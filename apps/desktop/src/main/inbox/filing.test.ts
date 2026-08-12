@@ -5,6 +5,7 @@ import {
   seedInboxItem,
   seedInboxItems,
   seedInboxItemTags,
+  asClientDb,
   type TestDatabaseResult
 } from '../../../tests/utils/test-db'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -177,8 +178,8 @@ describe('Inbox Filing Operations', () => {
 
   beforeEach(() => {
     testDb = createTestDatabase()
-    vi.mocked(getDatabase).mockReturnValue(testDb.db)
-    vi.mocked(requireDatabase).mockReturnValue(testDb.db)
+    vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
+    vi.mocked(requireDatabase).mockReturnValue(asClientDb(testDb.db))
     vi.mocked(getIndexDatabase).mockReturnValue({} as never)
 
     mockIndexBinaryFile.mockReset().mockResolvedValue('file-note-id')
@@ -344,10 +345,10 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects')
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/Screenshot.png' })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-1/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png'
+        '/mock-vault/notes/projects/Screenshot.png'
       )
       expect(mockCreateNote).not.toHaveBeenCalled()
       expect(mockSend).toHaveBeenCalledWith(
@@ -367,12 +368,12 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects', ['Image'])
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/Screenshot.png' })
       // Binary is eagerly indexed as an image to obtain its note id...
       expect(mockIndexBinaryFile).toHaveBeenCalledWith(
         {},
-        'notes/projects/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png',
+        'notes/projects/Screenshot.png',
+        '/mock-vault/notes/projects/Screenshot.png',
         'image'
       )
       // ...and the merged tags (existing + assigned + 'inbox') are written to note_tags.
@@ -392,7 +393,7 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects', ['Image'])
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/Screenshot.png' })
       expect(mockSend).toHaveBeenCalledWith(
         'inbox:filed',
         expect.objectContaining({ id: itemId, filedAction: 'folder' })
@@ -468,10 +469,10 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects')
 
-      expect(result.filedTo).toBe('notes/projects/screenshot-2.png')
+      expect(result.filedTo).toBe('notes/projects/Screenshot-2.png')
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-collision/screenshot.png',
-        '/mock-vault/notes/projects/screenshot-2.png'
+        '/mock-vault/notes/projects/Screenshot-2.png'
       )
     })
 
@@ -1342,12 +1343,12 @@ describe('Inbox Filing Operations', () => {
       expect(result).toEqual({ success: true, linkedCount: 2 })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-link-1/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png'
+        '/mock-vault/notes/projects/Screenshot.png'
       )
       expect(mockUpdateNote).toHaveBeenCalledTimes(2)
       expect(mockUpdateNote.mock.calls[0][0].content).toContain('## Inbox Captures')
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Old]]')
-      expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[screenshot]]')
+      expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Screenshot]]')
       expect(mockCreateNote).not.toHaveBeenCalled()
     })
 
@@ -1426,12 +1427,12 @@ describe('Inbox Filing Operations', () => {
       expect(mockCreateFolder).toHaveBeenCalledWith('references')
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf',
-        '/mock-vault/notes/references/report.pdf'
+        '/mock-vault/notes/references/Report.pdf'
       )
       expect(mockUnlink).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf'
       )
-      expect(mockUpdateNote.mock.calls.at(-1)?.[0].content).toContain('[[report]]')
+      expect(mockUpdateNote.mock.calls.at(-1)?.[0].content).toContain('[[Report]]')
     })
 
     it('returns binary linking filesystem failures', async () => {

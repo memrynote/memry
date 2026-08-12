@@ -13,7 +13,7 @@ import { useT } from '@memry/i18n/renderer'
 import { InboxListSection, InboxListItem } from '@/components/inbox'
 import { getFilteredFolders } from '@/components/quick-file-dropdown'
 import { groupItemsByTimePeriod } from '@/lib/inbox-utils'
-import { useRetryTranscription } from '@/hooks/use-inbox'
+import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
@@ -62,6 +62,16 @@ const ListView = ({
       retryTranscription.mutate(itemId)
     },
     [retryTranscription]
+  )
+
+  // Hook for renaming an item's title from the row context menu
+  const updateItem = useUpdateInboxItem()
+
+  const handleRename = useCallback(
+    (itemId: string, title: string) => {
+      updateItem.mutate({ id: itemId, title })
+    },
+    [updateItem]
   )
 
   const flatItems = groupedItems.flatMap((group) => group.items)
@@ -459,6 +469,7 @@ const ListView = ({
                 onQuickFileArrowUp={handleQuickFileArrowUp}
                 onQuickFileFolderSelect={handleQuickFileFolderSelect}
                 onRetryTranscription={handleRetryTranscription}
+                onRename={handleRename}
               />
             ))}
           </InboxListSection>

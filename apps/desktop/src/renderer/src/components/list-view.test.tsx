@@ -9,12 +9,14 @@ import type { InboxItemListItem, InboxItemType } from '@/types'
 
 const mocks = vi.hoisted(() => ({
   retryTranscription: vi.fn(),
+  updateInboxItem: vi.fn(),
   inputFocused: false,
   windowOpen: vi.fn()
 }))
 
 vi.mock('@/hooks/use-inbox', () => ({
-  useRetryTranscription: () => ({ mutate: mocks.retryTranscription })
+  useRetryTranscription: () => ({ mutate: mocks.retryTranscription }),
+  useUpdateInboxItem: () => ({ mutate: mocks.updateInboxItem })
 }))
 
 vi.mock('@/hooks/use-keyboard-shortcuts', () => ({

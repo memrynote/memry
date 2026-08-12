@@ -85,7 +85,6 @@
     "src/main/inbox/capture.test.ts",
     "src/main/inbox/crud.test.ts",
     "src/main/inbox/domain.test.ts",
-    "src/main/inbox/filing.test.ts",
     "src/main/inbox/jobs.article-extract.test.ts",
     "src/main/inbox/jobs.test.ts",
     "src/main/inbox/snooze.test.ts",

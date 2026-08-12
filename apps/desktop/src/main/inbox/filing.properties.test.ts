@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractItemProperties, generateNoteContent } from './filing.ts'
+import { extractItemProperties, generateNoteContent, getFiledBinaryFilename } from './filing.ts'
 
 describe('extractItemProperties', () => {
   it('returns the properties object from item metadata', () => {
@@ -54,5 +54,52 @@ describe('generateNoteContent link body', () => {
     const content = generateNoteContent(item)
     expect(content).toContain('> A short captured description.')
     expect(content).toContain('**Author:** Jane Doe')
+  })
+})
+
+describe('getFiledBinaryFilename', () => {
+  function binary(
+    overrides: Partial<Parameters<typeof getFiledBinaryFilename>[0]>
+  ): Parameters<typeof getFiledBinaryFilename>[0] {
+    return {
+      type: 'pdf',
+      title: 'Quarterly Report',
+      attachmentPath: 'attachments/inbox/pdf-1/a1b2c3-scan_final_v3.pdf',
+      ...overrides
+    } as Parameters<typeof getFiledBinaryFilename>[0]
+  }
+
+  // #808: renaming an image/PDF in the inbox is what names the file in the vault.
+  it('names a filed binary after the item title, keeping the extension', () => {
+    expect(getFiledBinaryFilename(binary({}))).toBe('Quarterly Report.pdf')
+    expect(getFiledBinaryFilename(binary({ type: 'image', title: 'Whiteboard' }))).toBe(
+      'Whiteboard.pdf'
+    )
+  })
+
+  it('still names filed voice memos after their title', () => {
+    expect(
+      getFiledBinaryFilename(
+        binary({
+          type: 'voice',
+          title: 'Standup notes',
+          attachmentPath: 'attachments/inbox/voice-1/voice-memo.m4a'
+        })
+      )
+    ).toBe('Standup notes.m4a')
+  })
+
+  it('strips path separators and other filesystem-hostile characters', () => {
+    expect(getFiledBinaryFilename(binary({ title: 'Q3/Q4: revenue*' }))).toBe('Q3Q4 revenue.pdf')
+  })
+
+  it('strips leading dots so a title cannot produce a hidden or traversal-shaped name', () => {
+    expect(getFiledBinaryFilename(binary({ title: '..config' }))).toBe('config.pdf')
+    expect(getFiledBinaryFilename(binary({ title: '.hidden' }))).toBe('hidden.pdf')
+  })
+
+  it('falls back to the capture-time filename when nothing survives sanitization', () => {
+    expect(getFiledBinaryFilename(binary({ title: '...' }))).toBe('a1b2c3-scan_final_v3.pdf')
+    expect(getFiledBinaryFilename(binary({ title: '///' }))).toBe('a1b2c3-scan_final_v3.pdf')
   })
 })
