@@ -38,6 +38,13 @@ steady states at `debug`:
   unknown content-length during a model download (`main/lib/embeddings.ts`). A stderr chunk is
   only downgraded when every line in it matches a known-benign pattern, so a real failure
   interleaved with progress output still reaches `error`.
+- Vector-clock bumps the `increment*ClockOffline` helpers make while the sync runtime is down
+  (`main/sync/offline-clock.ts`) — the normal offline-edit path, one call per edited row (per
+  changed field for tasks and projects).
+
+A log payload is built before the transport decides whether to keep it, so a hot path pays for
+its arguments at every level. Keep these lines to identifiers: log the row id and the changed
+field names, not the resulting clock or field-clock objects.
 
 ### Log Locations
 
