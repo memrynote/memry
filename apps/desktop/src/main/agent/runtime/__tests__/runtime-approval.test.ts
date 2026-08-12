@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import sodium from 'libsodium-wrappers-sumo'
 
 const mocks = vi.hoisted(() => ({
   setWriteGate: vi.fn(),
@@ -13,9 +16,11 @@ vi.mock('../event-bus', () => ({
   broadcastAgentEvent: mocks.broadcastAgentEvent
 }))
 
+import * as schema from '@memry/db-schema/data-schema'
 import type { VaultServiceHandles } from '../../mcp/tools/handles'
 import { buildWriteTools } from '../../mcp/tools/write-tools'
 import type { ConversationStore } from '../../storage/conversation-store'
+import { createConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import { AgentRuntime } from '../runtime'
 
@@ -77,11 +82,83 @@ function installedGate() {
   return gate
 }
 
+/**
+ * Same runtime, but wired to a real SQLite-backed ConversationStore instead of
+ * a `vi.fn()`. The tombstone bug lives in the store's SQL, so a mocked store
+ * cannot see it.
+ */
+function createRuntimeWithRealStore(vaultKey: Uint8Array) {
+  const sqlite = new Database(':memory:')
+  sqlite.exec(`
+    CREATE TABLE agent_conversations (
+      id TEXT PRIMARY KEY,
+      vault_id TEXT NOT NULL,
+      title_ciphertext TEXT NOT NULL,
+      backend TEXT NOT NULL,
+      backend_model TEXT,
+      trust_list TEXT NOT NULL DEFAULT '[]',
+      pinned INTEGER NOT NULL DEFAULT 0,
+      vector_clock TEXT NOT NULL,
+      field_clocks TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER,
+      last_synced_at INTEGER
+    );
+  `)
+  const conversations = createConversationStore({
+    db: drizzle(sqlite, { schema }),
+    vaultKey,
+    deviceId: 'device-1'
+  })
+  const runtime = new AgentRuntime({
+    conversations,
+    messages: {} as MessageStore,
+    getPreferences: () => ({ accessMode: 'vault_only', toolApprovalMode: 'always_accept' })
+  })
+
+  return { runtime, conversations }
+}
+
 describe('AgentRuntime approval gate', () => {
+  let vaultKey: Uint8Array
+
+  beforeAll(async () => {
+    await sodium.ready
+    vaultKey = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(Date, 'now').mockReturnValue(100)
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  })
+
+  it('rejects writes into a soft-deleted conversation', async () => {
+    const { runtime, conversations } = createRuntimeWithRealStore(vaultKey)
+    const conversation = conversations.create({
+      vaultId: 'v',
+      title: 'Doomed',
+      backend: 'claude_cli'
+    })
+
+    runtime.install()
+    const gate = installedGate()
+    const write = {
+      conversationId: conversation.id,
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Task' }
+    }
+
+    await expect(gate(write)).resolves.toEqual({ approved: true })
+
+    // A remote delete applied by the sync handler leaves exactly this state.
+    conversations.softDelete(conversation.id)
+
+    await expect(gate(write)).resolves.toEqual({
+      approved: false,
+      reason: 'Unknown conversation'
+    })
   })
 
   it('rejects writes for unknown conversations', async () => {
