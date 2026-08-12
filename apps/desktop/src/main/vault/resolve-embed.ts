@@ -173,7 +173,10 @@ export function resolveVaultEmbeds(refs: string[], notePath?: string): Record<st
 
   // Read once per batch, not once per ref: `getConfig` no longer re-parses
   // config.json — the parse is cached — but every call still stats the file to
-  // revalidate that cache and rebuilds the config object it hands back.
+  // revalidate that cache and rebuilds the config object it hands back. Reading
+  // it once also pins one notes folder for the whole batch, so a config change
+  // landing mid-resolve cannot send half a note's embeds to the old folder and
+  // half to the new one.
   const notesFolder = getConfig().defaultNoteFolder || 'notes'
 
   return resolveAgainstVault(status.path, notesFolder, refs, notePath)
