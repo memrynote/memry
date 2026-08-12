@@ -43,6 +43,11 @@ Size, crop, and alignment are **saved with the note** and restored when you reop
 Audio files render as inline audio blocks with playback controls. Filed voice memos keep their
 transcript with the audio file, so opening the file page shows the player and transcript together.
 
+The progress bar follows playback continuously, and only the scrubber and the time readout update
+as the track plays — so leaving a long recording running in a background tab costs nothing beyond
+the audio itself. Copying the transcript shows a checkmark for a couple of seconds; closing the
+file page before it clears cancels it cleanly.
+
 ## Image Attachments
 
 Images render as image blocks (not file blocks). Drag them to resize; double-click for the lightbox.
