@@ -16,6 +16,7 @@ import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { JournalDayPanel } from '@/components/journal'
 import { useJournalHeatmap } from '@/hooks/use-journal'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useToday } from '@/hooks/use-today'
 import {
   useCalendarPreferences,
   resolveDayCellClickBehavior,
@@ -145,9 +146,10 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
     [selectedDate]
   )
 
+  const today = useToday()
   const selectedDateObj = parseISODate(selectedDate)
   const dayPanelLabel =
-    selectedDate === getTodayString()
+    selectedDate === today
       ? t('date.relative.today')
       : selectedDateObj.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' })
   const currentYear = selectedDateObj.getFullYear()

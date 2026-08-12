@@ -56,6 +56,8 @@ same pointer location.
 
 When the panel is hidden, focus state still tracks (so reopening the panel restores the previously focused date).
 
+The **Today** label follows the real date: in a session left open past midnight it moves to the new day on its own, so yesterday is no longer labelled "Today".
+
 ## Why a Panel and a Calendar Tab?
 
 The Day Panel is the **always-visible** glance — what's today, what's due. The [Calendar tab](/user-guide/calendar) is the focused work surface for planning across days, weeks, and months.
