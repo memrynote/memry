@@ -525,15 +525,6 @@
       "scrollTabsRight": "Scroll tabs right",
       "dayPanel": "Day Panel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Scroll tabs left",
-      "scrollTabsRight": "Scroll tabs right"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Open tabs",
-      "scrollTabsLeft": "Scroll tabs left",
-      "scrollTabsRight": "Scroll tabs right"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Something went wrong",
       "anErrorOccurredWhileRenderingThisTabContent": "An error occurred while rendering this tab content.",

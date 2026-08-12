@@ -10,7 +10,6 @@ import {
   TreeFolderIcon
 } from './note-tree-internal'
 import { QuickFileDropdown, getFilteredFolders } from './quick-file-dropdown'
-import { TabBar } from './tabs/tab-bar'
 import { TabBarAction } from './tabs/tab-bar-action'
 import { TabContextMenu } from './tabs/tab-context-menu'
 import { TabDragProvider } from './tabs/tab-drag-provider'
@@ -150,10 +149,6 @@ vi.mock('@/contexts/tabs', () => ({
     }
   },
   useTabSettings: () => ({ tabCloseButton: 'always' })
-}))
-
-vi.mock('./tabs/new-tab-menu', () => ({
-  NewTabMenu: ({ groupId }: { groupId: string }) => <button type="button">new {groupId}</button>
 }))
 
 function tab(overrides: Partial<Tab> = {}): Tab {
@@ -356,15 +351,8 @@ describe('cold renderer component smoke coverage', () => {
     expect(ref.current).toBeNull()
   })
 
-  it('covers tabs bar, action button, context menu actions, and drag provider dispatches', async () => {
+  it('covers action button, context menu actions, and drag provider dispatches', async () => {
     const onClick = vi.fn()
-    render(<TabBar groupId="group-1" />)
-    fireEvent.click(screen.getByText('Regular'))
-    expect(mocks.setActiveTab).toHaveBeenCalledWith('tab-2', 'group-1')
-    fireEvent.click(screen.getByLabelText('Close Regular'))
-    expect(mocks.closeTab).toHaveBeenCalledWith('tab-2', 'group-1')
-    expect(screen.getByRole('button', { name: 'new group-1' })).toBeInTheDocument()
-
     render(<TabBarAction icon={<span>*</span>} tooltip="Run" onClick={onClick} isActive />)
     fireEvent.click(screen.getByRole('button', { name: 'Run' }))
     expect(onClick).toHaveBeenCalled()

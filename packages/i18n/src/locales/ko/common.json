@@ -274,15 +274,6 @@
       "scrollTabsRight": "탭을 오른쪽으로 스크롤",
       "dayPanel": "일 패널"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
-      "scrollTabsRight": "탭을 오른쪽으로 스크롤"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "탭 열기",
-      "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
-      "scrollTabsRight": "탭을 오른쪽으로 스크롤"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "문제가 발생했습니다.",
       "anErrorOccurredWhileRenderingThisTabContent": "이 탭 콘텐츠를 렌더링하는 동안 오류가 발생했습니다.",

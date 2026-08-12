@@ -274,15 +274,6 @@
       "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts",
       "dayPanel": "Tagestafel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Scrollen Sie durch die Tabs nach links",
-      "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Tabs öffnen",
-      "scrollTabsLeft": "Scrollen Sie durch die Tabs nach links",
-      "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Etwas ist schief gelaufen",
       "anErrorOccurredWhileRenderingThisTabContent": "Beim Rendern dieses Tab-Inhalts ist ein Fehler aufgetreten.",

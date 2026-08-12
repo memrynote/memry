@@ -274,15 +274,6 @@
       "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά",
       "dayPanel": "Πάνελ ημέρας"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
-      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Ανοίξτε τις καρτέλες",
-      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
-      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Κάτι πήγε στραβά",
       "anErrorOccurredWhileRenderingThisTabContent": "Παρουσιάστηκε σφάλμα κατά την απόδοση του περιεχομένου αυτής της καρτέλας.",

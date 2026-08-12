@@ -274,15 +274,6 @@
       "scrollTabsRight": "I-scroll pakanan ang mga tab",
       "dayPanel": "Panel ng Araw"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
-      "scrollTabsRight": "I-scroll pakanan ang mga tab"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Buksan ang mga tab",
-      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
-      "scrollTabsRight": "I-scroll pakanan ang mga tab"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Nagkaproblema",
       "anErrorOccurredWhileRenderingThisTabContent": "Nagkaroon ng error habang nire-render ang content ng tab na ito.",
