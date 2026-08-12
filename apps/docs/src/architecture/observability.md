@@ -116,12 +116,47 @@ Recognized surfaces (`TelemetrySurface` in `packages/contracts/telemetry-api`):
 - Tag names
 - User file paths and note filenames
 - Raw (unredacted) exception messages — a desktop error message can embed a note title or content
+- Scraped page metadata — the `<title>`, description or address of a URL the user clipped
 
 The contract uses string-typed enums for surfaces and actions; arbitrary strings can't sneak
 through. The one exception is error diagnostics, which additionally ship a redacted **stack
 trace** of code locations and, optionally, a message — but only after the client has run it
 through `redactText` (`packages/contracts/src/redact.ts`), never the raw string — see
 [Error Reporting](#error-reporting).
+
+#### The dimension allowlist
+
+`dimensions` is the one free-form slot on an event, so its key namespace is **closed**.
+`TELEMETRY_DIMENSION_KEYS` in `packages/contracts/src/telemetry-api.ts` lists every key allowed to
+leave the device; `sanitizeTelemetryDimensions` keeps at most one entry, drops any key not on the
+list, and drops any value that fails the safe-value shape (no `@`, no `://`, no slash, ≤ 64 chars,
+not UUID-shaped).
+
+The shape check alone is not enough, which is why the allowlist exists: a scraped page title such
+as `Divorce settlement calculator` passes every one of those rules. Only an enumerable key
+namespace can tell a bounded enum from arbitrary user or page content.
+
+Enforcement sits in `createTelemetryClient`'s `track()`
+(`apps/desktop/src/main/telemetry/client.ts`) — the single chokepoint every event crosses before
+the durable queue and the network, whether it came from `trackMainEvent`, the renderer's IPC
+handler, or a direct `runtime.track` call. A new call site cannot opt out by skipping a helper.
+The renderer wrapper (`src/renderer/src/lib/telemetry.ts`) applies the same shared function so the
+UI drops rejected dimensions before the IPC hop.
+
+**Adding a key is the review gate.** If the value cannot be enumerated ahead of time, it does not
+belong in a dimension — send a metric instead (a count, a duration, or a bucket label such as
+`result_bucket`).
+
+The allowlist is deliberately **not** part of `TelemetryDimensionsSchema`. The sync-server
+validates `/telemetry/batch` with that schema and rejects a whole batch on one bad event, so
+narrowing it would make a newly deployed server 400 batches sent by already-shipped desktop
+builds. The allowlist is enforced on the client, where the data still is.
+
+Because `warn`/`error` log records ship too (Path A, see [What Ships](#what-ships) and
+[Error & Diagnostic Logs in PostHog](#error-diagnostic-logs-in-posthog)), the same rule applies to
+log lines and thrown error messages in content-handling code: the inbox scraper
+(`apps/desktop/src/main/inbox/metadata.ts`) logs the clipped URL and scraped title at `debug`
+— below the ship floor — and keeps a content-free `warn` so the event stays countable.
 
 ## Tracking Pattern
 
