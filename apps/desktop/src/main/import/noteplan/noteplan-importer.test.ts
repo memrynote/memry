@@ -6,12 +6,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
+import * as os from 'os'
 import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
+import { insertProject } from '../../database/queries/projects'
+import { listTasks } from '../../database/queries/tasks'
 import type { NotePlanTaskDeps } from './noteplan-importer'
 
 vi.mock('electron', () => {
@@ -246,6 +249,38 @@ describe('notePlanImporter (integration)', () => {
     ).toBe(true)
   })
 
+  it('routes @Archive notes under NotePlan/Archive', async () => {
+    // `scanSource` maps a literal '@Archive' directory name — nothing else in
+    // this file touches that path, so a typo there would ship green.
+    const { deps } = makeDeps()
+    const ctx = importContext.createImportContext('np11', new AbortController().signal)
+    await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
+
+    const archived = path.join(tempVault.notesDir, 'NotePlan', 'Archive', 'Old Thing.md')
+    expect(fs.existsSync(archived)).toBe(true)
+    expect(fs.readFileSync(archived, 'utf8')).toContain('Archived long ago.')
+  })
+
+  it('resolves a co-located image as a vault attachment', async () => {
+    // Reusing `resolveCoLocatedAssets` for NotePlan was the whole point of
+    // extracting it — this is the only fixture that actually exercises it.
+    const { deps } = makeDeps()
+    const ctx = importContext.createImportContext('np12', new AbortController().signal)
+    const summary = await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
+
+    expect(summary.attachments).toBe(1)
+    // gopher.png must never surface as "Unsupported file type" — it is
+    // consumed as an attachment, not planned (and skipped) as a note file.
+    expect(summary.skipped).toBe(0)
+
+    const note = fs.readFileSync(
+      path.join(tempVault.notesDir, 'NotePlan', 'Note With Image.md'),
+      'utf8'
+    )
+    expect(note).toContain('memry-file://')
+    expect(note).not.toContain('](gopher.png)')
+  })
+
   it('keeps semantic frontmatter and drops NotePlan styling keys', async () => {
     const { deps } = makeDeps()
     const ctx = importContext.createImportContext('np5', new AbortController().signal)
@@ -260,8 +295,7 @@ describe('notePlanImporter (integration)', () => {
       ),
       'utf8'
     )
-    expect(project).toContain('status')
-    expect(project).toContain('Active')
+    expect(project).toContain('status: Active')
     expect(project).not.toContain('icon-color')
     expect(project).not.toContain('purple-600')
   })
@@ -271,8 +305,9 @@ describe('notePlanImporter (integration)', () => {
     const ctx = importContext.createImportContext('np6', new AbortController().signal)
     const summary = await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
 
-    // 2 notes + 1 weekly note + 1 journal entry = 4; nothing from Filters/.
-    expect(summary.imported).toBe(4)
+    // 3 notes (start-here, project-sample-1, with-image) + 1 weekly note +
+    // 1 archived note + 1 journal entry = 6; nothing from Filters/.
+    expect(summary.imported).toBe(6)
     expect(summary.failed).toEqual([])
     expect(fs.existsSync(path.join(tempVault.notesDir, 'NotePlan', 'All Tasks.md'))).toBe(false)
   })
@@ -292,5 +327,119 @@ describe('notePlanImporter (integration)', () => {
     expect(journal).toContain('My own words.')
     expect(journal).toContain('## Imported from NotePlan')
     expect(journal).toContain('Watch the getting-started video')
+  })
+})
+
+describe('notePlanImporter (real production deps)', () => {
+  // Every test above injects `NotePlanTaskDeps` fakes, so `defaultTaskDeps()`
+  // (requireDatabase + createDesktopTasksDomain + createTasksPublisher +
+  // getInboxProject) is only ever checked by `tsc`. Spying the barrel's
+  // `getDatabase` (as the suite above does) does not reach it: `client.ts`'s
+  // `requireDatabase()` calls the *local* `getDatabase` function in that same
+  // file, not the exported binding a spy patches. So this block runs the real
+  // `initDatabase`/`initIndexDatabase` against real temp SQLite files instead
+  // — the same wiring `runNotePlanImport` uses when nobody injects deps.
+  let tempVault: TestVaultResult
+  let tempDbDir: string
+
+  let vaultIndex: typeof import('../../vault/index')
+  let database: typeof import('../../database')
+  let importer: typeof import('./noteplan-importer')
+  let importContext: typeof import('../import-context')
+
+  beforeEach(async () => {
+    tempVault = createTestVault('noteplan-import-real-deps-test')
+    tempDbDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-noteplan-real-db-'))
+
+    vaultIndex = await import('../../vault/index')
+    database = await import('../../database')
+
+    vi.spyOn(vaultIndex, 'getStatus').mockReturnValue({
+      isOpen: true,
+      path: tempVault.path,
+      isIndexing: false,
+      indexProgress: 100,
+      error: null
+    } satisfies VaultStatus)
+
+    vi.spyOn(vaultIndex, 'getConfig').mockReturnValue({
+      excludePatterns: ['.git', 'node_modules', '.trash'],
+      defaultNoteFolder: 'notes',
+      journalFolder: 'journal',
+      attachmentsFolder: 'attachments'
+    } satisfies VaultConfig)
+
+    // FTS indexing is unrelated to what this block verifies (real task-row
+    // wiring) — same no-op the fake-deps suite above uses.
+    vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
+
+    const dataDbPath = path.join(tempDbDir, 'data.db')
+    const indexDbPath = path.join(tempDbDir, 'index.db')
+    database.runMigrations(dataDbPath)
+    database.runIndexMigrations(indexDbPath)
+    database.initDatabase(dataDbPath)
+    database.initIndexDatabase(indexDbPath)
+
+    startProjectionRuntime([createNoteDerivedStateProjector(() => tempVault.path)])
+
+    importer = await import('./noteplan-importer')
+    importContext = await import('../import-context')
+  })
+
+  afterEach(async () => {
+    await stopProjectionRuntime()
+    vi.restoreAllMocks()
+    database.closeAllDatabases()
+    tempVault.cleanup()
+    fs.rmSync(tempDbDir, { recursive: true, force: true })
+  })
+
+  it('creates real task rows through the production DB wiring when no deps are injected', async () => {
+    const db = database.getDatabase()
+    insertProject(db, {
+      id: 'inbox',
+      name: 'Inbox',
+      color: '#6366f1',
+      position: 0,
+      isInbox: true
+    })
+
+    const ctx = importContext.createImportContext('np-real', new AbortController().signal)
+    // No third argument — this is the only test in the file that exercises
+    // `defaultTaskDeps()` rather than an injected fake.
+    const summary = await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx)
+
+    expect(summary.failed).toEqual([])
+
+    const rows = listTasks(db, {
+      projectId: 'inbox',
+      includeCompleted: true,
+      includeArchived: true,
+      limit: 100
+    })
+
+    // Journal-sourced task: real due date, real (deterministic) sourceNoteId.
+    const video = rows.find((t) => t.title === 'Watch the getting-started video')
+    expect(video?.dueDate).toBe('2026-08-13')
+    expect(video?.sourceNoteId).toBe('j2026-08-12')
+    expect(video?.completedAt).toBeNull()
+
+    // `* [x]` really comes back completed through the real domain, not a fake.
+    const manual = rows.find((t) => t.title === 'Read the manual')
+    expect(manual?.completedAt).toBeTruthy()
+
+    const abandoned = rows.find((t) => t.title === 'Abandoned idea')
+    expect(abandoned?.archivedAt).toBeTruthy()
+
+    // Note-sourced, nested task: parent link and a shared (real, generated)
+    // sourceNoteId.
+    const kickoff = rows.find((t) => t.title === 'Project kickoff')
+    const child = rows.find((t) => t.title === 'Confirm stakeholders')
+    expect(kickoff?.sourceNoteId).toBeTruthy()
+    expect(child?.parentId).toBe(kickoff?.id)
+    expect(child?.sourceNoteId).toBe(kickoff?.sourceNoteId)
+
+    // The journal entry was actually written through the real DB-backed path.
+    expect(fs.existsSync(path.join(tempVault.path, 'journal', '2026-08-12.md'))).toBe(true)
   })
 })

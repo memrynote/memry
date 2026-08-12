@@ -44,6 +44,15 @@ const logger = createLogger('NotePlanImport')
 /** Directories NotePlan owns that hold nothing importable. */
 const IGNORED_DIRS = new Set(['Filters', '@Trash', 'Plugins', 'Caches', '.git'])
 
+/**
+ * NotePlan note/journal extensions. Anything else under an area (images,
+ * NotePlan's own `.filter` files, etc.) is a co-located asset for
+ * `resolveCoLocatedAssets` to pick up via the note body that references it —
+ * not a file to plan and then report skipped in its own right. Mirrors
+ * `collectMarkdownFiles` in the Markdown importer.
+ */
+const NOTE_EXTENSIONS = new Set(['.txt', '.md'])
+
 /** Where the macOS app keeps its data, relative to the user's home. */
 const MACOS_CONTAINER_REL =
   'Library/Containers/co.noteplan.NotePlan3/Data/Library/Application Support/co.noteplan.NotePlan3'
@@ -120,6 +129,10 @@ async function collectArea(
       await collectArea(absPath, areaRoot, rootDir, area, out)
     } else if (entry.isFile()) {
       if (entry.name === '.DS_Store') continue
+      // Non-note files (images, etc.) are co-located assets, resolved via the
+      // note body that references them — not planned (and reported skipped)
+      // in their own right. `resolveCoLocatedAssets` then imports them.
+      if (!NOTE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue
       out.push({ relPath: path.relative(areaRoot, absPath), absPath, rootDir, area })
     }
   }

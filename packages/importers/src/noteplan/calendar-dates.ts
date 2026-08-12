@@ -15,7 +15,10 @@ export interface CalendarFile {
   kind: CalendarKind
   /** ISO `YYYY-MM-DD`. Set only when `kind` is `'day'`. */
   iso?: string
-  /** Display label — used verbatim as the note title for non-day files. */
+  /**
+   * Fallback title for non-day files — the orchestrator prefers the body's
+   * H1 when one exists, so this is only what a headless file falls back to.
+   */
   label: string
 }
 
