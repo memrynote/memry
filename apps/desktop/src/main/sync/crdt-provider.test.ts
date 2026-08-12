@@ -704,6 +704,40 @@ describe('CrdtProvider', () => {
     expect(provider.getDoc('note-1')).toBe(replacementDoc)
   })
 
+  it('destroys the superseded doc when a real reopen replaces it mid-close', async () => {
+    createWindow(5)
+    let releaseFlush: (() => void) | undefined
+    mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFlush = resolve
+        })
+    )
+    const supersededDoc = await provider.open('note-1', undefined, { skipSeed: true })
+
+    const closePromise = provider.close('note-1')
+    await Promise.resolve()
+
+    // A real reopen through open() — the editor mounting again while the
+    // close's flush is still in flight — not a hand-built map entry.
+    const replacementDoc = await provider.open('note-1', 5, { skipSeed: true })
+    expect(replacementDoc).not.toBe(supersededDoc)
+
+    releaseFlush?.()
+    await closePromise
+
+    // The live doc must survive: the map still points at it and keystrokes
+    // arriving after the race still land in it.
+    expect(provider.getDoc('note-1')).toBe(replacementDoc)
+    expect(replacementDoc.isDestroyed).toBe(false)
+    provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after reopen'), 5)
+    expect(replacementDoc.getMap('meta').get('title')).toBe('typed after reopen')
+
+    // The orphan is torn down instead of being left for GC with its 'update'
+    // listener still attached.
+    expect(supersededDoc.isDestroyed).toBe(true)
+  })
+
   it('returns false when pushing a snapshot without a configured push callback', async () => {
     const noSnapshotProvider = new CrdtProvider()
     await noSnapshotProvider.init()

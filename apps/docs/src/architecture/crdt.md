@@ -101,6 +101,14 @@ pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmou
 window that turns out to be gone, and provider teardown on vault close or switch. Once
 released, the doc is evictable and compactable again.
 
+Closing is asynchronous — it flushes the doc to persistence first — so a note can be
+reopened while its own close is still in flight. The reopen builds a fresh Y.Doc and takes
+over the provider's entry for that note, and the close then finds that the entry no longer
+belongs to it. It leaves that entry alone, because the reopened doc is the one the editor
+is typing into, and destroys only the doc it superseded. Nothing can reach the superseded
+doc at that point: every route into a Y.Doc looks the note id up in the provider's map,
+which now resolves the replacement.
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:

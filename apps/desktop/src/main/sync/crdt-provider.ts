@@ -333,7 +333,21 @@ export class CrdtProvider {
     })
 
     if (this.docs.get(noteId) !== entry) {
-      log.debug('Doc reopened during async close, skipping destroy', { noteId })
+      // The note was reopened while the flush above was in flight, so doOpen()
+      // put a *different* entry — with its own Y.Doc — in the map. That
+      // replacement is what the editor is typing into, so the map entry must
+      // stay exactly as it is. Only the superseded doc is retired here, and it
+      // is provably unreachable: every routing path (applyIpcUpdate,
+      // applyIpcSyncStep2, applyRemoteUpdate, getDoc, getDiff, getStateVector,
+      // updateMeta, onDocUpdate, broadcastToWindows) re-reads this.docs by
+      // noteId and therefore resolves the replacement; nothing outside the
+      // provider retains a Y.Doc across awaits; and entry.doc is assigned only
+      // in doOpen and in compactDoc's in-place swap, so one doc belongs to
+      // exactly one entry and can never be shared with the replacement.
+      // Destroying it detaches its 'update' listener instead of leaving it for
+      // GC to notice.
+      log.debug('Doc reopened during async close, destroying the superseded doc', { noteId })
+      entry.doc.destroy()
       return
     }
 
