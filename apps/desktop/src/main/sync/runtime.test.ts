@@ -717,10 +717,19 @@ describe('sync runtime', () => {
     await queue.onBatch?.('note-missing-token', [new Uint8Array([1])])
     expect(runtimeMocks.postToServer).not.toHaveBeenCalled()
 
+    // A batch whose total is large but whose entries each fit a D1 row must be
+    // sent, not discarded: dropping it lost the user's paste on every device.
     runtimeMocks.encryptCrdtUpdate.mockReturnValueOnce(new Uint8Array(700_000))
     await queue.onBatch?.('note-too-large', [new Uint8Array([1]), new Uint8Array([2])])
-    expect(runtimeMocks.postToServer).not.toHaveBeenCalled()
+    expect(runtimeMocks.postToServer).toHaveBeenCalledWith(
+      '/sync/crdt/updates',
+      expect.objectContaining({ noteId: 'note-too-large' }),
+      'access-token'
+    )
+    const sentBody = runtimeMocks.postToServer.mock.calls[0][1] as { updates: string[] }
+    expect(sentBody.updates).toHaveLength(2)
 
+    runtimeMocks.postToServer.mockClear()
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
     runtimeMocks.crdtProvider.pushSnapshotForNote.mockRejectedValueOnce(
       new Error('snapshot failed')
@@ -770,6 +779,82 @@ describe('sync runtime', () => {
       expect.objectContaining({ errorCategory: 'storage_quota_exceeded' })
     )
     expect(queue.pause.mock.calls.length).toBe(pauseCallsBeforeSnapshot + 1)
+  })
+
+  it('splits a CRDT batch too big for one request across several requests', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
+    runtimeMocks.postToServer.mockClear()
+
+    // Six updates that each fit a D1 row but together exceed the 8 MiB body cap.
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array(890_000))
+    const raw = Array.from({ length: 6 }, (_, i) => new Uint8Array([i]))
+
+    await queue.onBatch?.('note-1', raw)
+
+    expect(runtimeMocks.postToServer).toHaveBeenCalledTimes(2)
+    const sent = runtimeMocks.postToServer.mock.calls.flatMap(
+      (call) => (call[1] as { updates: string[] }).updates
+    )
+    // Every update reaches the server — the batch is split, never trimmed.
+    expect(sent).toHaveLength(6)
+    for (const call of runtimeMocks.postToServer.mock.calls) {
+      const body = call[1] as { updates: string[] }
+      const chars = body.updates.reduce((sum, update) => sum + update.length, 0)
+      expect(chars).toBeLessThanOrEqual(6_000_000)
+    }
+
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+  })
+
+  it('pushes a snapshot when one CRDT update is too large for the incremental path', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
+    runtimeMocks.postToServer.mockClear()
+    runtimeMocks.crdtProvider.pushSnapshotForNote.mockReset()
+    runtimeMocks.crdtProvider.pushSnapshotForNote.mockResolvedValue(true)
+
+    // One paste: a single update far past what a D1 `crdt_updates` row holds.
+    runtimeMocks.encryptCrdtUpdate.mockReturnValueOnce(new Uint8Array(1_000_000))
+
+    await expect(
+      queue.onBatch?.('note-1', [new Uint8Array([1]), new Uint8Array([2])])
+    ).resolves.toBeUndefined()
+
+    // The small sibling still rides the incremental path...
+    expect(runtimeMocks.postToServer).toHaveBeenCalledTimes(1)
+    const body = runtimeMocks.postToServer.mock.calls[0][1] as { updates: string[] }
+    expect(body.updates).toHaveLength(1)
+    // ...and the oversized one converges through the R2-backed snapshot instead
+    // of vanishing.
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+  })
+
+  it('fails loudly when the snapshot fallback for an oversized CRDT update does not land', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+    const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
+    runtimeMocks.postToServer.mockClear()
+    runtimeMocks.crdtProvider.pushSnapshotForNote.mockReset()
+    runtimeMocks.crdtProvider.pushSnapshotForNote.mockResolvedValue(false)
+
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array(1_000_000))
+
+    // Rejecting is what keeps the batch buffered for the next flush; resolving
+    // here would be the silent drop this path replaces.
+    await expect(queue.onBatch?.('note-1', [new Uint8Array([1])])).rejects.toThrow(
+      'CRDT snapshot fallback failed'
+    )
+    expect(runtimeMocks.postToServer).not.toHaveBeenCalled()
+
+    runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
   })
 
   it('exposes engine dependency branches for signing keys, device keys, and calendar sync', async () => {

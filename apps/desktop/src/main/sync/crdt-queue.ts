@@ -8,7 +8,8 @@ const FLUSH_INTERVAL_MS = 1000
 const MAX_BATCH_SIZE = 50
 // Largest single merged update produced by coalescing. Merged updates are
 // pushed as one payload, so this keeps a long offline session from producing
-// one blob the server rejects (the push fn caps a batch at ~900KB base64).
+// one blob the server cannot store in a D1 row (the push fn splits a batch
+// across requests and falls back to a snapshot for anything still too large).
 const MAX_MERGED_UPDATE_BYTES = 256 * 1024
 // Largest raw payload a single flush may carry, for the same reason: after
 // coalescing a batch of 50 entries could otherwise be tens of megabytes.
