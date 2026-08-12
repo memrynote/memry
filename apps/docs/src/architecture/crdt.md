@@ -18,6 +18,11 @@ renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──�
 
 ## Persistence Resilience
 
+Opening the store is a self-contained step that lives in `crdt-persistence.ts`,
+separate from the provider that owns the Y.Docs: it runs the checks below and
+hands back either a usable store or nothing, which is what puts the provider
+into in-memory mode.
+
 The classic-level native binding is first exercised in a **disposable
 utilityProcess** (`crdt-preflight-child.ts`) against the **real store
 directory**: a binding that hard-aborts (unsupported CPU instructions, AV
