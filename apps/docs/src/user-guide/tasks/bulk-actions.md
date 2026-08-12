@@ -46,6 +46,8 @@ If multiple tasks are selected, dragging any of them moves the **whole selection
 
 After 10 seconds the action is committed and undo no longer reaches it. (You can still manually reverse, of course.) The cutoff is enforced at the moment you trigger undo, so an action that has just aged out is never replayed — whichever way you reach undo, it either runs a change that is still inside the window or does nothing.
 
+The window closes on the 10-second mark itself, not on a rounded-off tick shortly after, so anything the app shows about the pending undo disappears at the same instant undo stops accepting it.
+
 The undo window is app-wide, not per view. The most recent undoable action is shared across Tasks, Projects, and Calendar, so <kbd>⌘</kbd>+<kbd>Z</kbd> reverses whichever action happened last no matter where you switched to, and it expires on the same 10-second timer everywhere.
 
 ## Multi-Select Across Filters
