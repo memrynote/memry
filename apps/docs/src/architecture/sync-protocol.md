@@ -669,3 +669,9 @@ Shutting the bridge down asks the worker to exit and waits three seconds before 
 worker that misses that window is fully detached first, so the exit that terminating eventually
 produces cannot land on a bridge that has already been restarted and cancel the new worker's
 in-flight batches.
+
+The bridge only listens to the thread it is currently routing to. A message, error, or exit that
+arrives from a thread it has already walked away from is ignored, and that thread is disconnected
+outright. Without this, the late exit of a terminated worker would take the _live_ worker out of the
+rotation — a bridge reporting no worker at all while a healthy thread sat idle, leaving every batch
+for the rest of the session on the main thread.
