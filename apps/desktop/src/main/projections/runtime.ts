@@ -92,8 +92,38 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
   // it), so stop() has to be able to cut it short: without this, switching
   // vaults left the previous runtime's pass reading the old vault path against
   // a database that closeVault had already closed (#993).
-  let reconcileAbort: AbortController | null = null
-  let activeReconcile: Promise<unknown> | null = null
+  //
+  // There can be more than one outstanding pass: `openVault` fires a full
+  // reconcile without awaiting it, and a reindex or a structural config change
+  // fires the embedding drain on top of it (#1083). A single
+  // controller/promise pair let the second call overwrite the first, so stop()
+  // aborted and awaited only the newest pass while the older one kept reading
+  // the closing vault with a signal nobody held — the same unabortable stall as
+  // #803/#805. Every outstanding controller is tracked so stop() can abort all
+  // of them.
+  const reconcileControllers = new Set<AbortController>()
+  // Passes run one at a time, chained onto this tail: two concurrent passes
+  // would repeat the same repair work (the embedding drain is a subset of the
+  // full pass) against the same index database. stop() awaits the tail, which
+  // covers the running pass and everything queued behind it.
+  let reconcileChain: Promise<unknown> = Promise.resolve()
+
+  const runReconcilePass = async (
+    controller: AbortController,
+    names?: string[]
+  ): Promise<Record<string, unknown>> => {
+    const results: Record<string, unknown> = {}
+
+    for (const projector of selectProjectors(options.projectors, names)) {
+      if (controller.signal.aborted) {
+        break
+      }
+
+      results[projector.name] = await projector.reconcile(controller.signal)
+    }
+
+    return results
+  }
 
   const lanes: ProjectorLane[] = options.projectors.map((projector) => ({
     projector,
@@ -293,38 +323,35 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
     async reconcile(names) {
       const controller = new AbortController()
-      const run = (async () => {
-        const results: Record<string, unknown> = {}
 
-        for (const projector of selectProjectors(options.projectors, names)) {
-          if (controller.signal.aborted) {
-            break
-          }
+      // A pass that arrives once stop() has begun would run against databases
+      // the caller is about to close, and stop() has already aborted the
+      // controllers it knew about. Start it pre-aborted so it no-ops instead.
+      if (isStopping || isStopped) {
+        controller.abort()
+      }
 
-          results[projector.name] = await projector.reconcile(controller.signal)
-        }
+      reconcileControllers.add(controller)
 
-        return results
-      })()
-
-      reconcileAbort = controller
-      activeReconcile = run
+      const run = reconcileChain.then(() => runReconcilePass(controller, names))
+      // The tail swallows, so it never rejects: a failing pass must not stop
+      // the next one from being queued, and stop() awaits this handle.
+      reconcileChain = run.then(
+        () => {},
+        () => {}
+      )
 
       try {
         return await run
       } finally {
-        if (reconcileAbort === controller) {
-          reconcileAbort = null
-        }
-        if (activeReconcile === run) {
-          activeReconcile = null
-        }
+        reconcileControllers.delete(controller)
       }
     },
 
     async stop(stopOptions) {
-      reconcileAbort?.abort()
-      const pendingReconcile = activeReconcile
+      for (const controller of reconcileControllers) {
+        controller.abort()
+      }
 
       isStopping = true
 
@@ -345,11 +372,11 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
         lane.bus.clear()
       }
 
-      // Wait for the aborted pass to unwind before returning: the caller closes
-      // the databases right after this resolves.
-      if (pendingReconcile) {
-        await pendingReconcile.catch(() => {})
-      }
+      // Wait for the aborted passes to unwind before returning: the caller
+      // closes the databases right after this resolves. Reading the tail here
+      // (rather than at the top of stop()) also covers a pass queued during the
+      // drain — which starts pre-aborted, so it adds no wait.
+      await reconcileChain
     },
 
     getPendingCount() {
