@@ -25,7 +25,7 @@ import type {
   SplitDirection
 } from './types'
 import { tabReducer } from './reducer'
-import { createInitialState, createTabFromSidebarItem } from './helpers'
+import { createInitialState, createTabFromSidebarItem, generateId } from './helpers'
 import { useCloseGuardRegistry, type TabCloseGuard } from './close-guard'
 import { UnsavedChangesDialog } from '@/components/tabs/unsaved-changes-dialog'
 
@@ -182,9 +182,15 @@ interface TabActionsContextType {
   ) => void
 
   /**
-   * Split the view
+   * Split the view.
+   *
+   * Returns the id of the pane it created, so a caller can act on that pane in
+   * the same dispatch batch instead of guessing when the split lands: SPLIT_VIEW
+   * deliberately leaves `activeGroupId` on the source pane, so a follow-up
+   * `openTab` with no `groupId` would land back in the pane that was split.
+   * Returns null when the source group no longer exists and nothing was split.
    */
-  splitView: (direction: SplitDirection, groupId?: string) => void
+  splitView: (direction: SplitDirection, groupId?: string) => string | null
 
   /**
    * Close a split pane
@@ -366,6 +372,7 @@ export const TabProvider = ({
           groupId: options.groupId,
           position: options.position,
           background: options.background,
+          forceNew: options.forceNew,
           replaceActive: options.replaceActive
         }
       })
@@ -632,12 +639,19 @@ export const TabProvider = ({
     []
   )
 
-  const splitView = useCallback((direction: SplitDirection, groupId?: string) => {
+  const splitView = useCallback((direction: SplitDirection, groupId?: string): string | null => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
+    // Mirrors the reducer's own guard: splitting a group that is already gone is
+    // a no-op, and callers must not get an id for a pane that was never created.
+    if (!tabGroupsRef.current[actualGroupId]) return null
+    // Naming the pane here (instead of inside the reducer) is what makes the
+    // split observable to the caller without waiting for a render to commit.
+    const newGroupId = generateId()
     dispatch({
       type: 'SPLIT_VIEW',
-      payload: { direction, groupId: actualGroupId }
+      payload: { direction, groupId: actualGroupId, newGroupId }
     })
+    return newGroupId
   }, [])
 
   const closeSplit = useCallback((groupId: string) => {

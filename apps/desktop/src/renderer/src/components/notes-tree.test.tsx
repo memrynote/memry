@@ -227,6 +227,33 @@ describe('T521: NotesTree - folder tree display', () => {
     expect(screen.queryByText('Meeting Notes')).not.toBeInTheDocument()
   })
 
+  // #445: the sidebar is the one caller that fetches the whole vault, so it is
+  // the one caller that must not ask for the heavy per-note fields it never
+  // renders. Anything else keeps the full shape by omitting `fields`.
+  it('#445: requests the sidebar-only note shape', () => {
+    renderWithProviders(<NotesTree />)
+
+    expect(useNotesList).toHaveBeenCalledWith({ limit: 10000, fields: 'tree' })
+  })
+
+  it('#445: renders notes that carry no snippet, mimeType or fileSize', () => {
+    const treeShaped = [
+      createNote('note-1', 'Meeting Notes.md'),
+      createNote('note-5', 'Daily Journal.md', { emoji: '📝', localOnly: true })
+    ].map((note) => {
+      const { snippet: _snippet, ...rest } = note as NoteListItem & { snippet?: string }
+      void _snippet
+      return rest as NoteListItem
+    })
+
+    setupMocks(treeShaped, [])
+    renderWithProviders(<NotesTree />)
+
+    expect(screen.getByText('Meeting Notes')).toBeInTheDocument()
+    expect(screen.getByText('Daily Journal')).toBeInTheDocument()
+    expect(screen.getByText('📝')).toBeInTheDocument()
+  })
+
   it('should render error state when error occurs', () => {
     setupMocks([], [], false, new Error('Failed to load notes'))
     renderWithProviders(<NotesTree />)

@@ -9,7 +9,6 @@ Run a local embedding model so search ranks by meaning, not just keywords.
 When embeddings are loaded, memrynote can rank notes by **semantic similarity** to your query — not just keyword overlap. This affects:
 
 - The [search palette](/user-guide/search) (semantic boost on top of keyword match)
-- **AI Connections** in the [Journal](/user-guide/journal/daily-entries) sidebar
 - "Related notes" suggestions in some surfaces
 
 A query like "setting up authentication" can surface a note titled "OAuth flow" even when the words don't overlap.

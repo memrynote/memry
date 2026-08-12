@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { useMotionValue } from 'framer-motion'
+import { useMotionValue } from 'motion/react'
 import { CLIPS, type TabId } from '../types'
 
 type ProgressMilestone = 25 | 50 | 75

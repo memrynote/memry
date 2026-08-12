@@ -30,7 +30,7 @@ export interface ConversationStore {
     backend: AgentBackendId
     backendModel?: string | null
   }): Conversation
-  getById(id: string): Conversation | null
+  getById(id: string, opts?: { includeDeleted?: boolean }): Conversation | null
   listByVault(vaultId: string, opts?: { includeDeleted?: boolean }): Conversation[]
   update(
     id: string,
@@ -144,12 +144,17 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
       }
     },
 
-    getById(id) {
-      const row = db
-        .select()
-        .from(schema.agentConversations)
-        .where(eq(schema.agentConversations.id, id))
-        .get()
+    getById(id, opts) {
+      // Tombstoned rows are hidden by default, exactly like `listByVault`.
+      // `getById` is the existence gate the MCP write gate and the IPC handlers
+      // read, so a row carrying `deletedAt` must not answer "yes, write here" —
+      // an inbound remote delete can set that tombstone without this device
+      // ever touching the row.
+      const where = opts?.includeDeleted
+        ? eq(schema.agentConversations.id, id)
+        : and(eq(schema.agentConversations.id, id), isNull(schema.agentConversations.deletedAt))
+
+      const row = db.select().from(schema.agentConversations).where(where).get()
       return row ? agentConversationRowToModel(row, vaultKey) : null
     },
 
@@ -220,7 +225,13 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
     },
 
     softDelete(id) {
-      const existing = this.getById(id)
+      // Opt in to the tombstoned row: re-deleting has always re-stamped
+      // `deletedAt` and ticked the clock, and this keeps that behaviour.
+      // NOTE: this still has no production caller. Whoever wires conversation
+      // delete to the UI must also cancel any in-flight turn for the
+      // conversation (`AgentRuntime.cancelTurn`), or the run keeps writing into
+      // a record the user believes is gone.
+      const existing = this.getById(id, { includeDeleted: true })
       if (!existing) return
       const now = Date.now()
       db.update(schema.agentConversations)

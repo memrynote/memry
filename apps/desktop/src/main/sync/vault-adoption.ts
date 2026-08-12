@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 
 import type { DataDb } from '../database/types'
 import { VAULT_KEY_VERIFIER_SETTING } from '../crypto/vault-key-state'
-import { resetSyncVaultHeadersCache } from './http-client'
+import { resetVaultUuidCache } from '../agent/storage/vault-id'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('Sync:VaultAdoption')
@@ -28,9 +28,9 @@ export function adoptVaultLocally(db: DataDb, vaultUuid: string): void {
     )
   })
   // The adopted uuid replaces the local one on the SAME database handle, so the
-  // handle-keyed cache in http-client would keep stamping the pre-adoption
-  // identity on every authenticated request — including the device registration
-  // that immediately follows.
-  resetSyncVaultHeadersCache()
+  // handle-keyed cache in getOrCreateVaultUuid would keep handing back the
+  // pre-adoption identity to every call site — the request header, the device
+  // registration that immediately follows, and the vault-key derivation.
+  resetVaultUuidCache()
   logger.info('Adopted shared vault identity for linked device', { vaultUuid })
 }

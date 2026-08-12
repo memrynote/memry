@@ -274,15 +274,6 @@
       "scrollTabsRight": "Desplazarse por las pestañas hacia la derecha",
       "dayPanel": "Panel diurno"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Desplazarse por las pestañas hacia la izquierda",
-      "scrollTabsRight": "Desplazarse por las pestañas hacia la derecha"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Pestañas abiertas",
-      "scrollTabsLeft": "Desplazarse por las pestañas hacia la izquierda",
-      "scrollTabsRight": "Desplazarse por las pestañas hacia la derecha"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "algo salió mal",
       "anErrorOccurredWhileRenderingThisTabContent": "Se produjo un error al representar el contenido de esta pestaña.",

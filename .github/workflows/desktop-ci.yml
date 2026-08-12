@@ -77,6 +77,12 @@ jobs:
       - name: Typecheck desktop renderer
         run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.web.json --composite false
 
+      - name: Typecheck desktop main-process tests
+        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.node.json --composite false
+
+      - name: Typecheck desktop renderer tests
+        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.web.json --composite false
+
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
 
@@ -93,6 +99,12 @@ jobs:
       # deletes. Pure functions only, so it runs on any platform.
       - name: Test e2e keychain cleanup tooling
         run: node --test apps/desktop/scripts/purge-e2e-keychain.test.mjs
+
+      # Guards the install lock + atomic swap that keep a concurrent Electron
+      # install from breaking unrelated suites at `require('electron')` time.
+      # Runs fully offline against a fixture zip.
+      - name: Test Electron binary installer concurrency
+        run: node --test apps/desktop/scripts/install-electron-binary.test.cjs
 
   unit:
     name: Unit & integration tests

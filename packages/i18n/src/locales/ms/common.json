@@ -274,15 +274,6 @@
       "scrollTabsRight": "Tatal tab ke kanan",
       "dayPanel": "Panel Harian"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Tatal tab ke kiri",
-      "scrollTabsRight": "Tatal tab ke kanan"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Buka tab",
-      "scrollTabsLeft": "Tatal tab ke kiri",
-      "scrollTabsRight": "Tatal tab ke kanan"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Sesuatu telah berlaku",
       "anErrorOccurredWhileRenderingThisTabContent": "Ralat berlaku semasa memaparkan kandungan tab ini.",

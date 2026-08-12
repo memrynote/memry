@@ -274,15 +274,6 @@
       "scrollTabsRight": "Rul faner til højre",
       "dayPanel": "Dagspanel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Rul faner til venstre",
-      "scrollTabsRight": "Rul faner til højre"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Åbn faner",
-      "scrollTabsLeft": "Rul faner til venstre",
-      "scrollTabsRight": "Rul faner til højre"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Noget gik galt",
       "anErrorOccurredWhileRenderingThisTabContent": "Der opstod en fejl under gengivelsen af denne faneindhold.",

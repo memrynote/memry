@@ -591,7 +591,6 @@ describe('useUndoTracker subscription', () => {
 
   it('drops the entry on the expiry sweep and re-renders subscribers', () => {
     vi.useFakeTimers()
-    const start = Date.now()
 
     const { result } = renderHook(() => useUndoTracker())
     act(() => {
@@ -599,13 +598,110 @@ describe('useUndoTracker subscription', () => {
     })
     expect(result.current.canUndo).toBe(true)
 
-    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
     act(() => {
-      vi.advanceTimersByTime(1000)
+      vi.advanceTimersByTime(UNDO_EXPIRY_MS)
     })
 
     expect(result.current.canUndo).toBe(false)
     expect(result.current.lastActionDescription).toBeNull()
+  })
+
+  it('clears the snapshot at the entry expiry instant, not on a later sweep tick', () => {
+    vi.useFakeTimers()
+
+    const { result } = renderHook(() => useUndoTracker())
+    act(() => {
+      result.current.registerUndo('First action', vi.fn())
+    })
+
+    // Second entry lands 300 ms in, so its expiry falls *between* the ticks a
+    // 1 Hz sweep (aligned to the first registration) would have produced.
+    act(() => {
+      vi.advanceTimersByTime(300)
+      result.current.registerUndo('Second action', vi.fn())
+    })
+    expect(result.current.lastActionDescription).toBe('Second action')
+
+    // Advance to exactly the instant the second entry dies. A 1 Hz sweep would
+    // not notice until 700 ms later, and would still advertise it here.
+    act(() => {
+      vi.advanceTimersByTime(UNDO_EXPIRY_MS)
+    })
+
+    expect(result.current.canUndo).toBe(false)
+    expect(result.current.lastActionDescription).toBeNull()
+  })
+
+  it('arms a single expiry timer instead of a 1 Hz poll', () => {
+    vi.useFakeTimers()
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval')
+
+    const { result } = renderHook(() => useUndoTracker())
+    act(() => {
+      result.current.registerUndo('Delete task', vi.fn())
+    })
+
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), UNDO_EXPIRY_MS)
+    expect(setIntervalSpy).not.toHaveBeenCalled()
+
+    setTimeoutSpy.mockRestore()
+    setIntervalSpy.mockRestore()
+  })
+
+  it('undo() refuses an entry that expired since the last sweep', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result } = renderHook(() => useUndoTracker())
+    const undoFn = vi.fn()
+    act(() => {
+      result.current.registerUndo('Delete task', undoFn)
+    })
+
+    // Wall clock passes the expiry window, but the 1s sweep has not run yet.
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+
+    let success = true
+    act(() => {
+      success = result.current.undo()
+    })
+
+    expect(success).toBe(false)
+    expect(undoFn).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('undo() still runs a live entry and discards the expired one beneath it', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result } = renderHook(() => useUndoTracker())
+    const staleFn = vi.fn()
+    const liveFn = vi.fn()
+
+    act(() => {
+      result.current.registerUndo('Stale action', staleFn)
+    })
+
+    vi.setSystemTime(start + UNDO_EXPIRY_MS - 1000)
+    act(() => {
+      result.current.registerUndo('Live action', liveFn)
+    })
+
+    // Only the first entry is past its window; no sweep has run.
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+
+    act(() => {
+      expect(result.current.undo()).toBe(true)
+    })
+    expect(liveFn).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      expect(result.current.undo()).toBe(false)
+    })
+    expect(staleFn).not.toHaveBeenCalled()
   })
 
   it('does not mutate module state during render', () => {
@@ -621,11 +717,14 @@ describe('useUndoTracker subscription', () => {
     vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
 
     const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
     rerender()
 
     // Before the fix, render called getLastUndoEntry(), which filtered the
-    // module-level stack and stopped the cleanup interval mid-render.
+    // module-level stack and tore down the expiry timer mid-render.
     expect(clearIntervalSpy).not.toHaveBeenCalled()
+    expect(clearTimeoutSpy).not.toHaveBeenCalled()
     clearIntervalSpy.mockRestore()
+    clearTimeoutSpy.mockRestore()
   })
 })

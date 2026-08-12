@@ -274,15 +274,6 @@
       "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين",
       "dayPanel": "لوحة اليوم"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
-      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "علامات التبويب المفتوحة",
-      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
-      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "حدث خطأ ما",
       "anErrorOccurredWhileRenderingThisTabContent": "حدث خطأ أثناء عرض محتوى علامة التبويب هذه.",

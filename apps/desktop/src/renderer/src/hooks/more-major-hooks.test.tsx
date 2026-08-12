@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   removeTagFromNote: vi.fn(),
   requestPermission: vi.fn(),
   setActiveTab: vi.fn(),
-  splitView: vi.fn(),
+  splitView: vi.fn(() => 'group-split'),
   tabsDispatch: vi.fn(),
   toastInfo: vi.fn(),
   unpinNoteFromTag: vi.fn()
@@ -247,18 +247,22 @@ describe('more major hooks coverage', () => {
       { type: 'note', title: 'B', path: '/notes/b.md', entityId: 'note-b' } as never,
       {}
     )
+    // A plain open must never force a duplicate: `forceNew: false` is what keeps
+    // the reducer free to focus a tab this item already has.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-b', isPreview: false }),
-      { background: undefined }
+      { background: undefined, forceNew: false }
     )
 
     result.current.openSidebarItem(
       { type: 'note', title: 'C', path: '/notes/c.md', entityId: 'note-c' } as never,
       { inNewTab: true, inBackground: true }
     )
+    // `inNewTab` on a non-singleton reaches the reducer as `forceNew`, which is
+    // what makes it skip entity dedup and mint a genuinely new tab.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-c', isPreview: false }),
-      { background: true }
+      { background: true, forceNew: true }
     )
 
     result.current.openSidebarItem(
@@ -266,10 +270,11 @@ describe('more major hooks coverage', () => {
       { toTheSide: true }
     )
     expect(mocks.splitView).toHaveBeenCalledWith('horizontal', 'group-1')
-    act(() => vi.runOnlyPendingTimers())
+    // The open targets the pane splitView reports creating, in the same turn —
+    // no timer to flush, and no dependence on which pane is active by then.
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({ path: '/folder/new' }),
-      { background: undefined }
+      { groupId: 'group-split', background: undefined }
     )
 
     result.current.openAsPin({ type: 'tasks', title: 'Tasks', path: '/tasks' } as never)
@@ -322,12 +327,14 @@ describe('more major hooks coverage', () => {
     ;(Notification as unknown as { permission: string }).permission = 'granted'
     callback({ items: [{ id: 'item-a', title: 'Read paper' }] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inbox', 'lists'] })
+    // `t` is stubbed to echo its key here, so these assert the wiring; the
+    // rendered copy is covered in use-inbox-notifications.test.tsx.
     expect(Notification).toHaveBeenCalledWith('Read paper', {
-      body: 'Your snoozed item is ready for review',
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-a'
     })
-    expect(mocks.toastInfo).toHaveBeenCalledWith('"Read paper" is back from snooze')
+    expect(mocks.toastInfo).toHaveBeenCalledWith('snoozeDue.toast')
 
     callback({
       items: [
@@ -335,12 +342,12 @@ describe('more major hooks coverage', () => {
         { id: 'item-c', title: 'Two' }
       ]
     })
-    expect(Notification).toHaveBeenCalledWith('2 snoozed items', {
-      body: 'Your snoozed items are ready',
+    expect(Notification).toHaveBeenCalledWith('snoozeDue.notificationTitle', {
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-b,item-c'
     })
-    expect(mocks.toastInfo).toHaveBeenCalledWith('2 snoozed items are back')
+    expect(mocks.toastInfo).toHaveBeenCalledWith('snoozeDue.toast')
 
     callback({ items: [] })
     expect(invalidate).toHaveBeenCalledTimes(2)
@@ -373,7 +380,7 @@ describe('more major hooks coverage', () => {
     // A genuinely new resurface sharing the same title is still its own banner.
     first({ items: [{ id: 'item-3', title: 'Read paper' }] })
     expect(Notification).toHaveBeenLastCalledWith('Read paper', {
-      body: 'Your snoozed item is ready for review',
+      body: 'snoozeDue.notificationBody',
       icon: '/icon.png',
       tag: 'inbox-snooze-due:item-3'
     })

@@ -1062,6 +1062,81 @@ describe('notes operations', () => {
       // Most recently created should be first
       expect(result.notes[0].title).toBe('Note C')
     })
+
+    // ------------------------------------------------------------------
+    // #445: sidebar-shaped rows
+    // ------------------------------------------------------------------
+
+    it('#445: omitting fields keeps the full row byte-identical (back-compat)', async () => {
+      const legacy = await notes.listNotes({})
+      const explicitFull = await notes.listNotes({ fields: 'full' })
+
+      expect(explicitFull).toEqual(legacy)
+      expect(legacy.notes.every((n) => typeof n.snippet === 'string')).toBe(true)
+      expect(legacy.notes.every((n) => 'mimeType' in n && 'fileSize' in n)).toBe(true)
+    })
+
+    it("#445: fields: 'tree' drops snippet and file metadata but keeps every field the sidebar renders", async () => {
+      const full = await notes.listNotes({})
+      const tree = await notes.listNotes({ fields: 'tree' })
+
+      expect(tree.notes).toHaveLength(full.notes.length)
+      expect(tree.total).toBe(full.total)
+      expect(tree.hasMore).toBe(full.hasMore)
+
+      for (const note of tree.notes) {
+        expect('snippet' in note).toBe(false)
+        expect('mimeType' in note).toBe(false)
+        expect('fileSize' in note).toBe(false)
+      }
+
+      // buildTreeFromNotes / noteMap / the row renderer read exactly these.
+      const sidebarView = (list: typeof full.notes) =>
+        list.map((n) => ({
+          id: n.id,
+          path: n.path,
+          title: n.title,
+          modified: n.modified,
+          tags: n.tags,
+          emoji: n.emoji,
+          localOnly: n.localOnly,
+          fileType: n.fileType
+        }))
+
+      expect(sidebarView(tree.notes)).toEqual(sidebarView(full.notes))
+    })
+
+    it('#445: cuts the whole-vault sidebar payload for a large vault', async () => {
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+
+      // A realistic markdown vault row: ~200-char snippet, mime/size present.
+      const snippet = 'x'.repeat(200)
+      for (let i = 0; i < 500; i++) {
+        insertNoteCache(testDb.db, {
+          id: `bulk-${i}`,
+          path: `notes/bulk-${i}.md`,
+          title: `Bulk note ${i}`,
+          contentHash: `hash-${i}`,
+          fileType: 'markdown',
+          mimeType: 'text/markdown',
+          fileSize: 4096,
+          wordCount: 320,
+          snippet,
+          createdAt: '2026-01-15T12:00:00.000Z',
+          modifiedAt: '2026-01-15T12:00:00.000Z',
+          indexedAt: '2026-01-15T12:00:00.000Z'
+        })
+      }
+
+      const fullBytes = JSON.stringify(await notes.listNotes({ limit: 10000 })).length
+      const treeBytes = JSON.stringify(
+        await notes.listNotes({ limit: 10000, fields: 'tree' })
+      ).length
+
+      // Same rows either way — this is a payload cut, not a row cut.
+      expect((await notes.listNotes({ limit: 10000, fields: 'tree' })).notes).toHaveLength(503)
+      expect(treeBytes).toBeLessThan(fullBytes * 0.5)
+    })
   })
 
   // ==========================================================================

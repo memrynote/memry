@@ -18,6 +18,11 @@ renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──�
 
 ## Persistence Resilience
 
+Opening the store is a self-contained step that lives in `crdt-persistence.ts`,
+separate from the provider that owns the Y.Docs: it runs the checks below and
+hands back either a usable store or nothing, which is what puts the provider
+into in-memory mode.
+
 The classic-level native binding is first exercised in a **disposable
 utilityProcess** (`crdt-preflight-child.ts`) against the **real store
 directory**: a binding that hard-aborts (unsupported CPU instructions, AV
@@ -101,13 +106,35 @@ pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmou
 window that turns out to be gone, and provider teardown on vault close or switch. Once
 released, the doc is evictable and compactable again.
 
+Local compaction runs under that same condition as closing and eviction — a doc with no
+windows attached — and it is asynchronous for the same reason, so the two can be in flight
+at once for one note. Compaction therefore treats the entry it captured as provisional: it
+does not start on a doc that is already closing, and before swapping the compacted doc in
+it re-checks that the provider's map still holds the same entry. If the note was closed —
+or closed and reopened onto a fresh entry — in the meantime, the compaction is abandoned
+rather than written into an entry nothing reads. Remote updates that arrive during a
+compaction are buffered for it rather than applied directly, so an abandoned compaction
+hands its buffer to whichever doc is live at that point instead of discarding it: the sync
+coordinator counts those updates as applied and will not fetch them again.
+
+A compaction that succeeds hands its buffer over the same way, and only after the compacted
+doc has taken the entry's place and had its update handler attached. That handler is the one
+funnel that stores an update, broadcasts it to open editors and schedules the vault
+write-back, so replaying ahead of it would leave the compaction window's remote updates in
+memory alone — absent from the CRDT store after a restart and from the note's markdown file
+on disk. The compacted snapshot itself is applied before the handler is attached, on purpose:
+compaction has already persisted and pushed it, and routing it through the handler would
+store and broadcast the whole note a second time.
+
 Closing is asynchronous — it flushes the doc to persistence first — so a note can be
 reopened while its own close is still in flight. The reopen builds a fresh Y.Doc and takes
 over the provider's entry for that note, and the close then finds that the entry no longer
 belongs to it. It leaves that entry alone, because the reopened doc is the one the editor
 is typing into, and destroys only the doc it superseded. Nothing can reach the superseded
 doc at that point: every route into a Y.Doc looks the note id up in the provider's map,
-which now resolves the replacement.
+which now resolves the replacement. That includes a write-back armed before the close —
+destroying the superseded doc is not what makes it safe, since a destroyed Y.Doc can still
+be read; resolving the note id when the pass runs is.
 
 ## IPC Loop Prevention
 
@@ -132,6 +159,13 @@ document to its vault `.md` file and re-indexes it for search.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
   destroyed, which covers app quit and vault switch.
+- **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
+  reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
+  in the provider's map at fire time rather than serializing the doc it captured. Otherwise
+  the file would be overwritten with the superseded doc's content, discarding whatever
+  landed in the meantime. A note that is genuinely gone from the map — closed and not
+  reopened, or LRU-evicted — still has its pending pass written from the captured doc, so
+  no edit is dropped.
 - **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
   network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
   sweep per TTL window) rather than scanned on every watcher event, and
@@ -208,6 +242,15 @@ retry `429`s inline — honouring `Retry-After` per note would stall the whole p
 sync cadence is the retry instead. A single note that fails its snapshot baseline is
 skipped and retried on the next pass rather than abandoning the remaining notes.
 
+Whether a note still owes the server a snapshot is tracked per open doc as a byte count of
+the local updates applied since the last successful push; closing a note and the push-all
+pass both skip a note whose count is zero. A push therefore subtracts only the bytes its
+payload actually covered instead of resetting the count to zero. The payload is encoded
+before the push is awaited, and typing can reach the doc during that await — compaction is
+the widest window, since it encodes its snapshot up front and buffers only remote updates,
+not local ones. Discarding the whole count marked that edit as pushed, and the note was
+then skipped until some later edit re-armed it.
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:
@@ -226,6 +269,15 @@ A separate queue from `SyncQueueManager`:
 - Handles binary `Uint8Array` updates
 - Respects sequence ordering per `noteId`
 - Buffers updates when the network is paused
+
+### Memory bounds while paused
+
+While the queue is paused (offline, expired token, storage quota) nothing drains, so the buffers are capped on two axes:
+
+- **Per note** — a buffer that reaches the batch size is merged in place with `Y.mergeUpdates`, and merged updates and flush payloads are size-bounded. Merging is lossless; a long offline edit costs the size of the edit, not one array per keystroke.
+- **Across all notes** — the queue also caps its total buffered bytes, because the map keeps one live buffer per note touched since the pause. Crossing the ceiling first flushes whatever the server will take and merges every buffer, and only if that is not enough does it release the oldest notes' payloads.
+
+A release is never a drop. The note ids go to the durable pending-note store (`crdt-pending-notes.json`) **before** their payloads are freed, and `drainPendingCrdtNotes` pushes each note's full doc state — which supersedes the buffered updates — on the next reconnect or app start. If no durable store is wired up, or recording fails, the queue keeps the memory instead of releasing it.
 
 ## BlockNote Compatibility
 

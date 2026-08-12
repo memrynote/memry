@@ -232,6 +232,13 @@ export interface ApplyTemplateInput {
   mode: 'full' | 'body'
 }
 
+/**
+ * Which per-note fields `notes.list` should build. Omit for the full shape —
+ * `'tree'` drops the sidebar-irrelevant heavy fields (`snippet`, `mimeType`,
+ * `fileSize`) from every row.
+ */
+export type NoteListFields = 'full' | 'tree'
+
 export interface NoteListOptions {
   folder?: string
   tags?: string[]
@@ -239,6 +246,7 @@ export interface NoteListOptions {
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  fields?: NoteListFields
 }
 
 export interface NoteCreateResponse {

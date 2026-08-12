@@ -274,15 +274,6 @@
       "scrollTabsRight": "Görgessen jobbra a lapokon",
       "dayPanel": "Napi panel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Görgesse balra a lapokat",
-      "scrollTabsRight": "Görgessen jobbra a lapokon"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Nyissa meg a lapokat",
-      "scrollTabsLeft": "Görgesse balra a lapokat",
-      "scrollTabsRight": "Görgessen jobbra a lapokon"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Valami elromlott",
       "anErrorOccurredWhileRenderingThisTabContent": "Hiba történt a lap tartalmának megjelenítésekor.",

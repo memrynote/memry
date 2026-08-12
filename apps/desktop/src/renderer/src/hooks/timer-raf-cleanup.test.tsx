@@ -19,7 +19,6 @@ import { useRevealInSidebar } from './use-reveal-in-sidebar'
 import { usePropertySection } from './use-property-section'
 import { useUndoableAction } from './use-undoable-action'
 import { useFocusTrap } from './use-focus-trap'
-import { getAIConnections } from '@/services/ai-connections-service'
 
 vi.mock('sonner', () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn() })
@@ -160,21 +159,5 @@ describe('renderer timer/rAF cleanup on unmount', () => {
     } finally {
       vi.unstubAllGlobals()
     }
-  })
-
-  it('getAIConnections removes its abort listener once the delay resolves', async () => {
-    const controller = new AbortController()
-    const add = vi.spyOn(controller.signal, 'addEventListener')
-    const remove = vi.spyOn(controller.signal, 'removeEventListener')
-
-    const pending = getAIConnections('x'.repeat(500), controller.signal)
-    expect(add).toHaveBeenCalledWith('abort', expect.any(Function), { once: true })
-
-    await act(async () => {
-      await vi.runAllTimersAsync()
-      await pending
-    })
-
-    expect(remove).toHaveBeenCalledWith('abort', expect.any(Function))
   })
 })

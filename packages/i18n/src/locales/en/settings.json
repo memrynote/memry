@@ -1474,6 +1474,7 @@
       "pending": "pending",
       "localOnly": "local-only",
       "detected": "detected",
+      "dismissConflicts": "Dismiss",
       "clockSkewDetected": "Clock skew detected",
       "items": "items",
       "willSyncWhenBackOnline": "Will sync when back online",

@@ -274,15 +274,6 @@
       "scrollTabsRight": "גלול לשוניות ימינה",
       "dayPanel": "פאנל יום"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "גלול לשוניות שמאלה",
-      "scrollTabsRight": "גלול לשוניות ימינה"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "פתח כרטיסיות",
-      "scrollTabsLeft": "גלול לשוניות שמאלה",
-      "scrollTabsRight": "גלול לשוניות ימינה"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "משהו השתבש",
       "anErrorOccurredWhileRenderingThisTabContent": "אירעה שגיאה בעת עיבוד תוכן הכרטיסייה הזו.",

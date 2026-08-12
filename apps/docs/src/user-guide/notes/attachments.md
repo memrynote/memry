@@ -62,6 +62,10 @@ A pan keeps following your pointer even when it leaves the viewer or the app win
 wherever you release the button, so you can drag a zoomed image right to its edge in one motion.
 Zooming back out to 100% recenters the image.
 
+The scroll wheel and the toolbar buttons zoom in different increments, but they agree on what
+100% means: whenever the toolbar reads 100%, the image is recentred and the drag-to-pan hint is
+gone, no matter which mix of wheel and buttons you took to get there.
+
 ### Images From Another App's Vault
 
 Vaults written by Obsidian, Capacities and similar apps keep media in a shared
@@ -122,6 +126,8 @@ Attachment payloads sync as encrypted R2 blobs (the same path as note bodies). L
 
 ### Transfer Progress
 
-Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface. Every transfer finishes on 100%.
+Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface.
 
 Several attachments can upload and download at once, and each one tracks its own progress. One transfer finishing never stops another that is still running from reporting.
+
+Every transfer ends, and the progress bar on the attachment ends with it. A transfer that succeeds clears its bar; a transfer that fails shows it briefly as failed and then clears too. So a bar that stays on an attachment means the transfer is genuinely still going — including a transfer that is only waiting for the network, which can sit quiet for a long time on a bad connection without being abandoned. If a transfer fails you still get the notification described in [When an attachment doesn't sync](#when-an-attachment-doesn-t-sync); the bar clearing is not a sign it worked.

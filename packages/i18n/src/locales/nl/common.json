@@ -274,15 +274,6 @@
       "scrollTabsRight": "Blader door de tabbladen naar rechts",
       "dayPanel": "Dagpaneel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Blader door de tabbladen naar links",
-      "scrollTabsRight": "Blader door de tabbladen naar rechts"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Tabbladen openen",
-      "scrollTabsLeft": "Blader door de tabbladen naar links",
-      "scrollTabsRight": "Blader door de tabbladen naar rechts"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Er is iets misgegaan",
       "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",

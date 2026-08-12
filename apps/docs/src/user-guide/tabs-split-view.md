@@ -12,7 +12,7 @@ Every note, view, search, project, journal entry, or settings panel opens in a t
 
 Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
 
-Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. The **+** button stays pinned at the end of the bar while it scrolls.
+Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. If your system is set to reduce motion (macOS **Reduce motion**, Windows **Animation effects** off, or the equivalent on Linux), the bar jumps straight to the active tab instead of sliding, and the chevrons and wheel scrolling stop animating too — the tab is still brought into view either way. Changing the setting takes effect on the next scroll; no restart needed. The **+** button stays pinned at the end of the bar while it scrolls.
 
 There is no limit on how many tabs you can have open, and memrynote never closes one for you: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
 
@@ -48,6 +48,21 @@ heavier surfaces such as Tasks, Calendar, Graph, and the right-side Agent/Day Pa
 user opens them. This keeps startup memory tied to the visible workspace instead of every possible
 feature surface.
 
+### Opening a Second Copy
+
+When you want the same item open twice — two places in a long note, a reference you keep alongside your work — ask for a new tab explicitly from the sidebar:
+
+| Gesture                                      | Result                              |
+| -------------------------------------------- | ----------------------------------- |
+| <kbd>⌘</kbd> (macOS) / <kbd>Ctrl</kbd> click | Opens another tab and focuses it    |
+| <kbd>⌘</kbd>+<kbd>⇧</kbd> click              | Opens another tab in the background |
+| Middle-click                                 | Opens another tab in the background |
+| Right-click → **Open in New Tab**            | Opens another tab and focuses it    |
+
+Each copy is an independent tab: close, pin, or move one and the other stays put. Edits made in either appear in both.
+
+Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. These gestures focus the tab that already exists; the background gestures leave your focus where it is.
+
 ## Mouse Navigation
 
 Mouse Back and Forward side buttons move through tab focus history across the whole window, including split panes. Back returns to the previously focused tab; Forward replays the next tab after a Back action. Opening or selecting another tab starts a new history path.
@@ -57,6 +72,16 @@ Mouse Back and Forward side buttons move through tab focus history across the wh
 Drag a tab to the left, right, top, or bottom edge of the window to open a second pane.
 
 <!-- screenshot: tab being dragged into a drop zone to create a split -->
+
+### Open to the Side
+
+Right-click any sidebar item and choose **Open to the Side** to split the current pane and open
+that item in the new pane in one step. The new pane takes focus, so you can start reading or
+editing straight away.
+
+The item always lands in the pane that gesture created — even when the item is already open in
+another pane (you get a second, independent copy), and even if something else takes focus while
+the split is being drawn. Use it to put a note beside a canvas, or a project beside your journal.
 
 ### Drop Zones
 
@@ -101,6 +126,16 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Pinned state
 - Split layout and ratios
 - Active tab per pane
+
+The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
+
+### If the layout can't be saved
+
+Session layout is stored in the app's local browser storage, which has a size limit. A very large session — many open tabs, several split panes, tabs holding a lot of view state — can hit that limit, and once it does the layout stops being saved.
+
+memrynote now tells you when that happens: a toast reads **"Your open tabs are no longer being saved"**, and explains that the session is too large to store and may not be restored the next time you open the app. Close some tabs to get back under the limit; the next save after that succeeds on its own and the warning does not come back.
+
+Previously the failure was silent — the app kept running normally and you only found out at the next launch, when the restored layout turned out to be stale.
 
 ## Modified Indicator
 

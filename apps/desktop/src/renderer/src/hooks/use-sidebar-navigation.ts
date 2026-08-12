@@ -19,7 +19,6 @@ import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
 import { useIsItemActive } from './use-is-item-active'
 import { useFeatureFlags } from './use-feature-flags'
-import { useTrackedTimeout } from './use-tracked-timeout'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { featureForTabType } from '@memry/contracts/feature-flags'
 import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
@@ -149,9 +148,6 @@ export const useSidebarNavigation = () => {
   const { flags } = useFeatureFlags()
   const { open: openSettings } = useSettingsModal()
 
-  // The post-split "open in the new pane" hop must not fire after unmount
-  const scheduleTimeout = useTrackedTimeout()
-
   // Use refs for state to avoid recreating callbacks
   const stateRef = useRef(state)
   useEffect(() => {
@@ -169,13 +165,20 @@ export const useSidebarNavigation = () => {
         return
       }
 
-      const { inBackground, toTheSide } = options
+      const { inNewTab, inBackground, toTheSide } = options
       const currentState = stateRef.current
+
+      // "Open in New Tab" / Cmd-click / middle-click earn a genuinely new tab —
+      // but only for items that can meaningfully exist twice. SINGLETON_TAB_TYPES
+      // (Home, Inbox, Calendar, Tasks, Journal, Graph, Tags) are declared
+      // single-instance and stay that way; a second identical Inbox is not what
+      // the gesture is for, so those keep focusing the tab that already exists.
+      const forceNewTab = inNewTab === true && !SINGLETON_TAB_TYPES.includes(item.type)
 
       // Check for existing tab
       const existingTab = findExistingTabForItem(currentState, item)
 
-      if (existingTab && !toTheSide) {
+      if (existingTab && !toTheSide && !forceNewTab) {
         // Re-open singletons that carry per-view intent so the reducer merges
         // the fresh viewState (nonce) into the existing tab and refocuses it.
         // Passing the found groupId keeps the merge in the right split-view pane.
@@ -186,8 +189,12 @@ export const useSidebarNavigation = () => {
           })
           return
         }
-        // Focus existing tab
-        setActiveTab(existingTab.tab.id, existingTab.groupId)
+        // Focus existing tab — unless the caller asked to stay put (middle-click
+        // or Shift+Cmd-click on an item we just declined to duplicate). Stealing
+        // focus is the one thing `inBackground` exists to prevent.
+        if (!inBackground) {
+          setActiveTab(existingTab.tab.id, existingTab.groupId)
+        }
         return
       }
 
@@ -195,19 +202,19 @@ export const useSidebarNavigation = () => {
       const tabData = createTabFromSidebarItem(item, false)
 
       if (toTheSide) {
-        // Create split and open in new pane
-        splitView('horizontal', currentState.activeGroupId)
-        // The new group will be active, so opening a tab there
-        // Note: This is a simplification - ideally we'd wait for the split
-        // and then open the tab in the new pane
-        scheduleTimeout(() => {
-          openTab(tabData, { background: inBackground })
-        }, 0)
+        // Split, then open into the pane the split just created — by id, not by
+        // timing. SPLIT_VIEW leaves activeGroupId on the source pane, so an open
+        // that relies on "whatever is active next" lands back in the pane we
+        // split from, leaving the new pane holding only the cloned tab.
+        // Both dispatches queue on the same reducer, so OPEN_TAB always sees the
+        // group SPLIT_VIEW created, however late the render commits.
+        const newGroupId = splitView('horizontal', currentState.activeGroupId)
+        openTab(tabData, { groupId: newGroupId ?? undefined, background: inBackground })
       } else {
-        openTab(tabData, { background: inBackground })
+        openTab(tabData, { background: inBackground, forceNew: forceNewTab })
       }
     },
-    [openTab, setActiveTab, splitView, flags, openSettings, scheduleTimeout]
+    [openTab, setActiveTab, splitView, flags, openSettings]
   )
 
   /**

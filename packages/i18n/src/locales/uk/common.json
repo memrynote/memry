@@ -274,15 +274,6 @@
       "scrollTabsRight": "Прокрутити вкладки вправо",
       "dayPanel": "Денна панель"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Прокрутити вкладки вліво",
-      "scrollTabsRight": "Прокрутити вкладки вправо"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Відкриті вкладки",
-      "scrollTabsLeft": "Прокрутити вкладки вліво",
-      "scrollTabsRight": "Прокрутити вкладки вправо"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Щось пішло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Сталася помилка під час відображення вмісту цієї вкладки.",

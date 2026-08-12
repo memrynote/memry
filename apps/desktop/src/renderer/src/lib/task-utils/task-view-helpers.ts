@@ -118,7 +118,11 @@ export const getFilteredTasks = (
 export interface TaskWorkspaceCounts {
   /** Per view id, equal to `getFilteredTasks(tasks, viewId, 'view', projects).length`. */
   viewCounts: Record<string, number>
-  /** Per `task.projectId`, the number of that project's tasks not in a `done` status. */
+  /**
+   * Per `task.projectId`, the number of that project's non-archived tasks not in
+   * a `done` status — i.e. the rows `getFilteredTasks(tasks, projectId,
+   * 'project', projects)` renders, minus the completed ones.
+   */
   projectTaskCounts: Record<string, number>
 }
 
@@ -200,11 +204,14 @@ export const getTaskWorkspaceCounts = (
     const projectId = task.projectId
     const isIncomplete = statusTypesByProject.get(projectId)?.get(task.statusId) !== 'done'
 
+    // Archived tasks are dropped by `getFilteredTasks` before anything else, so
+    // no view — the project view included — can render them. Counting them in a
+    // badge makes it read higher than the list it opens.
+    if (task.archivedAt) continue
+
     if (isIncomplete) {
       projectTaskCounts[projectId] = (projectTaskCounts[projectId] ?? 0) + 1
     }
-
-    if (task.archivedAt) continue
 
     if (task.parentId !== null) {
       nonArchivedSubtaskParentIds.push(task.parentId)
@@ -506,7 +513,7 @@ export const getDayHeaderText = (date: Date): DayHeaderText => {
 }
 
 // ============================================================================
-// COMPLETED VIEW & ARCHIVE HELPERS
+// COMPLETED VIEW HELPERS
 // ============================================================================
 
 export const getCompletedTasks = (tasks: Task[]): Task[] => {
@@ -524,8 +531,4 @@ export const getCompletedTodayTasks = (tasks: Task[]): Task[] => {
       task.parentId === null &&
       isSameDay(task.completedAt, today)
   )
-}
-
-export const getArchivedTasks = (tasks: Task[]): Task[] => {
-  return tasks.filter((task) => task.archivedAt !== null)
 }

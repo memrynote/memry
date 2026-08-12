@@ -274,15 +274,6 @@
       "scrollTabsRight": "Posuňte karty doprava",
       "dayPanel": "Denní panel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Posuňte karty doleva",
-      "scrollTabsRight": "Posuňte karty doprava"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Otevřít karty",
-      "scrollTabsLeft": "Posuňte karty doleva",
-      "scrollTabsRight": "Posuňte karty doprava"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Něco se pokazilo",
       "anErrorOccurredWhileRenderingThisTabContent": "Při vykreslování obsahu této karty došlo k chybě.",

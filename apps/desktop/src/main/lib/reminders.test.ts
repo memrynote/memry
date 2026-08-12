@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { reminders } from '@memry/db-schema/schema/reminders'
-import { reminderStatus } from '@memry/contracts/reminders-api'
+import { reminderStatus, type Reminder } from '@memry/contracts/reminders-api'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
@@ -142,6 +142,11 @@ describe('reminders service', () => {
     dataDb.db.insert(reminders).values(reminder).run()
     return reminder.id
   }
+
+  const dismissedEventPayloads = (): { reminder: Reminder }[] =>
+    window.webContents.send.mock.calls
+      .filter((call) => call[0] === ReminderChannels.events.DISMISSED)
+      .map((call) => call[1] as { reminder: Reminder })
 
   const seedTask = (id: string, title: string, projectId: string): void => {
     const now = '2025-01-01T00:00:00.000Z'
@@ -628,6 +633,71 @@ describe('reminders service', () => {
     })
   })
 
+  it('emits one dismissed event per bulk-dismissed reminder', () => {
+    seedReminder({
+      id: 'rem-be1',
+      targetType: 'note',
+      targetId: 'note-be',
+      status: reminderStatus.PENDING
+    })
+    seedReminder({
+      id: 'rem-be2',
+      targetType: 'journal',
+      targetId: '2025-01-24',
+      status: reminderStatus.TRIGGERED
+    })
+    // Not part of the batch: no event may mention it.
+    seedReminder({ id: 'rem-be3', status: reminderStatus.PENDING })
+
+    expect(remindersService.bulkDismissReminders(['rem-be1', 'rem-be2'])).toBe(2)
+
+    const payloads = dismissedEventPayloads()
+    expect(payloads).toHaveLength(2)
+    // The target-scoped hooks match on targetType/targetId, so the row itself
+    // has to reach the renderer, not just the id.
+    expect(payloads[0]).toEqual({
+      reminder: expect.objectContaining({
+        id: 'rem-be1',
+        targetType: 'note',
+        targetId: 'note-be',
+        status: reminderStatus.DISMISSED
+      })
+    })
+    expect(payloads[1]).toEqual({
+      reminder: expect.objectContaining({
+        id: 'rem-be2',
+        targetType: 'journal',
+        targetId: '2025-01-24',
+        status: reminderStatus.DISMISSED
+      })
+    })
+    expect(payloads[0].reminder.dismissedAt).toBeTruthy()
+    expect(payloads.map((payload) => payload.reminder.id)).not.toContain('rem-be3')
+  })
+
+  it('emits no dismissed event for a bulk-dismiss id that matched no row', () => {
+    seedReminder({ id: 'rem-bg1', status: reminderStatus.PENDING })
+
+    expect(remindersService.bulkDismissReminders(['rem-bg1', 'rem-bulk-ghost'])).toBe(1)
+
+    expect(dismissedEventPayloads().map((payload) => payload.reminder.id)).toEqual(['rem-bg1'])
+  })
+
+  it('emits exactly one dismissed event for a single-reminder dismiss', () => {
+    seedReminder({ id: 'rem-single-ev', status: reminderStatus.PENDING })
+
+    expect(remindersService.dismissReminder('rem-single-ev')?.status).toBe(reminderStatus.DISMISSED)
+
+    expect(dismissedEventPayloads()).toEqual([
+      {
+        reminder: expect.objectContaining({
+          id: 'rem-single-ev',
+          status: reminderStatus.DISMISSED
+        })
+      }
+    ])
+  })
+
   describe('delivered notification cleanup (Electron 42+, macOS)', () => {
     it('removes the delivered notification banner on dismiss', () => {
       setPlatform('darwin')
@@ -648,6 +718,45 @@ describe('reminders service', () => {
 
       expect(result?.status).toBe(reminderStatus.SNOOZED)
       expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc2')
+    })
+
+    it('removes the delivered notification banner on delete', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc7', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.deleteReminder('rem-nc7')).toBe(true)
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc7')
+    })
+
+    it('leaves delivered banners alone when the delete finds no row', () => {
+      setPlatform('darwin')
+
+      expect(remindersService.deleteReminder('rem-nc-missing')).toBe(false)
+      expect(MockNotification.remove).not.toHaveBeenCalled()
+    })
+
+    it('removes the delivered banner for every reminder in a bulk dismiss', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc8', status: reminderStatus.TRIGGERED })
+      seedReminder({ id: 'rem-nc9', status: reminderStatus.TRIGGERED })
+      seedReminder({ id: 'rem-nc10', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.bulkDismissReminders(['rem-nc8', 'rem-nc9'])).toBe(2)
+
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc8')
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc9')
+      // Not part of the batch: its banner must survive.
+      expect(MockNotification.remove).not.toHaveBeenCalledWith('rem-nc10')
+    })
+
+    it('skips bulk-dismiss ids that matched no row', () => {
+      setPlatform('darwin')
+      seedReminder({ id: 'rem-nc11', status: reminderStatus.TRIGGERED })
+
+      expect(remindersService.bulkDismissReminders(['rem-nc11', 'rem-nc-ghost'])).toBe(1)
+
+      expect(MockNotification.remove).toHaveBeenCalledWith('rem-nc11')
+      expect(MockNotification.remove).not.toHaveBeenCalledWith('rem-nc-ghost')
     })
 
     it('does not touch delivered notifications on non-darwin platforms', () => {
@@ -755,6 +864,36 @@ describe('reminders service', () => {
 
       expect(notification.close).toHaveBeenCalledTimes(1)
       expect(Object.keys(notification.handlers)).toEqual([])
+    })
+
+    it('closes the live banner on delete and leaves other reminders alone', () => {
+      setPlatform('win32')
+      const deleted = fireDueReminder('rem-live-delete')
+      const untouched = fireDueReminder('rem-live-delete-keep')
+
+      remindersService.deleteReminder('rem-live-delete')
+
+      expect(deleted.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(deleted.handlers)).toEqual([])
+      // A reminder the user did not act on keeps its banner and its click handler.
+      expect(untouched.close).not.toHaveBeenCalled()
+      expect(Object.keys(untouched.handlers)).toContain('click')
+    })
+
+    it('closes the live banner for each bulk-dismissed reminder only', () => {
+      setPlatform('win32')
+      const first = fireDueReminder('rem-live-bulk-1')
+      const second = fireDueReminder('rem-live-bulk-2')
+      const untouched = fireDueReminder('rem-live-bulk-3')
+
+      expect(remindersService.bulkDismissReminders(['rem-live-bulk-1', 'rem-live-bulk-2'])).toBe(2)
+
+      expect(first.close).toHaveBeenCalledTimes(1)
+      expect(second.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(first.handlers)).toEqual([])
+      expect(Object.keys(second.handlers)).toEqual([])
+      expect(untouched.close).not.toHaveBeenCalled()
+      expect(Object.keys(untouched.handlers)).toContain('click')
     })
 
     it('supersedes its own earlier banner when the same reminder fires again', () => {

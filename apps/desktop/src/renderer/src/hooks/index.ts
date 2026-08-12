@@ -23,9 +23,6 @@ export * from './use-chord-shortcuts'
 export * from './use-mouse-nav-buttons'
 export * from './use-pane-navigation'
 
-// Journal
-export * from './use-journal-scroll'
-
 // Vault management
 export * from './use-vault'
 

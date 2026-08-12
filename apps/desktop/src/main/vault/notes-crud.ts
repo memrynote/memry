@@ -148,6 +148,13 @@ export interface NoteUpdateInput {
   emoji?: string | null
 }
 
+/**
+ * Which per-note fields `listNotes` should build. Omit for the full shape —
+ * `'tree'` drops what the sidebar never reads (`snippet`, `mimeType`,
+ * `fileSize`) so a whole-vault sidebar fetch stops shipping them.
+ */
+export type NoteListFields = 'full' | 'tree'
+
 export interface NoteListOptions {
   folder?: string
   tags?: string[]
@@ -156,6 +163,7 @@ export interface NoteListOptions {
   limit?: number
   offset?: number
   includeProperties?: boolean
+  fields?: NoteListFields
 }
 
 export interface NoteListResponse {

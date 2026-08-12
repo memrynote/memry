@@ -9,8 +9,19 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('TabPersistence:Storage')
 
-const toError = (error: unknown, fallback: string): Error => {
-  return error instanceof Error ? error : new Error(fallback)
+/**
+ * Whether a storage write failed because the origin ran out of quota.
+ *
+ * Chromium — the only engine this app ships a renderer on — throws a
+ * `DOMException` named `QuotaExceededError`; `QUOTA_EXCEEDED_ERR` is the legacy
+ * name older WebKit builds report for the same condition. Matched by shape
+ * rather than `instanceof Error`, because jsdom's `DOMException` does not
+ * inherit from `Error` the way a browser's does.
+ */
+export const isQuotaExceededError = (error: unknown): boolean => {
+  if (typeof error !== 'object' || error === null) return false
+  const { name } = error as { name?: unknown }
+  return name === 'QuotaExceededError' || name === 'QUOTA_EXCEEDED_ERR'
 }
 
 // =============================================================================
@@ -75,89 +86,17 @@ export const saveSync = (state: PersistedTabState): void => {
 }
 
 // =============================================================================
-// INDEXEDDB ADAPTER (Optional, for larger state)
-// =============================================================================
-
-const DB_NAME = 'memry_tabs'
-const DB_VERSION = 1
-const STORE_NAME = 'tabState'
-
-/**
- * Open IndexedDB database
- */
-const openDatabase = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-    request.onerror = () => reject(toError(request.error, 'Failed to open IndexedDB'))
-    request.onsuccess = () => resolve(request.result)
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
-      }
-    }
-  })
-}
-
-/**
- * IndexedDB adapter for tab persistence
- * Better for larger state that might exceed localStorage limits
- */
-export const indexedDBAdapter: TabStorage = {
-  save: async (state: PersistedTabState): Promise<void> => {
-    const db = await openDatabase()
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite')
-      const store = tx.objectStore(STORE_NAME)
-      const request = store.put(state, 'current')
-
-      request.onerror = () => reject(toError(request.error, 'Failed to save tab state'))
-      request.onsuccess = () => resolve()
-    })
-  },
-
-  load: async (): Promise<PersistedTabState | null> => {
-    try {
-      const db = await openDatabase()
-
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly')
-        const store = tx.objectStore(STORE_NAME)
-        const request = store.get('current')
-
-        request.onerror = () => reject(toError(request.error, 'Failed to load tab state'))
-        request.onsuccess = () => resolve(request.result || null)
-      })
-    } catch (error) {
-      log.error('Failed to load from IndexedDB:', error)
-      return null
-    }
-  },
-
-  clear: async (): Promise<void> => {
-    const db = await openDatabase()
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite')
-      const store = tx.objectStore(STORE_NAME)
-      const request = store.delete('current')
-
-      request.onerror = () => reject(toError(request.error, 'Failed to clear tab state'))
-      request.onsuccess = () => resolve()
-    })
-  }
-}
-
-// =============================================================================
 // DEFAULT ADAPTER
 // =============================================================================
 
 /**
- * Get the default storage adapter
- * Uses localStorage for simplicity, can be changed to IndexedDB if needed
+ * Get the default storage adapter.
+ *
+ * localStorage is the only backend. An IndexedDB adapter used to sit here,
+ * exported but selected by nothing; it was removed rather than left to rot —
+ * see #1330. If the localStorage quota ever becomes the real constraint (#1292
+ * closed without moving off it), the replacement backend needs a migration read
+ * from `STORAGE_KEY` and a downgrade story, which is its own change.
  */
 export const getDefaultStorage = (): TabStorage => {
   return localStorageAdapter

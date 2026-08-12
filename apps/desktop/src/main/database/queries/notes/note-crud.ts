@@ -82,6 +82,27 @@ export function getLocalOnlyCount(db: IndexDb): number {
 // Note Listing
 // ============================================================================
 
+/**
+ * The columns `listNotes`'s `fields: 'tree'` shape actually maps (PR #1316).
+ * Selecting only these keeps SQLite from reading the cached ~200-char `snippet`
+ * — plus `mimeType`/`fileSize` and the six columns no list caller ever reads —
+ * for every row of a whole-vault sidebar fetch that then throws them away.
+ */
+const NOTE_TREE_COLUMNS = {
+  id: noteCache.id,
+  path: noteCache.path,
+  title: noteCache.title,
+  fileType: noteCache.fileType,
+  emoji: noteCache.emoji,
+  localOnly: noteCache.localOnly,
+  wordCount: noteCache.wordCount,
+  createdAt: noteCache.createdAt,
+  modifiedAt: noteCache.modifiedAt
+} as const
+
+/** A `shape: 'tree'` row. Deliberately not a `NoteCache` — it has fewer columns. */
+export type NoteTreeCacheRow = Pick<NoteCache, keyof typeof NOTE_TREE_COLUMNS>
+
 export interface ListNotesOptions {
   folder?: string
   tags?: string[]
@@ -89,10 +110,34 @@ export interface ListNotesOptions {
   sortOrder?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  /**
+   * `'tree'` narrows the SQL projection to {@link NOTE_TREE_COLUMNS}. Defaults
+   * to the full `note_cache` row so every existing caller is unaffected.
+   */
+  shape?: 'full' | 'tree'
 }
 
-export function listNotesFromCache(db: IndexDb, options: ListNotesOptions = {}): NoteCache[] {
-  const { folder, tags, sortBy = 'modified', sortOrder = 'desc', limit = 100, offset = 0 } = options
+export function listNotesFromCache(
+  db: IndexDb,
+  options?: ListNotesOptions & { shape?: 'full' }
+): NoteCache[]
+export function listNotesFromCache(
+  db: IndexDb,
+  options: ListNotesOptions & { shape: 'tree' }
+): NoteTreeCacheRow[]
+export function listNotesFromCache(
+  db: IndexDb,
+  options: ListNotesOptions = {}
+): NoteCache[] | NoteTreeCacheRow[] {
+  const {
+    folder,
+    tags,
+    sortBy = 'modified',
+    sortOrder = 'desc',
+    limit = 100,
+    offset = 0,
+    shape = 'full'
+  } = options
 
   const conditions: SQL<unknown>[] = []
 
@@ -133,13 +178,27 @@ export function listNotesFromCache(db: IndexDb, options: ListNotesOptions = {}):
 
   const orderFn = sortOrder === 'asc' ? asc : desc
 
-  let query = db.select().from(noteCache)
+  const where = conditions.length > 0 ? and(...conditions) : undefined
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions)) as typeof query
+  if (shape === 'tree') {
+    return db
+      .select(NOTE_TREE_COLUMNS)
+      .from(noteCache)
+      .where(where)
+      .orderBy(orderFn(sortColumn))
+      .limit(limit)
+      .offset(offset)
+      .all()
   }
 
-  return query.orderBy(orderFn(sortColumn)).limit(limit).offset(offset).all()
+  return db
+    .select()
+    .from(noteCache)
+    .where(where)
+    .orderBy(orderFn(sortColumn))
+    .limit(limit)
+    .offset(offset)
+    .all()
 }
 
 export interface NoteCacheFileRow {

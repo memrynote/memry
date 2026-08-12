@@ -653,6 +653,177 @@ describe('CrdtProvider', () => {
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalledWith('note-1', compacted)
   })
 
+  it('persists, broadcasts and writes back the remote updates buffered by a successful compaction', async () => {
+    // A store that actually stores: storeUpdate appends, getYDoc replays. A
+    // lost update then shows up as missing content after a restart rather than
+    // as a mock-call shape.
+    const stored: Uint8Array[] = []
+    const wireStore = (store: (typeof mocks.persistenceInstances)[number]): void => {
+      store.storeUpdate.mockImplementation(async (_noteId: string, update: Uint8Array) => {
+        stored.push(update)
+      })
+      store.getYDoc.mockImplementation(async () => {
+        const doc = new Y.Doc()
+        for (const update of stored) Y.applyUpdate(doc, update)
+        return doc
+      })
+    }
+    wireStore(mocks.persistenceInstances[0])
+
+    // The compacted snapshot touches only the body fragment and the remote
+    // update only meta.title, so the merged state is deterministic instead of
+    // resolved by client id.
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+    expect(mocks.scheduleWriteback).not.toHaveBeenCalled()
+
+    // A sync pull lands while the compaction is parked on its snapshot push,
+    // so applyRemoteUpdate diverts it into the compaction buffer.
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('pulled during compaction'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    const compactedLiveDoc = provider.getDoc('note-1')
+
+    // The queued network broadcast reaches the editor: the user reopens the
+    // note, then the batcher flushes on shutdown.
+    createWindow(9)
+    await provider.open('note-1', 9, { skipSeed: true })
+    await provider.destroy()
+
+    const broadcast = mocks.sent.find(
+      (sent) => sent.windowId === 9 && sent.channel === CRDT_EVENTS.STATE_CHANGED
+    )
+    const broadcastDoc = new Y.Doc()
+    if (broadcast) Y.applyUpdate(broadcastDoc, (broadcast.payload as { update: Uint8Array }).update)
+
+    // A restart must still see it, i.e. it is readable back out of the store.
+    const restarted = new CrdtProvider()
+    await restarted.init(queue as any, pushSnapshot)
+    wireStore(mocks.persistenceInstances[mocks.persistenceInstances.length - 1])
+    const reloaded = await restarted.open('note-1', undefined, { skipSeed: true })
+
+    // Asserted together so a regression reports every limb it broke, not just
+    // the first one.
+    expect({
+      inMemory: compactedLiveDoc?.getMap('meta').get('title'),
+      writtenBackDoc: mocks.scheduleWriteback.mock.calls.at(-1),
+      broadcastToEditor: broadcastDoc.getMap('meta').get('title'),
+      afterRestart: reloaded.getMap('meta').get('title'),
+      // Control: the pre-compaction local edit must survive the same round trip.
+      dateAfterRestart: reloaded.getMap('meta').get('date')
+    }).toEqual({
+      inMemory: 'pulled during compaction',
+      writtenBackDoc: ['note-1', compactedLiveDoc],
+      broadcastToEditor: 'pulled during compaction',
+      afterRestart: 'pulled during compaction',
+      dateAfterRestart: '2026-01-01'
+    })
+
+    await restarted.destroy()
+  })
+
+  it('does not re-store or re-broadcast the compacted snapshot itself', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    const compacted = Y.encodeStateAsUpdate(compactedDoc)
+    mocks.compactYDoc.mockReturnValue({ compacted, savedBytes: 120 })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('pulled during compaction'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    const store = mocks.persistenceInstances[0]
+    const storedUpdates = store.storeUpdate.mock.calls.map(([, update]) => update as Uint8Array)
+
+    // The snapshot is written by compactDoc itself; seeding newDoc with it must
+    // not send it through onDocUpdate and store it a second time.
+    expect(storedUpdates.filter((update) => update === compacted)).toHaveLength(1)
+
+    // The buffered update reaches the store exactly once, not once per path.
+    const carriesRemoteTitle = (update: Uint8Array): boolean => {
+      const probe = new Y.Doc()
+      Y.applyUpdate(probe, update)
+      return probe.getMap('meta').get('title') === 'pulled during compaction'
+    }
+    expect(storedUpdates.filter(carriesRemoteTitle)).toHaveLength(1)
+    expect(mocks.scheduleWriteback).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a local edit that lands during the compaction push eligible for the next snapshot', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+
+    // crdt:apply-update routes straight to applyIpcUpdate, which has no
+    // compaction guard (only remote updates are buffered), so a keystroke can
+    // reach entry.doc after compactYDoc already encoded the payload being
+    // pushed here.
+    const typed = makeRemoteUpdate('typed during the push')
+    pushSnapshot.mockImplementationOnce(async () => {
+      provider.applyIpcUpdate('note-1', typed, 1)
+    })
+
+    await provider.compactDoc('note-1')
+
+    // Those bytes are not in the pushed payload, so the note must stay armed
+    // instead of reading as fully pushed.
+    expect(provider.getDocSizeMetrics()[0].pendingSnapshotBytes).toBe(typed.byteLength)
+    pushSnapshot.mockClear()
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+  })
+
+  it('re-pushes a local edit that landed while an abandoned compaction was pushing', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    const originalDoc = await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { date: '2026-01-01' })
+
+    // The editor reopens the note mid-compaction: open() adds the window to the
+    // same entry, the keystroke that follows lands on the pre-compaction doc,
+    // and the swap is then abandoned — so this edit lives only in originalDoc
+    // and only a later snapshot push can carry it to the server.
+    pushSnapshot.mockImplementationOnce(async () => {
+      await provider.open('note-1', 42, { skipSeed: true })
+      provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed after reopen'), 42)
+    })
+
+    await provider.compactDoc('note-1')
+
+    expect(provider.getDoc('note-1')).toBe(originalDoc)
+
+    pushSnapshot.mockClear()
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    const roundTrip = new Y.Doc()
+    Y.applyUpdate(roundTrip, pushSnapshot.mock.calls[0][1] as Uint8Array)
+    expect(roundTrip.getMap('meta').get('title')).toBe('typed after reopen')
+  })
+
   it('abandons the compacted swap if an editor opens during compaction', async () => {
     const compactedDoc = new Y.Doc()
     compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
@@ -673,6 +844,106 @@ describe('CrdtProvider', () => {
     expect(provider.getDocSizeMetrics()[0]).toEqual(
       expect.objectContaining({ noteId: 'note-1', windowCount: 1 })
     )
+  })
+
+  it('does not start compacting a doc that close() is already retiring', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before close' })
+
+    // Hold close() at its snapshot push: the entry is marked closing but the
+    // map still holds it, which is exactly what checkAndCompact's setImmediate
+    // sees when eviction and compaction fire on the same windowless doc.
+    let releaseClosePush: (() => void) | undefined
+    pushSnapshot.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseClosePush = resolve
+        })
+    )
+    const closePromise = provider.close('note-1')
+    await Promise.resolve()
+
+    mocks.compactYDoc.mockClear()
+    await provider.compactDoc('note-1')
+    expect(mocks.compactYDoc).not.toHaveBeenCalled()
+
+    releaseClosePush?.()
+    await closePromise
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  it('abandons the compacted swap when close() starts mid-compaction', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    const originalDoc = await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+
+    // Start close() from inside the compaction's persistence write, and park it
+    // on its own flush: the entry stays in the map, just marked closing.
+    let closePromise: Promise<void> | undefined
+    let releaseCloseFlush: (() => void) | undefined
+    mocks.persistenceInstances[0].storeUpdate.mockImplementationOnce(async () => {
+      mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseCloseFlush = resolve
+          })
+      )
+      closePromise = provider.close('note-1')
+      await Promise.resolve()
+    })
+
+    await provider.compactDoc('note-1')
+
+    // No swap onto a doc that close() is about to destroy.
+    expect(provider.getDoc('note-1')).toBe(originalDoc)
+
+    releaseCloseFlush?.()
+    await closePromise
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  it('replays buffered remote updates onto the live doc when a reopen replaces the entry mid-compaction', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    createWindow(6)
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+
+    // Suspend the compaction inside its snapshot push and run the production
+    // sequence in that window: eviction closes the windowless doc, the editor
+    // reopens the note onto a fresh entry, then a sync pull lands.
+    let reopenedDoc: Y.Doc | undefined
+    pushSnapshot.mockImplementationOnce(async () => {
+      await provider.close('note-1')
+      reopenedDoc = await provider.open('note-1', 6, { skipSeed: true })
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('pulled after reopen'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    // The compaction belongs to the retired entry, so it must not touch the
+    // live doc — and the update it swallowed must still reach that doc.
+    expect(provider.getDoc('note-1')).toBe(reopenedDoc)
+    expect(reopenedDoc?.isDestroyed).toBe(false)
+    expect(provider.getDoc('note-1')?.getMap('meta').get('title')).toBe('pulled after reopen')
   })
 
   it('keeps a reopened doc alive if close races with a new open', async () => {

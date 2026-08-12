@@ -118,6 +118,20 @@ broken the item re-quarantines within a few pulls, and if it was repaired server
 again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
 engine restarts and vault switches cannot re-arm an immediate check.
 
+Both of those in-memory ledgers are bounded, because a server-side incident can brand a very large
+number of items in a single session. The corrupt-item tracker holds at most 5,000 cooldown entries
+and sheds the coldest ones first; the coldest entry is also the one closest to its one-hour cooldown
+lapsing, so the most an eviction can cost is one extra re-fetch for an item that was about to become
+eligible anyway. Expired entries are also swept at the end of every pull, not only when a later pull
+happens to touch the same item.
+
+The quarantine ledger applies the same 7-day expiry to live entries that it already applied to
+persisted ones, so a long-running session behaves like a restart. Its 10,000-entry cap is
+deliberately soft: only entries that have not yet reached the permanent threshold can be evicted,
+because those are attempt counters and a still-broken item simply re-quarantines. Permanent
+quarantines are the record that keeps a failed-signature item out of the vault and are never dropped
+to satisfy the cap.
+
 ### Push acknowledgements and in-flight mutations
 
 The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites
@@ -474,11 +488,13 @@ require the vault to have synced any items, so a freshly created vault still app
 
 Every authenticated sync call — and the WebSocket handshake — stamps the active vault's UUID into
 `X-Memry-Vault-Id`. That UUID is a single `vault_metadata` row, so it is resolved once and cached
-against the open data-database handle rather than re-read per request. Opening, closing or switching
-a vault installs a new handle and therefore misses the cache on its own; the one rewrite that keeps
-the same handle — a linked device adopting the initiator's vault identity — invalidates it
-explicitly, so device registration and the first sync bind to the adopted vault, never the
-pre-adoption one.
+against the open data-database handle rather than re-read per request. The cache lives with the
+resolver itself, so every consumer shares it: the request header, device registration, vault-key
+derivation, canvas reconcile and per-attachment uploads all read the row once per open vault instead
+of once per operation. Opening, closing or switching a vault installs a new handle and therefore
+misses the cache on its own; the one rewrite that keeps the same handle — a linked device adopting
+the initiator's vault identity — invalidates it explicitly, so device registration and the first
+sync bind to the adopted vault, never the pre-adoption one.
 
 Desktop reads the directory over IPC:
 
@@ -665,7 +681,27 @@ Waiting longer is expensive, because the penalty is paid in whole minutes. The t
 rather than terminated, and restarting the sync runtime gives the bridge a fresh worker and a clean
 count.
 
+In-flight requests are bounded too. Each one carries the batch's items and key material until it is
+answered, so the bridge refuses to hold more than 1,000 at once; past that point requests are
+rejected at the door and fall to the main thread, which is the same degradation a wedged worker
+already triggers. A sweep runs while requests are outstanding and collects any request that outlived
+its own timeout, and it stops itself as soon as nothing is pending, so an idle bridge costs nothing.
+
 Shutting the bridge down asks the worker to exit and waits three seconds before terminating it. A
 worker that misses that window is fully detached first, so the exit that terminating eventually
 produces cannot land on a bridge that has already been restarted and cancel the new worker's
 in-flight batches.
+
+The bridge only listens to the thread it is currently routing to. A message, error, or exit that
+arrives from a thread it has already walked away from is ignored, and that thread is disconnected
+outright. Without this, the late exit of a terminated worker would take the _live_ worker out of the
+rotation — a bridge reporting no worker at all while a healthy thread sat idle, leaving every batch
+for the rest of the session on the main thread.
+
+Starting and stopping the bridge are serialised against each other. A start requested while a
+shutdown is still running waits for that shutdown to finish and then spawns a fresh thread, instead
+of mistaking the thread on its way out for a running one and returning with nothing behind it. For
+the same reason a thread that has been asked to exit no longer counts as running, so batches raised
+during the shutdown window go straight to the main thread rather than waiting out a request timeout
+against a worker that is leaving. This is what keeps a vault switch or a sync restart from ending up
+on main-thread crypto for the rest of the session.

@@ -43,6 +43,8 @@ Open the project's **⋯** menu and choose **Edit statuses**. From there you can
 
 The sidebar shows **incomplete** task counts per project — tasks whose status type is not `done`. This keeps the count meaningful even as you complete tasks.
 
+Archived tasks are excluded, so the badge always matches the number of open tasks you see when you open the project.
+
 ## Default Project
 
 [Settings → Tasks → Default Project](/user-guide/settings#tasks) sets which project new tasks go to when you quick-add outside any project view. "(No project)" is a valid default.

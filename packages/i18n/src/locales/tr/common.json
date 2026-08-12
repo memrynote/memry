@@ -274,15 +274,6 @@
       "scrollTabsRight": "Sekmeleri sağa kaydır",
       "dayPanel": "Gün Paneli"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Sekmeleri sola kaydır",
-      "scrollTabsRight": "Sekmeleri sağa kaydır"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Sekmeleri aç",
-      "scrollTabsLeft": "Sekmeleri sola kaydır",
-      "scrollTabsRight": "Sekmeleri sağa kaydır"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Bir şeyler ters gitti",
       "anErrorOccurredWhileRenderingThisTabContent": "Bu sekme içeriği oluşturulurken bir hata oluştu.",

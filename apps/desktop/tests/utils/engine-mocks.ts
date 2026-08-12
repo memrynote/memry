@@ -1,6 +1,11 @@
 import { vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  asSyncDb,
+  createTestDataDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { type SyncEngineDeps } from '@main/sync/engine'
 import { SyncQueueManager } from '@main/sync/queue'
 import { NetworkMonitor } from '@main/sync/network'
@@ -8,32 +13,76 @@ import type { WebSocketManager } from '@main/sync/websocket'
 
 export type { TestDatabaseResult }
 
+// `NetworkMonitor._online` is private, so `NetworkMonitor & { _online: boolean }`
+// reduces to `never` and every member access below fails to compile. The backing
+// field is the mock's own, so it is declared on the emitter rather than smuggled
+// into the NetworkMonitor type.
+type MockNetworkMonitor = EventEmitter & {
+  _online: boolean
+  start: () => void
+  stop: () => void
+}
+
 export function createMockNetwork(online = true): NetworkMonitor {
-  const monitor = new EventEmitter() as NetworkMonitor & { _online: boolean }
+  const monitor = new EventEmitter() as MockNetworkMonitor
   monitor._online = online
   Object.defineProperty(monitor, 'online', { get: () => monitor._online })
   monitor.start = vi.fn()
   monitor.stop = vi.fn()
-  return monitor
+  return monitor as unknown as NetworkMonitor
 }
 
-export function createMockWs(): WebSocketManager & { simulateConnected: () => void } {
-  const ws = new EventEmitter() as WebSocketManager & {
-    _connected: boolean
-    simulateConnected: () => void
+/**
+ * Everything the sync engine can read off `deps.ws`, derived from the real
+ * class rather than restated. `implements` on this is what turns a member added
+ * to WebSocketManager into a compile error here, instead of the mock silently
+ * answering `undefined` behind an `as WebSocketManager` cast.
+ */
+type WebSocketManagerSurface = Omit<WebSocketManager, keyof EventEmitter>
+
+export type MockWebSocketManager = WebSocketManager & { simulateConnected: () => void }
+
+class MockWs extends EventEmitter implements WebSocketManagerSurface {
+  private _connected = false
+  private _connectionGeneration = 0
+
+  get connected(): boolean {
+    return this._connected
   }
-  ws._connected = false
-  Object.defineProperty(ws, 'connected', { get: () => ws._connected })
-  ws.connect = vi.fn(async () => {
-    ws._connected = true
-  })
-  ws.disconnect = vi.fn(() => {
-    ws._connected = false
-  })
-  ws.simulateConnected = () => {
-    ws.emit('connected')
+
+  /** Advances once per socket open, mirroring the real manager's getter. */
+  get connectionGeneration(): number {
+    return this._connectionGeneration
   }
-  return ws
+
+  // Resolving does not mean the socket is up: the real connect() returns once
+  // the WebSocket has been constructed, and 'open' lands later. Tests that need
+  // a live socket call simulateConnected().
+  connect = vi.fn(async (): Promise<void> => {})
+
+  refreshAuth = vi.fn(async (): Promise<void> => {})
+
+  disconnect = vi.fn((): void => {
+    this._connected = false
+  })
+
+  /** One socket open: flips `connected`, advances the generation, announces it. */
+  simulateConnected = (): void => {
+    // The real manager opens at most one socket at a time, so a second open
+    // without an intervening disconnect is not a new generation.
+    if (!this._connected) {
+      this._connected = true
+      this._connectionGeneration++
+    }
+    this.emit('connected')
+  }
+}
+
+export function createMockWs(): MockWebSocketManager {
+  // WebSocketManager's private fields make it nominal, so a structural stand-in
+  // can never be assignable to it; the surface `implements` above is the check
+  // that matters.
+  return new MockWs() as unknown as MockWebSocketManager
 }
 
 export function createMockDeps(
@@ -41,7 +90,7 @@ export function createMockDeps(
   overrides?: Partial<SyncEngineDeps>
 ): SyncEngineDeps {
   return {
-    queue: new SyncQueueManager(db.db),
+    queue: new SyncQueueManager(asClientDb(db.db)),
     network: createMockNetwork(),
     ws: createMockWs(),
     getAccessToken: vi.fn().mockResolvedValue('test-token'),
@@ -52,7 +101,7 @@ export function createMockDeps(
       deviceId: 'device-1'
     }),
     getDevicePublicKey: vi.fn().mockResolvedValue(new Uint8Array(32)),
-    db: db.db,
+    db: asSyncDb(db.db),
     emitToRenderer: vi.fn(),
     ...overrides
   }

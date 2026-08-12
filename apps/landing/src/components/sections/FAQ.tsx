@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Container } from '@/components/layout/Container'
 import {
   Accordion,

@@ -100,8 +100,33 @@ export const MAX_PUSH_ITERATIONS = 50
 export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 export const PULL_PAGE_LIMIT = 100
 export const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
+/**
+ * Hard cap on live corrupt-item cooldown entries.
+ *
+ * Each entry is only a (type, id) key plus two numbers, so 5,000 costs well
+ * under a megabyte — but nothing bounded the map before, and a server-side
+ * poisoned-payload event (2026-07-18 class) marks every item of a failing page
+ * on every pull for a whole hour. Overflow evicts the oldest `failedAt` first:
+ * those are the entries closest to expiring anyway, so the only thing an
+ * eviction can cost is one extra re-fetch attempt for an item that was already
+ * eligible to retry minutes later.
+ */
+export const MAX_CORRUPT_ITEMS = 5000
 export const QUARANTINE_MAX_ATTEMPTS = 3
 export const QUARANTINE_ENTRY_TTL_MS = 7 * 24 * 60 * 60 * 1000
+/**
+ * Soft cap on in-memory quarantine entries.
+ *
+ * Deliberately soft: only entries below QUARANTINE_MAX_ATTEMPTS are evictable.
+ * Those are pure attempt counters — losing one costs the item a fresh set of
+ * attempts, and it re-quarantines within QUARANTINE_MAX_ATTEMPTS pulls if it is
+ * still broken. Permanent entries are the record that keeps a failed-signature
+ * item out of the vault, and `persistState()` serialises the map, so evicting
+ * one would also erase it from disk. They are never evicted here; if a session
+ * somehow accumulates more than this many permanent quarantines the map is
+ * allowed to exceed the cap and the overflow is logged instead.
+ */
+export const MAX_QUARANTINE_ENTRIES = 10_000
 export const STALE_CURSOR_THRESHOLD_MS = 24 * 60 * 60 * 1000
 export const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
 export const BASE_RATE_LIMIT_BACKOFF_MS = 5_000

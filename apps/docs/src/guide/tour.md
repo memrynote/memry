@@ -24,6 +24,8 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
+The **Notes** tree loads 10,000 notes at a time, most recently modified first. If your vault holds more than that, a footer row under the tree says how many older notes it is not showing and offers **Load more** to pull in the next batch. Notes past the ceiling are never hidden silently — and they stay reachable through search either way.
+
 At the bottom of the sidebar, a footer row holds three controls, left to right:
 
 - **Sync status** — shows whether sync is connected; click it to open account settings (or to sign in when you're signed out).
@@ -93,14 +95,14 @@ Tasks live alongside notes. Two views — **list** and **kanban**. Group tasks u
 
 memrynote is keyboard-friendly. The full shortcut list is at [Keyboard Shortcuts](/user-guide/keyboard-shortcuts). Highlights:
 
-| Shortcut                   | Action                                              |
-| -------------------------- | --------------------------------------------------- |
-| <kbd>⌘</kbd>+<kbd>N</kbd>  | New note                                            |
-| <kbd>⌘</kbd>+<kbd>F</kbd>  | Search / command palette                            |
-| <kbd>⌘</kbd>+<kbd>,</kbd>  | Settings                                            |
-| <kbd>⌘</kbd>+<kbd>B</kbd>  | Toggle sidebar                                      |
-| <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right                                         |
-| <kbd>F</kbd>               | Hint mode (numeric badges on every clickable thing) |
+| Shortcut                   | Action                                             |
+| -------------------------- | -------------------------------------------------- |
+| <kbd>⌘</kbd>+<kbd>N</kbd>  | New note                                           |
+| <kbd>⌘</kbd>+<kbd>F</kbd>  | Search / command palette                           |
+| <kbd>⌘</kbd>+<kbd>,</kbd>  | Settings                                           |
+| <kbd>⌘</kbd>+<kbd>B</kbd>  | Toggle sidebar                                     |
+| <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right                                        |
+| <kbd>F</kbd>               | Hint mode (letter badges on every clickable thing) |
 
 Open the in-app shortcuts dialog with <kbd>⌘</kbd>+<kbd>/</kbd> for the live list.
 

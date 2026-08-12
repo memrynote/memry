@@ -49,6 +49,10 @@
       "newNote": "New Note"
     },
     "loadingError": "Failed to load notes",
+    "truncated": {
+      "hidden": "{count, plural, one {# older note not shown} other {# older notes not shown}}",
+      "loadMore": "Load more"
+    },
     "actions": {
       "newNote": "New Note",
       "newFolder": "New Folder",

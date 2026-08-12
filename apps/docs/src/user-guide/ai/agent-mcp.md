@@ -151,6 +151,11 @@ Stop requests are scoped to the active conversation across Claude, Codex, and lo
 Automatic title generation and conversation summaries run through the selected backend without
 exposing memrynote MCP tools.
 
+Stop works from the moment you send a turn, including the pause before the backend starts answering
+— while a local provider is being checked for streaming and tool support, or while Claude or Codex is
+launching. Pressing stop in that window ends the turn there instead of letting it run to completion
+in the background.
+
 Stopping a turn — and quitting memrynote while one is running — asks the chat backend to shut down
 first, and forces it to close if it has not stopped shortly afterwards. Quitting waits for that to
 finish, so a backend is never left running in the background after memrynote is gone. A backend that
@@ -248,6 +253,11 @@ Agent Chat and external clients can reconnect without restarting the app or reop
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
 Bearer authorization header. Plain external clients can use read tools, but they do not get the
 in-app conversation/window context that approved writes require.
+
+A write is only approved for a conversation that still exists. A conversation that has been deleted —
+including one deleted on another device and carried here by sync — no longer counts as an existing
+conversation, so its write tools are refused rather than writing into a record that is gone from your
+chat history everywhere.
 
 ## Tools
 
@@ -472,6 +482,12 @@ denied.
 
 Stopping the turn while an approval is waiting counts as a denial: the pending request is refused,
 the tool never runs, and the approval controls disappear. Nothing is written to your vault.
+
+An approval you never answer expires after 30 minutes. The controls disappear, the tool never runs,
+and the tool row is marked as expired rather than denied — the agent is told the request timed out,
+not that you refused it. Take as long as you need to read a request or its diff; half an hour is
+there so a prompt left open overnight does not keep the request waiting forever, not to hurry you.
+If a request expires and you still want it, ask the agent again.
 
 ## Project Links
 

@@ -58,7 +58,9 @@ memrynote shows a toast with:
 - Title and snippet
 - Action buttons (snooze 5 min, snooze 10 min, custom snooze, open, dismiss)
 
-A system notification is shown as well. Dismissing or snoozing the reminder also retires its system notification — on macOS it is removed from Notification Center, and on Windows and Linux the banner is closed — so handled reminders don't pile up. If a snoozed reminder comes due again, its new notification replaces the earlier one for that reminder instead of stacking a second banner. Notifications you haven't acted on are never dismissed for you.
+A system notification is shown as well. Dismissing, snoozing, or deleting the reminder also retires its system notification — on macOS it is removed from Notification Center, and on Windows and Linux the banner is closed — so handled reminders don't pile up. "Dismiss all" does the same for every reminder in the batch, and only for those: a reminder that wasn't part of the action keeps its notification. If a snoozed reminder comes due again, its new notification replaces the earlier one for that reminder instead of stacking a second banner. Notifications you haven't acted on are never dismissed for you.
+
+Dismissing a reminder updates every place it appears right away — the inbox reminders view, the note's reminder pill, the journal badge, the task chip, and any other open memrynote window. "Dismiss all" behaves the same way, refreshing those views once per reminder it actually dismissed.
 
 Dismissing or snoozing a reminder syncs to your other devices, so a reminder you've handled on one device won't fire again on another. Each device still shows its own toast and system notification locally when the reminder's time arrives.
 

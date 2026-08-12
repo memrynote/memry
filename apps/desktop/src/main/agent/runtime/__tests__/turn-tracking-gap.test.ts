@@ -245,7 +245,6 @@ function createRegistry(handle: BackendRunHandle): AgentBackendRegistry {
     runTurn: vi.fn(async () => handle),
     generateTitle: vi.fn(async () => handle),
     summarize: vi.fn(async () => handle),
-    cancel: vi.fn(),
     getStatus: vi.fn(async () => ({ backend: 'claude_cli' as const, available: true }))
   }
   return { get: vi.fn(() => backend), list: vi.fn(() => [backend]) }

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { PageHead } from '@/components/shared/PageHead'
 import {
   HardDrive,

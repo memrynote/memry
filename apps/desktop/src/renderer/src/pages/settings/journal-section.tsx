@@ -90,14 +90,6 @@ export function JournalSettings() {
     [t, updateSettings]
   )
 
-  const handleShowAIConnectionsChange = useCallback(
-    async (checked: boolean) => {
-      const success = await updateSettings({ showAIConnections: checked })
-      if (!success) toast.error(t('journal.updateError'))
-    },
-    [t, updateSettings]
-  )
-
   const handleShowStatsFooterChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showStatsFooter: checked })
@@ -212,16 +204,12 @@ export function JournalSettings() {
           />
         </SettingRow>
 
-        <SettingRow
-          label={t('journal.showAIConnections.label')}
-          description={t('journal.showAIConnections.description')}
-        >
-          <Switch
-            checked={settings.showAIConnections}
-            onCheckedChange={(...args) => void handleShowAIConnectionsChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
+        {/*
+         * No "Show AI Connections" row: nothing renders AIConnectionsPanel, so the toggle
+         * controlled nothing. `journal.showAIConnections` stays persisted and readable/writable
+         * through settings so existing installs keep their value and re-exposing the row later
+         * is a UI-only change.
+         */}
       </SettingsGroup>
 
       <SettingsGroup label={t('journal.groups.footer')}>

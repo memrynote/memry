@@ -274,15 +274,6 @@
       "scrollTabsRight": "右捲動分頁",
       "dayPanel": "日間座談會"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "左捲動分頁",
-      "scrollTabsRight": "右捲動分頁"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "開啟分頁",
-      "scrollTabsLeft": "左捲動分頁",
-      "scrollTabsRight": "右捲動分頁"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "出了問題",
       "anErrorOccurredWhileRenderingThisTabContent": "在渲染這個分頁內容時發生了錯誤。",

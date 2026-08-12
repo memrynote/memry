@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStartupTheme } from './startup-theme'
-import { extractDomain, fetchLinkPreview, getFaviconUrl } from './url-metadata'
+import {
+  clearLinkPreviewCache,
+  extractDomain,
+  fetchLinkPreview,
+  getFaviconUrl,
+  linkPreviewCacheSize
+} from './url-metadata'
 import { getYouTubeEmbedUrl, getYouTubeThumbnailUrl } from './youtube-utils'
 
 const api = window.api as unknown as {
@@ -10,6 +16,7 @@ const api = window.api as unknown as {
 
 describe('URL metadata utilities', () => {
   beforeEach(() => {
+    clearLinkPreviewCache()
     api.inbox.previewLink.mockReset()
     api.inbox.previewLink.mockResolvedValue({
       title: 'Example',
@@ -49,6 +56,36 @@ describe('URL metadata utilities', () => {
       favicon: 'https://www.google.com/s2/favicons?domain=retry.test&sz=32'
     })
     expect(api.inbox.previewLink).toHaveBeenCalledTimes(2)
+  })
+
+  it('caps the preview cache at 200 entries', async () => {
+    for (let i = 0; i < 1000; i++) {
+      await fetchLinkPreview(`https://example.com/page-${i}`)
+    }
+
+    expect(linkPreviewCacheSize()).toBeLessThanOrEqual(200)
+    expect(linkPreviewCacheSize()).toBe(200)
+  })
+
+  it('evicts the least recently used preview, not the oldest inserted', async () => {
+    for (let i = 0; i < 200; i++) {
+      await fetchLinkPreview(`https://example.com/page-${i}`)
+    }
+    expect(api.inbox.previewLink).toHaveBeenCalledTimes(200)
+
+    // Touch the oldest insert so it becomes the most recently used entry.
+    await fetchLinkPreview('https://example.com/page-0')
+    expect(api.inbox.previewLink).toHaveBeenCalledTimes(200)
+
+    // One more distinct URL pushes past the cap and must evict page-1.
+    await fetchLinkPreview('https://example.com/page-200')
+    expect(linkPreviewCacheSize()).toBe(200)
+
+    await fetchLinkPreview('https://example.com/page-0')
+    expect(api.inbox.previewLink).toHaveBeenCalledTimes(201)
+
+    await fetchLinkPreview('https://example.com/page-1')
+    expect(api.inbox.previewLink).toHaveBeenCalledTimes(202)
   })
 })
 

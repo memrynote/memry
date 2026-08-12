@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { FEATURES } from '@/lib/constants'
@@ -116,40 +116,6 @@ export function Features() {
   const activeFeature = FEATURES.find((f) => f.id === activeId) ?? FEATURES[0]
   const activeIndex = FEATURES.findIndex((f) => f.id === activeId)
   const screenshotSrc = getFeatureScreenshotSrc(activeFeature.screenshot)
-
-  // The five captures aren't a uniform size (and get re-exported over time), so measure
-  // them all and build one fixed canvas = the largest width × largest height. Each shot
-  // then renders at its true relative size, centered, with the leftover space matted in
-  // the module's tint — so the frame never resizes between modules and nothing is cropped.
-  const [dims, setDims] = useState<Partial<Record<Feature['id'], { w: number; h: number }>>>({})
-
-  useEffect(() => {
-    let cancelled = false
-    Promise.all(
-      FEATURES.map(
-        (f) =>
-          new Promise<[Feature['id'], { w: number; h: number } | null]>((resolve) => {
-            const img = new Image()
-            img.onload = () => resolve([f.id, { w: img.naturalWidth, h: img.naturalHeight }])
-            img.onerror = () => resolve([f.id, null])
-            img.src = getFeatureScreenshotSrc(f.screenshot)
-          })
-      )
-    ).then((entries) => {
-      if (cancelled) return
-      const next: Partial<Record<Feature['id'], { w: number; h: number }>> = {}
-      for (const [id, d] of entries) if (d) next[id] = d
-      setDims(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const measured = Object.values(dims) as { w: number; h: number }[]
-  const canvasW = measured.length ? Math.max(...measured.map((d) => d.w)) : 4
-  const canvasH = measured.length ? Math.max(...measured.map((d) => d.h)) : 3
-  const activeDims = dims[activeFeature.id]
   const tintVar = MODULE_TINT[activeFeature.id]
 
   // Cycle through modules with the arrows over the screenshot (wraps around).
@@ -199,27 +165,22 @@ export function Features() {
           </div>
 
           <div
-            className="relative overflow-hidden rounded-xl shadow-card transition-colors duration-500 lg:sticky lg:top-28"
-            style={{
-              aspectRatio: `${canvasW} / ${canvasH}`,
-              backgroundColor: `var(${tintVar})`
-            }}
+            className="relative aspect-[1328/1048] overflow-hidden rounded-xl shadow-card transition-colors duration-500 lg:sticky lg:top-28"
+            style={{ backgroundColor: `var(${tintVar})` }}
           >
-            {/* Fixed canvas = the largest capture in each axis. Every shot keeps its real
-                proportions and is matted with the module's tint, so the frame never resizes
-                between modules and nothing is cropped. Incoming shot resolves from blur+scale
-                over the outgoing one — no mode="wait" blank frame between panels. */}
+            {/* 1328/1048 is the canvas the five captures used to add up to back when they were
+                all exported at the same scale — the widest by the tallest. Sizing by fit rather
+                than by raw pixels keeps that framing whatever scale a shot gets re-exported at:
+                each one fills the canvas on its long axis and mats the short one in the module's
+                tint. Incoming shot resolves from blur+scale over the outgoing one — no
+                mode="wait" blank frame between panels. */}
             <AnimatePresence initial={false}>
               <motion.img
                 key={activeFeature.id}
                 src={screenshotSrc}
                 alt={`${activeFeature.title} in MemryNote`}
                 decoding="async"
-                className="absolute inset-0 m-auto object-contain"
-                style={{
-                  width: activeDims ? `${(activeDims.w / canvasW) * 100}%` : '100%',
-                  height: activeDims ? `${(activeDims.h / canvasH) * 100}%` : '100%'
-                }}
+                className="absolute inset-0 size-full object-contain"
                 initial={{ opacity: 0, scale: 1.02, filter: 'blur(8px)' }}
                 animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, transition: { duration: 0.3, ease: 'easeOut' } }}

@@ -169,6 +169,28 @@ pnpm typecheck:node     # main process only
 pnpm typecheck:web      # renderer only
 ```
 
+### Typechecking test files
+
+The two configs above compile app source only — they exclude `**/*.test.ts(x)` and `**/*.spec.ts`.
+Test files are compiled by a separate pair of projects:
+
+```bash
+pnpm --filter @memry/desktop typecheck:test        # both halves
+pnpm --filter @memry/desktop typecheck:test:node   # tests/** harness + main/preload tests
+pnpm --filter @memry/desktop typecheck:test:web    # renderer tests
+```
+
+`pnpm typecheck` runs all four, and CI has a step per project.
+
+`apps/desktop/tsconfig.test.node.json` and `apps/desktop/tsconfig.test.web.json` each carry an
+`exclude` array listing test files that already failed to compile when the gate was introduced.
+That list is a shrinking backlog, not a policy: a new or newly-touched test file must compile, so
+never add an entry. Fixing a listed file's errors means deleting its line as well.
+
+This is what makes type-level guards in test code real. `implements`, `satisfies`, and typed harness
+signatures used to be checked only by your editor — a mock that drifted from the class it stands in
+for would silently answer `undefined` at runtime instead of failing the build.
+
 ## Native Module Rebuild
 
 `better-sqlite3` and `keytar` are the most common source of native runtime failures. If you see `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION` mismatches, or a Mach-O architecture error:
@@ -210,6 +232,18 @@ launch. The E2E launcher passes that resolved package binary as Playwright's exp
 directory. If CI still reaches the launcher with a missing `path.txt` or executable, the launcher
 runs the same installer helper once, trusts the helper's validation, and passes the platform-specific
 package executable path directly instead of importing `electron/index.js`.
+
+Because several processes can reach that helper at once on one machine — `ensure-native.sh` from
+`predev` / `prebuild` / `pretest:e2e`, plus each Playwright worker (`workers: 2` locally) — the
+install is serialised with a lock file next to the `electron` package, and only one process
+downloads: the others wait and reuse the finished install. The archive is extracted into a staging
+directory beside `dist/` and swapped in with a rename, and `path.txt` is written last and never
+deleted, so a concurrent `require('electron')` always sees either the previous install or the new
+one. Without that, an install in flight makes unrelated Vitest suites fail at import time with
+`Electron failed to install correctly`, which reads like a code regression rather than an
+environment problem. A failed download now also leaves an existing install untouched. The behaviour
+is covered by `node --test apps/desktop/scripts/install-electron-binary.test.cjs`, which runs
+offline against a fixture archive.
 
 Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
 runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged

@@ -274,15 +274,6 @@
       "scrollTabsRight": "Przewiń karty w prawo",
       "dayPanel": "Panel dzienny"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Przewiń karty w lewo",
-      "scrollTabsRight": "Przewiń karty w prawo"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Otwórz karty",
-      "scrollTabsLeft": "Przewiń karty w lewo",
-      "scrollTabsRight": "Przewiń karty w prawo"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Coś poszło nie tak",
       "anErrorOccurredWhileRenderingThisTabContent": "Wystąpił błąd podczas renderowania zawartości tej karty.",

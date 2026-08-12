@@ -233,6 +233,8 @@ export type TabAction =
         groupId?: string
         position?: number
         background?: boolean
+        /** Skip every dedup/focus branch and always mint a new tab */
+        forceNew?: boolean
         /** Replace the currently active tab instead of creating a new one */
         replaceActive?: boolean
       }
@@ -283,7 +285,14 @@ export type TabAction =
     }
 
   // Split view
-  | { type: 'SPLIT_VIEW'; payload: { direction: SplitDirection; groupId: string } }
+  | {
+      type: 'SPLIT_VIEW'
+      /**
+       * `newGroupId` lets the caller name the pane before it exists, so it can
+       * target it in the same dispatch batch. Omitted, the reducer mints one.
+       */
+      payload: { direction: SplitDirection; groupId: string; newGroupId?: string }
+    }
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }
   | { type: 'CLOSE_SPLIT'; payload: { groupId: string } }
   | { type: 'TOGGLE_MAXIMIZE_GROUP'; payload: { groupId: string } }

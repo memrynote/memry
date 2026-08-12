@@ -274,15 +274,6 @@
       "scrollTabsRight": "Derulați filele la dreapta",
       "dayPanel": "Panoul de zi"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Derulați filele la stânga",
-      "scrollTabsRight": "Derulați filele la dreapta"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Deschideți filele",
-      "scrollTabsLeft": "Derulați filele la stânga",
-      "scrollTabsRight": "Derulați filele la dreapta"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Ceva a mers prost",
       "anErrorOccurredWhileRenderingThisTabContent": "A apărut o eroare la redarea conținutului acestei file.",

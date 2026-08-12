@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Mascot } from '@/components/ui/mascot'
 import { FeatureChip, HomeSection, SectionTitle } from '@/components/site/primitives'
 

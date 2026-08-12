@@ -34,6 +34,29 @@ function buildTransform(position: Position, scale: number, rotation: number): st
   return `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`
 }
 
+/**
+ * Widest float error a zoom round trip can accumulate, and still far narrower than any zoom
+ * level the user can land on. Wheel steps are 0.1 and button steps 0.25, so the closest real
+ * neighbours of 100% are 95% and 105% — a genuine 1.0499999999999998 stays untouched.
+ */
+const SCALE_EPSILON = 1e-9
+
+/**
+ * Snaps a scale that is one float wobble away from 1 back onto exactly 1.
+ *
+ * Mixing the 0.1 wheel steps with the 0.25 button steps does not round-trip in binary
+ * floating point: wheel-down, zoom-in, zoom-out, wheel-up leaves 0.9999999999999999, and
+ * the mirror sequence leaves 1.0000000000000002. Both render as "100%" via
+ * `Math.round(scale * 100)` while every exact read in this component disagrees — the
+ * `scale === 1` recenter never fires, so the image stays visibly offset, and `scale > 1`
+ * can even stay armed at a displayed 100%. Applying this once in `applyScale` — the single
+ * write path for scale — keeps every exact read honest instead of scattering tolerances
+ * across each one.
+ */
+function normalizeScale(next: number): number {
+  return Math.abs(next - 1) < SCALE_EPSILON ? 1 : next
+}
+
 // ============================================================================
 // Image Viewer Component
 // ============================================================================
@@ -65,7 +88,10 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   // the scale change. Doing it in the render body instead (`if (scale === 1) setPosition(...)`)
   // made React throw the render away and run the component a second time on every zoom-out.
   const applyScale = useCallback(
-    (next: number) => {
+    (raw: number) => {
+      // Normalise before anything reads it, so the exact `=== 1` below and the `scale > 1`
+      // reads downstream cannot disagree with the "100%" the toolbar prints.
+      const next = normalizeScale(raw)
       scaleRef.current = next
       setScale(next)
       if (next === 1 && (positionRef.current.x !== 0 || positionRef.current.y !== 0)) {

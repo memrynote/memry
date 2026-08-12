@@ -42,6 +42,7 @@ Focused checks:
 ```bash
 pnpm --filter @memry/desktop typecheck:web
 pnpm --filter @memry/desktop typecheck:node
+pnpm --filter @memry/desktop typecheck:test
 pnpm --filter @memry/desktop test:renderer
 pnpm --filter @memry/desktop test:main
 pnpm --filter @memry/desktop i18n:check
@@ -134,7 +135,7 @@ Dual-database pattern: data DB (notes, tasks, projects) + index DB (search, grap
 
 - `better-sqlite3` ERR_DLOPEN_FAILED in tests = NODE_MODULE_VERSION mismatch → `pnpm --filter @memry/desktop rebuild:node`
 - Zod v4: `z.record(z.unknown())` throws in safeParse → use `z.record(z.string(), z.unknown())`
-- Pre-existing type errors in test files (websocket.test.ts, folders.test.ts) — ignore during typecheck
+- Desktop test files are typechecked by `tsconfig.test.node.json` / `tsconfig.test.web.json` (run via `pnpm --filter @memry/desktop typecheck:test`, and by `pnpm typecheck`). Both carry an `exclude` backlog of 309 test files that already failed to compile when the gate landed. That list only ever shrinks: never add a file to it — a new or newly-touched test file must compile.
 - Lazy URL resolution in http-client (per-call, not module-level) to avoid import-time throws in tests
 - Drizzle: nullable JSON columns need `null` not `undefined` in `.values()` insert
 - **Submit buttons that disable themselves mid-click lose the click.** If `onClick` calls a handler that synchronously sets state which adds `disabled` to the button (e.g. `disabled={isSubmitting}`), the browser suppresses the `click` event at the DOM layer between `pointerdown` and `click`. Fire submit from `onPointerDown` (runs before the re-render applies `disabled`) and keep `onClick` as a keyboard-activation fallback. See `calendar-quick-create-dialog.tsx`.

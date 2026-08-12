@@ -1,7 +1,6 @@
 import * as Y from 'yjs'
-import { LeveldbPersistence } from 'y-leveldb'
 import path from 'path'
-import { existsSync, rmSync } from 'fs'
+import { rmSync } from 'fs'
 import { app, BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -15,8 +14,7 @@ import {
   recordNetworkUpdate,
   resetWritebackState
 } from './crdt-writeback'
-import { runCrdtPreflight } from './crdt-preflight'
-import { moveStoreDir } from './crdt-store-move'
+import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
@@ -38,8 +36,6 @@ const SIZE_CHECK_INTERVAL_MS = 60_000
 const ENCODED_SIZE_COMPACTION_THRESHOLD = 1024 * 1024
 const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
-const PERSISTENCE_PROBE_KEY = '__memry_crdt_probe__'
-const PERSISTENCE_PROBE_TIMEOUT_MS = 15_000
 
 export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
 
@@ -73,14 +69,6 @@ interface ActiveDoc {
   lastSizeCheckAt: number
   lastTouchedAt: number
   closing?: boolean
-}
-
-interface CrdtPersistence {
-  getYDoc(noteId: string): Promise<Y.Doc>
-  clearDocument(noteId: string): Promise<void>
-  destroy(): Promise<void> | void
-  storeUpdate(noteId: string, update: Uint8Array): Promise<void>
-  flushDocument(noteId: string): Promise<void>
 }
 
 export class CrdtProvider {
@@ -129,79 +117,9 @@ export class CrdtProvider {
 
   private async doInitPersistence(): Promise<void> {
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
-    try {
-      // A binding that hard-aborts (unsupported CPU instructions, AV kills)
-      // takes the whole process down with no catchable error — observed on
-      // 2026.709.x: main died silently before the window painted. Exercise
-      // the binding in a disposable child first — against the real store, so
-      // corrupt on-disk state aborts the child too. Only load it here if the
-      // child survives.
-      let preflight = await runCrdtPreflight(storagePath)
-      // Only a child that actually opened the store can implicate it. A child
-      // that never started (Windows: utility process dies in Chromium/crashpad
-      // init) or that died loading the binding never touched the data, and
-      // quarantining on that verdict only churned the store dir every launch —
-      // with the restore then failing EPERM under AV. See crdt-preflight.ts.
-      if (!preflight.ok && preflight.stage === 'store' && existsSync(storagePath)) {
-        // The abort may be the store's data (torn LDB/MANIFEST from a past
-        // crash or full disk), not the binding. Quarantine the store and give
-        // the binding one clean shot at a fresh directory: pass → the data was
-        // the problem, keep the quarantine and start fresh (vault markdown is
-        // the source of truth; only CRDT history moves aside). Fail → the
-        // binding is the problem, so restore the store for a future launch
-        // with a working binding and fall through to in-memory mode.
-        const quarantinePath = `${storagePath}.broken-${Date.now()}`
-        const quarantined = await moveStoreDir(storagePath, quarantinePath)
-        if (!quarantined) {
-          log.warn('Could not quarantine the CRDT store — leaving it in place', { storagePath })
-        } else {
-          preflight = await runCrdtPreflight(storagePath)
-          if (preflight.ok) {
-            log.warn(
-              'CRDT store quarantined after failed preflight — continuing with a fresh store',
-              {
-                storagePath,
-                quarantinePath
-              }
-            )
-          } else {
-            // The failed re-probe can leave a partial fresh store behind, and
-            // on Windows renaming onto an existing directory fails EPERM —
-            // exactly what production logs show. That directory holds nothing
-            // (the probe never completed), so clear it before restoring.
-            try {
-              rmSync(storagePath, { recursive: true, force: true })
-            } catch (err) {
-              log.warn('Could not clear the fresh CRDT store before restoring', {
-                storagePath,
-                error: err
-              })
-            }
-            if (!(await moveStoreDir(quarantinePath, storagePath))) {
-              log.warn('Failed to restore quarantined CRDT store', { quarantinePath, storagePath })
-            }
-          }
-        }
-      }
-      if (!preflight.ok) {
-        throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
-      }
-      const persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
-      await probePersistence(persistence)
-      this.persistence = persistence
-      log.debug('CrdtProvider persistence initialized', { storagePath })
-    } catch (err) {
-      // A broken classic-level native binding (e.g. napi_create_reference
-      // failures on ABI mismatch, as shipped in 2026.705.1 on Windows) throws
-      // out-of-band or hangs instead of rejecting. Degrade to in-memory:
-      // notes still load from vault markdown and write back to disk; only
-      // CRDT history persistence is lost.
-      log.error(
-        'CRDT persistence unavailable — continuing in-memory (notes still load from vault files)',
-        { storagePath, error: err }
-      )
-      this.persistence = null
-    }
+    // Preflight, quarantine and probe live in crdt-persistence.ts; null means
+    // the store could not be trusted and this provider runs in-memory.
+    this.persistence = await openCrdtPersistence(storagePath)
     this.persistenceReady = true
   }
 
@@ -887,6 +805,11 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
+    if (entry.closing) {
+      log.debug('Skipping compaction: doc is closing', { noteId })
+      return
+    }
+
     if (entry.windowIds.size > 0) {
       log.debug('Skipping compaction: editors open', { noteId, windowCount: entry.windowIds.size })
       return
@@ -910,8 +833,17 @@ export class CrdtProvider {
 
     try {
       if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+        // Credit only the bytes this payload actually covers. result.compacted
+        // was encoded before the await, and applyIpcUpdate writes straight to
+        // entry.doc with no compaction guard (only remote updates are
+        // buffered), so a local edit landing during the push is genuinely
+        // unpushed. Zeroing wiped it, and every path that re-pushes a note —
+        // close() and pushAllSnapshots — is gated on this counter, so the note
+        // read as pushed and stayed unpushed until a later edit re-armed it.
+        // Clamped: close() may have zeroed the counter mid-push.
+        const pushedBytes = entry.pendingSnapshotBytes
         await this.snapshotPushFn(noteId, result.compacted)
-        entry.pendingSnapshotBytes = 0
+        entry.pendingSnapshotBytes = Math.max(0, entry.pendingSnapshotBytes - pushedBytes)
       }
 
       if (this.persistence) {
@@ -919,19 +851,31 @@ export class CrdtProvider {
         await this.persistence.flushDocument(noteId)
       }
 
-      if (entry.windowIds.size > 0) {
-        log.info('Compaction aborted: editor opened during compaction', { noteId })
+      // close() only flips `entry.closing` and then deletes (or lets doOpen
+      // replace) the map entry — it never consults compaction state, so the
+      // entry captured above can be retired, and the note reopened onto a
+      // fresh entry, while the pushes above are in flight. Comparing entry
+      // identity is what catches that: swapping `entry.doc` on a detached
+      // entry would drop the compaction into an object nothing reads, and
+      // strand the remote updates buffered for it.
+      const live = this.docs.get(noteId)
+      if (live !== entry || live?.closing || entry.windowIds.size > 0) {
+        log.info('Compaction abandoned: the doc was reopened, closed or replaced mid-compaction', {
+          noteId,
+          replaced: live !== entry,
+          closing: live?.closing === true,
+          windowCount: entry.windowIds.size
+        })
+        this.drainCompactionBuffer(noteId, live)
         return
       }
 
       const oldDoc = entry.doc
       const newDoc = new Y.Doc()
+      // Seeded before the handler is attached on purpose: result.compacted was
+      // already pushed and persisted above, so routing it through onDocUpdate
+      // would store and broadcast the whole snapshot a second time.
       Y.applyUpdate(newDoc, result.compacted)
-
-      const buffered = this.compactionBuffers.get(noteId) ?? []
-      for (const update of buffered) {
-        Y.applyUpdate(newDoc, update, ORIGIN_NETWORK)
-      }
 
       newDoc.on('update', (update: Uint8Array, origin: unknown) => {
         this.onDocUpdate(noteId, update, origin)
@@ -944,11 +888,49 @@ export class CrdtProvider {
 
       oldDoc.destroy()
 
+      // Replay the buffer only after the swap, so the updates land on the doc
+      // this.docs points at and go through the handler. onDocUpdate is the
+      // single funnel for persistUpdate, queueNetworkBroadcast and
+      // scheduleWriteback; replaying ahead of it left the compaction window's
+      // remote updates in memory only — dropped from the CRDT store, from the
+      // vault markdown file and from the broadcast — on every successful
+      // compaction that buffered at least one update. Still inside the try, so
+      // compactingDocs holds noteId and onDocUpdate's maybeCompact cannot
+      // re-enter.
+      this.drainCompactionBuffer(noteId, entry)
+
       log.info('Doc compacted', { noteId, beforeSize, afterSize: result.compacted.byteLength })
     } finally {
       this.compactingDocs.delete(noteId)
       this.compactionBuffers.delete(noteId)
     }
+  }
+
+  /**
+   * Hand the updates buffered for a finished compaction to whatever doc is live
+   * now — the compacted replacement on the happy path, or the doc that took its
+   * place when the compaction was abandoned. applyRemoteUpdate diverts remote
+   * updates into this buffer for the whole compaction window and reports
+   * nothing back to the sync coordinator, which has already recorded those
+   * sequence numbers as applied — so a buffer that is discarded, or replayed
+   * into a doc with no 'update' handler, is a silently lost remote update, not
+   * a retried one.
+   *
+   * Always call this with the entry `this.docs` currently holds: applying to a
+   * detached entry would resurrect the update into a doc nothing reads.
+   */
+  private drainCompactionBuffer(noteId: string, target: ActiveDoc | undefined): void {
+    const buffered = this.compactionBuffers.get(noteId)
+    this.compactionBuffers.delete(noteId)
+    if (!buffered?.length || !target || target.doc.isDestroyed) return
+
+    for (const update of buffered) {
+      Y.applyUpdate(target.doc, update, ORIGIN_NETWORK)
+    }
+    log.debug('Replayed remote updates buffered for an abandoned compaction', {
+      noteId,
+      count: buffered.length
+    })
   }
 
   /**
@@ -981,54 +963,6 @@ export class CrdtProvider {
     this.touchDoc(entry)
     Y.applyUpdate(entry.doc, diff, { source: 'ipc', windowId: -1 } satisfies IpcOrigin)
   }
-}
-
-/**
- * Verify the CRDT store's native binding actually works before trusting it.
- * A broken classic-level binding (ABI mismatch) doesn't reject cleanly — it
- * throws out-of-band from an fs callback (surfacing as uncaughtException) or
- * never invokes its callback at all (hanging the promise). Capture both so a
- * bad binary degrades to in-memory mode instead of crashing note editing.
- */
-async function probePersistence(persistence: CrdtPersistence): Promise<void> {
-  const probeDoc = new Y.Doc()
-  probeDoc.getMap('probe').set('ok', true)
-  const update = Y.encodeStateAsUpdate(probeDoc)
-  probeDoc.destroy()
-
-  await new Promise<void>((resolve, reject) => {
-    let settled = false
-    const settle = (fn: () => void): void => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      process.removeListener('uncaughtException', onUncaught)
-      fn()
-    }
-    const onUncaught = (err: Error): void => settle(() => reject(err))
-    const timer = setTimeout(
-      () =>
-        settle(() =>
-          reject(
-            new Error(`CRDT persistence probe timed out after ${PERSISTENCE_PROBE_TIMEOUT_MS}ms`)
-          )
-        ),
-      PERSISTENCE_PROBE_TIMEOUT_MS
-    )
-    process.prependListener('uncaughtException', onUncaught)
-
-    Promise.resolve()
-      .then(async () => {
-        await persistence.storeUpdate(PERSISTENCE_PROBE_KEY, update)
-        const loaded = await persistence.getYDoc(PERSISTENCE_PROBE_KEY)
-        loaded.destroy()
-        await persistence.clearDocument(PERSISTENCE_PROBE_KEY)
-      })
-      .then(
-        () => settle(resolve),
-        (err) => settle(() => reject(err instanceof Error ? err : new Error(String(err))))
-      )
-  })
 }
 
 function isIpcOrigin(origin: unknown): origin is IpcOrigin {

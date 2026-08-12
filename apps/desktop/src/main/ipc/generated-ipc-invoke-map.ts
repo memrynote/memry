@@ -218,7 +218,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get-version": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotDetail | null>>
   "notes:get-versions": (...args: [string]) => Awaited<Promise<import("../vault/notes-versions").SnapshotListItem[]>>
   "notes:import-files": (...args: [{ sourcePaths: string[]; targetFolder?: string | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").ImportFilesResult> | { success: false; error: string }>
-  "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "position" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
+  "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "position" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:open-external": (...args: [string]) => Awaited<Promise<void>>

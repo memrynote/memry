@@ -531,5 +531,10 @@
     "title": "{count, plural, one {Time to review # item} other {Time to review # items}}",
     "description": "Process today's captures in one calm pass.",
     "action": "Open inbox"
+  },
+  "snoozeDue": {
+    "notificationTitle": "{count, plural, one {# snoozed item} other {# snoozed items}}",
+    "notificationBody": "{count, plural, one {Your snoozed item is ready for review} other {Your snoozed items are ready}}",
+    "toast": "{count, plural, =1 {\"{itemTitle}\" is back from snooze} other {# snoozed items are back}}"
   }
 }

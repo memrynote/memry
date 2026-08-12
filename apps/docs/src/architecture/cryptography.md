@@ -163,11 +163,20 @@ allowed through the Electron verifier instead of being compared against an unrel
 pins. Development builds keep pinning disabled so local sync servers and test certificates remain
 usable.
 
+Both pinned surfaces — the Electron session verifier and the `https.Agent` the sync WebSocket
+connects through — resolve pins from the hostname the connection is actually dialing, at handshake
+time. Neither consults the configured `SYNC_SERVER_URL` host to decide whether to pin, so the host
+being verified is always the host whose pins were looked up.
+
 ### Pin activation state
 
 A host entry in `certificate-pins.ts` may hold placeholder hashes, which means pinning has not been
 activated for that host yet. This is a supported state, not a broken one: the runtime falls back to
-standard TLS verification for placeholder pins rather than failing the connection.
+standard TLS verification for placeholder pins rather than failing the connection. A host with no
+entry at all is treated the same way at runtime — pinning was never activated for it, so standard
+TLS applies. Standard TLS here still means full CA-chain validation plus hostname verification; only
+the extra SPKI pin comparison is absent. A missing entry is caught at build time instead, where
+`pnpm cert:check` fails.
 
 `pnpm cert:check` (also run by `prebuild` and `build:release`) audits the configured host and
 reflects the same rule:
@@ -179,10 +188,28 @@ reflects the same rule:
 | Placeholder hashes with `MEMRY_CERT_PINS_STRICT=1` | fails                                |
 | No entry for the host, or a malformed pin          | fails                                |
 
+### Which host the check audits
+
+The host is resolved from the same file a packaged build ships: `apps/desktop/.env.<MEMRY_ENV>`
+(`.env.production` when `MEMRY_ENV` is unset, which is how `prebuild` and `build:release` run it).
+That file is staged into the app as `app-config` and is what the shipped app dials, so the audit and
+the build agree on one host. An explicit `SYNC_SERVER_URL` in the environment overrides the file, for
+auditing a host ad hoc. With neither present — a fresh checkout or CI, where no `.env` file exists —
+the check audits the default production host and prints that it is doing so, rather than appearing to
+have checked the build's host.
+
+The first line of output always names the audited host and where it came from:
+
+```
+Auditing sync host sync.memrynote.com from apps/desktop/.env.production.
+```
+
 To activate pinning for a host, run `pnpm cert:extract -- <hostname>`, replace that host's
 placeholders with the emitted hashes (keep a backup pin for rotation), and set
-`MEMRY_CERT_PINS_STRICT=1` in the release build so the host can never silently regress to
-unpinned.
+`MEMRY_CERT_PINS_STRICT=1` so the host can never silently regress to unpinned. Strict mode is
+opt-in and can be set either in the environment or in the same `.env.<MEMRY_ENV>` file that names the
+host. It is deliberately off by default: the production host still carries placeholder pins, so
+enabling it globally would fail every `prebuild` and every fresh checkout.
 
 ## Renderer Permission Policy
 

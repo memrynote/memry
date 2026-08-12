@@ -274,15 +274,6 @@
       "scrollTabsRight": "Gulir tab ke kanan",
       "dayPanel": "Panel Hari"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Gulir tab ke kiri",
-      "scrollTabsRight": "Gulir tab ke kanan"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Buka tab",
-      "scrollTabsLeft": "Gulir tab ke kiri",
-      "scrollTabsRight": "Gulir tab ke kanan"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Ada yang tidak beres",
       "anErrorOccurredWhileRenderingThisTabContent": "Terjadi kesalahan saat merender konten tab ini.",
