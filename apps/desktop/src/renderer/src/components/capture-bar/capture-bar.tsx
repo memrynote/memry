@@ -15,6 +15,7 @@ import { FileText, Link as LinkIcon, Loader2, Mic, Paperclip, Send } from '@/lib
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts-base'
+import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 import { isMac } from '@/lib/shortcut-registry'
 import { isLikelyUrl } from '@/lib/capture-intent'
 import { hasSpecialSyntax, parseQuickAdd } from '@/lib/quick-add-parser'
@@ -143,6 +144,8 @@ export const CaptureBar = ({
   const recorderDismissTimerRef = useRef<number | null>(null)
   // Guards the attach button's pointerdown/click pair (see the button below).
   const attachFiredByPointerRef = useRef(false)
+  // The delayed blur below must not fire after the bar is gone.
+  const scheduleTimeout = useTrackedTimeout()
 
   const disabled = isBusy
   const trimmed = value.trim()
@@ -402,7 +405,7 @@ export const CaptureBar = ({
               }}
               onFocus={() => setIsFocused(true)}
               // Delayed so clicks on the dropdown and the detail hint land first.
-              onBlur={() => window.setTimeout(() => setIsFocused(false), 150)}
+              onBlur={() => scheduleTimeout(() => setIsFocused(false), 150)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}

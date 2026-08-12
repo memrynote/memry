@@ -104,15 +104,20 @@ export async function getAIConnections(
 
   // Simulate AI analysis delay
   await new Promise<void>((resolve, reject) => {
-    const timeoutId = setTimeout(resolve, AI_ANALYSIS_DELAY_MS)
+    const timeoutId = setTimeout(() => {
+      // A caller-owned signal outlives this call, so drop the listener (and the
+      // closure it holds) as soon as the delay is over.
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, AI_ANALYSIS_DELAY_MS)
+
+    const onAbort = (): void => {
+      clearTimeout(timeoutId)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
 
     // Handle abort signal
-    if (signal) {
-      signal.addEventListener('abort', () => {
-        clearTimeout(timeoutId)
-        reject(new DOMException('Aborted', 'AbortError'))
-      })
-    }
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 
   // Check if aborted after delay

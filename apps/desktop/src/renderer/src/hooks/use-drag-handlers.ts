@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
@@ -186,6 +186,14 @@ export const useDragHandlers = ({
   const [lastActionDescription, setLastActionDescription] = useState<string | null>(null)
   const [droppedPriorities, setDroppedPriorities] = useState<Map<string, Priority>>(new Map())
   const priorityTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Drop the pending "dropped priority" flash timer when the board unmounts
+  useEffect(
+    () => () => {
+      if (priorityTimerRef.current) clearTimeout(priorityTimerRef.current)
+    },
+    []
+  )
 
   // Record an action for undo
   const recordAction = useCallback((action: UndoAction, description: string) => {

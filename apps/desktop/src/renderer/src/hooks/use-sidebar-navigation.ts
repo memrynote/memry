@@ -19,6 +19,7 @@ import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
 import { useIsItemActive } from './use-is-item-active'
 import { useFeatureFlags } from './use-feature-flags'
+import { useTrackedTimeout } from './use-tracked-timeout'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { featureForTabType } from '@memry/contracts/feature-flags'
 import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
@@ -148,6 +149,9 @@ export const useSidebarNavigation = () => {
   const { flags } = useFeatureFlags()
   const { open: openSettings } = useSettingsModal()
 
+  // The post-split "open in the new pane" hop must not fire after unmount
+  const scheduleTimeout = useTrackedTimeout()
+
   // Use refs for state to avoid recreating callbacks
   const stateRef = useRef(state)
   useEffect(() => {
@@ -196,14 +200,14 @@ export const useSidebarNavigation = () => {
         // The new group will be active, so opening a tab there
         // Note: This is a simplification - ideally we'd wait for the split
         // and then open the tab in the new pane
-        setTimeout(() => {
+        scheduleTimeout(() => {
           openTab(tabData, { background: inBackground })
         }, 0)
       } else {
         openTab(tabData, { background: inBackground })
       }
     },
-    [openTab, setActiveTab, splitView, flags, openSettings]
+    [openTab, setActiveTab, splitView, flags, openSettings, scheduleTimeout]
   )
 
   /**
