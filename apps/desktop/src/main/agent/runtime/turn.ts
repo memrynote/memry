@@ -17,6 +17,7 @@ import { broadcastAgentEvent } from './event-bus'
 import { maybeCompact } from './compactor'
 import { assemblePrompt, type PromptContext } from './prompt-assembler'
 import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
+import { persistToolActivity } from './tool-activity'
 import { extractAgentSourceRefs } from '../source-refs'
 import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
 
@@ -59,7 +60,12 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   // message instead of a multiple of it. Nothing appends to this conversation
   // between here and the last use below except this turn itself, and those
   // appends return the message, so the in-memory copy stays authoritative.
-  const history = deps.messages.listByConversation(input.conversationId)
+  // Tool rows are persisted for the transcript UI only. Prompt assembly has
+  // never seen them — the backends carry their own tool context inside a turn —
+  // so replaying them would double-feed the model and grow every later prompt.
+  const history = deps.messages
+    .listByConversation(input.conversationId)
+    .filter((message) => message.role !== 'tool_call')
   const existingConversation = deps.conversations.getById(input.conversationId)
   const backend = deps.backends.get(input.backendOptions.backend)
   const permissions = input.permissions ?? DEFAULT_TURN_PERMISSIONS
@@ -212,21 +218,39 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         },
         onToolResult: (toolUseId, data) => {
           const toolCall = toolCalls.get(toolUseId)
+          // An unmatched result names no tool, so there is nothing to record.
           if (!toolCall) return
+          persistToolActivity(deps.messages, {
+            conversationId: input.conversationId,
+            toolCallId: toolUseId,
+            name: toolCall.name,
+            args: toolCall.args,
+            outcome: { ok: true }
+          })
           for (const ref of extractAgentSourceRefs(toolCall.name, toolCall.args, data)) {
             sourceRefs.set(ref.href, ref)
           }
         },
-        onToolFailed: (toolUseId, errorCode) => {
+        onToolFailed: (toolUseId, error) => {
           // The only tool-failure signal for CLI backends — transport failures
           // never reach the MCP server's own catch. Tool name only, never args.
-          const toolName = toolCalls.get(toolUseId)?.name
+          const toolCall = toolCalls.get(toolUseId)
+          const toolName = toolCall?.name
+          if (toolCall) {
+            persistToolActivity(deps.messages, {
+              conversationId: input.conversationId,
+              toolCallId: toolUseId,
+              name: toolCall.name,
+              args: toolCall.args,
+              outcome: { ok: false, error }
+            })
+          }
           trackMainEvent('ai_action_completed', {
             surface: 'ai',
             action: 'tool_call',
             source: backendLabel,
             result: 'failed',
-            errorCode: toSafeToken(errorCode ?? 'INTERNAL', 'INTERNAL'),
+            errorCode: toSafeToken(error?.code ?? 'INTERNAL', 'INTERNAL'),
             ...(toolName ? { dimensions: { tool: toSafeToken(toolName, 'unknown_tool') } } : {})
           })
         },
@@ -583,7 +607,7 @@ async function handleBackendEvent(
     assistantMessageId: string
     onToolUse: (toolUseId: string, name: string, args: unknown) => void
     onToolResult: (toolUseId: string, data: unknown) => void
-    onToolFailed: (toolUseId: string, errorCode: string | undefined) => void
+    onToolFailed: (toolUseId: string, error: { code: string; message: string } | undefined) => void
     onAssistantText: (text: string) => void
     onUnknownEvent: () => void
   }
@@ -621,7 +645,7 @@ async function handleBackendEvent(
         result: event.data
       })
     } else {
-      ctx.onToolFailed(event.toolUseId, event.error?.code)
+      ctx.onToolFailed(event.toolUseId, event.error)
       broadcastAgentEvent({
         kind: 'tool_call_failed',
         conversationId: ctx.conversationId,
