@@ -447,6 +447,19 @@ from `ipc/crdt-handlers.ts`) now emits `note_updated` with `source: 'editor_body
 share one 5-minute window per note. Only the throttle key ever sees the note id; the event itself
 carries no identifier.
 
+The shared throttle map (`telemetry/throttle.ts`) is bounded to 1000 keys. Because the keys are
+per-document (`note_updated:<noteId>`, `journal_updated:<date>`, and the CRDT writeback keys),
+exceeding that inside one window is ordinary operation — a vault import or a writeback pass over a
+large vault does it — so the cap is enforced rather than advisory: keys whose window has elapsed
+are swept first, and if nothing has expired the oldest-inserted keys are dropped anyway. Dropping a
+key only forfeits its throttle, never an event.
+
+Each entry records the window it was written under, and the sweep judges expiry per entry rather
+than by the window of whichever call happened to cross the cap. Callers do not share one window —
+the Google Calendar sync runner throttles on 60 seconds while the autosave keys use the 5-minute
+default — so a short-window caller must not be able to expire a still-live 5-minute entry and make
+`note_updated` re-emit early.
+
 ## Release Download Counts
 
 Downloads happen on GitHub Releases, where PostHog cannot see them — the landing site's
