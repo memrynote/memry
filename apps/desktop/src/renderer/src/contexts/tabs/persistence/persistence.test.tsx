@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useManualPersistence, useSessionRestore, useTabPersistence } from './hooks'
-import { indexedDBAdapter, localStorageAdapter, saveSync } from './storage'
+import { indexedDBAdapter, isQuotaExceededError, localStorageAdapter, saveSync } from './storage'
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
 import { STORAGE_KEY, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
@@ -16,7 +16,12 @@ const mocks = vi.hoisted(() => ({
   registerPendingSave: vi.fn((_: string, callback: () => void) => {
     mocks.pendingSave = callback
   }),
-  unregisterPendingSave: vi.fn()
+  unregisterPendingSave: vi.fn(),
+  toastError: vi.fn()
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: mocks.toastError }
 }))
 
 // Counts full tab-tree serializations so the auto-save tests can assert how many
@@ -370,6 +375,13 @@ describe('tab persistence serialization and storage', () => {
     setItem.mockRestore()
   })
 
+  it('recognises quota failures and only quota failures', () => {
+    expect(isQuotaExceededError(new DOMException('over quota', 'QuotaExceededError'))).toBe(true)
+    expect(isQuotaExceededError(new DOMException('over quota', 'QUOTA_EXCEEDED_ERR'))).toBe(true)
+    expect(isQuotaExceededError(new Error('disk on fire'))).toBe(false)
+    expect(isQuotaExceededError('QuotaExceededError')).toBe(false)
+  })
+
   it('saves, loads, and clears via indexedDB adapter', async () => {
     installIndexedDbMock()
 
@@ -444,6 +456,78 @@ describe('tab persistence hooks', () => {
     expect(mocks.serializeCalls).toBe(1)
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(storage.save).toHaveBeenCalledWith(expectedPersisted(CLOCK_START + 25))
+  })
+
+  it('reports a quota failure to the user and keeps saving afterwards', async () => {
+    const storage: TabStorage = {
+      save: vi
+        .fn()
+        .mockRejectedValueOnce(new DOMException('quota exceeded', 'QuotaExceededError'))
+        .mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+
+    const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+
+    // The rejected save must be handled, not left as an unhandled rejection:
+    // the user has to learn their session stopped being saved now, not at the
+    // next launch when the restored layout turns out to be stale.
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
+    expect(mocks.toastError.mock.calls[0][0]).toBe('Your open tabs are no longer being saved')
+    expect(mocks.toastError.mock.calls[0][1]).toMatchObject({
+      description: expect.stringContaining('too large to store')
+    })
+
+    // One failure must not wedge the saver: the next tab-state change is still
+    // written, and the payload is the new state rather than the failed one.
+    const next = state()
+    next.tabGroups['group-1'].tabs[0] = tab({ title: 'After the quota error' })
+    mocks.tabsState = next
+    rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
+    expect(storage.save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        tabGroups: expect.objectContaining({
+          'group-1': expect.objectContaining({
+            tabs: expect.arrayContaining([
+              expect.objectContaining({ title: 'After the quota error' })
+            ])
+          })
+        })
+      })
+    )
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+  })
+
+  it('warns once across a run of failures and falls back to the error message', async () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockRejectedValue(new Error('storage backend offline')),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+
+    const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
+    expect(mocks.toastError.mock.calls[0][1]).toMatchObject({
+      description: 'storage backend offline'
+    })
+
+    applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
+
+    // Every debounced save keeps failing, but the user is told once, not once
+    // per keystroke-sized tab-state change.
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
   })
 
   it('registers the unload handler once and writes the latest state on unload', () => {

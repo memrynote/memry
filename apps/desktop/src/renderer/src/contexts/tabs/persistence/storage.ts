@@ -13,6 +13,21 @@ const toError = (error: unknown, fallback: string): Error => {
   return error instanceof Error ? error : new Error(fallback)
 }
 
+/**
+ * Whether a storage write failed because the origin ran out of quota.
+ *
+ * Chromium — the only engine this app ships a renderer on — throws a
+ * `DOMException` named `QuotaExceededError`; `QUOTA_EXCEEDED_ERR` is the legacy
+ * name older WebKit builds report for the same condition. Matched by shape
+ * rather than `instanceof Error`, because jsdom's `DOMException` does not
+ * inherit from `Error` the way a browser's does.
+ */
+export const isQuotaExceededError = (error: unknown): boolean => {
+  if (typeof error !== 'object' || error === null) return false
+  const { name } = error as { name?: unknown }
+  return name === 'QuotaExceededError' || name === 'QUOTA_EXCEEDED_ERR'
+}
+
 // =============================================================================
 // LOCALSTORAGE ADAPTER
 // =============================================================================

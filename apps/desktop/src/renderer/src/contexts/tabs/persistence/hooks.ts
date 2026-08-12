@@ -5,9 +5,12 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { useTabs } from '@/contexts/tabs'
 import type { TabSystemState } from '@/contexts/tabs/types'
-import { getDefaultStorage, saveSync } from './storage'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { getDefaultStorage, isQuotaExceededError, saveSync } from './storage'
 import { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 import type { TabStorage } from './types'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
@@ -16,6 +19,7 @@ import { useFeatureFlags } from '@/hooks/use-feature-flags'
 
 const log = createLogger('TabPersistence:Hooks')
 const FLUSH_REGISTRY_KEY = 'tab-state'
+const SAVE_FAILURE_TOAST_ID = 'tab-state-save-failed'
 
 // =============================================================================
 // AUTO-SAVE HOOK
@@ -39,6 +43,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
   const stateRef = useRef(state)
+  const saveFailureNotifiedRef = useRef(false)
 
   // Keep ref in sync for flush registry access
   useEffect(() => {
@@ -75,9 +80,32 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
       if (json === lastSavedRef.current) return
 
-      void storage.save(serialized).then(() => {
-        lastSavedRef.current = json
-      })
+      // A rejected save must never escape as an unhandled rejection: the
+      // adapters rethrow, so without a handler a full-quota localStorage write
+      // drops the user's session on the floor with nothing but a renderer log
+      // line. Handle it here, keep `lastSavedRef` on the last value that really
+      // reached storage so the next state change retries, and tell the user
+      // once that their tab layout is no longer being saved.
+      void storage
+        .save(serialized)
+        .then(() => {
+          lastSavedRef.current = json
+          saveFailureNotifiedRef.current = false
+        })
+        .catch((error: unknown) => {
+          log.error('Failed to save tab state:', error)
+          if (saveFailureNotifiedRef.current) return
+          saveFailureNotifiedRef.current = true
+
+          const t = getI18n().getFixedT(null, 'common')
+          const quota = isQuotaExceededError(error)
+          toast.error(t('tabs.persistence.saveFailed'), {
+            id: SAVE_FAILURE_TOAST_ID,
+            description: quota
+              ? t('tabs.persistence.saveFailedQuota')
+              : extractErrorMessage(error, t('tabs.persistence.saveFailedGeneric'))
+          })
+        })
     }, debounceMs)
 
     return () => {

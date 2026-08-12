@@ -102,6 +102,14 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Split layout and ratios
 - Active tab per pane
 
+### If the layout can't be saved
+
+Session layout is stored in the app's local browser storage, which has a size limit. A very large session — many open tabs, several split panes, tabs holding a lot of view state — can hit that limit, and once it does the layout stops being saved.
+
+memrynote now tells you when that happens: a toast reads **"Your open tabs are no longer being saved"**, and explains that the session is too large to store and may not be restored the next time you open the app. Close some tabs to get back under the limit; the next save after that succeeds on its own and the warning does not come back.
+
+Previously the failure was silent — the app kept running normally and you only found out at the next launch, when the restored layout turned out to be stale.
+
 ## Modified Indicator
 
 A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). On a compressed tab the dot takes the close button's place, so unsaved work stays visible. Closing a modified tab triggers a flush before close.
