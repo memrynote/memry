@@ -82,6 +82,47 @@ export const initialAgentState: AgentState = {
   error: null
 }
 
+/**
+ * Transcripts already known to be ordered by `createdAt`. Every array this
+ * reducer produces preserves that order, so once one is marked the next upsert
+ * can splice a message into place instead of re-sorting and re-copying the
+ * whole transcript on every streamed event. Arrays handed over by main are not
+ * marked, so the first upsert on one still pays for a sort — and marks its
+ * result. Keyed by array identity, so entries disappear with the transcript.
+ */
+const orderedTranscripts = new WeakSet<Message[]>()
+
+function markOrdered(messages: Message[]): Message[] {
+  orderedTranscripts.add(messages)
+  return messages
+}
+
+/** Positional copies (`slice`/`map`) keep `createdAt` order, so they inherit the mark. */
+function carryOrder(source: Message[], next: Message[]): Message[] {
+  return orderedTranscripts.has(source) ? markOrdered(next) : next
+}
+
+/** First index whose `createdAt` is greater than `createdAt`. Assumes an ordered array. */
+function upperBound(messages: Message[], createdAt: number): number {
+  let low = 0
+  let high = messages.length
+  while (low < high) {
+    const mid = (low + high) >>> 1
+    if (messages[mid].createdAt <= createdAt) low = mid + 1
+    else high = mid
+  }
+  return low
+}
+
+/** The original merge-then-sort, kept for transcripts whose order we cannot vouch for. */
+function sortMerged(messages: Message[], existing: number, nextMessage: Message): Message[] {
+  const merged =
+    existing === -1
+      ? [...messages, nextMessage]
+      : messages.map((message, index) => (index === existing ? nextMessage : message))
+  return markOrdered(merged.sort((left, right) => left.createdAt - right.createdAt))
+}
+
 function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[] {
   if (event.kind !== 'assistant_text_delta') return messages
 
@@ -106,16 +147,37 @@ function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[]
       }
     }
   }
-  return next
+  return carryOrder(messages, next)
 }
 
 function upsertMessage(messages: Message[], nextMessage: Message): Message[] {
   const existing = messages.findIndex((message) => message.id === nextMessage.id)
-  const next =
-    existing === -1
-      ? [...messages, nextMessage]
-      : messages.map((message, index) => (index === existing ? nextMessage : message))
-  return [...next].sort((left, right) => left.createdAt - right.createdAt)
+  // Unknown order, or a re-sent message whose timestamp moved: only a full sort
+  // can place it, so fall back to the original behaviour.
+  if (!orderedTranscripts.has(messages)) return sortMerged(messages, existing, nextMessage)
+  if (existing === -1) {
+    // A stable sort keeps an appended message last among equal timestamps, which
+    // is exactly the upper bound of its `createdAt` in an ordered transcript.
+    const next = messages.slice()
+    next.splice(upperBound(messages, nextMessage.createdAt), 0, nextMessage)
+    return markOrdered(next)
+  }
+  if (messages[existing].createdAt !== nextMessage.createdAt) {
+    return sortMerged(messages, existing, nextMessage)
+  }
+  // Same timestamp: a stable sort cannot move it past its equal-timestamp
+  // neighbours, so replacing in place is the same array the sort would produce.
+  const next = messages.slice()
+  next[existing] = nextMessage
+  return markOrdered(next)
+}
+
+/** Newest `createdAt` in the transcript; O(1) once the transcript order is known. */
+function newestCreatedAt(messages: Message[]): number {
+  if (!orderedTranscripts.has(messages)) {
+    return messages.reduce((max, message) => Math.max(max, message.createdAt), 0)
+  }
+  return Math.max(0, messages[messages.length - 1]?.createdAt ?? 0)
 }
 
 function upsertToolCallMessage(
@@ -128,7 +190,7 @@ function upsertToolCallMessage(
     status: ToolCallStatus
   }
 ): Message[] {
-  const newest = messages.reduce((max, message) => Math.max(max, message.createdAt), 0)
+  const newest = newestCreatedAt(messages)
   return upsertMessage(messages, {
     id: `tool-call-${input.toolCallId}`,
     conversationId: input.conversationId,
@@ -182,7 +244,7 @@ function updateToolCallStatus(
       }
     }
   })
-  return matched ? next : messages
+  return matched ? carryOrder(messages, next) : messages
 }
 
 function updateToolCallStatusIn(
