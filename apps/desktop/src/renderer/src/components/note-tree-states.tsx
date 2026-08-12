@@ -7,10 +7,10 @@ export function NotesTreeSkeleton() {
   return (
     <div className="space-y-2 p-2">
       <Skeleton className="h-6 w-full" />
-      <Skeleton className="h-6 w-3/4 ml-4" />
-      <Skeleton className="h-6 w-3/4 ml-4" />
+      <Skeleton className="h-6 w-3/4 ms-4" />
+      <Skeleton className="h-6 w-3/4 ms-4" />
       <Skeleton className="h-6 w-full" />
-      <Skeleton className="h-6 w-2/3 ml-4" />
+      <Skeleton className="h-6 w-2/3 ms-4" />
     </div>
   )
 }
@@ -42,6 +42,41 @@ export function NotesTreeEmpty({
           <Plus className="h-3.5 w-3.5" />
         )}
         {t('tree.empty.newNote')}
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * Footer for a truncated tree.
+ *
+ * The sidebar fetches notes a page at a time, newest-modified first. Without
+ * this row the notes past the ceiling are simply absent — and since the tree is
+ * the primary navigation surface, absent reads as deleted.
+ */
+export function NotesTreeTruncationNotice({
+  hiddenCount,
+  isLoadingMore,
+  onLoadMore
+}: {
+  hiddenCount: number
+  isLoadingMore: boolean
+  onLoadMore: () => void
+}) {
+  const { t } = useT('notes')
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+      <span>{t('tree.truncated.hidden', { count: hiddenCount })}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onLoadMore}
+        disabled={isLoadingMore}
+        className="h-6 gap-1 px-2 text-xs"
+      >
+        {isLoadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
+        {t('tree.truncated.loadMore')}
       </Button>
     </div>
   )

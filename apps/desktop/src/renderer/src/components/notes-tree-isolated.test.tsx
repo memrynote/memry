@@ -160,7 +160,17 @@ vi.mock('@/components/note-tree-states', () => ({
       empty create
     </button>
   ),
-  NotesTreeError: ({ error }: { error: string }) => <div>{error}</div>
+  NotesTreeError: ({ error }: { error: string }) => <div>{error}</div>,
+  NotesTreeTruncationNotice: ({ hiddenCount, isLoadingMore, onLoadMore }: any) => (
+    <button
+      type="button"
+      data-testid="truncation-notice"
+      disabled={isLoadingMore}
+      onClick={onLoadMore}
+    >
+      hidden:{hiddenCount}
+    </button>
+  )
 }))
 
 vi.mock('@/components/virtualized-notes-tree', () => ({
@@ -268,7 +278,10 @@ const createData = () => ({
   refreshFolders: vi.fn(),
   setFolderIcon: vi.fn(),
   mutations: {},
-  computeTargetFolder: vi.fn((ids: string[]) => `target:${ids.join(',')}`)
+  computeTargetFolder: vi.fn((ids: string[]) => `target:${ids.join(',')}`),
+  hiddenNoteCount: 0,
+  isLoadingMore: false,
+  loadMore: vi.fn()
 })
 
 const createActions = (overrides: Record<string, unknown> = {}) => ({
@@ -510,5 +523,19 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.virtualActions.collapseAll).toHaveBeenCalled()
     expect(mocks.virtualActions.expandAll).toHaveBeenCalled()
     expect(mocks.virtualActions.expandNode).toHaveBeenCalledWith('folder-Work/Nested')
+  })
+
+  it('surfaces the truncation footer only when notes are missing from the page', () => {
+    const { unmount } = render(<NotesTree />)
+    expect(screen.queryByTestId('truncation-notice')).toBeNull()
+    unmount()
+
+    mocks.data = { ...createData(), hiddenNoteCount: 500 }
+    render(<NotesTree />)
+
+    const notice = screen.getByTestId('truncation-notice')
+    expect(notice).toHaveTextContent('hidden:500')
+    fireEvent.click(notice)
+    expect(mocks.data.loadMore).toHaveBeenCalled()
   })
 })
