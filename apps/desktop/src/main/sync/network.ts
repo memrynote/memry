@@ -22,7 +22,12 @@ function createElectronDeps(): NetworkMonitorDeps {
 
 const POLL_INTERVAL_MS = 5000
 const DEFAULT_DEBOUNCE_MS = 2000
-const MAX_NETWORK_MONITOR_LISTENERS = 50
+// 'status-changed' is the only event, and it has three steady-state
+// subscribers: the SyncEngine (attached in start(), removed in stop()), the
+// sync runtime, and the attachment UploadQueue. Keeping the ceiling at Node's
+// default leaves headroom without hiding an accumulating subscriber behind a
+// silent budget. See src/main/sync/emitter-budget.test.ts.
+const MAX_NETWORK_MONITOR_LISTENERS = 10
 
 export class NetworkMonitor extends EventEmitter {
   private _online: boolean

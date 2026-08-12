@@ -43,6 +43,9 @@ const runtimeMocks = vi.hoisted(() => {
     on = vi.fn((event: string, cb: (payload: { online: boolean }) => void) => {
       this.listeners.set(event, cb)
     })
+    removeListener = vi.fn((event: string, cb: (payload: { online: boolean }) => void) => {
+      if (this.listeners.get(event) === cb) this.listeners.delete(event)
+    })
     constructor() {
       NetworkMonitor.instances.push(this)
       this.online = runtimeMocks.networkOnline
@@ -845,6 +848,36 @@ describe('sync runtime', () => {
     expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
     expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('detaches its network subscriber on stop so the dead runtime graph is unreachable', async () => {
+    const runtime = await loadRuntime()
+    await runtime.startSyncRuntime()
+
+    const deadNetwork = runtimeMocks.NetworkMonitor.instances[0]
+    const deadQueue = runtimeMocks.CrdtUpdateQueue.instances[0]
+    // The subscriber the runtime installed really does reach this runtime's
+    // CRDT queue — that is what makes leaving it attached a live wire.
+    deadNetwork.listeners.get('status-changed')?.({ online: false })
+    expect(deadQueue.pause).toHaveBeenCalled()
+    deadQueue.pause.mockClear()
+
+    await runtime.stopSyncRuntime({ skipFinalSync: true })
+
+    // The attachment UploadQueue is a module singleton that keeps holding this
+    // NetworkMonitor after the runtime is gone, so an attached subscriber would
+    // keep the dead crdtQueue/crdtProvider graph reachable for the session.
+    expect(deadNetwork.listeners.size).toBe(0)
+  })
+
+  it('detaches its network subscriber when startup fails after the runtime is assembled', async () => {
+    const runtime = await loadRuntime()
+    runtimeMocks.engineStartError = new Error('engine start failed')
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    expect(runtimeMocks.NetworkMonitor.instances[0].listeners.size).toBe(0)
+    expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalled()
   })
 
   it('destroys CRDT provider when stopped without an active runtime', async () => {

@@ -35,7 +35,11 @@ import { trackMainEvent } from '../telemetry/track'
 export type { SyncEngineDeps, SyncEngineOptions }
 
 const log = createLogger('SyncEngine')
-const MAX_SYNC_ENGINE_LISTENERS = 50
+// Nothing in the main process subscribes to the engine today — status reaches
+// the renderer through `emitToRenderer`, not through listeners. Keeping the
+// ceiling at Node's default leaves headroom without hiding an accumulating
+// subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
+const MAX_SYNC_ENGINE_LISTENERS = 10
 
 // A sync run legitimately spans many paged requests plus retry backoff, so
 // this sits far above SYNC_REQUEST_TIMEOUT_MS × the retry budget. A lock held
