@@ -678,4 +678,142 @@ describe('embeddings', () => {
       expect(isInformationalWorkerStderr('   \n  ')).toBe(false)
     })
   })
+
+  // One win32 install re-attempted the ~23MB model download 48 times in 10 minutes
+  // (`fetch failed` — offline/proxy/blocked CDN). The pre-existing breaker latched on
+  // the FIRST failure and never re-opened, so the opposite failure mode was just as
+  // bad: a 5-second blip silently killed semantic indexing until the app restarted (#840).
+  describe('model load backoff', () => {
+    /**
+     * Drive one load attempt that fails the way a blocked download does. The fork
+     * is synchronous inside initEmbeddingModel(), so the worker to talk to is
+     * whichever instance exists immediately after the call.
+     */
+    const failOneLoad = async (): Promise<void> => {
+      const previous = mockUtilityProcessInstance
+      const promise = initEmbeddingModel()
+      const worker = mockUtilityProcessInstance
+      const baseline = worker === previous ? worker.postMessage.mock.calls.length : 0
+
+      worker.simulateMessage({ type: 'ready' })
+      await vi.waitFor(() => {
+        expect(worker.postMessage.mock.calls.length).toBeGreaterThan(baseline)
+      })
+
+      const request = worker.postMessage.mock.calls.at(-1)?.[0] as { requestId: string }
+      worker.simulateMessage({ type: 'error', requestId: request.requestId, error: 'fetch failed' })
+      await expect(promise).resolves.toBe(false)
+    }
+
+    /** Drive one load attempt that succeeds. */
+    const succeedOneLoad = async (): Promise<void> => {
+      const previous = mockUtilityProcessInstance
+      const promise = initEmbeddingModel()
+      const worker = mockUtilityProcessInstance
+      const baseline = worker === previous ? worker.postMessage.mock.calls.length : 0
+
+      worker.simulateMessage({ type: 'ready' })
+      await vi.waitFor(() => {
+        expect(worker.postMessage.mock.calls.length).toBeGreaterThan(baseline)
+      })
+
+      const request = worker.postMessage.mock.calls.at(-1)?.[0] as { requestId: string }
+      worker.simulateMessage({ type: 'load-model-result', requestId: request.requestId })
+      await expect(promise).resolves.toBe(true)
+    }
+
+    /** load-model requests the CURRENT worker has been sent. */
+    const loadRequests = (): number =>
+      mockUtilityProcessInstance.postMessage.mock.calls.filter(
+        (call) => (call[0] as { type: string }).type === 'load-model'
+      ).length
+
+    // Long enough for the 30s idle shutdown plus its 3s force-kill to complete, and
+    // for the 60s first backoff to expire — but SHORTER than the 120s second step,
+    // so a test that expects a retry here fails if the backoff wrongly escalated.
+    const FIRST_BACKOFF_ELAPSED_MS = 70_000
+
+    it('does not retry the download immediately after a failure', async () => {
+      vi.useFakeTimers()
+      await failOneLoad()
+      expect(loadRequests()).toBe(1)
+
+      // #when the projector asks again straight away (the next note edit)
+      await expect(initEmbeddingModel()).resolves.toBe(false)
+
+      // #then no second download is attempted — this is the tight retry loop
+      expect(loadRequests()).toBe(1)
+    })
+
+    it('retries once the backoff window elapses', async () => {
+      vi.useFakeTimers()
+      await failOneLoad()
+
+      // #when the first backoff expires (by which point the network may be back)
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF_ELAPSED_MS)
+      await succeedOneLoad()
+
+      // #then indexing recovers on its own, with no restart and no user action
+      expect(isModelLoaded()).toBe(true)
+    })
+
+    it('gives up for the session after repeated failures', async () => {
+      vi.useFakeTimers()
+
+      // #given five consecutive failures, each one waited out
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await failOneLoad()
+        await vi.advanceTimersByTimeAsync(20 * 60_000)
+      }
+
+      // #when yet more time passes and another note is edited
+      const forksBefore = mockFork.mock.calls.length
+      await expect(initEmbeddingModel()).resolves.toBe(false)
+
+      // #then the breaker is latched: no worker, no download, until app restart or
+      // an explicit user retry (re-enable AI / load model / reindex)
+      expect(mockFork.mock.calls.length).toBe(forksBefore)
+    })
+
+    it('clears the backoff on a successful load', async () => {
+      vi.useFakeTimers()
+      await failOneLoad()
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF_ELAPSED_MS)
+      await succeedOneLoad()
+
+      // #when the network breaks again later
+      await failOneLoad()
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF_ELAPSED_MS)
+
+      // #then the wait is the FIRST backoff step again, not an escalated one — a
+      // flaky network can never accumulate its way to the permanent latch
+      await succeedOneLoad()
+      expect(isModelLoaded()).toBe(true)
+    })
+
+    it('short-circuits embed while the breaker is open', async () => {
+      vi.useFakeTimers()
+      await failOneLoad()
+      const requestsAfterFailure = mockUtilityProcessInstance.postMessage.mock.calls.length
+
+      // #when a note is edited during the backoff window
+      await expect(generateEmbedding('content long enough for embeddings')).resolves.toBeNull()
+
+      // #then no embed request is sent — the worker re-drives the download inside
+      // handleEmbed, which is the breaker hole embed() used to have
+      expect(mockUtilityProcessInstance.postMessage.mock.calls.length).toBe(requestsAfterFailure)
+    })
+
+    it('lets an explicit user retry bypass the backoff window', async () => {
+      vi.useFakeTimers()
+      await failOneLoad()
+
+      // #when the user re-enables AI / hits "Load model" inside the cooldown
+      resetEmbeddingModelFailure()
+
+      // #then it retries immediately instead of making them wait out the backoff
+      await succeedOneLoad()
+      expect(isModelLoaded()).toBe(true)
+    })
+  })
 })

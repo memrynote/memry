@@ -30,9 +30,27 @@ The status line shows:
 - **Loaded** — ready
 - **Loading** — initialization in progress
 - **Not downloaded** — needs download
-- **Error** — see logs; usually disk space or hash mismatch
+- **Error** — see logs; usually disk space, a hash mismatch, or a failed download
 
 You can **Unload** the model from settings to free memory; reload as needed.
+
+### When the Download Fails
+
+The model is fetched once (~23MB). If that download fails — you are offline, behind a proxy, or the
+CDN is blocked — memrynote does **not** hammer the network. It waits before trying again, backing off
+each time (about one minute, then two, four, and eight), and after several consecutive failures it
+stops retrying for the rest of the session. Semantic search falls back to keyword-only meanwhile;
+nothing else is affected, and no notes are lost.
+
+If the connection comes back on its own, a later retry picks it up and indexing resumes with no action
+from you. To retry immediately instead of waiting out the backoff, do any of these — each one clears
+the wait:
+
+- Toggle **Enable** off and on in [Settings → AI](/user-guide/settings#ai)
+- Click **Download** / **Load model**
+- Click **Rebuild Index**
+
+Restarting memrynote also clears it.
 
 Opening a vault never blocks on embeddings. When a vault has notes that still need embedding — for
 example the first open after importing a vault — memrynote embeds them in the **background** after the
