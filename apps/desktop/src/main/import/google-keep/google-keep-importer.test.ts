@@ -89,7 +89,7 @@ describe('googleKeepImporter (integration)', () => {
     // 1 attachment (photo.gif)
     expect(summary.attachments).toBe(1)
 
-    const keepDir = path.join(tempVault.notesDir, 'Google Keep')
+    const keepDir = path.join(tempVault.path, 'Google Keep')
     expect(fs.existsSync(keepDir)).toBe(true)
 
     // All three notes should be files somewhere under Google Keep/
@@ -102,7 +102,7 @@ describe('googleKeepImporter (integration)', () => {
     const ctx = importContext.createImportContext('it2', new AbortController().signal)
     await importer.googleKeepImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const keepDir = path.join(tempVault.notesDir, 'Google Keep')
+    const keepDir = path.join(tempVault.path, 'Google Keep')
     const shoppingFile = path.join(keepDir, 'Shopping.md')
     expect(fs.existsSync(shoppingFile)).toBe(true)
 
@@ -118,7 +118,7 @@ describe('googleKeepImporter (integration)', () => {
 
     expect(summary.attachments).toBe(1)
 
-    const keepDir = path.join(tempVault.notesDir, 'Google Keep')
+    const keepDir = path.join(tempVault.path, 'Google Keep')
     const attachFile = path.join(keepDir, 'Note With Attachment.md')
     expect(fs.existsSync(attachFile)).toBe(true)
 
@@ -131,7 +131,7 @@ describe('googleKeepImporter (integration)', () => {
     const ctx = importContext.createImportContext('it4', new AbortController().signal)
     await importer.googleKeepImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const keepDir = path.join(tempVault.notesDir, 'Google Keep')
+    const keepDir = path.join(tempVault.path, 'Google Keep')
     const textFile = path.join(keepDir, 'My Text Note.md')
     expect(fs.existsSync(textFile)).toBe(true)
 
@@ -149,7 +149,7 @@ describe('googleKeepImporter (integration)', () => {
     // Timestamps now live on the note record, not in the file.
     const row = indexDb.sqlite
       .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
-      .get('notes/Google Keep/My Text Note.md') as { createdAt: string } | undefined
+      .get('Google Keep/My Text Note.md') as { createdAt: string } | undefined
     // createdTimestampUsec: 1_609_459_200_000_000 → 2021-01-01
     expect(row?.createdAt).toContain('2021-01-01')
   })

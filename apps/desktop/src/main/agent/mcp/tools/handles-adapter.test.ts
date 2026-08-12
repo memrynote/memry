@@ -215,13 +215,13 @@ describe('createVaultServiceHandles', () => {
               id: 'note-1',
               title: 'Alpha',
               snippet: null,
-              metadata: { type: 'note', path: 'notes/work/alpha.md', emoji: '🎬' }
+              metadata: { type: 'note', path: 'work/alpha.md', emoji: '🎬' }
             },
             {
               id: 'file-1',
               title: 'Scan',
               snippet: 'scan snippet',
-              metadata: { type: 'note', path: 'notes/work/scan.pdf', fileType: 'pdf' }
+              metadata: { type: 'note', path: 'work/scan.pdf', fileType: 'pdf' }
             },
             {
               id: 'note-2',
@@ -263,13 +263,13 @@ describe('createVaultServiceHandles', () => {
     expect(mocks.searchAll).toHaveBeenCalledWith(
       deps.indexDb,
       deps.dataDb,
-      expect.objectContaining({ folderPath: 'notes/work', limit: 5, noteFileTypes: undefined })
+      expect.objectContaining({ folderPath: 'work', limit: 5, noteFileTypes: undefined })
     )
 
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       title: 'Alpha',
-      path: 'notes/work/alpha.md',
+      path: 'work/alpha.md',
       fileType: 'markdown'
     })
     mocks.getNoteById.mockResolvedValue({
@@ -277,7 +277,7 @@ describe('createVaultServiceHandles', () => {
       title: 'Alpha',
       content: 'Current',
       tags: ['Team'],
-      path: 'notes/work/alpha.md',
+      path: 'work/alpha.md',
       frontmatter: { owner: 'Kaan' },
       emoji: '📚'
     })
@@ -339,7 +339,7 @@ describe('createVaultServiceHandles', () => {
       title: 'Root',
       content: '',
       tags: [],
-      path: 'notes/root.md',
+      path: 'root.md',
       frontmatter: {}
     })
     await expect(handles.notes.read('note-root')).resolves.toMatchObject({ folder_path: null })
@@ -359,7 +359,7 @@ describe('createVaultServiceHandles', () => {
       id: 'empty',
       content: '',
       tags: [],
-      path: 'notes/a.md'
+      path: 'a.md'
     })
     await handles.notes.update({ id: 'empty', mode: 'append', content_markdown: 'Next' })
     expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'empty', content: 'Next' })
@@ -368,7 +368,7 @@ describe('createVaultServiceHandles', () => {
       id: 'prepend',
       content: 'Current',
       tags: [],
-      path: 'notes/a.md'
+      path: 'a.md'
     })
     await handles.notes.update({ id: 'prepend', mode: 'prepend', content_markdown: 'Before' })
     expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
@@ -398,7 +398,7 @@ describe('createVaultServiceHandles', () => {
     mocks.getNoteCacheById.mockReturnValue({
       id: 'file-1',
       title: 'Scan',
-      path: 'notes/work/scan.pdf',
+      path: 'work/scan.pdf',
       fileType: 'pdf'
     })
 
@@ -417,7 +417,7 @@ describe('createVaultServiceHandles', () => {
     mocks.getNoteCacheById.mockReturnValue({
       id: 'legacy-1',
       title: 'Legacy',
-      path: 'notes/legacy.md',
+      path: 'legacy.md',
       fileType: null
     })
     mocks.getNoteById.mockResolvedValue({
@@ -425,7 +425,7 @@ describe('createVaultServiceHandles', () => {
       title: 'Legacy',
       content: 'Body',
       tags: [],
-      path: 'notes/legacy.md',
+      path: 'legacy.md',
       frontmatter: {},
       emoji: null
     })
@@ -443,7 +443,7 @@ describe('createVaultServiceHandles', () => {
     mocks.getNoteCacheById.mockReturnValue({
       id: 'file-1',
       title: 'Scan',
-      path: 'notes/work/scan.pdf',
+      path: 'work/scan.pdf',
       fileType: 'pdf'
     })
 
@@ -473,8 +473,8 @@ describe('createVaultServiceHandles', () => {
     ])
     mocks.listNotes.mockReturnValue({
       notes: [
-        { id: 'note-1', title: 'Client', path: 'notes/work/client.md', emoji: '💼' },
-        { id: 'note-2', title: 'Deep', path: 'notes/work/client/deep.md' }
+        { id: 'note-1', title: 'Client', path: 'work/client.md', emoji: '💼' },
+        { id: 'note-2', title: 'Deep', path: 'work/client/deep.md' }
       ]
     })
 
@@ -483,7 +483,7 @@ describe('createVaultServiceHandles', () => {
       { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' }
     ])
     expect(mocks.listNotes).toHaveBeenCalledWith({
-      folder: 'notes/work',
+      folder: 'work',
       limit: 1000,
       offset: 0
     })

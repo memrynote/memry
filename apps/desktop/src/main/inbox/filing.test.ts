@@ -344,10 +344,10 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects')
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'projects/screenshot.png' })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-1/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png'
+        '/mock-vault/projects/screenshot.png'
       )
       expect(mockCreateNote).not.toHaveBeenCalled()
       expect(mockSend).toHaveBeenCalledWith(
@@ -367,12 +367,12 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects', ['Image'])
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'projects/screenshot.png' })
       // Binary is eagerly indexed as an image to obtain its note id...
       expect(mockIndexBinaryFile).toHaveBeenCalledWith(
         {},
-        'notes/projects/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png',
+        'projects/screenshot.png',
+        '/mock-vault/projects/screenshot.png',
         'image'
       )
       // ...and the merged tags (existing + assigned + 'inbox') are written to note_tags.
@@ -392,7 +392,7 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects', ['Image'])
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(result).toEqual({ success: true, filedTo: 'projects/screenshot.png' })
       expect(mockSend).toHaveBeenCalledWith(
         'inbox:filed',
         expect.objectContaining({ id: itemId, filedAction: 'folder' })
@@ -413,7 +413,7 @@ describe('Inbox Filing Operations', () => {
       expect(result.success).toBe(true)
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/voice-1/memo.m4a',
-        '/mock-vault/notes/audio/Memo.m4a'
+        '/mock-vault/audio/Memo.m4a'
       )
       expect(mockUnlink).toHaveBeenCalledWith('/mock-vault/attachments/inbox/voice-1/memo.m4a')
     })
@@ -430,10 +430,10 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'audio')
 
-      expect(result).toEqual({ success: true, filedTo: 'notes/audio/Roadmap launch notes.wav' })
+      expect(result).toEqual({ success: true, filedTo: 'audio/Roadmap launch notes.wav' })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/voice-title/a1b2c3-voice-memo.wav',
-        '/mock-vault/notes/audio/Roadmap launch notes.wav'
+        '/mock-vault/audio/Roadmap launch notes.wav'
       )
     })
 
@@ -468,10 +468,10 @@ describe('Inbox Filing Operations', () => {
 
       const result = await fileToFolder(itemId, 'projects')
 
-      expect(result.filedTo).toBe('notes/projects/screenshot-2.png')
+      expect(result.filedTo).toBe('projects/screenshot-2.png')
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-collision/screenshot.png',
-        '/mock-vault/notes/projects/screenshot-2.png'
+        '/mock-vault/projects/screenshot-2.png'
       )
     })
 
@@ -1342,7 +1342,7 @@ describe('Inbox Filing Operations', () => {
       expect(result).toEqual({ success: true, linkedCount: 2 })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/image-link-1/screenshot.png',
-        '/mock-vault/notes/projects/screenshot.png'
+        '/mock-vault/projects/screenshot.png'
       )
       expect(mockUpdateNote).toHaveBeenCalledTimes(2)
       expect(mockUpdateNote.mock.calls[0][0].content).toContain('## Inbox Captures')
@@ -1371,7 +1371,7 @@ describe('Inbox Filing Operations', () => {
       expect(result).toEqual({ success: true, linkedCount: 1 })
       expect(mockRename).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/voice-link-1/a1b2c3-voice-memo.wav',
-        '/mock-vault/notes/projects/Roadmap launch notes.wav'
+        '/mock-vault/projects/Roadmap launch notes.wav'
       )
       expect(mockUpdateNote.mock.calls[0][0].content).toContain('[[Roadmap launch notes]]')
     })
@@ -1426,7 +1426,7 @@ describe('Inbox Filing Operations', () => {
       expect(mockCreateFolder).toHaveBeenCalledWith('references')
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf',
-        '/mock-vault/notes/references/report.pdf'
+        '/mock-vault/references/report.pdf'
       )
       expect(mockUnlink).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf'

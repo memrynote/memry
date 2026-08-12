@@ -88,7 +88,7 @@ describe('csvImporter (integration)', () => {
     expect(summary.imported).toBe(4)
     expect(summary.skipped).toBe(1)
 
-    const csvDir = path.join(tempVault.notesDir, 'CSV')
+    const csvDir = path.join(tempVault.path, 'CSV')
     expect(fs.existsSync(csvDir)).toBe(true)
 
     const files = fs.readdirSync(csvDir)
@@ -100,7 +100,7 @@ describe('csvImporter (integration)', () => {
     expect(buyFile).toBeTruthy()
     const buyRow = indexDb.sqlite
       .prepare('SELECT title FROM note_cache WHERE path = ?')
-      .get(`notes/CSV/${buyFile}`) as { title: string } | undefined
+      .get(`CSV/${buyFile}`) as { title: string } | undefined
     expect(buyRow?.title).toBe('Buy milk, eggs')
 
     // Check properties are saved (Tags column should appear as frontmatter property)
@@ -137,7 +137,7 @@ describe('csvImporter (integration)', () => {
     const ctx = importContext.createImportContext('it2', new AbortController().signal)
     await importer.csvImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const csvDir = path.join(tempVault.notesDir, 'CSV')
+    const csvDir = path.join(tempVault.path, 'CSV')
     const files = fs.readdirSync(csvDir)
     const researchFile = files.find((f) => f.includes('Research topic'))
     expect(researchFile).toBeTruthy()

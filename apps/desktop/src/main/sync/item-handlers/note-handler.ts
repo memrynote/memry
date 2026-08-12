@@ -23,7 +23,7 @@ import {
   generateFilePath,
   generateUniquePathSync
 } from '../../vault/file-ops'
-import { toAbsolutePath, toRelativePath, getNotesDir } from '../../vault/notes'
+import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
 import { getStatus as getVaultStatus } from '../../vault/index'
 import {
@@ -202,7 +202,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         }
 
         if (needsPathUpdate) {
-          const notesDir = getNotesDir()
+          const notesDir = getVaultRoot()
           const ext = existing.mimeType
             ? (getExtensionFromMimeType(existing.mimeType) ??
               getDefaultExtension(existing.fileType))
@@ -311,7 +311,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       }
 
       if (needsPathUpdate) {
-        const notesDir = getNotesDir()
+        const notesDir = getVaultRoot()
         // Folder-only move (title unchanged): preserve the existing on-disk
         // basename byte-for-byte instead of re-deriving it through the
         // sanitizer, which would retroactively rename legacy files.
@@ -506,7 +506,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       return resolution.action === 'merge' ? 'conflict' : 'applied'
     }
 
-    const notesDir = getNotesDir()
+    const notesDir = getVaultRoot()
     const title = data.title ?? 'Untitled'
 
     if (data.fileType && isBinaryFileType(data.fileType)) {

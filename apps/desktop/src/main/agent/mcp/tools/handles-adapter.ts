@@ -23,7 +23,6 @@ import {
   listNotes,
   renameFolder
 } from '../../../vault/notes'
-import { getConfig } from '../../../vault'
 import { getAllTagsWithCounts, listTagCategories } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
 import {
@@ -52,7 +51,10 @@ export interface AdapterDeps {
 }
 
 function folderPathFromNotePath(notePath: string): string | null {
-  const dir = toolPathFromVaultRelativePath(path.posix.dirname(notePath))
+  // `dirname` reports '.' for a note sitting directly in the vault root, which
+  // is reachable now that folder paths are vault-relative (#1204).
+  const parent = path.posix.dirname(notePath)
+  const dir = toolPathFromVaultRelativePath(parent === '.' ? '' : parent)
   return dir === '/' ? null : dir
 }
 
@@ -71,35 +73,17 @@ function normalizeFolderPath(value: string | undefined): string {
   return (value ?? '').replace(/^\/+|\/+$/g, '')
 }
 
-function defaultNotesFolder(): string {
-  return normalizeFolderPath(getConfig().defaultNoteFolder) || 'notes'
-}
-
-function stripDefaultNotesFolder(vaultRelativePath: string): string {
-  const normalized = normalizeFolderPath(vaultRelativePath)
-  const notesFolder = defaultNotesFolder()
-
-  if (normalized === notesFolder) return ''
-  if (normalized.startsWith(`${notesFolder}/`)) {
-    return normalized.slice(notesFolder.length + 1)
-  }
-  return normalized
-}
-
+// Tool paths are vault-relative with a leading slash ("/projects/active").
+// `defaultNoteFolder` is not part of this mapping: it names where a new note
+// goes, not where folders live, so an agent must see the same tree the sidebar
+// does (#1204).
 function toolPathFromVaultRelativePath(vaultRelativePath: string): string {
-  const stripped = stripDefaultNotesFolder(vaultRelativePath)
+  const stripped = normalizeFolderPath(vaultRelativePath)
   return stripped ? `/${stripped}` : '/'
 }
 
 function internalFolderFromToolPath(toolPath: string | undefined): string | undefined {
-  const stripped = stripDefaultNotesFolder(toolPath ?? '')
-  return stripped || undefined
-}
-
-function cacheFolderFromToolPath(toolPath: string | undefined): string {
-  const folder = internalFolderFromToolPath(toolPath)
-  const notesFolder = defaultNotesFolder()
-  return folder ? `${notesFolder}/${folder}` : notesFolder
+  return normalizeFolderPath(toolPath ?? '') || undefined
 }
 
 function isDirectChild(basePath: string, candidatePath: string): boolean {
@@ -185,7 +169,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags: [],
           dateRange: null,
           projectId: null,
-          folderPath: folderId ? cacheFolderFromToolPath(folderId) : null,
+          folderPath: folderId ? (internalFolderFromToolPath(folderId) ?? null) : null,
           limit,
           offset: 0,
           // Filtering inside the FTS query keeps `limit` counting eligible rows
@@ -323,11 +307,11 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           .map(toFolderEntry)
 
         const notes = listNotes({
-          folder: cacheFolderFromToolPath(folderPath),
+          folder: internalFolderFromToolPath(folderPath),
           limit: 1000,
           offset: 0
         }).notes.filter((note) => {
-          const toolPath = stripDefaultNotesFolder(note.path)
+          const toolPath = normalizeFolderPath(note.path)
           return recursive || isDirectChild(basePath, toolPath)
         })
 

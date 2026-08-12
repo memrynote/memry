@@ -179,7 +179,7 @@ describe('bearImporter (integration)', () => {
     expect(summary.attachments).toBe(1)
 
     // Note A should exist under Bear/
-    const bearDir = path.join(tempVault.notesDir, 'Bear')
+    const bearDir = path.join(tempVault.path, 'Bear')
     const noteAFile = path.join(bearDir, 'Note A.md')
     expect(fs.existsSync(noteAFile)).toBe(true)
 
@@ -198,7 +198,7 @@ describe('bearImporter (integration)', () => {
     expect(noteAContent).not.toContain('assets/shared%20image.png')
 
     // Note B is archived → Bear/Archived/
-    const archivedDir = path.join(tempVault.notesDir, 'Bear', 'Archived')
+    const archivedDir = path.join(tempVault.path, 'Bear', 'Archived')
     const noteBFile = path.join(archivedDir, 'Note B.md')
     expect(fs.existsSync(noteBFile)).toBe(true)
   })
@@ -207,7 +207,7 @@ describe('bearImporter (integration)', () => {
     const ctx = importContext.createImportContext('bear-it2', new AbortController().signal)
     await importer.bearImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const bearDir = path.join(tempVault.notesDir, 'Bear')
+    const bearDir = path.join(tempVault.path, 'Bear')
     const noteAFile = path.join(bearDir, 'Note A.md')
     const content = fs.readFileSync(noteAFile, 'utf8')
     expect(content).toContain('my_tag')
@@ -219,7 +219,7 @@ describe('bearImporter (integration)', () => {
 
     expect(summary.failed).toEqual([])
 
-    const archivedDir = path.join(tempVault.notesDir, 'Bear', 'Archived')
+    const archivedDir = path.join(tempVault.path, 'Bear', 'Archived')
     const noteBFile = path.join(archivedDir, 'Note B.md')
     expect(fs.existsSync(noteBFile)).toBe(true)
   })

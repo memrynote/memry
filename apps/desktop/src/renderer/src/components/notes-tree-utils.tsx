@@ -17,12 +17,16 @@ export function getDisplayName(notePath: string): string {
   return lastDot > 0 ? filename.slice(0, lastDot) : filename
 }
 
+/**
+ * Folder of a note, vault-relative.
+ *
+ * Note paths are vault-relative and so are the folder paths the folder APIs
+ * resolve, so nothing is stripped here. Stripping a leading segment used to
+ * fabricate folder nodes the main process could not resolve (#1204).
+ */
 export function extractFolderFromPath(notePath: string): string {
   const parts = notePath.split('/')
   parts.pop()
-  if (parts.length > 0 && parts[0] === 'notes') {
-    return parts.slice(1).join('/')
-  }
   return parts.join('/')
 }
 
@@ -80,38 +84,10 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
 // Tree Building
 // ============================================================================
 
-/**
- * Folder a note belongs to, expressed the way the folder APIs expect it:
- * relative to the notes root, not to the vault.
- *
- * Note paths come out of the index vault-relative, but `getFolders`,
- * `folderExists` and the folder view all resolve a folder path against
- * `<vault>/<defaultNoteFolder>`. Feeding a vault-relative path to those APIs
- * applies the notes root a second time, so a vault whose notes root is
- * `Notes` looked for `<vault>/Notes/Notes` and rendered "Folder not found"
- * (#1204). The prefix used to be the hardcoded literal `notes`, which is why
- * only that exact spelling worked.
- *
- * Returns `null` for a note that lives outside the notes root: no folder node
- * can represent it, so it belongs at the top level rather than under a folder
- * that cannot be opened.
- */
-export function folderPathRelativeToNotesRoot(notePath: string, notesRoot: string): string | null {
-  const dir = notePath.split('/').slice(0, -1).join('/')
-  const root = notesRoot.replace(/^\/+|\/+$/g, '')
-  if (!root) return dir
-  if (dir === root) return ''
-  return dir.startsWith(`${root}/`) ? dir.slice(root.length + 1) : null
-}
-
-/**
- * @param notesRoot - The vault's `defaultNoteFolder`. Empty for a flat vault.
- */
 export function buildTreeFromNotes(
   notes: NoteListItem[],
   folders: FolderInfo[],
-  positions: Record<string, number>,
-  notesRoot: string
+  positions: Record<string, number>
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
@@ -163,14 +139,13 @@ export function buildTreeFromNotes(
   })
 
   notes.forEach((note) => {
-    const folderPath = folderPathRelativeToNotesRoot(note.path, notesRoot)
+    const pathParts = note.path.split('/')
+    pathParts.pop()
 
-    // `null` (outside the notes root) and `''` (directly in it) both mean there
-    // is no folder node to file this note under.
-    if (!folderPath) {
+    if (pathParts.length === 0) {
       rootNotes.push(note)
     } else {
-      ensureFolderInMap(folderPath).notes.push(note)
+      ensureFolderInMap(pathParts.join('/')).notes.push(note)
     }
   })
 
