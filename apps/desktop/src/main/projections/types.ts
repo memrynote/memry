@@ -80,6 +80,17 @@ export type ProjectionEvent =
 
 export interface ProjectionProjector {
   name: string
+  /**
+   * Lane nothing reads back synchronously, so `flush()` does not wait for it.
+   *
+   * `flushProjectionEvents()` exists to make *index-DB* derived state visible to
+   * the next read, and the indexer awaits it once per file. Waiting for the
+   * embedding lane there put a ~23MB model load plus per-note CPU inference in
+   * front of every file the 8-worker pool touched (#1078). A background lane
+   * still receives every event, in publish order, and still drains on its own;
+   * only the barrier is lifted. `stop({ drain: true })` drains it like any other.
+   */
+  background?: boolean
   handles(event: ProjectionEvent): boolean
   project(event: ProjectionEvent): void | Promise<void>
   rebuild(): unknown

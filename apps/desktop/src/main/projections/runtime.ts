@@ -9,14 +9,34 @@ interface ProjectionRuntimeOptions {
   queueLimit?: number
 }
 
+export interface ProjectionStopOptions {
+  drain?: boolean
+  /** Cap on the stop drain. See DEFAULT_STOP_DRAIN_TIMEOUT_MS. */
+  drainTimeoutMs?: number
+}
+
 export interface ProjectionRuntime {
   publish(event: ProjectionEvent): void
   flush(): Promise<void>
   rebuild(names?: string[]): Promise<Record<string, unknown>>
   reconcile(names?: string[]): Promise<Record<string, unknown>>
-  stop(options?: { drain?: boolean }): Promise<void>
+  stop(options?: ProjectionStopOptions): Promise<void>
   getPendingCount(): number
 }
+
+/**
+ * How long `stop({ drain: true })` will wait for the backlog before cutting the
+ * drain short (#1078).
+ *
+ * `closeVault()` awaits this, so an unbounded drain makes a vault switch hang
+ * behind whatever the slowest lane is doing — the embedding lane's model load
+ * and per-note inference can hold it for minutes. The deadline only stops
+ * *dequeuing*: the event already inside project() is still awaited, so the
+ * databases are never closed underneath a running projector. What the deadline
+ * leaves queued is derived state, and the next open re-derives it (indexVault
+ * plus the backgrounded reconcileProjections).
+ */
+export const DEFAULT_STOP_DRAIN_TIMEOUT_MS = 5_000
 
 function selectProjectors(
   projectors: ProjectionProjector[],
@@ -59,6 +79,14 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
   const queueLimit = options.queueLimit ?? DEFAULT_PROJECTION_QUEUE_LIMIT
 
   let isStopped = false
+  // Set at the top of stop(), before the stop drain. publish() used to keep
+  // accepting events for the whole drain, so anything still emitting — a sync
+  // write-back, a watcher event that beat stopWatcher() — refilled a lane as
+  // fast as it emptied and drain()'s wait loop never settled (#1078). Those
+  // events were doomed anyway: the bus is cleared moments later. Refusing them
+  // up front makes the stop drain finite, and logs the refusal instead of
+  // swallowing it.
+  let isStopping = false
 
   // A reconcile pass runs backgrounded (vault open fires it and does not await
   // it), so stop() has to be able to cut it short: without this, switching
@@ -171,12 +199,45 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     return handle
   }
 
-  const drain = async (): Promise<void> => {
+  const drain = async (target: ProjectorLane[]): Promise<void> => {
     // Lanes advance independently, so a lane can still be busy (or have been
     // refilled) when a faster one settles. Loop until every lane is idle — or
     // until the runtime stops, since a stopped lane never drains its backlog.
-    while (!isStopped && lanes.some((lane) => lane.bus.size > 0 || lane.activeDrain !== null)) {
-      await Promise.all(lanes.map((lane) => drainLane(lane)))
+    while (!isStopped && target.some((lane) => lane.bus.size > 0 || lane.activeDrain !== null)) {
+      await Promise.all(target.map((lane) => drainLane(lane)))
+    }
+  }
+
+  /** Lanes a flush() barrier is allowed to wait on. See `background` in types.ts. */
+  const foregroundLanes = lanes.filter((lane) => !lane.projector.background)
+
+  /**
+   * Drain every lane, but stop dequeuing once `timeoutMs` elapses.
+   *
+   * The deadline flips `isStopped`, which each lane loop re-reads before its
+   * next event; the event already in flight keeps its await. stop() then waits
+   * on the outstanding lane handles, so nothing is abandoned mid-write.
+   */
+  const drainWithDeadline = async (timeoutMs: number): Promise<void> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const deadline = new Promise<void>((resolve) => {
+      timer = setTimeout(
+        () => {
+          logger?.warn?.('Projection stop drain timed out — cutting the backlog short', {
+            timeoutMs,
+            pending: lanes.reduce((total, lane) => total + lane.bus.size, 0)
+          })
+          isStopped = true
+          resolve()
+        },
+        Math.max(0, timeoutMs)
+      )
+    })
+
+    try {
+      await Promise.race([drain(lanes), deadline])
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -193,7 +254,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
 
   return {
     publish(event) {
-      if (isStopped) {
+      if (isStopped || isStopping) {
         logger?.warn?.('Projection event published after runtime stop', { event })
         return
       }
@@ -217,7 +278,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     },
 
     async flush() {
-      await drain()
+      await drain(foregroundLanes)
     },
 
     async rebuild(names) {
@@ -265,12 +326,20 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       reconcileAbort?.abort()
       const pendingReconcile = activeReconcile
 
+      isStopping = true
+
       const shouldDrain = stopOptions?.drain ?? true
       if (shouldDrain) {
-        await drain()
+        await drainWithDeadline(stopOptions?.drainTimeoutMs ?? DEFAULT_STOP_DRAIN_TIMEOUT_MS)
       }
 
       isStopped = true
+
+      // The caller closes the databases as soon as this resolves, so a lane the
+      // deadline (or `drain: false`) cut short must not still be inside
+      // project(). Its handle only settles once that event's await returns.
+      await Promise.all(lanes.map((lane) => lane.activeDrain ?? Promise.resolve()))
+
       for (const lane of lanes) {
         lane.isScheduled = false
         lane.bus.clear()
