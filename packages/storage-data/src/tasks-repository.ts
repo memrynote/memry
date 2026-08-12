@@ -152,6 +152,33 @@ function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskR
   }
 }
 
+/**
+ * Drop the sync bookkeeping columns from a listed row (#1326).
+ *
+ * `clock`, `fieldClocks` and `syncedAt` are not part of the declared `Task`
+ * shape — they only reach callers because `enrichTask` spreads the raw database
+ * row — and nothing that consumes `tasks:list` reads them. `fieldClocks` alone
+ * is a device-id-keyed vector clock per syncable field, which on a synced vault
+ * is the single largest part of a task row. The app-root workspace fetch pulls
+ * up to 1000 rows and re-runs on every task create / update / delete / complete
+ * and every incoming task sync event, so this is the payload worth cutting.
+ *
+ * Deliberately NOT done inside `enrichTask`: `getTask` feeds the delete
+ * snapshot that `task-sync.ts`'s `buildDeletePayload` hands to
+ * `withIncrementedClock`, which reads `clock` back off it. Stripping there
+ * would reset every task tombstone's vector clock to a fresh one.
+ */
+function stripSyncBookkeeping(task: Task): TaskListItem {
+  const {
+    clock: _clock,
+    fieldClocks: _fieldClocks,
+    syncedAt: _syncedAt,
+    ...rest
+  } = task as Task & { clock?: unknown; fieldClocks?: unknown; syncedAt?: unknown }
+
+  return rest as TaskListItem
+}
+
 export function createTasksRepository<TDb>({
   db,
   taskQueries,
@@ -190,7 +217,7 @@ export function createTasksRepository<TDb>({
     listTasks(options: TaskListOptions = {}): TaskListItem[] {
       return taskQueries
         .listTasks(db, options)
-        .map((task) => enrichTask(db, taskQueries, task) as TaskListItem)
+        .map((task) => stripSyncBookkeeping(enrichTask(db, taskQueries, task)))
     },
 
     countTasks(
