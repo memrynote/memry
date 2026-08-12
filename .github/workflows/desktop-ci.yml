@@ -227,6 +227,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: Cache Electron binary
+        uses: ./.github/actions/cache-electron-binary
+
       - name: Install system dependencies
         run: |
           # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
@@ -297,6 +300,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Cache Electron binary
+        uses: ./.github/actions/cache-electron-binary
 
       - name: Install dependencies
         env:
@@ -461,6 +467,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+
+      - name: Cache Electron binary
+        uses: ./.github/actions/cache-electron-binary
 
       - name: Install system dependencies
         run: |
