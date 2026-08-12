@@ -40,6 +40,21 @@ const handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
 }
 
 /**
+ * Is the tab already fully inside the strip's visible area?
+ * The chevron gutters are inline padding on the strip, so they are subtracted —
+ * a tab sitting under a chevron does not count as visible. Physical sides are
+ * used because that is what the rects report in both LTR and RTL.
+ */
+const isTabFullyVisible = (strip: HTMLElement, tabEl: Element): boolean => {
+  const stripRect = strip.getBoundingClientRect()
+  const tabRect = tabEl.getBoundingClientRect()
+  const style = getComputedStyle(strip)
+  const visibleLeft = stripRect.left + (parseFloat(style.paddingLeft) || 0)
+  const visibleRight = stripRect.right - (parseFloat(style.paddingRight) || 0)
+  return tabRect.left >= visibleLeft - 1 && tabRect.right <= visibleRight + 1
+}
+
+/**
  * Tab bar with drag-to-reorder support and context menu
  * DndContext is provided by SplitViewContainer for cross-panel support
  */
@@ -107,12 +122,20 @@ export const TabBarWithDrag = ({
   // Keep the active tab visible — without this the strip stays pinned at the start
   // and a newly opened (or newly activated) tab sits past the end edge.
   // Re-runs on the chevron gutters too: they widen the scroll content one render
-  // after the scroll fires, which would push the tab back out of view.
+  // after the scroll fires, which would push the tab back out of view. Those
+  // follow-up runs used to fire a second and third smooth scrollIntoView for the
+  // same activation, restarting the animation mid-flight; they now only re-scroll
+  // when the resized gutters actually pushed the tab out of the strip.
+  const scrolledTabIdRef = useRef<string | null>(null)
   useLayoutEffect(() => {
     if (!activeTabId || activeDragItem) return
-    const tabEl = scrollRef.current?.querySelector(`[data-tab-id="${CSS.escape(activeTabId)}"]`)
+    const strip = scrollRef.current
+    const tabEl = strip?.querySelector(`[data-tab-id="${CSS.escape(activeTabId)}"]`)
+    if (!strip || !tabEl) return
+    if (scrolledTabIdRef.current === activeTabId && isTabFullyVisible(strip, tabEl)) return
+    scrolledTabIdRef.current = activeTabId
     // scrollIntoView is not implemented in jsdom
-    tabEl?.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+    tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
   }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
 
   // If group doesn't exist, don't render (after all hooks)

@@ -12,7 +12,9 @@ Every note, view, search, project, journal entry, or settings panel opens in a t
 
 Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
 
-Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. The **+** button stays pinned at the end of the bar while it scrolls.
+Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. The **+** button stays pinned at the end of the bar while it scrolls.
+
+There is no limit on how many tabs you can have open, and memrynote never closes one for you: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
 
 ### Tab Context Menu
 
