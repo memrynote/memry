@@ -3,12 +3,19 @@ import {
   getConfiguredPinnedCertificateHashes,
   getConfiguredSyncCertHostname
 } from '../src/main/sync/certificate-pins.ts'
+import { describeCertCheckHost, resolveCertCheckConfig } from './check-cert-hashes-config.ts'
 
-const hostname = getConfiguredSyncCertHostname(process.env.SYNC_SERVER_URL)
-const pins = getConfiguredPinnedCertificateHashes(process.env.SYNC_SERVER_URL)
-const strict = process.env.MEMRY_CERT_PINS_STRICT === '1'
+// App root comes from the shell wrapper; cwd is the fallback for `pnpm cert:check`
+// style invocations from apps/desktop.
+const appRoot = process.argv[2] ?? process.cwd()
+const config = resolveCertCheckConfig(appRoot)
 
-const result = checkCertificatePinConfig({ hostname, pins, strict })
+const hostname = getConfiguredSyncCertHostname(config.syncServerUrl)
+const pins = getConfiguredPinnedCertificateHashes(config.syncServerUrl)
+
+console.log(describeCertCheckHost(config, hostname))
+
+const result = checkCertificatePinConfig({ hostname, pins, strict: config.strict })
 
 if (result.level === 'error') {
   console.error(`ERROR: ${result.message}`)

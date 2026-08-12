@@ -55,6 +55,7 @@ export default defineConfig({
           environment: 'node',
           include: [
             'src/main/**/*.{test,spec}.{ts,tsx}',
+            'scripts/*.{test,spec}.ts',
             'scripts/seed-data/**/*.{test,spec}.{ts,tsx}'
           ],
           // `*.integration.test.ts` boots a real Worker (miniflare + esbuild) and

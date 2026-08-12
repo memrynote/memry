@@ -188,10 +188,28 @@ reflects the same rule:
 | Placeholder hashes with `MEMRY_CERT_PINS_STRICT=1` | fails                                |
 | No entry for the host, or a malformed pin          | fails                                |
 
+### Which host the check audits
+
+The host is resolved from the same file a packaged build ships: `apps/desktop/.env.<MEMRY_ENV>`
+(`.env.production` when `MEMRY_ENV` is unset, which is how `prebuild` and `build:release` run it).
+That file is staged into the app as `app-config` and is what the shipped app dials, so the audit and
+the build agree on one host. An explicit `SYNC_SERVER_URL` in the environment overrides the file, for
+auditing a host ad hoc. With neither present — a fresh checkout or CI, where no `.env` file exists —
+the check audits the default production host and prints that it is doing so, rather than appearing to
+have checked the build's host.
+
+The first line of output always names the audited host and where it came from:
+
+```
+Auditing sync host sync.memrynote.com from apps/desktop/.env.production.
+```
+
 To activate pinning for a host, run `pnpm cert:extract -- <hostname>`, replace that host's
 placeholders with the emitted hashes (keep a backup pin for rotation), and set
-`MEMRY_CERT_PINS_STRICT=1` in the release build so the host can never silently regress to
-unpinned.
+`MEMRY_CERT_PINS_STRICT=1` so the host can never silently regress to unpinned. Strict mode is
+opt-in and can be set either in the environment or in the same `.env.<MEMRY_ENV>` file that names the
+host. It is deliberately off by default: the production host still carries placeholder pins, so
+enabling it globally would fail every `prebuild` and every fresh checkout.
 
 ## Renderer Permission Policy
 
