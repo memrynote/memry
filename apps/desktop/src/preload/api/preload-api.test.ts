@@ -26,7 +26,7 @@ import { remindersApi, reminderEvents } from './reminders'
 import { graphApi, searchApi, searchEvents } from './search'
 import { syncEvents } from './sync-events'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './sync-identity'
-import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './sync-ops'
+import { syncOps, cryptoApi, syncAttachments, syncCrdt } from './sync-ops'
 import { tagsApi, tagEvents } from './tags'
 import { updaterApi, updaterEvents } from './updater'
 import { vaultApi, vaultEvents } from './vault'
@@ -1044,7 +1044,8 @@ describe('preload api wrappers', () => {
       () => syncEvents.onVaultRecoveryNeeded(callback),
       SYNC_EVENTS.VAULT_RECOVERY_NEEDED
     )
-    expectSubscribe(() => onCrdtStateChanged(callback), SYNC_EVENTS.STATE_CHANGED)
+    // `onCrdtStateChanged` is note-scoped rather than a plain channel wrapper —
+    // its routing and listener lifetime are covered in `sync-ops.test.ts`.
     expectSubscribe(
       () => updaterEvents.onUpdaterStateChanged(callback),
       UpdaterChannels.events.STATE_CHANGED

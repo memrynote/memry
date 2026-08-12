@@ -1,5 +1,5 @@
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
-import { invoke, subscribe } from '../lib/ipc'
+import { invoke, logListenerError, subscribe } from '../lib/ipc'
 
 export const syncOps = {
   getStatus: () => invoke(SYNC_CHANNELS.GET_STATUS),
@@ -66,10 +66,69 @@ export const syncCrdt = {
     invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
 }
 
+type CrdtStateChangedPayload = { noteId: string; update: Uint8Array; origin: string }
+type CrdtStateChangedCallback = (data: CrdtStateChangedPayload) => void
+
+/**
+ * CRDT updates arrive on one global channel, but each subscriber only ever
+ * wants one note. Subscribing every open editor's provider to the raw channel
+ * made every keystroke in any note walk all N provider callbacks; this registry
+ * keeps a single channel subscription for the window and dispatches by noteId,
+ * so the cost per update is one map lookup regardless of how many notes are open.
+ */
+const crdtNoteSubscribers = new Map<string, Set<CrdtStateChangedCallback>>()
+let crdtChannelCleanup: (() => void) | null = null
+
+const dispatchCrdtStateChanged = (data: CrdtStateChangedPayload): void => {
+  const subscribers = crdtNoteSubscribers.get(data.noteId)
+  if (!subscribers) return
+  // Snapshot: a callback may unsubscribe itself (teardown) mid-dispatch. The
+  // per-callback guard mirrors `subscribe()` — one throwing provider must not
+  // starve the others registered for the same note.
+  for (const callback of [...subscribers]) {
+    try {
+      callback(data)
+    } catch (error) {
+      logListenerError(SYNC_EVENTS.STATE_CHANGED, error)
+    }
+  }
+}
+
 export const onCrdtStateChanged = (
-  callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
-): (() => void) =>
-  subscribe<{ noteId: string; update: Uint8Array; origin: string }>(
+  noteId: string,
+  callback: CrdtStateChangedCallback
+): (() => void) => {
+  let subscribers = crdtNoteSubscribers.get(noteId)
+  if (!subscribers) {
+    subscribers = new Set()
+    crdtNoteSubscribers.set(noteId, subscribers)
+  }
+  subscribers.add(callback)
+
+  // Attach the channel listener before returning so the caller is live from the
+  // moment it subscribes — no window where a main-process broadcast is dropped.
+  crdtChannelCleanup ??= subscribe<CrdtStateChangedPayload>(
     SYNC_EVENTS.STATE_CHANGED,
-    callback
+    dispatchCrdtStateChanged
   )
+
+  let unsubscribed = false
+  return () => {
+    if (unsubscribed) return
+    unsubscribed = true
+
+    const current = crdtNoteSubscribers.get(noteId)
+    if (!current) return
+    current.delete(callback)
+    if (current.size > 0) return
+
+    // Drop the note's bucket so closed notes cannot accumulate, and release the
+    // channel listener entirely once nothing is listening (note close, window
+    // reload, vault switch).
+    crdtNoteSubscribers.delete(noteId)
+    if (crdtNoteSubscribers.size === 0) {
+      crdtChannelCleanup?.()
+      crdtChannelCleanup = null
+    }
+  }
+}

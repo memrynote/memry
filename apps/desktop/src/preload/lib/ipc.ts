@@ -15,7 +15,7 @@ import type {
  * it on this world's global. Falling back to console keeps the failure visible
  * when it isn't there (tests, or an initialize that didn't run).
  */
-function logListenerError(channel: string, error: unknown): void {
+export function logListenerError(channel: string, error: unknown): void {
   const message = `[PreloadIpc] Listener for "${channel}" threw`
   const sink = (globalThis as typeof globalThis & { __electronLog?: unknown }).__electronLog as
     | { error?: (...data: unknown[]) => void }

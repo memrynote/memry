@@ -63,6 +63,19 @@ opening.
 - Persistence via y-leveldb is a Node-side concern.
 - Main can broadcast updates to multiple renderer windows (when split view exists).
 
+## Renderer Update Delivery
+
+Main broadcasts every CRDT update on one channel (`crdt:state-changed`), scoped to the
+windows attached to that doc. Inside a window, the preload layer keeps a
+`noteId → subscribers` registry behind a single channel listener, so an update is
+dispatched only to the provider that owns the note. Opening ten notes still installs one
+Electron listener, and a keystroke in one note does not wake the other nine providers.
+
+Each provider subscribes with its own `noteId` before it opens the doc, so no broadcast
+can land in the gap between opening a note and being wired to it. Unsubscribing the last
+provider for a note drops its entry, and the channel listener is released once nothing is
+listening — note close, window reload, and vault switch all take that path.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also

@@ -30,7 +30,12 @@ export class YjsIpcProvider extends Observable<string> {
     }
     this.doc.on('update', this.updateHandler)
 
+    // Note-scoped subscription: the preload registry dispatches by noteId, so
+    // this provider is no longer woken by every other open note's updates. The
+    // id check stays as a cheap assertion — applying another note's update to
+    // this doc would be silent corruption, so it must never be reachable.
     this.ipcCleanup = window.api.onCrdtStateChanged(
+      this.noteId,
       (data: { noteId: string; update: Uint8Array; origin: string }) => {
         if (data.noteId !== this.noteId) return
         Y.applyUpdate(this.doc, data.update, 'remote')
