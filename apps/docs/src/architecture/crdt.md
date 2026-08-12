@@ -101,6 +101,17 @@ pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmou
 window that turns out to be gone, and provider teardown on vault close or switch. Once
 released, the doc is evictable and compactable again.
 
+Local compaction runs under that same condition as closing and eviction — a doc with no
+windows attached — and it is asynchronous for the same reason, so the two can be in flight
+at once for one note. Compaction therefore treats the entry it captured as provisional: it
+does not start on a doc that is already closing, and before swapping the compacted doc in
+it re-checks that the provider's map still holds the same entry. If the note was closed —
+or closed and reopened onto a fresh entry — in the meantime, the compaction is abandoned
+rather than written into an entry nothing reads. Remote updates that arrive during a
+compaction are buffered for it rather than applied directly, so an abandoned compaction
+hands its buffer to whichever doc is live at that point instead of discarding it: the sync
+coordinator counts those updates as applied and will not fetch them again.
+
 Closing is asynchronous — it flushes the doc to persistence first — so a note can be
 reopened while its own close is still in flight. The reopen builds a fresh Y.Doc and takes
 over the provider's entry for that note, and the close then finds that the entry no longer
@@ -108,17 +119,6 @@ belongs to it. It leaves that entry alone, because the reopened doc is the one t
 is typing into, and destroys only the doc it superseded. Nothing can reach the superseded
 doc at that point: every route into a Y.Doc looks the note id up in the provider's map,
 which now resolves the replacement.
-
-Local compaction runs under the same condition as closing and eviction — a doc with no
-windows attached — and it is asynchronous for the same reason, so the two can be in flight
-at once for one note. Compaction therefore treats its entry as provisional: it does not
-start on a doc that is already closing, and before swapping the compacted doc in it
-re-checks that the provider's map still holds the same entry. If the note was closed, or
-closed and reopened, in the meantime, the compaction is abandoned rather than written into
-an entry nothing reads. Remote updates that arrived during that window are buffered for the
-compaction rather than applied directly, so an abandoned compaction hands its buffer to
-whichever doc is live at that point instead of discarding it — the sync coordinator counts
-those updates as applied and will not fetch them again.
 
 ## IPC Loop Prevention
 
