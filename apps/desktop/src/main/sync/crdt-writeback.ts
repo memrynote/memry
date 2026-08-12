@@ -149,10 +149,29 @@ function journalIdToDate(journalId: string): string {
   return journalId.slice(1)
 }
 
+/**
+ * Amortized TTL eviction, at most one full pass per TTL window.
+ *
+ * Both maps below are keyed per file/per note and are only ever written, so
+ * they need a sweep to stay bounded — but the sweep must not run per call:
+ * `isWritebackIgnored` fires on every watcher file event, where an inline pass
+ * cost O(map) each time. Gating the pass on its own TTL keeps both maps to the
+ * entries written in the last two windows at amortized O(1) per call.
+ */
+function sweepExpired(entries: Map<string, number>, ttlMs: number, now: number): void {
+  for (const [key, ts] of entries) {
+    if (now - ts >= ttlMs) entries.delete(key)
+  }
+}
+
+let ignoredWritesSweptAt = 0
+let networkUpdatesSweptAt = 0
+
 export function isWritebackIgnored(absolutePath: string): boolean {
   const now = Date.now()
-  for (const [p, ts] of ignoredWrites) {
-    if (now - ts >= IGNORED_WRITE_TTL_MS) ignoredWrites.delete(p)
+  if (now - ignoredWritesSweptAt >= IGNORED_WRITE_TTL_MS) {
+    ignoredWritesSweptAt = now
+    sweepExpired(ignoredWrites, IGNORED_WRITE_TTL_MS, now)
   }
   const ts = ignoredWrites.get(absolutePath)
   if (!ts) return false
@@ -163,14 +182,36 @@ export function clearWritebackIgnore(_absolutePath: string): void {
   // no-op: auto-evicted by TTL in isWritebackIgnored
 }
 
+/**
+ * Sweeping on the write path too, so a stopped watcher (which is what stops
+ * `isWritebackIgnored` from being called at all) cannot leave the map growing
+ * one entry per written file for the rest of the session.
+ */
+function rememberIgnoredWrite(absolutePath: string): void {
+  const now = Date.now()
+  if (now - ignoredWritesSweptAt >= IGNORED_WRITE_TTL_MS) {
+    ignoredWritesSweptAt = now
+    sweepExpired(ignoredWrites, IGNORED_WRITE_TTL_MS, now)
+  }
+  ignoredWrites.set(absolutePath, now)
+}
+
 export function markWritebackIgnored(absolutePath: string): void {
-  ignoredWrites.set(absolutePath, Date.now())
+  rememberIgnoredWrite(absolutePath)
 }
 
 const CONCURRENT_EDIT_WINDOW_MS = 2000
 
 export function recordNetworkUpdate(noteId: string): void {
-  lastNetworkUpdateMs.set(noteId, Date.now())
+  const now = Date.now()
+  // Only `wasRecentNetworkUpdate` used to delete, and it is reached only when
+  // that note is edited externally on disk — so without this the map grew one
+  // entry per note ever received from the network, for the whole session.
+  if (now - networkUpdatesSweptAt >= CONCURRENT_EDIT_WINDOW_MS) {
+    networkUpdatesSweptAt = now
+    sweepExpired(lastNetworkUpdateMs, CONCURRENT_EDIT_WINDOW_MS, now)
+  }
+  lastNetworkUpdateMs.set(noteId, now)
 }
 
 export function wasRecentNetworkUpdate(noteId: string): boolean {
@@ -252,6 +293,40 @@ export function cancelPendingWritebacks(): void {
   }
   pendingTimers.clear()
   lastWritebackCost.clear()
+}
+
+/**
+ * Sizes of the module-level maps. Diagnostics only — the growth of these maps
+ * is the bug this bookkeeping exists to keep regression-testable, and neither
+ * `isWritebackIgnored` nor `wasRecentNetworkUpdate` can distinguish "entry
+ * expired" from "entry evicted", so a leak is otherwise unobservable.
+ */
+export function getWritebackStateSizes(): {
+  ignoredWrites: number
+  networkUpdates: number
+  debugState: number
+} {
+  return {
+    ignoredWrites: ignoredWrites.size,
+    networkUpdates: lastNetworkUpdateMs.size,
+    debugState: debugState.size
+  }
+}
+
+/**
+ * Drop every per-note/per-file map. These are module-level, so without this a
+ * vault switch would carry the previous vault's bookkeeping — paths and note
+ * ids that no longer exist here — into the next session, and each successive
+ * vault would add to it. Called from `CrdtProvider.destroy()`, which is the
+ * one point every vault close, vault switch and sync-runtime stop goes through.
+ */
+export function resetWritebackState(): void {
+  lastWritebackCost.clear()
+  ignoredWrites.clear()
+  lastNetworkUpdateMs.clear()
+  debugState.clear()
+  ignoredWritesSweptAt = 0
+  networkUpdatesSweptAt = 0
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -385,7 +460,7 @@ async function writebackExisting(
     }
   }
 
-  ignoredWrites.set(absolutePath, Date.now())
+  rememberIgnoredWrite(absolutePath)
   await atomicWrite(absolutePath, fileContent)
 
   syncNoteToCache(
@@ -436,7 +511,7 @@ async function writebackNewNote(
   const { frontmatter } = mergeFrontmatter(null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
-  ignoredWrites.set(absolutePath, Date.now())
+  rememberIgnoredWrite(absolutePath)
   await atomicWrite(absolutePath, fileContent)
 
   syncNoteToCache(
@@ -513,7 +588,7 @@ async function writebackJournal(
       }
     }
 
-    ignoredWrites.set(absolutePath, Date.now())
+    rememberIgnoredWrite(absolutePath)
     await atomicWrite(absolutePath, fileContent)
 
     syncNoteToCache(
@@ -552,7 +627,7 @@ async function writebackJournal(
   const { frontmatter } = mergeJournalFrontmatter(date, null, doc)
   const fileContent = serializeNote(frontmatter, markdown)
 
-  ignoredWrites.set(journalPath, Date.now())
+  rememberIgnoredWrite(journalPath)
   await atomicWrite(journalPath, fileContent)
 
   syncNoteToCache(
@@ -597,7 +672,7 @@ async function handleJournalCollision(
   const fileContent = serializeNote(frontmatter, markdown)
 
   await ensureDirectory(journalDir)
-  ignoredWrites.set(collisionPath, Date.now())
+  rememberIgnoredWrite(collisionPath)
   await atomicWrite(collisionPath, fileContent)
 
   syncNoteToCache(
@@ -635,7 +710,7 @@ export async function handleSyncDeletion(noteId: string): Promise<void> {
   deleteNoteFromCache(indexDb, noteId)
   void flushProjectionEvents()
 
-  ignoredWrites.set(absolutePath, Date.now())
+  rememberIgnoredWrite(absolutePath)
   await deleteFile(absolutePath).catch((err) => {
     log.error('Failed to delete synced note file', { noteId, error: err })
   })

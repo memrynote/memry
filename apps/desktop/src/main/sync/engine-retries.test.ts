@@ -224,8 +224,13 @@ describe('SyncEngine', () => {
       getServerMock.mockClear()
 
       const pullCrdtForNote = vi.fn().mockResolvedValue(undefined)
-      ;(engine as unknown as { crdtSync: { pullCrdtForNote: typeof pullCrdtForNote } }).crdtSync = {
-        pullCrdtForNote
+      ;(
+        engine as unknown as {
+          crdtSync: { pullCrdtForNote: typeof pullCrdtForNote; clearCaches: () => void }
+        }
+      ).crdtSync = {
+        pullCrdtForNote,
+        clearCaches: vi.fn()
       }
 
       const pullDone = new Promise<void>((resolve) => {
@@ -280,8 +285,13 @@ describe('SyncEngine', () => {
       await engine.start()
 
       const pullCrdtForNote = vi.fn().mockResolvedValue(undefined)
-      ;(engine as unknown as { crdtSync: { pullCrdtForNote: typeof pullCrdtForNote } }).crdtSync = {
-        pullCrdtForNote
+      ;(
+        engine as unknown as {
+          crdtSync: { pullCrdtForNote: typeof pullCrdtForNote; clearCaches: () => void }
+        }
+      ).crdtSync = {
+        pullCrdtForNote,
+        clearCaches: vi.fn()
       }
 
       // Deterministic drain: the reconnect handler runs through scheduleSync,
