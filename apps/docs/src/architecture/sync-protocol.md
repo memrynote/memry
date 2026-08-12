@@ -697,3 +697,11 @@ arrives from a thread it has already walked away from is ignored, and that threa
 outright. Without this, the late exit of a terminated worker would take the _live_ worker out of the
 rotation — a bridge reporting no worker at all while a healthy thread sat idle, leaving every batch
 for the rest of the session on the main thread.
+
+Starting and stopping the bridge are serialised against each other. A start requested while a
+shutdown is still running waits for that shutdown to finish and then spawns a fresh thread, instead
+of mistaking the thread on its way out for a running one and returning with nothing behind it. For
+the same reason a thread that has been asked to exit no longer counts as running, so batches raised
+during the shutdown window go straight to the main thread rather than waiting out a request timeout
+against a worker that is leaving. This is what keeps a vault switch or a sync restart from ending up
+on main-thread crypto for the rest of the session.
