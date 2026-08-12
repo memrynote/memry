@@ -79,9 +79,26 @@ export interface DownloadResult {
   manifest: AttachmentManifest
 }
 
+/**
+ * 'completed' and 'failed' are terminal: exactly one of them is emitted for
+ * every transfer that reported any progress at all, and nothing follows it for
+ * that attachmentId. The renderer keys its transfer overlay by attachmentId and
+ * has no other way to learn a transfer ended — without a terminal phase a
+ * transfer that dies below 100% pins its overlay for the life of the window.
+ * Age heuristics are not an option: 'waiting_network' is legitimately silent for
+ * long stretches and would be torn down while still live.
+ */
 export interface TransferProgress {
   attachmentId: string
-  phase: 'hashing' | 'encrypting' | 'uploading' | 'downloading' | 'decrypting' | 'waiting_network'
+  phase:
+    | 'hashing'
+    | 'encrypting'
+    | 'uploading'
+    | 'downloading'
+    | 'decrypting'
+    | 'waiting_network'
+    | 'completed'
+    | 'failed'
   chunksCompleted: number
   totalChunks: number
   bytesTransferred: number
@@ -263,7 +280,18 @@ export class AttachmentSyncService {
   ): Promise<UploadResult> {
     const [token, vaultKey, signingKeys] = await this.requireAuth()
     const fileKey = generateFileKey()
-    const emit = (p: TransferProgress): void => (onProgress ?? this.onProgress)?.(p)
+    // Remember the last payload so the terminal emit can reuse its attachmentId
+    // and counts. Null until the first progress event, which is precisely the
+    // window in which the renderer has no entry that could be stranded — so
+    // failures before it need (and get) no terminal emit.
+    let lastProgress: TransferProgress | null = null
+    const emit = (p: TransferProgress): void => {
+      lastProgress = p
+      ;(onProgress ?? this.onProgress)?.(p)
+    }
+    const emitTerminal = (phase: 'completed' | 'failed'): void => {
+      if (lastProgress) emit({ ...lastProgress, phase })
+    }
     // Set once the session is registered below, so the finally can drop it on
     // every exit — success, throw, or abort — instead of only the happy path.
     let trackedSessionId: string | null = null
@@ -451,8 +479,17 @@ export class AttachmentSyncService {
       await this.completeUploadSession(token, sessionId, encryptedManifest, netOpts)
 
       log.info('upload complete', { attachmentId, sessionId })
+      emitTerminal('completed')
 
       return { attachmentId, sessionId, manifest }
+    } catch (err) {
+      // Every failure past the first progress event lands here: a rejected
+      // initiate/chunk/complete response, a dead-lettered or aborted retry, a
+      // cancelled upload. The attachmentId is minted per call, so a queue-level
+      // retry reports under a NEW id — this attempt's id is finished either way
+      // and must be stamped terminal rather than left in flight forever.
+      emitTerminal('failed')
+      throw err
     } finally {
       // The transfer is over by the time finally runs, so this can never orphan
       // an in-flight upload. The key is a server-issued session id unique to
@@ -477,7 +514,16 @@ export class AttachmentSyncService {
     // Per-call callback wins over the shared slot, mirroring uploadAttachment:
     // two concurrent downloads that both went through the singleton clobbered
     // each other, and whichever finished first cleared it for the survivor.
-    const emit = (p: TransferProgress): void => (opts?.onProgress ?? this.onProgress)?.(p)
+    // See uploadAttachment: lastProgress carries the id/counts the terminal emit
+    // reuses, and stays null while no renderer entry exists to strand.
+    let lastProgress: TransferProgress | null = null
+    const emit = (p: TransferProgress): void => {
+      lastProgress = p
+      ;(opts?.onProgress ?? this.onProgress)?.(p)
+    }
+    const emitTerminal = (phase: 'completed' | 'failed'): void => {
+      if (lastProgress) emit({ ...lastProgress, phase })
+    }
 
     log.info('starting download', { attachmentId })
 
@@ -566,8 +612,15 @@ export class AttachmentSyncService {
       await this.atomicWriteBinary(destPath, reassembled)
 
       log.info('download complete', { attachmentId, path: destPath })
+      emitTerminal('completed')
 
       return { filePath: destPath, manifest }
+    } catch (err) {
+      // Chunk fetch/decrypt failures, integrity mismatches and write failures
+      // all reach here. The already-materialized early return above is silent by
+      // design: it emits no progress, so there is nothing to terminate.
+      emitTerminal('failed')
+      throw err
     } finally {
       // Unlike uploads, the key here is the attachmentId, which a concurrent
       // download of the same attachment shares — it overwrites this entry when

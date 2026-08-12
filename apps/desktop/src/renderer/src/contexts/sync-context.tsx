@@ -26,15 +26,24 @@ import type { SyncStatus } from '@/sync/collaboration-status'
 interface ProgressEntry {
   progress: number
   status: string
-  /** Set once the transfer reaches 100%; the prune sweep drops it after the retention window. */
+  /** Set once the transfer ends; the prune sweep drops it after the retention window. */
   completedAt?: number
 }
 
 /**
+ * Terminal statuses main sends when a transfer is over. They are the only
+ * end-of-transfer signal for a transfer that dies below 100% — a failed or
+ * abandoned one — so they must mark the entry finishable exactly like a full
+ * bar does, or its file-block overlay stays pinned for the life of the window.
+ * An age heuristic cannot stand in for them: 'waiting_network' is legitimately
+ * silent for long stretches and is still live.
+ */
+const TERMINAL_TRANSFER_STATUSES = new Set(['completed', 'failed'])
+
+/**
  * How long a finished transfer's entry survives so the progress UI can settle.
- * Main only ever emits transfer *phases* ('uploading', 'decrypting', …) and
- * never a terminal status, so a full bar is the only end-of-transfer signal
- * the renderer gets.
+ * A full bar also counts as finished: main reaches 100% before the last
+ * server round-trip, so the terminal event can still be several seconds out.
  */
 export const SYNC_PROGRESS_RETENTION_MS = 5_000
 /**
@@ -121,8 +130,10 @@ function recordProgress(
   progress: number,
   status: string
 ): Record<string, ProgressEntry> {
-  const entry: ProgressEntry =
-    progress >= 100 ? { progress, status, completedAt: Date.now() } : { progress, status }
+  const finished = progress >= 100 || TERMINAL_TRANSFER_STATUSES.has(status)
+  const entry: ProgressEntry = finished
+    ? { progress, status, completedAt: Date.now() }
+    : { progress, status }
   return { ...current, [attachmentId]: entry }
 }
 

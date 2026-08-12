@@ -72,6 +72,13 @@ export interface LinkingApprovedEvent {
   sessionId: string
 }
 
+/**
+ * `status` is the transfer phase ('hashing' | 'encrypting' | 'uploading' |
+ * 'waiting_network'), plus the terminal 'completed' and 'failed' that main emits
+ * once when the transfer ends. The terminal values are additive to an existing
+ * free-form field — the payload shape is unchanged, and a receiver that does not
+ * know them simply treats them as one more phase.
+ */
 export interface UploadProgressEvent {
   attachmentId: string
   sessionId: string
@@ -79,6 +86,7 @@ export interface UploadProgressEvent {
   status: string
 }
 
+/** Same `status` contract as {@link UploadProgressEvent}; phases are 'downloading' | 'decrypting'. */
 export interface DownloadProgressEvent {
   attachmentId: string
   progress: number

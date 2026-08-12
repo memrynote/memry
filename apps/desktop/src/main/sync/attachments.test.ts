@@ -74,6 +74,8 @@ function buildSignedManifest(opts: {
   plaintext: Buffer
   vaultKey: Uint8Array
   signingKeypair: { privateKey: Uint8Array; publicKey: Uint8Array }
+  /** Override the whole-file checksum to force an integrity failure after the chunk decrypts. */
+  checksum?: string
 }): { encManifest: Record<string, string>; encryptedChunk: Uint8Array } {
   const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
   const fileKey = generateFileKey()
@@ -96,7 +98,7 @@ function buildSignedManifest(opts: {
     filename: opts.filename,
     mimeType: 'text/plain',
     size: opts.plaintext.length,
-    checksum: plaintextHash,
+    checksum: opts.checksum ?? plaintextHash,
     chunks: [
       {
         index: 0,
@@ -666,8 +668,10 @@ describe('AttachmentSyncService', () => {
       })
 
       // #then only the caller that owns this transfer hears about it — a second
-      // concurrent download can no longer clobber or silence this one
-      expect(perCall).toEqual(['att-dir'])
+      // concurrent download can no longer clobber or silence this one. Both the
+      // chunk progress and the terminal event go to the per-call callback.
+      expect(new Set(perCall)).toEqual(new Set(['att-dir']))
+      expect(perCall.length).toBeGreaterThan(0)
       expect(shared).toEqual([])
     })
   })
@@ -1129,6 +1133,211 @@ describe('AttachmentSyncService', () => {
       releaseSecond.resolve()
       await live
       expect(service.getDownloadProgress('att-shared')).toBeNull()
+    })
+  })
+})
+
+describe('terminal transfer phases', () => {
+  const uploadResponses = (
+    sessionId: string
+  ): Map<string, { status: number; body?: unknown; binary?: Uint8Array }> => {
+    const responses = new Map<string, { status: number; body?: unknown; binary?: Uint8Array }>()
+    responses.set('POST /attachments/upload/initiate', {
+      status: 200,
+      body: { sessionId, expiresAt: Date.now() + 3600000 }
+    })
+    responses.set(`GET /attachments/upload/${sessionId}`, {
+      status: 200,
+      body: {
+        sessionId,
+        attachmentId: '',
+        totalSize: 0,
+        chunkCount: 1,
+        uploadedChunks: [],
+        expiresAt: 0
+      }
+    })
+    responses.set(`PUT /attachments/upload/${sessionId}/chunk/`, {
+      status: 200,
+      body: { success: true, uploadedChunks: 1 }
+    })
+    responses.set(`POST /attachments/upload/${sessionId}/complete`, {
+      status: 200,
+      body: { success: true }
+    })
+    return responses
+  }
+
+  describe('#given an upload that reported progress #when it finishes', () => {
+    it('#then the last event is a completed phase for the same attachmentId', async () => {
+      const testFile = path.join(tmpDir, 'terminal-ok.bin')
+      await writeFile(testFile, Buffer.alloc(1024, 'A'))
+
+      const service = new AttachmentSyncService(
+        createTestDeps(createMockFetch(uploadResponses('session-ok')))
+      )
+      const events: TransferProgress[] = []
+      service.setProgressCallback((p) => events.push({ ...p }))
+
+      const result = await service.uploadAttachment('note-1', testFile)
+
+      expect(events.at(-1)).toEqual({
+        attachmentId: result.attachmentId,
+        phase: 'completed',
+        chunksCompleted: 1,
+        totalChunks: 1,
+        bytesTransferred: 1024,
+        totalBytes: 1024
+      })
+    })
+
+    it('#then a throw after the first progress event still ends in a failed phase', async () => {
+      const testFile = path.join(tmpDir, 'terminal-fail.bin')
+      await writeFile(testFile, Buffer.alloc(1024, 'B'))
+
+      // The hashing/encrypting pass has already reported progress by the time
+      // the session is initiated, so this is exactly the transfer that used to
+      // strand its entry in the renderer.
+      const responses = uploadResponses('session-fail')
+      responses.set('POST /attachments/upload/initiate', { status: 500, body: { error: 'boom' } })
+
+      const service = new AttachmentSyncService(createTestDeps(createMockFetch(responses)))
+      const events: TransferProgress[] = []
+      service.setProgressCallback((p) => events.push({ ...p }))
+
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
+        'Failed to initiate upload'
+      )
+
+      expect(events.at(-1)?.phase).toBe('failed')
+      expect(events.at(-1)?.attachmentId).toBe(events[0].attachmentId)
+      expect(events.filter((e) => e.phase === 'failed')).toHaveLength(1)
+    })
+
+    it('#then a chunk rejection also ends in a failed phase', async () => {
+      const testFile = path.join(tmpDir, 'terminal-chunk-fail.bin')
+      await writeFile(testFile, Buffer.alloc(1024, 'C'))
+
+      const responses = uploadResponses('session-chunk')
+      responses.set('PUT /attachments/upload/session-chunk/chunk/', {
+        status: 500,
+        body: { error: 'boom' }
+      })
+
+      const service = new AttachmentSyncService(createTestDeps(createMockFetch(responses)))
+      const events: TransferProgress[] = []
+      service.setProgressCallback((p) => events.push({ ...p }))
+
+      await expect(service.uploadAttachment('note-1', testFile)).rejects.toThrow(
+        'Failed to upload chunk'
+      )
+
+      expect(events.at(-1)?.phase).toBe('failed')
+    })
+  })
+
+  describe('#given an upload that dies before any progress #when it throws', () => {
+    it('#then no terminal event is emitted', async () => {
+      const service = new AttachmentSyncService(createTestDeps(createMockFetch(new Map())))
+      const events: TransferProgress[] = []
+      service.setProgressCallback((p) => events.push({ ...p }))
+
+      await expect(
+        service.uploadAttachment('note-1', path.join(tmpDir, 'never-existed.bin'))
+      ).rejects.toThrow()
+
+      // Nothing was ever reported, so there is no renderer entry to terminate —
+      // a terminal event here would invent an overlay that never existed.
+      expect(events).toEqual([])
+    })
+  })
+
+  describe('#given a download that reported progress #when it fails', () => {
+    it('#then the last event is a failed phase', async () => {
+      const vaultKey = generateFileKey()
+      const signingKeypair = sodium.crypto_sign_keypair()
+      // Chunk hashes still match, so the chunk decrypts and reports progress;
+      // the whole-file checksum then fails, after the renderer has an entry.
+      const { encManifest, encryptedChunk } = buildSignedManifest({
+        attachmentId: 'att-terminal-fail',
+        filename: 'terminal.txt',
+        plaintext: Buffer.alloc(256, 'T'),
+        vaultKey,
+        signingKeypair,
+        checksum: 'f'.repeat(64)
+      })
+
+      const fetchFn = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        if (urlStr.includes('/att-terminal-fail/manifest')) {
+          return new Response(JSON.stringify(encManifest), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (urlStr.includes('/chunks/')) {
+          return new Response(encryptedChunk, {
+            status: 200,
+            headers: { 'Content-Type': 'application/octet-stream' }
+          })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const service = new AttachmentSyncService(
+        createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+      )
+      const events: TransferProgress[] = []
+
+      await expect(
+        service.downloadAttachment('att-terminal-fail', path.join(tmpDir, 'terminal.txt'), {
+          onProgress: (p) => events.push({ ...p })
+        })
+      ).rejects.toThrow('File integrity failure')
+
+      expect(events.map((e) => e.phase)).toEqual(['decrypting', 'failed'])
+    })
+
+    it('#then a successful download ends in a completed phase', async () => {
+      const vaultKey = generateFileKey()
+      const signingKeypair = sodium.crypto_sign_keypair()
+      const { encManifest, encryptedChunk } = buildSignedManifest({
+        attachmentId: 'att-terminal-ok',
+        filename: 'terminal-ok.txt',
+        plaintext: Buffer.alloc(256, 'K'),
+        vaultKey,
+        signingKeypair
+      })
+
+      const fetchFn = vi.fn(async (url: string | URL | Request) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+        if (urlStr.includes('/att-terminal-ok/manifest')) {
+          return new Response(JSON.stringify(encManifest), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
+        if (urlStr.includes('/chunks/')) {
+          return new Response(encryptedChunk, {
+            status: 200,
+            headers: { 'Content-Type': 'application/octet-stream' }
+          })
+        }
+        return new Response(null, { status: 404 })
+      })
+
+      const service = new AttachmentSyncService(
+        createDownloadDeps(fetchFn, vaultKey, signingKeypair.publicKey)
+      )
+      const events: TransferProgress[] = []
+
+      await service.downloadAttachment(
+        'att-terminal-ok',
+        path.join(tmpDir, 'terminal-ok-out.txt'),
+        { onProgress: (p) => events.push({ ...p }) }
+      )
+
+      expect(events.map((e) => e.phase)).toEqual(['decrypting', 'completed'])
     })
   })
 })
