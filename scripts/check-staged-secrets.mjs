@@ -18,8 +18,23 @@ const testPathPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 
 const markdownPathPattern = /\.md$/i
 
-const secretAssignmentPattern =
-  /^\s*(?:export\s+)?([A-Z0-9_]*(?:SECRET|TOKEN|PRIVATE_KEY|API_KEY|PASSWORD|HMAC_KEY|CSC_LINK|KEY_PASSWORD)[A-Z0-9_]*)\s*[:=]\s*["']?([^"'\s#][^#\n]*)/i
+const secretKeywords = [
+  'SECRET',
+  'TOKEN',
+  'PRIVATE_KEY',
+  'API_KEY',
+  'PASSWORD',
+  'HMAC_KEY',
+  'CSC_LINK',
+  'KEY_PASSWORD'
+]
+
+const secretAssignmentPattern = new RegExp(
+  `^\\s*(?:export\\s+)?([A-Z0-9_]*(?:${secretKeywords.join('|')})[A-Z0-9_]*)\\s*[:=]\\s*["']?([^"'\\s#][^#\\n]*)`,
+  'i'
+)
+
+const secretKeywordWordPattern = new RegExp(`(?:^|_)(?:${secretKeywords.join('|')})(?:_|$)`)
 
 const tokenPatterns = [
   {
@@ -134,6 +149,19 @@ function isCodeDeclarationValue(filePath, value) {
   )
 }
 
+function isSecretKeywordKey(key) {
+  // Only treat the key as credential-shaped when a sensitive keyword stands as
+  // its own word (`ACCESS_TOKEN`, `refreshToken`, `token`). Identifiers that
+  // merely contain one inside a longer word are ordinary SQL or config syntax
+  // — fts5's `tokenize='porter unicode61'` is not a leaked token.
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .toUpperCase()
+
+  return secretKeywordWordPattern.test(words)
+}
+
 function isPlaceholderValue(value) {
   const normalized = normalizeValue(value).toLowerCase()
 
@@ -212,6 +240,7 @@ export function scanTextForSecrets(filePath, text) {
 
     if (
       tokenLines.has(index + 1) ||
+      !isSecretKeywordKey(key) ||
       key.toUpperCase().includes('PUBLIC_KEY') ||
       isCodeDeclarationValue(filePath, value) ||
       isPlaceholderValue(value)

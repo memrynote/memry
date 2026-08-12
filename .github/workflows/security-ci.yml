@@ -45,6 +45,9 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      - name: Test secret scanner rules
+        run: node --test scripts/check-staged-secrets.test.mjs
+
       - name: Scan changed files for secrets
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
