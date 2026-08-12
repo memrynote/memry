@@ -1,16 +1,36 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
+import { tasks } from '@memry/db-schema/schema/tasks'
+import { projects } from '@memry/db-schema/schema/projects'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
+
+const logMocks = vi.hoisted(() => ({
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn()
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    debug: (...args: unknown[]) => logMocks.debug(...args),
+    info: (...args: unknown[]) => logMocks.info(...args),
+    warn: (...args: unknown[]) => logMocks.warn(...args),
+    error: (...args: unknown[]) => logMocks.error(...args)
+  })
+}))
+
 import {
   OFFLINE_DEVICE_KEY,
   incrementBookmarkClockOffline,
   incrementNoteClockOffline,
   incrementReminderClockOffline,
+  incrementTaskClocksOffline,
   incrementTemplateClockOffline
 } from './offline-clock'
 
@@ -38,10 +58,59 @@ describe('offline clock helpers', () => {
 
   beforeEach(() => {
     testDb = createTestDataDb()
+    logMocks.debug.mockClear()
+    logMocks.info.mockClear()
+    logMocks.warn.mockClear()
+    logMocks.error.mockClear()
   })
 
   afterEach(() => {
     testDb.close()
+  })
+
+  // Tasks are the highest-volume offline path: this runs once per field change
+  // for every task edited while the sync runtime is down, and every argument is
+  // built eagerly regardless of the transport's level. So the payload itself,
+  // not just the level, is what has to stay small.
+  describe('incrementTaskClocksOffline', () => {
+    const insertTask = (values: Record<string, unknown>): void => {
+      testDb.db.insert(projects).values({ id: 'p1', name: 'P1', color: '#000', position: 0 }).run()
+      testDb.db
+        .insert(tasks)
+        .values({ id: 'task-1', projectId: 'p1', title: 'A task', ...values } as never)
+        .run()
+    }
+
+    it('#given a field change while offline #then bumps the doc clock and the changed field clock', () => {
+      insertTask({ clock: { [OFFLINE_DEVICE_KEY]: 1 } })
+
+      incrementTaskClocksOffline(asClientDb(testDb.db), 'task-1', ['title'])
+
+      const row = testDb.db.select().from(tasks).where(eq(tasks.id, 'task-1')).get()
+      expect(row?.clock).toEqual({ [OFFLINE_DEVICE_KEY]: 2 })
+      expect(row?.fieldClocks?.title).toEqual({ [OFFLINE_DEVICE_KEY]: 2 })
+    })
+
+    it('#then logs at debug with ids only, never an info line carrying clock objects', () => {
+      insertTask({ clock: { [OFFLINE_DEVICE_KEY]: 1 } })
+
+      incrementTaskClocksOffline(asClientDb(testDb.db), 'task-1', ['title', 'priority'])
+
+      expect(logMocks.info).not.toHaveBeenCalled()
+      expect(logMocks.debug).toHaveBeenCalledTimes(1)
+      expect(logMocks.debug).toHaveBeenCalledWith('Incremented offline task clocks', {
+        taskId: 'task-1',
+        changedFields: ['title', 'priority']
+      })
+    })
+
+    it('#given the task does not exist #then no-ops without logging', () => {
+      expect(() =>
+        incrementTaskClocksOffline(asClientDb(testDb.db), 'missing', ['title'])
+      ).not.toThrow()
+      expect(logMocks.debug).not.toHaveBeenCalled()
+      expect(logMocks.info).not.toHaveBeenCalled()
+    })
   })
 
   describe('incrementTemplateClockOffline', () => {
