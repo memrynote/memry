@@ -12,25 +12,17 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 
 describe('TypeSelector', () => {
-  it('enables all types for text items', () => {
-    renderWithProviders(<TypeSelector value="note" onChange={vi.fn()} noteOnly={false} />)
+  it('enables every type', () => {
+    renderWithProviders(<TypeSelector value="note" onChange={vi.fn()} />)
     expect(screen.getByRole('radio', { name: /note/i })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /task/i })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /event/i })).toBeEnabled()
     expect(screen.getByRole('radio', { name: /reminder/i })).toBeEnabled()
   })
 
-  it('disables non-note types for note-only items', () => {
-    renderWithProviders(<TypeSelector value="note" onChange={vi.fn()} noteOnly />)
-    expect(screen.getByRole('radio', { name: /note/i })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: /task/i })).toBeDisabled()
-    expect(screen.getByRole('radio', { name: /event/i })).toBeDisabled()
-    expect(screen.getByRole('radio', { name: /reminder/i })).toBeDisabled()
-  })
-
   it('reports the selected type and fires onChange on pick', () => {
     const onChange = vi.fn()
-    renderWithProviders(<TypeSelector value="task" onChange={onChange} noteOnly={false} />)
+    renderWithProviders(<TypeSelector value="task" onChange={onChange} />)
     expect(screen.getByRole('radio', { name: /task/i })).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(screen.getByRole('radio', { name: /event/i }))

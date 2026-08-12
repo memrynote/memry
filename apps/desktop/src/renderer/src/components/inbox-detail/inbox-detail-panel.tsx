@@ -510,13 +510,14 @@ export const InboxDetailPanel = ({
 
                   {/* Type selector + type-driven body — fills remaining space */}
                   <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="px-5 pt-4">
-                      <TypeSelector
-                        value={selectedType}
-                        onChange={setSelectedType}
-                        noteOnly={NOTE_ONLY_TYPES.includes(item.type)}
-                      />
-                    </div>
+                    {/* Note-only items (image/pdf/video/clip) have a single
+                        outcome, so the selector is hidden rather than shown
+                        with three dead options. */}
+                    {!NOTE_ONLY_TYPES.includes(item.type) && (
+                      <div className="px-5 pt-4">
+                        <TypeSelector value={selectedType} onChange={setSelectedType} />
+                      </div>
+                    )}
                     {selectedType === 'note' ? (
                       <FilingSection
                         item={item}

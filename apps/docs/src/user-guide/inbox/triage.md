@@ -89,7 +89,7 @@ Opening an item shows a **Convert** row beneath the filing section with four tar
 - **Event** — start time (required), end time, all-day, and location.
 - **Reminder** — the time to be reminded (must be in the future).
 
-File-based items (images, PDFs, videos, and clips) can only become a **Note**, so the other three are disabled for them. Voice memos convert using their transcription, so they keep the full set of options.
+File-based items (images, PDFs, videos, and clips) can only become a **Note**, so the selector is hidden for them entirely and the panel goes straight to filing. Voice memos convert using their transcription, so they keep the full set of options.
 
 ## Speed-Run Mode
 
