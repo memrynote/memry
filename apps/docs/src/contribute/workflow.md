@@ -61,7 +61,7 @@ pnpm docs:build
 
 `docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook only runs the docs impact check; when docs are missing, it stops the push and points you to the manual updater. Set `MEMRY_DOCS_AI_AUTO=1` only when you want the hook to run the updater for that push. Lint, typecheck, and test suites run in GitHub Actions.
 
-If a change truly has no docs impact, use the `docs:not-needed` PR label for CI and `MEMRY_DOCS_IMPACT_SKIP=1 git push` for the local hook.
+If a change truly has no docs impact, set `MEMRY_DOCS_IMPACT_SKIP=1` — `MEMRY_DOCS_IMPACT_SKIP=1 git push` for the hook, or `MEMRY_DOCS_IMPACT_SKIP=1 pnpm docs:impact --strict` for a manual run. The gate then reports the waived files and passes; say why the change needs no docs in the PR. There is no CI-side docs gate and no `docs:not-needed` label — the check is local only.
 
 ## Pre-Land Checks
 
