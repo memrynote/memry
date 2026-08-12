@@ -41,28 +41,40 @@ interface UndoEntry {
 let globalUndoStack: UndoEntry[] = []
 const globalUndoListeners: Set<() => void> = new Set()
 
-// Clean up expired entries periodically
-let cleanupInterval: ReturnType<typeof setInterval> | null = null
+/**
+ * One-shot timer armed for the exact instant the oldest live entry expires.
+ * A 1 Hz poll left the snapshot advertising a dead entry for up to a second
+ * after it expired; this fires on the boundary instead, and wakes once per
+ * entry rather than ten times over its lifetime.
+ */
+let expiryTimer: ReturnType<typeof setTimeout> | null = null
 
-function startCleanupInterval() {
-  if (cleanupInterval) return
-  cleanupInterval = setInterval(() => {
+function cancelExpirySweep() {
+  if (expiryTimer) {
+    clearTimeout(expiryTimer)
+    expiryTimer = null
+  }
+}
+
+/**
+ * (Re)arm the expiry timer for the oldest entry — entries are pushed in
+ * timestamp order, so index 0 always dies first. Leaves the timer cancelled
+ * when the stack is empty. Mutates module state, so never call during render.
+ */
+function scheduleExpirySweep() {
+  cancelExpirySweep()
+  const oldest = globalUndoStack[0]
+  if (!oldest) return
+  const delay = Math.max(0, oldest.timestamp + UNDO_EXPIRY_MS - Date.now())
+  expiryTimer = setTimeout(() => {
+    expiryTimer = null
     const pruned = pruneExpiredEntries()
-    if (globalUndoStack.length === 0) {
-      stopCleanupInterval()
-    }
+    scheduleExpirySweep()
     if (pruned) {
       notifyListeners()
     }
-  }, 1000)
-  cleanupInterval.unref?.()
-}
-
-function stopCleanupInterval() {
-  if (cleanupInterval) {
-    clearInterval(cleanupInterval)
-    cleanupInterval = null
-  }
+  }, delay)
+  expiryTimer.unref?.()
 }
 
 /**
@@ -101,7 +113,7 @@ function subscribeToUndoStack(listener: () => void): () => void {
     globalUndoListeners.delete(listener)
     if (globalUndoListeners.size === 0) {
       globalUndoStack = []
-      stopCleanupInterval()
+      cancelExpirySweep()
       refreshSnapshot()
     }
   }
@@ -114,17 +126,14 @@ function notifyListeners() {
 
 /**
  * Drop entries older than `UNDO_EXPIRY_MS`. Returns whether anything was removed.
- * Callers are responsible for notifying listeners — never call this during render.
+ * Callers are responsible for rescheduling the sweep and notifying listeners —
+ * never call this during render.
  */
 function pruneExpiredEntries(): boolean {
   const now = Date.now()
   const before = globalUndoStack.length
   globalUndoStack = globalUndoStack.filter((entry) => now - entry.timestamp < UNDO_EXPIRY_MS)
-  if (globalUndoStack.length === before) return false
-  if (globalUndoStack.length === 0) {
-    stopCleanupInterval()
-  }
-  return true
+  return globalUndoStack.length !== before
 }
 
 function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
@@ -140,7 +149,7 @@ function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
     globalUndoStack.shift()
   }
 
-  startCleanupInterval()
+  scheduleExpirySweep()
   notifyListeners()
 
   return newEntry.id
@@ -148,14 +157,12 @@ function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
 
 /**
  * Take the newest live entry off the stack. Prunes first so an expired entry can
- * never be handed back between 1 s sweeps, whichever accessor the caller used.
+ * never be handed back, whichever accessor the caller used.
  */
 function popUndoEntry(): UndoEntry | undefined {
   pruneExpiredEntries()
   const entry = globalUndoStack.pop()
-  if (globalUndoStack.length === 0) {
-    stopCleanupInterval()
-  }
+  scheduleExpirySweep()
   notifyListeners()
   return entry
 }
@@ -165,9 +172,7 @@ function removeUndoEntryById(id: string): boolean {
   if (idx === -1) return false
 
   globalUndoStack.splice(idx, 1)
-  if (globalUndoStack.length === 0) {
-    stopCleanupInterval()
-  }
+  scheduleExpirySweep()
   notifyListeners()
   return true
 }
@@ -175,6 +180,7 @@ function removeUndoEntryById(id: string): boolean {
 /** Read the newest live entry. Mutates the stack, so event handlers only. */
 function getLastUndoEntry(): UndoEntry | undefined {
   if (pruneExpiredEntries()) {
+    scheduleExpirySweep()
     notifyListeners()
   }
   return globalUndoStack[globalUndoStack.length - 1]
