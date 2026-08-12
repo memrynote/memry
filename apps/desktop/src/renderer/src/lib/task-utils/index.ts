@@ -69,8 +69,7 @@ export {
   type DayHeaderText,
   getDayHeaderText,
   getCompletedTasks,
-  getCompletedTodayTasks,
-  getArchivedTasks
+  getCompletedTodayTasks
 } from './task-view-helpers'
 
 export {
