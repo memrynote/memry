@@ -148,6 +148,71 @@ export const TelemetryDimensionsSchema = z
     message: 'Telemetry events support at most one dimension'
   })
 
+/**
+ * The ONLY dimension keys allowed to leave the device.
+ *
+ * `SafeDimensionValueSchema` is a blocklist: it rejects emails, urls, paths and
+ * over-long strings, but a short free-text string sails through it. A scraped
+ * `<title>` ("Divorce settlement calculator") is a legal safe-dimension value.
+ * That is how page-derived text reached telemetry (issue #1142): nothing
+ * downstream could tell a bounded enum from arbitrary content.
+ *
+ * So the key namespace is closed instead. Each entry below is a bounded enum,
+ * a version string, or a bucket label — never free text derived from user
+ * content, page content, or a filename. Adding a key here is the review gate:
+ * if the value cannot be enumerated ahead of time, it does not belong in a
+ * dimension. Send a metric (a count, a duration, a length bucket) instead.
+ */
+export const TELEMETRY_DIMENSION_KEYS = [
+  'capture_type',
+  'changed_fields',
+  'decision',
+  'filed_action',
+  'format',
+  'from_version',
+  'itemType',
+  'log_action',
+  'prior_app_version',
+  'result_bucket',
+  'setting',
+  'target',
+  'target_app_version',
+  'tool',
+  'transport',
+  'value'
+] as const
+
+export type TelemetryDimensionKey = (typeof TELEMETRY_DIMENSION_KEYS)[number]
+
+const ALLOWED_DIMENSION_KEYS: ReadonlySet<string> = new Set(TELEMETRY_DIMENSION_KEYS)
+
+/**
+ * Reduce a caller-supplied dimensions bag to what is allowed to ship: at most
+ * one entry, whose key is in the allowlist above and whose value still passes
+ * the safe-value shape.
+ *
+ * Drops rather than rejects. Telemetry must never break a feature, and losing
+ * one dimension is always preferable to either shipping user content or
+ * discarding the whole event (a batch containing one bad event is rejected
+ * wholesale by the sync-server, which would cost every other event in it).
+ *
+ * Deliberately NOT folded into `TelemetryDimensionsSchema`: the sync-server
+ * validates `/telemetry/batch` with that schema, so narrowing it would make a
+ * newly deployed server 400 entire batches coming from already-shipped desktop
+ * builds. The allowlist is enforced on the client, where the data still is.
+ */
+export const sanitizeTelemetryDimensions = (
+  dimensions: Record<string, string> | undefined
+): Record<string, string> | undefined => {
+  if (!dimensions) return undefined
+  for (const [key, value] of Object.entries(dimensions)) {
+    if (!ALLOWED_DIMENSION_KEYS.has(key)) continue
+    if (!SafeDimensionValueSchema.safeParse(value).success) continue
+    return { [key]: value }
+  }
+  return undefined
+}
+
 export const TelemetryMetricsSchema = z.object({
   durationMs: z.number().finite().nonnegative().optional(),
   itemCount: z.number().finite().nonnegative().optional(),

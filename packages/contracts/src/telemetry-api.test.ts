@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  TELEMETRY_DIMENSION_KEYS,
   TelemetryBatchSchema,
+  TelemetryDimensionsSchema,
   TelemetryErrorDetailSchema,
   TelemetryEventNameSchema,
   TelemetryEventSchema,
@@ -9,6 +11,7 @@ import {
   buildErrorDetail,
   normalizeRejectionReason,
   normalizeWindowError,
+  sanitizeTelemetryDimensions,
   toErrorCode
 } from './telemetry-api'
 
@@ -979,5 +982,50 @@ describe('contract widening for PostHog migration', () => {
   it('rejects an over-long error message', () => {
     const parsed = TelemetryErrorDetailSchema.safeParse({ message: 'x'.repeat(513) })
     expect(parsed.success).toBe(false)
+  })
+})
+
+describe('sanitizeTelemetryDimensions', () => {
+  it('keeps an allowlisted key whose value is a bounded enum', () => {
+    expect(sanitizeTelemetryDimensions({ capture_type: 'clipper' })).toEqual({
+      capture_type: 'clipper'
+    })
+  })
+
+  it('drops scraped page metadata even though it clears the safe-value shape', () => {
+    // Every value here is short, has no @, no :// and no slash, so the value
+    // blocklist alone would have shipped all of it (#1142).
+    const scraped = {
+      page_title: 'Divorce settlement calculator - LawFirm',
+      description: 'What you are owed after separation',
+      og_site_name: 'Sensitive Health Forum'
+    }
+    for (const [key, value] of Object.entries(scraped)) {
+      expect(sanitizeTelemetryDimensions({ [key]: value })).toBeUndefined()
+    }
+  })
+
+  it('drops an allowlisted key whose value breaks the safe-value shape', () => {
+    expect(sanitizeTelemetryDimensions({ target: 'https://example.com/x' })).toBeUndefined()
+    expect(sanitizeTelemetryDimensions({ setting: 'a'.repeat(65) })).toBeUndefined()
+    expect(
+      sanitizeTelemetryDimensions({ value: '550e8400-e29b-41d4-a716-446655440000' })
+    ).toBeUndefined()
+  })
+
+  it('keeps at most one dimension, skipping past disallowed keys', () => {
+    expect(
+      sanitizeTelemetryDimensions({ page_title: 'Anything', transport: 'record', tool: 'read' })
+    ).toEqual({ transport: 'record' })
+  })
+
+  it('passes undefined through untouched so the caller can omit the field', () => {
+    expect(sanitizeTelemetryDimensions(undefined)).toBeUndefined()
+  })
+
+  it('only allowlists keys the schema itself would accept', () => {
+    for (const key of TELEMETRY_DIMENSION_KEYS) {
+      expect(TelemetryDimensionsSchema.safeParse({ [key]: 'ok' }).success).toBe(true)
+    }
   })
 })
