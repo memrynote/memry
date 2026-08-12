@@ -85,6 +85,16 @@ row settles to a step count, and selecting it expands the individual tool calls 
 and results. A tool that needs your approval keeps the row open, because the Allow and Deny buttons
 live inside it.
 
+Tool activity is saved with the conversation, encrypted in the vault database like the rest of the
+transcript. Reopening a conversation later — after a restart, after a sync, or after memrynote has
+dropped an older transcript from memory — still shows which tools ran, with what parameters, and
+whether each one succeeded, failed, or was denied. The saved record is deliberately smaller than the
+live one: it keeps the tool name, its identifying parameters (long values are shortened), and the
+outcome, but not the tool's returned data. Only tools that finished are recorded, so a turn stopped
+mid-tool leaves no half-finished row behind. Conversations from before this was added simply show no
+tool rows; nothing else about them changes. Saved tool rows are a record for you, not context for the
+assistant — they are never replayed into a later prompt.
+
 When a tool result includes a real memrynote reference, Agent Chat renders that item as a clickable
 mention instead of plain text. Lists link each returned note, task, inbox item, journal entry,
 calendar event, project, or folder that has a navigable reference. Create and update confirmations
