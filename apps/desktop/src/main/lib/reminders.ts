@@ -810,7 +810,11 @@ export function bulkDismissReminders(reminderIds: string[]): number {
   let dismissedCount = 0
 
   for (const id of reminderIds) {
-    const result = db
+    // RETURNING hands back the updated row in the same statement, so the
+    // DISMISSED event carries a real reminder without a second SELECT per id.
+    // A row comes back only when the id matched, which is the old
+    // `result.changes > 0` test.
+    const row = db
       .update(reminders)
       .set({
         status: reminderStatus.DISMISSED,
@@ -818,15 +822,20 @@ export function bulkDismissReminders(reminderIds: string[]): number {
         modifiedAt: timestamp
       })
       .where(eq(reminders.id, id))
-      .run()
+      .returning()
+      .get()
 
-    if (result.changes > 0) {
+    if (row) {
       dismissedCount++
+      // Same event as the single-reminder dismiss, one per dismissed id.
+      // Without it no reminder view invalidates: the target-scoped hooks match
+      // on `reminder.targetType`/`targetId`, so the row itself has to travel.
+      emitEvent(ReminderChannels.events.DISMISSED, { reminder: toReminder(row) })
       enqueueLocalSyncUpdate('reminder', id)
       syncReminderCalendarState(id)
       // Same contract as the single-reminder dismiss: only ids the user actually
-      // dismissed (changes > 0) lose their banner, so an unrelated reminder that
-      // is not part of this batch is left alone.
+      // dismissed lose their banner, so an unrelated reminder that is not part
+      // of this batch is left alone.
       removeDeliveredNotification(id)
     }
   }
