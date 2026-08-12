@@ -80,6 +80,10 @@ ${fileList}
 `
 }
 
+export function isStrictSkipEnabled(env = process.env) {
+  return env.MEMRY_DOCS_IMPACT_SKIP === '1'
+}
+
 export function resolveBaseRef() {
   const upstreamRef = runGitOrNull(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
   if (upstreamRef) {
@@ -199,8 +203,17 @@ function runCli() {
   }
 
   if (options.strict && result.status === 'missing-docs') {
+    if (isStrictSkipEnabled()) {
+      console.error(
+        `\ndocs impact: strict gate bypassed via MEMRY_DOCS_IMPACT_SKIP=1. Waived docs-relevant files:\n${result.relevantFiles
+          .map((filePath) => `  ${filePath}`)
+          .join('\n')}\nExplain in the PR why this change needs no docs.\n`
+      )
+      return
+    }
+
     console.error(
-      '\ndocs impact: desktop/sync-server changes need docs review. Run `pnpm docs:ai-update` or update apps/docs/src, then commit the docs changes.\n'
+      '\ndocs impact: desktop/sync-server changes need docs review. Run `pnpm docs:ai-update` or update apps/docs/src, then commit the docs changes.\nIf this change genuinely has no user-facing docs impact, re-run with MEMRY_DOCS_IMPACT_SKIP=1 and say why in the PR.\n'
     )
     process.exit(1)
   }
