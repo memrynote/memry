@@ -346,11 +346,11 @@ bug trips `MaxListenersExceededWarning` instead of hiding behind a generous budg
 counts, so raising either needs a test change and an explanation.
 
 Every subscriber is detached on teardown: the engine removes its own in `stop()`,
-and the runtime keeps a reference to its `status-changed` handler so
-`stopSyncRuntime()` can remove it. That last detach matters because the attachment
-`UploadQueue` is a module singleton that keeps holding the `NetworkMonitor` past a
-runtime stop — an attached handler would keep the dead CRDT queue and provider
-reachable for the rest of the session.
+the runtime keeps a reference to its `status-changed` handler so
+`stopSyncRuntime()` can remove it, and the attachment `UploadQueue` is disposed
+with the runtime that built it (see "Upload queue lifetime" under Note
+Attachments). A subscriber left attached does more than leak: it keeps the dead
+CRDT queue and provider reachable for the rest of the session.
 
 ## Manifest Integrity
 
@@ -382,6 +382,23 @@ across devices:
   path that is outside this device's allowed roots by remapping its
   `attachments/<noteId>/<file>` tail onto the local vault (traversal-guarded),
   so notes written on another OS render without rewriting note content.
+- **Upload queue lifetime** — the in-memory `UploadQueue` is a module singleton
+  owned by the IPC layer, but its lifetime is scoped to the sync _runtime_. It
+  binds `getNetworkMonitor()` once, at construction, and only unsubscribes in
+  `dispose()`, so a queue reused across a runtime restart (vault switch,
+  sign-out/in) would stay attached to the previous monitor. That monitor is
+  stopped, which clears its poll timer: its `online` flag is frozen and it can
+  never emit `status-changed` again, so the reconnect wake-up that clears the
+  network backoff would be dead for the rest of the session — and a frozen
+  offline flag makes every retry burn the full five-minute offline wait before
+  failing. `resetSyncServiceSingletons()` therefore disposes the queue and the
+  attachment service on both teardown paths (`stopSyncRuntime()` and the
+  startup-failure cleanup), so the next runtime builds them against the live
+  monitor and vault A's queue can never serve vault B. The IPC layer registers
+  its disposer through `attachment-outbox`, which is already the seam between
+  the sync runtime and this singleton, so no import cycle is introduced.
+  Uploads pending at dispose are rejected rather than carried over — the outbox
+  below is what makes that safe.
 - **Durable upload outbox** — the upload intent is persisted in the data DB
   (`attachment_upload_queue`, migration 0039) before the transfer starts and
   cleared only after the server accepts the file. Failed or quit-interrupted
