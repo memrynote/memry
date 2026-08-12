@@ -118,6 +118,20 @@ broken the item re-quarantines within a few pulls, and if it was repaired server
 again without an emergency wipe. The manifest-check throttle (30 minutes) persists in sync state, so
 engine restarts and vault switches cannot re-arm an immediate check.
 
+Both of those in-memory ledgers are bounded, because a server-side incident can brand a very large
+number of items in a single session. The corrupt-item tracker holds at most 5,000 cooldown entries
+and sheds the coldest ones first; the coldest entry is also the one closest to its one-hour cooldown
+lapsing, so the most an eviction can cost is one extra re-fetch for an item that was about to become
+eligible anyway. Expired entries are also swept at the end of every pull, not only when a later pull
+happens to touch the same item.
+
+The quarantine ledger applies the same 7-day expiry to live entries that it already applied to
+persisted ones, so a long-running session behaves like a restart. Its 10,000-entry cap is
+deliberately soft: only entries that have not yet reached the permanent threshold can be evicted,
+because those are attempt counters and a still-broken item simply re-quarantines. Permanent
+quarantines are the record that keeps a failed-signature item out of the vault and are never dropped
+to satisfy the cap.
+
 ### Push acknowledgements and in-flight mutations
 
 The push queue coalesces: a new mutation for an item that already has an unattempted row overwrites
@@ -664,6 +678,12 @@ the session its worker — so a successful batch resets the count and only conse
 Waiting longer is expensive, because the penalty is paid in whole minutes. The thread is left alive
 rather than terminated, and restarting the sync runtime gives the bridge a fresh worker and a clean
 count.
+
+In-flight requests are bounded too. Each one carries the batch's items and key material until it is
+answered, so the bridge refuses to hold more than 1,000 at once; past that point requests are
+rejected at the door and fall to the main thread, which is the same degradation a wedged worker
+already triggers. A sweep runs while requests are outstanding and collects any request that outlived
+its own timeout, and it stops itself as soon as nothing is pending, so an idle bridge costs nothing.
 
 Shutting the bridge down asks the worker to exit and waits three seconds before terminating it. A
 worker that misses that window is fully detached first, so the exit that terminating eventually
