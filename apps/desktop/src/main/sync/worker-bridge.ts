@@ -102,10 +102,33 @@ export class SyncWorkerBridge {
     }
   }
 
-  private setupMessageHandler(): void {
-    if (!this.worker) return
+  /**
+   * True when `worker` is no longer the thread this bridge routes to.
+   *
+   * The handlers below are permanent, and stop()'s 3 s timeout walks away from
+   * a thread that is still alive: terminate() lands later, and by then a
+   * start() may have put a *different* thread in `this.worker`. Anything the
+   * abandoned thread says after that must not touch live state — its
+   * unconditional `this.worker = null` alone was enough to wedge every later
+   * batch on `Worker not started`.
+   *
+   * Detaching on the way out is what stops the abandoned thread talking to the
+   * bridge at all, `message` and `error` included, not just the `exit` that
+   * usually gets there first.
+   */
+  private isAbandoned(worker: Worker): boolean {
+    if (worker === this.worker) return false
+    worker.removeAllListeners()
+    return true
+  }
 
-    this.worker.on('message', (msg: WorkerToMainMessage) => {
+  private setupMessageHandler(): void {
+    const worker = this.worker
+    if (!worker) return
+
+    worker.on('message', (msg: WorkerToMainMessage) => {
+      if (this.isAbandoned(worker)) return
+
       // `ready` is consumed by start(); `shutdown-ack` is the expected reply to
       // stop() and carries no requestId. Neither is a dropped reply.
       if (msg.type === 'ready' || msg.type === 'shutdown-ack') return
@@ -133,12 +156,16 @@ export class SyncWorkerBridge {
       })
     })
 
-    this.worker.on('error', (err: Error) => {
+    worker.on('error', (err: Error) => {
+      if (this.isAbandoned(worker)) return
+
       log.error('Sync worker error', err)
       this.rejectAll(err)
     })
 
-    this.worker.on('exit', (code) => {
+    worker.on('exit', (code) => {
+      if (this.isAbandoned(worker)) return
+
       if (code !== 0) {
         log.error('Sync worker exited unexpectedly', { code })
         log.warn('Crypto operations will fall back to main thread')

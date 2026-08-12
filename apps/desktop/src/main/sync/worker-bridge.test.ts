@@ -274,6 +274,115 @@ describe('SyncWorkerBridge', () => {
     })
   })
 
+  describe('#given a timed-out stop() and a restart #when the abandoned thread speaks', () => {
+    const startReady = async (): Promise<MockWorker> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+      return mockWorkerInstance
+    }
+
+    /**
+     * stop() that hits the 3s timeout — terminate() is fired but the thread is
+     * abandoned without waiting for its exit — followed by the documented
+     * in-session recovery, start() on a fresh thread.
+     */
+    const abandonThenRestart = async (): Promise<[MockWorker, MockWorker]> => {
+      const abandoned = await startReady()
+      const stopPromise = bridge.stop()
+      vi.advanceTimersByTime(3_001)
+      await stopPromise
+
+      const live = await startReady()
+      expect(live).not.toBe(abandoned)
+      return [abandoned, live]
+    }
+
+    const inFlightEncrypt = (
+      live: MockWorker
+    ): { promise: Promise<unknown>; requestId: string } => {
+      const promise = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const posted = live.postMessage.mock.calls
+        .filter(([m]) => m.type === 'encrypt-batch')
+        .at(-1)?.[0]
+      // Never issued means the bridge refused the batch — the wedge this suite
+      // is about. Keep going so the assertion reports the rejection, not a
+      // TypeError on the missing message.
+      return { promise, requestId: posted?.requestId ?? 'never-issued' }
+    }
+
+    it('#then a batch submitted after its exit still reaches the live worker', async () => {
+      // #given
+      const [abandoned, live] = await abandonThenRestart()
+
+      // #when — terminate() lands and the abandoned thread finally exits, with
+      // the non-zero code terminate() produces
+      abandoned.simulateExit(1)
+
+      // #then — the bridge still owns the live thread, so a new batch goes to
+      // the worker instead of rejecting with 'Worker not started' and degrading
+      // the rest of the session to main-thread crypto
+      const { promise, requestId } = inFlightEncrypt(live)
+      live.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId,
+        results: [],
+        errors: []
+      })
+      await expect(promise).resolves.toEqual({ results: [], errors: [] })
+      expect(bridge.isRunning).toBe(true)
+    })
+
+    it('#then its message and error listeners are detached too, not just exit', async () => {
+      // #given
+      const [abandoned] = await abandonThenRestart()
+
+      // #when
+      abandoned.simulateExit(1)
+
+      // #then — nothing of the bridge is left on the thread it walked away from
+      expect(abandoned.listenerCount('message')).toBe(0)
+      expect(abandoned.listenerCount('error')).toBe(0)
+      expect(abandoned.listenerCount('exit')).toBe(0)
+    })
+
+    it('#then a late reply from it cannot answer the live worker request', async () => {
+      // #given
+      const [abandoned, live] = await abandonThenRestart()
+      const { promise, requestId } = inFlightEncrypt(live)
+
+      // #when — the abandoned thread replies against the live thread's request
+      abandoned.simulateMessage({ type: 'error', requestId, error: 'ghost batch' })
+
+      // #then — only the live worker's own reply settles it
+      live.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId,
+        results: [],
+        errors: []
+      })
+      await expect(promise).resolves.toEqual({ results: [], errors: [] })
+    })
+
+    it('#then a late error from it cannot reject the live worker request', async () => {
+      // #given
+      const [abandoned, live] = await abandonThenRestart()
+      const { promise, requestId } = inFlightEncrypt(live)
+
+      // #when — terminate() tears the abandoned thread down mid-flight
+      abandoned.simulateError(new Error('terminated mid-batch'))
+
+      // #then
+      live.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId,
+        results: [],
+        errors: []
+      })
+      await expect(promise).resolves.toEqual({ results: [], errors: [] })
+    })
+  })
+
   describe('#given running bridge #when encryptBatch called', () => {
     it('#then sends message and returns result', async () => {
       // #given
