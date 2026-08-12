@@ -3,10 +3,12 @@ import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import {
   deleteCriticMark,
+  normalizeCriticMarkupCommentFormatRanges,
   parseCriticMarkup,
   resolveCriticMark,
   serializeCriticMarkup,
   type CriticMarkupCommentAttachmentRef,
+  type CriticMarkupCommentFormatRange,
   type CriticMarkupCommentMentionRef,
   type CriticMarkupKind,
   type CriticMarkupMark
@@ -56,6 +58,7 @@ export interface SubmitCommentInput {
   body: string
   mentions: CriticMarkupCommentMentionRef[]
   attachments: CriticMarkupCommentAttachmentRef[]
+  formatRanges: CriticMarkupCommentFormatRange[]
 }
 
 export interface CriticMarkupReviewController {
@@ -259,6 +262,8 @@ export function useCriticMarkupReview({
 
       const id = createCriticMarkId('comment')
       const createdAt = Date.now()
+      const formatRanges =
+        normalizeCriticMarkupCommentFormatRanges(input.formatRanges, trimmedBody.length) ?? []
       const nextMarks = [
         ...marksRef.current,
         {
@@ -270,6 +275,7 @@ export function useCriticMarkupReview({
           createdAt,
           ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
           ...(input.attachments.length > 0 ? { attachments: input.attachments } : {}),
+          ...(formatRanges.length > 0 ? { formatRanges } : {}),
           start,
           end: start + draft.text.length
         }
@@ -295,14 +301,25 @@ export function useCriticMarkupReview({
       const existing = marksRef.current.find((mark) => mark.id === id && mark.kind === 'comment')
       if (!existing) return
 
+      const formatRanges =
+        normalizeCriticMarkupCommentFormatRanges(input.formatRanges, trimmedBody.length) ?? []
       const nextMarks = marksRef.current.map((mark) => {
         if (mark.id !== id) return mark
-        const { mentions: _mentions, attachments: _attachments, ...rest } = mark
+        const {
+          mentions: _mentions,
+          attachments: _attachments,
+          formatRanges: _formatRanges,
+          ...rest
+        } = mark
+        // Passed unconditionally: `buildCommentMetadata` only rewrites these keys
+        // when it receives arrays, so omitting an emptied one strands the stale
+        // `mentions=`/`attachments=`/`format=` in the file.
         return {
           ...rest,
           body: trimmedBody,
-          ...(input.mentions.length > 0 ? { mentions: input.mentions } : {}),
-          ...(input.attachments.length > 0 ? { attachments: input.attachments } : {})
+          mentions: input.mentions,
+          attachments: input.attachments,
+          formatRanges
         }
       })
       pushReviewUndoEntry(
