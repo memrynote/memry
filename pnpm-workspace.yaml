@@ -28,7 +28,7 @@ allowBuilds:
 overrides:
   tar: '>=7.5.21'
   rollup: '>=4.59.0'
-  hono: '>=4.12.27'
+  hono: '>=4.12.34'
   # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5'; 1.x has no patch.
   '@hono/node-server': '>=2.0.5 <3'
   esbuild: '>=0.28.1'
@@ -60,7 +60,7 @@ overrides:
   dompurify: '>=3.4.13'
   form-data: '>=4.0.6'
   fast-uri: '>=3.1.4 <4'
-  ip-address: '>=10.1.1'
+  ip-address: '>=10.3.1'
   smol-toml: '>=1.6.1'
   srvx: '>=0.11.13'
   tmp: '>=0.2.6'
@@ -86,7 +86,7 @@ overrides:
   'js-yaml@>=4.0.0 <4.3.0': '4.3.1'
   # nanoid 4.x has no patched release; the advisory's fix ships in 5.0.9.
   'nanoid@>=3.0.0 <3.3.8': '3.3.8'
-  'nanoid@>=4.0.0 <5.0.9': '5.0.9'
+  'nanoid@>=4.0.0 <5.0.9': '5.1.16'
   'uuid@>=8.0.0 <9.0.0': '11.1.1'
   'react-router@>=7.0.0 <7.18.0': '7.18.0'
 

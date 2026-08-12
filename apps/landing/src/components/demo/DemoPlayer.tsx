@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import { MockupFrame } from '@/components/shared/MockupFrame'
 import { ChapterRail, CHAPTERS } from '@/components/demo/ChapterRail'
 import { DemoScene } from '@/components/demo/DemoScene'

@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { Check, ShieldCheck, ExternalLink } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'

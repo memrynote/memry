@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Play } from 'lucide-react'
 import type { MouseEvent } from 'react'
 import { CLIPS, type SeekRequest } from './types'

@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'

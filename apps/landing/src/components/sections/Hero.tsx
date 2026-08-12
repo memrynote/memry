@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { Container } from '@/components/layout/Container'
 import { DownloadCTA } from '@/components/shared/DownloadCTA'
 

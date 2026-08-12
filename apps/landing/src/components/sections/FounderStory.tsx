@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 import { Link } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { GITHUB_URL, TWITTER_DEV_URL } from '@/lib/constants'

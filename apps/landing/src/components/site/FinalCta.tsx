@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router'
 import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'

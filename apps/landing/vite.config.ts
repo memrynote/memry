@@ -95,7 +95,7 @@ export default defineConfig(({ mode }) => {
           // prerendered DOM, so React.lazy would flash a fallback on direct loads).
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router'],
-            motion: ['framer-motion', 'lenis'],
+            motion: ['motion/react', 'lenis'],
             paddle: ['@paddle/paddle-js'],
             // Must stay the module.full.no-external subpath: the bare specifier
             // resolves to the lean bundle that lazy-loads rrweb as an external

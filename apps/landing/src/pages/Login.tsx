@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { Helmet } from 'react-helmet-async'
 import { Button } from '@/components/ui/button'
