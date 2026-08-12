@@ -59,6 +59,14 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
 
   const propertiesMap = options.includeProperties ? getPropertiesForNotes(db, noteIds) : null
 
+  // The sidebar tree renders path/title/modified/tags/emoji/localOnly/fileType
+  // and nothing else, but a whole-vault fetch of the full shape still ships a
+  // ~200-char snippet plus the mime/size pair for every note in the vault —
+  // over IPC, and again on every list invalidation. 'tree' builds only what the
+  // sidebar reads; the fields it skips are all optional on NoteListItem, so a
+  // 'tree' row stays a valid NoteListItem for any other consumer.
+  const treeShape = options.fields === 'tree'
+
   const noteItems: NoteListItem[] = notes.map((c) => ({
     id: c.id,
     path: c.path,
@@ -67,12 +75,11 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     modified: new Date(c.modifiedAt),
     tags: tagsMap.get(c.id) ?? [],
     wordCount: c.wordCount ?? 0,
-    snippet: c.snippet ?? undefined,
+    ...(treeShape ? {} : { snippet: c.snippet ?? undefined }),
     emoji: c.emoji,
     localOnly: c.localOnly ?? false,
     fileType: c.fileType ?? 'markdown',
-    mimeType: c.mimeType,
-    fileSize: c.fileSize,
+    ...(treeShape ? {} : { mimeType: c.mimeType, fileSize: c.fileSize }),
     ...(propertiesMap && { properties: propertiesMap.get(c.id) ?? {} })
   }))
 

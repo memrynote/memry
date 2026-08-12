@@ -40,6 +40,17 @@ export interface Note {
   emoji?: string | null // Emoji icon for visual identification
 }
 
+/**
+ * A row of `notes:list`.
+ *
+ * The optional fields are the ones `NoteListFields` controls: with
+ * `fields: 'tree'` the main process omits `snippet` (and the file-metadata
+ * pair on the main-side row type) because the sidebar tree never reads them,
+ * and a whole-vault sidebar fetch would otherwise ship ~200 chars of snippet
+ * per note across IPC on every list invalidation. Every field a caller can
+ * rely on unconditionally stays required, so `'tree'` rows are still ordinary
+ * `NoteListItem`s and no existing consumer needs a guard.
+ */
 export interface NoteListItem {
   id: string
   path: string
@@ -48,10 +59,20 @@ export interface NoteListItem {
   modified: Date
   tags: string[]
   wordCount: number
-  snippet?: string // First 200 chars of content
+  snippet?: string // First 200 chars of content — omitted when fields: 'tree'
   emoji?: string | null // Emoji icon for visual identification
   localOnly?: boolean
 }
+
+/**
+ * Which per-note fields `notes:list` should build.
+ *
+ * - `full` (default, and what every pre-existing caller gets by omitting it):
+ *   the complete `NoteListItem`.
+ * - `tree`: identity + what the sidebar renders (path, title, modified, tags,
+ *   emoji, localOnly, fileType). Heavy display-only fields are left off.
+ */
+export type NoteListFields = 'full' | 'tree'
 
 export interface NoteLink {
   sourceId: string
@@ -110,7 +131,11 @@ export const NoteListSchema = z.object({
   sortBy: z.enum(['modified', 'created', 'title', 'position']).default('modified'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   limit: z.number().int().min(1).max(10000).default(100),
-  offset: z.number().int().min(0).default(0)
+  offset: z.number().int().min(0).default(0),
+  // Optional (not `.default()`) on purpose: an older renderer omits it and the
+  // handler still resolves to the full shape, so the payload an existing
+  // caller receives is byte-identical to before this field existed.
+  fields: z.enum(['full', 'tree']).optional()
 })
 
 export const NoteReorderSchema = z.object({
