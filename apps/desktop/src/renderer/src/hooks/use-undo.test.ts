@@ -608,6 +608,61 @@ describe('useUndoTracker subscription', () => {
     expect(result.current.lastActionDescription).toBeNull()
   })
 
+  it('undo() refuses an entry that expired since the last sweep', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result } = renderHook(() => useUndoTracker())
+    const undoFn = vi.fn()
+    act(() => {
+      result.current.registerUndo('Delete task', undoFn)
+    })
+
+    // Wall clock passes the expiry window, but the 1s sweep has not run yet.
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+
+    let success = true
+    act(() => {
+      success = result.current.undo()
+    })
+
+    expect(success).toBe(false)
+    expect(undoFn).not.toHaveBeenCalled()
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('undo() still runs a live entry and discards the expired one beneath it', () => {
+    vi.useFakeTimers()
+    const start = Date.now()
+
+    const { result } = renderHook(() => useUndoTracker())
+    const staleFn = vi.fn()
+    const liveFn = vi.fn()
+
+    act(() => {
+      result.current.registerUndo('Stale action', staleFn)
+    })
+
+    vi.setSystemTime(start + UNDO_EXPIRY_MS - 1000)
+    act(() => {
+      result.current.registerUndo('Live action', liveFn)
+    })
+
+    // Only the first entry is past its window; no sweep has run.
+    vi.setSystemTime(start + UNDO_EXPIRY_MS + 1)
+
+    act(() => {
+      expect(result.current.undo()).toBe(true)
+    })
+    expect(liveFn).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      expect(result.current.undo()).toBe(false)
+    })
+    expect(staleFn).not.toHaveBeenCalled()
+  })
+
   it('does not mutate module state during render', () => {
     vi.useFakeTimers()
     const start = Date.now()

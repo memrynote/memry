@@ -146,7 +146,12 @@ function pushUndoEntry(entry: Omit<UndoEntry, 'id' | 'timestamp'>) {
   return newEntry.id
 }
 
+/**
+ * Take the newest live entry off the stack. Prunes first so an expired entry can
+ * never be handed back between 1 s sweeps, whichever accessor the caller used.
+ */
 function popUndoEntry(): UndoEntry | undefined {
+  pruneExpiredEntries()
   const entry = globalUndoStack.pop()
   if (globalUndoStack.length === 0) {
     stopCleanupInterval()
