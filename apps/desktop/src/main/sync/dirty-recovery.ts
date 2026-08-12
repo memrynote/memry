@@ -5,6 +5,8 @@ import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
+import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { getInboxSyncService } from './inbox-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from './project-sync'
@@ -20,6 +22,7 @@ export interface RecoveryResult {
   projects: number
   notes: number
   journals: number
+  inbox: number
 }
 
 /**
@@ -96,17 +99,25 @@ export function recoverDirtyItems(
 
   const noteCount = recoverDirtyNotes(db, adapters)
   const journalCount = recoverDirtyJournals(db, adapters)
+  const inboxCount = recoverDirtyInbox(db, adapters)
 
-  if (taskCount > 0 || projectCount > 0 || noteCount > 0 || journalCount > 0) {
+  if (taskCount > 0 || projectCount > 0 || noteCount > 0 || journalCount > 0 || inboxCount > 0) {
     log.info('Recovered dirty items for sync', {
       tasks: taskCount,
       projects: projectCount,
       notes: noteCount,
-      journals: journalCount
+      journals: journalCount,
+      inbox: inboxCount
     })
   }
 
-  return { tasks: taskCount, projects: projectCount, notes: noteCount, journals: journalCount }
+  return {
+    tasks: taskCount,
+    projects: projectCount,
+    notes: noteCount,
+    journals: journalCount,
+    inbox: inboxCount
+  }
 }
 
 /**
@@ -156,6 +167,70 @@ function recoverDirtyNotes(
   }
 
   return dirtyNotes.length
+}
+
+/**
+ * Heal inbox items whose triage state never left this device.
+ *
+ * Builds before #1159's fix filed items without enqueueing anything: `filedAt`,
+ * `filedTo` and `filedAction` were written straight to the row, so the filing
+ * never reached the other devices and the clock never advanced. Nothing else
+ * repairs those rows on an existing install — `seedUnclocked` only picks rows
+ * with a NULL clock, the manifest check is presence-based and the item is
+ * present on the server, and `inbox/filing.ts` refuses to re-file an item that
+ * already has a `filedAt`, so no later write ever touches them again. Without
+ * this sweep they stay unpushed forever, and stay exposed to the stale-peer
+ * push that reads their `filedAt: null` as a deliberate unfile.
+ *
+ * Same predicate as the arms above — `syncedAt IS NULL` or
+ * `modifiedAt > syncedAt` — because filing does stamp `modifiedAt`. That keeps
+ * the scan to one indexed-free table read that returns nothing on a healthy
+ * install, instead of re-pushing the whole inbox at every launch. It is
+ * self-clearing: the push stamps `syncedAt` past `modifiedAt`
+ * (`inboxHandler.markPushSynced`), so the row is clean on the next launch, and
+ * a row that never gets pushed is deduplicated by
+ * `SyncQueueManager.enqueue()` on itemId+type+operation.
+ *
+ * Scope matches the note arm: only items the server already knows (`clock`
+ * set — clock-less ones belong to `inboxHandler.seedUnclocked`) and not
+ * local-only.
+ *
+ * Unlike tasks/projects/notes this deliberately goes through the ordinary
+ * `enqueueUpdate`, which bumps the vector clock. `enqueueRecoveredUpdate`
+ * exists to re-push a change whose clock was *already* advanced at write time;
+ * these rows never got that far, so replaying their stored clock would lose to
+ * any peer that has since moved on and the filing would be dropped a second
+ * time. Bumping produces exactly the push the fix in `markItemAsFiled` would
+ * have produced at filing time.
+ */
+function recoverDirtyInbox(
+  db: DrizzleDb,
+  adapters?: SyncAdapterRegistry<DrizzleDb, (channel: string, data: unknown) => void>
+): number {
+  const inboxSync = adapters?.getLocal('inbox') ?? getInboxSyncService()
+  if (!inboxSync) return 0
+
+  const dirtyItems = db
+    .select({ id: inboxItems.id })
+    .from(inboxItems)
+    .where(
+      and(
+        isNotNull(inboxItems.clock),
+        sql`${inboxItems.localOnly} IS NOT 1`,
+        or(
+          isNull(inboxItems.syncedAt),
+          and(isNotNull(inboxItems.syncedAt), gt(inboxItems.modifiedAt, inboxItems.syncedAt))
+        )
+      )
+    )
+    .all()
+
+  for (const item of dirtyItems) {
+    log.debug('Recovering dirty inbox item', { itemId: item.id })
+    inboxSync.enqueueUpdate(item.id)
+  }
+
+  return dirtyItems.length
 }
 
 /**

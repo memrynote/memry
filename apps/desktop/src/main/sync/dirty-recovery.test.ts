@@ -4,12 +4,14 @@ import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/ut
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { noteMetadata } from '@memry/db-schema/data-schema'
+import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import type { DataDb } from '../database/client'
 import { incrementNoteClockOffline } from './offline-clock'
 import { SyncQueueManager } from './queue'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
+import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { recoverDirtyItems } from './dirty-recovery'
 
 const TEST_PROJECT = {
@@ -186,8 +188,7 @@ describe('dirty-recovery', () => {
     expect(queued?.operation).toBe('update')
     const payload = queued ? (JSON.parse(queued.payload) as Record<string, unknown>) : null
     const payloadFieldClocks = payload?.fieldClocks as
-      | Record<string, Record<string, number>>
-      | undefined
+      Record<string, Record<string, number>> | undefined
     expect(payload?.clock).toEqual({ 'old-device': 1, 'device-A': 1 })
     expect(payloadFieldClocks?.statusId).toEqual({ 'old-device': 1, 'device-A': 1 })
     expect(payloadFieldClocks?.title).toEqual({ 'old-device': 1 })
@@ -521,6 +522,139 @@ describe('dirty-recovery', () => {
 
       const row = db.select().from(noteMetadata).where(eq(noteMetadata.id, 'journal-tagged')).get()
       expect(row?.clock).toEqual({ 'device-A': 3 })
+    })
+  })
+
+  // Builds before the #1159 fix filed items without enqueueing anything, and
+  // nothing else on an existing install ever touches those rows again:
+  // seedUnclocked only takes clock-less rows, the manifest check is
+  // presence-based and the item is present, and filing.ts refuses to re-file an
+  // item that already has a filedAt. This arm is the only thing that heals them.
+  describe('inbox', () => {
+    // Deliberately the real InboxSyncService and the real queue, not a stub:
+    // the thing under test is that a queue row is actually produced *and* that
+    // the vector clock advances past what the server already holds. A fake
+    // adapter would assert neither.
+    const insertItem = (values: Record<string, unknown>): void => {
+      db.insert(inboxItems)
+        .values({
+          type: 'link',
+          title: 'A capture',
+          createdAt: '2026-01-01T00:00:00Z',
+          ...values
+        } as never)
+        .run()
+    }
+
+    beforeEach(() => {
+      initInboxSyncService({ queue, db, getDeviceId: () => 'device-A' })
+    })
+
+    afterEach(() => {
+      resetInboxSyncService()
+    })
+
+    it('recovers an item filed before the fix, at a clock the server cannot dismiss', () => {
+      // #given — captured and pushed, then filed by a pre-fix build: filedAt
+      // and modifiedAt moved, the clock and syncedAt did not
+      insertItem({
+        id: 'inbox-filed',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z',
+        filedAt: '2026-01-02T00:00:00Z',
+        filedTo: 'notes/Filed.md',
+        filedAction: 'folder'
+      })
+
+      // #when
+      const result = recoverDirtyItems(db)
+
+      // #then — one real queue row carrying the filed state
+      expect(result.inbox).toBe(1)
+      expect(queue.getPendingCount()).toBe(1)
+
+      const queued = queue.peek(1)[0]
+      expect(queued?.type).toBe('inbox')
+      expect(queued?.itemId).toBe('inbox-filed')
+      expect(queued?.operation).toBe('update')
+
+      const payload = JSON.parse(queued?.payload ?? '{}') as Record<string, unknown>
+      expect(payload.filedAt).toBe('2026-01-02T00:00:00Z')
+      expect(payload.filedTo).toBe('notes/Filed.md')
+      // The clock MUST advance. Replaying {device-A: 1} — the clock the server
+      // already has — loses to any peer that has moved on since, and the filing
+      // would be dropped a second time.
+      expect(payload.clock).toEqual({ 'device-A': 2 })
+
+      const row = db.select().from(inboxItems).where(eq(inboxItems.id, 'inbox-filed')).get()
+      expect(row?.clock).toEqual({ 'device-A': 2 })
+    })
+
+    it('leaves clean, local-only and clock-less items alone', () => {
+      // clean: stamped after its last write — the whole inbox must not re-push
+      insertItem({
+        id: 'inbox-clean',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-03T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // local-only: never leaves this device
+      insertItem({
+        id: 'inbox-local',
+        clock: { 'device-A': 1 },
+        localOnly: true,
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+      // clock-less: inboxHandler.seedUnclocked owns the first push
+      insertItem({ id: 'inbox-unclocked', modifiedAt: '2026-01-02T00:00:00Z' })
+
+      // #when
+      const result = recoverDirtyItems(db)
+
+      // #then
+      expect(result.inbox).toBe(0)
+      expect(queue.getPendingCount()).toBe(0)
+    })
+
+    it('recovers an item the server confirmed but never stamped as pushed', () => {
+      // #given — legacy rows carry no syncedAt at all
+      insertItem({
+        id: 'inbox-legacy',
+        clock: { 'device-A': 1 },
+        syncedAt: null,
+        modifiedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when / #then
+      expect(recoverDirtyItems(db).inbox).toBe(1)
+    })
+
+    it('stops firing once the push is stamped, and never queues a row twice', () => {
+      insertItem({
+        id: 'inbox-filed',
+        clock: { 'device-A': 1 },
+        syncedAt: '2026-01-01T00:00:00Z',
+        modifiedAt: '2026-01-02T00:00:00Z',
+        filedAt: '2026-01-02T00:00:00Z'
+      })
+
+      // #when — two launches before the push drains
+      expect(recoverDirtyItems(db).inbox).toBe(1)
+      expect(recoverDirtyItems(db).inbox).toBe(1)
+
+      // #then — the queue deduplicates on itemId+type+operation
+      expect(queue.getPendingCount()).toBe(1)
+
+      // #when — the push lands and markPushSynced stamps the row
+      db.update(inboxItems)
+        .set({ syncedAt: '2026-01-03T00:00:00Z' })
+        .where(eq(inboxItems.id, 'inbox-filed'))
+        .run()
+
+      // #then — the sweep goes quiet for good
+      expect(recoverDirtyItems(db).inbox).toBe(0)
     })
   })
 })

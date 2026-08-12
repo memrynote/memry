@@ -37,6 +37,14 @@ Each card shows:
 | **Open**                | Open the source URL in your browser.                                                                                                                  |
 | **Delete**              | Discard. (Confirms first.)                                                                                                                            |
 
+## Triage Decisions Across Devices
+
+Filing, archiving, and snoozing **sync across your devices**, like the item itself. File a web clip on your laptop and it leaves the inbox on your desktop too, once both have synced — you only triage an item once.
+
+If a device is offline when you file, the decision is queued and pushes on its next sync. Until then that device's inbox is simply behind; nothing is lost.
+
+Items you filed on an older version of Memry are repaired automatically: the first time each device starts up and syncs after updating, it sends any triage decision that never reached your other devices. You do not need to re-file anything.
+
 ## Keyboard Shortcuts
 
 When the inbox or a triage card has focus:
