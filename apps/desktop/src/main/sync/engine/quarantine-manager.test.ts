@@ -2,7 +2,23 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { QuarantineManager } from './quarantine-manager'
-import { QUARANTINE_MAX_ATTEMPTS, SYNC_STATE_KEYS } from './sync-context'
+import {
+  QUARANTINE_MAX_ATTEMPTS,
+  QUARANTINE_ENTRY_TTL_MS,
+  MAX_QUARANTINE_ENTRIES,
+  SYNC_STATE_KEYS
+} from './sync-context'
+
+// The cap tests quarantine tens of thousands of items; the real logger and the
+// real telemetry sink would turn that into tens of thousands of log lines and
+// events. Nothing in this file asserts on either.
+vi.mock('../../lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
+}))
+
+vi.mock('../../telemetry/diagnostics', () => ({
+  trackMainError: vi.fn()
+}))
 import type { SyncContext } from './sync-context'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
@@ -284,6 +300,107 @@ describe('QuarantineManager', () => {
       // #then
       expect(fresh.isQuarantined('round-trip', 'project')).toBe(true)
       expect(fresh.getQuarantinedItems()[0].lastError).toBe('err')
+    })
+  })
+
+  describe('in-session TTL sweep', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('#given an entry older than the TTL #when another item is quarantined #then the stale entry is dropped', () => {
+      // #given
+      manager.quarantineItem('stale', 'task', 'device-a', 'bad sig')
+
+      // #when — a session that never restarts crosses the same TTL loadState uses
+      vi.advanceTimersByTime(QUARANTINE_ENTRY_TTL_MS + 1)
+      manager.quarantineItem('fresh', 'task', 'device-a', 'bad sig')
+
+      // #then
+      const ids = manager.getQuarantinedItems().map((i) => i.itemId)
+      expect(ids).toEqual(['fresh'])
+    })
+
+    it('#given a permanent entry inside the TTL #when another item is quarantined #then it is kept', () => {
+      // #given
+      for (let i = 0; i < QUARANTINE_MAX_ATTEMPTS; i++) {
+        manager.quarantineItem('perm', 'task', 'device-a', 'bad sig')
+      }
+
+      // #when
+      vi.advanceTimersByTime(QUARANTINE_ENTRY_TTL_MS - 1000)
+      manager.quarantineItem('fresh', 'task', 'device-a', 'bad sig')
+
+      // #then — still protecting the vault from the bad item
+      expect(manager.isQuarantined('perm', 'task')).toBe(true)
+    })
+  })
+
+  describe('cap enforcement', () => {
+    it('#given more non-permanent entries than the cap #when quarantining #then the map stays at the cap', () => {
+      // #when
+      for (let i = 0; i < MAX_QUARANTINE_ENTRIES + 100; i++) {
+        manager.quarantineItem(`item-${i}`, 'task', 'device-a', 'bad sig')
+      }
+
+      // #then
+      expect(manager.getQuarantinedItems()).toHaveLength(MAX_QUARANTINE_ENTRIES)
+    })
+
+    it('#given the cap is exceeded #when evicting #then the coldest entry goes and the newest stays', () => {
+      // #given
+      for (let i = 0; i < MAX_QUARANTINE_ENTRIES; i++) {
+        manager.quarantineItem(`item-${i}`, 'task', 'device-a', 'bad sig')
+      }
+
+      // #when
+      manager.quarantineItem('newest', 'task', 'device-a', 'bad sig')
+
+      // #then
+      const ids = new Set(manager.getQuarantinedItems().map((i) => i.itemId))
+      expect(ids.has('item-0')).toBe(false)
+      expect(ids.has('item-1')).toBe(true)
+      expect(ids.has('newest')).toBe(true)
+    })
+
+    it('#given a permanent entry is the coldest #when the cap is exceeded #then it survives and a non-permanent one is evicted', () => {
+      // #given — the oldest entry is a permanent quarantine
+      for (let i = 0; i < QUARANTINE_MAX_ATTEMPTS; i++) {
+        manager.quarantineItem('perm', 'task', 'device-a', 'bad sig')
+      }
+      for (let i = 0; i < MAX_QUARANTINE_ENTRIES; i++) {
+        manager.quarantineItem(`item-${i}`, 'task', 'device-a', 'bad sig')
+      }
+
+      // #then — the permanent record is never the thing that gets dropped
+      expect(manager.isQuarantined('perm', 'task')).toBe(true)
+      const ids = new Set(manager.getQuarantinedItems().map((i) => i.itemId))
+      expect(ids.has('item-0')).toBe(false)
+    })
+
+    it('#given eviction happened #when a new permanent entry persists #then persisted permanents are intact', () => {
+      // #given — one permanent entry, then enough traffic to force evictions
+      for (let i = 0; i < QUARANTINE_MAX_ATTEMPTS; i++) {
+        manager.quarantineItem('perm', 'task', 'device-a', 'bad sig')
+      }
+      for (let i = 0; i < MAX_QUARANTINE_ENTRIES + 100; i++) {
+        manager.quarantineItem(`item-${i}`, 'task', 'device-a', 'bad sig')
+      }
+
+      // #when — a second permanent entry triggers a re-serialise of the map
+      for (let i = 0; i < QUARANTINE_MAX_ATTEMPTS; i++) {
+        manager.quarantineItem('perm-2', 'note', 'device-b', 'bad sig')
+      }
+
+      // #then — eviction never removed a permanent record from disk
+      const fresh = new QuarantineManager(ctx)
+      fresh.loadState()
+      expect(fresh.isQuarantined('perm', 'task')).toBe(true)
+      expect(fresh.isQuarantined('perm-2', 'note')).toBe(true)
     })
   })
 

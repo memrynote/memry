@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { CorruptItemTracker } from './corrupt-item-tracker'
-import { CORRUPT_ITEM_COOLDOWN_MS } from './sync-context'
+import { CORRUPT_ITEM_COOLDOWN_MS, MAX_CORRUPT_ITEMS } from './sync-context'
 import type { SyncContext } from './sync-context'
 import type { QuarantineManager } from './quarantine-manager'
 import { postToServer } from '../http-client'
@@ -140,6 +140,57 @@ describe('CorruptItemTracker', () => {
 
         expect(tracker.shouldRetry({ id: 'item-1', type: 'task' })).toBe(true)
         expect(tracker.shouldRetry({ id: 'item-2', type: 'task' })).toBe(true)
+      })
+    })
+  })
+
+  describe('cap enforcement', () => {
+    describe('#given more failures than the cap #when markFailed called', () => {
+      it('#then keeps exactly MAX_CORRUPT_ITEMS entries on cooldown', () => {
+        const tracker = createTracker()
+
+        for (let i = 0; i < MAX_CORRUPT_ITEMS + 250; i++) {
+          tracker.markFailed({ id: `item-${i}`, type: 'task' })
+        }
+
+        let onCooldown = 0
+        for (let i = 0; i < MAX_CORRUPT_ITEMS + 250; i++) {
+          if (!tracker.shouldRetry({ id: `item-${i}`, type: 'task' })) onCooldown++
+        }
+        expect(onCooldown).toBe(MAX_CORRUPT_ITEMS)
+      })
+
+      it('#then evicts the coldest entries first and keeps the newest', () => {
+        const tracker = createTracker()
+
+        for (let i = 0; i < MAX_CORRUPT_ITEMS; i++) {
+          tracker.markFailed({ id: `item-${i}`, type: 'task' })
+        }
+        // #when — one more entry pushes the map over the cap
+        tracker.markFailed({ id: 'newest', type: 'task' })
+
+        // #then — the oldest failedAt lost its cooldown, the newest kept it
+        expect(tracker.shouldRetry({ id: 'item-0', type: 'task' })).toBe(true)
+        expect(tracker.shouldRetry({ id: 'item-1', type: 'task' })).toBe(false)
+        expect(tracker.shouldRetry({ id: 'newest', type: 'task' })).toBe(false)
+      })
+    })
+
+    describe('#given a re-failed old entry #when the cap is exceeded', () => {
+      it('#then the refreshed entry survives and a colder one is evicted', () => {
+        const tracker = createTracker()
+
+        for (let i = 0; i < MAX_CORRUPT_ITEMS; i++) {
+          tracker.markFailed({ id: `item-${i}`, type: 'task' })
+        }
+        // item-0 is the coldest; failing it again must make it the hottest.
+        vi.advanceTimersByTime(1000)
+        tracker.markFailed({ id: 'item-0', type: 'task' })
+
+        tracker.markFailed({ id: 'newest', type: 'task' })
+
+        expect(tracker.shouldRetry({ id: 'item-0', type: 'task' })).toBe(false)
+        expect(tracker.shouldRetry({ id: 'item-1', type: 'task' })).toBe(true)
       })
     })
   })

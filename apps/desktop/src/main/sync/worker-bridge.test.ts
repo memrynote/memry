@@ -43,7 +43,7 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => logger
 }))
 
-import { MAX_CONSECUTIVE_FAILURES, SyncWorkerBridge } from './worker-bridge'
+import { MAX_CONSECUTIVE_FAILURES, MAX_PENDING_REQUESTS, SyncWorkerBridge } from './worker-bridge'
 
 describe('SyncWorkerBridge', () => {
   let bridge: SyncWorkerBridge
@@ -706,6 +706,96 @@ describe('SyncWorkerBridge', () => {
 
       // #then — a fresh thread is not the thread that failed
       expect(bridge.isRunning).toBe(true)
+    })
+  })
+
+  describe('#given running bridge #when pending requests are never answered', () => {
+    const startReadyBridge = async (): Promise<void> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+    }
+
+    const sendUnanswered = (): Promise<unknown> => {
+      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      request.catch(() => {})
+      return request
+    }
+
+    it('#then rejects once the pending map is at MAX_PENDING_REQUESTS', async () => {
+      // #given — the worker accepts requests and never replies
+      await startReadyBridge()
+      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) sendUnanswered()
+
+      // #when / #then
+      await expect(
+        bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      ).rejects.toThrow('Worker request queue full')
+    })
+
+    it('#then the rejected request is never posted to the worker', async () => {
+      // #given
+      await startReadyBridge()
+      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) sendUnanswered()
+
+      // #when
+      await bridge
+        .encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        .catch(() => {})
+
+      // #then — capped requests cost nothing: no message, no pending entry
+      const posted = mockWorkerInstance.postMessage.mock.calls.filter(
+        ([m]) => m.type === 'encrypt-batch'
+      )
+      expect(posted).toHaveLength(MAX_PENDING_REQUESTS)
+    })
+
+    it('#then a request whose own timeout never fired is swept', async () => {
+      // #given
+      await startReadyBridge()
+      const request = sendUnanswered()
+
+      // #when — the wall clock moves past the stale threshold without advancing
+      // the timer queue, so the request's own 60s timeout has not fired
+      vi.setSystemTime(Date.now() + 70_000)
+      vi.advanceTimersByTime(30_000)
+
+      // #then
+      await expect(request).rejects.toThrow('Worker request abandoned')
+    })
+
+    it('#then the sweep never preempts a live per-request timeout', async () => {
+      // #given
+      await startReadyBridge()
+      const request = sendUnanswered()
+
+      // #when — real elapsed time, so the 60s request timeout owns the failure
+      vi.advanceTimersByTime(61_000)
+
+      // #then
+      await expect(request).rejects.toThrow('Worker request timed out')
+    })
+
+    it('#then no timer is left running once the last request settles', async () => {
+      // #given
+      await startReadyBridge()
+      const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      const posted = mockWorkerInstance.postMessage.mock.calls.find(
+        ([m]) => m.type === 'encrypt-batch'
+      )![0]
+      expect(vi.getTimerCount()).toBeGreaterThan(0)
+
+      // #when
+      mockWorkerInstance.simulateMessage({
+        type: 'encrypt-batch-result',
+        requestId: posted.requestId,
+        results: [],
+        errors: []
+      })
+      await request
+
+      // #then — the sweep interval is not left ticking for the session
+      expect(vi.getTimerCount()).toBe(0)
     })
   })
 

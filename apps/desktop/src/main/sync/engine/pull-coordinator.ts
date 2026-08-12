@@ -410,6 +410,11 @@ export class PullCoordinator {
 
   private cleanupAfterPull(vaultKey: Uint8Array | null, cleanup: () => void): void {
     this.deviceKeyCache.clear()
+    // Cooldown entries otherwise only expire when a later pull happens to
+    // re-fetch the same item, so a burst of corruption that then stops leaves
+    // the tracker holding every entry for the rest of the session. Sweeping
+    // here is O(entries) once per pull and drops nothing that is still live.
+    this.corruptTracker.clearExpired()
     try {
       if (vaultKey) secureCleanup(vaultKey)
     } finally {

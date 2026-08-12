@@ -18,9 +18,36 @@ type PendingRequest = {
   resolve: (value: WorkerToMainMessage) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+  startedAt: number
 }
 
 const REQUEST_TIMEOUT_MS = 60_000
+
+/**
+ * Hard cap on simultaneously in-flight worker requests.
+ *
+ * Nothing bounded `pendingRequests` before: every entry pins the caller's
+ * promise callbacks, which close over the request's items, vault key and
+ * signing key. Sync only ever has a handful of batches in flight, so anything
+ * near this number means the worker has stopped answering and requests are
+ * stacking up faster than they time out. Rejecting at the door makes the caller
+ * fall back to main-thread crypto — same crypto, same result — and three such
+ * rejections latch the bridge off for the session (see recordRequestFailure).
+ */
+export const MAX_PENDING_REQUESTS = 1000
+
+/** How often the stale-pending sweep runs while requests are outstanding. */
+const PENDING_SWEEP_INTERVAL_MS = 30_000
+
+/**
+ * Age at which the sweep considers a pending request abandoned.
+ *
+ * Deliberately past REQUEST_TIMEOUT_MS: the per-request timer is the primary
+ * path and must keep owning the timeout, so the sweep can only ever collect an
+ * entry whose own timer never fired. The grace period keeps the two from racing
+ * on the same request.
+ */
+const PENDING_STALE_AFTER_MS = REQUEST_TIMEOUT_MS + 5_000
 
 /**
  * Consecutive failed worker requests before the bridge stops offering itself.
@@ -45,6 +72,7 @@ export class SyncWorkerBridge {
   private requestCounter = 0
   private consecutiveFailures = 0
   private latchedOff = false
+  private sweepTimer: ReturnType<typeof setInterval> | null = null
 
   async start(): Promise<void> {
     if (this.worker) return
@@ -138,6 +166,7 @@ export class SyncWorkerBridge {
         if (pending) {
           clearTimeout(pending.timer)
           this.pendingRequests.delete(msg.requestId)
+          if (this.pendingRequests.size === 0) this.stopSweepTimer()
           pending.resolve(msg)
           return
         }
@@ -182,6 +211,41 @@ export class SyncWorkerBridge {
       pending.reject(err)
       this.pendingRequests.delete(id)
     }
+    this.stopSweepTimer()
+  }
+
+  /**
+   * Backstop for pending entries whose own timeout never fired — the map is
+   * otherwise only ever drained by a reply, a per-request timer, or rejectAll.
+   * The interval exists only while requests are outstanding and stops itself as
+   * soon as the map empties, so an idle bridge costs no wakeups.
+   */
+  private ensureSweepTimer(): void {
+    if (this.sweepTimer) return
+    this.sweepTimer = setInterval(() => this.sweepStalePending(), PENDING_SWEEP_INTERVAL_MS)
+    this.sweepTimer.unref?.()
+  }
+
+  private stopSweepTimer(): void {
+    if (!this.sweepTimer) return
+    clearInterval(this.sweepTimer)
+    this.sweepTimer = null
+  }
+
+  private sweepStalePending(): void {
+    const now = Date.now()
+    let swept = 0
+    for (const [id, pending] of this.pendingRequests) {
+      if (now - pending.startedAt <= PENDING_STALE_AFTER_MS) continue
+      clearTimeout(pending.timer)
+      this.pendingRequests.delete(id)
+      pending.reject(new Error('Worker request abandoned: no reply and no timeout'))
+      swept++
+    }
+    if (swept > 0) {
+      log.warn('Swept abandoned worker requests', { count: swept })
+    }
+    if (this.pendingRequests.size === 0) this.stopSweepTimer()
   }
 
   /**
@@ -224,13 +288,25 @@ export class SyncWorkerBridge {
       return Promise.reject(new Error('Worker not started'))
     }
 
+    if (this.pendingRequests.size >= MAX_PENDING_REQUESTS) {
+      // Never enqueued, so nothing to sweep later. The caller degrades to
+      // main-thread crypto rather than waiting behind a wedged worker.
+      log.warn('Worker request queue full — rejecting request', {
+        pending: this.pendingRequests.size,
+        cap: MAX_PENDING_REQUESTS
+      })
+      return Promise.reject(new Error('Worker request queue full'))
+    }
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(msg.requestId)
+        if (this.pendingRequests.size === 0) this.stopSweepTimer()
         reject(new Error(`Worker request timed out: ${msg.type}`))
       }, REQUEST_TIMEOUT_MS)
 
-      this.pendingRequests.set(msg.requestId, { resolve, reject, timer })
+      this.pendingRequests.set(msg.requestId, { resolve, reject, timer, startedAt: Date.now() })
+      this.ensureSweepTimer()
       this.worker!.postMessage(msg)
     })
   }

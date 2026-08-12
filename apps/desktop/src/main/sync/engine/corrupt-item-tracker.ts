@@ -6,7 +6,7 @@ import { withRetry } from '../retry'
 import { postToServer } from '../http-client'
 import type { SyncContext } from './sync-context'
 import type { QuarantineManager } from './quarantine-manager'
-import { CORRUPT_ITEM_COOLDOWN_MS, itemRefKey } from './sync-context'
+import { CORRUPT_ITEM_COOLDOWN_MS, MAX_CORRUPT_ITEMS, itemRefKey } from './sync-context'
 
 const log = createLogger('CorruptItemTracker')
 
@@ -27,7 +27,14 @@ export interface RecoveredItem {
 }
 
 export class CorruptItemTracker {
+  /**
+   * (type, id) -> cooldown entry, capped at MAX_CORRUPT_ITEMS.
+   *
+   * Insertion order is kept equal to `failedAt` order (see `markFailed`), so
+   * eviction is "delete from the front" without a sort.
+   */
   private corruptItems = new Map<string, { failedAt: number; attempts: number }>()
+  private evictionLogged = false
   private ctx: SyncContext
   private quarantine: QuarantineManager
   private resolveDeviceKey: ResolveDeviceKey
@@ -49,13 +56,21 @@ export class CorruptItemTracker {
   }
 
   markFailed(ref: ItemRef): void {
-    const entry = this.corruptItems.get(itemRefKey(ref.type, ref.id))
+    const key = itemRefKey(ref.type, ref.id)
+    const entry = this.corruptItems.get(key)
     if (entry) {
       entry.attempts++
       entry.failedAt = Date.now()
+      // Re-insert so Map iteration order stays `failedAt` order. `set` on an
+      // existing key does not move it, and `failedAt` is mutated in place, so
+      // without this the eviction below would drop arbitrary entries instead of
+      // the coldest ones.
+      this.corruptItems.delete(key)
+      this.corruptItems.set(key, entry)
     } else {
-      this.corruptItems.set(itemRefKey(ref.type, ref.id), { failedAt: Date.now(), attempts: 1 })
+      this.corruptItems.set(key, { failedAt: Date.now(), attempts: 1 })
     }
+    this.evictOverflow()
   }
 
   clearExpired(): void {
@@ -69,6 +84,35 @@ export class CorruptItemTracker {
 
   clear(): void {
     this.corruptItems.clear()
+    this.evictionLogged = false
+  }
+
+  /**
+   * Keep the map at MAX_CORRUPT_ITEMS. Expired entries go first (they are dead
+   * weight already), then the oldest `failedAt` entries — the ones whose
+   * cooldown is closest to lapsing. An evicted entry only means the item is
+   * eligible for one more re-fetch on the next pull that carries it, never a
+   * hot loop: the very next failure re-inserts the cooldown.
+   */
+  private evictOverflow(): void {
+    if (this.corruptItems.size <= MAX_CORRUPT_ITEMS) return
+    this.clearExpired()
+
+    let overflow = this.corruptItems.size - MAX_CORRUPT_ITEMS
+    if (overflow <= 0) return
+
+    for (const key of this.corruptItems.keys()) {
+      if (overflow <= 0) break
+      this.corruptItems.delete(key)
+      overflow--
+    }
+
+    if (!this.evictionLogged) {
+      this.evictionLogged = true
+      log.warn('Corrupt-item tracker at cap — evicting coldest entries', {
+        cap: MAX_CORRUPT_ITEMS
+      })
+    }
   }
 
   async refetch(
