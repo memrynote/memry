@@ -59,6 +59,7 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
+import { planCrdtUpdatePush } from './crdt-payload'
 import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
@@ -535,30 +536,47 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             return Buffer.from(encrypted).toString('base64')
           })
 
-          const MAX_CRDT_PAYLOAD_BYTES = 900_000
-          const estimatedBytes = b64Updates.reduce((sum, s) => sum + s.length, 0) + 128
-          if (estimatedBytes > MAX_CRDT_PAYLOAD_BYTES) {
-            log.warn('CRDT payload exceeds size limit, dropping batch', {
-              noteId,
-              estimatedBytes,
-              updateCount: b64Updates.length
-            })
-            return
+          const { requests, oversized } = planCrdtUpdatePush(b64Updates)
+
+          for (const batch of requests) {
+            await withRetry(
+              () =>
+                withAuthRetry(
+                  (authToken) =>
+                    postToServer('/sync/crdt/updates', { noteId, updates: batch }, authToken),
+                  token!,
+                  crdtAuthRetryDeps,
+                  (fresh) => {
+                    token = fresh
+                  }
+                ),
+              { maxRetries: 3, baseDelayMs: 2000 }
+            )
           }
 
-          await withRetry(
-            () =>
-              withAuthRetry(
-                (authToken) =>
-                  postToServer('/sync/crdt/updates', { noteId, updates: b64Updates }, authToken),
-                token!,
-                crdtAuthRetryDeps,
-                (fresh) => {
-                  token = fresh
-                }
-              ),
-            { maxRetries: 3, baseDelayMs: 2000 }
-          )
+          if (oversized.length > 0) {
+            // One update this large cannot ride the incremental path at all: the
+            // server stores each update as a D1 blob. The operations are already
+            // in the local doc, so push the whole document to the R2-backed
+            // snapshot endpoint — an existing payload shape every client version
+            // pulls — instead of dropping the user's edit.
+            log.warn('CRDT update too large for the incremental path, pushing a snapshot instead', {
+              noteId,
+              oversizedCount: oversized.length,
+              largestChars: Math.max(...oversized.map((update) => update.length))
+            })
+            const pushed = await crdtProvider.pushSnapshotForNote(noteId)
+            if (!pushed) {
+              // Throwing re-buffers the batch, so the next flush retries the
+              // snapshot and shutdown records the note for replay. Returning
+              // here would be the silent drop this path exists to remove;
+              // snapshotPushFn already surfaced whatever went wrong.
+              log.error('CRDT snapshot fallback for an oversized update failed', { noteId })
+              throw new Error('CRDT snapshot fallback failed')
+            }
+            // The snapshot is itself the compaction point, so no scheduled one.
+            return
+          }
 
           // The incremental batch is already durable on the server; the full
           // snapshot is only a compaction point, so it rides a long debounce
