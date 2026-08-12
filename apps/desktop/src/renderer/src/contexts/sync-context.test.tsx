@@ -741,6 +741,51 @@ describe('syncReducer', () => {
       expect(state.uploadProgress).toEqual({ 'att-live': { progress: 40, status: 'uploading' } })
     })
 
+    it('#then drops a transfer that ended below 100% and keeps a silent one', () => {
+      let state = syncReducer(initialState, uploadEvent('att-dead', 40))
+      state = syncReducer(state, uploadEvent('att-waiting', 40))
+      // A transfer that is only waiting for the network is still live and must
+      // survive the sweep — the reason this cannot be an age heuristic.
+      state = syncReducer(state, {
+        type: 'UPLOAD_PROGRESS',
+        attachmentId: 'att-waiting',
+        progress: 40,
+        status: 'waiting_network'
+      })
+      state = syncReducer(state, {
+        type: 'UPLOAD_PROGRESS',
+        attachmentId: 'att-dead',
+        progress: 40,
+        status: 'failed'
+      })
+
+      state = syncReducer(state, {
+        type: 'PRUNE_STALE',
+        now: Date.now() + SYNC_PROGRESS_RETENTION_MS
+      })
+
+      expect(state.uploadProgress).toEqual({
+        'att-waiting': { progress: 40, status: 'waiting_network' }
+      })
+    })
+
+    it('#then drops a download that reported completed below 100%', () => {
+      let state = syncReducer(initialState, downloadEvent('dl-x', 60))
+      state = syncReducer(state, {
+        type: 'DOWNLOAD_PROGRESS',
+        attachmentId: 'dl-x',
+        progress: 60,
+        status: 'completed'
+      })
+
+      state = syncReducer(state, {
+        type: 'PRUNE_STALE',
+        now: Date.now() + SYNC_PROGRESS_RETENTION_MS
+      })
+
+      expect(state.downloadProgress).toBeNull()
+    })
+
     it('#then keeps a just-finished entry and returns the same state object', () => {
       const state = syncReducer(initialState, uploadEvent('att-done', 100))
       const swept = syncReducer(state, { type: 'PRUNE_STALE', now: Date.now() })
