@@ -126,6 +126,8 @@ Attachment payloads sync as encrypted R2 blobs (the same path as note bodies). L
 
 ### Transfer Progress
 
-Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface. Every transfer finishes on 100%.
+Transfers report progress as a whole percentage, updating only when that percentage changes rather than on every chunk — a large file moves through the same 0–100% either way, without flooding the interface.
 
 Several attachments can upload and download at once, and each one tracks its own progress. One transfer finishing never stops another that is still running from reporting.
+
+Every transfer ends, and the progress bar on the attachment ends with it. A transfer that succeeds clears its bar; a transfer that fails shows it briefly as failed and then clears too. So a bar that stays on an attachment means the transfer is genuinely still going — including a transfer that is only waiting for the network, which can sit quiet for a long time on a bad connection without being abandoned. If a transfer fails you still get the notification described in [When an attachment doesn't sync](#when-an-attachment-doesn-t-sync); the bar clearing is not a sign it worked.
