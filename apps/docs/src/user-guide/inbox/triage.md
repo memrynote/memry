@@ -17,7 +17,7 @@ Click the **Triage** tab in the inbox view, or hit the triage button in the inbo
 Each card shows:
 
 - The item type badge (link, note, image, voice, clip, social, etc.)
-- A title (or filename for files)
+- A title (seeded from the filename for files, and [renameable](#renaming-an-item))
 - A snippet of content or preview
 - Source URL (if any)
 - The capture timestamp
@@ -65,6 +65,21 @@ Many items map to a sequence:
 - **Task hidden in a link** → Convert to Task, the source is preserved as a reference
 - **Reference material** → Convert to Note with a tag, then Archive
 - **Already obsolete** → Delete
+
+## Renaming an Item
+
+Images, PDFs, and voice memos arrive named after the file you captured — `scan_final_v3.pdf` becomes a card titled "scan_final_v3". You can rename them two ways:
+
+- **Right-click the row** and choose **Rename**. Enter commits, Escape reverts.
+- **Open the item** and edit the title at the top of the detail panel. Enter or clicking away commits, Escape reverts.
+
+Clearing the title entirely reverts to the previous name rather than saving a blank one. Renames sync across your devices like any other edit.
+
+Reminders and notes have no Rename entry: a reminder's card shows the title of whatever it points at, and a note's title comes from its first line — edit the note body instead.
+
+The name you choose is also **the filename the item gets when you file it**. Rename a PDF to "Q3 Invoice" and filing it into a folder writes `Q3 Invoice.pdf` to your vault. Characters a filesystem can't take (`/`, `:`, `*`, and friends) are stripped, and if a file of that name already exists, memrynote appends a number rather than overwriting it.
+
+While an item is still in the inbox, its stored file keeps the name it was captured under. That name is internal — filing is what applies your title.
 
 ## Converting from the Detail Panel
 

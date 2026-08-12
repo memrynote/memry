@@ -29,6 +29,7 @@ import { FilingSection, useFilingState } from './filing-section'
 import { ConvertActions } from './convert-actions'
 import { TypeSelector } from './type-selector'
 import { NOTE_ONLY_TYPES, type ConvertType } from './convert-types'
+import { InboxTitleInput } from './inbox-title-input'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
@@ -39,6 +40,11 @@ const log = createLogger('Component:InboxDetailPanel')
 
 // Panel can work with either full or list item types
 type DetailItem = InboxItem | InboxItemListItem
+
+// Types whose title is a real, user-owned field, so the panel offers an editable
+// one. Note titles come from the body's first line and are handled by NoteDetail;
+// link/reminder/social titles are derived from their source and stay read-only.
+const EDITABLE_TITLE_TYPES = new Set(['voice', 'image', 'pdf'])
 
 const INBOX_DETAIL_WIDTH_KEY = 'inbox-detail-width'
 const INBOX_DETAIL_WIDTH_DEFAULT_PX = 380
@@ -307,7 +313,7 @@ export const InboxDetailPanel = ({
     pendingTitleRef.current = title
   }, [])
 
-  const handleVoiceTitleSave = useCallback(
+  const handleTitleSave = useCallback(
     (title: string): void => {
       if (!item) return
       const trimmed = title.trim()
@@ -444,25 +450,19 @@ export const InboxDetailPanel = ({
                         item.type === 'reminder' || item.type === 'social' ? '' : 'px-5 py-4'
                       }
                     >
-                      {item.type === 'voice' ? (
-                        <input
-                          type="text"
-                          defaultValue={item.title}
-                          key={item.id + item.title}
-                          onBlur={(e) => handleVoiceTitleSave(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.currentTarget.blur()
-                            }
-                          }}
-                          className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
-                          placeholder={t('detail.voiceTitlePlaceholder')}
-                          aria-label={t('detail.voiceTitlePlaceholder')}
+                      {EDITABLE_TITLE_TYPES.has(item.type) && !readOnly ? (
+                        <InboxTitleInput
+                          itemId={item.id}
+                          title={item.title}
+                          placeholder={
+                            item.type === 'voice'
+                              ? t('detail.voiceTitlePlaceholder')
+                              : t('detail.titlePlaceholder')
+                          }
+                          onSave={handleTitleSave}
                         />
                       ) : (
                         item.type !== 'link' &&
-                        item.type !== 'image' &&
-                        item.type !== 'pdf' &&
                         item.type !== 'reminder' &&
                         item.type !== 'social' && (
                           <h3 className="text-[15px] leading-5 font-medium text-foreground mb-3.5">

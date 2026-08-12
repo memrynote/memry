@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InboxDetailPanel } from './inbox-detail-panel'
+import type { InboxItemListItem } from '@/types'
 
 const invalidateQueries = vi.fn()
 const retryMutate = vi.fn()
@@ -163,14 +164,17 @@ vi.mock('./filing-section', async () => {
   }
 })
 
-const baseItem = {
+const baseItem: InboxItemListItem = {
   id: 'inbox-1',
-  type: 'note' as const,
+  type: 'note',
   title: 'Inbox note',
   content: 'Body',
   createdAt: new Date('2026-05-10T10:00:00Z'),
+  thumbnailUrl: null,
   sourceUrl: null,
-  tags: []
+  tags: [],
+  isStale: false,
+  processingStatus: 'complete'
 }
 
 function renderPanel(overrides: Partial<React.ComponentProps<typeof InboxDetailPanel>> = {}) {
@@ -294,6 +298,57 @@ describe('InboxDetailPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'retry transcription' }))
     expect(retryMutate).toHaveBeenCalledWith('voice-1')
+  })
+
+  // #808: image and PDF attachments used to render no title at all, so a capture
+  // named after the OS filename could never be corrected.
+  it.each(['image', 'pdf'] as const)('renames a %s attachment from the panel', async (type) => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: `${type}-1`, type, title: 'scan_final_v3' }
+    })
+
+    const titleInput = screen.getByDisplayValue('scan_final_v3')
+    await user.clear(titleInput)
+    await user.type(titleInput, 'Quarterly report{Enter}')
+
+    expect(updateMutate).toHaveBeenCalledWith({ id: `${type}-1`, title: 'Quarterly report' })
+  })
+
+  it('reverts to the previous title when an attachment name is cleared', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: 'image-2', type: 'image' as const, title: 'Whiteboard' }
+    })
+
+    const titleInput = screen.getByDisplayValue('Whiteboard')
+    await user.clear(titleInput)
+    await user.tab()
+
+    expect(updateMutate).not.toHaveBeenCalled()
+    expect(titleInput).toHaveValue('Whiteboard')
+  })
+
+  it('leaves an unchanged attachment title alone', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: 'pdf-2', type: 'pdf' as const, title: 'Invoice' }
+    })
+
+    await user.click(screen.getByDisplayValue('Invoice'))
+    await user.tab()
+
+    expect(updateMutate).not.toHaveBeenCalled()
+  })
+
+  it('keeps an attachment title read-only in the archived panel', () => {
+    renderPanel({
+      readOnly: true,
+      item: { ...baseItem, id: 'image-3', type: 'image' as const, title: 'Archived shot' }
+    })
+
+    expect(screen.queryByDisplayValue('Archived shot')).not.toBeInTheDocument()
+    expect(screen.getByText('Archived shot')).toBeInTheDocument()
   })
 
   it('renders read-only restore and delete actions without filing controls', async () => {

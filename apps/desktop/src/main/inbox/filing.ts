@@ -307,25 +307,31 @@ function generateNoteTitle(item: InboxItemRow): string {
   }
 }
 
-function sanitizeFiledVoiceFilenameBase(title: string): string {
-  const sanitized = title
-    .replace(/[<>:"/\\|?*]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/[.\s]+$/g, '')
-    .slice(0, 200)
-
-  return sanitized.length > 0 ? sanitized : 'Voice memo'
+function sanitizeFiledBinaryFilenameBase(title: string): string {
+  return (
+    title
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      // Leading dots would produce a hidden file (or a traversal-shaped name),
+      // so strip them the way the vault's own sanitizer does.
+      .replace(/^\.+/g, '')
+      .trim()
+      .replace(/[.\s]+$/g, '')
+      .slice(0, 200)
+  )
 }
 
-function getFiledBinaryFilename(item: InboxItemRow): string {
+export function getFiledBinaryFilename(item: InboxItemRow): string {
   const storedFilename = path.basename(item.attachmentPath ?? '')
-  if (item.type !== 'voice') {
+  const extension = path.extname(storedFilename)
+  const base = sanitizeFiledBinaryFilenameBase(generateNoteTitle(item))
+  if (base.length === 0) {
+    // Nothing usable survived sanitization — keep the capture-time name.
     return storedFilename
   }
 
-  const extension = path.extname(storedFilename)
-  return `${sanitizeFiledVoiceFilenameBase(generateNoteTitle(item))}${extension}`
+  return `${base}${extension}`
 }
 
 // Inbox screenshot/clip bodies embed images by their vault-relative attachment

@@ -18,6 +18,21 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
 }))
 
+// Radix's context menu needs pointer-event plumbing jsdom does not provide, so
+// the menu is flattened the way notes-tree-isolated.test.tsx flattens it: the
+// items render inline and a click stands in for picking one. What is under test
+// is the rename behaviour, not Radix's open/close.
+vi.mock('@/components/ui/context-menu', () => ({
+  ContextMenu: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ContextMenuTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ContextMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ContextMenuItem: ({ children, onSelect }: { children: ReactNode; onSelect?: () => void }) => (
+    <button type="button" onClick={onSelect}>
+      {children}
+    </button>
+  )
+}))
+
 // ============================================================================
 // Test Data
 // ============================================================================
@@ -29,18 +44,20 @@ const createInboxItem = (
   id: `item-${Date.now()}-${Math.random()}`,
   type,
   title: 'Test Item',
-  rawContent: 'Test content',
+  content: 'Test content',
   createdAt: new Date(),
-  status: 'pending' as const,
+  sourceUrl: null,
+  tags: [],
+  isStale: false,
+  processingStatus: 'complete',
   viewedAt: undefined,
-  snoozedUntil: null,
-  archivedAt: null,
-  metadata: null,
+  // InboxItemListItem declares these three as optional, not nullable.
+  snoozedUntil: undefined,
+  metadata: undefined,
   thumbnailUrl: null,
   transcription: null,
   transcriptionStatus: null,
-  duration: null,
-  attachments: [],
+  duration: undefined,
   ...overrides
 })
 
@@ -301,7 +318,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -317,7 +334,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -333,7 +350,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} onSelect={onSelect} onFocus={onFocus}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -351,7 +368,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} selectedIds={selectedIds}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -364,7 +381,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} focusedId="item-1">
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -378,7 +395,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} selectedIds={selectedIds}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -391,7 +408,7 @@ describe('T520: InboxListItem - selection and actions', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem item={item} period="today" onPreview={onPreview} onArchive={onArchive} />
+        <InboxListItem item={item} period="TODAY" onPreview={onPreview} onArchive={onArchive} />
       </InboxListSection>
     )
 
@@ -488,7 +505,7 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
+        <InboxListItem item={item} period="TODAY" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 
@@ -500,7 +517,7 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps}>
-        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
+        <InboxListItem item={item} period="TODAY" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 
@@ -512,12 +529,91 @@ describe('InboxList - accessibility', () => {
 
     render(
       <InboxListSection {...defaultSectionProps} focusedId="item-1">
-        <InboxListItem item={item} period="today" onPreview={vi.fn()} onArchive={vi.fn()} />
+        <InboxListItem item={item} period="TODAY" onPreview={vi.fn()} onArchive={vi.fn()} />
       </InboxListSection>
     )
 
     const listItem = screen.getByRole('listitem')
     expect(listItem).toHaveAttribute('tabindex', '0')
+  })
+})
+
+// ============================================================================
+// #808: rename an item's title from the row
+// ============================================================================
+
+describe('InboxListItem - rename', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renames an image from the row and reports the trimmed title', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    const item = createInboxItem('image', { id: 'image-1', title: 'scan_final_v3' })
+    renderWithContext(item, { onRename })
+
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    const input = screen.getByRole('textbox', { name: 'Rename item' })
+    await user.clear(input)
+    await user.type(input, '  Quarterly report  {Enter}')
+
+    expect(onRename).toHaveBeenCalledWith('image-1', 'Quarterly report')
+  })
+
+  it('reverts on Escape without renaming', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    const item = createInboxItem('pdf', { id: 'pdf-1', title: 'Invoice' })
+    renderWithContext(item, { onRename })
+
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    await user.type(screen.getByRole('textbox', { name: 'Rename item' }), 'Nope{Escape}')
+
+    expect(onRename).not.toHaveBeenCalled()
+    expect(screen.getByText('Invoice')).toBeInTheDocument()
+  })
+
+  it('treats a blank or unchanged name as a cancel', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    const item = createInboxItem('image', { id: 'image-2', title: 'Whiteboard' })
+    renderWithContext(item, { onRename })
+
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    const input = screen.getByRole('textbox', { name: 'Rename item' })
+    await user.clear(input)
+    await user.type(input, '   {Enter}')
+
+    expect(onRename).not.toHaveBeenCalled()
+    expect(screen.getByText('Whiteboard')).toBeInTheDocument()
+  })
+
+  it('does not open the detail panel while the row is being renamed', async () => {
+    const user = userEvent.setup()
+    const onPreview = vi.fn()
+    const item = createInboxItem('pdf', { id: 'pdf-2', title: 'Report' })
+    renderWithContext(item, { onRename: vi.fn(), onPreview })
+
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+    await user.click(screen.getByRole('textbox', { name: 'Rename item' }))
+
+    expect(onPreview).not.toHaveBeenCalled()
+  })
+
+  it.each(['reminder', 'note'] as const)(
+    'offers no rename for %s rows, whose title is not their own',
+    (type) => {
+      renderWithContext(createInboxItem(type, { title: 'Derived title' }), { onRename: vi.fn() })
+
+      expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument()
+    }
+  )
+
+  it('offers no rename when the list is not wired for it', () => {
+    renderWithContext(createInboxItem('image', { title: 'Whiteboard' }))
+
+    expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument()
   })
 })
 

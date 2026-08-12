@@ -78,7 +78,9 @@
     "transcriptionFailed": "Transcription failed",
     "retryTranscription": "Retry",
     "pageCount": "{count, plural, one {# page} other {# pages}}",
-    "snoozedUntilShort": "snoozed til {date}"
+    "snoozedUntilShort": "snoozed til {date}",
+    "rename": "Rename",
+    "renameLabel": "Rename item"
   },
   "loading": {
     "inbox": "Loading inbox...",
@@ -167,6 +169,7 @@
     "file": "File",
     "keyboardHint": "{modifier}⏎ file · 1-5 folder · Esc close",
     "voiceTitlePlaceholder": "Name this voice memo...",
+    "titlePlaceholder": "Name this item...",
     "fileTo": "File to",
     "ai": "AI",
     "match": {
