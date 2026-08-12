@@ -89,7 +89,11 @@
     "actionFailed": "Action failed",
     "nothingToUndo": "Nothing to undo",
     "undone": "Undone: {description}",
-    "undoFailed": "Failed to undo action"
+    "undoFailed": "Failed to undo action",
+    "filesImported": "{count, plural, one {Imported # file} other {Imported # files}}",
+    "filesImportFailed": "{count, plural, one {Failed to import # file} other {Failed to import # files}}",
+    "moreRemindersDue": "{count, plural, one {# more reminder due} other {# more reminders due}}",
+    "moreRemindersDueHint": "Check the reminders panel for details"
   },
   "dateRelative": {
     "today": "Today",

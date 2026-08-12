@@ -12,6 +12,7 @@
       "cannotRenameDeleted": "Cannot rename - note was deleted",
       "createLinkedFailed": "Failed to create linked note",
       "openLinkedFailed": "Failed to open linked item",
+      "fileNotFound": "File not found: {target}",
       "localOnly": "Note set to local only",
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",

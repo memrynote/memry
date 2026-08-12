@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { forwardRef, useEffect, useImperativeHandle, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
 
 import { AppSidebar } from './app-sidebar'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
@@ -19,6 +20,13 @@ const mocks = vi.hoisted(() => ({
   notesTreeCreateNote: vi.fn(),
   notesTreeCreateFolder: vi.fn(),
   canvasTreeCreateFolder: vi.fn(),
+  fileDrop: { onDrop: null as ((paths: string[]) => Promise<void> | void) | null },
+  // Keyless calls collapse to the last key segment; interpolated ones append
+  // their values so a test can prove the caller passed them through.
+  translate: (key: string, values?: Record<string, unknown>): string => {
+    const label = key.split('.').at(-1) ?? key
+    return values ? `${label}:${JSON.stringify(values)}` : label
+  },
   authState: { status: 'unauthenticated' },
   inboxItems: [
     { id: 'inbox-1', type: 'note' },
@@ -28,7 +36,11 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
-  useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
+  useT: () => ({ t: mocks.translate })
+}))
+
+vi.mock('react-i18next', () => ({
+  getI18n: () => ({ getFixedT: () => mocks.translate })
 }))
 
 vi.mock('@/components/onboarding/use-first-run-tour', () => ({
@@ -266,7 +278,10 @@ vi.mock('@/hooks/use-inbox', () => ({
 }))
 
 vi.mock('@/hooks/use-file-drop', () => ({
-  useFileDrop: () => ({ isDraggingFiles: false, dropHandlers: {} })
+  useFileDrop: (options: { onDrop: (paths: string[]) => Promise<void> | void }) => {
+    mocks.fileDrop.onDrop = options.onDrop
+    return { isDraggingFiles: false, dropHandlers: {} }
+  }
 }))
 
 // Minimal stateful Picker mock: the real Radix Popover does not open on click in
@@ -437,5 +452,26 @@ describe('AppSidebar', () => {
     rerender(<AppSidebar currentPage="inbox" viewCounts={{}} />)
     expect(screen.queryByRole('button', { name: 'Sync status' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'syncDisabled' })).not.toBeInTheDocument()
+  })
+
+  // Both import toasts used to be interpolated template literals, which the i18n
+  // lint gate could not see (issue #1340). Assert the key *and* the count so a
+  // regression back to English prose fails here, not just in review.
+  it('reports dropped-file import results through translation keys with counts', async () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    mocks.importFiles.mockResolvedValueOnce({
+      imported: 2,
+      failed: 1,
+      errors: ['bad.zip: unsupported']
+    })
+
+    await act(async () => {
+      await mocks.fileDrop.onDrop?.(['a.md', 'b.md', 'bad.zip'])
+    })
+
+    expect(toast.success).toHaveBeenCalledWith('filesImported:{"count":2}')
+    expect(toast.error).toHaveBeenCalledWith('filesImportFailed:{"count":1}', {
+      description: 'bad.zip: unsupported'
+    })
   })
 })

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from './use-inbox'
 
@@ -22,6 +23,7 @@ export interface UseUndoableActionResult {
 
 export function useUndoableAction(): UseUndoableActionResult {
   const queryClient = useQueryClient()
+  const { t } = useT('inbox')
   const pendingRef = useRef<Map<string, PendingUndo>>(new Map())
 
   // Drop every open undo window when the hook owner unmounts
@@ -53,10 +55,10 @@ export function useUndoableAction(): UseUndoableActionResult {
 
       if (result.success) {
         invalidateAll()
-        toast.info(`"${pending.title}" restored`)
+        toast.info(t('toast.restored', { title: pending.title }))
       }
     },
-    [invalidateAll]
+    [invalidateAll, t]
   )
 
   const enqueue = useCallback(

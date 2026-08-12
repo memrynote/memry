@@ -1025,7 +1025,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
           case 'not-found':
             // File-like target not found - show error instead of creating a note
-            toast.error(`File not found: ${target}`)
+            toast.error(t('page.toast.fileNotFound', { target }))
             break
         }
       } catch (err) {

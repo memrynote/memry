@@ -160,6 +160,20 @@ in the English bundles, and keeps non-English locale files aligned with English 
 tool tests when changing `apps/desktop/scripts/i18n/*` so scanner allowlists, JSON output, TODO
 limits, and locale-completeness behavior stay covered.
 
+Alongside it, the `i18n/no-toast-string-literal` ESLint rule guards toast copy in the renderer. It
+judges the static text of the first argument, so interpolation is no exemption — a hard-coded
+English template such as ``toast.error(`Could not open ${name}`)`` is reported exactly like
+`toast.error('Could not open file')`. Pass the values as placeholders instead:
+
+```ts
+toast.error(t('notes:page.toast.fileNotFound', { target }))
+```
+
+A template whose letters all come out of `t()` — ``toast.error(`${t('a')}: ${t('b')}`)`` — stays
+valid, because only punctuation and spacing are hard-coded. `TODO(i18n): wrap … in t()` silences the
+rule for one call site, but `pnpm i18n:check` runs with `--max-todo 0`, so it is a review aid rather
+than a way to land untranslated copy.
+
 ## Focused Typecheck
 
 Skip the flaky pre-hooks and known pre-existing errors:

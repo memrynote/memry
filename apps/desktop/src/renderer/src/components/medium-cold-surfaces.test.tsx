@@ -19,8 +19,11 @@ const dismissMutate = vi.hoisted(() => vi.fn())
 const clipboardWrite = vi.fn()
 
 vi.mock('@memry/i18n/renderer', () => ({
+  // Keyless calls still render as the bare key; interpolated ones append their
+  // values so a test can prove the caller actually passed them through.
   useT: () => ({
-    t: (key: string) => key
+    t: (key: string, values?: Record<string, unknown>) =>
+      values ? `${key}:${JSON.stringify(values)}` : key
   })
 }))
 
@@ -378,8 +381,8 @@ describe('medium cold renderer surfaces', () => {
     })
 
     expect(toastMock.base).toHaveBeenCalledTimes(5)
-    expect(toastMock.info).toHaveBeenCalledWith('1 more reminder(s) due', {
-      description: 'Check the reminders panel for details'
+    expect(toastMock.info).toHaveBeenCalledWith('toast.moreRemindersDue:{"count":1}', {
+      description: 'toast.moreRemindersDueHint'
     })
 
     const firstToastOptions = toastMock.base.mock.calls[0][1]
