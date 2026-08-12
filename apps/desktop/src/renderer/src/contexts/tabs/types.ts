@@ -233,6 +233,8 @@ export type TabAction =
         groupId?: string
         position?: number
         background?: boolean
+        /** Skip every dedup/focus branch and always mint a new tab */
+        forceNew?: boolean
         /** Replace the currently active tab instead of creating a new one */
         replaceActive?: boolean
       }

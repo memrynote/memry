@@ -110,6 +110,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         groupId = state.activeGroupId,
         position,
         background,
+        forceNew,
         replaceActive
       } = action.payload
       const targetGroup = state.tabGroups[groupId]
@@ -143,8 +144,11 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         }
       }
 
+      // `forceNew` is an explicit "I want another tab" (sidebar Open in New Tab,
+      // Cmd/Ctrl-click, middle-click). It skips every dedup/focus branch below so
+      // the open falls through to the mint-a-new-tab path.
       // Per-group singleton dedup: only check within the target group
-      if (tab.type) {
+      if (!forceNew && tab.type) {
         const existingInGroup = findExistingTabInGroup(targetGroup, tab.type)
         if (
           existingInGroup &&
@@ -179,6 +183,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
 
       // Cross-group singleton focus: when no explicit groupId, find singleton anywhere
       if (
+        !forceNew &&
         SINGLETON_TAB_TYPES.includes(tab.type) &&
         !action.payload.groupId &&
         tab.entityId === undefined
@@ -201,7 +206,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       }
 
       // Per-group entityId dedup
-      if (tab.entityId) {
+      if (!forceNew && tab.entityId) {
         const existingInGroup = findTabByEntityIdInGroup(targetGroup, tab.entityId)
         if (existingInGroup) {
           const updatedTabs = targetGroup.tabs.map((t) =>
