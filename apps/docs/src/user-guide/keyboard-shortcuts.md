@@ -124,7 +124,12 @@ Hint mode overlays numeric badges on interactive elements so you can act without
 | ------------------ | ----------------------------------------- |
 | Activate hint mode | <kbd>F</kbd> or <kbd>⌥</kbd>+<kbd>F</kbd> |
 | Pick a target      | Type the number shown                     |
+| Undo a keystroke   | <kbd>Backspace</kbd>                      |
 | Exit               | <kbd>Esc</kbd>                            |
+
+Each keystroke narrows the badges in place, and <kbd>Backspace</kbd> takes back the
+last character you typed. Only the badge overlay repaints as you type, so hint mode
+stays responsive on screens with a lot of targets.
 
 ## Global Undo (Tasks)
 

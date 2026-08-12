@@ -1,3 +1,8 @@
-export { HintModeProvider, useHintModeContext } from './context'
+export {
+  HintModeProvider,
+  useHintModeContext,
+  useHintModeState,
+  useHintModeActions
+} from './context'
 export { hintModeActiveRef } from './active-ref'
-export type { HintTarget, HintModeState, HintModeContextType } from './types'
+export type { HintTarget, HintModeState, HintModeActions, HintModeContextType } from './types'

@@ -1,5 +1,14 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
-import type { HintModeState, HintModeContextType } from './types'
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode
+} from 'react'
+import type { HintModeState, HintModeActions, HintModeContextType } from './types'
 import { scanClickableElements } from '@/lib/dom-scanner'
 import { assignLabels } from '@/lib/label-assigner'
 import { hintModeActiveRef } from './active-ref'
@@ -10,10 +19,23 @@ const INITIAL_STATE: HintModeState = {
   typedChars: ''
 }
 
-const HintModeContext = createContext<HintModeContextType | null>(null)
+// State and actions live in separate contexts: the state object changes on every
+// typed hint character, the action bundle never does. Consumers that only need
+// the actions (the global keydown listener) stay out of that render path.
+const HintModeStateContext = createContext<HintModeState | null>(null)
+const HintModeActionsContext = createContext<HintModeActions | null>(null)
 
 export const HintModeProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const [state, setState] = useState<HintModeState>(INITIAL_STATE)
+
+  // Latest committed state, read inside the actions so each one keeps a stable
+  // identity across renders (same pattern as use-keyboard-shortcuts-base.ts).
+  // Synced in an effect, not during render, so the actions observe exactly the
+  // value the previous closures would have captured.
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   const deactivate = useCallback(() => {
     hintModeActiveRef.current = false
@@ -21,7 +43,7 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
   }, [])
 
   const activate = useCallback(() => {
-    if (state.isActive) {
+    if (stateRef.current.isActive) {
       deactivate()
       return
     }
@@ -32,13 +54,13 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
     const hints = assignLabels(elements)
     hintModeActiveRef.current = true
     setState({ isActive: true, hints, typedChars: '' })
-  }, [state.isActive, deactivate])
+  }, [deactivate])
 
   const typeChar = useCallback(
     (char: string) => {
       const upper = char.toUpperCase()
-      const next = state.typedChars + upper
-      const matching = state.hints.filter((h) => h.label.startsWith(next))
+      const next = stateRef.current.typedChars + upper
+      const matching = stateRef.current.hints.filter((h) => h.label.startsWith(next))
 
       if (matching.length === 0) return
 
@@ -52,7 +74,7 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
 
       setState((prev) => ({ ...prev, typedChars: next }))
     },
-    [state.typedChars, state.hints, deactivate]
+    [deactivate]
   )
 
   const backspace = useCallback(() => {
@@ -68,13 +90,32 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
     }
   }, [])
 
-  const value: HintModeContextType = { state, activate, deactivate, typeChar, backspace }
+  const actions = useMemo<HintModeActions>(
+    () => ({ activate, deactivate, typeChar, backspace }),
+    [activate, deactivate, typeChar, backspace]
+  )
 
-  return <HintModeContext.Provider value={value}>{children}</HintModeContext.Provider>
+  return (
+    <HintModeActionsContext.Provider value={actions}>
+      <HintModeStateContext.Provider value={state}>{children}</HintModeStateContext.Provider>
+    </HintModeActionsContext.Provider>
+  )
+}
+
+export const useHintModeState = (): HintModeState => {
+  const state = useContext(HintModeStateContext)
+  if (!state) throw new Error('useHintModeState must be inside HintModeProvider')
+  return state
+}
+
+export const useHintModeActions = (): HintModeActions => {
+  const actions = useContext(HintModeActionsContext)
+  if (!actions) throw new Error('useHintModeActions must be inside HintModeProvider')
+  return actions
 }
 
 export const useHintModeContext = (): HintModeContextType => {
-  const ctx = useContext(HintModeContext)
-  if (!ctx) throw new Error('useHintModeContext must be inside HintModeProvider')
-  return ctx
+  const state = useHintModeState()
+  const actions = useHintModeActions()
+  return useMemo(() => ({ state, ...actions }), [state, actions])
 }
