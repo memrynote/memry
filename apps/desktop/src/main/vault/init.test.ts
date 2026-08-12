@@ -18,6 +18,7 @@ import {
   initVault,
   readVaultConfig,
   writeVaultConfig,
+  invalidateVaultConfigCache,
   getVaultName,
   countMarkdownFiles
 } from './init'
@@ -280,6 +281,156 @@ describe('readVaultConfig', () => {
 
     // Should return defaults
     expect(config.defaultNoteFolder).toBe('')
+  })
+})
+
+// ============================================================================
+// readVaultConfig caching (#1079)
+// ============================================================================
+
+describe('readVaultConfig caching', () => {
+  const FIXED_MTIME = new Date('2026-01-01T00:00:00.000Z')
+  const LATER_MTIME = new Date('2026-01-01T00:00:02.000Z')
+  const BASE_CONFIG = JSON.stringify({ defaultNoteFolder: 'notes' })
+  // Same byte length as BASE_CONFIG, so a swap between the two moves nothing the
+  // cache validates except the timestamp (or the inode, on a rename).
+  const SAME_SIZE_CONFIG = JSON.stringify({ defaultNoteFolder: 'other' })
+  let tempDir: TestDir
+  let configPath: string
+
+  beforeEach(() => {
+    tempDir = createTempDir()
+    fs.mkdirSync(path.join(tempDir.path, '.memry'))
+    configPath = getConfigPath(tempDir.path)
+    fs.writeFileSync(configPath, BASE_CONFIG)
+    // The cache compares nanosecond mtimes, and `utimesSync` is the only way to
+    // reproduce one exactly — a Date read back from `stat` has lost the sub-ms
+    // digits. Pinning the timestamp lets a test hold mtime fixed on purpose.
+    fs.utimesSync(configPath, FIXED_MTIME, FIXED_MTIME)
+    invalidateVaultConfigCache()
+  })
+
+  afterEach(() => {
+    invalidateVaultConfigCache()
+    tempDir.cleanup()
+  })
+
+  /**
+   * Make config.json unparseable in place, leaving the inode, size and mtime the
+   * cache validates against untouched: an in-place write keeps the inode, the
+   * replacement is the same length, and the pinned mtime is written back. A
+   * later call that still returns the old values provably did not re-read the
+   * file; one that returns defaults did. (`vi.spyOn(fs, 'readFileSync')` is not
+   * available — the ESM namespace of a node builtin is not configurable.)
+   */
+  function poisonConfigInPlace(): void {
+    fs.writeFileSync(configPath, 'x'.repeat(BASE_CONFIG.length))
+    fs.utimesSync(configPath, FIXED_MTIME, FIXED_MTIME)
+  }
+
+  it('#1079: repeated calls do not re-read config.json', () => {
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    poisonConfigInPlace()
+
+    for (let i = 0; i < 10; i++) {
+      expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+    }
+  })
+
+  it('#1079: re-reads after invalidateVaultConfigCache()', () => {
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    poisonConfigInPlace()
+    invalidateVaultConfigCache()
+
+    // Unparseable on disk, so a real read falls back to defaults.
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('')
+  })
+
+  it('#1079: writeVaultConfig drops the entry itself, not just via a moved mtime', () => {
+    writeVaultConfig(tempDir.path, { defaultNoteFolder: 'aaaaa' })
+    fs.utimesSync(configPath, FIXED_MTIME, FIXED_MTIME)
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('aaaaa')
+
+    // 'bbbbb' is the same length as 'aaaaa' and writeVaultConfig writes in
+    // place, so size and inode both hold; pinning mtime back stands in for a
+    // filesystem whose timestamps are too coarse to separate two quick writes.
+    // Only writeVaultConfig dropping the entry itself can save this.
+    writeVaultConfig(tempDir.path, { defaultNoteFolder: 'bbbbb' })
+    fs.utimesSync(configPath, FIXED_MTIME, FIXED_MTIME)
+
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('bbbbb')
+  })
+
+  it('#1079: picks up an external hand edit', () => {
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    fs.writeFileSync(configPath, JSON.stringify({ defaultNoteFolder: 'hand-edited' }))
+
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('hand-edited')
+  })
+
+  it('#1079: picks up a same-size external edit on mtime alone', () => {
+    expect(SAME_SIZE_CONFIG.length).toBe(BASE_CONFIG.length)
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    // In place and the same length, so size and inode hold and only mtime moves.
+    fs.writeFileSync(configPath, SAME_SIZE_CONFIG)
+    fs.utimesSync(configPath, LATER_MTIME, LATER_MTIME)
+
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('other')
+  })
+
+  it('#1079: picks up an atomic create+rename replacement on inode alone', () => {
+    expect(SAME_SIZE_CONFIG.length).toBe(BASE_CONFIG.length)
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    // How writePreferences() and other atomic writers replace config.json: a new
+    // file swapped in. Same length and mtime pinned back to the original, so a
+    // changed inode is the only thing left for the cache to notice.
+    const tempPath = `${configPath}.tmp`
+    fs.writeFileSync(tempPath, SAME_SIZE_CONFIG)
+    fs.renameSync(tempPath, configPath)
+    fs.utimesSync(configPath, FIXED_MTIME, FIXED_MTIME)
+
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('other')
+  })
+
+  it('#1079: never serves one vault config for another', () => {
+    const otherVault = createTempDir()
+    try {
+      fs.mkdirSync(path.join(otherVault.path, '.memry'))
+      fs.writeFileSync(
+        getConfigPath(otherVault.path),
+        JSON.stringify({ defaultNoteFolder: 'other-notes' })
+      )
+
+      expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+      expect(readVaultConfig(otherVault.path).defaultNoteFolder).toBe('other-notes')
+      expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+    } finally {
+      otherVault.cleanup()
+    }
+  })
+
+  it('#1079: falls back to defaults once config.json is deleted', () => {
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('notes')
+
+    fs.rmSync(configPath)
+
+    expect(readVaultConfig(tempDir.path).defaultNoteFolder).toBe('')
+  })
+
+  it('#1079: a caller mutating the result cannot poison the cache', () => {
+    const first = readVaultConfig(tempDir.path)
+    first.defaultNoteFolder = 'poison'
+    first.excludePatterns.push('poison')
+
+    const second = readVaultConfig(tempDir.path)
+
+    expect(second.defaultNoteFolder).toBe('notes')
+    expect(second.excludePatterns).not.toContain('poison')
   })
 })
 

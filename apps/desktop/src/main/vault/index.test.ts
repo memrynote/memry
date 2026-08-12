@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   initVault: vi.fn(),
   readVaultConfig: vi.fn(),
   writeVaultConfig: vi.fn(),
+  invalidateVaultConfigCache: vi.fn(),
   countMarkdownFiles: vi.fn(),
   checkIndexHealth: vi.fn(),
   rebuildIndex: vi.fn(),
@@ -106,6 +107,7 @@ vi.mock('./init', () => ({
   getVaultName: (vaultPath: string) => vaultPath.split('/').at(-1) || 'Vault',
   readVaultConfig: (...args: unknown[]) => mocks.readVaultConfig(...args),
   writeVaultConfig: (...args: unknown[]) => mocks.writeVaultConfig(...args),
+  invalidateVaultConfigCache: (...args: unknown[]) => mocks.invalidateVaultConfigCache(...args),
   countMarkdownFiles: (...args: unknown[]) => mocks.countMarkdownFiles(...args),
   getDataDbPath: (vaultPath: string) => `${vaultPath}/data.db`,
   getIndexDbPath: (vaultPath: string) => `${vaultPath}/index.db`
@@ -251,6 +253,7 @@ import {
   selectVault,
   updateConfig
 } from './index'
+import { getJournalConfig } from './journal-config'
 
 describe('vault lifecycle', () => {
   beforeEach(async () => {
@@ -425,6 +428,38 @@ describe('vault lifecycle', () => {
     await reindex()
     expect(mocks.indexVault).toHaveBeenCalledWith('/vault/config')
     expect(getStatus().indexProgress).toBe(100)
+  })
+
+  it('#1079: drops cached vault config on vault open and on vault close', async () => {
+    await selectVault({ path: '/vault/config' })
+    expect(mocks.invalidateVaultConfigCache).toHaveBeenCalled()
+
+    mocks.invalidateVaultConfigCache.mockClear()
+    await closeVault()
+    expect(mocks.invalidateVaultConfigCache).toHaveBeenCalled()
+
+    // A second vault must not inherit the first one's cached config.
+    mocks.invalidateVaultConfigCache.mockClear()
+    await selectVault({ path: '/vault/other' })
+    expect(mocks.invalidateVaultConfigCache).toHaveBeenCalled()
+  })
+
+  it('#1079: replaces the journal-config holder only when the values change', async () => {
+    await selectVault({ path: '/vault/config' })
+
+    const holder = getJournalConfig()
+    expect(holder.journalFolder).toBe('journal')
+
+    getConfig()
+    getConfig()
+    // Same values on disk, so the process-wide holder is left alone.
+    expect(getJournalConfig()).toBe(holder)
+
+    mocks.config = { ...mocks.config, journalFolder: 'diary' }
+    getConfig()
+
+    expect(getJournalConfig()).not.toBe(holder)
+    expect(getJournalConfig().journalFolder).toBe('diary')
   })
 
   it('drains deferred embeddings after a manual reindex and a structural config rebuild', async () => {

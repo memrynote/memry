@@ -81,6 +81,28 @@ Inside the vault directory (chosen during [first run](/guide/first-run)):
 └─ leveldb/          # y-leveldb store for Yjs CRDTs
 ```
 
+## Vault Config Cache
+
+`<vault>/.memry/config.json` holds the vault's exclude patterns, default note folder, journal
+folder and date format, and attachments folder. `getConfig()` reads it on most vault operations
+— note IO, folder listing, journal resolution, embed resolution, indexing, inbox filing and the
+per-note sync handler — so the parsed result is cached per vault in the main process rather than
+re-read and re-parsed on every call.
+
+The cache is validated against the file itself, not against a list of known writers:
+
+- Every read stats `config.json` and reuses the cached value only when the **inode, size and
+  nanosecond mtime** all match. Any change on disk is therefore picked up on the next call,
+  whether it came from the app, from sync, or from editing the file by hand.
+- The inode check specifically covers atomic replacement (write temp file, then rename), which
+  is how the preferences writer updates `config.json`.
+- In-app writes through `writeVaultConfig` drop the entry outright, so back-to-back writes stay
+  correct even on filesystems whose timestamps are too coarse to separate them.
+- Opening and closing a vault clears the whole cache, so one vault never serves another's
+  config.
+
+The on-disk format is unchanged; the cache is purely a runtime concern.
+
 ## App Config File
 
 App-level state that must be readable before any vault opens lives in a single JSON file,
