@@ -60,6 +60,7 @@ export const IMPORT_STATUS_CODES = {
   csvImporting: 'status.csv.importing',
   evernoteScanning: 'status.evernote.scanning',
   htmlScanning: 'status.html.scanning',
+  notePlanScanning: 'status.noteplan.scanning',
   onenoteLoadingNotebooks: 'status.onenote.loadingNotebooks',
   onenoteRateLimited: 'status.onenote.rateLimited',
   /** Per-attachment line the OneNote importer emits: takes `{ name }`. */
@@ -108,6 +109,10 @@ export const IMPORT_STATUS = {
     message: 'Scanning .enex files…'
   },
   htmlScanning: { code: IMPORT_STATUS_CODES.htmlScanning, message: 'Scanning HTML files…' },
+  notePlanScanning: {
+    code: IMPORT_STATUS_CODES.notePlanScanning,
+    message: 'Scanning NotePlan folder…'
+  },
   onenoteLoadingNotebooks: {
     code: IMPORT_STATUS_CODES.onenoteLoadingNotebooks,
     message: 'Loading OneNote notebooks…'

@@ -65,6 +65,7 @@ const IMPORT_STATUS_KEYS: Record<ImportStatusCode, string> = {
   'status.csv.importing': 'import.status.csv.importing',
   'status.evernote.scanning': 'import.status.evernote.scanning',
   'status.html.scanning': 'import.status.html.scanning',
+  'status.noteplan.scanning': 'import.status.noteplan.scanning',
   'status.onenote.loadingNotebooks': 'import.status.onenote.loadingNotebooks',
   'status.onenote.rateLimited': 'import.status.onenote.rateLimited',
   'status.onenote.downloadingAttachment': 'import.status.onenote.downloadingAttachment',

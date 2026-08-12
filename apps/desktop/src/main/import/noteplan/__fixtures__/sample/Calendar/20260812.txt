@@ -1,0 +1,11 @@
+Here's your first task:
+* Watch the getting-started video >2026-08-13
+* [x] Read the manual @done(2026-08-12)
+* [-] Abandoned idea
+
+## Today's Plan
++ 08:00 - 09:00 Reply to emails
++ [x] Gym
+
+- Websites to read later
+See also [[Start Here]].
