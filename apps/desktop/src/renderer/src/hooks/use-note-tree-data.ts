@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -10,6 +10,26 @@ import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:NoteTreeData')
+
+/**
+ * How many notes one sidebar page pulls.
+ *
+ * The ceiling stays deliberately bounded: the tree needs the whole array in the
+ * renderer to build folder structure, and this list is invalidated and refetched
+ * on every note create/update/rename/move, so an unbounded fetch would make a
+ * huge vault pay for the entire note set on every keystroke-driven write. What
+ * changes here is that the overflow is now reported and reachable on demand
+ * instead of being dropped without a trace.
+ */
+export const NOTE_TREE_PAGE_SIZE = 10000
+
+interface LoadedPage {
+  notes: NoteListItem[]
+  total: number
+  hasMore: boolean
+}
+
+const EMPTY_PAGE: LoadedPage = { notes: [], total: 0, hasMore: false }
 
 export interface NoteTreeData {
   notes: NoteListItem[]
@@ -27,14 +47,43 @@ export interface NoteTreeData {
   folderTemplateNames: Map<string, string>
   setFolderTemplateNames: React.Dispatch<React.SetStateAction<Map<string, string>>>
   computeTargetFolder: (selectedIds: string[]) => string
+  /** Notes in the vault that the pages fetched so far do not cover. */
+  hiddenNoteCount: number
+  /** True while a `loadMore()` page is in flight and the current tree is still shown. */
+  isLoadingMore: boolean
+  /** Pull one more page into the tree. No-op once nothing is hidden. */
+  loadMore: () => void
 }
 
 export function useNoteTreeData(): NoteTreeData {
+  const [limit, setLimit] = useState(NOTE_TREE_PAGE_SIZE)
+
   // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
   // localOnly/fileType and nothing else, so main skips the snippet and the
   // mime/size pair. At a 10k-note ceiling those are the bulk of the payload,
   // and this list is refetched on every note create/update/rename/move.
-  const { notes, isLoading, error } = useNotesList({ limit: 10000, fields: 'tree' })
+  const {
+    notes: fetchedNotes,
+    total,
+    hasMore,
+    isLoading: isPageLoading,
+    error
+  } = useNotesList({ limit, fields: 'tree' })
+
+  // Raising the ceiling changes the query key, so TanStack starts a fresh entry
+  // with no data and `isLoading` flips back to true. Hold the page already on
+  // screen so "load more" grows the tree instead of collapsing it to a skeleton.
+  const loadedPageRef = useRef<LoadedPage>(EMPTY_PAGE)
+  if (!isPageLoading && loadedPageRef.current.notes !== fetchedNotes) {
+    loadedPageRef.current = { notes: fetchedNotes, total, hasMore }
+  }
+  const page = loadedPageRef.current
+  const notes = page.notes
+
+  const loadMore = useCallback(() => {
+    setLimit((current) => current + NOTE_TREE_PAGE_SIZE)
+  }, [])
+
   const mutations = useNoteMutations()
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
 
@@ -122,7 +171,7 @@ export function useNoteTreeData(): NoteTreeData {
 
   return {
     notes,
-    isLoading,
+    isLoading: isPageLoading && notes.length === 0,
     error,
     folders,
     createFolder,
@@ -135,6 +184,9 @@ export function useNoteTreeData(): NoteTreeData {
     setNotePositions,
     folderTemplateNames,
     setFolderTemplateNames,
-    computeTargetFolder
+    computeTargetFolder,
+    hiddenNoteCount: page.hasMore ? Math.max(page.total - notes.length, 0) : 0,
+    isLoadingMore: isPageLoading && notes.length > 0,
+    loadMore
   }
 }

@@ -23,7 +23,12 @@ import { useNoteTreeData } from '@/hooks/use-note-tree-data'
 import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
 import { NoteTreeDeleteDialog, NoteTreeTemplateSelector } from '@/components/note-tree-dialogs'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
-import { NotesTreeSkeleton, NotesTreeEmpty, NotesTreeError } from '@/components/note-tree-states'
+import {
+  NotesTreeSkeleton,
+  NotesTreeEmpty,
+  NotesTreeError,
+  NotesTreeTruncationNotice
+} from '@/components/note-tree-states'
 import {
   TreeFolderIcon,
   RevealHandler,
@@ -606,6 +611,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             )}
           </TreeView>
         </TreeProvider>
+      )}
+
+      {data.hiddenNoteCount > 0 && (
+        <NotesTreeTruncationNotice
+          hiddenCount={data.hiddenNoteCount}
+          isLoadingMore={data.isLoadingMore}
+          onLoadMore={data.loadMore}
+        />
       )}
 
       <NoteTreeDeleteDialog
