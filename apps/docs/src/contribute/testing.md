@@ -68,6 +68,37 @@ pnpm --filter @memry/desktop seed:vault
 - Time-sensitive workflow tests should use dates relative to the current run instead of fixed
   calendar dates, so snooze/reminder assertions do not expire as CI time moves forward.
 
+### Renderer State Leaks Between Tests In A File
+
+`tests/setup-dom.ts` calls `cleanup()` and `tests/setup.ts` resets mocks, but **neither clears
+`localStorage`**. The renderer project runs `pool: 'threads'` with `isolate: true`, so jsdom is
+fresh per _file_ and shared by every test _inside_ it. A component that seeds UI state on mount
+and writes it back therefore leaks into later tests in the same file — `SidebarSection`
+(`sidebar-section-<id>-expanded`) and `SidebarTagList` (`sidebar-tags-expanded`,
+`sidebar-tags-sort`) both do.
+
+The failure looks like a component bug, not pollution: the element simply is not in the tree, or
+a query matches a different one. Add `beforeEach(() => localStorage.clear())` to any such file,
+and prove the pin is load-bearing by pre-seeding the key and asserting the element disappears.
+
+### Contrast Assertions
+
+jsdom has no cascade and no layout, so rendering can never prove a contrast ratio. The palette is
+literal hex in `src/renderer/src/assets/base.css`, so `tests/utils/contrast.ts` reads the theme
+blocks (`:root`, `.white`, `.dark`) straight from source and does the arithmetic:
+
+```ts
+import { assertSmallTextContrast } from '@tests/utils/contrast'
+
+// Throws naming the class, theme and background that failed.
+assertSmallTextContrast(element.className, ['--sidebar', '--muted'])
+```
+
+It checks every theme, understands Tailwind's `/NN` opacity modifier
+(`text-sidebar-muted/60` is not `--sidebar-muted`), and fails on any state variant that repaints
+the text below the WCAG AA floor for small text — or merely below where it rested. Because it
+reads the CSS at module load, a concurrent edit to `base.css` changes results mid-run.
+
 ## E2E (Playwright)
 
 ```bash
