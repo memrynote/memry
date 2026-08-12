@@ -12,13 +12,13 @@ import type { DataDb } from './client'
  */
 
 export function createFtsTasksTable(db: DataDb): void {
-  // `tokenize=` trails the column above deliberately — see the note in fts.ts.
   db.run(sql`
     CREATE VIRTUAL TABLE IF NOT EXISTS fts_tasks USING fts5(
       id UNINDEXED,
       title,
       description,
-      tags, tokenize='porter unicode61'
+      tags,
+      tokenize='porter unicode61'
     )
   `)
 }

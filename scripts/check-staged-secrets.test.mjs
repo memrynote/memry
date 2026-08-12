@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import { scanTextForSecrets } from './check-staged-secrets.mjs'
 
 const rules = (text) => scanTextForSecrets('apps/example/Component.tsx', text).map((f) => f.rule)
+const envRules = (text) => scanTextForSecrets('deploy/service.env', text).map((f) => f.rule)
 
 describe('check-staged-secrets JSX handling', () => {
   it('ignores token-named JSX props whose value is a code reference', () => {
@@ -50,6 +51,57 @@ describe('check-staged-secrets function values', () => {
 
   it('still flags an arrow function body containing a string literal', () => {
     assert.deepEqual(rules("  getAccessToken: (force) => 'hunter2secretvalue'"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+})
+
+describe('check-staged-secrets keyword word boundaries', () => {
+  it('ignores an fts5 tokenize= option in a CREATE VIRTUAL TABLE block', () => {
+    const ddl = [
+      'db.run(sql`',
+      '  CREATE VIRTUAL TABLE IF NOT EXISTS fts_notes USING fts5(',
+      '    id UNINDEXED,',
+      '    title,',
+      '    content,',
+      '    tags,',
+      "    tokenize='porter unicode61'",
+      '  )',
+      '`)'
+    ].join('\n')
+
+    assert.deepEqual(
+      scanTextForSecrets('apps/desktop/src/main/database/fts.ts', ddl).map((f) => f.rule),
+      []
+    )
+  })
+
+  it('ignores identifiers that only contain a sensitive keyword inside a longer word', () => {
+    assert.deepEqual(rules("  tokenizer: 'porter unicode61',"), [])
+    assert.deepEqual(rules("  passwordless: 'magic-link-flow',"), [])
+  })
+
+  it('still flags a snake-case token key assigned a credential literal', () => {
+    assert.deepEqual(rules("  API_TOKEN = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags a camelCase token key assigned a credential literal', () => {
+    assert.deepEqual(rules("  accessToken: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags a consecutive-caps token key assigned a credential literal', () => {
+    assert.deepEqual(rules("  APIToken: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',"), [
+      'high-risk-secret-assignment'
+    ])
+  })
+
+  it('still flags env-style credential assignments', () => {
+    assert.deepEqual(envRules('API_TOKEN=a1b2c3d4e5f67890abcdef'), ['high-risk-secret-assignment'])
+    assert.deepEqual(envRules('export DB_PASSWORD=hunter2hunter2'), [
       'high-risk-secret-assignment'
     ])
   })
