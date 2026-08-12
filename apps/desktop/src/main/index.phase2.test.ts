@@ -947,6 +947,46 @@ describe('main index phase2 exports', () => {
     expect(createdWindow.setSize).toHaveBeenCalledWith(760, 560)
   })
 
+  it('drops the launch-timeline vault-status listener when the vault fails to open', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    autoOpenLastVaultMock.mockRejectedValueOnce(new Error('vault open failed'))
+
+    await importMainModule()
+    await flushReadyWork()
+    await flushUntil(() => vaultStatusChangedListeners.length === 1)
+
+    // isOpen:true never arrives on a failed open, so the timeline listener has to
+    // be dropped by the settled promise or it leaks for the whole session. Only
+    // the window-resize listener may survive.
+    expect(vaultStatusChangedListeners).toHaveLength(1)
+
+    // ...and the survivor is the window-resize listener, not the timeline one.
+    const createdWindow = browserWindows[0]
+    createdWindow.getSize.mockReturnValue([1550, 900])
+    vaultStatusChangedListeners[0]?.({
+      isOpen: false,
+      path: null,
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+    expect(createdWindow.setSize).toHaveBeenCalledWith(760, 560)
+  })
+
+  // The stale-vault-path case: a stored path whose folder is gone resolves
+  // autoOpenLastVault without ever opening a vault, so isOpen:true never fires.
+  it('drops the launch-timeline vault-status listener when auto-open resolves without opening', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+
+    await importMainModule()
+    await flushReadyWork()
+    await flushUntil(() => vaultStatusChangedListeners.length === 1)
+
+    expect(vaultStatusChangedListeners).toHaveLength(1)
+  })
+
   it('covers dev-only startup paths for CSP, renderer URL loading, and React DevTools', async () => {
     whenReadyMock.mockResolvedValue(undefined)
     isDevMock.dev = true
