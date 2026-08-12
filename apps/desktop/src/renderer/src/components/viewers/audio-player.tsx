@@ -5,7 +5,7 @@
  * @module components/viewers/audio-player
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, memo, type RefObject } from 'react'
 import {
   Play,
   Pause,
@@ -50,6 +50,66 @@ function formatTime(seconds: number): string {
 }
 
 // ============================================================================
+// Progress Bar
+// ============================================================================
+
+interface AudioProgressProps {
+  /** Ref to the player's `<audio>` element, attached before this component's effects run. */
+  audioRef: RefObject<HTMLAudioElement | null>
+  /** Track length in seconds, owned by the parent so the skip controls can clamp to it. */
+  duration: number
+}
+
+/**
+ * Owns `currentTime` so the ~4 Hz `timeupdate` stream only re-renders the scrubber and the
+ * time labels. Keeping it in the parent re-rendered the whole player — both Radix sliders,
+ * every control button and the transcript — four times a second for the length of the track.
+ * State (not a ref) still drives the value, so the thumb keeps moving at full `timeupdate`
+ * resolution rather than stepping.
+ */
+const AudioProgress = memo(function AudioProgress({ audioRef, duration }: AudioProgressProps) {
+  const [currentTime, setCurrentTime] = useState(0)
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+    }
+  }, [audioRef])
+
+  const handleSeek = useCallback(
+    (value: number[]) => {
+      const audio = audioRef.current
+      if (!audio) return
+      audio.currentTime = value[0]
+      setCurrentTime(value[0])
+    },
+    [audioRef]
+  )
+
+  return (
+    <div className="space-y-2">
+      <Slider
+        value={[currentTime]}
+        max={duration || 100}
+        step={0.1}
+        onValueChange={handleSeek}
+        className="cursor-pointer"
+      />
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{formatTime(currentTime)}</span>
+        <span>{formatTime(duration)}</span>
+      </div>
+    </div>
+  )
+})
+
+// ============================================================================
 // Audio Player Component
 // ============================================================================
 
@@ -64,7 +124,6 @@ export function AudioPlayer({
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
@@ -79,18 +138,15 @@ export function AudioPlayer({
     const audio = audioRef.current
     if (!audio) return
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
     const handleLoadedMetadata = () => setDuration(audio.duration)
     const handleEnded = () => setIsPlaying(false)
     const handleError = () => setError(true)
 
-    audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('ended', handleEnded)
     audio.addEventListener('error', handleError)
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('error', handleError)
@@ -108,13 +164,6 @@ export function AudioPlayer({
     }
     setIsPlaying(!isPlaying)
   }, [isPlaying])
-
-  const handleSeek = useCallback((value: number[]) => {
-    const audio = audioRef.current
-    if (!audio) return
-    audio.currentTime = value[0]
-    setCurrentTime(value[0])
-  }, [])
 
   const handleVolumeChange = useCallback((value: number[]) => {
     const audio = audioRef.current
@@ -193,19 +242,7 @@ export function AudioPlayer({
             </div>
 
             {/* Progress bar */}
-            <div className="space-y-2">
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={0.1}
-                onValueChange={handleSeek}
-                className="cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
+            <AudioProgress audioRef={audioRef} duration={duration} />
 
             {/* Controls */}
             <div className="flex items-center justify-center gap-4">
