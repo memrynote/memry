@@ -106,18 +106,16 @@ locale has finished loading.
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
 
-**Notes Folder** sets the root of your notes tree inside the vault. Leave it empty (the default) and
-the vault root is the notes root. Set it to, say, `Notes` and memrynote treats `<vault>/Notes` as the top
-of the tree: new notes are created there, and everything inside it — `Notes/Work`, `Notes/Archive` —
-becomes a top-level folder in the sidebar. The `Notes` folder itself no longer appears, because it
-_is_ the root.
+**Default Location for New Notes** names the folder an unplaced new note goes to — a note created
+with no folder in mind, such as from a quick capture. Leave it empty to use the vault root.
 
-Two consequences worth knowing:
+It only affects where a new note is written. It is not a root:
 
-- Folders that live outside the notes root are not part of the notes tree. Their notes still show up,
-  but at the top level rather than under a folder.
-- The value is a path relative to the vault, not a nested one. `Notes` and `Notes/Inbox` are both
-  valid; a leading or trailing slash is ignored.
+- The sidebar keeps showing your whole vault. A folder named here appears as an ordinary folder
+  alongside the others; nothing is hidden or re-parented.
+- Creating a note inside a folder puts it in that folder, not inside the default one.
+- Every folder stays browsable. Folder View, moves, drag-and-drop, and folder paths on the sync
+  wire are all relative to the vault root regardless of this setting.
 
 ### Privacy
 
@@ -179,6 +177,13 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 ### Default Template
 
 Pick the template seeded into new journal entries.
+
+### Sidebar Visibility
+
+Show or hide journal sidebar panes:
+
+- **Show Schedule** — calendar / events for the date
+- **Show Tasks** — tasks due that day
 
 ### Footer
 

@@ -9,7 +9,7 @@ vi.mock('../../database/client', () => ({
 }))
 
 vi.mock('../../vault/notes', () => ({
-  getNotesDir: vi.fn(() => `${VAULT_ROOT}/notes`),
+  getVaultRoot: vi.fn(() => VAULT_ROOT),
   toRelativePath: vi.fn((p: string) => p.replace(`${VAULT_ROOT}/`, '')),
   toAbsolutePath: vi.fn((p: string) => `${VAULT_ROOT}/${p}`)
 }))
@@ -99,7 +99,7 @@ function makeCachedNote(overrides: Record<string, unknown> = {}) {
   return {
     id: 'note-1',
     title: 'test-file',
-    path: 'notes/folder/test-file.md',
+    path: 'folder/test-file.md',
     emoji: null,
     fileType: 'markdown',
     localOnly: false,

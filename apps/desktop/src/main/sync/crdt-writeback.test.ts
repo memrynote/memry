@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   parseNote: vi.fn(),
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn(),
-  getNotesDir: vi.fn(),
+  getDefaultNoteDir: vi.fn(),
   toRelativePath: vi.fn(),
   toAbsolutePath: vi.fn(),
   maybeCreateSignificantSnapshot: vi.fn(),
@@ -85,7 +85,7 @@ vi.mock('../vault/frontmatter', () => ({
 }))
 
 vi.mock('../vault/notes', () => ({
-  getNotesDir: (...args: unknown[]) => mocks.getNotesDir(...args),
+  getDefaultNoteDir: (...args: unknown[]) => mocks.getDefaultNoteDir(...args),
   toRelativePath: (...args: unknown[]) => mocks.toRelativePath(...args),
   toAbsolutePath: (...args: unknown[]) => mocks.toAbsolutePath(...args),
   maybeCreateSignificantSnapshot: (...args: unknown[]) =>
@@ -182,7 +182,7 @@ describe('crdt writeback', () => {
     )
     mocks.toAbsolutePath.mockImplementation((relative: string) => `/vault/${relative}`)
     mocks.toRelativePath.mockImplementation((absolute: string) => absolute.replace('/vault/', ''))
-    mocks.getNotesDir.mockReturnValue('/vault/notes')
+    mocks.getDefaultNoteDir.mockReturnValue('/vault/notes')
     mocks.generateNotePath.mockReturnValue('/vault/notes/New.md')
     mocks.generateUniquePath.mockImplementation((p: string) => Promise.resolve(p))
     mocks.getJournalPath.mockImplementation((date: string) => `/vault/journal/${date}.md`)

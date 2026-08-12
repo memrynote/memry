@@ -6,14 +6,13 @@ import type { ApplyContext } from './types'
 import { makeCtx, makeNotePayload } from '@tests/utils/fixtures/sync-item-handlers'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
-const NOTES_DIR = path.join(VAULT_ROOT, 'notes')
 
 vi.mock('../../database/client', () => ({
   getIndexDatabase: vi.fn(() => ({}))
 }))
 
 vi.mock('../../vault/notes', () => ({
-  getNotesDir: vi.fn(() => NOTES_DIR),
+  getVaultRoot: vi.fn(() => VAULT_ROOT),
   toRelativePath: vi.fn((p: string) => path.relative(VAULT_ROOT, p)),
   toAbsolutePath: vi.fn((p: string) => path.join(VAULT_ROOT, p))
 }))
@@ -173,7 +172,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetPropertyDefinition.mockReturnValue(undefined)
 
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
-    fs.mkdirSync(NOTES_DIR, { recursive: true })
+    fs.mkdirSync(VAULT_ROOT, { recursive: true })
 
     vi.mocked(getNoteCacheByPath).mockImplementation((_db, p) =>
       takenRelPaths.has(p)
@@ -209,14 +208,14 @@ describe('noteHandler.applyUpsert — path collision', () => {
     const pathA = calls[0][1].path
     const pathB = calls[1][1].path
 
-    expect(pathA).toBe(path.join('notes', 'a1', 'a1.md'))
-    expect(pathB).toBe(path.join('notes', 'a1', 'a1 1.md'))
+    expect(pathA).toBe(path.join('a1', 'a1.md'))
+    expect(pathB).toBe(path.join('a1', 'a1 1.md'))
     expect(pathA).not.toBe(pathB)
   })
 
   it('deduplicates path when local note_cache already has matching path', () => {
     // #given — path already exists in note_cache
-    takenRelPaths.add(path.join('notes', 'a1', 'a1.md'))
+    takenRelPaths.add(path.join('a1', 'a1.md'))
 
     // #when
     const result = noteHandler.applyUpsert(ctx, 'note-new', makeNotePayload(), {})
@@ -225,13 +224,13 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(result).toBe('applied')
 
     const calls = vi.mocked(syncNoteToCache).mock.calls
-    expect(calls[0][1].path).toBe(path.join('notes', 'a1', 'a1 1.md'))
+    expect(calls[0][1].path).toBe(path.join('a1', 'a1 1.md'))
   })
 
   it('increments suffix when multiple collisions exist', () => {
     // #given — two paths already taken
-    takenRelPaths.add(path.join('notes', 'a1', 'a1.md'))
-    takenRelPaths.add(path.join('notes', 'a1', 'a1 1.md'))
+    takenRelPaths.add(path.join('a1', 'a1.md'))
+    takenRelPaths.add(path.join('a1', 'a1 1.md'))
 
     // #when
     const result = noteHandler.applyUpsert(ctx, 'note-new', makeNotePayload(), {})
@@ -240,7 +239,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(result).toBe('applied')
 
     const calls = vi.mocked(syncNoteToCache).mock.calls
-    expect(calls[0][1].path).toBe(path.join('notes', 'a1', 'a1 2.md'))
+    expect(calls[0][1].path).toBe(path.join('a1', 'a1 2.md'))
   })
 
   it('updates existing markdown note tags, properties, emoji, cache metadata, and events', () => {
@@ -248,7 +247,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       emoji: null,
       fileType: 'markdown',
       mimeType: null,
@@ -258,8 +257,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
       createdAt: '2024-01-01T00:00:00.000Z',
       modifiedAt: '2024-01-01T00:00:00.000Z'
     })
-    fs.mkdirSync(path.join(NOTES_DIR, 'a1'), { recursive: true })
-    fs.writeFileSync(path.join(NOTES_DIR, 'a1', 'a1.md'), '---\n---\nold content')
+    fs.mkdirSync(path.join(VAULT_ROOT, 'a1'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, 'a1', 'a1.md'), '---\n---\nold content')
 
     // #when
     const result = noteHandler.applyUpsert(
@@ -314,7 +313,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'Old', 'a1.md'),
+      path: path.join('Old', 'a1.md'),
       emoji: null,
       fileType: 'markdown',
       mimeType: null,
@@ -325,9 +324,9 @@ describe('noteHandler.applyUpsert — path collision', () => {
       modifiedAt: '2024-01-01T00:00:00.000Z'
     })
     vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
-    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
-    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'a1.md'), '---\n---\nold content')
-    fs.writeFileSync(path.join(NOTES_DIR, 'Old', '.DS_Store'), '')
+    fs.mkdirSync(path.join(VAULT_ROOT, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, 'Old', 'a1.md'), '---\n---\nold content')
+    fs.writeFileSync(path.join(VAULT_ROOT, 'Old', '.DS_Store'), '')
 
     const result = noteHandler.applyUpsert(
       ctx,
@@ -347,20 +346,20 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(updateNoteCache).toHaveBeenCalledWith(
       {},
       'note-1',
-      expect.objectContaining({ path: path.join('notes', 'New', 'Renamed.md') })
+      expect.objectContaining({ path: path.join('New', 'Renamed.md') })
     )
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.RENAMED, {
       id: 'note-1',
-      oldPath: path.join('notes', 'Old', 'a1.md'),
-      newPath: path.join('notes', 'New', 'Renamed.md'),
+      oldPath: path.join('Old', 'a1.md'),
+      newPath: path.join('New', 'Renamed.md'),
       oldTitle: 'a1',
       newTitle: 'Renamed',
       source: 'sync'
     })
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.MOVED, {
       id: 'note-1',
-      oldPath: path.join('notes', 'Old', 'a1.md'),
-      newPath: path.join('notes', 'New', 'Renamed.md'),
+      oldPath: path.join('Old', 'a1.md'),
+      newPath: path.join('New', 'Renamed.md'),
       source: 'sync'
     })
   })
@@ -370,7 +369,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'Team [q3]',
-      path: path.join('notes', 'Old', 'Team [q3].md'),
+      path: path.join('Old', 'Team [q3].md'),
       emoji: null,
       fileType: 'markdown',
       mimeType: null,
@@ -381,8 +380,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
       modifiedAt: '2024-01-01T00:00:00.000Z'
     })
     vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
-    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
-    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'Team [q3].md'), '---\n---\nold content')
+    fs.mkdirSync(path.join(VAULT_ROOT, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, 'Old', 'Team [q3].md'), '---\n---\nold content')
 
     // #when — only the folder changes; the title is unchanged
     const result = noteHandler.applyUpsert(
@@ -397,12 +396,12 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(updateNoteCache).toHaveBeenCalledWith(
       {},
       'note-1',
-      expect.objectContaining({ path: path.join('notes', 'New', 'Team [q3].md') })
+      expect.objectContaining({ path: path.join('New', 'Team [q3].md') })
     )
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.MOVED, {
       id: 'note-1',
-      oldPath: path.join('notes', 'Old', 'Team [q3].md'),
-      newPath: path.join('notes', 'New', 'Team [q3].md'),
+      oldPath: path.join('Old', 'Team [q3].md'),
+      newPath: path.join('New', 'Team [q3].md'),
       source: 'sync'
     })
     expect(ctx.emit).not.toHaveBeenCalledWith(NotesChannels.events.RENAMED, expect.any(Object))
@@ -412,7 +411,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       emoji: null,
       fileType: 'markdown',
       mimeType: null,
@@ -456,7 +455,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       fileType: 'markdown',
       clock: { dev1: 3 }
     })
@@ -507,13 +506,13 @@ describe('noteHandler.applyUpsert — path collision', () => {
         expect.objectContaining({
           noteId: 'file-1',
           attachmentId: 'att-1',
-          diskPath: path.join(NOTES_DIR, 'Files', 'Report.pdf')
+          diskPath: path.join(VAULT_ROOT, 'Files', 'Report.pdf')
         })
       ])
       expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.CREATED, {
         note: {
           id: 'file-1',
-          path: path.join('notes', 'Files', 'Report.pdf'),
+          path: path.join('Files', 'Report.pdf'),
           title: 'Report'
         },
         source: 'sync'
@@ -527,7 +526,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'file-1',
       title: 'Report',
-      path: path.join('notes', 'Old', 'Report.pdf'),
+      path: path.join('Old', 'Report.pdf'),
       emoji: null,
       fileType: 'pdf',
       mimeType: 'application/pdf',
@@ -538,8 +537,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
       modifiedAt: '2024-01-01T00:00:00.000Z'
     })
     vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
-    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
-    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'Report.pdf'), 'pdf')
+    fs.mkdirSync(path.join(VAULT_ROOT, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(VAULT_ROOT, 'Old', 'Report.pdf'), 'pdf')
 
     const result = noteHandler.applyUpsert(
       ctx,
@@ -560,7 +559,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
       {},
       'file-1',
       expect.objectContaining({
-        path: path.join('notes', 'Archive', 'Quarterly.pdf'),
+        path: path.join('Archive', 'Quarterly.pdf'),
         title: 'Quarterly',
         emoji: 'file'
       })
@@ -569,7 +568,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
       ctx.db,
       'file-1',
       expect.objectContaining({
-        path: path.join('notes', 'Archive', 'Quarterly.pdf'),
+        path: path.join('Archive', 'Quarterly.pdf'),
         title: 'Quarterly',
         attachmentId: 'att-new'
       })
@@ -583,7 +582,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       fileType: 'markdown',
       clock: { dev1: 1 }
     })
@@ -594,10 +593,10 @@ describe('noteHandler.applyUpsert — path collision', () => {
     // #then
     expect(applied).toBe('applied')
     expect(deleteNoteFromCache).toHaveBeenCalledWith({}, 'note-1')
-    expect(deleteFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'notes', 'a1', 'a1.md'))
+    expect(deleteFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'a1', 'a1.md'))
     expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.DELETED, {
       id: 'note-1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       source: 'sync'
     })
     // A remote delete must run the same project-link cleanup as the local path,
@@ -607,7 +606,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     vi.clearAllMocks()
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       clock: { dev1: 3 }
     })
 
@@ -623,7 +622,7 @@ describe('noteHandler.applyUpsert — path collision', () => {
     mockGetNoteMetadataById.mockReturnValueOnce({
       id: 'note-1',
       title: 'a1',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       fileType: 'markdown',
       clock: { dev1: 1 }
     })
@@ -670,7 +669,7 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     downloadEvents = []
     mockGetNoteMetadataById.mockReturnValue(undefined)
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
-    fs.mkdirSync(NOTES_DIR, { recursive: true })
+    fs.mkdirSync(VAULT_ROOT, { recursive: true })
     attachmentEvents.onDownloadNeeded(listener)
   })
 
@@ -711,7 +710,7 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
   it('merges remote references into local ones on update and dedupes repeated requests', () => {
     mockGetNoteMetadataById.mockReturnValue({
       id: 'note-att-update',
-      path: path.join('notes', 'a1', 'a1.md'),
+      path: path.join('a1', 'a1.md'),
       title: 'a1',
       emoji: null,
       fileType: 'markdown',

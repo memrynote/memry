@@ -257,7 +257,7 @@ describe('content sync services', () => {
       tags: ['tag'],
       properties: { Status: 'draft' },
       pinnedTags: ['Pinned'],
-      folderPath: 'Projects',
+      folderPath: 'notes/Projects',
       clock: { 'dev-a': 1 }
     })
 
@@ -272,7 +272,7 @@ describe('content sync services', () => {
       fileType: 'pdf',
       mimeType: 'application/pdf',
       attachmentId: 'att-1',
-      folderPath: 'Files'
+      folderPath: 'notes/Files'
     })
 
     service.enqueueDelete('note-1')

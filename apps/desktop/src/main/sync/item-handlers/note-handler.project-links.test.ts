@@ -19,7 +19,6 @@ import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import type { ApplyContext, DrizzleDb } from './types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-links-'))
-const NOTES_DIR = path.join(VAULT_ROOT, 'notes')
 
 let dataDb: TestDatabaseResult
 
@@ -39,7 +38,7 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 
 vi.mock('../../vault/notes', () => ({
-  getNotesDir: vi.fn(() => NOTES_DIR),
+  getVaultRoot: vi.fn(() => VAULT_ROOT),
   toRelativePath: vi.fn((p: string) => path.relative(VAULT_ROOT, p)),
   toAbsolutePath: vi.fn((p: string) => path.join(VAULT_ROOT, p))
 }))
@@ -69,7 +68,7 @@ vi.mock('../../tasks/runtime-effects', () => ({
 
 import { noteHandler } from './note-handler'
 
-const NOTE_PATH = path.join('notes', 'n1.md')
+const NOTE_PATH = path.join('n1.md')
 
 function seedNote(): void {
   dataDb.db
@@ -85,7 +84,7 @@ function seedNote(): void {
     })
     .run()
 
-  fs.mkdirSync(NOTES_DIR, { recursive: true })
+  fs.mkdirSync(VAULT_ROOT, { recursive: true })
   fs.writeFileSync(path.join(VAULT_ROOT, NOTE_PATH), '---\ntags: []\n---\n\nbody\n', 'utf-8')
 }
 
@@ -97,7 +96,7 @@ describe('noteHandler.applyUpsert — project links on a synced update', () => {
     dataDb = createTestDataDb()
     ctx = { db: dataDb.db as unknown as DrizzleDb, emit: vi.fn() }
 
-    fs.rmSync(NOTES_DIR, { recursive: true, force: true })
+    fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
     dataDb.db
       .insert(projects)
       .values({

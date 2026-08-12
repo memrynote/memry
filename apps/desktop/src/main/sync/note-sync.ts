@@ -10,7 +10,6 @@ import { ContentSyncService, type ContentSyncDeps } from './content-sync-base'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes'
-import { getConfig } from '../vault/index'
 import { parseNote } from '../vault/frontmatter'
 import { registerRenameSyncCallback, unregisterRenameSyncCallback } from '../vault/rename-tracker'
 
@@ -127,12 +126,14 @@ export class NoteSyncService extends ContentSyncService<NoteSyncPayload> {
   }
 }
 
+/**
+ * Folder a note syncs under, vault-relative.
+ *
+ * `defaultNoteFolder` is deliberately not stripped: it is a destination for
+ * new notes, not a tree root, so two devices that disagree about it must still
+ * agree about where a note lives (#1204).
+ */
 export function extractFolderFromPath(relativePath: string): string | null {
-  const config = getConfig()
-  const prefix = config.defaultNoteFolder + '/'
-  const withoutPrefix = relativePath.startsWith(prefix)
-    ? relativePath.slice(prefix.length)
-    : relativePath
-  const dir = path.dirname(withoutPrefix)
+  const dir = path.dirname(relativePath)
   return dir === '.' ? null : dir
 }

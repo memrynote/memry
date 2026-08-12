@@ -15,9 +15,9 @@ const note = (id: string, path: string): NoteListItem =>
     tags: []
   }) as NoteListItem
 
-const noteA = note('note-a', 'notes/A/A.md')
-const noteB = note('note-b', 'notes/A/B.md')
-const rootNote = note('note-root', 'notes/Root.md')
+const noteA = note('note-a', 'A/A.md')
+const noteB = note('note-b', 'A/B.md')
+const rootNote = note('note-root', 'Root.md')
 
 const tree: TreeStructure = {
   rootNotes: [rootNote],
@@ -78,7 +78,7 @@ describe('useTreeDragDrop', () => {
     api.notes.reorder.mockResolvedValue({ success: true })
     api.notes.getAllPositions.mockResolvedValue({
       success: true,
-      positions: { 'notes/A/B.md': 0, 'notes/A/A.md': 1 }
+      positions: { 'A/B.md': 0, 'A/A.md': 1 }
     })
   })
 
@@ -122,8 +122,8 @@ describe('useTreeDragDrop', () => {
       })
     })
 
-    expect(api.notes.reorder).toHaveBeenCalledWith('A', ['notes/A/B.md', 'notes/A/A.md'])
-    expect(setNotePositions).toHaveBeenCalledWith({ 'notes/A/B.md': 0, 'notes/A/A.md': 1 })
+    expect(api.notes.reorder).toHaveBeenCalledWith('A', ['A/B.md', 'A/A.md'])
+    expect(setNotePositions).toHaveBeenCalledWith({ 'A/B.md': 0, 'A/A.md': 1 })
     expect(moveNoteMutateAsync).not.toHaveBeenCalled()
   })
 

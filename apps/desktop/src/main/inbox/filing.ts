@@ -17,7 +17,7 @@ import { createNote, getNoteById, updateNote, createFolder, getFolders } from '.
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
-import { getStatus, getConfig } from '../vault/index'
+import { getStatus } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
@@ -561,12 +561,11 @@ async function fileBinaryToFolder(
 
     // Build source and destination paths
     const vaultPath = getVaultPath()
-    const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
     const filename = getFiledBinaryFilename(item)
 
-    // Destination is vault/notes/{folderPath}/ (or root of notes folder)
-    const destFolder = path.join(vaultPath, config.defaultNoteFolder, folderPath || '')
+    // folderPath is vault-relative (the folder picker speaks vault paths).
+    const destFolder = path.join(vaultPath, folderPath || '')
     const destPath = path.join(destFolder, filename)
 
     // Handle filename conflicts by appending -1, -2, etc.
@@ -1056,12 +1055,11 @@ async function linkBinaryToNotes(
 
     // Build source and destination paths
     const vaultPath = getVaultPath()
-    const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
     const filename = getFiledBinaryFilename(item)
 
-    // Destination is vault/notes/{destFolder}/
-    const destFolderPath = path.join(vaultPath, config.defaultNoteFolder, destFolder)
+    // destFolder is vault-relative (derived from an existing note's path).
+    const destFolderPath = path.join(vaultPath, destFolder)
     const destPath = path.join(destFolderPath, filename)
 
     // Handle filename conflicts

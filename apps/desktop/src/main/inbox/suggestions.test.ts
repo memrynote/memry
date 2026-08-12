@@ -164,10 +164,10 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-1')
 
     expect(suggestions).toHaveLength(3)
-    expect(suggestions[0]?.destination.path).toBe('projects/ProjectA')
+    expect(suggestions[0]?.destination.path).toBe('notes/projects/ProjectA')
     expect(suggestions[0]?.suggestedTags).toEqual(['work'])
-    expect(suggestions[1]?.destination.path).toBe('archive')
-    expect(suggestions[2]?.destination.path).toBe('recent')
+    expect(suggestions[1]?.destination.path).toBe('notes/archive')
+    expect(suggestions[2]?.destination.path).toBe('notes/recent')
 
     expect(suggestions[0].confidence).toBeGreaterThan(suggestions[1].confidence)
     expect(suggestions[1].confidence).toBeGreaterThan(suggestions[2].confidence)
@@ -209,7 +209,7 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-2')
 
     expect(suggestions).toHaveLength(1)
-    expect(suggestions[0]?.destination.path).toBe('projects/ProjectB')
+    expect(suggestions[0]?.destination.path).toBe('notes/projects/ProjectB')
     expect(suggestions[0]?.suggestedTags).toEqual(['alpha', 'beta'])
   })
 
@@ -339,8 +339,8 @@ describe('inbox suggestions', () => {
     expect(suggestions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          destination: { type: 'folder', path: 'research' },
-          reason: 'Similar to "Memo" in research'
+          destination: { type: 'folder', path: 'notes/research' },
+          reason: 'Similar to "Memo" in notes/research'
         }),
         expect.objectContaining({
           destination: { type: 'note', noteId: 'note-match', noteTitle: 'Memo' },
@@ -399,7 +399,7 @@ describe('inbox suggestions', () => {
 
     const folders = await getNoteFolderSuggestions('note-current')
 
-    expect(folders.map((folder) => folder.path)).toEqual(['research', 'recent'])
+    expect(folders.map((folder) => folder.path)).toEqual(['notes/research', 'notes/recent'])
     expect(folders[0]?.reason).toBe("You've moved 1 notes here before")
   })
 
@@ -487,12 +487,12 @@ describe('inbox suggestions', () => {
 
     expect(folders).toEqual([
       expect.objectContaining({
-        path: '',
-        reason: 'Similar to "Root Note" in root'
+        path: 'notes',
+        reason: 'Similar to "Root Note" in notes'
       }),
       expect.objectContaining({
-        path: 'archive',
-        reason: 'Similar to "Archive Note" in archive'
+        path: 'notes/archive',
+        reason: 'Similar to "Archive Note" in notes/archive'
       })
     ])
   })
@@ -538,8 +538,8 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-pasta')
     const folders = suggestions.filter((s) => s.destination.type === 'folder')
 
-    expect(folders[0]?.destination.path).toBe('recipes')
-    expect(folders.find((f) => f.destination.path === 'misc')?.confidence ?? 1).toBeLessThan(
+    expect(folders[0]?.destination.path).toBe('notes/recipes')
+    expect(folders.find((f) => f.destination.path === 'notes/misc')?.confidence ?? 1).toBeLessThan(
       folders[0]!.confidence
     )
   })
@@ -577,7 +577,7 @@ describe('inbox suggestions', () => {
     const suggestions = await getSuggestions('item-rec')
     const folders = suggestions.filter((s) => s.destination.type === 'folder')
 
-    expect(folders.some((f) => f.destination.path === 'recipes')).toBe(true)
+    expect(folders.some((f) => f.destination.path === 'notes/recipes')).toBe(true)
   })
 
   it('suppresses a folder whose only hit is below the confidence floor', async () => {

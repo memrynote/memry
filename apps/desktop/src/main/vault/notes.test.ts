@@ -211,9 +211,9 @@ describe('notes operations', () => {
       })
 
       // Verify file exists in subfolder (spaces preserved in filename)
-      const filePath = path.join(tempVault.notesDir, 'projects', 'active', 'Nested Note.md')
+      const filePath = path.join(tempVault.path, 'projects', 'active', 'Nested Note.md')
       expect(fs.existsSync(filePath)).toBe(true)
-      expect(result.path).toBe('notes/projects/active/Nested Note.md')
+      expect(result.path).toBe('projects/active/Nested Note.md')
     })
 
     it('T361: generates unique path on collision', async () => {
@@ -838,7 +838,7 @@ describe('notes operations', () => {
       // New file should exist in archive folder
       const newPath = path.join(tempVault.path, moved.path)
       expect(fs.existsSync(newPath)).toBe(true)
-      expect(moved.path).toContain('notes/archive/')
+      expect(moved.path).toContain('archive/')
     })
 
     it('T365: creates target folder if needed', async () => {
@@ -847,7 +847,7 @@ describe('notes operations', () => {
         content: 'Content.'
       })
 
-      const targetFolder = path.join(tempVault.notesDir, 'deep', 'nested', 'folder')
+      const targetFolder = path.join(tempVault.path, 'deep', 'nested', 'folder')
       expect(fs.existsSync(targetFolder)).toBe(false)
 
       await notes.moveNote(created.id, 'deep/nested/folder')
@@ -920,7 +920,7 @@ describe('notes operations', () => {
       const moved = await notes.moveNote('binary-move-1', 'archive')
 
       // #then — binary content preserved, not serialized with frontmatter
-      expect(moved.path).toContain('notes/archive/')
+      expect(moved.path).toContain('archive/')
       expect(moved.path).toMatch(/\.png$/)
 
       const newAbsPath = path.join(tempVault.path, moved.path)
@@ -1043,7 +1043,7 @@ describe('notes operations', () => {
 
     it('T367: filters by folder', async () => {
       // Folder filter uses path prefix, so we need the full relative path
-      const result = await notes.listNotes({ folder: 'notes/subfolder' })
+      const result = await notes.listNotes({ folder: 'subfolder' })
 
       expect(result.notes.length).toBe(1)
       expect(result.notes[0].title).toBe('Note C')
@@ -1333,7 +1333,7 @@ describe('notes operations', () => {
       it('T370: creates nested directories', async () => {
         await notes.createFolder('new/nested/folder')
 
-        const folderPath = path.join(tempVault.notesDir, 'new', 'nested', 'folder')
+        const folderPath = path.join(tempVault.path, 'new', 'nested', 'folder')
         expect(fs.existsSync(folderPath)).toBe(true)
       })
     })
@@ -1345,10 +1345,10 @@ describe('notes operations', () => {
 
         await notes.renameFolder('old-name', 'new-name')
 
-        expect(fs.existsSync(path.join(tempVault.notesDir, 'old-name'))).toBe(false)
-        expect(fs.existsSync(path.join(tempVault.notesDir, 'new-name'))).toBe(true)
+        expect(fs.existsSync(path.join(tempVault.path, 'old-name'))).toBe(false)
+        expect(fs.existsSync(path.join(tempVault.path, 'new-name'))).toBe(true)
         // Note should still exist in renamed folder
-        expect(fs.existsSync(path.join(tempVault.notesDir, 'new-name', 'Inside.md'))).toBe(true)
+        expect(fs.existsSync(path.join(tempVault.path, 'new-name', 'Inside.md'))).toBe(true)
       })
     })
 
@@ -1356,7 +1356,7 @@ describe('notes operations', () => {
       it('T370: deletes folder recursively', async () => {
         await notes.createNote({ title: 'To Delete', content: 'C.', folder: 'delete-me' })
 
-        const folderPath = path.join(tempVault.notesDir, 'delete-me')
+        const folderPath = path.join(tempVault.path, 'delete-me')
         expect(fs.existsSync(folderPath)).toBe(true)
 
         await notes.deleteFolder('delete-me')

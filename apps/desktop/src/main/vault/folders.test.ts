@@ -8,6 +8,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 import {
+  folderExists,
   readFolderConfig,
   writeFolderConfig,
   getFolderTemplate,
@@ -77,6 +78,67 @@ describe('isFolderConfigFile', () => {
 })
 
 // ============================================================================
+// Folder Resolution (#1204)
+// ============================================================================
+
+/**
+ * The mocked config sets `defaultNoteFolder: 'notes'` throughout this file, so
+ * every case below also proves the setting does not re-root folder lookup.
+ * Resolving through it is what made a real folder report "Folder not found"
+ * and open an empty Folder View.
+ */
+describe('folderExists', () => {
+  let tempVault: TestDir
+
+  beforeEach(async () => {
+    tempVault = createTempVault()
+    mockVaultPath = tempVault.path
+    const indexModule = await import('./index')
+    ;(indexModule.getStatus as ReturnType<typeof vi.fn>).mockReturnValue({
+      path: tempVault.path,
+      isOpen: true
+    })
+  })
+
+  afterEach(() => {
+    tempVault.cleanup()
+  })
+
+  it('resolves a top-level folder against the vault root', () => {
+    fs.mkdirSync(path.join(tempVault.path, 'travel'), { recursive: true })
+
+    expect(folderExists('travel')).toBe(true)
+  })
+
+  it('resolves a nested folder against the vault root', () => {
+    fs.mkdirSync(path.join(tempVault.path, 'projects', 'active'), { recursive: true })
+
+    expect(folderExists('projects/active')).toBe(true)
+  })
+
+  it('does not resolve a folder through the configured note folder', () => {
+    // <vault>/notes/travel exists but <vault>/travel does not. Joining the
+    // notes folder in would report true for a folder the sidebar never shows.
+    fs.mkdirSync(path.join(tempVault.path, 'notes', 'travel'), { recursive: true })
+
+    expect(folderExists('travel')).toBe(false)
+  })
+
+  it('treats the configured note folder as an ordinary folder', () => {
+    expect(folderExists('notes')).toBe(true)
+  })
+
+  it('treats the empty path as the vault root', () => {
+    expect(folderExists('')).toBe(true)
+    expect(folderExists('.')).toBe(true)
+  })
+
+  it('returns false for a folder that is not there', () => {
+    expect(folderExists('nope')).toBe(false)
+  })
+})
+
+// ============================================================================
 // Folder Config Tests (T398-T400)
 // ============================================================================
 
@@ -116,7 +178,7 @@ describe('folder config operations', () => {
 
     it('T398: reads and parses .folder.md file', async () => {
       // Create folder config
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(
         path.join(projectsDir, '.folder.md'),
@@ -136,7 +198,7 @@ inherit: false
 
     it('T398: reads root folder config', async () => {
       fs.writeFileSync(
-        path.join(tempVault.path, 'notes', '.folder.md'),
+        path.join(tempVault.path, '.folder.md'),
         `---
 template: default-template
 ---
@@ -151,7 +213,7 @@ template: default-template
     })
 
     it('T398: parses view configuration', async () => {
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(
         path.join(projectsDir, '.folder.md'),
@@ -188,7 +250,7 @@ summaries:
     it('T398: writes config to .folder.md file', async () => {
       await writeFolderConfig('projects', { template: 'project-template' })
 
-      const filePath = path.join(tempVault.path, 'notes', 'projects', '.folder.md')
+      const filePath = path.join(tempVault.path, 'projects', '.folder.md')
       expect(fs.existsSync(filePath)).toBe(true)
 
       const content = fs.readFileSync(filePath, 'utf-8')
@@ -198,13 +260,13 @@ summaries:
     it('T398: creates folder if not exists', async () => {
       await writeFolderConfig('new-folder', { template: 'test' })
 
-      const folderPath = path.join(tempVault.path, 'notes', 'new-folder')
+      const folderPath = path.join(tempVault.path, 'new-folder')
       expect(fs.existsSync(folderPath)).toBe(true)
     })
 
     it('T398: deletes file if config is empty', async () => {
       // Create a config first
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(path.join(projectsDir, '.folder.md'), 'template: old')
 
@@ -226,7 +288,7 @@ summaries:
 
   describe('getFolderTemplate', () => {
     it('T399: returns template from folder config', async () => {
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(
         path.join(projectsDir, '.folder.md'),
@@ -244,7 +306,7 @@ template: project-template
     it('T399: inherits template from parent folder', async () => {
       // Set template on root
       fs.writeFileSync(
-        path.join(tempVault.path, 'notes', '.folder.md'),
+        path.join(tempVault.path, '.folder.md'),
         `---
 template: root-template
 ---
@@ -252,7 +314,7 @@ template: root-template
       )
 
       // Create subfolder without config
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
 
       const template = await getFolderTemplate('projects')
@@ -263,7 +325,7 @@ template: root-template
     it('T399: stops inheritance when inherit is false', async () => {
       // Set template on root
       fs.writeFileSync(
-        path.join(tempVault.path, 'notes', '.folder.md'),
+        path.join(tempVault.path, '.folder.md'),
         `---
 template: root-template
 ---
@@ -271,7 +333,7 @@ template: root-template
       )
 
       // Set inherit: false on subfolder
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(
         path.join(projectsDir, '.folder.md'),
@@ -294,7 +356,7 @@ inherit: false
 
     it('T399: traverses multiple levels', async () => {
       // Set template on parent
-      const projectsDir = path.join(tempVault.path, 'notes', 'projects')
+      const projectsDir = path.join(tempVault.path, 'projects')
       fs.mkdirSync(projectsDir, { recursive: true })
       fs.writeFileSync(
         path.join(projectsDir, '.folder.md'),

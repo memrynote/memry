@@ -113,7 +113,7 @@ describe('htmlImporter (integration)', () => {
     // Two attachments: local.png + remote.png (data URI kept inline, not saved)
     expect(summary.attachments).toBe(2)
 
-    const htmlDir = path.join(tempVault.notesDir, 'HTML')
+    const htmlDir = path.join(tempVault.path, 'HTML')
 
     // Files use sanitized title as filename (spaces preserved, case preserved)
     expect(fs.existsSync(path.join(htmlDir, 'Page One.md'))).toBe(true)

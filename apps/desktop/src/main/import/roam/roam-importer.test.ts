@@ -86,7 +86,7 @@ describe('roamImporter (integration)', () => {
     expect(summary.failed).toEqual([])
     expect(summary.imported).toBe(3)
 
-    const roamDir = path.join(tempVault.notesDir, 'Roam')
+    const roamDir = path.join(tempVault.path, 'Roam')
     expect(fs.existsSync(path.join(roamDir, 'Project Plan.md'))).toBe(true)
     expect(fs.existsSync(path.join(roamDir, 'Meeting Notes.md'))).toBe(true)
 
@@ -107,10 +107,7 @@ describe('roamImporter (integration)', () => {
     const ctx = importContext.createImportContext('it2', new AbortController().signal)
     await importer.roamImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const meeting = fs.readFileSync(
-      path.join(tempVault.notesDir, 'Roam', 'Meeting Notes.md'),
-      'utf8'
-    )
+    const meeting = fs.readFileSync(path.join(tempVault.path, 'Roam', 'Meeting Notes.md'), 'utf8')
     // ((blk-goals)) lives on "Project Plan" → wikilink + quoted (scrubbed) text.
     expect(meeting).toContain('[[Project Plan]]: "Goals are *important* and ==urgent=="')
     // No ^uid anchors are emitted.
@@ -121,7 +118,7 @@ describe('roamImporter (integration)', () => {
     const ctx = importContext.createImportContext('it3', new AbortController().signal)
     await importer.roamImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const daily = path.join(tempVault.notesDir, 'Roam', '2024-01-01.md')
+    const daily = path.join(tempVault.path, 'Roam', '2024-01-01.md')
     expect(fs.existsSync(daily)).toBe(true)
     expect(fs.readFileSync(daily, 'utf8')).toContain('- First entry of the year')
   })
