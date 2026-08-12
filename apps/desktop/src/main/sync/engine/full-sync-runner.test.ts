@@ -647,6 +647,33 @@ describe('FullSyncRunner', () => {
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
     })
 
+    it('#then a sweep that ran moments ago for another reason does not hold it back', async () => {
+      // Regression: the reconnect floor used to be measured against
+      // LAST_CRDT_SWEEP_AT, which is also stamped by the startup, forced and
+      // interval sweeps. An app that had just started and then lost its
+      // connection once therefore sat on stale note bodies for a whole floor,
+      // even though this was its first reconnect and nothing needed collapsing.
+      // The two-device body-CRDT E2E specs caught it as "the other device's
+      // edit never arrives".
+      const h = createHarness({ crdtProvider: {} })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      // That startup sweep landed a second ago — deep inside the floor.
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1_000) : undefined
+      )
+      h.ws.connectionGeneration += 1
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+    })
+
     it('#then a socket that is still down falls back to the interval', async () => {
       // Down-and-not-yet-back is not a completed reconnect. Sweeping on every
       // cycle here would reinstate the storm for anyone whose socket is blocked
@@ -699,13 +726,17 @@ describe('FullSyncRunner', () => {
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
       await h.runner.run()
-      mocks.getAllCrdtNoteIds.mockClear()
-      h.actions.scheduleSync.mockClear()
       h.getStateValue.mockImplementation((key: string) =>
         key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now() - 1_000) : undefined
       )
+      // The first drop is owed a sweep at once — that is what starts the floor.
       h.ws.connectionGeneration += 1
+      await h.runner.run()
 
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+      // The flap: a second reconnect inside the floor of the sweep above.
+      h.ws.connectionGeneration += 1
       await h.runner.run()
       return h
     }
@@ -747,11 +778,9 @@ describe('FullSyncRunner', () => {
       // for one gap — the storm this floor exists to prevent, half-restored.
       const h = await reconnectInsideFloor()
 
-      h.getStateValue.mockImplementation((key: string) =>
-        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT
-          ? String(Date.now() - CRDT_RECONNECT_SWEEP_FLOOR_MS - 1)
-          : undefined
-      )
+      // Walk the wall clock past the floor without letting the armed timer fire,
+      // so the next fullSync is the one that settles the debt.
+      vi.setSystemTime(Date.now() + CRDT_RECONNECT_SWEEP_FLOOR_MS + 1)
       await h.runner.run()
       expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
 

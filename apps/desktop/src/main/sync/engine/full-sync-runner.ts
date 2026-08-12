@@ -44,6 +44,20 @@ export class FullSyncRunner {
    */
   private lastSweepConnectionGeneration: number | null = null
   /**
+   * When this runner last swept *because the socket had dropped and come back*.
+   * Null until that happens. The reconnect floor is measured against this and
+   * not against `LAST_CRDT_SWEEP_AT`, because that stamp also covers startup,
+   * forced and interval sweeps — none of which say anything about how often
+   * reconnects are arriving. Measuring the floor against them made the first
+   * reconnect after any recent sweep (a plain app start, then one Wi-Fi blip)
+   * wait out the whole floor before the vault was swept, which is exactly the
+   * case the floor was never meant to cover.
+   *
+   * In-memory only, like `lastSweepConnectionGeneration`: a reconnect from a
+   * previous process says nothing about this socket's flap rate.
+   */
+  private lastReconnectSweepAt: number | null = null
+  /**
    * A reconnect gap was seen inside the floor and the deferred timer has not
    * paid it yet. Cleared by any sweep, so a fullSync that arrives past the
    * floor first settles the debt and the pending timer becomes a no-op instead
@@ -98,12 +112,14 @@ export class FullSyncRunner {
       // and came back, so broadcasts were missed. This stays true for every
       // later cycle until a sweep actually runs and re-reads the generation —
       // which is what carries an unpaid debt forward, no extra flag needed.
-      if (ws.connectionGeneration !== this.lastSweepConnectionGeneration) {
+      if (this.hasReconnectGap()) {
         // Due, but not necessarily now: a connection flapping every few seconds
         // would buy one full O(vault) pass per flap. Hold it to one per floor
         // and remember the debt — dropping it would strand whatever changed
-        // during the gap.
-        if (this.msSinceLastSweep() >= CRDT_RECONNECT_SWEEP_FLOOR_MS) return true
+        // during the gap. The floor counts from the last reconnect sweep, so an
+        // isolated drop is served at once however recently the vault was swept
+        // for some other reason.
+        if (this.msSinceReconnectSweep() >= CRDT_RECONNECT_SWEEP_FLOOR_MS) return true
         this.deferOwedSweep()
         return false
       }
@@ -136,13 +152,27 @@ export class FullSyncRunner {
     return now - lastSweepAt
   }
 
+  /** Did the socket drop and come back since the last sweep read its generation? */
+  private hasReconnectGap(): boolean {
+    const ws = this.ctx.deps.ws
+    if (!ws || this.lastSweepConnectionGeneration === null) return false
+    return ws.connectionGeneration !== this.lastSweepConnectionGeneration
+  }
+
+  private msSinceReconnectSweep(): number {
+    // Never swept for a reconnect on this runner: the floor has nothing to
+    // collapse yet, so the first drop is owed a sweep immediately.
+    if (this.lastReconnectSweepAt === null) return Number.POSITIVE_INFINITY
+    return Date.now() - this.lastReconnectSweepAt
+  }
+
   /** Hold an owed sweep until the floor expires, without losing it. */
   private deferOwedSweep(): void {
     this.crdtSweepOwed = true
     // One timer, re-used: a flapping connection must not stack a timer per flap.
     if (this.owedSweepTimer) return
 
-    const waitMs = Math.max(0, CRDT_RECONNECT_SWEEP_FLOOR_MS - this.msSinceLastSweep())
+    const waitMs = Math.max(0, CRDT_RECONNECT_SWEEP_FLOOR_MS - this.msSinceReconnectSweep())
     this.owedSweepTimer = setTimeout(() => {
       this.owedSweepTimer = null
       this.payOwedSweep()
@@ -173,6 +203,9 @@ export class FullSyncRunner {
   }
 
   private sweepAllCrdtNotes(): void {
+    // Read before the generation is re-stamped below: only a sweep that closes
+    // a real drop/reconnect gap starts the floor for the next one.
+    if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
     for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
       this.crdtSync.addPendingPull(noteId)
     }
