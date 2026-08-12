@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import type { TestDatabaseResult } from '@tests/utils/test-db'
 import type { NoteSyncPayload, TaskSyncPayload } from '@memry/contracts/sync-payloads'
-import type { ApplyContext, DrizzleDb } from '../types'
+import type { ApplyContext, DrizzleDb } from '@main/sync/item-handlers/types'
 
 export const TEST_PROJECT = {
   id: 'proj-1',

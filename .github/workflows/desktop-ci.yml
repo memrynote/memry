@@ -77,6 +77,12 @@ jobs:
       - name: Typecheck desktop renderer
         run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.web.json --composite false
 
+      - name: Typecheck desktop main-process tests
+        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.node.json --composite false
+
+      - name: Typecheck desktop renderer tests
+        run: pnpm --filter @memry/desktop exec tsc --noEmit -p tsconfig.test.web.json --composite false
+
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
 

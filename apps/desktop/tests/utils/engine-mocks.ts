@@ -1,6 +1,11 @@
 import { vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  asSyncDb,
+  createTestDataDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import { type SyncEngineDeps } from '@main/sync/engine'
 import { SyncQueueManager } from '@main/sync/queue'
 import { NetworkMonitor } from '@main/sync/network'
@@ -8,13 +13,23 @@ import type { WebSocketManager } from '@main/sync/websocket'
 
 export type { TestDatabaseResult }
 
+// `NetworkMonitor._online` is private, so `NetworkMonitor & { _online: boolean }`
+// reduces to `never` and every member access below fails to compile. The backing
+// field is the mock's own, so it is declared on the emitter rather than smuggled
+// into the NetworkMonitor type.
+type MockNetworkMonitor = EventEmitter & {
+  _online: boolean
+  start: () => void
+  stop: () => void
+}
+
 export function createMockNetwork(online = true): NetworkMonitor {
-  const monitor = new EventEmitter() as NetworkMonitor & { _online: boolean }
+  const monitor = new EventEmitter() as MockNetworkMonitor
   monitor._online = online
   Object.defineProperty(monitor, 'online', { get: () => monitor._online })
   monitor.start = vi.fn()
   monitor.stop = vi.fn()
-  return monitor
+  return monitor as unknown as NetworkMonitor
 }
 
 /**
@@ -75,7 +90,7 @@ export function createMockDeps(
   overrides?: Partial<SyncEngineDeps>
 ): SyncEngineDeps {
   return {
-    queue: new SyncQueueManager(db.db),
+    queue: new SyncQueueManager(asClientDb(db.db)),
     network: createMockNetwork(),
     ws: createMockWs(),
     getAccessToken: vi.fn().mockResolvedValue('test-token'),
@@ -86,7 +101,7 @@ export function createMockDeps(
       deviceId: 'device-1'
     }),
     getDevicePublicKey: vi.fn().mockResolvedValue(new Uint8Array(32)),
-    db: db.db,
+    db: asSyncDb(db.db),
     emitToRenderer: vi.fn(),
     ...overrides
   }
