@@ -26,7 +26,25 @@ import type { SyncStatus } from '@/sync/collaboration-status'
 interface ProgressEntry {
   progress: number
   status: string
+  /** Set once the transfer reaches 100%; the prune sweep drops it after the retention window. */
+  completedAt?: number
 }
+
+/**
+ * How long a finished transfer's entry survives so the progress UI can settle.
+ * Main only ever emits transfer *phases* ('uploading', 'decrypting', …) and
+ * never a terminal status, so a full bar is the only end-of-transfer signal
+ * the renderer gets.
+ */
+export const SYNC_PROGRESS_RETENTION_MS = 5_000
+/**
+ * The cap is what bounds memory; this TTL is purely a staleness policy, so it
+ * is deliberately generous — expiring a conflict only ever retracts a warning
+ * the user may not have read yet.
+ */
+export const SYNC_CONFLICT_TTL_MS = 24 * 60 * 60 * 1_000
+export const SYNC_CONFLICT_CAP = 100
+const PRUNE_INTERVAL_MS = 5_000
 
 interface ConflictEntry {
   itemId: string
@@ -73,13 +91,15 @@ type SyncAction =
   | { type: 'SESSION_EXPIRED'; error: string }
   | { type: 'DEVICE_REVOKED'; unsyncedCount: number; error: string }
   | { type: 'CONFLICT_DETECTED'; itemId: string; itemType: string }
+  | { type: 'CLEAR_CONFLICTS' }
+  | { type: 'PRUNE_STALE'; now: number }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
   | { type: 'ITEM_SYNCED'; lastSyncAt: number; operation: 'push' | 'pull' }
   | { type: 'INITIAL_SYNC_PROGRESS'; phase: InitialSyncPhase; current: number; total: number }
   | { type: 'RESET' }
 
-const initialState: SyncState = {
+export const initialState: SyncState = {
   status: 'unknown',
   lastSyncAt: null,
   pendingCount: 0,
@@ -95,7 +115,38 @@ const initialState: SyncState = {
   syncActivity: { pushCount: 0, pullCount: 0 }
 }
 
-function syncReducer(state: SyncState, action: SyncAction): SyncState {
+function recordProgress(
+  current: Record<string, ProgressEntry> | null,
+  attachmentId: string,
+  progress: number,
+  status: string
+): Record<string, ProgressEntry> {
+  const entry: ProgressEntry =
+    progress >= 100 ? { progress, status, completedAt: Date.now() } : { progress, status }
+  return { ...current, [attachmentId]: entry }
+}
+
+/** Returns the same reference when nothing expired, so the reducer can bail out. */
+function pruneProgress(
+  current: Record<string, ProgressEntry> | null,
+  now: number
+): Record<string, ProgressEntry> | null {
+  if (!current) return current
+  const kept = Object.entries(current).filter(
+    ([, entry]) =>
+      entry.completedAt === undefined || now - entry.completedAt < SYNC_PROGRESS_RETENTION_MS
+  )
+  if (kept.length === Object.keys(current).length) return current
+  return kept.length > 0 ? Object.fromEntries(kept) : null
+}
+
+/** Returns the same reference when nothing expired, so the reducer can bail out. */
+function pruneConflicts(conflicts: ConflictEntry[], now: number): ConflictEntry[] {
+  const fresh = conflicts.filter((entry) => now - entry.detectedAt < SYNC_CONFLICT_TTL_MS)
+  return fresh.length === conflicts.length ? conflicts : fresh
+}
+
+export function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED': {
       const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
@@ -124,18 +175,22 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
     case 'UPLOAD_PROGRESS':
       return {
         ...state,
-        uploadProgress: {
-          ...state.uploadProgress,
-          [action.attachmentId]: { progress: action.progress, status: action.status }
-        }
+        uploadProgress: recordProgress(
+          state.uploadProgress,
+          action.attachmentId,
+          action.progress,
+          action.status
+        )
       }
     case 'DOWNLOAD_PROGRESS':
       return {
         ...state,
-        downloadProgress: {
-          ...state.downloadProgress,
-          [action.attachmentId]: { progress: action.progress, status: action.status }
-        }
+        downloadProgress: recordProgress(
+          state.downloadProgress,
+          action.attachmentId,
+          action.progress,
+          action.status
+        )
       }
     case 'SESSION_EXPIRED':
       return { ...state, sessionExpired: true, status: 'error', error: action.error }
@@ -146,14 +201,37 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
         status: 'error',
         error: action.error
       }
-    case 'CONFLICT_DETECTED':
+    case 'CONFLICT_DETECTED': {
+      const now = Date.now()
+      // Every pull that re-detects the same item emits again, so an item that
+      // ping-pongs between devices used to append an entry per round. Key by
+      // item: the popover counts conflicting *items*, and one noisy note can
+      // no longer push 99 genuinely distinct conflicts out of the cap.
+      const kept = pruneConflicts(state.conflicts, now).filter(
+        (entry) => entry.itemId !== action.itemId || entry.itemType !== action.itemType
+      )
+      const next = [...kept, { itemId: action.itemId, itemType: action.itemType, detectedAt: now }]
       return {
         ...state,
-        conflicts: [
-          ...state.conflicts,
-          { itemId: action.itemId, itemType: action.itemType, detectedAt: Date.now() }
-        ]
+        conflicts:
+          next.length > SYNC_CONFLICT_CAP ? next.slice(next.length - SYNC_CONFLICT_CAP) : next
       }
+    }
+    case 'CLEAR_CONFLICTS':
+      return state.conflicts.length === 0 ? state : { ...state, conflicts: [] }
+    case 'PRUNE_STALE': {
+      const uploadProgress = pruneProgress(state.uploadProgress, action.now)
+      const downloadProgress = pruneProgress(state.downloadProgress, action.now)
+      const conflicts = pruneConflicts(state.conflicts, action.now)
+      if (
+        uploadProgress === state.uploadProgress &&
+        downloadProgress === state.downloadProgress &&
+        conflicts === state.conflicts
+      ) {
+        return state
+      }
+      return { ...state, uploadProgress, downloadProgress, conflicts }
+    }
     case 'QUEUE_CLEARED':
       return { ...state, pendingCount: 0 }
     case 'CLOCK_SKEW_WARNING':
@@ -190,6 +268,7 @@ interface SyncContextValue {
   pause: () => Promise<void>
   resume: () => Promise<void>
   clearError: () => void
+  clearConflicts: () => void
   linkingRequest: LinkingRequestEvent | null
   clearLinkingRequest: () => void
   dismissDeviceRevoked: () => void
@@ -443,6 +522,17 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     }
   }, [authState.status, t])
 
+  // Progress and conflict entries used to accumulate for the whole session and
+  // only cleared on logout. Sweep them on a timer; the reducer returns the same
+  // state object when nothing expired, so an idle sweep costs no rerender.
+  useEffect(() => {
+    if (authState.status !== 'authenticated') return
+    const timer = setInterval(() => {
+      dispatch({ type: 'PRUNE_STALE', now: Date.now() })
+    }, PRUNE_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [authState.status])
+
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
       dispatch({ type: 'CLEAR_ERROR' })
@@ -481,6 +571,10 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     dispatch({ type: 'CLEAR_ERROR' })
   }, [])
 
+  const clearConflicts = useCallback(() => {
+    dispatch({ type: 'CLEAR_CONFLICTS' })
+  }, [])
+
   const clearLinkingRequest = useCallback(() => {
     setLinkingRequest(null)
   }, [])
@@ -500,6 +594,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       pause,
       resume,
       clearError,
+      clearConflicts,
       linkingRequest,
       clearLinkingRequest,
       dismissDeviceRevoked,
@@ -512,6 +607,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       pause,
       resume,
       clearError,
+      clearConflicts,
       linkingRequest,
       clearLinkingRequest,
       dismissDeviceRevoked,
