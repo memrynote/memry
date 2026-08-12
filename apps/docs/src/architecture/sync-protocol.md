@@ -474,11 +474,13 @@ require the vault to have synced any items, so a freshly created vault still app
 
 Every authenticated sync call — and the WebSocket handshake — stamps the active vault's UUID into
 `X-Memry-Vault-Id`. That UUID is a single `vault_metadata` row, so it is resolved once and cached
-against the open data-database handle rather than re-read per request. Opening, closing or switching
-a vault installs a new handle and therefore misses the cache on its own; the one rewrite that keeps
-the same handle — a linked device adopting the initiator's vault identity — invalidates it
-explicitly, so device registration and the first sync bind to the adopted vault, never the
-pre-adoption one.
+against the open data-database handle rather than re-read per request. The cache lives with the
+resolver itself, so every consumer shares it: the request header, device registration, vault-key
+derivation, canvas reconcile and per-attachment uploads all read the row once per open vault instead
+of once per operation. Opening, closing or switching a vault installs a new handle and therefore
+misses the cache on its own; the one rewrite that keeps the same handle — a linked device adopting
+the initiator's vault identity — invalidates it explicitly, so device registration and the first
+sync bind to the adopted vault, never the pre-adoption one.
 
 Desktop reads the directory over IPC:
 
