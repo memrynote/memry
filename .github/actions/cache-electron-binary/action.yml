@@ -1,0 +1,47 @@
+name: Cache Electron binary
+description: >-
+  Reuse the Electron release zip that apps/desktop/scripts/install-electron-binary.cjs
+  downloads, so a runner that needs a real Electron runtime normally does no network
+  I/O for it. Without this every job — including all 16 "Electron E2E full" shards —
+  pulls ~115 MB from GitHub releases at the same moment, and the connection drops
+  ("curl: (56) Connection died") kill shards before a single test runs.
+
+  Safety: the installer treats a restored artifact as untrusted input. It hashes it
+  against the checksums.json shipped inside the electron npm package before extracting
+  anything, and falls back to a fresh download if it does not match — so a cache entry
+  planted from another branch is discarded, never executed. Requires actions/setup-node
+  to have run first (the version is resolved with node).
+
+runs:
+  using: composite
+  steps:
+    # The key has to move with the locked Electron version, or a future bump silently
+    # reuses the previous release's zip. Read it from pnpm-lock.yaml rather than
+    # apps/desktop/package.json, whose range ("^43.1.1") does not identify a build.
+    - name: Resolve the locked Electron version
+      id: electron
+      shell: bash
+      run: |
+        set -euo pipefail
+        version="$(node -e '
+          const lock = require("node:fs").readFileSync("pnpm-lock.yaml", "utf8")
+          const match = lock.match(/^ {2}electron@([0-9][^:(\s]*):/m)
+          if (!match) {
+            console.error("Could not resolve the Electron version from pnpm-lock.yaml")
+            process.exit(1)
+          }
+          process.stdout.write(match[1])
+        ')"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "MEMRY_ELECTRON_CACHE_DIR=$RUNNER_TEMP/electron-binary-cache" >> "$GITHUB_ENV"
+        echo "Caching the Electron $version binary for $RUNNER_OS/$RUNNER_ARCH"
+
+    # runner.os + runner.arch keep a macOS runner from ever restoring a linux-x64
+    # build; the zip is additionally named per platform+arch, so a wrongly restored
+    # entry would read as a miss rather than as the wrong binary. No restore-keys:
+    # a near-miss prefix has nothing usable in it.
+    - name: Restore the Electron binary cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/electron-binary-cache
+        key: electron-binary-${{ runner.os }}-${{ runner.arch }}-${{ steps.electron.outputs.version }}
