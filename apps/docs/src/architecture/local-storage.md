@@ -66,6 +66,16 @@ still being refilled cannot keep it alive) and gives up after a few seconds. Wha
 queued at that point is derived state; the next open re-derives it. The event already inside
 `project()` is always awaited, so the databases never close underneath a running projector.
 
+**Reconcile passes run one at a time and are all cancellable.** Alongside the event queues,
+projectors expose a reconcile pass that repairs derived state wholesale. More than one can be
+requested at once — opening a vault fires a full pass in the background, and a reindex or a
+structural config change fires an embedding-only pass on top of it — so the passes are chained
+and run sequentially rather than concurrently over the same index database. Every outstanding
+pass receives a cancellation signal when the vault closes, and the close waits for all of them
+to unwind before the databases are closed; a pass requested after the close has started never
+reaches a projector. This keeps vault switching and app quit bounded no matter how many repairs
+are in flight.
+
 ## Where the Files Live
 
 Inside the vault directory (chosen during [first run](/guide/first-run)):

@@ -380,6 +380,174 @@ describe('projection runtime', () => {
   })
 
   /**
+   * A pass that polls its signal between steps, so an abort that never arrives
+   * shows up as work continuing after stop() resolved.
+   */
+  function createReconcileTracker(steps = 40, stepMs = 20) {
+    const state = { inFlight: 0, completed: 0, steps: 0 }
+
+    const reconcile = async (signal?: AbortSignal): Promise<void> => {
+      state.inFlight += 1
+      try {
+        for (let i = 0; i < steps; i++) {
+          if (signal?.aborted) {
+            return
+          }
+          state.steps += 1
+          await new Promise((resolve) => setTimeout(resolve, stepMs))
+        }
+        state.completed += 1
+      } finally {
+        state.inFlight -= 1
+      }
+    }
+
+    return { state, reconcile }
+  }
+
+  /**
+   * #1083's post-reindex embedding drain (`reconcileProjections(['embedding'])`)
+   * can fire while `openVault`'s backgrounded full pass is still running, so two
+   * reconciles overlap. The runtime kept a single controller/promise pair and
+   * the second call overwrote both, leaving the first pass with a signal nobody
+   * held: stop() aborted and awaited only the newest pass, and the older one
+   * kept reading the vault the caller was already closing (#803/#805 stall
+   * class).
+   */
+  it('stop aborts every outstanding reconcile pass, not just the newest', async () => {
+    const { state, reconcile } = createReconcileTracker()
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('search', { reconcile })]
+    })
+
+    const first = runtime.reconcile()
+    const second = runtime.reconcile(['search'])
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    await runtime.stop()
+
+    // Nothing may still be inside reconcile() when stop() resolves: the caller
+    // closes the databases on the next line.
+    expect(state.inFlight).toBe(0)
+    expect(state.completed).toBe(0)
+
+    // And no pass may resume afterwards.
+    const stepsAtStop = state.steps
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    expect(state.steps).toBe(stepsAtStop)
+
+    await Promise.all([first, second])
+  })
+
+  it('stop stays bounded with two reconcile passes outstanding', async () => {
+    // 40 steps x 20ms = 800ms per pass if nothing aborts it.
+    const { state, reconcile } = createReconcileTracker()
+    const runtime = createProjectionRuntime({
+      projectors: [createProjector('search', { reconcile })]
+    })
+
+    const first = runtime.reconcile()
+    const second = runtime.reconcile(['search'])
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    const startedAt = Date.now()
+    await runtime.stop()
+    const elapsed = Date.now() - startedAt
+
+    // Prompt: `closeVault()` awaits stop(), and 800ms of unaborted repair per
+    // pass must not be on that path.
+    expect(elapsed).toBeLessThan(400)
+    expect(state.steps).toBeLessThan(10)
+    // Prompt *and* complete — returning early while a pass keeps reading the
+    // vault is what made the old stall silent.
+    expect(state.inFlight).toBe(0)
+
+    await Promise.all([first, second])
+  })
+
+  it('runs overlapping reconcile passes one at a time', async () => {
+    const { state, reconcile } = createReconcileTracker(2, 10)
+    const peak = { inFlight: 0 }
+    const runtime = createProjectionRuntime({
+      projectors: [
+        createProjector('search', {
+          reconcile: async (signal?: AbortSignal) => {
+            const pass = reconcile(signal)
+            peak.inFlight = Math.max(peak.inFlight, state.inFlight)
+            await pass
+          }
+        })
+      ]
+    })
+
+    await Promise.all([runtime.reconcile(), runtime.reconcile(['search'])])
+
+    // Both repairs still run — serializing must not coalesce one away.
+    expect(state.completed).toBe(2)
+    expect(peak.inFlight).toBe(1)
+  })
+
+  it('keeps queuing passes after one fails, and no-ops a pass requested after stop', async () => {
+    const seen: string[] = []
+    const runtime = createProjectionRuntime({
+      projectors: [
+        createProjector('search', {
+          reconcile: vi.fn(async () => {
+            seen.push('pass')
+            if (seen.length === 1) {
+              throw new Error('reconcile exploded')
+            }
+          })
+        })
+      ]
+    })
+
+    const failing = runtime.reconcile()
+    const next = runtime.reconcile()
+
+    await expect(failing).rejects.toThrow('reconcile exploded')
+    await next
+    expect(seen).toHaveLength(2)
+
+    await runtime.stop()
+
+    // The databases are closed by now, so a late caller must not reach a
+    // projector.
+    await runtime.reconcile()
+    expect(seen).toHaveLength(2)
+  })
+
+  it('loses no projection events while reconcile passes are outstanding', async () => {
+    const projected: string[] = []
+    const { reconcile } = createReconcileTracker()
+    const runtime = createProjectionRuntime({
+      projectors: [
+        createProjector('search', {
+          reconcile,
+          project: async (event: ProjectionEvent) => {
+            await new Promise((resolve) => setTimeout(resolve, 1))
+            projected.push(eventEntityId(event))
+          }
+        })
+      ]
+    })
+
+    const first = runtime.reconcile()
+    const second = runtime.reconcile(['search'])
+
+    const ids = ['note-a', 'note-b', 'note-c']
+    for (const id of ids) {
+      runtime.publish(markdownEvent(id, id))
+    }
+
+    await runtime.stop()
+
+    expect(projected).toEqual(ids)
+
+    await Promise.all([first, second])
+  })
+
+  /**
    * #1078: `flushProjectionEvents()` waited for *every* lane, and the indexer
    * awaits it once per file. That put the embedding lane's model load plus
    * per-note inference in front of every file the 8-worker pool touched.
