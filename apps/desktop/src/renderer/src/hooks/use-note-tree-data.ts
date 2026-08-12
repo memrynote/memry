@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -6,10 +7,43 @@ import {
   type NoteListItem
 } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
+import { vaultService, onVaultStatusChanged } from '@/services/vault-service'
 import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:NoteTreeData')
+
+const notesRootKey = ['vault', 'notes-root'] as const
+
+/**
+ * The vault's notes root (`defaultNoteFolder`).
+ *
+ * The tree has to know it: note paths arrive vault-relative while folder paths
+ * are resolved against `<vault>/<defaultNoteFolder>`, so the tree must strip
+ * the configured root rather than a hardcoded `notes/` (#1204). Changing the
+ * setting rebuilds the index and pushes a vault status event, which is what
+ * invalidates this.
+ */
+function useNotesRoot(): string {
+  const queryClient = useQueryClient()
+  const { data } = useQuery({
+    queryKey: notesRootKey,
+    // Never undefined and never retried: the sidebar must not stay blank
+    // because one config read hiccuped. The vault-root default is what an
+    // unconfigured vault uses anyway.
+    queryFn: async () => (await vaultService.getConfig())?.defaultNoteFolder ?? '',
+    retry: false,
+    staleTime: 60_000
+  })
+
+  useEffect(() => {
+    return onVaultStatusChanged(() => {
+      void queryClient.invalidateQueries({ queryKey: notesRootKey })
+    })
+  }, [queryClient])
+
+  return data ?? ''
+}
 
 /**
  * How many notes one sidebar page pulls.
@@ -86,6 +120,7 @@ export function useNoteTreeData(): NoteTreeData {
 
   const mutations = useNoteMutations()
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
+  const notesRoot = useNotesRoot()
 
   const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
@@ -139,8 +174,8 @@ export function useNoteTreeData(): NoteTreeData {
   }, [notes])
 
   const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders, notePositions)
-  }, [notes, folders, notePositions])
+    return buildTreeFromNotes(notes, folders, notePositions, notesRoot)
+  }, [notes, folders, notePositions, notesRoot])
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()

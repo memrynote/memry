@@ -218,7 +218,7 @@ describe('buildTreeFromNotes', () => {
     ]
     const folders = [{ path: 'Projects', icon: null }]
 
-    const tree = buildTreeFromNotes(notes, folders, {})
+    const tree = buildTreeFromNotes(notes, folders, {}, 'notes')
     expect(tree.rootNotes).toHaveLength(1)
     expect(tree.rootNotes[0].id).toBe('a')
     expect(tree.folders).toHaveLength(1)
@@ -236,13 +236,13 @@ describe('buildTreeFromNotes', () => {
     ]
     const positions = { 'notes/c.md': 0, 'notes/a.md': 1 }
 
-    const tree = buildTreeFromNotes(notes, [], positions)
+    const tree = buildTreeFromNotes(notes, [], positions, 'notes')
     expect(tree.rootNotes.map((n) => n.id)).toEqual(['c', 'a', 'b'])
   })
 
   it('creates intermediate folders for nested paths', () => {
     const notes = [createNote({ id: 'a', path: 'notes/a/b/c/file.md', modified: baseDate })]
-    const tree = buildTreeFromNotes(notes, [], {})
+    const tree = buildTreeFromNotes(notes, [], {}, 'notes')
     expect(tree.folders).toHaveLength(1)
     expect(tree.folders[0].name).toBe('a')
     expect(tree.folders[0].children[0].name).toBe('b')
@@ -253,8 +253,79 @@ describe('buildTreeFromNotes', () => {
     const notes: NoteListItem[] = []
     const folders = [{ path: 'Archive', icon: '📦' }]
 
-    const tree = buildTreeFromNotes(notes, folders, {})
+    const tree = buildTreeFromNotes(notes, folders, {}, 'notes')
     expect(tree.folders[0].icon).toBe('📦')
+  })
+
+  // #1204: folder nodes are handed straight back to folderExists/getFolders,
+  // which resolve against `<vault>/<defaultNoteFolder>`. Any node path that is
+  // still vault-relative gets the notes root applied twice and renders
+  // "Folder not found".
+  describe('notes root (#1204)', () => {
+    it('strips a capitalised notes root instead of the literal "notes"', () => {
+      const notes = [
+        createNote({ id: 'a', path: 'Notes/hello.md', modified: baseDate }),
+        createNote({ id: 'b', path: 'Notes/Work/alpha.md', modified: baseDate })
+      ]
+      const folders = [{ path: 'Work', icon: null }]
+
+      const tree = buildTreeFromNotes(notes, folders, {}, 'Notes')
+
+      expect(tree.folders.map((f) => f.path)).toEqual(['Work'])
+      expect(tree.rootNotes.map((n) => n.id)).toEqual(['a'])
+      expect(tree.folders[0].notes.map((n) => n.id)).toEqual(['b'])
+    })
+
+    it('never emits a node whose path is the notes root itself', () => {
+      const notes = [createNote({ id: 'a', path: 'Notes/Work/alpha.md', modified: baseDate })]
+
+      const tree = buildTreeFromNotes(notes, [], {}, 'Notes')
+
+      const allPaths: string[] = []
+      const walk = (nodes: FolderNode[]): void => {
+        for (const node of nodes) {
+          allPaths.push(node.path)
+          walk(node.children)
+        }
+      }
+      walk(tree.folders)
+      expect(allPaths).not.toContain('Notes')
+      expect(allPaths).not.toContain('Notes/Work')
+      expect(allPaths).toContain('Work')
+    })
+
+    it('keeps a real "notes" folder browsable when the notes root is the vault root', () => {
+      const notes = [createNote({ id: 'a', path: 'notes/Work/alpha.md', modified: baseDate })]
+      const folders = [
+        { path: 'notes', icon: null },
+        { path: 'notes/Work', icon: null }
+      ]
+
+      const tree = buildTreeFromNotes(notes, folders, {}, '')
+
+      // The old hardcoded strip produced an orphan "Work" node that resolved to
+      // `<vault>/Work` and did not exist.
+      expect(tree.folders.map((f) => f.path)).toEqual(['notes'])
+      expect(tree.folders[0].children.map((f) => f.path)).toEqual(['notes/Work'])
+      expect(tree.folders[0].children[0].notes.map((n) => n.id)).toEqual(['a'])
+    })
+
+    it('puts notes outside the notes root at the top level rather than in an unopenable folder', () => {
+      const notes = [createNote({ id: 'a', path: 'Archive/old.md', modified: baseDate })]
+
+      const tree = buildTreeFromNotes(notes, [], {}, 'Notes')
+
+      expect(tree.folders).toEqual([])
+      expect(tree.rootNotes.map((n) => n.id)).toEqual(['a'])
+    })
+
+    it('tolerates a slash-padded notes root', () => {
+      const notes = [createNote({ id: 'a', path: 'Notes/Work/alpha.md', modified: baseDate })]
+
+      const tree = buildTreeFromNotes(notes, [], {}, '/Notes/')
+
+      expect(tree.folders.map((f) => f.path)).toEqual(['Work'])
+    })
   })
 })
 
