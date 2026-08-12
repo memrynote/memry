@@ -82,13 +82,32 @@ const group = (activeTabId: string): Record<string, unknown> => ({
   ]
 })
 
+/** Flipped per test; the stub below answers the reduced-motion query from it. */
+let prefersReducedMotion = false
+
 describe('TabBarWithDrag active-tab scrolling', () => {
   let scrollIntoView: ReturnType<typeof vi.fn>
+  let scrollBy: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     strip.scrollLeft = 0
     strip.scrollWidth = 1000
     strip.clientWidth = 300
+
+    // Installed here, not via vi.spyOn: the afterEach calls vi.restoreAllMocks(),
+    // which would strip the implementation off the suite-wide matchMedia mock.
+    prefersReducedMotion = false
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: (query: string) =>
+        ({
+          matches: prefersReducedMotion && query.includes('prefers-reduced-motion'),
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn()
+        }) as unknown as MediaQueryList
+    })
 
     for (const name of ['scrollWidth', 'clientWidth', 'scrollLeft'] as const) {
       originalDescriptors.set(name, Object.getOwnPropertyDescriptor(HTMLElement.prototype, name))
@@ -98,6 +117,8 @@ describe('TabBarWithDrag active-tab scrolling', () => {
     scrollIntoView = vi.fn()
     HTMLElement.prototype.scrollIntoView =
       scrollIntoView as unknown as HTMLElement['scrollIntoView']
+    scrollBy = vi.fn()
+    HTMLElement.prototype.scrollBy = scrollBy as unknown as HTMLElement['scrollBy']
     mocks.tabGroup = group('tab-1')
   })
 
@@ -139,5 +160,60 @@ describe('TabBarWithDrag active-tab scrolling', () => {
 
     expect(scrollIntoView).toHaveBeenCalledTimes(2)
     expect(scrollIntoView.mock.instances[1]).toHaveAttribute('data-tab-id', 'tab-3')
+  })
+
+  it('animates the activation scroll when motion is not reduced', () => {
+    render(<TabBarWithDrag groupId="group-1" />)
+
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+    )
+  })
+
+  it('still scrolls the active tab into view under reduced motion, just not animated', () => {
+    prefersReducedMotion = true
+
+    const { rerender } = render(<TabBarWithDrag groupId="group-1" />)
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.instances[0]).toHaveAttribute('data-tab-id', 'tab-1')
+    expect(scrollIntoView).toHaveBeenLastCalledWith(
+      expect.objectContaining({ inline: 'nearest', block: 'nearest', behavior: 'auto' })
+    )
+
+    // The gate removes the animation, not the scroll: activating a tab that is
+    // off screen must still bring it back.
+    mocks.tabGroup = group('tab-3')
+    rerender(<TabBarWithDrag groupId="group-1" />)
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(2)
+    expect(scrollIntoView.mock.instances[1]).toHaveAttribute('data-tab-id', 'tab-3')
+    expect(scrollIntoView).toHaveBeenLastCalledWith(expect.objectContaining({ behavior: 'auto' }))
+  })
+
+  it('gates the chevron scroll on the preference, read at click time', () => {
+    render(<TabBarWithDrag groupId="group-1" />)
+    const chevron = (): HTMLElement =>
+      screen.getByRole('button', { name: 'phaseF.componentsTabsTabBarWithDrag.scrollTabsRight' })
+
+    fireEvent.click(chevron())
+    expect(scrollBy).toHaveBeenLastCalledWith({ left: 200, behavior: 'smooth' })
+
+    // No remount: the preference is read per call, so a mid-session change takes
+    // effect on the next scroll.
+    prefersReducedMotion = true
+    fireEvent.click(chevron())
+    expect(scrollBy).toHaveBeenLastCalledWith({ left: 200, behavior: 'auto' })
+  })
+
+  it('gates the CSS scroll-behavior too, for wheel scrolling', () => {
+    render(<TabBarWithDrag groupId="group-1" />)
+
+    // handleWheel assigns scrollLeft directly, which `scroll-smooth` animates —
+    // no scroll options object to gate, so that path needs the CSS variant.
+    expect(screen.getByTestId('tab-strip')).toHaveClass(
+      'scroll-smooth',
+      'motion-reduce:scroll-auto'
+    )
   })
 })
