@@ -158,6 +158,20 @@ a vault-key derivation, and reconnect backoff caps at 30 seconds. A sweep suppre
 that window is not dropped: it is paid by the next reconnect or by the 60-second pull
 tick, and the vault-wide sweep at the end of a full sync covers every note regardless.
 
+That end-of-full-sync sweep is itself gated, because `fullSync` also re-runs on auth
+refresh and rate-limit release, where an O(vault) pass buys nothing. The gate reads the
+WebSocket connection generation: same generation and still connected means no broadcast
+could have been missed, so the sweep is skipped; a new generation means the socket
+dropped and came back, so it runs. A manifest re-pull forces it, being offline skips it,
+and when the socket cannot answer at all a 15-minute interval decides.
+
+A reconnect sweep is also floored at one per 60 seconds so a flapping connection cannot
+buy one pass per flap; inside the floor it is deferred on a single re-used timer rather
+than dropped. That floor counts from the last sweep that actually closed a reconnect gap,
+not from any sweep — measuring it against the startup or interval sweep made the first
+reconnect after app start wait out the whole floor, which left the device showing a stale
+body for that window.
+
 ## Snapshot Failure Handling
 
 A snapshot is a **compaction optimization**, not the source of truth: the authoritative
