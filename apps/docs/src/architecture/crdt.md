@@ -109,6 +109,17 @@ is typing into, and destroys only the doc it superseded. Nothing can reach the s
 doc at that point: every route into a Y.Doc looks the note id up in the provider's map,
 which now resolves the replacement.
 
+Local compaction runs under the same condition as closing and eviction — a doc with no
+windows attached — and it is asynchronous for the same reason, so the two can be in flight
+at once for one note. Compaction therefore treats its entry as provisional: it does not
+start on a doc that is already closing, and before swapping the compacted doc in it
+re-checks that the provider's map still holds the same entry. If the note was closed, or
+closed and reopened, in the meantime, the compaction is abandoned rather than written into
+an entry nothing reads. Remote updates that arrived during that window are buffered for the
+compaction rather than applied directly, so an abandoned compaction hands its buffer to
+whichever doc is live at that point instead of discarding it — the sync coordinator counts
+those updates as applied and will not fetch them again.
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:
