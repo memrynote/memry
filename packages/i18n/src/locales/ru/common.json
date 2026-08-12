@@ -274,15 +274,6 @@
       "scrollTabsRight": "Прокручивать вкладки вправо",
       "dayPanel": "Дневная панель"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Прокручивать вкладки влево",
-      "scrollTabsRight": "Прокручивать вкладки вправо"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Открытые вкладки",
-      "scrollTabsLeft": "Прокручивать вкладки влево",
-      "scrollTabsRight": "Прокручивать вкладки вправо"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Что-то пошло не так",
       "anErrorOccurredWhileRenderingThisTabContent": "Произошла ошибка при отрисовке содержимого этой вкладки.",

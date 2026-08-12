@@ -274,15 +274,6 @@
       "scrollTabsRight": "Vieritä välilehtiä oikealle",
       "dayPanel": "Päivän paneeli"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
-      "scrollTabsRight": "Vieritä välilehtiä oikealle"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Avaa välilehdet",
-      "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
-      "scrollTabsRight": "Vieritä välilehtiä oikealle"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Jotain meni pieleen",
       "anErrorOccurredWhileRenderingThisTabContent": "Tämän välilehden sisältöä hahmonnettaessa tapahtui virhe.",

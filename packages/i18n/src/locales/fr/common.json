@@ -274,15 +274,6 @@
       "scrollTabsRight": "Faire défiler les onglets vers la droite",
       "dayPanel": "Panneau de jour"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Faire défiler les onglets vers la gauche",
-      "scrollTabsRight": "Faire défiler les onglets vers la droite"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Ouvrir les onglets",
-      "scrollTabsLeft": "Faire défiler les onglets vers la gauche",
-      "scrollTabsRight": "Faire défiler les onglets vers la droite"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Quelque chose s'est mal passé",
       "anErrorOccurredWhileRenderingThisTabContent": "Une erreur s'est produite lors du rendu du contenu de cet onglet.",

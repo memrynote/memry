@@ -274,15 +274,6 @@
       "scrollTabsRight": "Scorri le schede verso destra",
       "dayPanel": "Pannello del giorno"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Scorri le schede a sinistra",
-      "scrollTabsRight": "Scorri le schede verso destra"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Schede aperte",
-      "scrollTabsLeft": "Scorri le schede a sinistra",
-      "scrollTabsRight": "Scorri le schede verso destra"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Qualcosa è andato storto",
       "anErrorOccurredWhileRenderingThisTabContent": "Si è verificato un errore durante il rendering del contenuto di questa scheda.",

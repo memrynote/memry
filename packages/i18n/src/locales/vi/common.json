@@ -274,15 +274,6 @@
       "scrollTabsRight": "Cuộn tab sang phải",
       "dayPanel": "Bảng Ngày"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Cuộn tab sang trái",
-      "scrollTabsRight": "Cuộn tab sang phải"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Tabs mở",
-      "scrollTabsLeft": "Cuộn tab sang trái",
-      "scrollTabsRight": "Cuộn tab sang phải"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Đã xảy ra sự cố",
       "anErrorOccurredWhileRenderingThisTabContent": "Đã xảy ra lỗi khi hiển thị nội dung tab này.",

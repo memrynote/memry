@@ -3,9 +3,7 @@
  */
 
 // Main tab bar components
-export { TabBar } from './tab-bar'
 export { TabBarWithDrag } from './tab-bar-with-drag'
-export { TabBarWithOverflow } from './tab-bar-with-overflow'
 export { TabDragProvider } from './tab-drag-provider'
 
 // Individual tab components
@@ -32,6 +30,3 @@ export { SkipToContent } from './skip-to-content'
 // Edge cases & polish
 export { UnsavedChangesDialog } from './unsaved-changes-dialog'
 export { TabErrorBoundary } from './tab-error-boundary'
-
-// Animations
-export * from './animations'

@@ -274,15 +274,6 @@
       "scrollTabsRight": "Skrolla flikar åt höger",
       "dayPanel": "Dagspanel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Skrolla flikar åt vänster",
-      "scrollTabsRight": "Skrolla flikar åt höger"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Öppna flikar",
-      "scrollTabsLeft": "Skrolla flikar åt vänster",
-      "scrollTabsRight": "Skrolla flikar åt höger"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Något gick fel",
       "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod vid rendering av detta flikinnehåll.",

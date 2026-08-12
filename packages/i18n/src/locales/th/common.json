@@ -274,15 +274,6 @@
       "scrollTabsRight": "เลื่อนแท็บไปทางขวา",
       "dayPanel": "แผงวัน"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
-      "scrollTabsRight": "เลื่อนแท็บไปทางขวา"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "เปิดแท็บ",
-      "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
-      "scrollTabsRight": "เลื่อนแท็บไปทางขวา"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "มีบางอย่างผิดพลาด",
       "anErrorOccurredWhileRenderingThisTabContent": "เกิดข้อผิดพลาดขณะแสดงเนื้อหาแท็บนี้",

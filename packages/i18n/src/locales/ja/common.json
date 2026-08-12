@@ -274,15 +274,6 @@
       "scrollTabsRight": "タブを右にスクロールする",
       "dayPanel": "曜日パネル"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "タブを左にスクロール",
-      "scrollTabsRight": "タブを右にスクロールする"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "タブを開く",
-      "scrollTabsLeft": "タブを左にスクロール",
-      "scrollTabsRight": "タブを右にスクロールする"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "何か問題が発生しました",
       "anErrorOccurredWhileRenderingThisTabContent": "このタブのコンテンツをレンダリング中にエラーが発生しました。",

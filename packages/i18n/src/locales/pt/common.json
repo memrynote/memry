@@ -274,15 +274,6 @@
       "scrollTabsRight": "Rolar as guias para a direita",
       "dayPanel": "Painel do Dia"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Rolar as guias para a esquerda",
-      "scrollTabsRight": "Rolar as guias para a direita"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Abas abertas",
-      "scrollTabsLeft": "Rolar as guias para a esquerda",
-      "scrollTabsRight": "Rolar as guias para a direita"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Algo deu errado",
       "anErrorOccurredWhileRenderingThisTabContent": "Ocorreu um erro ao renderizar o conteúdo desta guia.",

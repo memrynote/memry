@@ -274,15 +274,6 @@
       "scrollTabsRight": "Pomaknite kartice udesno",
       "dayPanel": "Dnevni panel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Pomičite kartice lijevo",
-      "scrollTabsRight": "Pomaknite kartice udesno"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Otvorene kartice",
-      "scrollTabsLeft": "Pomičite kartice lijevo",
-      "scrollTabsRight": "Pomaknite kartice udesno"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Nešto nije u redu",
       "anErrorOccurredWhileRenderingThisTabContent": "Došlo je do pogreške prilikom renderiranja sadržaja ove kartice.",

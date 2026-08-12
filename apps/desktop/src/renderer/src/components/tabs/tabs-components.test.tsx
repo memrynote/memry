@@ -4,7 +4,6 @@ import { AccessibleTab } from '@/components/tabs/accessible-tab'
 import { NewTabMenu } from '@/components/tabs/new-tab-menu'
 import { PinnedTab } from '@/components/tabs/pinned-tab'
 import { RegularTab } from '@/components/tabs/regular-tab'
-import { TabBarWithOverflow } from '@/components/tabs/tab-bar-with-overflow'
 import { TabIcon } from '@/components/tabs/tab-icon'
 import type { Tab } from '@/contexts/tabs/types'
 import { notesService } from '@/services/notes-service'
@@ -79,12 +78,6 @@ vi.mock('@/lib/render-note-icon', () => ({
   NoteIconDisplay: ({ value }: { value: string }) => <span>{value}</span>
 }))
 
-class ResizeObserverMock {
-  observe = vi.fn()
-  unobserve = vi.fn()
-  disconnect = vi.fn()
-}
-
 const makeTab = (overrides: Partial<Tab> = {}): Tab =>
   ({
     id: 'tab-1',
@@ -109,9 +102,6 @@ describe('tabs components coverage', () => {
       makeTab({ id: 'tab-1', title: 'Daily Note' }),
       makeTab({ id: 'tab-2', title: 'Inbox', type: 'inbox', isPinned: true, isModified: true })
     ]
-    globalThis.ResizeObserver = ResizeObserverMock as never
-    Element.prototype.scrollIntoView = vi.fn()
-    Element.prototype.scrollBy = vi.fn()
   })
 
   it('renders icon variants including emoji and fallback', () => {
@@ -231,17 +221,5 @@ describe('tabs components coverage', () => {
     expect(tabsApi.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'tasks' }), {
       groupId: 'group-1'
     })
-  })
-
-  it('renders overflow container and scrolls active tab into view', () => {
-    render(
-      <TabBarWithOverflow groupId="group-1">
-        <div data-tab-id="tab-1">one</div>
-        <div data-tab-id="tab-2">two</div>
-      </TabBarWithOverflow>
-    )
-
-    expect(screen.getByText('one')).toBeInTheDocument()
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
   })
 })

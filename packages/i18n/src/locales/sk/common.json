@@ -274,15 +274,6 @@
       "scrollTabsRight": "Posunúť záložky doprava",
       "dayPanel": "Denný panel"
     },
-    "componentsTabsTabBarWithOverflow": {
-      "scrollTabsLeft": "Posunúť záložky doľava",
-      "scrollTabsRight": "Posunúť záložky doprava"
-    },
-    "componentsTabsTabBar": {
-      "openTabs": "Otvárané záložky",
-      "scrollTabsLeft": "Posunúť záložky doľava",
-      "scrollTabsRight": "Posunúť záložky doprava"
-    },
     "componentsTabsTabErrorBoundary": {
       "somethingWentWrong": "Niečo sa pokazilo",
       "anErrorOccurredWhileRenderingThisTabContent": "Pri vykresľovaní obsahu tejto záložky došlo k chybe.",
