@@ -203,12 +203,20 @@ async function createTasks(
 
     realIds.set(task.tempId, id)
 
-    if (task.state === 'done') {
-      await deps.completeTask({ id, completedAt: task.completedAt ?? undefined })
-    } else if (task.state === 'cancelled') {
-      // Memry has no cancelled state; archiving is what the TickTick importer
-      // does with the same concept.
-      await deps.archiveTask(id)
+    // The row already exists and is already mapped, so a failed state
+    // transition must not escape: unwound to the caller it would abort the
+    // note write and leave these rows pointing at a `sourceNoteId` that never
+    // resolves. Report it and move on with the task open instead.
+    try {
+      if (task.state === 'done') {
+        await deps.completeTask({ id, completedAt: task.completedAt ?? undefined })
+      } else if (task.state === 'cancelled') {
+        // Memry has no cancelled state; archiving is what the TickTick importer
+        // does with the same concept.
+        await deps.archiveTask(id)
+      }
+    } catch (error) {
+      ctx.reportFailed(task.title, error)
     }
   }
 
@@ -253,7 +261,18 @@ function frontmatterTags(value: unknown): string[] {
   return []
 }
 
-async function prepare(absPath: string, fallbackTitle: string): Promise<PreparedBody> {
+/**
+ * @param stripHeading Remove the body's first H1. True for notes, whose title
+ *   field carries that text — leaving it would render the title twice. False
+ *   for journal entries, which are keyed by date and have no title field, so a
+ *   stripped H1 would be deleted outright. `firstHeading` scans the whole body,
+ *   not just line 1, so this is not limited to a leading heading.
+ */
+async function prepare(
+  absPath: string,
+  fallbackTitle: string,
+  stripHeading: boolean
+): Promise<PreparedBody> {
   const raw = await fs.readFile(absPath, 'utf8')
   const { data, content } = matter(raw)
   const frontmatter = data as Record<string, unknown>
@@ -264,9 +283,7 @@ async function prepare(absPath: string, fallbackTitle: string): Promise<Prepared
   const { properties } = mapProperties(rest)
 
   const heading = firstHeading(content)
-  // The H1 is NotePlan's real title; it moves onto the note, so drop that one
-  // line from the body rather than rendering the title twice.
-  const body = heading ? stripFirstHeading(content) : content
+  const body = heading && stripHeading ? stripFirstHeading(content) : content
 
   const converted = convertBody(body)
 
@@ -277,6 +294,41 @@ async function prepare(absPath: string, fallbackTitle: string): Promise<Prepared
     properties,
     tasks: converted.tasks
   }
+}
+
+/**
+ * The body pipeline both write loops share: resolve the file's co-located
+ * assets, create its task rows, then swap every `{np-task:…}` placeholder for
+ * the real id. The loops differ only in where `noteId` comes from and what
+ * they finally write, so everything up to that point lives here.
+ */
+async function bodyForWrite(args: {
+  prepared: PreparedBody
+  absPath: string
+  rootDir: string
+  noteId: string
+  /** Absent when there is no Inbox project: no rows, placeholders stripped. */
+  projectId: string | undefined
+  deps: NotePlanTaskDeps
+  ctx: ImportContext
+  realRoots: Map<string, string>
+}): Promise<string> {
+  const { prepared, absPath, rootDir, noteId, projectId, deps, ctx, realRoots } = args
+
+  const markdown = await resolveCoLocatedAssets({
+    body: prepared.markdown,
+    noteId,
+    noteAbsPath: absPath,
+    rootDir,
+    ctx,
+    realRoots
+  })
+
+  const realIds = projectId
+    ? await createTasks(prepared.tasks, noteId, projectId, deps, ctx)
+    : new Map<string, string>()
+
+  return applyTaskIds(markdown, prepared.tasks, realIds)
 }
 
 export async function runNotePlanImport(
@@ -319,25 +371,21 @@ export async function runNotePlanImport(
   for (const planned of plan.notes) {
     if (ctx.isCancelled()) return ctx.toSummary()
     try {
-      const prepared = await prepare(planned.absPath, planned.title)
+      // A note carries the H1 in its title field, so strip it from the body.
+      const prepared = await prepare(planned.absPath, planned.title, true)
       ctx.status(importingItemStatus(prepared.title))
 
       const noteId = generateNoteId()
-      let markdown = await resolveCoLocatedAssets({
-        body: prepared.markdown,
-        noteId,
-        noteAbsPath: planned.absPath,
+      const markdown = await bodyForWrite({
+        prepared,
+        absPath: planned.absPath,
         rootDir: planned.rootDir,
+        noteId,
+        projectId,
+        deps,
         ctx,
         realRoots
       })
-
-      if (projectId) {
-        const realIds = await createTasks(prepared.tasks, noteId, projectId, deps, ctx)
-        markdown = applyTaskIds(markdown, prepared.tasks, realIds)
-      } else {
-        markdown = applyTaskIds(markdown, prepared.tasks, new Map())
-      }
 
       const stat = await fs.stat(planned.absPath)
       await createNote({
@@ -365,7 +413,9 @@ export async function runNotePlanImport(
   for (const planned of plan.journals) {
     if (ctx.isCancelled()) return ctx.toSummary()
     try {
-      const prepared = await prepare(planned.absPath, planned.date)
+      // The entry is keyed by date and has no title field, so keep the H1 in
+      // the body — stripping it here would delete the text outright.
+      const prepared = await prepare(planned.absPath, planned.date, false)
       ctx.status(importingItemStatus(planned.date))
 
       // A journal entry is user-authored: never overwrite one that already has
@@ -375,31 +425,33 @@ export async function runNotePlanImport(
       // with it as `sourceNoteId` before the entry is written.
       const noteId = resolveJournalEntryId(planned.date)
 
-      let markdown = await resolveCoLocatedAssets({
-        body: prepared.markdown,
-        noteId,
-        noteAbsPath: planned.absPath,
+      const markdown = await bodyForWrite({
+        prepared,
+        absPath: planned.absPath,
         rootDir: planned.rootDir,
+        noteId,
+        projectId,
+        deps,
         ctx,
         realRoots
       })
-
-      if (projectId) {
-        const realIds = await createTasks(prepared.tasks, noteId, projectId, deps, ctx)
-        markdown = applyTaskIds(markdown, prepared.tasks, realIds)
-      } else {
-        markdown = applyTaskIds(markdown, prepared.tasks, new Map())
-      }
 
       const content =
         existing && existing.content.trim().length > 0
           ? `${existing.content.trim()}\n\n## Imported from NotePlan\n\n${markdown}`
           : markdown
 
+      // `writeJournalEntryWithContent` *replaces* an existing entry's
+      // properties whenever this argument is defined, so merge first — passing
+      // the source file's properties straight through would silently drop the
+      // user's own. Undefined when empty, which is what preserves them.
+      const properties = { ...(existing?.properties ?? {}), ...prepared.properties }
+
       await createJournalEntry({
         date: planned.date,
         content,
-        tags: [...new Set([...(existing?.tags ?? []), ...prepared.tags])]
+        tags: [...new Set([...(existing?.tags ?? []), ...prepared.tags])],
+        properties: Object.keys(properties).length > 0 ? properties : undefined
       })
       ctx.reportImported()
     } catch (error) {

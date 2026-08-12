@@ -1,3 +1,8 @@
+---
+mood: focused
+icon: rocket
+---
+# Monday kickoff
 Here's your first task:
 * Watch the getting-started video >2026-08-13
 * [x] Read the manual @done(2026-08-12)

@@ -145,6 +145,51 @@ describe('notePlanImporter (integration)', () => {
     // Bullets stayed bullets, wikilinks untouched.
     expect(journal).toContain('- Websites to read later')
     expect(journal).toContain('[[Start Here]]')
+    // No placeholder residue survives into the written file.
+    expect(journal).not.toContain('np-task')
+  })
+
+  it("keeps a daily note's H1 in the body", async () => {
+    // A journal entry is keyed by date and has no title field, so a stripped H1
+    // would be deleted outright rather than moved onto the entry.
+    const { deps } = makeDeps()
+    const ctx = importContext.createImportContext('np8', new AbortController().signal)
+    await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
+
+    const journal = fs.readFileSync(path.join(tempVault.path, 'journal', '2026-08-12.md'), 'utf8')
+    expect(journal).toContain('# Monday kickoff')
+  })
+
+  it("carries a daily note's frontmatter properties onto the journal entry", async () => {
+    const { deps } = makeDeps()
+    const ctx = importContext.createImportContext('np9', new AbortController().signal)
+    await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
+
+    const journal = fs.readFileSync(path.join(tempVault.path, 'journal', '2026-08-12.md'), 'utf8')
+    // Semantic keys survive; NotePlan's styling keys are dropped, same as the
+    // note path.
+    expect(journal).toContain('mood')
+    expect(journal).toContain('focused')
+    expect(journal).not.toContain('rocket')
+  })
+
+  it("merges into an existing entry's properties rather than replacing them", async () => {
+    // `writeJournalEntryWithContent` replaces rather than merges whenever the
+    // properties argument is defined, so an unmerged pass-through would wipe
+    // whatever the user already had on the entry.
+    fs.writeFileSync(
+      path.join(tempVault.path, 'journal', '2026-08-12.md'),
+      '---\ndate: 2026-08-12\nproperties:\n  streak: 12\n---\nMy own words.',
+      'utf8'
+    )
+
+    const { deps } = makeDeps()
+    const ctx = importContext.createImportContext('np10', new AbortController().signal)
+    await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
+
+    const journal = fs.readFileSync(path.join(tempVault.path, 'journal', '2026-08-12.md'), 'utf8')
+    expect(journal).toContain('streak')
+    expect(journal).toContain('mood')
   })
 
   it('creates task rows with due dates, completion and cancellation', async () => {
