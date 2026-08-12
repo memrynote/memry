@@ -112,6 +112,10 @@ prompt such as `summarize @Star Wars Movies` keeps the referenced item visibly a
 prompt. Mention tags submit as readable `@Title` text plus an encrypted structured attachment
 reference.
 
+The picker waits for a brief pause in typing before it searches, so typing a long mention runs one
+search rather than one per character. The list always reflects the last thing you typed — a slower
+search for an earlier query is discarded rather than shown.
+
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
 

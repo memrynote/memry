@@ -7,6 +7,7 @@ import type { SearchResultItem } from '@memry/contracts/search-api'
 import { useT } from '@memry/i18n/renderer'
 
 import { MentionIcon, type MentionAttachment, type MentionIconSpec } from './mention-icons'
+import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { cn } from '@/lib/utils'
 
 interface RefPickerProps {
@@ -27,6 +28,11 @@ interface RefPickerProps {
 const PICKER_GAP = 8
 const PICKER_MARGIN = 8
 const PICKER_MAX_HEIGHT = 256
+/**
+ * Short enough that typing then pausing still feels instant, long enough that a
+ * burst of keystrokes collapses into a single search + calendar round-trip.
+ */
+const SEARCH_DEBOUNCE_MS = 150
 
 interface RefPickerResult {
   kind: AttachmentInput['kind']
@@ -132,6 +138,7 @@ export function RefPicker({
   onClose
 }: RefPickerProps): React.JSX.Element {
   const { t } = useT('common')
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS)
   const [results, setResults] = useState<RefPickerResult[]>([])
   const [prevQuery, setPrevQuery] = useState(query)
   const [portalStyle, setPortalStyle] = useState<CSSProperties>({
@@ -147,11 +154,21 @@ export function RefPicker({
     setResults([])
   }
 
+  // Dropping the mention list is cheap and has to happen on every keystroke so
+  // the parent can never insert a ref belonging to a previous query.
   useEffect(() => {
-    const text = query.trim()
-    let cancelled = false
     onItemsChange([])
     onSelectedIndexChange(-1)
+  }, [onItemsChange, onSelectedIndexChange, query])
+
+  // The sources behind the list are not cheap — an FTS query and a calendar
+  // range query, one main-process round-trip each — so they run off the
+  // debounced query instead. A burst of typing costs one pair of round-trips
+  // rather than one pair per character; `cancelled` drops a slower in-flight
+  // search so it cannot clobber a newer query's results.
+  useEffect(() => {
+    const text = debouncedQuery.trim()
+    let cancelled = false
 
     void Promise.all([loadSearchResults(text), loadCalendarResults(text)]).then(
       ([searchResults, calendarResults]) => {
@@ -166,7 +183,7 @@ export function RefPicker({
     return () => {
       cancelled = true
     }
-  }, [onItemsChange, onSelectedIndexChange, query])
+  }, [debouncedQuery, onItemsChange, onSelectedIndexChange])
 
   // Anchor the portal to the composer and keep it aligned while the surrounding
   // container scrolls or the window resizes. Prefers the side with more room so
