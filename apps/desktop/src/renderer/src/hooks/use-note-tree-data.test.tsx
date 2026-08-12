@@ -21,7 +21,15 @@ const mocks = vi.hoisted(() => ({
     delete: vi.fn(),
     rename: vi.fn(),
     move: vi.fn()
+  },
+  vaultService: {
+    getConfig: vi.fn()
   }
+}))
+
+vi.mock('@/services/vault-service', () => ({
+  vaultService: mocks.vaultService,
+  onVaultStatusChanged: () => () => {}
 }))
 
 vi.mock('@/services/notes-service', () => {
@@ -85,6 +93,7 @@ describe('useNoteTreeData truncation', () => {
     vi.clearAllMocks()
     mocks.notesService.getFolders.mockResolvedValue([])
     mocks.notesService.getAllPositions.mockResolvedValue({ success: true, positions: {} })
+    mocks.vaultService.getConfig.mockResolvedValue({ defaultNoteFolder: '' })
   })
 
   it('reports the notes the first page could not cover', async () => {
@@ -163,5 +172,70 @@ describe('useNoteTreeData truncation', () => {
 
     await waitFor(() => expect(result.current.notes).toHaveLength(vault.length))
     expect(result.current.isLoadingMore).toBe(false)
+  })
+})
+
+/**
+ * #1204: "Default Location for New Notes" is the notes ROOT. Note paths arrive
+ * vault-relative, but every folder API resolves against
+ * `<vault>/<defaultNoteFolder>` — so the tree has to strip the *configured*
+ * root. It used to strip the hardcoded literal `notes/`, which left a folder
+ * node called `Notes` that resolved to `<vault>/Notes/Notes` and rendered
+ * "Folder not found".
+ */
+describe('useNoteTreeData notes root', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.notesService.getAllPositions.mockResolvedValue({ success: true, positions: {} })
+  })
+
+  function note(path: string): NoteListItem {
+    return {
+      id: path,
+      path,
+      title: path,
+      created: new Date(0),
+      modified: new Date(0),
+      tags: [],
+      wordCount: 0,
+      emoji: null,
+      localOnly: false,
+      fileType: 'markdown'
+    } as unknown as NoteListItem
+  }
+
+  it('makes a folder named after the notes root browsable', async () => {
+    mocks.vaultService.getConfig.mockResolvedValue({ defaultNoteFolder: 'Notes' })
+    // getFolders() is already notes-root-relative.
+    mocks.notesService.getFolders.mockResolvedValue([{ path: 'Work', icon: null }])
+    serve([note('Notes/Work/alpha.md'), note('Notes/loose.md')])
+
+    const { result } = renderHook(() => useNoteTreeData(), { wrapper })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => expect(result.current.tree.folders).toHaveLength(1))
+
+    // 'Work' resolves to <vault>/Notes/Work. 'Notes' would resolve to
+    // <vault>/Notes/Notes and fail folderExists.
+    expect(result.current.tree.folders.map((f) => f.path)).toEqual(['Work'])
+    expect(result.current.tree.folders[0].notes.map((n) => n.path)).toEqual(['Notes/Work/alpha.md'])
+    expect(result.current.tree.rootNotes.map((n) => n.path)).toEqual(['Notes/loose.md'])
+  })
+
+  it('keeps a literal notes/ folder intact when the notes root is the vault root', async () => {
+    mocks.vaultService.getConfig.mockResolvedValue({ defaultNoteFolder: '' })
+    mocks.notesService.getFolders.mockResolvedValue([
+      { path: 'notes', icon: null },
+      { path: 'notes/Work', icon: null }
+    ])
+    serve([note('notes/Work/alpha.md')])
+
+    const { result } = renderHook(() => useNoteTreeData(), { wrapper })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    await waitFor(() => expect(result.current.tree.folders).toHaveLength(1))
+
+    expect(result.current.tree.folders.map((f) => f.path)).toEqual(['notes'])
+    expect(result.current.tree.folders[0].children.map((f) => f.path)).toEqual(['notes/Work'])
   })
 })

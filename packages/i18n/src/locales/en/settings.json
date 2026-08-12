@@ -174,8 +174,8 @@
         "description": "New notes and folders are created inside the currently selected folder. When off, items are always created at root."
       },
       "defaultNoteFolder": {
-        "label": "Default Location for New Notes",
-        "description": "Empty = vault root",
+        "label": "Notes Folder",
+        "description": "The folder your notes live in. New notes go here, and its contents become the top level of your notes tree — so this folder itself stops appearing in the sidebar. Leave empty to use the vault root.",
         "placeholder": "notes"
       }
     },

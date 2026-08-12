@@ -106,6 +106,19 @@ locale has finished loading.
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
 
+**Notes Folder** sets the root of your notes tree inside the vault. Leave it empty (the default) and
+the vault root is the notes root. Set it to, say, `Notes` and memrynote treats `<vault>/Notes` as the top
+of the tree: new notes are created there, and everything inside it — `Notes/Work`, `Notes/Archive` —
+becomes a top-level folder in the sidebar. The `Notes` folder itself no longer appears, because it
+_is_ the root.
+
+Two consequences worth knowing:
+
+- Folders that live outside the notes root are not part of the notes tree. Their notes still show up,
+  but at the top level rather than under a folder.
+- The value is a path relative to the vault, not a nested one. `Notes` and `Notes/Inbox` are both
+  valid; a leading or trailing slash is ignored.
+
 ### Privacy
 
 **Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
