@@ -69,6 +69,32 @@ Inside the vault directory (chosen during [first run](/guide/first-run)):
 └─ leveldb/          # y-leveldb store for Yjs CRDTs
 ```
 
+## App Config File
+
+App-level state that must be readable before any vault opens lives in a single JSON file,
+`<userData>/memry-config.json` (`src/main/store.ts`): the known-vault list, current vault,
+locale, sync state, cached entitlement, capture allowlist, updater preferences and the last
+main-window geometry.
+
+It is read once into an in-memory cache and every `store.set` rewrites the **whole**
+pretty-printed file synchronously. That makes the file cheap to read but expensive to write,
+so high-frequency writers must batch.
+
+### Window Geometry
+
+The main window's size and position are persisted so the next launch (or macOS dock reopen)
+restores them. `resize`, `move`, `maximize` and `unmaximize` all feed one trailing debounce
+(`createWindowBoundsPersister` in `src/main/window-bounds.ts`,
+`WINDOW_BOUNDS_PERSIST_DELAY_MS` = 1500 ms), so a continuous drag settles into a single
+config write instead of rewriting the file throughout the gesture. The persister also drops
+writes whose geometry matches the previous one — `maximize`/`unmaximize` each fire alongside
+their own `resize`, and a window nudged back to where it started re-emits `move` unchanged.
+The window `close` handler flushes the pending write so the final geometry is never lost to
+a timer that never fired.
+
+The persister is deliberately free of Electron imports (it takes `read`/`write` callbacks) so
+the debounce can be unit tested with fake timers.
+
 ## Canvas Files
 
 A canvas is a plain `.excalidraw` document in `<vault>/canvases/`, the same way a note is a
