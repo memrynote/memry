@@ -9,7 +9,12 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { createTestVault, type TestVaultResult } from '@tests/utils/test-vault'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  asClientDb,
+  createTestDataDb,
+  createTestIndexDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../../projections'
 import { createNoteDerivedStateProjector } from '../../projections/projectors/note-derived-state-projector'
@@ -108,10 +113,11 @@ describe('notePlanImporter (integration)', () => {
       excludePatterns: ['.git', 'node_modules', '.trash'],
       defaultNoteFolder: 'notes',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     } satisfies VaultConfig)
 
-    vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db)
+    vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
     vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
 
@@ -366,6 +372,7 @@ describe('notePlanImporter (real production deps)', () => {
       excludePatterns: ['.git', 'node_modules', '.trash'],
       defaultNoteFolder: 'notes',
       journalFolder: 'journal',
+      journalDateFormat: 'YYYY-MM-DD',
       attachmentsFolder: 'attachments'
     } satisfies VaultConfig)
 
