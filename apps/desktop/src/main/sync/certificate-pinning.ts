@@ -115,6 +115,43 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
   })
 }
 
+/**
+ * The WebSocket manager built a fresh agent on every reconnect. An https.Agent
+ * created here has `keepAlive` off and the `ws` upgrade detaches its socket
+ * (`agentRemove`), so the agent owns nothing between connects — the object was
+ * the only thing being reallocated.
+ *
+ * Reuse does NOT weaken the pin. The check lives in `checkServerIdentity`,
+ * which resolves the connecting hostname's pins from `certificate-pins.ts` on
+ * every TLS handshake, so a reused agent verifies exactly what a fresh one
+ * would and an updated pin table takes effect on the very next handshake — no
+ * restart, no cache flush. Only the two branches `createPinnedAgent` decides at
+ * construction time are frozen into the instance: whether pinning is disabled
+ * (dev/test) and whether the configured host still carries placeholder pins.
+ * Those two form the cache key below, so if either flips, the cached agent is
+ * destroyed and rebuilt rather than silently reused under the old decision.
+ */
+let sharedPinnedAgent: { key: string; agent: https.Agent } | null = null
+
+function pinnedAgentCacheKey(): string {
+  const disabled = isPinningDisabled() ? 'disabled' : 'enabled'
+  return `${disabled}|${getConfiguredPinnedCertificateHashes().join(',')}`
+}
+
+export function getSharedPinnedAgent(): https.Agent {
+  const key = pinnedAgentCacheKey()
+  if (sharedPinnedAgent && sharedPinnedAgent.key === key) return sharedPinnedAgent.agent
+  sharedPinnedAgent?.agent.destroy()
+  sharedPinnedAgent = { key, agent: createPinnedAgent() }
+  return sharedPinnedAgent.agent
+}
+
+/** Drop the shared agent (tests; and any future explicit pin reload). */
+export function resetSharedPinnedAgent(): void {
+  sharedPinnedAgent?.agent.destroy()
+  sharedPinnedAgent = null
+}
+
 export function getPinnedCertificateHashes(): readonly string[] {
   const pins = [...getConfiguredPinnedCertificateHashes()]
   if (!isPinningDisabled() && hasPlaceholderHashes(pins)) {

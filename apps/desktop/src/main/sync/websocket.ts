@@ -2,7 +2,7 @@ import WebSocket from 'ws'
 import { EventEmitter } from 'events'
 import { z } from 'zod'
 import { createLogger } from '../lib/logger'
-import { createPinnedAgent, CertificatePinningError } from './certificate-pinning'
+import { getSharedPinnedAgent, CertificatePinningError } from './certificate-pinning'
 import { getSyncVaultHeaders } from './http-client'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -120,7 +120,7 @@ export class WebSocketManager extends EventEmitter {
         'X-App-Version': this.deps.getAppVersion(),
         ...vaultHeaders
       },
-      agent: wsUrl.startsWith('wss://') ? createPinnedAgent() : undefined
+      agent: wsUrl.startsWith('wss://') ? getSharedPinnedAgent() : undefined
     })
 
     this.ws = ws

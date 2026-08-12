@@ -70,14 +70,43 @@ export function parseRetryAfterHeader(header: string | null): number | undefined
   return undefined
 }
 
+// The vault UUID is one SQLite row that is stable for as long as a vault stays
+// open, yet it was re-read — through a freshly built drizzle query — on every
+// authenticated request and every WebSocket connect. Cache it against the
+// DataDb instance `getDatabase()` hands back: opening, closing or switching a
+// vault installs a new instance (see database/client.ts initDatabase), so the
+// key misses on its own and no vault switch can be served a stale identity.
+// The one rewrite that keeps the same handle — a linked device adopting the
+// initiator's uuid — calls resetSyncVaultHeadersCache() explicitly.
+let cachedVaultHeaders: Record<string, string> | null = null
+let cachedVaultHeadersDb: unknown = null
+
+/** Invalidate after an in-place rewrite of the vault_metadata singleton. */
+export function resetSyncVaultHeadersCache(): void {
+  cachedVaultHeaders = null
+  cachedVaultHeadersDb = null
+}
+
 export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
   try {
+    // The imports stay inside the call: hoisting them to module scope would
+    // pull ../database in at import time, which is exactly the eagerness the
+    // lazy resolution in this file exists to avoid. They resolve from the
+    // module registry after the first call; the SQLite read is what this
+    // cache removes.
     const [{ getDatabase }, { getOrCreateVaultUuid }] = await Promise.all([
       import('../database'),
       import('../agent/storage/vault-id')
     ])
-    const vaultId = getOrCreateVaultUuid(getDatabase())
-    return vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
+    const db = getDatabase()
+    if (cachedVaultHeaders && cachedVaultHeadersDb === db) return cachedVaultHeaders
+    const vaultId = getOrCreateVaultUuid(db)
+    const headers: Record<string, string> = vaultId ? { 'X-Memry-Vault-Id': vaultId } : {}
+    // Frozen because every caller now receives this same instance.
+    Object.freeze(headers)
+    cachedVaultHeaders = headers
+    cachedVaultHeadersDb = db
+    return headers
   } catch {
     return {}
   }

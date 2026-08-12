@@ -7,6 +7,7 @@ import { yDocToMarkdown } from './sync/blocknote-converter'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
 import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
+import { resetSyncVaultHeadersCache } from './sync/http-client'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
@@ -276,6 +277,9 @@ export function registerTestHooks(): void {
               vault_uuid = excluded.vault_uuid,
               updated_at = excluded.updated_at`
       )
+      // Same in-place rewrite adoptVaultLocally performs, so drop the
+      // handle-keyed vault-header cache for the same reason.
+      resetSyncVaultHeadersCache()
 
       const deviceId = await persistKeysAndRegisterDevice(
         Buffer.from(input.masterKeyBase64, 'base64'),
