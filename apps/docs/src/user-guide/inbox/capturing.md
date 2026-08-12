@@ -68,6 +68,11 @@ waveform instantly when you open a voice item. Older voice items recorded before
 stored are decoded on demand instead; if that file is missing or unreadable the panel keeps the flat
 placeholder bars, and playback of other voice items stays unaffected no matter how many you open.
 
+Every recording is stored as a mono 16 kHz PCM WAV file, which is what the transcription models
+expect. Preparing that file releases the decoded audio as soon as each stage is done, so saving a
+full 5-minute memo no longer holds the whole recording in memory several times over. The stored
+format is unchanged, so voice items recorded by earlier versions still play.
+
 If voice transcription is enabled, memrynote transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
 
 If voice transcription setup is incomplete, memrynote takes you to AI settings before recording. If

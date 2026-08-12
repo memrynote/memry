@@ -30,11 +30,13 @@ function computeWaveform(audioBuffer: AudioBuffer, buckets: number): number[] {
 }
 
 async function decodeAudioBlob(blob: Blob): Promise<AudioBuffer> {
+  // `blob.arrayBuffer()` hands back a buffer nobody else holds, so `decodeAudioData`
+  // may detach it directly. Copying it first only doubled the encoded bytes in memory.
   const arrayBuffer = await blob.arrayBuffer()
   const audioContext = new AudioContext()
 
   try {
-    return await audioContext.decodeAudioData(arrayBuffer.slice(0))
+    return await audioContext.decodeAudioData(arrayBuffer)
   } finally {
     void audioContext.close()
   }
@@ -51,7 +53,15 @@ async function renderMonoWavAudio(audioBuffer: AudioBuffer): Promise<AudioBuffer
   source.buffer = audioBuffer
   source.connect(offlineContext.destination)
   source.start(0)
-  return offlineContext.startRendering()
+
+  try {
+    return await offlineContext.startRendering()
+  } finally {
+    // Rendering is done, so drop the graph's hold on the full-rate decode (~100 MB for a
+    // 5-minute stereo memo) before the caller allocates the WAV buffer.
+    source.disconnect()
+    source.buffer = null
+  }
 }
 
 function encodePcm16Wav(audioBuffer: AudioBuffer): ArrayBuffer {
@@ -92,8 +102,9 @@ function encodePcm16Wav(audioBuffer: AudioBuffer): ArrayBuffer {
 }
 
 export async function prepareVoiceMemoAudio(blob: Blob): Promise<PreparedVoiceMemo> {
-  const decoded = await decodeAudioBlob(blob)
-  const rendered = await renderMonoWavAudio(decoded)
+  // Deliberately not kept in a local: holding the decode would keep the full-rate buffer
+  // reachable through the WAV encode and the waveform pass that follow.
+  const rendered = await renderMonoWavAudio(await decodeAudioBlob(blob))
 
   return {
     data: encodePcm16Wav(rendered),
