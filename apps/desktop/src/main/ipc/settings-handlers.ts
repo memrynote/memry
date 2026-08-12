@@ -1013,11 +1013,40 @@ export interface GlobalCaptureResult {
 }
 
 /**
+ * Accelerator currently held by the configured global capture shortcut. Only
+ * this one is released on re-apply: `globalShortcut.unregisterAll()` would also
+ * drop the quick capture fallback shortcut owned by `main/index.ts`.
+ */
+let registeredGlobalCaptureAccelerator: string | null = null
+
+/** Notified after every apply so the quick capture fallback stays in step. */
+let globalCaptureAppliedHandler: ((configuredRegistered: boolean) => void) | null = null
+
+/**
+ * Let `main/index.ts` keep its hardcoded quick capture fallback in step with the
+ * configured accelerator without this module importing the entrypoint.
+ */
+export function setGlobalCaptureAppliedHandler(
+  handler: ((configuredRegistered: boolean) => void) | null
+): void {
+  globalCaptureAppliedHandler = handler
+}
+
+/**
  * Read keyboard.globalCapture from settings and register/unregister OS shortcut.
  * Safe to call at startup and on settings change.
  */
 export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
-  globalShortcut.unregisterAll()
+  const result = registerConfiguredGlobalCapture()
+  globalCaptureAppliedHandler?.(result.registered)
+  return result
+}
+
+function registerConfiguredGlobalCapture(): GlobalCaptureResult {
+  if (registeredGlobalCaptureAccelerator) {
+    globalShortcut.unregister(registeredGlobalCaptureAccelerator)
+    registeredGlobalCaptureAccelerator = null
+  }
 
   const settings = readGroupSettings('keyboard', KEYBOARD_SHORTCUTS_DEFAULTS)
   const binding = settings.globalCapture
@@ -1052,6 +1081,7 @@ export function applyGlobalCaptureShortcut(): GlobalCaptureResult {
     }
   }
 
+  registeredGlobalCaptureAccelerator = accelerator
   logger.info(`Global capture: registered ${accelerator}`)
   return { success: true, registered: true }
 }

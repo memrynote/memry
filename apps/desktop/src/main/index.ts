@@ -26,7 +26,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
-import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
+import { applyGlobalCaptureShortcut, setGlobalCaptureAppliedHandler } from './ipc/settings-handlers'
 import {
   autoOpenLastVault,
   beginVaultShutdown,
@@ -1608,13 +1608,11 @@ const appReady = app.whenReady().then(async () => {
     .initPersistence()
     .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
 
-  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default)
-  const globalCaptureResult = applyGlobalCaptureShortcut()
-  quickCaptureShortcutRegistration.configuredRegistered = globalCaptureResult.registered
-  quickCaptureShortcutRegistration.registered = globalCaptureResult.registered
-  if (!globalCaptureResult.registered) {
-    registerQuickCaptureShortcut()
-  }
+  // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default).
+  // The handler also runs on every later re-apply (keyboard settings save), so a save can no
+  // longer leave quick capture with no working shortcut at all.
+  setGlobalCaptureAppliedHandler(syncQuickCaptureFallbackShortcut)
+  applyGlobalCaptureShortcut()
   registerQuickCaptureTestHooks()
 
   // Configure CSP, cert pinning, and permission handlers before the window loads
@@ -1843,6 +1841,12 @@ function handleQuickCaptureShortcut(): void {
 }
 
 function registerQuickCaptureShortcut(): void {
+  // Idempotent: a re-apply must not register an accelerator we already hold.
+  if (quickCaptureShortcutRegistration.fallbackRegistered) {
+    quickCaptureShortcutRegistration.registered = true
+    return
+  }
+
   const registered = globalShortcut.register(QUICK_CAPTURE_SHORTCUT, handleQuickCaptureShortcut)
 
   quickCaptureShortcutRegistration.fallbackAttempted = true
@@ -1863,6 +1867,30 @@ function registerQuickCaptureShortcut(): void {
       })
     }
   }
+}
+
+function unregisterQuickCaptureFallbackShortcut(): void {
+  if (!quickCaptureShortcutRegistration.fallbackRegistered) return
+
+  globalShortcut.unregister(QUICK_CAPTURE_SHORTCUT)
+  quickCaptureShortcutRegistration.fallbackRegistered = false
+}
+
+/**
+ * Keep the hardcoded fallback shortcut in step with the configured global capture
+ * accelerator. Runs at startup and after every keyboard settings save, so saving
+ * settings can no longer drop the fallback (or report one that is not registered).
+ */
+function syncQuickCaptureFallbackShortcut(configuredRegistered: boolean): void {
+  quickCaptureShortcutRegistration.configuredRegistered = configuredRegistered
+
+  if (configuredRegistered) {
+    unregisterQuickCaptureFallbackShortcut()
+    quickCaptureShortcutRegistration.registered = true
+    return
+  }
+
+  registerQuickCaptureShortcut()
 }
 
 function registerQuickCaptureTestHooks(): void {
