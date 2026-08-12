@@ -76,7 +76,22 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
     // changes walks the tab tree once instead of once per change.
     saveTimeoutRef.current = setTimeout(() => {
       const serialized = serializeTabState(state)
-      const json = JSON.stringify(serialized)
+
+      // Compare everything *except* `savedAt`. `serializeTabState` stamps a
+      // fresh `Date.now()` on every call, so comparing the whole payload made
+      // no two serializations ever equal and this guard never fired: state
+      // changes the persisted projection does not carry (`isModified`,
+      // `isDeleted`, `lastAccessedAt`, back/forward history, `recentlyClosed`)
+      // each cost a full stringify plus a synchronous `localStorage.setItem`
+      // that wrote back byte-identical content.
+      //
+      // Skipping a write leaves an older `savedAt` in storage, which is inert:
+      // nothing reads it — not `migratePersistedState`, not `deserializeTabState`,
+      // not `extractPinnedTabs`. Writes that do happen still carry the stamp
+      // from the moment they were made, and both quit paths (`beforeunload`,
+      // the Cmd+Q flush registry) write unconditionally regardless of this guard.
+      const { savedAt: _savedAt, ...fingerprint } = serialized
+      const json = JSON.stringify(fingerprint)
 
       if (json === lastSavedRef.current) return
 

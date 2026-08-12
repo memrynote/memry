@@ -127,6 +127,8 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Split layout and ratios
 - Active tab per pane
 
+The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
+
 ### If the layout can't be saved
 
 Session layout is stored in the app's local browser storage, which has a size limit. A very large session — many open tabs, several split panes, tabs holding a lot of view state — can hit that limit, and once it does the layout stops being saved.

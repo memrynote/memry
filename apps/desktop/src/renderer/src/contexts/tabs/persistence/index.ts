@@ -10,7 +10,7 @@ export { STORAGE_VERSION, STORAGE_KEY } from './types'
 export { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 
 // Storage adapters
-export { localStorageAdapter, indexedDBAdapter, getDefaultStorage, saveSync } from './storage'
+export { localStorageAdapter, getDefaultStorage, saveSync } from './storage'
 
 // Migrations
 export { migratePersistedState, needsMigration, getMigrationDescription } from './migrations'
