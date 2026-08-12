@@ -675,6 +675,106 @@ describe('CrdtProvider', () => {
     )
   })
 
+  it('does not start compacting a doc that close() is already retiring', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before close' })
+
+    // Hold close() at its snapshot push: the entry is marked closing but the
+    // map still holds it, which is exactly what checkAndCompact's setImmediate
+    // sees when eviction and compaction fire on the same windowless doc.
+    let releaseClosePush: (() => void) | undefined
+    pushSnapshot.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseClosePush = resolve
+        })
+    )
+    const closePromise = provider.close('note-1')
+    await Promise.resolve()
+
+    mocks.compactYDoc.mockClear()
+    await provider.compactDoc('note-1')
+    expect(mocks.compactYDoc).not.toHaveBeenCalled()
+
+    releaseClosePush?.()
+    await closePromise
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  it('abandons the compacted swap when close() starts mid-compaction', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    const originalDoc = await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+
+    // Start close() from inside the compaction's persistence write, and park it
+    // on its own flush: the entry stays in the map, just marked closing.
+    let closePromise: Promise<void> | undefined
+    let releaseCloseFlush: (() => void) | undefined
+    mocks.persistenceInstances[0].storeUpdate.mockImplementationOnce(async () => {
+      mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseCloseFlush = resolve
+          })
+      )
+      closePromise = provider.close('note-1')
+      await Promise.resolve()
+    })
+
+    await provider.compactDoc('note-1')
+
+    // No swap onto a doc that close() is about to destroy.
+    expect(provider.getDoc('note-1')).toBe(originalDoc)
+
+    releaseCloseFlush?.()
+    await closePromise
+    expect(provider.getDoc('note-1')).toBeUndefined()
+  })
+
+  it('replays buffered remote updates onto the live doc when a reopen replaces the entry mid-compaction', async () => {
+    const compactedDoc = new Y.Doc()
+    compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+    mocks.compactYDoc.mockReturnValue({
+      compacted: Y.encodeStateAsUpdate(compactedDoc),
+      savedBytes: 120
+    })
+
+    createWindow(6)
+    await provider.open('note-1', undefined, { skipSeed: true })
+    provider.updateMeta('note-1', { title: 'Before compaction' })
+
+    // Suspend the compaction inside its snapshot push and run the production
+    // sequence in that window: eviction closes the windowless doc, the editor
+    // reopens the note onto a fresh entry, then a sync pull lands.
+    let reopenedDoc: Y.Doc | undefined
+    pushSnapshot.mockImplementationOnce(async () => {
+      await provider.close('note-1')
+      reopenedDoc = await provider.open('note-1', 6, { skipSeed: true })
+      provider.applyRemoteUpdate('note-1', makeRemoteUpdate('pulled after reopen'))
+    })
+
+    await provider.compactDoc('note-1')
+
+    // The compaction belongs to the retired entry, so it must not touch the
+    // live doc — and the update it swallowed must still reach that doc.
+    expect(provider.getDoc('note-1')).toBe(reopenedDoc)
+    expect(reopenedDoc?.isDestroyed).toBe(false)
+    expect(provider.getDoc('note-1')?.getMap('meta').get('title')).toBe('pulled after reopen')
+  })
+
   it('keeps a reopened doc alive if close races with a new open', async () => {
     let releaseFlush: (() => void) | undefined
     mocks.persistenceInstances[0].flushDocument.mockImplementationOnce(

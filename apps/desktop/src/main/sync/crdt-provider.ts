@@ -887,6 +887,11 @@ export class CrdtProvider {
     const entry = this.docs.get(noteId)
     if (!entry) return
 
+    if (entry.closing) {
+      log.debug('Skipping compaction: doc is closing', { noteId })
+      return
+    }
+
     if (entry.windowIds.size > 0) {
       log.debug('Skipping compaction: editors open', { noteId, windowCount: entry.windowIds.size })
       return
@@ -919,8 +924,22 @@ export class CrdtProvider {
         await this.persistence.flushDocument(noteId)
       }
 
-      if (entry.windowIds.size > 0) {
-        log.info('Compaction aborted: editor opened during compaction', { noteId })
+      // close() only flips `entry.closing` and then deletes (or lets doOpen
+      // replace) the map entry — it never consults compaction state, so the
+      // entry captured above can be retired, and the note reopened onto a
+      // fresh entry, while the pushes above are in flight. Comparing entry
+      // identity is what catches that: swapping `entry.doc` on a detached
+      // entry would drop the compaction into an object nothing reads, and
+      // strand the remote updates buffered for it.
+      const live = this.docs.get(noteId)
+      if (live !== entry || live?.closing || entry.windowIds.size > 0) {
+        log.info('Compaction abandoned: the doc was reopened, closed or replaced mid-compaction', {
+          noteId,
+          replaced: live !== entry,
+          closing: live?.closing === true,
+          windowCount: entry.windowIds.size
+        })
+        this.drainCompactionBuffer(noteId, live)
         return
       }
 
@@ -949,6 +968,27 @@ export class CrdtProvider {
       this.compactingDocs.delete(noteId)
       this.compactionBuffers.delete(noteId)
     }
+  }
+
+  /**
+   * Hand the updates buffered for an abandoned compaction to whatever doc is
+   * live now. applyRemoteUpdate diverts remote updates into this buffer for the
+   * whole compaction window and reports nothing back to the sync coordinator,
+   * which has already recorded those sequence numbers as applied — so a
+   * discarded buffer is a silently lost remote update, not a retried one.
+   */
+  private drainCompactionBuffer(noteId: string, target: ActiveDoc | undefined): void {
+    const buffered = this.compactionBuffers.get(noteId)
+    this.compactionBuffers.delete(noteId)
+    if (!buffered?.length || !target || target.doc.isDestroyed) return
+
+    for (const update of buffered) {
+      Y.applyUpdate(target.doc, update, ORIGIN_NETWORK)
+    }
+    log.debug('Replayed remote updates buffered for an abandoned compaction', {
+      noteId,
+      count: buffered.length
+    })
   }
 
   /**
