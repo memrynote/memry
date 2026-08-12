@@ -99,6 +99,16 @@ function trackApprovalDecided(decision: string, result: 'success' | 'failed'): v
 export class AgentRuntime {
   private pending = new Map<string, PendingApproval>()
   private subprocesses = new Map<number, TrackedSubprocess>()
+  // Conversations whose stop was pressed while no run handle existed yet.
+  //
+  // This is NOT a second cancellation mechanism: killing the tracked run handle
+  // is still the only thing that stops work. The flag exists because the handle
+  // can arrive *after* the decision to stop was taken, and `subprocesses` is
+  // empty for the whole of `await backend.runTurn(...)` — the local backend
+  // awaits a two-round-trip capability probe before it constructs its handle,
+  // the CLI backends await a spawn. A stop landing in that window used to walk
+  // an empty map and silently do nothing while the turn ran to completion.
+  private cancelRequested = new Set<string>()
   private turnLocks = new Set<string>()
   private activeTurns = new Map<string, Set<Promise<unknown>>>()
   private isShuttingDown = false
@@ -197,6 +207,10 @@ export class AgentRuntime {
   // kill is a signal to a real child; for the in-process local backend it is the
   // AbortController driving streamText, registered under a negative pseudo-pid.
   cancelTurn(conversationId: string): void {
+    // Recorded before the loop, so a handle still being built by an in-flight
+    // backend.runTurn() is killed the instant it registers (see trackSubprocess)
+    // instead of being missed by the walk below.
+    this.cancelRequested.add(conversationId)
     this.denyPendingApprovals(conversationId)
     for (const sub of this.subprocesses.values()) {
       if (sub.conversationId !== conversationId) continue
@@ -215,10 +229,19 @@ export class AgentRuntime {
       )
     }
     this.turnLocks.add(conversationId)
+    // A stop pressed against an earlier turn must never reach this one. Safe
+    // because this lock serializes turns per conversation: the previous turn
+    // registered its last run handle before its own releaseTurnLock, so there is
+    // nothing left for the flag to catch by the time a new turn can acquire.
+    this.cancelRequested.delete(conversationId)
   }
 
   releaseTurnLock(conversationId: string): void {
     this.turnLocks.delete(conversationId)
+    // Same reasoning, from the other end: the turn is over and produced its last
+    // handle before this ran, so dropping the flag here keeps the set bounded
+    // rather than holding an id until that conversation is used again.
+    this.cancelRequested.delete(conversationId)
   }
 
   trackTurn(conversationId: string, turn: Promise<unknown>): void {
@@ -251,7 +274,11 @@ export class AgentRuntime {
       kill: subprocess.kill,
       waitExit: subprocess.waitExit
     })
-    if (this.isShuttingDown) {
+    // Two late-arrival cases, one remedy: quit or stop was decided while this
+    // handle did not exist yet, so the walk in killAll/cancelTurn could not see
+    // it. This kill is the one that walk would have performed. The entry stays
+    // in the map either way — cleanup() is what untracks it.
+    if (this.isShuttingDown || this.cancelRequested.has(conversationId)) {
       try {
         subprocess.kill()
       } catch (error) {
@@ -283,6 +310,7 @@ export class AgentRuntime {
     await Promise.all(tracked.map((sub) => this.reapSubprocess(sub)))
 
     this.turnLocks.clear()
+    this.cancelRequested.clear()
 
     const turns = [...this.activeTurns.values()].flatMap((entries) => [...entries])
     if (turns.length > 0) {
