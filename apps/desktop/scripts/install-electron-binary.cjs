@@ -269,11 +269,13 @@ function main() {
 
       console.log(`[electron] installed ${version} for ${platform}-${arch}: ${executablePath}`)
     } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true })
       fs.rmSync(stagingDir, { recursive: true, force: true })
       fs.rmSync(retiredDir, { recursive: true, force: true })
     }
   } finally {
+    // `tempDir` is created before the lock, so it must be cleaned up on the
+    // early-return path too.
+    fs.rmSync(tempDir, { recursive: true, force: true })
     releaseInstallLock(lockPath)
   }
 }

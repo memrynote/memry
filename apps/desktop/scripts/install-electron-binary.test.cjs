@@ -96,9 +96,11 @@ function buildElectronDir(root, fixtureZip) {
   return dir
 }
 
-function runInstaller(electronDir, binDir) {
+function runInstaller(electronDir, binDir, tmpDir) {
   return childProcess.spawn(process.execPath, [INSTALLER, electronDir], {
-    env: { ...process.env, PATH: `${binDir}:${process.env.PATH}` },
+    // A dedicated TMPDIR makes the installer's scratch dirs observable, so a leak
+    // on any exit path is caught rather than hidden in the shared system tmp.
+    env: { ...process.env, PATH: `${binDir}:${process.env.PATH}`, TMPDIR: tmpDir },
     stdio: ['ignore', 'pipe', 'pipe']
   })
 }
@@ -126,11 +128,17 @@ async function withFixture(run, options) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-install-electron-test-'))
   try {
     const fixtureZip = buildFixtureZip(root)
+    const electronDir = buildElectronDir(root, fixtureZip)
+    const defaultBinDir = buildCurlShim(root, fixtureZip, options)
+    const tmpDir = path.join(root, 'tmp')
+    fs.mkdirSync(tmpDir)
+
     return await run({
       root,
       fixtureZip,
-      electronDir: buildElectronDir(root, fixtureZip),
-      binDir: buildCurlShim(root, fixtureZip, options)
+      electronDir,
+      tmpDir,
+      install: (binDir = defaultBinDir) => runInstaller(electronDir, binDir, tmpDir)
     })
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
@@ -141,8 +149,8 @@ test(
   'a reinstall never exposes a half-written install to concurrent readers',
   { skip: unsupported },
   async () => {
-    await withFixture(async ({ electronDir, binDir }) => {
-      const seed = await settled(runInstaller(electronDir, binDir))
+    await withFixture(async ({ electronDir, install }) => {
+      const seed = await settled(install())
       assert.equal(seed.code, 0, seed.output)
       assert.ok(readerSeesValidInstall(electronDir))
 
@@ -153,7 +161,7 @@ test(
         if (!readerSeesValidInstall(electronDir)) broken++
       }, 5)
 
-      const reinstall = await settled(runInstaller(electronDir, binDir))
+      const reinstall = await settled(install())
       clearInterval(poll)
 
       assert.equal(reinstall.code, 0, reinstall.output)
@@ -167,11 +175,8 @@ test(
   'concurrent installs are serialised instead of corrupting dist/',
   { skip: unsupported },
   async () => {
-    await withFixture(async ({ electronDir, binDir }) => {
-      const [first, second] = await Promise.all([
-        settled(runInstaller(electronDir, binDir)),
-        settled(runInstaller(electronDir, binDir))
-      ])
+    await withFixture(async ({ electronDir, tmpDir, install }) => {
+      const [first, second] = await Promise.all([settled(install()), settled(install())])
 
       assert.equal(first.code, 0, first.output)
       assert.equal(second.code, 0, second.output)
@@ -181,6 +186,10 @@ test(
       const combined = `${first.output}${second.output}`
       assert.match(combined, /already installed by a concurrent run/)
       assert.equal(combined.match(/installing 0\.0\.0-test/g).length, 1)
+
+      // The waiter returns before the download block, so its scratch dir has to be
+      // cleaned up on that early-return path too.
+      assert.deepEqual(fs.readdirSync(tmpDir), [], 'an install leaked a scratch directory')
     })
   }
 )
@@ -189,12 +198,12 @@ test(
   'a lock left by a killed process is reclaimed, not waited on forever',
   { skip: unsupported },
   async () => {
-    await withFixture(async ({ electronDir, binDir }) => {
+    await withFixture(async ({ electronDir, install }) => {
       // A pid that cannot be running: recorded far in the past and never alive.
       const lockPath = path.join(electronDir, '.install-electron-binary.lock')
       fs.writeFileSync(lockPath, JSON.stringify({ pid: 2 ** 30, startedAt: 0 }))
 
-      const result = await settled(runInstaller(electronDir, binDir))
+      const result = await settled(install())
 
       assert.equal(result.code, 0, result.output)
       assert.match(result.output, /clearing an abandoned install lock/)
@@ -205,13 +214,13 @@ test(
 )
 
 test('a failed download leaves the previous install intact', { skip: unsupported }, async () => {
-  await withFixture(async ({ root, electronDir, fixtureZip }) => {
+  await withFixture(async ({ root, electronDir, fixtureZip, tmpDir, install }) => {
     const workingBin = buildCurlShim(path.join(root, 'ok'), fixtureZip)
-    const seed = await settled(runInstaller(electronDir, workingBin))
+    const seed = await settled(install(workingBin))
     assert.equal(seed.code, 0, seed.output)
 
     const failingBin = buildCurlShim(path.join(root, 'bad'), fixtureZip, { fail: true })
-    const failed = await settled(runInstaller(electronDir, failingBin))
+    const failed = await settled(install(failingBin))
 
     assert.notEqual(failed.code, 0, 'expected the install to fail')
     assert.ok(readerSeesValidInstall(electronDir), 'a failed install destroyed the good one')
