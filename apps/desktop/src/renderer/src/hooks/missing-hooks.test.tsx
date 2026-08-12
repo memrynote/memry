@@ -493,6 +493,59 @@ describe('navigation and keyboard hooks', () => {
     expect(callbacks.onOpenBulkArchiveDialog).toHaveBeenCalled()
   })
 
+  it('keeps one inbox keydown listener across item churn and reads the latest items', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+    const callbacks = {
+      onRefresh: vi.fn(),
+      onArchiveFocusedItem: vi.fn(),
+      onOpenBulkArchiveDialog: vi.fn(),
+      onOpenSourceUrl: vi.fn()
+    }
+    const baseProps = {
+      enabled: true,
+      isDetailPanelOpen: false,
+      isBulkFilePanelOpen: false,
+      isInBulkMode: false,
+      focusedItemId: 'item-1',
+      ...callbacks
+    }
+    const { rerender, unmount } = renderHook((props) => useInboxKeyboard(props), {
+      initialProps: { ...baseProps, items: mocks.inbox.items as never }
+    })
+
+    const keydownAdds = (): unknown[] => addSpy.mock.calls.filter(([type]) => type === 'keydown')
+    const keydownRemoves = (): unknown[] =>
+      removeSpy.mock.calls.filter(([type]) => type === 'keydown')
+
+    expect(keydownAdds()).toHaveLength(1)
+
+    // Every refetch/optimistic update hands the hook a fresh array identity.
+    for (let i = 0; i < 5; i++) {
+      rerender({ ...baseProps, items: [...mocks.inbox.items] as never })
+    }
+
+    expect(keydownAdds()).toHaveLength(1)
+    expect(keydownRemoves()).toHaveLength(0)
+
+    // The single listener must still see the newest items array.
+    rerender({
+      ...baseProps,
+      items: [
+        { id: 'item-1', title: 'First', sourceUrl: 'https://example.com/one' },
+        { id: 'item-9', title: 'Ninth', sourceUrl: 'https://example.com/nine' }
+      ] as never
+    })
+    fireEvent.keyDown(window, { key: 'Delete' })
+    expect(callbacks.onArchiveFocusedItem).toHaveBeenCalledWith('item-1', 'item-9')
+
+    unmount()
+    expect(keydownRemoves()).toHaveLength(1)
+
+    addSpy.mockRestore()
+    removeSpy.mockRestore()
+  })
+
   it('handles search, settings, countdown, and flush lifecycle hooks', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))

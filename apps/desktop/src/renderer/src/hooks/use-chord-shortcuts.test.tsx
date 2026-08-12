@@ -114,6 +114,41 @@ const renderWithState = (initialState: TabSystemState) => {
   }
 }
 
+type TabsDispatch = ReturnType<typeof useTabs>['dispatch']
+
+interface ControlProps {
+  onState: (s: TabSystemState) => void
+  onDispatch: (d: TabsDispatch) => void
+}
+
+const HookWithControls = ({ onState, onDispatch }: ControlProps): null => {
+  useChordShortcuts()
+  const { state, dispatch } = useTabs()
+  useEffect(() => {
+    onState(state)
+    onDispatch(dispatch)
+  }, [state, dispatch, onState, onDispatch])
+  return null
+}
+
+const renderWithControls = (initialState: TabSystemState) => {
+  let latest: TabSystemState = initialState
+  let dispatch: TabsDispatch = () => {}
+  const { unmount } = renderHook(() => null, {
+    wrapper: ({ children }) => (
+      <TabProvider initialState={initialState}>
+        <HookWithControls onState={(s) => (latest = s)} onDispatch={(d) => (dispatch = d)} />
+        {children}
+      </TabProvider>
+    )
+  })
+  return {
+    unmount,
+    getState: () => latest,
+    dispatch: (action: Parameters<TabsDispatch>[0]) => dispatch(action)
+  }
+}
+
 const dispatchKey = (key: string, opts: { meta?: boolean; shift?: boolean } = {}) => {
   window.dispatchEvent(
     new KeyboardEvent('keydown', {
@@ -311,6 +346,63 @@ describe('useChordShortcuts', () => {
     expect(getState().tabGroups[g3.id].tabs.some((tab) => tab.title === 'Moving backward')).toBe(
       true
     )
+  })
+
+  it('binds the window keydown listener once across tab state changes', () => {
+    // #given a two-group setup with the listener spies installed
+    const addSpy = vi.spyOn(window, 'addEventListener')
+    const removeSpy = vi.spyOn(window, 'removeEventListener')
+    const g1 = makeGroup([makeTab()])
+    const g2 = makeGroup([makeTab()], false)
+    const { unmount, dispatch } = renderWithControls(makeState([g1, g2]))
+
+    const keydownAdds = (): unknown[] => addSpy.mock.calls.filter(([type]) => type === 'keydown')
+    const keydownRemoves = (): unknown[] =>
+      removeSpy.mock.calls.filter(([type]) => type === 'keydown')
+
+    expect(keydownAdds()).toHaveLength(1)
+
+    // #when the active group flips back and forth six times
+    for (let i = 0; i < 6; i++) {
+      const groupId = i % 2 === 0 ? g2.id : g1.id
+      act(() => {
+        dispatch({ type: 'SET_ACTIVE_GROUP', payload: { groupId } })
+      })
+    }
+
+    // #then the listener was never detached and reattached
+    expect(keydownAdds()).toHaveLength(1)
+    expect(keydownRemoves()).toHaveLength(0)
+
+    // #and unmount still removes it
+    unmount()
+    expect(keydownRemoves()).toHaveLength(1)
+
+    addSpy.mockRestore()
+    removeSpy.mockRestore()
+  })
+
+  it('completes a chord against the tab state at keypress time', () => {
+    // #given three groups with the second one made active after mount
+    const g1 = makeGroup([makeTab()])
+    const g2 = makeGroup([makeTab()], false)
+    const g3 = makeGroup([makeTab()], false)
+    const { getState, dispatch } = renderWithControls(makeState([g1, g2, g3]))
+
+    act(() => {
+      dispatch({ type: 'SET_ACTIVE_GROUP', payload: { groupId: g2.id } })
+    })
+
+    // #when ⌘K then ArrowRight fires
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    act(() => {
+      dispatchKey('ArrowRight', { meta: true })
+    })
+
+    // #then it advances from the new active group, not the one from first render
+    expect(getState().activeGroupId).toBe(g3.id)
   })
 
   it('ignores typing targets, hint mode, unsupported chords, and timeout expiry', () => {

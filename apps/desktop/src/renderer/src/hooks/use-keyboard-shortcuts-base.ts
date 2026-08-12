@@ -3,7 +3,7 @@
  * Handles keyboard event binding and shortcut matching
  */
 
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
 
 // =============================================================================
@@ -81,11 +81,17 @@ export const useKeyboardShortcuts = (
   options: UseKeyboardShortcutsOptions = {}
 ): void => {
   const { capture = false } = options
-  // Memoize shortcuts to prevent unnecessary re-renders
-  const memoizedShortcuts = useMemo(() => shortcuts, [shortcuts])
+  // Callers rebuild the shortcut array whenever their state changes. Read it
+  // from a ref at keypress time so the window listener binds once per mount
+  // instead of detaching/reattaching on every render.
+  const shortcutsRef = useRef(shortcuts)
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  useEffect(() => {
+    shortcutsRef.current = shortcuts
+  }, [shortcuts])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (hintModeActiveRef.current) return
 
       const target = e.target as HTMLElement
@@ -94,7 +100,7 @@ export const useKeyboardShortcuts = (
       const isInputField =
         target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      for (const shortcut of memoizedShortcuts) {
+      for (const shortcut of shortcutsRef.current) {
         const { key, modifiers = {}, action, when, allowInInput } = shortcut
 
         // Skip if in input and not allowed
@@ -141,14 +147,11 @@ export const useKeyboardShortcuts = (
         action()
         return
       }
-    },
-    [memoizedShortcuts]
-  )
+    }
 
-  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown, capture)
     return () => window.removeEventListener('keydown', handleKeyDown, capture)
-  }, [handleKeyDown, capture])
+  }, [capture])
 }
 
 export default useKeyboardShortcuts
