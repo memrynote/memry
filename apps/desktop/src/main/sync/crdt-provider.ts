@@ -863,12 +863,10 @@ export class CrdtProvider {
 
       const oldDoc = entry.doc
       const newDoc = new Y.Doc()
+      // Seeded before the handler is attached on purpose: result.compacted was
+      // already pushed and persisted above, so routing it through onDocUpdate
+      // would store and broadcast the whole snapshot a second time.
       Y.applyUpdate(newDoc, result.compacted)
-
-      const buffered = this.compactionBuffers.get(noteId) ?? []
-      for (const update of buffered) {
-        Y.applyUpdate(newDoc, update, ORIGIN_NETWORK)
-      }
 
       newDoc.on('update', (update: Uint8Array, origin: unknown) => {
         this.onDocUpdate(noteId, update, origin)
@@ -881,6 +879,17 @@ export class CrdtProvider {
 
       oldDoc.destroy()
 
+      // Replay the buffer only after the swap, so the updates land on the doc
+      // this.docs points at and go through the handler. onDocUpdate is the
+      // single funnel for persistUpdate, queueNetworkBroadcast and
+      // scheduleWriteback; replaying ahead of it left the compaction window's
+      // remote updates in memory only — dropped from the CRDT store, from the
+      // vault markdown file and from the broadcast — on every successful
+      // compaction that buffered at least one update. Still inside the try, so
+      // compactingDocs holds noteId and onDocUpdate's maybeCompact cannot
+      // re-enter.
+      this.drainCompactionBuffer(noteId, entry)
+
       log.info('Doc compacted', { noteId, beforeSize, afterSize: result.compacted.byteLength })
     } finally {
       this.compactingDocs.delete(noteId)
@@ -889,11 +898,17 @@ export class CrdtProvider {
   }
 
   /**
-   * Hand the updates buffered for an abandoned compaction to whatever doc is
-   * live now. applyRemoteUpdate diverts remote updates into this buffer for the
-   * whole compaction window and reports nothing back to the sync coordinator,
-   * which has already recorded those sequence numbers as applied — so a
-   * discarded buffer is a silently lost remote update, not a retried one.
+   * Hand the updates buffered for a finished compaction to whatever doc is live
+   * now — the compacted replacement on the happy path, or the doc that took its
+   * place when the compaction was abandoned. applyRemoteUpdate diverts remote
+   * updates into this buffer for the whole compaction window and reports
+   * nothing back to the sync coordinator, which has already recorded those
+   * sequence numbers as applied — so a buffer that is discarded, or replayed
+   * into a doc with no 'update' handler, is a silently lost remote update, not
+   * a retried one.
+   *
+   * Always call this with the entry `this.docs` currently holds: applying to a
+   * detached entry would resurrect the update into a doc nothing reads.
    */
   private drainCompactionBuffer(noteId: string, target: ActiveDoc | undefined): void {
     const buffered = this.compactionBuffers.get(noteId)
