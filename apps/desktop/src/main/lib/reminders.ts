@@ -34,6 +34,7 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { broadcastToAllWindows } from './window-broadcast'
 import { getMainI18n } from './main-i18n'
 import { publishProjectionEvent } from '../projections'
+import { registerMinuteTick, unregisterMinuteTick, hasMinuteTick } from './minute-tick'
 import { emitCalendarProjectionChanged } from '../calendar/change-events'
 import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
 import {
@@ -54,8 +55,11 @@ type ReminderRow = typeof reminders.$inferSelect
 // Scheduler State
 // ============================================================================
 
-let schedulerInterval: ReturnType<typeof setInterval> | null = null
-const SCHEDULER_INTERVAL_MS = 60 * 1000 // Check every 60 seconds
+/** Id for this poller's subscription to the shared minute tick. */
+const MINUTE_TICK_ID = 'reminders'
+
+/** Last value handed to the OS badge, so an idle tick skips the native call. */
+let lastBadgeCount: number | null = null
 
 // ============================================================================
 // Helper Functions
@@ -329,12 +333,21 @@ function removeDeliveredNotification(reminderId: string): void {
  * (macOS dock + Unity launcher; a no-op false return on Windows).
  * A badge failure must never break the reminder flow.
  */
-function updateAppBadge(): void {
+function setAppBadge(count: number): void {
+  // The scheduler re-asserts the badge every minute; skip the native call when
+  // the count has not moved so an idle app does no dock work.
+  if (count === lastBadgeCount) return
+
   try {
-    app.setBadgeCount(countPendingReminders())
+    app.setBadgeCount(count)
+    lastBadgeCount = count
   } catch (error) {
     logger.warn('Failed to update app badge count:', error)
   }
+}
+
+function updateAppBadge(): void {
+  setAppBadge(countPendingReminders())
 }
 
 // ============================================================================
@@ -741,12 +754,22 @@ function processDueReminders(): void {
   if (!getStatus().isOpen) return
 
   try {
+    // Cheap count first: nothing pending or snoozed means nothing can be due,
+    // so an idle vault skips the due-reminder lookup entirely. It also doubles
+    // as the badge value, so the tick runs one query instead of two.
+    const pendingCount = countPendingReminders()
+
+    if (pendingCount === 0) {
+      setAppBadge(0)
+      return
+    }
+
     const dueReminders = getDueReminders()
 
     if (dueReminders.length === 0) {
       // Reminders can also mutate outside this module (e.g. note date pills),
       // so refresh the badge on every tick to self-heal a stale count.
-      updateAppBadge()
+      setAppBadge(pendingCount)
       return
     }
 
@@ -798,7 +821,7 @@ function processDueReminders(): void {
  * Called on app ready
  */
 export function startReminderScheduler(): void {
-  if (schedulerInterval) {
+  if (hasMinuteTick(MINUTE_TICK_ID)) {
     logger.warn('Scheduler already running')
     return
   }
@@ -810,8 +833,8 @@ export function startReminderScheduler(): void {
   // when the vault is not open yet).
   updateAppBadge()
 
-  // Set up interval to check for due reminders
-  schedulerInterval = setInterval(processDueReminders, SCHEDULER_INTERVAL_MS)
+  // Check for due reminders on the shared main-process minute tick
+  registerMinuteTick(MINUTE_TICK_ID, processDueReminders)
 }
 
 /**
@@ -819,9 +842,8 @@ export function startReminderScheduler(): void {
  * Called on app quit
  */
 export function stopReminderScheduler(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval)
-    schedulerInterval = null
+  if (hasMinuteTick(MINUTE_TICK_ID)) {
+    unregisterMinuteTick(MINUTE_TICK_ID)
     logger.info('Scheduler stopped')
   }
 }
@@ -830,7 +852,7 @@ export function stopReminderScheduler(): void {
  * Check if the scheduler is running
  */
 export function isSchedulerRunning(): boolean {
-  return schedulerInterval !== null
+  return hasMinuteTick(MINUTE_TICK_ID)
 }
 
 /**

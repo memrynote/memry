@@ -163,6 +163,25 @@ The pipeline is wired into both duplicated serializers: the renderer save path (
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.
 
+## Background Polling (Shared Minute Tick)
+
+Three features watch the clock rather than an event: due reminders, snoozed inbox items that should
+resurface, and the daily inbox review nudge. They share one 60-second timer in
+`main/lib/minute-tick.ts` instead of each owning an interval, so an idle app wakes the process once
+a minute, not three times. The timer is `unref`'d — polling alone never keeps the process alive —
+and it only exists while at least one poller is registered.
+
+Each poller stays cheap when there is nothing to do:
+
+- **Reminders** count pending/snoozed rows first. Zero means nothing can be due, so the due lookup
+  is skipped and the tick costs one indexed count. The dock badge is only re-asserted when the
+  count actually changes.
+- **Inbox snooze** runs a single filtered query that returns no rows when nothing is due.
+- **Inbox review** returns before touching the database when the reminder is disabled (the default).
+
+All three also short-circuit when no vault is open. Add a new minute-cadence job by registering it
+on the shared tick — do not start another interval.
+
 ## SQLite Memory Budget
 
 The desktop main process opens both databases with bounded SQLite page caches:
