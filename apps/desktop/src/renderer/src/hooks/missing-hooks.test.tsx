@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAIConnections } from './use-ai-connections'
 import { useAIInline } from './use-ai-inline'
 import { useActiveHeading } from './use-active-heading'
 import { useCalendarPreferences, resolveDayCellClickBehavior } from './use-calendar-preferences'
@@ -23,8 +22,6 @@ import { useSearchShortcut } from './use-search-shortcut'
 import { useSettingsShortcut } from './use-settings-shortcut'
 import { useStorageUsage } from './use-storage-usage'
 import { useUndoableAction } from './use-undoable-action'
-import { AISettingsProvider } from '@/contexts/ai-settings-context'
-import { getAIConnections } from '@/services/ai-connections-service'
 import { toast } from 'sonner'
 
 const mocks = vi.hoisted(() => ({
@@ -87,11 +84,6 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/lib/save-registry', () => ({
   flushAllPendingSaves: (...args: unknown[]) => mocks.flushAllPendingSaves(...args),
   hasPendingSaves: (...args: unknown[]) => mocks.hasPendingSaves(...args)
-}))
-
-vi.mock('@/services/ai-connections-service', () => ({
-  MIN_CONTENT_LENGTH: 20,
-  getAIConnections: vi.fn()
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -184,22 +176,12 @@ function queryWrapper(
   }
 }
 
-function aiSettingsWrapper() {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return <AISettingsProvider>{children}</AISettingsProvider>
-  }
-}
-
 function installAnimationFrame() {
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     callback(0)
     return 1
   })
   vi.stubGlobal('cancelAnimationFrame', vi.fn())
-}
-
-function longContent(label = 'content') {
-  return `${label} `.repeat(20)
 }
 
 beforeEach(() => {
@@ -311,84 +293,6 @@ beforeEach(() => {
 })
 
 describe('AI hooks', () => {
-  it('debounces AI connection analysis, refreshes, and handles errors', async () => {
-    vi.useFakeTimers()
-    vi.mocked(getAIConnections).mockResolvedValue([{ id: 'c1', title: 'Connection' }] as never)
-    const { result, rerender } = renderHook(({ content }) => useAIConnections(content), {
-      initialProps: { content: longContent('first') }
-    })
-
-    act(() => {
-      vi.advanceTimersByTime(2000)
-    })
-    await waitFor(() =>
-      expect(result.current.connections).toEqual([{ id: 'c1', title: 'Connection' }])
-    )
-
-    rerender({ content: 'short' })
-    act(() => {
-      vi.advanceTimersByTime(500)
-    })
-    await waitFor(() => expect(result.current.connections).toEqual([]))
-
-    vi.mocked(getAIConnections).mockRejectedValueOnce(new Error('analysis failed'))
-    rerender({ content: longContent('second') })
-    act(() => {
-      vi.advanceTimersByTime(2500)
-    })
-    await waitFor(() => expect(result.current.error).toBe('analysis failed'))
-
-    vi.mocked(getAIConnections).mockResolvedValueOnce([{ id: 'c2' }] as never)
-    act(() => {
-      result.current.refresh()
-    })
-    await waitFor(() => expect(result.current.connections).toEqual([{ id: 'c2' }]))
-  })
-
-  it('aborts and clears AI connection analysis when AI is disabled', async () => {
-    vi.useFakeTimers()
-    let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
-    const api = window.api as typeof window.api & {
-      onSettingsChanged: (callback: (event: { key: string; value: unknown }) => void) => () => void
-    }
-    vi.mocked(api.settings.getAISettings).mockResolvedValue({ enabled: true })
-    api.onSettingsChanged = vi.fn((callback) => {
-      onSettingsChanged = callback
-      return mocks.unsubscribe
-    })
-    vi.mocked(getAIConnections).mockImplementation(
-      (_content, signal) =>
-        new Promise((_, reject) => {
-          signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
-        }) as never
-    )
-
-    const { result } = renderHook(() => useAIConnections(longContent('first')), {
-      wrapper: aiSettingsWrapper()
-    })
-
-    await waitFor(() => expect(api.settings.getAISettings).toHaveBeenCalled())
-    await waitFor(() => expect(api.onSettingsChanged).toHaveBeenCalled())
-    act(() => {
-      onSettingsChanged?.({ key: 'ai', value: { enabled: true } })
-    })
-    act(() => {
-      vi.advanceTimersByTime(2500)
-    })
-    await waitFor(() => expect(getAIConnections).toHaveBeenCalled())
-
-    act(() => {
-      onSettingsChanged?.({ key: 'ai', value: { enabled: false } })
-    })
-    await act(async () => {
-      await Promise.resolve()
-    })
-
-    expect(result.current.connections).toEqual([])
-    expect(result.current.isLoading).toBe(false)
-    expect(result.current.error).toBeNull()
-  })
-
   it('initializes AI inline from disabled, healthy, failed, and retry states', async () => {
     const invoke = vi.fn()
     window.electron.ipcRenderer.invoke = invoke

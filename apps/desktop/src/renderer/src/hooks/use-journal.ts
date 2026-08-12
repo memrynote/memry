@@ -9,8 +9,6 @@ export { useYearStats } from './use-journal-stats'
 export type { UseYearStatsResult } from './use-journal-stats'
 export { useDayContext } from './use-day-context'
 export type { UseDayContextResult } from './use-day-context'
-export { useAIConnections } from './use-ai-connections'
-export type { UseAIConnectionsResult } from './use-ai-connections'
 
 export type {
   JournalEntry,
