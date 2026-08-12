@@ -22,6 +22,22 @@ export class SyncStateManager {
   private ctx: SyncContext
   private nodeEmit: NodeEmit
 
+  /**
+   * `true` once a read (or a write through `setStateValue`) has proved sync is
+   * NOT paused. `isPaused` is asked on every WS message, every enqueue and
+   * every pull tick, and answering it from SQLite each time is a table lookup
+   * per event.
+   *
+   * Only the negative answer is cached, deliberately. `sync_state` rows are
+   * also mutated outside this class — the emergency wipe, session teardown and
+   * device re-registration all delete rows directly — but every one of those
+   * paths only ever *removes* `syncPaused`, and a missing row means "not
+   * paused". So a cached `false` can never become wrong, while a cached `true`
+   * could; paused therefore always re-reads. That costs nothing in practice,
+   * because paused is exactly the state in which every hot caller stops early.
+   */
+  private knownNotPaused = false
+
   constructor(ctx: SyncContext, nodeEmit: NodeEmit) {
     this.ctx = ctx
     this.nodeEmit = nodeEmit
@@ -48,7 +64,10 @@ export class SyncStateManager {
   }
 
   isPaused(): boolean {
-    return this.getStateValue(SYNC_STATE_KEYS.SYNC_PAUSED) === 'true'
+    if (this.knownNotPaused) return false
+    const paused = this.getStateValue(SYNC_STATE_KEYS.SYNC_PAUSED) === 'true'
+    this.knownNotPaused = !paused
+    return paused
   }
 
   getStateValue(key: string): string | undefined {
@@ -57,6 +76,11 @@ export class SyncStateManager {
   }
 
   setStateValue(key: string, value: string): void {
+    // Write-through: every pause and resume in the app lands here, so the
+    // cached answer flips with the row rather than after it.
+    if (key === SYNC_STATE_KEYS.SYNC_PAUSED) {
+      this.knownNotPaused = value !== 'true'
+    }
     this.ctx.deps.db
       .insert(syncState)
       .values({ key, value, updatedAt: new Date() })

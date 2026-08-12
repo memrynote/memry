@@ -173,6 +173,24 @@ Migration 0047 resets `attempts` to 0 for rows that an earlier build had already
 stranded by the old in-cycle spend are retried again after upgrading. It preserves the row, its
 payload, and its recorded error.
 
+### Dead-letter purge and the pause flag are kept off the enqueue path
+
+Rows that exhausted their budget are purged once at least 50 of them are older than
+`ERROR_RETENTION_DAYS`. Nothing reads those rows and they can only accumulate at the pace of a
+failing push, so the threshold is probed on the first enqueue and every fiftieth after that rather
+than on every one — and the probe is a bounded existence check, not a count of the table. A bulk
+import therefore no longer scans `sync_queue` once per queued mutation. The purge itself is
+unchanged: same threshold, same retention window, same deletion.
+
+Whether sync is paused is asked on every WebSocket message, every enqueue and every pull tick, so
+the answer is held in memory. Only the _not paused_ answer is cached. Pause and resume write through
+the state manager and flip the cached answer with the row, so they take effect on the next call.
+Paused always re-reads, because `sync_state` rows are also removed outside the manager — the
+emergency wipe, session teardown and device re-registration all delete them — and a removed
+`syncPaused` row can only mean "not paused". A cached `false` can never go stale that way; a cached
+`true` could. That extra read costs nothing, because paused is exactly the state in which every
+caller stops early.
+
 ### Recovering pushes that never landed
 
 Items expose a "the server has this state" stamp (`syncedAt`) that advances on a confirmed push as
