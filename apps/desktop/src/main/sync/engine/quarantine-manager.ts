@@ -9,13 +9,20 @@ import {
   SYNC_STATE_KEYS,
   QUARANTINE_MAX_ATTEMPTS,
   QUARANTINE_ENTRY_TTL_MS,
+  MAX_QUARANTINE_ENTRIES,
   itemRefKey
 } from './sync-context'
 
 const log = createLogger('QuarantineManager')
 
 export class QuarantineManager {
+  /**
+   * (type, id) -> quarantine entry. Insertion order is kept equal to `failedAt`
+   * order (see `quarantineItem`) so `evictOverflow` can walk it coldest-first
+   * without a sort.
+   */
   private quarantinedItems = new Map<string, QuarantineEntry>()
+  private evictionLogged = false
   private ctx: SyncContext
 
   constructor(ctx: SyncContext) {
@@ -23,11 +30,15 @@ export class QuarantineManager {
   }
 
   quarantineItem(itemId: string, itemType: string, signerDeviceId: string, error: string): void {
-    const existing = this.quarantinedItems.get(itemRefKey(itemType, itemId))
+    const key = itemRefKey(itemType, itemId)
+    const existing = this.quarantinedItems.get(key)
     const attemptCount = existing ? existing.attemptCount + 1 : 1
     const permanent = attemptCount >= QUARANTINE_MAX_ATTEMPTS
 
-    this.quarantinedItems.set(itemRefKey(itemType, itemId), {
+    // Delete before set: `set` on an existing key leaves it where it was, and
+    // the entry's `failedAt` has just moved forward.
+    this.quarantinedItems.delete(key)
+    this.quarantinedItems.set(key, {
       itemId,
       itemType,
       signerDeviceId,
@@ -35,6 +46,8 @@ export class QuarantineManager {
       attemptCount,
       lastError: error
     })
+    this.sweepExpired()
+    this.evictOverflow()
 
     log.warn('SECURITY_AUDIT: Signature verification failed', {
       itemId,
@@ -124,6 +137,64 @@ export class QuarantineManager {
 
   clear(): void {
     this.quarantinedItems.clear()
+    this.evictionLogged = false
+  }
+
+  /**
+   * Drop entries past QUARANTINE_ENTRY_TTL_MS — the same filter `loadState()`
+   * applies to persisted entries on startup, just applied while the process
+   * keeps running. Before this, a session that never restarted held every
+   * quarantine it ever created, including ones for server rows repaired or
+   * purged weeks earlier. A still-broken item re-quarantines within
+   * QUARANTINE_MAX_ATTEMPTS pulls, which is exactly what a restart already did.
+   */
+  private sweepExpired(): void {
+    const now = Date.now()
+    let dropped = 0
+    for (const [key, entry] of this.quarantinedItems) {
+      if (now - entry.failedAt < QUARANTINE_ENTRY_TTL_MS) continue
+      this.quarantinedItems.delete(key)
+      dropped++
+    }
+    if (dropped > 0) {
+      log.info('Expired stale quarantine entries', { dropped })
+    }
+  }
+
+  /**
+   * Bound the map at MAX_QUARANTINE_ENTRIES by dropping the coldest
+   * NON-permanent entries only.
+   *
+   * A non-permanent entry is an attempt counter and nothing else: evicting one
+   * gives the item a fresh QUARANTINE_MAX_ATTEMPTS window, so the worst case is
+   * a few extra decrypt attempts before it is branded again. A permanent entry
+   * is what keeps a failed-signature item out of the vault, and `persistState`
+   * serialises this map — evicting one would drop it from disk too. So the cap
+   * is deliberately soft: if every entry is permanent the map is allowed to
+   * exceed it.
+   */
+  private evictOverflow(): void {
+    if (this.quarantinedItems.size <= MAX_QUARANTINE_ENTRIES) return
+
+    let overflow = this.quarantinedItems.size - MAX_QUARANTINE_ENTRIES
+    let evicted = 0
+    for (const [key, entry] of this.quarantinedItems) {
+      if (overflow <= 0) break
+      if (entry.attemptCount >= QUARANTINE_MAX_ATTEMPTS) continue
+      this.quarantinedItems.delete(key)
+      overflow--
+      evicted++
+    }
+
+    if (this.evictionLogged) return
+    this.evictionLogged = true
+    log.warn('Quarantine map at cap', {
+      cap: MAX_QUARANTINE_ENTRIES,
+      evicted,
+      // > 0 means the cap could not be honoured: every remaining entry is a
+      // permanent quarantine and dropping one would re-admit a bad item.
+      permanentOverflow: overflow
+    })
   }
 
   private persistState(): void {
