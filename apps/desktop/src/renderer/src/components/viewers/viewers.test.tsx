@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Profiler } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AudioPlayer } from './audio-player'
@@ -210,6 +211,51 @@ describe('viewer components', () => {
     expect(
       screen.getByText('phaseF.componentsViewersImageViewer.failedToLoadImage')
     ).toBeInTheDocument()
+  })
+
+  it('pans an image without re-rendering per mousemove and commits the final offset', async () => {
+    const user = userEvent.setup()
+    const onRender = vi.fn()
+    const { container } = render(
+      <Profiler id="image-viewer" onRender={onRender}>
+        <ImageViewer src="memry-file://pan.png" alt="Pan" />
+      </Profiler>
+    )
+    const image = screen.getByRole('img', { name: 'Pan' })
+    const imageContainer = image.parentElement as HTMLDivElement
+
+    // Pan only engages above 100%.
+    await user.click(container.querySelectorAll('button')[1])
+    expect(screen.getByText('125%')).toBeInTheDocument()
+
+    fireEvent.mouseDown(imageContainer, { clientX: 100, clientY: 100 })
+    onRender.mockClear()
+
+    const steps = 12
+    for (let step = 1; step <= steps; step += 1) {
+      fireEvent.mouseMove(imageContainer, { clientX: 100 + step * 3, clientY: 100 + step * 5 })
+    }
+
+    // The gesture drives the transform imperatively: pixel-accurate, zero React commits.
+    expect(onRender).not.toHaveBeenCalled()
+    expect(image).toHaveStyle('transform: translate(36px, 60px) scale(1.25) rotate(0deg)')
+
+    // The pointer leaving the container must not abort or freeze the pan.
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 170 })
+    expect(onRender).not.toHaveBeenCalled()
+    expect(image).toHaveStyle('transform: translate(40px, 70px) scale(1.25) rotate(0deg)')
+
+    // Mouseup outside the container still ends the drag and commits state once.
+    fireEvent.mouseUp(window)
+    expect(onRender).toHaveBeenCalledTimes(1)
+
+    // A later re-render must not snap back to the pointer-down offset.
+    await user.click(screen.getByTitle('phaseF.componentsViewersImageViewer.rotate'))
+    expect(image).toHaveStyle('transform: translate(40px, 70px) scale(1.25) rotate(90deg)')
+
+    // Dropping back to 100% still recenters.
+    await user.click(screen.getByTitle('phaseF.componentsViewersImageViewer.resetZoom'))
+    expect(image).toHaveStyle('transform: translate(0px, 0px) scale(1) rotate(90deg)')
   })
 
   it('loads PDFs, navigates pages, changes zoom/sidebar/rotation, and reports load errors', async () => {
