@@ -40,6 +40,19 @@ const handleWheel = (e: React.WheelEvent<HTMLDivElement>): void => {
 }
 
 /**
+ * Motion preference for the strip's own programmatic scrolls.
+ *
+ * A `behavior` passed in the scroll options overrides the CSS `scroll-behavior`
+ * property, so the `@media (prefers-reduced-motion: reduce)` blocks in
+ * `assets/base.css` cannot suppress these calls — the preference has to be read
+ * in JS (same read as `components/onboarding/use-first-run-tour.ts`). Read at
+ * call time rather than through a subscription: nothing renders from it, and a
+ * mid-session change to the OS setting is picked up by the next scroll.
+ */
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+
+/**
  * Is the tab already fully inside the strip's visible area?
  * The chevron gutters are inline padding on the strip, so they are subtracted —
  * a tab sitting under a chevron does not count as visible. Physical sides are
@@ -135,7 +148,7 @@ export const TabBarWithDrag = ({
     if (scrolledTabIdRef.current === activeTabId && isTabFullyVisible(strip, tabEl)) return
     scrolledTabIdRef.current = activeTabId
     // scrollIntoView is not implemented in jsdom
-    tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: 'smooth' })
+    tabEl.scrollIntoView?.({ inline: 'nearest', block: 'nearest', behavior: scrollBehavior() })
   }, [activeTabId, regularTabsLength, activeDragItem, canScrollToStart, canScrollToEnd])
 
   // If group doesn't exist, don't render (after all hooks)
@@ -150,7 +163,7 @@ export const TabBarWithDrag = ({
     const el = scrollRef.current
     if (!el) return
     const sign = getComputedStyle(el).direction === 'rtl' ? -1 : 1
-    el.scrollBy({ left: distance * sign, behavior: 'smooth' })
+    el.scrollBy({ left: distance * sign, behavior: scrollBehavior() })
   }
 
   const scrollToStart = (): void => scrollByLogical(-200)
@@ -219,7 +232,9 @@ export const TabBarWithDrag = ({
           data-testid="tab-strip"
           className={cn(
             'flex-1 flex items-end gap-0.5 px-1 pb-0 overflow-x-auto',
-            'scroll-smooth',
+            // Wheel scrolling assigns scrollLeft directly, which the CSS property
+            // animates — so that one still needs the CSS-side gate.
+            'scroll-smooth motion-reduce:scroll-auto',
             'scrollbar-none [&::-webkit-scrollbar]:hidden',
             '[-ms-overflow-style:none] [scrollbar-width:none]',
             canScrollToStart && 'ps-7',
