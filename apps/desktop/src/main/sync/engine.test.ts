@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine, SYNC_LOCK_STALE_MS, PERIODIC_PULL_MAX_QUIET_MS } from './engine'
 import type { WebSocketMessage } from './websocket'
-import { createMockDeps, createMockNetwork, setupTestDb } from '@tests/utils/engine-mocks'
+import {
+  createMockDeps,
+  createMockNetwork,
+  createMockWs,
+  setupTestDb
+} from '@tests/utils/engine-mocks'
 
 describe('SyncEngine', () => {
   const { getDb } = setupTestDb()
@@ -62,24 +67,14 @@ describe('SyncEngine', () => {
   })
 
   describe('#given a socket that has not dropped #when the 60s pull tick fires', () => {
-    // deps.ws is an EventEmitter stand-in without the real getter.
-    const withGeneration = (
-      deps: ReturnType<typeof createMockDeps>,
-      read: () => number
-    ): ReturnType<typeof createMockDeps> => {
-      Object.defineProperty(deps.ws, 'connectionGeneration', {
-        configurable: true,
-        get: read
-      })
-      return deps
-    }
-
-    const startArmedEngine = async (
+    // Opened before start() so the engine arms the tick against a socket that
+    // is already up — the generation it stamps is the one the ticks then read.
+    const startArmedEngineOnLiveSocket = async (
       getSpy: { mock: { calls: unknown[] } },
-      read: () => number
+      ws: ReturnType<typeof createMockWs>
     ): Promise<{ engine: SyncEngine; callsAfterStart: number }> => {
-      const deps = withGeneration(createMockDeps(getDb()), read)
-      const engine = new SyncEngine(deps)
+      ws.simulateConnected()
+      const engine = new SyncEngine(createMockDeps(getDb(), { ws }))
       // fullSync is exercised elsewhere; here it only has to leave the tick armed.
       vi.spyOn(engine, 'fullSync').mockResolvedValue()
       await engine.start()
@@ -97,8 +92,8 @@ describe('SyncEngine', () => {
     it('#then it issues no request, and pulls again once the socket generation moves', async () => {
       vi.useFakeTimers()
       const getSpy = await mockPullTransport()
-      let generation = 1
-      const { engine, callsAfterStart } = await startArmedEngine(getSpy, () => generation)
+      const ws = createMockWs()
+      const { engine, callsAfterStart } = await startArmedEngineOnLiveSocket(getSpy, ws)
 
       // #when — two ticks on the same, still-connected socket
       await vi.advanceTimersByTimeAsync(60_000)
@@ -108,7 +103,8 @@ describe('SyncEngine', () => {
       expect(getSpy.mock.calls.length).toBe(callsAfterStart)
 
       // #when — the socket dropped and came back between ticks
-      generation += 1
+      ws.disconnect()
+      ws.simulateConnected()
       await vi.advanceTimersByTimeAsync(60_000)
 
       // #then — broadcasts may have been missed, so the tick pulls again
@@ -124,7 +120,7 @@ describe('SyncEngine', () => {
       // quiet vault, so the tick must not go quiet forever.
       vi.useFakeTimers()
       const getSpy = await mockPullTransport()
-      const { engine, callsAfterStart } = await startArmedEngine(getSpy, () => 1)
+      const { engine, callsAfterStart } = await startArmedEngineOnLiveSocket(getSpy, createMockWs())
 
       await vi.advanceTimersByTimeAsync(PERIODIC_PULL_MAX_QUIET_MS - 60_000)
       expect(getSpy.mock.calls.length).toBe(callsAfterStart)
@@ -140,11 +136,9 @@ describe('SyncEngine', () => {
     it('#then a disconnected socket keeps the every-tick pull', async () => {
       vi.useFakeTimers()
       const getSpy = await mockPullTransport()
-      const deps = withGeneration(createMockDeps(getDb()), () => 1)
-      const engine = new SyncEngine(deps)
-      vi.spyOn(engine, 'fullSync').mockResolvedValue()
-      await engine.start()
-      deps.ws.disconnect()
+      const ws = createMockWs()
+      const { engine } = await startArmedEngineOnLiveSocket(getSpy, ws)
+      ws.disconnect()
       const callsAfterStart = getSpy.mock.calls.length
 
       await vi.advanceTimersByTimeAsync(60_000)
