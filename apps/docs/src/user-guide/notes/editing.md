@@ -137,6 +137,12 @@ Color and underline are kept on separate nested spans, so an older version of Me
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
 
+## Link Previews
+
+Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.
+
+That in-memory cache holds the 200 most recently used links and evicts the least recently used entry beyond that, which keeps a long session with many link-heavy notes from growing without a limit. Evicted links are simply fetched again the next time they are shown.
+
 ## Comments
 
 Select text to open the floating toolbar. **Comment** creates an anchored review card in the right rail; selecting the text itself does not open the rail. The right rail aligns each card beside the marked text. Comment cards can be resolved or deleted.
