@@ -107,7 +107,9 @@ over the provider's entry for that note, and the close then finds that the entry
 belongs to it. It leaves that entry alone, because the reopened doc is the one the editor
 is typing into, and destroys only the doc it superseded. Nothing can reach the superseded
 doc at that point: every route into a Y.Doc looks the note id up in the provider's map,
-which now resolves the replacement.
+which now resolves the replacement. That includes a write-back armed before the close —
+destroying the superseded doc is not what makes it safe, since a destroyed Y.Doc can still
+be read; resolving the note id when the pass runs is.
 
 ## IPC Loop Prevention
 
@@ -132,6 +134,13 @@ document to its vault `.md` file and re-indexes it for search.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
   destroyed, which covers app quit and vault switch.
+- **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
+  reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
+  in the provider's map at fire time rather than serializing the doc it captured. Otherwise
+  the file would be overwritten with the superseded doc's content, discarding whatever
+  landed in the meantime. A note that is genuinely gone from the map — closed and not
+  reopened, or LRU-evicted — still has its pending pass written from the captured doc, so
+  no edit is dropped.
 - **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
   network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
   sweep per TTL window) rather than scanned on every watcher event, and

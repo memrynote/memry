@@ -242,11 +242,37 @@ function writebackDelayMs(noteId: string): number {
   return Math.max(WRITEBACK_DEBOUNCE_MS, last.finishedAt + cooldownMs - Date.now())
 }
 
+/**
+ * The doc to serialize for this note at the moment the pass actually runs.
+ *
+ * A scheduled write-back captures the Y.Doc that was live when it was armed,
+ * but a note can be closed and reopened inside the debounce window: `doOpen`
+ * puts a *different* Y.Doc in the provider's map for the same note id, and the
+ * still-armed timer would otherwise serialize the superseded doc straight onto
+ * the markdown file — clobbering whatever landed there in the meantime (a sync
+ * pull writing the file, an external editor, or the replacement doc's own
+ * state). Destroying the superseded doc on the close path does not prevent
+ * this: `Y.Doc.destroy()` leaves the doc's store readable, so the stale
+ * serialize still succeeds.
+ *
+ * The provider's map is the authority for "which doc is this note", so resolve
+ * by note id here rather than trusting the captured reference. When the note is
+ * genuinely absent from the map — closed and not reopened, or evicted by the
+ * inactive-doc LRU — the captured doc is still the last known state and its
+ * write-back must still land, so it stays the fallback.
+ */
+function resolveWritebackDoc(noteId: string, captured: Y.Doc): Y.Doc {
+  const live = getCrdtProvider().getDoc(noteId)
+  if (!live || live === captured) return captured
+  log.debug('Write-back doc was superseded; serializing the live doc', { noteId })
+  return live
+}
+
 /** Runs a pass and records what it cost, which is what paces the next one. */
 async function runWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   const startedAt = Date.now()
   try {
-    await performWriteback(noteId, doc)
+    await performWriteback(noteId, resolveWritebackDoc(noteId, doc))
   } finally {
     const finishedAt = Date.now()
     lastWritebackCost.set(noteId, { finishedAt, durationMs: finishedAt - startedAt })
