@@ -102,6 +102,11 @@ class MockNotification {
   emit(event: string, ...args: unknown[]): void {
     this.handlers[event]?.(...args)
   }
+
+  removeAllListeners(): this {
+    this.handlers = {}
+    return this
+  }
 }
 
 let remindersService: typeof import('./reminders')
@@ -684,6 +689,129 @@ describe('reminders service', () => {
         'Failed to remove delivered notification for reminder rem-nc6:',
         removeError
       )
+    })
+  })
+
+  describe('live notification lifecycle', () => {
+    const fireDueReminder = (id: string): MockNotification => {
+      seedReminder({
+        id,
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: '2000-01-01T00:00:00.000Z',
+        status: reminderStatus.PENDING
+      })
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+      return notificationInstances[notificationInstances.length - 1]!
+    }
+
+    it('detaches the listeners holding the reminder once the banner is clicked', () => {
+      const notification = fireDueReminder('rem-live-click')
+      expect(Object.keys(notification.handlers)).toEqual(
+        expect.arrayContaining(['click', 'close', 'failed'])
+      )
+
+      notification.emit('click')
+
+      // Navigation still happened, but nothing keeps the ReminderWithTarget alive.
+      expect(window.webContents.send).toHaveBeenCalledWith(
+        ReminderChannels.events.CLICKED,
+        expect.objectContaining({ reminder: expect.objectContaining({ id: 'rem-live-click' }) })
+      )
+      expect(Object.keys(notification.handlers)).toEqual([])
+    })
+
+    it('detaches the listeners when the banner is closed by the OS', () => {
+      const notification = fireDueReminder('rem-live-close')
+
+      notification.emit('close')
+
+      expect(Object.keys(notification.handlers)).toEqual([])
+      // Already released: a later in-app dismiss must not re-close it.
+      remindersService.dismissReminder('rem-live-close')
+      expect(notification.close).not.toHaveBeenCalled()
+    })
+
+    it('closes the live banner on in-app dismiss where Notification.remove does not exist', () => {
+      setPlatform('win32')
+      const notification = fireDueReminder('rem-live-win')
+
+      remindersService.dismissReminder('rem-live-win')
+
+      expect(notification.close).toHaveBeenCalledTimes(1)
+      expect(MockNotification.remove).not.toHaveBeenCalled()
+      expect(Object.keys(notification.handlers)).toEqual([])
+    })
+
+    it('closes the live banner on in-app snooze', () => {
+      setPlatform('win32')
+      const notification = fireDueReminder('rem-live-snooze')
+
+      remindersService.snoozeReminder({
+        id: 'rem-live-snooze',
+        snoozeUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+      })
+
+      expect(notification.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(notification.handlers)).toEqual([])
+    })
+
+    it('supersedes its own earlier banner when the same reminder fires again', () => {
+      setPlatform('win32')
+      const first = fireDueReminder('rem-live-again')
+
+      // Snoozed then due once more: the same reminder id fires a second time.
+      dataDb.db
+        .update(reminders)
+        .set({ status: reminderStatus.PENDING })
+        .where(eq(reminders.id, 'rem-live-again'))
+        .run()
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+
+      const second = notificationInstances[notificationInstances.length - 1]!
+      expect(second).not.toBe(first)
+      expect(first.close).toHaveBeenCalledTimes(1)
+      expect(Object.keys(first.handlers)).toEqual([])
+      // The replacement is live and clickable.
+      expect(second.close).not.toHaveBeenCalled()
+      expect(Object.keys(second.handlers)).toContain('click')
+    })
+
+    it('keeps a failed delivery from leaving a tracked notification behind', () => {
+      setPlatform('win32')
+      const notification = fireDueReminder('rem-live-failed')
+
+      notification.emit('failed', {}, new Error('delivery failed'))
+
+      expect(Object.keys(notification.handlers)).toEqual([])
+      remindersService.dismissReminder('rem-live-failed')
+      expect(notification.close).not.toHaveBeenCalled()
+    })
+
+    it('evicts the oldest tracked notifications past the cap without closing them', () => {
+      // 51 unactioned banners: one past the 50-entry ceiling.
+      for (let index = 0; index < 51; index += 1) {
+        seedReminder({
+          id: `rem-cap-${index}`,
+          targetType: 'note',
+          targetId: 'note-1',
+          remindAt: `2000-01-01T00:00:${String(index).padStart(2, '0')}.000Z`,
+          status: reminderStatus.PENDING
+        })
+      }
+
+      remindersService.startReminderScheduler()
+      remindersService.stopReminderScheduler()
+
+      expect(notificationInstances).toHaveLength(51)
+      const evicted = notificationInstances[0]!
+      const retained = notificationInstances[50]!
+      expect(Object.keys(evicted.handlers)).toEqual([])
+      expect(Object.keys(retained.handlers)).toContain('click')
+      // Eviction only drops the handle — the banner itself is left on screen.
+      expect(evicted.close).not.toHaveBeenCalled()
     })
   })
 

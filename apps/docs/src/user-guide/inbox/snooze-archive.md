@@ -38,6 +38,8 @@ without one timer per row.
 
 When wake fires, the item appears at the top of the active inbox. If memrynote isn't running, the item appears next time the app opens.
 
+If the inbox is open — including in more than one pane or window — you also get a single system notification for that wake, not one per open inbox. A later wake for different items always gets its own notification, even when the titles happen to match.
+
 ## Archive
 
 Archived items leave the active inbox but stay in your vault. They're still:

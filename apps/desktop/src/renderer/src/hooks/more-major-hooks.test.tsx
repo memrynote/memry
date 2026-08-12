@@ -317,26 +317,66 @@ describe('more major hooks coverage', () => {
     expect(mocks.requestPermission).toHaveBeenCalled()
 
     const callback = mocks.onInboxSnoozeDue.mock.calls[0][0] as (event: {
-      items: Array<{ title: string }>
+      items: Array<{ id: string; title: string }>
     }) => void
     ;(Notification as unknown as { permission: string }).permission = 'granted'
-    callback({ items: [{ title: 'Read paper' }] })
+    callback({ items: [{ id: 'item-a', title: 'Read paper' }] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inbox', 'lists'] })
     expect(Notification).toHaveBeenCalledWith('Read paper', {
       body: 'Your snoozed item is ready for review',
-      icon: '/icon.png'
+      icon: '/icon.png',
+      tag: 'inbox-snooze-due:item-a'
     })
     expect(mocks.toastInfo).toHaveBeenCalledWith('"Read paper" is back from snooze')
 
-    callback({ items: [{ title: 'One' }, { title: 'Two' }] })
+    callback({
+      items: [
+        { id: 'item-b', title: 'One' },
+        { id: 'item-c', title: 'Two' }
+      ]
+    })
     expect(Notification).toHaveBeenCalledWith('2 snoozed items', {
       body: 'Your snoozed items are ready',
-      icon: '/icon.png'
+      icon: '/icon.png',
+      tag: 'inbox-snooze-due:item-b,item-c'
     })
     expect(mocks.toastInfo).toHaveBeenCalledWith('2 snoozed items are back')
 
     callback({ items: [] })
     expect(invalidate).toHaveBeenCalledTimes(2)
+  })
+
+  it('tags snooze notifications by resurfaced item id so concurrent mounts collapse to one banner', () => {
+    // Split view (or a second window) mounts the inbox page twice, and the
+    // snooze-due event is delivered to every subscriber.
+    renderHook(() => useInboxNotifications(), { wrapper: queryWrapper() })
+    renderHook(() => useInboxNotifications(), { wrapper: queryWrapper() })
+
+    type SnoozeCallback = (event: { items: Array<{ id: string; title: string }> }) => void
+    const first = mocks.onInboxSnoozeDue.mock.calls[0][0] as SnoozeCallback
+    const second = mocks.onInboxSnoozeDue.mock.calls[1][0] as SnoozeCallback
+    ;(Notification as unknown as { permission: string }).permission = 'granted'
+
+    // Same resurface, different sources, and item order is not guaranteed.
+    const dueItems = [
+      { id: 'item-2', title: 'Read paper' },
+      { id: 'item-1', title: 'Read paper' }
+    ]
+    first({ items: dueItems })
+    second({ items: [...dueItems].reverse() })
+
+    const tags = (
+      Notification as unknown as { mock: { calls: [string, { tag: string }][] } }
+    ).mock.calls.map(([, options]) => options.tag)
+    expect(tags).toEqual(['inbox-snooze-due:item-1,item-2', 'inbox-snooze-due:item-1,item-2'])
+
+    // A genuinely new resurface sharing the same title is still its own banner.
+    first({ items: [{ id: 'item-3', title: 'Read paper' }] })
+    expect(Notification).toHaveBeenLastCalledWith('Read paper', {
+      body: 'Your snoozed item is ready for review',
+      icon: '/icon.png',
+      tag: 'inbox-snooze-due:item-3'
+    })
   })
 
   it('loads project, month entries, and year stats query hooks', async () => {
