@@ -198,7 +198,7 @@ describe('onenoteImporter (integration)', () => {
       expect(summary.failed).toHaveLength(1)
       expect(summary.failed[0].item).toBe('OneNote')
       expect(summary.failed[0].error).toMatch(/not yet configured/i)
-      expect(fs.existsSync(path.join(tempVault.notesDir, 'OneNote'))).toBe(false)
+      expect(fs.existsSync(path.join(tempVault.path, 'OneNote'))).toBe(false)
     } finally {
       if (originalClientId !== undefined) process.env.ONENOTE_CLIENT_ID = originalClientId
     }
@@ -215,7 +215,7 @@ describe('onenoteImporter (integration)', () => {
     expect(summary.attachments).toBe(4)
     expect(summary.skipped).toBe(2)
 
-    const base = path.join(tempVault.notesDir, 'OneNote', 'Work')
+    const base = path.join(tempVault.path, 'OneNote', 'Work')
     // Subpage nesting: parent moves into its own folder with its child.
     const helloPath = path.join(base, 'Ideas', 'Hello Page', 'Hello Page.md')
     const childPath = path.join(base, 'Ideas', 'Hello Page', 'Hello Child.md')
@@ -302,10 +302,8 @@ describe('onenoteImporter (integration)', () => {
       TEST_DEPS
     )
     expect(summary.imported).toBe(1)
-    expect(fs.existsSync(path.join(tempVault.notesDir, 'OneNote', 'Work', 'Archive', 'Old'))).toBe(
-      true
-    )
-    expect(fs.existsSync(path.join(tempVault.notesDir, 'OneNote', 'Work', 'Ideas'))).toBe(false)
+    expect(fs.existsSync(path.join(tempVault.path, 'OneNote', 'Work', 'Archive', 'Old'))).toBe(true)
+    expect(fs.existsSync(path.join(tempVault.path, 'OneNote', 'Work', 'Ideas'))).toBe(false)
   })
 
   it('imports extra attachment types when includeIncompatibleAttachments is on', async () => {

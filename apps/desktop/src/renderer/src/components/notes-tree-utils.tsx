@@ -17,12 +17,16 @@ export function getDisplayName(notePath: string): string {
   return lastDot > 0 ? filename.slice(0, lastDot) : filename
 }
 
+/**
+ * Folder of a note, vault-relative.
+ *
+ * Note paths are vault-relative and so are the folder paths the folder APIs
+ * resolve, so nothing is stripped here. Stripping a leading segment used to
+ * fabricate folder nodes the main process could not resolve (#1204).
+ */
 export function extractFolderFromPath(notePath: string): string {
   const parts = notePath.split('/')
   parts.pop()
-  if (parts.length > 0 && parts[0] === 'notes') {
-    return parts.slice(1).join('/')
-  }
   return parts.join('/')
 }
 
@@ -138,16 +142,10 @@ export function buildTreeFromNotes(
     const pathParts = note.path.split('/')
     pathParts.pop()
 
-    if (pathParts.length === 0 || pathParts[0] === 'notes') {
-      if (pathParts.length <= 1) {
-        rootNotes.push(note)
-      } else {
-        const folderPath = pathParts.slice(1).join('/')
-        ensureFolderInMap(folderPath).notes.push(note)
-      }
+    if (pathParts.length === 0) {
+      rootNotes.push(note)
     } else {
-      const folderPath = pathParts.join('/')
-      ensureFolderInMap(folderPath).notes.push(note)
+      ensureFolderInMap(pathParts.join('/')).notes.push(note)
     }
   })
 

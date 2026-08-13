@@ -17,7 +17,7 @@ import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { isBinaryFileType, type FileType } from '@memry/shared/file-types'
 import { updateNoteMetadata } from '@memry/storage-data'
-import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
+import { emitNoteEvent, getVaultRoot, toAbsolutePath, toRelativePath } from './notes-io'
 import { getNoteById } from './notes-crud'
 import type { Note } from './notes-crud'
 
@@ -109,7 +109,9 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
 
 export async function moveNote(id: string, newFolder: string): Promise<Note> {
   const db = getIndexDatabase()
-  const notesDir = getNotesDir()
+  // `newFolder` comes from the sidebar tree / folder view, which are
+  // vault-relative — never re-root it through `defaultNoteFolder`.
+  const notesDir = getVaultRoot()
 
   const existing = await getNoteById(id)
   if (!existing) {

@@ -37,7 +37,6 @@ import { createLogger } from '../lib/logger'
 import { getNoteFolderSuggestions } from '../inbox/suggestions'
 import { createValidatedHandler, withErrorHandler } from './validate'
 import { readFolderConfig, writeFolderConfig, folderExists } from '../vault/folders'
-import { getConfig } from '../vault'
 import { getIndexDatabase as getDataDb, getDatabase } from '../database'
 import { noteCache, noteTags, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
@@ -49,29 +48,18 @@ const logger = createLogger('IPC:FolderView')
 // ============================================================================
 
 /**
- * Notes path prefix derived from defaultNoteFolder. Empty for a flat vault
- * root (the default); "notes/" for a vault that nests notes under a folder.
- */
-function getNotesPrefix(): string {
-  const folder = getConfig().defaultNoteFolder.replace(/\/+$/, '')
-  return folder ? `${folder}/` : ''
-}
-
-/**
  * Compute relative folder path from the viewed folder.
  * E.g., if viewing "projects" and note is at "projects/2024/note.md"
  * returns "/2024"
+ *
+ * Both `notePath` and `viewedFolder` are vault-relative. `defaultNoteFolder`
+ * is not consulted: it names where new notes go, not where folders live, so
+ * setting it must not make every other folder look empty (#1204).
  */
-function computeRelativeFolder(
-  notePath: string,
-  viewedFolder: string,
-  notesPrefix: string
-): string {
-  // notePath is like "projects/2024/note.md" (prefix stripped if present)
+function computeRelativeFolder(notePath: string, viewedFolder: string): string {
+  // notePath is like "projects/2024/note.md"
   // viewedFolder is like "projects"
-  const withoutNotes =
-    notesPrefix && notePath.startsWith(notesPrefix) ? notePath.slice(notesPrefix.length) : notePath
-  const noteDir = withoutNotes.split('/').slice(0, -1).join('/')
+  const noteDir = notePath.split('/').slice(0, -1).join('/')
 
   if (!viewedFolder || viewedFolder === '') {
     return noteDir ? `/${noteDir}` : '/'
@@ -359,15 +347,13 @@ export function registerFolderViewHandlers(): void {
           }
         }
 
-        // Build path pattern for LIKE query.
-        // Prefix matches the vault layout: "" (flat root) or "notes/".
-        // scope.path "projects" -> match "<prefix>projects/%"
+        // Build path pattern for LIKE query. Note paths are vault-relative,
+        // so scope.path "projects" -> match "projects/%".
         // Captured into a local so the 'folder' narrowing survives into the
         // .map() closure below (TS doesn't carry discriminated-union
         // narrowing of a property access across a nested function).
         const folderPath = input.scope.path
-        const prefix = getNotesPrefix()
-        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${folderPath}/%` : '%'
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
@@ -423,7 +409,7 @@ export function registerFolderViewHandlers(): void {
           path: note.path,
           title: note.title,
           emoji: note.emoji,
-          folder: computeRelativeFolder(note.path, folderPath, prefix),
+          folder: computeRelativeFolder(note.path, folderPath),
           tags: tagsByNote.get(note.id) || [],
           created: note.created,
           modified: note.modified,
@@ -502,8 +488,7 @@ export function registerFolderViewHandlers(): void {
           : []
 
         // Query distinct property names used in this folder
-        const prefix = getNotesPrefix()
-        const pathPattern = folderPath ? `${prefix}${folderPath}/%` : `${prefix}%`
+        const pathPattern = folderPath ? `${folderPath}/%` : '%'
 
         // Get notes in folder first
         const folderNotes = await db

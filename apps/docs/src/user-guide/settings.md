@@ -106,6 +106,17 @@ locale has finished loading.
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
 
+**Default Location for New Notes** names the folder an unplaced new note goes to — a note created
+with no folder in mind, such as from a quick capture. Leave it empty to use the vault root.
+
+It only affects where a new note is written. It is not a root:
+
+- The sidebar keeps showing your whole vault. A folder named here appears as an ordinary folder
+  alongside the others; nothing is hidden or re-parented.
+- Creating a note inside a folder puts it in that folder, not inside the default one.
+- Every folder stays browsable. Folder View, moves, drag-and-drop, and folder paths on the sync
+  wire are all relative to the vault root regardless of this setting.
+
 ### Privacy
 
 **Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
@@ -191,6 +202,8 @@ Show or hide journal sidebar panes:
 ### Inbox
 
 **Stale Inbox Days** — number of days a task can sit in the inbox before being flagged stale (1–90).
+
+**Images** — how an image lands in a note you file it to. _Embed in the note_ keeps it inside the note and out of the sidebar; _File in the sidebar_ moves the file into the folder you pick and links to it. **Ask every time** turns the prompt in the filing panel back on after you have answered it once. See [Triage](/user-guide/inbox/triage#filing-an-image-into-a-note).
 
 ---
 

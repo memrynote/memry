@@ -523,8 +523,13 @@ describe('auth-device handlers', () => {
       await expect(
         invokeHandler(SYNC_CHANNELS.LINK_VIA_QR, { qrData: 'qr-missing-token' })
       ).resolves.toEqual({
+        // #1202: this used to throw the raw internal string "No auth token
+        // available for device linking" — untranslated, unlogged, and naming an
+        // artifact the user never saw.
         success: false,
-        error: 'No auth token available for device linking'
+        error:
+          'Your sign-in timed out before this device finished linking. Sign in again, then scan the code once more.',
+        errorCode: 'setup-session-expired'
       })
     })
 
@@ -598,7 +603,10 @@ describe('auth-device handlers', () => {
       const timedOut = {
         success: false,
         error:
-          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.'
+          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.',
+        // The renderer branches on this code, never on the sentence above — the
+        // sentence is already localized by the time it crosses IPC (#1202).
+        errorCode: 'setup-session-expired'
       }
       const phrase = { recoveryPhrase: 'correct horse battery staple' }
 
@@ -654,7 +662,8 @@ describe('auth-device handlers', () => {
       ).resolves.toEqual({
         success: false,
         error:
-          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.'
+          'Your sign-in timed out before this finished. Sign in again, then enter your recovery phrase.',
+        errorCode: 'setup-session-expired'
       })
 
       mockGetFromServer.mockResolvedValueOnce({ kdfSalt: 'salt', keyVerifier: 'verifier' })

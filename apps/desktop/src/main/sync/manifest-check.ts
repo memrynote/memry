@@ -1,8 +1,9 @@
-import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@memry/db-schema/data-schema'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { tasks } from '@memry/db-schema/schema/tasks'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
@@ -16,6 +17,7 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
 import { toOutboundReminderPayload } from './reminder-outbound'
+import { taskActivityRetentionCutoff } from './task-activity-retention'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { SyncQueueManager } from './queue'
@@ -126,7 +128,15 @@ export async function checkManifestIntegrity(
 
     const serverOnlyIds = result.value.items.filter(
       (item) =>
-        !localKeys.has(itemRefKey(item.type, item.id)) && !deps.isQuarantined?.(item.id, item.type)
+        // `task_activity` is exempt in this direction only. Rows past the
+        // retention cutoff are skipped on apply and pruned locally by design, so
+        // the server legitimately holds rows this device will never have.
+        // Counting them would set `rePullNeeded` on every manifest check for the
+        // rest of the vault's life. The local→server direction above still
+        // repairs activity rows that never reached the server.
+        item.type !== 'task_activity' &&
+        !localKeys.has(itemRefKey(item.type, item.id)) &&
+        !deps.isQuarantined?.(item.id, item.type)
     )
     if (serverOnlyIds.length > 0) {
       log.warn('Server has items not found locally, will trigger re-pull', {
@@ -210,6 +220,20 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     .all()
   for (const f of syncedFilters) {
     addLocalRef({ id: f.id, type: 'filter' })
+  }
+
+  // Only rows still inside the retention window: an expired row re-pushed from
+  // here would land on peers that have already pruned it, and their apply would
+  // reject it anyway.
+  const syncedTaskActivity = db
+    .select({ id: taskActivity.id })
+    .from(taskActivity)
+    .where(
+      and(isNotNull(taskActivity.clock), gte(taskActivity.createdAt, taskActivityRetentionCutoff()))
+    )
+    .all()
+  for (const a of syncedTaskActivity) {
+    addLocalRef({ id: a.id, type: 'task_activity' })
   }
 
   // Tombstones MUST be excluded, for the same reason the canvases block below
@@ -339,6 +363,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'filter': {
       const row = db.select().from(savedFilters).where(eq(savedFilters.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'task_activity': {
+      const row = db.select().from(taskActivity).where(eq(taskActivity.id, ref.id)).get()
       return row ? JSON.stringify(row) : null
     }
     case 'template': {

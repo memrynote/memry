@@ -100,12 +100,7 @@ export interface SocialMetadata {
 }
 
 export type InboxMetadata =
-  | LinkMetadata
-  | ImageMetadata
-  | VoiceMetadata
-  | ClipMetadata
-  | PdfMetadata
-  | SocialMetadata
+  LinkMetadata | ImageMetadata | VoiceMetadata | ClipMetadata | PdfMetadata | SocialMetadata
 
 // Filing system types
 export interface Folder {
@@ -121,4 +116,10 @@ export interface LinkedNote {
   title: string
   type: 'note' | 'folder'
   emoji?: string | null
+  /**
+   * Staged in the filing picker but not written yet (#807). The note is created
+   * when the item is filed, so `id` here is a local placeholder, never a real
+   * note id — filing sends the title instead.
+   */
+  isPending?: boolean
 }

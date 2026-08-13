@@ -39,7 +39,11 @@ vi.mock('../services/auth', () => ({
     accessToken: 'new-access-token',
     refreshToken: 'new-refresh-token'
   }),
-  signSetupToken: vi.fn().mockResolvedValue('mock-setup-token')
+  signSetupToken: vi.fn().mockResolvedValue('mock-setup-token'),
+  // Renewal is covered for real in setup-token-renewal.real-jose.test.ts; this
+  // stub only keeps the module's export surface complete for this suite.
+  verifyRenewableSetupToken: vi.fn(),
+  SETUP_TOKEN_RENEWAL_WINDOW_SECONDS: 24 * 60 * 60
 }))
 
 vi.mock('../services/device', () => ({

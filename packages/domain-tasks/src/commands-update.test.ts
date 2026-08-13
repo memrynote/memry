@@ -95,6 +95,67 @@ describe('createTasksCommands — update/delete/complete/archive task', () => {
       )
     })
 
+    // The tasks page sends one fixed key set on every edit and leaves the
+    // untouched fields `undefined`. A key with no value is not an edit: the
+    // write layer skips it, so the change feed and the sync field clocks must
+    // skip it too.
+    it('reports only the field that carries a value when the caller sends the whole key set', async () => {
+      const existing = createTask({
+        title: 'Book airport transfer',
+        description: 'a'.repeat(49),
+        projectId: 'proj-istanbul',
+        statusId: 'status-booked',
+        dueDate: '2026-08-14',
+        dueTime: '11:00'
+      })
+      const deps = buildDeps({
+        getTask: vi.fn(() => existing),
+        updateTask: vi.fn(() => createTask({ ...existing, statusId: 'status-today' }))
+      })
+      const commands = createTasksCommands(deps)
+
+      await commands.updateTask({
+        id: 'task-1',
+        statusId: 'status-today',
+        title: undefined,
+        description: undefined,
+        priority: undefined,
+        projectId: undefined,
+        parentId: undefined,
+        dueDate: undefined,
+        dueTime: undefined,
+        repeatConfig: undefined,
+        tags: undefined,
+        linkedNoteIds: undefined
+      })
+
+      const publishCall = vi.mocked(deps.publisher.taskUpdated).mock.calls[0][0]
+      expect(publishCall.changedFields).toEqual(['statusId'])
+      expect(publishCall.changes).toEqual({ statusId: 'status-today' })
+      expect(publishCall.previous).toEqual({ statusId: 'status-booked' })
+      // A key with no value must not reach the write either — an UPDATE that
+      // named these columns would clear them.
+      expect(deps.repository.updateTask).toHaveBeenCalledWith('task-1', {
+        statusId: 'status-today'
+      })
+    })
+
+    it('still treats null as an explicit clear', async () => {
+      const existing = createTask({ dueDate: '2026-08-14', dueTime: '11:00' })
+      const deps = buildDeps({
+        getTask: vi.fn(() => existing),
+        updateTask: vi.fn(() => createTask({ ...existing, dueDate: null }))
+      })
+      const commands = createTasksCommands(deps)
+
+      await commands.updateTask({ id: 'task-1', dueDate: null, dueTime: undefined })
+
+      const publishCall = vi.mocked(deps.publisher.taskUpdated).mock.calls[0][0]
+      expect(publishCall.changedFields).toEqual(['dueDate'])
+      expect(publishCall.previous).toEqual({ dueDate: '2026-08-14' })
+      expect(deps.repository.updateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
+    })
+
     it('does not touch tags or links when not provided', async () => {
       const deps = buildDeps({
         getTask: vi.fn(() => createTask()),
@@ -132,7 +193,14 @@ describe('createTasksCommands — update/delete/complete/archive task', () => {
       const result = await commands.completeTask({ id: 'task-1' })
 
       expect(result).toEqual({ success: true, task })
-      expect(deps.publisher.taskCompleted).toHaveBeenCalledWith({ id: 'task-1', task })
+      // completeTask writes before it returns, so the old completedAt has to be
+      // read up front and carried on the event — nothing downstream can go back
+      // for it.
+      expect(deps.publisher.taskCompleted).toHaveBeenCalledWith({
+        id: 'task-1',
+        task,
+        previous: { completedAt: null }
+      })
     })
 
     it('returns error when task missing', async () => {

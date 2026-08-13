@@ -83,20 +83,24 @@ describe('getDisplayName', () => {
 // ============================================================================
 
 describe('extractFolderFromPath', () => {
-  it('extracts folder from notes-prefixed path', () => {
-    expect(extractFolderFromPath('notes/Projects/hello.md')).toBe('Projects')
+  it('extracts the vault-relative folder', () => {
+    expect(extractFolderFromPath('Projects/hello.md')).toBe('Projects')
   })
 
-  it('returns empty for root note', () => {
-    expect(extractFolderFromPath('notes/hello.md')).toBe('')
+  it('returns empty for a note in the vault root', () => {
+    expect(extractFolderFromPath('hello.md')).toBe('')
   })
 
   it('handles nested folders', () => {
-    expect(extractFolderFromPath('notes/a/b/c/file.md')).toBe('a/b/c')
+    expect(extractFolderFromPath('a/b/c/file.md')).toBe('a/b/c')
   })
 
-  it('handles non-notes-prefixed path', () => {
-    expect(extractFolderFromPath('Projects/hello.md')).toBe('Projects')
+  it('treats a folder named like the notes root as an ordinary folder (#1204)', () => {
+    // `defaultNoteFolder` is where new notes go, not a tree root. Stripping a
+    // leading "notes" used to fabricate folder nodes the folder APIs could not
+    // resolve, which is what made the folder view come up empty.
+    expect(extractFolderFromPath('notes/Projects/hello.md')).toBe('notes/Projects')
+    expect(extractFolderFromPath('notes/hello.md')).toBe('notes')
   })
 })
 
@@ -213,8 +217,8 @@ describe('collectAllFolderIds', () => {
 describe('buildTreeFromNotes', () => {
   it('places notes in correct folders', () => {
     const notes = [
-      createNote({ id: 'a', path: 'notes/hello.md', modified: baseDate }),
-      createNote({ id: 'b', path: 'notes/Projects/alpha.md', modified: baseDate })
+      createNote({ id: 'a', path: 'hello.md', modified: baseDate }),
+      createNote({ id: 'b', path: 'Projects/alpha.md', modified: baseDate })
     ]
     const folders = [{ path: 'Projects', icon: null }]
 
@@ -226,22 +230,43 @@ describe('buildTreeFromNotes', () => {
     expect(tree.folders[0].notes[0].id).toBe('b')
   })
 
+  it('keeps a folder named like the notes root browsable (#1204)', () => {
+    // A vault with `defaultNoteFolder = 'notes'` must show `notes/` as a real
+    // folder. Stripping it produced a node whose path the folder APIs could not
+    // resolve, so the folder view opened empty and folderExists said "not
+    // found". Every folder node here carries a path the vault can resolve.
+    const notes = [
+      createNote({ id: 'a', path: 'notes/hello.md', modified: baseDate }),
+      createNote({ id: 'b', path: 'travel/kyoto.md', modified: baseDate })
+    ]
+    const folders = [
+      { path: 'notes', icon: null },
+      { path: 'travel', icon: null }
+    ]
+
+    const tree = buildTreeFromNotes(notes, folders, {})
+    expect(tree.rootNotes).toHaveLength(0)
+    expect(tree.folders.map((f) => f.path)).toEqual(['notes', 'travel'])
+    expect(tree.folders[0].notes.map((n) => n.id)).toEqual(['a'])
+    expect(tree.folders[1].notes.map((n) => n.id)).toEqual(['b'])
+  })
+
   it('sorts by position then by modified date', () => {
     const earlier = new Date(2025, 0, 1)
     const later = new Date(2026, 0, 1)
     const notes = [
-      createNote({ id: 'a', path: 'notes/a.md', modified: earlier }),
-      createNote({ id: 'b', path: 'notes/b.md', modified: later }),
-      createNote({ id: 'c', path: 'notes/c.md', modified: earlier })
+      createNote({ id: 'a', path: 'a.md', modified: earlier }),
+      createNote({ id: 'b', path: 'b.md', modified: later }),
+      createNote({ id: 'c', path: 'c.md', modified: earlier })
     ]
-    const positions = { 'notes/c.md': 0, 'notes/a.md': 1 }
+    const positions = { 'c.md': 0, 'a.md': 1 }
 
     const tree = buildTreeFromNotes(notes, [], positions)
     expect(tree.rootNotes.map((n) => n.id)).toEqual(['c', 'a', 'b'])
   })
 
   it('creates intermediate folders for nested paths', () => {
-    const notes = [createNote({ id: 'a', path: 'notes/a/b/c/file.md', modified: baseDate })]
+    const notes = [createNote({ id: 'a', path: 'a/b/c/file.md', modified: baseDate })]
     const tree = buildTreeFromNotes(notes, [], {})
     expect(tree.folders).toHaveLength(1)
     expect(tree.folders[0].name).toBe('a')

@@ -74,22 +74,6 @@ export function JournalSettings() {
     [setDefaultTemplate, t]
   )
 
-  const handleShowScheduleChange = useCallback(
-    async (checked: boolean) => {
-      const success = await updateSettings({ showSchedule: checked })
-      if (!success) toast.error(t('journal.updateError'))
-    },
-    [t, updateSettings]
-  )
-
-  const handleShowTasksChange = useCallback(
-    async (checked: boolean) => {
-      const success = await updateSettings({ showTasks: checked })
-      if (!success) toast.error(t('journal.updateError'))
-    },
-    [t, updateSettings]
-  )
-
   const handleShowStatsFooterChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showStatsFooter: checked })
@@ -181,36 +165,14 @@ export function JournalSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label={t('journal.groups.sidebarVisibility')}>
-        <SettingRow
-          label={t('journal.showSchedule.label')}
-          description={t('journal.showSchedule.description')}
-        >
-          <Switch
-            checked={settings.showSchedule}
-            onCheckedChange={(...args) => void handleShowScheduleChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-
-        <SettingRow
-          label={t('journal.showTasks.label')}
-          description={t('journal.showTasks.description')}
-        >
-          <Switch
-            checked={settings.showTasks}
-            onCheckedChange={(...args) => void handleShowTasksChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-
-        {/*
-         * No "Show AI Connections" row: nothing renders AIConnectionsPanel, so the toggle
-         * controlled nothing. `journal.showAIConnections` stays persisted and readable/writable
-         * through settings so existing installs keep their value and re-exposing the row later
-         * is a UI-only change.
-         */}
-      </SettingsGroup>
+      {/*
+       * No "Sidebar Visibility" group. All three of its rows controlled nothing:
+       * JournalDayPanel gates its schedule and task sections on feature flags and emptiness
+       * only, never on `showSchedule` / `showTasks`, and nothing renders AIConnectionsPanel at
+       * all. `journal.showSchedule`, `journal.showTasks`, and `journal.showAIConnections` stay
+       * persisted and readable/writable through settings so existing installs keep their values
+       * and re-exposing the rows later is a UI-only change.
+       */}
 
       <SettingsGroup label={t('journal.groups.footer')}>
         <SettingRow

@@ -295,8 +295,46 @@ export interface ProjectListResponse {
 }
 
 // ============================================================================
+// Activity log
+// ============================================================================
+
+/**
+ * `limit` is bounded so a malformed renderer call cannot ask for the whole
+ * table; the drawer reads 3 and the Sheet pages through 50 at a time.
+ */
+export const TaskActivityListSchema = z.object({
+  taskId: z.string().min(1),
+  limit: z.number().int().min(1).max(200).optional(),
+  offset: z.number().int().min(0).optional(),
+  /** Omit for "everything"; otherwise only these actions. */
+  actions: z.array(z.string()).optional()
+})
+
+export interface TaskActivityEntry {
+  id: string
+  taskId: string
+  action: string
+  field: string | null
+  /** JSON-encoded scalars. Always null for `description` — see the schema module. */
+  oldValue: string | null
+  newValue: string | null
+  actor: string
+  /** True when this device wrote the row. The UI never shows device names. */
+  isThisDevice: boolean
+  createdAt: string
+}
+
+export interface TaskActivityListResponse {
+  entries: TaskActivityEntry[]
+  total: number
+  hasMore: boolean
+}
+
+// ============================================================================
 // Type inference
 // ============================================================================
+
+export type TaskActivityListInput = z.infer<typeof TaskActivityListSchema>
 
 export type TaskCreateInput = z.infer<typeof TaskCreateSchema>
 export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>

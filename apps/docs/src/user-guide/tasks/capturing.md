@@ -22,33 +22,87 @@ The new task is created in the current view's scope:
 
 ## Natural Language Dates
 
-Phrases parse into due dates as you type:
+Start a date with `@` — the same `@` phrases the note editor understands — and quick-add parses the whole phrase into a due date:
 
-| You type                      | memrynote sets          |
-| ----------------------------- | ----------------------- |
-| `Buy bread tomorrow`          | Due tomorrow            |
-| `Email Dana next Friday`      | Due next Friday         |
-| `Pay rent in 3 days`          | Due 3 days from now     |
-| `Quarterly review next month` | Due first of next month |
+| You type                       | memrynote sets                |
+| ------------------------------ | ----------------------------- |
+| `Buy bread @tomorrow`          | Due tomorrow                  |
+| `Email Dana @next friday`      | Due next Friday               |
+| `Pay rent @in 3 days`          | Due 3 days from now           |
+| `Quarterly review @next month` | Due a month from today        |
+| `Standup @tomorrow at 9:30`    | Due tomorrow, with a due time |
 
-The parsed date appears as a chip you can adjust or remove before saving. If you don't want date parsing on a particular task, prefix or quote the text.
+The phrase turns into a pill inside the input as soon as it is recognised, so you can see what will be captured before you press <kbd>Enter</kbd>. Text that doesn't read as a date — `Ping @bob` — stays part of the title.
 
-## Priority and Project Inline
+### Finishing What You Type
 
-You can set priority and project inline during quick-add:
+The rest of the phrase appears greyed out ahead of the cursor as you type — `@tomo` shows `@tomorrow`. Press <kbd>Tab</kbd> or <kbd>→</kbd> to take it, or keep typing to ignore it. The same completion works for `!high`, `+project`, `#tag` and the repeat phrases below.
 
-- `! High priority` — exclamation marker for priority
-- `+ Project name` — plus prefix for project assignment
+<kbd>Enter</kbd> never takes the suggestion — it captures exactly what is on screen.
 
-(These map to the same UI pickers used for editing existing tasks.)
+## Repeats
+
+Type the cadence in plain English and the task is created as a repeating task:
+
+| You type                     | Repeats                         |
+| ---------------------------- | ------------------------------- |
+| `Standup every weekday`      | Mon–Fri                         |
+| `Team sync every monday`     | Weekly on Monday                |
+| `Water plants every 2 weeks` | Every second week               |
+| `Pay rent every month`       | Monthly, on the task's due date |
+| `Backup every other day`     | Every second day                |
+
+No `@` is needed — a phrase that doesn't read as a cadence, like `Check every door`, is left in the title. Like a date, a recognised cadence becomes a pill in the input, and `every w` completes to `every weekday` on <kbd>Tab</kbd>.
+
+If you didn't give the task a due date of its own, it starts on the first matching day: `every monday` lands on the next Monday, `every day` starts today.
+
+Repeats are English-only for now.
+
+## The Whole Grammar
+
+Quick-add speaks the same shorthand as the note editor, so a marker means the same thing wherever you type it:
+
+```
+Ship the beta @next friday !high +Memry #launch [[Roadmap]] every 2 weeks
+```
+
+| Marker    | Sets          | Notes                                                              |
+| --------- | ------------- | ------------------------------------------------------------------ |
+| `@…`      | Due date      | Any phrase from [Natural Language Dates](#natural-language-dates)  |
+| `!…`      | Priority      | `!urgent`, `!high`, `!medium`, `!low` — `!u`, `!h`, `!m`, `!l` too |
+| `+…`      | Project       | `+work`, `+Personal`, `+project-alpha`                             |
+| `#…`      | Tag           | Every `#tag` counts, so a task can take several                    |
+| `[[…]]`   | A linked note | Opens a note picker as you type                                    |
+| `every …` | Repeat        | See [Repeats](#repeats)                                            |
+
+Each marker has to start a word, so ordinary writing is safe: `Ship it!`, `Learn C++`, `Compute 1+2` and `Close issue#12` are captured exactly as typed. A marker the app cannot resolve — `+nowhere` for a project that doesn't exist — stays in the title rather than disappearing.
+
+::: tip Changed in this release
+`#` used to mean **project**. It now means **tag**, matching the note editor. Use `+` for projects: `#Work` files a `Work` tag, `+Work` files into the Work project. Priority is a single `!` — `!high`, not `!!high` — and the old `!today` date shorthand is gone; `@today` does more.
+:::
+
+Every marker sets the same field the pickers in the task drawer set — quick-add is a shortcut, not a separate system.
+
+## Linking a Note
+
+Type `[[` and a note picker opens straight away, showing your most recently edited notes and narrowing as you type:
+
+- <kbd>↑</kbd> / <kbd>↓</kbd> to move
+- <kbd>Enter</kbd> or <kbd>Tab</kbd> to pick — the title is written in as `[[Note title]]`
+- <kbd>Esc</kbd> to close the list and keep what you typed (a second <kbd>Esc</kbd> clears the field)
+
+The `[[…]]` run leaves the task title, and the note shows up under **Related** on the task. You can type the title yourself, too — `[[Roadmap]]` links the note called _Roadmap_. A title that matches no note is simply dropped from the title with nothing linked.
+
+This is the one marker with a list instead of greyed-out completion: note titles are yours, so showing them beats guessing at them.
 
 ## Tags
 
 Tasks take tags from the same pool as your notes — one tag means one thing across the app,
 and it keeps whatever colour and icon you gave it.
 
-You can tag a task in two places:
+You can tag a task in three places:
 
+- **Quick-add** — type `#launch` in the capture field, as many as you like
 - **The add-task dialog** — tag it as you create it
 - **The task detail drawer** — add or remove tags on an existing task
 
@@ -61,8 +115,8 @@ something `mit` later files it under the same tag.
 A common use is marking your Most Important Tasks — tag them `MIT`, then filter to that tag
 to see just today's short list.
 
-Quick-add has no tag shortcut yet: `#` there means **project**, not tag. Use the add dialog
-or the drawer.
+Nested tags work the same way they do in notes: `#work/client` files under `work`. A brand-new
+tag typed in quick-add is created on the spot and picks up a colour like any other.
 
 ## From a Project View
 

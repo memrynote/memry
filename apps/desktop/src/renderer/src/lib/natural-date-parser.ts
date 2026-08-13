@@ -282,6 +282,10 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
     date = nextMonday(today)
   } else if (normalizedInput === 'last week') {
     date = lastMonday(today)
+  } else if (normalizedInput === 'next month') {
+    date = addMonths(today, 1)
+  } else if (normalizedInput === 'last month') {
+    date = addMonths(today, -1)
   } else if (normalizedInput === 'this weekend' || normalizedInput === 'weekend') {
     date = nextSaturday(today)
   }

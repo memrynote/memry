@@ -8,15 +8,7 @@ import {
 } from './schema.ts'
 
 export type InboxItemType =
-  | 'link'
-  | 'note'
-  | 'image'
-  | 'voice'
-  | 'video'
-  | 'clip'
-  | 'pdf'
-  | 'social'
-  | 'reminder'
+  'link' | 'note' | 'image' | 'voice' | 'video' | 'clip' | 'pdf' | 'social' | 'reminder'
 
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
@@ -121,6 +113,8 @@ export interface InboxFileResponse {
   filedTo: string | null
   noteId?: string
   error?: string
+  /** Embed was requested but the image had to be filed as a linked file (#807). */
+  fellBackToLink?: boolean
 }
 
 export interface InboxBulkResponse {
@@ -307,6 +301,13 @@ export interface InboxUpdateInput {
   content?: string
 }
 
+/**
+ * One note an item is filed into. Ordered — the first target owns any
+ * attachment the filing writes (#807). `new` has a title instead of an id
+ * because the note is created by the filing itself.
+ */
+export type FilingTarget = { kind: 'note'; noteId: string } | { kind: 'new'; title: string }
+
 export interface FileItemInput {
   itemId: string
   destination: {
@@ -315,8 +316,12 @@ export interface FileItemInput {
     noteId?: string
     noteIds?: string[]
     noteTitle?: string
+    /** Supersedes `noteIds`; `noteIds` stays for callers that predate it. */
+    targets?: FilingTarget[]
   }
   tags?: string[]
+  /** Image only: how it lands in the target notes. */
+  imageMode?: 'embed' | 'link'
 }
 
 export interface SnoozeInput {

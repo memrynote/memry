@@ -25,19 +25,23 @@ memrynote checks for updates in the background and prompts you to restart when o
 ready. Both the check and the download are optional — turn either off in
 **Settings → General**.
 
-The install itself runs after the app has closed. If the app reopens on the same
-version, the installer did not apply the update. That is worth reporting: the app now
-records the attempt and reports it on the next launch, and its log holds the reason.
+The install itself runs after the app has closed. If the installer does not apply the
+update, memrynote tells you on the next launch and offers to download the installer so
+you can run it yourself. Running it over your existing install is enough — your vault
+and settings are untouched, and you do not need to uninstall first.
 
-Send us the log file along with the report:
+It is still worth reporting, because the app's log holds the reason. Send us the log
+file along with the report:
 
 - **Windows** — `%APPDATA%\memrynote\logs\main.log`
 - **macOS** — `~/Library/Logs/memrynote/main.log`
 - **Linux** — `~/.config/memrynote/logs/main.log`
 
-As a workaround, download the current installer from the
-[download page](https://memrynote.com/download/desktop) and run it over your existing
-install. Your vault and settings are untouched — you do not need to uninstall first.
+On Windows, an update can also be blocked by a file in the install folder being held
+open — antivirus and leftover memrynote processes are the usual causes. The installer
+works around this on its own now, and it writes an `install.log` next to the app
+(typically `%LOCALAPPDATA%\Programs\memrynote`) that names the file it could not move.
+That log is the most useful thing you can send us if an update still fails.
 
 ## Run from Source
 

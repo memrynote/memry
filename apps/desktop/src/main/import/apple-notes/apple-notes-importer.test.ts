@@ -349,7 +349,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
     // The password-protected note is skipped, not failed.
     expect(summary.skipped).toBeGreaterThanOrEqual(1)
 
-    const notePath = path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'My Note.md')
+    const notePath = path.join(tempVault.path, 'Apple Notes', 'Work', 'My Note.md')
     expect(fs.existsSync(notePath)).toBe(true)
 
     const md = fs.readFileSync(notePath, 'utf8')
@@ -365,7 +365,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
     // Timestamps now live on the note record, not in the file.
     const row = indexDb.sqlite
       .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
-      .get('notes/Apple Notes/Work/My Note.md') as { createdAt: string } | undefined
+      .get('Apple Notes/Work/My Note.md') as { createdAt: string } | undefined
     // created = 700000000 CoreTime → 2023 (see coreTimeToIso).
     expect(row?.createdAt).toContain('2023-03-08')
   })
@@ -398,9 +398,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
     const ctx = importContext.createImportContext('an-dir', new AbortController().signal)
     const summary = await importer.appleNotesImporter.run({ sourcePaths: [dbDir] }, ctx)
     expect(summary.imported).toBe(1)
-    expect(fs.existsSync(path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'My Note.md'))).toBe(
-      true
-    )
+    expect(fs.existsSync(path.join(tempVault.path, 'Apple Notes', 'Work', 'My Note.md'))).toBe(true)
   })
 
   it('reads the default NoteStore.sqlite path when no file is chosen', async () => {
@@ -417,9 +415,9 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       const ctx = importContext.createImportContext('an5', new AbortController().signal)
       const summary = await importer.appleNotesImporter.run({ sourcePaths: [] }, ctx)
       expect(summary.imported).toBe(1)
-      expect(
-        fs.existsSync(path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'My Note.md'))
-      ).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.path, 'Apple Notes', 'Work', 'My Note.md'))).toBe(
+        true
+      )
     } finally {
       if (origHome === undefined) delete process.env.HOME
       else process.env.HOME = origHome
@@ -439,7 +437,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       // The note is written once with the resolved body — nothing failed.
       expect(summary.failed).toEqual([])
 
-      const notePath = path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'Photo Note.md')
+      const notePath = path.join(tempVault.path, 'Apple Notes', 'Work', 'Photo Note.md')
       const md = fs.readFileSync(notePath, 'utf8')
       // Token resolved → no leftover placeholder; embedded image carries the
       // original filename as alt text and points at a saved vault file whose name
@@ -474,7 +472,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       const ctx = importContext.createImportContext('an-doc', new AbortController().signal)
       await importer.appleNotesImporter.run({ sourcePaths: [attDbPath] }, ctx)
 
-      const notePath = path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'Doc Note.md')
+      const notePath = path.join(tempVault.path, 'Apple Notes', 'Work', 'Doc Note.md')
       const md = fs.readFileSync(notePath, 'utf8')
       expect(md).not.toContain('apple-notes-attachment:')
       // A spreadsheet is a file block (clickable), never an `![]()` image embed.
@@ -495,7 +493,7 @@ describe('appleNotesImporter (integration, synthetic NoteStore.sqlite)', () => {
       const ctx = importContext.createImportContext('an-url', new AbortController().signal)
       const summary = await importer.appleNotesImporter.run({ sourcePaths: [attDbPath] }, ctx)
 
-      const notePath = path.join(tempVault.notesDir, 'Apple Notes', 'Work', 'Link Note.md')
+      const notePath = path.join(tempVault.path, 'Apple Notes', 'Work', 'Link Note.md')
       const md = fs.readFileSync(notePath, 'utf8')
       expect(md).toContain('[Foursquare](https://example.com/x)')
       expect(md).not.toContain('apple-notes-attachment:')

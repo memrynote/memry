@@ -22,13 +22,19 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
+import type { Editor } from '@tiptap/core'
 import { useT } from '@memry/i18n/renderer'
 import type {
   CriticMarkupCommentAttachmentRef,
   CriticMarkupCommentMentionKind,
   CriticMarkupCommentMentionRef
 } from '@memry/shared'
-import { iconForMention, splitCommentBody } from './comment-body'
+import {
+  iconForMention,
+  splitCommentBodyWithFormat,
+  trimCommentBodyWithFormat
+} from './comment-body'
+import { CommentFormatToolbar } from './comment-format-toolbar'
 import type { SubmitCommentInput } from './use-critic-markup-review'
 
 interface CommentComposerProps {
@@ -39,7 +45,7 @@ interface CommentComposerProps {
   onSubmit: (input: SubmitCommentInput) => void
 }
 
-const emptyEditorValue: AgentPromptValue = { text: '', attachments: [] }
+const emptyEditorValue: AgentPromptValue = { text: '', attachments: [], formatRanges: [] }
 
 export function CommentComposer({
   targetId,
@@ -127,16 +133,34 @@ export function CommentComposer({
   )
 
   const handleSubmit = useCallback(() => {
-    const body = editorValue.text.trim()
+    // Trim here and only here — the offsets shift with the text, and the
+    // storage layer trims again downstream.
+    const { body, formatRanges } = trimCommentBodyWithFormat(
+      editorValue.text,
+      editorValue.formatRanges
+    )
     if (!body || isUploading) return
 
-    onSubmit({ body, mentions, attachments })
+    onSubmit({ body, mentions, attachments, formatRanges })
     editorRef.current?.clear()
     setEditorValue(emptyEditorValue)
     setAttachments([])
     setUploadError(null)
     closeMentionPicker()
-  }, [attachments, closeMentionPicker, editorValue.text, isUploading, mentions, onSubmit])
+  }, [
+    attachments,
+    closeMentionPicker,
+    editorValue.formatRanges,
+    editorValue.text,
+    isUploading,
+    mentions,
+    onSubmit
+  ])
+
+  const renderFormatToolbar = useCallback(
+    (editor: Editor) => <CommentFormatToolbar editor={editor} suppressed={mentionQuery !== null} />,
+    [mentionQuery]
+  )
 
   const handleAttachClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -184,7 +208,12 @@ export function CommentComposer({
       if (!target) return
       // The mention picker renders in a body-level portal, so its options sit
       // outside the composer subtree; treat clicks inside it as inside.
-      if (target instanceof Element && target.closest('[data-ref-picker]')) return
+      if (
+        target instanceof Element &&
+        target.closest('[data-ref-picker], [data-comment-format-toolbar]')
+      ) {
+        return
+      }
       if (composer.contains(target)) return
       cancelIfEmpty()
     }
@@ -222,6 +251,8 @@ export function CommentComposer({
             disabled={false}
             editorClassName="!min-h-[22px] max-h-[130px] overflow-y-auto !p-0 !py-0.5 !text-[13px] !leading-5"
             placeholder={t('comments.commentPlaceholder')}
+            richTextMarks
+            renderSelectionToolbar={renderFormatToolbar}
             onEscape={cancelIfEmpty}
             onMentionKeyDown={handleMentionKeyDown}
             onMentionQueryChange={setMentionQuery}
@@ -316,18 +347,20 @@ export function CommentComposer({
 }
 
 function seedPartsFromComment(initial: SubmitCommentInput): AgentPromptSeedPart[] {
-  return splitCommentBody(initial.body, initial.mentions).map((part) =>
-    part.kind === 'mention'
-      ? {
-          kind: 'mention' as const,
-          attachment: {
-            kind: part.mention.kind,
-            ref_id: part.mention.refId,
-            label: part.mention.label,
-            icon: iconForMention(part.mention)
+  return splitCommentBodyWithFormat(initial.body, initial.mentions, initial.formatRanges).map(
+    (part) =>
+      part.kind === 'mention'
+        ? {
+            kind: 'mention' as const,
+            attachment: {
+              kind: part.mention.kind,
+              ref_id: part.mention.refId,
+              label: part.mention.label,
+              icon: iconForMention(part.mention)
+            },
+            marks: part.marks
           }
-        }
-      : { kind: 'text' as const, text: part.text }
+        : { kind: 'text' as const, text: part.text, marks: part.marks }
   )
 }
 

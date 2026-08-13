@@ -22,7 +22,7 @@ import {
   type NoteFrontmatter
 } from '../vault/frontmatter'
 import {
-  getNotesDir,
+  getDefaultNoteDir,
   toRelativePath,
   toAbsolutePath,
   maybeCreateSignificantSnapshot
@@ -527,7 +527,7 @@ async function writebackNewNote(
   const meta = doc.getMap('meta')
   const title = (meta.get('title') as string) || 'Untitled'
 
-  const notesDir = getNotesDir()
+  const notesDir = getDefaultNoteDir()
   // Guard against filename collisions: distinct titles can sanitize to the same
   // basename (e.g. `Report #1` and `Report 1`), which would otherwise overwrite
   // an existing note's file and orphan an index row. Mirrors createNote.

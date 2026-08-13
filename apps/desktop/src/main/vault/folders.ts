@@ -9,7 +9,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { existsSync } from 'fs'
 import matter from 'gray-matter'
-import { getStatus, getConfig } from './index'
+import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
@@ -39,20 +39,11 @@ function getVaultPath(): string {
 }
 
 /**
- * Get the notes directory path.
- */
-function getNotesDir(): string {
-  const vaultPath = getVaultPath()
-  const config = getConfig()
-  return path.join(vaultPath, config.defaultNoteFolder)
-}
-
-/**
  * Get the absolute path for a folder config file.
- * @param folderPath - Relative path from notes directory (e.g., "projects/active")
+ * @param folderPath - Vault-relative folder path (e.g., "projects/active")
  */
 function getFolderConfigPath(folderPath: string): string {
-  const notesDir = getNotesDir()
+  const notesDir = getVaultPath()
   // Handle root folder
   if (!folderPath || folderPath === '' || folderPath === '.') {
     return path.join(notesDir, FOLDER_CONFIG_FILE)
@@ -137,12 +128,17 @@ function serializeFolderConfig(config: FolderConfig): string {
 // ============================================================================
 
 /**
- * Check if a folder exists in the notes directory.
- * @param folderPath - Relative path from notes directory (e.g., "projects/active")
+ * Check if a folder exists in the vault.
+ *
+ * Vault-relative on purpose: `defaultNoteFolder` is a destination for new
+ * notes, not a tree root, so it must not take part in resolving a folder the
+ * sidebar handed us (#1204).
+ *
+ * @param folderPath - Vault-relative folder path (e.g., "projects/active")
  * @returns true if folder exists, false otherwise
  */
 export function folderExists(folderPath: string): boolean {
-  const notesDir = getNotesDir()
+  const notesDir = getVaultPath()
   // Handle root folder
   if (!folderPath || folderPath === '' || folderPath === '.') {
     return existsSync(notesDir)

@@ -10,12 +10,14 @@ import {
   CompleteLinkingQrSchema,
   FinalizeVaultChoiceSchema,
   GetLinkingSasSchema,
+  LINK_FAILURE_SETUP_SESSION_EXPIRED,
   LinkViaQrSchema,
   LinkViaRecoverySchema,
   PickVaultFolderSchema,
   RemoveDeviceSchema,
   RenameDeviceSchema
 } from '@memry/contracts/ipc-devices'
+import type { LinkFailureCode } from '@memry/contracts/ipc-devices'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
 import { eq } from 'drizzle-orm'
@@ -48,12 +50,8 @@ import {
   initiateDeviceLinking,
   linkViaQr
 } from '../sync/linking-service'
-import {
-  getValidAccessToken,
-  isTokenExpired,
-  retrieveToken,
-  storeToken
-} from '../sync/token-manager'
+import { getValidAccessToken, storeToken } from '../sync/token-manager'
+import { ensureLiveSetupToken, getSetupDevicePublicKey } from '../sync/setup-token'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
 import { getMainI18n } from '../lib/main-i18n'
@@ -208,8 +206,25 @@ function setupSessionExpiredMessage(): string {
   return getMainI18n().t('errors:auth.setupSessionExpired')
 }
 
+/**
+ * The failure envelope for a dead setup token: the translated sentence for the
+ * user plus the stable code the renderer branches on. The message is localized
+ * here, so it is display text only — see `LinkFailureCode`.
+ */
+function setupSessionExpiredResult(message = setupSessionExpiredMessage()): {
+  success: false
+  error: string
+  errorCode: LinkFailureCode
+} {
+  return {
+    success: false,
+    error: message,
+    errorCode: LINK_FAILURE_SETUP_SESSION_EXPIRED
+  }
+}
+
 function logSetupTokenFailure(
-  stage: 'recovery-info' | 'device-register' | 'first-device-setup',
+  stage: 'recovery-info' | 'device-register' | 'first-device-setup' | 'link-via-qr',
   reason: 'absent' | 'locally-expired' | 'rejected',
   err?: unknown
 ): void {
@@ -296,7 +311,10 @@ export function registerAuthDeviceHandlers(): void {
     async (input) => {
       const raw = await postToServer<unknown>('/auth/otp/verify', {
         email: input.email,
-        code: input.code
+        code: input.code,
+        // Committing this device's key here is what lets the setup token be
+        // renewed later, when the user comes back with their recovery phrase.
+        devicePublicKey: await getSetupDevicePublicKey()
       })
       const serverResponse = VerifyOtpResponseSchema.parse(raw)
 
@@ -319,7 +337,7 @@ export function registerAuthDeviceHandlers(): void {
   )
 
   ipcMain.handle(SYNC_CHANNELS.SETUP_NEW_ACCOUNT, async () => {
-    const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
+    const setupToken = await ensureLiveSetupToken()
     if (!setupToken) {
       logSetupTokenFailure('first-device-setup', 'absent')
       return { success: false, error: setupSessionExpiredMessage() }
@@ -357,8 +375,14 @@ export function registerAuthDeviceHandlers(): void {
     SYNC_CHANNELS.LINK_VIA_QR,
     LinkViaQrSchema,
     async (input) => {
-      const token = input.oauthToken || (await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN))
-      if (!token) throw new Error('No auth token available for device linking')
+      const token = input.oauthToken || (await ensureLiveSetupToken())
+      if (!token) {
+        // Same class of failure as the recovery path, on the QR surface: the
+        // sign-in that minted the setup token ran out. "No auth token available
+        // for device linking" named an artifact the user never saw (#1202).
+        logSetupTokenFailure('link-via-qr', 'absent')
+        return setupSessionExpiredResult(getMainI18n().t('errors:auth.setupSessionExpiredLinking'))
+      }
       return linkViaQr(input.qrData, token)
     },
     'errors:auth.linkDeviceQrFailed'
@@ -398,17 +422,14 @@ export function registerAuthDeviceHandlers(): void {
         return { success: false, error: getMainI18n().t('errors:auth.invalidRecoveryPhraseFormat') }
       }
 
-      const setupToken = await retrieveToken(KEYCHAIN_ENTRIES.SETUP_TOKEN)
+      // Finding a 24-word recovery phrase routinely outlasts the setup token's
+      // five minutes, so a token that ran out is renewed in place here rather
+      // than dead-ending the reinstall (#1202). Null means renewal was not
+      // possible either, which is where "sign in again" takes over.
+      const setupToken = await ensureLiveSetupToken()
       if (!setupToken) {
         logSetupTokenFailure('recovery-info', 'absent')
-        return { success: false, error: setupSessionExpiredMessage() }
-      }
-
-      // Checked locally first: a token that already ran out cannot be salvaged
-      // by a round trip, and the server's own wording for it is unreadable.
-      if (isTokenExpired(setupToken)) {
-        logSetupTokenFailure('recovery-info', 'locally-expired')
-        return { success: false, error: setupSessionExpiredMessage() }
+        return setupSessionExpiredResult()
       }
 
       let rawRecovery: unknown
@@ -417,7 +438,7 @@ export function registerAuthDeviceHandlers(): void {
       } catch (err) {
         if (!isSetupTokenRejection(err)) throw err
         logSetupTokenFailure('recovery-info', 'rejected', err)
-        return { success: false, error: setupSessionExpiredMessage() }
+        return setupSessionExpiredResult()
       }
       const recoveryInfo = RecoveryDataResponseSchema.parse(rawRecovery)
 
@@ -447,7 +468,7 @@ export function registerAuthDeviceHandlers(): void {
         } catch (err) {
           if (!isSetupTokenRejection(err)) throw err
           logSetupTokenFailure('device-register', 'rejected', err)
-          return { success: false, error: setupSessionExpiredMessage() }
+          return setupSessionExpiredResult()
         }
       } finally {
         secureCleanup(derived.masterKey)

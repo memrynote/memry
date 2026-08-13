@@ -35,7 +35,10 @@ function isStringLiteralWithLetters(arg) {
   if (arg.type === 'Literal' && typeof arg.value === 'string') {
     return hasLetters(arg.value)
   }
-  if (arg.type === 'TemplateLiteral' && arg.expressions.length === 0) {
+  if (arg.type === 'TemplateLiteral') {
+    // Only the static text counts. A template assembled purely from translated
+    // parts (`${t('a')} ${t('b')}`) leaves nothing but punctuation/whitespace in
+    // the quasis, so it stays valid; hard-coded English between the holes does not.
     const raw = arg.quasis.map((q) => q.value.cooked).join('')
     return hasLetters(raw)
   }

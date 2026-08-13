@@ -206,7 +206,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const pendingMentionRef = useRef(false)
   const [promptValue, setPromptValue] = useState<AgentPromptValue>({
     text: '',
-    attachments: []
+    attachments: [],
+    formatRanges: []
   })
   const [currentNoteAttachment, setCurrentNoteAttachment] = useState<AttachmentInput | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
@@ -518,7 +519,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         attachments: currentAttachments
       })
       promptEditorRef.current?.clear()
-      setPromptValue({ text: '', attachments: [] })
+      setPromptValue({ text: '', attachments: [], formatRanges: [] })
       closePicker()
     } catch {
       // Agent context owns the user-facing error; leave the draft text in place.

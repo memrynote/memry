@@ -21,7 +21,7 @@ const logger = createLogger('UpdateInstallMarker')
 
 export const UPDATE_INSTALL_MARKER_FILENAME = 'update-install-attempt.json'
 
-interface UpdateInstallAttempt {
+export interface UpdateInstallAttempt {
   /**
    * Raw `app.getVersion()` of the build that handed off to the installer — the
    * one value the next launch can compare itself against. Never the display
@@ -75,13 +75,16 @@ export const markUpdateInstallStarted = (fromVersion: string, toVersion?: string
  * never applied. Call once per launch, after the telemetry runtime initializes.
  * The marker is consumed on every launch whatever the verdict, so a stale one
  * can neither accumulate nor report the same failure twice.
+ *
+ * Returns the failed attempt so the caller can surface it in-app: telemetry
+ * tells us, but the user is the one stuck on an old version with no idea why.
  */
-export const detectFailedUpdateInstall = (currentVersion: string): void => {
+export const detectFailedUpdateInstall = (currentVersion: string): UpdateInstallAttempt | null => {
   let raw: string
   try {
     raw = fs.readFileSync(markerPath(), 'utf-8')
   } catch {
-    return // no attempt recorded: normal launch
+    return null // no attempt recorded: normal launch
   }
 
   try {
@@ -93,9 +96,9 @@ export const detectFailedUpdateInstall = (currentVersion: string): void => {
   const attempt = parseAttempt(raw)
   // A corrupt marker proves an install was attempted but not from WHICH
   // version, and without that the applied/failed split is a coin flip.
-  if (!attempt) return
+  if (!attempt) return null
   // Booted as a different build: the installer did its job.
-  if (attempt.fromVersion !== currentVersion) return
+  if (attempt.fromVersion !== currentVersion) return null
 
   const startedAt = Date.parse(attempt.startedAt)
   const durationMs = Number.isFinite(startedAt) ? Math.max(0, Date.now() - startedAt) : undefined
@@ -117,4 +120,6 @@ export const detectFailedUpdateInstall = (currentVersion: string): void => {
       ...(attempt.toVersion ? { target_app_version: attempt.toVersion } : {})
     }
   })
+
+  return attempt
 }

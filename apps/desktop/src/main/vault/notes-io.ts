@@ -28,7 +28,25 @@ function getVaultPath(): string {
 // Path Conversions
 // ============================================================================
 
-export function getNotesDir(): string {
+/**
+ * Root every folder path in the app is relative to.
+ *
+ * The sidebar tree, folder view, `.folder.md` config, moves and the sync wire
+ * all speak vault-relative folder paths. `defaultNoteFolder` deliberately does
+ * NOT re-root this: setting it must not change what the sidebar shows (#1204).
+ */
+export function getVaultRoot(): string {
+  return getVaultPath()
+}
+
+/**
+ * Where a new note lands when the caller does not name a folder.
+ *
+ * This is the only thing `defaultNoteFolder` controls. A caller that does name
+ * a folder gets `getVaultRoot()` + that folder, so creating inside a folder
+ * never nests it under the default one.
+ */
+export function getDefaultNoteDir(): string {
   const vaultPath = getVaultPath()
   const config = getConfig()
   return path.join(vaultPath, config.defaultNoteFolder)

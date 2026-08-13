@@ -87,7 +87,7 @@ describe('notionImporter (integration)', () => {
     expect(summary.imported).toBe(3)
     expect(summary.attachments).toBe(1)
 
-    const notionDir = path.join(tempVault.notesDir, 'Notion')
+    const notionDir = path.join(tempVault.path, 'Notion')
     expect(fs.existsSync(path.join(notionDir, 'Parent Page.md'))).toBe(true)
     expect(fs.existsSync(path.join(notionDir, 'Parent Page', 'Child Page.md'))).toBe(true)
     expect(fs.existsSync(path.join(notionDir, 'Tasks DB.md'))).toBe(true)
@@ -110,7 +110,7 @@ describe('notionImporter (integration)', () => {
     // Timestamps now live on the note record, not in the file.
     const row = indexDb.sqlite
       .prepare('SELECT created_at AS createdAt FROM note_cache WHERE path = ?')
-      .get('notes/Notion/Parent Page/Child Page.md') as { createdAt: string } | undefined
+      .get('Notion/Parent Page/Child Page.md') as { createdAt: string } | undefined
     // Child Page was created March 5, 2024 in the export.
     expect(row?.createdAt).toContain('2024-03-05')
   })

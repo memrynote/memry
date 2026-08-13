@@ -157,7 +157,7 @@ describe('NoteSyncService push', () => {
       tags: ['roadmap', 'q3'],
       properties: { Status: 'Draft' },
       pinnedTags: ['roadmap'],
-      folderPath: 'Projects',
+      folderPath: 'notes/Projects',
       fileType: 'markdown',
       clock: { 'device-a': 1 },
       createdAt: CREATED_AT,
@@ -226,7 +226,7 @@ describe('NoteSyncService push', () => {
       fileType: 'pdf',
       mimeType: 'application/pdf',
       attachmentId: 'attachment-1',
-      folderPath: 'Files'
+      folderPath: 'notes/Files'
     })
     expect(payload).not.toHaveProperty('content')
     expect(NoteSyncPayloadSchema.safeParse(payload).success).toBe(true)
@@ -391,13 +391,20 @@ describe('note sync service lifecycle', () => {
 })
 
 describe('extractFolderFromPath', () => {
-  it('strips the configured note root and returns the remaining folder', () => {
-    expect(extractFolderFromPath('notes/Projects/Plan.md')).toBe('Projects')
-    expect(extractFolderFromPath('notes/Projects/Q3/Plan.md')).toBe('Projects/Q3')
+  it('returns the vault-relative folder', () => {
+    expect(extractFolderFromPath('Projects/Plan.md')).toBe('Projects')
+    expect(extractFolderFromPath('Projects/Q3/Plan.md')).toBe('Projects/Q3')
   })
 
-  it('returns null for notes that sit directly in the root', () => {
-    expect(extractFolderFromPath('notes/Plan.md')).toBeNull()
+  it('keeps the configured note root as an ordinary folder segment (#1204)', () => {
+    // `defaultNoteFolder` is a destination for new notes, not a tree root, so
+    // it must not be stripped off the wire: two devices that disagree about it
+    // still have to agree about where the note lives.
+    expect(extractFolderFromPath('notes/Projects/Plan.md')).toBe('notes/Projects')
+    expect(extractFolderFromPath('notes/Plan.md')).toBe('notes')
+  })
+
+  it('returns null for notes that sit directly in the vault root', () => {
     expect(extractFolderFromPath('Plan.md')).toBeNull()
   })
 })

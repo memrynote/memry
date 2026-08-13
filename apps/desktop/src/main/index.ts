@@ -113,7 +113,12 @@ import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels, InboxChannels } from '@memry/contracts/ipc-channels'
 import { parseInboxOpenItemId } from './deeplink-utils'
-import { initializeUpdater, isQuitAndInstallRequested, performQuitAndInstall } from './updater'
+import {
+  initializeUpdater,
+  isQuitAndInstallRequested,
+  noteFailedUpdateInstall,
+  performQuitAndInstall
+} from './updater'
 import { clearPendingInstallMarker, isPendingInstallInFlight } from './updater-install-guard'
 import { applyGpuCrashGuard, recordGpuCrash, shouldRecordGpuCrash } from './gpu-crash-guard'
 import { buildAppMenu, buildEditableTextContextMenu } from './menu'
@@ -1430,7 +1435,13 @@ const appReady = app.whenReady().then(async () => {
   // Same shape as the crash marker: an update install that never applied left a
   // marker behind because the failure itself happened after this runtime was
   // disposed on the previous quit.
-  detectFailedUpdateInstall(app.getVersion())
+  const failedInstall = detectFailedUpdateInstall(app.getVersion())
+  if (failedInstall) {
+    // Telemetry alone leaves the user stuck: same prompt, same Restart, same
+    // old version. Hand it to the updater state so the renderer can offer the
+    // manual installer instead of silently looping.
+    noteFailedUpdateInstall(failedInstall.toVersion ?? null)
+  }
   installCrashMarker(telemetryRuntime.context.sessionId, app.getVersion())
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)
 

@@ -88,11 +88,14 @@ describe('evernoteImporter (integration)', () => {
     expect(summary.attachments).toBe(1)
 
     // Note should be under Evernote/sample/ (notebook = basename of file)
-    const evernoteDir = path.join(tempVault.notesDir, 'Evernote', 'sample')
+    const evernoteDir = path.join(tempVault.path, 'Evernote', 'sample')
     const noteFiles = fs.readdirSync(evernoteDir)
     expect(noteFiles.some((f) => f.includes('Sample Evernote Note'))).toBe(true)
 
-    const notePath = path.join(evernoteDir, noteFiles.find((f) => f.endsWith('.md'))!)
+    const notePath = path.join(
+      evernoteDir,
+      noteFiles.find((f) => f.endsWith('.md'))!
+    )
     const content = fs.readFileSync(notePath, 'utf8')
 
     // Body text present
@@ -117,7 +120,7 @@ describe('evernoteImporter (integration)', () => {
     const ctx = importContext.createImportContext('ev2', new AbortController().signal)
     await importer.evernoteImporter.run({ sourcePaths: [FIXTURE] }, ctx)
 
-    const evernoteDir = path.join(tempVault.notesDir, 'Evernote', 'sample')
+    const evernoteDir = path.join(tempVault.path, 'Evernote', 'sample')
     const noteFiles = fs.readdirSync(evernoteDir)
     const noteFile = noteFiles.find((f) => f.endsWith('.md'))!
 
@@ -126,9 +129,7 @@ describe('evernoteImporter (integration)', () => {
       .prepare(
         'SELECT created_at AS createdAt, modified_at AS modifiedAt FROM note_cache WHERE path = ?'
       )
-      .get(`notes/Evernote/sample/${noteFile}`) as
-      | { createdAt: string; modifiedAt: string }
-      | undefined
+      .get(`Evernote/sample/${noteFile}`) as { createdAt: string; modifiedAt: string } | undefined
     expect(row?.createdAt).toContain('2023-10-15')
     expect(row?.modifiedAt).toContain('2023-10-16')
   })

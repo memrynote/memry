@@ -21,9 +21,11 @@
 
   --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
-  --color-paper: #fffcf7;
-  --color-paper-alt: #f7f4ee;
-  --color-paper-deep: #efe9df;
+  /* Paper stack keeps its warm hue but sheds yellow as it deepens — the cream read
+     as heavy because b* climbed with every step down (2.7 → 3.2 → 5.6). */
+  --color-paper: #fffdfa;
+  --color-paper-alt: #fbf9f5;
+  --color-paper-deep: #f5f1ea;
   --color-dark: #141210;
   --color-dark-surface: #1e1b18;
   --color-dark-border: #2e2a25;
@@ -33,13 +35,14 @@
   --color-terracotta-glow: var(--color-brand-300);
   --color-sage: #5b7f6a;
   --color-muted: #6b6560;
-  --color-border: #e8e4dd;
+  /* Held a touch darker than the lifted paper so card edges keep their definition. */
+  --color-border: #e6e1d8;
   --color-card: #ffffff;
 
   /* Pastel section tints — muted, paper-compatible mega-card backgrounds */
   --color-tint-sky: #dfeaf2;
   --color-tint-sage: #e2ebe0;
-  --color-tint-sand: #f3ead6;
+  --color-tint-sand: #f6f0e2;
   --color-tint-peach: #fce4d6;
   --color-tint-rose: #f7dfe1;
   --color-tint-lilac: #e7e1f2;
@@ -69,7 +72,7 @@ body {
   font-family: var(--font-sans);
   background-color: var(--color-paper);
   color: var(--color-ink);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.022'/%3E%3C/svg%3E");
   background-size: 200px 200px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

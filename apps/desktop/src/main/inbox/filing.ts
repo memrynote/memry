@@ -8,7 +8,7 @@
  */
 
 import path from 'path'
-import { rename, copyFile, unlink } from 'fs/promises'
+import { rename, copyFile, unlink, stat, readFile } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -17,21 +17,32 @@ import { createNote, getNoteById, updateNote, createFolder, getFolders } from '.
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
-import { getStatus, getConfig } from '../vault/index'
+import { getStatus } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
-import { InboxChannels, TasksChannels, CalendarChannels } from '@memry/contracts/ipc-channels'
+import {
+  InboxChannels,
+  NotesChannels,
+  TasksChannels,
+  CalendarChannels
+} from '@memry/contracts/ipc-channels'
 import type { FilingAction } from '@memry/contracts/inbox-api'
+import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
+import { saveAttachment } from '../vault/attachments'
+import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
+import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
+import type { NoteListItem } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
-import { publishProjectionEvent } from '../projections'
+import { publishInboxUpserted, syncInboxUpdate } from './runtime-effects'
 import { syncTaskCreate } from '../tasks/runtime-effects'
+import { recordTaskCreated } from '../tasks/activity-log'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -182,14 +193,24 @@ function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string
  * path and never touches `note_tags`) and write the tags to the index DB.
  * No-op for unsupported/markdown extensions. See #800.
  */
-async function persistBinaryTags(
+/**
+ * Index a filed binary and hand back the tree entry it produced.
+ *
+ * The vault watcher cannot cover this: indexing happens before chokidar reports
+ * the moved file, so the watcher's add handler finds an existing `note_cache`
+ * row and returns early without emitting. Whoever writes the row therefore owns
+ * the announcement, exactly as `createNote` does for markdown.
+ *
+ * Returns null when there is nothing to announce — a file type the tree does not
+ * carry, or an index write that failed.
+ */
+async function indexFiledBinary(
   relativePath: string,
   absolutePath: string,
   tags: string[]
-): Promise<void> {
-  if (tags.length === 0) return
+): Promise<NoteListItem | null> {
   const fileType = getFileType(path.extname(absolutePath))
-  if (!fileType || fileType === 'markdown') return
+  if (!fileType || fileType === 'markdown') return null
 
   // Best-effort: the caller has already moved the file and deleted the inbox
   // attachment folder, so a failure here (e.g. index DB unavailable) must not
@@ -198,13 +219,34 @@ async function persistBinaryTags(
   try {
     const indexDb = getIndexDatabase()
     const noteId = await indexBinaryFile(indexDb, relativePath, absolutePath, fileType)
-    setNoteTags(indexDb, noteId, tags)
+    if (tags.length > 0) setNoteTags(indexDb, noteId, tags)
+
+    const stats = await stat(absolutePath)
+    return {
+      id: noteId,
+      path: relativePath,
+      title: path.basename(absolutePath, path.extname(absolutePath)),
+      created: stats.birthtime,
+      modified: stats.mtime,
+      tags,
+      wordCount: 0
+    }
   } catch (error) {
     log.warn(
-      'Failed to persist tags for filed binary (continuing):',
+      'Failed to index filed binary (continuing):',
       error instanceof Error ? error.message : String(error)
     )
+    return null
   }
+}
+
+/**
+ * Tell every window a filed binary joined the tree, so the sidebar and folder
+ * view update in place instead of waiting for a restart.
+ */
+function announceFiledBinary(note: NoteListItem | null): void {
+  if (!note) return
+  broadcastToAllWindows(NotesChannels.events.CREATED, { note, source: 'internal' })
 }
 
 /**
@@ -270,25 +312,31 @@ function generateNoteTitle(item: InboxItemRow): string {
   }
 }
 
-function sanitizeFiledVoiceFilenameBase(title: string): string {
-  const sanitized = title
-    .replace(/[<>:"/\\|?*]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/[.\s]+$/g, '')
-    .slice(0, 200)
-
-  return sanitized.length > 0 ? sanitized : 'Voice memo'
+function sanitizeFiledBinaryFilenameBase(title: string): string {
+  return (
+    title
+      .replace(/[<>:"/\\|?*]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      // Leading dots would produce a hidden file (or a traversal-shaped name),
+      // so strip them the way the vault's own sanitizer does.
+      .replace(/^\.+/g, '')
+      .trim()
+      .replace(/[.\s]+$/g, '')
+      .slice(0, 200)
+  )
 }
 
-function getFiledBinaryFilename(item: InboxItemRow): string {
+export function getFiledBinaryFilename(item: InboxItemRow): string {
   const storedFilename = path.basename(item.attachmentPath ?? '')
-  if (item.type !== 'voice') {
+  const extension = path.extname(storedFilename)
+  const base = sanitizeFiledBinaryFilenameBase(generateNoteTitle(item))
+  if (base.length === 0) {
+    // Nothing usable survived sanitization — keep the capture-time name.
     return storedFilename
   }
 
-  const extension = path.extname(storedFilename)
-  return `${sanitizeFiledVoiceFilenameBase(generateNoteTitle(item))}${extension}`
+  return `${base}${extension}`
 }
 
 // Inbox screenshot/clip bodies embed images by their vault-relative attachment
@@ -462,10 +510,21 @@ function markItemAsFiled(itemId: string, filedTo: string, filedAction: FilingAct
     .where(eq(inboxItems.id, itemId))
     .run()
 
-  publishProjectionEvent({
-    type: 'inbox.upserted',
-    itemId
-  })
+  // Filing must reach the other devices. Without a push the filed state never
+  // leaves this device, and a peer that still holds `filedAt: null` pushes that
+  // whole row on its next change — which applyUpsert reads as a deliberate
+  // unfile and applies here, resurrecting the item the user already filed.
+  // Best-effort like convertToTask's enqueue: a sync outage must not fail a
+  // filing that already succeeded locally, but it must stay countable.
+  try {
+    syncInboxUpdate(itemId)
+  } catch (error) {
+    log.warn('syncInboxUpdate failed; filing persisted locally', error)
+    trackMainError('inbox', 'filing_sync_enqueue', error)
+    // syncInboxUpdate publishes the projection itself; republish here so a
+    // failed enqueue doesn't also leave the local Inbox list stale.
+    publishInboxUpserted(itemId)
+  }
 
   // Emit filed event
   emitInboxEvent(InboxChannels.events.FILED, {
@@ -544,12 +603,11 @@ async function fileBinaryToFolder(
 
     // Build source and destination paths
     const vaultPath = getVaultPath()
-    const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
     const filename = getFiledBinaryFilename(item)
 
-    // Destination is vault/notes/{folderPath}/ (or root of notes folder)
-    const destFolder = path.join(vaultPath, config.defaultNoteFolder, folderPath || '')
+    // folderPath is vault-relative (the folder picker speaks vault paths).
+    const destFolder = path.join(vaultPath, folderPath || '')
     const destPath = path.join(destFolder, filename)
 
     // Handle filename conflicts by appending -1, -2, etc.
@@ -574,8 +632,8 @@ async function fileBinaryToFolder(
     // Calculate relative path from vault root for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Persist the assigned tags onto the filed file (index DB / note_tags)
-    await persistBinaryTags(relativePath, finalPath, mergedTags)
+    // Index the filed file and announce it, so the tree picks it up live.
+    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -808,6 +866,11 @@ export async function convertToTask(
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     broadcastToAllWindows(TasksChannels.events.CREATED, { task: enrichedTask })
 
+    // Publisher bypass (see the trackMainEvent note below): the activity log is
+    // hooked to the publisher, so this path has to log its own creation row or
+    // a task filed from the inbox would have no history at all.
+    recordTaskCreated(enrichedTask)
+
     try {
       syncTaskCreate(taskId)
     } catch (error) {
@@ -982,7 +1045,129 @@ export async function linkToNote(
   folderPath?: string
 ): Promise<{ success: boolean; error?: string }> {
   // Delegate to linkToNotes with single note
-  return linkToNotes(itemId, [noteId], tags, folderPath)
+  return linkToNotes(itemId, [{ kind: 'note', noteId }], tags, folderPath)
+}
+
+/**
+ * Turn the ordered targets into note ids, creating the notes the user staged in
+ * the picker but never committed (#807). Creation is deferred to filing on
+ * purpose: typing a name and changing your mind must not leave an empty note
+ * behind.
+ *
+ * Order is preserved because the first id owns the attachment.
+ */
+async function resolveFilingTargets(
+  targets: FilingTarget[],
+  folderPath?: string
+): Promise<{ noteIds: string[] } | { error: string }> {
+  const noteIds: string[] = []
+
+  for (const target of targets) {
+    if (target.kind === 'note') {
+      noteIds.push(target.noteId)
+      continue
+    }
+
+    const created = await createNote({
+      title: target.title,
+      content: '',
+      folder: folderPath || undefined
+    })
+    noteIds.push(created.id)
+  }
+
+  return { noteIds }
+}
+
+/**
+ * The filename `saveAttachment` actually wrote. It returns a `memry-file://`
+ * URL rather than the name (the name it echoes back is the *original* one,
+ * before the uniqueness prefix), and only the written name can be turned into
+ * a path the note can reference.
+ */
+function attachmentFilenameFromUrl(url: string): string {
+  const lastSegment = url.split('/').pop() ?? ''
+  try {
+    return decodeURIComponent(lastSegment)
+  } catch {
+    return lastSegment
+  }
+}
+
+/**
+ * A markdown ref from `notePath` to a file at `targetPath`, both vault-relative.
+ *
+ * Relative to the *note*, not the vault: that is what the editor resolves at
+ * render time (`resolve-note-relative-url.ts`) and what keeps the vault
+ * readable by Obsidian. A `memry-file://` URL would render here and break on
+ * every other device, since it carries this machine's absolute path.
+ */
+function noteRelativeRef(notePath: string, targetPath: string): string {
+  const noteDir = path.posix.dirname(normalizeRelativePath(notePath))
+  const from = noteDir === '.' ? '' : noteDir
+  const relative = path.posix.relative(from, normalizeRelativePath(targetPath))
+  return encodeAttachmentUrl(relative)
+}
+
+/**
+ * Embed an image into its target notes as a note attachment (#807).
+ *
+ * The file lands under `attachments/<ownerNoteId>/`, which the indexer and the
+ * watcher both exclude — so it never shows up in the sidebar or in search, which
+ * is the whole point of this mode. The first note owns the file; the others
+ * reference the same copy and break if the owner is deleted. That is the agreed
+ * trade for not duplicating a photo per note.
+ *
+ * Returns `null` when the attachment store refuses the file (too large, or an
+ * extension it does not accept) so the caller can fall back to linking.
+ */
+async function embedImageInNotes(
+  itemId: string,
+  item: InboxItemRow,
+  targetNotes: Array<{ id: string; content: string; path: string }>,
+  mergedTags: string[]
+): Promise<{ success: boolean; error?: string; linkedCount?: number } | null> {
+  const vaultPath = getVaultPath()
+  const sourcePath = path.join(vaultPath, item.attachmentPath as string)
+  const filename = getFiledBinaryFilename(item)
+  const ownerNote = targetNotes[0]
+
+  const data = await readFile(sourcePath)
+  const saved = await saveAttachment(ownerNote.id, data, filename)
+  if (!saved.success || !saved.path) {
+    log.info('Embed refused by the attachment store, falling back to a linked file', {
+      itemId,
+      error: saved.error
+    })
+    return null
+  }
+
+  const storedFilename = attachmentFilenameFromUrl(saved.path)
+  const attachmentRelativePath = `attachments/${ownerNote.id}/${storedFilename}`
+  const alt = item.title?.trim() || path.basename(filename, path.extname(filename))
+  const dateStr = formatDate(new Date())
+  const inboxCapturesRegex = /^## Inbox Captures$/m
+
+  for (const targetNote of targetNotes) {
+    const entry = `![${alt}](${noteRelativeRef(targetNote.path, attachmentRelativePath)})\n*(${dateStr})*`
+    const updatedContent = inboxCapturesRegex.test(targetNote.content)
+      ? targetNote.content.replace(/^(## Inbox Captures)$/m, `$1\n\n${entry}`)
+      : `${targetNote.content.trimEnd()}\n\n## Inbox Captures\n\n${entry}`
+
+    await updateNote({ id: targetNote.id, content: updatedContent })
+  }
+
+  // Uploads the blob and records the reference on the owner note, so peers get
+  // the image instead of a note pointing at a file only this device has.
+  emitNoteAttachmentSaved(ownerNote.id, path.join(vaultPath, attachmentRelativePath))
+
+  await deleteInboxAttachments(itemId)
+  markItemAsFiled(itemId, attachmentRelativePath, 'linked')
+  recordFilingHistory(item.type, null, attachmentRelativePath, 'linked', mergedTags)
+
+  log.info(`Embedded image into ${targetNotes.length} note(s): ${attachmentRelativePath}`)
+
+  return { success: true, linkedCount: targetNotes.length }
 }
 
 /**
@@ -993,14 +1178,17 @@ export async function linkToNote(
  * @param item - Inbox item row
  * @param noteIds - Array of target note IDs
  * @param folderPath - Optional folder path for the file
+ * @param imageMode - `embed` keeps an image out of the sidebar by storing it as
+ *   a note attachment; `link` (the default) moves the raw file into the vault.
  */
 async function linkBinaryToNotes(
   itemId: string,
   item: InboxItemRow,
   noteIds: string[],
   tags: string[] = [],
-  folderPath?: string
-): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
+  folderPath?: string,
+  imageMode?: ImageFilingMode
+): Promise<{ success: boolean; error?: string; linkedCount?: number; fellBackToLink?: boolean }> {
   try {
     // Verify attachment exists
     if (!item.attachmentPath) {
@@ -1022,6 +1210,15 @@ async function linkBinaryToNotes(
       targetNotes.push({ id: noteId, content: targetNote.content, path: targetNote.path })
     }
 
+    // Embed mode: the image becomes an attachment of the first note instead of
+    // a file in the tree. A refusal (size/type) is not a failure — fall through
+    // to the linked-file path below and tell the caller why.
+    if (imageMode === 'embed' && item.type === 'image') {
+      const embedded = await embedImageInNotes(itemId, item, targetNotes, mergedTags)
+      if (embedded) return embedded
+    }
+    const fellBackToLink = imageMode === 'embed' && item.type === 'image'
+
     // Determine destination folder:
     // 1. Use provided folderPath
     // 2. Or same folder as first target note
@@ -1039,12 +1236,11 @@ async function linkBinaryToNotes(
 
     // Build source and destination paths
     const vaultPath = getVaultPath()
-    const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
     const filename = getFiledBinaryFilename(item)
 
-    // Destination is vault/notes/{destFolder}/
-    const destFolderPath = path.join(vaultPath, config.defaultNoteFolder, destFolder)
+    // destFolder is vault-relative (derived from an existing note's path).
+    const destFolderPath = path.join(vaultPath, destFolder)
     const destPath = path.join(destFolderPath, filename)
 
     // Handle filename conflicts
@@ -1069,9 +1265,14 @@ async function linkBinaryToNotes(
     // Use title (filename without extension) for wiki-link because that's how
     // files are indexed in the database (watcher sets title = basename without ext)
     const fileTitle = path.basename(finalPath, path.extname(finalPath))
-    // Use ![[]] for images to embed them inline, [[]] for other files
-    const isImage = item.type === 'image'
-    const wikiLink = isImage ? `[[${fileTitle}]]` : `[[${fileTitle}]]`
+    // A plain link, images included: this mode puts the file in the sidebar, and
+    // the note points at it — clicking opens the image in its own tab, because
+    // `resolveWikiLink` finds the indexed binary and routes it to the viewer.
+    // Never `![[…]]` here: that embed goes through `resolve-embed`, which splices
+    // in a note-relative path, and BlockNote then resolves that against the
+    // renderer's own base URL and renders a broken image. Inline images are what
+    // the *embed* mode is for, and it stores them as attachments instead.
+    const wikiLink = `[[${fileTitle}]]`
     const dateStr = formatDate(new Date())
     const captureEntry = `- ${wikiLink} *(${dateStr})*`
 
@@ -1101,8 +1302,8 @@ async function linkBinaryToNotes(
     // Calculate relative path for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Persist the assigned tags onto the filed file (index DB / note_tags)
-    await persistBinaryTags(relativePath, finalPath, mergedTags)
+    // Index the filed file and announce it, so the tree picks it up live.
+    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')
@@ -1112,7 +1313,11 @@ async function linkBinaryToNotes(
 
     log.info(`Linked binary item to ${targetNotes.length} note(s): ${relativePath}`)
 
-    return { success: true, linkedCount: targetNotes.length }
+    return {
+      success: true,
+      linkedCount: targetNotes.length,
+      ...(fellBackToLink ? { fellBackToLink: true } : {})
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error linking binary to notes:', message)
@@ -1134,14 +1339,21 @@ async function linkBinaryToNotes(
  */
 export async function linkToNotes(
   itemId: string,
-  noteIds: string[],
+  targets: FilingTarget[],
   tags: string[] = [],
-  folderPath?: string
-): Promise<{ success: boolean; error?: string; linkedCount?: number }> {
+  folderPath?: string,
+  imageMode?: ImageFilingMode
+): Promise<{
+  success: boolean
+  error?: string
+  linkedCount?: number
+  noteIds?: string[]
+  fellBackToLink?: boolean
+}> {
   try {
     const db = requireDatabase()
 
-    if (!noteIds || noteIds.length === 0) {
+    if (!targets || targets.length === 0) {
       return { success: false, error: 'At least one note ID is required' }
     }
 
@@ -1156,9 +1368,18 @@ export async function linkToNotes(
       return { success: false, error: 'Item has already been filed' }
     }
 
+    // Only now, past every rejection above: a staged note must not be created
+    // for a filing that was going to fail anyway.
+    const resolved = await resolveFilingTargets(targets, folderPath)
+    if ('error' in resolved) {
+      return { success: false, error: resolved.error }
+    }
+    const { noteIds } = resolved
+
     // Binary types: move file and add wiki-links to target notes
     if (isBinaryType(item.type)) {
-      return linkBinaryToNotes(itemId, item, noteIds, tags, folderPath)
+      const result = await linkBinaryToNotes(itemId, item, noteIds, tags, folderPath, imageMode)
+      return { ...result, noteIds }
     }
 
     // Text types: create markdown note and add wiki-links (existing logic)
@@ -1225,7 +1446,7 @@ export async function linkToNotes(
     // Record filing history
     recordFilingHistory(item.type, item.content, targetNotes[0].path, 'linked', mergedTags)
 
-    return { success: true, linkedCount: targetNotes.length }
+    return { success: true, linkedCount: targetNotes.length, noteIds }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     log.error('Error linking to notes:', message)

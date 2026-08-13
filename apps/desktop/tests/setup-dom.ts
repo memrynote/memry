@@ -525,6 +525,7 @@ const createMockApi = () => ({
   onTaskDeleted: vi.fn().mockReturnValue(() => {}),
   onTaskCompleted: vi.fn().mockReturnValue(() => {}),
   onTaskMoved: vi.fn().mockReturnValue(() => {}),
+  onTaskActivityCreated: vi.fn().mockReturnValue(() => {}),
   onProjectCreated: vi.fn().mockReturnValue(() => {}),
   onProjectUpdated: vi.fn().mockReturnValue(() => {}),
   onProjectDeleted: vi.fn().mockReturnValue(() => {}),

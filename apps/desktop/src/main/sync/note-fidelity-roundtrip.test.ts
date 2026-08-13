@@ -120,7 +120,7 @@ describe('note fidelity across devices', () => {
 
     expect(payload.title).toBe('Deep Work')
     expect(payload.content).toBe(NOTE_BODY)
-    expect(payload.folderPath).toBe('research')
+    expect(payload.folderPath).toBe('notes/research')
     expect(payload.emoji).toBe('📚')
     expect(payload.fileType).toBe('markdown')
     expect(payload.tags).toEqual(['reading', 'focus'])

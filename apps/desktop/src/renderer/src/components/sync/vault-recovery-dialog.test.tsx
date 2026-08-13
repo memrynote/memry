@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LINK_FAILURE_SETUP_SESSION_EXPIRED } from '@memry/contracts/ipc-devices'
+
+import { IpcFailureError } from '@/lib/ipc-error'
 
 const hoisted = vi.hoisted(() => ({
   linkViaRecovery: vi.fn()
@@ -83,7 +86,10 @@ describe('VaultRecoveryDialog', () => {
 
   it('offers re-auth when the setup token has expired', async () => {
     hoisted.linkViaRecovery.mockRejectedValueOnce(
-      new Error('Session expired. Please sign in again.')
+      new IpcFailureError(
+        'Your sign-in timed out before this finished.',
+        LINK_FAILURE_SETUP_SESSION_EXPIRED
+      )
     )
     const onSignOut = vi.fn()
     const onRecovered = vi.fn()
@@ -99,13 +105,55 @@ describe('VaultRecoveryDialog', () => {
     openInput()
     fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
 
-    await waitFor(() =>
-      expect(screen.getByTestId('phrase-error')).toHaveTextContent(/session expired/i)
-    )
+    await waitFor(() => expect(screen.getByTestId('phrase-error')).toHaveTextContent(/timed out/i))
     expect(onRecovered).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in again' }))
     expect(onSignOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers re-auth on a non-English message carrying the expiry code', async () => {
+    // #given the main process localized the message before it crossed IPC.
+    // The old English regex (/sign in again|session expired/i) matched nothing
+    // here, so 29 of the 30 locales lost the button entirely (#1202).
+    hoisted.linkViaRecovery.mockRejectedValueOnce(
+      new IpcFailureError(
+        'Deine Anmeldung ist abgelaufen, bevor dies abgeschlossen wurde.',
+        LINK_FAILURE_SETUP_SESSION_EXPIRED
+      )
+    )
+    const onSignOut = vi.fn()
+    render(
+      <VaultRecoveryDialog open onRecovered={vi.fn()} onDismiss={vi.fn()} onSignOut={onSignOut} />
+    )
+
+    openInput()
+    fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
+
+    // #then the control the message tells the user to use is actually present.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument()
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in again' }))
+    expect(onSignOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not offer re-auth for an unrelated failure that merely mentions signing in', async () => {
+    // #given wording that the old regex matched by accident.
+    hoisted.linkViaRecovery.mockRejectedValueOnce(
+      new Error('Recovery phrase does not match. Sign in again on another device.')
+    )
+    render(
+      <VaultRecoveryDialog open onRecovered={vi.fn()} onDismiss={vi.fn()} onSignOut={vi.fn()} />
+    )
+
+    openInput()
+    fireEvent.click(screen.getByRole('button', { name: 'submit-phrase' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('phrase-error')).toHaveTextContent(/does not match/i)
+    )
+    expect(screen.queryByRole('button', { name: 'Sign in again' })).not.toBeInTheDocument()
   })
 
   it('offers a start-fresh escape that only signs out after an explicit confirmation', () => {

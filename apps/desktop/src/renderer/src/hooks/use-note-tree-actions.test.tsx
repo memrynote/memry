@@ -87,17 +87,17 @@ const createNote = (id: string, path: string, overrides: Partial<NoteListItem> =
     ...overrides
   }) as NoteListItem
 
-const rootNote = createNote('root', 'notes/Root.md')
-const workA = createNote('work-a', 'notes/Work/A.md')
-const workB = createNote('work-b', 'notes/Work/B.md')
-const otherNote = createNote('other', 'notes/Other/C.pdf', { fileType: 'pdf' })
+const rootNote = createNote('root', 'Root.md')
+const workA = createNote('work-a', 'Work/A.md')
+const workB = createNote('work-b', 'Work/B.md')
+const otherNote = createNote('other', 'Other/C.pdf', { fileType: 'pdf' })
 
 const folders = [{ path: 'Work' }, { path: 'Other' }, { path: 'Work/Nested' }] as any[]
 const allNotes = [rootNote, workA, workB, otherNote]
 const noteMap = new Map(allNotes.map((note) => [note.id, note]))
 const tree = buildTreeFromNotes(allNotes, folders, {
-  'notes/Work/A.md': 1,
-  'notes/Work/B.md': 2,
+  'Work/A.md': 1,
+  'Work/B.md': 2,
   Work: 1,
   Other: 2
 })
@@ -107,7 +107,7 @@ const createMutations = () =>
     createNote: {
       mutateAsync: vi.fn().mockResolvedValue({
         success: true,
-        note: createNote('new-note', 'notes/Work/Untitled.md')
+        note: createNote('new-note', 'Work/Untitled.md')
       })
     },
     renameNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true }) },
@@ -168,7 +168,7 @@ describe('useNoteTreeActions', () => {
     vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
     vi.mocked(notesService.getAllPositions).mockResolvedValue({
       success: true,
-      positions: { 'notes/Work/B.md': 1 }
+      positions: { 'Work/B.md': 1 }
     })
     vi.mocked(notesService.openExternal).mockResolvedValue(undefined)
     vi.mocked(notesService.revealInFinder).mockResolvedValue(undefined)
@@ -343,11 +343,8 @@ describe('useNoteTreeActions', () => {
         position: 'after'
       })
     })
-    expect(notesService.reorder).toHaveBeenCalledWith('Work', [
-      'notes/Work/B.md',
-      'notes/Work/A.md'
-    ])
-    expect(deps.setNotePositions).toHaveBeenCalledWith({ 'notes/Work/B.md': 1 })
+    expect(notesService.reorder).toHaveBeenCalledWith('Work', ['Work/B.md', 'Work/A.md'])
+    expect(deps.setNotePositions).toHaveBeenCalledWith({ 'Work/B.md': 1 })
     expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
 
     await act(async () => {

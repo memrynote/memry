@@ -78,7 +78,9 @@
     "transcriptionFailed": "Transcription failed",
     "retryTranscription": "Retry",
     "pageCount": "{count, plural, one {# page} other {# pages}}",
-    "snoozedUntilShort": "snoozed til {date}"
+    "snoozedUntilShort": "snoozed til {date}",
+    "rename": "Rename",
+    "renameLabel": "Rename item"
   },
   "loading": {
     "inbox": "Loading inbox...",
@@ -102,13 +104,15 @@
     "failedCaptureImage": "Failed to capture image",
     "linkedToNote": "Linked to note",
     "linkedToNotes": "Linked to {count} notes",
+    "embedFellBackToLink": "Image was too large to embed — filed as a linked file instead",
     "filedTo": "Filed to {folder}",
     "filedItemsTo": "Filed {count} items to {folder}",
     "filedPartial": "Filed {processed} of {total} items",
     "appliedTags": "{tagCount, plural, one {Applied # tag} other {Applied # tags}} to {itemCount, plural, one {# item} other {# items}}",
     "archivedItems": "{count, plural, one {Archived # item} other {Archived # items}}",
     "snoozedUntil": "Snoozed until {time}",
-    "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}"
+    "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}",
+    "restored": "\"{title}\" restored"
   },
   "bulk": {
     "selected": "{count} selected",
@@ -166,6 +170,7 @@
     "file": "File",
     "keyboardHint": "{modifier}⏎ file · 1-5 folder · Esc close",
     "voiceTitlePlaceholder": "Name this voice memo...",
+    "titlePlaceholder": "Name this item...",
     "fileTo": "File to",
     "ai": "AI",
     "match": {
@@ -184,7 +189,14 @@
     "linkANote": "Link a note",
     "suggestedCount": "{count} suggested",
     "linkNotesPlaceholder": "Link notes...",
-    "searchNotesAria": "Search notes to link",
+    "linkOrCreateNotePlaceholder": "Find or create a note...",
+    "createNote": "Create \"{title}\"",
+    "pendingNote": "New note",
+    "searchNotesAria": "Search notes to link or create",
+    "imageFilingModeLabel": "Image lands as",
+    "imageFilingModeEmbed": "Embedded in the note",
+    "imageFilingModeLink": "File in the sidebar",
+    "imageFilingModeRemember": "Don't ask again",
     "linkedNotesAria": "Linked notes",
     "removeLinkTo": "Remove link to {title}",
     "notePlaceholder": "Write your note...",
@@ -197,7 +209,6 @@
     "task": "Task",
     "event": "Event",
     "reminder": "Reminder",
-    "binaryOnlyNote": "Files can only become a note",
     "create": "Create",
     "addTask": "Add task",
     "addEvent": "Add event",

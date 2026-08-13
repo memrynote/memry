@@ -270,7 +270,7 @@ memrynote settings list
 memrynote settings groups
 memrynote settings group general
 memrynote settings set-group general '{"theme":"dark","language":"tr"}'
-memrynote settings set-group journal '{"defaultTemplate":"Daily Review","showSchedule":false}'
+memrynote settings set-group journal '{"defaultTemplate":"Daily Review","showStatsFooter":false}'
 memrynote settings set-group tabs '{"restoreSessionOnStart":false,"tabCloseButton":"active"}'
 memrynote settings set-group noteEditor '{"toolbarMode":"sticky"}'
 memrynote settings group voiceTranscription

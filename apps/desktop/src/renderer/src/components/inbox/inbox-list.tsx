@@ -22,7 +22,8 @@ import {
   AlertCircle,
   RotateCcw,
   Bell,
-  Video
+  Video,
+  Pencil
 } from '@/lib/icons'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -31,6 +32,13 @@ import { Pill } from '@/components/ui/pill'
 import { QuickActions } from '@/components/quick-actions'
 import { InlineQuickFile } from '@/components/inline-quick-file'
 import { QuickFileDropdown, getFilteredFolders } from '@/components/quick-file-dropdown'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
+import { InboxRowNameInput } from './inbox-row-name-input'
 import {
   formatDuration,
   formatCompactRelativeTime,
@@ -379,6 +387,8 @@ export interface InboxListItemProps {
   onQuickFileArrowUp?: () => void
   onQuickFileFolderSelect?: (folder: Folder) => void
   onRetryTranscription?: (id: string) => void
+  /** Rename the item's title from the row's context menu */
+  onRename?: (id: string, title: string) => void
   /** Additional class names */
   className?: string
 }
@@ -401,6 +411,7 @@ export function InboxListItem({
   onQuickFileArrowUp,
   onQuickFileFolderSelect,
   onRetryTranscription: _onRetryTranscription,
+  onRename,
   className
 }: InboxListItemProps) {
   const { t } = useT('inbox')
@@ -415,6 +426,7 @@ export function InboxListItem({
     const createdAt = item.createdAt instanceof Date ? item.createdAt : new Date(item.createdAt)
     return Date.now() - createdAt.getTime() < 3000
   })
+  const [isRenaming, setIsRenaming] = useState(false)
 
   const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
@@ -443,7 +455,13 @@ export function InboxListItem({
   const previewText = getInboxItemPreview(item)
   const showPreview = density === 'comfortable' && previewText !== null
 
+  // Reminders show metadata.targetTitle rather than their own title, and note
+  // titles are derived from the body's first line — renaming either from the row
+  // would look like it did nothing.
+  const canRename = !!onRename && item.type !== 'reminder' && item.type !== 'note'
+
   const handleClick = (): void => {
+    if (isRenaming) return
     onFocus(item.id)
     onPreview(item.id)
   }
@@ -453,7 +471,7 @@ export function InboxListItem({
     onSelect(item.id, e.shiftKey)
   }
 
-  return (
+  const row = (
     <motion.div
       layout="position"
       initial={
@@ -552,20 +570,34 @@ export function InboxListItem({
         <div className="flex flex-col grow min-w-0 gap-0.5">
           {/* Row 1: title, pills, and the metadata/actions slot */}
           <div className="flex items-center gap-2 min-w-0">
-            {/* Title — single line, truncated */}
-            <span
-              className={cn(
-                'grow shrink min-w-0 truncate font-medium',
-                densityConfig.titleSize,
-                isReminderViewed
-                  ? 'text-muted-foreground/60'
-                  : item.snoozedUntil
-                    ? 'text-muted-foreground'
-                    : 'text-foreground/90'
-              )}
-            >
-              {displayTitle}
-            </span>
+            {/* Title — single line, truncated; swaps to an input while renaming */}
+            {isRenaming ? (
+              <div className="grow shrink min-w-0">
+                <InboxRowNameInput
+                  initialValue={item.title}
+                  ariaLabel={t('list.renameLabel')}
+                  onSubmit={(next) => {
+                    setIsRenaming(false)
+                    onRename?.(item.id, next)
+                  }}
+                  onCancel={() => setIsRenaming(false)}
+                />
+              </div>
+            ) : (
+              <span
+                className={cn(
+                  'grow shrink min-w-0 truncate font-medium',
+                  densityConfig.titleSize,
+                  isReminderViewed
+                    ? 'text-muted-foreground/60'
+                    : item.snoozedUntil
+                      ? 'text-muted-foreground'
+                      : 'text-foreground/90'
+                )}
+              >
+                {displayTitle}
+              </span>
+            )}
 
             {/* Voice duration pill — hidden on hover when actions show */}
             {item.type === 'voice' && item.duration != null && (
@@ -650,6 +682,20 @@ export function InboxListItem({
         </div>
       )}
     </motion.div>
+  )
+
+  if (!canRename) return row
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{row}</ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={() => setIsRenaming(true)}>
+          <Pencil className="me-2 h-4 w-4" />
+          {t('list.rename')}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 

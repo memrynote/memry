@@ -729,7 +729,9 @@ describe('ContentArea', () => {
 
     expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Standalone #urgent',
+        // `#urgent` is a tag now, so it leaves the title and lands on the task.
+        title: 'Standalone',
+        tags: ['urgent'],
         linkedNoteIds: ['note-1']
       })
     )

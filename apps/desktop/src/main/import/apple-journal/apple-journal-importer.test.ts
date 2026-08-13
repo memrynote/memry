@@ -98,7 +98,7 @@ describe('appleJournalImporter (integration)', () => {
     const ctx = importContext.createImportContext('it2', new AbortController().signal)
     await importer.appleJournalImporter.run({ sourcePaths }, ctx)
 
-    const appleDir = path.join(tempVault.notesDir, 'Apple Journal')
+    const appleDir = path.join(tempVault.path, 'Apple Journal')
     expect(fs.existsSync(appleDir)).toBe(true)
 
     const files = fs.readdirSync(appleDir)
@@ -114,7 +114,7 @@ describe('appleJournalImporter (integration)', () => {
     const ctx = importContext.createImportContext('it3', new AbortController().signal)
     await importer.appleJournalImporter.run({ sourcePaths }, ctx)
 
-    const appleDir = path.join(tempVault.notesDir, 'Apple Journal')
+    const appleDir = path.join(tempVault.path, 'Apple Journal')
     const files = fs.readdirSync(appleDir)
     const noteFile = files.find((f) => f.includes('2024-11-03'))!
     const content = fs.readFileSync(path.join(appleDir, noteFile), 'utf8')

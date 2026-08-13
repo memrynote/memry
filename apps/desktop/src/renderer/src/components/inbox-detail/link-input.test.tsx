@@ -101,8 +101,10 @@ describe('LinkInput', () => {
     act(() => {
       vi.advanceTimersByTime(200)
     })
+    // A query that matches nothing is exactly when creating is what the user
+    // meant, so the create row takes the place of the old empty message (#807).
     await waitFor(() => {
-      expect(screen.getByText('empty.noNotes')).toBeInTheDocument()
+      expect(screen.getByTestId('link-input-create-note')).toBeInTheDocument()
     })
 
     fireEvent.mouseDown(document.body)
@@ -116,5 +118,55 @@ describe('LinkInput', () => {
 
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(input).toHaveValue('')
+  })
+
+  it('stages a new note without creating it, and keeps Enter on a real match (#807)', async () => {
+    const { onLinkedNotesChange } = renderInput()
+    const input = screen.getByLabelText('detail.searchNotesAria')
+
+    fireEvent.change(input, { target: { value: 'Trip notes' } })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('link-input-create-note')).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+    // Nothing is written here — the note is created when the item is filed.
+    expect(onLinkedNotesChange).toHaveBeenCalledWith([
+      { id: 'pending:Trip notes', title: 'Trip notes', type: 'note', isPending: true }
+    ])
+    expect(window.api.notes.create).not.toHaveBeenCalled()
+
+    onLinkedNotesChange.mockClear()
+    fireEvent.change(input, { target: { value: 'Project' } })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Project Alpha/ })).toBeInTheDocument()
+    })
+
+    // Create sits last, so Enter still links the top match.
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onLinkedNotesChange).toHaveBeenCalledWith([
+      { id: 'note-1', title: 'Project Alpha', type: 'note', emoji: 'A' }
+    ])
+  })
+
+  it('does not offer to create a note whose title already exists (#807)', async () => {
+    renderInput()
+    const input = screen.getByLabelText('detail.searchNotesAria')
+
+    fireEvent.change(input, { target: { value: 'Project Alpha' } })
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Project Alpha/ })).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('link-input-create-note')).not.toBeInTheDocument()
   })
 })

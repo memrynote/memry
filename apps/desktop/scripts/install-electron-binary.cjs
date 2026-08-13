@@ -20,6 +20,21 @@ const officialMirror = 'https://github.com/electron/electron/releases/download/'
 const LOCK_POLL_MS = 250
 const LOCK_STALE_MS = 10 * 60 * 1000
 
+// Every CI job that needs a real Electron runtime re-downloads the ~115 MB release
+// zip, and `Electron E2E full` fans out to 16 shards that all start at once — GitHub
+// releases regularly drops those connections ("curl: (56) Connection died, tried 5
+// times before giving up"), failing shards before a single test runs. When
+// MEMRY_ELECTRON_CACHE_DIR is set the verified zip is kept there between runs, so the
+// usual path does no network I/O at all. Unset (the default) behaves exactly as before.
+//
+// SECURITY: the artifact is an executable the job then runs, and on CI the cache is
+// shared with — and writable by — every branch. A restored zip is therefore never
+// trusted: it is copied into this run's scratch dir and hashed against the
+// `checksums.json` that ships inside the `electron` npm package, the same gate a fresh
+// download passes, before anything is extracted. Anything that does not match is
+// deleted and re-downloaded rather than failing the job.
+const cacheDir = process.env.MEMRY_ELECTRON_CACHE_DIR
+
 if (!electronDir) {
   console.error('Usage: install-electron-binary.cjs <electron-package-dir>')
   process.exit(2)
@@ -100,6 +115,54 @@ function validateChecksum(zipPath, expectedHash) {
   const actualHash = crypto.createHash('sha256').update(fs.readFileSync(zipPath)).digest('hex')
   if (actualHash !== expectedHash) {
     throw new Error(`Electron checksum mismatch: expected ${expectedHash}, got ${actualHash}`)
+  }
+}
+
+/** `fs.rmSync(..., { force: true })` still throws on e.g. ENOTDIR; cleanup must not. */
+function removeQuietly(target) {
+  try {
+    fs.rmSync(target, { force: true })
+  } catch {
+    // Nothing useful to do: the cache is advisory.
+  }
+}
+
+/**
+ * Copy a cached artifact into this run's scratch dir and verify it. Returns false —
+ * after discarding the entry — for anything missing, unreadable or tampered with, so
+ * the caller falls back to a fresh download instead of failing.
+ */
+function restoreFromCache(cachedZipPath, zipPath, expectedHash) {
+  if (!fs.existsSync(cachedZipPath)) {
+    return false
+  }
+
+  try {
+    // Copy first and hash the copy, so the bytes that get extracted are exactly the
+    // bytes that were verified even if the cache entry changes underneath us.
+    fs.copyFileSync(cachedZipPath, zipPath)
+    validateChecksum(zipPath, expectedHash)
+    return true
+  } catch (error) {
+    console.log(`[electron] discarding unusable cached artifact: ${error.message}`)
+    removeQuietly(zipPath)
+    removeQuietly(cachedZipPath)
+    return false
+  }
+}
+
+/** Best effort: a cache write must never be the reason an install fails. */
+function storeInCache(zipPath, cachedZipPath) {
+  const pendingPath = `${cachedZipPath}.${process.pid}.partial`
+
+  try {
+    fs.mkdirSync(path.dirname(cachedZipPath), { recursive: true })
+    fs.copyFileSync(zipPath, pendingPath)
+    // Publish with a rename so a concurrent reader never sees a half-copied zip.
+    fs.renameSync(pendingPath, cachedZipPath)
+  } catch (error) {
+    removeQuietly(pendingPath)
+    console.log(`[electron] could not cache the artifact: ${error.message}`)
   }
 }
 
@@ -213,6 +276,9 @@ function main() {
   const expectedHash = checksums[zipName]
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-electron-'))
   const zipPath = path.join(tempDir, zipName)
+  // Keyed by the exact zip name, so a version/platform/arch change can never reuse a
+  // stale artifact even if the cache entry itself was restored too loosely.
+  const cachedZipPath = cacheDir ? path.join(cacheDir, zipName) : null
 
   if (!expectedHash) {
     throw new Error(`No Electron checksum found for ${zipName}`)
@@ -236,11 +302,21 @@ function main() {
 
     sweepStaleWorkDirs(electronDir)
 
-    console.log(`[electron] installing ${version} for ${platform}-${arch} from ${officialMirror}`)
+    console.log(`[electron] installing ${version} for ${platform}-${arch}`)
 
     try {
-      downloadArtifact(`${officialMirror}v${version}/${zipName}`, zipPath)
-      validateChecksum(zipPath, expectedHash)
+      if (cachedZipPath && restoreFromCache(cachedZipPath, zipPath, expectedHash)) {
+        console.log(`[electron] reusing the cached ${zipName} from ${cacheDir}`)
+      } else {
+        console.log(`[electron] downloading ${zipName} from ${officialMirror}`)
+        downloadArtifact(`${officialMirror}v${version}/${zipName}`, zipPath)
+        validateChecksum(zipPath, expectedHash)
+
+        if (cachedZipPath) {
+          storeInCache(zipPath, cachedZipPath)
+        }
+      }
+
       extractArtifact(zipPath, stagingDir)
 
       // Validate the staged tree before the live `dist/` is touched at all, so a

@@ -10,6 +10,7 @@ import {
   FirstDeviceSetupRequestSchema,
   RefreshTokenRequestSchema,
   OAuthCallbackSchema,
+  RenewSetupTokenRequestSchema,
   EmailChangeRequestSchema,
   EmailChangeVerifySchema,
   DeleteAccountRequestSchema
@@ -27,7 +28,8 @@ import {
   issueTokens,
   revokeDeviceTokens,
   rotateRefreshToken,
-  signSetupToken
+  signSetupToken,
+  verifyRenewableSetupToken
 } from '../services/auth'
 import { listDevices } from '../services/device'
 import { sendEmail } from '../services/email'
@@ -86,6 +88,14 @@ const recoveryIpRateLimit = createRateLimiter({
   maxRequests: 3,
   windowSeconds: 600,
   keyPrefix: 'recovery-ip'
+})
+
+// A legitimate setup renews at most a handful of times while its user hunts
+// for a recovery phrase; this only exists to cap signature-probing.
+const setupRenewRateLimit = createRateLimiter({
+  maxRequests: 10,
+  windowSeconds: 600,
+  keyPrefix: 'setup-renew'
 })
 
 const handleOtpRequest = async (c: Parameters<typeof otpIpRateLimit>[0]): Promise<Response> => {
@@ -265,7 +275,7 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
   }
 
-  const { email, code, sessionNonce } = parsed.data
+  const { email, code, sessionNonce, devicePublicKey } = parsed.data
 
   await verifyOtp(c.env.DB, email, code, c.env.OTP_HMAC_KEY)
 
@@ -282,7 +292,9 @@ auth.post('/otp/verify', otpIpRateLimit, async (c) => {
     c.env.LOCAL_ADMIN_SYNC_EMAILS
   )
 
-  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
+  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce, {
+    devicePublicKey
+  })
 
   safeWaitUntil(
     c,
@@ -349,7 +361,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid callback body', 400)
   }
 
-  const { code, state, sessionNonce } = parsed.data
+  const { code, state, sessionNonce, devicePublicKey } = parsed.data
 
   const statePayload = await verifyOAuthState(state, c.env.JWT_PUBLIC_KEY)
   const redirectUri = statePayload.redirectUri ?? c.env.GOOGLE_REDIRECT_URI
@@ -392,7 +404,9 @@ auth.post('/oauth/:provider/callback', async (c) => {
     c.env.LOCAL_ADMIN_SYNC_EMAILS
   )
 
-  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce)
+  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce, {
+    devicePublicKey
+  })
 
   safeWaitUntil(
     c,
@@ -408,6 +422,69 @@ auth.post('/oauth/:provider/callback', async (c) => {
     needsSetup: !user.kdf_salt,
     setupToken
   })
+})
+
+// POST /setup-token/renew
+//
+// #1202: the setup token is minted at sign-in but first used minutes later,
+// once the user has found their 24-word recovery phrase. It sat idle for its
+// whole 5-minute life and then died, stranding the reinstall.
+//
+// Renewal is deliberately NOT a bearer operation. It requires a signature from
+// the device key the client committed at sign-in, so a setup token lifted from
+// a log or an intercepted response is worth exactly the same five minutes it
+// was worth before. Presenting a grant retires it, so only one setup token is
+// ever redeemable, and `renewable_until` is signed into the grant at mint time
+// so the chain cannot outlive its original window.
+auth.post('/setup-token/renew', setupRenewRateLimit, async (c) => {
+  const body = await c.req.json()
+  const parsed = RenewSetupTokenRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+
+  const { setupToken, challengeNonce, challengeSignature } = parsed.data
+
+  let publicKey: CryptoKey
+  try {
+    publicKey = await getPublicKey(c.env.JWT_PUBLIC_KEY)
+  } catch {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Invalid JWT verify key configuration', 500)
+  }
+
+  const claims = await verifyRenewableSetupToken(setupToken, publicKey)
+
+  const isValid = await verifyDeviceChallenge(
+    claims.devicePublicKey,
+    `${challengeNonce}:${claims.jti}`,
+    challengeSignature
+  )
+  if (!isValid) {
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Device challenge verification failed', 401)
+  }
+
+  // Same single-use ledger POST /devices writes, so a renewed-away token can
+  // never also register a device. expires_at is the chain deadline rather than
+  // now+5m: cleanup must not drop the row while the chain is still alive, or
+  // the retired jti would become renewable a second time.
+  const consumed = await c.env.DB.prepare(
+    'INSERT OR IGNORE INTO consumed_setup_tokens (jti, user_id, expires_at) VALUES (?, ?, ?)'
+  )
+    .bind(claims.jti, claims.userId, claims.renewableUntil)
+    .run()
+
+  if ((consumed.meta.changes ?? 0) === 0) {
+    throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Setup token already used', 401)
+  }
+
+  const renewed = await signSetupToken(claims.userId, c.env.JWT_PRIVATE_KEY, claims.sessionNonce, {
+    devicePublicKey: claims.devicePublicKey,
+    renewableUntil: claims.renewableUntil
+  })
+
+  logger.info('Setup token renewed for an in-progress device setup', { userId: claims.userId })
+
+  return c.json({ success: true, setupToken: renewed })
 })
 
 // POST /devices

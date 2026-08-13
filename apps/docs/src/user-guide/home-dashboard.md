@@ -12,7 +12,7 @@ A fresh vault auto-seeds a single board named **Home**. You can keep just that o
 - **Create a board** — use **New** in the switcher; give it a name (and optional icon).
 - **Reorder** — boards keep a stable position so the switcher order is predictable.
 
-Each board stores its own set of widgets and their layout. Boards are part of your vault, so they sync across your devices.
+Each board stores its own set of widgets and their layout, saved in the vault database on the device that made them. Boards are **not** part of sync yet, so each device keeps its own boards and arrangement.
 
 ## Widgets
 
@@ -36,13 +36,13 @@ Open the **widget gallery** (the add-widget control on the board) and click a ty
 
 ### Move, resize & remove
 
-The board is a free-form grid (powered by react-grid-layout):
+The board is a free-form 8-column grid (powered by react-grid-layout):
 
 - **Move** — drag a widget by its header to reposition it; neighbours reflow.
 - **Resize** — drag the grip at the bottom-right corner. Each widget has a minimum size it won't shrink below.
 - **Remove** — use the control in the widget frame.
 
-Layout changes persist automatically.
+Layout changes persist automatically, at any window size. The board keeps its eight columns whatever the window width — columns get narrower rather than collapsing — so a widget always occupies the same share of the board and your arrangement is the one you left, on every launch. Columns stop narrowing once the board reaches its minimum width; from there the board scrolls sideways rather than squeezing widgets past the point of being readable.
 
 ### Density
 

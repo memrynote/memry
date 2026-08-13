@@ -175,7 +175,7 @@
       },
       "defaultNoteFolder": {
         "label": "Default Location for New Notes",
-        "description": "Empty = vault root",
+        "description": "Where a new note goes when you don't pick a folder. Creating a note inside a folder still uses that folder, and your sidebar is unaffected. Empty = vault root",
         "placeholder": "notes"
       }
     },
@@ -450,6 +450,20 @@
       "title": "Inbox",
       "subtitle": "Daily review reminder and inbox preferences.",
       "loading": "Loading…"
+    },
+    "imageFiling": {
+      "group": "Images",
+      "error": "Failed to update image filing preference",
+      "mode": {
+        "label": "Filing an image to a note",
+        "description": "Embedded keeps the image inside the note and out of the sidebar. File in the sidebar moves it into the folder you pick and links to it.",
+        "embed": "Embed in the note",
+        "link": "File in the sidebar"
+      },
+      "ask": {
+        "label": "Ask every time",
+        "description": "Off means new images use the choice above without asking."
+      }
     },
     "reviewReminder": {
       "group": "Daily review reminder",

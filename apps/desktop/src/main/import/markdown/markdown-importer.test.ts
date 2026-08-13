@@ -93,7 +93,7 @@ describe('markdownImporter (integration)', () => {
     expect(summary.attachments).toBe(1)
 
     // root-note.md → Markdown/
-    const rootNote = path.join(tempVault.notesDir, 'Markdown', 'Root Note.md')
+    const rootNote = path.join(tempVault.path, 'Markdown', 'Root Note.md')
     expect(fs.existsSync(rootNote)).toBe(true)
     const rootContent = fs.readFileSync(rootNote, 'utf8')
     // Tags preserved
@@ -109,7 +109,7 @@ describe('markdownImporter (integration)', () => {
     expect(rootContent).not.toContain('](image.png)')
 
     // work/nested-note.md → Markdown/work/
-    const nestedNote = path.join(tempVault.notesDir, 'Markdown', 'work', 'nested-note.md')
+    const nestedNote = path.join(tempVault.path, 'Markdown', 'work', 'nested-note.md')
     expect(fs.existsSync(nestedNote)).toBe(true)
   })
 
@@ -122,7 +122,7 @@ describe('markdownImporter (integration)', () => {
     expect(summary.imported).toBe(1)
     expect(summary.attachments).toBe(1)
 
-    const rootNote = path.join(tempVault.notesDir, 'Markdown', 'Root Note.md')
+    const rootNote = path.join(tempVault.path, 'Markdown', 'Root Note.md')
     expect(fs.existsSync(rootNote)).toBe(true)
   })
 
@@ -135,7 +135,7 @@ describe('markdownImporter (integration)', () => {
     // photo.png is embedded twice but saved once; Images/nested.png is the second.
     expect(summary.attachments).toBe(2)
 
-    const note = path.join(tempVault.notesDir, 'Markdown', 'Embed Note.md')
+    const note = path.join(tempVault.path, 'Markdown', 'Embed Note.md')
     expect(fs.existsSync(note)).toBe(true)
     const content = fs.readFileSync(note, 'utf8')
 
@@ -160,7 +160,7 @@ describe('markdownImporter (integration)', () => {
     expect(summary.attachments).toBe(1)
     expect(summary.skipped).toBe(0)
 
-    const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'People', 'Person Note.md')
+    const note = path.join(tempVault.path, 'Markdown', 'Notes', 'People', 'Person Note.md')
     expect(fs.existsSync(note)).toBe(true)
     const content = fs.readFileSync(note, 'utf8')
     expect(content).toContain('memry-file://')
@@ -180,7 +180,7 @@ describe('markdownImporter (integration)', () => {
     expect(summary.attachments).toBe(0)
     expect(summary.skipped).toBe(1)
 
-    const note = path.join(tempVault.notesDir, 'Markdown', 'Person Note.md')
+    const note = path.join(tempVault.path, 'Markdown', 'Person Note.md')
     expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/Media/shared.png)')
   })
 
@@ -234,7 +234,7 @@ describe('markdownImporter (integration)', () => {
         expect(summary.attachments).toBe(0)
         expect(summary.skipped).toBe(1)
 
-        const note = path.join(tempVault.notesDir, 'Markdown', 'Notes', 'linked.md')
+        const note = path.join(tempVault.path, 'Markdown', 'Notes', 'linked.md')
         expect(fs.readFileSync(note, 'utf8')).toContain('](../Images/secret.png)')
       } finally {
         fs.rmSync(root, { recursive: true, force: true })
@@ -257,13 +257,13 @@ describe('markdownImporter (integration)', () => {
 
     // root-note.md has title: "Root Note" in frontmatter — the title now lives
     // in the filename and the note cache, never in the file's frontmatter.
-    const rootNote = path.join(tempVault.notesDir, 'Markdown', 'Root Note.md')
+    const rootNote = path.join(tempVault.path, 'Markdown', 'Root Note.md')
     expect(fs.existsSync(rootNote)).toBe(true)
     expect(fs.readFileSync(rootNote, 'utf8')).not.toContain('title:')
 
     const row = indexDb.sqlite
       .prepare('SELECT title FROM note_cache WHERE path = ?')
-      .get('notes/Markdown/Root Note.md') as { title: string } | undefined
+      .get('Markdown/Root Note.md') as { title: string } | undefined
     expect(row?.title).toBe('Root Note')
   })
 })

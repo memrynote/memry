@@ -620,11 +620,15 @@ describe('settings section coverage', () => {
       expect(mocks.journalSettings.setDefaultTemplate).toHaveBeenCalledWith('daily')
     )
 
-    // AIConnectionsPanel has no call site, so the journal settings page must not offer a
-    // toggle for it. The persisted `showAIConnections` value is untouched.
+    // The whole "Sidebar Visibility" group is gone: JournalDayPanel never reads showSchedule /
+    // showTasks, and nothing renders AIConnectionsPanel, so none of the three toggles controlled
+    // anything. The persisted values are untouched.
+    expect(screen.queryByText('journal.groups.sidebarVisibility')).toBeNull()
+    expect(screen.queryByText('journal.showSchedule.label')).toBeNull()
+    expect(screen.queryByText('journal.showTasks.label')).toBeNull()
     expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
 
-    fireEvent.click(screen.getAllByRole('switch')[5])
+    fireEvent.click(screen.getAllByRole('switch')[3])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false

@@ -881,6 +881,53 @@
   line-height: 16px;
 }
 
+/* Selection toolbar inside the comment composer. Sizing mirrors the note
+   editor's compact formatting popover above so the two read as one system. */
+.critic-comment-format-toolbar {
+  z-index: 50;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent);
+}
+
+.critic-comment-format-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.critic-comment-format-button {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.critic-comment-format-button:hover,
+.critic-comment-format-button[aria-pressed='true'] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.critic-comment-format-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Marks in a saved comment stay inline so the collapsed card can still clamp. */
+.critic-review-body-mark {
+  display: inline;
+}
+
 .critic-review-textarea {
   margin-top: 8px;
   min-height: 78px;
@@ -1160,6 +1207,8 @@
     --task-repeat: #3b82f6;
     --task-token-date: #f59e0b;
     --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -1292,6 +1341,8 @@
     --task-repeat: #3b82f6;
     --task-token-date: #f59e0b;
     --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -1429,6 +1480,8 @@
     --task-repeat: #60a5fa;
     --task-token-date: #fbbf24;
     --task-token-project: #93c5fd;
+    --task-token-tag: #a78bfa;
+    --task-token-note: #2dd4bf;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -2240,6 +2293,8 @@ del.bn-inline-content {
   --color-task-repeat: var(--task-repeat);
   --color-task-token-date: var(--task-token-date);
   --color-task-token-project: var(--task-token-project);
+  --color-task-token-tag: var(--task-token-tag);
+  --color-task-token-note: var(--task-token-note);
   --color-task-checkbox-done: var(--task-checkbox-done);
 
   /* ===== SIDEBAR ===== */

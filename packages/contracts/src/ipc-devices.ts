@@ -28,6 +28,22 @@ export interface GenerateLinkingQrResult {
   expiresAt?: number
 }
 
+/**
+ * Machine-readable reason a linking call failed.
+ *
+ * The companion `error` string is localized in the main process before it
+ * crosses IPC, so it is display text and nothing else. Matching patterns
+ * against it only ever works in English — under the other 29 locales the match
+ * silently fails and locale-specific recovery UI never renders (issue #1202).
+ * Branch on this code instead.
+ *
+ * Optional and additive: an absent code means "no specific reason", which is
+ * how every pre-existing failure path continues to behave.
+ */
+export const LINK_FAILURE_SETUP_SESSION_EXPIRED = 'setup-session-expired'
+
+export type LinkFailureCode = typeof LINK_FAILURE_SETUP_SESSION_EXPIRED
+
 export interface LinkViaQrInput {
   qrData: string
   oauthToken?: string
@@ -39,6 +55,7 @@ export interface LinkViaQrResult {
   status?: 'waiting_approval' | 'approved' | 'error'
   verificationCode?: string
   error?: string
+  errorCode?: LinkFailureCode
 }
 
 export interface LinkViaRecoveryInput {
@@ -49,6 +66,7 @@ export interface LinkViaRecoveryResult {
   success: boolean
   deviceId?: string
   error?: string
+  errorCode?: LinkFailureCode
 }
 
 export interface CompleteLinkingQrInput {

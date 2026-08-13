@@ -12,6 +12,7 @@
       "cannotRenameDeleted": "Cannot rename - note was deleted",
       "createLinkedFailed": "Failed to create linked note",
       "openLinkedFailed": "Failed to open linked item",
+      "fileNotFound": "File not found: {target}",
       "localOnly": "Note set to local only",
       "willSync": "Note will sync to cloud",
       "renameFailed": "Failed to rename note",
@@ -238,6 +239,14 @@
     "attachAria": "Attach file",
     "mentionAria": "Mention a person, page or date",
     "sendAria": "Send comment",
+    "formatToolbarAria": "Text formatting",
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "code": "Code"
+    },
     "openImageAria": "Open image {name}",
     "openAttachmentAria": "Open attachment {name}",
     "kind": {

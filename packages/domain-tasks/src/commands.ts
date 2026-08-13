@@ -184,17 +184,37 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   bulkArchiveTasks(ids: string[]): number
 }
 
+/**
+ * `previous` carries the pre-write value of every field named in
+ * `changedFields`, so a subscriber can render old → new without re-reading the
+ * row (by then it is gone). Optional because subscribers must tolerate a
+ * producer that cannot supply it; every call site in this file does.
+ *
+ * `previous.description` is present when the body changed. It stays in memory
+ * only: the one subscriber that reads it (the task activity log) needs the old
+ * length to compute a delta, and stores that delta rather than the body. The
+ * event already carries the new body on `task`, so carrying the old one costs
+ * nothing extra.
+ */
 export interface TaskUpdatedEvent {
   id: string
   task: Task
   changes: Partial<Task>
   changedFields: string[]
+  previous?: Partial<Task>
 }
 
 export interface TaskMovedEvent {
   id: string
   task: Task
   changedFields: string[]
+  previous?: Partial<Task>
+}
+
+export interface TaskCompletedEvent {
+  id: string
+  task: Task
+  previous?: Partial<Task>
 }
 
 export interface ProjectUpdatedEvent {
@@ -216,7 +236,7 @@ export interface TasksDomainPublisher {
   taskCreated(event: { task: Task }): void | Promise<void>
   taskUpdated(event: TaskUpdatedEvent): void | Promise<void>
   taskDeleted(event: { id: string; snapshot?: Task }): void | Promise<void>
-  taskCompleted(event: { id: string; task: Task }): void | Promise<void>
+  taskCompleted(event: TaskCompletedEvent): void | Promise<void>
   taskMoved(event: TaskMovedEvent): void | Promise<void>
   taskReordered?(event: { id: string; changedFields: string[] }): void | Promise<void>
   projectCreated(event: { project: ProjectWithStatuses | Project }): void | Promise<void>
@@ -231,6 +251,27 @@ export interface CreateTasksCommandsDeps {
   repository: TasksCommandRepository
   publisher: TasksDomainPublisher
   generateId: () => string
+}
+
+/**
+ * Drops keys whose value is `undefined`.
+ *
+ * Callers do not send only what the user touched. The tasks page builds one
+ * fixed key set on every edit — title, description, priority, projectId,
+ * statusId, dueDate, dueTime, isRepeating, repeatConfig, tags, linkedNoteIds —
+ * and leaves the untouched ones `undefined`, so the raw input says nothing
+ * about what changed. The write layer already ignores them (drizzle omits
+ * `undefined` from `.set()`), so treating them as changes only misreports: a
+ * status-only edit would log every other field as cleared in the activity feed
+ * and bump the sync field clock of each, letting this device win a merge on
+ * fields it never edited.
+ *
+ * `null` is untouched — it still means "clear this field".
+ */
+function definedUpdates(updates: Partial<Task>): Partial<Task> {
+  return Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined)
+  ) as Partial<Task>
 }
 
 function computeChangedFields(
@@ -261,6 +302,30 @@ function computeChangedFields(
   }
 
   return [...changedFields]
+}
+
+/**
+ * The pre-write value of each field `computeChangedFields` reported as changed.
+ *
+ * Not a second differ — it reads the field list the differ already produced and
+ * projects the old row through it, so the two can never disagree about what
+ * changed.
+ */
+function pickPrevious(
+  existingTask: Task | undefined,
+  changedFields: string[],
+  overrides: Partial<Task> = {}
+): Partial<Task> {
+  const previous: Partial<Task> = {}
+  if (existingTask) {
+    for (const field of changedFields) {
+      const key = field as keyof Task
+      if (key in existingTask) {
+        ;(previous as Record<string, unknown>)[field] = existingTask[key]
+      }
+    }
+  }
+  return { ...previous, ...overrides }
 }
 
 function mergeTaskRelations(
@@ -327,10 +392,10 @@ export function createTasksCommands({
       const { id, tags, linkedNoteIds, priority, ...rawUpdates } = input
       const existingTask = repository.getTask(id)
 
-      const updates: Partial<Task> = {
+      const updates: Partial<Task> = definedUpdates({
         ...rawUpdates,
         ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
-      }
+      })
 
       if (updates.projectId && existingTask && existingTask.projectId !== updates.projectId) {
         const currentStatus = existingTask.statusId
@@ -386,7 +451,13 @@ export function createTasksCommands({
         id,
         task: resolvedTask,
         changes,
-        changedFields
+        changedFields,
+        // Relations live in their own tables, so `existingTask.tags` is not the
+        // pre-write truth — the explicit reads above are.
+        previous: pickPrevious(existingTask, changedFields, {
+          ...(oldTags !== undefined ? { tags: oldTags } : {}),
+          ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {})
+        })
       })
 
       return { success: true, task: resolvedTask }
@@ -400,16 +471,24 @@ export function createTasksCommands({
     },
 
     async completeTask(input: TaskCompleteInput) {
+      // Pre-read: completeTask writes before it returns, so by the time we have
+      // `task` the old completedAt is already gone.
+      const before = repository.getTask(input.id)
       const task = repository.completeTask(input.id, input.completedAt)
       if (!task) {
         return { success: false, task: null, error: 'Task not found' }
       }
 
-      await publisher.taskCompleted({ id: input.id, task })
+      await publisher.taskCompleted({
+        id: input.id,
+        task,
+        previous: { completedAt: before?.completedAt ?? null }
+      })
       return { success: true, task }
     },
 
     async uncompleteTask(id: string) {
+      const before = repository.getTask(id)
       const task = repository.uncompleteTask(id)
       if (!task) {
         return { success: false, task: null, error: 'Task not found' }
@@ -419,12 +498,14 @@ export function createTasksCommands({
         id,
         task,
         changes: { completedAt: null },
-        changedFields: ['completedAt']
+        changedFields: ['completedAt'],
+        previous: { completedAt: before?.completedAt ?? null }
       })
       return { success: true, task }
     },
 
     async archiveTask(id: string) {
+      const before = repository.getTask(id)
       const task = repository.archiveTask(id)
       if (!task) {
         return { success: false, error: 'Task not found' }
@@ -434,12 +515,14 @@ export function createTasksCommands({
         id,
         task,
         changes: { archivedAt: task.archivedAt },
-        changedFields: ['archivedAt']
+        changedFields: ['archivedAt'],
+        previous: { archivedAt: before?.archivedAt ?? null }
       })
       return { success: true }
     },
 
     async unarchiveTask(id: string) {
+      const before = repository.getTask(id)
       const task = repository.unarchiveTask(id)
       if (!task) {
         return { success: false, error: 'Task not found' }
@@ -449,15 +532,17 @@ export function createTasksCommands({
         id,
         task,
         changes: { archivedAt: null },
-        changedFields: ['archivedAt']
+        changedFields: ['archivedAt'],
+        previous: { archivedAt: before?.archivedAt ?? null }
       })
       return { success: true }
     },
 
     async moveTask(input: TaskMoveInput) {
+      const before = repository.getTask(input.taskId)
       let targetStatusId = input.targetStatusId
       if (input.targetProjectId && !targetStatusId) {
-        const currentTask = repository.getTask(input.taskId)
+        const currentTask = before
         if (currentTask && currentTask.projectId !== input.targetProjectId) {
           const currentStatus = currentTask.statusId
             ? repository.getStatus(currentTask.statusId)
@@ -491,7 +576,8 @@ export function createTasksCommands({
       await publisher.taskMoved({
         id: input.taskId,
         task,
-        changedFields
+        changedFields,
+        previous: pickPrevious(before, changedFields)
       })
 
       return { success: true, task }
@@ -576,6 +662,7 @@ export function createTasksCommands({
     },
 
     async convertToSubtask(taskId: string, parentId: string) {
+      const before = repository.getTask(taskId)
       const task = repository.moveTask(taskId, { parentId })
       if (!task) {
         return { success: false, task: null, error: 'Task not found' }
@@ -585,13 +672,15 @@ export function createTasksCommands({
         id: taskId,
         task,
         changes: { parentId },
-        changedFields: ['parentId']
+        changedFields: ['parentId'],
+        previous: { parentId: before?.parentId ?? null }
       })
 
       return { success: true, task }
     },
 
     async convertToTask(taskId: string) {
+      const before = repository.getTask(taskId)
       const task = repository.moveTask(taskId, { parentId: null })
       if (!task) {
         return { success: false, task: null, error: 'Task not found' }
@@ -601,7 +690,8 @@ export function createTasksCommands({
         id: taskId,
         task,
         changes: { parentId: null },
-        changedFields: ['parentId']
+        changedFields: ['parentId'],
+        previous: { parentId: before?.parentId ?? null }
       })
 
       return { success: true, task }
@@ -849,11 +939,19 @@ export function createTasksCommands({
     },
 
     async bulkComplete(ids: string[]) {
+      // The bulk write is a single `UPDATE … WHERE id IN (…)`, so per-row
+      // before-state costs one extra read per id. Accepted: the loop below
+      // already reads each row once, and selections are user-sized.
+      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
       const count = repository.bulkCompleteTasks(ids)
       for (const id of ids) {
         const task = repository.getTask(id)
         if (task) {
-          await publisher.taskCompleted({ id, task })
+          await publisher.taskCompleted({
+            id,
+            task,
+            previous: { completedAt: before.get(id)?.completedAt ?? null }
+          })
         }
       }
       return { success: true, count }
@@ -869,6 +967,7 @@ export function createTasksCommands({
     },
 
     async bulkMove(ids: string[], projectId: string) {
+      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
       const count = repository.bulkMoveTasks(ids, projectId)
       for (const id of ids) {
         const task = repository.getTask(id)
@@ -877,7 +976,8 @@ export function createTasksCommands({
             id,
             task,
             changes: { projectId },
-            changedFields: ['projectId', 'position']
+            changedFields: ['projectId', 'position'],
+            previous: pickPrevious(before.get(id), ['projectId', 'position'])
           })
         }
       }
@@ -885,6 +985,7 @@ export function createTasksCommands({
     },
 
     async bulkArchive(ids: string[]) {
+      const before = new Map(ids.map((id) => [id, repository.getTask(id)]))
       const count = repository.bulkArchiveTasks(ids)
       for (const id of ids) {
         const task = repository.getTask(id)
@@ -893,7 +994,8 @@ export function createTasksCommands({
             id,
             task,
             changes: { archivedAt: task.archivedAt },
-            changedFields: ['archivedAt']
+            changedFields: ['archivedAt'],
+            previous: { archivedAt: before.get(id)?.archivedAt ?? null }
           })
         }
       }

@@ -100,6 +100,7 @@ const runtimeMocks = vi.hoisted(() => {
     taskSync: service('task'),
     inboxSync: service('inbox'),
     filterSync: service('filter'),
+    taskActivitySync: service('taskActivity'),
     bookmarkSync: service('bookmark'),
     reminderSync: service('reminder'),
     templateSync: service('template'),
@@ -252,6 +253,10 @@ vi.mock('./inbox-sync', () => ({
 vi.mock('./filter-sync', () => ({
   initFilterSyncService: runtimeMocks.filterSync.init,
   resetFilterSyncService: runtimeMocks.filterSync.reset
+}))
+vi.mock('./task-activity-sync', () => ({
+  initTaskActivitySyncService: runtimeMocks.taskActivitySync.init,
+  resetTaskActivitySyncService: runtimeMocks.taskActivitySync.reset
 }))
 vi.mock('./bookmark-sync', () => ({
   initBookmarkSyncService: runtimeMocks.bookmarkSync.init,

@@ -282,14 +282,23 @@ export const InboxSettingsSchema = z.object({
   // Optional daily reminder to process the inbox in one calm pass.
   reviewReminderEnabled: z.boolean(),
   // Local wall-clock time, 24h "HH:MM".
-  reviewReminderTime: z.string().regex(REVIEW_REMINDER_TIME_PATTERN)
+  reviewReminderTime: z.string().regex(REVIEW_REMINDER_TIME_PATTERN),
+  // How an image lands in the notes it is filed to (#807): as a note attachment
+  // that stays out of the sidebar, or as a file in the tree the note links to.
+  // Defaulted, not required — settings written by older builds must still parse.
+  imageFilingMode: z.enum(['embed', 'link']).default('embed'),
+  // Once the user answers the filing prompt with "remember", it stops being
+  // asked and `imageFilingMode` is used silently. Changeable here afterwards.
+  imageFilingModeRemembered: z.boolean().default(false)
 })
 
 export type InboxSettings = z.infer<typeof InboxSettingsSchema>
 
 export const INBOX_SETTINGS_DEFAULTS: InboxSettings = {
   reviewReminderEnabled: false,
-  reviewReminderTime: '18:00'
+  reviewReminderTime: '18:00',
+  imageFilingMode: 'embed',
+  imageFilingModeRemembered: false
 }
 
 // ============================================================================

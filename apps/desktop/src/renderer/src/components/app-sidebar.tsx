@@ -117,12 +117,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const handleFileDrop = useCallback(async (paths: string[]) => {
     try {
       const result = await notesService.importFiles(paths, targetFolderRef.current)
+      const tCommon = getI18n().getFixedT(null, 'common')
 
       if (result.imported > 0) {
-        toast.success(`Imported ${result.imported} file${result.imported > 1 ? 's' : ''}`)
+        toast.success(tCommon('toast.filesImported', { count: result.imported }))
       }
       if (result.failed > 0) {
-        toast.error(`Failed to import ${result.failed} file${result.failed > 1 ? 's' : ''}`, {
+        toast.error(tCommon('toast.filesImportFailed', { count: result.failed }), {
           description: result.errors?.join('\n')
         })
       }

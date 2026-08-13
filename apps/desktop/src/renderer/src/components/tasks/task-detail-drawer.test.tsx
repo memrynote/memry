@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { i18n as I18nInstance } from 'i18next'
 import type { ReactElement, ReactNode } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
@@ -72,8 +73,16 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
 let i18nEn: I18nInstance
 
 function renderWithI18n(ui: ReactElement) {
+  // The drawer's Activity section reads through react-query, so the tree needs
+  // a client. Retries off so a failed IPC stub surfaces immediately instead of
+  // being retried past the test's timeout.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } }
+  })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+    </QueryClientProvider>
   )
   return render(ui, { wrapper: Wrapper })
 }

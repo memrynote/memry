@@ -81,6 +81,26 @@ describe('update install marker', () => {
     )
   })
 
+  it('returns the failed attempt so the caller can surface it in-app', () => {
+    // #given an install handed off from 2026.806.2 to v2026-08-07.2
+    markUpdateInstallStarted('2026.806.2', 'v2026-08-07.2')
+
+    // #when the app boots as the SAME old build
+    const failed = detectFailedUpdateInstall('2026.806.2')
+
+    // #then the attempt comes back, not just a telemetry event
+    expect(failed).toMatchObject({ fromVersion: '2026.806.2', toVersion: 'v2026-08-07.2' })
+  })
+
+  it('returns null when the install applied', () => {
+    // #given an install handed off from 2026.806.2
+    markUpdateInstallStarted('2026.806.2', 'v2026-08-07.2')
+
+    // #when the app boots as the new build
+    // #then there is nothing to surface
+    expect(detectFailedUpdateInstall('2026.807.2')).toBeNull()
+  })
+
   it('consumes the marker so the same failure is never reported twice', () => {
     // #given a failed install already reported on the previous boot
     markUpdateInstallStarted('2026.806.2')

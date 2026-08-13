@@ -9,18 +9,13 @@ import {
   type ReactNode
 } from 'react'
 import { authService } from '@/services/auth-service'
-import { extractErrorMessage } from '@/lib/ipc-error'
+import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { deviceService, setupService } from '@/services/device-service'
 import { getI18n } from 'react-i18next'
 
 type AuthStatus =
-  | 'idle'
-  | 'checking'
-  | 'unauthenticated'
-  | 'authenticating'
-  | 'authenticated'
-  | 'error'
+  'idle' | 'checking' | 'unauthenticated' | 'authenticating' | 'authenticated' | 'error'
 
 export interface WizardVaultSummary {
   vaultUuid: string
@@ -571,19 +566,23 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
       if (!result.success) {
-        throw new Error(
+        throw new IpcFailureError(
           extractErrorMessage(
             result.error,
             getI18n().getFixedT(null, 'settings')('setup.recovery.failed')
-          )
+          ),
+          result.errorCode
         )
       }
       dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
       return { deviceId: result.deviceId }
     } catch (err) {
       trackRendererError('auth_recovery_link_failed', err)
-      throw new Error(
-        extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('setup.recovery.failed'))
+      // Re-wrapping here would otherwise drop the handler's code and leave
+      // callers with nothing but localized display text to inspect (#1202).
+      throw new IpcFailureError(
+        extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('setup.recovery.failed')),
+        getIpcErrorCode(err)
       )
     }
   }, [])

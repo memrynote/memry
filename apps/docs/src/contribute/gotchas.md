@@ -15,6 +15,29 @@ Two fix paths depending on the target:
 
 > Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app never opens the test vault, and E2E waits for workspace surfaces time out.
 
+## Electron binary re-downloads on every worktree
+
+`bash apps/desktop/scripts/ensure-native.sh electron` (and the E2E fixtures, when
+`path.txt` is missing) fetch the ~115 MB Electron release zip from GitHub releases.
+Every fresh worktree pays that again, and the download is the single most common
+reason the install fails outright: `curl: (56) Connection died, tried 5 times before
+giving up`.
+
+Set `MEMRY_ELECTRON_CACHE_DIR` to reuse one copy across worktrees:
+
+```bash
+export MEMRY_ELECTRON_CACHE_DIR="$HOME/.cache/memry-electron"
+```
+
+The installer stores the verified zip there and, on later runs, restores it instead of
+downloading. Restored artifacts are not trusted: each one is hashed against the
+`checksums.json` shipped inside the `electron` npm package before extraction, and a
+mismatch deletes the entry and falls back to a normal download. Leaving the variable
+unset keeps the previous always-download behaviour.
+
+Desktop CI sets this automatically via `.github/actions/cache-electron-binary`, keyed
+by the locked Electron version plus the runner's OS and arch.
+
 ## Electron major upgrade — native ABI + V8 API removals
 
 Bumping the `electron` major (e.g. 39 → 43) is more than a version change:

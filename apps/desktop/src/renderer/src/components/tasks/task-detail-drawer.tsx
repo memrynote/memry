@@ -19,6 +19,7 @@ import { TaskReminderButton } from '@/components/tasks/task-reminder-button'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
+import { TaskActivitySection } from '@/components/tasks/task-activity-section'
 import type { FileType } from '@memry/shared/file-types'
 
 const TASK_DETAIL_WIDTH_KEY = 'task-detail-width'
@@ -684,6 +685,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 </span>
               )}
             </div>
+
+            {/* ── Activity ── */}
+            <TaskActivitySection
+              taskId={task.id}
+              taskTitle={task.title}
+              language={i18n.language}
+              label={<SectionLabel>{t('drawer.activity')}</SectionLabel>}
+            />
 
             {/* ── Footer ── */}
             <div className="flex flex-col py-3 px-5 gap-3 mt-auto">

@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InboxDetailPanel } from './inbox-detail-panel'
+import type { InboxItemListItem } from '@/types'
 
 const invalidateQueries = vi.fn()
 const retryMutate = vi.fn()
@@ -111,7 +112,7 @@ vi.mock('./convert-actions', () => ({
 }))
 
 vi.mock('./type-selector', () => ({
-  TypeSelector: () => null
+  TypeSelector: () => <div data-testid="type-selector" />
 }))
 
 vi.mock('./filing-section', async () => {
@@ -163,14 +164,17 @@ vi.mock('./filing-section', async () => {
   }
 })
 
-const baseItem = {
+const baseItem: InboxItemListItem = {
   id: 'inbox-1',
-  type: 'note' as const,
+  type: 'note',
   title: 'Inbox note',
   content: 'Body',
   createdAt: new Date('2026-05-10T10:00:00Z'),
+  thumbnailUrl: null,
   sourceUrl: null,
-  tags: []
+  tags: [],
+  isStale: false,
+  processingStatus: 'complete'
 }
 
 function renderPanel(overrides: Partial<React.ComponentProps<typeof InboxDetailPanel>> = {}) {
@@ -204,8 +208,29 @@ describe('InboxDetailPanel', () => {
       inbox: {
         getSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
         trackSuggestion: vi.fn().mockResolvedValue(undefined)
-      }
+      },
+      // The panel reads the image filing preference (#807); without these the
+      // settings hook throws before anything renders.
+      settings: {
+        getInboxSettings: vi.fn().mockResolvedValue({
+          reviewReminderEnabled: false,
+          reviewReminderTime: '18:00',
+          imageFilingMode: 'embed',
+          imageFilingModeRemembered: false
+        }),
+        setInboxSettings: vi.fn().mockResolvedValue({ success: true })
+      },
+      onSettingsChanged: vi.fn(() => () => {})
     }
+  })
+
+  it('shows the type selector for text items but hides it for note-only ones', () => {
+    renderPanel()
+    expect(screen.getByTestId('type-selector')).toBeInTheDocument()
+
+    cleanup()
+    renderPanel({ item: { ...baseItem, id: 'inbox-image', type: 'image' as const } })
+    expect(screen.queryByTestId('type-selector')).not.toBeInTheDocument()
   })
 
   it('renders loading and closed states without item content', () => {
@@ -233,7 +258,13 @@ describe('InboxDetailPanel', () => {
       suggestedTags: ['suggested'],
       actualTags: ['tag-a']
     })
-    expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects', ['tag-a'], ['note-link'])
+    expect(props.onFile).toHaveBeenCalledWith(
+      'inbox-1',
+      'Projects',
+      ['tag-a'],
+      [{ kind: 'note', noteId: 'note-link' }],
+      undefined
+    )
     expect(props.onClose).toHaveBeenCalled()
   })
 
@@ -244,7 +275,7 @@ describe('InboxDetailPanel', () => {
     fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
 
     await waitFor(() =>
-      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [])
+      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [], undefined)
     )
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -294,6 +325,57 @@ describe('InboxDetailPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'retry transcription' }))
     expect(retryMutate).toHaveBeenCalledWith('voice-1')
+  })
+
+  // #808: image and PDF attachments used to render no title at all, so a capture
+  // named after the OS filename could never be corrected.
+  it.each(['image', 'pdf'] as const)('renames a %s attachment from the panel', async (type) => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: `${type}-1`, type, title: 'scan_final_v3' }
+    })
+
+    const titleInput = screen.getByDisplayValue('scan_final_v3')
+    await user.clear(titleInput)
+    await user.type(titleInput, 'Quarterly report{Enter}')
+
+    expect(updateMutate).toHaveBeenCalledWith({ id: `${type}-1`, title: 'Quarterly report' })
+  })
+
+  it('reverts to the previous title when an attachment name is cleared', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: 'image-2', type: 'image' as const, title: 'Whiteboard' }
+    })
+
+    const titleInput = screen.getByDisplayValue('Whiteboard')
+    await user.clear(titleInput)
+    await user.tab()
+
+    expect(updateMutate).not.toHaveBeenCalled()
+    expect(titleInput).toHaveValue('Whiteboard')
+  })
+
+  it('leaves an unchanged attachment title alone', async () => {
+    const user = userEvent.setup()
+    renderPanel({
+      item: { ...baseItem, id: 'pdf-2', type: 'pdf' as const, title: 'Invoice' }
+    })
+
+    await user.click(screen.getByDisplayValue('Invoice'))
+    await user.tab()
+
+    expect(updateMutate).not.toHaveBeenCalled()
+  })
+
+  it('keeps an attachment title read-only in the archived panel', () => {
+    renderPanel({
+      readOnly: true,
+      item: { ...baseItem, id: 'image-3', type: 'image' as const, title: 'Archived shot' }
+    })
+
+    expect(screen.queryByDisplayValue('Archived shot')).not.toBeInTheDocument()
+    expect(screen.getByText('Archived shot')).toBeInTheDocument()
   })
 
   it('renders read-only restore and delete actions without filing controls', async () => {
