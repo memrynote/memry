@@ -654,3 +654,24 @@ describe('inline underline persistence through the real markdown pipeline', () =
     expect(md).not.toContain('MEMRYICC')
   })
 })
+
+describe('blocknote-converter export path never mutates the live doc', () => {
+  it('never mutates the live doc, even for a node type the schema does not know', async () => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    // A block containing an inline node the server schema cannot build.
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const unknown = new Y.XmlElement('wikiLink')
+    unknown.setAttribute('target', 'Roadmap')
+    para.insert(0, [unknown])
+    block.insert(0, [para])
+    fragment.insert(0, [block])
+
+    const before = Y.encodeStateAsUpdate(doc)
+    await yDocToMarkdown(doc)
+
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+})

@@ -9,7 +9,7 @@ import {
 } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import { randomUUID } from 'node:crypto'
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
@@ -101,9 +101,14 @@ export async function yDocToMarkdown(
   fragmentName = CRDT_FRAGMENT_NAME
 ): Promise<string | null> {
   try {
+    // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
+    // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
+    // the live doc, turns a serialization gap into replicated data loss. Read
+    // from a detached copy so this path can only ever read.
+    const snapshot = new Y.Doc()
+    Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     const editor = getEditor()
-    const fragment = doc.getXmlFragment(fragmentName)
-    const blocks = editor.yXmlFragmentToBlocks(fragment)
+    const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
     if (blocks.length === 0) return ''
     return await blocksToMarkdownPreserving(editor, blocks as Block[])
   } catch (err) {
