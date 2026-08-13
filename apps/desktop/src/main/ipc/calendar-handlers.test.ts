@@ -127,6 +127,14 @@ import {
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
 import { registerCalendarHandlers, unregisterCalendarHandlers } from './calendar-handlers'
+import { GOOGLE_CAPABILITIES } from '../calendar/providers/google/provider-definition'
+
+/**
+ * Every provider status now carries the registry's capability record. Asserted
+ * against the definition itself rather than a copied literal, so a capability
+ * flip has to be a deliberate edit in one place.
+ */
+const GOOGLE_PROVIDER_CAPABILITIES = GOOGLE_CAPABILITIES
 
 describe('calendar-handlers', () => {
   let dbResult: TestDatabaseResult
@@ -499,6 +507,7 @@ describe('calendar-handlers', () => {
     })
     expect(status).toEqual({
       provider: 'google',
+      capabilities: GOOGLE_PROVIDER_CAPABILITIES,
       connected: true,
       hasLocalAuth: false,
       account: expect.objectContaining({
@@ -543,6 +552,7 @@ describe('calendar-handlers', () => {
       success: true,
       status: {
         provider: 'google',
+        capabilities: GOOGLE_PROVIDER_CAPABILITIES,
         connected: true,
         hasLocalAuth: true,
         account: {
@@ -586,6 +596,7 @@ describe('calendar-handlers', () => {
       success: true,
       status: {
         provider: 'google',
+        capabilities: GOOGLE_PROVIDER_CAPABILITIES,
         connected: false,
         hasLocalAuth: false,
         account: null,
@@ -1183,6 +1194,7 @@ describe('calendar-handlers', () => {
       success: false,
       status: {
         provider: 'google',
+        capabilities: GOOGLE_PROVIDER_CAPABILITIES,
         connected: false,
         hasLocalAuth: false,
         account: null,
@@ -1238,6 +1250,7 @@ describe('calendar-handlers', () => {
       success: true,
       status: {
         provider: 'google',
+        capabilities: GOOGLE_PROVIDER_CAPABILITIES,
         connected: true,
         hasLocalAuth: true,
         account: {
@@ -1317,5 +1330,111 @@ describe('calendar-handlers', () => {
 
     // #then — an empty list, not an error
     expect(found.events).toEqual([])
+  })
+
+  describe('provider registry (#1392)', () => {
+    it('reports the providers this build can connect, with their capabilities', async () => {
+      registerCalendarHandlers()
+
+      const listed = await invokeHandler(CalendarChannels.invoke.LIST_PROVIDERS)
+
+      expect(listed).toEqual({
+        providers: [{ id: 'google', capabilities: GOOGLE_PROVIDER_CAPABILITIES }]
+      })
+    })
+
+    it.each([
+      CalendarChannels.invoke.CONNECT_PROVIDER,
+      CalendarChannels.invoke.DISCONNECT_PROVIDER,
+      CalendarChannels.invoke.REFRESH_PROVIDER
+    ])('rejects an unregistered provider on %s with the historical message', async (channel) => {
+      registerCalendarHandlers()
+
+      const result = await invokeHandler(channel, { provider: 'caldav' })
+
+      // Byte-identical to the string the four `!== 'google'` guards returned.
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Unsupported calendar provider: caldav')
+      // …and it reports the unknown provider's status rather than throwing,
+      // with null capabilities because this build does not know it.
+      expect(result.status).toMatchObject({ provider: 'caldav', capabilities: null })
+    })
+
+    it('never runs a provider flow for an unregistered provider', async () => {
+      registerCalendarHandlers()
+
+      await invokeHandler(CalendarChannels.invoke.CONNECT_PROVIDER, { provider: 'ics' })
+
+      expect(mockConnectGoogleCalendar).not.toHaveBeenCalled()
+      expect(mockStartGoogleCalendarSyncRunner).not.toHaveBeenCalled()
+    })
+
+    describe('legacy channels are permanent aliases', () => {
+      // An older renderer talking to a newer main still sends these. Deleting
+      // one breaks the app for the length of a partial update, so they are a
+      // compatibility surface, not dead code.
+      it('calendar:list-google-calendars resolves to the google provider', async () => {
+        registerCalendarHandlers()
+        mockResolveDefaultGoogleAccountId.mockReturnValue('user@example.com')
+
+        const legacy = await invokeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS, {})
+        const generic = await invokeHandler(CalendarChannels.invoke.LIST_PROVIDER_CALENDARS, {
+          provider: 'google'
+        })
+
+        expect(legacy).toEqual(generic)
+        expect(mockListGoogleCalendars).toHaveBeenCalledTimes(2)
+      })
+
+      it('calendar:set-default-google-calendar resolves to the google provider', async () => {
+        registerCalendarHandlers()
+
+        const legacy = await invokeHandler(CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR, {
+          calendarId: 'cal-1',
+          markOnboardingComplete: true
+        })
+
+        expect(legacy).toMatchObject({ success: true })
+        expect(mockSetDefaultGoogleCalendar).toHaveBeenCalledWith(expect.anything(), {
+          calendarId: 'cal-1',
+          markOnboardingComplete: true
+        })
+      })
+
+      it('calendar:retry-google-source-sync and calendar:retry-source-sync share one handler', async () => {
+        registerCalendarHandlers()
+        db.run(sql`
+          INSERT INTO calendar_sources (
+            id, provider, kind, account_id, remote_id, title, timezone,
+            is_selected, sync_status, created_at, modified_at
+          ) VALUES (
+            ${'google-calendar-1'}, ${'google'}, ${'calendar'},
+            ${'user@example.com'}, ${'primary'}, ${'Primary'}, ${'UTC'},
+            ${1}, ${'ok'}, ${'2026-04-12T08:00:00.000Z'}, ${'2026-04-12T08:00:00.000Z'}
+          )
+        `)
+
+        const legacy = await invokeHandler(
+          CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC,
+          { sourceId: 'google-calendar-1' }
+        )
+        const generic = await invokeHandler(CalendarChannels.invoke.RETRY_SOURCE_SYNC, {
+          sourceId: 'google-calendar-1'
+        })
+
+        expect(legacy.success).toBe(true)
+        expect(generic.success).toBe(true)
+        expect(mockSyncGoogleCalendarSource).toHaveBeenCalledTimes(2)
+      })
+
+      it('unregisters every channel it registered, legacy included', () => {
+        registerCalendarHandlers()
+        const registered = handleCalls.map(([channel]) => channel as string)
+
+        unregisterCalendarHandlers()
+
+        expect(removeHandlerCalls).toEqual(expect.arrayContaining(registered))
+      })
+    })
   })
 })

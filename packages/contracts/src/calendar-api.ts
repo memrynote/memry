@@ -71,6 +71,55 @@ export const SetDefaultGoogleCalendarSchema = z.object({
   markOnboardingComplete: z.boolean().default(true)
 })
 
+// ============================================================================
+// Calendar provider capability model
+// ============================================================================
+//
+// Mirrors `main/calendar/provider/adapter.ts`. It lives in contracts because
+// the renderer needs it: a provider that cannot write must not be offered a
+// "push events to provider" toggle, and one that cannot push must not claim
+// real-time sync. `provider` stays a plain string everywhere — the set of
+// providers is open, and old clients must tolerate ids they have never heard of.
+
+export const CalendarProviderIncrementalModeSchema = z.enum([
+  'sync-token',
+  'delta-link',
+  'sync-collection',
+  'ctag-etag',
+  'conditional-get',
+  'full'
+])
+
+export const CalendarProviderAuthFlowSchema = z.enum(['oauth2', 'basic', 'url', 'none'])
+
+export const CalendarProviderCapabilitiesSchema = z.object({
+  supportsWrite: z.boolean(),
+  supportsCreateCalendar: z.boolean(),
+  supportsPush: z.boolean(),
+  supportsMultiAccount: z.boolean(),
+  incrementalMode: CalendarProviderIncrementalModeSchema,
+  authFlow: CalendarProviderAuthFlowSchema
+})
+
+export type CalendarProviderIncrementalMode = z.infer<typeof CalendarProviderIncrementalModeSchema>
+export type CalendarProviderAuthFlow = z.infer<typeof CalendarProviderAuthFlowSchema>
+export type CalendarProviderCapabilities = z.infer<typeof CalendarProviderCapabilitiesSchema>
+
+/** The provider-neutral form of `ListGoogleCalendarsSchema`. */
+export const ListProviderCalendarsSchema = z
+  .object({
+    provider: z.string().min(1).default('google')
+  })
+  .optional()
+  .default({ provider: 'google' })
+
+/** The provider-neutral form of `SetDefaultGoogleCalendarSchema`. */
+export const SetDefaultProviderCalendarSchema = z.object({
+  provider: z.string().min(1).default('google'),
+  calendarId: z.string().nullable(),
+  markOnboardingComplete: z.boolean().default(true)
+})
+
 export const ListCalendarEventsSchema = z.object({
   includeArchived: z.boolean().default(false)
 })
@@ -135,6 +184,8 @@ export type CalendarProviderRequest = z.infer<typeof CalendarProviderRequestSche
 export type PromoteExternalEventInput = z.infer<typeof PromoteExternalEventSchema>
 export type ListGoogleCalendarsInput = z.infer<typeof ListGoogleCalendarsSchema>
 export type SetDefaultGoogleCalendarInput = z.infer<typeof SetDefaultGoogleCalendarSchema>
+export type ListProviderCalendarsInput = z.infer<typeof ListProviderCalendarsSchema>
+export type SetDefaultProviderCalendarInput = z.infer<typeof SetDefaultProviderCalendarSchema>
 
 export interface CalendarEventAttendeeRecord {
   email: string
@@ -279,10 +330,7 @@ export interface CalendarProjectionItem {
 }
 
 export type CalendarProviderAccountConnectionStatus =
-  | 'connected'
-  | 'disconnected'
-  | 'reconnect_required'
-  | 'error'
+  'connected' | 'disconnected' | 'reconnect_required' | 'error'
 
 export interface CalendarProviderAccountStatus {
   accountId: string
@@ -294,6 +342,12 @@ export interface CalendarProviderAccountStatus {
 
 export interface CalendarProviderStatus {
   provider: string
+  /**
+   * What this provider can do, so the renderer can hide affordances it does
+   * not have. `null` when the provider id is not registered in this build —
+   * which is exactly what an older client sees for a provider added later.
+   */
+  capabilities: CalendarProviderCapabilities | null
   connected: boolean
   hasLocalAuth: boolean
   account: Pick<CalendarSourceRecord, 'id' | 'title'> | null
@@ -390,4 +444,20 @@ export interface PromoteExternalEventResponse {
 export interface SetDefaultGoogleCalendarResponse {
   success: boolean
   error?: string
+}
+
+// Provider-neutral aliases for the shapes above. Same objects on the wire —
+// only the names stop saying "Google".
+export type ProviderCalendarDescriptorRecord = GoogleCalendarDescriptorRecord
+export type ListProviderCalendarsResponse = ListGoogleCalendarsResponse
+export type SetDefaultProviderCalendarResponse = SetDefaultGoogleCalendarResponse
+
+/** One entry of `calendar:list-providers` — what main is willing to connect. */
+export interface CalendarProviderDescriptor {
+  id: string
+  capabilities: CalendarProviderCapabilities
+}
+
+export interface ListCalendarProvidersResponse {
+  providers: CalendarProviderDescriptor[]
 }

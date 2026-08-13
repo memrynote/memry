@@ -447,9 +447,17 @@ export const SettingsChannels = {
     GET_BACKUP_SETTINGS: 'settings:getBackupSettings',
     /** Update backup configuration */
     SET_BACKUP_SETTINGS: 'settings:setBackupSettings',
-    /** M2: get Google Calendar defaults (target calendar, onboarding flag, promote-dialog flag) */
+    /** Get one calendar provider's defaults (target calendar, onboarding flag, promote-dialog flag) */
+    GET_CALENDAR_PROVIDER_SETTINGS: 'settings:getCalendarProviderSettings',
+    /** Update one calendar provider's defaults (partial merge) */
+    SET_CALENDAR_PROVIDER_SETTINGS: 'settings:setCalendarProviderSettings',
+    /**
+     * M2: get Google Calendar defaults. Permanent compatibility alias for
+     * GET_CALENDAR_PROVIDER_SETTINGS with `provider` pinned to 'google' — an
+     * older renderer against a newer main still calls it. Do not delete.
+     */
     GET_CALENDAR_GOOGLE_SETTINGS: 'settings:getCalendarGoogleSettings',
-    /** M2: update Google Calendar defaults (partial merge) */
+    /** M2: update Google Calendar defaults (partial merge). Permanent alias, see above. */
     SET_CALENDAR_GOOGLE_SETTINGS: 'settings:setCalendarGoogleSettings',
     /** Get calendar preferences (day panel dot source + click behavior) */
     GET_CALENDAR_SETTINGS: 'settings:getCalendarSettings',
@@ -676,6 +684,22 @@ export const CalendarChannels = {
     REFRESH_PROVIDER: 'calendar:refresh-provider',
     /** M2: copy an external Google event into an editable Memry event */
     PROMOTE_EXTERNAL_EVENT: 'calendar:promote-external-event',
+    /** Providers this build can connect, with their capabilities (#1392) */
+    LIST_PROVIDERS: 'calendar:list-providers',
+    /** List one provider's calendars for target/default selection */
+    LIST_PROVIDER_CALENDARS: 'calendar:list-provider-calendars',
+    /** Persist the onboarding choice for a provider's default target calendar */
+    SET_DEFAULT_PROVIDER_CALENDAR: 'calendar:set-default-provider-calendar',
+    /** Re-run sync for a single calendar source (Retry button on sync-health UI) */
+    RETRY_SOURCE_SYNC: 'calendar:retry-source-sync',
+
+    // ------------------------------------------------------------------
+    // Permanent compatibility aliases. NOT dead code — during a partial
+    // update an older renderer talks to a newer main, and removing a channel
+    // breaks the app for the length of that window. These resolve to the same
+    // handlers as their provider-neutral twins above, with `provider` pinned
+    // to 'google'. Do not delete them.
+    // ------------------------------------------------------------------
     /** M2: list the user's Google calendars for target/default selection */
     LIST_GOOGLE_CALENDARS: 'calendar:list-google-calendars',
     /** M2: persist the onboarding choice for default target Google calendar */
