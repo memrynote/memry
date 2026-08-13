@@ -1,13 +1,5 @@
 export type InboxItemType =
-  | 'link'
-  | 'note'
-  | 'image'
-  | 'voice'
-  | 'video'
-  | 'clip'
-  | 'pdf'
-  | 'social'
-  | 'reminder'
+  'link' | 'note' | 'image' | 'voice' | 'video' | 'clip' | 'pdf' | 'social' | 'reminder'
 
 export type InboxProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
@@ -170,12 +162,27 @@ export interface InboxItemListItem {
   metadata?: ReminderMetadata
 }
 
+/**
+ * One note an item is being filed into. Ordered, because the first entry owns
+ * any attachment the filing writes (#807) — every later target references the
+ * same file rather than getting its own copy.
+ *
+ * A `new` target has no id yet: the note is created at filing time, not when
+ * the user typed its name into the picker.
+ */
+export type FilingTarget = { kind: 'note'; noteId: string } | { kind: 'new'; title: string }
+
 export interface FilingDestination {
   type: 'folder' | 'note' | 'new-note'
   path?: string
   noteId?: string
   noteIds?: string[]
   noteTitle?: string
+  /**
+   * Ordered targets, superseding `noteIds` when present. `noteIds` stays for
+   * callers that predate this field (older renderer builds, the MCP tools).
+   */
+  targets?: FilingTarget[]
 }
 
 export interface SuggestedNote {
@@ -207,11 +214,21 @@ export interface InboxCaptureResponse {
   existingItem?: InboxDuplicateMatch
 }
 
+/** How an image is written into the notes it is filed to (#807). */
+export type ImageFilingMode = 'embed' | 'link'
+
 export interface InboxFileResponse {
   success: boolean
   filedTo: string | null
   noteId?: string
   error?: string
+  /**
+   * Set when `embed` was asked for but the image could not become an
+   * attachment (too large, or an extension the attachment store rejects) and
+   * filing continued in `link` mode. The image is filed either way — the
+   * renderer only uses this to explain why it is not inline.
+   */
+  fellBackToLink?: boolean
 }
 
 export interface InboxBulkResponse {
@@ -298,6 +315,12 @@ export interface FileItemInput {
   itemId: string
   destination: FilingDestination
   tags?: string[]
+  /**
+   * How an image lands in the target notes (#807): `embed` saves it as a note
+   * attachment (hidden from the sidebar), `link` moves the raw file into the
+   * chosen folder (visible) and references it. Ignored for non-image types.
+   */
+  imageMode?: ImageFilingMode
 }
 
 export interface SnoozeInput {

@@ -6,6 +6,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { ReviewTimeInput } from '@/components/settings/review-time-input'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
+import type { ImageFilingMode } from '@memry/domain-inbox'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -49,6 +50,25 @@ export function InboxSettings() {
     async (value: string) => {
       const ok = await updateSettings({ reviewReminderTime: value })
       if (!ok) toast.error(t('inbox.reviewReminder.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleImageModeChange = useCallback(
+    async (mode: ImageFilingMode) => {
+      const ok = await updateSettings({ imageFilingMode: mode })
+      if (!ok) toast.error(t('inbox.imageFiling.error'))
+    },
+    [t, updateSettings]
+  )
+
+  // The switch reads "ask me", so it is the inverse of the remembered flag —
+  // turning it back on is how a user who clicked "don't ask again" gets the
+  // filing prompt back.
+  const handleAskAgainChange = useCallback(
+    async (askAgain: boolean) => {
+      const ok = await updateSettings({ imageFilingModeRemembered: !askAgain })
+      if (!ok) toast.error(t('inbox.imageFiling.error'))
     },
     [t, updateSettings]
   )
@@ -105,6 +125,40 @@ export function InboxSettings() {
           >
             {t('inbox.reviewReminder.test.button')}
           </Button>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('inbox.imageFiling.group')}>
+        <SettingRow
+          label={t('inbox.imageFiling.mode.label')}
+          description={t('inbox.imageFiling.mode.description')}
+        >
+          <div className="flex items-center gap-1.5">
+            {(['embed', 'link'] as const).map((mode) => (
+              <Button
+                key={mode}
+                data-testid={`inbox-image-filing-${mode}`}
+                variant={settings.imageFilingMode === mode ? 'secondary' : 'outline'}
+                size="sm"
+                aria-pressed={settings.imageFilingMode === mode}
+                onClick={() => void handleImageModeChange(mode)}
+              >
+                {t(`inbox.imageFiling.mode.${mode}`)}
+              </Button>
+            ))}
+          </div>
+        </SettingRow>
+
+        <SettingRow
+          label={t('inbox.imageFiling.ask.label')}
+          description={t('inbox.imageFiling.ask.description')}
+        >
+          <Switch
+            data-testid="inbox-image-filing-ask"
+            checked={!settings.imageFilingModeRemembered}
+            onCheckedChange={(c) => void handleAskAgainChange(c)}
+            className={ACCENT_SWITCH}
+          />
         </SettingRow>
       </SettingsGroup>
     </div>

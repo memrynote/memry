@@ -37,6 +37,7 @@ import {
 import { useUndoableAction } from '@/hooks/use-undoable-action'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { useInboxKeyboard } from '@/hooks/use-inbox-keyboard'
+import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { toast } from 'sonner'
 
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml']
@@ -250,7 +251,13 @@ export function InboxListView({
   }, [])
 
   const handleFilingComplete = useCallback(
-    (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]): void => {
+    (
+      itemId: string,
+      folderId: string,
+      tags: string[],
+      targets: FilingTarget[],
+      imageMode?: ImageFilingMode
+    ): void => {
       const filedItem = items.find((item) => item.id === itemId)
       if (!filedItem) return
 
@@ -275,26 +282,34 @@ export function InboxListView({
 
           try {
             const destination =
-              linkedNoteIds.length > 0
-                ? { type: 'note' as const, noteIds: linkedNoteIds, path: folderId }
+              targets.length > 0
+                ? { type: 'note' as const, targets, path: folderId }
                 : { type: 'folder' as const, path: folderId }
 
-            const result = await fileItemMutation.mutateAsync({ itemId, destination, tags })
+            const result = await fileItemMutation.mutateAsync({
+              itemId,
+              destination,
+              tags,
+              ...(imageMode ? { imageMode } : {})
+            })
 
             if (result.success) {
               void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-              if (linkedNoteIds.length > 0) {
-                linkedNoteIds.forEach((noteId) => {
-                  void queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
-                })
+              if (targets.length > 0) {
+                void queryClient.invalidateQueries({ queryKey: notesKeys.all })
               }
               toast.success(
-                linkedNoteIds.length > 1
-                  ? t('toast.linkedToNotes', { count: linkedNoteIds.length })
-                  : linkedNoteIds.length === 1
+                targets.length > 1
+                  ? t('toast.linkedToNotes', { count: targets.length })
+                  : targets.length === 1
                     ? t('toast.linkedToNote')
                     : t('toast.filedTo', { folder: folderId || t('detail.notesRoot') })
               )
+              // The image is filed either way — this only explains why it is not
+              // inline, so it rides after the success toast rather than replacing it.
+              if (result.fellBackToLink) {
+                toast.warning(t('toast.embedFellBackToLink'))
+              }
             } else {
               throw new Error(result.error || t('toast.failedFile'))
             }

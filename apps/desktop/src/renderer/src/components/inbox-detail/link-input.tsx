@@ -5,7 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link2, FileText, X, Loader2, Folder } from '@/lib/icons'
+import { Link2, FileText, X, Loader2, Folder, Plus } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
@@ -47,7 +47,7 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
         <p className="text-[13px] leading-4 font-medium truncate text-foreground">{note.title}</p>
         {note.type === 'note' && (
           <p className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">
-            {t('type.note')}
+            {note.isPending ? t('detail.pendingNote') : t('type.note')}
           </p>
         )}
       </div>
@@ -164,11 +164,26 @@ export const LinkInput = ({
   const availableResults = searchResults.filter(
     (note) => !linkedNotes.find((n) => n.id === note.id)
   )
-  const isDropdownOpen = searchQuery.trim().length >= 2 && !isDropdownDismissed
+  const trimmedQuery = searchQuery.trim()
+  // Offer creation unless the typed title is already on the board — as a search
+  // hit or as a note already staged — so Enter never silently makes a duplicate.
+  const canCreateNote =
+    trimmedQuery.length >= 2 &&
+    !searchResults.some((note) => note.title.toLowerCase() === trimmedQuery.toLowerCase()) &&
+    !linkedNotes.some((note) => note.title.toLowerCase() === trimmedQuery.toLowerCase())
+
+  /**
+   * The keyboard-navigable list. Create sits *last*, so Enter still links the
+   * top match when the query found something — with an empty result list it is
+   * index 0 anyway, which is the case where creating is what you meant.
+   */
+  const options: Array<{ kind: 'create' } | { kind: 'note'; note: LinkedNote }> = [
+    ...availableResults.map((note) => ({ kind: 'note' as const, note })),
+    ...(canCreateNote ? [{ kind: 'create' as const }] : [])
+  ]
+  const isDropdownOpen = trimmedQuery.length >= 2 && !isDropdownDismissed
   const highlightedIndex =
-    availableResults.length === 0
-      ? -1
-      : Math.min(highlightedIndexState, availableResults.length - 1)
+    options.length === 0 ? -1 : Math.min(highlightedIndexState, options.length - 1)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -195,6 +210,24 @@ export const LinkInput = ({
     [linkedNotes, onLinkedNotesChange]
   )
 
+  /**
+   * Stage a note that does not exist yet. Nothing is written here — a name the
+   * user types and then removes must not leave an empty note in the vault, so
+   * creation waits for the filing itself.
+   */
+  const handleCreateNote = useCallback((): void => {
+    const title = searchQuery.trim()
+    if (!title) return
+    onLinkedNotesChange([
+      ...linkedNotes,
+      { id: `pending:${title}`, title, type: 'note', isPending: true }
+    ])
+    setSearchQuery('')
+    setIsDropdownDismissed(false)
+    setHighlightedIndex(0)
+    inputRef.current?.focus()
+  }, [searchQuery, linkedNotes, onLinkedNotesChange])
+
   const handleRemoveNote = useCallback(
     (noteId: string): void => {
       onLinkedNotesChange(linkedNotes.filter((n) => n.id !== noteId))
@@ -214,8 +247,18 @@ export const LinkInput = ({
     }
   }
 
+  const activateOption = (index: number): void => {
+    const option = options[index]
+    if (!option) return
+    if (option.kind === 'create') {
+      handleCreateNote()
+      return
+    }
+    handleSelectNote(option.note)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (!isDropdownOpen || availableResults.length === 0) {
+    if (!isDropdownOpen || options.length === 0) {
       if (e.key === 'Escape') {
         setSearchQuery('')
         inputRef.current?.blur()
@@ -226,17 +269,15 @@ export const LinkInput = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault()
-        setHighlightedIndex((prev) => (prev < availableResults.length - 1 ? prev + 1 : 0))
+        setHighlightedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0))
         break
       case 'ArrowUp':
         e.preventDefault()
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : availableResults.length - 1))
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1))
         break
       case 'Enter':
         e.preventDefault()
-        if (highlightedIndex >= 0 && highlightedIndex < availableResults.length) {
-          handleSelectNote(availableResults[highlightedIndex])
-        }
+        activateOption(highlightedIndex)
         break
       case 'Escape':
         e.preventDefault()
@@ -245,9 +286,9 @@ export const LinkInput = ({
         setHighlightedIndex(0)
         break
       case 'Tab':
-        if (highlightedIndex >= 0 && highlightedIndex < availableResults.length) {
+        if (highlightedIndex >= 0 && highlightedIndex < options.length) {
           e.preventDefault()
-          handleSelectNote(availableResults[highlightedIndex])
+          activateOption(highlightedIndex)
         }
         break
     }
@@ -263,7 +304,7 @@ export const LinkInput = ({
             ref={inputRef}
             type="text"
             role="combobox"
-            placeholder={t('detail.linkNotesPlaceholder')}
+            placeholder={t('detail.linkOrCreateNotePlaceholder')}
             value={searchQuery}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
@@ -291,20 +332,41 @@ export const LinkInput = ({
                 <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">{tCommon('state.searching')}</span>
               </div>
-            ) : availableResults.length === 0 ? (
+            ) : options.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-3">
                 {searchResults.length > 0 ? t('empty.allMatchesLinked') : t('empty.noNotes')}
               </p>
             ) : (
-              availableResults.map((note, index) => (
-                <SearchResultItem
-                  key={note.id}
-                  note={note}
-                  isHighlighted={index === highlightedIndex}
-                  onSelect={handleSelectNote}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                />
-              ))
+              options.map((option, index) =>
+                option.kind === 'create' ? (
+                  <button
+                    key="create"
+                    type="button"
+                    role="option"
+                    aria-selected={index === highlightedIndex}
+                    data-testid="link-input-create-note"
+                    onClick={handleCreateNote}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2 text-start transition-colors',
+                      index === highlightedIndex ? 'bg-muted/60' : 'hover:bg-muted/40'
+                    )}
+                  >
+                    <Plus className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <span className="text-[13px] leading-4 truncate flex-1 text-foreground">
+                      {t('detail.createNote', { title: trimmedQuery })}
+                    </span>
+                  </button>
+                ) : (
+                  <SearchResultItem
+                    key={option.note.id}
+                    note={option.note}
+                    isHighlighted={index === highlightedIndex}
+                    onSelect={handleSelectNote}
+                    onMouseEnter={() => setHighlightedIndex(index)}
+                  />
+                )
+              )
             )}
           </div>
         )}
