@@ -870,9 +870,7 @@
       "apiKey": "APIキー",
       "none": "システム"
     },
-    "comingSoon": "近日公開予定",
-    "connect": "接続する",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Googleカレンダー",
       "description": "memrynote イベントとインポートされた Google カレンダーの双方向同期。",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Google カレンダーを更新できませんでした",
       "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
       "retryFailed": "カレンダー同期の再試行に失敗しました",
-      "pushToGoogle": {
-        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
-        "error": "同期方向の更新に失敗しました",
-        "label": "memrynote の予定を Google カレンダーに表示"
-      },
       "agentAccess": {
         "description": "デフォルトではオフです。オンにすると AI エージェントが Google の予定を読み取れるようになり、オフにすると予定について質問しても何も返されません。どちらの場合も、memrynote では引き続き予定が表示されます。",
         "error": "AI アクセスの更新に失敗しました",
         "label": "AI に Google Calendar の予定の読み取りを許可"
+      },
+      "pushEvents": {
+        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
+        "error": "同期方向の更新に失敗しました",
+        "label": "memrynote の予定を Google カレンダーに表示"
       }
     },
+    "comingSoon": "近日公開予定",
+    "connect": "接続する",
     "sourcePicker": {
       "empty": "このデバイスでは、インポートされた Google カレンダーをまだ使用できません。",
       "statuses": {

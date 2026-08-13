@@ -870,9 +870,7 @@
       "apiKey": "API ключ",
       "none": "Системний"
     },
-    "comingSoon": "Скоро буде",
-    "connect": "Підключити",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Календар",
       "description": "Двозначна синхронізація для подій memrynote та імпортованих календарів Google.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Не вдалося оновити Google Календар",
       "disconnectFailed": "Не вдалося відключити Google Календар",
       "retryFailed": "Не вдалося повторити синхронізацію календаря",
-      "pushToGoogle": {
-        "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
-        "error": "Не вдалося оновити напрямок синхронізації",
-        "label": "Показувати події memrynote в Google Calendar"
-      },
       "agentAccess": {
         "description": "Вимкнено за замовчуванням. Якщо увімкнути, агент ШІ зможе читати ваші події Google; якщо вимкнути, він нічого не отримає у відповідь на запитання про них. Ви в будь-якому разі бачитимете їх у memrynote.",
         "error": "Не вдалося оновити доступ ШІ",
         "label": "Дозволити ШІ читати події Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
+        "error": "Не вдалося оновити напрямок синхронізації",
+        "label": "Показувати події memrynote в Google Calendar"
       }
     },
+    "comingSoon": "Скоро буде",
+    "connect": "Підключити",
     "sourcePicker": {
       "empty": "На цьому пристрої поки що немає імпортованих календарів Google.",
       "statuses": {

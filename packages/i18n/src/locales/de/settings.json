@@ -870,9 +870,7 @@
       "apiKey": "API-Schlüssel",
       "none": "System"
     },
-    "comingSoon": "Demnächst verfügbar",
-    "connect": "Verbinden",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Kalender",
       "description": "Bidirektionale Synchronisierung für memrynote-Ereignisse und importierte Google-Kalender.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Google Kalender konnte nicht aktualisiert werden",
       "disconnectFailed": "Google Kalender konnte nicht getrennt werden",
       "retryFailed": "Die Kalendersynchronisierung konnte nicht wiederholt werden",
-      "pushToGoogle": {
-        "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
-        "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
-        "label": "memrynote-Termine in Google Calendar anzeigen"
-      },
       "agentAccess": {
         "description": "Standardmäßig deaktiviert. Ist die Option aktiviert, kann der KI-Agent Ihre Google-Termine lesen; ist sie deaktiviert, erhält er bei Fragen dazu nichts zurück. In memrynote sehen Sie Ihre Termine in jedem Fall weiterhin.",
         "error": "Der KI-Zugriff konnte nicht aktualisiert werden",
         "label": "KI Termine aus Google Calendar lesen lassen"
+      },
+      "pushEvents": {
+        "description": "Deaktivieren für Ein-Wege-Synchronisierung — du siehst weiterhin deine Google-Termine in memrynote, aber memrynote-Termine erscheinen nicht in Google.",
+        "error": "Synchronisierungsrichtung konnte nicht aktualisiert werden",
+        "label": "memrynote-Termine in Google Calendar anzeigen"
       }
     },
+    "comingSoon": "Demnächst verfügbar",
+    "connect": "Verbinden",
     "sourcePicker": {
       "empty": "Auf diesem Gerät sind noch keine importierten Google-Kalender verfügbar.",
       "statuses": {

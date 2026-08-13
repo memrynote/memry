@@ -870,9 +870,7 @@
       "apiKey": "Kunci API",
       "none": "Sistem"
     },
-    "comingSoon": "Segera Hadir",
-    "connect": "Hubungkan",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Kalender",
       "description": "Sinkronisasi dua arah untuk acara memrynote dan kalender Google yang diimpor.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Gagal menyegarkan Google Kalender",
       "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
       "retryFailed": "Gagal mencoba lagi sinkronisasi kalender",
-      "pushToGoogle": {
-        "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
-        "error": "Gagal memperbarui arah sinkronisasi",
-        "label": "Tampilkan acara memrynote di Google Calendar"
-      },
       "agentAccess": {
         "description": "Nonaktif secara bawaan. Aktifkan dan agen AI dapat membaca acara Google Anda; nonaktifkan dan ia tidak mendapat apa pun saat ditanya tentang acara itu. Anda tetap melihatnya di memrynote, apa pun pilihan Anda.",
         "error": "Gagal memperbarui akses AI",
         "label": "Izinkan AI membaca acara Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
+        "error": "Gagal memperbarui arah sinkronisasi",
+        "label": "Tampilkan acara memrynote di Google Calendar"
       }
     },
+    "comingSoon": "Segera Hadir",
+    "connect": "Hubungkan",
     "sourcePicker": {
       "empty": "Belum ada kalender Google yang diimpor yang tersedia di perangkat ini.",
       "statuses": {

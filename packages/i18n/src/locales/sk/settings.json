@@ -870,9 +870,7 @@
       "apiKey": "API kľúč",
       "none": "Systém"
     },
-    "comingSoon": "Čoskoro",
-    "connect": "Pripojiť",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Kalendár",
       "description": "Obojsmerná synchronizácia udalostí memrynote a importovaných Google kalendárov.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Nepodarilo sa aktualizovať Google Kalendár",
       "disconnectFailed": "Nepodarilo sa odpojiť Google Kalendár",
       "retryFailed": "Nepodarilo sa znova synchronizovať kalendár",
-      "pushToGoogle": {
-        "description": "Vypnite pre jednosmernú synchronizáciu — svoje Google udalosti stále uvidíte v memrynote, ale udalosti memrynote sa nezobrazia v Google.",
-        "error": "Nepodarilo sa aktualizovať smer synchronizácie",
-        "label": "Zobraziť udalosti memrynote v Google Calendar"
-      },
       "agentAccess": {
         "description": "Predvolene vypnuté. Po zapnutí môže AI agent čítať vaše Google udalosti; po vypnutí nedostane pri otázke na ne nič. Svoje Google udalosti tak či tak stále uvidíte v memrynote.",
         "error": "Nepodarilo sa aktualizovať prístup AI",
         "label": "Povoliť AI čítať udalosti z Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Vypnite pre jednosmernú synchronizáciu — svoje Google udalosti stále uvidíte v memrynote, ale udalosti memrynote sa nezobrazia v Google.",
+        "error": "Nepodarilo sa aktualizovať smer synchronizácie",
+        "label": "Zobraziť udalosti memrynote v Google Calendar"
       }
     },
+    "comingSoon": "Čoskoro",
+    "connect": "Pripojiť",
     "sourcePicker": {
       "empty": "Žiadne importované Google kalendáre nie sú na tomto zariadení zatiaľ k dispozícii.",
       "statuses": {

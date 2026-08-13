@@ -870,9 +870,7 @@
       "apiKey": "مفتاح واجهة برمجة التطبيقات",
       "none": "النظام"
     },
-    "comingSoon": "قريبا",
-    "connect": "الاتصال",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "تقويم جوجل",
       "description": "مزامنة ثنائية الاتجاه لأحداث memrynote وتقويمات Google المستوردة.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "فشل تحديث تقويم Google",
       "disconnectFailed": "فشل في قطع اتصال تقويم Google",
       "retryFailed": "فشلت إعادة محاولة مزامنة التقويم",
-      "pushToGoogle": {
-        "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
-        "error": "فشل تحديث اتجاه المزامنة",
-        "label": "إظهار أحداث memrynote في تقويم Google"
-      },
       "agentAccess": {
         "description": "متوقف افتراضيًا. شغّله ليتمكن وكيل الذكاء الاصطناعي من قراءة أحداث Google الخاصة بك؛ أوقفه فلا يحصل على شيء عند سؤاله عنها. وستظل تراها في memrynote في الحالتين.",
         "error": "فشل تحديث وصول الذكاء الاصطناعي",
         "label": "السماح للذكاء الاصطناعي بقراءة أحداث Google Calendar"
+      },
+      "pushEvents": {
+        "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
+        "error": "فشل تحديث اتجاه المزامنة",
+        "label": "إظهار أحداث memrynote في تقويم Google"
       }
     },
+    "comingSoon": "قريبا",
+    "connect": "الاتصال",
     "sourcePicker": {
       "empty": "لا تتوفر تقاويم Google المستوردة على هذا الجهاز حتى الآن.",
       "statuses": {

@@ -13,7 +13,7 @@ const setDefaultGoogleCalendar = vi.fn<
 >()
 
 vi.mock('@/services/calendar-service', () => ({
-  listGoogleCalendars: (...args: unknown[]) => listGoogleCalendars(...(args as [])),
+  listProviderCalendars: (...args: unknown[]) => listGoogleCalendars(...(args as [])),
   setDefaultGoogleCalendar: (input: {
     calendarId: string | null
     markOnboardingComplete?: boolean

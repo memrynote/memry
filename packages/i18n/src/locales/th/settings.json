@@ -870,9 +870,7 @@
       "apiKey": "คีย์ API",
       "none": "ระบบ"
     },
-    "comingSoon": "เร็วๆ นี้",
-    "connect": "เชื่อมต่อ",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google ปฏิทิน",
       "description": "ซิงก์สองทางสำหรับกิจกรรม memrynote และปฏิทินของ Google ที่นำเข้า",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "รีเฟรช Google Calendar ล้มเหลว",
       "disconnectFailed": "ตัดการเชื่อมต่อ Google Calendar ล้มเหลว",
       "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว",
-      "pushToGoogle": {
-        "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
-        "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
-        "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
-      },
       "agentAccess": {
         "description": "ปิดอยู่ตามค่าเริ่มต้น เปิดแล้วเอเจนต์ AI จะอ่านกิจกรรม Google ของคุณได้ ปิดแล้วจะไม่ได้ข้อมูลใดกลับไปเมื่อถามถึงกิจกรรมเหล่านั้น คุณจะยังเห็นกิจกรรมเหล่านั้นใน memrynote ไม่ว่าจะเลือกแบบใด",
         "error": "อัปเดตการเข้าถึงของ AI ไม่สำเร็จ",
         "label": "ให้ AI อ่านกิจกรรมใน Google Calendar"
+      },
+      "pushEvents": {
+        "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
+        "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
+        "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
       }
     },
+    "comingSoon": "เร็วๆ นี้",
+    "connect": "เชื่อมต่อ",
     "sourcePicker": {
       "empty": "ยังไม่มีปฏิทิน Google ที่นำเข้าพร้อมใช้งานบนอุปกรณ์นี้",
       "statuses": {

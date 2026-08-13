@@ -1101,39 +1101,40 @@
       "apiKey": "API Key",
       "none": "System"
     },
-    "comingSoon": "Coming Soon",
-    "connect": "Connect",
-    "googleCalendar": {
-      "name": "Google Calendar",
-      "description": "Two-way sync for memrynote events and imported Google calendars.",
+    "calendarProvider": {
       "statuses": {
         "connected": "Connected",
         "notConnected": "Not Connected",
         "reconnectRequired": "Reconnect Required"
       },
-      "accountReconnect": "Reconnect Google",
+      "accountReconnect": "Reconnect",
       "addAccount": "Add account",
       "importedCalendars": "Imported Calendars",
       "selected": "{count} selected",
       "syncNow": "Sync Now",
       "disconnect": "Disconnect",
-      "reconnect": "Reconnect Google",
+      "reconnect": "Reconnect",
       "syncFailed": "Something went wrong",
-      "connectFailed": "Failed to connect Google Calendar",
-      "refreshFailed": "Failed to refresh Google Calendar",
-      "disconnectFailed": "Failed to disconnect Google Calendar",
+      "connectFailed": "Failed to connect {provider}",
+      "refreshFailed": "Failed to refresh {provider}",
+      "disconnectFailed": "Failed to disconnect {provider}",
       "retryFailed": "Failed to retry calendar sync",
-      "pushToGoogle": {
-        "label": "Show memrynote events in Google Calendar",
-        "description": "Turn off for one-way sync — you'll still see your Google events in memrynote, but memrynote events won't appear in Google.",
+      "agentAccess": {
+        "label": "Let AI read {provider} events",
+        "description": "Off by default. Turn on and the AI agent can read events from this calendar; turn off and it gets nothing back when asked about them. You keep seeing them in memrynote either way.",
+        "error": "Failed to update AI access"
+      },
+      "pushEvents": {
+        "label": "Show memrynote events in {provider}",
+        "description": "Turn off for one-way sync — you'll still see this calendar's events in memrynote, but memrynote events stop being pushed out.",
         "error": "Failed to update sync direction"
       },
-      "agentAccess": {
-        "label": "Let AI read Google Calendar events",
-        "description": "Off by default. Turn on and the AI agent can read your Google events; turn off and it gets nothing back when asked about them. You keep seeing them in memrynote either way.",
-        "error": "Failed to update AI access"
-      }
+      "readOnlyNotice": "Read-only — memrynote never writes to this calendar.",
+      "pollInterval": "Checked for changes about every {minutes} minutes.",
+      "realtime": "Changes arrive as they happen."
     },
+    "comingSoon": "Coming Soon",
+    "connect": "Connect",
     "sourcePicker": {
       "empty": "No imported Google calendars are available on this device yet.",
       "statuses": {
@@ -1165,6 +1166,22 @@
       "todoist": {
         "name": "Todoist",
         "description": "Two-way task sync"
+      },
+      "icsSubscription": {
+        "name": "ICS Subscription",
+        "description": "Read-only calendar feeds — Proton, Notion Calendar, holiday and school calendars"
+      },
+      "caldav": {
+        "name": "CalDAV",
+        "description": "Fastmail, Nextcloud, iCloud, Radicale, and anyone self-hosting"
+      },
+      "outlookCalendar": {
+        "name": "Outlook / Microsoft 365",
+        "description": "Two-way sync over Microsoft Graph"
+      },
+      "unknownCalendar": {
+        "name": "Calendar",
+        "description": "A calendar provider this version of memrynote does not recognise yet"
       }
     }
   },

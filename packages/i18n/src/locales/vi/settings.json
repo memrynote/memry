@@ -870,9 +870,7 @@
       "apiKey": "Khóa API",
       "none": "Hệ thống"
     },
-    "comingSoon": "Sắp ra mắt",
-    "connect": "Kết nối",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Calendar",
       "description": "Đồng bộ hai chiều cho các sự kiện memrynote và các lịch Google được nhập.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Không thể làm mới Google Calendar",
       "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
       "retryFailed": "Không thể thử lại đồng bộ lịch",
-      "pushToGoogle": {
-        "description": "Tắt để đồng bộ một chiều — bạn vẫn thấy sự kiện Google trong memrynote, nhưng sự kiện memrynote sẽ không xuất hiện trong Google.",
-        "error": "Không cập nhật được hướng đồng bộ",
-        "label": "Hiện sự kiện memrynote trong Google Calendar"
-      },
       "agentAccess": {
         "description": "Mặc định là tắt. Bật thì trợ lý AI có thể đọc sự kiện Google của bạn; tắt thì nó không nhận được gì khi được hỏi về chúng. Dù thế nào, bạn vẫn thấy chúng trong memrynote.",
         "error": "Không cập nhật được quyền truy cập của AI",
         "label": "Cho AI đọc sự kiện Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Tắt để đồng bộ một chiều — bạn vẫn thấy sự kiện Google trong memrynote, nhưng sự kiện memrynote sẽ không xuất hiện trong Google.",
+        "error": "Không cập nhật được hướng đồng bộ",
+        "label": "Hiện sự kiện memrynote trong Google Calendar"
       }
     },
+    "comingSoon": "Sắp ra mắt",
+    "connect": "Kết nối",
     "sourcePicker": {
       "empty": "Chưa có lịch Google nào được nhập có sẵn trên thiết bị này.",
       "statuses": {
