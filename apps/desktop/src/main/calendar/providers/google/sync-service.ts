@@ -8,7 +8,7 @@ import {
 } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { createGoogleCalendarClient } from './client'
-import { readCalendarGoogleSettings } from './calendar-google-settings'
+import { readCalendarProviderSettings } from '../../provider/settings'
 import { GOOGLE_CAPABILITIES, GOOGLE_PROVIDER_ID } from './capabilities'
 import {
   applyProviderDelete,
@@ -44,10 +44,11 @@ export const googleSyncContext: ProviderSyncContext = {
   listAccountIds: (db) => listGoogleAccountIds(db),
   resolveDefaultAccountId: (db) => resolveDefaultGoogleAccountId(db),
   hasConnection: (db) => hasGoogleCalendarConnection(db),
-  isPushEnabled: (db) => readCalendarGoogleSettings(db).pushEventsToGoogle,
+  isPushEnabled: (db) => readCalendarProviderSettings(db, GOOGLE_PROVIDER_ID).pushEventsToProvider,
   resolveTargetAccountId: (db, target, existingBinding) =>
     resolveTargetGoogleAccountId(db, target, existingBinding),
-  readDefaultTargetCalendarId: (db) => readCalendarGoogleSettings(db).defaultTargetCalendarId
+  readDefaultTargetCalendarId: (db) =>
+    readCalendarProviderSettings(db, GOOGLE_PROVIDER_ID).defaultTargetCalendarId
 }
 
 export async function discoverGoogleCalendarSources(

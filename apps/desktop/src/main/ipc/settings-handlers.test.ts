@@ -1151,4 +1151,116 @@ describe('settings-handlers', () => {
       expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
     })
   })
+  describe('calendar.<providerId> settings group (#1394)', () => {
+    it('#given no stored row #when GET invoked for a new provider #then returns neutral defaults', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      const result = await invokeHandler<{
+        defaultTargetCalendarId: string | null
+        pushEventsToProvider: boolean
+        agentReadEventsConsent: boolean | null
+      }>(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS, 'caldav')
+
+      expect(result.defaultTargetCalendarId).toBeNull()
+      expect(result.pushEventsToProvider).toBe(true)
+      // Never asked reads as "the agent may not read this provider".
+      expect(result.agentReadEventsConsent).toBeNull()
+    })
+
+    it('#given a legacy calendar.google row #when GET invoked for google #then translates the historic key', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({
+          defaultTargetCalendarId: 'primary@group.calendar.google.com',
+          onboardingCompleted: true,
+          promoteConfirmDismissed: true,
+          pushEventsToGoogle: false,
+          agentReadEventsConsent: true
+        })
+      )
+
+      const result = await invokeHandler<{
+        defaultTargetCalendarId: string | null
+        pushEventsToProvider: boolean
+      }>(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS, 'google')
+
+      expect(settingsQueries.getSetting).toHaveBeenCalledWith(expect.anything(), 'calendar.google')
+      expect(result.defaultTargetCalendarId).toBe('primary@group.calendar.google.com')
+      expect(result.pushEventsToProvider).toBe(false)
+    })
+
+    it('#when SET invoked for a new provider #then writes calendar.<providerId> and broadcasts', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      const result = await invokeHandler<{ success: boolean }>(
+        SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
+        'caldav',
+        { agentReadEventsConsent: true }
+      )
+
+      expect(result.success).toBe(true)
+      const [, key, value] = (settingsQueries.setSetting as Mock).mock.calls.at(-1) as [
+        unknown,
+        string,
+        string
+      ]
+      expect(key).toBe('calendar.caldav')
+      expect(JSON.parse(value)).toMatchObject({ agentReadEventsConsent: true })
+      expect(mockSend).toHaveBeenCalledWith(
+        SettingsChannels.events.CHANGED,
+        expect.objectContaining({ key: 'calendar.caldav' })
+      )
+    })
+
+    it('#when SET invoked for google #then keeps the historic pushEventsToGoogle key', async () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
+
+      await invokeHandler(SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS, 'google', {
+        pushEventsToProvider: false
+      })
+
+      const [, key, value] = (settingsQueries.setSetting as Mock).mock.calls.at(-1) as [
+        unknown,
+        string,
+        string
+      ]
+      expect(key).toBe('calendar.google')
+      const written = JSON.parse(value) as Record<string, unknown>
+      expect(written.pushEventsToGoogle).toBe(false)
+      expect(written).not.toHaveProperty('pushEventsToProvider')
+    })
+
+    it('#given no vault open #then GET falls back to defaults and SET reports the error', async () => {
+      registerSettingsHandlers()
+      ;(getDatabase as Mock).mockImplementation(() => {
+        throw new Error('Database not initialized')
+      })
+
+      const read = await invokeHandler<{ pushEventsToProvider: boolean }>(
+        SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS,
+        'caldav'
+      )
+      const write = await invokeHandler<{ success: boolean; error?: string }>(
+        SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
+        'caldav',
+        { agentReadEventsConsent: true }
+      )
+
+      expect(read.pushEventsToProvider).toBe(true)
+      expect(write.success).toBe(false)
+      expect(write.error).toBeTruthy()
+      expect(settingsQueries.setSetting).not.toHaveBeenCalled()
+    })
+
+    it('unregisters both provider channels alongside the google aliases', () => {
+      registerSettingsHandlers()
+      unregisterSettingsHandlers()
+
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS)
+      expect(removeHandlerCalls).toContain(SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS)
+    })
+  })
 })
