@@ -1,10 +1,10 @@
 import type {
-  CalendarProviderCapabilities,
   ListProviderCalendarsResponse,
   SetDefaultProviderCalendarResponse
 } from '@memry/contracts/calendar-api'
 import type { DataDb } from '../../../database/types'
 import type { CalendarProviderDefinition, ProviderConnectResult } from '../../provider/registry'
+import { GOOGLE_CAPABILITIES, GOOGLE_PROVIDER_ID } from './capabilities'
 import { createGoogleCalendarClient } from './client'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from './onboarding'
 import {
@@ -23,16 +23,7 @@ import {
   syncGoogleCalendarSource
 } from './sync-service'
 
-export const GOOGLE_PROVIDER_ID = 'google'
-
-export const GOOGLE_CAPABILITIES: CalendarProviderCapabilities = {
-  supportsWrite: true,
-  supportsCreateCalendar: true,
-  supportsPush: true,
-  supportsMultiAccount: true,
-  incrementalMode: 'sync-token',
-  authFlow: 'oauth2'
-}
+export { GOOGLE_CAPABILITIES, GOOGLE_PROVIDER_ID }
 
 export const googleProviderDefinition: CalendarProviderDefinition = {
   id: GOOGLE_PROVIDER_ID,
