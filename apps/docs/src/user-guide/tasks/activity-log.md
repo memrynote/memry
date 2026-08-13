@@ -8,9 +8,13 @@ The panel shows the three most recent entries. Select **Show all** to open the f
 
 Each entry names the field that changed and shows the old value struck through against the new one:
 
-- **Due date** Aug 12 → Aug 20
+- **Due date** Aug 12, 2026 → Aug 20, 2026
 - **Status** Todo → In Progress
 - **Created** Buy milk
+
+Completing a task is recorded as **Completed**, and reopening it as **Reopened** — not as an edit to a date field.
+
+Values read the way they do in the task's properties: projects, statuses and parent tasks by name, priorities by label, dates in your locale's format. Structured settings like a repeat rule are recorded as _changed_ rather than spelled out.
 
 Reordering a task in a list is not recorded — position changes carry no information worth keeping, and dragging a long list would otherwise write hundreds of entries.
 
@@ -30,7 +34,7 @@ Activity is written wherever a task changes — the task list, the Kanban board,
 
 ## Filtering
 
-The full timeline has a filter for the kind of change: created, updated, completed, moved, deleted, or replaced. The inline preview in the detail panel always shows everything.
+The full timeline has a filter for the kind of change: created, updated, completed, reopened, moved, deleted, or replaced. The inline preview in the detail panel always shows everything.
 
 ## Privacy and retention
 
