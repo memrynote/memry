@@ -50,6 +50,11 @@ Click an empty time slot (day / week views) or a date cell (month) to create an 
 - Notes / description
 - Recurrence (one-off, daily, weekly, monthly)
 
+On the day and week timelines you can also drag across a range of hours instead of clicking.
+Drag to the top or bottom edge of the grid and it scrolls on its own, so a selection can run
+past the hours currently on screen — hold the pointer at the edge and the range keeps growing
+as the grid scrolls.
+
 ## Event Detail Popover
 
 Click an event to open the popover. Edit title, time, and description in place. The popover has a "Open in tab" action for full editing.

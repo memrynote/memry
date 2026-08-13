@@ -64,6 +64,12 @@ export interface TimeGridSelection {
 
 interface UseTimeGridMarqueeOptions {
   gridRef: RefObject<HTMLDivElement | null>
+  /**
+   * The scrolling ancestor of `gridRef` (the element carrying `overflow-y`).
+   * The grid itself is the full 24-hour strip and never scrolls, so edge
+   * auto-scroll has to measure and move this element instead.
+   */
+  scrollRef: RefObject<HTMLElement | null>
   dateForColumn: (columnIndex: number) => string
   columnCount?: number
   hourHeight?: number
@@ -89,6 +95,9 @@ function isEventChip(target: EventTarget | null): boolean {
 function getMouseY(clientY: number, gridRef: RefObject<HTMLDivElement | null>): number {
   const el = gridRef.current
   if (!el) return 0
+  // The grid is not the scroll container, so `rect.top` already travels with
+  // the scroll and `el.scrollTop` is 0. Reading the scroller here instead would
+  // double-count the offset — this stays on the grid deliberately.
   const rect = el.getBoundingClientRect()
   return clientY - rect.top + el.scrollTop
 }
@@ -138,6 +147,7 @@ function buildSelection(
 
 export function useTimeGridMarquee({
   gridRef,
+  scrollRef,
   dateForColumn,
   columnCount = 1,
   hourHeight = HOUR_HEIGHT,
@@ -152,6 +162,7 @@ export function useTimeGridMarquee({
     columnIndex: number
     rafId: number | null
     hasMoved: boolean
+    lastClientY: number
   } | null>(null)
 
   const clearSelection = useCallback(() => setSelection(null), [])
@@ -164,12 +175,13 @@ export function useTimeGridMarquee({
     setIsDragging(false)
   }, [])
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
+  // Re-derived from the pointer's viewport position, so it also picks up
+  // movement caused by auto-scroll while the pointer is held still.
+  const updateSelection = useCallback(
+    (clientY: number) => {
       if (!dragState.current) return
-      dragState.current.hasMoved = true
       const { anchorY, columnIndex } = dragState.current
-      const currentY = getMouseY(e.clientY, gridRef)
+      const currentY = getMouseY(clientY, gridRef)
       const geo = selectionFromDrag(anchorY, currentY, hourHeight, snapMinutes)
       const date = dateForColumn(columnIndex)
       setSelection(
@@ -184,8 +196,23 @@ export function useTimeGridMarquee({
           getColumnElement
         )
       )
+    },
+    [gridRef, dateForColumn, hourHeight, snapMinutes, columnCount, getColumnElement]
+  )
 
-      const el = gridRef.current
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!dragState.current) return
+      dragState.current.hasMoved = true
+      dragState.current.lastClientY = e.clientY
+      updateSelection(e.clientY)
+
+      // Auto-scroll is measured against the scroll container's visible box. The
+      // grid's own rect is the whole 24-hour strip, which extends far past both
+      // edges of the viewport once scrolled, so its `top`/`bottom` never came
+      // within the threshold and the drag could not be extended past the hours
+      // already on screen.
+      const el = scrollRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
       const distFromTop = e.clientY - rect.top
@@ -196,25 +223,28 @@ export function useTimeGridMarquee({
         dragState.current.rafId = null
       }
 
+      const startAutoScroll = (delta: number): void => {
+        const scroll = (): void => {
+          if (!dragState.current) return
+          el.scrollTop += delta
+          // The pointer has not moved, but the hours under it have.
+          updateSelection(dragState.current.lastClientY)
+          dragState.current.rafId = requestAnimationFrame(scroll)
+        }
+        if (dragState.current) dragState.current.rafId = requestAnimationFrame(scroll)
+      }
+
       if (distFromTop < AUTO_SCROLL_THRESHOLD) {
         const speed = Math.round(AUTO_SCROLL_MAX_SPEED * (1 - distFromTop / AUTO_SCROLL_THRESHOLD))
-        const scroll = () => {
-          el.scrollTop -= speed
-          if (dragState.current) dragState.current.rafId = requestAnimationFrame(scroll)
-        }
-        dragState.current.rafId = requestAnimationFrame(scroll)
+        startAutoScroll(-speed)
       } else if (distFromBottom < AUTO_SCROLL_THRESHOLD) {
         const speed = Math.round(
           AUTO_SCROLL_MAX_SPEED * (1 - distFromBottom / AUTO_SCROLL_THRESHOLD)
         )
-        const scroll = () => {
-          el.scrollTop += speed
-          if (dragState.current) dragState.current.rafId = requestAnimationFrame(scroll)
-        }
-        dragState.current.rafId = requestAnimationFrame(scroll)
+        startAutoScroll(speed)
       }
     },
-    [gridRef, dateForColumn, hourHeight, snapMinutes, columnCount, getColumnElement]
+    [scrollRef, updateSelection]
   )
 
   const handleMouseUp = useCallback(() => {
@@ -240,7 +270,13 @@ export function useTimeGridMarquee({
       if (isEventChip(e.target)) return
       e.preventDefault()
       const anchorY = getMouseY(e.clientY, gridRef)
-      dragState.current = { anchorY, columnIndex, rafId: null, hasMoved: false }
+      dragState.current = {
+        anchorY,
+        columnIndex,
+        rafId: null,
+        hasMoved: false,
+        lastClientY: e.clientY
+      }
       setIsDragging(true)
       setSelection(null)
     },

@@ -59,7 +59,6 @@ describe('useWeekInfiniteScroll', () => {
     function Harness(): React.JSX.Element {
       current = useWeekInfiniteScroll({
         initialDate: '2026-05-14',
-        gutterWidth: 48,
         totalDays: 90,
         onVisibleDayStartChange
       })
@@ -68,7 +67,7 @@ describe('useWeekInfiniteScroll', () => {
 
     const { getByTestId } = render(<Harness />)
     const scroller = getByTestId('week-scroller') as HTMLDivElement
-    defineReadonlyNumber(scroller, 'clientWidth', 748)
+    defineReadonlyNumber(scroller, 'clientWidth', 700)
     scroller.scrollTo = vi.fn(({ left }) => {
       scroller.scrollLeft = Number(left)
     })
@@ -144,7 +143,6 @@ describe('useWeekInfiniteScroll', () => {
     function Harness(): React.JSX.Element {
       current = useWeekInfiniteScroll({
         initialDate: '2026-05-14',
-        gutterWidth: 48,
         totalDays: 36_525
       })
       return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
@@ -153,8 +151,8 @@ describe('useWeekInfiniteScroll', () => {
     const { getByTestId } = render(<Harness />)
     const scroller = getByTestId('week-scroller') as HTMLDivElement
 
-    // First real layout: (748 - 48 gutter) / 7 = 100px columns.
-    defineReadonlyNumber(scroller, 'clientWidth', 748)
+    // First real layout: 700 / 7 = 100px columns.
+    defineReadonlyNumber(scroller, 'clientWidth', 700)
     act(() => {
       ResizeObserverMock.instances[0].trigger()
     })
@@ -163,14 +161,37 @@ describe('useWeekInfiniteScroll', () => {
     expect(pinnedScrollLeft).toBeGreaterThan(0)
     const pinnedDay = pinnedScrollLeft / 100
 
-    // Window widened: (1098 - 48) / 7 = 150px columns. The same day must stay
+    // Window widened: 1050 / 7 = 150px columns. The same day must stay
     // pinned — scrollLeft is re-derived from the day position, not left at the
     // stale pixel offset (which would jump hundreds of days into the past/future).
-    defineReadonlyNumber(scroller, 'clientWidth', 1098)
+    defineReadonlyNumber(scroller, 'clientWidth', 1050)
     act(() => {
       ResizeObserverMock.instances[0].trigger()
     })
     expect(current?.columnWidth).toBe(150)
     expect(scroller.scrollLeft).toBe(pinnedDay * 150)
+  })
+
+  it('fits exactly seven columns in the scroll container, leaving no partial eighth day', () => {
+    let current: UseWeekInfiniteScrollResult | null = null
+
+    function Harness(): React.JSX.Element {
+      current = useWeekInfiniteScroll({ initialDate: '2026-05-14', totalDays: 90 })
+      return <div data-testid="week-scroller" ref={current.scrollContainerRef} />
+    }
+
+    const { getByTestId } = render(<Harness />)
+    const scroller = getByTestId('week-scroller') as HTMLDivElement
+
+    // The hour gutter is a sibling of this element, so its width is already
+    // excluded. Subtracting it a second time narrowed every column and left a
+    // gutter-wide strip at the end of the week for a partial 8th day.
+    defineReadonlyNumber(scroller, 'clientWidth', 1000)
+    act(() => {
+      ResizeObserverMock.instances[0].trigger()
+    })
+
+    expect(current?.columnWidth).toBeCloseTo(1000 / 7, 6)
+    expect((current?.columnWidth ?? 0) * 7).toBeCloseTo(1000, 6)
   })
 })

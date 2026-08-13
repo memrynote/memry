@@ -106,7 +106,6 @@ export function CalendarWeekView({
   const { scrollContainerRef, virtualizer, visibleDayStart, scrollToDate, dateForDayIndex } =
     useWeekInfiniteScroll({
       initialDate: anchorDate,
-      gutterWidth: GUTTER_WIDTH,
       onVisibleDayStartChange: notifyVisibleStart
     })
 
@@ -162,6 +161,7 @@ export function CalendarWeekView({
 
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
+    scrollRef: scrollContainerRef,
     dateForColumn,
     columnCount: virtualizer.options.count,
     getColumnElement
