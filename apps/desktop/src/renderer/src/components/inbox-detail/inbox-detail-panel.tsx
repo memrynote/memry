@@ -34,6 +34,8 @@ import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
+import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
+import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:InboxDetailPanel')
@@ -61,7 +63,13 @@ interface InboxDetailPanelProps {
   isLoading?: boolean
   readOnly?: boolean
   onClose: () => void
-  onFile: (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]) => void
+  onFile: (
+    itemId: string,
+    folderId: string,
+    tags: string[],
+    targets: FilingTarget[],
+    imageMode?: ImageFilingMode
+  ) => void
   onArchive: (id: string) => void
   onRestore?: (id: string) => void
   onDelete?: (id: string) => void
@@ -106,6 +114,26 @@ export const InboxDetailPanel = ({
   // Filing state management
   const { selectedFolder, tags, linkedNotes, setSelectedFolder, setTags, setLinkedNotes, canFile } =
     useFilingState({ item, isOpen })
+
+  // How an image lands in the notes it is linked to (#807). The prompt only
+  // appears until the user answers it once; after that the stored mode is used
+  // silently and only Settings → Inbox can change it.
+  const { settings: inboxSettings, updateSettings: updateInboxSettings } = useInboxPreferences()
+  // Null until the user touches the control, so the stored preference stays
+  // authoritative — including when it arrives after the first render.
+  const [imageModeOverride, setImageModeOverride] = useState<ImageFilingMode | null>(null)
+  const [rememberImageMode, setRememberImageMode] = useState(false)
+  const imageMode = imageModeOverride ?? inboxSettings.imageFilingMode
+
+  const imageModeChoice = useMemo(
+    () => ({
+      mode: imageMode,
+      onModeChange: setImageModeOverride,
+      remember: rememberImageMode,
+      onRememberChange: setRememberImageMode
+    }),
+    [imageMode, rememberImageMode]
+  )
 
   // Fetch AI suggestions for keyboard shortcuts
   const { data: aiSuggestions = [] } = useQuery({
@@ -222,16 +250,43 @@ export const InboxDetailPanel = ({
     // Use path for folder location - prefer path, fallback to id
     const folderPath = selectedFolder.path ?? selectedFolder.id ?? ''
 
+    // Answering the prompt is what persists the preference — silently after the
+    // filing either way, so a failed settings write never blocks the item.
+    if (imageModeChoice.remember) {
+      void updateInboxSettings({
+        imageFilingMode: imageModeChoice.mode,
+        imageFilingModeRemembered: true
+      })
+    }
+
     onFile(
       item.id,
       folderPath,
       tags,
-      linkedNotes.map((n) => n.id)
+      // Pending notes carry a title instead of an id — they are created by the
+      // filing itself, in the folder chosen above.
+      linkedNotes.map((note) =>
+        note.isPending
+          ? ({ kind: 'new', title: note.title } as const)
+          : ({ kind: 'note', noteId: note.id } as const)
+      ),
+      item.type === 'image' ? imageModeChoice.mode : undefined
     )
 
     setIsFilingLoading(false)
     onClose()
-  }, [selectedFolder, item, tags, linkedNotes, aiEnabled, aiSuggestions, onFile, onClose])
+  }, [
+    selectedFolder,
+    item,
+    tags,
+    linkedNotes,
+    aiEnabled,
+    aiSuggestions,
+    imageModeChoice,
+    updateInboxSettings,
+    onFile,
+    onClose
+  ])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -527,6 +582,11 @@ export const InboxDetailPanel = ({
                         onFolderSelect={handleFolderSelect}
                         onTagsChange={setTags}
                         onLinkedNotesChange={setLinkedNotes}
+                        imageModeChoice={
+                          item.type === 'image' && !inboxSettings.imageFilingModeRemembered
+                            ? imageModeChoice
+                            : undefined
+                        }
                       />
                     ) : (
                       <ConvertActions item={item} type={selectedType} onConverted={onClose} />

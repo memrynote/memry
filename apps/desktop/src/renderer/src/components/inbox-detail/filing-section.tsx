@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { confidenceBand } from '@/lib/confidence-band'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
+import type { ImageFilingMode } from '@memry/domain-inbox'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:FilingSection')
@@ -53,6 +54,13 @@ interface FilingSectionProps {
   onFolderSelect: (folder: FolderType) => void
   onTagsChange: (tags: string[]) => void
   onLinkedNotesChange: (notes: LinkedNote[]) => void
+  /** #807 — only asked for images, and only until the user says "don't ask again". */
+  imageModeChoice?: {
+    mode: ImageFilingMode
+    onModeChange: (mode: ImageFilingMode) => void
+    remember: boolean
+    onRememberChange: (remember: boolean) => void
+  }
   className?: string
 }
 
@@ -68,6 +76,7 @@ export const FilingSection = ({
   onFolderSelect,
   onTagsChange,
   onLinkedNotesChange,
+  imageModeChoice,
   className
 }: FilingSectionProps): React.JSX.Element => {
   const { t } = useT('inbox')
@@ -544,6 +553,46 @@ export const FilingSection = ({
 
             {/* Link notes search input */}
             <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
+
+            {/* How the image lands in those notes (#807) */}
+            {imageModeChoice && linkedNotes.length > 0 && (
+              <div className="flex flex-col gap-2" data-testid="image-filing-mode">
+                <span className="text-[11px] leading-3.5 text-muted-foreground/60">
+                  {t('detail.imageFilingModeLabel')}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {(['embed', 'link'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      data-testid={`image-filing-mode-${mode}`}
+                      aria-pressed={imageModeChoice.mode === mode}
+                      onClick={() => imageModeChoice.onModeChange(mode)}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md text-[12px] leading-4 border transition-colors',
+                        imageModeChoice.mode === mode
+                          ? 'bg-foreground/[0.06] border-border text-foreground'
+                          : 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40'
+                      )}
+                    >
+                      {mode === 'embed'
+                        ? t('detail.imageFilingModeEmbed')
+                        : t('detail.imageFilingModeLink')}
+                    </button>
+                  ))}
+                </div>
+                <label className="flex items-center gap-2 text-[11px] leading-3.5 text-muted-foreground/60">
+                  <input
+                    type="checkbox"
+                    data-testid="image-filing-mode-remember"
+                    checked={imageModeChoice.remember}
+                    onChange={(e) => imageModeChoice.onRememberChange(e.target.checked)}
+                    className="size-3 accent-[var(--primary)]"
+                  />
+                  {t('detail.imageFilingModeRemember')}
+                </label>
+              </div>
+            )}
           </>
         )}
       </div>

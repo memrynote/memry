@@ -77,6 +77,58 @@ describe('FilingSection', () => {
     resetMockApi()
   })
 
+  it('offers the image filing mode only once notes are linked (#807)', async () => {
+    const api = getMockApi() as any
+    api.notes.getFolders.mockResolvedValue([{ path: 'Projects' }])
+    api.inbox.getSuggestions.mockResolvedValue({ suggestions: [] })
+
+    const onModeChange = vi.fn()
+    const onRememberChange = vi.fn()
+    const choice = {
+      mode: 'embed' as const,
+      onModeChange,
+      remember: false,
+      onRememberChange
+    }
+
+    const { rerender } = renderWithProviders(
+      <FilingSection
+        item={{ ...item, type: 'image' }}
+        selectedFolder={null}
+        tags={[]}
+        linkedNotes={[]}
+        onFolderSelect={vi.fn()}
+        onTagsChange={vi.fn()}
+        onLinkedNotesChange={vi.fn()}
+        imageModeChoice={choice}
+      />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /linkANote/i }))
+    // Nothing to embed into yet.
+    expect(screen.queryByTestId('image-filing-mode')).not.toBeInTheDocument()
+
+    rerender(
+      <FilingSection
+        item={{ ...item, type: 'image' }}
+        selectedFolder={null}
+        tags={[]}
+        linkedNotes={[{ id: 'note-1', title: 'Trip', type: 'note' }]}
+        onFolderSelect={vi.fn()}
+        onTagsChange={vi.fn()}
+        onLinkedNotesChange={vi.fn()}
+        imageModeChoice={choice}
+      />
+    )
+
+    expect(screen.getByTestId('image-filing-mode-embed')).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByTestId('image-filing-mode-link'))
+    expect(onModeChange).toHaveBeenCalledWith('link')
+
+    await userEvent.click(screen.getByTestId('image-filing-mode-remember'))
+    expect(onRememberChange).toHaveBeenCalledWith(true)
+  })
+
   it('loads folders and AI suggestions, then drives folder, tag, and note-link changes', async () => {
     const api = getMockApi() as any
     api.notes.getFolders.mockResolvedValue([

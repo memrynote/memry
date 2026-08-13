@@ -208,7 +208,19 @@ describe('InboxDetailPanel', () => {
       inbox: {
         getSuggestions: vi.fn().mockResolvedValue({ suggestions: [] }),
         trackSuggestion: vi.fn().mockResolvedValue(undefined)
-      }
+      },
+      // The panel reads the image filing preference (#807); without these the
+      // settings hook throws before anything renders.
+      settings: {
+        getInboxSettings: vi.fn().mockResolvedValue({
+          reviewReminderEnabled: false,
+          reviewReminderTime: '18:00',
+          imageFilingMode: 'embed',
+          imageFilingModeRemembered: false
+        }),
+        setInboxSettings: vi.fn().mockResolvedValue({ success: true })
+      },
+      onSettingsChanged: vi.fn(() => () => {})
     }
   })
 
@@ -246,7 +258,13 @@ describe('InboxDetailPanel', () => {
       suggestedTags: ['suggested'],
       actualTags: ['tag-a']
     })
-    expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects', ['tag-a'], ['note-link'])
+    expect(props.onFile).toHaveBeenCalledWith(
+      'inbox-1',
+      'Projects',
+      ['tag-a'],
+      [{ kind: 'note', noteId: 'note-link' }],
+      undefined
+    )
     expect(props.onClose).toHaveBeenCalled()
   })
 
@@ -257,7 +275,7 @@ describe('InboxDetailPanel', () => {
     fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
 
     await waitFor(() =>
-      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [])
+      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [], undefined)
     )
 
     fireEvent.keyDown(document, { key: 'Escape' })
