@@ -461,6 +461,15 @@ describe('App', () => {
       })
     )
 
+    // The new note must also show itself in the sidebar. Where it landed is
+    // only knowable from the created note — with "create in selected folder"
+    // off, main resolves the destination from `defaultNoteFolder`.
+    const revealed: string[] = []
+    const onReveal = (event: Event): void => {
+      revealed.push((event as CustomEvent<{ entityId?: string }>).detail.entityId ?? '')
+    }
+    window.addEventListener('reveal-in-sidebar', onReveal)
+
     newNoteShortcut?.()
 
     await waitFor(() => expect(createNote).toHaveBeenCalledWith({ title: 'Untitled', content: '' }))
@@ -471,6 +480,8 @@ describe('App', () => {
         entityId: 'note-1'
       })
     )
+    await waitFor(() => expect(revealed).toEqual(['note-1']))
+    window.removeEventListener('reveal-in-sidebar', onReveal)
   })
 
   it('keeps one updater subscription and does not re-render the tree per progress tick', async () => {

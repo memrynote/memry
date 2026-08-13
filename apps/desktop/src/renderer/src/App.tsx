@@ -74,6 +74,7 @@ import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getTaskWorkspaceCounts } from '@/lib/task-utils'
+import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
@@ -196,6 +197,9 @@ const AppContent = (): React.JSX.Element => {
           isPreview: false,
           isDeleted: false
         })
+        // Where the note landed is only knowable from the created note, so the
+        // sidebar is told to reveal it rather than guessing at the folder.
+        revealNoteInSidebar(result.note.id)
       }
     } catch (error) {
       log.error('Failed to create new note:', error)

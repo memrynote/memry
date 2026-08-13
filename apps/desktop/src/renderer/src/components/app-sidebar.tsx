@@ -68,6 +68,7 @@ import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { useT } from '@memry/i18n/renderer'
 import { useFirstRunTour } from '@/components/onboarding/use-first-run-tour'
 
@@ -198,6 +199,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           isPreview: false,
           isDeleted: false
         })
+        // The folder may have come from `defaultNoteFolder` rather than the
+        // selection, so the created note is what says where to look.
+        revealNoteInSidebar(result.note.id)
       }
     } catch (error) {
       log.error('Failed to create new note', error)

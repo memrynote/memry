@@ -117,6 +117,9 @@ It only affects where a new note is written. It is not a root:
 - Every folder stays browsable. Folder View, moves, drag-and-drop, and folder paths on the sync
   wire are all relative to the vault root regardless of this setting.
 
+Wherever the note lands, the sidebar opens that folder and scrolls the new note into view — see
+[Creating a Note](/user-guide/notes/editing#creating-a-note).
+
 ### Privacy
 
 **Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event

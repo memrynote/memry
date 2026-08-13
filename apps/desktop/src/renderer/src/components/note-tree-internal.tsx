@@ -31,6 +31,14 @@ export function TreeFolderIcon({
 // RevealHandler — expands folders to reveal a specific note
 // ============================================================================
 
+/**
+ * How long to keep waiting for a note that is not in the tree yet. A note
+ * created a moment ago only lands once the list query refetches, so the reveal
+ * has to outlive that round trip — but an id that will never arrive (a deleted
+ * note, a stale event) must not pin the pending state forever.
+ */
+const REVEAL_WAIT_MS = 5000
+
 interface RevealHandlerProps {
   pendingRevealNoteId: string | null
   noteMap: Map<string, { path: string }>
@@ -51,8 +59,10 @@ export function RevealHandler({
 
     const note = noteMap.get(pendingRevealNoteId)
     if (!note) {
-      onClear()
-      return
+      // Hold the request instead of dropping it: `noteMap` is a dependency, so
+      // this effect re-runs the moment the note reaches the tree.
+      const giveUp = setTimeout(onClear, REVEAL_WAIT_MS)
+      return () => clearTimeout(giveUp)
     }
 
     const pathParts = note.path.split('/')

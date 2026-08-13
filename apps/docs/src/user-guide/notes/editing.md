@@ -15,6 +15,13 @@ memrynote's editor is built on **BlockNote** — a block-based rich text editor 
 
 The new note opens in a tab. The title field has focus.
 
+The sidebar follows along: the folder the note landed in is opened — nested folders included — and
+the note is scrolled into view and briefly highlighted, so you can see where it went without going
+looking for it. This matters most when the note did not land where you were standing: with **Create
+in Selected Folder** off and a **Default Location for New Notes** set, the note goes to that folder,
+and the sidebar takes you there. It is the same jump as **Reveal in navigation** in a note's `⋯`
+menu.
+
 ## Block Types
 
 Available from the slash menu (`/`) or the block-handle drag-out:

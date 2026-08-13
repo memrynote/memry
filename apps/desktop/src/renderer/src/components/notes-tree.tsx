@@ -209,8 +209,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
       const { entityId } = event.detail
       if (!entityId) return
-      const note = data.noteMap.get(entityId)
-      if (!note) return
+      // Deliberately not checked against `noteMap`: a note created a moment ago
+      // is not in the tree query yet, and dropping the request here is what used
+      // to make a brand-new note impossible to reveal. RevealHandler waits.
 
       try {
         localStorage.setItem('sidebar-section-collections-expanded', 'true')
@@ -231,7 +232,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     return () => {
       window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     }
-  }, [data.noteMap])
+  }, [])
 
   const handleRevealComplete = useCallback(
     (noteId: string) => {
@@ -249,6 +250,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     },
     [notifyTargetFolderChange]
   )
+
+  // The virtualized tree has no RevealHandler — that lives inside TreeProvider,
+  // which only the plain tree renders — so drive it through its imperative
+  // handle instead. Waits for the note to reach the tree, the same way
+  // RevealHandler does, because a just-created note is not there yet.
+  useEffect(() => {
+    if (!pendingRevealNoteId || !shouldVirtualize(data.tree)) return
+    if (!data.noteMap.has(pendingRevealNoteId)) return
+
+    virtualTreeActionsRef.current?.revealNote(pendingRevealNoteId)
+    handleRevealComplete(pendingRevealNoteId)
+  }, [pendingRevealNoteId, data.tree, data.noteMap, handleRevealComplete])
 
   if (data.isLoading) return <NotesTreeSkeleton />
 

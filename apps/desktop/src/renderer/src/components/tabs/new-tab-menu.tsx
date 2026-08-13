@@ -5,6 +5,7 @@ import { newItemViewState } from '@/contexts/tabs/helpers'
 import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
@@ -65,6 +66,9 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
           },
           { groupId }
         )
+        // The expand above is a guess from the selection; this reveals where
+        // the note actually landed, and scrolls it into view.
+        revealNoteInSidebar(result.note.id)
       }
     } catch (error) {
       log.error('Failed to create new note', error)

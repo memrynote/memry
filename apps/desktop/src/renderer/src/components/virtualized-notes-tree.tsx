@@ -80,6 +80,12 @@ export interface VirtualizedTreeActions {
   collapseAll: () => void
   expandNode: (nodeId: string) => void
   expandNodes: (nodeIds: string[]) => void
+  /**
+   * Expand every folder on a note's path and scroll the row into view. The
+   * plain tree gets this from `RevealHandler` + `scrollIntoView`; here the row
+   * may not be mounted at all, so the virtualizer has to do the scrolling.
+   */
+  revealNote: (noteId: string) => void
 }
 
 interface VirtualizedNotesTreeProps {
@@ -166,6 +172,26 @@ function saveExpandedFolders(expandedIds: Set<string>): void {
   } catch {
     // Ignore storage errors
   }
+}
+
+/**
+ * `expanded` plus every folder holding `notePath`, so a note nested several
+ * levels down becomes reachable in one step. Node ids are built the same way
+ * the plain tree's `RevealHandler` builds them: `folder-<path>`, with the vault
+ * root segment dropped.
+ */
+function withAncestorsExpanded(expanded: Set<string>, notePath: string): Set<string> {
+  const parts = notePath.split('/')
+  parts.pop()
+  if (parts.length <= 1) return expanded
+
+  const next = new Set(expanded)
+  let currentPath = ''
+  for (const part of parts.slice(1)) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part
+    next.add(`folder-${currentPath}`)
+  }
+  return next
 }
 
 /**
@@ -711,30 +737,6 @@ export function VirtualizedNotesTree({
   // Expanded folders state (persisted to localStorage)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => loadExpandedFolders())
 
-  // Expose expand/collapse actions to parent
-  useImperativeHandle(
-    actionsRef,
-    () => ({
-      expandAll: () => {
-        setExpandedIds(new Set(getAllFolderIds(tree)))
-      },
-      collapseAll: () => {
-        setExpandedIds(new Set())
-      },
-      expandNode: (nodeId: string) => {
-        setExpandedIds((prev) => {
-          const next = new Set(prev)
-          next.add(nodeId)
-          return next
-        })
-      },
-      expandNodes: (nodeIds: string[]) => {
-        setExpandedIds(new Set(nodeIds))
-      }
-    }),
-    [tree]
-  )
-
   // Drag state
   const [dragState, setDragState] = useState<DragState>({
     draggedId: null,
@@ -807,6 +809,47 @@ export function VirtualizedNotesTree({
     overscan: 10, // Render 10 extra items above/below viewport
     scrollMargin: usesExternalScroll ? scrollMargin : 0
   })
+
+  // Expose expand/collapse actions to parent
+  useImperativeHandle(
+    actionsRef,
+    () => ({
+      expandAll: () => {
+        setExpandedIds(new Set(getAllFolderIds(tree)))
+      },
+      collapseAll: () => {
+        setExpandedIds(new Set())
+      },
+      expandNode: (nodeId: string) => {
+        setExpandedIds((prev) => {
+          const next = new Set(prev)
+          next.add(nodeId)
+          return next
+        })
+      },
+      expandNodes: (nodeIds: string[]) => {
+        setExpandedIds(new Set(nodeIds))
+      },
+      revealNote: (noteId: string) => {
+        const note = noteMap.get(noteId)
+        if (!note) return
+
+        // Opening the folders is what gives the note a row, so the index has to
+        // come from the flattening those folders produce — not from the one on
+        // screen right now.
+        const nextExpanded = withAncestorsExpanded(expandedIds, note.path)
+        const index = flattenTree(tree, nextExpanded).findIndex((item) => item.id === noteId)
+        setExpandedIds(nextExpanded)
+
+        // One frame later the virtualizer has been re-rendered with that row in
+        // its count, and can scroll to an index it would otherwise clamp away.
+        if (index !== -1) {
+          requestAnimationFrame(() => virtualizer.scrollToIndex(index, { align: 'center' }))
+        }
+      }
+    }),
+    [tree, noteMap, expandedIds, virtualizer]
+  )
 
   // Toggle folder expand/collapse
   const handleToggleExpand = useCallback((folderId: string) => {
@@ -1052,6 +1095,9 @@ export function VirtualizedNotesTree({
           return (
             <div
               key={item.id}
+              // The same hook the plain tree exposes, so "reveal" can flash the
+              // row it just scrolled to without knowing which tree is rendered.
+              data-tree-node-id={item.id}
               style={{
                 position: 'absolute',
                 top: 0,

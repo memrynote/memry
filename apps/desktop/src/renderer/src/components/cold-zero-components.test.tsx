@@ -320,6 +320,11 @@ describe('cold renderer component smoke coverage', () => {
         onClear={onClear}
       />
     )
+    // An id the tree does not have is held, not dropped — a note created a
+    // moment ago only arrives when the list query refetches — so the handler
+    // gives up on a timer instead of immediately.
+    expect(onClear).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(5000))
     expect(onClear).toHaveBeenCalled()
 
     const target = document.createElement('div')

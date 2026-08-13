@@ -115,6 +115,7 @@ vi.mock('@/components/note-tree-internal', () => ({
   ),
   RevealHandler: ({ pendingRevealNoteId, onReveal, onClear }: any) => (
     <span>
+      <span data-testid="pending-reveal">{pendingRevealNoteId ?? ''}</span>
       <button type="button" onClick={() => onReveal(pendingRevealNoteId ?? 'root')}>
         reveal pending
       </button>
@@ -426,6 +427,21 @@ describe('NotesTree isolated coverage', () => {
     expect(mocks.actions.handleFolderTemplateSelect).toHaveBeenCalledWith(null)
 
     vi.useRealTimers()
+  })
+
+  it('keeps a reveal for a note the tree has not loaded yet', () => {
+    // A note created a moment ago reaches the sidebar only after the list query
+    // refetches. Checking `noteMap` here used to drop the request outright,
+    // which is what made a brand-new note impossible to reveal.
+    render(<NotesTree />)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('reveal-in-sidebar', { detail: { entityId: 'note-just-created' } })
+      )
+    })
+
+    expect(screen.getByTestId('pending-reveal')).toHaveTextContent('note-just-created')
   })
 
   it('reveals a folder row action on keyboard focus, not only on hover', () => {

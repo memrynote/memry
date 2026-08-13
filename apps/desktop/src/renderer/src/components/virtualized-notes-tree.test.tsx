@@ -13,7 +13,8 @@ import type { TreeStructure } from '@/lib/virtualized-tree-utils'
 import { isRevealed } from '@tests/utils/reveal'
 
 const mocks = vi.hoisted(() => ({
-  openTab: vi.fn()
+  openTab: vi.fn(),
+  scrollToIndex: vi.fn()
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -29,7 +30,8 @@ vi.mock('@tanstack/react-virtual', () => ({
         start: index * 28,
         size: 28
       })),
-    getTotalSize: () => count * 28
+    getTotalSize: () => count * 28,
+    scrollToIndex: mocks.scrollToIndex
   })
 }))
 
@@ -261,6 +263,36 @@ describe('VirtualizedNotesTree', () => {
 
     act(() => actionsRef.current?.expandAll())
     expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+
+  it('reveals a note by opening its folders and scrolling its row into view', async () => {
+    const actionsRef = createRef<VirtualizedTreeActions | null>()
+    renderTree({ actionsRef })
+
+    act(() => actionsRef.current?.collapseAll())
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    act(() => actionsRef.current?.revealNote('note-work'))
+
+    // The folder holding it is open, and the virtualizer — not scrollIntoView —
+    // does the scrolling, because the row may not have been mounted at all.
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+    expect(mocks.scrollToIndex).toHaveBeenCalledWith(1, { align: 'center' })
+  })
+
+  it('does not scroll for a note the tree does not have', async () => {
+    const actionsRef = createRef<VirtualizedTreeActions | null>()
+    renderTree({ actionsRef })
+
+    act(() => actionsRef.current?.revealNote('note-missing'))
+
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+    })
+    expect(mocks.scrollToIndex).not.toHaveBeenCalled()
   })
 
   it('emits range selections and drag move operations', () => {
