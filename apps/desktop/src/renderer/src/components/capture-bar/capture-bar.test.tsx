@@ -22,7 +22,21 @@ import type { Project } from '@/data/tasks-data'
 // jsdom has no layout engine; the autocomplete dropdown scrolls its selection.
 Element.prototype.scrollIntoView = vi.fn()
 
-const mocks = vi.hoisted(() => ({ recorderStart: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  recorderStart: vi.fn(),
+  listNotes: vi.fn(),
+  getAllTagsWithCounts: vi.fn()
+}))
+
+// The `[[` picker and the `#` ghost read these pools lazily, the first time the
+// user reaches for one.
+vi.mock('@/services/notes-service', () => ({
+  notesService: { list: mocks.listNotes }
+}))
+
+vi.mock('@/services/tags-service', () => ({
+  tagsService: { getAllWithCounts: mocks.getAllTagsWithCounts }
+}))
 
 vi.mock('@/components/voice-recorder', () => ({
   VoiceRecorder: forwardRef(
@@ -108,8 +122,24 @@ const baseProps = {
 const field = (): HTMLTextAreaElement =>
   screen.getByRole('textbox', { name: 'Capture field' }) as HTMLTextAreaElement
 
+/** The un-typed remainder painted after the caret by the inline completion. */
+const ghost = (): HTMLElement => screen.getByTestId('capture-bar-ghost')
+
+const mockNotes = [
+  { id: 'note-1', title: 'Roadmap' },
+  { id: 'note-2', title: 'Q1 Goals' },
+  { id: 'note-3', title: 'Hiring plan' }
+]
+
 beforeEach(() => {
   vi.clearAllMocks()
+  mocks.listNotes.mockResolvedValue({ notes: mockNotes })
+  mocks.getAllTagsWithCounts.mockResolvedValue({
+    tags: [
+      { name: 'launch', count: 9 },
+      { name: 'later', count: 2 }
+    ]
+  })
 })
 
 // ============================================================================
@@ -539,19 +569,22 @@ describe('CaptureBar — quick-add syntax', () => {
     quickAdd: { projects: mockProjects }
   }
 
-  it('parses date, priority and project out of the title', async () => {
+  it('parses date, priority, project and tags out of the title', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
 
-    await user.type(field(), 'Buy groceries !tomorrow !!high #Personal')
-    await user.keyboard('{Escape}')
+    await user.type(field(), 'Buy groceries @tomorrow !high +Personal #errands #food')
     await user.keyboard('{Enter}')
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
     const [title, parsed] = onSubmit.mock.calls[0]
     expect(title).toBe('Buy groceries')
-    expect(parsed).toMatchObject({ priority: 'high', projectId: 'project-1' })
+    expect(parsed).toMatchObject({
+      priority: 'high',
+      projectId: 'project-1',
+      tags: ['errands', 'food']
+    })
     expect(parsed.dueDate).toBeInstanceOf(Date)
   })
 
@@ -560,79 +593,64 @@ describe('CaptureBar — quick-add syntax', () => {
     const onSubmit = vi.fn()
     renderBar(<CaptureBar {...baseProps} onSubmit={onSubmit} />)
 
-    await user.type(field(), 'Buy groceries !tomorrow{enter}')
+    await user.type(field(), 'Buy groceries @tomorrow{enter}')
 
-    expect(onSubmit).toHaveBeenCalledWith('Buy groceries !tomorrow')
+    expect(onSubmit).toHaveBeenCalledWith('Buy groceries @tomorrow')
   })
 
-  it('offers date options on !, priority on !! and projects on #', async () => {
+  it('ghosts the completion for !priority, +project and #tag', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
-    await user.type(field(), 'Task !')
-    expect(screen.getAllByText(/today/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/tomorrow/i).length).toBeGreaterThanOrEqual(1)
+    await user.type(field(), 'Task !hi')
+    expect(ghost()).toHaveTextContent('gh')
 
     await user.clear(field())
-    await user.type(field(), 'Task !!')
-    expect(screen.getAllByText(/high/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/urgent/i).length).toBeGreaterThanOrEqual(1)
+    await user.type(field(), 'Task +per')
+    expect(ghost()).toHaveTextContent('sonal')
 
     await user.clear(field())
-    await user.type(field(), 'Task #')
-    expect(screen.getAllByText(/personal/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText(/work/i).length).toBeGreaterThanOrEqual(1)
+    await user.type(field(), 'Task #lau')
+    await waitFor(() => expect(ghost()).toHaveTextContent('nch'))
   })
 
-  it('filters options as the token is typed', async () => {
+  it('completes the token on Tab', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
-    await user.type(field(), 'Task #per')
+    await user.type(field(), 'Task +per')
+    await user.keyboard('{Tab}')
 
-    expect(screen.getAllByText(/personal/i).length).toBeGreaterThanOrEqual(1)
-    expect(screen.queryAllByText(/^Work$/).length).toBe(0)
+    expect(field()).toHaveValue('Task +Personal ')
+    expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
+  })
+
+  it('completes the token on ArrowRight', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Task !hi')
+    await user.keyboard('{ArrowRight}')
+
+    expect(field()).toHaveValue('Task !high ')
   })
 
   it('detects the trigger on the last line of a multi-line capture', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
-    await user.type(field(), 'First line{Shift>}{Enter}{/Shift}#per')
+    await user.type(field(), 'First line{Shift>}{Enter}{/Shift}+per')
 
-    expect(screen.getAllByText(/personal/i).length).toBeGreaterThanOrEqual(1)
+    expect(ghost()).toHaveTextContent('sonal')
   })
 
-  it('inserts the selected option in place of the trigger token', async () => {
-    const user = userEvent.setup()
-    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
-
-    await user.type(field(), 'Task #per')
-    await user.click(screen.getByRole('option', { name: /personal/i }))
-
-    expect(field()).toHaveValue('Task #Personal ')
-  })
-
-  it('closes the dropdown on the first Escape and clears on the second', async () => {
-    const user = userEvent.setup()
-    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
-
-    await user.type(field(), 'Task !')
-    expect(screen.getAllByText(/today/i).length).toBeGreaterThanOrEqual(1)
-
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-    expect(field()).toHaveValue('')
-  })
-
-  it('submits on Enter when the trailing token is already an exact match', async () => {
+  it('submits what is typed on Enter instead of taking the ghost', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
 
-    await user.type(field(), 'Important task !!high')
+    await user.type(field(), 'Important task !high')
+    expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
     await user.keyboard('{Enter}')
 
     expect(onSubmit).toHaveBeenCalledTimes(1)
@@ -641,22 +659,162 @@ describe('CaptureBar — quick-add syntax', () => {
     await waitFor(() => expect(field()).toHaveValue(''))
   })
 
-  it('renders no dropdown for plain prose', async () => {
+  it('ghosts nothing for plain prose', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
 
     await user.type(field(), 'Buy groceries')
 
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
   })
 
-  it('renders no dropdown when quick-add is off', async () => {
+  it('ghosts nothing when quick-add is off', async () => {
     const user = userEvent.setup()
     renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
 
     await user.type(field(), 'Task !')
 
+    expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
+  })
+
+  it('leaves prose punctuation and code alone', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Ship it! Learn C++{enter}')
+
+    expect(onSubmit.mock.calls[0][0]).toBe('Ship it! Learn C++')
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ priority: 'none', projectId: null })
+  })
+})
+
+// ============================================================================
+// `[[` note picker — the one completion that is a list, not a ghost
+// ============================================================================
+
+describe('CaptureBar — [[ note picker', () => {
+  const quickAddProps = {
+    ...baseProps,
+    quickAdd: { projects: mockProjects }
+  }
+
+  const options = (): HTMLElement[] => screen.getAllByRole('option')
+
+  // userEvent reads `[` as the start of a key descriptor, so a literal `[[`
+  // has to be typed as four brackets.
+  const OPEN_PICKER = 'Draft the plan [[[['
+
+  it('opens on [[ with recent notes and filters as you type', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+    expect(options().map((option) => option.textContent)).toEqual([
+      'Roadmap',
+      'Q1 Goals',
+      'Hiring plan'
+    ])
+
+    await user.type(field(), 'Q1')
+    await waitFor(() => expect(options()).toHaveLength(1))
+    expect(options()[0]).toHaveTextContent('Q1 Goals')
+  })
+
+  it('does not open for any other marker', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Task #lau')
+    await waitFor(() => expect(ghost()).toBeInTheDocument())
+
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('writes the chosen title into the field on Enter', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+    await user.keyboard('{Enter}')
+
+    // Enter selected the note rather than submitting the task.
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(field()).toHaveValue('Draft the plan [[Roadmap]] ')
+  })
+
+  it('navigates with the arrow keys and selects with Tab', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowUp}')
+    expect(options()[1]).toHaveAttribute('aria-selected', 'true')
+
+    await user.keyboard('{Tab}')
+    expect(field()).toHaveValue('Draft the plan [[Q1 Goals]] ')
+  })
+
+  it('links the selected note on submit and drops the run from the title', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+    await user.keyboard('{Enter}')
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit.mock.calls[0][0]).toBe('Draft the plan')
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ linkedNoteIds: ['note-1'] })
+  })
+
+  it('resolves a hand-typed [[Title]] by exact title', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    // The picker's fetch is what loads the pool; typing straight through it
+    // never selects anything.
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+    await user.type(field(), 'hiring plan]]')
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit.mock.calls[0][0]).toBe('Draft the plan')
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ linkedNoteIds: ['note-3'] })
+  })
+
+  it('links nothing when the title matches no note', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Draft the plan [[[[Nothing here]]{enter}')
+
+    expect(onSubmit.mock.calls[0][0]).toBe('Draft the plan')
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ linkedNoteIds: [] })
+  })
+
+  it('closes on Escape without clearing, and clears on the second Escape', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), OPEN_PICKER)
+    await waitFor(() => expect(options()).toHaveLength(3))
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(field()).toHaveValue('Draft the plan [[')
+
+    await user.keyboard('{Escape}')
+    expect(field()).toHaveValue('')
   })
 })
 
@@ -712,5 +870,83 @@ describe('CaptureBar — shared geometry', () => {
     // Same 1.5px dashed box, only the colour differs between surfaces.
     expect(shell.style.borderColor).not.toBe('')
     expect(shell.className).toContain('border-[1.5px]')
+  })
+})
+
+// ============================================================================
+// Natural-language quick-add (#129)
+// ============================================================================
+
+describe('CaptureBar — natural-language quick-add', () => {
+  const quickAddProps = {
+    ...baseProps,
+    quickAdd: { projects: mockProjects }
+  }
+
+  it('parses an @ date phrase and an "every …" repeat out of the title', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={onSubmit} />)
+
+    await user.type(field(), 'Water plants @tomorrow every 2 weeks')
+    await user.keyboard('{Enter}')
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    const [title, parsed] = onSubmit.mock.calls[0]
+    expect(title).toBe('Water plants')
+    expect(parsed.dueDate).toBeInstanceOf(Date)
+    expect(parsed.repeat).toMatchObject({ frequency: 'weekly', interval: 2 })
+  })
+
+  it('paints a pill over each recognised phrase', async () => {
+    const user = userEvent.setup()
+    const { container } = renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Water plants @tomorrow every 2 weeks')
+
+    const pills = [...container.querySelectorAll('span')].filter((span) =>
+      span.className.includes('rounded-full')
+    )
+    expect(pills.map((pill) => pill.textContent)).toEqual(['@tomorrow', 'every 2 weeks'])
+  })
+
+  it('paints no pill over prose that only looks like syntax', async () => {
+    const user = userEvent.setup()
+    const { container } = renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Check every door')
+
+    expect(container.querySelectorAll('span[class*="rounded-full"]')).toHaveLength(0)
+  })
+
+  it('ghosts the rest of a half-typed date phrase', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Call Bob @tomo')
+    expect(ghost()).toHaveTextContent('rrow')
+
+    await user.keyboard('{Tab}')
+    expect(field()).toHaveValue('Call Bob @Tomorrow ')
+  })
+
+  it('ghosts the rest of a half-typed cadence', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Standup every week')
+    expect(ghost()).toHaveTextContent('day')
+
+    await user.keyboard('{ArrowRight}')
+    expect(field()).toHaveValue('Standup every weekday ')
+  })
+
+  it('ghosts nothing for an "every" that is not a cadence', async () => {
+    const user = userEvent.setup()
+    renderBar(<CaptureBar {...quickAddProps} onSubmit={vi.fn()} />)
+
+    await user.type(field(), 'Check every door')
+
+    expect(screen.queryByTestId('capture-bar-ghost')).not.toBeInTheDocument()
   })
 })

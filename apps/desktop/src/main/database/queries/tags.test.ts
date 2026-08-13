@@ -209,6 +209,29 @@ describe('getAllTagsWithCounts', () => {
     expect(typeof orphan?.color).toBe('string')
   })
 
+  it('gives a brand-new task-only tag a definition row, so quick-add tags are not colourless', () => {
+    // #given: the tag quick-add's `#tag` marker creates — it exists on a task
+    // and nowhere else, and no vault path ever ran `ensureTagDefinitions` for
+    // it (that is only wired to notes).
+    insertTask(dataDb, 't1')
+    insertTaskTag(dataDb, 't1', 'launch')
+    expect(
+      dataDb.all<{ name: string }>(sql`SELECT name FROM tag_definitions WHERE name = 'launch'`)
+    ).toEqual([])
+
+    // #when: the tag hub and the sidebar read the pool
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then: it is listed, coloured, and now has a definition of its own —
+    // the read path back-fills what the task write path never created.
+    const launch = result.find((tag) => tag.name === 'launch')
+    expect(launch).toMatchObject({ name: 'launch', count: 1 })
+    expect(launch?.color).toBeTruthy()
+    expect(
+      dataDb.all<{ name: string }>(sql`SELECT name FROM tag_definitions WHERE name = 'launch'`)
+    ).toHaveLength(1)
+  })
+
   it('sorts results by count descending', () => {
     // #given: "beta" has more occurrences than "alpha"
     insertNote(indexDb, 'n1')

@@ -89,7 +89,7 @@
   },
   "quickAdd": {
     "label": "Quick add task",
-    "placeholder": "Add a task…    !today  !!high  #project"
+    "placeholder": "Add a task…    @tomorrow  !high  +project  #tag  [[note]]  every monday"
   },
   "drawer": {
     "close": "Close task details",
