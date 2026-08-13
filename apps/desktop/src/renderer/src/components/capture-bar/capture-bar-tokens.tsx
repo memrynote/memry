@@ -12,9 +12,9 @@ import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import {
   findQuickAddSpans,
-  getDateOptions,
   getPriorityOptions,
   getProjectOptions,
+  getTagOptions,
   predictRepeatCompletion,
   type AutocompleteOption,
   type QuickAddSpanKind
@@ -35,11 +35,12 @@ interface Token {
 }
 
 const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
-  date: 'text-task-token-date bg-task-token-date/10 rounded px-0.5 -mx-0.5',
   priority: 'rounded px-0.5 -mx-0.5',
   project: 'text-task-token-project bg-task-token-project/10 rounded px-0.5 -mx-0.5',
+  tag: 'text-task-token-tag bg-task-token-tag/10 rounded px-0.5 -mx-0.5',
   // The natural-language forms read as one phrase rather than one word, so they
   // get the fuller pill: same metrics, rounder shell, stronger fill.
+  noteLink: 'text-task-token-note bg-task-token-note/15 rounded-full px-0.5 -mx-0.5',
   datePhrase: 'text-task-token-date bg-task-token-date/15 rounded-full px-0.5 -mx-0.5',
   repeat: 'text-task-repeat bg-task-repeat/15 rounded-full px-0.5 -mx-0.5'
 }
@@ -99,7 +100,7 @@ export const TokenOverlay = ({
         }
 
         if (token.kind === 'priority') {
-          const keyword = token.text.slice(2).toLowerCase()
+          const keyword = token.text.slice(1).toLowerCase()
           const colorClass =
             PRIORITY_COLORS[keyword] ?? 'text-task-priority-high bg-task-priority-high/10'
           return (
@@ -145,9 +146,9 @@ export function replaceTrigger(value: string, start: number, replacement: string
 // INLINE GHOST COMPLETION
 // ============================================================================
 
-type TriggerKind = 'date' | 'datePhrase' | 'priority' | 'project' | 'repeat'
+type TriggerKind = 'datePhrase' | 'priority' | 'project' | 'tag' | 'noteLink' | 'repeat'
 
-interface Trigger {
+export interface Trigger {
   kind: TriggerKind
   /** What has been typed after the trigger character (repeats keep "every"). */
   query: string
@@ -158,18 +159,24 @@ interface Trigger {
 /**
  * The quick-add trigger the caret is sitting in, if any.
  *
- * The sigil forms (`!`, `!!`, `#`) are one token; the natural-language forms
- * (`@next wednesday`, `every 2 weeks`) run over several words, so they are read
- * from their trigger word up to the end of the value instead.
+ * The sigil forms (`!`, `+`, `#`) are one token; the natural-language forms
+ * (`@next wednesday`, `every 2 weeks`, `[[Note title]]`) run over several
+ * words, so they are read from their trigger up to the end of the value.
  */
 export function detectTrigger(value: string): Trigger | null {
+  // An unclosed `[[` owns everything after it — a note title may hold any
+  // sigil, and the picker is what finishes it.
+  const linkStart = value.lastIndexOf('[[')
+  if (linkStart >= 0 && !value.slice(linkStart + 2).includes(']]')) {
+    return { kind: 'noteLink', query: value.slice(linkStart + 2), start: linkStart }
+  }
+
   const token = lastToken(value)
   const tokenStart = value.length - token.length
 
-  // `!!` before `!`: priority is the more specific trigger.
-  if (token.startsWith('!!')) return { kind: 'priority', query: token.slice(2), start: tokenStart }
-  if (token.startsWith('!')) return { kind: 'date', query: token.slice(1), start: tokenStart }
-  if (token.startsWith('#')) return { kind: 'project', query: token.slice(1), start: tokenStart }
+  if (token.startsWith('!')) return { kind: 'priority', query: token.slice(1), start: tokenStart }
+  if (token.startsWith('+')) return { kind: 'project', query: token.slice(1), start: tokenStart }
+  if (token.startsWith('#')) return { kind: 'tag', query: token.slice(1), start: tokenStart }
 
   // Multi-word triggers live on the caret's line; the nearest one wins.
   const lineStart = value.lastIndexOf('\n') + 1
@@ -195,7 +202,12 @@ function firstCompletion(options: AutocompleteOption[], typed: string): string |
   return options.find((option) => option.value.toLowerCase().startsWith(lower))?.value ?? null
 }
 
-function predictFor(trigger: Trigger, typed: string, projects: Project[]): string | null {
+function predictFor(
+  trigger: Trigger,
+  typed: string,
+  projects: Project[],
+  tags: string[]
+): string | null {
   switch (trigger.kind) {
     case 'datePhrase': {
       // The note editor's `@`-mention predictor, so both surfaces complete a
@@ -205,12 +217,16 @@ function predictFor(trigger: Trigger, typed: string, projects: Project[]): strin
     }
     case 'repeat':
       return predictRepeatCompletion(trigger.query)
-    case 'date':
-      return firstCompletion(getDateOptions(trigger.query), typed)
     case 'priority':
       return firstCompletion(getPriorityOptions(trigger.query), typed)
     case 'project':
       return firstCompletion(getProjectOptions(trigger.query, projects), typed)
+    case 'tag':
+      return firstCompletion(getTagOptions(trigger.query, tags), typed)
+    // Note titles are arbitrary user data, so `[[` gets the picker instead of a
+    // guess. CaptureBar reads the trigger and opens the dropdown.
+    case 'noteLink':
+      return null
   }
 }
 
@@ -228,12 +244,16 @@ export interface GhostCompletion {
  * nothing to finish. The prediction is always a case-insensitive superstring of
  * what the user typed, so accepting it never loses characters.
  */
-export function predictCompletion(value: string, projects: Project[]): GhostCompletion | null {
+export function predictCompletion(
+  value: string,
+  projects: Project[],
+  tags: string[] = []
+): GhostCompletion | null {
   const trigger = detectTrigger(value)
   if (!trigger) return null
 
   const typed = value.slice(trigger.start)
-  const text = predictFor(trigger, typed, projects)
+  const text = predictFor(trigger, typed, projects, tags)
   if (!text || !text.toLowerCase().startsWith(typed.toLowerCase())) return null
 
   const remainder = text.slice(typed.length)

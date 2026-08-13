@@ -142,6 +142,8 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         priority: Priority
         projectId: string | null
         repeat?: RepeatConfig | null
+        tags?: string[]
+        linkedNoteIds?: string[]
       }
     ) => {
       if (!project) return
@@ -154,6 +156,8 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         newTask.isRepeating = true
         newTask.repeatConfig = parsedData.repeat
       }
+      newTask.tags = parsedData?.tags ?? []
+      newTask.linkedNoteIds = parsedData?.linkedNoteIds ?? []
       undoable.createTask(newTask)
     },
     [project, undoable]

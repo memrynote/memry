@@ -1,6 +1,5 @@
 import type { Priority, RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
-import { startOfDay, addDays } from '@/lib/task-utils'
 import { parseNaturalDate } from '@/lib/natural-date-parser'
 import { findRepeatPhrase, firstOccurrenceFor } from '@/lib/repeat-phrase'
 
@@ -16,10 +15,17 @@ export interface ParsedQuickAdd {
   priority: Priority
   projectId: string | null
   repeat: RepeatConfig | null
+  /** Every `#tag` in the input, in order, with the typed casing kept. */
+  tags: string[]
+  /**
+   * The titles inside `[[…]]`, in order. The parser only sees text, so the
+   * surface maps these to note ids (see CaptureBar).
+   */
+  noteTitles: string[]
 }
 
 /** A stretch of the input that carries syntax rather than title text. */
-export type QuickAddSpanKind = 'date' | 'priority' | 'project' | 'datePhrase' | 'repeat'
+export type QuickAddSpanKind = 'priority' | 'project' | 'tag' | 'noteLink' | 'datePhrase' | 'repeat'
 
 export interface QuickAddSpan {
   start: number
@@ -29,136 +35,79 @@ export interface QuickAddSpan {
 }
 
 // ============================================================================
-// DATE PARSING
+// MARKER GRAMMAR
 // ============================================================================
 
 /**
- * Map of day name abbreviations to day indices (0 = Sunday)
+ * `!` starts a word and needs at least one letter after it, so prose keeps its
+ * punctuation: "Ship it!" and "Wow!!" are titles, not priorities.
  */
-const dayNameMap: Record<string, number> = {
-  sun: 0,
-  sunday: 0,
-  mon: 1,
-  monday: 1,
-  tue: 2,
-  tuesday: 2,
-  wed: 3,
-  wednesday: 3,
-  thu: 4,
-  thursday: 4,
-  fri: 5,
-  friday: 5,
-  sat: 6,
-  saturday: 6
+const PRIORITY_PATTERN = /(?:^|\s)(![a-zA-Z]+)/g
+
+/** `+` starts a word, so "1+2" and "C++" never read as a project. */
+const PROJECT_PATTERN = /(?:^|\s)(\+[\w-]+)/g
+
+/**
+ * The note editor's tag grammar verbatim, nesting included — see
+ * `HASH_TAG_PATTERN` in `components/note/content-area/hash-tag.tsx`, which also
+ * requires the `#` to start a word. `C#` and `issue#12` are therefore prose.
+ */
+const TAG_PATTERN = /(?:^|\s)(#[a-zA-Z0-9][a-zA-Z0-9_-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9_-]*)*)/g
+
+/** `[[Note title]]` — note titles are arbitrary, so anything but the brackets. */
+const NOTE_LINK_PATTERN = /\[\[([^[\]\n]+)\]\]/g
+
+interface MarkerRun {
+  start: number
+  /** Exclusive. */
+  end: number
+  /** The run including its sigil, e.g. `!high`. */
+  text: string
+  /** The run without its sigil, e.g. `high`. */
+  value: string
 }
 
 /**
- * Map of month name abbreviations to month indices (0 = January)
+ * Every run of `pattern` in `input`. The patterns above match a leading space
+ * to anchor the sigil to a word start, so the run itself is capture group 1.
  */
-const monthNameMap: Record<string, number> = {
-  jan: 0,
-  january: 0,
-  feb: 1,
-  february: 1,
-  mar: 2,
-  march: 2,
-  apr: 3,
-  april: 3,
-  may: 4,
-  jun: 5,
-  june: 5,
-  jul: 6,
-  july: 6,
-  aug: 7,
-  august: 7,
-  sep: 8,
-  september: 8,
-  oct: 9,
-  october: 9,
-  nov: 10,
-  november: 10,
-  dec: 11,
-  december: 11
+const findMarkerRuns = (input: string, pattern: RegExp): MarkerRun[] => {
+  const runs: MarkerRun[] = []
+  for (const match of input.matchAll(pattern)) {
+    const text = match[1]
+    const start = match.index + match[0].length - text.length
+    runs.push({ start, end: start + text.length, text, value: text.slice(1) })
+  }
+  return runs
+}
+
+export interface NoteLinkMatch {
+  start: number
+  /** Exclusive. */
+  end: number
+  /** The text between the brackets. */
+  title: string
+}
+
+/** Every finished `[[…]]` run. An unclosed `[[` is still being typed. */
+export const findNoteLinks = (input: string): NoteLinkMatch[] => {
+  const links: NoteLinkMatch[] = []
+  for (const match of input.matchAll(NOTE_LINK_PATTERN)) {
+    links.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      title: match[1].trim()
+    })
+  }
+  return links
 }
 
 /**
- * Get next occurrence of a day of the week
+ * A note title is user text and may well contain a sigil — `[[Q3 #launch]]`
+ * links a note, it does not tag the task. Markers inside a link are ignored.
  */
-const getNextDayOfWeek = (targetDay: number): Date => {
-  const today = startOfDay(new Date())
-  const currentDay = today.getDay()
-  let daysUntil = targetDay - currentDay
-
-  // If today is the target day, get next week's
-  if (daysUntil <= 0) {
-    daysUntil += 7
-  }
-
-  return addDays(today, daysUntil)
-}
-
-const buildDateWithRollover = (monthIndex: number, day: number): Date => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const date = new Date(year, monthIndex, day)
-  date.setHours(0, 0, 0, 0)
-
-  if (date < startOfDay(today)) {
-    date.setFullYear(year + 1)
-  }
-
-  return date
-}
-
-/**
- * Parse date keyword to Date object
- * Supports: today, tomorrow, day names (mon, tue, etc.), month+day (dec20, 20dec)
- */
-export const parseDateKeyword = (keyword: string): Date | null => {
-  const lower = keyword.toLowerCase().trim()
-
-  if (lower === 'today') {
-    return startOfDay(new Date())
-  }
-
-  if (lower === 'tomorrow' || lower === 'tmr' || lower === 'tom') {
-    return addDays(startOfDay(new Date()), 1)
-  }
-
-  if (lower === 'nextweek' || lower === 'next') {
-    return addDays(startOfDay(new Date()), 7)
-  }
-
-  if (dayNameMap[lower] !== undefined) {
-    return getNextDayOfWeek(dayNameMap[lower])
-  }
-
-  // Month + day: dec20, dec 20, december20
-  const monthDayMatch = lower.match(/^([a-z]+)\s*(\d{1,2})$/)
-  if (monthDayMatch) {
-    const [, monthStr, dayStr] = monthDayMatch
-    const monthIndex = monthNameMap[monthStr]
-    const day = parseInt(dayStr, 10)
-
-    if (monthIndex !== undefined && day >= 1 && day <= 31) {
-      return buildDateWithRollover(monthIndex, day)
-    }
-  }
-
-  // Day + month: 20dec, 21jan, 23may
-  const dayMonthMatch = lower.match(/^(\d{1,2})\s*([a-z]+)$/)
-  if (dayMonthMatch) {
-    const [, dayStr, monthStr] = dayMonthMatch
-    const monthIndex = monthNameMap[monthStr]
-    const day = parseInt(dayStr, 10)
-
-    if (monthIndex !== undefined && day >= 1 && day <= 31) {
-      return buildDateWithRollover(monthIndex, day)
-    }
-  }
-
-  return null
-}
+const isInsideLink = (links: NoteLinkMatch[], index: number): boolean =>
+  links.some((link) => index >= link.start && index < link.end)
 
 // ============================================================================
 // NATURAL-LANGUAGE DATE PHRASES (@tomorrow, @next wednesday, @dec 20 at 3pm)
@@ -300,16 +249,17 @@ const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
 /**
  * Parse quick add input string with special syntax
  *
- * Syntax:
- * - Due date: !today, !tomorrow, !mon, !dec20
- * - Natural due date: @tomorrow, @next wednesday, @dec 20 at 3pm
+ * Syntax (the note editor's grammar, so both surfaces agree):
+ * - Due date: @tomorrow, @next wednesday, @dec 20 at 3pm
  * - Repeat: every day, every weekday, every monday, every 2 weeks, every month
- * - Priority: !!urgent, !!high, !!medium, !!low
- * - Project: #project-name, #personal, #work
+ * - Priority: !urgent, !high, !medium, !low
+ * - Project: +project-name, +personal, +work
+ * - Tag: #launch, #work/client — every tag in the input counts
+ * - Note link: [[Roadmap]]
  *
  * Examples:
- * - "Buy groceries !today !!high" → title: "Buy groceries", due: today, priority: high
- * - "Review PR #work @next friday" → title: "Review PR", project: work, due: next Friday
+ * - "Buy groceries @today !high" → title: "Buy groceries", due: today, priority: high
+ * - "Review PR +work @next friday" → title: "Review PR", project: work, due: next Friday
  * - "Water plants every 2 weeks" → title: "Water plants", repeats every second week
  */
 export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAdd => {
@@ -319,60 +269,57 @@ export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAd
   let priority: Priority = 'none'
   let projectId: string | null = null
 
+  // Note links first: they own their whole run, sigils inside included.
+  const noteLinks = findNoteLinks(input)
+  for (const link of noteLinks) {
+    spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+  }
+
   // Natural-language due date: @tomorrow, @next wednesday
   const datePhrase = findDatePhrase(input)
-  if (datePhrase) {
+  if (datePhrase && !isInsideLink(noteLinks, datePhrase.start)) {
     dueDate = datePhrase.date
     dueTime = datePhrase.time
     spans.push({ start: datePhrase.start, end: datePhrase.end, kind: 'datePhrase' })
   }
 
-  // Due date keyword: !keyword (single !, never !!keyword — that is priority)
-  if (!dueDate) {
-    for (const match of input.matchAll(/(?<![!])!([a-zA-Z0-9]+)/g)) {
-      const parsedDate = parseDateKeyword(match[1])
-      if (parsedDate) {
-        dueDate = parsedDate
-        spans.push({ start: match.index, end: match.index + match[0].length, kind: 'date' })
-        break // Only use first valid date
-      }
-    }
-  }
-
   // Repeat: every monday, every 2 weeks. Anchored to the due date so a bare
   // "every month" repeats on the day the task is actually due.
   const repeatPhrase = findRepeatPhrase(input, dueDate ?? new Date())
-  const repeat = repeatPhrase?.config ?? null
-  if (repeatPhrase) {
+  const repeat =
+    repeatPhrase && !isInsideLink(noteLinks, repeatPhrase.start) ? repeatPhrase.config : null
+  if (repeatPhrase && repeat) {
     spans.push({ start: repeatPhrase.start, end: repeatPhrase.end, kind: 'repeat' })
   }
 
-  // Parse priority: !!keyword (double !)
-  const priorityMatch = input.match(/!!([a-zA-Z]+)/)
-  if (priorityMatch?.index !== undefined) {
-    const parsedPriority = parsePriorityKeyword(priorityMatch[1])
+  // Priority: !high. The first run that names a priority wins; "!nope" is prose.
+  for (const run of findMarkerRuns(input, PRIORITY_PATTERN)) {
+    if (isInsideLink(noteLinks, run.start)) continue
+    const parsedPriority = parsePriorityKeyword(run.value)
     if (parsedPriority) {
       priority = parsedPriority
-      spans.push({
-        start: priorityMatch.index,
-        end: priorityMatch.index + priorityMatch[0].length,
-        kind: 'priority'
-      })
+      spans.push({ start: run.start, end: run.end, kind: 'priority' })
+      break
     }
   }
 
-  // Parse project: #project-name
-  const projectMatch = input.match(/#([\w-]+)/)
-  if (projectMatch?.index !== undefined) {
-    const foundProjectId = findProjectByName(projectMatch[1], projects)
+  // Project: +work. Unresolved "+foo" stays in the title.
+  for (const run of findMarkerRuns(input, PROJECT_PATTERN)) {
+    if (isInsideLink(noteLinks, run.start)) continue
+    const foundProjectId = findProjectByName(run.value, projects)
     if (foundProjectId) {
       projectId = foundProjectId
-      spans.push({
-        start: projectMatch.index,
-        end: projectMatch.index + projectMatch[0].length,
-        kind: 'project'
-      })
+      spans.push({ start: run.start, end: run.end, kind: 'project' })
+      break
     }
+  }
+
+  // Tags: unlike the other markers, every one counts — a task takes several.
+  const tags: string[] = []
+  for (const run of findMarkerRuns(input, TAG_PATTERN)) {
+    if (isInsideLink(noteLinks, run.start)) continue
+    tags.push(run.value)
+    spans.push({ start: run.start, end: run.end, kind: 'tag' })
   }
 
   // A repeat only rolls forward from a due date, so give an undated repeating
@@ -387,7 +334,9 @@ export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAd
     dueTime,
     priority,
     projectId,
-    repeat
+    repeat,
+    tags,
+    noteTitles: noteLinks.map((link) => link.title).filter(Boolean)
   }
 }
 
@@ -399,26 +348,33 @@ export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAd
 export const findQuickAddSpans = (input: string): QuickAddSpan[] => {
   const spans: QuickAddSpan[] = []
 
+  const noteLinks = findNoteLinks(input)
+  for (const link of noteLinks) {
+    spans.push({ start: link.start, end: link.end, kind: 'noteLink' })
+  }
+
   const datePhrase = findDatePhrase(input)
-  if (datePhrase) {
+  if (datePhrase && !isInsideLink(noteLinks, datePhrase.start)) {
     spans.push({ start: datePhrase.start, end: datePhrase.end, kind: 'datePhrase' })
   }
 
   const repeatPhrase = findRepeatPhrase(input)
-  if (repeatPhrase) {
+  if (repeatPhrase && !isInsideLink(noteLinks, repeatPhrase.start)) {
     spans.push({ start: repeatPhrase.start, end: repeatPhrase.end, kind: 'repeat' })
   }
 
   // The sigil forms are painted as soon as they are typed, parseable or not —
-  // an unfinished "!tom" or an unknown "#foo" still reads as syntax.
-  for (const match of input.matchAll(/(!![a-zA-Z]+|(?<![!])![a-zA-Z0-9]+|#[\w-]+)/g)) {
-    const raw = match[0]
-    const kind: QuickAddSpanKind = raw.startsWith('!!')
-      ? 'priority'
-      : raw.startsWith('!')
-        ? 'date'
-        : 'project'
-    spans.push({ start: match.index, end: match.index + raw.length, kind })
+  // an unfinished "!hi" or an unknown "+foo" still reads as syntax.
+  const sigilKinds: [RegExp, QuickAddSpanKind][] = [
+    [PRIORITY_PATTERN, 'priority'],
+    [PROJECT_PATTERN, 'project'],
+    [TAG_PATTERN, 'tag']
+  ]
+  for (const [pattern, kind] of sigilKinds) {
+    for (const run of findMarkerRuns(input, pattern)) {
+      if (isInsideLink(noteLinks, run.start)) continue
+      spans.push({ start: run.start, end: run.end, kind })
+    }
   }
 
   return dropOverlaps(spans)
@@ -432,10 +388,13 @@ export const findQuickAddSpans = (input: string): QuickAddSpan[] => {
  * Check if input has any special syntax
  */
 export const hasSpecialSyntax = (input: string): boolean => {
+  // Scanned with matchAll rather than `.test()`: these patterns are global and
+  // module-level, so `.test()` would carry `lastIndex` between calls.
   return (
-    /(?<![!])![a-zA-Z0-9]+/.test(input) || // date
-    /!![a-zA-Z]+/.test(input) || // priority
-    /#[\w-]+/.test(input) || // project
+    findMarkerRuns(input, PRIORITY_PATTERN).length > 0 ||
+    findMarkerRuns(input, PROJECT_PATTERN).length > 0 ||
+    findMarkerRuns(input, TAG_PATTERN).length > 0 ||
+    findNoteLinks(input).length > 0 ||
     findDatePhrase(input) !== null || // @tomorrow
     findRepeatPhrase(input) !== null // every monday
   )
@@ -481,37 +440,6 @@ export interface AutocompleteOption {
 }
 
 /**
- * Get date options for autocomplete, filtered by query
- */
-export const getDateOptions = (query: string): AutocompleteOption[] => {
-  const keywords = [
-    { keyword: 'today', label: 'Today' },
-    { keyword: 'tomorrow', label: 'Tomorrow' },
-    { keyword: 'nextweek', label: 'Next Week' },
-    { keyword: 'monday', label: 'Monday' },
-    { keyword: 'tuesday', label: 'Tuesday' },
-    { keyword: 'wednesday', label: 'Wednesday' },
-    { keyword: 'thursday', label: 'Thursday' },
-    { keyword: 'friday', label: 'Friday' },
-    { keyword: 'saturday', label: 'Saturday' },
-    { keyword: 'sunday', label: 'Sunday' }
-  ]
-
-  const options: AutocompleteOption[] = keywords.map(({ keyword, label }) => ({
-    value: `!${keyword}`,
-    label
-  }))
-
-  if (!query) return options.slice(0, 5)
-
-  const lowerQuery = query.toLowerCase()
-  return options.filter(
-    (opt) =>
-      opt.value.toLowerCase().includes(lowerQuery) || opt.label.toLowerCase().includes(lowerQuery)
-  )
-}
-
-/**
  * The cadences the ghost completes to. Ordered so the shortest useful phrase
  * wins an ambiguous prefix ("every w" → weekday, the commonest routine).
  */
@@ -539,10 +467,10 @@ export const predictRepeatCompletion = (query: string): string | null => {
  */
 export const getPriorityOptions = (query: string): AutocompleteOption[] => {
   const options: AutocompleteOption[] = [
-    { value: '!!urgent', label: 'Urgent' },
-    { value: '!!high', label: 'High' },
-    { value: '!!medium', label: 'Medium' },
-    { value: '!!low', label: 'Low' }
+    { value: '!urgent', label: 'Urgent' },
+    { value: '!high', label: 'High' },
+    { value: '!medium', label: 'Medium' },
+    { value: '!low', label: 'Low' }
   ]
 
   if (!query) return options
@@ -562,7 +490,7 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
 
   if (!query) {
     return activeProjects.map((p) => ({
-      value: `#${p.name}`,
+      value: `+${p.name}`,
       label: p.name
     }))
   }
@@ -573,7 +501,20 @@ export const getProjectOptions = (query: string, projects: Project[]): Autocompl
       (p) => p.name.toLowerCase().includes(lowerQuery) || p.id.toLowerCase().includes(lowerQuery)
     )
     .map((p) => ({
-      value: `#${p.name}`,
+      value: `+${p.name}`,
       label: p.name
     }))
+}
+
+/**
+ * Get tag options for autocomplete, filtered by query. The pool is the app's
+ * existing tags (notes and tasks share it), in the order the caller supplies.
+ */
+export const getTagOptions = (query: string, tags: string[]): AutocompleteOption[] => {
+  const options: AutocompleteOption[] = tags.map((tag) => ({ value: `#${tag}`, label: tag }))
+
+  if (!query) return options
+
+  const lowerQuery = query.toLowerCase()
+  return options.filter((opt) => opt.label.toLowerCase().includes(lowerQuery))
 }

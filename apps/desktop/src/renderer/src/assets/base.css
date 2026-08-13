@@ -1207,6 +1207,8 @@
     --task-repeat: #3b82f6;
     --task-token-date: #f59e0b;
     --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -1339,6 +1341,8 @@
     --task-repeat: #3b82f6;
     --task-token-date: #f59e0b;
     --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -1476,6 +1480,8 @@
     --task-repeat: #60a5fa;
     --task-token-date: #fbbf24;
     --task-token-project: #93c5fd;
+    --task-token-tag: #a78bfa;
+    --task-token-note: #2dd4bf;
 
     /* Checkbox */
     --task-checkbox-done: #7b9e87;
@@ -2287,6 +2293,8 @@ del.bn-inline-content {
   --color-task-repeat: var(--task-repeat);
   --color-task-token-date: var(--task-token-date);
   --color-task-token-project: var(--task-token-project);
+  --color-task-token-tag: var(--task-token-tag);
+  --color-task-token-note: var(--task-token-note);
   --color-task-checkbox-done: var(--task-checkbox-done);
 
   /* ===== SIDEBAR ===== */

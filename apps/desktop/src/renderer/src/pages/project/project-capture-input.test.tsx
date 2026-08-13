@@ -139,7 +139,7 @@ describe('ProjectCaptureInput — text capture', () => {
     const user = userEvent.setup()
     const { props } = setup()
 
-    await user.type(field(), 'Draft the brief !!high')
+    await user.type(field(), 'Draft the brief !high')
     await user.keyboard('{Enter}')
 
     expect(props.onAddTask).toHaveBeenCalledWith(
