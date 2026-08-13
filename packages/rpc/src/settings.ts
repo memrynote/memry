@@ -282,6 +282,19 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_GRAPH_SETTINGS,
       params: ['settings']
     }),
+    getCalendarProviderSettings: defineMethod<
+      (providerId: string) => Promise<CalendarGoogleSettings>
+    >({
+      channel: SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS,
+      params: ['providerId']
+    }),
+    setCalendarProviderSettings: defineMethod<
+      (providerId: string, settings: Partial<CalendarGoogleSettings>) => SuccessResponse
+    >({
+      channel: SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
+      params: ['providerId', 'settings']
+    }),
+    // Permanent compatibility aliases — see the channel constants. Never remove.
     getCalendarGoogleSettings: defineMethod<() => Promise<CalendarGoogleSettings>>({
       channel: SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS
     }),

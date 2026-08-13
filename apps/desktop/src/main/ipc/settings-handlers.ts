@@ -928,6 +928,29 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS, updates)
   )
 
+  // `calendar.<providerId>` — google keeps its exact historical key, so an
+  // existing install reads and writes the same row it always has. The
+  // per-provider schema split lands in #1394.
+  const calendarProviderSettingsKey = (providerId: string): string => `calendar.${providerId}`
+
+  ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS, (_event, providerId) =>
+    readGroupSettings(
+      calendarProviderSettingsKey(String(providerId)),
+      CALENDAR_GOOGLE_SETTINGS_DEFAULTS
+    )
+  )
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
+    (_event, providerId: string, updates: Partial<CalendarGoogleSettings>) =>
+      writeGroupSettings(
+        calendarProviderSettingsKey(String(providerId)),
+        CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+        updates
+      )
+  )
+
+  // Permanent compatibility aliases: an older renderer against a newer main
+  // calls these with no provider, which has always meant google. Do not remove.
   ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS, () =>
     readGroupSettings('calendar.google', CALENDAR_GOOGLE_SETTINGS_DEFAULTS)
   )
@@ -1169,6 +1192,8 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_GRAPH_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS)
+  ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_CALENDAR_GOOGLE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_CALENDAR_SETTINGS)

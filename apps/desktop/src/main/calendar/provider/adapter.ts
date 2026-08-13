@@ -7,33 +7,20 @@ import type {
 import type { CalendarSyncSourceType } from '../types'
 
 /**
- * How a provider tells us "what changed since last time".
+ * The capability model lives in contracts because the renderer needs it too —
+ * a provider that cannot write must not be offered a "push events" toggle.
+ * Re-exported here under the main-process names so adapter code reads locally.
  *
- * - `sync-token` — Google: opaque token returned with each page
- * - `delta-link` — Microsoft Graph: `@odata.deltaLink`
- * - `sync-collection` — CalDAV RFC 6578
- * - `ctag-etag` — CalDAV without RFC 6578: collection ctag, then per-item etags
- * - `conditional-get` — plain HTTP `ETag` / `Last-Modified` on a whole feed (ICS)
- * - `full` — no incremental support; every pass re-reads everything
+ * `incrementalMode` is how a provider tells us "what changed since last time":
+ * `sync-token` (Google), `delta-link` (Microsoft Graph), `sync-collection`
+ * (CalDAV RFC 6578), `ctag-etag` (CalDAV without it), `conditional-get`
+ * (plain HTTP ETag on a whole ICS feed), `full` (no incremental support).
  */
-export type ProviderIncrementalMode =
-  'sync-token' | 'delta-link' | 'sync-collection' | 'ctag-etag' | 'conditional-get' | 'full'
-
-/** Which connect flow the UI shell has to render for this provider. */
-export type ProviderAuthFlow = 'oauth2' | 'basic' | 'url' | 'none'
-
-export interface ProviderCapabilities {
-  /** False for read-only providers (ICS). The engine — not the adapter — refuses writes. */
-  supportsWrite: boolean
-  /** Can we provision our own "memrynote" calendar on the remote? */
-  supportsCreateCalendar: boolean
-  /** Real-time change notifications. False means the runner polls. */
-  supportsPush: boolean
-  /** More than one connected account per provider. */
-  supportsMultiAccount: boolean
-  incrementalMode: ProviderIncrementalMode
-  authFlow: ProviderAuthFlow
-}
+export type {
+  CalendarProviderAuthFlow as ProviderAuthFlow,
+  CalendarProviderCapabilities as ProviderCapabilities,
+  CalendarProviderIncrementalMode as ProviderIncrementalMode
+} from '@memry/contracts/calendar-api'
 
 export interface RemoteCalendarDescriptor {
   id: string

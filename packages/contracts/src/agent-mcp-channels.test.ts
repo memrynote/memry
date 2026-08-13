@@ -5,13 +5,23 @@ import { AgentMcpDesktopReadOperations, AgentMcpDesktopWriteOperations } from '.
 // Google Workspace Limited Use compliance: data obtained through the Google
 // Calendar integration must never be readable by AI backends, so no
 // Google-integration operation may appear in the agent allowlists.
+//
+// The provider-neutral twins (#1392) are listed alongside the Google-named
+// originals: they reach the same connected accounts, so allowlisting one would
+// re-open exactly the hole the Google-named exclusion closes.
 const googleIntegrationOperations = [
   'calendar.listSources',
   'calendar.getProviderStatus',
+  'calendar.listProviders',
+  'calendar.listProviderCalendars',
   'calendar.listGoogleCalendars',
   'calendar.promoteExternalEvent',
   'calendar.updateSourceSelection',
+  'calendar.setDefaultProviderCalendar',
   'calendar.setDefaultGoogleCalendar',
+  'calendar.retryCalendarSourceSync',
+  'settings.getCalendarProviderSettings',
+  'settings.setCalendarProviderSettings',
   'settings.getCalendarGoogleSettings',
   'settings.setCalendarGoogleSettings'
 ] as const
