@@ -219,6 +219,44 @@ export const CALENDAR_GOOGLE_SETTINGS_DEFAULTS: CalendarGoogleSettings = {
 }
 
 // ============================================================================
+// Calendar — per-provider settings (`calendar.<providerId>`)
+// ============================================================================
+//
+// The shape above is the *google* instance of this base, frozen in its historic
+// form: its outbound toggle is spelled `pushEventsToGoogle` and its group key is
+// `calendar.google`. Both stay exactly as they are — a live install must read
+// back the row it already wrote, and there is no migration.
+//
+// Every provider added from here on stores `calendar.<providerId>` in this
+// neutral shape, where the same toggle is `pushEventsToProvider`. The main
+// process translates between the two so the sync engine only ever sees the
+// neutral name.
+//
+// `agentReadEventsConsent` is deliberately part of the *base*, not a Google
+// extension. Google Workspace Limited Use is what forced the question first,
+// but the answer became the house rule: no provider's external events are
+// readable by the agent until that provider has been explicitly consented to.
+// Null means "not asked yet" and reads as no.
+export const CalendarProviderSettingsSchema = z.object({
+  defaultTargetCalendarId: z.string().nullable(),
+  onboardingCompleted: z.boolean(),
+  promoteConfirmDismissed: z.boolean(),
+  /** false = one-way (inbound only): pull events in, never push ours out. */
+  pushEventsToProvider: z.boolean(),
+  agentReadEventsConsent: z.boolean().nullable().default(null)
+})
+
+export type CalendarProviderSettings = z.infer<typeof CalendarProviderSettingsSchema>
+
+export const CALENDAR_PROVIDER_SETTINGS_DEFAULTS: CalendarProviderSettings = {
+  defaultTargetCalendarId: null,
+  onboardingCompleted: false,
+  promoteConfirmDismissed: false,
+  pushEventsToProvider: true,
+  agentReadEventsConsent: null
+}
+
+// ============================================================================
 // Features Settings (optional module toggles)
 // ============================================================================
 

@@ -23,10 +23,11 @@ describe('useAgentMcpDesktopApiResponder', () => {
   let respondToMainInvoke: ReturnType<typeof vi.fn>
   let templatesList: ReturnType<typeof vi.fn>
   let templatesCreate: ReturnType<typeof vi.fn>
+  let calendarListProviders: ReturnType<typeof vi.fn>
   let calendarGetProviderStatus: ReturnType<typeof vi.fn>
   let calendarGetRange: ReturnType<typeof vi.fn>
   let calendarListEvents: ReturnType<typeof vi.fn>
-  let getCalendarGoogleSettings: ReturnType<typeof vi.fn>
+  let getCalendarProviderSettings: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     onMainInvokeCallback = undefined
@@ -40,8 +41,11 @@ describe('useAgentMcpDesktopApiResponder', () => {
     calendarGetRange = vi.fn().mockResolvedValue({ items: [] })
     calendarListEvents = vi.fn().mockResolvedValue({ events: [] })
     // null = the user has not answered the agent-access prompt yet. Until they
-    // grant it, Google-synced events stay out of every agent read.
-    getCalendarGoogleSettings = vi.fn().mockResolvedValue({ agentReadEventsConsent: null })
+    // grant it, that provider's synced events stay out of every agent read.
+    getCalendarProviderSettings = vi.fn().mockResolvedValue({ agentReadEventsConsent: null })
+    calendarListProviders = vi.fn().mockResolvedValue({
+      providers: [{ id: 'google', capabilities: null }]
+    })
     mocks.logError.mockReset()
     ;(window as Window & { api: unknown }).api = {
       onMainInvoke: vi.fn(
@@ -62,12 +66,13 @@ describe('useAgentMcpDesktopApiResponder', () => {
         create: templatesCreate
       },
       calendar: {
+        listProviders: calendarListProviders,
         getProviderStatus: calendarGetProviderStatus,
         getRange: calendarGetRange,
         listEvents: calendarListEvents
       },
       settings: {
-        getCalendarGoogleSettings
+        getCalendarProviderSettings
       }
     }
   })
@@ -123,8 +128,10 @@ describe('useAgentMcpDesktopApiResponder', () => {
       'calendar.getProviderStatus',
       'calendar.listSources',
       'calendar.listGoogleCalendars',
+      'calendar.listProviderCalendars',
       'calendar.promoteExternalEvent',
-      'settings.getCalendarGoogleSettings'
+      'settings.getCalendarGoogleSettings',
+      'settings.getCalendarProviderSettings'
     ]
 
     for (const operation of operations) {
@@ -212,7 +219,7 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('keeps Google events out of range reads when consent is denied, ignoring caller flags', async () => {
-    getCalendarGoogleSettings.mockResolvedValue({ agentReadEventsConsent: false })
+    getCalendarProviderSettings.mockResolvedValue({ agentReadEventsConsent: false })
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -226,7 +233,7 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('includes Google events in range reads once the user grants consent', async () => {
-    getCalendarGoogleSettings.mockResolvedValue({ agentReadEventsConsent: true })
+    getCalendarProviderSettings.mockResolvedValue({ agentReadEventsConsent: true })
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 
@@ -240,7 +247,7 @@ describe('useAgentMcpDesktopApiResponder', () => {
   })
 
   it('falls back to excluding Google events when the consent lookup fails', async () => {
-    getCalendarGoogleSettings.mockRejectedValue(new Error('settings unavailable'))
+    getCalendarProviderSettings.mockRejectedValue(new Error('settings unavailable'))
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
 

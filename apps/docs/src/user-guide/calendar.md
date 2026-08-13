@@ -199,7 +199,29 @@ an account whose sign-in it cannot read. See
 
 Right-click an external event → **Promote to vault** to copy it into your encrypted vault. Useful when you want to attach notes, tags, or reminders that wouldn't survive on the source calendar.
 
-### Google Data and AI Features
+### Connected Calendars and AI Features
+
+**The rule: no connected calendar is readable by the AI assistant until you say so, one provider at
+a time.** Google Workspace's Limited Use terms are what made us ask the question first, but the
+answer is the house rule for every calendar you connect — Google today, and ICS feeds, CalDAV
+servers and Outlook as they arrive. Each provider is asked separately, and consenting to one says
+nothing about another.
+
+Three details follow from that:
+
+- **Not asked yet reads as no.** Until you answer, the assistant sees nothing from that calendar.
+  There is no "on by default" state.
+- **Turning a provider off does not touch the others.** Your answers are stored per provider, in
+  that provider's own settings group.
+- **While any connected provider is unconsented, external events stay out entirely.** The
+  assistant's calendar reads carry one include-external flag rather than a per-provider list, so
+  memrynote errs on the side of showing it nothing. Consent to every connected provider — or
+  disconnect the one you don't want it reading — to open the gate.
+
+Events you [promoted to your vault](#promote-external-events) are exempt: a promoted event is your
+own memrynote event, and the assistant reads it like any other.
+
+#### Google specifically
 
 AI access to your Google Calendar events is off until you turn it on. The first time you open the
 calendar with Google calendars imported, memrynote asks once: **Let AI read your Google Calendar

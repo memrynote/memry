@@ -19,6 +19,7 @@ import {
   BACKUP_SETTINGS_DEFAULTS,
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  CALENDAR_PROVIDER_SETTINGS_DEFAULTS,
   CALENDAR_SETTINGS_DEFAULTS,
   FEATURES_SETTINGS_DEFAULTS,
   INBOX_SETTINGS_DEFAULTS
@@ -32,12 +33,17 @@ import type {
   BackupSettings,
   VoiceTranscriptionSettings,
   CalendarGoogleSettings,
+  CalendarProviderSettings,
   CalendarSettings,
   FeaturesSettings,
   InboxSettings
 } from '@memry/contracts/settings-schemas'
 import { GRAPH_SETTINGS_DEFAULTS } from '@memry/contracts/graph-api'
 import type { GraphSettings } from '@memry/contracts/graph-api'
+import {
+  readCalendarProviderSettings,
+  writeCalendarProviderSettings
+} from '../calendar/provider/settings'
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '../settings/settings-store'
@@ -928,25 +934,27 @@ export function registerSettingsHandlers(): void {
       writeGroupSettings('graph', GRAPH_SETTINGS_DEFAULTS, updates)
   )
 
-  // `calendar.<providerId>` — google keeps its exact historical key, so an
-  // existing install reads and writes the same row it always has. The
-  // per-provider schema split lands in #1394.
-  const calendarProviderSettingsKey = (providerId: string): string => `calendar.${providerId}`
-
-  ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS, (_event, providerId) =>
-    readGroupSettings(
-      calendarProviderSettingsKey(String(providerId)),
-      CALENDAR_GOOGLE_SETTINGS_DEFAULTS
-    )
-  )
+  // `calendar.<providerId>`, in the neutral shape. Google's row keeps its exact
+  // historical key and keys — `readCalendarProviderSettings` translates its
+  // `pushEventsToGoogle` to `pushEventsToProvider` on the way out, so an
+  // existing install reads and writes the same row it always has (#1394).
+  ipcMain.handle(SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS, (_event, providerId) => {
+    const db = getDbOrNull()
+    if (!db) return { ...CALENDAR_PROVIDER_SETTINGS_DEFAULTS }
+    return readCalendarProviderSettings(db, String(providerId))
+  })
   ipcMain.handle(
     SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
-    (_event, providerId: string, updates: Partial<CalendarGoogleSettings>) =>
-      writeGroupSettings(
-        calendarProviderSettingsKey(String(providerId)),
-        CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
-        updates
-      )
+    (_event, providerId: string, updates: Partial<CalendarProviderSettings>) => {
+      const db = getDbOrNull()
+      if (!db) return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+      writeCalendarProviderSettings(db, String(providerId), updates)
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: `calendar.${String(providerId)}`,
+        value: updates
+      })
+      return { success: true }
+    }
   )
 
   // Permanent compatibility aliases: an older renderer against a newer main

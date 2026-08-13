@@ -1,6 +1,7 @@
 import type {
   BackupSettings,
   CalendarGoogleSettings,
+  CalendarProviderSettings,
   CalendarSettings,
   EditorSettings,
   FeaturesSettings,
@@ -283,13 +284,13 @@ export const settingsRpc = defineDomain({
       params: ['settings']
     }),
     getCalendarProviderSettings: defineMethod<
-      (providerId: string) => Promise<CalendarGoogleSettings>
+      (providerId: string) => Promise<CalendarProviderSettings>
     >({
       channel: SettingsChannels.invoke.GET_CALENDAR_PROVIDER_SETTINGS,
       params: ['providerId']
     }),
     setCalendarProviderSettings: defineMethod<
-      (providerId: string, settings: Partial<CalendarGoogleSettings>) => SuccessResponse
+      (providerId: string, settings: Partial<CalendarProviderSettings>) => SuccessResponse
     >({
       channel: SettingsChannels.invoke.SET_CALENDAR_PROVIDER_SETTINGS,
       params: ['providerId', 'settings']

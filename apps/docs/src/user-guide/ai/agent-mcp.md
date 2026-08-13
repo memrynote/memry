@@ -457,14 +457,17 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 `args: ["2026-05-14", "2026-06-14"]` or
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
-Google-integration operations — calendar sources, provider status, Google calendar lists, promoting
-external events, and Google calendar settings — are excluded from the agent allowlists outright.
+Calendar-integration operations — calendar sources, provider status, provider calendar lists,
+promoting external events, and calendar provider settings — are excluded from the agent allowlists
+outright. That applies to the provider-neutral operations and their Google-named aliases alike; they
+reach the same connected accounts, so allowlisting either would re-open the same hole.
 
-Google-synced events themselves are gated on explicit user consent. `calendar.getRange` resolves
-`includeExternal` from the stored answer to the **Let AI read Google Calendar events** setting, never
-from the caller: an agent that passes `includeExternal: true` still gets native-only results unless
-the user granted access. Not asked yet, declined, or a settings read that failed all resolve to
-native-only. See [Calendar → Google Data and AI Features](/user-guide/calendar#google-data-and-ai-features).
+Events synced from a connected calendar are gated on explicit per-provider consent.
+`calendar.getRange` resolves `includeExternal` from the stored answers, never from the caller: an
+agent that passes `includeExternal: true` still gets native-only results unless every connected
+provider has been granted access. Not asked yet, declined, or a settings read that failed all
+resolve to native-only. See
+[Calendar → Connected Calendars and AI Features](/user-guide/calendar#connected-calendars-and-ai-features).
 
 Google user data is never used to train or improve AI models, in line with the Google API Services
 User Data Policy (Limited Use).

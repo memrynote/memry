@@ -41,13 +41,27 @@ async function normalizeDesktopApiArgs(operation: string, args: unknown[]): Prom
   }
 }
 
-// Google Workspace Limited Use: Google-synced events are invisible to the agent
-// until the user explicitly opts in. Anything other than a stored `true` — not
-// asked yet, opted out, or a settings read that failed — stays native-only.
-async function hasAgentGoogleEventConsent(): Promise<boolean> {
+/**
+ * External calendar events are invisible to the agent until every calendar
+ * provider this build can connect has been explicitly consented to. Anything
+ * other than a stored `true` — never asked, opted out, or a settings read that
+ * failed — stays native-only.
+ *
+ * Google Workspace Limited Use forced the question first; the answer is the
+ * house rule now (#1394). The gate is all-or-nothing because
+ * `calendar.getRange` takes a single `includeExternal` flag: until it can
+ * filter per provider, one unconsented provider keeps every external event out
+ * rather than risking one leaking through.
+ */
+async function hasAgentExternalEventConsent(): Promise<boolean> {
   try {
-    const settings = await window.api.settings.getCalendarGoogleSettings()
-    return settings.agentReadEventsConsent === true
+    const { providers } = await window.api.calendar.listProviders()
+    if (providers.length === 0) return false
+
+    const settings = await Promise.all(
+      providers.map((provider) => window.api.settings.getCalendarProviderSettings(provider.id))
+    )
+    return settings.every((group) => group.agentReadEventsConsent === true)
   } catch (error) {
     log.warn('Calendar consent lookup failed; keeping agent reads native-only', error)
     return false
@@ -70,7 +84,7 @@ async function normalizeCalendarRangeInput(args: unknown[]): Promise<JsonRecord>
     endAt: end ? normalizeCalendarRangeBound(end, 'end') : end,
     // Resolved from stored consent, never from the caller: an agent that asks
     // for external events cannot talk its way past the user's answer.
-    includeExternal: await hasAgentGoogleEventConsent()
+    includeExternal: await hasAgentExternalEventConsent()
   }
 }
 
