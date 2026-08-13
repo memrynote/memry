@@ -310,6 +310,10 @@ export function recordExternalTaskUpdate(
 ): void {
   const changedFields = Object.keys(updates).filter((field) => {
     if (IGNORED_FIELDS.has(field)) return false
+    // `undefined` never reached the row: drizzle omits it from `.set()`. Google
+    // sends the key with no value whenever the event carries no description, so
+    // counting it would log the body as deleted on a poll that changed nothing.
+    if (updates[field] === undefined) return false
     return JSON.stringify(before?.[field] ?? null) !== JSON.stringify(updates[field] ?? null)
   })
 

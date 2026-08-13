@@ -253,6 +253,27 @@ export interface CreateTasksCommandsDeps {
   generateId: () => string
 }
 
+/**
+ * Drops keys whose value is `undefined`.
+ *
+ * Callers do not send only what the user touched. The tasks page builds one
+ * fixed key set on every edit — title, description, priority, projectId,
+ * statusId, dueDate, dueTime, isRepeating, repeatConfig, tags, linkedNoteIds —
+ * and leaves the untouched ones `undefined`, so the raw input says nothing
+ * about what changed. The write layer already ignores them (drizzle omits
+ * `undefined` from `.set()`), so treating them as changes only misreports: a
+ * status-only edit would log every other field as cleared in the activity feed
+ * and bump the sync field clock of each, letting this device win a merge on
+ * fields it never edited.
+ *
+ * `null` is untouched — it still means "clear this field".
+ */
+function definedUpdates(updates: Partial<Task>): Partial<Task> {
+  return Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined)
+  ) as Partial<Task>
+}
+
 function computeChangedFields(
   existingTask: Task | undefined,
   updates: Partial<Task>,
@@ -371,10 +392,10 @@ export function createTasksCommands({
       const { id, tags, linkedNoteIds, priority, ...rawUpdates } = input
       const existingTask = repository.getTask(id)
 
-      const updates: Partial<Task> = {
+      const updates: Partial<Task> = definedUpdates({
         ...rawUpdates,
         ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
-      }
+      })
 
       if (updates.projectId && existingTask && existingTask.projectId !== updates.projectId) {
         const currentStatus = existingTask.statusId

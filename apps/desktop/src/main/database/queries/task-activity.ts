@@ -12,6 +12,7 @@ import { statuses } from '@memry/db-schema/schema/statuses'
 import { projects } from '@memry/db-schema/schema/projects'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import type { TaskActivityEntry } from '@memry/contracts/tasks-api'
+import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
 import type { DataDb } from '../client'
 
 export interface ListTaskActivityInput {
@@ -63,6 +64,12 @@ export function listTaskActivity(
 
   const names = resolveReferencedNames(db, rows)
 
+  // `null` means this device has no registered id yet — signed out, or before
+  // the first link. The writer stamps those rows with OFFLINE_CLOCK_DEVICE_ID,
+  // so mirroring its fallback here is what keeps a signed-out user's own edits
+  // from reading as "Another device".
+  const thisDeviceId = currentDeviceId ?? OFFLINE_CLOCK_DEVICE_ID
+
   return {
     entries: rows.map((row) => ({
       id: row.id,
@@ -74,7 +81,7 @@ export function listTaskActivity(
       actor: row.actor,
       // Resolved here rather than shipping the raw device id: the UI shows
       // "You" or nothing, never a machine name.
-      isThisDevice: currentDeviceId !== null && row.deviceId === currentDeviceId,
+      isThisDevice: row.deviceId === thisDeviceId,
       createdAt: row.createdAt
     })),
     total: count,

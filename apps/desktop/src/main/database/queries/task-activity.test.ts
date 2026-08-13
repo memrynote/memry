@@ -78,10 +78,28 @@ describe('listTaskActivity', () => {
     expect(JSON.stringify(result.entries)).not.toContain('device-B')
   })
 
-  it('reports nothing as this device when the device is not registered', () => {
+  it('claims the offline-stamped rows when the device is not registered', () => {
+    // An unregistered device (signed out, or before the first link) writes its
+    // own rows under OFFLINE_CLOCK_DEVICE_ID. Reading them back as someone
+    // else's would tell a signed-out user that "another device" made the edit
+    // they just made.
+    testDb.db
+      .insert(taskActivity)
+      .values({
+        id: 'a4',
+        taskId: 'task-1',
+        action: 'updated',
+        field: 'title',
+        actor: 'user',
+        deviceId: '_offline',
+        createdAt: isoDaysAgo(0)
+      })
+      .run()
+
     const result = listTaskActivity(asClientDb(testDb.db), { taskId: 'task-1' }, null)
 
-    expect(result.entries.every((entry) => !entry.isThisDevice)).toBe(true)
+    expect(result.entries.find((entry) => entry.id === 'a4')?.isThisDevice).toBe(true)
+    expect(result.entries.find((entry) => entry.id === 'a2')?.isThisDevice).toBe(false)
   })
 
   it('pages without repeating or skipping a row', () => {

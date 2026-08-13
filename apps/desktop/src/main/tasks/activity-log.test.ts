@@ -46,7 +46,11 @@ vi.mock('./runtime-effects', () => ({
 vi.mock('../telemetry/track', () => ({ trackMainEvent: vi.fn() }))
 
 import { createTasksPublisher } from './publisher'
-import { recordTaskSuperseded, taskSupersededActivityId } from './activity-log'
+import {
+  recordExternalTaskUpdate,
+  recordTaskSuperseded,
+  taskSupersededActivityId
+} from './activity-log'
 
 const DEVICE = 'device-A'
 
@@ -250,6 +254,23 @@ describe('task activity write path', () => {
     const [row] = rows()
     expect(row.action).toBe('deleted')
     expect(row.oldValue).toBe(JSON.stringify('Gone'))
+  })
+
+  it('ignores writeback columns that carry no value', () => {
+    // Google sends the key with nothing in it when the event has no
+    // description; drizzle omits it from the UPDATE, so the body is still
+    // there and nothing may say it was deleted.
+    recordExternalTaskUpdate(
+      'task-1',
+      { title: 'Standup', description: 'a'.repeat(49), dueTime: '11:00' },
+      { title: 'Standup sync', description: undefined, dueTime: undefined },
+      'google_calendar'
+    )
+
+    const all = rows()
+    expect(all).toHaveLength(1)
+    expect(all[0].field).toBe('title')
+    expect(all[0].newValue).toBe(JSON.stringify('Standup sync'))
   })
 
   it('a database failure cannot take the mutation down with it', () => {
