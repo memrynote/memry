@@ -26,6 +26,7 @@ const FILTERABLE_ACTIONS = [
   'created',
   'updated',
   'completed',
+  'uncompleted',
   'moved',
   'deleted',
   'superseded'
@@ -103,8 +104,11 @@ export function TaskActivitySheet({
             <p className="py-4 text-[12px] text-text-tertiary">{t('drawer.activityEmpty')}</p>
           )}
 
-          {groups.map((group) => (
-            <div key={group.label} className="flex flex-col">
+          {groups.map((group, index) => (
+            // Keyed by position, not label: a row that arrives with an
+            // unparseable timestamp groups under an empty label, and two of
+            // those would collide on a label key.
+            <div key={`${index}-${group.label}`} className="flex flex-col">
               <span className="sticky top-0 bg-background py-2 text-[11px] font-medium uppercase leading-3.5 text-text-tertiary [letter-spacing:0.05em]">
                 {group.label}
               </span>
@@ -157,7 +161,7 @@ function groupByDay(
   for (const entry of entries) {
     const date = new Date(entry.createdAt)
     const label = Number.isNaN(date.getTime())
-      ? ''
+      ? t('drawer.activityUnknownDate')
       : isSameDay(date, today)
         ? t('drawer.activityToday')
         : isSameDay(date, yesterday)

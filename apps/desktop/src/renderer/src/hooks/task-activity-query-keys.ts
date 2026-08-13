@@ -7,6 +7,8 @@ export const ACTIVITY_PAGE_SIZE = 50
 export const taskActivityKeys = {
   all: ['task-activity'] as const,
   lists: () => [...taskActivityKeys.all, 'list'] as const,
+  /** Prefix for one task — invalidating this hits its preview and its sheet. */
+  forTask: (taskId: string) => [...taskActivityKeys.lists(), taskId] as const,
   list: (taskId: string, options?: { limit?: number; actions?: string[] }) =>
-    [...taskActivityKeys.lists(), taskId, options ?? {}] as const
+    [...taskActivityKeys.forTask(taskId), options ?? {}] as const
 }

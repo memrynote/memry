@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import type { TaskActivityEntry } from '@memry/rpc/tasks'
-import { tasksService, onTaskCompleted, onTaskMoved, onTaskUpdated } from '@/services/tasks-service'
+import { tasksService, onTaskActivityCreated } from '@/services/tasks-service'
 import {
   taskActivityKeys,
   ACTIVITY_PAGE_SIZE,
@@ -59,12 +59,12 @@ export function useTaskActivity(options: UseTaskActivityOptions): UseTaskActivit
   useEffect(() => {
     if (!taskId) return
 
-    const invalidate = (): void => {
-      void queryClient.invalidateQueries({ queryKey: taskActivityKeys.lists() })
-    }
-
-    const unsubs = [onTaskUpdated(invalidate), onTaskCompleted(invalidate), onTaskMoved(invalidate)]
-    return () => unsubs.forEach((unsub) => unsub())
+    // Scoped to this task: a burst of edits elsewhere should not refetch every
+    // open drawer's feed.
+    return onTaskActivityCreated((event) => {
+      if (event.taskId !== taskId) return
+      void queryClient.invalidateQueries({ queryKey: taskActivityKeys.forTask(taskId) })
+    })
   }, [queryClient, taskId])
 
   const lastPage = query.data?.pages[query.data.pages.length - 1]

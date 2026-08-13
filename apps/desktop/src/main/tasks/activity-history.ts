@@ -18,9 +18,26 @@ import { createLogger } from '../lib/logger'
 
 const log = createLogger('TaskActivityHistory')
 
+/** At most one prune sweep per hour per process. */
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000
+let lastPruneAt = 0
+
 export function getTaskActivity(input: TaskActivityListInput): TaskActivityListResponse {
+  // Prune on read, the same way note snapshots prune on write. Retention has to
+  // actually run somewhere: `applyUpsert` rejecting rows past the cutoff only
+  // converges because every device eventually deletes its own, and a device
+  // that never pruned would keep showing entries its peers have already
+  // dropped — and can no longer accept back.
+  maybePruneExpiredTaskActivity()
+
   const db = requireDatabase()
   return listTaskActivity(db, input, getCurrentDeviceId(db))
+}
+
+export function maybePruneExpiredTaskActivity(now: number = Date.now()): number {
+  if (now - lastPruneAt < PRUNE_INTERVAL_MS) return 0
+  lastPruneAt = now
+  return pruneExpiredTaskActivity()
 }
 
 /**
@@ -37,4 +54,9 @@ export function pruneExpiredTaskActivity(): number {
     log.warn('Failed to prune task activity', { error: err })
     return 0
   }
+}
+
+/** Test hook — the interval guard is process-global. */
+export function resetTaskActivityPruneGuard(): void {
+  lastPruneAt = 0
 }

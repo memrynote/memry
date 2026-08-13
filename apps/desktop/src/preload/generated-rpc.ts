@@ -21,6 +21,7 @@ const eventChannels = {
   "onProjectCreated": "tasks:project-created",
   "onProjectUpdated": "tasks:project-updated",
   "onProjectDeleted": "tasks:project-deleted",
+  "onTaskActivityCreated": "task-activity:created",
   "onInboxCaptured": "inbox:captured",
   "onInboxUpdated": "inbox:updated",
   "onInboxArchived": "inbox:archived",

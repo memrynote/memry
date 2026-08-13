@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
+import { projects } from '@memry/db-schema/schema/projects'
 import { listTaskActivity, pruneTaskActivity } from './task-activity'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -122,6 +123,54 @@ describe('listTaskActivity', () => {
 
     const seen = [...page1.entries, ...page2.entries].map((entry) => entry.id)
     expect(new Set(seen).size).toBe(3)
+  })
+
+  it('resolves entity ids to names so the feed never shows a raw id', () => {
+    testDb.db
+      .insert(projects)
+      .values([
+        { id: 'proj-a', name: 'Work', color: '#fff', icon: null, position: 0 },
+        { id: 'proj-b', name: 'Home', color: '#000', icon: null, position: 1 }
+      ] as never)
+      .run()
+    testDb.db
+      .insert(taskActivity)
+      .values({
+        id: 'move-1',
+        taskId: 'task-9',
+        action: 'moved',
+        field: 'projectId',
+        oldValue: JSON.stringify('proj-a'),
+        newValue: JSON.stringify('proj-b'),
+        actor: 'user',
+        createdAt: isoDaysAgo(1)
+      })
+      .run()
+
+    const result = listTaskActivity(asClientDb(testDb.db), { taskId: 'task-9' }, null)
+
+    expect(result.entries[0].oldValue).toBe(JSON.stringify('Work'))
+    expect(result.entries[0].newValue).toBe(JSON.stringify('Home'))
+  })
+
+  it('falls back to the id when the referenced row is gone — a deleted project still happened', () => {
+    testDb.db
+      .insert(taskActivity)
+      .values({
+        id: 'move-2',
+        taskId: 'task-9',
+        action: 'moved',
+        field: 'projectId',
+        oldValue: JSON.stringify('proj-vanished'),
+        newValue: null,
+        actor: 'user',
+        createdAt: isoDaysAgo(1)
+      })
+      .run()
+
+    const result = listTaskActivity(asClientDb(testDb.db), { taskId: 'task-9' }, null)
+
+    expect(result.entries[0].oldValue).toBe(JSON.stringify('proj-vanished'))
   })
 
   it('filters by action', () => {

@@ -25,10 +25,12 @@ import {
   type TaskActivityActor
 } from '@memry/db-schema/schema/task-activity'
 import { OFFLINE_CLOCK_DEVICE_ID } from '@memry/contracts/sync-api'
+import { TaskActivityChannels } from '@memry/contracts/ipc-channels'
 import { utcNow } from '@memry/shared/utc'
 import { getDatabase } from '../database'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { enqueueLocalSyncCreate } from '../sync/local-mutations'
 import { getCurrentDeviceId } from '../sync/current-device-id'
 
@@ -73,24 +75,41 @@ function textLength(value: unknown): number {
  * runs on every external file edit *and* every note open, and must not write a
  * row for either.
  */
+export function isAuditableField(field: string): boolean {
+  return !IGNORED_FIELDS.has(field)
+}
+
 function auditableFields(changedFields: string[] | undefined): string[] {
-  return (changedFields ?? []).filter((field) => !IGNORED_FIELDS.has(field))
+  return (changedFields ?? []).filter(isAuditableField)
 }
 
 function writeRows(rows: ActivityRowInput[]): void {
   if (rows.length === 0) return
 
+  let db: ReturnType<typeof getDatabase>
+  let deviceId: string
   try {
-    const db = getDatabase()
-    const deviceId = getCurrentDeviceId(db) ?? OFFLINE_CLOCK_DEVICE_ID
-    const createdAt = utcNow()
+    db = getDatabase()
+    deviceId = getCurrentDeviceId(db) ?? OFFLINE_CLOCK_DEVICE_ID
+  } catch (err) {
+    // Swallowed on purpose — see the module comment.
+    log.warn('Failed to record task activity', { error: err, count: rows.length })
+    return
+  }
 
-    for (const row of rows) {
+  const createdAt = utcNow()
+  const touchedTaskIds = new Set<string>()
+
+  for (const row of rows) {
+    // Per row, not per batch: one bad row must not silently drop the rest of a
+    // multi-field edit.
+    try {
       const id = row.id ?? generateId()
 
       // Insert-if-absent by hand: `superseded` rows carry a deterministic id
       // that the other side of the same conflict may already have written.
-      db.insert(taskActivity)
+      const result = db
+        .insert(taskActivity)
         .values({
           id,
           taskId: row.taskId,
@@ -105,11 +124,28 @@ function writeRows(rows: ActivityRowInput[]): void {
         .onConflictDoNothing()
         .run()
 
+      // Nothing inserted means the peer's copy of this deterministic-id row is
+      // already here. Enqueuing anyway would bump the clock on a row this
+      // device did not author and push a redundant encrypted blob.
+      if (result.changes === 0) continue
+
       enqueueLocalSyncCreate('task_activity', id)
+      touchedTaskIds.add(row.taskId)
+    } catch (err) {
+      log.warn('Failed to record task activity row', { error: err, taskId: row.taskId })
     }
-  } catch (err) {
-    // Swallowed on purpose — see the module comment.
-    log.warn('Failed to record task activity', { error: err, count: rows.length })
+  }
+
+  // The renderer's activity query cannot rely on `tasks:updated` alone: the
+  // Google Calendar writeback never emits it, and a peer's task update that
+  // loses whole-row LWW returns 'skipped' without emitting either — while its
+  // activity rows still land. So the write itself announces.
+  for (const taskId of touchedTaskIds) {
+    try {
+      broadcastToAllWindows(TaskActivityChannels.events.CREATED, { taskId })
+    } catch (err) {
+      log.warn('Failed to announce task activity', { error: err, taskId })
+    }
   }
 }
 
@@ -121,22 +157,43 @@ function fieldRows(
   previous: Partial<Task> | undefined,
   actor: TaskActivityActor
 ): ActivityRowInput[] {
-  return auditableFields(changedFields).map((field) => {
+  const rows: ActivityRowInput[] = []
+
+  for (const field of auditableFields(changedFields)) {
     if (LENGTH_ONLY_FIELDS.has(field)) {
-      const delta =
-        textLength(next[field as keyof Task]) - textLength(previous?.[field as keyof Task])
-      return { taskId, action, field, oldValue: null, newValue: JSON.stringify({ delta }), actor }
+      rows.push(lengthOnlyRow(taskId, action, field, next, previous, actor))
+      continue
     }
 
-    return {
-      taskId,
-      action,
-      field,
-      oldValue: encodeValue(previous?.[field as keyof Task]),
-      newValue: encodeValue(next[field as keyof Task]),
-      actor
-    }
-  })
+    const oldValue = encodeValue(previous?.[field as keyof Task])
+    const newValue = encodeValue(next[field as keyof Task])
+
+    // `changedFields` on the move and bulk-move paths is built from which
+    // inputs the caller supplied, not from a diff, so moving a task to the
+    // project it is already in would otherwise log `proj-A → proj-A`.
+    if (oldValue === newValue) continue
+
+    rows.push({ taskId, action, field, oldValue, newValue, actor })
+  }
+
+  return rows
+}
+
+/**
+ * A row for a field whose value must never be stored — today only
+ * `description`. Carries the character delta so the UI can say what happened
+ * without the body ever reaching the database or an encrypted payload.
+ */
+function lengthOnlyRow(
+  taskId: string,
+  action: TaskActivityAction,
+  field: string,
+  next: Partial<Task>,
+  previous: Partial<Task> | undefined,
+  actor: TaskActivityActor
+): ActivityRowInput {
+  const delta = textLength(next[field as keyof Task]) - textLength(previous?.[field as keyof Task])
+  return { taskId, action, field, oldValue: null, newValue: JSON.stringify({ delta }), actor }
 }
 
 /**
@@ -165,16 +222,39 @@ export function recordTaskUpdated(event: {
   previous?: Partial<Task>
   actor?: TaskActivityActor
 }): void {
-  writeRows(
-    fieldRows(
-      event.id,
-      TaskActivityActions.UPDATED,
-      event.changedFields,
-      { ...event.task, ...event.changes },
-      event.previous,
-      event.actor ?? TaskActivityActors.USER
-    )
-  )
+  const next = { ...event.task, ...event.changes }
+  const actor = event.actor ?? TaskActivityActors.USER
+
+  // `uncompleteTask` publishes taskUpdated, not taskCompleted, so completion
+  // has to be recognized here too — otherwise reopening a task reads as a
+  // generic edit to a timestamp field and the `uncompleted` action is dead.
+  const completion = completionRow(event.id, next, event.previous)
+  const rest = event.changedFields.filter((field) => field !== 'completedAt')
+
+  writeRows([
+    ...(completion ? [completion] : []),
+    ...fieldRows(event.id, TaskActivityActions.UPDATED, rest, next, event.previous, actor)
+  ])
+}
+
+/** Completion is a state flip, not a timestamp edit — logged as its own action. */
+function completionRow(
+  taskId: string,
+  next: Partial<Task>,
+  previous: Partial<Task> | undefined
+): ActivityRowInput | null {
+  const wasComplete = Boolean(previous?.completedAt)
+  const isComplete = Boolean(next.completedAt)
+  if (wasComplete === isComplete) return null
+
+  return {
+    taskId,
+    action: isComplete ? TaskActivityActions.COMPLETED : TaskActivityActions.UNCOMPLETED,
+    field: 'completedAt',
+    oldValue: encodeValue(previous?.completedAt),
+    newValue: encodeValue(next.completedAt),
+    actor: TaskActivityActors.USER
+  }
 }
 
 export function recordTaskMoved(event: {
@@ -200,20 +280,8 @@ export function recordTaskCompleted(event: {
   task: Task
   previous?: Partial<Task>
 }): void {
-  const wasComplete = Boolean(event.previous?.completedAt)
-  const isComplete = Boolean(event.task.completedAt)
-  if (wasComplete === isComplete) return
-
-  writeRows([
-    {
-      taskId: event.id,
-      action: isComplete ? TaskActivityActions.COMPLETED : TaskActivityActions.UNCOMPLETED,
-      field: 'completedAt',
-      oldValue: encodeValue(event.previous?.completedAt),
-      newValue: encodeValue(event.task.completedAt),
-      actor: TaskActivityActors.USER
-    }
-  ])
+  const row = completionRow(event.id, event.task, event.previous)
+  writeRows(row ? [row] : [])
 }
 
 export function recordTaskDeleted(id: string, snapshot?: Task): void {
@@ -301,14 +369,28 @@ export function recordTaskSuperseded(conflict: {
   winningValue: unknown
   mergedClock: Record<string, number>
 }): void {
+  // `position` is a syncable field, so two devices reordering the same project
+  // offline produce one conflict per task. Those are exactly the rows the noise
+  // rule exists to suppress, and here they would each become a sync item too.
+  if (!isAuditableField(conflict.field)) return
+
+  const isLengthOnly = LENGTH_ONLY_FIELDS.has(conflict.field)
+
   writeRows([
     {
       id: taskSupersededActivityId(conflict.taskId, conflict.field, conflict.mergedClock),
       taskId: conflict.taskId,
       action: TaskActivityActions.SUPERSEDED,
       field: conflict.field,
-      oldValue: encodeValue(conflict.losingValue),
-      newValue: encodeValue(conflict.winningValue),
+      // A losing description is still a description: storing it here would put
+      // note-sized markdown into an encrypted sync payload, which is the one
+      // thing this table promises never to do.
+      oldValue: isLengthOnly ? null : encodeValue(conflict.losingValue),
+      newValue: isLengthOnly
+        ? JSON.stringify({
+            delta: textLength(conflict.winningValue) - textLength(conflict.losingValue)
+          })
+        : encodeValue(conflict.winningValue),
       actor: TaskActivityActors.SYNC
     }
   ])

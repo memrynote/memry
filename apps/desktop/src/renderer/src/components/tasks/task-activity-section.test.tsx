@@ -8,12 +8,16 @@ import { createRendererI18n } from '@memry/i18n/renderer'
 import type { TaskActivityEntry } from '@memry/rpc/tasks'
 
 const getActivity = vi.fn()
+let activityListener: ((event: { taskId: string }) => void) | null = null
 
 vi.mock('@/services/tasks-service', () => ({
   tasksService: { getActivity: (...args: unknown[]) => getActivity(...args) },
-  onTaskUpdated: () => () => {},
-  onTaskCompleted: () => () => {},
-  onTaskMoved: () => () => {}
+  onTaskActivityCreated: (callback: (event: { taskId: string }) => void) => {
+    activityListener = callback
+    return () => {
+      activityListener = null
+    }
+  }
 }))
 
 import { TaskActivitySection } from './task-activity-section'
@@ -83,8 +87,41 @@ describe('TaskActivitySection', () => {
     renderSection(section)
 
     expect(await screen.findByText('Due date')).toBeInTheDocument()
-    expect(screen.getByText('2026-08-12')).toBeInTheDocument()
-    expect(screen.getByText('2026-08-20')).toBeInTheDocument()
+    // Dates are shown the way the properties grid shows them, not as stored.
+    expect(screen.getByText('Aug 12, 2026')).toBeInTheDocument()
+    expect(screen.getByText('Aug 20, 2026')).toBeInTheDocument()
+  })
+
+  it('humanizes priority instead of showing the stored integer', async () => {
+    getActivity.mockResolvedValue({
+      entries: [makeEntry({ field: 'priority', oldValue: '0', newValue: '3' })],
+      total: 1,
+      hasMore: false
+    })
+
+    renderSection(section)
+
+    expect(await screen.findByText('High')).toBeInTheDocument()
+    expect(screen.queryByText('3')).not.toBeInTheDocument()
+  })
+
+  it('says a structured value changed rather than dumping its JSON', async () => {
+    getActivity.mockResolvedValue({
+      entries: [
+        makeEntry({
+          field: 'repeatConfig',
+          oldValue: null,
+          newValue: JSON.stringify({ frequency: 'weekly', interval: 1 })
+        })
+      ],
+      total: 1,
+      hasMore: false
+    })
+
+    renderSection(section)
+
+    expect(await screen.findByText('changed')).toBeInTheDocument()
+    expect(screen.queryByText(/frequency/)).not.toBeInTheDocument()
   })
 
   it('summarizes a description edit without ever rendering the body', async () => {
@@ -116,7 +153,8 @@ describe('TaskActivitySection', () => {
 
     renderSection(section)
 
-    expect(await screen.findByText('Replaced by another device')).toBeInTheDocument()
+    // Keeps its timestamp: "when did I lose that edit" is the whole question.
+    expect(await screen.findByText(/Replaced by another device ·/)).toBeInTheDocument()
   })
 
   it('offers "Show all" only when there is more than the preview', async () => {
@@ -134,6 +172,23 @@ describe('TaskActivitySection', () => {
 
     await screen.findByText('Due date')
     expect(screen.queryByText(/Show all/)).not.toBeInTheDocument()
+  })
+
+  it('refreshes when a row is written for this task, and ignores other tasks', async () => {
+    getActivity.mockResolvedValue({ entries: [], total: 0, hasMore: false })
+
+    renderSection(section)
+    await waitFor(() => expect(getActivity).toHaveBeenCalledTimes(1))
+
+    // The Google Calendar writeback and a peer update that loses whole-row LWW
+    // both write rows without emitting `tasks:updated`, so the feed listens to
+    // the write itself.
+    activityListener?.({ taskId: 'task-2' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getActivity).toHaveBeenCalledTimes(1)
+
+    activityListener?.({ taskId: 'task-1' })
+    await waitFor(() => expect(getActivity).toHaveBeenCalledTimes(2))
   })
 
   it('invites the first edit when there is no history', async () => {

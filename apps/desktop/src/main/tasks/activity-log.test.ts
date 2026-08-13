@@ -146,6 +146,44 @@ describe('task activity write path', () => {
     expect(JSON.stringify(row)).not.toContain(body)
   })
 
+  it('reports a real delta when the old body is known', () => {
+    createTasksPublisher().taskUpdated({
+      id: 'task-1',
+      task: makeTask({ description: 'a'.repeat(995) }),
+      changes: { description: 'a'.repeat(995) },
+      changedFields: ['description'],
+      previous: { description: 'a'.repeat(1000) }
+    })
+
+    // Deleting five characters is -5, not "+995 characters added".
+    expect(rows()[0].newValue).toBe(JSON.stringify({ delta: -5 }))
+  })
+
+  it('logs reopening as its own action even though it arrives as an update', () => {
+    createTasksPublisher().taskUpdated({
+      id: 'task-1',
+      task: makeTask({ completedAt: null }),
+      changes: { completedAt: null },
+      changedFields: ['completedAt'],
+      previous: { completedAt: '2026-08-13T10:00:00.000Z' }
+    })
+
+    const all = rows()
+    expect(all).toHaveLength(1)
+    expect(all[0].action).toBe('uncompleted')
+  })
+
+  it('writes nothing when a move lands on the value the task already had', () => {
+    createTasksPublisher().taskMoved({
+      id: 'task-1',
+      task: makeTask({ projectId: 'proj-1' }),
+      changedFields: ['projectId', 'position'],
+      previous: { projectId: 'proj-1', position: 0 }
+    })
+
+    expect(rows()).toHaveLength(0)
+  })
+
   it('writes nothing for a position-only change', () => {
     createTasksPublisher().taskUpdated({
       id: 'task-1',
@@ -257,6 +295,55 @@ describe('superseded rows', () => {
     expect(all[0].action).toBe('superseded')
     expect(all[0].actor).toBe('sync')
     expect(all[0].oldValue).toBe(JSON.stringify('2026-08-12'))
+  })
+
+  it('never puts a losing description body into a synced row', () => {
+    const body = 'b'.repeat(4000)
+
+    recordTaskSuperseded({
+      taskId: 'task-1',
+      field: 'description',
+      losingValue: body,
+      winningValue: 'c'.repeat(4010),
+      mergedClock: { 'device-A': 1, 'device-B': 1 }
+    })
+
+    const [row] = rows()
+    expect(row.oldValue).toBeNull()
+    expect(row.newValue).toBe(JSON.stringify({ delta: 10 }))
+    expect(JSON.stringify(row)).not.toContain(body)
+  })
+
+  it('ignores position conflicts — an offline reorder of 200 tasks is not 200 rows', () => {
+    for (let index = 0; index < 200; index += 1) {
+      recordTaskSuperseded({
+        taskId: `task-${index}`,
+        field: 'position',
+        losingValue: index,
+        winningValue: index + 1,
+        mergedClock: { 'device-A': 1, 'device-B': 1 }
+      })
+    }
+
+    expect(rows()).toHaveLength(0)
+    expect(enqueueLocalSyncCreate).not.toHaveBeenCalled()
+  })
+
+  it('does not re-push a row the peer already sent', () => {
+    const conflict = {
+      taskId: 'task-1',
+      field: 'dueDate',
+      losingValue: '2026-08-12',
+      winningValue: '2026-08-20',
+      mergedClock: { 'device-A': 1, 'device-B': 1 }
+    }
+
+    recordTaskSuperseded(conflict)
+    enqueueLocalSyncCreate.mockClear()
+    recordTaskSuperseded(conflict)
+
+    expect(rows()).toHaveLength(1)
+    expect(enqueueLocalSyncCreate).not.toHaveBeenCalled()
   })
 
   it('key order in the clock cannot change the id', () => {

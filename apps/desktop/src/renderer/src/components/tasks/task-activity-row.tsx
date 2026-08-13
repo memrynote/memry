@@ -30,12 +30,68 @@ function decode(value: string | null): unknown {
   }
 }
 
-export function formatValue(raw: string | null, t: TFunction<'tasks'>): string {
+const PRIORITY_KEYS = [
+  'priorityLabels.none',
+  'priorityLabels.low',
+  'priorityLabels.medium',
+  'priorityLabels.high'
+] as const
+
+/** ISO timestamps and bare dates both reach the feed; neither should read as machine output. */
+function formatTemporal(value: string, language: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const hasTime = value.includes('T')
+  return new Intl.DateTimeFormat(language, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    ...(hasTime ? { hour: 'numeric', minute: '2-digit' } : {})
+  }).format(date)
+}
+
+const TEMPORAL_FIELDS = new Set([
+  'dueDate',
+  'startDate',
+  'completedAt',
+  'archivedAt',
+  'dueTime',
+  'repeatFrom'
+])
+
+/**
+ * Values are shown the way the properties grid shows them, not the way the
+ * database stores them. Entity ids are already resolved to names in the main
+ * process; everything left here is a scalar that still needs a human form.
+ */
+export function formatValue(
+  raw: string | null,
+  field: string | null,
+  language: string,
+  t: TFunction<'tasks'>
+): string {
   const value = decode(raw)
   if (value === null || value === undefined || value === '') return t('drawer.activityEmptyValue')
-  if (Array.isArray(value))
+
+  if (field === 'priority' && typeof value === 'number') {
+    const key = PRIORITY_KEYS[value]
+    return key ? t(key as never) : String(value)
+  }
+
+  if (Array.isArray(value)) {
     return value.length > 0 ? value.join(', ') : t('drawer.activityEmptyValue')
-  if (typeof value === 'object') return JSON.stringify(value)
+  }
+
+  if (typeof value === 'object') {
+    // repeatConfig and friends are structured; the feed says that they changed,
+    // not what their JSON looks like.
+    return t('drawer.activityValueChanged')
+  }
+
+  if (typeof value === 'string' && field && TEMPORAL_FIELDS.has(field)) {
+    return formatTemporal(value, language)
+  }
+
   return String(value)
 }
 
@@ -96,8 +152,28 @@ export const TaskActivityRow = memo(function TaskActivityRow({
   const isSuperseded = entry.action === 'superseded'
   const isDescription = entry.field === 'description'
 
+  const label = entry.field ? fieldLabel(entry.field, t) : actionLabel(entry.action, t)
+  const oldText =
+    entry.oldValue !== null ? formatValue(entry.oldValue, entry.field, language, t) : null
+  const newText =
+    entry.newValue !== null ? formatValue(entry.newValue, entry.field, language, t) : null
+  const time = formatRelativeTime(entry.createdAt, language)
+
+  // The `→` is decorative and points the wrong way in RTL, so the meaning of
+  // the row lives here instead of in the glyph — this is the only thing a
+  // screen reader is given.
+  const description = isDescription
+    ? `${label}: ${descriptionSummary(entry.newValue, t)}`
+    : [
+        label,
+        oldText && t('drawer.activityFrom', { value: oldText }),
+        newText && t('drawer.activityTo', { value: newText })
+      ]
+        .filter(Boolean)
+        .join(' ')
+
   return (
-    <div className="flex gap-2.5">
+    <div className="flex gap-2.5" role="listitem" aria-label={`${description} · ${time}`}>
       <div className="relative flex w-3 shrink-0 justify-center">
         <span
           className={cn('absolute inset-y-0 w-px', isSuperseded ? 'bg-amber-500/40' : 'bg-border')}
@@ -112,42 +188,38 @@ export const TaskActivityRow = memo(function TaskActivityRow({
         />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 pb-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 pb-3" aria-hidden="true">
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[12px] leading-4">
-          <span className="text-text-secondary">
-            {entry.field ? fieldLabel(entry.field, t) : actionLabel(entry.action, t)}
-          </span>
+          <span className="text-text-secondary">{label}</span>
 
           {isDescription ? (
             <span className="text-text-tertiary">{descriptionSummary(entry.newValue, t)}</span>
           ) : (
             <>
-              {entry.oldValue !== null && (
+              {oldText !== null && (
                 <span
                   className={cn(
                     'truncate text-text-tertiary',
                     isSuperseded && 'line-through decoration-1 [text-underline-position:from-font]'
                   )}
                 >
-                  {formatValue(entry.oldValue, t)}
+                  {oldText}
                 </span>
               )}
-              {entry.oldValue !== null && entry.newValue !== null && (
-                <span className="text-text-tertiary" aria-hidden="true">
-                  →
-                </span>
+              {oldText !== null && newText !== null && (
+                <span className="text-text-tertiary rtl:rotate-180">→</span>
               )}
-              {entry.newValue !== null && (
-                <span className="truncate text-text-primary">{formatValue(entry.newValue, t)}</span>
-              )}
+              {newText !== null && <span className="truncate text-text-primary">{newText}</span>}
             </>
           )}
         </div>
 
         <span className="text-[11px] leading-3.5 text-text-tertiary/70">
+          {/* Superseded rows keep their time: "when did I lose that edit?" is
+              the whole question the row exists to answer. */}
           {isSuperseded
-            ? t('drawer.activitySupersededNote')
-            : `${actorLabel(entry, t)} · ${formatRelativeTime(entry.createdAt, language)}`}
+            ? `${t('drawer.activitySupersededNote')} · ${time}`
+            : `${actorLabel(entry, t)} · ${time}`}
         </span>
       </div>
     </div>

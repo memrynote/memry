@@ -123,7 +123,6 @@
     "activityMore": "Load more",
     "activityTitle": "Activity — {title}",
     "activityDescription": "Every change to this task, newest first.",
-    "activityClose": "Close activity",
     "activityFilter": "Filter by change type",
     "activityFilterAll": "All changes",
     "activityRetention": "Activity older than {days} days is removed.",
@@ -140,7 +139,6 @@
     "activityActionDeleted": "Deleted",
     "activityActionSuperseded": "Replaced",
     "activitySupersededNote": "Replaced by another device",
-    "activityDescriptionEdited": "Description edited",
     "activityCharsAdded": "+{count} chars",
     "activityCharsRemoved": "{count} chars",
     "activityCharsSame": "reworded",
@@ -159,7 +157,13 @@
     "activityFieldCompletedAt": "Completion",
     "activityFieldArchivedAt": "Archive",
     "activityFieldRepeatConfig": "Repeat",
-    "activityFieldSourceNoteId": "Source note"
+    "activityFieldSourceNoteId": "Source note",
+    "activityFrom": "from {value}",
+    "activityTo": "to {value}",
+    "activityValueChanged": "changed",
+    "activityUnknownDate": "Undated",
+    "activityFieldRepeatFrom": "Repeat from",
+    "activityFieldIsRepeating": "Repeating"
   },
   "kanban": {
     "board": "Kanban board",

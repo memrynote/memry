@@ -94,6 +94,10 @@ export function onTaskMoved(callback: (event: TaskMovedEvent) => void): () => vo
   return window.api.onTaskMoved(callback)
 }
 
+export function onTaskActivityCreated(callback: (event: { taskId: string }) => void): () => void {
+  return window.api.onTaskActivityCreated(callback)
+}
+
 export function onProjectCreated(callback: (event: ProjectCreatedEvent) => void): () => void {
   return window.api.onProjectCreated(callback)
 }

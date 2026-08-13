@@ -190,9 +190,11 @@ export interface TasksCommandRepository extends TasksQueryRepository {
  * row (by then it is gone). Optional because subscribers must tolerate a
  * producer that cannot supply it; every call site in this file does.
  *
- * `description` is deliberately absent from `previous` even when it changed —
- * it is editor markdown and can be note-sized, and the one subscriber that
- * needs it (the task activity log) stores a length delta rather than the body.
+ * `previous.description` is present when the body changed. It stays in memory
+ * only: the one subscriber that reads it (the task activity log) needs the old
+ * length to compute a delta, and stores that delta rather than the body. The
+ * event already carries the new body on `task`, so carrying the old one costs
+ * nothing extra.
  */
 export interface TaskUpdatedEvent {
   id: string
@@ -286,7 +288,7 @@ function computeChangedFields(
  *
  * Not a second differ — it reads the field list the differ already produced and
  * projects the old row through it, so the two can never disagree about what
- * changed. `description` is skipped on purpose: see `TaskUpdatedEvent`.
+ * changed.
  */
 function pickPrevious(
   existingTask: Task | undefined,
@@ -296,7 +298,6 @@ function pickPrevious(
   const previous: Partial<Task> = {}
   if (existingTask) {
     for (const field of changedFields) {
-      if (field === 'description') continue
       const key = field as keyof Task
       if (key in existingTask) {
         ;(previous as Record<string, unknown>)[field] = existingTask[key]
