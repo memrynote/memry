@@ -8,7 +8,12 @@
  */
 
 const FENCE_RE = /^\s*(```|~~~)/
-const H1_RE = /^#\s+(.+?)\s*$/
+/**
+ * `(\S.*)` rather than a lazy `(.+?)\s*$` — the lazy form backtracks
+ * quadratically on a heading padded with trailing spaces. The trailing
+ * whitespace comes off in JS instead.
+ */
+const H1_RE = /^#\s+(\S.*)/
 
 /** Index of the first H1 line outside any code fence, or -1. */
 function headingLineIndex(lines: string[]): number {
@@ -28,7 +33,7 @@ export function firstHeading(body: string): string | null {
   const lines = body.split('\n')
   const index = headingLineIndex(lines)
   if (index === -1) return null
-  return H1_RE.exec(lines[index])![1]
+  return H1_RE.exec(lines[index])![1].trimEnd()
 }
 
 /**

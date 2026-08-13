@@ -38,11 +38,26 @@ export function taskPlaceholder(tempId: string): string {
 }
 
 const FENCE_RE = /^\s*(```|~~~)/
-/** Marker plus at least one space — so a `---` rule is never a list item. */
-const LIST_RE = /^([ \t]*)([*+-]) +(.*)$/
+/**
+ * Marker plus at least one space — so a `---` rule is never a list item.
+ * No `$`: the input is always a single line, and anchoring the tail makes
+ * ` +(.*)$` backtrack quadratically over a run of spaces.
+ */
+const LIST_RE = /^([ \t]*)([*+-]) +(.*)/
 const STATE_RE = /^\[([ xX>-])\] */
-const DUE_RE = / *>(\d{4}-\d{2}-\d{2})\b/
-const DONE_RE = / *@done\((\d{4}-\d{2}-\d{2})(?:[ T][^)]*)?\)/
+/**
+ * The spaces that lead up to a date token come off in `cutToken`, not in the
+ * pattern — a leading ` *` on an unanchored regex scans quadratically.
+ */
+const DUE_RE = />(\d{4}-\d{2}-\d{2})\b/
+const DONE_RE = /@done\((\d{4}-\d{2}-\d{2})(?:[ T][^)]*)?\)/
+
+/** Cut a matched token out of `text`, taking the spaces before it with it. */
+function cutToken(text: string, match: RegExpExecArray): string {
+  let start = match.index
+  while (start > 0 && text[start - 1] === ' ') start--
+  return text.slice(0, start) + text.slice(match.index + match[0].length)
+}
 
 /**
  * Indent depth in levels. NotePlan writes tabs; a file touched by another
@@ -118,13 +133,13 @@ export function convertBody(source: string): ConvertedBody {
     const done = DONE_RE.exec(title)
     if (done) {
       completedAt = done[1]
-      title = title.replace(DONE_RE, '')
+      title = cutToken(title, done)
     }
 
     const due = DUE_RE.exec(title)
     if (due) {
       dueDate = due[1]
-      title = title.replace(DUE_RE, '')
+      title = cutToken(title, due)
     }
 
     title = title.trim()

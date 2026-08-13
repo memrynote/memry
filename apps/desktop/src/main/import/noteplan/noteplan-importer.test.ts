@@ -239,10 +239,10 @@ describe('notePlanImporter (integration)', () => {
 
     // start-here.txt has `# Start Here` — the title must come from the H1, not
     // the filename, or `[[Start Here]]` will not resolve.
-    expect(fs.existsSync(path.join(tempVault.notesDir, 'NotePlan', 'Start Here.md'))).toBe(true)
+    expect(fs.existsSync(path.join(tempVault.path, 'NotePlan', 'Start Here.md'))).toBe(true)
 
     const project = path.join(
-      tempVault.notesDir,
+      tempVault.path,
       'NotePlan',
       '10 - Projects',
       'Project Aurora Website Redesign.md'
@@ -251,7 +251,7 @@ describe('notePlanImporter (integration)', () => {
 
     // Weekly files have no journal equivalent — they land as notes.
     expect(
-      fs.existsSync(path.join(tempVault.notesDir, 'NotePlan', 'Calendar', 'Week 33 review.md'))
+      fs.existsSync(path.join(tempVault.path, 'NotePlan', 'Calendar', 'Week 33 review.md'))
     ).toBe(true)
   })
 
@@ -262,7 +262,7 @@ describe('notePlanImporter (integration)', () => {
     const ctx = importContext.createImportContext('np11', new AbortController().signal)
     await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
 
-    const archived = path.join(tempVault.notesDir, 'NotePlan', 'Archive', 'Old Thing.md')
+    const archived = path.join(tempVault.path, 'NotePlan', 'Archive', 'Old Thing.md')
     expect(fs.existsSync(archived)).toBe(true)
     expect(fs.readFileSync(archived, 'utf8')).toContain('Archived long ago.')
   })
@@ -280,7 +280,7 @@ describe('notePlanImporter (integration)', () => {
     expect(summary.skipped).toBe(0)
 
     const note = fs.readFileSync(
-      path.join(tempVault.notesDir, 'NotePlan', 'Note With Image.md'),
+      path.join(tempVault.path, 'NotePlan', 'Note With Image.md'),
       'utf8'
     )
     expect(note).toContain('memry-file://')
@@ -293,12 +293,7 @@ describe('notePlanImporter (integration)', () => {
     await importer.runNotePlanImport({ sourcePaths: [FIXTURE_DIR] }, ctx, deps)
 
     const project = fs.readFileSync(
-      path.join(
-        tempVault.notesDir,
-        'NotePlan',
-        '10 - Projects',
-        'Project Aurora Website Redesign.md'
-      ),
+      path.join(tempVault.path, 'NotePlan', '10 - Projects', 'Project Aurora Website Redesign.md'),
       'utf8'
     )
     expect(project).toContain('status: Active')
@@ -315,7 +310,7 @@ describe('notePlanImporter (integration)', () => {
     // 1 archived note + 1 journal entry = 6; nothing from Filters/.
     expect(summary.imported).toBe(6)
     expect(summary.failed).toEqual([])
-    expect(fs.existsSync(path.join(tempVault.notesDir, 'NotePlan', 'All Tasks.md'))).toBe(false)
+    expect(fs.existsSync(path.join(tempVault.path, 'NotePlan', 'All Tasks.md'))).toBe(false)
   })
 
   it('appends to an existing journal entry instead of overwriting it', async () => {

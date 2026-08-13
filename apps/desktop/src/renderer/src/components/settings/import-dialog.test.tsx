@@ -134,12 +134,12 @@ describe('ImportDialog i18n', () => {
   it('uses each directory importer’s own picker copy, never a sibling’s', () => {
     const { unmount } = renderDialog(appleNotesItem)
     expect(screen.getByRole('button', { name: 'Select Apple Notes folder…' })).toBeInTheDocument()
-    expect(screen.getByText(/group\.com\.apple\.notes/)).toBeInTheDocument()
+    expect(screen.getByText('group.com.apple.notes', { exact: false })).toBeInTheDocument()
     unmount()
 
     renderDialog(notePlanItem)
     expect(screen.queryByRole('button', { name: 'Select Apple Notes folder…' })).toBeNull()
-    expect(screen.queryByText(/group\.com\.apple\.notes/)).toBeNull()
+    expect(screen.queryByText('group.com.apple.notes', { exact: false })).toBeNull()
     expect(screen.getByRole('button', { name: 'Choose folder…' })).toBeInTheDocument()
     // Match the hint specifically — the dialog description also says "NotePlan folder".
     expect(screen.getByText(/Calendar, Notes and @Archive/)).toBeInTheDocument()
@@ -150,7 +150,7 @@ describe('ImportDialog i18n', () => {
       ...notePlanItem,
       fileSpec: { ...notePlanItem.fileSpec, folderHintKey: undefined }
     })
-    expect(screen.queryByText(/group\.com\.apple\.notes/)).toBeNull()
+    expect(screen.queryByText('group.com.apple.notes', { exact: false })).toBeNull()
     expect(screen.queryByText(/Calendar, Notes and @Archive/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Choose folder…' })).toBeInTheDocument()
   })
