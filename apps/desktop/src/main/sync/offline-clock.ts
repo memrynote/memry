@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -17,6 +16,7 @@ import {
   type FieldClocks
 } from '@memry/contracts/sync-api'
 import { increment } from './vector-clock'
+import { getCurrentDeviceId } from './current-device-id'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
@@ -254,15 +254,6 @@ export function incrementReminderClockOffline(db: DataDb, reminderId: string): v
   } catch (err) {
     log.warn('Failed to increment offline reminder clock', { reminderId, error: err })
   }
-}
-
-function getCurrentDeviceId(db: DataDb): string | null {
-  const device = db
-    .select({ id: syncDevices.id })
-    .from(syncDevices)
-    .where(eq(syncDevices.isCurrentDevice, true))
-    .get()
-  return device?.id ?? null
 }
 
 /**

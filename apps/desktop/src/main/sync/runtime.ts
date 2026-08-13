@@ -26,6 +26,7 @@ import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
 import { initTaskActivitySyncService, resetTaskActivitySyncService } from './task-activity-sync'
+import { getCurrentDeviceId } from './current-device-id'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
@@ -205,15 +206,6 @@ function resetSyncServiceSingletons(): void {
   // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
   resetAttachmentQueue()
-}
-
-function getCurrentDeviceId(db: DataDb): string | null {
-  const device = db
-    .select({ id: syncDevices.id })
-    .from(syncDevices)
-    .where(eq(syncDevices.isCurrentDevice, true))
-    .get()
-  return device?.id ?? null
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {

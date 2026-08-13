@@ -132,7 +132,14 @@ describe('createTasksCommands — update/delete/complete/archive task', () => {
       const result = await commands.completeTask({ id: 'task-1' })
 
       expect(result).toEqual({ success: true, task })
-      expect(deps.publisher.taskCompleted).toHaveBeenCalledWith({ id: 'task-1', task })
+      // completeTask writes before it returns, so the old completedAt has to be
+      // read up front and carried on the event — nothing downstream can go back
+      // for it.
+      expect(deps.publisher.taskCompleted).toHaveBeenCalledWith({
+        id: 'task-1',
+        task,
+        previous: { completedAt: null }
+      })
     })
 
     it('returns error when task missing', async () => {

@@ -15,6 +15,7 @@ import { BaseItemHandler } from './base-handler'
 import { MissingSyncParentError } from './types'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 import { publishProjectionEvent } from '../../projections'
+import { recordTaskSuperseded } from '../../tasks/activity-log'
 
 const log = createLogger('TaskHandler')
 
@@ -183,6 +184,24 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             writeNoteIds(tx as unknown as DrizzleDb, itemId, merged)
           }
 
+          // The only activity rows a remote apply may write. Ordinary applied
+          // changes arrive on their own as synced `task_activity` rows from the
+          // device that made them; emitting here too would duplicate every
+          // entry once per device. A lost merge has no such row — until now it
+          // was only ever a log line — so this is where it gets recorded.
+          for (const conflict of result.conflicts) {
+            if (JSON.stringify(conflict.mergedValue) === JSON.stringify(conflict.localValue)) {
+              continue
+            }
+            recordTaskSuperseded({
+              taskId: itemId,
+              field: conflict.field,
+              losingValue: conflict.localValue,
+              winningValue: conflict.mergedValue,
+              mergedClock: conflict.mergedClock
+            })
+          }
+
           const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
           ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
           if (data.tags) ctx.emit('notes:tags-changed', {})
@@ -298,8 +317,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(tasks).where(eq(tasks.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

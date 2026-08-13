@@ -86,6 +86,7 @@ function unifiedSidebar() {
             { text: 'Filters & Sorting', link: '/user-guide/tasks/filters-sorting' },
             { text: 'Subtasks & Recurrence', link: '/user-guide/tasks/subtasks-recurrence' },
             { text: 'Bulk Actions', link: '/user-guide/tasks/bulk-actions' },
+            { text: 'Activity Log', link: '/user-guide/tasks/activity-log' },
             { text: 'Drag & Drop', link: '/user-guide/tasks/drag-and-drop' },
             { text: 'Import from Todoist', link: '/user-guide/tasks/import-todoist' },
             { text: 'Import from TickTick', link: '/user-guide/tasks/import-ticktick' }

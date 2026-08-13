@@ -38,6 +38,7 @@ import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
 import { publishInboxUpserted, syncInboxUpdate } from './runtime-effects'
 import { syncTaskCreate } from '../tasks/runtime-effects'
+import { recordTaskCreated } from '../tasks/activity-log'
 import { trackMainError } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
@@ -860,6 +861,11 @@ export async function convertToTask(
 
     const enrichedTask = { ...task, linkedNoteIds: [] as string[] }
     broadcastToAllWindows(TasksChannels.events.CREATED, { task: enrichedTask })
+
+    // Publisher bypass (see the trackMainEvent note below): the activity log is
+    // hooked to the publisher, so this path has to log its own creation row or
+    // a task filed from the inbox would have no history at all.
+    recordTaskCreated(enrichedTask)
 
     try {
       syncTaskCreate(taskId)

@@ -23,6 +23,9 @@ import type {
   ProjectWithStats,
   RepeatConfig,
   Status,
+  TaskActivityEntry,
+  TaskActivityListInput,
+  TaskActivityListResponse,
   TaskCreateResponse,
   TaskMoveInput,
   TaskStats
@@ -69,6 +72,9 @@ export type {
   ProjectWithStats,
   RepeatConfig,
   Status,
+  TaskActivityEntry,
+  TaskActivityListInput,
+  TaskActivityListResponse,
   TaskCreateResponse,
   TaskMoveInput,
   TaskStats
@@ -382,6 +388,10 @@ export const tasksRpc = defineDomain({
     getLinkedTasks: defineMethod<(noteId: string) => Promise<Task[]>>({
       channel: TasksChannels.invoke.GET_LINKED_TASKS,
       params: ['noteId']
+    }),
+    getActivity: defineMethod<(input: TaskActivityListInput) => Promise<TaskActivityListResponse>>({
+      channel: TasksChannels.invoke.GET_ACTIVITY,
+      params: ['input']
     })
   },
   events: {

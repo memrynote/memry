@@ -378,6 +378,7 @@ export interface MainIpcInvokeHandlers {
   "tasks:delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "tasks:duplicate": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; task: null; error: string; } | { success: boolean; task: import("../../../../../packages/domain-tasks/src/types").Task; error?: undefined; }>>
   "tasks:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Task | null>>
+  "tasks:get-activity": (...args: [{ taskId: string; limit?: number | undefined; offset?: number | undefined; actions?: string[] | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/tasks-api").TaskActivityListResponse>>
   "tasks:get-linked-tasks": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Task[]>>
   "tasks:get-overdue": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/queries").TaskListEnvelope>>
   "tasks:get-stats": (...args: []) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").TaskStats>>

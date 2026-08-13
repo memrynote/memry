@@ -94,7 +94,13 @@ describe('createTasksDomain', () => {
         projectId: 'project-b',
         statusId: 'status-b'
       },
-      changedFields: ['projectId', 'statusId']
+      changedFields: ['projectId', 'statusId'],
+      // Old values travel with the event so the activity log can render
+      // old → new without re-reading a row that has already been overwritten.
+      previous: {
+        projectId: 'project-a',
+        statusId: 'status-a'
+      }
     })
     expect(result.task).toEqual(updatedTask)
   })
