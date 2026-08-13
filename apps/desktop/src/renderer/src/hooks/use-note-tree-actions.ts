@@ -8,6 +8,7 @@ import type { Note } from '@memry/contracts/notes-api'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
 import { notesService } from '@/services/notes-service'
+import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -164,6 +165,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           isDeleted: false
         })
 
+        // `expandFolderPath` above only knows the selection, which is empty
+        // whenever "create in selected folder" is off — the note itself is what
+        // says where it landed. Without this the row, and the rename input on
+        // it, stay shut inside a collapsed folder.
+        revealNoteInSidebar(newNote.id)
+
         originalRenameTitle.current = 'Untitled'
         setRenamingNoteId(newNote.id)
         setRenameValue('Untitled')
@@ -210,6 +217,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
             isPreview: false,
             isDeleted: false
           })
+
+          // "New note" on a folder's context menu can be used on a folder that
+          // is shut; the note then lands somewhere invisible.
+          revealNoteInSidebar(newNote.id)
         }
       } catch (err) {
         trackRendererError('note_create_failed', err)

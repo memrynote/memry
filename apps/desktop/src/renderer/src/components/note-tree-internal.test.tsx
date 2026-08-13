@@ -26,7 +26,11 @@ vi.mock('@/components/folder-icon-button', () => ({
   FolderIconButton: () => null
 }))
 
+// Vault-relative, the way `useNoteTreeData` hands them over: `notes` is a real
+// folder in the sidebar, not a root prefix to strip.
 const nested = new Map([['note-1', { path: 'notes/Work/Nested/Alpha.md' }]])
+const oneFolderDeep = new Map([['note-1', { path: 'movies/Untitled.md' }]])
+const atVaultRoot = new Map([['note-1', { path: 'Untitled.md' }]])
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -51,12 +55,52 @@ describe('RevealHandler', () => {
       />
     )
 
-    expect(mocks.expandNode).toHaveBeenCalledWith('folder-Work')
-    expect(mocks.expandNode).toHaveBeenCalledWith('folder-Work/Nested')
+    expect(mocks.expandNode).toHaveBeenCalledWith('folder-notes')
+    expect(mocks.expandNode).toHaveBeenCalledWith('folder-notes/Work')
+    expect(mocks.expandNode).toHaveBeenCalledWith('folder-notes/Work/Nested')
 
     act(() => void vi.advanceTimersByTime(50))
     expect(onReveal).toHaveBeenCalledWith('note-1')
     expect(onClear).not.toHaveBeenCalled()
+  })
+
+  it('opens the folder of a note sitting one level down', () => {
+    // The regression: the first path segment used to be dropped as a vault-root
+    // prefix, so a note in a top-level folder — where `defaultNoteFolder` puts
+    // every new note — expanded nothing and stayed hidden.
+    const onReveal = vi.fn()
+
+    render(
+      <RevealHandler
+        pendingRevealNoteId="note-1"
+        noteMap={oneFolderDeep}
+        onReveal={onReveal}
+        onClear={vi.fn()}
+      />
+    )
+
+    expect(mocks.expandNode).toHaveBeenCalledWith('folder-movies')
+
+    act(() => void vi.advanceTimersByTime(50))
+    expect(onReveal).toHaveBeenCalledWith('note-1')
+  })
+
+  it('reveals a note at the vault root without expanding anything', () => {
+    const onReveal = vi.fn()
+
+    render(
+      <RevealHandler
+        pendingRevealNoteId="note-1"
+        noteMap={atVaultRoot}
+        onReveal={onReveal}
+        onClear={vi.fn()}
+      />
+    )
+
+    expect(mocks.expandNode).not.toHaveBeenCalled()
+
+    act(() => void vi.advanceTimersByTime(50))
+    expect(onReveal).toHaveBeenCalledWith('note-1')
   })
 
   it('waits for a note the tree has not loaded yet, then reveals it', () => {
@@ -86,9 +130,31 @@ describe('RevealHandler', () => {
       />
     )
 
-    expect(mocks.expandNode).toHaveBeenCalledWith('folder-Work/Nested')
+    expect(mocks.expandNode).toHaveBeenCalledWith('folder-notes/Work/Nested')
     act(() => void vi.advanceTimersByTime(50))
     expect(onReveal).toHaveBeenCalledWith('note-1')
+  })
+
+  it('expands once per request, not once per render', () => {
+    // Creating a note re-renders the sidebar repeatedly and none of the props
+    // here are stable, so a per-render expand would re-open a folder the moment
+    // the user collapses it.
+    const props = {
+      pendingRevealNoteId: 'note-1',
+      onReveal: vi.fn(),
+      onClear: vi.fn()
+    }
+
+    const { rerender } = render(<RevealHandler {...props} noteMap={oneFolderDeep} />)
+    expect(mocks.expandNode).toHaveBeenCalledTimes(1)
+
+    // A refetch hands over a fresh Map with the same contents.
+    rerender(<RevealHandler {...props} noteMap={new Map(oneFolderDeep)} />)
+    expect(mocks.expandNode).toHaveBeenCalledTimes(1)
+
+    // The request still completes.
+    act(() => void vi.advanceTimersByTime(50))
+    expect(props.onReveal).toHaveBeenCalledWith('note-1')
   })
 
   it('gives up on a note that never arrives', () => {

@@ -177,17 +177,18 @@ function saveExpandedFolders(expandedIds: Set<string>): void {
 /**
  * `expanded` plus every folder holding `notePath`, so a note nested several
  * levels down becomes reachable in one step. Node ids are built the same way
- * the plain tree's `RevealHandler` builds them: `folder-<path>`, with the vault
- * root segment dropped.
+ * `flattenTree` builds them — `folder-<vault-relative path>` — so every segment
+ * before the filename counts. A note one folder down is the common case and
+ * must expand that folder.
  */
 function withAncestorsExpanded(expanded: Set<string>, notePath: string): Set<string> {
   const parts = notePath.split('/')
   parts.pop()
-  if (parts.length <= 1) return expanded
+  if (parts.length === 0) return expanded
 
   const next = new Set(expanded)
   let currentPath = ''
-  for (const part of parts.slice(1)) {
+  for (const part of parts) {
     currentPath = currentPath ? `${currentPath}/${part}` : part
     next.add(`folder-${currentPath}`)
   }

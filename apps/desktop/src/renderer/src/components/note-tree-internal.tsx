@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { SIDEBAR_REVEAL_FOLDER_EVENT } from '@/components/note/note-breadcrumb'
 import { useTree } from '@/components/kibo-ui/tree'
 import { FolderIconButton } from '@/components/folder-icon-button'
@@ -53,9 +53,13 @@ export function RevealHandler({
   onClear
 }: RevealHandlerProps) {
   const { expandNode } = useTree()
+  const expandedForRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!pendingRevealNoteId) return
+    if (!pendingRevealNoteId) {
+      expandedForRef.current = null
+      return
+    }
 
     const note = noteMap.get(pendingRevealNoteId)
     if (!note) {
@@ -65,11 +69,22 @@ export function RevealHandler({
       return () => clearTimeout(giveUp)
     }
 
-    const pathParts = note.path.split('/')
-    pathParts.pop()
+    // Once per request, not once per render. Creating a note re-renders the
+    // sidebar several times over, and none of this effect's callbacks are
+    // stable, so expanding on every run would re-open a folder the moment the
+    // user collapses it.
+    if (expandedForRef.current !== pendingRevealNoteId) {
+      expandedForRef.current = pendingRevealNoteId
 
-    if (pathParts.length > 1) {
-      const folderParts = pathParts.slice(1)
+      // Note paths are vault-relative, so every segment before the filename
+      // names a real folder — the same ids `buildTreeFromNotes` gives the folder
+      // nodes. Dropping the first segment assumed a vault-root prefix that has
+      // not existed since #1204: a note one folder down (`movies/Untitled.md`,
+      // the common case) expanded nothing at all, and a deeper one expanded
+      // folders by the wrong name.
+      const folderParts = note.path.split('/')
+      folderParts.pop()
+
       let currentPath = ''
       for (const part of folderParts) {
         currentPath = currentPath ? `${currentPath}/${part}` : part

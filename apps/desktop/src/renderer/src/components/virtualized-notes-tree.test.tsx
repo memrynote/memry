@@ -115,8 +115,12 @@ const note = (id: string, path: string, overrides: Record<string, unknown> = {})
     ...overrides
   }) as any
 
-const workNote = note('note-work', 'notes/Work/Alpha.md', { emoji: '*' })
-const rootNote = note('note-root', 'notes/Root.pdf', { fileType: 'pdf' })
+// Vault-relative, matching the folder paths in `tree` below — the same shape
+// `buildTreeFromNotes` produces. A fabricated `notes/` prefix here is what let
+// a reveal that stripped the first segment look correct in tests while it left
+// the folder shut in the app.
+const workNote = note('note-work', 'Work/Alpha.md', { emoji: '*' })
+const rootNote = note('note-root', 'Root.pdf', { fileType: 'pdf' })
 
 const tree: TreeStructure = {
   folders: [

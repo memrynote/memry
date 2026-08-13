@@ -22,6 +22,10 @@ in Selected Folder** off and a **Default Location for New Notes** set, the note 
 and the sidebar takes you there. It is the same jump as **Reveal in navigation** in a note's `⋯`
 menu.
 
+Every way of making a note does this: <kbd>⌘</kbd>+<kbd>N</kbd>, the sidebar's **New** button, the
+**New note** icon on the Collections header, the tab bar's **+**, and **New note** on a folder's
+right-click menu — including when that folder is closed.
+
 ## Block Types
 
 Available from the slash menu (`/`) or the block-handle drag-out:
