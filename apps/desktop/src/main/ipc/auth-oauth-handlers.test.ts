@@ -71,7 +71,7 @@ vi.mock('../sync/token-manager', () => ({
 }))
 
 const mockStartGoogleRunner = vi.fn()
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/providers/google/sync-service', () => ({
   startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleRunner(...args)
 }))
 

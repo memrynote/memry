@@ -295,7 +295,7 @@ describe('CalendarEventSyncService', () => {
 
   describe('#given an event pinned to a specific Google calendar', () => {
     // REGRESSION GUARD. `targetCalendarId` is what routes a push to the right
-    // Google calendar (see calendar/google/account-routing.ts and
+    // Google calendar (see calendar/providers/google/account-routing.ts and
     // sync-service.ts), and promote-external-event.ts sets it. serialize() ships
     // the whole row so the column does leave this device — but
     // CalendarEventSyncPayloadSchema used to have no `targetCalendarId` key, so

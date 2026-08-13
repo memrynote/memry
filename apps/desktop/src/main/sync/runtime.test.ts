@@ -218,7 +218,7 @@ vi.mock('../agent/storage/vault-id', () => ({
   getOrCreateVaultUuid: runtimeMocks.getOrCreateVaultUuid
 }))
 
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/providers/google/sync-service', () => ({
   syncGoogleCalendarSource: runtimeMocks.syncGoogleCalendarSource
 }))
 

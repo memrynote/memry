@@ -5,16 +5,16 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import { createLogger } from '../../lib/logger'
-import { requireDatabase, type DataDb } from '../../database'
+import { createLogger } from '../../../lib/logger'
+import { requireDatabase, type DataDb } from '../../../database'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
-} from '../../sync/local-mutations'
-import { getCurrentDeviceId } from '../../sync/current-device-id'
-import { recordExternalTaskUpdate } from '../../tasks/activity-log'
-import { publishProjectionEvent } from '../../projections'
+} from '../../../sync/local-mutations'
+import { getCurrentDeviceId } from '../../../sync/current-device-id'
+import { recordExternalTaskUpdate } from '../../../tasks/activity-log'
+import { publishProjectionEvent } from '../../../projections'
 import {
   hasGoogleCalendarConnection,
   listGoogleAccountIds,
@@ -22,10 +22,10 @@ import {
 } from './oauth'
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { loadSourceAsGoogleEvent, pushEventWithConflictRetry } from './push-conflict-retry'
-import { isMemryUserSignedIn } from '../../sync/auth-state'
-import { increment } from '../../sync/vector-clock'
+import { isMemryUserSignedIn } from '../../../sync/auth-state'
+import { increment } from '../../../sync/vector-clock'
 import { createGoogleCalendarClient } from './client'
-import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../field-merge-calendar'
+import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../../field-merge-calendar'
 import {
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToExternalEventRecord,
@@ -35,7 +35,7 @@ import {
 import {
   getCalendarExternalEventById,
   upsertCalendarExternalEvent
-} from '../repositories/calendar-external-events-repository'
+} from '../../repositories/calendar-external-events-repository'
 import {
   findCalendarBindingByRemoteEvent,
   getCalendarSourceById,
@@ -43,10 +43,14 @@ import {
   listCalendarSources,
   upsertCalendarBinding,
   upsertCalendarSource
-} from '../repositories/calendar-sources-repository'
-import { emitCalendarChanged, emitCalendarProjectionChanged } from '../change-events'
+} from '../../repositories/calendar-sources-repository'
+import { emitCalendarChanged, emitCalendarProjectionChanged } from '../../change-events'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
-import type { CalendarSyncTarget, GoogleCalendarClient, GoogleCalendarRemoteEvent } from '../types'
+import type {
+  CalendarSyncTarget,
+  GoogleCalendarClient,
+  GoogleCalendarRemoteEvent
+} from '../../types'
 
 const log = createLogger('Calendar:GoogleSync')
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'

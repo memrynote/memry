@@ -27,7 +27,7 @@ const { loggerMock } = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('../../lib/logger', () => ({
+vi.mock('../../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
@@ -35,14 +35,14 @@ const { mockListCalendarSources } = vi.hoisted(() => ({
   mockListCalendarSources: vi.fn()
 }))
 
-vi.mock('../repositories/calendar-sources-repository', () => ({
+vi.mock('../../repositories/calendar-sources-repository', () => ({
   listCalendarSources: (...args: unknown[]) => mockListCalendarSources(...args)
 }))
 
 // oauth-errors resolves its copy through the main-process i18n singleton, which
 // only exists after setMainI18n() during app boot. Echo the key back so the
 // assertions below pin the chosen message, not one locale's wording.
-vi.mock('../../lib/main-i18n', () => ({
+vi.mock('../../../lib/main-i18n', () => ({
   getMainI18n: () => ({
     t: (key: string) => key,
     getFixedT: () => (key: string) => key
@@ -61,7 +61,7 @@ import {
   resetGoogleCalendarOAuthState,
   resolveDefaultGoogleAccountId
 } from './oauth'
-import { isExpectedConditionError } from '../../telemetry/expected-conditions'
+import { isExpectedConditionError } from '../../../telemetry/expected-conditions'
 import {
   LEGACY_DEFAULT_ACCOUNT_ID,
   clearGoogleCalendarTokens,

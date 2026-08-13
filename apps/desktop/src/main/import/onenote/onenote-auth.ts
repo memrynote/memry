@@ -2,7 +2,7 @@
  * Microsoft account auth for the OneNote importer.
  *
  * Auth-code + PKCE flow for a public desktop client (no client secret),
- * mirroring `calendar/google/oauth.ts`: an ephemeral loopback HTTP server
+ * mirroring `calendar/providers/google/oauth.ts`: an ephemeral loopback HTTP server
  * receives the redirect, the state is single-use with a 10-minute expiry, and
  * the consent screen opens in the system browser. Tokens live in Memry's
  * secret storage (Electron `safeStorage` with keytar fallback) under a

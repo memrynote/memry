@@ -92,7 +92,7 @@ vi.mock('../database/client', () => ({
   getDatabase: mockGetDatabase
 }))
 
-vi.mock('../calendar/google/provider-auth-transfer', () => ({
+vi.mock('../calendar/providers/google/provider-auth-transfer', () => ({
   collectGoogleProviderAuthTransfer: mockCollectGoogleProviderAuthTransfer,
   encryptGoogleProviderAuthTransfer: mockEncryptGoogleProviderAuthTransfer,
   decryptGoogleProviderAuthTransfer: mockDecryptGoogleProviderAuthTransfer,

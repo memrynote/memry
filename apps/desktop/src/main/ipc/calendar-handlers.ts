@@ -59,7 +59,7 @@ import {
   hasGoogleCalendarLocalAuth,
   listGoogleAccountIds,
   resolveDefaultGoogleAccountId
-} from '../calendar/google/oauth'
+} from '../calendar/providers/google/oauth'
 import { getCalendarRangeProjection } from '../calendar/projection'
 import { getCalendarEnabledPropertyNames } from '../calendar/calendar-property-visibility'
 import { getCalendarSettings } from './settings-handlers'
@@ -69,10 +69,13 @@ import {
   stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow,
   syncGoogleCalendarSource
-} from '../calendar/google/sync-service'
-import { listGoogleCalendars, setDefaultGoogleCalendar } from '../calendar/google/onboarding'
-import { createGoogleCalendarClient } from '../calendar/google/client'
-import { getGooglePushRuntime } from '../calendar/google/push-runtime'
+} from '../calendar/providers/google/sync-service'
+import {
+  listGoogleCalendars,
+  setDefaultGoogleCalendar
+} from '../calendar/providers/google/onboarding'
+import { createGoogleCalendarClient } from '../calendar/providers/google/client'
+import { getGooglePushRuntime } from '../calendar/providers/google/push-runtime'
 import {
   promoteExternalEvent,
   ExternalEventNotFoundError,

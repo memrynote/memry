@@ -44,7 +44,7 @@ vi.mock('./oauth', () => ({
   listGoogleAccountIds: vi.fn(() => ['test-account@example.com'])
 }))
 
-vi.mock('../../sync/auth-state', () => ({
+vi.mock('../../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
@@ -55,7 +55,7 @@ import {
 } from './oauth'
 import { resolveDefaultGoogleAccountId } from './oauth'
 import * as googleClientModule from './client'
-import { isMemryUserSignedIn } from '../../sync/auth-state'
+import { isMemryUserSignedIn } from '../../../sync/auth-state'
 import {
   applyGoogleCalendarDelete,
   applyGoogleCalendarWriteback,
@@ -65,8 +65,8 @@ import {
   syncGoogleCalendarNow,
   syncGoogleCalendarSource
 } from './sync-service'
-import { SyncQueueManager } from '../../sync/queue'
-import { initReminderSyncService, resetReminderSyncService } from '../../sync/reminder-sync'
+import { SyncQueueManager } from '../../../sync/queue'
+import { initReminderSyncService, resetReminderSyncService } from '../../../sync/reminder-sync'
 
 describe('google calendar sync service', () => {
   let dbResult: TestDatabaseResult

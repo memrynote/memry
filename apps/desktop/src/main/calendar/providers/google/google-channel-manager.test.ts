@@ -10,7 +10,7 @@ const { loggerMock } = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('../../lib/logger', () => ({
+vi.mock('../../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 

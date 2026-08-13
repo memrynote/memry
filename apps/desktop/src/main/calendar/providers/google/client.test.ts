@@ -24,7 +24,7 @@ const { loggerMock } = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('../../lib/logger', () => ({
+vi.mock('../../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
@@ -33,7 +33,7 @@ vi.mock('../../lib/logger', () => ({
 // API/token failure below throws 'main-process i18n not initialized' instead of
 // the mapped message — and throwCalendarApiFailure never attaches
 // error.status / error.apiStatus.
-vi.mock('../../lib/main-i18n', () => ({
+vi.mock('../../../lib/main-i18n', () => ({
   getMainI18n: () => ({
     t: (key: string) => key,
     getFixedT: () => (key: string) => key

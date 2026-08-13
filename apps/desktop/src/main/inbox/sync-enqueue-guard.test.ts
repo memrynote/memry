@@ -39,7 +39,7 @@ const INBOX_DIR = path.dirname(fileURLToPath(import.meta.url))
 /**
  * The fence is the whole main process, not `inbox/`. `readdirSync(INBOX_DIR)`
  * was both non-recursive and directory-scoped, so the Google Calendar
- * writeback (`calendar/google/sync-service.ts`) — which clears `snoozedUntil`
+ * writeback (`calendar/providers/google/sync-service.ts`) — which clears `snoozedUntil`
  * on `inbox_items` — sat outside it entirely. Any module that can write triage
  * state is in scope; the `inboxItems` prefilter keeps the scan to the handful
  * of files that touch the table.
@@ -208,7 +208,7 @@ describe('inbox triage writes enqueue a sync push', () => {
         'inbox/crud.ts',
         'inbox/filing.ts',
         'inbox/snooze.ts',
-        'calendar/google/sync-service.ts',
+        'calendar/providers/google/sync-service.ts',
         'sync/item-handlers/inbox-handler.ts'
       ])
     )

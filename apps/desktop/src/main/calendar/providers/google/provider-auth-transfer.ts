@@ -1,8 +1,8 @@
 import sodium from 'libsodium-wrappers-sumo'
 import { z } from 'zod'
 
-import type { DataDb } from '../../database/types'
-import { computeProviderAuthConfirm, constantTimeEqual, decrypt, encrypt } from '../../crypto'
+import type { DataDb } from '../../../database/types'
+import { computeProviderAuthConfirm, constantTimeEqual, decrypt, encrypt } from '../../../crypto'
 import { getGoogleCalendarTokens, storeGoogleCalendarRefreshToken } from './keychain'
 import { listGoogleAccountIds } from './oauth'
 

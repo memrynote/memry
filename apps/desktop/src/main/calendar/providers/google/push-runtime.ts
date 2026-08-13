@@ -1,12 +1,12 @@
 import { randomBytes, createHmac, randomUUID } from 'node:crypto'
-import { createLogger } from '../../lib/logger'
-import { deleteFromServer, patchToServer, postToServer } from '../../sync/http-client'
-import { getValidAccessToken } from '../../sync/token-manager'
+import { createLogger } from '../../../lib/logger'
+import { deleteFromServer, patchToServer, postToServer } from '../../../sync/http-client'
+import { getValidAccessToken } from '../../../sync/token-manager'
 import { createGoogleCalendarClient } from './client'
 import { resolveDefaultGoogleAccountId } from './oauth'
-import { requireDatabase } from '../../database'
+import { requireDatabase } from '../../../database'
 import { createGoogleChannelManager, type GoogleChannelManager } from './google-channel-manager'
-import { getCalendarSourceById } from '../repositories/calendar-sources-repository'
+import { getCalendarSourceById } from '../../repositories/calendar-sources-repository'
 
 const log = createLogger('Calendar:GooglePushRuntime')
 

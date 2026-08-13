@@ -8,10 +8,10 @@ import {
   CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
   type CalendarGoogleSettings
 } from '@memry/contracts/settings-schemas'
-import { setSetting } from '../../settings/settings-store'
-import type { DataDb } from '../../database'
+import { setSetting } from '../../../settings/settings-store'
+import type { DataDb } from '../../../database'
 import { readCalendarGoogleSettings } from './calendar-google-settings'
-import type { GoogleCalendarClient, GoogleCalendarDescriptor } from '../types'
+import type { GoogleCalendarClient, GoogleCalendarDescriptor } from '../../types'
 
 const CALENDAR_GOOGLE_SETTINGS_KEY = 'calendar.google'
 
