@@ -672,11 +672,23 @@ describe('TestConnectionResultSchema', () => {
 })
 
 describe('InboxSettings', () => {
-  it('defaults to disabled at 18:00', () => {
+  it('defaults to disabled at 18:00, embedding images without asking twice', () => {
     expect(INBOX_SETTINGS_DEFAULTS).toEqual({
       reviewReminderEnabled: false,
-      reviewReminderTime: '18:00'
+      reviewReminderTime: '18:00',
+      imageFilingMode: 'embed',
+      imageFilingModeRemembered: false
     })
+  })
+
+  it('fills the image filing keys in for settings written before they existed', () => {
+    const parsed = InboxSettingsSchema.parse({
+      reviewReminderEnabled: true,
+      reviewReminderTime: '06:30'
+    })
+
+    expect(parsed.imageFilingMode).toBe('embed')
+    expect(parsed.imageFilingModeRemembered).toBe(false)
   })
 
   it('accepts a valid HH:MM time', () => {
