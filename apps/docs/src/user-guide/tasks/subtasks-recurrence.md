@@ -51,6 +51,8 @@ Schedule a task to repeat on a fixed cadence.
 
 Set a `repeat count` to cap the number of occurrences (e.g. "weekly for 6 weeks").
 
+You can also type the cadence straight into quick-add — `Team sync every monday` — instead of opening the picker. See [Capturing Tasks](/user-guide/tasks/capturing#repeats).
+
 ### How Completion Works
 
 When you mark a recurring task done, memrynote generates the **next occurrence** based on the rule and the current date.

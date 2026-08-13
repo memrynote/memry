@@ -2,29 +2,31 @@
  * Quick-add syntax layer for the shared CaptureBar.
  *
  * Two pieces, both opt-in through CaptureBar's `quickAdd` prop: the coloured
- * token overlay painted behind the text field, and the option lists that feed
- * the autocomplete dropdown for `!date`, `!!priority` and `#project`.
+ * token overlay painted behind the text field, and the inline ghost completion
+ * that finishes the trigger being typed (`@tomo` → `@tomorrow`).
  *
  * Surfaces that only capture prose (the Inbox) never render any of this.
  */
 
 import { useMemo } from 'react'
-import { Calendar, Flag, Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
+  findQuickAddSpans,
   getDateOptions,
   getPriorityOptions,
   getProjectOptions,
-  resolveDateDay
+  predictRepeatCompletion,
+  type AutocompleteOption,
+  type QuickAddSpanKind
 } from '@/lib/quick-add-parser'
+import { predictDateCompletion } from '@/lib/date-phrase-completion'
 import type { Project } from '@/data/tasks-data'
-import type { AutocompleteOption, AutocompleteType } from '@/components/tasks/quick-add'
 
 // ============================================================================
 // TOKEN HIGHLIGHT OVERLAY
 // ============================================================================
 
-type TokenKind = 'date' | 'priority' | 'project' | 'plain'
+type TokenKind = QuickAddSpanKind | 'plain'
 
 interface Token {
   text: string
@@ -35,7 +37,11 @@ interface Token {
 const TOKEN_STYLES: Record<Exclude<TokenKind, 'plain'>, string> = {
   date: 'text-task-token-date bg-task-token-date/10 rounded px-0.5 -mx-0.5',
   priority: 'rounded px-0.5 -mx-0.5',
-  project: 'text-task-token-project bg-task-token-project/10 rounded px-0.5 -mx-0.5'
+  project: 'text-task-token-project bg-task-token-project/10 rounded px-0.5 -mx-0.5',
+  // The natural-language forms read as one phrase rather than one word, so they
+  // get the fuller pill: same metrics, rounder shell, stronger fill.
+  datePhrase: 'text-task-token-date bg-task-token-date/15 rounded-full px-0.5 -mx-0.5',
+  repeat: 'text-task-repeat bg-task-repeat/15 rounded-full px-0.5 -mx-0.5'
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -53,25 +59,15 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 export function tokenize(input: string): Token[] {
-  const regex = /(!![a-zA-Z]+|(?<![!])![a-zA-Z0-9]+|#[\w-]+)/g
   const tokens: Token[] = []
   let lastIndex = 0
 
-  for (const match of input.matchAll(regex)) {
-    const start = match.index
-    if (start > lastIndex) {
-      tokens.push({ text: input.slice(lastIndex, start), kind: 'plain', start: lastIndex })
+  for (const span of findQuickAddSpans(input)) {
+    if (span.start > lastIndex) {
+      tokens.push({ text: input.slice(lastIndex, span.start), kind: 'plain', start: lastIndex })
     }
-
-    const raw = match[0]
-    if (raw.startsWith('!!')) {
-      tokens.push({ text: raw, kind: 'priority', start })
-    } else if (raw.startsWith('!')) {
-      tokens.push({ text: raw, kind: 'date', start })
-    } else {
-      tokens.push({ text: raw, kind: 'project', start })
-    }
-    lastIndex = start + raw.length
+    tokens.push({ text: input.slice(span.start, span.end), kind: span.kind, start: span.start })
+    lastIndex = span.end
   }
 
   if (lastIndex < input.length) {
@@ -81,7 +77,14 @@ export function tokenize(input: string): Token[] {
   return tokens
 }
 
-export const TokenOverlay = ({ value }: { value: string }): React.JSX.Element => {
+export const TokenOverlay = ({
+  value,
+  ghost = ''
+}: {
+  value: string
+  /** Un-typed remainder of the completion, painted after the caret. */
+  ghost?: string
+}): React.JSX.Element => {
   const tokens = useMemo(() => tokenize(value), [value])
 
   return (
@@ -112,6 +115,11 @@ export const TokenOverlay = ({ value }: { value: string }): React.JSX.Element =>
           </span>
         )
       })}
+      {ghost && (
+        <span data-testid="capture-bar-ghost" className="text-text-tertiary">
+          {ghost}
+        </span>
+      )}
     </span>
   )
 }
@@ -128,74 +136,106 @@ export function lastToken(value: string): string {
   return /\S*$/.exec(value)?.[0] ?? ''
 }
 
-/** Swap the trailing token for a completion and leave the caret past a space. */
-export function replaceLastToken(value: string, replacement: string): string {
-  // Function replacer: project names may contain `$`, which would otherwise be
-  // read as a replacement pattern.
-  return `${value.replace(/\S*$/, () => replacement)} `
+/** Swap the trigger the caret is in for a completion, caret past a space. */
+export function replaceTrigger(value: string, start: number, replacement: string): string {
+  return `${value.slice(0, start)}${replacement} `
 }
 
 // ============================================================================
-// AUTOCOMPLETE
+// INLINE GHOST COMPLETION
 // ============================================================================
 
-/** Which dropdown, if any, the trailing token asks for. */
-export function detectAutocomplete(value: string): { type: AutocompleteType; query: string } {
+type TriggerKind = 'date' | 'datePhrase' | 'priority' | 'project' | 'repeat'
+
+interface Trigger {
+  kind: TriggerKind
+  /** What has been typed after the trigger character (repeats keep "every"). */
+  query: string
+  /** Index in the value where the trigger starts. */
+  start: number
+}
+
+/**
+ * The quick-add trigger the caret is sitting in, if any.
+ *
+ * The sigil forms (`!`, `!!`, `#`) are one token; the natural-language forms
+ * (`@next wednesday`, `every 2 weeks`) run over several words, so they are read
+ * from their trigger word up to the end of the value instead.
+ */
+export function detectTrigger(value: string): Trigger | null {
   const token = lastToken(value)
+  const tokenStart = value.length - token.length
 
   // `!!` before `!`: priority is the more specific trigger.
-  if (token.startsWith('!!')) return { type: 'priority', query: token.slice(2) }
-  if (token.startsWith('!')) return { type: 'date', query: token.slice(1) }
-  if (token.startsWith('#')) return { type: 'project', query: token.slice(1) }
-  return { type: null, query: '' }
-}
+  if (token.startsWith('!!')) return { kind: 'priority', query: token.slice(2), start: tokenStart }
+  if (token.startsWith('!')) return { kind: 'date', query: token.slice(1), start: tokenStart }
+  if (token.startsWith('#')) return { kind: 'project', query: token.slice(1), start: tokenStart }
 
-const PRIORITY_ICON_COLORS: Record<string, string> = {
-  '!!urgent': 'text-task-priority-urgent',
-  '!!high': 'text-task-priority-high',
-  '!!medium': 'text-task-priority-medium',
-  '!!low': 'text-task-priority-low'
-}
+  // Multi-word triggers live on the caret's line; the nearest one wins.
+  const lineStart = value.lastIndexOf('\n') + 1
+  const line = value.slice(lineStart)
 
-export function buildAutocompleteOptions(
-  type: AutocompleteType,
-  query: string,
-  projects: Project[]
-): AutocompleteOption[] {
-  switch (type) {
-    case 'date':
-      return getDateOptions(query).map((option) => {
-        const day = resolveDateDay(option.value.slice(1))
-        return {
-          value: option.value,
-          label: option.label,
-          icon: (
-            <span className="relative flex h-4 w-4 items-center justify-center text-task-token-date">
-              <Calendar className="size-4" />
-              {day !== null && (
-                <span className="absolute mt-[3px] text-[6px] font-bold leading-none">{day}</span>
-              )}
-            </span>
-          )
-        }
-      })
-    case 'priority':
-      return getPriorityOptions(query).map((option) => ({
-        value: option.value,
-        label: option.label,
-        icon: (
-          <Flag
-            className={cn('size-4', PRIORITY_ICON_COLORS[option.value] ?? 'text-muted-foreground')}
-          />
-        )
-      }))
-    case 'project':
-      return getProjectOptions(query, projects).map((option) => ({
-        value: option.value,
-        label: option.label,
-        icon: <Folder className="size-4 text-task-token-project" />
-      }))
-    default:
-      return []
+  const at = line.lastIndexOf('@')
+  const atStart = at >= 0 && (at === 0 || /\s/.test(line[at - 1])) ? lineStart + at : -1
+
+  const everyMatches = [...line.matchAll(/\bevery\b/gi)]
+  const every = everyMatches.length > 0 ? everyMatches[everyMatches.length - 1].index : -1
+  const everyStart = every >= 0 ? lineStart + every : -1
+
+  if (atStart < 0 && everyStart < 0) return null
+  if (atStart > everyStart) {
+    return { kind: 'datePhrase', query: value.slice(atStart + 1), start: atStart }
   }
+  return { kind: 'repeat', query: value.slice(everyStart), start: everyStart }
+}
+
+/** First option whose value continues what has been typed. */
+function firstCompletion(options: AutocompleteOption[], typed: string): string | null {
+  const lower = typed.toLowerCase()
+  return options.find((option) => option.value.toLowerCase().startsWith(lower))?.value ?? null
+}
+
+function predictFor(trigger: Trigger, typed: string, projects: Project[]): string | null {
+  switch (trigger.kind) {
+    case 'datePhrase': {
+      // The note editor's `@`-mention predictor, so both surfaces complete a
+      // half-typed date the same way.
+      const completion = predictDateCompletion(trigger.query)
+      return completion === null ? null : `@${completion}`
+    }
+    case 'repeat':
+      return predictRepeatCompletion(trigger.query)
+    case 'date':
+      return firstCompletion(getDateOptions(trigger.query), typed)
+    case 'priority':
+      return firstCompletion(getPriorityOptions(trigger.query), typed)
+    case 'project':
+      return firstCompletion(getProjectOptions(trigger.query, projects), typed)
+  }
+}
+
+export interface GhostCompletion {
+  /** Index in the value where the completed text starts. */
+  start: number
+  /** The whole trigger in canonical casing, e.g. `@Tomorrow`. */
+  text: string
+  /** The part not yet typed — what gets painted after the caret. */
+  remainder: string
+}
+
+/**
+ * What the ghost should offer for the text at the caret, or null when there is
+ * nothing to finish. The prediction is always a case-insensitive superstring of
+ * what the user typed, so accepting it never loses characters.
+ */
+export function predictCompletion(value: string, projects: Project[]): GhostCompletion | null {
+  const trigger = detectTrigger(value)
+  if (!trigger) return null
+
+  const typed = value.slice(trigger.start)
+  const text = predictFor(trigger, typed, projects)
+  if (!text || !text.toLowerCase().startsWith(typed.toLowerCase())) return null
+
+  const remainder = text.slice(typed.length)
+  return remainder ? { start: trigger.start, text, remainder } : null
 }

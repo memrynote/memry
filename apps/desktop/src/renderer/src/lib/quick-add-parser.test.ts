@@ -4,12 +4,15 @@ import {
   parseDateKeyword,
   parsePriorityKeyword,
   findProjectByName,
+  findDatePhrase,
+  findQuickAddSpans,
   parseQuickAdd,
   hasSpecialSyntax,
   getParsePreview,
   getDateOptions,
   getPriorityOptions,
-  getProjectOptions
+  getProjectOptions,
+  predictRepeatCompletion
 } from './quick-add-parser'
 
 // ============================================================================
@@ -480,8 +483,10 @@ describe('parseQuickAdd', () => {
       expect(result).toEqual({
         title: 'Buy groceries',
         dueDate: null,
+        dueTime: null,
         priority: 'none',
-        projectId: null
+        projectId: null,
+        repeat: null
       })
     })
 
@@ -940,6 +945,170 @@ describe('getProjectOptions', () => {
         expect(option).toHaveProperty('value')
         expect(option).toHaveProperty('label')
       })
+    })
+  })
+})
+
+// ============================================================================
+// NATURAL-LANGUAGE DATE PHRASES AND REPEATS (#129)
+// ============================================================================
+
+describe('natural-language quick-add', () => {
+  const projects: Project[] = [createMockProject({ id: 'work', name: 'Work' })]
+
+  beforeEach(() => {
+    // Saturday, 10 January 2026.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 10))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  describe('findDatePhrase', () => {
+    it('reads a single-word mention', () => {
+      const match = findDatePhrase('Call Bob @tomorrow')
+      expect(match).toMatchObject({ start: 9, end: 18, text: '@tomorrow' })
+      expect(match?.date).toEqual(new Date(2026, 0, 11))
+    })
+
+    it('reads a multi-word mention and stops at the title', () => {
+      const match = findDatePhrase('@next wednesday call Bob')
+      expect(match?.text).toBe('@next wednesday')
+      // From Saturday, "next wednesday" is next week's — the same rule the note
+      // editor's @-mentions follow.
+      expect(match?.date).toEqual(new Date(2026, 0, 21))
+    })
+
+    it('reads a time when the phrase carries one', () => {
+      const match = findDatePhrase('Standup @tomorrow at 9:30')
+      expect(match?.text).toBe('@tomorrow at 9:30')
+      expect(match?.time).toBe('09:30')
+    })
+
+    it('ignores a mention that is not a date', () => {
+      expect(findDatePhrase('Ping @bob about the deck')).toBeNull()
+    })
+
+    it('ignores an @ inside a word', () => {
+      expect(findDatePhrase('mail bob@today.com')).toBeNull()
+    })
+  })
+
+  describe('parseQuickAdd — date phrases', () => {
+    it('pulls the phrase out of the title', () => {
+      const result = parseQuickAdd('Call Bob @next wednesday', projects)
+      expect(result.title).toBe('Call Bob')
+      expect(result.dueDate).toEqual(new Date(2026, 0, 21))
+      expect(result.dueTime).toBeNull()
+    })
+
+    it('keeps the time from the phrase', () => {
+      const result = parseQuickAdd('Standup @tomorrow at 9:30', projects)
+      expect(result.title).toBe('Standup')
+      expect(result.dueTime).toBe('09:30')
+    })
+
+    it('combines with priority and project', () => {
+      const result = parseQuickAdd('Ship it @tomorrow !!high #Work', projects)
+      expect(result.title).toBe('Ship it')
+      expect(result.dueDate).toEqual(new Date(2026, 0, 11))
+      expect(result.priority).toBe('high')
+      expect(result.projectId).toBe('work')
+    })
+
+    it('leaves an unparseable mention in the title', () => {
+      const result = parseQuickAdd('Ping @bob', projects)
+      expect(result.title).toBe('Ping @bob')
+      expect(result.dueDate).toBeNull()
+    })
+
+    it('wins over a !keyword date so only one due date is taken', () => {
+      const result = parseQuickAdd('Call Bob @tomorrow !today', projects)
+      expect(result.dueDate).toEqual(new Date(2026, 0, 11))
+      expect(result.title).toBe('Call Bob !today')
+    })
+  })
+
+  describe('parseQuickAdd — repeats', () => {
+    it('parses "every monday" and starts on the next Monday', () => {
+      const result = parseQuickAdd('Team sync every monday', projects)
+      expect(result.title).toBe('Team sync')
+      expect(result.repeat).toMatchObject({ frequency: 'weekly', daysOfWeek: [1] })
+      expect(result.dueDate).toEqual(new Date(2026, 0, 12))
+    })
+
+    it('parses "every 2 weeks" and starts today', () => {
+      const result = parseQuickAdd('Water plants every 2 weeks', projects)
+      expect(result.title).toBe('Water plants')
+      expect(result.repeat).toMatchObject({ frequency: 'weekly', interval: 2 })
+      expect(result.dueDate).toEqual(new Date(2026, 0, 10))
+    })
+
+    it('parses "every weekday" and starts on the next weekday', () => {
+      const result = parseQuickAdd('Standup every weekday', projects)
+      expect(result.repeat).toMatchObject({ daysOfWeek: [1, 2, 3, 4, 5] })
+      expect(result.dueDate).toEqual(new Date(2026, 0, 12))
+    })
+
+    it('anchors "every month" to an explicit due date', () => {
+      const result = parseQuickAdd('Pay rent @jan 31 every month', projects)
+      expect(result.title).toBe('Pay rent')
+      expect(result.dueDate).toEqual(new Date(2026, 0, 31))
+      expect(result.repeat).toMatchObject({ monthlyType: 'dayOfMonth', dayOfMonth: 31 })
+    })
+
+    it('keeps a due date the user typed', () => {
+      const result = parseQuickAdd('Report !friday every week', projects)
+      expect(result.dueDate).toEqual(new Date(2026, 0, 16))
+      expect(result.repeat).toMatchObject({ frequency: 'weekly', interval: 1 })
+    })
+
+    it('leaves a plain "every" in the title', () => {
+      const result = parseQuickAdd('Check every door', projects)
+      expect(result.title).toBe('Check every door')
+      expect(result.repeat).toBeNull()
+      expect(result.dueDate).toBeNull()
+    })
+  })
+
+  describe('findQuickAddSpans', () => {
+    it('marks every syntax stretch, phrases included', () => {
+      expect(findQuickAddSpans('Sync @tomorrow every monday !!high #Work')).toEqual([
+        { start: 5, end: 14, kind: 'datePhrase' },
+        { start: 15, end: 27, kind: 'repeat' },
+        { start: 28, end: 34, kind: 'priority' },
+        { start: 35, end: 40, kind: 'project' }
+      ])
+    })
+
+    it('marks nothing in plain prose', () => {
+      expect(findQuickAddSpans('Buy groceries every door')).toEqual([])
+    })
+  })
+
+  describe('hasSpecialSyntax', () => {
+    it('is true for natural-language phrases', () => {
+      expect(hasSpecialSyntax('Call Bob @tomorrow')).toBe(true)
+      expect(hasSpecialSyntax('Water plants every 2 weeks')).toBe(true)
+    })
+
+    it('is false for plain prose', () => {
+      expect(hasSpecialSyntax('Check every door')).toBe(false)
+    })
+  })
+
+  describe('predictRepeatCompletion', () => {
+    it('completes a cadence from what has been typed', () => {
+      expect(predictRepeatCompletion('every w')).toBe('every weekday')
+      expect(predictRepeatCompletion('every 2')).toBe('every 2 weeks')
+      expect(predictRepeatCompletion('every')).toBe('every day')
+    })
+
+    it('completes nothing once the phrase cannot become a cadence', () => {
+      expect(predictRepeatCompletion('every door')).toBeNull()
+      expect(predictRepeatCompletion('never')).toBeNull()
     })
   })
 })

@@ -9,7 +9,6 @@ import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import type { Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
 const log = createLogger('ProjectHubCapture')
@@ -18,10 +17,7 @@ interface ProjectCaptureInputProps {
   project: Project
   projects: Project[]
   /** Create a task in this project from parsed quick-add input. */
-  onAddTask: (
-    title: string,
-    parsedData?: { dueDate: Date | null; priority: Priority; projectId: string | null }
-  ) => void
+  onAddTask: (title: string, parsedData?: CaptureBarParsed) => void
   onChanged: () => void
   /** Bump to focus the text field. */
   focusSignal?: number

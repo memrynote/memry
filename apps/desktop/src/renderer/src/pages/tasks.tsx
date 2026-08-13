@@ -38,7 +38,7 @@ import {
   type TaskSort,
   type SavedFilter
 } from '@/data/tasks-data'
-import { createDefaultTask, type Task, type Priority } from '@/data/task-model'
+import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import {
   useFilterState,
@@ -662,9 +662,11 @@ export const TasksPage = ({
       title: string,
       parsedData?: {
         dueDate: Date | null
+        dueTime?: string | null
         priority: Priority
         projectId: string | null
         statusId?: string | null
+        repeat?: RepeatConfig | null
       }
     ): void => {
       const projectId = resolveQuickAddProject(
@@ -695,6 +697,11 @@ export const TasksPage = ({
 
       const newTask = createDefaultTask(projectId, statusId, title, dueDate)
       newTask.priority = priority
+      newTask.dueTime = parsedData?.dueTime ?? null
+      if (parsedData?.repeat) {
+        newTask.isRepeating = true
+        newTask.repeatConfig = parsedData.repeat
+      }
 
       undoable.createTask(newTask)
     },

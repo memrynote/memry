@@ -5,8 +5,9 @@
  * nowhere else, so the three surfaces cannot drift apart again. Everything a
  * single surface needs is a capability prop: pass `attachment` and a paperclip
  * appears, pass `voice` and the mic + inline recorder appear, pass `quickAdd`
- * and `!today` / `!!high` / `#project` get parsed, coloured and autocompleted.
- * Omit them and the affordance is not rendered at all.
+ * and `@tomorrow` / `every monday` / `!!high` / `#project` get parsed, painted
+ * as pills, and finished by the inline ghost completion. Omit them and the
+ * affordance is not rendered at all.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -19,17 +20,10 @@ import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 import { isMac } from '@/lib/shortcut-registry'
 import { isLikelyUrl } from '@/lib/capture-intent'
 import { hasSpecialSyntax, parseQuickAdd } from '@/lib/quick-add-parser'
-import { AutocompleteDropdown } from '@/components/tasks/quick-add'
 import { VoiceRecorder, type VoiceRecorderHandle } from '@/components/voice-recorder'
-import {
-  TokenOverlay,
-  buildAutocompleteOptions,
-  detectAutocomplete,
-  lastToken,
-  replaceLastToken
-} from './capture-bar-tokens'
+import { TokenOverlay, predictCompletion, replaceTrigger } from './capture-bar-tokens'
 import { ownsFocusShortcut, registerCaptureField } from './focus-shortcut-owner'
-import type { Priority } from '@/data/task-model'
+import type { Priority, RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
 /** Focus accent when a surface does not supply its own (Inbox's amber). */
@@ -43,8 +37,11 @@ const MAX_FIELD_HEIGHT = 200
 
 export interface CaptureBarParsed {
   dueDate: Date | null
+  /** "HH:MM", only when the natural-language date carried a time. */
+  dueTime: string | null
   priority: Priority
   projectId: string | null
+  repeat: RepeatConfig | null
 }
 
 export interface CaptureBarProps {
@@ -67,7 +64,11 @@ export interface CaptureBarProps {
   accentColor?: string
   /** `'add'` = dashed plus, `'auto'` = link or document depending on the content. */
   icon?: 'auto' | 'add'
-  /** Enables `!date` / `!!priority` / `#project` parsing, colouring and autocomplete. */
+  /**
+   * Enables quick-add parsing, pills and ghost completion: `!date`,
+   * `!!priority`, `#project`, plus the natural-language `@next wednesday` and
+   * `every 2 weeks` phrases.
+   */
   quickAdd?: { projects: Project[] }
   /** Renders the paperclip. */
   attachment?: {
@@ -136,6 +137,7 @@ export const CaptureBar = ({
   const { t } = useT('common')
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
+  const [caretAtEnd, setCaretAtEnd] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isRecorderMounted, setIsRecorderMounted] = useState(false)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
@@ -219,26 +221,29 @@ export const CaptureBar = ({
   }, [clearRecorderDismissTimer])
 
   // --------------------------------------------------------------------------
-  // Autocomplete (quick-add only)
+  // Inline ghost completion (quick-add only)
   // --------------------------------------------------------------------------
 
-  const autocomplete = useMemo(() => {
-    if (!quickAdd || !isFocused) return { type: null, query: '', options: [] }
-    const { type, query } = detectAutocomplete(value)
-    return { type, query, options: buildAutocompleteOptions(type, query, quickAdd.projects) }
-  }, [quickAdd, isFocused, value])
+  // The ghost is painted at the end of the overlay, so it only tells the truth
+  // while the caret is there too.
+  const syncCaret = useCallback((): void => {
+    const field = fieldRef.current
+    if (!field) return
+    setCaretAtEnd(
+      field.selectionStart === field.value.length && field.selectionStart === field.selectionEnd
+    )
+  }, [])
 
-  const autocompleteOpen = autocomplete.options.length > 0
+  const ghost = useMemo(() => {
+    if (!quickAdd || !isFocused || !caretAtEnd) return null
+    return predictCompletion(value, quickAdd.projects)
+  }, [quickAdd, isFocused, caretAtEnd, value])
 
-  const handleAutocompleteSelect = useCallback((selected: string): void => {
-    setValue((prev) => replaceLastToken(prev, selected))
+  const acceptGhost = useCallback((): void => {
+    if (!ghost) return
+    setValue((prev) => replaceTrigger(prev, ghost.start, ghost.text))
     fieldRef.current?.focus()
-  }, [])
-
-  const handleAutocompleteClose = useCallback((): void => {
-    // A trailing space changes the last token, which closes the dropdown.
-    setValue((prev) => `${prev} `)
-  }, [])
+  }, [ghost])
 
   // --------------------------------------------------------------------------
   // Submit
@@ -252,14 +257,18 @@ export const CaptureBar = ({
           const parsed = parseQuickAdd(trimmed, quickAdd.projects)
           return onSubmit(parsed.title, {
             dueDate: parsed.dueDate,
+            dueTime: parsed.dueTime,
             priority: parsed.priority,
-            projectId: parsed.projectId
+            projectId: parsed.projectId,
+            repeat: parsed.repeat
           })
         })()
       : await onSubmit(trimmed)
 
     // `false` means the surface wants the text left alone (duplicate, failure).
-    if (result !== false) setValue('')
+    if (result !== false) {
+      setValue('')
+    }
     // Keep focus for rapid entry.
     fieldRef.current?.focus()
   }, [trimmed, disabled, quickAdd, onSubmit])
@@ -274,27 +283,13 @@ export const CaptureBar = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
-      // While the dropdown is open it owns navigation and selection.
-      if (autocompleteOpen) {
-        if (['ArrowDown', 'ArrowUp', 'Tab'].includes(e.key)) return
-        if (e.key === 'Enter' && !e.shiftKey) {
-          const exactMatch = autocomplete.options.some(
-            (option) => option.value === lastToken(value)
-          )
-          if (exactMatch) {
-            // The token is already complete — submit instead of re-selecting it.
-            e.preventDefault()
-            e.stopPropagation()
-            void submit()
-          }
-          return
-        }
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          handleAutocompleteClose()
-          return
-        }
+      // Tab and → accept the ghost. Enter deliberately does not: it submits
+      // exactly what is on screen, so a suggestion is never captured by
+      // accident.
+      if (ghost && (e.key === 'Tab' || e.key === 'ArrowRight')) {
+        e.preventDefault()
+        acceptGhost()
+        return
       }
 
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -314,15 +309,7 @@ export const CaptureBar = ({
         fieldRef.current?.blur()
       }
     },
-    [
-      autocompleteOpen,
-      autocomplete.options,
-      value,
-      submit,
-      handleAutocompleteClose,
-      onOpenDetail,
-      openDetail
-    ]
+    [ghost, acceptGhost, submit, onOpenDetail, openDetail]
   )
 
   // --------------------------------------------------------------------------
@@ -349,7 +336,7 @@ export const CaptureBar = ({
   // Render
   // --------------------------------------------------------------------------
 
-  const showTokens = Boolean(quickAdd) && hasSpecialSyntax(value)
+  const showTokens = Boolean(quickAdd) && (hasSpecialSyntax(value) || ghost !== null)
   const attachBusy = attachment?.busy ?? false
 
   const leadingIcon =
@@ -390,14 +377,18 @@ export const CaptureBar = ({
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[12px] leading-[18px]"
               >
-                <TokenOverlay value={value} />
+                <TokenOverlay value={value} ghost={ghost?.remainder} />
               </div>
             )}
             <textarea
               ref={fieldRef}
               rows={1}
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) => {
+                setValue(e.target.value)
+                syncCaret()
+              }}
+              onSelect={syncCaret}
               onScroll={() => {
                 if (overlayRef.current && fieldRef.current) {
                   overlayRef.current.scrollTop = fieldRef.current.scrollTop
@@ -543,15 +534,6 @@ export const CaptureBar = ({
       </div>
 
       {footer}
-
-      {autocompleteOpen && (
-        <AutocompleteDropdown
-          type={autocomplete.type}
-          options={autocomplete.options}
-          onSelect={handleAutocompleteSelect}
-          onClose={handleAutocompleteClose}
-        />
-      )}
     </div>
   )
 }

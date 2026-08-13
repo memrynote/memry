@@ -1,6 +1,8 @@
-import type { Priority } from '@/data/task-model'
+import type { Priority, RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { startOfDay, addDays } from '@/lib/task-utils'
+import { parseNaturalDate } from '@/lib/natural-date-parser'
+import { findRepeatPhrase, firstOccurrenceFor } from '@/lib/repeat-phrase'
 
 // ============================================================================
 // TYPES
@@ -9,8 +11,21 @@ import { startOfDay, addDays } from '@/lib/task-utils'
 export interface ParsedQuickAdd {
   title: string
   dueDate: Date | null
+  /** "HH:MM", only when the natural-language date carried a time. */
+  dueTime: string | null
   priority: Priority
   projectId: string | null
+  repeat: RepeatConfig | null
+}
+
+/** A stretch of the input that carries syntax rather than title text. */
+export type QuickAddSpanKind = 'date' | 'priority' | 'project' | 'datePhrase' | 'repeat'
+
+export interface QuickAddSpan {
+  start: number
+  /** Exclusive. */
+  end: number
+  kind: QuickAddSpanKind
 }
 
 // ============================================================================
@@ -146,6 +161,61 @@ export const parseDateKeyword = (keyword: string): Date | null => {
 }
 
 // ============================================================================
+// NATURAL-LANGUAGE DATE PHRASES (@tomorrow, @next wednesday, @dec 20 at 3pm)
+// ============================================================================
+
+export interface DatePhraseMatch {
+  /** Index of the `@` in the scanned input. */
+  start: number
+  /** Exclusive end index of the phrase. */
+  end: number
+  /** The matched text including the `@` (what the pill paints over). */
+  text: string
+  date: Date
+  /** "HH:MM" when the phrase carried a time, null otherwise. */
+  time: string | null
+}
+
+/** `@` plus at most this many words — the cap on the greedy phrase scan. */
+const MAX_DATE_PHRASE_WORDS = 4
+
+/**
+ * Find the first `@…` run that reads as a date, matching the note editor's
+ * `@`-mention grammar: the `@` starts a word and the phrase can span several
+ * words. Longest match wins, so "@next wednesday call bob" keeps "call bob" in
+ * the title.
+ */
+export const findDatePhrase = (input: string): DatePhraseMatch | null => {
+  for (const at of input.matchAll(/@/g)) {
+    const start = at.index
+    // A mention starts a word — "a@b" is not one.
+    if (start > 0 && !/\s/.test(input[start - 1])) continue
+
+    const rest = input.slice(start + 1)
+    if (!rest || /^\s/.test(rest)) continue
+
+    const wordEnds = [...rest.matchAll(/\S+/g)]
+      .slice(0, MAX_DATE_PHRASE_WORDS)
+      .map((word) => word.index + word[0].length)
+
+    for (let count = wordEnds.length; count >= 1; count--) {
+      const phrase = rest.slice(0, wordEnds[count - 1])
+      const parsed = parseNaturalDate(phrase)
+      if (parsed.success) {
+        return {
+          start,
+          end: start + 1 + phrase.length,
+          text: `@${phrase}`,
+          date: parsed.result.date,
+          time: parsed.result.time
+        }
+      }
+    }
+  }
+  return null
+}
+
+// ============================================================================
 // PRIORITY PARSING
 // ============================================================================
 
@@ -205,70 +275,153 @@ export const findProjectByName = (name: string, projects: Project[]): string | n
 // MAIN PARSER
 // ============================================================================
 
+/** Sorted, non-overlapping — an earlier span wins a contested stretch. */
+const dropOverlaps = (spans: QuickAddSpan[]): QuickAddSpan[] => {
+  const sorted = [...spans].sort((a, b) => a.start - b.start)
+  const kept: QuickAddSpan[] = []
+  for (const span of sorted) {
+    if (kept.length > 0 && span.start < kept[kept.length - 1].end) continue
+    kept.push(span)
+  }
+  return kept
+}
+
+const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
+  let title = ''
+  let cursor = 0
+  for (const span of spans) {
+    title += input.slice(cursor, span.start)
+    cursor = span.end
+  }
+  title += input.slice(cursor)
+  return title.replace(/\s+/g, ' ').trim()
+}
+
 /**
  * Parse quick add input string with special syntax
  *
  * Syntax:
  * - Due date: !today, !tomorrow, !mon, !dec20
+ * - Natural due date: @tomorrow, @next wednesday, @dec 20 at 3pm
+ * - Repeat: every day, every weekday, every monday, every 2 weeks, every month
  * - Priority: !!urgent, !!high, !!medium, !!low
  * - Project: #project-name, #personal, #work
  *
  * Examples:
  * - "Buy groceries !today !!high" → title: "Buy groceries", due: today, priority: high
- * - "Review PR #work !tomorrow" → title: "Review PR", project: work, due: tomorrow
+ * - "Review PR #work @next friday" → title: "Review PR", project: work, due: next Friday
+ * - "Water plants every 2 weeks" → title: "Water plants", repeats every second week
  */
 export const parseQuickAdd = (input: string, projects: Project[]): ParsedQuickAdd => {
-  let title = input
+  const spans: QuickAddSpan[] = []
   let dueDate: Date | null = null
+  let dueTime: string | null = null
   let priority: Priority = 'none'
   let projectId: string | null = null
 
-  // Parse due date: !keyword (single !)
-  // Match !word but not !!word (priority)
-  const dateMatches = input.match(/(?<![!])!([a-zA-Z0-9]+)/g)
-  if (dateMatches) {
-    for (const match of dateMatches) {
-      const keyword = match.slice(1) // Remove the !
-      const parsedDate = parseDateKeyword(keyword)
+  // Natural-language due date: @tomorrow, @next wednesday
+  const datePhrase = findDatePhrase(input)
+  if (datePhrase) {
+    dueDate = datePhrase.date
+    dueTime = datePhrase.time
+    spans.push({ start: datePhrase.start, end: datePhrase.end, kind: 'datePhrase' })
+  }
+
+  // Due date keyword: !keyword (single !, never !!keyword — that is priority)
+  if (!dueDate) {
+    for (const match of input.matchAll(/(?<![!])!([a-zA-Z0-9]+)/g)) {
+      const parsedDate = parseDateKeyword(match[1])
       if (parsedDate) {
         dueDate = parsedDate
-        title = title.replace(match, '').trim()
+        spans.push({ start: match.index, end: match.index + match[0].length, kind: 'date' })
         break // Only use first valid date
       }
     }
   }
 
+  // Repeat: every monday, every 2 weeks. Anchored to the due date so a bare
+  // "every month" repeats on the day the task is actually due.
+  const repeatPhrase = findRepeatPhrase(input, dueDate ?? new Date())
+  const repeat = repeatPhrase?.config ?? null
+  if (repeatPhrase) {
+    spans.push({ start: repeatPhrase.start, end: repeatPhrase.end, kind: 'repeat' })
+  }
+
   // Parse priority: !!keyword (double !)
   const priorityMatch = input.match(/!!([a-zA-Z]+)/)
-  if (priorityMatch) {
-    const keyword = priorityMatch[1]
-    const parsedPriority = parsePriorityKeyword(keyword)
+  if (priorityMatch?.index !== undefined) {
+    const parsedPriority = parsePriorityKeyword(priorityMatch[1])
     if (parsedPriority) {
       priority = parsedPriority
-      title = title.replace(priorityMatch[0], '').trim()
+      spans.push({
+        start: priorityMatch.index,
+        end: priorityMatch.index + priorityMatch[0].length,
+        kind: 'priority'
+      })
     }
   }
 
   // Parse project: #project-name
   const projectMatch = input.match(/#([\w-]+)/)
-  if (projectMatch) {
-    const projectName = projectMatch[1]
-    const foundProjectId = findProjectByName(projectName, projects)
+  if (projectMatch?.index !== undefined) {
+    const foundProjectId = findProjectByName(projectMatch[1], projects)
     if (foundProjectId) {
       projectId = foundProjectId
-      title = title.replace(projectMatch[0], '').trim()
+      spans.push({
+        start: projectMatch.index,
+        end: projectMatch.index + projectMatch[0].length,
+        kind: 'project'
+      })
     }
   }
 
-  // Clean up extra whitespace
-  title = title.replace(/\s+/g, ' ').trim()
+  // A repeat only rolls forward from a due date, so give an undated repeating
+  // task its first occurrence.
+  if (repeat && !dueDate) {
+    dueDate = firstOccurrenceFor(repeat)
+  }
 
   return {
-    title,
+    title: stripSpans(input, dropOverlaps(spans)),
     dueDate,
+    dueTime,
     priority,
-    projectId
+    projectId,
+    repeat
   }
+}
+
+/**
+ * The stretches of `input` that carry syntax, for the token overlay. Same
+ * source of truth as {@link parseQuickAdd}, so a highlighted phrase is always
+ * one that actually left the title.
+ */
+export const findQuickAddSpans = (input: string): QuickAddSpan[] => {
+  const spans: QuickAddSpan[] = []
+
+  const datePhrase = findDatePhrase(input)
+  if (datePhrase) {
+    spans.push({ start: datePhrase.start, end: datePhrase.end, kind: 'datePhrase' })
+  }
+
+  const repeatPhrase = findRepeatPhrase(input)
+  if (repeatPhrase) {
+    spans.push({ start: repeatPhrase.start, end: repeatPhrase.end, kind: 'repeat' })
+  }
+
+  // The sigil forms are painted as soon as they are typed, parseable or not —
+  // an unfinished "!tom" or an unknown "#foo" still reads as syntax.
+  for (const match of input.matchAll(/(!![a-zA-Z]+|(?<![!])![a-zA-Z0-9]+|#[\w-]+)/g)) {
+    const raw = match[0]
+    const kind: QuickAddSpanKind = raw.startsWith('!!')
+      ? 'priority'
+      : raw.startsWith('!')
+        ? 'date'
+        : 'project'
+    spans.push({ start: match.index, end: match.index + raw.length, kind })
+  }
+
+  return dropOverlaps(spans)
 }
 
 // ============================================================================
@@ -282,8 +435,10 @@ export const hasSpecialSyntax = (input: string): boolean => {
   return (
     /(?<![!])![a-zA-Z0-9]+/.test(input) || // date
     /!![a-zA-Z]+/.test(input) || // priority
-    /#[\w-]+/.test(input)
-  ) // project
+    /#[\w-]+/.test(input) || // project
+    findDatePhrase(input) !== null || // @tomorrow
+    findRepeatPhrase(input) !== null // every monday
+  )
 }
 
 /**
@@ -325,11 +480,6 @@ export interface AutocompleteOption {
   icon?: string
 }
 
-export const resolveDateDay = (keyword: string): number | null => {
-  const date = parseDateKeyword(keyword)
-  return date ? date.getDate() : null
-}
-
 /**
  * Get date options for autocomplete, filtered by query
  */
@@ -359,6 +509,29 @@ export const getDateOptions = (query: string): AutocompleteOption[] => {
     (opt) =>
       opt.value.toLowerCase().includes(lowerQuery) || opt.label.toLowerCase().includes(lowerQuery)
   )
+}
+
+/**
+ * The cadences the ghost completes to. Ordered so the shortest useful phrase
+ * wins an ambiguous prefix ("every w" → weekday, the commonest routine).
+ */
+const REPEAT_PHRASES = [
+  'every day',
+  'every weekday',
+  'every week',
+  'every 2 weeks',
+  'every weekend',
+  'every month',
+  'every year'
+]
+
+/**
+ * Canonical cadence for a half-typed "every …", or null when nothing completes
+ * it. Case-insensitive superstring of `query`, like the date completions.
+ */
+export const predictRepeatCompletion = (query: string): string | null => {
+  const lower = query.toLowerCase()
+  return REPEAT_PHRASES.find((phrase) => phrase.startsWith(lower)) ?? null
 }
 
 /**

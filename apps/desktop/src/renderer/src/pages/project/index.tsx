@@ -10,7 +10,7 @@ import { useTabActions, useActiveTab } from '@/contexts/tabs'
 import { useUndoableTaskActions } from '@/hooks/use-undoable-task-actions'
 import { useUndoTracker } from '@/hooks'
 import { getDefaultTodoStatus } from '@/lib/task-utils'
-import { createDefaultTask, type Priority } from '@/data/task-model'
+import { createDefaultTask, type Priority, type RepeatConfig } from '@/data/task-model'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
@@ -134,13 +134,26 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const handleQuickAdd = useCallback(
     (
       title: string,
-      parsedData?: { dueDate: Date | null; priority: Priority; projectId: string | null }
+      // Widened rather than `CaptureBarParsed`: the task list's empty state
+      // calls this with a title only.
+      parsedData?: {
+        dueDate: Date | null
+        dueTime?: string | null
+        priority: Priority
+        projectId: string | null
+        repeat?: RepeatConfig | null
+      }
     ) => {
       if (!project) return
       const statusId = getDefaultTodoStatus(project)?.id || project.statuses[0]?.id
       if (!statusId) return
       const newTask = createDefaultTask(project.id, statusId, title, parsedData?.dueDate ?? null)
       if (parsedData?.priority) newTask.priority = parsedData.priority
+      newTask.dueTime = parsedData?.dueTime ?? null
+      if (parsedData?.repeat) {
+        newTask.isRepeating = true
+        newTask.repeatConfig = parsedData.repeat
+      }
       undoable.createTask(newTask)
     },
     [project, undoable]
