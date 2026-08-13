@@ -203,6 +203,8 @@ Show or hide journal sidebar panes:
 
 **Stale Inbox Days** — number of days a task can sit in the inbox before being flagged stale (1–90).
 
+**Images** — how an image lands in a note you file it to. _Embed in the note_ keeps it inside the note and out of the sidebar; _File in the sidebar_ moves the file into the folder you pick and links to it. **Ask every time** turns the prompt in the filing panel back on after you have answered it once. See [Triage](/user-guide/inbox/triage#filing-an-image-into-a-note).
+
 ---
 
 ## Calendar

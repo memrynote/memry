@@ -29,13 +29,34 @@ Each card shows:
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Archive**             | Done; file the item and move on. The item is searchable but out of the active inbox.                                                                  |
 | **Snooze**              | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive).                              |
-| **Quick file**          | Move into a folder, project, or tag without converting. Notes and attachments alike appear in the sidebar as soon as they are filed.                    |
+| **Quick file**          | Move into a folder, project, or tag without converting. Notes and attachments alike appear in the sidebar as soon as they are filed.                  |
 | **Convert to Note**     | Create a note seeded with the item's content. The original is archived with a back-reference.                                                         |
 | **Convert to Task**     | Create a task in the current default project, or pick a project, due date, due time, and priority.                                                    |
 | **Convert to Event**    | Create a calendar event from the item: start (and optional end) time, an all-day toggle, and a location. The item body becomes the event description. |
 | **Convert to Reminder** | Create a note from the item and schedule a reminder for it at a chosen time. The time must be in the future.                                          |
 | **Open**                | Open the source URL in your browser.                                                                                                                  |
 | **Delete**              | Discard. (Confirms first.)                                                                                                                            |
+
+## Filing an Image Into a Note
+
+When you file an image and link it to one or more notes, you choose the shape it takes:
+
+| Choice                  | What happens                                                                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Embed in the note**   | The image becomes an attachment of the note and renders inside it. It does **not** appear in the sidebar — it lives with the note, not as a file in your folder tree. |
+| **File in the sidebar** | The image file moves into the folder you picked and shows up in the sidebar; the note gets an inline reference to it.                                                 |
+
+Link the same image to several notes and there is still only **one** image on disk, owned by the first note in the list. The other notes point at that copy — so deleting the first note breaks the image in the others. If you want independent copies, file the image separately for each note.
+
+Very large images, and formats the attachment store does not accept, cannot be embedded. Filing still succeeds: memrynote tells you it could not embed and files the image as a linked file instead.
+
+You are asked once. Tick **Don't ask again** and every later image uses the same choice, which you can change any time under **Settings → Inbox → Images**.
+
+## Creating the Note You File Into
+
+The note picker in the filing panel finds existing notes _and_ makes new ones. Type a name that does not match anything and pick **Create "…"** — nothing is written yet. The note is created when you press **File**, in the folder you selected, and the item lands in it.
+
+Because creation waits for the filing, a name you type and then remove leaves nothing behind in your vault.
 
 ## Triage Decisions Across Devices
 
