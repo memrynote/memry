@@ -50,11 +50,28 @@ function clockTotal(clock: VectorClock): number {
   return total
 }
 
+/**
+ * One field where both sides edited concurrently and the values differed.
+ *
+ * `mergedClock` is the union of the two field clocks. Clock merge is
+ * commutative, so both devices compute the same value for the same pair of
+ * edits — which is what lets the activity log mint a matching id on each side
+ * and collapse the two mirror-image rows into one.
+ */
+export interface FieldConflict {
+  field: string
+  localValue: unknown
+  remoteValue: unknown
+  mergedValue: unknown
+  mergedClock: VectorClock
+}
+
 export interface MergeResult<T> {
   merged: Partial<T>
   mergedFieldClocks: FieldClocks
   hadConflicts: boolean
   conflictedFields: string[]
+  conflicts: FieldConflict[]
 }
 
 export function mergeFields<T>(
@@ -67,6 +84,7 @@ export function mergeFields<T>(
   const merged: Record<string, unknown> = {}
   const mergedFieldClocks: FieldClocks = {}
   const conflictedFields: string[] = []
+  const conflicts: FieldConflict[] = []
   let hadConflicts = false
 
   for (const field of syncableFields) {
@@ -96,6 +114,13 @@ export function mergeFields<T>(
       if (isConcurrent && valsDiffer) {
         hadConflicts = true
         conflictedFields.push(field)
+        conflicts.push({
+          field,
+          localValue: localVal,
+          remoteValue: remoteVal,
+          mergedValue: merged[field],
+          mergedClock: mergeClock(localFC, remoteFC)
+        })
       }
     }
 
@@ -106,7 +131,8 @@ export function mergeFields<T>(
     merged: merged as Partial<T>,
     mergedFieldClocks,
     hadConflicts,
-    conflictedFields
+    conflictedFields,
+    conflicts
   }
 }
 

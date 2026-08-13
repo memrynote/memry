@@ -25,6 +25,8 @@ import { WebSocketManager } from './websocket'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
+import { initTaskActivitySyncService, resetTaskActivitySyncService } from './task-activity-sync'
+import { getCurrentDeviceId } from './current-device-id'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
@@ -179,6 +181,7 @@ function resetSyncServiceSingletons(): void {
   resetTaskSyncService()
   resetInboxSyncService()
   resetFilterSyncService()
+  resetTaskActivitySyncService()
   resetBookmarkSyncService()
   resetTemplateSyncService()
   resetReminderSyncService()
@@ -203,15 +206,6 @@ function resetSyncServiceSingletons(): void {
   // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its
   // `online` flag frozen) and would upload vault A's leftovers under vault B.
   resetAttachmentQueue()
-}
-
-function getCurrentDeviceId(db: DataDb): string | null {
-  const device = db
-    .select({ id: syncDevices.id })
-    .from(syncDevices)
-    .where(eq(syncDevices.isCurrentDevice, true))
-    .get()
-  return device?.id ?? null
 }
 
 async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
@@ -356,61 +350,41 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const getDeviceId = (): string | null => getCurrentDeviceId(db)
 
-      const taskSync = initTaskSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const inboxSync = initInboxSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const filterSync = initFilterSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const bookmarkSync = initBookmarkSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const templateSync = initTemplateSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const reminderSync = initReminderSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const canvasSync = initCanvasSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const canvasFolderSync = initCanvasFolderSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const projectSync = initProjectSyncService({ queue, db: runtimeSyncDb, getDeviceId })
-      const settingsSync = initSettingsSyncManager({ db: runtimeSyncDb, queue, getDeviceId })
+      // Every record sync service takes the same three dependencies. Hoisting
+      // them keeps this list one line per type — adding the 22nd type otherwise
+      // pushed the file past the 800-line lint ceiling.
+      const recordSyncDeps = { queue, db: runtimeSyncDb, getDeviceId }
+
+      const taskSync = initTaskSyncService(recordSyncDeps)
+      const inboxSync = initInboxSyncService(recordSyncDeps)
+      const filterSync = initFilterSyncService(recordSyncDeps)
+      const taskActivitySync = initTaskActivitySyncService(recordSyncDeps)
+      const bookmarkSync = initBookmarkSyncService(recordSyncDeps)
+      const templateSync = initTemplateSyncService(recordSyncDeps)
+      const reminderSync = initReminderSyncService(recordSyncDeps)
+      const canvasSync = initCanvasSyncService(recordSyncDeps)
+      const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
+      const projectSync = initProjectSyncService(recordSyncDeps)
+      const settingsSync = initSettingsSyncManager(recordSyncDeps)
       const noteSync = initNoteSyncService({ queue, getDeviceId })
       const journalSync = initJournalSyncService({ queue, getDeviceId })
-      const tagDefinitionSync = initTagDefinitionSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const tagCategorySync = initTagCategorySyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const folderConfigSync = initFolderConfigSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const calendarEventSync = initCalendarEventSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const calendarSourceSync = initCalendarSourceSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const calendarBindingSync = initCalendarBindingSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
-      const calendarExternalEventSync = initCalendarExternalEventSyncService({
-        queue,
-        db: runtimeSyncDb,
-        getDeviceId
-      })
+      const tagDefinitionSync = initTagDefinitionSyncService(recordSyncDeps)
+      const tagCategorySync = initTagCategorySyncService(recordSyncDeps)
+      const folderConfigSync = initFolderConfigSyncService(recordSyncDeps)
+      const calendarEventSync = initCalendarEventSyncService(recordSyncDeps)
+      const calendarSourceSync = initCalendarSourceSyncService(recordSyncDeps)
+      const calendarBindingSync = initCalendarBindingSyncService(recordSyncDeps)
+      const calendarExternalEventSync = initCalendarExternalEventSyncService(recordSyncDeps)
 
       const adapters = createSyncAdapterRegistry([
         { type: 'task', kind: 'record', local: taskSync, remote: getRemoteSyncAdapter('task') },
         { type: 'inbox', kind: 'record', local: inboxSync, remote: getRemoteSyncAdapter('inbox') },
+        {
+          type: 'task_activity',
+          kind: 'record',
+          local: taskActivitySync,
+          remote: getRemoteSyncAdapter('task_activity')
+        },
         {
           type: 'filter',
           kind: 'record',

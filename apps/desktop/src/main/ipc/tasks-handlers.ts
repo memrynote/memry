@@ -17,6 +17,7 @@ import {
   StatusCreateSchema,
   StatusReorderSchema,
   StatusUpdateSchema,
+  TaskActivityListSchema,
   TaskCompleteSchema,
   TaskCreateSchema,
   TaskListSchema,
@@ -29,6 +30,7 @@ import { createLogger } from '../lib/logger'
 import { generateId } from '../lib/id'
 import { createHandler, createStringHandler, createValidatedHandler, withDb } from './validate'
 import { createDesktopTasksDomain } from '../tasks/domain'
+import { getTaskActivity } from '../tasks/activity-history'
 import { captureUrlToProject } from '../tasks/capture-url'
 import { importFilesToProject } from '../tasks/import-files-to-project'
 import { linkProjectItem, unlinkProjectItem } from '../tasks/project-item-links'
@@ -531,6 +533,11 @@ export function registerTasksHandlers(): void {
     createStringHandler(async (noteId) =>
       createTaskDomain(requireDatabase()).getLinkedTasks(noteId)
     )
+  )
+
+  ipcMain.handle(
+    TasksChannels.invoke.GET_ACTIVITY,
+    createValidatedHandler(TaskActivityListSchema, async (input) => getTaskActivity(input))
   )
 }
 

@@ -12,6 +12,13 @@ import {
 } from './runtime-effects'
 import { trackMainEvent } from '../telemetry/track'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
+import {
+  recordTaskCompleted,
+  recordTaskCreated,
+  recordTaskDeleted,
+  recordTaskMoved,
+  recordTaskUpdated
+} from './activity-log'
 
 function emitTaskEvent(channel: string, data: unknown): void {
   broadcastToAllWindows(channel, data)
@@ -34,6 +41,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
       if (task.tags && task.tags.length > 0) emitTagsChanged()
+      recordTaskCreated(task)
       syncTaskCreate(task.id)
       trackMainEvent('task_created', {
         surface: 'tasks',
@@ -42,9 +50,10 @@ export function createTasksPublisher(): TasksDomainPublisher {
         result: 'success'
       })
     },
-    taskUpdated: ({ id, task, changes, changedFields }) => {
+    taskUpdated: ({ id, task, changes, changedFields, previous }) => {
       emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes })
       if (changedFields.includes('tags')) emitTagsChanged()
+      recordTaskUpdated({ id, task, changes, changedFields, previous })
       syncTaskUpdate(id, changedFields)
       trackMainEvent('task_updated', {
         surface: 'tasks',
@@ -55,6 +64,7 @@ export function createTasksPublisher(): TasksDomainPublisher {
       })
     },
     taskDeleted: ({ id, snapshot }) => {
+      recordTaskDeleted(id, snapshot)
       syncTaskDelete(id, snapshot)
       emitTaskEvent(TasksChannels.events.DELETED, { id })
       if (snapshot?.tags && snapshot.tags.length > 0) emitTagsChanged()
@@ -65,8 +75,9 @@ export function createTasksPublisher(): TasksDomainPublisher {
         result: 'success'
       })
     },
-    taskCompleted: ({ id, task }) => {
+    taskCompleted: ({ id, task, previous }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
+      recordTaskCompleted({ id, task, previous })
       syncTaskUpdate(id, ['completedAt'])
       trackMainEvent('task_completed', {
         surface: 'tasks',
@@ -75,10 +86,14 @@ export function createTasksPublisher(): TasksDomainPublisher {
         result: 'success'
       })
     },
-    taskMoved: ({ id, task, changedFields }) => {
+    taskMoved: ({ id, task, changedFields, previous }) => {
       emitTaskEvent(TasksChannels.events.MOVED, { id, task })
+      recordTaskMoved({ id, task, changedFields, previous })
       syncTaskUpdate(id, changedFields)
     },
+    // Deliberately no activity row: reorder only ever changes `position`, which
+    // the activity writer filters out anyway, and a 200-task drag would call
+    // this 200 times.
     taskReordered: ({ id, changedFields }) => {
       syncTaskUpdate(id, changedFields)
     },

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TasksChannels } from '../../contracts/src/ipc-channels.ts'
+import { TaskActivityChannels, TasksChannels } from '../../contracts/src/ipc-channels.ts'
 import {
   ProjectCreateSchema,
   ProjectLinkItemSchema,
@@ -23,6 +23,9 @@ import type {
   ProjectWithStats,
   RepeatConfig,
   Status,
+  TaskActivityEntry,
+  TaskActivityListInput,
+  TaskActivityListResponse,
   TaskCreateResponse,
   TaskMoveInput,
   TaskStats
@@ -69,6 +72,9 @@ export type {
   ProjectWithStats,
   RepeatConfig,
   Status,
+  TaskActivityEntry,
+  TaskActivityListInput,
+  TaskActivityListResponse,
   TaskCreateResponse,
   TaskMoveInput,
   TaskStats
@@ -382,6 +388,10 @@ export const tasksRpc = defineDomain({
     getLinkedTasks: defineMethod<(noteId: string) => Promise<Task[]>>({
       channel: TasksChannels.invoke.GET_LINKED_TASKS,
       params: ['noteId']
+    }),
+    getActivity: defineMethod<(input: TaskActivityListInput) => Promise<TaskActivityListResponse>>({
+      channel: TasksChannels.invoke.GET_ACTIVITY,
+      params: ['input']
     })
   },
   events: {
@@ -392,7 +402,11 @@ export const tasksRpc = defineDomain({
     onTaskMoved: defineEvent<TaskMovedEvent>(TasksChannels.events.MOVED),
     onProjectCreated: defineEvent<ProjectCreatedEvent>(TasksChannels.events.PROJECT_CREATED),
     onProjectUpdated: defineEvent<ProjectUpdatedEvent>(TasksChannels.events.PROJECT_UPDATED),
-    onProjectDeleted: defineEvent<ProjectDeletedEvent>(TasksChannels.events.PROJECT_DELETED)
+    onProjectDeleted: defineEvent<ProjectDeletedEvent>(TasksChannels.events.PROJECT_DELETED),
+    // Announced by the activity writer itself. `tasks:updated` is not enough:
+    // the Google Calendar writeback never emits it, and a peer update that
+    // loses whole-row LWW is skipped without emitting — yet both produce rows.
+    onTaskActivityCreated: defineEvent<{ taskId: string }>(TaskActivityChannels.events.CREATED)
   }
 })
 

@@ -4,7 +4,6 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
-import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { createLogger } from '../../lib/logger'
 import { requireDatabase, type DataDb } from '../../database'
@@ -13,6 +12,8 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../../sync/local-mutations'
+import { getCurrentDeviceId } from '../../sync/current-device-id'
+import { recordExternalTaskUpdate } from '../../tasks/activity-log'
 import { publishProjectionEvent } from '../../projections'
 import {
   hasGoogleCalendarConnection,
@@ -54,20 +55,6 @@ let syncInFlight = false
 
 function getNow(): string {
   return new Date().toISOString()
-}
-
-/**
- * Local copy of the sync runtime's device lookup — `sync/offline-clock` is on
- * the architecture check's blocked list for feature modules, and this is the
- * same three-line query `runtime.ts` and `offline-clock.ts` already keep.
- */
-function getCurrentDeviceId(db: DataDb): string | null {
-  const device = db
-    .select({ id: syncDevices.id })
-    .from(syncDevices)
-    .where(eq(syncDevices.isCurrentDevice, true))
-    .get()
-  return device?.id ?? null
 }
 
 function isGoneError(error: unknown): boolean {
@@ -591,7 +578,11 @@ export async function applyGoogleCalendarWriteback(
         updates.description = remote.description
       }
 
+      // Publisher bypass: this is a raw writeback, so the activity row is
+      // logged here. The actor is Google Calendar, not the user.
+      const beforeTask = db.select().from(tasks).where(eq(tasks.id, binding.sourceId)).get()
       db.update(tasks).set(updates).where(eq(tasks.id, binding.sourceId)).run()
+      recordExternalTaskUpdate(binding.sourceId, beforeTask, updates, 'google_calendar')
       publishTaskCalendarMutation(binding.sourceId)
       break
     }
@@ -662,14 +653,12 @@ export async function applyGoogleCalendarDelete(
     }
 
     case 'task': {
-      db.update(tasks)
-        .set({
-          dueDate: null,
-          dueTime: null,
-          modifiedAt: now
-        })
-        .where(eq(tasks.id, binding.sourceId))
-        .run()
+      const beforeTask = db.select().from(tasks).where(eq(tasks.id, binding.sourceId)).get()
+      const unschedule = { dueDate: null, dueTime: null, modifiedAt: now }
+      db.update(tasks).set(unschedule).where(eq(tasks.id, binding.sourceId)).run()
+      // Deleting the Google event unschedules the task; that is a real edit and
+      // the log should say Google made it.
+      recordExternalTaskUpdate(binding.sourceId, beforeTask, unschedule, 'google_calendar')
       publishTaskCalendarMutation(binding.sourceId)
       break
     }

@@ -26,6 +26,7 @@ import {
   ReminderSyncPayloadSchema,
   StatusSyncSchema,
   TagDefinitionSyncPayloadSchema,
+  TaskActivitySyncPayloadSchema,
   TaskSyncPayloadSchema,
   TemplateSyncPayloadSchema
 } from './sync-payloads'
@@ -185,6 +186,42 @@ describe('FilterSyncPayloadSchema', () => {
   it('rejects non-number position', () => {
     const result = FilterSyncPayloadSchema.safeParse({ position: '0' })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('TaskActivitySyncPayloadSchema', () => {
+  it('accepts a full row', () => {
+    const result = TaskActivitySyncPayloadSchema.safeParse({
+      taskId: 'task-1',
+      action: 'updated',
+      field: 'dueDate',
+      oldValue: '"2026-08-12"',
+      newValue: '"2026-08-20"',
+      actor: 'user',
+      deviceId: 'device-A',
+      clock: { 'device-A': 3 },
+      createdAt: '2026-08-13T10:00:00.000Z'
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts null field/values — description rows never carry the body text', () => {
+    const result = TaskActivitySyncPayloadSchema.safeParse({
+      taskId: 'task-1',
+      action: 'updated',
+      field: 'description',
+      oldValue: null,
+      newValue: null
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts an empty payload (all optional, forward-tolerant per D5)', () => {
+    expect(TaskActivitySyncPayloadSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('rejects a non-string action', () => {
+    expect(TaskActivitySyncPayloadSchema.safeParse({ action: 3 }).success).toBe(false)
   })
 })
 

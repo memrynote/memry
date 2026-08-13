@@ -344,6 +344,13 @@
       "when": 1785585344000,
       "tag": "0048_canvas_folders",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1785585345000,
+      "tag": "0049_task_activity",
+      "breakpoints": true
     }
   ]
 }

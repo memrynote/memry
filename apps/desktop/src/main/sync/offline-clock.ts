@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
-import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
+import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
@@ -16,6 +16,7 @@ import {
   type FieldClocks
 } from '@memry/contracts/sync-api'
 import { increment } from './vector-clock'
+import { getCurrentDeviceId } from './current-device-id'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
@@ -185,6 +186,28 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
   }
 }
 
+/**
+ * Note there is no rebinding hook for these the way task-sync.ts rebinds
+ * offline task clocks: an activity row stamped `_offline` keeps that key for
+ * its whole life. That is fine — the row is immutable, so the clock is never
+ * compared against a later local edit.
+ */
+export function incrementTaskActivityClockOffline(db: DataDb, activityId: string): void {
+  try {
+    const row = db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get()
+    if (!row) return
+
+    const existingClock = (row.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(taskActivity).set({ clock: newClock }).where(eq(taskActivity.id, activityId)).run()
+
+    log.debug('Incremented offline task activity clock', { activityId })
+  } catch (err) {
+    log.warn('Failed to increment offline task activity clock', { activityId, error: err })
+  }
+}
+
 export function incrementTemplateClockOffline(db: DataDb, templateId: string): void {
   try {
     const template = db.select().from(templates).where(eq(templates.id, templateId)).get()
@@ -231,15 +254,6 @@ export function incrementReminderClockOffline(db: DataDb, reminderId: string): v
   } catch (err) {
     log.warn('Failed to increment offline reminder clock', { reminderId, error: err })
   }
-}
-
-function getCurrentDeviceId(db: DataDb): string | null {
-  const device = db
-    .select({ id: syncDevices.id })
-    .from(syncDevices)
-    .where(eq(syncDevices.isCurrentDevice, true))
-    .get()
-  return device?.id ?? null
 }
 
 /**

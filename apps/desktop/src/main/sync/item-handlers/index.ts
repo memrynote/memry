@@ -3,6 +3,7 @@ import type { RemoteSyncAdapter } from '@memry/sync-core'
 import type { SyncItemHandler, DrizzleDb, EmitToWindows } from './types'
 import type { SyncQueueManager } from '../queue'
 import { taskHandler } from './task-handler'
+import { taskActivityHandler } from './task-activity-handler'
 import { inboxHandler } from './inbox-handler'
 import { filterHandler } from './filter-handler'
 import { bookmarkHandler } from './bookmark-handler'
@@ -29,6 +30,7 @@ export { resolveClockConflict } from './types'
 
 const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['task', taskHandler],
+  ['task_activity', taskActivityHandler],
   ['inbox', inboxHandler],
   ['filter', filterHandler],
   ['bookmark', bookmarkHandler],
