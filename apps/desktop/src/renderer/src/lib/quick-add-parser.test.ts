@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type { Project } from '@/data/tasks-data'
 import {
-  parseDateKeyword,
   parsePriorityKeyword,
   findProjectByName,
   findDatePhrase,
+  findNoteLinks,
   findQuickAddSpans,
   parseQuickAdd,
   hasSpecialSyntax,
   getParsePreview,
-  getDateOptions,
   getPriorityOptions,
   getProjectOptions,
+  getTagOptions,
   predictRepeatCompletion
 } from './quick-add-parser'
 
@@ -31,239 +31,6 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   createdAt: new Date(),
   taskCount: 0,
   ...overrides
-})
-
-// ============================================================================
-// T104: DATE KEYWORD PARSING
-// ============================================================================
-
-describe('parseDateKeyword', () => {
-  beforeEach(() => {
-    // January 10, 2026 is a Saturday
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(2026, 0, 10))
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  describe('today keyword', () => {
-    it("should parse 'today' to current date", () => {
-      const result = parseDateKeyword('today')
-      expect(result).toEqual(new Date(2026, 0, 10))
-    })
-
-    it("should handle uppercase 'TODAY'", () => {
-      const result = parseDateKeyword('TODAY')
-      expect(result).toEqual(new Date(2026, 0, 10))
-    })
-
-    it("should handle mixed case 'Today'", () => {
-      const result = parseDateKeyword('Today')
-      expect(result).toEqual(new Date(2026, 0, 10))
-    })
-  })
-
-  describe('tomorrow keywords', () => {
-    it("should parse 'tomorrow' to next day", () => {
-      const result = parseDateKeyword('tomorrow')
-      expect(result).toEqual(new Date(2026, 0, 11))
-    })
-
-    it("should parse 'tmr' to next day", () => {
-      const result = parseDateKeyword('tmr')
-      expect(result).toEqual(new Date(2026, 0, 11))
-    })
-
-    it("should parse 'tom' to next day", () => {
-      const result = parseDateKeyword('tom')
-      expect(result).toEqual(new Date(2026, 0, 11))
-    })
-  })
-
-  describe('next week keywords', () => {
-    it("should parse 'nextweek' to +7 days", () => {
-      const result = parseDateKeyword('nextweek')
-      expect(result).toEqual(new Date(2026, 0, 17))
-    })
-
-    it("should parse 'next' to +7 days", () => {
-      const result = parseDateKeyword('next')
-      expect(result).toEqual(new Date(2026, 0, 17))
-    })
-  })
-
-  describe('day name parsing (from Saturday Jan 10, 2026)', () => {
-    it("should parse 'sun' to next Sunday (Jan 11)", () => {
-      const result = parseDateKeyword('sun')
-      expect(result).toEqual(new Date(2026, 0, 11))
-    })
-
-    it("should parse 'sunday' to next Sunday (Jan 11)", () => {
-      const result = parseDateKeyword('sunday')
-      expect(result).toEqual(new Date(2026, 0, 11))
-    })
-
-    it("should parse 'mon' to next Monday (Jan 12)", () => {
-      const result = parseDateKeyword('mon')
-      expect(result).toEqual(new Date(2026, 0, 12))
-    })
-
-    it("should parse 'monday' to next Monday (Jan 12)", () => {
-      const result = parseDateKeyword('monday')
-      expect(result).toEqual(new Date(2026, 0, 12))
-    })
-
-    it("should parse 'tue' to next Tuesday (Jan 13)", () => {
-      const result = parseDateKeyword('tue')
-      expect(result).toEqual(new Date(2026, 0, 13))
-    })
-
-    it("should parse 'tuesday' to next Tuesday (Jan 13)", () => {
-      const result = parseDateKeyword('tuesday')
-      expect(result).toEqual(new Date(2026, 0, 13))
-    })
-
-    it("should parse 'wed' to next Wednesday (Jan 14)", () => {
-      const result = parseDateKeyword('wed')
-      expect(result).toEqual(new Date(2026, 0, 14))
-    })
-
-    it("should parse 'wednesday' to next Wednesday (Jan 14)", () => {
-      const result = parseDateKeyword('wednesday')
-      expect(result).toEqual(new Date(2026, 0, 14))
-    })
-
-    it("should parse 'thu' to next Thursday (Jan 15)", () => {
-      const result = parseDateKeyword('thu')
-      expect(result).toEqual(new Date(2026, 0, 15))
-    })
-
-    it("should parse 'thursday' to next Thursday (Jan 15)", () => {
-      const result = parseDateKeyword('thursday')
-      expect(result).toEqual(new Date(2026, 0, 15))
-    })
-
-    it("should parse 'fri' to next Friday (Jan 16)", () => {
-      const result = parseDateKeyword('fri')
-      expect(result).toEqual(new Date(2026, 0, 16))
-    })
-
-    it("should parse 'friday' to next Friday (Jan 16)", () => {
-      const result = parseDateKeyword('friday')
-      expect(result).toEqual(new Date(2026, 0, 16))
-    })
-
-    it("should parse 'sat' to next Saturday (Jan 17)", () => {
-      const result = parseDateKeyword('sat')
-      expect(result).toEqual(new Date(2026, 0, 17))
-    })
-
-    it("should parse 'saturday' to next Saturday (Jan 17)", () => {
-      const result = parseDateKeyword('saturday')
-      expect(result).toEqual(new Date(2026, 0, 17))
-    })
-  })
-
-  describe('month + day format', () => {
-    it("should parse 'dec20' to Dec 20, 2026", () => {
-      const result = parseDateKeyword('dec20')
-      expect(result).toEqual(new Date(2026, 11, 20))
-    })
-
-    it("should parse 'dec 20' (with space) to Dec 20, 2026", () => {
-      const result = parseDateKeyword('dec 20')
-      expect(result).toEqual(new Date(2026, 11, 20))
-    })
-
-    it("should parse 'december20' to Dec 20, 2026", () => {
-      const result = parseDateKeyword('december20')
-      expect(result).toEqual(new Date(2026, 11, 20))
-    })
-
-    it("should parse 'jan5' to Jan 5, 2027 (past date rolls to next year)", () => {
-      const result = parseDateKeyword('jan5')
-      expect(result).toEqual(new Date(2027, 0, 5))
-    })
-
-    it("should parse 'feb14' to Feb 14, 2026", () => {
-      const result = parseDateKeyword('feb14')
-      expect(result).toEqual(new Date(2026, 1, 14))
-    })
-
-    it("should parse 'mar1' to Mar 1, 2026", () => {
-      const result = parseDateKeyword('mar1')
-      expect(result).toEqual(new Date(2026, 2, 1))
-    })
-  })
-
-  describe('day + month format (day-first)', () => {
-    it("should parse '23may' to May 23, 2026", () => {
-      const result = parseDateKeyword('23may')
-      expect(result).toEqual(new Date(2026, 4, 23))
-    })
-
-    it("should parse '21jan' to Jan 21, 2026 (future date stays same year)", () => {
-      const result = parseDateKeyword('21jan')
-      expect(result).toEqual(new Date(2026, 0, 21))
-    })
-
-    it("should parse '5jan' to Jan 5, 2027 (past date rolls to next year)", () => {
-      const result = parseDateKeyword('5jan')
-      expect(result).toEqual(new Date(2027, 0, 5))
-    })
-
-    it("should parse '14february' to Feb 14, 2026", () => {
-      const result = parseDateKeyword('14february')
-      expect(result).toEqual(new Date(2026, 1, 14))
-    })
-
-    it("should parse '1mar' to Mar 1, 2026", () => {
-      const result = parseDateKeyword('1mar')
-      expect(result).toEqual(new Date(2026, 2, 1))
-    })
-
-    it("should parse '25dec' to Dec 25, 2026", () => {
-      const result = parseDateKeyword('25dec')
-      expect(result).toEqual(new Date(2026, 11, 25))
-    })
-
-    it("should return null for '32jan' (invalid day)", () => {
-      expect(parseDateKeyword('32jan')).toBeNull()
-    })
-
-    it("should return null for '0dec' (day 0 is invalid)", () => {
-      expect(parseDateKeyword('0dec')).toBeNull()
-    })
-  })
-
-  describe('invalid keywords', () => {
-    it("should return null for 'invalid'", () => {
-      const result = parseDateKeyword('invalid')
-      expect(result).toBeNull()
-    })
-
-    it("should return null for 'dec32' (invalid day)", () => {
-      const result = parseDateKeyword('dec32')
-      expect(result).toBeNull()
-    })
-
-    it('should return null for empty string', () => {
-      const result = parseDateKeyword('')
-      expect(result).toBeNull()
-    })
-
-    it('should return null for random text', () => {
-      const result = parseDateKeyword('xyz123')
-      expect(result).toBeNull()
-    })
-
-    it("should return null for 'dec0' (day 0 is invalid)", () => {
-      const result = parseDateKeyword('dec0')
-      expect(result).toBeNull()
-    })
-  })
 })
 
 // ============================================================================
@@ -469,6 +236,7 @@ describe('parseQuickAdd', () => {
   ]
 
   beforeEach(() => {
+    // Saturday, 10 January 2026.
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 0, 10))
   })
@@ -486,7 +254,9 @@ describe('parseQuickAdd', () => {
         dueTime: null,
         priority: 'none',
         projectId: null,
-        repeat: null
+        repeat: null,
+        tags: [],
+        noteTitles: []
       })
     })
 
@@ -496,111 +266,225 @@ describe('parseQuickAdd', () => {
     })
   })
 
-  describe('date parsing', () => {
-    it("should parse '!today' in input", () => {
-      const result = parseQuickAdd('Buy groceries !today', projects)
-      expect(result.title).toBe('Buy groceries')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 10))
-    })
+  // --------------------------------------------------------------------------
+  // ! — priority
+  // --------------------------------------------------------------------------
 
-    it("should parse '!tomorrow' in input", () => {
-      const result = parseQuickAdd('Meeting !tomorrow', projects)
-      expect(result.title).toBe('Meeting')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 11))
-    })
-
-    it("should parse '!mon' in input", () => {
-      const result = parseQuickAdd('Review code !mon', projects)
-      expect(result.title).toBe('Review code')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 12))
-    })
-  })
-
-  describe('priority parsing', () => {
-    it("should parse '!!high' in input", () => {
-      const result = parseQuickAdd('Buy groceries !!high', projects)
+  describe('priority', () => {
+    it("reads '!high' and takes it out of the title", () => {
+      const result = parseQuickAdd('Buy groceries !high', projects)
       expect(result.title).toBe('Buy groceries')
       expect(result.priority).toBe('high')
     })
 
-    it("should parse '!!urgent' in input", () => {
-      const result = parseQuickAdd('Emergency fix !!urgent', projects)
+    it("reads '!urgent'", () => {
+      const result = parseQuickAdd('Emergency fix !urgent', projects)
       expect(result.title).toBe('Emergency fix')
       expect(result.priority).toBe('urgent')
     })
 
-    it("should parse '!!low' in input", () => {
-      const result = parseQuickAdd('Nice to have !!low', projects)
-      expect(result.title).toBe('Nice to have')
+    it('reads the short forms', () => {
+      expect(parseQuickAdd('Task !u', projects).priority).toBe('urgent')
+      expect(parseQuickAdd('Task !h', projects).priority).toBe('high')
+      expect(parseQuickAdd('Task !med', projects).priority).toBe('medium')
+      expect(parseQuickAdd('Task !l', projects).priority).toBe('low')
+    })
+
+    it('is case-insensitive', () => {
+      expect(parseQuickAdd('Task !HIGH', projects).priority).toBe('high')
+    })
+
+    it('takes the first run that names a priority', () => {
+      const result = parseQuickAdd('Task !nope !low', projects)
       expect(result.priority).toBe('low')
+      expect(result.title).toBe('Task !nope')
+    })
+
+    it('leaves an unknown keyword in the title', () => {
+      const result = parseQuickAdd('Task !xyz', projects)
+      expect(result.title).toBe('Task !xyz')
+      expect(result.priority).toBe('none')
+    })
+
+    it('leaves prose punctuation alone', () => {
+      // Nothing follows the marker, so these are sentences, not syntax.
+      expect(parseQuickAdd('Ship it!', projects)).toMatchObject({
+        title: 'Ship it!',
+        priority: 'none'
+      })
+      expect(parseQuickAdd('Wow!!', projects)).toMatchObject({ title: 'Wow!!', priority: 'none' })
+    })
+
+    it('no longer reads the old double marker', () => {
+      // `!` is the priority marker now; `!!high` is not a second spelling of it.
+      const result = parseQuickAdd('Buy groceries !!high', projects)
+      expect(result.title).toBe('Buy groceries !!high')
+      expect(result.priority).toBe('none')
+    })
+
+    it('no longer reads a bare date keyword', () => {
+      // `!today` used to mean "due today". `@` covers all of it now.
+      const result = parseQuickAdd('Meeting !tomorrow', projects)
+      expect(result.title).toBe('Meeting !tomorrow')
+      expect(result.dueDate).toBeNull()
+    })
+
+    it('does not fire mid-word', () => {
+      const result = parseQuickAdd('Deploy hotfix-1!high', projects)
+      expect(result.title).toBe('Deploy hotfix-1!high')
+      expect(result.priority).toBe('none')
     })
   })
 
-  describe('project parsing', () => {
-    it("should parse '#work' in input", () => {
-      const result = parseQuickAdd('Review PR #work', projects)
+  // --------------------------------------------------------------------------
+  // + — project
+  // --------------------------------------------------------------------------
+
+  describe('project', () => {
+    it("reads '+work' and takes it out of the title", () => {
+      const result = parseQuickAdd('Review PR +work', projects)
       expect(result.title).toBe('Review PR')
       expect(result.projectId).toBe('work')
     })
 
-    it("should parse '#personal' in input", () => {
-      const result = parseQuickAdd('Buy groceries #personal', projects)
+    it('resolves a name as well as an id', () => {
+      const result = parseQuickAdd('Buy groceries +Personal', projects)
       expect(result.title).toBe('Buy groceries')
       expect(result.projectId).toBe('personal')
     })
 
-    it('should ignore invalid project reference', () => {
-      const result = parseQuickAdd('Task #nonexistent', projects)
-      expect(result.title).toBe('Task #nonexistent')
+    it('leaves an unresolved project in the title', () => {
+      const result = parseQuickAdd('Task +nonexistent', projects)
+      expect(result.title).toBe('Task +nonexistent')
       expect(result.projectId).toBeNull()
+    })
+
+    it('never fires mid-word', () => {
+      // The guards that make `+` safe in prose and in code.
+      expect(parseQuickAdd('Compute 1+2 today', projects)).toMatchObject({
+        title: 'Compute 1+2 today',
+        projectId: null
+      })
+      expect(parseQuickAdd('Learn C++', projects)).toMatchObject({
+        title: 'Learn C++',
+        projectId: null
+      })
+    })
+
+    it("no longer answers to the old '#' marker", () => {
+      // Migration: `#Work` files a *tag* now, not the Work project.
+      const result = parseQuickAdd('Review PR #Work', projects)
+      expect(result.projectId).toBeNull()
+      expect(result.tags).toEqual(['Work'])
     })
   })
 
-  describe('combined syntax', () => {
-    it('should parse all fields: date, priority, and project', () => {
-      const result = parseQuickAdd('Meeting !tomorrow !!urgent #work', projects)
-      expect(result.title).toBe('Meeting')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 11))
-      expect(result.priority).toBe('urgent')
-      expect(result.projectId).toBe('work')
+  // --------------------------------------------------------------------------
+  // # — tags
+  // --------------------------------------------------------------------------
+
+  describe('tags', () => {
+    it('reads a tag and takes it out of the title', () => {
+      const result = parseQuickAdd('Ship the beta #launch', projects)
+      expect(result.title).toBe('Ship the beta')
+      expect(result.tags).toEqual(['launch'])
     })
 
-    it('should handle syntax in different order', () => {
-      const result = parseQuickAdd('#work Meeting !today !!high', projects)
+    it('reads every tag in the input, unlike the other markers', () => {
+      const result = parseQuickAdd('Ship the beta #launch #q1 #marketing', projects)
+      expect(result.title).toBe('Ship the beta')
+      expect(result.tags).toEqual(['launch', 'q1', 'marketing'])
+    })
+
+    it('reads the note editor’s nested form', () => {
+      const result = parseQuickAdd('Call the client #work/client', projects)
+      expect(result.title).toBe('Call the client')
+      expect(result.tags).toEqual(['work/client'])
+    })
+
+    it('keeps the case the user typed', () => {
+      expect(parseQuickAdd('Read the paper #MIT', projects).tags).toEqual(['MIT'])
+    })
+
+    it('never fires mid-word', () => {
+      expect(parseQuickAdd('Close issue#12', projects)).toMatchObject({
+        title: 'Close issue#12',
+        tags: []
+      })
+      expect(parseQuickAdd('Learn C# basics', projects)).toMatchObject({
+        title: 'Learn C# basics',
+        tags: []
+      })
+    })
+
+    it('ignores a bare #', () => {
+      const result = parseQuickAdd('Sort the # pile', projects)
+      expect(result.title).toBe('Sort the # pile')
+      expect(result.tags).toEqual([])
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // [[…]] — note links
+  // --------------------------------------------------------------------------
+
+  describe('note links', () => {
+    it('reads the title inside the brackets and drops the run', () => {
+      const result = parseQuickAdd('Draft the plan [[Roadmap]]', projects)
+      expect(result.title).toBe('Draft the plan')
+      expect(result.noteTitles).toEqual(['Roadmap'])
+    })
+
+    it('reads several links', () => {
+      const result = parseQuickAdd('Prep [[Roadmap]] and [[Q1 Goals]]', projects)
+      expect(result.title).toBe('Prep and')
+      expect(result.noteTitles).toEqual(['Roadmap', 'Q1 Goals'])
+    })
+
+    it('leaves an unclosed run alone — it is still being typed', () => {
+      const result = parseQuickAdd('Draft the plan [[Road', projects)
+      expect(result.title).toBe('Draft the plan [[Road')
+      expect(result.noteTitles).toEqual([])
+    })
+
+    it('treats a marker inside a link as part of the note title', () => {
+      const result = parseQuickAdd('Prep [[Q3 #launch +work]] #real', projects)
+      expect(result.noteTitles).toEqual(['Q3 #launch +work'])
+      expect(result.tags).toEqual(['real'])
+      expect(result.projectId).toBeNull()
+      expect(result.title).toBe('Prep')
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Everything together
+  // --------------------------------------------------------------------------
+
+  describe('combined syntax', () => {
+    it('parses the whole grammar in one line', () => {
+      const withMemry = [...projects, createMockProject({ id: 'memry', name: 'Memry' })]
+      const result = parseQuickAdd(
+        'Ship the beta @next friday !high +Memry #launch [[Roadmap]] every 2 weeks',
+        withMemry
+      )
+
+      expect(result.title).toBe('Ship the beta')
+      // From Saturday, "next friday" is next week's — the note editor's rule.
+      expect(result.dueDate).toEqual(new Date(2026, 0, 23))
+      expect(result.priority).toBe('high')
+      expect(result.projectId).toBe('memry')
+      expect(result.tags).toEqual(['launch'])
+      expect(result.noteTitles).toEqual(['Roadmap'])
+      expect(result.repeat).toMatchObject({ frequency: 'weekly', interval: 2 })
+    })
+
+    it('does not care about the order the markers are typed in', () => {
+      const result = parseQuickAdd('+work Meeting @today !high #sync', projects)
       expect(result.title).toBe('Meeting')
       expect(result.dueDate).toEqual(new Date(2026, 0, 10))
       expect(result.priority).toBe('high')
       expect(result.projectId).toBe('work')
-    })
-
-    it('should handle date and priority only', () => {
-      const result = parseQuickAdd('Task !today !!medium', projects)
-      expect(result.title).toBe('Task')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 10))
-      expect(result.priority).toBe('medium')
-      expect(result.projectId).toBeNull()
-    })
-  })
-
-  describe('multiple dates', () => {
-    it('should use first valid date when multiple dates present', () => {
-      const result = parseQuickAdd('Task !today !tomorrow', projects)
-      expect(result.title).toBe('Task !tomorrow')
-      expect(result.dueDate).toEqual(new Date(2026, 0, 10))
-    })
-  })
-
-  describe('invalid syntax preserved', () => {
-    it('should preserve invalid date keyword in title', () => {
-      const result = parseQuickAdd('Buy !invalid groceries', projects)
-      expect(result.title).toBe('Buy !invalid groceries')
-      expect(result.dueDate).toBeNull()
-    })
-
-    it('should preserve invalid priority keyword in title', () => {
-      const result = parseQuickAdd('Task !!xyz', projects)
-      expect(result.title).toBe('Task !!xyz')
-      expect(result.priority).toBe('none')
+      expect(result.tags).toEqual(['sync'])
     })
   })
 
@@ -611,7 +495,7 @@ describe('parseQuickAdd', () => {
     })
 
     it('should clean whitespace after removing syntax', () => {
-      const result = parseQuickAdd('Buy  !today   groceries', projects)
+      const result = parseQuickAdd('Buy  @today   groceries', projects)
       expect(result.title).toBe('Buy groceries')
       expect(result.dueDate).toEqual(new Date(2026, 0, 10))
     })
@@ -623,80 +507,33 @@ describe('parseQuickAdd', () => {
 // ============================================================================
 
 describe('hasSpecialSyntax', () => {
-  describe('date detection', () => {
-    it("should detect date syntax '!today'", () => {
-      expect(hasSpecialSyntax('task !today')).toBe(true)
-    })
-
-    it("should detect date syntax '!tomorrow'", () => {
-      expect(hasSpecialSyntax('task !tomorrow')).toBe(true)
-    })
-
-    it("should detect date syntax '!mon'", () => {
-      expect(hasSpecialSyntax('task !mon')).toBe(true)
-    })
+  it('detects each marker', () => {
+    expect(hasSpecialSyntax('task !high')).toBe(true)
+    expect(hasSpecialSyntax('task +work')).toBe(true)
+    expect(hasSpecialSyntax('task #launch')).toBe(true)
+    expect(hasSpecialSyntax('task [[Roadmap]]')).toBe(true)
+    expect(hasSpecialSyntax('task @tomorrow')).toBe(true)
+    expect(hasSpecialSyntax('task every monday')).toBe(true)
   })
 
-  describe('priority detection', () => {
-    it("should detect priority syntax '!!high'", () => {
-      expect(hasSpecialSyntax('task !!high')).toBe(true)
-    })
-
-    it("should detect priority syntax '!!urgent'", () => {
-      expect(hasSpecialSyntax('task !!urgent')).toBe(true)
-    })
-
-    it("should detect priority syntax '!!low'", () => {
-      expect(hasSpecialSyntax('task !!low')).toBe(true)
-    })
+  it('is false for plain prose', () => {
+    expect(hasSpecialSyntax('plain task')).toBe(false)
+    expect(hasSpecialSyntax('')).toBe(false)
+    expect(hasSpecialSyntax('Check every door')).toBe(false)
   })
 
-  describe('project detection', () => {
-    it("should detect project syntax '#work'", () => {
-      expect(hasSpecialSyntax('task #work')).toBe(true)
-    })
-
-    it("should detect project syntax '#my-project'", () => {
-      expect(hasSpecialSyntax('task #my-project')).toBe(true)
-    })
+  it('is false for a lone marker', () => {
+    expect(hasSpecialSyntax('task !')).toBe(false)
+    expect(hasSpecialSyntax('task +')).toBe(false)
+    expect(hasSpecialSyntax('task #')).toBe(false)
+    expect(hasSpecialSyntax('task [[')).toBe(false)
   })
 
-  describe('no syntax', () => {
-    it('should return false for plain task', () => {
-      expect(hasSpecialSyntax('plain task')).toBe(false)
-    })
-
-    it('should return false for empty string', () => {
-      expect(hasSpecialSyntax('')).toBe(false)
-    })
-  })
-
-  describe('combined syntax', () => {
-    it('should detect combined syntax', () => {
-      expect(hasSpecialSyntax('task !today #work')).toBe(true)
-    })
-
-    it('should detect all three syntaxes', () => {
-      expect(hasSpecialSyntax('task !today !!high #work')).toBe(true)
-    })
-  })
-
-  describe('edge cases', () => {
-    it("should return false for '!' alone", () => {
-      expect(hasSpecialSyntax('task !')).toBe(false)
-    })
-
-    it("should return false for '!!' alone", () => {
-      expect(hasSpecialSyntax('task !!')).toBe(false)
-    })
-
-    it("should return false for '#' alone", () => {
-      expect(hasSpecialSyntax('task #')).toBe(false)
-    })
-
-    it('should detect syntax even with leading !!', () => {
-      expect(hasSpecialSyntax('!!high')).toBe(true)
-    })
+  it('does not carry state between calls', () => {
+    // The marker patterns are global and module-level; scanning with `.test()`
+    // would leave `lastIndex` behind and make every other call lie.
+    expect(hasSpecialSyntax('task #launch')).toBe(true)
+    expect(hasSpecialSyntax('task #launch')).toBe(true)
   })
 })
 
@@ -719,81 +556,41 @@ describe('getParsePreview', () => {
     vi.useRealTimers()
   })
 
-  describe('return structure', () => {
-    it('should return all required fields', () => {
-      const result = getParsePreview('task', projects)
-      expect(result).toHaveProperty('hasDate')
-      expect(result).toHaveProperty('hasPriority')
-      expect(result).toHaveProperty('hasProject')
-      expect(result).toHaveProperty('dueDate')
-      expect(result).toHaveProperty('priority')
-      expect(result).toHaveProperty('projectId')
-      expect(result).toHaveProperty('projectName')
-    })
+  it('should return all required fields', () => {
+    const result = getParsePreview('task', projects)
+    expect(result).toHaveProperty('hasDate')
+    expect(result).toHaveProperty('hasPriority')
+    expect(result).toHaveProperty('hasProject')
+    expect(result).toHaveProperty('dueDate')
+    expect(result).toHaveProperty('priority')
+    expect(result).toHaveProperty('projectId')
+    expect(result).toHaveProperty('projectName')
   })
 
-  describe('date preview', () => {
-    it('should show hasDate true when date present', () => {
-      const result = getParsePreview('task !today', projects)
-      expect(result.hasDate).toBe(true)
-      expect(result.dueDate).toEqual(new Date(2026, 0, 10))
-    })
-
-    it('should show hasDate false when no date', () => {
-      const result = getParsePreview('task', projects)
-      expect(result.hasDate).toBe(false)
-      expect(result.dueDate).toBeNull()
-    })
+  it('reports an empty input as carrying nothing', () => {
+    const result = getParsePreview('task', projects)
+    expect(result.hasDate).toBe(false)
+    expect(result.hasPriority).toBe(false)
+    expect(result.hasProject).toBe(false)
+    expect(result.projectName).toBeNull()
   })
 
-  describe('priority preview', () => {
-    it('should show hasPriority true when priority present', () => {
-      const result = getParsePreview('task !!high', projects)
-      expect(result.hasPriority).toBe(true)
-      expect(result.priority).toBe('high')
-    })
-
-    it('should show hasPriority false when priority is none', () => {
-      const result = getParsePreview('task', projects)
-      expect(result.hasPriority).toBe(false)
-      expect(result.priority).toBe('none')
-    })
+  it('reports every field the input carries', () => {
+    const result = getParsePreview('task @tomorrow !urgent +personal', projects)
+    expect(result.hasDate).toBe(true)
+    expect(result.hasPriority).toBe(true)
+    expect(result.hasProject).toBe(true)
+    expect(result.dueDate).toEqual(new Date(2026, 0, 11))
+    expect(result.priority).toBe('urgent')
+    expect(result.projectId).toBe('personal')
+    expect(result.projectName).toBe('Personal')
   })
 
-  describe('project preview', () => {
-    it('should show hasProject true with valid project', () => {
-      const result = getParsePreview('task #work', projects)
-      expect(result.hasProject).toBe(true)
-      expect(result.projectId).toBe('work')
-      expect(result.projectName).toBe('Work')
-    })
-
-    it('should show hasProject false with invalid project', () => {
-      const result = getParsePreview('task #nonexistent', projects)
-      expect(result.hasProject).toBe(false)
-      expect(result.projectId).toBeNull()
-      expect(result.projectName).toBeNull()
-    })
-
-    it('should show hasProject false when no project', () => {
-      const result = getParsePreview('task', projects)
-      expect(result.hasProject).toBe(false)
-      expect(result.projectId).toBeNull()
-      expect(result.projectName).toBeNull()
-    })
-  })
-
-  describe('combined preview', () => {
-    it('should handle all fields correctly', () => {
-      const result = getParsePreview('task !tomorrow !!urgent #personal', projects)
-      expect(result.hasDate).toBe(true)
-      expect(result.hasPriority).toBe(true)
-      expect(result.hasProject).toBe(true)
-      expect(result.dueDate).toEqual(new Date(2026, 0, 11))
-      expect(result.priority).toBe('urgent')
-      expect(result.projectId).toBe('personal')
-      expect(result.projectName).toBe('Personal')
-    })
+  it('reports an unresolved project as no project', () => {
+    const result = getParsePreview('task +nonexistent', projects)
+    expect(result.hasProject).toBe(false)
+    expect(result.projectId).toBeNull()
+    expect(result.projectName).toBeNull()
   })
 })
 
@@ -801,88 +598,17 @@ describe('getParsePreview', () => {
 // T110: AUTOCOMPLETE OPTIONS
 // ============================================================================
 
-describe('getDateOptions', () => {
-  describe('no query (default options)', () => {
-    it('should return first 5 options when no query', () => {
-      const result = getDateOptions('')
-      expect(result).toHaveLength(5)
-      expect(result.map((o) => o.value)).toEqual([
-        '!today',
-        '!tomorrow',
-        '!nextweek',
-        '!monday',
-        '!tuesday'
-      ])
-    })
-  })
-
-  describe('filtered by query', () => {
-    it("should filter options with 'to' query", () => {
-      const result = getDateOptions('to')
-      expect(result.map((o) => o.value)).toContain('!today')
-      expect(result.map((o) => o.value)).toContain('!tomorrow')
-    })
-
-    it("should filter options with 'mon' query", () => {
-      const result = getDateOptions('mon')
-      expect(result).toHaveLength(1)
-      expect(result[0].value).toBe('!monday')
-    })
-
-    it("should filter options with 'wed' query", () => {
-      const result = getDateOptions('wed')
-      expect(result).toHaveLength(1)
-      expect(result[0].value).toBe('!wednesday')
-    })
-  })
-
-  describe('option structure', () => {
-    it('should have value and label for each option', () => {
-      const result = getDateOptions('')
-      result.forEach((option) => {
-        expect(option).toHaveProperty('value')
-        expect(option).toHaveProperty('label')
-      })
-    })
-  })
-})
-
 describe('getPriorityOptions', () => {
-  describe('no query (all options)', () => {
-    it('should return all 4 options when no query', () => {
-      const result = getPriorityOptions('')
-      expect(result).toHaveLength(4)
-      expect(result.map((o) => o.value)).toEqual(['!!urgent', '!!high', '!!medium', '!!low'])
-    })
+  it('offers the four priorities, single-marker only', () => {
+    const result = getPriorityOptions('')
+    expect(result).toHaveLength(4)
+    expect(result.map((o) => o.value)).toEqual(['!urgent', '!high', '!medium', '!low'])
   })
 
-  describe('filtered by query', () => {
-    it("should filter options with 'h' query", () => {
-      const result = getPriorityOptions('h')
-      expect(result.map((o) => o.value)).toContain('!!high')
-    })
-
-    it("should filter options with 'ur' query", () => {
-      const result = getPriorityOptions('ur')
-      expect(result).toHaveLength(1)
-      expect(result[0].value).toBe('!!urgent')
-    })
-
-    it("should filter options with 'med' query", () => {
-      const result = getPriorityOptions('med')
-      expect(result).toHaveLength(1)
-      expect(result[0].value).toBe('!!medium')
-    })
-  })
-
-  describe('option structure', () => {
-    it('should have value and label for each option', () => {
-      const result = getPriorityOptions('')
-      result.forEach((option) => {
-        expect(option).toHaveProperty('value')
-        expect(option).toHaveProperty('label')
-      })
-    })
+  it('filters by what has been typed', () => {
+    expect(getPriorityOptions('h').map((o) => o.value)).toContain('!high')
+    expect(getPriorityOptions('ur')).toHaveLength(1)
+    expect(getPriorityOptions('med')[0].value).toBe('!medium')
   })
 })
 
@@ -894,58 +620,41 @@ describe('getProjectOptions', () => {
     createMockProject({ id: 'dev', name: 'Development' })
   ]
 
-  describe('no query (all non-archived)', () => {
-    it('should return all non-archived projects', () => {
-      const result = getProjectOptions('', projects)
-      expect(result).toHaveLength(3)
-      expect(result.map((o) => o.label)).toEqual(['Work', 'Personal', 'Development'])
-    })
-
-    it('should exclude archived projects', () => {
-      const result = getProjectOptions('', projects)
-      expect(result.map((o) => o.label)).not.toContain('Archived')
-    })
+  it('offers every active project', () => {
+    const result = getProjectOptions('', projects)
+    expect(result).toHaveLength(3)
+    expect(result.map((o) => o.label)).toEqual(['Work', 'Personal', 'Development'])
   })
 
-  describe('filtered by query', () => {
-    it("should filter by name 'work'", () => {
-      const result = getProjectOptions('work', projects)
-      expect(result).toHaveLength(1)
-      expect(result[0].label).toBe('Work')
-    })
-
-    it("should filter by name 'dev'", () => {
-      const result = getProjectOptions('dev', projects)
-      expect(result).toHaveLength(1)
-      expect(result[0].label).toBe('Development')
-    })
-
-    it("should filter by ID 'personal'", () => {
-      const result = getProjectOptions('personal', projects)
-      expect(result).toHaveLength(1)
-      expect(result[0].label).toBe('Personal')
-    })
-
-    it('should return empty for no matches', () => {
-      const result = getProjectOptions('xyz', projects)
-      expect(result).toHaveLength(0)
-    })
+  it('excludes archived projects', () => {
+    expect(getProjectOptions('', projects).map((o) => o.label)).not.toContain('Archived')
   })
 
-  describe('option structure', () => {
-    it("should have correct value format '#ProjectName'", () => {
-      const result = getProjectOptions('', projects)
-      expect(result[0].value).toBe('#Work')
-      expect(result[1].value).toBe('#Personal')
-    })
+  it('filters by name and by id', () => {
+    expect(getProjectOptions('dev', projects)[0].label).toBe('Development')
+    expect(getProjectOptions('personal', projects)[0].label).toBe('Personal')
+    expect(getProjectOptions('xyz', projects)).toHaveLength(0)
+  })
 
-    it('should have value and label for each option', () => {
-      const result = getProjectOptions('', projects)
-      result.forEach((option) => {
-        expect(option).toHaveProperty('value')
-        expect(option).toHaveProperty('label')
-      })
-    })
+  it("writes the value with the '+' marker", () => {
+    const result = getProjectOptions('', projects)
+    expect(result[0].value).toBe('+Work')
+    expect(result[1].value).toBe('+Personal')
+  })
+})
+
+describe('getTagOptions', () => {
+  const tags = ['launch', 'work/client', 'MIT']
+
+  it('offers the whole pool in the order it was given', () => {
+    const result = getTagOptions('', tags)
+    expect(result.map((o) => o.value)).toEqual(['#launch', '#work/client', '#MIT'])
+  })
+
+  it('filters case-insensitively', () => {
+    expect(getTagOptions('mit', tags).map((o) => o.value)).toEqual(['#MIT'])
+    expect(getTagOptions('client', tags).map((o) => o.value)).toEqual(['#work/client'])
+    expect(getTagOptions('zzz', tags)).toHaveLength(0)
   })
 })
 
@@ -996,6 +705,19 @@ describe('natural-language quick-add', () => {
     })
   })
 
+  describe('findNoteLinks', () => {
+    it('reads every finished run and where it sits', () => {
+      expect(findNoteLinks('Prep [[Roadmap]] then [[Q1 Goals]]')).toEqual([
+        { start: 5, end: 16, title: 'Roadmap' },
+        { start: 22, end: 34, title: 'Q1 Goals' }
+      ])
+    })
+
+    it('reads nothing from an unfinished run', () => {
+      expect(findNoteLinks('Prep [[Road')).toEqual([])
+    })
+  })
+
   describe('parseQuickAdd — date phrases', () => {
     it('pulls the phrase out of the title', () => {
       const result = parseQuickAdd('Call Bob @next wednesday', projects)
@@ -1011,7 +733,7 @@ describe('natural-language quick-add', () => {
     })
 
     it('combines with priority and project', () => {
-      const result = parseQuickAdd('Ship it @tomorrow !!high #Work', projects)
+      const result = parseQuickAdd('Ship it @tomorrow !high +Work', projects)
       expect(result.title).toBe('Ship it')
       expect(result.dueDate).toEqual(new Date(2026, 0, 11))
       expect(result.priority).toBe('high')
@@ -1024,10 +746,10 @@ describe('natural-language quick-add', () => {
       expect(result.dueDate).toBeNull()
     })
 
-    it('wins over a !keyword date so only one due date is taken', () => {
-      const result = parseQuickAdd('Call Bob @tomorrow !today', projects)
+    it('takes only the first phrase that reads as a date', () => {
+      const result = parseQuickAdd('Call Bob @tomorrow @friday', projects)
       expect(result.dueDate).toEqual(new Date(2026, 0, 11))
-      expect(result.title).toBe('Call Bob !today')
+      expect(result.title).toBe('Call Bob @friday')
     })
   })
 
@@ -1060,7 +782,7 @@ describe('natural-language quick-add', () => {
     })
 
     it('keeps a due date the user typed', () => {
-      const result = parseQuickAdd('Report !friday every week', projects)
+      const result = parseQuickAdd('Report @friday every week', projects)
       expect(result.dueDate).toEqual(new Date(2026, 0, 16))
       expect(result.repeat).toMatchObject({ frequency: 'weekly', interval: 1 })
     })
@@ -1075,16 +797,46 @@ describe('natural-language quick-add', () => {
 
   describe('findQuickAddSpans', () => {
     it('marks every syntax stretch, phrases included', () => {
-      expect(findQuickAddSpans('Sync @tomorrow every monday !!high #Work')).toEqual([
-        { start: 5, end: 14, kind: 'datePhrase' },
-        { start: 15, end: 27, kind: 'repeat' },
-        { start: 28, end: 34, kind: 'priority' },
-        { start: 35, end: 40, kind: 'project' }
+      expect(
+        findQuickAddSpans('Sync [[Roadmap]] @tomorrow every monday !high +Work #launch')
+      ).toEqual([
+        { start: 5, end: 16, kind: 'noteLink' },
+        { start: 17, end: 26, kind: 'datePhrase' },
+        { start: 27, end: 39, kind: 'repeat' },
+        { start: 40, end: 45, kind: 'priority' },
+        { start: 46, end: 51, kind: 'project' },
+        { start: 52, end: 59, kind: 'tag' }
       ])
     })
 
     it('marks nothing in plain prose', () => {
       expect(findQuickAddSpans('Buy groceries every door')).toEqual([])
+    })
+
+    it('marks a half-typed marker, so the pill appears as it is typed', () => {
+      expect(findQuickAddSpans('Task !hi')).toEqual([{ start: 5, end: 8, kind: 'priority' }])
+      expect(findQuickAddSpans('Task +foo')).toEqual([{ start: 5, end: 9, kind: 'project' }])
+    })
+
+    it('does not mark a marker that lives inside a note link', () => {
+      expect(findQuickAddSpans('Prep [[Q3 #launch]]')).toEqual([
+        { start: 5, end: 19, kind: 'noteLink' }
+      ])
+    })
+
+    it('agrees with what the parser strips', () => {
+      // Landmine: pills and title-stripping must not disagree, or the caret and
+      // the captured title stop matching what the user sees.
+      const input = 'Sync [[Roadmap]] @tomorrow every monday !high +Work #launch'
+      const spans = findQuickAddSpans(input)
+      const remainder = spans
+        .reduceRight((text, span) => text.slice(0, span.start) + text.slice(span.end), input)
+        .replace(/\s+/g, ' ')
+        .trim()
+
+      expect(remainder).toBe(
+        parseQuickAdd(input, [createMockProject({ id: 'work', name: 'Work' })]).title
+      )
     })
   })
 

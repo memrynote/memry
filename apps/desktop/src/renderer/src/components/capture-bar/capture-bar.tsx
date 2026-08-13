@@ -5,9 +5,10 @@
  * nowhere else, so the three surfaces cannot drift apart again. Everything a
  * single surface needs is a capability prop: pass `attachment` and a paperclip
  * appears, pass `voice` and the mic + inline recorder appear, pass `quickAdd`
- * and `@tomorrow` / `every monday` / `!!high` / `#project` get parsed, painted
- * as pills, and finished by the inline ghost completion. Omit them and the
- * affordance is not rendered at all.
+ * and `@tomorrow` / `every monday` / `!high` / `+project` / `#tag` / `[[Note]]`
+ * get parsed, painted as pills, and finished by the inline ghost completion (or,
+ * for `[[`, the note picker). Omit them and the affordance is not rendered at
+ * all.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,8 +21,16 @@ import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 import { isMac } from '@/lib/shortcut-registry'
 import { isLikelyUrl } from '@/lib/capture-intent'
 import { hasSpecialSyntax, parseQuickAdd } from '@/lib/quick-add-parser'
+import { fuzzySearch } from '@/lib/fuzzy-search'
 import { VoiceRecorder, type VoiceRecorderHandle } from '@/components/voice-recorder'
-import { TokenOverlay, predictCompletion, replaceTrigger } from './capture-bar-tokens'
+import { AutocompleteDropdown } from '@/components/tasks/quick-add/autocomplete-dropdown'
+import {
+  TokenOverlay,
+  detectTrigger,
+  predictCompletion,
+  replaceTrigger
+} from './capture-bar-tokens'
+import { useNoteSuggestions, useTagSuggestions } from './capture-bar-suggestions'
 import { ownsFocusShortcut, registerCaptureField } from './focus-shortcut-owner'
 import type { Priority, RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
@@ -42,7 +51,14 @@ export interface CaptureBarParsed {
   priority: Priority
   projectId: string | null
   repeat: RepeatConfig | null
+  /** Every `#tag` in the input, case preserved. */
+  tags: string[]
+  /** Notes named by a `[[…]]` run that resolved to a real note. */
+  linkedNoteIds: string[]
 }
+
+/** How many notes the `[[` picker shows at once. */
+const NOTE_PICKER_LIMIT = 10
 
 export interface CaptureBarProps {
   placeholder: string
@@ -65,9 +81,9 @@ export interface CaptureBarProps {
   /** `'add'` = dashed plus, `'auto'` = link or document depending on the content. */
   icon?: 'auto' | 'add'
   /**
-   * Enables quick-add parsing, pills and ghost completion: `!date`,
-   * `!!priority`, `#project`, plus the natural-language `@next wednesday` and
-   * `every 2 weeks` phrases.
+   * Enables quick-add parsing, pills and completion — the note editor's own
+   * grammar: `@next wednesday`, `!high`, `+project`, `#tag`, `[[Note]]` and
+   * `every 2 weeks`. Everything but `[[` is finished by the inline ghost.
    */
   quickAdd?: { projects: Project[] }
   /** Renders the paperclip. */
@@ -234,16 +250,87 @@ export const CaptureBar = ({
     )
   }, [])
 
+  // The trigger the caret is in, shared by the ghost and the `[[` picker.
+  const trigger = useMemo(
+    () => (quickAdd && isFocused ? detectTrigger(value) : null),
+    [quickAdd, isFocused, value]
+  )
+
+  const noteQuery = trigger?.kind === 'noteLink' ? trigger.query : null
+  const notes = useNoteSuggestions(noteQuery !== null)
+  const tags = useTagSuggestions(trigger?.kind === 'tag')
+
   const ghost = useMemo(() => {
     if (!quickAdd || !isFocused || !caretAtEnd) return null
-    return predictCompletion(value, quickAdd.projects)
-  }, [quickAdd, isFocused, caretAtEnd, value])
+    return predictCompletion(value, quickAdd.projects, tags)
+  }, [quickAdd, isFocused, caretAtEnd, value, tags])
 
   const acceptGhost = useCallback((): void => {
     if (!ghost) return
     setValue((prev) => replaceTrigger(prev, ghost.start, ghost.text))
     fieldRef.current?.focus()
   }, [ghost])
+
+  // --------------------------------------------------------------------------
+  // `[[` note picker
+  //
+  // The one completion that is a list rather than a ghost: note titles are
+  // arbitrary user data, so guessing at them would be worse than showing them.
+  // --------------------------------------------------------------------------
+
+  // Closed by Esc, re-armed by the next keystroke.
+  const [pickerDismissed, setPickerDismissed] = useState(false)
+  const [pickerIndex, setPickerIndex] = useState(0)
+
+  // What the picker has handed out, so submit links the note the user actually
+  // chose rather than re-resolving a title two notes might share.
+  const pickedNoteIdsRef = useRef(new Map<string, string>())
+
+  const noteOptions = useMemo(() => {
+    if (noteQuery === null) return []
+    const query = noteQuery.trim()
+    const matched = query ? fuzzySearch(notes, query, ['title']) : notes
+    return matched
+      .slice(0, NOTE_PICKER_LIMIT)
+      .map((note) => ({ value: note.id, label: note.title }))
+  }, [noteQuery, notes])
+
+  // Reset the highlight during render whenever the list changes underneath it.
+  const [lastNoteOptions, setLastNoteOptions] = useState(noteOptions)
+  if (lastNoteOptions !== noteOptions) {
+    setLastNoteOptions(noteOptions)
+    setPickerIndex(0)
+  }
+
+  const isPickerOpen = noteQuery !== null && !pickerDismissed && noteOptions.length > 0
+
+  const selectNote = useCallback(
+    (noteId: string): void => {
+      const note = notes.find((candidate) => candidate.id === noteId)
+      if (!note || trigger?.kind !== 'noteLink') return
+      pickedNoteIdsRef.current.set(note.title.toLowerCase(), note.id)
+      setValue((prev) => replaceTrigger(prev, trigger.start, `[[${note.title}]]`))
+      fieldRef.current?.focus()
+    },
+    [notes, trigger]
+  )
+
+  // A `[[Title]]` the picker wrote is already known; one typed by hand is
+  // resolved against the loaded notes by exact title.
+  const resolveNoteIds = useCallback(
+    (titles: string[]): string[] =>
+      titles
+        .map((title) => {
+          const key = title.toLowerCase()
+          return (
+            pickedNoteIdsRef.current.get(key) ??
+            notes.find((note) => note.title.toLowerCase() === key)?.id ??
+            null
+          )
+        })
+        .filter((id): id is string => id !== null),
+    [notes]
+  )
 
   // --------------------------------------------------------------------------
   // Submit
@@ -260,7 +347,9 @@ export const CaptureBar = ({
             dueTime: parsed.dueTime,
             priority: parsed.priority,
             projectId: parsed.projectId,
-            repeat: parsed.repeat
+            repeat: parsed.repeat,
+            tags: parsed.tags,
+            linkedNoteIds: resolveNoteIds(parsed.noteTitles)
           })
         })()
       : await onSubmit(trimmed)
@@ -271,7 +360,7 @@ export const CaptureBar = ({
     }
     // Keep focus for rapid entry.
     fieldRef.current?.focus()
-  }, [trimmed, disabled, quickAdd, onSubmit])
+  }, [trimmed, disabled, quickAdd, onSubmit, resolveNoteIds])
 
   const openDetail = useCallback((): void => {
     if (!onOpenDetail) return
@@ -283,6 +372,33 @@ export const CaptureBar = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+      // The `[[` picker owns the keyboard while it is open — including Enter,
+      // which selects a note here rather than submitting the task.
+      if (isPickerOpen) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setPickerIndex((prev) => Math.min(prev + 1, noteOptions.length - 1))
+          return
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setPickerIndex((prev) => Math.max(prev - 1, 0))
+          return
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault()
+          selectNote(noteOptions[pickerIndex].value)
+          return
+        }
+        // First Esc closes the list and leaves the text alone; a second one
+        // clears the field, the way Esc always has.
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setPickerDismissed(true)
+          return
+        }
+      }
+
       // Tab and → accept the ghost. Enter deliberately does not: it submits
       // exactly what is on screen, so a suggestion is never captured by
       // accident.
@@ -309,7 +425,17 @@ export const CaptureBar = ({
         fieldRef.current?.blur()
       }
     },
-    [ghost, acceptGhost, submit, onOpenDetail, openDetail]
+    [
+      isPickerOpen,
+      noteOptions,
+      pickerIndex,
+      selectNote,
+      ghost,
+      acceptGhost,
+      submit,
+      onOpenDetail,
+      openDetail
+    ]
   )
 
   // --------------------------------------------------------------------------
@@ -386,6 +512,7 @@ export const CaptureBar = ({
               value={value}
               onChange={(e) => {
                 setValue(e.target.value)
+                setPickerDismissed(false)
                 syncCaret()
               }}
               onSelect={syncCaret}
@@ -411,6 +538,16 @@ export const CaptureBar = ({
                   : 'text-foreground/90'
               )}
             />
+
+            {isPickerOpen && (
+              <AutocompleteDropdown
+                type="note"
+                options={noteOptions}
+                selectedIndex={pickerIndex}
+                onSelect={selectNote}
+                onClose={() => setPickerDismissed(true)}
+              />
+            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5">

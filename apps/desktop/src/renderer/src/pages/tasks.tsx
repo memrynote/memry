@@ -667,6 +667,8 @@ export const TasksPage = ({
         projectId: string | null
         statusId?: string | null
         repeat?: RepeatConfig | null
+        tags?: string[]
+        linkedNoteIds?: string[]
       }
     ): void => {
       const projectId = resolveQuickAddProject(
@@ -702,6 +704,8 @@ export const TasksPage = ({
         newTask.isRepeating = true
         newTask.repeatConfig = parsedData.repeat
       }
+      newTask.tags = parsedData?.tags ?? []
+      newTask.linkedNoteIds = parsedData?.linkedNoteIds ?? []
 
       undoable.createTask(newTask)
     },

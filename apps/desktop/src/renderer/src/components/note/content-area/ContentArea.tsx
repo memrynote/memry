@@ -783,7 +783,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
         const parsed = text
           ? parseQuickAdd(text, projects)
-          : { title: '', priority: 'none', projectId: null, dueDate: null }
+          : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
 
         try {
           const result = await tasksService.create({
@@ -792,6 +792,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             title: parsed.title,
             priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
             dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            // A `#tag` on the checklist line leaves the title now that `#` means
+            // tag, so it has to land on the task instead of being dropped.
+            tags: parsed.tags,
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {

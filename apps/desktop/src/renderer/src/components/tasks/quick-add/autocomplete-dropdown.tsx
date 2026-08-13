@@ -1,12 +1,12 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
-import { Calendar, Flag, Folder } from '@/lib/icons'
+import { Calendar, FileText, Flag, Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export type AutocompleteType = 'date' | 'priority' | 'project' | null
+export type AutocompleteType = 'date' | 'priority' | 'project' | 'note' | null
 
 export interface AutocompleteOption {
   value: string
@@ -19,6 +19,12 @@ interface AutocompleteDropdownProps {
   options: AutocompleteOption[]
   onSelect: (value: string) => void
   onClose: () => void
+  /**
+   * Controlled highlight. Pass it when the caller already owns the keyboard —
+   * CaptureBar does, because its textarea handler runs before this component's
+   * window listener and would otherwise submit on the Enter that should select.
+   */
+  selectedIndex?: number
   className?: string
 }
 
@@ -32,7 +38,8 @@ const AUTOCOMPLETE_HEADERS: Record<
 > = {
   date: { icon: <Calendar className="size-3.5" />, label: 'Due Date' },
   priority: { icon: <Flag className="size-3.5" />, label: 'Priority' },
-  project: { icon: <Folder className="size-3.5" />, label: 'Project' }
+  project: { icon: <Folder className="size-3.5" />, label: 'Project' },
+  note: { icon: <FileText className="size-3.5" />, label: 'Link a note' }
 }
 
 const AutocompleteHeader = ({ type }: { type: AutocompleteType }): React.JSX.Element | null => {
@@ -104,16 +111,19 @@ export const AutocompleteDropdown = ({
   options,
   onSelect,
   onClose,
+  selectedIndex: controlledIndex,
   className
 }: AutocompleteDropdownProps): React.JSX.Element | null => {
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const isControlled = controlledIndex !== undefined
+  const [internalIndex, setInternalIndex] = useState(0)
+  const selectedIndex = isControlled ? controlledIndex : internalIndex
   const listRef = useRef<HTMLDivElement>(null)
 
   // Reset selection during render whenever the available options change.
   const [storedOptions, setStoredOptions] = useState(options)
   if (storedOptions !== options) {
     setStoredOptions(options)
-    setSelectedIndex(0)
+    setInternalIndex(0)
   }
 
   // Scroll selected item into view (layout work).
@@ -134,11 +144,11 @@ export const AutocompleteDropdown = ({
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault()
-          setSelectedIndex((prev) => Math.min(prev + 1, options.length - 1))
+          setInternalIndex((prev) => Math.min(prev + 1, options.length - 1))
           break
         case 'ArrowUp':
           e.preventDefault()
-          setSelectedIndex((prev) => Math.max(prev - 1, 0))
+          setInternalIndex((prev) => Math.max(prev - 1, 0))
           break
         case 'Enter':
         case 'Tab':
@@ -156,11 +166,13 @@ export const AutocompleteDropdown = ({
     [options, selectedIndex, onSelect, onClose]
   )
 
-  // Add/remove keyboard listener
+  // Add/remove keyboard listener — skipped while controlled, so the caller's
+  // own handler is the only one acting on a key.
   useEffect(() => {
+    if (isControlled) return
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  }, [handleKeyDown, isControlled])
 
   // Don't render if no options
   if (options.length === 0) return null
@@ -188,7 +200,7 @@ export const AutocompleteDropdown = ({
             <OptionItem
               option={option}
               isSelected={index === selectedIndex}
-              showValue={type !== 'project'}
+              showValue={type !== 'project' && type !== 'note'}
               onClick={() => onSelect(option.value)}
             />
           </div>
