@@ -208,7 +208,8 @@ describe('inbox triage writes enqueue a sync push', () => {
         'inbox/crud.ts',
         'inbox/filing.ts',
         'inbox/snooze.ts',
-        'calendar/providers/google/sync-service.ts',
+        // The calendar → inbox_snooze writeback; provider-neutral since #1393.
+        'calendar/sync/writeback.ts',
         'sync/item-handlers/inbox-handler.ts'
       ])
     )

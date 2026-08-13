@@ -5,37 +5,41 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import type { FieldClocks } from '@memry/contracts/sync-api'
-import { createLogger } from '../../../lib/logger'
-import type { DataDb } from '../../../database/types'
-import { enqueueLocalSyncUpdate } from '../../../sync/local-mutations'
-import { initAllFieldClocks } from '../../../sync/field-merge'
-import {
-  CALENDAR_EVENT_SYNCABLE_FIELDS,
-  mergeCalendarEventFields
-} from '../../field-merge-calendar'
-import { emitCalendarChanged } from '../../change-events'
+import { createLogger } from '../../lib/logger'
+import type { DataDb } from '../../database/types'
+import { enqueueLocalSyncUpdate } from '../../sync/local-mutations'
+import { initAllFieldClocks } from '../../sync/field-merge'
+import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
+import { emitCalendarChanged } from '../change-events'
 import {
   mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
   mapInboxSnoozeToGoogleInput,
   mapReminderToGoogleInput,
   mapTaskToGoogleInput
-} from './mappers'
+} from './remote-event-mappers'
+import type { CalendarSyncTarget } from '../types'
+import { ProviderConflictError } from '../provider/errors'
 import type {
-  CalendarSyncTarget,
-  GoogleCalendarClient,
-  GoogleCalendarRemoteEvent,
-  GoogleCalendarUpsertEventInput
-} from '../../types'
+  CalendarProviderAdapter,
+  RemoteCalendarEvent,
+  UpsertRemoteEventInput
+} from '../provider/adapter'
 
-const log = createLogger('Calendar:GooglePushConflict')
+const log = createLogger('Calendar:PushConflict')
 export const MAX_PUSH_CONFLICT_RETRIES = 3
 
 function getNow(): string {
   return new Date().toISOString()
 }
 
+/**
+ * The remote copy moved under us. Adapters raise `ProviderConflictError`; the
+ * Google client predates the taxonomy and throws a plain error carrying
+ * `status: 412`, which is still recognized so its behavior is unchanged.
+ */
 function isPreconditionFailedError(error: unknown): boolean {
+  if (error instanceof ProviderConflictError) return true
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -44,10 +48,10 @@ function isPreconditionFailedError(error: unknown): boolean {
   )
 }
 
-export function loadSourceAsGoogleEvent(
+export function loadSourceAsRemoteEvent(
   db: DataDb,
   target: CalendarSyncTarget
-): GoogleCalendarUpsertEventInput {
+): UpsertRemoteEventInput {
   switch (target.sourceType) {
     case 'event': {
       const row = db
@@ -82,16 +86,19 @@ export function loadSourceAsGoogleEvent(
 export async function pushEventWithConflictRetry(
   db: DataDb,
   target: CalendarSyncTarget,
-  client: Pick<GoogleCalendarClient, 'upsertEvent' | 'getEvent'>,
+  adapter: Pick<CalendarProviderAdapter, 'upsertEvent' | 'getEvent'>,
   resolvedCalendarId: string,
   existingBinding: typeof calendarBindings.$inferSelect | undefined
-): Promise<GoogleCalendarRemoteEvent> {
+): Promise<RemoteCalendarEvent> {
+  if (!adapter.upsertEvent) {
+    throw new Error('Calendar provider cannot write events')
+  }
   let ifMatch: string | null = existingBinding?.remoteVersion ?? null
 
   for (let attempt = 0; attempt < MAX_PUSH_CONFLICT_RETRIES; attempt++) {
-    const localEvent = loadSourceAsGoogleEvent(db, target)
+    const localEvent = loadSourceAsRemoteEvent(db, target)
     try {
-      return await client.upsertEvent({
+      return await adapter.upsertEvent({
         calendarId: resolvedCalendarId,
         eventId: existingBinding?.remoteEventId ?? null,
         event: localEvent,
@@ -102,7 +109,7 @@ export async function pushEventWithConflictRetry(
         throw error
       }
 
-      const remote = await client.getEvent({
+      const remote = await adapter.getEvent({
         calendarId: resolvedCalendarId,
         eventId: existingBinding.remoteEventId
       })
@@ -112,7 +119,7 @@ export async function pushEventWithConflictRetry(
       }
 
       ifMatch = remote.etag ?? null
-      log.warn('Google upsert returned 412; merged remote and retrying', {
+      log.warn('remote upsert returned a conflict; merged remote and retrying', {
         sourceType: target.sourceType,
         sourceId: target.sourceId,
         attempt: attempt + 1,
@@ -129,21 +136,17 @@ export async function pushEventWithConflictRetry(
     enqueueLocalSyncUpdate('calendar_binding', existingBinding.id)
   }
 
-  log.error('Google upsert exhausted conflict retries', {
+  log.error('remote upsert exhausted conflict retries', {
     sourceType: target.sourceType,
     sourceId: target.sourceId,
     attempts: MAX_PUSH_CONFLICT_RETRIES
   })
   throw new Error(
-    `Google calendar push gave up after ${MAX_PUSH_CONFLICT_RETRIES} 412 conflicts for ${target.sourceType}:${target.sourceId}`
+    `Calendar push gave up after ${MAX_PUSH_CONFLICT_RETRIES} conflicts for ${target.sourceType}:${target.sourceId}`
   )
 }
 
-function mergeRemoteEventIntoLocal(
-  db: DataDb,
-  eventId: string,
-  remote: GoogleCalendarRemoteEvent
-): void {
+function mergeRemoteEventIntoLocal(db: DataDb, eventId: string, remote: RemoteCalendarEvent): void {
   const existing = db.select().from(calendarEvents).where(eq(calendarEvents.id, eventId)).get()
   if (!existing) return
 
