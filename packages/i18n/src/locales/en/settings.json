@@ -948,6 +948,7 @@
       "todoist": "Import a project CSV export (.csv)",
       "ticktick": "Import a TickTick backup (.csv) as projects, tasks and reminders",
       "markdown": "Import .md files or a folder (frontmatter, tags, attachments)",
+      "noteplan": "Import a NotePlan folder — daily notes become journal entries, tasks become tasks",
       "html": "Import .html files with linked images and cross-page links",
       "google-keep": "Import a Google Takeout Keep export (.json or .zip)",
       "bear": "Import a Bear .bear2bk archive (notes, tags, attachments)",
@@ -1000,6 +1001,7 @@
       "folderKeepsAssets": "Choose the folder when images sit outside the notes' own folder — exports often keep media in a shared one.",
       "chooseHint": "Select your {label}",
       "folderHint": "Click below and select the “group.com.apple.notes” folder when the picker opens (it starts there). This lets Memry read your notes and attachments — no Full Disk Access needed.",
+      "noteplanFolderHint": "Choose your NotePlan folder — either the app’s data folder or one of its Backups copies. Memry reads the Calendar, Notes and @Archive folders inside it.",
       "selected": "{count, plural, one {# file selected} other {# files selected}}",
       "start": "Start import",
       "cancel": "Cancel",
@@ -1066,6 +1068,9 @@
       },
       "html": {
         "scanning": "Scanning HTML files…"
+      },
+      "noteplan": {
+        "scanning": "Scanning NotePlan folder…"
       },
       "onenote": {
         "loadingNotebooks": "Loading OneNote notebooks…",

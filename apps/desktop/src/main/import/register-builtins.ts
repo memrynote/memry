@@ -3,6 +3,7 @@ import { notionImporter } from './notion/notion-importer'
 import { todoistImporter } from './todoist/todoist-importer'
 import { ticktickImporter } from './ticktick/ticktick-importer'
 import { markdownImporter } from './markdown/markdown-importer'
+import { notePlanImporter } from './noteplan/noteplan-importer'
 import { htmlImporter } from './html/html-importer'
 import { googleKeepImporter } from './google-keep/google-keep-importer'
 import { bearImporter } from './bear/bear-importer'
@@ -25,6 +26,7 @@ export function registerBuiltinImporters(): void {
   registerImporter(todoistImporter)
   registerImporter(ticktickImporter)
   registerImporter(markdownImporter)
+  registerImporter(notePlanImporter)
   registerImporter(htmlImporter)
   registerImporter(googleKeepImporter)
   registerImporter(bearImporter)

@@ -26,6 +26,7 @@ import {
 } from '@memry/contracts/journal-api'
 import { createLogger } from '../lib/logger'
 import { createValidatedHandler, createHandler } from './validate'
+import { createJournalEntry } from '../journal/create-entry'
 import {
   readJournalEntry,
   writeJournalEntryWithContent,
@@ -49,16 +50,10 @@ import {
 import { getTasksByDueDate, countOverdueTasksBeforeDate } from '../journal/store'
 import { getIndexDatabase, getDatabase } from '../database'
 import { getCanonicalJournalByDate } from '@memry/domain-notes'
-import {
-  enqueueJournalCreate,
-  enqueueJournalDelete,
-  enqueueJournalUpdate,
-  initializeJournalCrdt
-} from '../journal/runtime-effects'
+import { enqueueJournalDelete, enqueueJournalUpdate } from '../journal/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
 import { shouldEmitThrottled } from '../telemetry/throttle'
-import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('IPC:Journal')
 
@@ -107,50 +102,12 @@ export function registerJournalHandlers(): void {
   ipcMain.handle(
     JournalChannels.invoke.CREATE_ENTRY,
     createValidatedHandler(CreateEntryInputSchema, async (input): Promise<JournalEntry> => {
-      const db = getIndexDatabase()
-      const dataDb = getDatabase()
-
-      // Write to file (properties are now serialized to frontmatter)
-      const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
-        input.date,
-        input.content ?? '',
-        input.tags,
-        null, // existingEntry
-        input.properties // properties serialized to frontmatter
-      )
-
-      const journalPath = getJournalRelativePath(entry.date)
-      const cached = getJournalEntryByDate(db, entry.date) ?? getNoteCacheByPath(db, journalPath)
-      const canonical = getCanonicalJournalByDate(dataDb, entry.date)
-      const cacheId = canonical?.id ?? cached?.id ?? entry.id
-
-      syncJournalCache(
-        db,
-        {
-          id: cacheId,
-          path: journalPath,
-          fileContent,
-          frontmatter,
-          parsedContent: entry.content,
-          title: entry.date,
-          createdAt: entry.createdAt,
-          modifiedAt: entry.modifiedAt
-        },
-        { isNew: !cached }
-      )
-      await flushProjectionEvents()
-
-      const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
-      enqueueJournalCreate(cacheId, syncedEntry.date)
-      await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
-
-      // Emit event
-      emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
-        date: syncedEntry.date,
-        entry: syncedEntry
+      return createJournalEntry({
+        date: input.date,
+        content: input.content ?? '',
+        tags: input.tags,
+        properties: input.properties
       })
-
-      return syncedEntry
     })
   )
 
@@ -170,41 +127,12 @@ export function registerJournalHandlers(): void {
       const existing = await readJournalEntry(input.date)
       if (!existing) {
         // If entry doesn't exist, create it (properties serialized to frontmatter)
-        const { entry, fileContent, frontmatter } = await writeJournalEntryWithContent(
-          input.date,
-          input.content ?? '',
-          input.tags ?? [],
-          null, // existingEntry
-          input.properties // properties serialized to frontmatter
-        )
-        const cacheId = canonical?.id ?? cached?.id ?? entry.id
-
-        syncJournalCache(
-          db,
-          {
-            id: cacheId,
-            path: journalPath,
-            fileContent,
-            frontmatter,
-            parsedContent: entry.content,
-            title: entry.date,
-            createdAt: entry.createdAt,
-            modifiedAt: entry.modifiedAt
-          },
-          { isNew: !cached }
-        )
-        await flushProjectionEvents()
-
-        const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
-        enqueueJournalCreate(cacheId, syncedEntry.date)
-        await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
-
-        emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
-          date: syncedEntry.date,
-          entry: syncedEntry
+        return createJournalEntry({
+          date: input.date,
+          content: input.content ?? '',
+          tags: input.tags ?? [],
+          properties: input.properties
         })
-
-        return syncedEntry
       }
 
       // Merge updates

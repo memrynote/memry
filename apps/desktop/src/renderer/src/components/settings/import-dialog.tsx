@@ -82,6 +82,10 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
   }
 
   const isDirectoryPick = Boolean(item?.fileSpec.directory)
+  // Picker copy belongs to the importer: Apple Notes asks for one specific
+  // container folder, NotePlan for a whole vault. Absent → generic label, no hint.
+  const chooseLabelKey = item?.fileSpec.chooseLabelKey
+  const folderHintKey = item?.fileSpec.folderHintKey
   // Electron degrades a combined file+directory panel to directory-only on
   // Windows/Linux, so an importer that accepts either gets two buttons.
   const offersFolderToo = Boolean(item?.fileSpec.allowDirectory) && !isDirectoryPick
@@ -122,8 +126,8 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
             {AccountPanel && (
               <AccountPanel disabled={run.isRunning} onStateChange={setAccountState} />
             )}
-            {!isAccountBased && isDirectoryPick && (
-              <p className="text-xs/4 text-muted-foreground">{t('import.dialog.folderHint')}</p>
+            {!isAccountBased && isDirectoryPick && folderHintKey && (
+              <p className="text-xs/4 text-muted-foreground">{t(folderHintKey)}</p>
             )}
             {!isAccountBased && (
               <div className="flex flex-wrap gap-2">
@@ -133,7 +137,9 @@ export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
                   onClick={() => void choose()}
                   disabled={run.isRunning || run.isPreviewing}
                 >
-                  {isDirectoryPick ? t('import.dialog.chooseFolder') : t('import.dialog.choose')}
+                  {isDirectoryPick
+                    ? t(chooseLabelKey ?? 'import.dialog.chooseDirectory')
+                    : t('import.dialog.choose')}
                 </Button>
                 {offersFolderToo && (
                   <Button
