@@ -1259,11 +1259,14 @@ async function linkBinaryToNotes(
     // Use title (filename without extension) for wiki-link because that's how
     // files are indexed in the database (watcher sets title = basename without ext)
     const fileTitle = path.basename(finalPath, path.extname(finalPath))
-    // Images embed inline with `![[…]]`, everything else is a plain link.
-    // The embed form needs the *filename* — `resolve-embed` looks the target up
-    // as a real file, where the extension-less index title finds nothing.
-    const isImage = item.type === 'image'
-    const wikiLink = isImage ? `![[${path.basename(finalPath)}]]` : `[[${fileTitle}]]`
+    // A plain link, images included: this mode puts the file in the sidebar, and
+    // the note points at it — clicking opens the image in its own tab, because
+    // `resolveWikiLink` finds the indexed binary and routes it to the viewer.
+    // Never `![[…]]` here: that embed goes through `resolve-embed`, which splices
+    // in a note-relative path, and BlockNote then resolves that against the
+    // renderer's own base URL and renders a broken image. Inline images are what
+    // the *embed* mode is for, and it stores them as attachments instead.
+    const wikiLink = `[[${fileTitle}]]`
     const dateStr = formatDate(new Date())
     const captureEntry = `- ${wikiLink} *(${dateStr})*`
 

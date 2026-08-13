@@ -77,18 +77,19 @@ describe('FilingSection', () => {
     resetMockApi()
   })
 
-  it('offers the image filing mode only once notes are linked (#807)', async () => {
+  it('hides the folder picker while embedding, and brings it back for a sidebar file (#807)', async () => {
     const api = getMockApi() as any
     api.notes.getFolders.mockResolvedValue([{ path: 'Projects' }])
     api.inbox.getSuggestions.mockResolvedValue({ suggestions: [] })
 
     const onModeChange = vi.fn()
     const onRememberChange = vi.fn()
-    const choice = {
+    const imageFiling = {
       mode: 'embed' as const,
       onModeChange,
       remember: false,
-      onRememberChange
+      onRememberChange,
+      askUser: true
     }
 
     const { rerender } = renderWithProviders(
@@ -100,33 +101,64 @@ describe('FilingSection', () => {
         onFolderSelect={vi.fn()}
         onTagsChange={vi.fn()}
         onLinkedNotesChange={vi.fn()}
-        imageModeChoice={choice}
+        imageFiling={imageFiling}
       />
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /linkANote/i }))
-    // Nothing to embed into yet.
-    expect(screen.queryByTestId('image-filing-mode')).not.toBeInTheDocument()
+    // Embedding puts the file under the note's attachments — there is no folder
+    // to choose, so promising one would be a lie. The chooser stays visible
+    // regardless, or there would be no way back to the sidebar mode.
+    expect(screen.getByTestId('image-filing-mode')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('searchOrCreateFolder')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('image-filing-mode-link'))
+    expect(onModeChange).toHaveBeenCalledWith('link')
+
+    await userEvent.click(screen.getByTestId('image-filing-mode-remember'))
+    expect(onRememberChange).toHaveBeenCalledWith(true)
 
     rerender(
       <FilingSection
         item={{ ...item, type: 'image' }}
         selectedFolder={null}
         tags={[]}
-        linkedNotes={[{ id: 'note-1', title: 'Trip', type: 'note' }]}
+        linkedNotes={[]}
         onFolderSelect={vi.fn()}
         onTagsChange={vi.fn()}
         onLinkedNotesChange={vi.fn()}
-        imageModeChoice={choice}
+        imageFiling={{ ...imageFiling, mode: 'link' }}
       />
     )
 
-    expect(screen.getByTestId('image-filing-mode-embed')).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByTestId('image-filing-mode-link'))
-    expect(onModeChange).toHaveBeenCalledWith('link')
+    expect(await screen.findByPlaceholderText('searchOrCreateFolder')).toBeInTheDocument()
+  })
 
-    await userEvent.click(screen.getByTestId('image-filing-mode-remember'))
-    expect(onRememberChange).toHaveBeenCalledWith(true)
+  it('keeps the mode applied but stops asking once the user has answered (#807)', () => {
+    const api = getMockApi() as any
+    api.notes.getFolders.mockResolvedValue([{ path: 'Projects' }])
+    api.inbox.getSuggestions.mockResolvedValue({ suggestions: [] })
+
+    renderWithProviders(
+      <FilingSection
+        item={{ ...item, type: 'image' }}
+        selectedFolder={null}
+        tags={[]}
+        linkedNotes={[]}
+        onFolderSelect={vi.fn()}
+        onTagsChange={vi.fn()}
+        onLinkedNotesChange={vi.fn()}
+        imageFiling={{
+          mode: 'embed',
+          onModeChange: vi.fn(),
+          remember: true,
+          onRememberChange: vi.fn(),
+          askUser: false
+        }}
+      />
+    )
+
+    expect(screen.queryByTestId('image-filing-mode')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('searchOrCreateFolder')).not.toBeInTheDocument()
   })
 
   it('loads folders and AI suggestions, then drives folder, tag, and note-link changes', async () => {

@@ -125,15 +125,23 @@ export const InboxDetailPanel = ({
   const [rememberImageMode, setRememberImageMode] = useState(false)
   const imageMode = imageModeOverride ?? inboxSettings.imageFilingMode
 
-  const imageModeChoice = useMemo(
+  const isImageItem = item?.type === 'image'
+  const imageFiling = useMemo(
     () => ({
       mode: imageMode,
       onModeChange: setImageModeOverride,
       remember: rememberImageMode,
-      onRememberChange: setRememberImageMode
+      onRememberChange: setRememberImageMode,
+      askUser: !inboxSettings.imageFilingModeRemembered
     }),
-    [imageMode, rememberImageMode]
+    [imageMode, rememberImageMode, inboxSettings.imageFilingModeRemembered]
   )
+
+  // Embedding needs a note to own the attachment, not a folder — so the usual
+  // "pick a destination folder" gate does not apply, and linking one is what
+  // makes the item filable instead.
+  const isEmbeddingImage = isImageItem && imageMode === 'embed'
+  const canFileItem = isEmbeddingImage ? linkedNotes.length > 0 : canFile
 
   // Fetch AI suggestions for keyboard shortcuts
   const { data: aiSuggestions = [] } = useQuery({
@@ -223,7 +231,8 @@ export const InboxDetailPanel = ({
 
   // Handle filing
   const handleFileItem = useCallback(async (): Promise<void> => {
-    if (!selectedFolder || !item) return
+    // No folder is picked when embedding — the attachment goes under the note.
+    if (!item || (!selectedFolder && !isEmbeddingImage)) return
 
     setIsFilingLoading(true)
 
@@ -237,7 +246,7 @@ export const InboxDetailPanel = ({
           itemId: item.id,
           itemType: item.type,
           suggestedTo: suggestedPath,
-          actualTo: selectedFolder.id,
+          actualTo: selectedFolder?.id ?? '',
           confidence: topSuggestion?.confidence || 0,
           suggestedTags: topSuggestion?.suggestedTags || [],
           actualTags: tags
@@ -247,14 +256,16 @@ export const InboxDetailPanel = ({
         })
     }
 
-    // Use path for folder location - prefer path, fallback to id
-    const folderPath = selectedFolder.path ?? selectedFolder.id ?? ''
+    // Use path for folder location - prefer path, fallback to id. Embedding hides
+    // the picker, so send nothing rather than a folder the user never saw: any
+    // note staged in the picker then lands in their default note folder.
+    const folderPath = isEmbeddingImage ? '' : (selectedFolder?.path ?? selectedFolder?.id ?? '')
 
     // Answering the prompt is what persists the preference — silently after the
     // filing either way, so a failed settings write never blocks the item.
-    if (imageModeChoice.remember) {
+    if (imageFiling.remember) {
       void updateInboxSettings({
-        imageFilingMode: imageModeChoice.mode,
+        imageFilingMode: imageFiling.mode,
         imageFilingModeRemembered: true
       })
     }
@@ -270,7 +281,7 @@ export const InboxDetailPanel = ({
           ? ({ kind: 'new', title: note.title } as const)
           : ({ kind: 'note', noteId: note.id } as const)
       ),
-      item.type === 'image' ? imageModeChoice.mode : undefined
+      isImageItem ? imageFiling.mode : undefined
     )
 
     setIsFilingLoading(false)
@@ -282,7 +293,9 @@ export const InboxDetailPanel = ({
     linkedNotes,
     aiEnabled,
     aiSuggestions,
-    imageModeChoice,
+    imageFiling,
+    isImageItem,
+    isEmbeddingImage,
     updateInboxSettings,
     onFile,
     onClose
@@ -316,7 +329,7 @@ export const InboxDetailPanel = ({
       // Cmd/Ctrl + Enter to file
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
-        if (canFile && item) {
+        if (canFileItem && item) {
           void handleFileItem()
         }
         return
@@ -336,7 +349,7 @@ export const InboxDetailPanel = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [
     isOpen,
-    canFile,
+    canFileItem,
     item,
     selectedType,
     suggestedFoldersForShortcut,
@@ -582,11 +595,7 @@ export const InboxDetailPanel = ({
                         onFolderSelect={handleFolderSelect}
                         onTagsChange={setTags}
                         onLinkedNotesChange={setLinkedNotes}
-                        imageModeChoice={
-                          item.type === 'image' && !inboxSettings.imageFilingModeRemembered
-                            ? imageModeChoice
-                            : undefined
-                        }
+                        imageFiling={item.type === 'image' ? imageFiling : undefined}
                       />
                     ) : (
                       <ConvertActions item={item} type={selectedType} onConverted={onClose} />
@@ -640,7 +649,7 @@ export const InboxDetailPanel = ({
                     {selectedType === 'note' && (
                       <Button
                         onClick={() => void handleFileItem()}
-                        disabled={!canFile || isFilingLoading}
+                        disabled={!canFileItem || isFilingLoading}
                         className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0 transition-all duration-150 ease-out active:scale-[0.98] disabled:active:scale-100"
                       >
                         {isFilingLoading ? (

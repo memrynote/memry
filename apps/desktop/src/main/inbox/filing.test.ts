@@ -1423,9 +1423,11 @@ describe('Inbox Filing Operations', () => {
       expect(mockUpdateNote).toHaveBeenCalledTimes(2)
       expect(mockUpdateNote.mock.calls[0][0].content).toContain('## Inbox Captures')
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Old]]')
-      // Images embed inline, and the embed resolves by filename — an
-      // extension-less `[[Screenshot]]` finds no file.
-      expect(mockUpdateNote.mock.calls[1][0].content).toContain('![[Screenshot.png]]')
+      // A plain link, not an embed: this mode puts the file in the sidebar and
+      // the note points at it. The target is the indexed title, which carries no
+      // extension, so `resolveWikiLink` can find the file and open its viewer.
+      expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Screenshot]]')
+      expect(mockUpdateNote.mock.calls[1][0].content).not.toContain('![[')
       expect(mockCreateNote).not.toHaveBeenCalled()
       // Linking moves the binary into the vault just as filing does, so the
       // tree needs the same announcement to update without a restart.
@@ -1490,6 +1492,34 @@ describe('Inbox Filing Operations', () => {
       )
     })
 
+    it('embeds without a destination folder, since the picker is hidden then (#807)', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-embed-4',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/image-embed-4/screenshot.png'
+      })
+      mockCreateNote.mockResolvedValue({ id: 'fresh-note', path: 'Trip.md', title: 'Trip' })
+      mockGetNoteById.mockResolvedValue({ id: 'fresh-note', content: '', path: 'Trip.md' })
+      mockSaveAttachment.mockResolvedValue({
+        success: true,
+        path: 'memry-file:///mock-vault/attachments/fresh-note/ab12cd-Screenshot.png'
+      })
+
+      const result = await linkToNotes(itemId, [{ kind: 'new', title: 'Trip' }], [], '', 'embed')
+
+      expect(result.success).toBe(true)
+      // No folder was chosen, so the note falls to the vault's own default
+      // rather than being forced to the root.
+      expect(mockCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Trip', folder: undefined })
+      )
+      expect(mockCreateFolder).not.toHaveBeenCalled()
+      expect(mockRename).not.toHaveBeenCalled()
+    })
+
     it('falls back to a linked file when the image is too large to embed (#807)', async () => {
       const itemId = seedInboxItem(testDb.db, {
         id: 'image-embed-2',
@@ -1526,7 +1556,7 @@ describe('Inbox Filing Operations', () => {
         noteIds: ['note-1']
       })
       expect(mockRename).toHaveBeenCalled()
-      expect(mockUpdateNote.mock.calls[0][0].content).toContain('![[Screenshot.png]]')
+      expect(mockUpdateNote.mock.calls[0][0].content).toContain('[[Screenshot]]')
     })
 
     it('creates a staged note at filing time and gives it the attachment (#807)', async () => {

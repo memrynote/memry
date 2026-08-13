@@ -54,12 +54,18 @@ interface FilingSectionProps {
   onFolderSelect: (folder: FolderType) => void
   onTagsChange: (tags: string[]) => void
   onLinkedNotesChange: (notes: LinkedNote[]) => void
-  /** #807 — only asked for images, and only until the user says "don't ask again". */
-  imageModeChoice?: {
+  /**
+   * #807 — images only. `mode` shapes the whole form, not just the outcome:
+   * embedding puts the file under the note's attachments, so there is no folder
+   * to pick and the "File to" row goes away. `askUser` is what the "don't ask
+   * again" checkbox turns off; the mode itself still applies.
+   */
+  imageFiling?: {
     mode: ImageFilingMode
     onModeChange: (mode: ImageFilingMode) => void
     remember: boolean
     onRememberChange: (remember: boolean) => void
+    askUser: boolean
   }
   className?: string
 }
@@ -76,7 +82,7 @@ export const FilingSection = ({
   onFolderSelect,
   onTagsChange,
   onLinkedNotesChange,
-  imageModeChoice,
+  imageFiling,
   className
 }: FilingSectionProps): React.JSX.Element => {
   const { t } = useT('inbox')
@@ -273,192 +279,199 @@ export const FilingSection = ({
     }
   }, [trimmedSearch, isCreatingFolder, queryClient, onFolderSelect, t])
 
+  // Embedding stores the image under the owning note's attachments, so there is
+  // no folder for the user to choose — showing "File to" there would promise a
+  // destination the filing never uses.
+  const showFolderPicker = imageFiling?.mode !== 'embed'
+
   return (
     <div className={cn(className)}>
       {/* File To + Tags — line by line */}
       <div className="flex flex-col py-4 px-5 border-b border-border">
         {/* File To */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-              {t('detail.fileTo')}
-            </span>
-            {isLoadingAISuggestions ? (
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" />
-              </div>
-            ) : hasAISuggestions ? (
-              <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
-                <Sparkles className="size-3" />
-                <span>{t('detail.ai')}</span>
-              </div>
-            ) : null}
-          </div>
-
-          {/* Folder Dropdown */}
-          <Popover
-            open={showAllFolders}
-            onOpenChange={(open) => {
-              setShowAllFolders(open)
-              if (!open) setFolderSearch('')
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  'flex items-center w-full rounded-md py-2 px-3 transition-colors',
-                  hasAISuggestions
-                    ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
-                    : 'bg-foreground/[0.02] border border-border'
-                )}
-              >
-                <div className="flex items-center grow gap-2 min-w-0">
-                  {displayFolder?.icon ? (
-                    <NoteIconDisplay value={displayFolder.icon} className="size-4 shrink-0" />
-                  ) : (
-                    <Folder
-                      className={cn(
-                        'size-4 shrink-0',
-                        hasAISuggestions ? 'text-[var(--tint)]' : 'text-muted-foreground'
-                      )}
-                    />
-                  )}
-                  <span className="text-[13px] leading-4 font-medium text-foreground truncate">
-                    {displayPath}
-                  </span>
+        {showFolderPicker && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+                {t('detail.fileTo')}
+              </span>
+              {isLoadingAISuggestions ? (
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Loader2 className="size-3 animate-spin" />
                 </div>
-                <ChevronDown className="size-3 text-muted-foreground/50 shrink-0" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
-              align="start"
-              sideOffset={4}
+              ) : hasAISuggestions ? (
+                <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
+                  <Sparkles className="size-3" />
+                  <span>{t('detail.ai')}</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Folder Dropdown */}
+            <Popover
+              open={showAllFolders}
+              onOpenChange={(open) => {
+                setShowAllFolders(open)
+                if (!open) setFolderSearch('')
+              }}
             >
-              {/* Search */}
-              <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
-                <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
-                <Input
-                  placeholder={t('detail.searchOrCreateFolder')}
-                  value={folderSearch}
-                  onChange={(e) => setFolderSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && canCreateFolder) {
-                      e.preventDefault()
-                      void handleCreateFolder()
-                    }
-                  }}
-                  className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
-                  autoFocus
-                />
-              </div>
-
-              <div className="max-h-56 overflow-y-auto">
-                {/* Suggested */}
-                {suggestedFolders.length > 0 && !folderSearch.trim() && (
-                  <div className="flex flex-col py-1">
-                    <span className="text-[10px] [letter-spacing:0.05em] uppercase text-muted-foreground/40 px-3 py-1">
-                      {t('detail.suggested')}
-                    </span>
-                    {suggestedFolders.map((folder) => {
-                      const isSelected = selectedFolder?.id === folder.id
-                      return (
-                        <button
-                          type="button"
-                          key={folder.id || 'root-suggested'}
-                          onClick={() => {
-                            onFolderSelect(folder)
-                            setShowAllFolders(false)
-                          }}
-                          className={cn(
-                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
-                            isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
-                          )}
-                        >
-                          {folder.icon ? (
-                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
-                          ) : (
-                            <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
-                          )}
-                          <span className="text-[13px] leading-4 text-foreground truncate grow">
-                            {folder.path
-                              ? folder.path.replace(/\//g, ' / ')
-                              : t('detail.notesRoot')}
-                          </span>
-                          {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* All folders */}
-                <div
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
                   className={cn(
-                    'flex flex-col py-1',
-                    suggestedFolders.length > 0 &&
-                      !folderSearch.trim() &&
-                      'border-t border-border/40'
+                    'flex items-center w-full rounded-md py-2 px-3 transition-colors',
+                    hasAISuggestions
+                      ? 'bg-[var(--tint)]/[0.03] border border-[var(--tint)]/12'
+                      : 'bg-foreground/[0.02] border border-border'
                   )}
                 >
-                  {canCreateFolder && (
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateFolder()}
-                      disabled={isCreatingFolder}
-                      className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
-                    >
-                      {isCreatingFolder ? (
-                        <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
-                      ) : (
-                        <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
-                      )}
-                      <span className="text-[13px] leading-4 text-[var(--tint)]">
-                        {t('detail.createFolder', { name: trimmedSearch })}
-                      </span>
-                    </button>
-                  )}
-                  {filteredFolders.length === 0 && !canCreateFolder ? (
-                    <p className="text-xs text-muted-foreground text-center py-3">
-                      {t('empty.noFolders')}
-                    </p>
-                  ) : filteredFolders.length === 0 ? null : (
-                    filteredFolders.map((folder) => {
-                      const isSelected = selectedFolder?.id === folder.id
-                      return (
-                        <button
-                          type="button"
-                          key={folder.id}
-                          onClick={() => {
-                            onFolderSelect(folder)
-                            setShowAllFolders(false)
-                          }}
-                          className={cn(
-                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
-                            isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
-                          )}
-                        >
-                          {folder.icon ? (
-                            <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
-                          ) : (
-                            <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                          )}
-                          <span className="grow text-[13px] leading-4 text-foreground truncate">
-                            {folder.path ? folder.path.replace(/\//g, ' / ') : folder.name}
-                          </span>
-                          {isSelected && (
-                            <Check className="size-3 shrink-0 text-muted-foreground" />
-                          )}
-                        </button>
-                      )
-                    })
-                  )}
+                  <div className="flex items-center grow gap-2 min-w-0">
+                    {displayFolder?.icon ? (
+                      <NoteIconDisplay value={displayFolder.icon} className="size-4 shrink-0" />
+                    ) : (
+                      <Folder
+                        className={cn(
+                          'size-4 shrink-0',
+                          hasAISuggestions ? 'text-[var(--tint)]' : 'text-muted-foreground'
+                        )}
+                      />
+                    )}
+                    <span className="text-[13px] leading-4 font-medium text-foreground truncate">
+                      {displayPath}
+                    </span>
+                  </div>
+                  <ChevronDown className="size-3 text-muted-foreground/50 shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0 rounded-md bg-[var(--popover)] border-border shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+                align="start"
+                sideOffset={4}
+              >
+                {/* Search */}
+                <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
+                  <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
+                  <Input
+                    placeholder={t('detail.searchOrCreateFolder')}
+                    value={folderSearch}
+                    onChange={(e) => setFolderSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && canCreateFolder) {
+                        e.preventDefault()
+                        void handleCreateFolder()
+                      }
+                    }}
+                    className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
+                    autoFocus
+                  />
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+
+                <div className="max-h-56 overflow-y-auto">
+                  {/* Suggested */}
+                  {suggestedFolders.length > 0 && !folderSearch.trim() && (
+                    <div className="flex flex-col py-1">
+                      <span className="text-[10px] [letter-spacing:0.05em] uppercase text-muted-foreground/40 px-3 py-1">
+                        {t('detail.suggested')}
+                      </span>
+                      {suggestedFolders.map((folder) => {
+                        const isSelected = selectedFolder?.id === folder.id
+                        return (
+                          <button
+                            type="button"
+                            key={folder.id || 'root-suggested'}
+                            onClick={() => {
+                              onFolderSelect(folder)
+                              setShowAllFolders(false)
+                            }}
+                            className={cn(
+                              'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
+                              isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
+                            )}
+                          >
+                            {folder.icon ? (
+                              <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                            ) : (
+                              <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
+                            )}
+                            <span className="text-[13px] leading-4 text-foreground truncate grow">
+                              {folder.path
+                                ? folder.path.replace(/\//g, ' / ')
+                                : t('detail.notesRoot')}
+                            </span>
+                            {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* All folders */}
+                  <div
+                    className={cn(
+                      'flex flex-col py-1',
+                      suggestedFolders.length > 0 &&
+                        !folderSearch.trim() &&
+                        'border-t border-border/40'
+                    )}
+                  >
+                    {canCreateFolder && (
+                      <button
+                        type="button"
+                        onClick={() => void handleCreateFolder()}
+                        disabled={isCreatingFolder}
+                        className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
+                      >
+                        {isCreatingFolder ? (
+                          <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
+                        ) : (
+                          <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
+                        )}
+                        <span className="text-[13px] leading-4 text-[var(--tint)]">
+                          {t('detail.createFolder', { name: trimmedSearch })}
+                        </span>
+                      </button>
+                    )}
+                    {filteredFolders.length === 0 && !canCreateFolder ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">
+                        {t('empty.noFolders')}
+                      </p>
+                    ) : filteredFolders.length === 0 ? null : (
+                      filteredFolders.map((folder) => {
+                        const isSelected = selectedFolder?.id === folder.id
+                        return (
+                          <button
+                            type="button"
+                            key={folder.id}
+                            onClick={() => {
+                              onFolderSelect(folder)
+                              setShowAllFolders(false)
+                            }}
+                            className={cn(
+                              'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
+                              isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
+                            )}
+                          >
+                            {folder.icon ? (
+                              <NoteIconDisplay value={folder.icon} className="size-3.5 shrink-0" />
+                            ) : (
+                              <Folder className="size-3.5 shrink-0 text-muted-foreground" />
+                            )}
+                            <span className="grow text-[13px] leading-4 text-foreground truncate">
+                              {folder.path ? folder.path.replace(/\//g, ' / ') : folder.name}
+                            </span>
+                            {isSelected && (
+                              <Check className="size-3 shrink-0 text-muted-foreground" />
+                            )}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
 
         {/* Tags */}
         <TagAutocomplete
@@ -471,6 +484,50 @@ export const FilingSection = ({
           className="mt-4 py-0 px-0 border-b-0"
         />
       </div>
+
+      {/* How the image lands in the notes it is linked to (#807). Sits above the
+          link row because it decides whether the folder picker is shown at all. */}
+      {imageFiling?.askUser && (
+        <div
+          className="flex flex-col gap-2 py-4 px-5 border-b border-border"
+          data-testid="image-filing-mode"
+        >
+          <span className="text-[11px] leading-3.5 text-muted-foreground/60">
+            {t('detail.imageFilingModeLabel')}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {(['embed', 'link'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                data-testid={`image-filing-mode-${mode}`}
+                aria-pressed={imageFiling.mode === mode}
+                onClick={() => imageFiling.onModeChange(mode)}
+                className={cn(
+                  'px-2.5 py-1 rounded-md text-[12px] leading-4 border transition-colors',
+                  imageFiling.mode === mode
+                    ? 'bg-foreground/[0.06] border-border text-foreground'
+                    : 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40'
+                )}
+              >
+                {mode === 'embed'
+                  ? t('detail.imageFilingModeEmbed')
+                  : t('detail.imageFilingModeLink')}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-[11px] leading-3.5 text-muted-foreground/60">
+            <input
+              type="checkbox"
+              data-testid="image-filing-mode-remember"
+              checked={imageFiling.remember}
+              onChange={(e) => imageFiling.onRememberChange(e.target.checked)}
+              className="size-3 accent-[var(--primary)]"
+            />
+            {t('detail.imageFilingModeRemember')}
+          </label>
+        </div>
+      )}
 
       {/* Link to note — collapsed by default to keep the panel calm */}
       <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
@@ -553,46 +610,6 @@ export const FilingSection = ({
 
             {/* Link notes search input */}
             <LinkInput linkedNotes={linkedNotes} onLinkedNotesChange={onLinkedNotesChange} />
-
-            {/* How the image lands in those notes (#807) */}
-            {imageModeChoice && linkedNotes.length > 0 && (
-              <div className="flex flex-col gap-2" data-testid="image-filing-mode">
-                <span className="text-[11px] leading-3.5 text-muted-foreground/60">
-                  {t('detail.imageFilingModeLabel')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {(['embed', 'link'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      data-testid={`image-filing-mode-${mode}`}
-                      aria-pressed={imageModeChoice.mode === mode}
-                      onClick={() => imageModeChoice.onModeChange(mode)}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md text-[12px] leading-4 border transition-colors',
-                        imageModeChoice.mode === mode
-                          ? 'bg-foreground/[0.06] border-border text-foreground'
-                          : 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40'
-                      )}
-                    >
-                      {mode === 'embed'
-                        ? t('detail.imageFilingModeEmbed')
-                        : t('detail.imageFilingModeLink')}
-                    </button>
-                  ))}
-                </div>
-                <label className="flex items-center gap-2 text-[11px] leading-3.5 text-muted-foreground/60">
-                  <input
-                    type="checkbox"
-                    data-testid="image-filing-mode-remember"
-                    checked={imageModeChoice.remember}
-                    onChange={(e) => imageModeChoice.onRememberChange(e.target.checked)}
-                    className="size-3 accent-[var(--primary)]"
-                  />
-                  {t('detail.imageFilingModeRemember')}
-                </label>
-              </div>
-            )}
           </>
         )}
       </div>

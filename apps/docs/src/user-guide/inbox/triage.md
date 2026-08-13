@@ -41,10 +41,12 @@ Each card shows:
 
 When you file an image and link it to one or more notes, you choose the shape it takes:
 
-| Choice                  | What happens                                                                                                                                                          |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Embed in the note**   | The image becomes an attachment of the note and renders inside it. It does **not** appear in the sidebar — it lives with the note, not as a file in your folder tree. |
-| **File in the sidebar** | The image file moves into the folder you picked and shows up in the sidebar; the note gets an inline reference to it.                                                 |
+| Choice                  | What happens                                                                                                                                                                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Embed in the note**   | The image becomes an attachment of the note and renders inside it. It does **not** appear in the sidebar — it lives with the note, not as a file in your folder tree, so there is no folder to pick and the **File to** row goes away. |
+| **File in the sidebar** | The image file moves into the folder you pick and shows up in the sidebar. The note gets a link to it; clicking that link opens the image in its own tab.                                                                              |
+
+The two destinations are independent: the image can go in `Travel` while the note that links it sits under a project.
 
 Link the same image to several notes and there is still only **one** image on disk, owned by the first note in the list. The other notes point at that copy — so deleting the first note breaks the image in the others. If you want independent copies, file the image separately for each note.
 
