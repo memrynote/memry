@@ -22,6 +22,10 @@ vi.mock('@memry/i18n/renderer', () => ({
 vi.mock('@/hooks/use-inbox', () => ({
   useRetryTranscription: () => ({
     mutate: vi.fn()
+  }),
+  // ListView mounts the detail panel, which renames an item through this one.
+  useUpdateInboxItem: () => ({
+    mutate: vi.fn()
   })
 }))
 

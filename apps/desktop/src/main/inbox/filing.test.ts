@@ -419,8 +419,8 @@ describe('Inbox Filing Operations', () => {
       expect(mockSend).toHaveBeenCalledWith('notes:created', {
         note: expect.objectContaining({
           id: 'file-note-id',
-          path: 'projects/screenshot.png',
-          title: 'screenshot',
+          path: 'projects/Screenshot.png',
+          title: 'Screenshot',
           tags: ['inbox']
         }),
         source: 'internal'
@@ -1434,7 +1434,7 @@ describe('Inbox Filing Operations', () => {
       expect(mockSend).toHaveBeenCalledWith('notes:created', {
         note: expect.objectContaining({
           id: 'file-note-id',
-          path: 'projects/screenshot.png'
+          path: 'projects/Screenshot.png'
         }),
         source: 'internal'
       })
