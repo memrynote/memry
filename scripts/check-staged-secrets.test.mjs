@@ -54,6 +54,21 @@ describe('check-staged-secrets function values', () => {
       'high-risk-secret-assignment'
     ])
   })
+
+  it('ignores an async arrow whose body is a call with string arguments', () => {
+    assert.deepEqual(
+      rules(
+        "  hashToken: async (plaintext) => createHmac('sha256', hmacKey).update(plaintext).digest('hex'),"
+      ),
+      []
+    )
+  })
+
+  it('still flags an async arrow returning a bare string literal', () => {
+    assert.deepEqual(rules("  hashToken: async () => 'hunter2secretvalue'"), [
+      'high-risk-secret-assignment'
+    ])
+  })
 })
 
 describe('check-staged-secrets keyword word boundaries', () => {

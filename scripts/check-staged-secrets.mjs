@@ -144,6 +144,13 @@ function isCodeDeclarationValue(filePath, value) {
     // the value is a function, not a literal. Quote characters anywhere in it
     // keep an embedded string literal flagged.
     /^\([^)'"`]*\)\s*=>[^'"`]*$/.test(normalized) ||
+    // arrow function whose body is a call expression
+    // (`hashToken: async (plaintext) => createHmac('sha256', key).update(plaintext)`).
+    // The rule above rejects any quote so an embedded literal stays flagged,
+    // which also rejects the string arguments of a perfectly ordinary call. A
+    // callee name followed by `(` is the discriminator: a bare literal body
+    // like `() => 'sk-live-…'` has no callee and still fails.
+    /^(?:async\s*)?\([^)'"`]*\)\s*=>\s*[A-Za-z_$][\w$.]*\(/.test(normalized) ||
     /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized) ||
     isSourceCodeReferenceValue(filePath, value)
   )
