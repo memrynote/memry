@@ -17,7 +17,6 @@ const INSTANT_JUMP_THRESHOLD_DAYS = 14
 
 interface UseWeekInfiniteScrollOptions {
   initialDate: string
-  gutterWidth: number
   totalDays?: number
   onVisibleDayStartChange?: (dayIndex: number) => void
 }
@@ -34,17 +33,21 @@ export interface UseWeekInfiniteScrollResult {
 
 export function useWeekInfiniteScroll({
   initialDate,
-  gutterWidth,
   totalDays = DEFAULT_TOTAL_DAYS,
   onVisibleDayStartChange
 }: UseWeekInfiniteScrollOptions): UseWeekInfiniteScrollResult {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
-  const columnWidth = useMemo(() => {
-    if (containerWidth <= gutterWidth) return MIN_COLUMN_WIDTH
-    return Math.max(MIN_COLUMN_WIDTH, (containerWidth - gutterWidth) / COLUMNS_PER_PAGE)
-  }, [containerWidth, gutterWidth])
+  // `containerWidth` is the scroll container's own width, and that element is a
+  // sibling of the hour gutter rather than its parent — the gutter is already
+  // excluded. Subtracting it again shaved a seventh of the gutter off every
+  // column and left a gutter-wide strip at the end of the week for the
+  // virtualizer to fill with a partial 8th day.
+  const columnWidth = useMemo(
+    () => Math.max(MIN_COLUMN_WIDTH, containerWidth / COLUMNS_PER_PAGE),
+    [containerWidth]
+  )
 
   const initialIndex = useMemo(() => dayIndexFromDate(initialDate), [initialDate])
   const [visibleDayStart, setVisibleDayStart] = useState(initialIndex)

@@ -103,11 +103,39 @@ function createMockGridRef(rect: Partial<DOMRect> = {}): RefObject<HTMLDivElemen
   return { current: element }
 }
 
+/**
+ * The scrolling ancestor of the grid. Defaults to the same box as
+ * `createMockGridRef` so tests that do not exercise auto-scroll behave as
+ * before.
+ */
+function createMockScrollRef(rect: Partial<DOMRect> = {}): RefObject<HTMLElement | null> {
+  const element = {
+    getBoundingClientRect: () => ({
+      top: 0,
+      left: 0,
+      right: 500,
+      bottom: 2304,
+      width: 500,
+      height: 2304,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+      ...rect
+    }),
+    scrollTop: 0
+  } as unknown as HTMLElement
+  return { current: element }
+}
+
 describe('useTimeGridMarquee', () => {
   it('starts with no selection', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
-      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+      useTimeGridMarquee({
+        gridRef: ref,
+        scrollRef: createMockScrollRef(),
+        dateForColumn: () => '2026-04-14'
+      })
     )
     expect(result.current.selection).toBeNull()
     expect(result.current.isDragging).toBe(false)
@@ -116,7 +144,11 @@ describe('useTimeGridMarquee', () => {
   it('creates 1-hour selection on double-click', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
-      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+      useTimeGridMarquee({
+        gridRef: ref,
+        scrollRef: createMockScrollRef(),
+        dateForColumn: () => '2026-04-14'
+      })
     )
     // 432px = 9 hours * 48px/hour = 9:00 AM
     const event = {
@@ -136,7 +168,11 @@ describe('useTimeGridMarquee', () => {
   it('clears selection via clearSelection()', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
-      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+      useTimeGridMarquee({
+        gridRef: ref,
+        scrollRef: createMockScrollRef(),
+        dateForColumn: () => '2026-04-14'
+      })
     )
     const event = {
       clientY: 864,
@@ -157,7 +193,11 @@ describe('useTimeGridMarquee', () => {
   it('ignores non-left clicks and clicks starting on event chips', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
-      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+      useTimeGridMarquee({
+        gridRef: ref,
+        scrollRef: createMockScrollRef(),
+        dateForColumn: () => '2026-04-14'
+      })
     )
     const chip = document.createElement('button')
     chip.dataset.visualType = 'event'
@@ -223,9 +263,11 @@ describe('useTimeGridMarquee', () => {
     )
     grid.append(gutter, column)
     const ref = { current: grid } as React.RefObject<HTMLDivElement | null>
+    const scrollRef = createMockScrollRef({ top: 100, bottom: 300, height: 200 })
     const { result, unmount } = renderHook(() =>
       useTimeGridMarquee({
         gridRef: ref,
+        scrollRef,
         dateForColumn: (index) => `2026-04-${String(14 + index).padStart(2, '0')}`,
         columnCount: 2
       })
@@ -262,6 +304,10 @@ describe('useTimeGridMarquee', () => {
       rafCallbacks.at(-1)?.(0)
       document.dispatchEvent(new MouseEvent('mouseup'))
     })
+    // The scroll container moves; the grid, which has no overflow of its own,
+    // is left untouched.
+    expect(scrollRef.current!.scrollTop).toBeGreaterThan(0)
+    expect(grid.scrollTop).toBe(10)
     expect(result.current.isDragging).toBe(false)
     expect(result.current.selection).not.toBeNull()
 
@@ -300,6 +346,7 @@ describe('useTimeGridMarquee', () => {
     const { result } = renderHook(() =>
       useTimeGridMarquee({
         gridRef: ref,
+        scrollRef: createMockScrollRef(),
         dateForColumn: () => '2026-08-06',
         columnCount: COLUMN_COUNT,
         // The virtualizer had not rendered this column yet.
@@ -319,10 +366,169 @@ describe('useTimeGridMarquee', () => {
     )
   })
 
+  /**
+   * A realistically shaped time grid: a 24-hour strip (1152px at 48px/hour)
+   * inside a viewport that shows four hours, scrolled to 08:00. The grid's own
+   * rect therefore starts above the viewport and ends far below it — measuring
+   * auto-scroll against that rect never comes within the edge threshold.
+   */
+  function createScrollingRig(initialScrollTop: number): {
+    grid: HTMLDivElement
+    scroller: HTMLElement
+    gridRef: RefObject<HTMLDivElement | null>
+    scrollRef: RefObject<HTMLElement | null>
+  } {
+    const VIEWPORT_TOP = 100
+    const VIEWPORT_HEIGHT = 192
+    const GRID_HEIGHT = 1152
+
+    const scroller = document.createElement('div')
+    scroller.scrollTop = initialScrollTop
+    scroller.getBoundingClientRect = () =>
+      ({
+        top: VIEWPORT_TOP,
+        bottom: VIEWPORT_TOP + VIEWPORT_HEIGHT,
+        left: 0,
+        right: 400,
+        width: 400,
+        height: VIEWPORT_HEIGHT,
+        x: 0,
+        y: VIEWPORT_TOP,
+        toJSON: () => ({})
+      }) as DOMRect
+
+    const grid = document.createElement('div')
+    // The grid rides the scroll: its viewport-relative top moves as the
+    // container scrolls, which is what lets the selection follow along.
+    grid.getBoundingClientRect = () =>
+      ({
+        top: VIEWPORT_TOP - scroller.scrollTop,
+        bottom: VIEWPORT_TOP - scroller.scrollTop + GRID_HEIGHT,
+        left: 0,
+        right: 400,
+        width: 400,
+        height: GRID_HEIGHT,
+        x: 0,
+        y: VIEWPORT_TOP - scroller.scrollTop,
+        toJSON: () => ({})
+      }) as DOMRect
+
+    return {
+      grid,
+      scroller,
+      gridRef: { current: grid } as RefObject<HTMLDivElement | null>,
+      scrollRef: { current: scroller } as RefObject<HTMLElement | null>
+    }
+  }
+
+  function stubRaf(): FrameRequestCallback[] {
+    const rafCallbacks: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback)
+      return rafCallbacks.length
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    return rafCallbacks
+  }
+
+  it('auto-scrolls the container at the bottom edge and extends the selection past the visible hours', () => {
+    const rafCallbacks = stubRaf()
+    // Scrolled to 08:00 (8h * 48px), so the viewport shows 08:00–12:00.
+    const { grid, scroller, gridRef, scrollRef } = createScrollingRig(384)
+    const { result, unmount } = renderHook(() =>
+      useTimeGridMarquee({ gridRef, scrollRef, dateForColumn: () => '2026-04-14' })
+    )
+
+    act(() => {
+      result.current.handlers.onMouseDown(
+        {
+          button: 0,
+          clientY: 148,
+          target: grid,
+          preventDefault: vi.fn()
+        } as unknown as React.MouseEvent,
+        0
+      )
+    })
+
+    // Drag to 2px above the viewport's bottom edge: 09:00–12:00 so far.
+    act(() => {
+      document.dispatchEvent(new MouseEvent('mousemove', { clientY: 290 }))
+    })
+    expect(result.current.selection).toMatchObject({
+      startAt: '2026-04-14T09:00',
+      endAt: '2026-04-14T12:00'
+    })
+    expect(rafCallbacks.length).toBeGreaterThan(0)
+
+    // Hold the pointer still and let auto-scroll run: 8 frames * 12px = 96px,
+    // two more hours of grid.
+    act(() => {
+      for (let i = 0; i < 8; i++) rafCallbacks.at(-1)?.(0)
+    })
+
+    expect(scroller.scrollTop).toBe(480)
+    expect(grid.scrollTop).toBe(0)
+    expect(result.current.selection).toMatchObject({
+      startAt: '2026-04-14T09:00',
+      endAt: '2026-04-14T14:00'
+    })
+
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('auto-scrolls the container at the top edge', () => {
+    const rafCallbacks = stubRaf()
+    const { grid, scroller, gridRef, scrollRef } = createScrollingRig(384)
+    const { result, unmount } = renderHook(() =>
+      useTimeGridMarquee({ gridRef, scrollRef, dateForColumn: () => '2026-04-14' })
+    )
+
+    act(() => {
+      result.current.handlers.onMouseDown(
+        {
+          button: 0,
+          clientY: 280,
+          target: grid,
+          preventDefault: vi.fn()
+        } as unknown as React.MouseEvent,
+        0
+      )
+    })
+
+    // Drag up to 2px below the viewport's top edge.
+    act(() => {
+      document.dispatchEvent(new MouseEvent('mousemove', { clientY: 102 }))
+    })
+    expect(result.current.selection).toMatchObject({
+      startAt: '2026-04-14T08:00',
+      endAt: '2026-04-14T11:45'
+    })
+
+    act(() => {
+      for (let i = 0; i < 8; i++) rafCallbacks.at(-1)?.(0)
+    })
+
+    expect(scroller.scrollTop).toBe(288)
+    expect(grid.scrollTop).toBe(0)
+    expect(result.current.selection).toMatchObject({
+      startAt: '2026-04-14T06:00',
+      endAt: '2026-04-14T11:45'
+    })
+
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
   it('clears click-only drags on mouseup', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() =>
-      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+      useTimeGridMarquee({
+        gridRef: ref,
+        scrollRef: createMockScrollRef(),
+        dateForColumn: () => '2026-04-14'
+      })
     )
 
     act(() => {

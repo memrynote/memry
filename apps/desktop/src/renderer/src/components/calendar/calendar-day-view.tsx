@@ -66,6 +66,7 @@ export function CalendarDayView({
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
+    scrollRef,
     dateForColumn
   })
   const { drag, startMove, startResize, wasDragged } = useEventDrag({
