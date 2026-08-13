@@ -200,13 +200,24 @@ vi.mock('@/components/inbox-detail', () => ({
     isOpen: boolean
     item: { id: string; title: string } | null
     onClose: () => void
-    onFile: (id: string, folder: string, tags: string[], noteIds: string[]) => void
+    onFile: (
+      id: string,
+      folder: string,
+      tags: string[],
+      targets: Array<{ kind: 'note'; noteId: string } | { kind: 'new'; title: string }>,
+      imageMode?: 'embed' | 'link'
+    ) => void
     onArchive: (id: string) => void
   }) =>
     isOpen ? (
       <div>
         <span>Detail {item?.title}</span>
-        <button type="button" onClick={() => onFile('item-1', 'Filed', ['work'], ['note-1'])}>
+        <button
+          type="button"
+          onClick={() =>
+            onFile('item-1', 'Filed', ['work'], [{ kind: 'note', noteId: 'note-1' }], 'embed')
+          }
+        >
           Detail file
         </button>
         <button type="button" onClick={() => onArchive('item-1')}>
@@ -453,8 +464,13 @@ describe('InboxListView', () => {
     })
     expect(mocks.fileItem).toHaveBeenCalledWith({
       itemId: 'item-1',
-      destination: { type: 'note', noteIds: ['note-1'], path: 'Filed' },
-      tags: ['work']
+      destination: {
+        type: 'note',
+        targets: [{ kind: 'note', noteId: 'note-1' }],
+        path: 'Filed'
+      },
+      tags: ['work'],
+      imageMode: 'embed'
     })
     view.unmount()
 

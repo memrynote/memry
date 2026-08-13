@@ -4,6 +4,8 @@ import type {
   CaptureVoiceInput,
   CaptureImageInput,
   FileItemInput,
+  FilingTarget,
+  ImageFilingMode,
   InboxCaptureResponse,
   InboxDuplicateMatch,
   InboxFileResponse,
@@ -62,10 +64,11 @@ export interface InboxCommandServices {
   ): Promise<{ success: boolean; error?: string }>
   linkToNotes(
     itemId: string,
-    noteIds: string[],
+    targets: FilingTarget[],
     tags?: string[],
-    path?: string
-  ): Promise<{ success: boolean; error?: string }>
+    path?: string,
+    imageMode?: ImageFilingMode
+  ): Promise<{ success: boolean; error?: string; noteIds?: string[]; fellBackToLink?: boolean }>
   snoozeItem(input: SnoozeInput): { success: boolean; error?: string }
   unsnoozeItem(itemId: string): { success: boolean; error?: string }
   getSnoozedItems(): Promise<SnoozedItem[]>
@@ -210,7 +213,7 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
     captureVoice: (input) => services.captureVoiceItem(input),
 
     async fileItem(input) {
-      const { itemId, destination, tags } = input
+      const { itemId, destination, tags, imageMode } = input
 
       switch (destination.type) {
         case 'folder':
@@ -218,13 +221,18 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
         case 'new-note':
           return services.convertToNote(itemId)
         case 'note': {
-          const noteIds = destination.noteIds?.length
-            ? destination.noteIds
-            : destination.noteId
-              ? [destination.noteId]
-              : []
+          // `targets` is ordered and may contain notes that do not exist yet;
+          // `noteIds`/`noteId` are the pre-#807 shapes, still accepted.
+          const targets: FilingTarget[] = destination.targets?.length
+            ? destination.targets
+            : (destination.noteIds?.length
+                ? destination.noteIds
+                : destination.noteId
+                  ? [destination.noteId]
+                  : []
+              ).map((noteId) => ({ kind: 'note', noteId }))
 
-          if (noteIds.length === 0) {
+          if (targets.length === 0) {
             return {
               success: false,
               filedTo: null,
@@ -232,12 +240,24 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
             }
           }
 
-          const result = await services.linkToNotes(itemId, noteIds, tags, destination.path)
+          const result = await services.linkToNotes(
+            itemId,
+            targets,
+            tags,
+            destination.path,
+            imageMode
+          )
+          // Notes created during filing only have ids afterwards, so the owner
+          // comes back from the service rather than being read off the input.
+          const ownerId =
+            result.noteIds?.[0] ?? (targets[0].kind === 'note' ? targets[0].noteId : null)
+
           return {
             success: result.success,
-            filedTo: noteIds[0],
-            noteId: noteIds[0],
-            error: result.error
+            filedTo: ownerId,
+            ...(ownerId ? { noteId: ownerId } : {}),
+            error: result.error,
+            ...(result.fellBackToLink ? { fellBackToLink: true } : {})
           }
         }
         default:

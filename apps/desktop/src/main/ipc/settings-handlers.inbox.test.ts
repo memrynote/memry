@@ -124,7 +124,9 @@ describe('inbox settings handler', () => {
   it('round-trips and defaults', () => {
     expect(getInboxReviewSettings()).toEqual({
       reviewReminderEnabled: false,
-      reviewReminderTime: '18:00'
+      reviewReminderTime: '18:00',
+      imageFilingMode: 'embed',
+      imageFilingModeRemembered: false
     })
   })
 
@@ -132,7 +134,9 @@ describe('inbox settings handler', () => {
     writeInboxReviewSettings({ reviewReminderEnabled: true, reviewReminderTime: '06:30' })
     expect(getInboxReviewSettings()).toEqual({
       reviewReminderEnabled: true,
-      reviewReminderTime: '06:30'
+      reviewReminderTime: '06:30',
+      imageFilingMode: 'embed',
+      imageFilingModeRemembered: false
     })
     expect(getSetting(getDatabase(), 'inbox')).toContain('06:30')
     expect(updateField).toHaveBeenCalledWith('inbox.reviewReminderEnabled', true)

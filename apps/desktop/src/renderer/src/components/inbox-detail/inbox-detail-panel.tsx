@@ -34,6 +34,8 @@ import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
+import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
+import { useInboxPreferences } from '@/hooks/use-inbox-preferences'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:InboxDetailPanel')
@@ -61,7 +63,13 @@ interface InboxDetailPanelProps {
   isLoading?: boolean
   readOnly?: boolean
   onClose: () => void
-  onFile: (itemId: string, folderId: string, tags: string[], linkedNoteIds: string[]) => void
+  onFile: (
+    itemId: string,
+    folderId: string,
+    tags: string[],
+    targets: FilingTarget[],
+    imageMode?: ImageFilingMode
+  ) => void
   onArchive: (id: string) => void
   onRestore?: (id: string) => void
   onDelete?: (id: string) => void
@@ -106,6 +114,34 @@ export const InboxDetailPanel = ({
   // Filing state management
   const { selectedFolder, tags, linkedNotes, setSelectedFolder, setTags, setLinkedNotes, canFile } =
     useFilingState({ item, isOpen })
+
+  // How an image lands in the notes it is linked to (#807). The prompt only
+  // appears until the user answers it once; after that the stored mode is used
+  // silently and only Settings → Inbox can change it.
+  const { settings: inboxSettings, updateSettings: updateInboxSettings } = useInboxPreferences()
+  // Null until the user touches the control, so the stored preference stays
+  // authoritative — including when it arrives after the first render.
+  const [imageModeOverride, setImageModeOverride] = useState<ImageFilingMode | null>(null)
+  const [rememberImageMode, setRememberImageMode] = useState(false)
+  const imageMode = imageModeOverride ?? inboxSettings.imageFilingMode
+
+  const isImageItem = item?.type === 'image'
+  const imageFiling = useMemo(
+    () => ({
+      mode: imageMode,
+      onModeChange: setImageModeOverride,
+      remember: rememberImageMode,
+      onRememberChange: setRememberImageMode,
+      askUser: !inboxSettings.imageFilingModeRemembered
+    }),
+    [imageMode, rememberImageMode, inboxSettings.imageFilingModeRemembered]
+  )
+
+  // Embedding needs a note to own the attachment, not a folder — so the usual
+  // "pick a destination folder" gate does not apply, and linking one is what
+  // makes the item filable instead.
+  const isEmbeddingImage = isImageItem && imageMode === 'embed'
+  const canFileItem = isEmbeddingImage ? linkedNotes.length > 0 : canFile
 
   // Fetch AI suggestions for keyboard shortcuts
   const { data: aiSuggestions = [] } = useQuery({
@@ -195,7 +231,8 @@ export const InboxDetailPanel = ({
 
   // Handle filing
   const handleFileItem = useCallback(async (): Promise<void> => {
-    if (!selectedFolder || !item) return
+    // No folder is picked when embedding — the attachment goes under the note.
+    if (!item || (!selectedFolder && !isEmbeddingImage)) return
 
     setIsFilingLoading(true)
 
@@ -209,7 +246,7 @@ export const InboxDetailPanel = ({
           itemId: item.id,
           itemType: item.type,
           suggestedTo: suggestedPath,
-          actualTo: selectedFolder.id,
+          actualTo: selectedFolder?.id ?? '',
           confidence: topSuggestion?.confidence || 0,
           suggestedTags: topSuggestion?.suggestedTags || [],
           actualTags: tags
@@ -219,19 +256,50 @@ export const InboxDetailPanel = ({
         })
     }
 
-    // Use path for folder location - prefer path, fallback to id
-    const folderPath = selectedFolder.path ?? selectedFolder.id ?? ''
+    // Use path for folder location - prefer path, fallback to id. Embedding hides
+    // the picker, so send nothing rather than a folder the user never saw: any
+    // note staged in the picker then lands in their default note folder.
+    const folderPath = isEmbeddingImage ? '' : (selectedFolder?.path ?? selectedFolder?.id ?? '')
+
+    // Answering the prompt is what persists the preference — silently after the
+    // filing either way, so a failed settings write never blocks the item.
+    if (imageFiling.remember) {
+      void updateInboxSettings({
+        imageFilingMode: imageFiling.mode,
+        imageFilingModeRemembered: true
+      })
+    }
 
     onFile(
       item.id,
       folderPath,
       tags,
-      linkedNotes.map((n) => n.id)
+      // Pending notes carry a title instead of an id — they are created by the
+      // filing itself, in the folder chosen above.
+      linkedNotes.map((note) =>
+        note.isPending
+          ? ({ kind: 'new', title: note.title } as const)
+          : ({ kind: 'note', noteId: note.id } as const)
+      ),
+      isImageItem ? imageFiling.mode : undefined
     )
 
     setIsFilingLoading(false)
     onClose()
-  }, [selectedFolder, item, tags, linkedNotes, aiEnabled, aiSuggestions, onFile, onClose])
+  }, [
+    selectedFolder,
+    item,
+    tags,
+    linkedNotes,
+    aiEnabled,
+    aiSuggestions,
+    imageFiling,
+    isImageItem,
+    isEmbeddingImage,
+    updateInboxSettings,
+    onFile,
+    onClose
+  ])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -261,7 +329,7 @@ export const InboxDetailPanel = ({
       // Cmd/Ctrl + Enter to file
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
-        if (canFile && item) {
+        if (canFileItem && item) {
           void handleFileItem()
         }
         return
@@ -281,7 +349,7 @@ export const InboxDetailPanel = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [
     isOpen,
-    canFile,
+    canFileItem,
     item,
     selectedType,
     suggestedFoldersForShortcut,
@@ -527,6 +595,7 @@ export const InboxDetailPanel = ({
                         onFolderSelect={handleFolderSelect}
                         onTagsChange={setTags}
                         onLinkedNotesChange={setLinkedNotes}
+                        imageFiling={item.type === 'image' ? imageFiling : undefined}
                       />
                     ) : (
                       <ConvertActions item={item} type={selectedType} onConverted={onClose} />
@@ -580,7 +649,7 @@ export const InboxDetailPanel = ({
                     {selectedType === 'note' && (
                       <Button
                         onClick={() => void handleFileItem()}
-                        disabled={!canFile || isFilingLoading}
+                        disabled={!canFileItem || isFilingLoading}
                         className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0 transition-all duration-150 ease-out active:scale-[0.98] disabled:active:scale-100"
                       >
                         {isFilingLoading ? (

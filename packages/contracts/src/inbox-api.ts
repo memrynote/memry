@@ -19,15 +19,7 @@ export { InboxChannels }
 // ============================================================================
 
 export type InboxItemType =
-  | 'link'
-  | 'note'
-  | 'image'
-  | 'voice'
-  | 'video'
-  | 'clip'
-  | 'pdf'
-  | 'social'
-  | 'reminder'
+  'link' | 'note' | 'image' | 'voice' | 'video' | 'clip' | 'pdf' | 'social' | 'reminder'
 export type ProcessingStatus = 'pending' | 'processing' | 'complete' | 'failed'
 export type FilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
 export type CaptureSource = 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
@@ -445,6 +437,18 @@ export const InboxUpdateSchema = z.object({
   content: z.string().max(50000).optional()
 })
 
+/**
+ * One note an item is filed into. Ordered: the first target owns any attachment
+ * the filing writes (#807), the rest reference the same file.
+ *
+ * `new` carries a title instead of an id because the note does not exist until
+ * the user commits the filing.
+ */
+export const FilingTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('note'), noteId: z.string() }),
+  z.object({ kind: z.literal('new'), title: z.string().min(1).max(200) })
+])
+
 export const FileItemSchema = z.object({
   itemId: z.string(),
   destination: z.object({
@@ -452,9 +456,13 @@ export const FileItemSchema = z.object({
     path: z.string().optional(),
     noteId: z.string().optional(), // Single note (backward compat)
     noteIds: z.array(z.string()).optional(), // Multiple notes
-    noteTitle: z.string().max(200).optional()
+    noteTitle: z.string().max(200).optional(),
+    // Supersedes noteIds when present; noteIds stays for callers that predate it.
+    targets: z.array(FilingTargetSchema).max(20).optional()
   }),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  // Image only: 'embed' saves a note attachment, 'link' moves the raw file.
+  imageMode: z.enum(['embed', 'link']).optional()
 })
 
 export const SnoozeSchema = z.object({
@@ -552,6 +560,8 @@ export interface FileResponse {
   filedTo: string | null
   noteId?: string
   error?: string
+  /** Embed was requested but the image had to be filed as a linked file (#807). */
+  fellBackToLink?: boolean
 }
 
 export interface BulkResponse {

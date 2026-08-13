@@ -7,7 +7,12 @@ export const RequestOtpRequestSchema = z.object({
 export const VerifyOtpRequestSchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/),
-  sessionNonce: z.string().min(1).optional()
+  sessionNonce: z.string().min(1).optional(),
+  // Ed25519 public key of the device that will redeem the setup token. Binds
+  // renewal (POST /auth/setup-token/renew) to this key so a leaked setup token
+  // on its own is never renewable. Optional: clients that omit it get exactly
+  // today's behaviour — one non-renewable 5-minute token.
+  devicePublicKey: z.string().min(1).max(128).optional()
 })
 
 export const ResendOtpRequestSchema = z.object({
@@ -38,7 +43,24 @@ export const RefreshTokenRequestSchema = z.object({
 export const OAuthCallbackSchema = z.object({
   code: z.string().min(1),
   state: z.string().min(1),
-  sessionNonce: z.string().min(1).optional()
+  sessionNonce: z.string().min(1).optional(),
+  devicePublicKey: z.string().min(1).max(128).optional()
+})
+
+/**
+ * Renew a setup token that ran out while the user was away finding their
+ * recovery phrase. Proof of possession of the committed device key — not mere
+ * possession of the (expired) token — is what authorises the new one.
+ */
+export const RenewSetupTokenRequestSchema = z.object({
+  setupToken: z.string().min(1),
+  challengeNonce: z.string().min(1).max(128),
+  challengeSignature: z.string().min(1).max(256)
+})
+
+export const RenewSetupTokenResponseSchema = z.object({
+  success: z.boolean(),
+  setupToken: z.string().min(1)
 })
 
 export const RequestOtpResponseSchema = z.object({
