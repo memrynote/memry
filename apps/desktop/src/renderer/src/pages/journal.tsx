@@ -29,6 +29,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { BacklinksSection, type Backlink, backlinkId } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
@@ -373,11 +374,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         )
       )
         return
-      if (
-        target.closest('[contenteditable="true"]')?.contains(target) &&
-        target.closest('.bn-block-content')
-      )
-        return
+      // "Outside every block" — deliberately NOT the same test as the marquee
+      // start rule's "is there text here". See marquee-hit-test.ts.
+      if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
       focusAtEndRef.current?.()
     }

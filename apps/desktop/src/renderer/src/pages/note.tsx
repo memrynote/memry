@@ -15,6 +15,7 @@ import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
+import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -351,11 +352,9 @@ export function NotePage({ noteId }: NotePageProps) {
         )
       )
         return
-      if (
-        target.closest('[contenteditable="true"]')?.contains(target) &&
-        target.closest('.bn-block-content')
-      )
-        return
+      // "Outside every block" — deliberately NOT the same test as the marquee
+      // start rule's "is there text here". See marquee-hit-test.ts.
+      if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
       focusAtEndRef.current?.()
     }

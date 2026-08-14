@@ -138,7 +138,7 @@ if (
   return
 ```
 
-This mirrors `shouldStartMarquee` in `use-block-marquee-selection.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
+This mirrors `shouldStartMarquee` in `components/note/content-area/marquee-hit-test.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
 
 ## Global Keydown Listeners Must Not Depend on Render State
 
