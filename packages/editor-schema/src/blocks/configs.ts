@@ -83,7 +83,7 @@ export const bookmarkConfig = {
   content: 'none' as const
 }
 
-/** Node names of every custom block spec — the parity gate reads this. */
+/** Node names of every custom block spec. The parity gate (#1433) will read this. */
 export const MEMRY_BLOCK_TYPES = [
   'taskBlock',
   'callout',

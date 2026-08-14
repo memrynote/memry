@@ -32,7 +32,7 @@ import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
 import type { FileBlockProps } from './file-block-markers'
 
-export { FILE_BLOCK_REGEX, parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
+export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
 export type { FileBlockProps } from './file-block-markers'
 
 // Configure PDF.js worker

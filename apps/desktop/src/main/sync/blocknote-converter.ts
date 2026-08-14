@@ -396,14 +396,18 @@ async function parseContentWithColorMarkers(
     buffer = []
   }
 
-  let insideFence = false
+  const fence = createFenceTracker()
 
   for (const line of text.split('\n')) {
     const trimmed = line.trim()
     // A marker inside a code fence is the author's text, not a marker.
-    if (CODE_FENCE_LINE_REGEX.test(trimmed)) insideFence = !insideFence
+    const insideFence = fence.consume(line)
 
-    if (!insideFence && BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
+    // Deliberately NOT fence-guarded: this branch predates custom-block parsing
+    // and guarding it would drop a colour marker that follows a fence this
+    // tracker read differently, which is data loss on a path #1432 never
+    // touched. The renderer's twin (markdown-utils.ts) is unguarded too.
+    if (BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
       const colors = parseBlockColorsMarker(trimmed)
       if (colors) {
         await flushBuffer()
@@ -412,7 +416,7 @@ async function parseContentWithColorMarkers(
       }
     }
 
-    const marker = insideFence ? null : parseCustomBlockMarkerLine(trimmed)
+    const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
     if (marker) {
       await flushBuffer()
       pendingColors = null
@@ -427,7 +431,42 @@ async function parseContentWithColorMarkers(
   return blocks
 }
 
-const CODE_FENCE_LINE_REGEX = /^(?:```|~~~)/
+/**
+ * CommonMark fence tracking, not a parity toggle.
+ *
+ * A boolean flipped by /^(?:```|~~~)/ is wrong in the way that matters here: it
+ * tracks neither the fence character nor its length, so a ```` ```` ```` block
+ * quoting an inner ``` — the shape of any note that documents this very marker
+ * format — reads as closed halfway through. The example marker inside it then
+ * parses as a real block and write-back rewrites the file around it.
+ *
+ * A fence opens with 3+ of ` or ~ (up to 3 leading spaces) and closes only on
+ * the SAME character, at least as long, with nothing after it.
+ */
+function createFenceTracker(): { consume: (line: string) => boolean } {
+  let open: { char: string; length: number } | null = null
+
+  return {
+    /** True when `line` is inside a fence — the opening/closing lines included. */
+    consume: (line) => {
+      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+      if (!match) return open !== null
+
+      const char = match[1][0]
+      const length = match[1].length
+      if (open === null) {
+        // An info string may not contain a backtick (CommonMark 4.5).
+        if (char === '`' && match[2].includes('`')) return false
+        open = { char, length }
+        return true
+      }
+      if (char === open.char && length >= open.length && match[2].trim() === '') {
+        open = null
+      }
+      return true
+    }
+  }
+}
 
 /**
  * The three custom blocks whose on-disk form is a single marker line.
@@ -450,8 +489,14 @@ const CODE_FENCE_LINE_REGEX = /^(?:```|~~~)/
  * stay quote blocks and their bytes stay untouched.
  */
 function parseCustomBlockMarkerLine(line: string): Block | null {
-  if (FILE_BLOCK_LINE_REGEX.test(line)) {
-    const props = parseFileBlockMarker(line)
+  // Matched exactly the way the renderer matches (markdown-utils.ts): `file` on
+  // the trimmed line, the two image markers on the raw one. Trimming those two
+  // as well would claim a marker indented under a list item, dropping the
+  // nesting the parent preserved — and would make the same file parse to a
+  // different document depending on which process read it.
+  const trimmed = line.trim()
+  if (FILE_BLOCK_LINE_REGEX.test(trimmed)) {
+    const props = parseFileBlockMarker(trimmed)
     if (props) return { type: 'file', props } as unknown as Block
   }
 
@@ -467,18 +512,27 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
   const bookmark = line.match(BOOKMARK_LINE_REGEX)
   if (bookmark) {
     const url = bookmark[1]
-    return { type: 'bookmark', props: { url, domain: bookmarkDomain(url) } } as unknown as Block
+    // `![bookmark](assets/photo.png)` is someone's image with an unlucky alt
+    // text, not a bookmark card. The embed branch has `extractYouTubeVideoId`
+    // for the same reason; this is its counterpart.
+    const parsed = parseHttpUrl(url)
+    if (parsed) {
+      return {
+        type: 'bookmark',
+        props: { url, domain: parsed.hostname.replace(/^www\./, '') }
+      } as unknown as Block
+    }
   }
 
   return null
 }
 
-/** Display-only host label; never reaches the vault file. */
-function bookmarkDomain(url: string): string {
+function parseHttpUrl(url: string): URL | null {
   try {
-    return new URL(url).hostname.replace('www.', '')
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed : null
   } catch {
-    return url
+    return null
   }
 }
 

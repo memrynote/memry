@@ -4,7 +4,6 @@
  * a re-export because the marker is imported from here all over the renderer.
  */
 export {
-  FILE_BLOCK_REGEX,
   serializeFileBlock,
   parseFileBlockMarker,
   type FileBlockProps

@@ -9,4 +9,4 @@ export const createBookmarkBlock = createReactBlockSpec(bookmarkConfig, {
   render: BookmarkBlockRender
 })
 
-export { BOOKMARK_BLOCK_REGEX, serializeBookmark } from '@memry/editor-schema/blocks'
+export { serializeBookmark } from '@memry/editor-schema/blocks'

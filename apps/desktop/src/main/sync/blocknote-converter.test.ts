@@ -15,6 +15,7 @@ import { createMemrySchema, serializeLinkMentionToken } from '@memry/editor-sche
 import { MEMRY_BLOCK_TYPES } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
+import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
   it('returns empty markdown for an empty Yjs fragment', async () => {
@@ -1290,5 +1291,96 @@ describe('custom inline content inside a table', () => {
     // #then
     expect(markdown).not.toBeNull()
     expect(markdown).toContain(serializeDateMentionToken(props))
+  })
+})
+
+describe('custom block markers are not claimed out of context', () => {
+  const FENCE3 = '`'.repeat(3)
+  const FENCE4 = '`'.repeat(4)
+  const FILE_MARKER =
+    '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return await yDocToMarkdown(doc)
+  }
+
+  it('a marker quoted inside a nested code fence stays text', async () => {
+    // #given a note documenting the marker format — a four-backtick fence
+    // wrapping a three-backtick one. A fence tracker that only toggles on
+    // /^```/ reads the inner fence as the closing one, and everything after it
+    // as live markdown: the code block is torn in two and the *example* marker
+    // becomes a real file block pointing at a PDF.
+    const markdown = `How the marker looks:\n\n${FENCE4}md\n${FENCE3}\n${FILE_MARKER}\n${FENCE3}\n${FENCE4}\n\nThat is all.`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then
+    expect(result).toBe(markdown)
+  })
+
+  it('a tilde fence does not close a backtick fence', async () => {
+    // #given ~~~ inside a ``` block is content, not a delimiter
+    const markdown = `${FENCE3}md\n~~~\n${FILE_MARKER}\n~~~\n${FENCE3}`
+
+    // #when / #then
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
+  it('keeps a block-colour marker that follows a nested fence', async () => {
+    // #given colours are parsed on a path that predates custom blocks. Guarding
+    // it on fence state made a marker after a fence the tracker read wrong
+    // vanish from the vault file — data loss on a path this work never touched.
+    const markdown = `${FENCE4}\n${FENCE3}\n${FENCE4}\n\n<!-- colors:{"backgroundColor":"blue"} -->\ntinted`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the colour survives (the fence's language tag is normalized by
+    // remark on both sides of this change, so compare the part that matters)
+    expect(result).toContain('<!-- colors:{"backgroundColor":"blue"} -->\ntinted')
+  })
+
+  it('leaves an embed marker indented under a list item nested', async () => {
+    // #given the renderer matches the two image markers on the RAW line, so a
+    // marker indented under a list item is content. Trimming first claims it
+    // and the nesting is lost — the same file would then parse to a different
+    // document depending on which process read it.
+    const markdown = '- item\n\n  ![embed](https://youtu.be/dQw4w9WgXcQ)'
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the nesting marker is still there
+    expect(result).toContain('block-nesting-level=1')
+  })
+
+  it('leaves a real image whose alt text happens to be bookmark alone', async () => {
+    // #given someone's screenshot, not a bookmark card. The embed branch has
+    // extractYouTubeVideoId for this; the bookmark branch needs its own check.
+    const markdown = '![bookmark](assets/photo.png)'
+
+    // #when / #then
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
+  it('a file name containing --> does not truncate the marker', async () => {
+    // #given `-->` closes an HTML comment, so an unescaped one splits the
+    // marker and spills the rest of the JSON into the note as a paragraph
+    const props = {
+      url: 'memry-file://x/y.pdf',
+      name: 'a-->b.pdf',
+      size: 5,
+      mimeType: 'application/pdf'
+    }
+
+    // #when
+    const marker = `<!--${fileBlockCommentData(props as never)}-->`
+
+    // #then the comment has exactly one terminator, and the name survives it
+    expect(marker.match(/-->/g)).toHaveLength(1)
+    expect(parseFileBlockMarker(marker)).toMatchObject({ name: 'a-->b.pdf' })
   })
 })

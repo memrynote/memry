@@ -83,4 +83,4 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(youtubeEmbedConfig, 
   render: YoutubeEmbedBlockRender
 })
 
-export { EMBED_BLOCK_REGEX, serializeYoutubeEmbed } from '@memry/editor-schema/blocks'
+export { serializeYoutubeEmbed } from '@memry/editor-schema/blocks'

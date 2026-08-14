@@ -4,9 +4,12 @@
  * This is a contract, not a preference. Write-back byte-compares the serialized
  * document against the file before writing, so a single character of drift here
  * rewrites every note holding one of these blocks, in every vault, on next open.
- * Both processes serialize through these functions for exactly that reason:
- * main's headless spec and the renderer's React spec cannot produce different
- * bytes if neither one owns the format.
+ * The renderer serializes through these functions directly. Main cannot: a
+ * server spec returns DOM and BlockNote converts that to markdown, so main
+ * builds DOM shaped to serialize to the identical bytes. Two implementations
+ * that must agree is exactly the drift this package exists to prevent, so the
+ * agreement is asserted by test (see `blocknote-converter.test.ts`), not left
+ * to reading.
  *
  * Each form below is the one already on disk today — see the git history of
  * `callout-block.tsx`, `youtube-embed-block.tsx`, `bookmark-block.tsx` and
@@ -34,9 +37,6 @@ export function serializeCalloutBlock(type: string, contentMarkdown: string): st
 // ---------------------------------------------------------------------------
 // youtubeEmbed / bookmark — an image embed whose alt text names the block
 // ---------------------------------------------------------------------------
-
-export const EMBED_BLOCK_REGEX = /!\[embed\]\(([^)]+)\)/g
-export const BOOKMARK_BLOCK_REGEX = /!\[bookmark\]\(([^)]+)\)/g
 
 /** A whole line that is nothing but an embed / bookmark marker. */
 export const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
@@ -82,7 +82,6 @@ export interface FileBlockProps {
  * Regex to match file block markers in markdown
  * Format: <!-- file:{"url":"...","name":"...","size":123,"mimeType":"...","width":720} -->
  */
-export const FILE_BLOCK_REGEX = /<!-- file:(\{[^}]+\}) -->/g
 
 /** A whole line that is nothing but a file marker. */
 export const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
@@ -96,6 +95,17 @@ export const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
  */
 export function serializeFileBlock(props: FileBlockProps): string {
   return `<!--${fileBlockCommentData(props)}-->`
+}
+
+/**
+ * `-->` anywhere in the payload would close the HTML comment early, splitting
+ * the marker and spilling the rest into the note as a paragraph. A file named
+ * `a-->b.pdf` is enough. Escaping it as `\u003e` keeps the JSON byte-for-byte
+ * equivalent — `JSON.parse` gives the original string back — while removing the
+ * only sequence the comment syntax reserves.
+ */
+function escapeCommentTerminator(json: string): string {
+  return json.replace(/-->/g, '--\\u003e')
 }
 
 /**
@@ -120,7 +130,7 @@ export function fileBlockCommentData(props: FileBlockProps): string {
   if (props.align && props.align !== 'left') {
     payload.align = props.align
   }
-  return ` file:${JSON.stringify(payload)} `
+  return ` file:${escapeCommentTerminator(JSON.stringify(payload))} `
 }
 
 /**
