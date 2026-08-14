@@ -61,6 +61,7 @@ jobs:
             @memry/domain-inbox \
             @memry/domain-notes \
             @memry/domain-tasks \
+            @memry/editor-schema \
             @memry/i18n \
             @memry/rpc \
             @memry/shared \
@@ -85,6 +86,16 @@ jobs:
 
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
+
+      # The document schema is the same kind of renderer↔main contract the step
+      # above gates for IPC, and its failure mode is worse: y-prosemirror answers
+      # a node name its schema cannot build by DELETING the element from the
+      # shared Y.Doc, which replicates to every device. Runs here rather than in
+      # the unit job because it needs no native modules. The renderer↔main
+      # comparison and the write-back byte checks ride along with the desktop
+      # suite in the "Unit & integration tests" job.
+      - name: Check editor schema parity
+        run: node scripts/run-turbo.js run test --filter=@memry/editor-schema
 
       - name: Lint desktop
         run: pnpm --filter @memry/desktop exec eslint --cache .

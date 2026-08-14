@@ -11,10 +11,21 @@ import {
 import * as Y from 'yjs'
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { createMemrySchema, serializeLinkMentionToken } from '@memry/editor-schema'
-import { MEMRY_BLOCK_TYPES } from '@memry/editor-schema/blocks'
+import {
+  createMemrySchema,
+  serializeLinkMentionToken,
+  MEMRY_INLINE_CONTENT_TYPES
+} from '@memry/editor-schema'
+import {
+  MEMRY_BLOCK_TYPES,
+  serializeBookmark,
+  serializeCalloutBlock,
+  serializeFileBlock,
+  serializeYoutubeEmbed
+} from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
+import { serializeTaskBlock } from '@memry/shared/task-block'
 import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
@@ -930,14 +941,20 @@ describe('registering the custom specs does not rewrite existing markdown', () =
  * this table rather than being silently untested — the whole class of bug was
  * one spec nobody covered.
  *
- * The markdown is the form already on disk today, read from the functions that
- * write it: `serializeCalloutBlock`, `serializeYoutubeEmbed`,
- * `serializeBookmark`, `serializeFileBlock` and `serializeTaskBlock`.
+ * The markdown is COMPUTED by the functions that write it in the renderer —
+ * `serializeCalloutBlock`, `serializeYoutubeEmbed`, `serializeBookmark`,
+ * `serializeFileBlock`, `serializeTaskBlock` — not spelled out as a literal.
+ * That is deliberate: each block's on-disk form has two implementations (those
+ * functions, which the renderer's save path calls directly, and the hand-built
+ * DOM in main's server spec, which BlockNote turns into markdown), and until
+ * now they only happened to agree. Comparing main's real `yDocToMarkdown`
+ * output against the renderer's serializer is what gates that agreement — a
+ * literal on both sides would let either implementation drift alone.
  */
 const BLOCK_CASES = [
   {
     type: 'callout',
-    markdown: '> [!info]\n> Heads up',
+    markdown: serializeCalloutBlock('info', 'Heads up'),
     block: {
       id: 'blk',
       type: 'callout',
@@ -948,7 +965,7 @@ const BLOCK_CASES = [
   },
   {
     type: 'youtubeEmbed',
-    markdown: '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+    markdown: serializeYoutubeEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
     block: {
       id: 'blk',
       type: 'youtubeEmbed',
@@ -958,7 +975,7 @@ const BLOCK_CASES = [
   },
   {
     type: 'bookmark',
-    markdown: '![bookmark](https://example.com/a)',
+    markdown: serializeBookmark('https://example.com/a'),
     block: {
       id: 'blk',
       type: 'bookmark',
@@ -976,8 +993,12 @@ const BLOCK_CASES = [
   },
   {
     type: 'file',
-    markdown:
-      '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->',
+    markdown: serializeFileBlock({
+      url: 'memry-file://local/v/a/x.pdf',
+      name: 'x.pdf',
+      size: 1234,
+      mimeType: 'application/pdf'
+    }),
     block: {
       id: 'blk',
       type: 'file',
@@ -995,7 +1016,12 @@ const BLOCK_CASES = [
   },
   {
     type: 'taskBlock',
-    markdown: '- [ ] a task {task:t1}',
+    markdown: serializeTaskBlock({
+      taskId: 't1',
+      title: 'a task',
+      checked: false,
+      parentTaskId: ''
+    }),
     block: {
       id: 'blk',
       type: 'taskBlock',
@@ -1013,6 +1039,40 @@ function docHolding(block: unknown): Y.Doc {
   )
   return doc
 }
+
+describe('the round-trip tables cover every custom node type', () => {
+  // The gate on the gate (#1433). BLOCK_CASES and INLINE_CASES are hand-written
+  // fixtures, and a hand-written list is exactly how this whole class of bug got
+  // in: a spec was added, nobody wrote a case for it, and nothing was red. So
+  // the case lists are checked against the package's exported type lists —
+  // adding a spec without a fixture FAILS here rather than being skipped.
+  it('has a round-trip fixture for every custom block type', () => {
+    expect(BLOCK_CASES.map((c) => c.type as string).sort()).toEqual([...MEMRY_BLOCK_TYPES].sort())
+  })
+
+  it('has a round-trip fixture for every custom inline type', () => {
+    expect(INLINE_CASES.map((c) => c.nodeName as string).sort()).toEqual(
+      [...MEMRY_INLINE_CONTENT_TYPES].sort()
+    )
+  })
+
+  it('the converter this build ships can construct every custom node type', () => {
+    // #given one document holding every custom block AND every custom inline
+    // node, read through the converter's OWN schema — not a reconstruction.
+    // A type missing from `blocknote-converter.ts`'s schema is a delete
+    // y-prosemirror replicates to every device.
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      BLOCK_CASES.map((c) => c.block) as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    const blockGroup = doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement
+    blockGroup.push([customInlineBlockContainer()])
+
+    // #when / #then
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+})
 
 describe('custom blocks survive the CRDT write path', () => {
   it.each(BLOCK_CASES.filter((c) => c.type !== 'taskBlock'))(
@@ -1158,37 +1218,13 @@ function serverEditorForSchemaInspection(): ServerBlockNoteEditor {
   }) as ServerBlockNoteEditor
 }
 
-describe('server block specs never present anything render-only', () => {
-  // `render` is not presentation in the main process: BlockNote reaches it for
-  // anything it serializes without a `toExternalHTML`, and one throw there makes
-  // `yDocToMarkdown` return null — the note stops writing back entirely. So the
-  // two have to be the same DOM, and neither may throw.
-  it.each(BLOCK_CASES)('$type renders exactly what it serializes', async ({ block, type }) => {
-    const specs = createServerBlockSpecs() as unknown as Record<
-      string,
-      {
-        implementation: {
-          render: (block: unknown, editor: unknown) => { dom: HTMLElement }
-          toExternalHTML?: (
-            block: unknown,
-            editor: unknown,
-            context: { nestingLevel: number }
-          ) => { dom: HTMLElement } | undefined
-        }
-      }
-    >
-    const impl = specs[type].implementation
-
-    // The specs build real DOM, which only exists inside server-util's JSDOM.
-    await serverEditorForSchemaInspection()._withJSDOM(async () => {
-      const rendered = impl.render(block, null)
-      const external = impl.toExternalHTML?.(block, null, { nestingLevel: 0 })
-
-      expect(external).toBeDefined()
-      expect(rendered.dom.outerHTML).toBe(external!.dom.outerHTML)
-    })
-  })
-})
+// `render` is not presentation in the main process — BlockNote reaches it for
+// anything it serializes without a `toExternalHTML`, and one throw there makes
+// `yDocToMarkdown` return null so the note stops writing back entirely. That
+// property is asserted for every block AND inline spec, derived from the
+// exported type lists, in `packages/editor-schema/src/schema-contract.test.ts`
+// (`pnpm --filter @memry/editor-schema test`), next to the specs themselves.
+// What this file gates is the other half: the bytes the real converter writes.
 
 describe('custom inline content inside a table', () => {
   // BlockNote serializes inline content inside a table through the spec's
@@ -1273,6 +1309,22 @@ describe('custom inline content inside a table', () => {
     // ...and the cell holds the textual form, not the editor's rich markup
     expect(markdown).toContain(expected)
   })
+
+  it.each(INLINE_CASES)(
+    '$nodeName keeps its on-disk form in a table cell',
+    async ({ nodeName, attrs, text }) => {
+      // #given the same table-driven list the top-level round-trip uses, so a
+      // new inline spec is covered here too or the coverage gate above is red.
+      // A cell is the one place BlockNote reaches `render`, which is how a rich
+      // or throwing server implementation reaches the vault file.
+      const markdown = await tableMarkdown([{ type: nodeName, props: { ...attrs } }])
+
+      // #then the conversion succeeds at all (a throwing render returns null)…
+      expect(markdown).not.toBeNull()
+      // …and the cell holds the textual form, not the editor's rich markup
+      expect(markdown).toContain(text)
+    }
+  )
 
   it('a date mention keeps its token in a table cell', async () => {
     // #given
