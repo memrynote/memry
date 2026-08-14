@@ -104,6 +104,26 @@ Hover the gutter on the left to reveal the block handle. Drag a block to:
 - Reorder within the note
 - Move out into a different note (drop on a sidebar item or another open tab)
 
+## Selecting Text and Blocks
+
+Dragging that **starts inside a line** always selects text, however far it travels and in whatever direction. Dragging straight down across several paragraphs selects the text between the two points, exactly as dragging diagonally does.
+
+To select whole blocks instead, start the drag **outside the text column**:
+
+- the gray margin to the left or right of the column
+- the bullet or number in front of a list item
+- the strip to the left of an indented block
+- a block with no editable text of its own — a task, a file or a video
+- the empty area below the last block
+
+A selection box follows the pointer and every block it touches is highlighted, the same way selecting files works in a file manager. The box only appears once you have moved a few pixels, so a plain click in the margin still just puts the cursor at the end of the note.
+
+A bookmark card is the one exception: its whole surface is a link, so clicking it opens the link and a drag has to begin in the margin beside it instead.
+
+With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
+
+One consequence worth knowing: the empty space to the right of a short line still counts as that line's text, so the right-hand margin outside the column is the place to begin a right-side block selection.
+
 ## Saving
 
 Saves are **automatic and debounced** (default ~1 second). Changes also flush on:
