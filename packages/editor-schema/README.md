@@ -57,9 +57,31 @@ write-back cycles per fixture, byte-identical, no write) and
 `apps/desktop/src/renderer/src/components/note/content-area/wiki-link-collab-promotion.test.ts`
 (a real editor on a real Y.Doc promotes once and then stops).
 
-One shape does **not** converge and is tracked separately: a wiki link inside a
-longer marked phrase (`~~Cancelled: [[Meeting]]~~`) is rewritten once, to
-`~~Cancelled: ~~[[Meeting]]`. See #1439.
+### Where it does not hold: a wiki link that carries an inline mark
+
+The fixed point above is true of an _unmarked_ link. A link carrying bold,
+italic or strikethrough does not round-trip, because BlockNote's
+`CustomInlineContentFromConfig` has no `styles` field — the promotion has
+nowhere to put the mark, so it drops it. Measured on this branch, with the
+promotion step removed as a control:
+
+| on disk                      | after one open               | control (no promotion) |
+| ---------------------------- | ---------------------------- | ---------------------- |
+| `**[[Meeting]]**`            | `[[Meeting]]`                | unchanged              |
+| `~~[[Meeting]]~~`            | `[[Meeting]]`                | unchanged              |
+| `*[[A]]*`                    | `[[A]]`                      | unchanged              |
+| `~~Cancelled: [[Meeting]]~~` | `~~Cancelled: ~~[[Meeting]]` | unchanged              |
+
+The first three **delete the mark from the vault file**. The fourth is worse
+than it looks: GFM requires a closing `~~` not be preceded by whitespace, so
+`~~Cancelled: ~~` is strikethrough nowhere — the note ends up showing four
+literal tildes. Bold survives the same shape only because the serializer emits
+`&#x20;` entities around it; strike gets no such escape.
+
+Each is a single rewrite, not unbounded growth, and each is stable afterwards.
+Tracked as #1439. Until it is fixed, **"opening a note does not modify it" holds
+for unmarked links only** — do not read the contract above more widely than
+that.
 
 ## The gate
 

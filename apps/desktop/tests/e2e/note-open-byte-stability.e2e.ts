@@ -100,6 +100,11 @@ async function openInEditor(page, title: string): Promise<void> {
   await page.locator(SELECTORS.noteEditor).first().waitFor({ state: 'visible', timeout: 15_000 })
 }
 
+/** How many times write-back has run for this note so far. */
+async function getWritebackRuns(electronApp, noteId: string): Promise<number> {
+  return (await getWritebackDebugById(electronApp, noteId))?.performedCount ?? 0
+}
+
 /** Wait until write-back has actually run for this note at least `count` times. */
 async function waitForWritebackRuns(electronApp, noteId: string, count: number): Promise<void> {
   await expect
@@ -181,6 +186,11 @@ test.describe('Note open byte stability', () => {
       .poll(() => stripFrontmatter(fs.readFileSync(absPath, 'utf8')), { timeout: 20_000 })
       .toBe(stripFrontmatter(first.bytes))
     const afterFirstOpen = fs.readFileSync(absPath, 'utf8')
+    // `performedCount` lives in the MAIN process and is only cleared by
+    // `CrdtProvider.destroy()`, which a renderer reload does not trigger — so
+    // waiting for `>= 1` again would return immediately and this test would
+    // measure the first cycle twice. Capture the count and wait past it.
+    const runsAfterFirstOpen = await getWritebackRuns(electronAppA, first.id)
 
     // #when the app is reloaded and the note opened again — a cold open, with
     // the shared doc rebuilt from the CRDT store
@@ -188,7 +198,7 @@ test.describe('Note open byte stability', () => {
     await pageA.waitForLoadState('domcontentloaded')
     await waitForSyncOnline(pageA, 60_000)
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, first.id, 1)
+    await waitForWritebackRuns(electronAppA, first.id, runsAfterFirstOpen + 1)
 
     // #then the second cycle is a fixed point — whole file this time, since the
     // first open already settled the frontmatter
