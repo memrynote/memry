@@ -125,7 +125,6 @@
     "src/main/projections/projectors/search-projector.test.ts",
     "src/main/sync/attachments.test.ts",
     "src/main/sync/auth-retry.test.ts",
-    "src/main/sync/blocknote-converter.test.ts",
     "src/main/sync/certificate-pinning.test.ts",
     "src/main/sync/concurrency.test.ts",
     "src/main/sync/content-sync-base.test.ts",

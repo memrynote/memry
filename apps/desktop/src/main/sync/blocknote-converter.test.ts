@@ -20,12 +20,10 @@ import {
   MEMRY_BLOCK_TYPES,
   serializeBookmark,
   serializeCalloutBlock,
-  serializeFileBlock,
   serializeYoutubeEmbed
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
-import { serializeTaskBlock } from '@memry/shared/task-block'
 import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
@@ -249,7 +247,11 @@ describe('blocknote-converter code block language', () => {
     // #then
     expect(ok).toBe(true)
     expect(blocks).not.toBeNull()
-    const task = blocks!.find((b) => b.type === 'taskBlock')
+    // `yFragmentToBlocks` is typed against BlockNote's default block union, which
+    // has no `taskBlock` — the custom specs only exist at runtime here.
+    const task = (blocks as unknown as Array<{ type: string; props: unknown }>).find(
+      (b) => b.type === 'taskBlock'
+    )
     expect(task).toBeTruthy()
     expect(task!.props).toMatchObject({ taskId: 'abc-123', title: 'Buy milk', checked: false })
     expect(blocks!.some((b) => b.type === 'checkListItem')).toBe(false)
@@ -898,6 +900,82 @@ describe('custom inline nodes survive the CRDT write path', () => {
   )
 })
 
+/**
+ * The textual form each custom inline type takes on disk.
+ *
+ * Typed against `MEMRY_INLINE_CONTENT_TYPES`, so a new inline spec with no
+ * entry here fails `typecheck` before it fails a test.
+ */
+const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], string> = {
+  wikiLink: '[[Roadmap]]',
+  hashTag: '#roadmap',
+  linkMention: '((mention:https%3A%2F%2Fx.com))',
+  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))'
+}
+
+/** The block shapes a marker's own text can be sitting inside of. */
+const BLOCK_CONTEXTS: Array<[string, (form: string) => string]> = [
+  ['a bullet item', (f) => `- ${f}`],
+  ['a numbered item', (f) => `1. ${f}`],
+  ['a quote', (f) => `> ${f}`],
+  ['a heading', (f) => `# ${f}`],
+  ['a checklist item', (f) => `- [ ] ${f}`],
+  ['a code fence', (f) => ['```md', f, '```'].join('\n')],
+  ['mid-sentence', (f) => `See ${f} today.`],
+  ['a paragraph of its own', (f) => f]
+]
+
+describe('a custom spec must not claim the block its text sits in', () => {
+  // This is the gate for `parse`, and it is the one class the name/propSchema
+  // comparisons cannot see. A spec whose `parse` matches an element by its TEXT
+  // rather than by its own markup claims the whole <li>/<blockquote>/<td>, and
+  // the block around the marker is what gets lost. It has happened once already:
+  // wikiLink's editor `parse` promotes any element whose whole text reads
+  // `[[X]]` — a paste convenience — and sharing it into main's markdown importer
+  // destroyed the surrounding block in 13 of 78 fixtures.
+  //
+  // Derived from MEMRY_INLINE_CONTENT_TYPES on purpose: a new spec cannot opt
+  // out of this by simply not having a fixture written for it.
+  it('declares a textual form for every custom inline type', () => {
+    expect(Object.keys(INLINE_TEXT_FORMS).sort()).toEqual([...MEMRY_INLINE_CONTENT_TYPES].sort())
+  })
+
+  const cases = MEMRY_INLINE_CONTENT_TYPES.flatMap((type) =>
+    BLOCK_CONTEXTS.map(([context, wrap]) => [type, context, wrap(INLINE_TEXT_FORMS[type])] as const)
+  )
+
+  it.each(cases)('%s inside %s survives untouched', async (_type, _context, markdown) => {
+    // #given a vault note as it exists on disk today
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(ok).toBe(true)
+
+    // #when the converter reads and writes it back
+    // #then byte-identical — write-back byte-compares, so anything else rewrites
+    // the note in every vault on next open
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {
+    // #given a table whose first cell is nothing but the marker — the shape that
+    // makes a text-matching `parse` claim the whole <td>
+    const form = INLINE_TEXT_FORMS[type]
+    const markdown = `| ${form} | b |\n| --- | --- |\n| c | d |`
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then the table is still a table (the separator row's padding is
+    // normalized by remark on both sides of any change, so it is not asserted)
+    expect(result).toContain(form)
+    expect(result?.split('\n')).toHaveLength(3)
+    expect(result?.startsWith('|')).toBe(true)
+    expect(result).toContain('| d |')
+  })
+})
+
 describe('registering the custom specs does not rewrite existing markdown', () => {
   // Write-back byte-compares before writing, so any serialization drift here
   // rewrites every affected note in every vault on next open. The block-level
@@ -941,15 +1019,20 @@ describe('registering the custom specs does not rewrite existing markdown', () =
  * this table rather than being silently untested — the whole class of bug was
  * one spec nobody covered.
  *
- * The markdown is COMPUTED by the functions that write it in the renderer —
- * `serializeCalloutBlock`, `serializeYoutubeEmbed`, `serializeBookmark`,
- * `serializeFileBlock`, `serializeTaskBlock` — not spelled out as a literal.
- * That is deliberate: each block's on-disk form has two implementations (those
+ * `callout`, `youtubeEmbed` and `bookmark` COMPUTE their expected markdown from
+ * `serializeCalloutBlock` / `serializeYoutubeEmbed` / `serializeBookmark`. For
+ * those three the on-disk form genuinely has two implementations — those
  * functions, which the renderer's save path calls directly, and the hand-built
- * DOM in main's server spec, which BlockNote turns into markdown), and until
- * now they only happened to agree. Comparing main's real `yDocToMarkdown`
- * output against the renderer's serializer is what gates that agreement — a
- * literal on both sides would let either implementation drift alone.
+ * DOM in main's server spec that BlockNote turns into markdown — so comparing
+ * main's real output against the renderer's serializer gates their agreement.
+ *
+ * `file` and `taskBlock` spell the bytes out as LITERALS, because main
+ * serializes through the very same functions (`fileBlockCommentData` inside the
+ * file server spec, `serializeTaskBlock` inside the converter). Computing those
+ * expectations compares a function to itself: renaming the marker `file:` →
+ * `memry-file:` — a change that rewrites every note holding an attachment, in
+ * every vault — left this suite 104/104 green. Where there is only one
+ * implementation, the literal IS the contract.
  */
 const BLOCK_CASES = [
   {
@@ -993,12 +1076,14 @@ const BLOCK_CASES = [
   },
   {
     type: 'file',
-    markdown: serializeFileBlock({
-      url: 'memry-file://local/v/a/x.pdf',
-      name: 'x.pdf',
-      size: 1234,
-      mimeType: 'application/pdf'
-    }),
+    // Literal on purpose. `serializeFileBlock` is what MAIN serializes through
+    // (its server spec builds the comment from `fileBlockCommentData`), so
+    // computing the expectation from it would compare the function to itself:
+    // renaming the marker `file:` → `memry-file:` — which rewrites every note
+    // holding an attachment, in every vault — left this suite 104/104 green.
+    // The bytes below are the vault format; they are the contract.
+    markdown:
+      '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->',
     block: {
       id: 'blk',
       type: 'file',
@@ -1016,12 +1101,10 @@ const BLOCK_CASES = [
   },
   {
     type: 'taskBlock',
-    markdown: serializeTaskBlock({
-      taskId: 't1',
-      title: 'a task',
-      checked: false,
-      parentTaskId: ''
-    }),
+    // Literal for the same reason as `file`: the converter serializes task
+    // blocks through `serializeTaskBlock` itself (blocknote-converter.ts), so a
+    // computed expectation cannot fail.
+    markdown: '- [ ] a task {task:t1}',
     block: {
       id: 'blk',
       type: 'taskBlock',

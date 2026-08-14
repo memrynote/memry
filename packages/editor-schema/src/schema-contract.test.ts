@@ -259,6 +259,12 @@ describe('every server implementation emits exactly what it serializes', () => {
     expect(sorted(Object.keys(INLINE_FIXTURES))).toEqual(sorted(MEMRY_INLINE_CONTENT_TYPES))
   })
 
+  // A consistency check, not byte protection: every server spec currently
+  // passes the SAME function reference as both `render` and `toExternalHTML`,
+  // so this cannot catch the two going wrong together. What it does catch is
+  // them diverging — which is how `linkMention` came to serialize the editor's
+  // `<a>` chip into a table cell. The bytes themselves are gated against the
+  // real converter in `blocknote-converter.test.ts`.
   it.each(MEMRY_BLOCK_TYPES)('%s renders exactly what it serializes', (type) => {
     // #given
     const impl = serverBlockSpecs()[type].implementation
