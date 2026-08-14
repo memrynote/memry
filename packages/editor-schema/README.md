@@ -24,6 +24,43 @@ return `null` so the note stops writing back at all.
 Presentation stays with each process (main has no React). Everything that
 decides what reaches disk is shared.
 
+## The canonical form of a wiki link
+
+**In the CRDT it is a `wikiLink` NODE. On disk it is `[[target]]` TEXT.**
+
+The two ends reach that agreement from opposite directions, which is why it has
+to be stated rather than inferred:
+
+- **Main never parses `[[X]]`.** `WikiLinkSerializationOnly` carries no `parse`
+  rule, so the parser that seeds a note's shared Y.Doc from its vault file
+  (`crdt-provider.seedFromMarkdown` → `markdownToYFragment`) leaves the brackets
+  as plain text. It cannot do otherwise: the editor's `parse` rule promotes any
+  element whose whole text reads `[[X]]`, and in a markdown importer that
+  swallows the `<li>`, `<blockquote>` or `<td>` around the link.
+- **The renderer always promotes.** `normalizeWikiLinks`, called from
+  `use-editor-sync.ts`'s `handleChange`, is not gated on collaboration, so the
+  first change event after a note opens replaces the text with the node — and
+  that write lands in the shared doc through y-prosemirror.
+- **Write-back turns the node back into the same bytes** (`wikiLinkToText`).
+
+So a note's first open converts text → node exactly once, and the round trip is
+a fixed point from then on: a `wikiLink` node carries its target in props, so
+`[[` never reappears in the document and the normalizer stops matching. Opening
+a note does not modify it, which is both the user-visible contract and what
+protects Obsidian fidelity.
+
+Do not "fix" the asymmetry by giving main a `parse` rule or by dropping the
+renderer's promotion. Each end is the way it is for its own reason, and the
+convergence is gated by test —
+`apps/desktop/src/main/sync/note-open-byte-stability.test.ts` (five open →
+write-back cycles per fixture, byte-identical, no write) and
+`apps/desktop/src/renderer/src/components/note/content-area/wiki-link-collab-promotion.test.ts`
+(a real editor on a real Y.Doc promotes once and then stops).
+
+One shape does **not** converge and is tracked separately: a wiki link inside a
+longer marked phrase (`~~Cancelled: [[Meeting]]~~`) is rewritten once, to
+`~~Cancelled: ~~[[Meeting]]`. See #1439.
+
 ## The gate
 
 `src/schema-contract.test.ts` (`pnpm --filter @memry/editor-schema test`) checks
