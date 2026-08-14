@@ -64,15 +64,15 @@ function bookmarkDom(block: { props: { url: string } }): { dom: HTMLElement } {
  * else, which is the difference between `<!-- file:{…} -->` reaching the vault
  * file and `\<!-- file:...` doing so.
  */
-function fileDom(block: { props: Record<string, unknown> }): { dom: HTMLElement } {
+function fileDom(block: { props: Partial<FileBlockProps> }): { dom: HTMLElement } {
   const props: FileBlockProps = {
-    url: String(block.props.url ?? ''),
-    name: String(block.props.name ?? ''),
-    size: Number(block.props.size ?? 0),
-    mimeType: String(block.props.mimeType ?? ''),
-    width: Number(block.props.width ?? 0),
-    height: Number(block.props.height ?? 0),
-    align: block.props.align as FileBlockProps['align']
+    url: block.props.url ?? '',
+    name: block.props.name ?? '',
+    size: block.props.size ?? 0,
+    mimeType: block.props.mimeType ?? '',
+    width: block.props.width ?? 0,
+    height: block.props.height ?? 0,
+    align: block.props.align
   }
   const dom = document.createElement('div')
   dom.appendChild(document.createComment(fileBlockCommentData(props)))
