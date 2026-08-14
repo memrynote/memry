@@ -9,9 +9,13 @@ import {
   findUnrepresentableNodes
 } from './blocknote-converter'
 import * as Y from 'yjs'
+import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { serializeLinkMentionToken } from '@memry/editor-schema'
+import { createMemrySchema, serializeLinkMentionToken } from '@memry/editor-schema'
+import { MEMRY_BLOCK_TYPES } from '@memry/editor-schema/blocks'
+import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
+import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
   it('returns empty markdown for an empty Yjs fragment', async () => {
@@ -897,7 +901,17 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     '> [[Quoted]]',
     '- [ ] a task {task:t1}',
     '```ts\nconst x = "[[Roadmap]]"\n```',
-    '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.'
+    '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.',
+    // Callouts stay quote blocks on this path: their marker line carries a type
+    // and an optional title the callout schema cannot hold, so parsing them
+    // would rewrite `> [!note]` as `> [!info]` in every Obsidian vault.
+    '> [!info]\n> Heads up',
+    '> [!note]\n> An Obsidian type this schema has no value for',
+    '> [!info] A title on the marker line\n> and a body',
+    // A marker inside a fence is the author's text, not a marker.
+    '```md\n![bookmark](https://example.com)\n<!-- file:{"url":"u","name":"n","size":1,"mimeType":"m"} -->\n```',
+    // `![embed](…)` only becomes a video when there is a video to play.
+    '![embed](https://example.com/not-a-video)'
   ])('round-trips %j unchanged', async (markdown) => {
     // #given a vault note as it exists on disk today
     const doc = new Y.Doc()
@@ -907,6 +921,272 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     // #when write-back serializes it again
     // #then the bytes are the same, so nothing is written
     expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+})
+
+/**
+ * Every custom BLOCK type, with the markdown form it must serialize to and the
+ * block the renderer authors for it. A new block spec with no case here fails
+ * this table rather than being silently untested — the whole class of bug was
+ * one spec nobody covered.
+ *
+ * The markdown is the form already on disk today, read from the functions that
+ * write it: `serializeCalloutBlock`, `serializeYoutubeEmbed`,
+ * `serializeBookmark`, `serializeFileBlock` and `serializeTaskBlock`.
+ */
+const BLOCK_CASES = [
+  {
+    type: 'callout',
+    markdown: '> [!info]\n> Heads up',
+    block: {
+      id: 'blk',
+      type: 'callout',
+      props: { type: 'info', textAlignment: 'left', textColor: 'default' },
+      content: [{ type: 'text', text: 'Heads up', styles: {} }],
+      children: []
+    }
+  },
+  {
+    type: 'youtubeEmbed',
+    markdown: '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
+    block: {
+      id: 'blk',
+      type: 'youtubeEmbed',
+      props: { videoId: 'dQw4w9WgXcQ', videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+      children: []
+    }
+  },
+  {
+    type: 'bookmark',
+    markdown: '![bookmark](https://example.com/a)',
+    block: {
+      id: 'blk',
+      type: 'bookmark',
+      props: {
+        url: 'https://example.com/a',
+        domain: 'example.com',
+        title: '',
+        description: '',
+        image: '',
+        favicon: '',
+        siteName: ''
+      },
+      children: []
+    }
+  },
+  {
+    type: 'file',
+    markdown:
+      '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->',
+    block: {
+      id: 'blk',
+      type: 'file',
+      props: {
+        url: 'memry-file://local/v/a/x.pdf',
+        name: 'x.pdf',
+        size: 1234,
+        mimeType: 'application/pdf',
+        width: 0,
+        height: 0,
+        align: 'left'
+      },
+      children: []
+    }
+  },
+  {
+    type: 'taskBlock',
+    markdown: '- [ ] a task {task:t1}',
+    block: {
+      id: 'blk',
+      type: 'taskBlock',
+      props: { taskId: 't1', title: 'a task', checked: false, parentTaskId: '' },
+      children: []
+    }
+  }
+] as const
+
+function docHolding(block: unknown): Y.Doc {
+  const doc = new Y.Doc()
+  blocksToYFragment(
+    [block] as unknown as Parameters<typeof blocksToYFragment>[0],
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+  )
+  return doc
+}
+
+describe('custom blocks survive the CRDT write path', () => {
+  it.each(BLOCK_CASES.filter((c) => c.type !== 'taskBlock'))(
+    '$type survives markdown → doc → markdown unchanged',
+    async ({ markdown }) => {
+      // #given a vault note as it exists on disk today
+      const doc = new Y.Doc()
+      const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+      expect(ok).toBe(true)
+
+      // #when write-back serializes it again
+      // #then the bytes are identical, so nothing is written
+      expect(await yDocToMarkdown(doc)).toBe(markdown)
+    }
+  )
+
+  it.each(BLOCK_CASES)(
+    '$type serializes to its on-disk form without touching the doc',
+    async ({ block, markdown }) => {
+      // #given the doc the renderer produces when the user authors the block
+      const doc = docHolding(block)
+      const before = Y.encodeStateAsUpdate(doc)
+
+      // #when write-back serializes it
+      const result = await yDocToMarkdown(doc)
+
+      // #then the vault file gets the exact marker it holds today…
+      expect(result).toBe(markdown)
+      // …and the shared doc is untouched: y-prosemirror's answer to a node it
+      // cannot build is to DELETE it, which replicates to every other device.
+      expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+    }
+  )
+
+  it.each(BLOCK_CASES)('$type is representable by this build', ({ block }) => {
+    // #given / #when / #then — a name missing from the schema is a replicated
+    // delete, and write-back refuses the whole file when it sees one.
+    expect(findUnrepresentableNodes(docHolding(block))).toEqual([])
+  })
+
+  it.each(BLOCK_CASES)(
+    '$type keeps its marker nested under a list item',
+    async ({ block, markdown }) => {
+      // #given a block indented under a bullet. This path does NOT take the
+      // converter's top-level branch — it goes through the spec's own HTML,
+      // which is where a `render` that throws stops the note writing back.
+      const doc = docHolding({
+        id: 'parent',
+        type: 'bulletListItem',
+        props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default' },
+        content: [{ type: 'text', text: 'parent', styles: {} }],
+        children: [block]
+      })
+
+      // #when
+      const result = await yDocToMarkdown(doc)
+
+      // #then the conversion succeeds at all (a throwing render returns null)…
+      expect(result).not.toBeNull()
+      // …and the nested block still carries its own marker, not editor markup
+      expect(result).toContain('parent')
+      expect(result).toContain(markdown)
+    }
+  )
+})
+
+describe('custom blocks and table cells', () => {
+  // The inline specs have to survive a table cell because BlockNote serializes
+  // inline content through `render` there. Blocks cannot: a cell holds inline
+  // content only, so no block spec's `render` is reachable that way. That is a
+  // property of the schema, so it is proven rather than assumed — if a future
+  // BlockNote lets a block into a cell, this fails and the block specs need the
+  // same treatment the inline ones got.
+  it('a table cell admits inline content only, so no block spec renders inside one', () => {
+    const pmSchema = serverEditorForSchemaInspection().editor.pmSchema
+
+    for (const cellNode of ['tableCell', 'tableHeader', 'tableParagraph']) {
+      const content = pmSchema.nodes[cellNode]?.spec.content ?? ''
+      for (const blockType of MEMRY_BLOCK_TYPES) {
+        expect(content).not.toContain(blockType)
+      }
+    }
+  })
+
+  it.each(BLOCK_CASES)(
+    '$type serializes next to a table without breaking it',
+    async ({ block, markdown }) => {
+      // #given a note that holds both — the combination that made a throwing spec
+      // return null for the whole document rather than for one block
+      const doc = new Y.Doc()
+      blocksToYFragment(
+        [
+          block,
+          {
+            id: 'tbl',
+            type: 'table',
+            props: {},
+            children: [],
+            content: {
+              type: 'tableContent',
+              columnWidths: [null],
+              rows: [
+                {
+                  cells: [
+                    {
+                      type: 'tableCell',
+                      content: [{ type: 'text', text: 'x', styles: {} }],
+                      props: {
+                        colspan: 1,
+                        rowspan: 1,
+                        backgroundColor: 'default',
+                        textColor: 'default',
+                        textAlignment: 'left'
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ] as unknown as Parameters<typeof blocksToYFragment>[0],
+        doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+      )
+
+      // #when / #then
+      const result = await yDocToMarkdown(doc)
+      expect(result).not.toBeNull()
+      expect(result).toContain(markdown)
+    }
+  )
+})
+
+/**
+ * The same schema `blocknote-converter` builds, in an editor of its own, purely
+ * so a test can look at the ProseMirror schema and call the specs directly.
+ */
+function serverEditorForSchemaInspection(): ServerBlockNoteEditor {
+  return ServerBlockNoteEditor.create({
+    schema: createMemrySchema({
+      blocks: createServerBlockSpecs(),
+      inline: createServerInlineSpecs()
+    })
+  }) as ServerBlockNoteEditor
+}
+
+describe('server block specs never present anything render-only', () => {
+  // `render` is not presentation in the main process: BlockNote reaches it for
+  // anything it serializes without a `toExternalHTML`, and one throw there makes
+  // `yDocToMarkdown` return null — the note stops writing back entirely. So the
+  // two have to be the same DOM, and neither may throw.
+  it.each(BLOCK_CASES)('$type renders exactly what it serializes', async ({ block, type }) => {
+    const specs = createServerBlockSpecs() as unknown as Record<
+      string,
+      {
+        implementation: {
+          render: (block: unknown, editor: unknown) => { dom: HTMLElement }
+          toExternalHTML?: (
+            block: unknown,
+            editor: unknown,
+            context: { nestingLevel: number }
+          ) => { dom: HTMLElement } | undefined
+        }
+      }
+    >
+    const impl = specs[type].implementation
+
+    // The specs build real DOM, which only exists inside server-util's JSDOM.
+    await serverEditorForSchemaInspection()._withJSDOM(async () => {
+      const rendered = impl.render(block, null)
+      const external = impl.toExternalHTML?.(block, null, { nestingLevel: 0 })
+
+      expect(external).toBeDefined()
+      expect(rendered.dom.outerHTML).toBe(external!.dom.outerHTML)
+    })
   })
 })
 
@@ -1011,5 +1291,112 @@ describe('custom inline content inside a table', () => {
     // #then
     expect(markdown).not.toBeNull()
     expect(markdown).toContain(serializeDateMentionToken(props))
+  })
+})
+
+describe('custom block markers are not claimed out of context', () => {
+  const FENCE3 = '`'.repeat(3)
+  const FENCE4 = '`'.repeat(4)
+  const FILE_MARKER =
+    '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return await yDocToMarkdown(doc)
+  }
+
+  it('a marker quoted inside a nested code fence stays text', async () => {
+    // #given a note documenting the marker format — a four-backtick fence
+    // wrapping a three-backtick one. A fence tracker that only toggles on
+    // /^```/ reads the inner fence as the closing one, and everything after it
+    // as live markdown: the code block is torn in two and the *example* marker
+    // becomes a real file block pointing at a PDF.
+    const markdown = `How the marker looks:\n\n${FENCE4}md\n${FENCE3}\n${FILE_MARKER}\n${FENCE3}\n${FENCE4}\n\nThat is all.`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then
+    expect(result).toBe(markdown)
+  })
+
+  it('a tilde fence does not close a backtick fence', async () => {
+    // #given ~~~ inside a ``` block is content, not a delimiter
+    const markdown = `${FENCE3}md\n~~~\n${FILE_MARKER}\n~~~\n${FENCE3}`
+
+    // #when / #then
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
+  it('keeps a block-colour marker that follows a nested fence', async () => {
+    // #given colours are parsed on a path that predates custom blocks. Guarding
+    // it on fence state made a marker after a fence the tracker read wrong
+    // vanish from the vault file — data loss on a path this work never touched.
+    const markdown = `${FENCE4}\n${FENCE3}\n${FENCE4}\n\n<!-- colors:{"backgroundColor":"blue"} -->\ntinted`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the colour survives (the fence's language tag is normalized by
+    // remark on both sides of this change, so compare the part that matters)
+    expect(result).toContain('<!-- colors:{"backgroundColor":"blue"} -->\ntinted')
+  })
+
+  it('leaves an embed marker indented under a list item nested', async () => {
+    // #given the renderer matches the two image markers on the RAW line, so a
+    // marker indented under a list item is content. Trimming first claims it
+    // and the nesting is lost — the same file would then parse to a different
+    // document depending on which process read it.
+    const markdown = '- item\n\n  ![embed](https://youtu.be/dQw4w9WgXcQ)'
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the nesting marker is still there
+    expect(result).toContain('block-nesting-level=1')
+  })
+
+  it('leaves a real image whose alt text happens to be bookmark alone', async () => {
+    // #given someone's screenshot, not a bookmark card. The embed branch has
+    // extractYouTubeVideoId for this; the bookmark branch needs its own check.
+    const markdown = '![bookmark](assets/photo.png)'
+
+    // #when / #then
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
+  // HTML closes a comment on `-->` and on `--!>` (the spec's comment-end-bang
+  // state). Either one inside the payload splits the marker and spills the rest
+  // of the JSON into the note as a paragraph — a file named `a-->b.pdf` is
+  // enough. Only the `>` is escaped: escaping every `--` would change the bytes
+  // of every marker whose filename contains one.
+  it.each([['a-->b.pdf'], ['a--!>b.pdf'], ['a--b--c.pdf']])(
+    'a file named %s survives the marker round-trip',
+    (name) => {
+      // #given
+      const props = { url: 'memry-file://x/y.pdf', name, size: 5, mimeType: 'application/pdf' }
+
+      // #when
+      const marker = `<!--${fileBlockCommentData(props as never)}-->`
+
+      // #then exactly one terminator — the one that closes the marker
+      expect(marker.match(/--!?>/g)).toHaveLength(1)
+      expect(parseFileBlockMarker(marker)).toMatchObject({ name })
+    }
+  )
+
+  it('does not scan quadratically over a line that only looks like a marker', () => {
+    // #given note bodies arrive over sync, so an unanchored scan here is
+    // reachable input. Unanchored this took 392ms at 8k repetitions.
+    const decoy = '<!-- file:{'.repeat(8000)
+
+    // #when
+    const started = performance.now()
+    const parsed = parseFileBlockMarker(decoy)
+
+    // #then rejected, and in constant-ish time rather than seconds
+    expect(parsed).toBeNull()
+    expect(performance.now() - started).toBeLessThan(50)
   })
 })

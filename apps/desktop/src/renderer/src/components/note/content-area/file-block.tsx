@@ -9,6 +9,7 @@ import { getI18n } from 'react-i18next'
 import { useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createReactBlockSpec } from '@blocknote/react'
+import { fileBlockConfig } from '@memry/editor-schema/blocks'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -31,7 +32,7 @@ import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
 import type { FileBlockProps } from './file-block-markers'
 
-export { FILE_BLOCK_REGEX, parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
+export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
 export type { FileBlockProps } from './file-block-markers'
 
 // Configure PDF.js worker
@@ -684,24 +685,13 @@ function FileBlockRender({
   )
 }
 
-export const createFileBlock = createReactBlockSpec(
-  {
-    type: 'file',
-    propSchema: {
-      url: { default: '' },
-      name: { default: '' },
-      size: { default: 0 },
-      mimeType: { default: '' },
-      width: { default: 0 },
-      height: { default: 0 },
-      align: { default: 'left' as const, values: ['left', 'center', 'right'] as const }
-    },
-    content: 'none'
-  },
-  {
-    render: FileBlockRender
-  }
-)
+// Type/props/content come from the shared config so this block and the main
+// process's headless twin cannot disagree. `file` is the one that shadows a
+// BlockNote DEFAULT block: before the config was shared, main built the default
+// spec and silently dropped size/mimeType/width/height/align on the way to disk.
+export const createFileBlock = createReactBlockSpec(fileBlockConfig, {
+  render: FileBlockRender
+})
 
 // ============================================================================
 // File Block Serialization Helpers

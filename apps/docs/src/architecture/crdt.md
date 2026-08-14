@@ -323,6 +323,25 @@ plain markdown link and its domain, title, favicon and site name are gone. Every
 Whatever still cannot be represented is caught by the fail-closed guard in
 [Markdown Write-Back](#markdown-write-back).
 
+The custom **blocks** — `callout`, `youtubeEmbed`, `bookmark`, `file` and `taskBlock` — work
+the same way. `file` is worth calling out: the renderer overrides BlockNote's default `file`
+spec, so before the config was shared the main process built the _default_ one and wrote
+`[name.pdf](url)` where the vault file held `<!-- file:{…} -->`, dropping size, MIME type and
+any width/height/alignment.
+
+Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
+(`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is
+present — so the `<!-- file:… -->`, `![embed](…)` and `![bookmark](…)` marker lines are
+recognised there, using the same rules the renderer uses on its own save path. Markers
+inside a code fence are the author's text and stay text; the fence tracker follows
+CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
+
+Callouts are deliberately **not** parsed back. Their marker carries a type and an optional
+title that the block config cannot hold, and the renderer's parser coerces any unrecognised
+type to `info`. Parsing them on this path would rewrite `> [!note]` as `> [!info]` in every
+Obsidian-authored vault, so a callout read from a file stays a quote block and its bytes stay
+untouched. A callout created in the editor round-trips through the live document normally.
+
 ## Files Worth Knowing
 
 ```

@@ -7,7 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./inline": "./src/inline/index.ts",
-    "./blocks": "./src/blocks/configs.ts",
+    "./blocks": "./src/blocks/index.ts",
     "./server": "./src/server.ts"
   },
   "types": "./src/index.ts",
