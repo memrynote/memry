@@ -1,7 +1,6 @@
-import { createInlineContentSpec } from '@blocknote/core'
+import { createDateMentionSpec } from '@memry/editor-schema/inline'
 import { isSameWeek, addWeeks, subWeeks } from 'date-fns'
 import {
-  serializeDateMentionToken,
   type DateMentionData,
   type DateMentionDateFormat,
   type DateMentionTimeFormat,
@@ -150,61 +149,18 @@ export function createDateMentionContent(data: DateMentionData) {
   }
 }
 
-export const DateMention = createInlineContentSpec(
-  {
-    type: 'dateMention',
-    propSchema: {
-      anchorId: { default: '' },
-      dateISO: { default: '' },
-      hasTime: { default: false },
-      dateFormat: { default: 'relative' },
-      remind: { default: 'none' },
-      timeFormat: { default: 'system' }
-    },
-    content: 'none'
-  },
-  {
-    render: (inlineContent) => {
-      const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = inlineContent.props
-      const dom = createDateMentionPillDom({
-        anchorId,
-        dateISO,
-        hasTime,
-        dateFormat: dateFormat as DateMentionDateFormat,
-        remind: remind as RemindOffset,
-        timeFormat: timeFormat as DateMentionTimeFormat
-      })
-      return { dom }
-    },
-
-    parse: (element) => {
-      if (!element.hasAttribute('data-date-mention')) return undefined
-      const anchorId = element.getAttribute('data-anchor-id') || ''
-      const dateISO = element.getAttribute('data-date-iso') || ''
-      if (!anchorId || !dateISO) return undefined
-      return {
-        anchorId,
-        dateISO,
-        hasTime: element.getAttribute('data-has-time') === 'true',
-        dateFormat: (element.getAttribute('data-date-format') ||
-          'relative') as DateMentionDateFormat,
-        remind: (element.getAttribute('data-remind') || 'none') as RemindOffset,
-        timeFormat: (element.getAttribute('data-time-format') || 'system') as DateMentionTimeFormat
-      }
-    },
-
-    toExternalHTML: (inlineContent) => {
-      const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = inlineContent.props
-      const dom = document.createElement('span')
-      dom.textContent = serializeDateMentionToken({
-        anchorId,
-        dateISO,
-        hasTime,
-        dateFormat: dateFormat as DateMentionDateFormat,
-        remind: remind as RemindOffset,
-        timeFormat: timeFormat as DateMentionTimeFormat
-      })
-      return { dom }
-    }
-  }
-)
+// Presentation only — the pill formats against the user's week-start and clock
+// settings, which are renderer state. The config, `parse` and `toExternalHTML`
+// live in @memry/editor-schema so the main process registers the same node.
+export const DateMention = createDateMentionSpec((inlineContent) => {
+  const { anchorId, dateISO, hasTime, dateFormat, remind, timeFormat } = inlineContent.props
+  const dom = createDateMentionPillDom({
+    anchorId,
+    dateISO,
+    hasTime,
+    dateFormat: dateFormat as DateMentionDateFormat,
+    remind: remind as RemindOffset,
+    timeFormat: timeFormat as DateMentionTimeFormat
+  })
+  return { dom }
+})

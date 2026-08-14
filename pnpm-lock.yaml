@@ -254,6 +254,9 @@ importers:
       '@memry/domain-tasks':
         specifier: workspace:*
         version: link:../../packages/domain-tasks
+      '@memry/editor-schema':
+        specifier: workspace:*
+        version: link:../../packages/editor-schema
       '@memry/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -1082,6 +1085,22 @@ importers:
         version: link:../typescript-config
 
   packages/domain-tasks:
+    devDependencies:
+      '@memry/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+
+  packages/editor-schema:
+    dependencies:
+      '@blocknote/code-block':
+        specifier: ^0.47.1
+        version: 0.47.1(@blocknote/core@0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4))
+      '@blocknote/core':
+        specifier: ^0.47.1
+        version: 0.47.1(patch_hash=3449fe80e8250449972daaa5e90945cc40086f945ac0ed30c6a3f0d8d89a9848)(@types/hast@3.0.4)
+      '@memry/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*

@@ -9,7 +9,7 @@ import {
 } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import { randomUUID } from 'node:crypto'
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
@@ -101,14 +101,57 @@ export async function yDocToMarkdown(
   fragmentName = CRDT_FRAGMENT_NAME
 ): Promise<string | null> {
   try {
+    // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
+    // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
+    // the live doc, turns a serialization gap into replicated data loss. Read
+    // from a detached copy so this path can only ever read.
+    const snapshot = new Y.Doc()
+    Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     const editor = getEditor()
-    const fragment = doc.getXmlFragment(fragmentName)
-    const blocks = editor.yXmlFragmentToBlocks(fragment)
+    const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
     if (blocks.length === 0) return ''
     return await blocksToMarkdownPreserving(editor, blocks as Block[])
   } catch (err) {
     log.error('Yjs-to-markdown conversion failed', err)
     return null
+  }
+}
+
+/**
+ * Node names in the CRDT fragment that this build's schema cannot construct.
+ *
+ * y-prosemirror answers an unknown node name by DELETING the element
+ * (`createNodeFromYElement`, dist/y-prosemirror.cjs:878-885), so a doc holding
+ * one can only ever serialize to markdown that is missing it. Callers use this
+ * to refuse the write rather than persist the loss.
+ *
+ * The oracle is the ProseMirror schema itself, not a hand-written list: node
+ * names are not block type names, and a list would miss the ones that never
+ * appear in `blockSchema` (a table expands into `tableRow` / `tableCell` /
+ * `tableHeader` / `tableParagraph`) — flagging those would strand every note
+ * with a table. Reads only; never mutates `doc`.
+ */
+export function findUnrepresentableNodes(doc: Y.Doc, fragmentName = CRDT_FRAGMENT_NAME): string[] {
+  try {
+    const known = getEditor().editor.pmSchema.nodes
+    const unknown = new Set<string>()
+    const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+      for (const child of node.toArray()) {
+        const el = child as Y.XmlElement
+        // Y.XmlText carries no nodeName — its runs are marks, and the schema
+        // holds every mark both processes use.
+        if (typeof el.nodeName !== 'string') continue
+        if (!(el.nodeName in known)) unknown.add(el.nodeName)
+        visit(el)
+      }
+    }
+    visit(doc.getXmlFragment(fragmentName))
+    return [...unknown]
+  } catch (err) {
+    // A schema this broken also fails `yDocToMarkdown`, whose null return keeps
+    // the file anyway. Reporting "nothing unknown" here can't cause a write.
+    log.error('Unrepresentable-node scan failed', err)
+    return []
   }
 }
 
