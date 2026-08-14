@@ -1,4 +1,3 @@
-import { defaultBlockSpecs } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
@@ -15,8 +14,10 @@ import { DateMention } from './date-mention'
 // from the factory; only the two whose presentation needs renderer state
 // (tag palette, clock/week-start settings) are passed in.
 export const editorSchema = createMemrySchema({
+  // No `...defaultBlockSpecs` here: the factory already spreads them, and
+  // respreading them after it would put BlockNote's plain `codeBlock` back over
+  // the syntax-highlighting one the factory installs. Pass overrides only.
   blocks: {
-    ...defaultBlockSpecs,
     file: createFileBlock(),
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
