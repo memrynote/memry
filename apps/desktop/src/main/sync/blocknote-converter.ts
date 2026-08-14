@@ -1,7 +1,14 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
+import {
+  BOOKMARK_LINE_REGEX,
+  EMBED_LINE_REGEX,
+  FILE_BLOCK_LINE_REGEX,
+  parseFileBlockMarker
+} from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
+import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { randomUUID } from 'node:crypto'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
@@ -389,20 +396,90 @@ async function parseContentWithColorMarkers(
     buffer = []
   }
 
+  let insideFence = false
+
   for (const line of text.split('\n')) {
-    if (BLOCK_COLORS_LINE_REGEX.test(line.trim())) {
-      const colors = parseBlockColorsMarker(line.trim())
+    const trimmed = line.trim()
+    // A marker inside a code fence is the author's text, not a marker.
+    if (CODE_FENCE_LINE_REGEX.test(trimmed)) insideFence = !insideFence
+
+    if (!insideFence && BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
+      const colors = parseBlockColorsMarker(trimmed)
       if (colors) {
         await flushBuffer()
         pendingColors = colors
         continue
       }
     }
+
+    const marker = insideFence ? null : parseCustomBlockMarkerLine(trimmed)
+    if (marker) {
+      await flushBuffer()
+      pendingColors = null
+      blocks.push(marker)
+      continue
+    }
+
     buffer.push(line)
   }
   await flushBuffer()
 
   return blocks
+}
+
+const CODE_FENCE_LINE_REGEX = /^(?:```|~~~)/
+
+/**
+ * The three custom blocks whose on-disk form is a single marker line.
+ *
+ * Without this, the main process — which is what seeds a note's shared Y.Doc
+ * from the vault file — parses each marker as something else and the block is
+ * gone before the editor ever sees it: `<!-- file:{…} -->` is dropped outright
+ * (an HTML comment BlockNote has no block for), and both `![…](url)` markers
+ * become plain image blocks pointing at a page rather than an image.
+ *
+ * The renderer's own parser does exactly this (`splitByEmbedMarkers` in
+ * markdown-utils.ts); it only ever runs on the non-collaborative path, so this
+ * is the same rule applied where the collaborative path actually parses.
+ *
+ * Callouts deliberately have no case here. Their marker line carries a type and
+ * an optional title that this schema cannot hold — `> [!note]` and `> [!tip]`
+ * are not among the four values `calloutConfig` allows, and a title after the
+ * marker moves onto its own line on the way back out. Parsing them would
+ * rewrite `> [!note]` as `> [!info]` in every Obsidian vault; left alone they
+ * stay quote blocks and their bytes stay untouched.
+ */
+function parseCustomBlockMarkerLine(line: string): Block | null {
+  if (FILE_BLOCK_LINE_REGEX.test(line)) {
+    const props = parseFileBlockMarker(line)
+    if (props) return { type: 'file', props } as unknown as Block
+  }
+
+  const embed = line.match(EMBED_LINE_REGEX)
+  if (embed) {
+    const videoId = extractYouTubeVideoId(embed[1])
+    // A non-YouTube `![embed](…)` has no video to play; it stays an image.
+    if (videoId) {
+      return { type: 'youtubeEmbed', props: { videoId, videoUrl: embed[1] } } as unknown as Block
+    }
+  }
+
+  const bookmark = line.match(BOOKMARK_LINE_REGEX)
+  if (bookmark) {
+    const url = bookmark[1]
+    return { type: 'bookmark', props: { url, domain: bookmarkDomain(url) } } as unknown as Block
+  }
+
+  return null
+}
+
+/** Display-only host label; never reaches the vault file. */
+function bookmarkDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '')
+  } catch {
+    return url
+  }
 }
 
 async function blocksToMarkdownPreserving(

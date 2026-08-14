@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
+import { youtubeEmbedConfig } from '@memry/editor-schema/blocks'
 import { Play } from '@/lib/icons'
 import { getYouTubeThumbnailUrl, getYouTubeEmbedUrl } from '@/lib/youtube-utils'
 import { useT } from '@memry/i18n/renderer'
@@ -34,7 +35,7 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
       />
       <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
         <div className="flex items-center justify-center size-14 rounded-full bg-red-600 group-hover:bg-red-500 transition-colors shadow-lg">
-          <Play className="size-6 text-white ml-0.5" />
+          <Play className="size-6 text-white ms-0.5" />
         </div>
       </div>
     </button>
@@ -76,22 +77,10 @@ function YoutubeEmbedBlockRender({
   )
 }
 
-export const createYoutubeEmbedBlock = createReactBlockSpec(
-  {
-    type: 'youtubeEmbed' as const,
-    propSchema: {
-      videoId: { default: '' },
-      videoUrl: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: YoutubeEmbedBlockRender
-  }
-)
+// Type/props/content and the `![embed](url)` on-disk form come from the shared
+// package so the main process registers the same node and writes the same bytes.
+export const createYoutubeEmbedBlock = createReactBlockSpec(youtubeEmbedConfig, {
+  render: YoutubeEmbedBlockRender
+})
 
-export const EMBED_BLOCK_REGEX = /!\[embed\]\(([^)]+)\)/g
-
-export function serializeYoutubeEmbed(videoUrl: string): string {
-  return `![embed](${videoUrl})`
-}
+export { EMBED_BLOCK_REGEX, serializeYoutubeEmbed } from '@memry/editor-schema/blocks'
