@@ -4,6 +4,9 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 
 const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
+  findUnrepresentableNodes: vi.fn(),
+  trackMainError: vi.fn(),
+  trackMainLog: vi.fn(),
   getNoteCacheById: vi.fn(),
   getNoteCacheByPath: vi.fn(),
   getNoteMetadataById: vi.fn(),
@@ -61,7 +64,13 @@ vi.mock('./crdt-provider', () => ({
 }))
 
 vi.mock('./blocknote-converter', () => ({
-  yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args)
+  yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args),
+  findUnrepresentableNodes: (...args: unknown[]) => mocks.findUnrepresentableNodes(...args)
+}))
+
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
+  trackMainLog: (...args: unknown[]) => mocks.trackMainLog(...args)
 }))
 
 vi.mock('@memry/shared/utc', () => ({
@@ -141,6 +150,7 @@ import {
   scheduleWriteback,
   wasRecentNetworkUpdate
 } from './crdt-writeback'
+import { resetTelemetryThrottle } from '../telemetry/throttle'
 
 function makeDoc(title = 'Synced title', tags: string[] = []): Y.Doc {
   const doc = new Y.Doc()
@@ -156,8 +166,12 @@ describe('crdt writeback', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     vi.clearAllMocks()
+    // Module-level and keyed per note; the fixed fake clock means a second test
+    // reusing a note id would otherwise land inside the first one's window.
+    resetTelemetryThrottle()
     mocks.sent = []
     mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
+    mocks.findUnrepresentableNodes.mockReturnValue([])
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Existing.md',
@@ -256,6 +270,65 @@ describe('crdt writeback', () => {
       performedCount: 1,
       lastMarkdown: 'updated markdown'
     })
+  })
+
+  it('keeps the file and reports when the doc holds a node the schema cannot represent', async () => {
+    // #given the live doc carries an inline node this build has no spec for
+    mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the vault file is left exactly as the user last saw it — a lossy
+    // serialization written here would be the permanent copy
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.yDocToMarkdown).not.toHaveBeenCalled()
+    expect(mocks.maybeCreateSignificantSnapshot).not.toHaveBeenCalled()
+    expect(mocks.syncNoteToCache).not.toHaveBeenCalled()
+    expect(mocks.trackMainLog).toHaveBeenCalledWith(
+      'error',
+      expect.objectContaining({
+        scope: 'CrdtWriteback',
+        action: 'writeback_unrepresentable_node',
+        errorCode: 'wikiLink'
+      })
+    )
+  })
+
+  it('resumes writing back once the doc is representable again', async () => {
+    // #given a pass that was refused
+    mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+
+    // #when the next edit leaves nothing unrepresentable
+    mocks.findUnrepresentableNodes.mockReturnValue([])
+    scheduleWriteback('note-1', makeDoc('Later title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the refusal did not latch — the note writes normally
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+  })
+
+  it('reports and keeps the stale file when conversion returns null', async () => {
+    // #given the serializer failed outright
+    mocks.yDocToMarkdown.mockResolvedValue(null)
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.trackMainLog).toHaveBeenCalledWith(
+      'error',
+      expect.objectContaining({ scope: 'CrdtWriteback', action: 'conversion_null' })
+    )
   })
 
   it('keeps no debug state (and no note markdown) outside test mode', async () => {

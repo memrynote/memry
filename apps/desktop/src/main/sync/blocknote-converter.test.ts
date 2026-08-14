@@ -5,7 +5,8 @@ import {
   blocksToYFragment,
   markdownToYFragment,
   yFragmentToBlocks,
-  repairEmptyBlockIds
+  repairEmptyBlockIds,
+  findUnrepresentableNodes
 } from './blocknote-converter'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
@@ -673,5 +674,69 @@ describe('blocknote-converter export path never mutates the live doc', () => {
     await yDocToMarkdown(doc)
 
     expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+})
+
+describe('findUnrepresentableNodes', () => {
+  function seedUnknownInlineNode(nodeName: string): Y.Doc {
+    const doc = new Y.Doc()
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const unknown = new Y.XmlElement(nodeName)
+    unknown.setAttribute('target', 'Roadmap')
+    para.insert(0, [unknown])
+    block.insert(0, [para])
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [block])
+    return doc
+  }
+
+  it('names the inline node type the server schema cannot build', () => {
+    // #given a doc holding a renderer-only inline node
+    const doc = seedUnknownInlineNode('wikiLink')
+
+    // #when
+    const unknown = findUnrepresentableNodes(doc)
+
+    // #then
+    expect(unknown).toEqual(['wikiLink'])
+  })
+
+  it('reports nothing for content this build can serialize, tables included', async () => {
+    // #given the node names a real vault note produces — tables expand into
+    // tableRow/tableCell/tableHeader/tableParagraph, none of which are block
+    // types, so a hand-written "known types" list would flag them
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(
+      '| a | b |\n| --- | --- |\n| 1 | 2 |\n\n> quote\n\n- [ ] a task {task:t1}\n\n```ts\nconst x = 1\n```\n',
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    expect(ok).toBe(true)
+
+    // #when
+    const unknown = findUnrepresentableNodes(doc)
+
+    // #then
+    expect(unknown).toEqual([])
+  })
+
+  it('reads without mutating the doc', () => {
+    // #given
+    const doc = seedUnknownInlineNode('wikiLink')
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when
+    findUnrepresentableNodes(doc)
+
+    // #then
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  it('reports an empty doc as representable', () => {
+    // #given a note that has never been edited
+    const doc = new Y.Doc()
+
+    // #when / #then
+    expect(findUnrepresentableNodes(doc)).toEqual([])
   })
 })

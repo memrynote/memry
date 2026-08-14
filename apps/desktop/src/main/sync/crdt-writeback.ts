@@ -3,7 +3,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { yDocToMarkdown } from './blocknote-converter'
+import { findUnrepresentableNodes, yDocToMarkdown } from './blocknote-converter'
 import { emitNoteUpdated } from './note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
 import { utcNow } from '@memry/shared/utc'
@@ -398,6 +398,32 @@ function resolveFromCanonicalMetadata(
 }
 
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+  // Fail closed. If the doc holds a node type this build has no schema spec
+  // for, every serialization of it is missing that node — writing the result
+  // would make the loss the file's permanent content, and the next index pass
+  // would push it to every other device. Keeping the file costs the user a
+  // stale body until a build that knows the type runs; writing costs them the
+  // content. Checked before serializing, since the answer decides nothing else.
+  const unrepresentable = findUnrepresentableNodes(doc)
+  if (unrepresentable.length > 0) {
+    updateDebugState(noteId, {
+      pending: false,
+      lastError: `unrepresentable: ${unrepresentable.join(',')}`
+    })
+    log.error('Doc holds node types this build cannot serialize, keeping the file', {
+      noteId,
+      nodes: unrepresentable
+    })
+    if (shouldEmitThrottled(`writeback_unrepresentable:${noteId}`)) {
+      trackMainLog('error', {
+        scope: 'CrdtWriteback',
+        action: 'writeback_unrepresentable_node',
+        errorCode: unrepresentable.join(',')
+      })
+    }
+    return
+  }
+
   const plainMarkdown = await yDocToMarkdown(doc)
   const markdown =
     plainMarkdown === null
