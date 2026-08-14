@@ -205,6 +205,45 @@ test.describe('Block marquee selection', () => {
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
 
+  test('regression: vertical drag inside text selects text, never blocks', async ({ page }) => {
+    // #1441: the reported bug. Pressing inside a line and dragging straight down
+    // used to flip into a block selection and destroy the text selection the
+    // user was building — while the same press dragged down-and-right selected
+    // text. Mirror image of expectNoNativeTextSelection: this gesture must leave
+    // a real native selection behind and no marquee at all.
+    await createNote(page, `Marquee Vertical Text ${Date.now()}`)
+    await focusEditor(page)
+    await typeBlocks(page, [
+      'First paragraph of the vertical drag regression',
+      'Second paragraph of the vertical drag regression',
+      'Third paragraph of the vertical drag regression'
+    ])
+    await page.waitForTimeout(400)
+
+    expect(await getBlockCount(page)).toBeGreaterThanOrEqual(3)
+
+    const first = await getBlockBox(page, 0)
+    const third = await getBlockBox(page, 2)
+
+    // Start a few characters into the first line and end inside the third,
+    // with no horizontal travel whatsoever.
+    const startX = first.x + Math.min(60, first.width / 2)
+    const startY = first.y + first.height / 2
+    const endY = third.y + third.height / 2
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX, endY, { steps: 14 })
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+
+    await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
+    await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
+
+    const selectedText = await page.evaluate(() => window.getSelection()?.toString() ?? '')
+    expect(selectedText.length).toBeGreaterThan(0)
+  })
+
   test('regression: single click in block does NOT trigger marquee', async ({ page }) => {
     await createNote(page, `Marquee Click ${Date.now()}`)
     await focusEditor(page)

@@ -1,10 +1,13 @@
 /**
  * Marquee hit-testing — one home for "what did this press land on?".
  *
- * Two call sites ask a location question about a mousedown in the editor:
+ * Three call sites ask a location question about a mousedown in the editor:
  *
  *   - the marquee selection hook: "may this press start a marquee at all?"
  *     (`shouldStartMarquee`)
+ *   - the same hook, once that is settled: "is there selectable text at this
+ *     press?" (`hasSelectableTextAt`) — the gate that stops a marquee starting
+ *     from inside a line of text
  *   - the note page's and the journal page's click-to-focus-end handlers:
  *     "is this press outside every block?" (`isOutsideAllBlocks`)
  *
@@ -12,11 +15,8 @@
  * hook and both pages, where two of the copies were byte-identical and the
  * third was a different rule entirely. Co-locating them is the point: they are
  * deliberately NOT the same test, and the only way that stays deliberate rather
- * than accidental is for a change to one to sit next to the other.
- *
- * #1444 adds a third question here — "is there selectable text at this press?",
- * the gate that stops a marquee starting from inside a line of text. Read
- * `isOutsideAllBlocks` below before assuming it can answer that one too.
+ * than accidental is for a change to one to sit next to the other. The last two
+ * in particular sound like one question and answer differently on a task block.
  *
  * This module is pure DOM inspection — no editor, no React, no state. Every
  * function takes the raw `event.target` and answers from ancestry alone.
@@ -24,6 +24,9 @@
 
 /** BlockNote's block content element: the box a single block's content lives in. */
 const BLOCK_CONTENT_SELECTOR = '.bn-block-content'
+
+/** BlockNote's inline content element: the run of editable text inside a block. */
+const INLINE_CONTENT_SELECTOR = '.bn-inline-content'
 
 /**
  * Is this press outside every block — i.e. in the margin, the gutter, or the
@@ -49,13 +52,14 @@ const BLOCK_CONTENT_SELECTOR = '.bn-block-content'
  *
  * ## Why the marquee start rule (#1444) cannot reuse this
  *
- * "Outside every block" and "no selectable text here" sound like the same
- * question and have different answers. A task block sits inside
- * `.bn-block-content` but holds no editable text at all, so answering the
- * marquee question with this predicate would classify a press on a task row as
- * "inside a block" and refuse to start a marquee there — and answering THIS
- * question with the marquee's predicate would classify a click on a task row
- * as "outside every block", firing `preventDefault()` + `focusAtEnd()` on it,
+ * `hasSelectableTextAt` below is the marquee's question, and it is a separate
+ * function for a reason: "outside every block" and "no selectable text here"
+ * sound like the same question and have different answers. A task block sits
+ * inside `.bn-block-content` but holds no editable text at all, so answering
+ * the marquee question with this predicate would classify a press on a task row
+ * as "inside a block" and refuse to start a marquee there — and answering THIS
+ * question with `hasSelectableTextAt` would classify a click on a task row as
+ * "outside every block", firing `preventDefault()` + `focusAtEnd()` on it,
  * jumping the caret to the end of the document and suppressing the row's own
  * focus handling so the task title could no longer be opened for inline
  * editing. The two stay separate on purpose.
@@ -85,7 +89,7 @@ export function isOutsideAllBlocks(target: Element): boolean {
  * body. Clicking it should open the link; selecting it is reached from the
  * margin instead.
  */
-export function shouldStartMarquee(target: EventTarget | null): boolean {
+export function shouldStartMarquee(target: EventTarget | null): target is HTMLElement {
   if (!(target instanceof HTMLElement)) return false
   if (target.closest('[data-marquee-ignore]')) return false
   if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
@@ -97,4 +101,56 @@ export function shouldStartMarquee(target: EventTarget | null): boolean {
     return false
   }
   return true
+}
+
+/**
+ * Is there selectable text at this press?
+ *
+ * The marquee start rule (#1444): a press that lands on text begins a text
+ * selection and never a marquee, however far the following drag travels and in
+ * whatever direction. A marquee begins only outside text — the gray margin, the
+ * list-marker strip, the strip left of an indented block, a block holding no
+ * editable text, or the empty area below the last block. Deciding once, from the
+ * press location, is the whole point: the rule this replaced decided *during*
+ * the drag from its direction, so the same starting point produced blocks when
+ * the user dragged straight down and text when they drifted right.
+ *
+ * ## Why `.bn-inline-content` and not `contenteditable`
+ *
+ * "Is the press inside a `contenteditable="true"` subtree" is the obvious test
+ * and the wrong one here. `base.css` sets `padding-inline: 0px` on `.bn-editor`
+ * globally, so the contenteditable root spans the entire text column rather
+ * than sitting inside it. Anchored there, the list-marker strip, the
+ * nested-block indent strip and every non-editable custom block (task, file,
+ * bookmark, YouTube embed) all sit inside the contenteditable root and would
+ * report "text" — which is every marquee entry point except the outer margin.
+ *
+ * ## Why list markers fall outside it
+ *
+ * A bullet or a number is a `::before` pseudo-element owned by
+ * `.bn-block-content`, and pseudo-elements are never event targets, so a press
+ * on the marker reports `.bn-block-content` itself. That element has no
+ * `.bn-inline-content` ancestor, so the marker strip classifies as margin with
+ * no coordinate arithmetic anywhere.
+ *
+ * ## Why the empty space right of a short line is still text
+ *
+ * `.bn-inline-content` is block-level, so for a paragraph it spans the full
+ * column width regardless of how far the text itself reaches. Granularity here
+ * is deliberately the block box, not the line box: reclassifying the tail of a
+ * short line would mean measuring line boxes on every mousedown, and users have
+ * no reliable sense of where a line ended. The practical consequence, stated so
+ * it is not later filed as a bug: the only place to begin a right-side marquee
+ * is the gray margin outside the column.
+ *
+ * TRIPWIRE, read this before upgrading BlockNote. `.bn-inline-content` is a
+ * BlockNote-internal class name, not a contract. If an upgrade renames it, this
+ * function silently answers "no text anywhere", every press starts a marquee,
+ * and text selection in the editor dies — with no type error and no crash. The
+ * hook test catches it only because its fixture spells the same class name;
+ * that fixture is the tripwire, so do not "modernise" it into a helper that
+ * derives the name from here.
+ */
+export function hasSelectableTextAt(target: Element): boolean {
+  return target.closest(INLINE_CONTENT_SELECTOR) !== null
 }

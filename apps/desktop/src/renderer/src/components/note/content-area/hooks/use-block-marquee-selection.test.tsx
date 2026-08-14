@@ -191,7 +191,7 @@ describe('useBlockMarqueeSelection', () => {
     trigger.remove()
   })
 
-  it('ignores disabled, interactive, opted-out, and mostly-horizontal editable drags', () => {
+  it('ignores disabled, interactive, opted-out, and in-text drags', () => {
     const { trigger, blockContainerRef } = setupDom()
     const button = document.createElement('button')
     trigger.append(button)
@@ -209,9 +209,13 @@ describe('useBlockMarqueeSelection', () => {
     // Icons render as SVG, which is an Element but not an HTMLElement.
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     trigger.append(icon)
-    const editable = document.createElement('div')
-    editable.setAttribute('contenteditable', 'true')
-    trigger.append(editable)
+    // The bug this rule exists to kill (#1441): a press inside a line of text
+    // followed by a long straight-down drag. The class name is BlockNote's own
+    // and is spelled out here on purpose — it is the tripwire that fires if an
+    // upgrade renames the inline content element out from under the predicate.
+    const inlineContent = document.createElement('div')
+    inlineContent.className = 'bn-inline-content'
+    trigger.append(inlineContent)
     const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
 
     const { result, rerender, unmount } = renderHook(
@@ -250,12 +254,145 @@ describe('useBlockMarqueeSelection', () => {
       expect(result.current.selectedBlockIds.size).toBe(0)
     }
 
+    // Straight down the whole note — under the old direction heuristic this was
+    // the gesture that selected blocks. It must now select nothing.
     act(() => {
-      editable.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
-      document.dispatchEvent(mouse('mousemove', { clientX: 40, clientY: 16 }))
-      document.dispatchEvent(mouse('mouseup', { clientX: 40, clientY: 16 }))
+      inlineContent.dispatchEvent(mouse('mousedown', { clientX: 60, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 60, clientY: 190 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 60, clientY: 190 }))
     })
     expect(result.current.selectedBlockIds.size).toBe(0)
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('starts a marquee everywhere except on selectable text', () => {
+    // The decision table from #1441, one press location per row.
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
+
+    // The gray margin beside the text column: nothing above it is inline content.
+    const margin = document.createElement('div')
+    trigger.append(margin)
+    // A list marker, and any block holding no editable text (task, file,
+    // bookmark, YouTube embed). Markers are a ::before on the block content
+    // element and pseudo-elements are never event targets, so both press
+    // locations report a `.bn-block-content` with no inline content inside it.
+    const blockContentWithoutText = document.createElement('div')
+    blockContentWithoutText.className = 'bn-block-content'
+    trigger.append(blockContentWithoutText)
+    // The empty area below the last block.
+    const belowLastBlock = document.createElement('div')
+    belowLastBlock.className = 'editor-click-area'
+    trigger.append(belowLastBlock)
+    // A line of text, plus a bold run nested inside it — the rule is about the
+    // nearest inline content ancestor, not about the target itself.
+    const line = document.createElement('div')
+    line.className = 'bn-inline-content'
+    trigger.append(line)
+    const boldRun = document.createElement('strong')
+    line.append(boldRun)
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({
+        editor,
+        blockContainerRef,
+        triggerContainerEl: trigger
+      })
+    )
+
+    for (const outsideText of [margin, blockContentWithoutText, belowLastBlock]) {
+      act(() => {
+        outsideText.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+        document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+        document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+      })
+      expect([...result.current.selectedBlockIds]).toEqual(['a', 'b'])
+      act(() => {
+        result.current.clearSelection()
+      })
+    }
+
+    for (const insideText of [line, boldRun]) {
+      act(() => {
+        insideText.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+        document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+        document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+      })
+      expect(result.current.selectedBlockIds.size).toBe(0)
+    }
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('needs a real drag rather than a click, in any direction', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({
+        editor,
+        blockContainerRef,
+        triggerContainerEl: trigger
+      })
+    )
+
+    // Same press, same geometry over block 'a' — only the travel differs.
+    // 4px is a click with a shaky hand and must not flash a selection box.
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 10, clientY: 20 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 14, clientY: 20 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 14, clientY: 20 }))
+    })
+    expect(result.current.selectedBlockIds.size).toBe(0)
+    expect(result.current.marqueeRect).toBeNull()
+
+    // 6px of the same purely horizontal motion is a drag. Direction carries no
+    // meaning any more, so sideways travel starts a marquee just as down does.
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 10, clientY: 20 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 16, clientY: 20 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 16, clientY: 20 }))
+    })
+    expect([...result.current.selectedBlockIds]).toEqual(['a'])
+
+    unmount()
+    trigger.remove()
+  })
+
+  it('clears a live marquee selection when the press lands in text, without starting a new one', () => {
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
+    const line = document.createElement('div')
+    line.className = 'bn-inline-content'
+    trigger.append(line)
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({
+        editor,
+        blockContainerRef,
+        triggerContainerEl: trigger
+      })
+    )
+
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+    })
+    expect([...result.current.selectedBlockIds]).toEqual(['a', 'b'])
+
+    // Declining to start a marquee must not also decline to clear the old one:
+    // a stale block highlight competing with the caret is its own bug.
+    act(() => {
+      line.dispatchEvent(mouse('mousedown', { clientX: 60, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 60, clientY: 190 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 60, clientY: 190 }))
+    })
+    expect(result.current.selectedBlockIds.size).toBe(0)
+    expect(result.current.highlightRects).toEqual([])
 
     unmount()
     trigger.remove()
