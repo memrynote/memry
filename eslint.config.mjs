@@ -28,6 +28,11 @@ export default defineConfig(
       '*.config.js',
       'config/**',
       'apps/desktop/config/**',
+      // Same rule as the two entries above — build/test config is not app code.
+      // `*.config.ts` only matches the repo root, so a package-level one needs
+      // saying out loud or the type-aware parser trips on a file no tsconfig
+      // program includes.
+      'packages/*/vitest.config.ts',
       'scripts/**',
       'apps/desktop/scripts/**',
       'specs/**',
