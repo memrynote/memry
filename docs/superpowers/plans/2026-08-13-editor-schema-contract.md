@@ -385,7 +385,7 @@ git commit -m "refactor(editor): extract the shared BlockNote schema into @memry
 - Consumes: `createMemrySchema` (Task 3)
 - Produces: `createServerBlockSpecs(): MemryBlockImplementations` — headless implementations built from the shared configs
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it('round-trips a wiki link through the CRDT write path', async () => {
@@ -404,12 +404,12 @@ it('round-trips a wiki link through the CRDT write path', async () => {
 })
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `pnpm --filter @memry/desktop test:main -- blocknote-converter`
 Expected: FAIL — the link is missing from the markdown.
 
-- [ ] **Step 3: Move the taskBlock config and add headless specs**
+- [x] **Step 3: Move the taskBlock config and add headless specs**
 
 ```ts
 // packages/editor-schema/src/blocks/server-specs.ts
@@ -427,20 +427,29 @@ export function createServerBlockSpecs(): MemryBlockImplementations {
 }
 ```
 
-- [ ] **Step 4: Rewrite `serverSchema`**
+- [x] **Step 4: Rewrite `serverSchema`**
+
+**Corrected during implementation.** `createMemrySchema` takes `{ blocks, inline }` (Task 3 Step 3), and the inline half is the half that closes the incident:
 
 ```ts
-const serverSchema = createMemrySchema(createServerBlockSpecs())
+const serverSchema = createMemrySchema({
+  blocks: createServerBlockSpecs(),
+  inline: createServerInlineSpecs()
+})
 ```
+
+`createServerInlineSpecs` lives in `packages/editor-schema/src/server.ts`, which the package's `exports` already pointed at.
 
 Delete `createServerTaskBlock` and its comment — the propSchema is now shared, so the warning it carried no longer applies.
 
-- [ ] **Step 5: Run the tests**
+**`wikiLink` cannot be shared whole after all.** Task 3 Step 2 marked it "portable — whole spec", and it is, for rendering. But its `parse` promotes ANY element whose entire text reads `[[X]]` into an inline node. In the editor that is a paste convenience; in main's markdown importer it eats the block around the link. Measured against `HEAD~`: `- [[A]]\n- [[B]]` came back as `[[A]] [[B]]`, `> [[Quoted]]` as `[[Quoted]]`, and a `| [[A]] |` table cell as `| A |` — three silent rewrites of existing vault notes, none of which any pre-existing test covered. So main takes `WikiLinkSerializationOnly` (same config, same `toExternalHTML`, no `parse`) and `MemryInlineSpecs` grows a `wikiLink` entry each process fills in. Markdown output is now byte-identical to `HEAD~` for every fixture, and `blocknote-converter.test.ts` keeps the fixtures that caught it.
 
-Run: `pnpm --filter @memry/desktop test:main -- "blocknote-converter|crdt-writeback|note-fidelity"` then the full `pnpm test:desktop`
-Expected: PASS, and the pre-existing round-trip/byte-stability tests still green.
+- [x] **Step 5: Run the tests**
 
-- [ ] **Step 6: Commit**
+Run: `pnpm --filter @memry/desktop test:main` and `pnpm --filter @memry/desktop test:renderer` (the `-- <path>` filter is silently ignored; use `pnpm exec vitest run --config config/vitest.config.ts --project main <path>` from `apps/desktop` for one file).
+Result: main 512 files / 6352 tests, renderer 609 files / 6965 tests, both green, with the pre-existing round-trip and note-fidelity tests untouched.
+
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/editor-schema apps/desktop/src/main/sync/blocknote-converter.ts apps/desktop/src/main/sync/blocknote-converter.test.ts
