@@ -26,13 +26,13 @@
 
 import { test, expect, type Page } from './fixtures'
 import { waitForAppReady, waitForVaultReady, createNote } from './utils/electron-helpers'
+import { marqueeGutterX } from './utils/marquee-helpers'
 
 const EDITOR_CONTAINER = '.bn-container'
 const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
 const OVERLAY_SELECTOR = '.marquee-overlay'
-const MARQUEE_ZONE_SELECTOR = '.marquee-zone'
 const TASK_BLOCK_SELECTOR = '[data-content-type="taskBlock"]'
 
 async function focusEditor(page: Page) {
@@ -59,12 +59,6 @@ async function getBlockBox(page: Page, index: number) {
 
 async function getBlockCount(page: Page): Promise<number> {
   return page.locator(BLOCK_SELECTOR).count()
-}
-
-async function getMarqueeZoneBox(page: Page) {
-  const box = await page.locator(MARQUEE_ZONE_SELECTOR).first().boundingBox()
-  if (!box) throw new Error('marquee zone not found')
-  return box
 }
 
 // Pattern from inline-subtasks.e2e.ts:77 — provision a real DB task via IPC
@@ -175,16 +169,15 @@ async function withTasksUpdateSpy<T>(
   }
 }
 
-// Drag from the gutter (start outside any contenteditable so the marquee
-// promotion gate at use-block-marquee-selection.ts:226-228 fires on pure
-// vertical motion) past block `fromIdx` down to block `toIdx`. End the drag
-// just inside the editor so the rect intersects every block in between.
+// Drag from the gray margin beside the text column (start outside any block,
+// so the gesture is unambiguously a block selection) past block `fromIdx` down
+// to block `toIdx`. End the drag just inside the editor so the rect intersects
+// every block in between.
 async function marqueeAcross(page: Page, fromIdx: number, toIdx: number) {
-  const zone = await getMarqueeZoneBox(page)
   const first = await getBlockBox(page, fromIdx)
   const last = await getBlockBox(page, toIdx)
 
-  const startX = zone.x + 8
+  const startX = await marqueeGutterX(page, fromIdx)
   const startY = first.y + 4
   const endX = first.x + Math.min(40, first.width / 2)
   const endY = last.y + last.height - 4
