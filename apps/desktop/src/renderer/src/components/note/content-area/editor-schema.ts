@@ -1,35 +1,30 @@
-import {
-  BlockNoteSchema,
-  defaultInlineContentSpecs,
-  defaultBlockSpecs,
-  createCodeBlockSpec
-} from '@blocknote/core'
-import { codeBlockOptions } from '@blocknote/code-block'
+import { defaultBlockSpecs } from '@blocknote/core'
+import { createMemrySchema } from '@memry/editor-schema'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
-import { WikiLink } from './wiki-link'
 import { HashTag } from './hash-tag'
-import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 
-export const editorSchema = BlockNoteSchema.create({
-  blockSpecs: {
+// Built through the shared factory so the main process gets a schema with the
+// same node types. Main converts the shared Y.Doc through y-prosemirror, which
+// DELETES any element its schema cannot build — a spec registered on one side
+// only replicates as data loss, not as a missing style. The inline specs come
+// from the factory; only the two whose presentation needs renderer state
+// (tag palette, clock/week-start settings) are passed in.
+export const editorSchema = createMemrySchema({
+  blocks: {
     ...defaultBlockSpecs,
-    codeBlock: createCodeBlockSpec(codeBlockOptions),
     file: createFileBlock(),
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
     taskBlock: createTaskBlock()
   },
-  inlineContentSpecs: {
-    ...defaultInlineContentSpecs,
-    wikiLink: WikiLink,
+  inline: {
     hashTag: HashTag,
-    linkMention: LinkMention,
     dateMention: DateMention
   }
 })

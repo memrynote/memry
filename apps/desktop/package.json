@@ -149,6 +149,7 @@
     "@memry/cli": "workspace:*",
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
+    "@memry/editor-schema": "workspace:*",
     "@memry/domain-inbox": "workspace:*",
     "@memry/domain-notes": "workspace:*",
     "@memry/domain-tasks": "workspace:*",
