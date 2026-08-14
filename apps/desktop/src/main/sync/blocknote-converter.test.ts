@@ -1366,21 +1366,37 @@ describe('custom block markers are not claimed out of context', () => {
     expect(await roundTrip(markdown)).toBe(markdown)
   })
 
-  it('a file name containing --> does not truncate the marker', async () => {
-    // #given `-->` closes an HTML comment, so an unescaped one splits the
-    // marker and spills the rest of the JSON into the note as a paragraph
-    const props = {
-      url: 'memry-file://x/y.pdf',
-      name: 'a-->b.pdf',
-      size: 5,
-      mimeType: 'application/pdf'
+  // HTML closes a comment on `-->` and on `--!>` (the spec's comment-end-bang
+  // state). Either one inside the payload splits the marker and spills the rest
+  // of the JSON into the note as a paragraph — a file named `a-->b.pdf` is
+  // enough. Only the `>` is escaped: escaping every `--` would change the bytes
+  // of every marker whose filename contains one.
+  it.each([['a-->b.pdf'], ['a--!>b.pdf'], ['a--b--c.pdf']])(
+    'a file named %s survives the marker round-trip',
+    (name) => {
+      // #given
+      const props = { url: 'memry-file://x/y.pdf', name, size: 5, mimeType: 'application/pdf' }
+
+      // #when
+      const marker = `<!--${fileBlockCommentData(props as never)}-->`
+
+      // #then exactly one terminator — the one that closes the marker
+      expect(marker.match(/--!?>/g)).toHaveLength(1)
+      expect(parseFileBlockMarker(marker)).toMatchObject({ name })
     }
+  )
+
+  it('does not scan quadratically over a line that only looks like a marker', () => {
+    // #given note bodies arrive over sync, so an unanchored scan here is
+    // reachable input. Unanchored this took 392ms at 8k repetitions.
+    const decoy = '<!-- file:{'.repeat(8000)
 
     // #when
-    const marker = `<!--${fileBlockCommentData(props as never)}-->`
+    const started = performance.now()
+    const parsed = parseFileBlockMarker(decoy)
 
-    // #then the comment has exactly one terminator, and the name survives it
-    expect(marker.match(/-->/g)).toHaveLength(1)
-    expect(parseFileBlockMarker(marker)).toMatchObject({ name: 'a-->b.pdf' })
+    // #then rejected, and in constant-ish time rather than seconds
+    expect(parsed).toBeNull()
+    expect(performance.now() - started).toBeLessThan(50)
   })
 })

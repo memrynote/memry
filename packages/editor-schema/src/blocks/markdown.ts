@@ -98,14 +98,18 @@ export function serializeFileBlock(props: FileBlockProps): string {
 }
 
 /**
- * `-->` anywhere in the payload would close the HTML comment early, splitting
- * the marker and spilling the rest into the note as a paragraph. A file named
- * `a-->b.pdf` is enough. Escaping it as `\u003e` keeps the JSON byte-for-byte
- * equivalent — `JSON.parse` gives the original string back — while removing the
- * only sequence the comment syntax reserves.
+ * A comment terminator anywhere in the payload closes the marker early,
+ * splitting it and spilling the rest into the note as a paragraph. A file
+ * named `a-->b.pdf` is enough.
+ *
+ * HTML ends a comment on `-->` AND on `--!>` (the spec's comment-end-bang
+ * state), so both are escaped. Only the `>` is replaced: escaping every `--`
+ * would change the bytes of every marker whose filename contains one, and
+ * write-back byte-compares. `\u003e` is JSON-equivalent, so `JSON.parse`
+ * returns the original string unchanged.
  */
 function escapeCommentTerminator(json: string): string {
-  return json.replace(/-->/g, '--\\u003e')
+  return json.replace(/--(!?)>/g, '--$1\\u003e')
 }
 
 /**
@@ -137,7 +141,11 @@ export function fileBlockCommentData(props: FileBlockProps): string {
  * Parse file block marker from markdown
  */
 export function parseFileBlockMarker(marker: string): FileBlockProps | null {
-  const match = marker.match(/<!-- file:(\{[^}]+\}) -->/)
+  // Anchored: every caller passes one already-trimmed marker line, and leaving
+  // it unanchored made the scan quadratic in the line's length — `<!-- file:{`
+  // repeated a few thousand times is a note body, i.e. attacker-reachable
+  // through sync. Measured 24ms at 2k repetitions, 392ms at 8k.
+  const match = marker.match(/^<!-- file:(\{[^}]+\}) -->$/)
   if (!match) return null
   try {
     return JSON.parse(match[1])
