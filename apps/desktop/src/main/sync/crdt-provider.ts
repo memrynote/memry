@@ -92,6 +92,17 @@ export class CrdtProvider {
     this.now = options.now ?? Date.now
   }
 
+  /**
+   * How many editor-less docs stay cached before the LRU starts closing them.
+   *
+   * A caller that holds several docs open across an await — sync's batch CRDT
+   * pull is the one that does — must not open more than this in one pass, or
+   * the docs it opened first are closed underneath it. See applyCrdtBatch.
+   */
+  get inactiveDocCapacity(): number {
+    return this.inactiveDocLimit
+  }
+
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
     await this.initPersistence()
 

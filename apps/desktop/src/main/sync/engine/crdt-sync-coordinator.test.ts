@@ -211,6 +211,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
           closeIfInactive,
@@ -262,6 +263,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          inactiveDocCapacity: 32,
           getDoc,
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive,
@@ -333,6 +335,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
@@ -378,6 +381,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
           closeIfInactive: vi.fn().mockResolvedValue(true),
@@ -469,6 +473,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open: vi.fn().mockResolvedValue({}),
           closeIfInactive: vi.fn().mockResolvedValue(true),
@@ -516,6 +521,84 @@ describe('CrdtSyncCoordinator', () => {
     // #then an abort must propagate, not be swallowed as a skipped note; the pass
     // stops before pulling any updates.
     expect(postToServerMock).not.toHaveBeenCalled()
+  })
+
+  it('splits a pass larger than the provider cache so its docs survive the pull', async () => {
+    // #given five notes and room for two editor-less docs — a sign-in hands the
+    // whole vault over, which is many times the real limit
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          inactiveDocCapacity: 2,
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
+          seedFromMarkdownPublic: vi.fn()
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    postToServerMock.mockImplementation((_url: string, body: unknown) => ({
+      notes: Object.fromEntries(
+        (body as { notes: Array<{ noteId: string }> }).notes.map((note) => [
+          note.noteId,
+          { updates: [], hasMore: false }
+        ])
+      )
+    }))
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['n1', 'n2', 'n3', 'n4', 'n5'], 'token-1', new Uint8Array([4]))
+
+    // #then a pass holds every one of its notes open until their updates land, so
+    // one that outgrows the cache has its earliest notes closed underneath it and
+    // their updates dropped as "unopened doc".
+    const batched = postToServerMock.mock.calls.map(([, body]: [string, unknown]) =>
+      (body as { notes: Array<{ noteId: string }> }).notes.map((note) => note.noteId)
+    )
+    expect(batched).toEqual([['n1', 'n2'], ['n3', 'n4'], ['n5']])
+  })
+
+  it('does not seed from markdown when a doc was closed underneath the pass', async () => {
+    // #given note-2's doc is gone by the time the pass checks it: getStateVector
+    // reports null (no doc) rather than an empty vector (open but empty doc)
+    const seedFromMarkdownPublic = vi.fn()
+    const ctx = {
+      deps: {
+        crdtProvider: {
+          inactiveDocCapacity: 32,
+          getDoc: vi.fn().mockReturnValue(undefined),
+          open: vi.fn().mockResolvedValue({}),
+          closeIfInactive: vi.fn().mockResolvedValue(true),
+          applyRemoteUpdate: vi.fn(),
+          getStateVector: vi.fn((noteId: string) =>
+            noteId === 'note-2' ? null : new Uint8Array([1, 2, 3, 4])
+          ),
+          seedFromMarkdownPublic
+        }
+      },
+      abortController: new AbortController()
+    } as unknown as SyncContext
+
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-2': { updates: [], hasMore: false }
+      }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then treating a closed doc as an empty one writes this device's stale
+    // markdown over a body the pass never applied — the remote edit is lost, not
+    // merely stale, and the next pass has nothing left to reconcile against.
+    expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
   })
 })
 

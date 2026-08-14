@@ -92,6 +92,22 @@ targets docs with zero attached windows, so active editor docs are never evicted
 provider metrics expose the open doc count, encoded size, and per-doc `windowCount`
 so memory growth can be observed without inspecting private provider state.
 
+That cap bounds how many notes one sync pass may hold at a time. The batch CRDT pull
+opens every note it is about to fetch before it sends the request and keeps them open
+until their updates are applied, so it splits its work into chunks of
+`CrdtProvider.inactiveDocCapacity`. An unsplit pass larger than the cap evicts the notes
+it opened first, and their updates are then dropped as "unopened doc" — a whole-vault
+pass, which is what a sign-in or a reconnect sweep produces, is several times the cap.
+Chunking also keeps each request under the server's 100-note limit on
+`/sync/crdt/updates/batch`.
+
+For the same reason, "this doc has no state" and "this doc is not open" are treated as
+different answers when the pass decides whether to seed a note from local markdown. A
+doc the provider closed mid-pass reports no state vector at all; seeding on that would
+write this device's markdown over a body the pass never managed to apply, losing the
+other device's edit rather than merely showing it late. Those notes are left for the
+next pass.
+
 Because "attached window" is what makes a doc safe from eviction, every IPC entry point
 that can open a doc attributes it to the sender window — `crdt:open-doc` and the
 `crdt:sync-step-1` handshake alike. The handshake matters because it can be the call that
