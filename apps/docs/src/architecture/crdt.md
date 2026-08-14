@@ -172,6 +172,17 @@ document to its vault `.md` file and re-indexes it for search.
   `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
   survive into the next one.
 
+- **The export path cannot write** — a pass serializes from a detached copy of the Y.Doc,
+  never the live one. The BlockNote/Yjs converter answers a node type its schema cannot
+  build by _deleting_ that element; run against the live doc that turns a serialization
+  gap into a real CRDT delete which replicates to every device. Reading from a copy keeps
+  any such repair inside a throwaway document.
+- **Write-back fails closed** — before serializing, the pass scans the fragment for node
+  types this build's schema cannot construct. If it finds any, the `.md` file is left
+  exactly as it is and the pass reports `writeback_unrepresentable_node` rather than
+  writing a version with that content missing. The note resumes normal write-back as soon
+  as the document no longer holds such a node; the refusal does not latch.
+
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
 results and the file on disk catch up when the pass runs.
@@ -285,6 +296,23 @@ BlockNote uses Yjs natively. The renderer's BlockNote editor binds to the render
 
 Markdown cannot represent arbitrary nested BlockNote paragraphs. Note markdown export and CRDT writeback preserve those unsupported child blocks with hidden nesting markers, then restore them when a note reloads. Inbox note reload also reads BlockNote's saved `data-nesting-level` HTML metadata so captured note indentation round-trips through the editor.
 Marker parsing trims imported markdown with a linear scan so malformed or very large note bodies cannot trigger regex backtracking during reload.
+
+### The schema is a cross-process contract
+
+The custom node types memrynote adds to BlockNote — wiki links, hash tags, link and date
+mentions, and the custom blocks — live in the `@memry/editor-schema` workspace package so
+both processes can build from one definition. This matters more than a shared-code tidy-up:
+the main process converts the shared Y.Doc through y-prosemirror, which deletes any element
+whose node name its schema does not know. A spec registered on only one side is data loss,
+not a missing style — the same class of cross-process contract that [IPC](/architecture/ipc)
+gates with `ipc:check`.
+
+Specs whose rendering is portable are shared whole. Those whose rendering needs renderer
+state — `hashTag` (tag palette, icons) and `dateMention` (clock format, week start) — share
+their config, `parse` and `toExternalHTML`, the half that decides what reaches the vault
+file, while each process supplies its own presentation. Until both processes build from the
+package, the fail-closed guard in [Markdown Write-Back](#markdown-write-back) is what keeps
+an unknown node type from costing content.
 
 ## Files Worth Knowing
 

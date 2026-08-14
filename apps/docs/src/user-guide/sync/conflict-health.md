@@ -113,6 +113,19 @@ There is no undo for an auto-resolved conflict, and no conflict log to read back
 
 A side-by-side compare with **Keep mine** / **Keep remote** does not exist in memrynote. If you want one, that is a feature request, not a setting you have missed.
 
+## A Note That Stops Updating Its File
+
+memrynote will pause writing a note's `.md` file rather than write a copy with content
+missing from it. If the note's document contains something this app version cannot
+represent — most often a newer note type opened on an older build — the file is left
+exactly as it was and the app records the reason.
+
+What you see: the note is correct in the editor and on every synced device, but its file on
+disk stops changing.
+
+What to do: update memrynote on that device. The note writes its file again on the next
+edit, with nothing lost — the pause is what protected the content.
+
 ## What memrynote Won't Do
 
 memrynote doesn't auto-merge **across record types** — e.g. it won't combine two competing project structures. The vector clock comparison stays within a single record.
