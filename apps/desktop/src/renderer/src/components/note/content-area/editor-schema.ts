@@ -1,4 +1,4 @@
-import { createMemrySchema } from '@memry/editor-schema'
+import { createMemrySchema, WikiLink } from '@memry/editor-schema'
 import { createFileBlock } from './file-block'
 import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
@@ -25,6 +25,9 @@ export const editorSchema = createMemrySchema({
     taskBlock: createTaskBlock()
   },
   inline: {
+    // The editor flavour of wikiLink: same node as main's, plus the `parse`
+    // rule that turns pasted `[[X]]` text into a link.
+    wikiLink: WikiLink,
     hashTag: HashTag,
     dateMention: DateMention
   }

@@ -1,6 +1,6 @@
 import type { InlineContentSpec } from '@blocknote/core'
-import { WikiLink } from './wiki-link'
 import { LinkMention } from './link-mention'
+import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
 
@@ -10,14 +10,22 @@ export * from './hash-tag'
 export * from './date-mention'
 
 /**
- * The two specs whose presentation each process supplies for itself, built via
- * `createHashTagSpec` / `createDateMentionSpec` so the config and the
- * serialization half still come from here. wikiLink and linkMention need no
- * entry — they are portable and shared whole.
+ * The specs each process supplies for itself. The config and the serialization
+ * half still come from here (via `createHashTagSpec` / `createDateMentionSpec`,
+ * or `WikiLink` / `WikiLinkSerializationOnly`), so only presentation and
+ * HTML-paste behaviour differ. linkMention needs no entry — it is portable and
+ * shared whole.
  */
 export interface MemryInlineSpecs {
   hashTag: InlineContentSpec<typeof hashTagConfig>
   dateMention: InlineContentSpec<typeof dateMentionConfig>
+  /**
+   * `WikiLink` in the editor, `WikiLinkSerializationOnly` in main: the editor
+   * spec's `parse` promotes any element whose whole text is `[[X]]`, which is
+   * useful on paste and destructive in a markdown importer. Same node either
+   * way — see wiki-link.ts.
+   */
+  wikiLink: InlineContentSpec<typeof wikiLinkConfig>
 }
 
 /**
@@ -27,7 +35,7 @@ export interface MemryInlineSpecs {
  */
 export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
   return {
-    wikiLink: WikiLink,
+    wikiLink: specs.wikiLink,
     linkMention: LinkMention,
     hashTag: specs.hashTag,
     dateMention: specs.dateMention

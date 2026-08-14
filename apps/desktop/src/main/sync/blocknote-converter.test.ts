@@ -10,6 +10,8 @@ import {
 } from './blocknote-converter'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { serializeLinkMentionToken } from '@memry/editor-schema'
+import { serializeDateMentionToken } from '@memry/shared/date-mention'
 
 describe('blocknote-converter code block language', () => {
   it('returns empty markdown for an empty Yjs fragment', async () => {
@@ -664,7 +666,10 @@ describe('blocknote-converter export path never mutates the live doc', () => {
     const block = new Y.XmlElement('blockContainer')
     block.setAttribute('id', 'b1')
     const para = new Y.XmlElement('paragraph')
-    const unknown = new Y.XmlElement('wikiLink')
+    // Deliberately a name no build knows. `wikiLink` used to stand in here, but
+    // this schema now registers it — the guard has to be aimed at a node type
+    // that is genuinely unconstructible, e.g. one a future build introduces.
+    const unknown = new Y.XmlElement('someUnknownFutureNode')
     unknown.setAttribute('target', 'Roadmap')
     para.insert(0, [unknown])
     block.insert(0, [para])
@@ -692,14 +697,17 @@ describe('findUnrepresentableNodes', () => {
   }
 
   it('names the inline node type the server schema cannot build', () => {
-    // #given a doc holding a renderer-only inline node
-    const doc = seedUnknownInlineNode('wikiLink')
+    // #given a doc holding an inline node no build in this app can construct —
+    // a note written by a newer version, say. (This case used `wikiLink` while
+    // the main schema lacked it; that spec is now registered, so the coverage
+    // moves to a name that is still genuinely unknown.)
+    const doc = seedUnknownInlineNode('someUnknownFutureNode')
 
     // #when
     const unknown = findUnrepresentableNodes(doc)
 
     // #then
-    expect(unknown).toEqual(['wikiLink'])
+    expect(unknown).toEqual(['someUnknownFutureNode'])
   })
 
   it('reports nothing for content this build can serialize, tables included', async () => {
@@ -722,7 +730,7 @@ describe('findUnrepresentableNodes', () => {
 
   it('reads without mutating the doc', () => {
     // #given
-    const doc = seedUnknownInlineNode('wikiLink')
+    const doc = seedUnknownInlineNode('someUnknownFutureNode')
     const before = Y.encodeStateAsUpdate(doc)
 
     // #when
@@ -738,5 +746,166 @@ describe('findUnrepresentableNodes', () => {
 
     // #when / #then
     expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it('reports nothing for every custom node type the renderer can author', async () => {
+    // #given the doc a synced note actually holds: a taskBlock plus all four
+    // custom inline nodes. Every one of these was a delete-on-open before the
+    // main schema was built from the shared factory.
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(
+      '- [ ] a task {task:t1}\n',
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    expect(ok).toBe(true)
+    const blockGroup = doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(0) as Y.XmlElement
+    blockGroup.push([customInlineBlockContainer()])
+
+    // #when
+    const unknown = findUnrepresentableNodes(doc)
+
+    // #then
+    expect(unknown).toEqual([])
+  })
+})
+
+/**
+ * One `blockContainer` whose paragraph holds every custom inline node type,
+ * seeded the way the renderer seeds them: straight into the shared Y.Doc.
+ */
+function customInlineBlockContainer(): Y.XmlElement {
+  const block = new Y.XmlElement('blockContainer')
+  block.setAttribute('id', 'inline-b1')
+  const para = new Y.XmlElement('paragraph')
+  para.insert(
+    0,
+    INLINE_CASES.map(({ nodeName, attrs }) => {
+      const node = new Y.XmlElement(nodeName)
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value)
+      return node
+    })
+  )
+  block.insert(0, [para])
+  return block
+}
+
+/**
+ * Every custom inline node type, with the markdown form it must serialize to.
+ * A new inline spec with no case here fails this table rather than being
+ * silently untested — the whole class of bug was one spec nobody covered.
+ */
+const INLINE_CASES = [
+  {
+    nodeName: 'wikiLink',
+    attrs: { target: 'Roadmap', alias: 'the plan' },
+    text: '[[Roadmap|the plan]]'
+  },
+  { nodeName: 'hashTag', attrs: { tag: 'roadmap' }, text: '#roadmap' },
+  {
+    nodeName: 'linkMention',
+    attrs: { url: 'https://example.com/a', domain: 'example.com' },
+    text: serializeLinkMentionToken('https://example.com/a')
+  },
+  {
+    nodeName: 'dateMention',
+    // `hasTime` is left at its schema default so the seeded attributes stay
+    // strings; a string "false" would be truthy and change the token.
+    attrs: {
+      anchorId: 'a1',
+      dateISO: '2026-08-14',
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    },
+    text: serializeDateMentionToken({
+      anchorId: 'a1',
+      dateISO: '2026-08-14',
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    })
+  }
+] as const
+
+describe('custom inline nodes survive the CRDT write path', () => {
+  /**
+   * `blockGroup > blockContainer > paragraph > [text, node, text]` — the shape
+   * the renderer's editor actually writes into the shared fragment (verified
+   * against `markdownToYFragment` output), so the node reaches the converter
+   * exactly as a real synced note would deliver it.
+   */
+  function seedInlineNode(nodeName: string, attrs: Record<string, string>): Y.Doc {
+    const doc = new Y.Doc()
+    const group = new Y.XmlElement('blockGroup')
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const node = new Y.XmlElement(nodeName)
+    for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value)
+    para.insert(0, [new Y.XmlText('See '), node, new Y.XmlText(' tomorrow.')])
+    block.insert(0, [para])
+    group.insert(0, [block])
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [group])
+    return doc
+  }
+
+  it('round-trips a wiki link through the CRDT write path', async () => {
+    // #given the doc the renderer produces for `[[Roadmap|the plan]]`
+    const doc = seedInlineNode('wikiLink', { target: 'Roadmap', alias: 'the plan' })
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when write-back serializes it
+    const markdown = await yDocToMarkdown(doc)
+
+    // #then the link reaches the vault file…
+    expect(markdown).toContain('[[Roadmap|the plan]]')
+    // …and the shared doc is untouched: y-prosemirror's answer to an unknown
+    // node is to delete it, which replicates to every other device.
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it.each(INLINE_CASES)(
+    '$nodeName serializes to its markdown form',
+    async ({ nodeName, attrs, text }) => {
+      // #given
+      const doc = seedInlineNode(nodeName, { ...attrs })
+      const before = Y.encodeStateAsUpdate(doc)
+
+      // #when
+      const markdown = await yDocToMarkdown(doc)
+
+      // #then
+      expect(markdown).toContain(text)
+      expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+    }
+  )
+})
+
+describe('registering the custom specs does not rewrite existing markdown', () => {
+  // Write-back byte-compares before writing, so any serialization drift here
+  // rewrites every affected note in every vault on next open. The block-level
+  // cases are the sharp ones: a spec whose `parse` matches an element by its
+  // text content claims the whole `<li>` / `<blockquote>` / `<td>`, and the
+  // block around the link is what gets lost.
+  it.each([
+    'See [[Roadmap|the plan]] tomorrow.',
+    '[[Roadmap]]',
+    '# Heading\n\n[[A]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline.',
+    '- [[A]]\n- [[B]]',
+    '> [[Quoted]]',
+    '- [ ] a task {task:t1}',
+    '```ts\nconst x = "[[Roadmap]]"\n```',
+    '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.'
+  ])('round-trips %j unchanged', async (markdown) => {
+    // #given a vault note as it exists on disk today
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(ok).toBe(true)
+
+    // #when write-back serializes it again
+    // #then the bytes are the same, so nothing is written
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })
