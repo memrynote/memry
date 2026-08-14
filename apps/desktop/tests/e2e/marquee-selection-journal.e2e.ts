@@ -11,13 +11,13 @@
 
 import { test, expect, type Page } from './fixtures'
 import { waitForAppReady, waitForVaultReady, navigateTo } from './utils/electron-helpers'
+import { marqueeGutterX } from './utils/marquee-helpers'
 
 const EDITOR_CONTAINER = '.bn-container'
 const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
 const OVERLAY_SELECTOR = '.marquee-overlay'
-const MARQUEE_ZONE_SELECTOR = '.marquee-zone'
 const METADATA_IGNORE_SELECTOR = '[data-marquee-ignore]'
 
 async function focusJournalEditor(page: Page) {
@@ -44,12 +44,6 @@ async function getBlockBox(page: Page, index: number) {
 
 async function getBlockCount(page: Page): Promise<number> {
   return page.locator(BLOCK_SELECTOR).count()
-}
-
-async function getMarqueeZoneBox(page: Page) {
-  const box = await page.locator(MARQUEE_ZONE_SELECTOR).first().boundingBox()
-  if (!box) throw new Error('marquee zone not found')
-  return box
 }
 
 async function expectNoNativeTextSelection(page: Page): Promise<void> {
@@ -88,9 +82,11 @@ test.describe('Journal block marquee selection', () => {
     const first = await getBlockBox(page, 0)
     const third = await getBlockBox(page, 2)
 
-    const startX = first.x + first.width / 2
+    // Start in the gray margin beside the column — block selection is a
+    // gesture that begins outside text — and drag down into block 2.
+    const startX = await marqueeGutterX(page, 0)
     const startY = first.y + 4
-    const endX = startX
+    const endX = first.x + first.width / 2
     const endY = third.y + third.height - 4
 
     await page.mouse.move(startX, startY)
@@ -128,9 +124,9 @@ test.describe('Journal block marquee selection', () => {
     const second = await getBlockBox(page, 1)
     const third = await getBlockBox(page, 2)
 
-    const startX = second.x + second.width / 2
+    const startX = await marqueeGutterX(page, 1)
     const startY = second.y + 4
-    const endX = startX
+    const endX = second.x + second.width / 2
     const endY = third.y + third.height - 4
 
     await page.mouse.move(startX, startY)
@@ -188,13 +184,13 @@ test.describe('Journal block marquee selection', () => {
     ])
     await page.waitForTimeout(400)
 
-    await getMarqueeZoneBox(page)
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
+    // Start in the gray margin left of the column; end point unchanged.
+    const startX = await marqueeGutterX(page, 0)
     const startY = first.y + first.height / 2
-    const startX = first.x + 2
-    const endX = startX
+    const endX = first.x + 2
     const endY = last.y + last.height - 4
 
     await page.mouse.move(startX, startY)
