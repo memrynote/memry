@@ -1,13 +1,7 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
-import {
-  type Block,
-  type PartialBlock,
-  BlockNoteSchema,
-  defaultBlockSpecs,
-  createBlockSpec,
-  createCodeBlockSpec
-} from '@blocknote/core'
-import { codeBlockOptions } from '@blocknote/code-block'
+import { type Block, type PartialBlock } from '@blocknote/core'
+import { createMemrySchema } from '@memry/editor-schema'
+import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { randomUUID } from 'node:crypto'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
@@ -49,37 +43,14 @@ import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
 const log = createLogger('BlockNoteConverter')
 
-// Headless `taskBlock` node so the CRDT fragment stores the SAME custom block
-// the renderer paints. Seeding a raw `checkListItem` would flash a plain
-// checkbox on open and — via the renderer's checkbox→task converter — mint a
-// duplicate task. Only the node schema (type + props + content) is used for
-// (de)serialization here; the server never renders, so `render` throws if it is
-// ever reached. propSchema must stay identical to the renderer's taskBlock
-// (task-block/index.tsx) or yXmlFragmentToBlocks would mis-parse the props.
-const createServerTaskBlock = createBlockSpec(
-  {
-    type: 'taskBlock' as const,
-    propSchema: {
-      taskId: { default: '' },
-      title: { default: '' },
-      checked: { default: false },
-      parentTaskId: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: () => {
-      throw new Error('taskBlock server spec is serialization-only and must not be rendered')
-    }
-  }
-)
-
-const serverSchema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs,
-    codeBlock: createCodeBlockSpec(codeBlockOptions),
-    taskBlock: createServerTaskBlock()
-  }
+// The same factory the renderer builds its schema from, so this process cannot
+// lack a node type the renderer can author. That symmetry is the whole fix:
+// y-prosemirror answers an unknown node name by DELETING the element from the
+// shared Y.Doc, so a spec registered on one side only replicates as data loss.
+// Main supplies serialization-only implementations — nothing here ever renders.
+const serverSchema = createMemrySchema({
+  blocks: createServerBlockSpecs(),
+  inline: createServerInlineSpecs()
 })
 
 let serverEditor: ServerBlockNoteEditor | null = null

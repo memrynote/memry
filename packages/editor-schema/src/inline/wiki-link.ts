@@ -5,10 +5,11 @@
  * same node: a spec the main-process schema does not carry is not a rendering
  * gap, it is data loss — y-prosemirror deletes any element it cannot build,
  * straight out of the shared Y.Doc. Fully portable (vanilla DOM, no renderer
- * imports), so both processes use this spec unchanged.
+ * imports); the node, its props and its on-disk form are shared, and only the
+ * HTML-paste `parse` rule differs (see `WikiLinkSerializationOnly` below).
  */
 
-import { createInlineContentSpec } from '@blocknote/core'
+import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
 
 const WIKI_LINK_FULL_PATTERN = /^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/
 
@@ -49,6 +50,18 @@ export function wikiLinkToText(target: string, alias: string): string {
   return alias && alias !== target ? `[[${target}|${alias}]]` : `[[${target}]]`
 }
 
+/** The node's on-disk form. Identical in both processes — this is the contract. */
+const wikiLinkToExternalHTML = (inlineContent: {
+  props: { target: string; alias: string }
+}): { dom: HTMLElement } => {
+  const dom = document.createElement('span')
+  dom.textContent = wikiLinkToText(
+    inlineContent.props.target || '',
+    inlineContent.props.alias || ''
+  )
+  return { dom }
+}
+
 export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
   render: (inlineContent) => {
     const dom = document.createElement('span')
@@ -75,12 +88,28 @@ export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
     if (!parsed) return undefined
     return { target: parsed.target, alias: parsed.alias }
   },
-  toExternalHTML: (inlineContent) => {
-    const dom = document.createElement('span')
-    dom.textContent = wikiLinkToText(
-      inlineContent.props.target || '',
-      inlineContent.props.alias || ''
-    )
-    return { dom }
-  }
+  toExternalHTML: wikiLinkToExternalHTML
 })
+
+/**
+ * The same node for the main process — same type, same props, same on-disk
+ * form — but with no `parse` rule.
+ *
+ * The rule above is an editor paste convenience: it promotes ANY element whose
+ * whole text reads `[[X]]` into an inline node. In a markdown importer that is
+ * structural damage — a `- [[A]]` list item, a `> [[A]]` quote and a `| [[A]] |`
+ * table cell each parse as one such element, and the block around the link is
+ * lost. Main only ever needs to READ these nodes out of the shared Y.Doc and
+ * write them back, so it takes the node without the heuristic and keeps
+ * markdown parsing byte-for-byte what it is today.
+ *
+ * `render` emits the same text as `toExternalHTML` rather than throwing:
+ * BlockNote serializes inline content inside a TABLE through `render`, so a
+ * throwing render made `yDocToMarkdown` return null for any note with a wiki
+ * link in a table — that note then stopped writing back entirely.
+ */
+export const WikiLinkSerializationOnly: InlineContentSpec<typeof wikiLinkConfig> =
+  createInlineContentSpec(wikiLinkConfig, {
+    render: wikiLinkToExternalHTML,
+    toExternalHTML: wikiLinkToExternalHTML
+  })

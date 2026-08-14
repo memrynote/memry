@@ -307,12 +307,21 @@ whose node name its schema does not know. A spec registered on only one side is 
 not a missing style — the same class of cross-process contract that [IPC](/architecture/ipc)
 gates with `ipc:check`.
 
-Specs whose rendering is portable are shared whole. Those whose rendering needs renderer
-state — `hashTag` (tag palette, icons) and `dateMention` (clock format, week start) — share
-their config, `parse` and `toExternalHTML`, the half that decides what reaches the vault
-file, while each process supplies its own presentation. Until both processes build from the
-package, the fail-closed guard in [Markdown Write-Back](#markdown-write-back) is what keeps
-an unknown node type from costing content.
+The package owns each node's config, `parse` and `toExternalHTML` — the half that decides
+what reaches the vault file — and each process supplies its own presentation. The renderer
+gives the editor chip; the main process gives an implementation that emits the node's plain
+markdown form.
+
+**Main's implementations are not decoration.** BlockNote serializes inline content inside a
+**table** through the spec's `render`, not through `toExternalHTML`, so for that one block
+type main's rendering is what lands on disk. A `render` that throws makes the whole note's
+conversion fail — it stops writing back rather than losing a cell — and a `render` carrying
+the editor's rich markup rewrites the cell: a link mention's `((mention:…))` token becomes a
+plain markdown link and its domain, title, favicon and site name are gone. Every server-side
+`render` therefore emits exactly what `toExternalHTML` emits. No spec is shared whole.
+
+Whatever still cannot be represented is caught by the fail-closed guard in
+[Markdown Write-Back](#markdown-write-back).
 
 ## Files Worth Knowing
 

@@ -1,6 +1,6 @@
 import type { InlineContentSpec } from '@blocknote/core'
-import { WikiLink } from './wiki-link'
-import { LinkMention } from './link-mention'
+import { linkMentionConfig } from './link-mention'
+import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
 
@@ -10,14 +10,32 @@ export * from './hash-tag'
 export * from './date-mention'
 
 /**
- * The two specs whose presentation each process supplies for itself, built via
- * `createHashTagSpec` / `createDateMentionSpec` so the config and the
- * serialization half still come from here. wikiLink and linkMention need no
- * entry — they are portable and shared whole.
+ * The specs each process supplies for itself. The config and the serialization
+ * half still come from here (via `createHashTagSpec` / `createDateMentionSpec`,
+ * or `WikiLink` / `WikiLinkSerializationOnly`), so only presentation and
+ * HTML-paste behaviour differ.
+ *
+ * Every one of the four is listed. None can be "shared whole": BlockNote
+ * serializes inline content inside a TABLE through `render`, so the editor's
+ * rich implementation reaching the main process rewrites that cell's markdown.
  */
 export interface MemryInlineSpecs {
   hashTag: InlineContentSpec<typeof hashTagConfig>
   dateMention: InlineContentSpec<typeof dateMentionConfig>
+  /**
+   * `WikiLink` in the editor, `WikiLinkSerializationOnly` in main: the editor
+   * spec's `parse` promotes any element whose whole text is `[[X]]`, which is
+   * useful on paste and destructive in a markdown importer. Same node either
+   * way — see wiki-link.ts.
+   */
+  wikiLink: InlineContentSpec<typeof wikiLinkConfig>
+  /**
+   * `LinkMention` in the editor, `LinkMentionSerializationOnly` in main. The
+   * editor chip renders an `<a>`; in a table cell that `<a>` is what gets
+   * serialized, turning the `((mention:…))` token into a plain markdown link
+   * and dropping domain/title/favicon/siteName from disk.
+   */
+  linkMention: InlineContentSpec<typeof linkMentionConfig>
 }
 
 /**
@@ -27,8 +45,8 @@ export interface MemryInlineSpecs {
  */
 export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
   return {
-    wikiLink: WikiLink,
-    linkMention: LinkMention,
+    wikiLink: specs.wikiLink,
+    linkMention: specs.linkMention,
     hashTag: specs.hashTag,
     dateMention: specs.dateMention
   }
