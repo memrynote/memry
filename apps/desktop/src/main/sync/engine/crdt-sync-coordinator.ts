@@ -204,6 +204,31 @@ export class CrdtSyncCoordinator {
     const crdtProvider = this.ctx.deps.crdtProvider
     if (!crdtProvider || !this.ctx.abortController) return
 
+    // A pass holds every one of its notes open from before the request is sent
+    // until that note's updates are applied, so it must never open more than
+    // the provider keeps cached: past the limit the LRU closes the notes it
+    // opened first, applyRemoteUpdate drops their updates as "unopened doc",
+    // and the seed check below then sees no state vector at all. The passes
+    // that matter are exactly the oversized ones — a sign-in or a reconnect
+    // sweep hands over the whole vault, several times the limit.
+    //
+    // Chunking here also keeps each request under the server's 100-note cap on
+    // /sync/crdt/updates/batch, which a whole-vault pass otherwise blows past.
+    const chunkSize = crdtProvider.inactiveDocCapacity
+    for (let i = 0; i < noteIds.length; i += chunkSize) {
+      if (this.ctx.abortController.signal.aborted) return
+      await this.applyCrdtBatchChunk(noteIds.slice(i, i + chunkSize), token, vaultKey)
+    }
+  }
+
+  private async applyCrdtBatchChunk(
+    noteIds: string[],
+    token: string,
+    vaultKey: Uint8Array
+  ): Promise<void> {
+    const crdtProvider = this.ctx.deps.crdtProvider
+    if (!crdtProvider || !this.ctx.abortController) return
+
     const syncOpenedNoteIds = new Set<string>()
     try {
       const sinceMap = new Map<string, number>()
@@ -304,7 +329,16 @@ export class CrdtSyncCoordinator {
       // duplicated note body. Its baseline failed transiently; the next pass fetches it.
       for (const noteId of sinceMap.keys()) {
         const postVector = crdtProvider.getStateVector(noteId)
-        if (!postVector || postVector.length <= 2) {
+        // No vector at all means the doc is no longer open, which is not the
+        // same as an open doc that turned out to be empty: the provider closed
+        // it while this pass ran, so what the server holds is simply unknown
+        // here. Seeding on that would write local markdown over a note whose
+        // remote body was never applied. Leave it for the next pass.
+        if (!postVector) {
+          log.warn('Skipping markdown seed: CRDT doc closed mid-batch', { noteId })
+          continue
+        }
+        if (postVector.length <= 2) {
           await crdtProvider.seedFromMarkdownPublic(noteId)
           log.debug('applyCrdtBatch: seeded from markdown as fallback (no server CRDT)', {
             noteId
