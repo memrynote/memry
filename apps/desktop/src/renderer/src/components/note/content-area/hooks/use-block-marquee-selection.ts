@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createLogger } from '@/lib/logger'
+import { shouldStartMarquee } from '../marquee-hit-test'
 import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
 
 const log = createLogger('Hook:Marquee')
@@ -46,20 +47,6 @@ interface UseBlockMarqueeSelectionReturn {
 interface OriginPoint {
   clientX: number
   clientY: number
-}
-
-function shouldStartMarquee(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.closest('[data-marquee-ignore]')) return false
-  if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
-  if (
-    target.closest(
-      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu'
-    )
-  ) {
-    return false
-  }
-  return true
 }
 
 function rectsIntersect(

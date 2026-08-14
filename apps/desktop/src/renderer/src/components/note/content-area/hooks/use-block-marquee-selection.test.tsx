@@ -191,10 +191,24 @@ describe('useBlockMarqueeSelection', () => {
     trigger.remove()
   })
 
-  it('ignores disabled, interactive, and mostly-horizontal editable drags', () => {
+  it('ignores disabled, interactive, opted-out, and mostly-horizontal editable drags', () => {
     const { trigger, blockContainerRef } = setupDom()
     const button = document.createElement('button')
     trigger.append(button)
+    // The side rail opts out of marquee entirely (note-layout.tsx marks it
+    // `data-marquee-ignore`), so a drag that starts on it selects nothing.
+    const rail = document.createElement('div')
+    rail.setAttribute('data-marquee-ignore', '')
+    trigger.append(rail)
+    // BlockNote renders its menus inside the marquee zone rather than
+    // portaling them out, so dragging within one must not select blocks
+    // behind it. Also covered end-to-end by editor-drag-handle-menu.e2e.ts.
+    const sideMenu = document.createElement('div')
+    sideMenu.className = 'bn-side-menu'
+    trigger.append(sideMenu)
+    // Icons render as SVG, which is an Element but not an HTMLElement.
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    trigger.append(icon)
     const editable = document.createElement('div')
     editable.setAttribute('contenteditable', 'true')
     trigger.append(editable)
@@ -226,6 +240,15 @@ describe('useBlockMarqueeSelection', () => {
       document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
     })
     expect(result.current.selectedBlockIds.size).toBe(0)
+
+    for (const optedOut of [rail, sideMenu, icon]) {
+      act(() => {
+        optedOut.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+        document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
+        document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 70 }))
+      })
+      expect(result.current.selectedBlockIds.size).toBe(0)
+    }
 
     act(() => {
       editable.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
