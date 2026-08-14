@@ -1,5 +1,5 @@
 import type { InlineContentSpec } from '@blocknote/core'
-import { LinkMention } from './link-mention'
+import { linkMentionConfig } from './link-mention'
 import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
@@ -13,8 +13,11 @@ export * from './date-mention'
  * The specs each process supplies for itself. The config and the serialization
  * half still come from here (via `createHashTagSpec` / `createDateMentionSpec`,
  * or `WikiLink` / `WikiLinkSerializationOnly`), so only presentation and
- * HTML-paste behaviour differ. linkMention needs no entry — it is portable and
- * shared whole.
+ * HTML-paste behaviour differ.
+ *
+ * Every one of the four is listed. None can be "shared whole": BlockNote
+ * serializes inline content inside a TABLE through `render`, so the editor's
+ * rich implementation reaching the main process rewrites that cell's markdown.
  */
 export interface MemryInlineSpecs {
   hashTag: InlineContentSpec<typeof hashTagConfig>
@@ -26,6 +29,13 @@ export interface MemryInlineSpecs {
    * way — see wiki-link.ts.
    */
   wikiLink: InlineContentSpec<typeof wikiLinkConfig>
+  /**
+   * `LinkMention` in the editor, `LinkMentionSerializationOnly` in main. The
+   * editor chip renders an `<a>`; in a table cell that `<a>` is what gets
+   * serialized, turning the `((mention:…))` token into a plain markdown link
+   * and dropping domain/title/favicon/siteName from disk.
+   */
+  linkMention: InlineContentSpec<typeof linkMentionConfig>
 }
 
 /**
@@ -36,7 +46,7 @@ export interface MemryInlineSpecs {
 export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
   return {
     wikiLink: specs.wikiLink,
-    linkMention: LinkMention,
+    linkMention: specs.linkMention,
     hashTag: specs.hashTag,
     dateMention: specs.dateMention
   }

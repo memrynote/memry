@@ -5,6 +5,7 @@ import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
 import { HashTag } from './hash-tag'
+import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 
 // Built through the shared factory so the main process gets a schema with the
@@ -28,6 +29,7 @@ export const editorSchema = createMemrySchema({
     // The editor flavour of wikiLink: same node as main's, plus the `parse`
     // rule that turns pasted `[[X]]` text into a link.
     wikiLink: WikiLink,
+    linkMention: LinkMention,
     hashTag: HashTag,
     dateMention: DateMention
   }

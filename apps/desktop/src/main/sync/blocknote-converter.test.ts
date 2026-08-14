@@ -909,3 +909,107 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
 })
+
+describe('custom inline content inside a table', () => {
+  // BlockNote serializes inline content inside a table through the spec's
+  // `render`, NOT `toExternalHTML`. Every other block type takes the
+  // `toExternalHTML` path, so a server spec can look correct everywhere and
+  // still corrupt tables. Both failure modes below were real:
+  //   - a throwing render made yDocToMarkdown return null, so the whole note
+  //     silently stopped writing back
+  //   - the editor's rich linkMention render emitted `<a href>`, rewriting the
+  //     `((mention:…))` token as a plain markdown link and dropping the
+  //     domain/title/favicon/siteName from disk permanently
+  const cellProps = {
+    colspan: 1,
+    rowspan: 1,
+    backgroundColor: 'default',
+    textColor: 'default',
+    textAlignment: 'left'
+  }
+
+  async function tableMarkdown(cellContent: unknown[]): Promise<string | null> {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'tbl',
+          type: 'table',
+          props: {},
+          children: [],
+          content: {
+            type: 'tableContent',
+            columnWidths: [null, null],
+            rows: [
+              {
+                cells: [
+                  { type: 'tableCell', content: cellContent, props: cellProps },
+                  {
+                    type: 'tableCell',
+                    content: [{ type: 'text', text: 'x', styles: {} }],
+                    props: cellProps
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    return await yDocToMarkdown(doc)
+  }
+
+  it.each([
+    ['wikiLink', [{ type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }], '[[Roadmap]]'],
+    [
+      'wikiLink with an alias',
+      [{ type: 'wikiLink', props: { target: 'Roadmap', alias: 'the plan' } }],
+      '[[Roadmap|the plan]]'
+    ],
+    ['hashTag', [{ type: 'hashTag', props: { tag: 'work', color: '', icon: '' } }], '#work'],
+    [
+      'linkMention',
+      [
+        {
+          type: 'linkMention',
+          props: {
+            url: 'https://x.com/y',
+            domain: 'x.com',
+            title: 'T',
+            favicon: 'f',
+            siteName: 'S'
+          }
+        }
+      ],
+      serializeLinkMentionToken('https://x.com/y')
+    ]
+  ])('%s keeps its on-disk form in a table cell', async (_name, content, expected) => {
+    // #when
+    const markdown = await tableMarkdown(content)
+
+    // #then the conversion succeeds at all (a throwing render returns null)...
+    expect(markdown).not.toBeNull()
+    // ...and the cell holds the textual form, not the editor's rich markup
+    expect(markdown).toContain(expected)
+  })
+
+  it('a date mention keeps its token in a table cell', async () => {
+    // #given
+    const props = {
+      anchorId: 'a1',
+      dateISO: '2026-08-14T09:00:00.000Z',
+      hasTime: true,
+      dateFormat: 'relative' as const,
+      remind: 'none' as const,
+      timeFormat: 'system' as const
+    }
+
+    // #when
+    const markdown = await tableMarkdown([{ type: 'dateMention', props }])
+
+    // #then
+    expect(markdown).not.toBeNull()
+    expect(markdown).toContain(serializeDateMentionToken(props))
+  })
+})

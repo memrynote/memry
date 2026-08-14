@@ -4,7 +4,7 @@
  * why main needs the spec at all.
  */
 
-import { createInlineContentSpec } from '@blocknote/core'
+import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core'
 
 /**
  * Markdown persistence token for link mentions. A mention is serialized to
@@ -56,6 +56,34 @@ export const linkMentionConfig = {
   content: 'none' as const
 }
 
+/** Matches only the editor's own markup — no text heuristic, so it is safe on both sides. */
+const linkMentionParse = (element: HTMLElement) => {
+  if (element.hasAttribute('data-link-mention')) {
+    const url = element.getAttribute('data-url') || ''
+    const domain = element.getAttribute('data-domain') || ''
+    const title = element.getAttribute('data-title') || ''
+    const favicon = element.getAttribute('data-favicon') || ''
+    const siteName = element.getAttribute('data-site-name') || ''
+    if (!url) return undefined
+    return { url, domain, title, favicon, siteName }
+  }
+
+  return undefined
+}
+
+/**
+ * The node's on-disk form. Emits the markdown persistence token as plain text
+ * (not an `<a>`, which BlockNote's link mark would reclaim on reload);
+ * normalizeLinkMentions rebuilds the rich inline content from it on load.
+ */
+const linkMentionToExternalHTML = (inlineContent: {
+  props: { url: string }
+}): { dom: HTMLElement } => {
+  const dom = document.createElement('span')
+  dom.textContent = serializeLinkMentionToken(inlineContent.props.url)
+  return { dom }
+}
+
 export const LinkMention = createInlineContentSpec(linkMentionConfig, {
   render: (inlineContent) => {
     const { url, domain, title, favicon, siteName } = inlineContent.props
@@ -100,26 +128,26 @@ export const LinkMention = createInlineContentSpec(linkMentionConfig, {
     return { dom }
   },
 
-  parse: (element) => {
-    if (element.hasAttribute('data-link-mention')) {
-      const url = element.getAttribute('data-url') || ''
-      const domain = element.getAttribute('data-domain') || ''
-      const title = element.getAttribute('data-title') || ''
-      const favicon = element.getAttribute('data-favicon') || ''
-      const siteName = element.getAttribute('data-site-name') || ''
-      if (!url) return undefined
-      return { url, domain, title, favicon, siteName }
-    }
+  parse: linkMentionParse,
 
-    return undefined
-  },
-
-  toExternalHTML: (inlineContent) => {
-    // Emit the markdown persistence token as plain text (not an <a>, which
-    // BlockNote's link mark would reclaim on reload). normalizeLinkMentions
-    // rebuilds the rich inline content from this token on load.
-    const dom = document.createElement('span')
-    dom.textContent = serializeLinkMentionToken(inlineContent.props.url)
-    return { dom }
-  }
+  toExternalHTML: linkMentionToExternalHTML
 })
+
+/**
+ * The same node for the main process — same type, same props, same on-disk
+ * form — but rendering the token instead of the rich `<a>` chip.
+ *
+ * `render` is not dead weight on the server: BlockNote serializes inline
+ * content inside a TABLE through `render`, not `toExternalHTML`. With the
+ * editor's implementation registered, a mention in a table cell came out as
+ * `| [x.com](https://x.com/y) |` — the token, domain, title, favicon and
+ * siteName gone from disk for good. A server render must therefore emit
+ * exactly what `toExternalHTML` emits; it must never be rich, and it must
+ * never throw.
+ */
+export const LinkMentionSerializationOnly: InlineContentSpec<typeof linkMentionConfig> =
+  createInlineContentSpec(linkMentionConfig, {
+    render: linkMentionToExternalHTML,
+    parse: linkMentionParse,
+    toExternalHTML: linkMentionToExternalHTML
+  })

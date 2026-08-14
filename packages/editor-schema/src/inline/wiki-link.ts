@@ -102,11 +102,14 @@ export const WikiLink = createInlineContentSpec(wikiLinkConfig, {
  * lost. Main only ever needs to READ these nodes out of the shared Y.Doc and
  * write them back, so it takes the node without the heuristic and keeps
  * markdown parsing byte-for-byte what it is today.
+ *
+ * `render` emits the same text as `toExternalHTML` rather than throwing:
+ * BlockNote serializes inline content inside a TABLE through `render`, so a
+ * throwing render made `yDocToMarkdown` return null for any note with a wiki
+ * link in a table — that note then stopped writing back entirely.
  */
 export const WikiLinkSerializationOnly: InlineContentSpec<typeof wikiLinkConfig> =
   createInlineContentSpec(wikiLinkConfig, {
-    render: () => {
-      throw new Error('wikiLink server spec is serialization-only and must not be rendered')
-    },
+    render: wikiLinkToExternalHTML,
     toExternalHTML: wikiLinkToExternalHTML
   })

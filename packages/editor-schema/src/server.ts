@@ -3,15 +3,25 @@
  *
  * Everything reachable from here runs under Node + jsdom: no React, no
  * renderer imports. What it supplies is the presentation half the package
- * deliberately leaves to each process — except that main never presents
- * anything, so every `render` throws. The parse/`toExternalHTML` halves, which
- * are what actually decide the bytes written to the vault, come from the same
- * modules the renderer uses.
+ * deliberately leaves to each process — and for main that half must emit
+ * exactly what `toExternalHTML` emits.
+ *
+ * It is tempting to make these renders throw, on the reasoning that a
+ * serialization-only schema never presents anything. That is wrong: BlockNote
+ * serializes inline content inside a TABLE through `render`, not
+ * `toExternalHTML`. A throwing render made `yDocToMarkdown` return null for
+ * any note holding a wiki link, hash tag or date mention in a table, which
+ * stopped that note's write-back completely; and leaving the editor's rich
+ * `linkMention` render in place rewrote `((mention:…))` as a plain markdown
+ * link, losing the token and its metadata from disk.
  */
 
 import {
   createHashTagSpec,
   createDateMentionSpec,
+  dateMentionSerialization,
+  hashTagSerialization,
+  LinkMentionSerializationOnly,
   WikiLinkSerializationOnly,
   type MemryInlineSpecs
 } from './inline'
@@ -21,11 +31,12 @@ export { createServerBlockSpecs } from './blocks/server-specs'
 export function createServerInlineSpecs(): MemryInlineSpecs {
   return {
     wikiLink: WikiLinkSerializationOnly,
-    hashTag: createHashTagSpec(() => {
-      throw new Error('hashTag server spec is serialization-only and must not be rendered')
-    }),
-    dateMention: createDateMentionSpec(() => {
-      throw new Error('dateMention server spec is serialization-only and must not be rendered')
-    })
+    linkMention: LinkMentionSerializationOnly,
+    hashTag: createHashTagSpec((inlineContent) =>
+      hashTagSerialization.toExternalHTML(inlineContent)
+    ),
+    dateMention: createDateMentionSpec((inlineContent) =>
+      dateMentionSerialization.toExternalHTML(inlineContent)
+    )
   }
 }
