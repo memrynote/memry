@@ -94,6 +94,14 @@ const dispatchCrdtStateChanged = (data: CrdtStateChangedPayload): void => {
   }
 }
 
+/**
+ * Main dropped the provider that owned every open doc. Unlike the update
+ * channel this is not note-scoped: every provider in the window is stranded at
+ * once, so each one subscribes for itself and rebinds its own note.
+ */
+export const onCrdtProviderReset = (callback: () => void): (() => void) =>
+  subscribe<void>(SYNC_EVENTS.PROVIDER_RESET, callback)
+
 export const onCrdtStateChanged = (
   noteId: string,
   callback: CrdtStateChangedCallback

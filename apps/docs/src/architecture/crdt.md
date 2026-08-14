@@ -122,6 +122,29 @@ pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmou
 window that turns out to be gone, and provider teardown on vault close or switch. Once
 released, the doc is evictable and compactable again.
 
+### Rebinding After a Provider Reset
+
+Sign-out — and any other provider reset — drops the instance that owned every open doc,
+while renderer editors stay mounted. Their providers are then bound to docs nothing
+serves: main goes on applying remote updates, to the _new_ instance's docs, and
+broadcasts them to a window set the editor is no longer in. Nothing about that is visible
+to the user, so the note silently shows stale content until it is closed and reopened or
+the app restarts.
+
+The reset therefore broadcasts `crdt:provider-reset` to every window, and each provider
+re-opens its note and redoes the sync handshake. Re-opening is the part that matters:
+that is what re-attributes the window to the fresh doc and puts the editor back in the
+broadcast set. The event carries no note id — one reset strands every open doc at once,
+so each provider hears it and rebinds its own note.
+
+The renderer's Y.Doc is merged rather than replaced. A note stays editable while signed
+out, so edits made in that window exist nowhere else; `crdt:sync-step-1` / `-2` reconcile
+them with whatever main now holds instead of discarding them.
+
+The reset also logs how many docs had an editor attached when it happened. That is the
+number the rebind has to bring back, and it is the only signal that this class of failure
+occurred — a stale editor is otherwise indistinguishable from a quiet note.
+
 Local compaction runs under that same condition as closing and eviction — a doc with no
 windows attached — and it is asynchronous for the same reason, so the two can be in flight
 at once for one note. Compaction therefore treats the entry it captured as provisional: it

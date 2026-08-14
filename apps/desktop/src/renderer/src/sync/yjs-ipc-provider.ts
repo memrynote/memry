@@ -16,6 +16,9 @@ export class YjsIpcProvider extends Observable<string> {
   private destroyed = false
   private updateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null
   private ipcCleanup: (() => void) | null = null
+  private resetCleanup: (() => void) | null = null
+  /** Serialises rebinds so two resets in a row cannot interleave handshakes. */
+  private rebinding: Promise<void> | null = null
 
   constructor(config: YjsIpcProviderConfig) {
     super()
@@ -43,6 +46,18 @@ export class YjsIpcProvider extends Observable<string> {
       }
     )
 
+    // Main can drop the provider that owns this note's doc — sign-out does, and
+    // so does any other provider reset — while this editor stays mounted. The
+    // binding is dead at that point and nothing else says so: remote updates go
+    // on being applied in main and broadcast to a window set this editor is no
+    // longer in, so the note silently goes stale until it is closed and
+    // reopened. Rebind instead.
+    this.resetCleanup = window.api.onCrdtProviderReset(() => {
+      this.rebinding = (this.rebinding ?? Promise.resolve())
+        .catch(() => {})
+        .then(() => this.rebind())
+    })
+
     await this.openDoc()
     if (this.destroyed) return
     await this.performSyncHandshake()
@@ -57,6 +72,11 @@ export class YjsIpcProvider extends Observable<string> {
     if (this.ipcCleanup) {
       this.ipcCleanup()
       this.ipcCleanup = null
+    }
+
+    if (this.resetCleanup) {
+      this.resetCleanup()
+      this.resetCleanup = null
     }
 
     window.api.syncCrdt.closeDoc({ noteId: this.noteId }).catch((err: unknown) => {
@@ -77,6 +97,32 @@ export class YjsIpcProvider extends Observable<string> {
     this.destroyed = true
     this.disconnect()
     super.destroy()
+  }
+
+  /**
+   * Re-open this note in main and redo the handshake after a provider reset.
+   *
+   * The local doc is merged rather than replaced: a note stays editable while
+   * signed out, so those edits exist only here, and `syncStep1`/`syncStep2`
+   * reconciles them with whatever main now holds. Re-opening is also what
+   * re-attributes this window to the doc, which is what puts the editor back
+   * into main's broadcast set.
+   *
+   * A failure is logged and dropped rather than thrown: this runs from an IPC
+   * event with no caller to receive it, and the provider must stay alive for
+   * the next reset.
+   */
+  private async rebind(): Promise<void> {
+    if (this.destroyed) return
+    this.synced = false
+    try {
+      await this.openDoc()
+      if (this.destroyed) return
+      await this.performSyncHandshake()
+      log.debug('Rebound after provider reset', { noteId: this.noteId })
+    } catch (err) {
+      log.error('Failed to rebind after provider reset', { noteId: this.noteId, error: err })
+    }
   }
 
   private async openDoc(): Promise<void> {
