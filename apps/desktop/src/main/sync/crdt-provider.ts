@@ -22,6 +22,7 @@ import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
+import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
@@ -578,6 +579,22 @@ export class CrdtProvider {
 
     const raw = await safeRead(toAbsolutePath(cached.path))
     if (!raw) return
+
+    // Before gray-matter, before BlockNote. The parse is what freezes the main
+    // process — cost tracks single-block size, not file size — so a large-file
+    // class note never gets a Y.Doc body. This guard is not conditional on how
+    // the note arrived, so an oversized note already sitting in an existing
+    // vault stops freezing on open too.
+    const classification = classifyMarkdownContent(raw)
+    if (classification.sizeClass === 'large-file') {
+      log.warn('Refusing to seed a large-file-class note into CRDT', {
+        noteId,
+        reason: classification.reason,
+        fileBytes: classification.fileBytes,
+        largestBlockBytes: classification.largestBlockBytes
+      })
+      return
+    }
 
     const parsed = parseNote(raw, cached.path)
     if (!parsed.content?.trim()) return

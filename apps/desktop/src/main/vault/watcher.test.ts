@@ -72,6 +72,7 @@ vi.mock('./index', () => ({
 }))
 
 import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
+import { syncNoteCreate } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
@@ -569,5 +570,58 @@ describe('vault watcher', () => {
     expect(copy).toBeDefined()
     expect(copy!.id).not.toBe(original!.id)
     expect(copy!.title).toBe('my-note copy')
+  })
+
+  // ==========================================================================
+  // Large-file class: a row in the sidebar, but never a CRDT seed at ingest
+  // ==========================================================================
+
+  it('lists a pasted log dump but does not initiate a CRDT seed for it', async () => {
+    // #given a 600 KB dump with no blank line anywhere. It is under the byte
+    // ceiling, so only the block bound catches it — this is the shape that
+    // froze the app: one paragraph holding millions of inline nodes.
+    const dump = Array.from({ length: 20_000 }, (_, i) => `2026-08-15 line ${i} payload`).join('\n')
+    const dumpPath = createTestNote(vault, { title: 'server-log', content: dump })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    vi.mocked(syncNoteCreate).mockClear()
+
+    // #when
+    await watcher.handleFileAdd(dumpPath)
+
+    // #then — the row still appears, so the file is not hidden from the user
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/server-log.md'))
+      .get()
+    expect(cached).toBeDefined()
+
+    // ...but ingest asks for no CRDT doc, so the BlockNote parse never starts
+    expect(syncNoteCreate).toHaveBeenCalledWith(cached!.id, expect.any(String), expect.any(Array), {
+      initCrdt: false
+    })
+  })
+
+  it('still initiates a CRDT seed for a well-formed note', async () => {
+    // #given ordinary prose: blank-line separated, small blocks
+    const prose = Array.from({ length: 200 }, (_, i) => `Paragraph ${i} of the note.`).join('\n\n')
+    const notePath = createTestNote(vault, { title: 'ordinary', content: prose })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    vi.mocked(syncNoteCreate).mockClear()
+
+    // #when
+    await watcher.handleFileAdd(notePath)
+
+    // #then — the guard must not cost note-class files their CRDT doc
+    expect(syncNoteCreate).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(Array),
+      { initCrdt: true }
+    )
   })
 })

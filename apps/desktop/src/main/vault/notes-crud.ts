@@ -20,6 +20,7 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
+import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
   atomicWrite,
@@ -43,7 +44,11 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
-import { NotesChannels } from '@memry/contracts/notes-api'
+import {
+  NotesChannels,
+  type NoteSizeClass,
+  type NoteLargeFileReason
+} from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
@@ -96,6 +101,10 @@ export interface Note {
   wordCount: number
   properties: Record<string, unknown>
   emoji?: string | null
+  /** See the same fields on the contracts `Note`, which this shape feeds. */
+  sizeClass?: NoteSizeClass
+  largeFileReason?: NoteLargeFileReason | null
+  contentOmitted?: boolean
 }
 
 export interface NoteListItem {
@@ -335,6 +344,32 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 // Read
 // ============================================================================
 
+/**
+ * What a large-file-class note reports: identity plus cached metadata, and no
+ * body. The editor never mounts for these, so there is nothing to hand it — and
+ * for the over-ceiling case the bytes were never read in the first place.
+ */
+function largeFileNote(
+  db: ReturnType<typeof getIndexDatabase>,
+  id: string,
+  cached: NonNullable<ReturnType<typeof getNoteCacheById>>
+): Note {
+  return {
+    id,
+    path: cached.path,
+    title: cached.title,
+    content: '',
+    frontmatter: {},
+    created: new Date(cached.createdAt),
+    modified: new Date(cached.modifiedAt),
+    tags: getNoteTags(db, id),
+    aliases: [],
+    wordCount: cached.wordCount ?? 0,
+    properties: getNotePropertiesAsRecord(db, id),
+    emoji: cached.emoji ?? null
+  }
+}
+
 export async function getNoteById(id: string): Promise<Note | null> {
   const db = getIndexDatabase()
 
@@ -344,6 +379,27 @@ export async function getNoteById(id: string): Promise<Note | null> {
   }
 
   const absolutePath = toAbsolutePath(cached.path)
+
+  // Classify before reading. A file over the byte ceiling must never become a
+  // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a
+  // main-process allocation and GC pause on its own. `stat` settles those
+  // without touching the bytes.
+  const stats = await fs.stat(absolutePath).catch(() => null)
+  const bySize = stats ? classifyMarkdownStat(stats.size) : null
+  if (bySize) {
+    logger.info('Note is large-file class by size; body not read', {
+      id,
+      path: cached.path,
+      fileBytes: bySize.fileBytes
+    })
+    return {
+      ...largeFileNote(db, id, cached),
+      sizeClass: bySize.sizeClass,
+      largeFileReason: bySize.reason,
+      contentOmitted: true
+    }
+  }
+
   const fileContent = await safeRead(absolutePath)
 
   // `null` = file truly missing (ENOENT). An empty string is a VALID empty
@@ -362,6 +418,25 @@ export async function getNoteById(id: string): Promise<Note | null> {
       errorCode: 'NOTE_FILE_MISSING'
     })
     return null
+  }
+
+  // Under the byte ceiling the file is cheap to read, so the block bound is
+  // measured exactly. This is the case a byte ceiling alone gets wrong: a
+  // sub-ceiling log dump is one enormous block and parses quadratically.
+  const byContent = classifyMarkdownContent(fileContent)
+  if (byContent.sizeClass === 'large-file') {
+    logger.info('Note is large-file class by block size; not opening as a note', {
+      id,
+      path: cached.path,
+      fileBytes: byContent.fileBytes,
+      largestBlockBytes: byContent.largestBlockBytes
+    })
+    return {
+      ...largeFileNote(db, id, cached),
+      sizeClass: byContent.sizeClass,
+      largeFileReason: byContent.reason,
+      contentOmitted: true
+    }
   }
 
   const parsed = parseNote(fileContent, cached.path)

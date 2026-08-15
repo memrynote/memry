@@ -1171,6 +1171,69 @@ describe('CrdtProvider', () => {
     expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
   })
 
+  it('refuses to seed a log dump that is under the byte ceiling but one giant block', async () => {
+    // #given 600 KB of log lines with no blank line anywhere — the reported
+    // freeze. A byte ceiling alone would accept this file.
+    const dump = Array.from({ length: 20_000 }, (_, i) => `2026-08-15 line ${i} payload`).join('\n')
+    await provider.open('log-dump', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'log-dump',
+      path: 'notes/dump.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(dump)
+    mocks.markdownToYFragment.mockClear()
+    mocks.persistenceInstances[0].storeUpdate.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('log-dump')
+
+    // #then — the BlockNote parse is the freeze, so it must never be reached,
+    // and nothing is persisted for the note.
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+    expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
+    expect(provider.getDoc('log-dump')?.getXmlFragment('prosemirror').length).toBe(0)
+  })
+
+  it('refuses to seed a file over the byte ceiling', async () => {
+    // #given a file past NOTE_MAX_BYTES, shaped as ordinary paragraphs
+    const huge = Array.from({ length: 3000 }, () => 'x'.repeat(1000)).join('\n\n')
+    await provider.open('huge-note', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'huge-note',
+      path: 'notes/huge.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(huge)
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('huge-note')
+
+    // #then
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+  })
+
+  it('still seeds a well-formed 1.8 MB note, which parses fine', async () => {
+    // #given the measured good case: big, but many blank-line-separated blocks
+    const body = Array.from({ length: 450 }, () => 'x'.repeat(4000)).join('\n\n')
+    await provider.open('big-but-fine', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'big-but-fine',
+      path: 'notes/big.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(body)
+    mocks.parseNote.mockReturnValueOnce({ content: body })
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('big-but-fine')
+
+    // #then — the guard must not cost the app notes it can genuinely handle
+    expect(mocks.markdownToYFragment).toHaveBeenCalledWith(body, expect.anything(), 'notes/big.md')
+  })
+
   it('ignores closing docs and unavailable windows while applying updates', async () => {
     createWindow(21, true)
     await provider.open('closing-note', 21, { skipSeed: true })
