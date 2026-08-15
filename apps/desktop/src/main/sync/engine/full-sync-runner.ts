@@ -81,6 +81,17 @@ export class FullSyncRunner {
   private pacedCrdtPullQueue = new Set<string>()
   private pacedCrdtPullTimer: ReturnType<typeof setTimeout> | null = null
   private pacedCrdtChunkInFlight = false
+  /**
+   * Cancels the sweep's in-flight pulls when the engine goes away.
+   *
+   * Dropping the queue and the timer stops the NEXT chunk, but a paced sweep
+   * spans minutes, so there is almost always a chunk already in flight — and
+   * that one would run to completion against a provider and a vault this engine
+   * no longer owns, opening docs on a discarded provider and spending request
+   * budget for a session that is over. Rebuilt on demand, because an aborted
+   * controller stays aborted and a later engine must not inherit it.
+   */
+  private pacedCrdtPullAbort: AbortController | null = null
 
   constructor(
     ctx: SyncContext,
@@ -224,6 +235,16 @@ export class FullSyncRunner {
     // chunk still in flight re-arm the pace timer from its `finally` and keep a
     // dead engine pulling against a vault it no longer owns.
     this.pacedCrdtPullQueue.clear()
+    this.pacedCrdtPullAbort?.abort()
+    this.pacedCrdtPullAbort = null
+  }
+
+  /** Signal for sweep-issued pulls, live until `dispose()` cancels them. */
+  private sweepPullSignal(): AbortSignal {
+    if (!this.pacedCrdtPullAbort || this.pacedCrdtPullAbort.signal.aborted) {
+      this.pacedCrdtPullAbort = new AbortController()
+    }
+    return this.pacedCrdtPullAbort.signal
   }
 
   private sweepAllCrdtNotes(): void {
@@ -400,7 +421,9 @@ export class FullSyncRunner {
       }
 
       if (priority.length > 0) {
-        this.actions.scheduleSync(() => this.crdtSync.pullCrdtForNotes(priority))
+        this.actions.scheduleSync(() =>
+          this.crdtSync.pullCrdtForNotes(priority, this.sweepPullSignal())
+        )
       }
     }
 
@@ -453,7 +476,7 @@ export class FullSyncRunner {
     this.pacedCrdtChunkInFlight = true
     this.actions.scheduleSync(async () => {
       try {
-        await this.crdtSync.pullCrdtForNotes(chunk)
+        await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal())
       } finally {
         // Re-arm from the chunk's completion, not from when it was issued, so a
         // slow chunk stretches the interval instead of overlapping the next one.

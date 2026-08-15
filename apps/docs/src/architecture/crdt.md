@@ -308,6 +308,13 @@ One drain runs at a time and one timer is armed at a time. A second sweep landin
 mid-drain re-queues into the running one instead of starting its own, which would double
 the request rate; engine teardown cancels the timer and drops the queue.
 
+Teardown also aborts the chunk already in flight. Cancelling the timer only stops the
+_next_ one, and a paced sweep spans minutes, so at teardown there is almost always one
+running — it would otherwise pull into a provider and a vault the engine no longer owns,
+and spend request budget for a session that is over. The abort signal is rebuilt per
+drain rather than reused, because an aborted controller stays aborted and the next
+engine's pulls must not start cancelled.
+
 ## Snapshot Failure Handling
 
 A snapshot is a **compaction optimization**, not the source of truth: the authoritative

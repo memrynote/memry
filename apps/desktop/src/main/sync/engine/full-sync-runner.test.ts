@@ -54,7 +54,7 @@ vi.mock('../../database/client', () => ({
 class FakeCrdtSync {
   private pending = new Set<string>()
   pullCrdtForNote = vi.fn(async () => {})
-  pullCrdtForNotes = vi.fn(async (_noteIds: string[]) => {})
+  pullCrdtForNotes = vi.fn(async (_noteIds: string[], _signal?: AbortSignal) => {})
 
   addPendingPull(noteId: string): void {
     this.pending.add(noteId)
@@ -517,7 +517,10 @@ describe('FullSyncRunner', () => {
 
       await expect(h.runner.run()).rejects.toThrow('boom')
 
-      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-1', 'note-2'])
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(
+        ['note-1', 'note-2'],
+        expect.any(AbortSignal)
+      )
       expect(h.crdtSync.pendingPullCount).toBe(0)
     })
 
@@ -563,7 +566,7 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
       await scheduled[0]()
 
-      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-7'])
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-7'], expect.any(AbortSignal))
     })
 
     it('#then the index DB is not touched while it is uninitialized', async () => {
@@ -992,7 +995,7 @@ describe('FullSyncRunner', () => {
     }
 
     function pulledNoteIds(h: Harness): string[] {
-      return h.crdtSync.pullCrdtForNotes.mock.calls.flatMap(([ids]: [string[]]) => ids)
+      return h.crdtSync.pullCrdtForNotes.mock.calls.flatMap(([ids]) => ids)
     }
 
     it('#then the chunk size and interval stay inside BOTH server rate limits', () => {
@@ -1019,7 +1022,10 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-0', 'note-1', 'note-2'])
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(
+        ['note-0', 'note-1', 'note-2'],
+        expect.any(AbortSignal)
+      )
       // The single-note path is two GETs per note (snapshot, then incrementals).
       // The batch path shares one incrementals POST across the group — the
       // snapshot baselines are still one GET each, so this halves the traffic
@@ -1113,6 +1119,39 @@ describe('FullSyncRunner', () => {
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 10)
 
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then disposing the runner aborts the chunk already in flight', async () => {
+      // Clearing the queue and the timer only stops the NEXT chunk. A paced
+      // sweep spans minutes, so at teardown there is almost always one in
+      // flight, and it would otherwise keep pulling into a provider and vault
+      // this engine no longer owns.
+      const h = sweepingHarness(60)
+
+      await h.runner.run()
+      const [, signal] = h.crdtSync.pullCrdtForNotes.mock.calls[0] as [string[], AbortSignal]
+      expect(signal.aborted).toBe(false)
+
+      h.runner.dispose()
+
+      expect(signal.aborted).toBe(true)
+    })
+
+    it('#then a later sweep does not inherit the aborted signal', async () => {
+      // An aborted controller stays aborted, so reusing it would leave every
+      // pull of the next engine cancelled before it started.
+      const h = sweepingHarness(60)
+
+      await h.runner.run()
+      const [, first] = h.crdtSync.pullCrdtForNotes.mock.calls[0] as [string[], AbortSignal]
+      h.runner.dispose()
+      expect(first.aborted).toBe(true)
+
+      h.crdtSync.addPendingPull('note-later')
+      await h.runner.run()
+
+      const [, latest] = h.crdtSync.pullCrdtForNotes.mock.calls.at(-1) as [string[], AbortSignal]
+      expect(latest.aborted).toBe(false)
     })
   })
 })

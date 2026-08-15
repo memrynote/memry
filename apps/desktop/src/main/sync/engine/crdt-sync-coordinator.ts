@@ -447,7 +447,7 @@ export class CrdtSyncCoordinator {
    * retry rather than dropped: the sweep hands this method the whole vault, so
    * silently returning would strand every stale body until the next sweep.
    */
-  async pullCrdtForNotes(noteIds: string[]): Promise<void> {
+  async pullCrdtForNotes(noteIds: string[], signal?: AbortSignal): Promise<void> {
     if (noteIds.length === 0) return
     log.debug('pullCrdtForNotes entered', { count: noteIds.length })
 
@@ -463,9 +463,14 @@ export class CrdtSyncCoordinator {
       return
     }
 
-    const localAbort = new AbortController()
+    // A caller that can outlive this group passes its own signal: the paced
+    // sweep spans minutes, so without one a group already in flight would keep
+    // pulling after the engine was disposed, against a provider and vault it no
+    // longer owns. Callers that cannot be torn down mid-group get a signal that
+    // never fires, which is the behaviour the engine's own controller gave.
+    const effectiveSignal = signal ?? new AbortController().signal
     try {
-      await this.applyCrdtBatch(noteIds, token, vaultKey, localAbort.signal)
+      await this.applyCrdtBatch(noteIds, token, vaultKey, effectiveSignal)
       log.debug('pullCrdtForNotes completed', { count: noteIds.length })
     } finally {
       secureCleanup(vaultKey)
