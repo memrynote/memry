@@ -61,6 +61,10 @@
         "title": "This file is too large to open",
         "reason": "It is {size}. Memry can display files up to {limit}.",
         "explanation": "The file is untouched on disk. Open it in an app built for files this size."
+      },
+      "find": {
+        "searching": "{count} so far…",
+        "limited": "{index}/{shown} of {total}"
       }
     }
   },

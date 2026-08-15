@@ -1,10 +1,12 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { formatBytes } from '@/lib/format'
 import { Button } from '@/components/ui/button'
+import { FindBar } from '@/components/find-bar/find-bar'
 import { useLargeFileSession } from '@/hooks/use-large-file-session'
+import { useLargeFileSearch, type LargeFileSearch } from '@/hooks/use-large-file-search'
 import { LargeFileNotice, largeFileReasonArgs } from './large-file-notice'
 import type { NoteLargeFileReason } from '@memry/contracts/notes-api'
 
@@ -24,6 +26,18 @@ export interface LargeFileViewerProps {
   reason: NoteLargeFileReason | null | undefined
   /** Measured size the reason refers to, when the main process reported one. */
   measuredBytes?: number | null
+  /**
+   * Whether this viewer is the surface the find shortcut belongs to. A viewer
+   * in a background tab stays mounted, and two bars answering one keystroke is
+   * worse than none.
+   */
+  active?: boolean
+  /**
+   * Filled with "open the find bar", so the Edit > Find menu item and the note
+   * menu can reach a search that lives inside this component. Mirrors the
+   * `focusAtEndRef` handshake the editor already uses.
+   */
+  openFindRef?: RefObject<(() => void) | null>
   className?: string
 }
 
@@ -40,11 +54,14 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   noteId,
   reason,
   measuredBytes,
+  active = true,
+  openFindRef,
   className
 }: LargeFileViewerProps) {
   const { t } = useT('notes')
-  const { state, getLine, isTruncated, ensureRange } = useLargeFileSession(noteId)
+  const { state, sessionId, getLine, isTruncated, ensureRange } = useLargeFileSession(noteId)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const search = useLargeFileSearch(sessionId)
 
   const lineCount = state.status === 'ready' ? state.lineCount : 0
   const virtualizer = useVirtualizer({
@@ -61,6 +78,46 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   useEffect(() => {
     if (lineCount > 0) ensureRange(firstRow, lastRow)
   }, [ensureRange, firstRow, lastRow, lineCount])
+
+  const isReady = state.status === 'ready'
+  const openFind = search.open
+  const canFind = isReady && lineCount > 0
+
+  // The app's find affordance, matched rather than reinvented: the same
+  // Cmd/Ctrl+F, and the same bar. `useFindInPage` is switched off for this
+  // surface in note.tsx — it walks the DOM, and the DOM here is a few dozen
+  // rows out of millions.
+  useEffect(() => {
+    if (!active || !canFind) return
+    const handler = (event: KeyboardEvent): void => {
+      const isMac = navigator.platform.toUpperCase().includes('MAC')
+      const modifier = isMac ? event.metaKey : event.ctrlKey
+      if (!modifier || event.key.toLowerCase() !== 'f') return
+      event.preventDefault()
+      event.stopPropagation()
+      openFind()
+    }
+    window.addEventListener('keydown', handler, { capture: true })
+    return () => window.removeEventListener('keydown', handler, { capture: true })
+  }, [active, canFind, openFind])
+
+  // Edit > Find and the note menu reach the bar through this.
+  useEffect(() => {
+    if (!openFindRef) return
+    openFindRef.current = canFind ? openFind : null
+    return () => {
+      openFindRef.current = null
+    }
+  }, [openFindRef, canFind, openFind])
+
+  const currentHit = search.currentHit
+  useEffect(() => {
+    if (!currentHit) return
+    virtualizer.scrollToIndex(currentHit.line, { align: 'center' })
+    // The virtualizer identity changes every render; the hit is what moves the
+    // viewport.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentHit])
 
   if (state.status === 'too-large') {
     return (
@@ -99,8 +156,24 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   return (
     <div
       data-testid="large-file-viewer"
-      className={cn('flex h-full min-h-[60vh] flex-col', className)}
+      className={cn('relative flex h-full min-h-[60vh] flex-col', className)}
     >
+      {canFind && (
+        <FindBar
+          isOpen={search.isOpen}
+          query={search.query}
+          matchCount={search.total}
+          currentIndex={search.currentIndex}
+          inputRef={search.inputRef}
+          onQueryChange={search.setQuery}
+          onNext={search.next}
+          onPrev={search.prev}
+          onClose={search.close}
+          countLabel={countLabel(t, search)}
+          className="top-3"
+        />
+      )}
+
       <ViewerHeader
         reason={reason}
         measuredBytes={measuredBytes}
@@ -132,6 +205,8 @@ export const LargeFileViewer = memo(function LargeFileViewer({
                 text={getLine(row.index)}
                 truncated={isTruncated(row.index)}
                 truncatedLabel={t('page.largeFile.viewer.lineTruncated')}
+                query={search.isOpen ? search.query : ''}
+                activeOrdinal={currentHit?.line === row.index ? currentHit.ordinal : null}
               />
             ))}
           </div>
@@ -140,6 +215,28 @@ export const LargeFileViewer = memo(function LargeFileViewer({
     </div>
   )
 })
+
+type Translate = ReturnType<typeof useT>['t']
+
+/**
+ * What the find bar says about the count.
+ *
+ * Two cases the note find bar never has, both of which would be a lie as a bare
+ * `3/128`: a pass still crossing the file, where the count is still growing,
+ * and a hit list capped for navigation, where it is only part of the total.
+ * `undefined` falls back to the bar's own `current/total`.
+ */
+function countLabel(t: Translate, search: LargeFileSearch): string | undefined {
+  if (search.searching) return t('page.largeFile.find.searching', { count: search.total })
+  if (search.limited) {
+    return t('page.largeFile.find.limited', {
+      index: search.currentIndex + 1,
+      shown: search.hits.length,
+      total: search.total
+    })
+  }
+  return undefined
+}
 
 function ViewerHeader({
   reason,
@@ -219,18 +316,81 @@ function CenteredMessage({ text }: { text: string }): React.JSX.Element {
   )
 }
 
+/** ASCII-only lowercase — the same fold the main-process pass applies. */
+function foldAscii(text: string): string {
+  return text.replace(/[A-Z]/g, (letter) => letter.toLowerCase())
+}
+
+/** Highlight of every match, drawn over line text the viewer already holds. */
+const MATCH_CLASS = 'bg-amber-200 text-inherit dark:bg-amber-400/35'
+const CURRENT_MATCH_CLASS = 'bg-amber-500 text-white dark:bg-amber-500/75'
+
+/**
+ * One line with its matches marked.
+ *
+ * The occurrences are re-found here rather than sent: the line text is already
+ * on screen, and the fold and the non-overlapping advance are the same as the
+ * pass's, so the Nth match here is the pass's ordinal N. Sending character
+ * offsets instead would mean translating byte offsets, which is exactly where
+ * a multi-byte character goes wrong.
+ */
+function HighlightedLine({
+  text,
+  query,
+  activeOrdinal
+}: {
+  text: string
+  query: string
+  activeOrdinal: number | null
+}): React.JSX.Element {
+  if (!query || !text) return <>{text}</>
+
+  const haystack = foldAscii(text)
+  const needle = foldAscii(query)
+  const parts: React.JSX.Element[] = []
+  let from = 0
+  let ordinal = 0
+
+  for (;;) {
+    const at = haystack.indexOf(needle, from)
+    if (at < 0) break
+    if (at > from) parts.push(<span key={`t${from}`}>{text.slice(from, at)}</span>)
+    parts.push(
+      <mark
+        key={`m${at}`}
+        className={cn(
+          'rounded-[2px]',
+          ordinal === activeOrdinal ? CURRENT_MATCH_CLASS : MATCH_CLASS
+        )}
+      >
+        {text.slice(at, at + needle.length)}
+      </mark>
+    )
+    ordinal += 1
+    from = at + needle.length
+  }
+
+  if (parts.length === 0) return <>{text}</>
+  if (from < text.length) parts.push(<span key={`t${from}`}>{text.slice(from)}</span>)
+  return <>{parts}</>
+}
+
 const LineRow = memo(function LineRow({
   line,
   offset,
   text,
   truncated,
-  truncatedLabel
+  truncatedLabel,
+  query,
+  activeOrdinal
 }: {
   line: number
   offset: number
   text: string | undefined
   truncated: boolean
   truncatedLabel: string
+  query: string
+  activeOrdinal: number | null
 }) {
   return (
     <div
@@ -240,7 +400,9 @@ const LineRow = memo(function LineRow({
       <span className="w-16 shrink-0 select-none border-e border-border pe-3 text-end text-muted-foreground tabular-nums">
         {line + 1}
       </span>
-      <span className="ps-3 whitespace-pre text-foreground">{text ?? ''}</span>
+      <span className="ps-3 whitespace-pre text-foreground">
+        <HighlightedLine text={text ?? ''} query={query} activeOrdinal={activeOrdinal} />
+      </span>
       {truncated && (
         <span className="ms-2 shrink-0 rounded-sm bg-muted px-1 text-[10px] text-muted-foreground">
           {truncatedLabel}
