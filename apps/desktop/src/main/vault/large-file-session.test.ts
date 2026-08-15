@@ -296,6 +296,66 @@ describe('large-file session', () => {
     expect(mocks.buildLineIndex).toHaveBeenCalledTimes(1)
   })
 
+  it('still reports ready when the consumer that started the scan lets go', async () => {
+    // #given a scan the test settles by hand, so the close can be placed
+    // between the second open and the scan finishing
+    const body = 'one\ntwo\nthree\n'
+    await writeVaultFile('log.md', body)
+    let finishScan: ((index: LineIndex) => void) | null = null
+    mocks.buildLineIndex.mockImplementation(
+      () =>
+        new Promise<LineIndex>((resolve) => {
+          finishScan = resolve
+        })
+    )
+
+    // #when the note is opened twice and the first opener then closes. React
+    // StrictMode does exactly this on every mount in dev, and so does a tab
+    // switch away and straight back, or a second window on the same note.
+    const first = await openLargeFileSession('note-1')
+    const second = await openLargeFileSession('note-1')
+    const sessionId = second.status === 'indexing' ? second.sessionId : ''
+    await closeLargeFileSession(first.status === 'indexing' ? first.sessionId : '')
+    finishScan!(indexFor(body))
+    await new Promise((resolve) => setImmediate(resolve))
+
+    // #then the consumer still holding the session gets its answer. Without
+    // this it waits on "Preparing… " forever: the scan finished into a session
+    // the other consumer's close had already removed.
+    expect(indexEvents().at(-1)).toMatchObject({ sessionId, status: 'ready', lineCount: 3 })
+    expect((await readLargeFileLines({ sessionId, startLine: 0, count: 1 }))?.lines).toEqual([
+      'one'
+    ])
+  })
+
+  it('keeps a ready session open for the window that is still on it', async () => {
+    // #given two consumers on the same note — two windows, or a remount
+    const sessionId = await openReadySession('one\ntwo\n')
+    await openLargeFileSession('note-1')
+
+    // #when the first one closes
+    await closeLargeFileSession(sessionId)
+
+    // #then the other can still read through it
+    expect((await readLargeFileLines({ sessionId, startLine: 0, count: 1 }))?.lines).toEqual([
+      'one'
+    ])
+  })
+
+  it('lets the file handle go once the last consumer closes', async () => {
+    // #given two consumers on the same session
+    const sessionId = await openReadySession('one\ntwo\n')
+    await openLargeFileSession('note-1')
+
+    // #when both close
+    await closeLargeFileSession(sessionId)
+    await closeLargeFileSession(sessionId)
+
+    // #then the session is gone — a count that never reaches zero pins an OS
+    // file handle for as long as the app runs
+    expect(await readLargeFileLines({ sessionId, startLine: 0, count: 1 })).toBeNull()
+  })
+
   it('rescans when the file changed underneath a ready session', async () => {
     // #given a scanned file that then grows on disk
     await writeVaultFile('log.md', 'one\ntwo\n')

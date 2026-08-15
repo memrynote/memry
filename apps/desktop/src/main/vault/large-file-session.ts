@@ -64,6 +64,18 @@ interface Session {
   search: FileSearchRun | null
   /** Bumped per search, so a superseded query's progress is ignored. */
   searchToken: number
+  /**
+   * How many consumers were handed this session id and have not closed it.
+   *
+   * One session per file is what makes a tab switch back free, but it also
+   * means a close can arrive from a consumer that is no longer the only one.
+   * A remount opens before the outgoing mount's close lands — React StrictMode
+   * guarantees that ordering in dev, two windows on the same note reach it in
+   * production — and disposing on the first close removed the session out from
+   * under the consumer that had just been given its id, so the scan finished
+   * into nothing and the viewer waited on "Preparing…" forever.
+   */
+  holders: number
 }
 
 /** Insertion-ordered, which is what makes the oldest entry the eviction target. */
@@ -156,6 +168,7 @@ export async function openLargeFileSession(noteId: string): Promise<LargeFileOpe
     const unchanged = existing.fileBytes === stats.size && existing.mtimeMs === stats.mtimeMs
     if (unchanged) {
       await closeHandle()
+      existing.holders += 1
       return existing.index
         ? {
             status: 'ready',
@@ -182,7 +195,8 @@ export async function openLargeFileSession(noteId: string): Promise<LargeFileOpe
     mtimeMs: stats.mtimeMs,
     index: null,
     search: null,
-    searchToken: 0
+    searchToken: 0,
+    holders: 1
   }
   sessions.set(session.id, session)
 
@@ -316,9 +330,19 @@ export async function searchLargeFileSession(input: {
   }
 }
 
+/**
+ * Release one consumer's hold on a session.
+ *
+ * The handle and its index go only when the last holder lets go. Eviction and a
+ * changed-on-disk rescan still dispose outright — both are the main process
+ * deciding the session is no longer usable, and a stranded reader gets `null`
+ * from its next read and reopens.
+ */
 export async function closeLargeFileSession(sessionId: string): Promise<void> {
   const session = sessions.get(sessionId)
   if (!session) return
+  session.holders -= 1
+  if (session.holders > 0) return
   await disposeSession(session)
 }
 
