@@ -18,7 +18,10 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/crdt-test-userdata' },
   BrowserWindow: {
     fromWebContents: () => senderWindow.current,
-    fromId: () => null
+    fromId: () => null,
+    // resetCrdtProvider fans the rebind event out to every window, so the
+    // teardown cases below reach broadcastToAllWindows.
+    getAllWindows: () => []
   },
   ipcMain: mockIpcMain
 }))

@@ -22,7 +22,14 @@ import { inboxEvents } from './api/inbox'
 import { folderViewApi, folderViewEvents } from './api/folder-view'
 import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
-import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './api/sync-ops'
+import {
+  syncOps,
+  cryptoApi,
+  syncAttachments,
+  syncCrdt,
+  onCrdtStateChanged,
+  onCrdtProviderReset
+} from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
@@ -113,6 +120,7 @@ export const api = {
   homePages: homePagesApi,
 
   onCrdtStateChanged,
+  onCrdtProviderReset,
   ...syncEvents,
   ...updaterEvents,
   ...importEvents,

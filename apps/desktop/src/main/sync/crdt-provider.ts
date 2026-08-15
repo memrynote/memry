@@ -4,6 +4,7 @@ import { rmSync } from 'fs'
 import { app, BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
@@ -385,7 +386,32 @@ export class CrdtProvider {
     return Y.encodeStateAsUpdate(entry.doc, remoteStateVector)
   }
 
+  /**
+   * Open docs an editor window is currently attached to — measured live, or as
+   * of `destroy()` once the map has been emptied.
+   *
+   * Every one of these is an editor whose renderer-side provider is bound to a
+   * doc this instance owns. When the instance is dropped, that binding is dead
+   * and the editor cannot know: main goes on applying remote updates, to the
+   * new instance's docs, and broadcasts them to a window set the editor is no
+   * longer in. So this is the number a provider reset has to bring back — see
+   * `resetCrdtProvider`.
+   */
+  get strandedEditorDocCount(): number {
+    if (this.docs.size === 0) return this.attachedDocsAtDestroy
+    let count = 0
+    for (const entry of this.docs.values()) {
+      if (entry.windowIds.size > 0) count++
+    }
+    return count
+  }
+
+  private attachedDocsAtDestroy = 0
+
   async destroy(): Promise<void> {
+    // Read before the map is cleared below: after that the count is gone, and
+    // the reset that follows destroy() is where it has to be reported.
+    this.attachedDocsAtDestroy = this.strandedEditorDocCount
     await flushPendingWritebacks()
     this.networkBatcher.flushAll()
 
@@ -995,5 +1021,17 @@ export function getCrdtProvider(): CrdtProvider {
 }
 
 export function resetCrdtProvider(): void {
+  const previous = instance
   instance = null
+  if (!previous) return
+
+  // Renderer providers hold a note open against the instance just dropped, and
+  // nothing else tells them it is gone: the next remote update is applied to a
+  // doc in the fresh instance and broadcast to a window set that no longer
+  // contains the editor, so the note silently goes stale until it is closed and
+  // reopened. Ask every window to re-open its notes and redo the handshake.
+  broadcastToAllWindows(CRDT_EVENTS.PROVIDER_RESET)
+  log.info('CRDT provider reset, asked windows to rebind their editors', {
+    strandedEditorDocs: previous.strandedEditorDocCount
+  })
 }

@@ -11,7 +11,14 @@ export const CRDT_CHANNELS = {
 export const CRDT_EVENTS = {
   STATE_CHANGED: 'crdt:state-changed',
   DOC_LOADED: 'crdt:doc-loaded',
-  DOC_ERROR: 'crdt:doc-error'
+  DOC_ERROR: 'crdt:doc-error',
+  /**
+   * Main dropped the provider that owned every open Y.Doc, so each renderer
+   * provider is now bound to a doc nothing serves. Sent on sign-out and any
+   * other provider reset; a renderer holding an editor open must re-open its
+   * note and redo the sync handshake, or it goes stale with no further signal.
+   */
+  PROVIDER_RESET: 'crdt:provider-reset'
 } as const
 
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const

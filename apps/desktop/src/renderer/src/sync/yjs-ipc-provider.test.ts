@@ -33,6 +33,20 @@ function broadcastStateChanged(payload: StateChangedPayload): void {
   for (const callback of [...(noteSubscribers.get(payload.noteId) ?? [])]) callback(payload)
 }
 
+/**
+ * The provider-reset channel carries no note id: main dropped the instance that
+ * owned every doc at once, so every provider in the window hears it.
+ */
+const resetSubscribers = new Set<() => void>()
+const mockOnCrdtProviderReset = vi.fn((callback: () => void) => {
+  resetSubscribers.add(callback)
+  return () => resetSubscribers.delete(callback)
+})
+
+function broadcastProviderReset(): void {
+  for (const callback of [...resetSubscribers]) callback()
+}
+
 beforeEach(() => {
   mockOpenDoc.mockResolvedValue({ success: true })
   mockCloseDoc.mockResolvedValue({ success: true })
@@ -47,7 +61,8 @@ beforeEach(() => {
         syncStep1: mockSyncStep1,
         syncStep2: mockSyncStep2
       },
-      onCrdtStateChanged: mockOnCrdtStateChanged
+      onCrdtStateChanged: mockOnCrdtStateChanged,
+      onCrdtProviderReset: mockOnCrdtProviderReset
     }
   }
 })
@@ -55,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks()
   noteSubscribers.clear()
+  resetSubscribers.clear()
 })
 
 vi.mock('@/lib/logger', () => ({
@@ -242,6 +258,69 @@ describe('YjsIpcProvider note-scoped subscription', () => {
 
     doc.destroy()
     sourceDoc.destroy()
+  })
+})
+
+describe('YjsIpcProvider provider reset', () => {
+  it('re-opens the note and redoes the handshake, carrying edits made while unbound', async () => {
+    // #given a connected editor, then main drops the provider that owned its doc
+    // (sign-out) while the editor stays mounted and the user keeps typing
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+    await provider.connect()
+
+    doc.getMap('meta').set('title', 'Typed while signed out')
+    mockOpenDoc.mockClear()
+    mockSyncStep1.mockClear()
+    mockSyncStep2.mockClear()
+
+    const rebuiltDoc = new Y.Doc()
+    mockSyncStep1.mockResolvedValueOnce({
+      diff: Y.encodeStateAsUpdate(rebuiltDoc),
+      stateVector: Y.encodeStateVector(rebuiltDoc)
+    })
+
+    // #when
+    broadcastProviderReset()
+    await vi.waitFor(() => expect(mockSyncStep2).toHaveBeenCalled())
+
+    // #then re-opening is what re-attributes this window to the fresh doc; without
+    // it main broadcasts to a window set the editor is not in and the note goes
+    // stale with no further signal. The local doc is merged, not replaced, so the
+    // edit made while unbound is pushed to main instead of being dropped.
+    expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
+    expect(mockSyncStep1).toHaveBeenCalledWith({
+      noteId: 'note-42',
+      stateVector: expect.any(Uint8Array)
+    })
+    expect(mockSyncStep2).toHaveBeenCalledWith({
+      noteId: 'note-42',
+      diff: expect.any(Uint8Array)
+    })
+    expect(doc.getMap('meta').get('title')).toBe('Typed while signed out')
+    expect(provider.isSynced).toBe(true)
+
+    provider.destroy()
+    doc.destroy()
+    rebuiltDoc.destroy()
+  })
+
+  it('stops rebinding once destroyed so a closed note cannot reopen itself', async () => {
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+    await provider.connect()
+    provider.destroy()
+    mockOpenDoc.mockClear()
+
+    broadcastProviderReset()
+    await Promise.resolve()
+
+    // #then a destroyed provider has released its subscription, so a reset must
+    // not resurrect the note in main and pin a doc nothing is looking at.
+    expect(resetSubscribers.size).toBe(0)
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+
+    doc.destroy()
   })
 })
 

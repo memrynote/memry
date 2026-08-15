@@ -1034,6 +1034,40 @@ describe('CrdtProvider', () => {
     ).resolves.toBe(0)
   })
 
+  it('tells every window to rebind its editors when the provider is reset', async () => {
+    // #given two windows and a note an editor holds open in the live singleton
+    createWindow(1)
+    createWindow(2)
+    const singleton = getCrdtProvider()
+    await singleton.init(queue as any, pushSnapshot)
+    await singleton.open('note-open', 1, { skipSeed: true })
+    expect(singleton.strandedEditorDocCount).toBe(1)
+    mocks.sent = []
+
+    // #when the provider is dropped, as sign-out does
+    resetCrdtProvider()
+
+    // #then every window has to hear it, not just the one holding the note: each
+    // renderer provider is bound to a doc this instance owned, and without the
+    // event it keeps that dead binding, so main applies remote updates to the
+    // fresh instance and broadcasts them to a window set the editor is not in.
+    const rebinds = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_RESET)
+    expect(rebinds.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+  })
+
+  it('still reports the editors it stranded after destroy has emptied the doc map', async () => {
+    // #given sign-out wipes storage (which destroys) before it resets the singleton
+    createWindow(1)
+    const singleton = getCrdtProvider()
+    await singleton.init(queue as any, pushSnapshot)
+    await singleton.open('note-open', 1, { skipSeed: true })
+    await singleton.destroy()
+
+    // #then the count must survive that, or the one number saying how many editors
+    // a reset broke is always zero by the time it is read
+    expect(singleton.strandedEditorDocCount).toBe(1)
+  })
+
   it('covers provider singleton, idempotent init, and wipe storage lifecycle', async () => {
     const singleton = getCrdtProvider()
     expect(getCrdtProvider()).toBe(singleton)
