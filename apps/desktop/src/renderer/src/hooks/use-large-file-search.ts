@@ -168,6 +168,10 @@ export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
     })
   }, [])
 
+  // A pass already crossing the file is left to finish and its answer dropped:
+  // there is at most one per session, the next query cancels it, and closing
+  // the file cancels it. Cancelling on close would be a channel for a few
+  // seconds of work nobody is waiting on.
   const close = useCallback(() => {
     setIsOpen(false)
     cancelPending()

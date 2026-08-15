@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
@@ -625,5 +625,50 @@ describe('LargeFileViewer', () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }))
     })
     expect(await screen.findByRole('textbox', { name: /find/i })).toHaveValue('')
+  })
+
+  it('stops saying it is searching when the session has gone', async () => {
+    // #given a session the main process no longer has — evicted behind another
+    // file, or a restart — answering only once the bar is already searching
+    await openReady(400)
+    let answer = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((resolve) => {
+        answer = () => resolve(null)
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => answer())
+
+    // #then — the bar settles rather than spinning on a count that will never
+    // arrive. The next keystroke searches the reopened session.
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+  })
+
+  it('settles rather than spinning when the search itself fails', async () => {
+    // #given a search that fails once the bar is already searching
+    await openReady(400)
+    let fail = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = () => reject(new Error('EBADF'))
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => fail())
+
+    // #then — "searching" that never ends is the one state the bar must not
+    // get stuck in, because it reads as "still counting" forever
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
 })
