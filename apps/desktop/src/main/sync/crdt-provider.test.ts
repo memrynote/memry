@@ -1214,9 +1214,9 @@ describe('CrdtProvider', () => {
     expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
   })
 
-  it('still seeds a well-formed 1.8 MB note, which parses fine', async () => {
+  it('still seeds a well-formed 800 KB note, which parses fine', async () => {
     // #given the measured good case: big, but many blank-line-separated blocks
-    const body = Array.from({ length: 450 }, () => 'x'.repeat(4000)).join('\n\n')
+    const body = Array.from({ length: 200 }, () => 'x'.repeat(4000)).join('\n\n')
     await provider.open('big-but-fine', undefined, { skipSeed: true })
     mocks.getNoteCacheById.mockReturnValueOnce({
       id: 'big-but-fine',

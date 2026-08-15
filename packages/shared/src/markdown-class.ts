@@ -1,26 +1,50 @@
 /**
  * Decides whether a markdown file may become an editable, CRDT-seeded note.
  *
- * The BlockNote markdown parse is roughly quadratic in the size of a single
- * block, not in the size of the file. Measured on real files:
+ * Both bounds are calibrated against a **1 s parse budget** — the longest the
+ * main process may block while seeding a note on first open. The corpus, the
+ * method, the budget's reasoning and the full measurement tables live in
+ * `docs/superpowers/specs/2026-08-15-note-class-threshold-calibration.md`
+ * (#1463). Re-run the measurement with:
  *
- *   1.81 MB, blank-line separated (124 blocks)  ->    477 ms
- *   1.81 MB, as-is                (1 block)     ->  6 594 ms   (14x)
- *   2.73 MB, as-is                (2 blocks)    ->  8 936 ms
+ *   pnpm --filter @memry/desktop measure:parse-budget
  *
- * Identical bytes; only the block shape differs. Log dumps carry no blank
- * lines, so remark parses the whole file as one paragraph holding millions of
- * inline nodes.
+ * Headline numbers, medians through `markdownToBlocks` (the real seeding entry
+ * point) on an Apple Silicon dev machine:
+ *
+ *   well-formed prose                          450 ms/MB   linear in file size
+ *   imported vault note (tasks, wikilinks)     830 ms/MB
+ *   table-dense structured document          1 400 ms/MB   superlinear
+ *   one 128 KB block  prose 53 · log dump 74 · outline 264 · table 1 017 ms
+ *   one 512 KB block  log dump 2 653 ms — 36x the 128 KB cost for 4x the bytes
  *
  * That is why classification needs *both* bounds. A byte ceiling alone
- * misclassifies in both directions: it rejects a well-formed 3 MB note that
- * parses fine, and accepts a 900 KB log dump that does not.
+ * misclassifies in both directions: it rejects a well-formed note that parses
+ * fine, and accepts a 900 KB log dump that does not — a file with no blank
+ * lines is one block however long it is.
  */
 
-/** Files above this never become notes. Checked against `stat`, before any read. */
-export const NOTE_MAX_BYTES = 2 * 1024 * 1024
+/**
+ * Files above this never become notes. Checked against `stat`, before any read.
+ *
+ * 1 MB at the 830 ms/MB measured for the worst *realistic* shape (an imported
+ * vault note: headings, task lists, quotes, wikilinks) is 0.83 s — inside the
+ * budget, and ~150k words, far past any note a person writes. The
+ * pre-calibration 2 MB costs 1.65 s for that same shape and 3.0 s for a
+ * table-dense document, so it did not hold the budget.
+ */
+export const NOTE_MAX_BYTES = 1024 * 1024
 
-/** Largest blank-line-separated block a note may contain. */
+/**
+ * Largest blank-line-separated block a note may contain.
+ *
+ * Calibration confirmed 128 KB. No shape measured costs more than ~1 s for a
+ * single block that size, and the pathology this bound exists for — a file with
+ * no blank lines anywhere — runs 500 KB to 18 MB, orders of magnitude clear of
+ * it. Halving it to 64 KB would buy back only the tail of machine-generated
+ * content while taking editability from real notes that legitimately hold one
+ * wide table, one long code fence, or a whole-page outline export.
+ */
 export const NOTE_MAX_BLOCK_BYTES = 128 * 1024
 
 export type MarkdownSizeClass = 'note' | 'large-file'

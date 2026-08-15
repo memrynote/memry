@@ -21,11 +21,11 @@ row appears in the sidebar.**
 
 All on the reporter's machine, against the real files.
 
-| stage | 1.9 MB | 17.8 MB |
-|---|---|---|
-| djb2 content hash + every metadata regex | 20 ms | ~200 ms |
-| FTS5 insert, `tokenize='porter unicode61'` | 14 ms | 93 ms (19.5 MB index) |
-| **`tryParseMarkdownToBlocks`** | **6 594 ms** | see below |
+| stage                                      | 1.9 MB       | 17.8 MB               |
+| ------------------------------------------ | ------------ | --------------------- |
+| djb2 content hash + every metadata regex   | 20 ms        | ~200 ms               |
+| FTS5 insert, `tokenize='porter unicode61'` | 14 ms        | 93 ms (19.5 MB index) |
+| **`tryParseMarkdownToBlocks`**             | **6 594 ms** | see below             |
 
 The first two were the initial suspects and both are cleared by measurement.
 
@@ -52,19 +52,19 @@ SQLite MAX_LENGTH    : 2 147 483 645 bytes (~2 GB)
 
 ## Root cause
 
-`handleMarkdownFileAdd` does not separate *listing a note* from *processing its
-body*. Everything the sidebar row needs is `stat` + filename. What actually runs
+`handleMarkdownFileAdd` does not separate _listing a note_ from _processing its
+body_. Everything the sidebar row needs is `stat` + filename. What actually runs
 before the row is shown:
 
-| # | site | work |
-|---|---|---|
-| 1 | `vault/watcher.ts:333` | `safeRead` — whole file into one JS string |
-| 2 | `:339` | `parseNote` / gray-matter |
-| 3 | `:343` | `generateContentHash`, char-by-char djb2 |
-| 4 | `:354` | `syncNoteToCache`; puts full `parsedContent` on the projection event |
-| 5 | `:368` | `flushProjectionEvents` → FTS insert |
-| 6 | `:395` | `syncNoteCreate` → `initForNote` → `open()` → `seedFromMarkdown` → `markdownToYFragment` |
-| 7 | `:399` | `emitEvent(CREATED)` — sidebar row appears |
+| #   | site                   | work                                                                                     |
+| --- | ---------------------- | ---------------------------------------------------------------------------------------- |
+| 1   | `vault/watcher.ts:333` | `safeRead` — whole file into one JS string                                               |
+| 2   | `:339`                 | `parseNote` / gray-matter                                                                |
+| 3   | `:343`                 | `generateContentHash`, char-by-char djb2                                                 |
+| 4   | `:354`                 | `syncNoteToCache`; puts full `parsedContent` on the projection event                     |
+| 5   | `:368`                 | `flushProjectionEvents` → FTS insert                                                     |
+| 6   | `:395`                 | `syncNoteCreate` → `initForNote` → `open()` → `seedFromMarkdown` → `markdownToYFragment` |
+| 7   | `:399`                 | `emitEvent(CREATED)` — sidebar row appears                                               |
 
 Step 6 is called before step 7 but is not awaited: `initForNote` yields at its
 first `await`, `emitEvent` paints the row, the handler returns, and the
@@ -76,7 +76,7 @@ on the main process with no yield point. That ordering is exactly the reported
 and CRDT-seeds the entire file, on the main process, before the user has touched
 the note.
 
-A size ceiling does not fix this. Any file *under* the ceiling still takes the
+A size ceiling does not fix this. Any file _under_ the ceiling still takes the
 same path. The ceiling only picks which files are excluded; it is not the fix.
 
 ## Design: tiered ingest
@@ -93,8 +93,8 @@ Two classes of vault file, decided at ingest, and three tiers of work.
 Classification, both conditions required for **Note**:
 
 ```
-NOTE_MAX_BYTES       = 2 MB      // 264 ms/MB measured on well-formed markdown -> ~530 ms at 2 MB
-NOTE_MAX_BLOCK_BYTES = 128 KB    // 0.2 MB single block measured at 57 ms -> ~30 ms at 128 KB
+NOTE_MAX_BYTES       = 1 MB      // 830 ms/MB for the worst realistic shape -> 0.83 s
+NOTE_MAX_BLOCK_BYTES = 128 KB    // worst single 128 KB block measured at ~1 s
 ```
 
 Largest block = largest blank-line-separated segment. Files over
@@ -105,10 +105,14 @@ A fixed byte ceiling alone misclassifies both directions: it rejects a
 well-formed 3 MB note that parses fine, and accepts a 900 KB log dump that does
 not. The pair is the point.
 
-`NOTE_MAX_BYTES` is derived from a single measurement (1.81 MB / 124 blocks /
-477 ms). It should be re-tuned against a corpus of real notes before it ships;
-2 MB is generous for prose (~300k words) so the risk is low, but the number is
-not yet well-founded.
+Both numbers were re-derived against a generated corpus in #1463, from a stated
+budget of **1 s of main-process block on a note's first open**. That work moved
+`NOTE_MAX_BYTES` from 2 MB to 1 MB (2 MB measured 1.65 s for an imported vault
+note and 3.0 s for a table-dense document) and confirmed `NOTE_MAX_BLOCK_BYTES`
+at 128 KB. It also found that a plain paragraph parses _linearly_, not
+quadratically — density, not block size alone, is the driver — and that
+table-heavy markdown is superlinear in file size, which neither bound catches.
+See `2026-08-15-note-class-threshold-calibration.md`.
 
 ### Tiers
 
@@ -189,7 +193,10 @@ what a full re-scan cost last time — do not repeat it.
 
 ## Open risks
 
-- `NOTE_MAX_BYTES` rests on one data point; tune against real notes.
+- ~~`NOTE_MAX_BYTES` rests on one data point; tune against real notes.~~ Done in
+  #1463. The residual it exposed: table-dense and punctuation-dense markdown is
+  superlinear in _file_ size, so a file inside both bounds can still cost
+  minutes. Bounding that needs a time-boxed parse, not a third size number.
 - `NoteListItem.wordCount` / `snippet` become nullable — a renderer-visible
   contract change; needs the IPC contract updated and `pnpm ipc:check` run.
 - The viewer is the bulk of the work here and is the piece most likely to want

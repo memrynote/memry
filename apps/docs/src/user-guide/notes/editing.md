@@ -207,15 +207,16 @@ and it uses two limits, not one:
 
 | Limit                                                | Value  |
 | ---------------------------------------------------- | ------ |
-| File size                                            | 2 MB   |
+| File size                                            | 1 MB   |
 | Largest run of lines with no blank line between them | 128 KB |
 
-A file has to clear **both** to open as an editable note.
+A file has to clear **both** to open as an editable note. 1 MB is around 150,000 words — several
+novels — so ordinary notes, however long, are nowhere near it.
 
-The second limit is the one that catches log dumps and exported transcripts. The editor's markdown
-parser gets slower than linearly as a single block grows, so shape matters more than total size: the
-same 1.8 MB costs about half a second split into paragraphs and about seven seconds as one
-unbroken block. A file with no blank lines in it is one block, however long it is.
+The second limit is the one that catches log dumps, exported transcripts and pasted data. What
+makes markdown slow to open is how dense one unbroken run of lines is, not how many bytes the file
+has: 128 KB of paragraphs opens in about 50 ms, while 128 KB of table rows or minified JSON takes a
+full second. A file with no blank lines in it is one block, however long it is.
 
 A file that misses either limit still appears in the sidebar. Opening it shows a panel naming its
 size and the limit it passed, marked **read-only · not synced**:
