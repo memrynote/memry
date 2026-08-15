@@ -42,7 +42,7 @@ function createEditor(parsedBlocks: any[] = []) {
   const transact = vi.fn((callback: (tr: any) => unknown) => {
     const tr = {
       setMeta: vi.fn().mockReturnThis()
-    }
+    } as { setMeta: ReturnType<typeof vi.fn>; __nextBlocks?: unknown }
     const result = callback(tr)
     if (Array.isArray(tr.__nextBlocks)) {
       document = tr.__nextBlocks
@@ -305,6 +305,9 @@ describe('useEditorSync', () => {
     )
 
     await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    // Loading reports the tag the body ALREADY had, flagged as the baseline —
+    // opening a note must not write to it (#1454).
+    expect(onInlineTagsChange).toHaveBeenCalledWith(['Focus'], 'load')
     onHeadingsChange.mockClear()
     onInlineTagsChange.mockClear()
     ;(editor.document[1].content as string[]) = ['Ship #Focus #Build']
@@ -332,8 +335,76 @@ describe('useEditorSync', () => {
     act(() => {
       vi.advanceTimersByTime(100)
     })
-    expect(onInlineTagsChange).toHaveBeenCalledWith(['Build', 'Focus'])
+    expect(onInlineTagsChange).toHaveBeenCalledWith(['Build', 'Focus'], 'edit')
     expect(result.current.prevInlineTagsRef.current).toEqual(['Build', 'Focus'])
+  })
+
+  it('reports the loaded tags as a baseline, and only a real edit as an edit', async () => {
+    // #given a note whose body already carries a hash tag
+    const onInlineTagsChange = vi.fn()
+    const editor = createEditor()
+    const initialBlocks = [
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: ['Tagged #hashtag here.'],
+        children: []
+      }
+    ]
+
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: initialBlocks as never,
+        contentType: 'blocks',
+        onInlineTagsChange
+      })
+    )
+
+    // #when it is opened
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    // #then the only report is the baseline, and it carries the tag the file
+    // already had — nothing for the owner to persist
+    expect(onInlineTagsChange.mock.calls).toEqual([[['hashtag'], 'load']])
+    expect(result.current.prevInlineTagsRef.current).toEqual(['hashtag'])
+
+    // #when the user then deletes that tag from the body
+    vi.useFakeTimers()
+    ;(editor.document[0].content as string[]) = ['Tagged here.']
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(300)
+    })
+
+    // #then THAT is an edit — removing the last inline tag still reaches the owner
+    expect(onInlineTagsChange).toHaveBeenLastCalledWith([], 'edit')
+  })
+
+  it('reports a baseline on the collaborative path too, where content is already bound', async () => {
+    // #given the collaborative branch: the shared fragment is bound to the
+    // editor before this hook runs, so there is nothing to parse — but the tags
+    // in that body are just as much "what the note was opened with" (#1454)
+    const onInlineTagsChange = vi.fn()
+    const undoManager = { clear: vi.fn(), stopCapturing: vi.fn() }
+    yUndoMocks.getState.mockReturnValue({ undoManager })
+    const editor = createEditor()
+    ;(editor.document[0].content as unknown as string[]) = ['Tagged #hashtag here.']
+
+    // #when
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        yjsFragment: {} as never,
+        onInlineTagsChange
+      })
+    )
+
+    // #then
+    await waitFor(() => expect(onInlineTagsChange).toHaveBeenCalled())
+    expect(onInlineTagsChange.mock.calls).toEqual([[['hashtag'], 'load']])
+    expect(result.current.prevInlineTagsRef.current).toEqual(['hashtag'])
   })
 
   it('re-applies external content in place when the external revision changes', async () => {
@@ -475,7 +546,7 @@ describe('useEditorSync', () => {
           initialContent: 'Body',
           contentType: 'markdown',
           isRemoteUpdateRef,
-          yjsFragment,
+          yjsFragment: yjsFragment as never,
           onContentChange,
           onMarkdownChange
         }),

@@ -94,7 +94,7 @@ describe('vault watcher', () => {
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
     vi.mocked(updateFtsContent).mockImplementation(() => false)
     vi.mocked(updateNoteEmbedding).mockResolvedValue(false)
-    vi.mocked(getConfig).mockReturnValue(baseConfig)
+    vi.mocked(getConfig).mockReturnValue(baseConfig as never)
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
@@ -257,6 +257,72 @@ describe('vault watcher', () => {
         source: 'external'
       })
     )
+  })
+
+  // ==========================================================================
+  // #1454: a body `#hashtag` is index-only — it may not reach the file's
+  // frontmatter. The CRDT tag array is authoritative for write-back's `tags:`
+  // block, so seeding it from the merged tag list rewrites the user's file the
+  // first time they open the note.
+  // ==========================================================================
+  it('seeds the CRDT with the declared tags only, never the body hash tags', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+
+    const notePath = createTestNote(vault, {
+      title: 'inline-tag-note',
+      content: 'Tagged #hashtag here.',
+      tags: ['Declared']
+    })
+
+    await watcher.handleFileAdd(notePath)
+
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/inline-tag-note.md'))
+      .get()
+    const noteId = cached!.id
+
+    // the index still merges the body tag in — search, the tag hub and the
+    // graph all depend on that, and none of them touch the file
+    const indexedTags = indexDb.db
+      .select()
+      .from(noteTags)
+      .where(eq(noteTags.noteId, noteId))
+      .all()
+      .map((tag) => tag.tag)
+      .sort()
+    expect(indexedTags).toEqual(['Declared', 'hashtag'])
+
+    // …but only what the file itself declares is handed to the CRDT
+    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'inline-tag-note', ['Declared'], {
+      sizeClass: expect.any(String)
+    })
+  })
+
+  it('hands the CRDT no tags at all for a note whose only tag is in its body', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+
+    const notePath = createTestNote(vault, {
+      title: 'body-only-tag-note',
+      content: 'Tagged #hashtag here.'
+    })
+
+    await watcher.handleFileAdd(notePath)
+
+    const noteId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/body-only-tag-note.md'))
+      .get()!.id
+
+    // An empty array is the whole fix: `mergeFrontmatter` only forces `tags:`
+    // onto the file when the doc's tag array is non-empty.
+    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'body-only-tag-note', [], {
+      sizeClass: expect.any(String)
+    })
   })
 
   // ==========================================================================

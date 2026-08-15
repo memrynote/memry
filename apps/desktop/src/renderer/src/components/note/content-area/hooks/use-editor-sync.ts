@@ -18,7 +18,7 @@ import {
 } from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
 import { fetchLinkPreview } from '@/lib/url-metadata'
-import type { HeadingInfo } from '../types'
+import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 
@@ -124,7 +124,13 @@ interface EditorSyncParams {
   onContentChange?: (blocks: Block[]) => void
   onMarkdownChange?: (markdown: string) => void
   onHeadingsChange?: (headings: HeadingInfo[]) => void
-  onInlineTagsChange?: (tags: string[]) => void
+  /**
+   * Reports the inline `#tags` in the body. `origin` separates the tag set the
+   * note was OPENED with (`'load'`) from one the user just typed (`'edit'`):
+   * opening a note must not modify it, so the load report is a baseline to diff
+   * against and never something to persist (#1454).
+   */
+  onInlineTagsChange?: (tags: string[], origin: InlineTagsOrigin) => void
 }
 
 interface EditorSyncResult {
@@ -203,6 +209,19 @@ export function useEditorSync({
 
     let cancelled = false
 
+    /**
+     * Report the tag set the note was opened with as the baseline for later
+     * edits, without asking anyone to persist it. Opening a note must not
+     * modify it (#1454), and every hash tag in the body reads as "new" until
+     * this baseline exists.
+     */
+    const reportLoadedInlineTags = (): void => {
+      if (!onInlineTagsChange) return
+      const tags = extractInlineTags(editor.document as Block[])
+      prevInlineTagsRef.current = tags
+      onInlineTagsChange(tags, 'load')
+    }
+
     // Collaboration owns the document: the main process feeds an external edit
     // into the shared Y.Doc (`feedExternalEditToCrdt`), the IPC provider applies
     // it here, and y-prosemirror merges it into this editor in place. Replacing
@@ -219,6 +238,9 @@ export function useEditorSync({
         const headings = extractHeadings(editor.document as Block[])
         if (!cancelled) onHeadingsChange(headings)
       }
+      // The shared fragment is already bound to the editor here (that is what
+      // `extractHeadings` above reads), so this is the note's opening tag set.
+      if (!cancelled) reportLoadedInlineTags()
       return () => {
         cancelled = true
       }
@@ -296,11 +318,7 @@ export function useEditorSync({
             const headings = extractHeadings(editor.document as Block[])
             onHeadingsChange(headings)
           }
-          if (onInlineTagsChange) {
-            const tags = extractInlineTags(editor.document as Block[])
-            prevInlineTagsRef.current = tags
-            onInlineTagsChange(tags)
-          }
+          reportLoadedInlineTags()
         }
       }
     }
@@ -370,7 +388,7 @@ export function useEditorSync({
         const prevKey = [...prevInlineTagsRef.current].sort().join(',')
         if (tagsKey !== prevKey) {
           prevInlineTagsRef.current = tags
-          onInlineTagsChange(tags)
+          onInlineTagsChange(tags, 'edit')
         }
       }, 300)
     }

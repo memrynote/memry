@@ -13,7 +13,7 @@ import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './index'
-import { parseNote, generateContentHash, extractProperties } from './frontmatter'
+import { parseNote, generateContentHash, extractProperties, extractTags } from './frontmatter'
 import { safeRead } from './file-ops'
 import { generateNoteId } from '../lib/id'
 import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
@@ -369,6 +369,12 @@ export class VaultWatcher {
     void flushProjectionEvents()
 
     const tags = syncResult.tags
+    // The CRDT tag array is what write-back serializes back into the file's
+    // `tags:` block, so it may only carry tags the file itself declares.
+    // `syncResult.tags` merges the body's `#hashtag`s in for the index; seeding
+    // those would inject a `tags:` block into a note that never had one, the
+    // first time it is opened — "opening a note modified it" (#1454).
+    const declaredTags = extractTags(parsed.frontmatter)
     const properties = extractProperties(parsed.frontmatter)
 
     if (tags.length > 0) {
@@ -410,10 +416,12 @@ export class VaultWatcher {
       const journalDate = extractJournalDate(relativePath)
       if (!isLargeFile) {
         enqueueJournalCreate(noteId, journalDate)
-        void initializeJournalCrdt(noteId, journalDate, tags)
+        void initializeJournalCrdt(noteId, journalDate, declaredTags)
       }
     } else {
-      syncNoteCreate(noteId, parsed.title, tags, { sizeClass: classification.sizeClass })
+      syncNoteCreate(noteId, parsed.title, declaredTags, {
+        sizeClass: classification.sizeClass
+      })
     }
 
     // Emit event to renderer

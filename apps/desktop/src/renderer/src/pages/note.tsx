@@ -15,7 +15,14 @@ import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { LargeFileNotice } from '@/components/note/large-file-notice'
-import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
+import {
+  NoteLayout,
+  HeadingItem,
+  ContentArea,
+  HeadingInfo,
+  InlineTagsOrigin,
+  Block
+} from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
@@ -790,8 +797,17 @@ export function NotePage({ noteId }: NotePageProps) {
   const pendingTagsRef = useRef<string[] | null>(null)
 
   const handleInlineTagsChange = useCallback(
-    async (currentInlineTags: string[]) => {
+    async (currentInlineTags: string[], origin: InlineTagsOrigin) => {
       if (!noteId || !note || isDeleted) return
+
+      // Opening a note must not modify it (#1454). A load report is the tag set
+      // the body already carried, so it only seeds the baseline later edits are
+      // diffed against: a tag that lives only in the body stays there — the
+      // index still indexes it — until the user actually adds or removes one.
+      if (origin === 'load') {
+        inlineTagsRef.current = new Set(currentInlineTags)
+        return
+      }
 
       const prev = inlineTagsRef.current
       const current = new Set(currentInlineTags)

@@ -15,18 +15,19 @@
  * The note is seeded as BYTES on disk, not through the app, because the whole
  * claim is about bytes the user (or Obsidian) wrote.
  *
- * ## One thing this suite found, and does not fix
+ * ## The one this suite found, now fixed (#1454)
  *
- * Opening a note whose body contains a plain `#hashtag` INJECTS a `tags:` block
- * into its frontmatter — `extractInlineTags` reads hash tags out of plain text,
- * not just out of `hashTag` nodes, the tag reaches the CRDT tag array, and
- * write-back's `mergeFrontmatter` writes it to the file. That is a real
- * "opening a note modified it", but it is the inline-tag pipeline rather than
- * the wiki-link round trip this issue is about, and whether inline tags should
- * promote themselves into frontmatter at all is a product decision. It is
- * pinned by its own test at the bottom of this file instead of being papered
- * over, and the body-stability tests strip frontmatter so they measure the loop
- * they are named for.
+ * Opening a note whose body contained a plain `#hashtag` used to INJECT a
+ * `tags:` block into its frontmatter. A body tag is index-only — search and the
+ * tag hub merge it in (`extractNoteMetadata`) without touching the file — but
+ * that merged list was also handed to `CrdtProvider.initForNote`, and
+ * write-back treats the doc's tag array as authoritative for `tags:`
+ * (`mergeFrontmatter`). The last test in this file asserts the file is now
+ * byte-identical; the mechanism is pinned in
+ * `src/main/sync/note-open-byte-stability.test.ts`.
+ *
+ * The body-stability tests above still strip frontmatter, so they measure the
+ * wiki-link loop they are named for rather than this.
  */
 
 import * as fs from 'fs'
@@ -186,10 +187,6 @@ test.describe('Note open byte stability', () => {
       .poll(() => stripFrontmatter(fs.readFileSync(absPath, 'utf8')), { timeout: 20_000 })
       .toBe(stripFrontmatter(first.bytes))
     const afterFirstOpen = fs.readFileSync(absPath, 'utf8')
-    // `performedCount` lives in the MAIN process and is only cleared by
-    // `CrdtProvider.destroy()`, which a renderer reload does not trigger — so
-    // waiting for `>= 1` again would return immediately and this test would
-    // measure the first cycle twice. Capture the count and wait past it.
     const runsAfterFirstOpen = await getWritebackRuns(electronAppA, first.id)
 
     // #when the app is reloaded and the note opened again — a cold open, with
@@ -198,16 +195,23 @@ test.describe('Note open byte stability', () => {
     await pageA.waitForLoadState('domcontentloaded')
     await waitForSyncOnline(pageA, 60_000)
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, first.id, runsAfterFirstOpen + 1)
 
-    // #then the second cycle is a fixed point — whole file this time, since the
-    // first open already settled the frontmatter
-    await expect
-      .poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 20_000 })
-      .toBe(afterFirstOpen)
+    // #then nothing happens at all, and that IS the convergence proof.
+    //
+    // This test used to wait for a second write-back before checking the bytes,
+    // which can never arrive: `scheduleWriteback` has one production caller,
+    // `onDocUpdate`. The second open rebuilds the doc from the CRDT store with
+    // the `wikiLink` nodes already promoted, so `normalizeWikiLinks` finds
+    // nothing to change, the doc never updates, and write-back never runs. The
+    // suite's own unit sibling asserts exactly that ("reopening a doc that
+    // already holds the node does not re-promote it") — the old assertion
+    // contradicted the property the rest of the file exists to prove.
+    await pageA.waitForTimeout(3_000)
+    expect(await getWritebackRuns(electronAppA, first.id)).toBe(runsAfterFirstOpen)
+    expect(fs.readFileSync(absPath, 'utf8')).toBe(afterFirstOpen)
   })
 
-  test('REGRESSION PIN: an inline #hashtag adds a tags: block on first open', async ({
+  test('an inline #hashtag does not add a tags: block on first open', async ({
     pageA,
     electronAppA,
     vaultPathA,
@@ -216,26 +220,29 @@ test.describe('Note open byte stability', () => {
     void bootstrappedSyncPair
     await waitForSyncOnline(pageA)
 
-    // #given a note with no frontmatter and one inline hash tag in its body
+    // #given a note with no frontmatter and one inline hash tag in its body —
+    // an Obsidian user who keeps tags in the body and not in frontmatter
     const title = `Inline Tag Frontmatter ${Date.now()}`
     const absPath = seedVaultFile(vaultPathA, title, 'Tagged #hashtag here.')
     const baseline = await indexedBaseline(pageA, title, absPath)
     expect(baseline.bytes).not.toContain('tags:')
 
-    // #when it is opened
+    // #when it is opened, and write-back has genuinely run
     await openInEditor(pageA, title)
     await waitForWritebackRuns(electronAppA, baseline.id, 1)
 
-    // #then opening it modified the file. This is NOT the wiki-link loop — the
-    // body below the frontmatter is untouched — it is `extractInlineTags`
-    // reading hash tags out of plain text and write-back's `mergeFrontmatter`
-    // persisting them. Asserted as current behaviour, not as correct behaviour;
-    // deciding whether inline tags belong in frontmatter is its own change.
-    await expect
-      .poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 20_000 })
-      .toContain('tags:')
-    const rewritten = fs.readFileSync(absPath, 'utf8')
-    expect(rewritten).toContain('- hashtag')
-    expect(stripFrontmatter(rewritten)).toBe('Tagged #hashtag here.')
+    // #then the whole file is byte-identical: the tag stays where the user put
+    // it. It reaches search and the tag hub through the index (#1454), not by
+    // rewriting the file. This test used to assert the opposite, as a pin.
+    expect(fs.readFileSync(absPath, 'utf8')).toBe(baseline.bytes)
+    expect(fs.readFileSync(absPath, 'utf8')).not.toContain('tags:')
+
+    // and the note really does carry the tag, so this is not a lost feature
+    const note = await getNoteHandleByTitle(pageA, title)
+    const tags = await pageA.evaluate(
+      (id) => window.api.notes.get(id).then((loaded) => loaded?.tags ?? []),
+      note.id
+    )
+    expect(tags).toContain('hashtag')
   })
 })
