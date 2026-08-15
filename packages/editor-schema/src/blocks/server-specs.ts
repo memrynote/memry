@@ -147,6 +147,6 @@ export function createServerBlockSpecs() {
       toExternalHTML: bookmarkDom
     })()
   }
-  assertSpecKeysMatchNodeTypes('blockSpecs', registered)
+  assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)
   return registered
 }

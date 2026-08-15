@@ -36,16 +36,20 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
     codeBlock: createCodeBlockSpec(codeBlockOptions),
     ...impl.blocks
   }
-  const inlineContentSpecs = {
-    ...defaultInlineContentSpecs,
-    ...createMemryInlineContentSpecs(impl.inline)
-  }
+  const memryInlineSpecs = createMemryInlineContentSpecs(impl.inline)
+  const inlineContentSpecs = { ...defaultInlineContentSpecs, ...memryInlineSpecs }
 
   // Once, at construction. Both processes call this at module scope, so a
   // mis-keyed spec is a failed schema build — not a note that quietly loses a
   // wiki link on its next write-back.
-  assertSpecKeysMatchNodeTypes('blockSpecs', blockSpecs)
-  assertSpecKeysMatchNodeTypes('inlineContentSpecs', inlineContentSpecs)
+  //
+  // Deliberately over what WE supply, not over the merged maps. Memry cannot
+  // mis-key BlockNote's own defaults, so asserting them buys nothing — but it
+  // would turn a future BlockNote minor that ships an aliased default into an
+  // app that does not launch, in both processes, at module scope. Same
+  // protection, none of that exposure.
+  assertSpecKeysMatchNodeTypes('blockSpecs', impl.blocks)
+  assertSpecKeysMatchNodeTypes('inlineContentSpecs', memryInlineSpecs)
 
   return BlockNoteSchema.create({ blockSpecs, inlineContentSpecs })
 }

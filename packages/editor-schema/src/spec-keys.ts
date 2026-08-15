@@ -60,6 +60,9 @@ function nodeTypeOf(spec: unknown): string | null {
 export function assertSpecKeysMatchNodeTypes(mapName: string, specs: SpecMap): void {
   for (const key of Object.keys(specs)) {
     const nodeType = nodeTypeOf(specs[key])
+    // Compared exactly, case included: `wikilink` under `wikiLink` is the
+    // likeliest real typo and is exactly the one a lenient compare would wave
+    // through.
     if (nodeType === null || nodeType === key) continue
 
     throw new Error(
@@ -81,18 +84,24 @@ export function assertSpecKeysMatchNodeTypes(mapName: string, specs: SpecMap): v
  * Intersecting the parameter with this maps a mis-keyed entry to `never`, which
  * makes the whole argument unassignable at the call site.
  *
- * It is a partial carry on purpose. A spec whose `config.type` is widened to
- * `string` — a shape BlockNote's own `BlockSpecs` allows — cannot be checked
- * here, so it falls through to the runtime assertion; that is why the runtime
- * assertion is the backstop and not the other way round. The inline half needs
- * none of this: `MemryInlineSpecs` names each spec's config by hand
- * (`InlineContentSpec<typeof wikiLinkConfig>`), which already binds key to
- * config.
+ * It is a partial carry on purpose, and the fall-through is explicit. A spec
+ * whose `config.type` is widened to `string` — a shape BlockNote's own
+ * `BlockSpecs` allows, and what you get from a config written without
+ * `as const` — carries no literal to compare, so it is passed through to the
+ * runtime assertion rather than rejected here. Without that branch, correct
+ * code fails to compile with `not assignable to type 'never'` and no
+ * explanation, which is a worse trade than the check is worth.
+ *
+ * The inline half needs none of this: `MemryInlineSpecs` names each spec's
+ * config by hand (`InlineContentSpec<typeof wikiLinkConfig>`), which already
+ * binds key to config.
  */
 export type SpecKeysMatchNodeTypes<Specs> = {
   [Key in keyof Specs]: Specs[Key] extends { config: { type: infer NodeType } }
     ? [NodeType] extends [Key]
       ? Specs[Key]
-      : never
+      : string extends NodeType
+        ? Specs[Key]
+        : never
     : Specs[Key]
 }

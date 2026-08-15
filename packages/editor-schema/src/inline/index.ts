@@ -55,7 +55,7 @@ export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
     hashTag: specs.hashTag,
     dateMention: specs.dateMention
   }
-  assertSpecKeysMatchNodeTypes('inlineContentSpecs', registered)
+  assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
   return registered
 }
 

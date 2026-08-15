@@ -98,17 +98,24 @@ export async function yDocToMarkdown(
 /**
  * Node names in the CRDT fragment that this build's schema cannot CONSTRUCT.
  *
- * Constructibility is the exact question y-prosemirror's repair heuristic asks:
+ * Constructibility is the question y-prosemirror's repair heuristic asks first:
  * it answers a node name its schema cannot build by DELETING the element
  * (`createNodeFromYElement`, dist/y-prosemirror.cjs:878-885), so a doc holding
  * one can only ever serialize to markdown that is missing it. Callers use this
  * to refuse the write rather than persist the loss.
  *
- * It does NOT answer "will this node survive serialization" — the converse of
- * the sentence above does not hold, and reading it as though it does is what
- * #1455 is about. A node this build can construct can still be dropped on the
- * way to markdown; the case that does it is a spec registered under a key that
- * is not its `config.type`. ProseMirror builds the node (its name comes from
+ * It does NOT answer "will this node survive serialization", and reading it as
+ * though it does is what #1455 is about. A node this build can construct can
+ * still be dropped on the way to markdown, in more than one way.
+ *
+ * It is also narrower than y-prosemirror's own test: this asks whether the NAME
+ * is registered, while `schema.node(name, attrs, children)` additionally throws
+ * on invalid content and on a required attribute with no default. Measured: a
+ * childless `tableRow` is a registered name, so nothing is reported here, and
+ * `yDocToMarkdown` returns `''` for the whole document.
+ *
+ * One case worth naming, because it is the one this guard reads as safe: a spec
+ * registered under a key that is not its `config.type`. ProseMirror builds the node (its name comes from
  * `config.type`, so nothing is reported here and the write is allowed) while
  * BlockNote's own schema — keyed by the registration key — cannot resolve it
  * and drops it. Measured: `See [[Wiki Link]] for details.` → `See for

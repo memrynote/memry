@@ -403,7 +403,7 @@ describe('every spec is registered under its own node type', () => {
     // #when / #then the schema build fails, naming the slot and the node name
     expect(() =>
       createMemrySchema({ blocks: misKeyed, inline: createServerInlineSpecs() })
-    ).toThrowError(/blockSpecs\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
+    ).toThrowError(/blockSpecs.*\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
   })
 
   it('refuses an inline spec registered under another name', () => {
@@ -419,7 +419,7 @@ describe('every spec is registered under its own node type', () => {
 
     // #when / #then it throws at the factory, before any schema exists
     expect(() => createMemryInlineContentSpecs({ ...inline, wikiLink: renamed })).toThrowError(
-      /inlineContentSpecs\["wikiLink"\].*config\.type is "wikiLinkRenamed"/s
+      /inlineContentSpecs.*\["wikiLink"\].*config\.type is "wikiLinkRenamed"/s
     )
   })
 
