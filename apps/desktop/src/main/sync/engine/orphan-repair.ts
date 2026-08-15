@@ -1,4 +1,5 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
+import { withIncrementedClock } from '@memry/sync-core'
 import { createLogger } from '../../lib/logger'
 import { decryptPullBatch } from '../sync-crypto-batch'
 import { getHandler } from '../item-handlers'
@@ -90,6 +91,10 @@ export async function repairOrphans(
     }
   }
 
+  // Only needed if something actually turns out to be a confirmed orphan, but
+  // resolved once here rather than per item: it is a keychain read.
+  let tombstoneDeviceId: string | null | undefined
+
   let repaired = 0
   let tombstoned = 0
 
@@ -111,11 +116,38 @@ export async function repairOrphans(
     // Parent confirmed absent locally AND not returned by the server. The child
     // can never be written, so stop the re-pull loop at its source by
     // tombstoning it server-side for every device.
+    //
+    // The clock has to be advanced first. `orphan.item.content` is what this
+    // device just pulled, so its clock is the server's OWN clock for that row,
+    // and the server rejects any push whose clock has no entry greater than what
+    // it already holds (`detectReplay` in services/sync.ts). Sent back unchanged
+    // the tombstone came home as SYNC_REPLAY_DETECTED, the queue row was cleared
+    // as "already applied", the next pull served the same orphan again, and this
+    // repair ran again — the loop it exists to end, running forever. Seven tasks
+    // sat in it for hours on a real device.
+    //
+    // A normal delete does not need this: it is built from a local row by the
+    // domain layer, which stamps the clock on the way out. This one has no local
+    // row — that is what being an orphan means — so nothing stamped it, and the
+    // push path leaves `delete` payloads verbatim by design.
+    if (tombstoneDeviceId === undefined) {
+      tombstoneDeviceId = (await ctx.deps.getSigningKeys())?.deviceId ?? null
+    }
+    if (!tombstoneDeviceId) {
+      // Without a device id the tombstone would be a replay again. Leave the
+      // orphan for the next pull rather than burn a push proving that.
+      log.warn('Cannot tombstone orphaned item without a device id', {
+        itemId: orphan.item.id,
+        type: orphan.item.type
+      })
+      continue
+    }
+
     ctx.deps.queue.enqueue({
       type: orphan.item.type as SyncItemType,
       itemId: orphan.item.id,
       operation: 'delete',
-      payload: orphan.item.content,
+      payload: withIncrementedClock(orphan.item.content, tombstoneDeviceId),
       priority: 0
     })
     tombstoned++
