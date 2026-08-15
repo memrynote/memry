@@ -246,9 +246,14 @@ Three things to expect:
   change the file.
 - **Long lines wrap.** A line wider than the pane continues on the next line, as a note's text does.
   There is nothing to scroll sideways to, and nothing sitting past the edge.
-- **Very long single lines are cut.** A line longer than 64 KB — minified JSON, for example — is
-  shown up to that point and marked `long line cut here` at the end of the wrapped text. The rest of
-  the line is still on disk, untouched.
+- **Very long lines open shortened.** A line over about 2,000 characters — one minified JSON record,
+  for example — is drawn up to that point, followed by **Show the rest of this line**. A single line
+  that long wraps into a couple of hundred rows, and a screenful of those is what makes the app slow
+  to answer while you scroll it. Nothing is lost: the control shows the whole line, and the file on
+  disk is untouched either way.
+- **Very long single lines are cut.** A line longer than 64 KB — a whole file on one line — is read
+  only up to that point. Show the rest of the line and the end of it is marked `long line cut here`.
+  The rest is still on disk, untouched.
 
 Because lines wrap, a row is as tall as the pane's width makes it, and that is only known for the
 part of the file you have looked at. In a file of very long lines the scrollbar is an estimate: it

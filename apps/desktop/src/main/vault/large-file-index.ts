@@ -36,6 +36,26 @@ export const LINE_INDEX_MAX_CHECKPOINTS = 65_536
  */
 export const MAX_LINE_BYTES = 64 * 1024
 
+/**
+ * Byte budget for one page handed to the renderer. **The first dial to turn.**
+ *
+ * A page used to be 200 lines and nothing else, which is the wrong unit: the
+ * renderer's cost is bytes, not rows. For an ordinary log 200 lines is ~20 KB;
+ * for a 69 MB dump of 18 KB lines it is 3.6 MB — read here, structured-cloned
+ * across IPC, and then held in the renderer as JS strings. Twenty of those and
+ * the renderer is holding the whole file.
+ *
+ * 256 KB is one `READ_CHUNK_BYTES` window: a page is one seek plus one read in
+ * the common case, and a message that size crosses IPC without being an event
+ * in its own right. A page is therefore `min(count, whatever fits in here)`,
+ * and never zero lines — a line fatter than the budget still comes back alone,
+ * because a page of nothing would have the viewer ask for it forever.
+ *
+ * Raise it if paging feels stepwise on a file of very long lines (fewer, bigger
+ * round trips). Lower it if the app still stutters while scrolling one.
+ */
+export const LARGE_FILE_PAGE_BYTES = 256 * 1024
+
 const NEWLINE = 0x0a
 const CARRIAGE_RETURN = 0x0d
 
@@ -143,6 +163,8 @@ export async function scanLineIndex(
 export interface ReadLinesOptions {
   chunkBytes?: number
   maxLineBytes?: number
+  /** Page byte budget. Defaults to `LARGE_FILE_PAGE_BYTES`. */
+  maxBytes?: number
 }
 
 export interface ReadLinesResult {
@@ -159,6 +181,11 @@ export interface ReadLinesResult {
  * the loop reaches, so a multi-byte character can straddle two of them; a line
  * is only decoded once its bytes are complete, which is why partial windows are
  * buffered rather than decoded eagerly.
+ *
+ * `count` is a ceiling, not a promise: the page also stops at `maxBytes`, so a
+ * caller asking for 200 lines of an 18 KB-per-line file gets ~15. The caller
+ * must read `lines.length` to learn where the page ended rather than assuming
+ * `count` — see `LARGE_FILE_PAGE_BYTES`.
  */
 export async function readLines(
   read: ByteReader,
@@ -169,6 +196,7 @@ export async function readLines(
 ): Promise<ReadLinesResult> {
   const chunkBytes = options.chunkBytes ?? READ_CHUNK_BYTES
   const maxLineBytes = options.maxLineBytes ?? MAX_LINE_BYTES
+  const maxBytes = options.maxBytes ?? LARGE_FILE_PAGE_BYTES
 
   const lines: string[] = []
   const truncated: number[] = []
@@ -184,6 +212,8 @@ export async function readLines(
   let pending: Buffer[] = []
   let pendingBytes = 0
   let cut = false
+  /** Bytes of line text emitted so far, which is what the byte budget bounds. */
+  let emittedBytes = 0
 
   /** Buffer a line fragment, refusing to grow past the per-line cap. */
   const append = (segment: Buffer): void => {
@@ -209,11 +239,14 @@ export async function readLines(
     } else {
       lines.push(decodeLine(pending, pendingBytes))
       if (cut) truncated.push(startLine + lines.length - 1)
+      emittedBytes += pendingBytes
     }
     pending = []
     pendingBytes = 0
     cut = false
-    return lines.length >= count
+    // `lines.length > 0` rather than a bare byte test: one line over the budget
+    // on its own must still come back, or the caller asks for it forever.
+    return lines.length >= count || (lines.length > 0 && emittedBytes >= maxBytes)
   }
 
   const buffer = Buffer.allocUnsafe(chunkBytes)

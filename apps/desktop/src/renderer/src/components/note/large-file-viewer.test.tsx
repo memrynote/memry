@@ -591,26 +591,128 @@ describe('LargeFileViewer', () => {
     expect(await screen.findByText('row 0')).toBeInTheDocument()
   })
 
-  it('drops pages far behind the viewport instead of keeping every line scrolled past', async () => {
-    // #given a long file, scrolled from the top
+  it('drops pages by the bytes they hold, not by how many of them there are', async () => {
+    // #given a long file of fat lines — the 69 MB shape, where 200 lines is
+    // megabytes rather than kilobytes. Counting pages says 20 of these are
+    // cheap; they are the whole file.
     const lineCount = 200_000
-    await openReady(lineCount)
-    await screen.findByText('row 0')
+    const fat = 'x'.repeat(8_000)
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 40_000_000
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockImplementation(
+      async (input: { startLine: number; count: number }): Promise<LargeFileLinesResult> => ({
+        startLine: input.startLine,
+        lines: Array.from(
+          { length: Math.max(0, Math.min(input.count, lineCount - input.startLine)) },
+          (_, i) => `row ${input.startLine + i} ${fat}`
+        ),
+        truncated: [],
+        lineCount
+      })
+    )
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={40_000_000} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 40_000_000, lineCount })
+
     const fetchesOfFirstPage = () =>
       mocks.readLines.mock.calls.filter(([input]) => input.startLine === 0).length
-    expect(fetchesOfFirstPage()).toBe(1)
+    await waitFor(() => expect(fetchesOfFirstPage()).toBe(1))
 
-    // #when the viewport travels past the page cache — 60 pages of 200 lines,
-    // against a 48-page cache
-    for (let page = 1; page <= 60; page++) {
+    // #when the viewport travels far enough that the pages behind it are more
+    // than the cache's byte budget — 16 pages of ~1.6 M characters each
+    for (let page = 1; page <= 16; page++) {
       await scrollTo(page * 200, lineCount)
     }
 
     // #then — scrolling back to the top re-fetches page 0, because it was let
-    // go. A viewer that kept every page walked through a 2 GB file would end up
-    // holding the file, which is the thing this design exists to avoid.
+    // go. Counting pages never would have: 17 pages is well inside any page
+    // count, and is 27 M characters of text held in the renderer.
     await scrollTo(0, lineCount)
     await waitFor(() => expect(fetchesOfFirstPage()).toBe(2))
+  })
+
+  it('pages on from where a short page ended rather than from a fixed stride', async () => {
+    // #given a main process that ends a page at its byte budget: 15 lines came
+    // back where 200 were asked for, because each line is ~18 KB
+    const lineCount = 100_000
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 69_420_544
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockImplementation(
+      async (input: { startLine: number }): Promise<LargeFileLinesResult> => ({
+        startLine: input.startLine,
+        lines: Array.from({ length: 15 }, (_, i) => `row ${input.startLine + i}`),
+        truncated: [],
+        lineCount
+      })
+    )
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={69_420_544} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 69_420_544, lineCount })
+
+    // #then — the rows past the first short page are filled in. A page whose
+    // identity is `startLine / 200` cannot express this: line 20 would be
+    // looked for at index 20 of a page holding 15 lines, and stay blank
+    // forever, while the fetch for it would never be issued at all.
+    expect(await screen.findByText('row 20')).toBeInTheDocument()
+    expect(await screen.findByText('row 39')).toBeInTheDocument()
+    const starts = mocks.readLines.mock.calls.map(([input]) => input.startLine)
+    expect(starts).toContain(15)
+    expect(starts).toContain(30)
+    // and nothing was asked for twice: the walk resumes at the end of the page
+    // that landed, so no request overlaps the one before it
+    expect(new Set(starts).size).toBe(starts.length)
+  })
+
+  it('renders the head of a very long line, with a way to see the rest', async () => {
+    // #given one 18 KB minified record — a single file line that wraps into
+    // ~200 visual rows, which is the layout cost the freeze was made of
+    const head = 'a'.repeat(2_048)
+    const tail = `TAIL-MARKER${'b'.repeat(6_000)}`
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 69_420_544
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockResolvedValue({
+      startLine: 0,
+      lines: [head + tail],
+      truncated: [],
+      lineCount: 1
+    } satisfies LargeFileLinesResult)
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={69_420_544} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 69_420_544, lineCount: 1 })
+
+    // #then — the row is drawn short, and says so
+    const showRest = await screen.findByRole('button', { name: /show the rest of this line/i })
+    expect(document.body.textContent).not.toContain('TAIL-MARKER')
+
+    // #when the reader asks for the rest
+    await userEvent.click(showRest)
+
+    // #then it is all there, and the control is gone
+    await waitFor(() => expect(document.body.textContent).toContain('TAIL-MARKER'))
+    expect(
+      screen.queryByRole('button', { name: /show the rest of this line/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it('leaves an ordinary line whole, with no control on it', async () => {
+    // #given/when a file of normal lines
+    await openReady(500)
+
+    // #then — the cap is for the pathological case; it must not put a control
+    // on every row of a log file
+    expect(await screen.findByText('row 0')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /show the rest of this line/i })
+    ).not.toBeInTheDocument()
   })
 
   it('gives up cleanly when the open itself fails', async () => {

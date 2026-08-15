@@ -25,6 +25,26 @@ export const LARGE_FILE_LINE_HEIGHT = 32
 /** Rows rendered either side of the viewport, so scrolling stays ahead of IPC. */
 const OVERSCAN_ROWS = 24
 
+/**
+ * Characters of one line drawn before the rest is put behind a control.
+ * **The dial for how janky the viewer feels.**
+ *
+ * Distinct from `MAX_LINE_BYTES` (64 KB), which is what the *main process*
+ * reads: that is about not putting the file back in one string. This is about
+ * layout. Since lines wrap, an 18 KB minified record is not one line box but
+ * something like 200 of them, and a viewport plus overscan of those was
+ * measured at ~853 KB of text in the DOM at once — laid out, on the renderer's
+ * main thread, which is the thread that answers clicks.
+ *
+ * 2 KB is a long paragraph: about 20 wrapped rows, enough to see what a line
+ * is. A record that long is not readable as prose anyway, and the whole of it
+ * is one click away.
+ *
+ * Lower it if the app is still unresponsive on a file of very long lines.
+ * Raise it if lines are being cut so short the viewer feels lossy.
+ */
+export const LARGE_FILE_RENDERED_LINE_CHARS = 2048
+
 export interface LargeFileViewerProps {
   noteId: string
   /** Which bound put the file out of note class, from the classifier. */
@@ -243,6 +263,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
                 text={getLine(row.index)}
                 truncated={isTruncated(row.index)}
                 truncatedLabel={t('page.largeFile.viewer.lineTruncated')}
+                showRestLabel={t('page.largeFile.viewer.showRestOfLine')}
                 query={search.isOpen ? search.query : ''}
                 activeOrdinal={currentHit?.line === row.index ? currentHit.ordinal : null}
                 measureRef={virtualizer.measureElement}
@@ -432,6 +453,7 @@ const LineRow = memo(function LineRow({
   text,
   truncated,
   truncatedLabel,
+  showRestLabel,
   query,
   activeOrdinal,
   measureRef
@@ -441,10 +463,21 @@ const LineRow = memo(function LineRow({
   text: string | undefined
   truncated: boolean
   truncatedLabel: string
+  showRestLabel: string
   query: string
   activeOrdinal: number | null
   measureRef: (node: HTMLElement | null) => void
 }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const full = text ?? ''
+  const capped = full.length > LARGE_FILE_RENDERED_LINE_CHARS
+  // A hit on this row is drawn whole whatever its length: find scrolls to the
+  // line it matched, and a row that highlights nothing when it arrives is worse
+  // than one long row. Only ever one row at a time — the current hit.
+  const whole = expanded || activeOrdinal !== null
+  const visible = capped && !whole ? full.slice(0, LARGE_FILE_RENDERED_LINE_CHARS) : full
+
   return (
     <div
       data-index={line}
@@ -458,8 +491,24 @@ const LineRow = memo(function LineRow({
           blank line — and a line whose page has not arrived — open at one line,
           which a collapsed row would report as zero height. */}
       <p className="min-h-[1lh] py-[3px] text-base leading-relaxed whitespace-pre-wrap break-words text-foreground">
-        <HighlightedLine text={text ?? ''} query={query} activeOrdinal={activeOrdinal} />
-        {truncated && (
+        <HighlightedLine text={visible} query={query} activeOrdinal={activeOrdinal} />
+        {capped && !whole && (
+          <>
+            <span aria-hidden="true">…</span>
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="ms-2 rounded-sm bg-muted px-1.5 py-0.5 align-middle text-[0.7em] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
+            >
+              {showRestLabel}
+            </button>
+          </>
+        )}
+        {/* Two different cuts, never shown at once: this one is the main
+            process's 64 KB read cap, and it belongs at the end of the line the
+            reader actually asked to see. Showing it alongside "show the rest"
+            would read as one thing said twice. */}
+        {truncated && (!capped || whole) && (
           <span className="ms-2 rounded-sm bg-muted px-1 align-middle text-[0.7em] text-muted-foreground">
             {truncatedLabel}
           </span>

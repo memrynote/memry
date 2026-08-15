@@ -15,14 +15,32 @@ import type { LargeFileIndexEvent } from '@memry/contracts/notes-api'
 
 const log = createLogger('LargeFileSession')
 
-/** Lines per fetched page. One screenful is ~50 rows; this is a few of those. */
+/**
+ * Ceiling on the lines in one fetched page. One screenful is ~50 rows; this is
+ * a few of those.
+ *
+ * A ceiling, not the page size: the main process ends a page early once it has
+ * filled `LARGE_FILE_PAGE_BYTES` (`main/vault/large-file-index.ts`), so a file
+ * of 18 KB lines pages ~15 lines at a time and an ordinary log pages 200. Page
+ * identity therefore cannot be `line / LARGE_FILE_PAGE_LINES` — pages are kept
+ * as a sorted, non-overlapping run and looked up by the line they cover.
+ */
 export const LARGE_FILE_PAGE_LINES = 200
 
-/** Pages kept in memory. 48 x 200 lines is a generous scrollback, and bounded. */
-const PAGE_CACHE_LIMIT = 48
-
-/** Pages either side of the viewport kept when the cache is trimmed. */
-const PAGE_CACHE_MARGIN = 2
+/**
+ * Characters of line text the page cache holds. **The dial for memory.**
+ *
+ * A page count was the old bound (48 pages) and it never once fired on the file
+ * that motivated this: 3 863 lines at 200 per page is 20 pages, so the cache
+ * "never full" meant the renderer holding all 69 MB as JS strings. Bytes are
+ * the bound that means anything when pages vary in size.
+ *
+ * 16 M characters is roughly 16–32 MB of V8 string memory — one character is
+ * one byte for Latin-1 text and two once anything else appears on the line.
+ * Lower it if memory matters more than not re-fetching; raise it if scrolling
+ * back over a stretch you have already read re-fetches too eagerly.
+ */
+const PAGE_CACHE_CHARS = 16 * 1024 * 1024
 
 export type LargeFileViewState =
   | { status: 'opening' }
@@ -34,9 +52,21 @@ export type LargeFileViewState =
   // detail (an errno, a worker fault) belongs in the log, not on screen.
   | { status: 'error' }
 
+/**
+ * One page as it landed: the lines the main process chose to end it at.
+ *
+ * `startLine` is the page's identity. Nothing divides to find it, because the
+ * main process ends a page at a byte budget and the renderer only learns how
+ * long a page is when it arrives.
+ */
 interface Page {
+  startLine: number
   lines: string[]
   truncated: Set<number>
+  /** Characters of line text held here, which is what the cache bound counts. */
+  chars: number
+  /** Monotonic touch counter, for least-recently-used trimming. */
+  lastUsed: number
 }
 
 export interface LargeFileSession {
@@ -62,8 +92,16 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
   // Bumped to reopen after the main process let the session go.
   const [generation, setGeneration] = useState(0)
 
-  const pagesRef = useRef(new Map<number, Page>())
-  const inFlightRef = useRef(new Set<number>())
+  // Sorted by `startLine` and non-overlapping, so a line is found by binary
+  // search rather than by dividing.
+  const pagesRef = useRef<Page[]>([])
+  // One request at a time: the next page starts where the last one ended, and
+  // that is only known once it has landed.
+  const inFlightRef = useRef<number | null>(null)
+  // The range the viewport last asked for, so a page arriving can carry on
+  // filling it without the viewer having to ask again.
+  const rangeRef = useRef<{ start: number; end: number } | null>(null)
+  const tickRef = useRef(0)
   const sessionIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -73,8 +111,9 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     // only exists once it does. Hold them rather than drop them.
     const buffered: LargeFileIndexEvent[] = []
 
-    pagesRef.current = new Map()
-    inFlightRef.current = new Set()
+    pagesRef.current = []
+    inFlightRef.current = null
+    rangeRef.current = null
     sessionIdRef.current = null
 
     const apply = (event: LargeFileIndexEvent): void => {
@@ -164,72 +203,151 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     // it, so in practice only `generation` (a reopen) re-runs the effect.
   }, [noteId, generation])
 
-  const ensureRange = useCallback((startLine: number, endLine: number) => {
+  /**
+   * Fetch the first line of the wanted range that no page covers yet.
+   *
+   * One request in flight, and a self-call once it lands: where the next page
+   * starts is the end of the one before it, which is not known until it has
+   * arrived. Walking the range up front — the old `firstPage..lastPage` loop —
+   * needs a page size, and there is no longer one.
+   */
+  const fill = useCallback(function fillPages(): void {
     const sessionId = sessionIdRef.current
-    if (!sessionId) return
+    const range = rangeRef.current
+    if (!sessionId || !range || inFlightRef.current !== null) return
 
-    const firstPage = Math.max(0, Math.floor(startLine / LARGE_FILE_PAGE_LINES))
-    const lastPage = Math.max(firstPage, Math.floor(endLine / LARGE_FILE_PAGE_LINES))
-
-    for (let page = firstPage; page <= lastPage; page++) {
-      if (pagesRef.current.has(page) || inFlightRef.current.has(page)) continue
-      inFlightRef.current.add(page)
-
-      const requested = page
-      void window.api.notes
-        .largeFileReadLines({
-          sessionId,
-          startLine: requested * LARGE_FILE_PAGE_LINES,
-          count: LARGE_FILE_PAGE_LINES
-        })
-        .then((result) => {
-          inFlightRef.current.delete(requested)
-          // A different file is open now; this page belongs to nothing.
-          if (sessionIdRef.current !== sessionId) return
-          if (!result) {
-            // The session is gone — evicted behind another file, or the main
-            // process restarted. Reopening is cheaper than telling the user.
-            setGeneration((n) => n + 1)
-            return
-          }
-          pagesRef.current.set(requested, {
-            lines: result.lines,
-            truncated: new Set(result.truncated)
-          })
-          trimPages(pagesRef.current, firstPage, lastPage)
-          setPagesRevision((n) => n + 1)
-        })
-        .catch((err: unknown) => {
-          inFlightRef.current.delete(requested)
-          log.warn('Failed to read large-file lines', err)
-        })
+    const pages = pagesRef.current
+    // Pages touched in this pass are the ones on screen, and are never the
+    // trim's target however long ago they were fetched.
+    const keepTick = tickRef.current + 1
+    let cursor = range.start
+    while (cursor <= range.end) {
+      const page = findPage(pages, cursor)
+      if (!page) break
+      page.lastUsed = ++tickRef.current
+      cursor = page.startLine + page.lines.length
     }
+    if (cursor > range.end) return
+
+    const requested = cursor
+    inFlightRef.current = requested
+    void window.api.notes
+      .largeFileReadLines({ sessionId, startLine: requested, count: LARGE_FILE_PAGE_LINES })
+      .then((result) => {
+        inFlightRef.current = null
+        // A different file is open now; this page belongs to nothing.
+        if (sessionIdRef.current !== sessionId) return
+        if (!result) {
+          // The session is gone — evicted behind another file, or the main
+          // process restarted. Reopening is cheaper than telling the user.
+          setGeneration((n) => n + 1)
+          return
+        }
+        // Past the end of the file. Carrying on would ask for the same line
+        // forever, since nothing would ever cover it.
+        if (result.lines.length === 0) return
+
+        insertPage(pages, {
+          startLine: requested,
+          lines: result.lines,
+          truncated: new Set(result.truncated),
+          chars: result.lines.reduce((total, line) => total + line.length, 0),
+          lastUsed: ++tickRef.current
+        })
+        trimPages(pages, keepTick)
+        setPagesRevision((n) => n + 1)
+        fillPages()
+      })
+      .catch((err: unknown) => {
+        inFlightRef.current = null
+        log.warn('Failed to read large-file lines', err)
+      })
   }, [])
 
+  const ensureRange = useCallback(
+    (startLine: number, endLine: number) => {
+      const start = Math.max(0, startLine)
+      rangeRef.current = { start, end: Math.max(start, endLine) }
+      fill()
+    },
+    [fill]
+  )
+
   const getLine = useCallback((line: number): string | undefined => {
-    const page = pagesRef.current.get(Math.floor(line / LARGE_FILE_PAGE_LINES))
-    return page?.lines[line % LARGE_FILE_PAGE_LINES]
+    const page = findPage(pagesRef.current, line)
+    return page?.lines[line - page.startLine]
   }, [])
 
   const isTruncated = useCallback((line: number): boolean => {
-    const page = pagesRef.current.get(Math.floor(line / LARGE_FILE_PAGE_LINES))
-    return page?.truncated.has(line) ?? false
+    return findPage(pagesRef.current, line)?.truncated.has(line) ?? false
   }, [])
 
   return { state, sessionId, getLine, isTruncated, ensureRange }
 }
 
+/** The page covering `line`, or undefined. Binary search over the sorted run. */
+function findPage(pages: Page[], line: number): Page | undefined {
+  let low = 0
+  let high = pages.length - 1
+  let found = -1
+  while (low <= high) {
+    const mid = (low + high) >> 1
+    if (pages[mid].startLine <= line) {
+      found = mid
+      low = mid + 1
+    } else {
+      high = mid - 1
+    }
+  }
+  if (found < 0) return undefined
+  const page = pages[found]
+  return line < page.startLine + page.lines.length ? page : undefined
+}
+
 /**
- * Drop pages far from the viewport once the cache is over its limit.
+ * Add a page, keeping the run sorted and non-overlapping.
+ *
+ * Overlap should not happen — a page is only ever asked for at a line nothing
+ * covers — but a run with two pages claiming one line would have `findPage`
+ * answer differently depending on where the search landed, and that is not a
+ * bug worth being able to have.
+ */
+function insertPage(pages: Page[], page: Page): void {
+  const end = page.startLine + page.lines.length
+  for (let i = pages.length - 1; i >= 0; i--) {
+    const other = pages[i]
+    if (other.startLine < end && page.startLine < other.startLine + other.lines.length) {
+      pages.splice(i, 1)
+    }
+  }
+  let at = 0
+  while (at < pages.length && pages[at].startLine < page.startLine) at += 1
+  pages.splice(at, 0, page)
+}
+
+/**
+ * Drop the least recently used pages until the cache is inside its byte bound.
  *
  * Without this, scrolling the length of a 2 GB file accumulates every line it
- * passed — the same unbounded string, assembled slowly.
+ * passed — the same unbounded string, assembled slowly. Counting pages instead
+ * of characters is what let a 69 MB file of 18 KB lines sit in the renderer
+ * whole: 20 pages is nothing to a 48-page cache, and is the entire file.
+ *
+ * Pages touched at or after `keepTick` are on screen and are never taken; if
+ * they alone are over the bound the viewport wins and the cache runs over.
  */
-function trimPages(pages: Map<number, Page>, firstPage: number, lastPage: number): void {
-  if (pages.size <= PAGE_CACHE_LIMIT) return
-  const keepFrom = firstPage - PAGE_CACHE_MARGIN
-  const keepTo = lastPage + PAGE_CACHE_MARGIN
-  for (const page of pages.keys()) {
-    if (page < keepFrom || page > keepTo) pages.delete(page)
+function trimPages(pages: Page[], keepTick: number): void {
+  let total = 0
+  for (const page of pages) total += page.chars
+
+  while (total > PAGE_CACHE_CHARS) {
+    let victim = -1
+    for (let i = 0; i < pages.length; i++) {
+      if (pages[i].lastUsed >= keepTick) continue
+      if (victim < 0 || pages[i].lastUsed < pages[victim].lastUsed) victim = i
+    }
+    if (victim < 0) return
+    total -= pages[victim].chars
+    pages.splice(victim, 1)
   }
 }

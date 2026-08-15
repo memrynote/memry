@@ -245,6 +245,56 @@ describe('readLines', () => {
     // #then
     expect(result.lines).toEqual(['héllo 🌍 wörld', 'second'])
   })
+
+  it('ends a page at the byte budget rather than at the line count asked for', async () => {
+    // #given the shape that froze the renderer: 3 863 lines averaging ~18 KB, so
+    // a 200-line page is 3.6 MB of string cloned across IPC and held in the
+    // renderer. The line count is the wrong unit — the cost is in bytes.
+    const wide = 'w'.repeat(18_000)
+    const body = Array.from({ length: 60 }, () => wide).join('\n') + '\n'
+    const index = await indexOf(body, { fileBytes: 0 })
+
+    // #when a full 200-line page is asked for under a 256 KB budget
+    const result = await linesOf(body, index, 0, 200, { maxBytes: 256 * 1024 })
+
+    // #then — the page stops at the budget: ~15 lines, not 60, and the payload
+    // is a quarter of a megabyte rather than a megabyte per fetch
+    const bytes = result.lines.reduce((n, line) => n + Buffer.byteLength(line, 'utf8'), 0)
+    expect(result.lines.length).toBeLessThan(20)
+    expect(bytes).toBeLessThan(256 * 1024 + 18_001)
+    // and it is a whole page, not a token one: the budget is nearly filled
+    expect(bytes).toBeGreaterThan(200 * 1024)
+    // and the lines it did return start where they were asked to
+    expect(result.startLine).toBe(0)
+    expect(result.lines[0]).toBe(wide)
+  })
+
+  it('still returns one line when that line alone is over the byte budget', async () => {
+    // #given a file of lines each fatter than a whole page budget
+    const body = ['a'.repeat(4000), 'b'.repeat(4000), 'c'.repeat(4000)].join('\n') + '\n'
+    const index = await indexOf(body, { fileBytes: 0 })
+
+    // #when
+    const result = await linesOf(body, index, 1, 200, { maxBytes: 100 })
+
+    // #then — a page of zero lines would leave the viewer asking for the same
+    // line forever, so the budget yields to making progress
+    expect(result.lines).toEqual(['b'.repeat(4000)])
+  })
+
+  it('leaves a page of short lines bounded by the line count, not the budget', async () => {
+    // #given an ordinary log: 200 lines is ~20 KB, nowhere near the budget
+    const body = Array.from({ length: 500 }, (_, i) => `row ${i}`).join('\n') + '\n'
+    const index = await indexOf(body, { fileBytes: 0 })
+
+    // #when
+    const result = await linesOf(body, index, 0, 200, { maxBytes: 256 * 1024 })
+
+    // #then — the byte bound is a ceiling for pathological files, not a new
+    // limit on the ordinary ones
+    expect(result.lines).toHaveLength(200)
+    expect(result.lines[199]).toBe('row 199')
+  })
 })
 
 describe('fileHandleReader', () => {

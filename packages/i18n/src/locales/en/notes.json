@@ -55,7 +55,8 @@
         "empty": "This file is empty.",
         "failed": "This file could not be prepared for reading.",
         "missing": "This file is no longer on disk.",
-        "lineTruncated": "long line cut here"
+        "lineTruncated": "long line cut here",
+        "showRestOfLine": "Show the rest of this line"
       },
       "tooLarge": {
         "title": "This file is too large to open",
