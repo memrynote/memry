@@ -225,5 +225,9 @@ size and the limit it passed, marked **read-only · not synced**:
 - **The file on disk is not touched.** Nothing is truncated, rewritten or deleted, and you can
   still open it in any other editor.
 
+The limits apply to notes arriving over sync too. A device still running an older version can send
+you a note that is over them; memrynote keeps every byte of it and writes the file to your vault,
+but opens it read-only rather than in the editor, exactly as if you had dropped it in yourself.
+
 Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
 existing notes under these limits are unaffected.
