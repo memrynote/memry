@@ -476,6 +476,28 @@ describe('SyncProvider', () => {
       )
     })
 
+    it('#then names the note when the main process reports which one is too large', async () => {
+      // "A note is too large" with no name leaves the user nothing to act on.
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) {
+          cb({
+            status: 'error',
+            pendingCount: 0,
+            errorCategory: 'note_too_large',
+            errorNoteTitle: 'Server log dump'
+          })
+        }
+      })
+
+      expect(toastMock.error).toHaveBeenCalledWith(
+        '"Server log dump" is too large to sync. Splitting it into smaller notes will fix this.',
+        { duration: 10000 }
+      )
+    })
+
     it('#then translates session and device revoked state errors', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))

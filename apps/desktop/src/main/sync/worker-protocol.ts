@@ -85,7 +85,15 @@ export type WorkerToMainMessage =
       type: 'encrypt-batch-result'
       requestId: string
       results: EncryptedPushResult[]
-      errors: Array<{ queueId: string; itemId: string; error: string }>
+      // `code` marks the failures the main thread must handle specifically.
+      // An Error subclass cannot cross the worker boundary, so the
+      // discriminator has to travel as data.
+      errors: Array<{
+        queueId: string
+        itemId: string
+        error: string
+        code?: 'item_too_large'
+      }>
     }
   | {
       type: 'decrypt-batch-result'

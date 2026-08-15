@@ -6,6 +6,7 @@ import { verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { encryptItemForPush, type EncryptItemInput } from './encrypt'
 import { decompressPayload } from './compress'
+import { ItemTooLargeError, NOTE_SYNC_MAX_BYTES, SYNC_ITEM_MAX_ENCRYPT_BYTES } from './note-size'
 
 beforeAll(async () => {
   await initCrypto()
@@ -193,5 +194,26 @@ describe('encryptItemForPush', () => {
 
       spy.mockRestore()
     })
+  })
+})
+
+describe('#given a payload over the sync ceiling #when encryptItemForPush', () => {
+  it('#then it throws a typed ItemTooLargeError naming the item', () => {
+    const oversized = new Uint8Array(NOTE_SYNC_MAX_BYTES + 1)
+    let thrown: unknown
+    try {
+      encryptItemForPush(makeInput({ id: 'note-oversized', content: oversized }))
+    } catch (err) {
+      thrown = err
+    }
+
+    expect(thrown).toBeInstanceOf(ItemTooLargeError)
+    expect((thrown as ItemTooLargeError).itemId).toBe('note-oversized')
+    expect((thrown as ItemTooLargeError).maxBytes).toBe(SYNC_ITEM_MAX_ENCRYPT_BYTES)
+  })
+
+  it('#then a payload exactly at the ceiling still encrypts', () => {
+    const atCeiling = new Uint8Array(NOTE_SYNC_MAX_BYTES)
+    expect(() => encryptItemForPush(makeInput({ content: atCeiling }))).not.toThrow()
   })
 })

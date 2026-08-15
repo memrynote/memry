@@ -30,6 +30,7 @@ vi.mock('./decrypt-item', () => ({
 }))
 
 import { decryptPullBatch, encryptPushBatch } from './sync-crypto-batch'
+import { ItemTooLargeError } from './note-size'
 
 const vaultKey = new Uint8Array([1, 2, 3])
 const signingSecretKey = new Uint8Array([4, 5, 6])
@@ -132,6 +133,102 @@ describe('sync crypto batch', () => {
       error: 'boom'
     })
     expect(result).toEqual([{ queueId: 'queue-ok', pushItem: { ok: true } }])
+  })
+
+  it('reports a worker encrypt-cap rejection to the caller, not just to the queue row', async () => {
+    const onItemTooLarge = vi.fn()
+    const workerBridge = {
+      isRunning: true,
+      encryptBatch: vi.fn().mockResolvedValue({
+        results: [],
+        errors: [
+          {
+            queueId: 'queue-1',
+            itemId: 'note-1',
+            error: 'Item too large for sync (estimated 22.9MB, max 5MB)',
+            code: 'item_too_large'
+          }
+        ]
+      })
+    }
+
+    const result = await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+      workerBridge: workerBridge as never,
+      queue: { markFailed: mocks.markFailed } as never,
+      extractPayloadMetadata: () => ({}),
+      resolvePushPayload: (item) => item.payload,
+      onItemTooLarge
+    })
+
+    expect(onItemTooLarge).toHaveBeenCalledWith({
+      itemId: 'note-1',
+      type: 'note',
+      payload: '{"title":"Note"}'
+    })
+    expect(mocks.markFailed).toHaveBeenCalledWith(
+      'queue-1',
+      'Encrypt failed: Item too large for sync (estimated 22.9MB, max 5MB)'
+    )
+    expect(result).toEqual([])
+  })
+
+  it('leaves an ordinary worker encrypt failure unreported to the caller', async () => {
+    const onItemTooLarge = vi.fn()
+    const workerBridge = {
+      isRunning: true,
+      encryptBatch: vi.fn().mockResolvedValue({
+        results: [],
+        errors: [{ queueId: 'queue-1', itemId: 'note-1', error: 'boom' }]
+      })
+    }
+
+    await encryptPushBatch([queueRow], vaultKey, signingSecretKey, 'device-1', {
+      workerBridge: workerBridge as never,
+      queue: { markFailed: mocks.markFailed } as never,
+      extractPayloadMetadata: () => ({}),
+      resolvePushPayload: (item) => item.payload,
+      onItemTooLarge
+    })
+
+    expect(onItemTooLarge).not.toHaveBeenCalled()
+    expect(mocks.markFailed).toHaveBeenCalledWith('queue-1', 'Encrypt failed: boom')
+  })
+
+  it('isolates a main-thread encrypt-cap rejection so the rest of the batch still pushes', async () => {
+    const onItemTooLarge = vi.fn()
+    mocks.encryptItemForPush.mockImplementation((input: { id: string }) => {
+      if (input.id === 'note-big') {
+        throw new ItemTooLargeError('note-big', 24_000_000, 5 * 1024 * 1024)
+      }
+      return { pushItem: { encrypted: true } }
+    })
+
+    const result = await encryptPushBatch(
+      [
+        { ...queueRow, id: 'queue-big', itemId: 'note-big', payload: '{"title":"Log dump"}' },
+        queueRow
+      ],
+      vaultKey,
+      signingSecretKey,
+      'device-1',
+      {
+        queue: { markFailed: mocks.markFailed } as never,
+        extractPayloadMetadata: () => ({}),
+        resolvePushPayload: (item) => item.payload,
+        onItemTooLarge
+      }
+    )
+
+    expect(onItemTooLarge).toHaveBeenCalledWith({
+      itemId: 'note-big',
+      type: 'note',
+      payload: '{"title":"Log dump"}'
+    })
+    expect(mocks.markFailed).toHaveBeenCalledWith(
+      'queue-big',
+      expect.stringContaining('Item too large for sync')
+    )
+    expect(result).toEqual([{ queueId: 'queue-1', pushItem: { encrypted: true } }])
   })
 
   it('decrypts on the main thread and records missing signer keys and crypto failures', async () => {

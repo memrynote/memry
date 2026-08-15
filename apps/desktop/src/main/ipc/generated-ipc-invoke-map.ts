@@ -330,6 +330,7 @@ export interface MainIpcInvokeHandlers {
   "sync:get-devices": (...args: []) => Awaited<Promise<{ devices: { id: string; name: string; platform: "macos" | "windows" | "linux" | "ios" | "android"; linkedAt: number; lastSyncAt: number | undefined; isCurrentDevice: boolean; }[]; email: string | undefined; needsRecoveryConfirmation: boolean; }>>
   "sync:get-download-progress": (...args: [{ attachmentId: string; }]) => Awaited<{ progress: number; downloadedChunks: number; totalChunks: number; status: "downloading"; } | null | { success: false; error: string }>
   "sync:get-history": (...args: [{ limit?: number | undefined; offset?: number | undefined; }]) => Awaited<{ entries: { id: string; type: "error" | "push" | "pull"; itemCount: number; direction: string | undefined; details: unknown; durationMs: number | undefined; createdAt: number; }[]; total: number; } | { success: false; error: string }>
+  "sync:get-large-notes": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-sync-ops").LargeNotesResult>
   "sync:get-linking-sas": (...args: [{ sessionId: string; }]) => Awaited<Promise<{ verificationCode?: string | undefined; error?: string | undefined; }> | { success: false; error: string }>
   "sync:get-quarantined-items": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-events").QuarantinedItemInfo[]>
   "sync:get-queue-size": (...args: []) => Awaited<{ pending: number; failed: number; }>
