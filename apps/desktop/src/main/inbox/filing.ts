@@ -13,7 +13,15 @@ import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
-import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+// Filing creates notes the user expects on every device, so it goes through the
+// notes domain command rather than the raw vault write. `createNoteCommand` is
+// what enqueues the note's own sync push and seeds its CRDT doc; without it the
+// filed inbox row syncs (markItemAsFiled below) while the note it became stays
+// on this device — the peer hides the item and never draws the note. Nothing
+// rescues it in-session either: `seedUnclockedNotes` runs only from a full sync,
+// and the vault watcher enqueues creates for binaries, not markdown.
+import { createNoteCommand } from '../notes/domain'
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
@@ -704,7 +712,7 @@ export async function fileToFolder(
     const content = generateNoteContent(item)
 
     // Create note
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content,
       folder: folderPath || undefined,
@@ -763,7 +771,7 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     const content = generateNoteContent(item)
 
     // Create note in root folder
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content,
       tags: mergedTags,
@@ -1008,7 +1016,7 @@ export async function convertToReminder(
     const existingTags = getItemTags(db, itemId)
     const mergedTags = [...new Set([...existingTags, 'inbox'])]
     const title = generateNoteTitle(item)
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content: generateNoteContent(item),
       tags: mergedTags,
@@ -1068,7 +1076,7 @@ async function resolveFilingTargets(
       continue
     }
 
-    const created = await createNote({
+    const created = await createNoteCommand({
       title: target.title,
       content: '',
       folder: folderPath || undefined
@@ -1407,7 +1415,7 @@ export async function linkToNotes(
     const inboxNoteContent = generateNoteContent(item)
 
     // Create the inbox note in the specified folder (we need this so the wikilink has a target)
-    await createNote({
+    await createNoteCommand({
       title: inboxNoteTitle,
       content: inboxNoteContent,
       folder: folderPath || undefined,
