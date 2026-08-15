@@ -1,10 +1,12 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   LargeFileIndexEvent,
   LargeFileLinesResult,
-  LargeFileOpenResult
+  LargeFileOpenResult,
+  LargeFileSearchProgressEvent,
+  LargeFileSearchResult
 } from '@memry/contracts/notes-api'
 
 const mocks = vi.hoisted(() => ({
@@ -14,10 +16,13 @@ const mocks = vi.hoisted(() => ({
   firstRow: 0,
   open: vi.fn(),
   readLines: vi.fn(),
+  search: vi.fn(),
   close: vi.fn(),
   openExternal: vi.fn(),
   revealInFinder: vi.fn(),
-  indexListeners: [] as Array<(event: LargeFileIndexEvent) => void>
+  indexListeners: [] as Array<(event: LargeFileIndexEvent) => void>,
+  searchListeners: [] as Array<(event: LargeFileSearchProgressEvent) => void>,
+  scrollToIndex: vi.fn()
 }))
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -33,7 +38,8 @@ vi.mock('@tanstack/react-virtual', () => ({
           size: 22
         })),
       getTotalSize: () => count * 22,
-      measureElement: () => {}
+      measureElement: () => {},
+      scrollToIndex: mocks.scrollToIndex
     }
   }
 }))
@@ -56,6 +62,26 @@ async function scrollTo(firstRow: number, lineCount: number): Promise<void> {
   await act(async () => {
     await Promise.resolve()
   })
+}
+
+function emitSearchProgress(event: LargeFileSearchProgressEvent): void {
+  act(() => {
+    for (const listener of [...mocks.searchListeners]) listener(event)
+  })
+}
+
+/** Opens the find bar the way the user does, and types `query` into it. */
+async function findInFile(query: string): Promise<HTMLElement> {
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }))
+  })
+  const input = await screen.findByRole('textbox', { name: /find/i })
+  // The bar focuses and selects its input on the next frame, exactly as the
+  // note find bar does. Typing before that lands would have the selection
+  // swallow the first character.
+  await waitFor(() => expect(input).toHaveFocus())
+  await userEvent.type(input, query)
+  return input
 }
 
 function linePage(startLine: number, count: number, lineCount: number): LargeFileLinesResult {
@@ -95,6 +121,15 @@ describe('LargeFileViewer', () => {
     mocks.visibleRows = 40
     mocks.firstRow = 0
     mocks.indexListeners = []
+    mocks.searchListeners = []
+    mocks.scrollToIndex.mockReset()
+    mocks.search.mockReset().mockResolvedValue({
+      status: 'complete',
+      query: '',
+      hits: [],
+      total: 0,
+      limited: false
+    } satisfies LargeFileSearchResult)
     mocks.open.mockReset()
     mocks.readLines.mockReset()
     mocks.close.mockReset().mockResolvedValue(undefined)
@@ -106,6 +141,7 @@ describe('LargeFileViewer', () => {
       ...((api.notes as Record<string, unknown>) ?? {}),
       largeFileOpen: mocks.open,
       largeFileReadLines: mocks.readLines,
+      largeFileSearch: mocks.search,
       largeFileClose: mocks.close,
       openExternal: mocks.openExternal,
       revealInFinder: mocks.revealInFinder
@@ -114,6 +150,12 @@ describe('LargeFileViewer', () => {
       mocks.indexListeners.push(listener)
       return () => {
         mocks.indexListeners = mocks.indexListeners.filter((l) => l !== listener)
+      }
+    }
+    api.onLargeFileSearchProgress = (listener: (event: LargeFileSearchProgressEvent) => void) => {
+      mocks.searchListeners.push(listener)
+      return () => {
+        mocks.searchListeners = mocks.searchListeners.filter((l) => l !== listener)
       }
     }
   })
@@ -422,5 +464,234 @@ describe('LargeFileViewer', () => {
     // #then the session is released — one OS file handle per file ever opened
     // is not something a long-running app can carry
     await waitFor(() => expect(mocks.close).toHaveBeenCalledWith('session-1'))
+  })
+
+  it('finds inside the file on the same shortcut the rest of the app uses', async () => {
+    // #given a ready file whose text is not in any search index
+    await openReady(400)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 70, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+
+    // #when the user presses the app's find shortcut
+    await findInFile('row 7')
+
+    // #then — the search runs in the main process over the open session, and
+    // the count is the file's, not the handful of rows on screen
+    await waitFor(() =>
+      expect(mocks.search).toHaveBeenCalledWith({ sessionId: 'session-1', query: 'row 7' })
+    )
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+  })
+
+  it('marks a count that is still growing as still growing', async () => {
+    // #given a search that has not finished crossing the file
+    await openReady(400)
+    mocks.search.mockReturnValue(new Promise(() => {}))
+
+    // #when the pass reports what it has so far
+    await findInFile('row')
+    await waitFor(() => expect(mocks.search).toHaveBeenCalled())
+    emitSearchProgress({
+      sessionId: 'session-1',
+      query: 'row',
+      bytesSearched: 1_000,
+      fileBytes: 40_000_000,
+      total: 12
+    })
+
+    // #then — a partial count rendered as "12" would read as the answer. At
+    // 2 GB the pass takes seconds, so it has to say it is not done.
+    expect(await screen.findByText(/12 so far/)).toBeInTheDocument()
+    expect(screen.queryByText('1/12')).not.toBeInTheDocument()
+  })
+
+  it('says a capped hit list is capped instead of passing it off as the total', async () => {
+    // #given more matches than the navigable list holds
+    await openReady(400)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row',
+      hits: Array.from({ length: 3 }, (_, i) => ({ line: i, ordinal: 0 })),
+      total: 900_000,
+      limited: true
+    } satisfies LargeFileSearchResult)
+
+    // #when
+    await findInFile('row')
+
+    // #then — the navigable list is 3 long and the file holds 900 000. Showing
+    // "1/900000" would promise 900 000 stops the bar cannot make.
+    expect(await screen.findByText('1/3 of 900000')).toBeInTheDocument()
+  })
+
+  it('highlights the matches on the rows the viewer is showing', async () => {
+    // #given a file whose visible rows contain the query
+    await openReady(400)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'ow 1',
+      hits: [{ line: 1, ordinal: 0 }],
+      total: 1,
+      limited: false
+    } satisfies LargeFileSearchResult)
+
+    // #when
+    await findInFile('ow 1')
+
+    // #then — the highlight is drawn from the line text already on screen, so
+    // nothing extra is fetched to draw it
+    const marks = await screen.findAllByText('ow 1', { selector: 'mark' })
+    expect(marks.length).toBeGreaterThan(0)
+  })
+
+  it('moves to the next hit and takes the viewport with it', async () => {
+    // #given two hits, one of them far down the file
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 3_500, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+
+    // #when
+    await userEvent.type(input, '{Enter}')
+
+    // #then — a hit 3 500 rows down is unreachable without this
+    expect(await screen.findByText('2/2')).toBeInTheDocument()
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(3_500, expect.anything()))
+  })
+
+  it('wraps backwards from the first hit rather than stopping at it', async () => {
+    // #given
+    await openReady(400)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row',
+      hits: [
+        { line: 1, ordinal: 0 },
+        { line: 2, ordinal: 0 },
+        { line: 3, ordinal: 0 }
+      ],
+      total: 3,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row')
+    expect(await screen.findByText('1/3')).toBeInTheDocument()
+
+    // #when
+    await userEvent.type(input, '{Shift>}{Enter}{/Shift}')
+
+    // #then
+    expect(await screen.findByText('3/3')).toBeInTheDocument()
+  })
+
+  it('closes the find bar and drops its highlights on Escape', async () => {
+    // #given a search with a hit on screen
+    await openReady(400)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'ow 1',
+      hits: [{ line: 1, ordinal: 0 }],
+      total: 1,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('ow 1')
+    expect(await screen.findAllByText('ow 1', { selector: 'mark' })).not.toHaveLength(0)
+
+    // #when
+    await userEvent.type(input, '{Escape}')
+
+    // #then
+    await waitFor(() => expect(screen.queryByText('ow 1', { selector: 'mark' })).toBeNull())
+    expect(input.closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true')
+
+    // #and reopening starts from nothing rather than the last search
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }))
+    })
+    expect(await screen.findByRole('textbox', { name: /find/i })).toHaveValue('')
+  })
+
+  it('stops saying it is searching when the session has gone', async () => {
+    // #given a session the main process no longer has — evicted behind another
+    // file, or a restart — answering only once the bar is already searching
+    await openReady(400)
+    let answer = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((resolve) => {
+        answer = () => resolve(null)
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => answer())
+
+    // #then — the bar settles rather than spinning on a count that will never
+    // arrive. The next keystroke searches the reopened session.
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+  })
+
+  it('settles rather than spinning when the search itself fails', async () => {
+    // #given a search that fails once the bar is already searching
+    await openReady(400)
+    let fail = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = () => reject(new Error('EBADF'))
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => fail())
+
+    // #then — "searching" that never ends is the one state the bar must not
+    // get stuck in, because it reads as "still counting" forever
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+  })
+
+  it("settles when something else takes the file's one search", async () => {
+    // #given another window on the same file starting its own search, which
+    // supersedes this one in the main process
+    await openReady(400)
+    let supersede = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((resolve) => {
+        supersede = () => resolve({ status: 'cancelled', query: 'row' })
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => supersede())
+
+    // #then — a query this bar did not replace has to settle here, or the bar
+    // counts forever against a pass that is not running
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
 })

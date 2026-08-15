@@ -24,11 +24,13 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { buildLineIndex } from './large-file-index-bridge'
 import { fileHandleReader, readLines, type ByteReader, type LineIndex } from './large-file-index'
+import { runFileSearch, type FileSearchRun } from './large-file-search-bridge'
 import {
   NotesChannels,
   type LargeFileIndexEvent,
   type LargeFileLinesResult,
-  type LargeFileOpenResult
+  type LargeFileOpenResult,
+  type LargeFileSearchResult
 } from '@memry/contracts/notes-api'
 
 const logger = createLogger('LargeFileSession')
@@ -58,6 +60,10 @@ interface Session {
   fileBytes: number
   mtimeMs: number
   index: LineIndex | null
+  /** The in-file search crossing this file right now, if any. */
+  search: FileSearchRun | null
+  /** Bumped per search, so a superseded query's progress is ignored. */
+  searchToken: number
 }
 
 /** Insertion-ordered, which is what makes the oldest entry the eviction target. */
@@ -76,6 +82,10 @@ function findByNote(noteId: string): Session | undefined {
 
 async function disposeSession(session: Session): Promise<void> {
   sessions.delete(session.id)
+  // A search left running would keep crossing a file nobody is looking at, and
+  // its worker would outlive the handle it was opened for.
+  session.search?.cancel()
+  session.search = null
   await session.handle.close().catch((err) => {
     logger.warn('Failed to close large-file handle', { path: session.absolutePath, err })
   })
@@ -170,7 +180,9 @@ export async function openLargeFileSession(noteId: string): Promise<LargeFileOpe
     read: fileHandleReader(handle),
     fileBytes: stats.size,
     mtimeMs: stats.mtimeMs,
-    index: null
+    index: null,
+    search: null,
+    searchToken: 0
   }
   sessions.set(session.id, session)
 
@@ -252,6 +264,56 @@ export async function readLargeFileLines(input: {
     const window = await readLines(read, index, input.startLine, input.count)
     return { ...window, lineCount: index.lineCount }
   })
+}
+
+/**
+ * Find every occurrence of `query` in an open session's file.
+ *
+ * The path comes from the session, never from the caller, and the pass runs on
+ * a worker. One search per session at a time: a newer query cancels the older
+ * one, which resolves `cancelled` so its caller stops waiting on an answer the
+ * user has already typed past.
+ */
+export async function searchLargeFileSession(input: {
+  sessionId: string
+  query: string
+}): Promise<LargeFileSearchResult | null> {
+  const session = sessions.get(input.sessionId)
+  if (!session) return null
+
+  session.search?.cancel()
+  session.searchToken += 1
+  const token = session.searchToken
+
+  const run = runFileSearch(
+    session.absolutePath,
+    input.query,
+    session.read,
+    (bytesSearched, total) => {
+      // A count from the query before last would overwrite the current one.
+      if (session.searchToken !== token || !sessions.has(session.id)) return
+      broadcastToAllWindows(NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS, {
+        sessionId: session.id,
+        query: input.query,
+        bytesSearched,
+        fileBytes: session.fileBytes,
+        total
+      })
+    }
+  )
+  session.search = run
+
+  const found = await run.result
+  if (session.searchToken === token) session.search = null
+
+  if (found.cancelled) return { status: 'cancelled', query: input.query }
+  return {
+    status: 'complete',
+    query: input.query,
+    hits: found.hits,
+    total: found.total,
+    limited: found.limited
+  }
 }
 
 export async function closeLargeFileSession(sessionId: string): Promise<void> {

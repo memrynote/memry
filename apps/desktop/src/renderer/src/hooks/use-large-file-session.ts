@@ -41,6 +41,8 @@ interface Page {
 
 export interface LargeFileSession {
   state: LargeFileViewState
+  /** The open session, for anything else that reads through it — search. */
+  sessionId: string | null
   /** Undefined until the page holding this line has arrived. */
   getLine: (line: number) => string | undefined
   isTruncated: (line: number) => boolean
@@ -50,6 +52,9 @@ export interface LargeFileSession {
 
 export function useLargeFileSession(noteId: string): LargeFileSession {
   const [state, setState] = useState<LargeFileViewState>({ status: 'opening' })
+  // Mirrors `sessionIdRef` as state, because the search hook has to re-run when
+  // the session behind the viewer changes.
+  const [sessionId, setSessionId] = useState<string | null>(null)
   // Bumped whenever a page lands, so the viewer repaints. The pages themselves
   // live in a ref: they are a cache keyed by position, not render state, and
   // copying the map on every arriving page would be the expensive part.
@@ -119,6 +124,7 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
         }
 
         sessionIdRef.current = opened.sessionId
+        setSessionId(opened.sessionId)
         setState(
           opened.status === 'ready'
             ? { status: 'ready', fileBytes: opened.fileBytes, lineCount: opened.lineCount }
@@ -137,9 +143,12 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     return () => {
       cancelled = true
       unsubscribe()
-      const sessionId = sessionIdRef.current
+      const openSessionId = sessionIdRef.current
       sessionIdRef.current = null
-      if (sessionId) void window.api.notes.largeFileClose(sessionId)
+      // Cleared here rather than at the top of the effect: a session id that
+      // outlives its session would have the search hook query a closed one.
+      setSessionId(null)
+      if (openSessionId) void window.api.notes.largeFileClose(openSessionId)
     }
     // `noteId` is in the deps for correctness, but the viewer keys this hook by
     // it, so in practice only `generation` (a reopen) re-runs the effect.
@@ -197,7 +206,7 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
     return page?.truncated.has(line) ?? false
   }, [])
 
-  return { state, getLine, isTruncated, ensureRange }
+  return { state, sessionId, getLine, isTruncated, ensureRange }
 }
 
 /**

@@ -208,6 +208,19 @@ export const LargeFileReadLinesSchema = z.object({
   count: z.number().int().min(1).max(2000)
 })
 
+/**
+ * One in-file search over an open large-file session.
+ *
+ * The query is literal, never a pattern: a regex over a 2 GB file is an
+ * unbounded amount of backtracking driven by whatever the renderer sent. The
+ * length cap is for the same reason — the search carries one query-length
+ * overlap between windows, so the query is part of the memory bound.
+ */
+export const LargeFileSearchSchema = z.object({
+  sessionId: z.string(),
+  query: z.string().min(1).max(200)
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -265,6 +278,47 @@ export type LargeFileIndexEvent =
   | { sessionId: string; status: 'scanning'; bytesScanned: number; fileBytes: number }
   | { sessionId: string; status: 'ready'; fileBytes: number; lineCount: number }
   | { sessionId: string; status: 'error'; message: string }
+
+/**
+ * One match: which line, and which occurrence on that line.
+ *
+ * Deliberately not a byte offset. Byte offsets would have to be translated back
+ * into character positions against text the renderer already holds, and the
+ * translation is exactly where a multi-byte character goes wrong.
+ */
+export interface LargeFileSearchHit {
+  line: number
+  ordinal: number
+}
+
+/**
+ * The end of one in-file search.
+ *
+ * `hits` is capped for navigation while `total` counts every match in the file,
+ * so a query that matches millions of times still reports honestly instead of
+ * carrying millions of positions across IPC. `cancelled` is a query the user
+ * typed past — the caller should keep showing the newer one.
+ */
+export type LargeFileSearchResult =
+  | {
+      status: 'complete'
+      query: string
+      hits: LargeFileSearchHit[]
+      total: number
+      /** True when `hits` was cut short and `total` is the larger truth. */
+      limited: boolean
+    }
+  | { status: 'cancelled'; query: string }
+
+/** A count that is still growing. Never render this as a final answer. */
+export interface LargeFileSearchProgressEvent {
+  sessionId: string
+  query: string
+  bytesSearched: number
+  fileBytes: number
+  /** Matches found so far, not the total. */
+  total: number
+}
 
 // ============================================================================
 // Handler Signatures
@@ -326,6 +380,11 @@ export interface NotesHandlers {
   ) => Promise<LargeFileLinesResult | null>
 
   [NotesChannels.invoke.LARGE_FILE_CLOSE]: (sessionId: string) => Promise<void>
+
+  /** `null` when the session is gone. Partial counts arrive as events. */
+  [NotesChannels.invoke.LARGE_FILE_SEARCH]: (
+    input: z.infer<typeof LargeFileSearchSchema>
+  ) => Promise<LargeFileSearchResult | null>
 }
 
 // ============================================================================

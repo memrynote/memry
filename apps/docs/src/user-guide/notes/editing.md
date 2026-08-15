@@ -250,6 +250,25 @@ The viewer opens files up to **2 GB**. Above that, the file still appears in the
 opening it explains that it is past the limit and offers to open it in your default app or show it
 in your file manager.
 
+### Finding text in a large file
+
+Search does not index these files, so the global search box will not find anything inside one. The
+viewer has its own find instead, on the same shortcut as everywhere else — `Cmd/Ctrl+F` — or from
+**Find** in the note menu.
+
+Type and it searches the whole file, not the part on screen. `Enter` moves to the next match,
+`Shift+Enter` to the previous one, and `Esc` closes the bar. Matches are highlighted on the lines
+you can see, and moving between them scrolls the file to each one.
+
+Three things worth knowing:
+
+- **The count grows while it searches.** A pass over 2 GB takes a few seconds, so the bar shows
+  `12 so far…` until it has crossed the whole file, then settles on the final count.
+- **Only the first 2,000 matches are navigable.** A query matching a million lines still reports the
+  real count, shown as `1/2000 of 1000000`; `Enter` walks the first 2,000. Narrow the query to reach
+  the rest.
+- **Case is ignored for A–Z only.** `error` finds `ERROR`, but `é` does not find `É`.
+
 Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
 existing notes under these limits are unaffected.
 

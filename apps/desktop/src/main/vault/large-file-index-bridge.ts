@@ -23,7 +23,10 @@ import { Worker } from 'worker_threads'
 import { join } from 'path'
 import { createLogger } from '../lib/logger'
 import { scanLineIndex, type ByteReader, type LineIndex } from './large-file-index'
-import type { IndexWorkerMessage } from './large-file-index-worker-protocol'
+import {
+  LARGE_FILE_WORKER_FILE,
+  type LargeFileWorkerMessage
+} from './large-file-index-worker-protocol'
 
 const logger = createLogger('LargeFileIndexBridge')
 
@@ -47,10 +50,13 @@ export async function buildLineIndex(
  * stack, which is the one thing anyone reading a worker failure out of a user's
  * log actually needs — so a non-Error is wrapped, keeping the original as
  * `cause` rather than flattening it into a string.
+ *
+ * Exported because the search bridge spawns the same worker entry and its
+ * failures reach the log the same way, through a fallback that hides them.
  */
-function asError(value: unknown): Error {
+export function asError(value: unknown): Error {
   if (value instanceof Error) return value
-  return new Error(`Line-index worker failed: ${String(value)}`, { cause: value })
+  return new Error(`Large-file worker failed: ${String(value)}`, { cause: value })
 }
 
 function scanOnWorker(
@@ -59,8 +65,8 @@ function scanOnWorker(
   onProgress: (bytesScanned: number) => void
 ): Promise<LineIndex> {
   return new Promise<LineIndex>((resolve, reject) => {
-    const worker = new Worker(join(__dirname, 'large-file-index-worker.js'), {
-      workerData: { absolutePath, fileBytes }
+    const worker = new Worker(join(__dirname, LARGE_FILE_WORKER_FILE), {
+      workerData: { kind: 'index', absolutePath, fileBytes }
     })
 
     let settled = false
@@ -72,7 +78,7 @@ function scanOnWorker(
       run()
     }
 
-    worker.on('message', (message: IndexWorkerMessage) => {
+    worker.on('message', (message: LargeFileWorkerMessage) => {
       if (message.type === 'progress') {
         onProgress(message.bytesScanned)
         return
@@ -88,7 +94,7 @@ function scanOnWorker(
         )
         return
       }
-      finish(() => reject(new Error(message.message)))
+      if (message.type === 'error') finish(() => reject(new Error(message.message)))
     })
 
     worker.on('error', (err: unknown) => finish(() => reject(asError(err))))

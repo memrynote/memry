@@ -371,15 +371,24 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [marqueeZoneEl])
 
   const isActiveNote = activeTab?.entityId === noteId
+  // A large file has no editor DOM to walk, and what is mounted is a few dozen
+  // virtualized rows out of millions — searching them would answer confidently
+  // about the wrong thing. The viewer owns find on that surface instead.
+  const isLargeFile = note?.sizeClass === 'large-file'
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
-    isActiveNote
+    isActiveNote && !isLargeFile
   )
+  const openLargeFileFindRef = useRef<(() => void) | null>(null)
+  const openFind = useCallback((): void => {
+    if (isLargeFile) openLargeFileFindRef.current?.()
+    else findInPage.open()
+  }, [isLargeFile, findInPage])
 
   // Native menu bar: Edit > Find and File > Export to PDF target the active note.
   useEffect(() => {
     if (!isActiveNote) return
-    const onFind = (): void => findInPage.open()
+    const onFind = (): void => openFind()
     const onExport = (): void => setIsExportDialogOpen(true)
     window.addEventListener('memry:menu-find', onFind)
     window.addEventListener('memry:menu-export', onExport)
@@ -387,7 +396,7 @@ export function NotePage({ noteId }: NotePageProps) {
       window.removeEventListener('memry:menu-find', onFind)
       window.removeEventListener('memry:menu-export', onExport)
     }
-  }, [isActiveNote, findInPage])
+  }, [isActiveNote, openFind])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -1181,7 +1190,7 @@ export function NotePage({ noteId }: NotePageProps) {
           }
           setMoreMenuOpen(false)
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
-          if (action === 'find') findInPage.open()
+          if (action === 'find') openFind()
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
           if (action === 'apply-template') setIsApplyTemplateOpen(true)
@@ -1422,6 +1431,8 @@ export function NotePage({ noteId }: NotePageProps) {
             <LargeFileViewer
               key={noteId}
               noteId={noteId}
+              active={isActiveNote}
+              openFindRef={openLargeFileFindRef}
               reason={note.largeFile?.reason}
               measuredBytes={
                 note.largeFile?.reason === 'block-bytes'

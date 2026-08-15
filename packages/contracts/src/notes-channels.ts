@@ -122,11 +122,15 @@ export const NotesChannels = {
     /** Read one window of lines from an open large-file session */
     LARGE_FILE_READ_LINES: 'notes:large-file-read-lines',
     /** Release an open large-file session and its file handle */
-    LARGE_FILE_CLOSE: 'notes:large-file-close'
+    LARGE_FILE_CLOSE: 'notes:large-file-close',
+    /** Find every occurrence of a literal query inside an open large file */
+    LARGE_FILE_SEARCH: 'notes:large-file-search'
   },
   events: {
     /** Progress, completion or failure of a large file's line-offset scan */
     LARGE_FILE_INDEX: 'notes:large-file-index',
+    /** Partial hit count of an in-file search still crossing the file */
+    LARGE_FILE_SEARCH_PROGRESS: 'notes:large-file-search-progress',
     /** Note was created (externally or internally) */
     CREATED: 'notes:created',
     /** Note was updated */

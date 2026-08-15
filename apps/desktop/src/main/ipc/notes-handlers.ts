@@ -19,11 +19,13 @@ import {
   NoteGetPositionsSchema,
   SetLocalOnlySchema,
   ApplyTemplateSchema,
-  LargeFileReadLinesSchema
+  LargeFileReadLinesSchema,
+  LargeFileSearchSchema
 } from '@memry/contracts/notes-api'
 import {
   openLargeFileSession,
   readLargeFileLines,
+  searchLargeFileSession,
   closeLargeFileSession,
   closeAllLargeFileSessions
 } from '../vault/large-file-session'
@@ -1109,6 +1111,13 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.LARGE_FILE_CLOSE,
     createStringHandler((sessionId) => closeLargeFileSession(sessionId))
+  )
+
+  // notes:large-file-search — Find a literal query inside an open session.
+  // Large files never enter FTS, so this is the only search that can see them.
+  ipcMain.handle(
+    NotesChannels.invoke.LARGE_FILE_SEARCH,
+    createValidatedHandler(LargeFileSearchSchema, (input) => searchLargeFileSession(input))
   )
 }
 

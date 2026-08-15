@@ -51,6 +51,7 @@ const mocks = vi.hoisted(() => ({
   updatedHandler: null as
     ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void) | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
     isOpen: true,
     query: 'ship',
@@ -245,7 +246,13 @@ vi.mock('@/hooks/use-editor-settings', () => ({
 }))
 
 vi.mock('@/hooks/use-find-in-page', () => ({
-  useFindInPage: () => mocks.findInPage
+  useFindInPage: (_container: unknown, enabled?: boolean) => {
+    // Captured because whether this hook is switched on is the whole question
+    // on a large-file surface: it walks the mounted DOM, and the mounted DOM
+    // there is a few dozen virtualized rows out of millions.
+    mocks.findInPageEnabled = enabled
+    return mocks.findInPage
+  }
 }))
 
 vi.mock('@/hooks/use-graph-data', () => ({
@@ -1329,6 +1336,27 @@ describe('NotePage', () => {
       expect(viewer).toHaveTextContent('page.largeFile.badge')
     })
 
+    it('sends Find to the file viewer instead of walking the mounted rows', async () => {
+      // #given a large-file note
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('large-file-viewer')
+
+      // #when the user asks to find
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.find' }))
+
+      // #then — the DOM-walking find bar never answers here. It would report a
+      // count of the handful of rows on screen as if it were the file's.
+      expect(mocks.findInPageEnabled).toBe(false)
+      expect(mocks.findInPage.open).not.toHaveBeenCalled()
+    })
+
     it('still mounts the editor for an ordinary note', async () => {
       // #given the default note, which carries no sizeClass at all — the shape
       // every existing vault produces
@@ -1338,6 +1366,8 @@ describe('NotePage', () => {
       expect(await screen.findByTestId('editor-content')).toBeInTheDocument()
       expect(screen.queryByTestId('large-file-viewer')).not.toBeInTheDocument()
       expect(mocks.contentAreaMounts).toBe(1)
+      // ...and find still walks the editor, which is where the text is
+      expect(mocks.findInPageEnabled).toBe(true)
     })
   })
 })

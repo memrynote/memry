@@ -221,6 +221,7 @@ export interface MainIpcInvokeHandlers {
   "notes:large-file-close": (...args: [string]) => Awaited<Promise<void>>
   "notes:large-file-open": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileOpenResult>>
   "notes:large-file-read-lines": (...args: [{ sessionId: string; startLine: number; count: number; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileLinesResult | null>>
+  "notes:large-file-search": (...args: [{ sessionId: string; query: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").LargeFileSearchResult | null>>
   "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "position" | "modified" | "created" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; }]) => Awaited<Promise<import("../vault/notes-crud").NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<import("../vault/attachments").AttachmentInfo[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
