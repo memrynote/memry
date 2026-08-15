@@ -1583,6 +1583,7 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
+  getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
 }
 
 // Crypto API

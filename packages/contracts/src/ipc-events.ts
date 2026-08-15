@@ -44,6 +44,13 @@ export interface SyncStatusChangedEvent {
   error?: string
   errorCategory?: SyncErrorCategory
   offlineSince?: number
+  /**
+   * Name of the note the error is about. Only set for `note_too_large`, where
+   * an unnamed "a note is too large" leaves the user with nothing to act on.
+   * Optional: an older main process sends none and the renderer falls back to
+   * the unnamed message.
+   */
+  errorNoteTitle?: string
 }
 
 export interface ItemSyncedEvent {
@@ -121,10 +128,7 @@ export interface SyncResumedEvent {
  * own: the client stops refreshing entirely and the user must sign in again.
  */
 export type SessionExpiredReason =
-  | 'token_expired'
-  | 'device_revoked'
-  | 'server_error'
-  | 'refresh_rejected'
+  'token_expired' | 'device_revoked' | 'server_error' | 'refresh_rejected'
 
 export interface SessionExpiredEvent {
   reason: SessionExpiredReason

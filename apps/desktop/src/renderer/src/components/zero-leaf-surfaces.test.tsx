@@ -157,6 +157,9 @@ describe('zero-covered leaf surfaces', () => {
       vault: {
         getStatus: vi.fn().mockResolvedValue({ path: '/Users/kaan/Vault' }),
         reveal: vi.fn().mockResolvedValue(undefined)
+      },
+      syncOps: {
+        getLargeNotes: vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
       }
     }
   })

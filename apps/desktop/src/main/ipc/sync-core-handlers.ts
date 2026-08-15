@@ -12,6 +12,7 @@ import {
   UpdateSyncedSettingSchema
 } from '@memry/contracts/ipc-sync-ops'
 import { getSettingsSyncManager } from '../sync/settings-sync'
+import { listLargeNotes } from '../sync/large-notes'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 
 import { eq, desc, count } from 'drizzle-orm'
@@ -315,6 +316,10 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     if (!token) return null
     return getFromServer<StorageBreakdownResult>('/sync/storage', token)
   })
+
+  // Purely local: reads the note cache and stats the files, so it answers with
+  // no server round-trip and works for an existing vault with no reindex.
+  ipcMain.handle(SYNC_CHANNELS.GET_LARGE_NOTES, () => listLargeNotes())
 
   ipcMain.handle(SYNC_CHANNELS.GET_QUARANTINED_ITEMS, () => {
     const engine = resolveSyncEngine()

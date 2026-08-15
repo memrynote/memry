@@ -12,7 +12,8 @@ export const syncOps = {
   updateSyncedSetting: (fieldPath: string, value: unknown) =>
     invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
-  getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
+  getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN),
+  getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES)
 }
 
 type CryptoItemType = 'note' | 'task' | 'project' | 'settings'

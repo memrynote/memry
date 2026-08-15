@@ -14,6 +14,7 @@ export const SYNC_OP_CHANNELS = {
   UPDATE_SYNCED_SETTING: 'sync:update-synced-setting',
   GET_SYNCED_SETTINGS: 'sync:get-synced-settings',
   GET_STORAGE_BREAKDOWN: 'sync:get-storage-breakdown',
+  GET_LARGE_NOTES: 'sync:get-large-notes',
   GET_QUARANTINED_ITEMS: 'sync:get-quarantined-items',
   CHECK_DEVICE_STATUS: 'sync:check-device-status',
   EMERGENCY_WIPE: 'sync:emergency-wipe'
@@ -113,6 +114,26 @@ export interface StorageBreakdownResult {
     crdt: number
     other: number
   }
+}
+
+/**
+ * A note at or over the per-note sync ceiling. The storage breakdown answers
+ * "how much am I using"; this answers "which note is about to stop syncing",
+ * which the four aggregate categories cannot express.
+ */
+export interface LargeNoteEntry {
+  id: string
+  title: string
+  path: string
+  sizeBytes: number
+  /** `over` has already stopped syncing; `approaching` still syncs. */
+  status: 'approaching' | 'over'
+}
+
+export interface LargeNotesResult {
+  /** Largest note the sync path accepts, so the renderer need not restate it. */
+  maxBytes: number
+  notes: LargeNoteEntry[]
 }
 
 // ============================================================================

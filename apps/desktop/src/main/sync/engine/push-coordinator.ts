@@ -1,6 +1,6 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import type { QueueClearedEvent } from '@memry/contracts/ipc-events'
+import type { QueueClearedEvent, SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
 import type { PushResponse, SyncItemType } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
@@ -178,7 +178,8 @@ export class PushCoordinator {
               queue: this.ctx.deps.queue,
               extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
               resolvePushPayload: (item, deviceId, key) =>
-                this.resolvePushPayload(item, deviceId, key)
+                this.resolvePushPayload(item, deviceId, key),
+              onItemTooLarge: (item) => this.reportItemTooLarge(item)
             }
           )
           timer.endPhase(dedupedItems.length)
@@ -446,6 +447,53 @@ export class PushCoordinator {
     }
 
     return Array.from(seen.values())
+  }
+
+  /**
+   * The client encrypt cap rejects a note before any HTTP request, so the
+   * server's 413 path — the one that raises the note-too-large toast — is never
+   * reached. Without this the rejection lived only on the sync-queue row and
+   * the note simply stopped syncing (#1465). Deliberately does not move the
+   * engine's own state or pause the queue: one oversized note must not stall
+   * every other note, which is how the server-413 path already behaves.
+   */
+  private reportItemTooLarge(item: { itemId: string; type: string; payload: string }): void {
+    if (item.type !== 'note' && item.type !== 'journal') {
+      log.warn('Push: item over the sync size cap', { itemId: item.itemId, type: item.type })
+      return
+    }
+
+    const title = this.extractPayloadTitle(item.payload)
+    log.error('Push: note over the sync size cap, it will not sync', {
+      itemId: item.itemId,
+      type: item.type,
+      title
+    })
+    trackMainEvent('sync_error', {
+      surface: 'sync',
+      action: 'push_note_too_large',
+      result: 'failed',
+      errorCode: 'note_too_large',
+      source: 'push',
+      dimensions: { transport: 'record' }
+    })
+    const event: SyncStatusChangedEvent = {
+      status: 'error',
+      pendingCount: this.ctx.deps.queue.getPendingCount(),
+      error: 'A note is too large to sync',
+      errorCategory: 'note_too_large',
+      ...(title ? { errorNoteTitle: title } : {})
+    }
+    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.STATUS_CHANGED, event)
+  }
+
+  private extractPayloadTitle(payload: string): string | undefined {
+    try {
+      const parsed = JSON.parse(payload) as { title?: unknown }
+      return typeof parsed.title === 'string' && parsed.title ? parsed.title : undefined
+    } catch {
+      return undefined
+    }
   }
 
   private extractPayloadMetadata(payload: string): {

@@ -135,12 +135,26 @@ function emitQuotaExceeded(): void {
   })
 }
 
-function emitNoteTooLarge(): void {
+function emitNoteTooLarge(noteId: string): void {
+  // "A note is too large" with no name leaves the user nothing to act on, and
+  // the note id is meaningless to them (#1465).
+  let noteTitle: string | undefined
+  try {
+    noteTitle = getIndexDatabase()
+      .select({ title: noteCache.title })
+      .from(noteCache)
+      .where(eq(noteCache.id, noteId))
+      .get()?.title
+  } catch (err) {
+    log.debug('Could not resolve the note title for a too-large error', { noteId, error: err })
+  }
+
   emitSyncStatus({
     status: 'error',
     pendingCount: 0,
     error: 'A note is too large to sync',
-    errorCategory: 'note_too_large'
+    errorCategory: 'note_too_large',
+    ...(noteTitle ? { errorNoteTitle: noteTitle } : {})
   })
 }
 
@@ -571,7 +585,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             } else {
               // Body-limit 413: one oversized note must not stall the queue
               // for every other note.
-              emitNoteTooLarge()
+              emitNoteTooLarge(noteId)
             }
           }
           throw err
@@ -629,7 +643,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             } else {
               // Body-limit 413: one oversized note must not stall the queue
               // for every other note.
-              emitNoteTooLarge()
+              emitNoteTooLarge(noteId)
             }
           }
           throw err

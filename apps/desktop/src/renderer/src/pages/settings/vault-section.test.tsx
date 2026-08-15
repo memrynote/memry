@@ -33,6 +33,11 @@ describe('VaultSettings account vaults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.api.vault.getStatus = vi.fn().mockResolvedValue({ path: '/vaults/Active' })
+    const api = window.api as typeof window.api & {
+      syncOps?: { getLargeNotes?: ReturnType<typeof vi.fn> }
+    }
+    api.syncOps = api.syncOps ?? {}
+    api.syncOps.getLargeNotes = vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
   })
 
   it('lists every vault in the account', async () => {

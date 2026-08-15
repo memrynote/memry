@@ -185,6 +185,78 @@ describe('PushCoordinator', () => {
     getRemoteSyncAdapterMock.mockReturnValue(undefined)
   })
 
+  describe('#given a queued note over the client encrypt cap #when it is pushed', () => {
+    function rejectEncryptAsTooLarge(): void {
+      encryptPushBatchMock.mockImplementation(
+        async (
+          items: QueueRow[],
+          vaultKey: Uint8Array,
+          _signingKey: Uint8Array,
+          deviceId: string,
+          deps: {
+            queue: SyncQueueManager
+            resolvePushPayload: (item: QueueRow, deviceId: string, vaultKey: Uint8Array) => string
+            onItemTooLarge?: (item: { itemId: string; type: string; payload: string }) => void
+          }
+        ) => {
+          for (const item of items) {
+            deps.queue.markFailed(item.id, 'Encrypt failed: Item too large for sync')
+            deps.onItemTooLarge?.({
+              itemId: item.itemId,
+              type: item.type,
+              payload: deps.resolvePushPayload(item, deviceId, vaultKey)
+            })
+          }
+          return []
+        }
+      )
+    }
+
+    it('#then the renderer is told which note stopped syncing', async () => {
+      const { coordinator, queue, emitToRenderer } = createHarness(getDb())
+      acceptAll()
+      rejectEncryptAsTooLarge()
+
+      queue.enqueue({
+        type: 'note',
+        itemId: 'note-big',
+        operation: 'create',
+        payload: JSON.stringify({ title: 'Server log dump' })
+      })
+
+      await coordinator.push()
+
+      expect(emitToRenderer).toHaveBeenCalledWith(
+        EVENT_CHANNELS.STATUS_CHANGED,
+        expect.objectContaining({
+          status: 'error',
+          errorCategory: 'note_too_large',
+          errorNoteTitle: 'Server log dump'
+        })
+      )
+    })
+
+    it('#then a non-note item over the cap raises no note-too-large error', async () => {
+      const { coordinator, queue, emitToRenderer } = createHarness(getDb())
+      acceptAll()
+      rejectEncryptAsTooLarge()
+
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'settings-1',
+        operation: 'update',
+        payload: JSON.stringify({ theme: 'dark' })
+      })
+
+      await coordinator.push()
+
+      expect(emitToRenderer).not.toHaveBeenCalledWith(
+        EVENT_CHANNELS.STATUS_CHANGED,
+        expect.objectContaining({ errorCategory: 'note_too_large' })
+      )
+    })
+  })
+
   describe('#given a queued local mutation #when the server accepts it', () => {
     it('#then it is pushed, dropped from the queue, and marked synced locally', async () => {
       const { coordinator, queue, stateManager, emitToRenderer } = createHarness(getDb())
