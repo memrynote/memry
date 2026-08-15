@@ -56,6 +56,23 @@ describe('replaceNoteBodyInCrdt', () => {
     expect(await replaceNoteBodyInCrdt('n1', '')).toBe(false)
   })
 
+  it('refuses markdown over the note-class bounds', async () => {
+    // #given the body a receiver writes back after an oversized note arrives
+    // over sync: one blank-line-free block far over NOTE_MAX_BLOCK_BYTES. The
+    // watcher feeds the file it just wrote straight back in here, so without
+    // this guard the receiver pays the very parse the write-back avoided.
+    const doc = makeDoc()
+    getDoc.mockReturnValue(doc)
+    const dump = Array.from({ length: 8_000 }, (_, i) => `2026-08-15 worker payload ${i}`).join(
+      '\n'
+    )
+
+    // #then no parse, no transaction, and the live doc is left alone
+    expect(await replaceNoteBodyInCrdt('n1', dump)).toBe(false)
+    expect(markdownToBlocks).not.toHaveBeenCalled()
+    expect(doc.transact).not.toHaveBeenCalled()
+  })
+
   it('clears the fragment then rebuilds it once when a doc is open', async () => {
     const doc = makeDoc()
     getDoc.mockReturnValue(doc)
