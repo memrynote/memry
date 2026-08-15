@@ -63,7 +63,17 @@ describe('largestBlockByteLength', () => {
     ['trailing blank lines ignored', 'hello\n\n', 5],
     ['no blank lines at all -> whole file is one block', 'a\nb\nc\nd', 7],
     ['multibyte counted as bytes not chars', '日本語', 9],
-    ['first block can be the largest', 'aaaaaaaa\n\nbb', 8]
+    ['first block can be the largest', 'aaaaaaaa\n\nbb', 8],
+    // Shapes the #1463 corpus surfaced. Each is a whole document that reads as
+    // ONE block, which is what the block bound is measuring.
+    ['tight list (roam/bear export) is one block', '- a\n  - b\n- c', 13],
+    ['markdown table is one block', '| a | b |\n| - | - |\n| 1 | 2 |', 29],
+    ['minified json on one line is one block', '[{"id":1},{"id":2}]', 19],
+    ['frontmatter is its own block', '---\ntitle: x\n---\n\nbody', 16],
+    // Deliberate under-report: remark keeps a fence whole, this scan splits it.
+    // Safe, because the cost this bound tracks is inline parsing and a fence
+    // carries no inline nodes.
+    ['blank line inside a code fence still splits', '```\naa\n\nbbbb\n```', 8]
   ]
 
   it.each(cases)('%s', (_name, markdown, largest) => {
@@ -196,14 +206,14 @@ describe('classifyMarkdownContent', () => {
     })
   })
 
-  it('keeps a well-formed 1.8 MB note in note class', () => {
-    // #given the measured well-behaved case: 1.81 MB across many blocks
+  it('keeps a well-formed note just under the ceiling in note class', () => {
+    // #given ~800 KB of ordinary paragraphs — the shape that measured 450 ms/MB
     const paragraph = 'x'.repeat(4000)
-    const markdown = Array.from({ length: 450 }, () => paragraph).join('\n\n')
-    expect(utf8ByteLength(markdown)).toBeGreaterThan(1.7 * 1024 * 1024)
+    const markdown = Array.from({ length: 200 }, () => paragraph).join('\n\n')
+    expect(utf8ByteLength(markdown)).toBeGreaterThan(0.7 * 1024 * 1024)
     expect(utf8ByteLength(markdown)).toBeLessThan(NOTE_MAX_BYTES)
 
-    // #when / #then — parses in ~477 ms, so it stays editable
+    // #when / #then — well inside the 1 s budget, so it stays editable
     expect(classifyMarkdownContent(markdown).sizeClass).toBe('note')
   })
 
@@ -218,6 +228,44 @@ describe('classifyMarkdownContent', () => {
       reason: 'block-bytes'
     })
   })
+
+  // The #1463 corpus turned up three more whole-document-is-one-block shapes.
+  // All three are under the byte ceiling and all three are caught by the block
+  // bound, which is the pairing working as intended.
+  const oneBlockShapes: Array<[name: string, markdown: string]> = [
+    [
+      // packages/importers/src/roam joins every bullet with a single newline,
+      // so an exported page carries no blank line at all.
+      'whole-page outline export (roam/bear)',
+      Array.from({ length: 6000 }, (_, i) => `  - bullet ${i} with a little text`).join('\n')
+    ],
+    [
+      'wide markdown table',
+      ['| id | value | note |', '| --- | --- | --- |']
+        .concat(Array.from({ length: 6000 }, (_, i) => `| ${i} | value ${i} | note ${i} |`))
+        .join('\n')
+    ],
+    [
+      'minified json pasted as one line',
+      `[${Array.from({ length: 8000 }, (_, i) => `{"id":${i},"ok":true}`).join(',')}]`
+    ]
+  ]
+
+  it.each(oneBlockShapes)('%s is large-file class on the block bound', (_name, markdown) => {
+    // #given a file comfortably under the byte ceiling
+    expect(utf8ByteLength(markdown)).toBeLessThan(NOTE_MAX_BYTES)
+    expect(utf8ByteLength(markdown)).toBeGreaterThan(NOTE_MAX_BLOCK_BYTES)
+
+    // #when / #then — no blank line anywhere, so the file is a single block.
+    // For the table and the JSON that is also the right verdict on cost (a
+    // 128 KB block of either measured ~1 s on its own). For the outline it is
+    // the bound being deliberately conservative: a list is cheaper per byte
+    // than a paragraph, and a byte scan cannot tell the two apart.
+    expect(classifyMarkdownContent(markdown)).toMatchObject({
+      sizeClass: 'large-file',
+      reason: 'block-bytes'
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -226,8 +274,11 @@ describe('classifyMarkdownContent', () => {
 
 describe('shipped thresholds', () => {
   it('are the calibrated values', () => {
-    // Changing these is a product decision (#1463), not an implementation detail.
-    expect(NOTE_MAX_BYTES).toBe(2_097_152)
+    // Changing these is a product decision, not an implementation detail. Both
+    // follow from a 1 s parse budget; the corpus, the method and the measured
+    // numbers are in
+    // docs/superpowers/specs/2026-08-15-note-class-threshold-calibration.md.
+    expect(NOTE_MAX_BYTES).toBe(1_048_576)
     expect(NOTE_MAX_BLOCK_BYTES).toBe(131_072)
   })
 })
