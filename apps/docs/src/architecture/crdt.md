@@ -101,6 +101,14 @@ pass, which is what a sign-in or a reconnect sweep produces, is several times th
 Chunking also keeps each request under the server's 100-note limit on
 `/sync/crdt/updates/batch`.
 
+The vault-wide sweep hands its work to that same batch path rather than pulling one note
+at a time, and sizes its own chunks at `min(CRDT_SWEEP_CHUNK_NOTES, inactiveDocCapacity)`
+so a paced chunk is one batch request rather than several. Batching alone is not a fix for
+request volume, though: the batch endpoint batches the **incrementals**, not the snapshot
+baselines, which are still fetched one note at a time inside the pass. A 121-note sweep
+goes from 242 requests to roughly 125 — half, not a handful. What keeps it under the
+server's limits is the pacing described in [Reconnect Recovery](#reconnect-recovery).
+
 For the same reason, "this doc has no state" and "this doc is not open" are treated as
 different answers when the pass decides whether to seed a note from local markdown. A
 doc the provider closed mid-pass reports no state vector at all; seeding on that would
@@ -264,6 +272,42 @@ not from any sweep — measuring it against the startup or interval sweep made t
 reconnect after app start wait out the whole floor, which left the device showing a stale
 body for that window.
 
+### Pacing the sweep
+
+Deciding _whether_ to sweep is not enough, because a sweep that runs fires against every
+note in the vault at once. Down the one-note-at-a-time path that was two GETs per note:
+121 notes meant 242 requests in about four seconds, and the server refused most of them.
+
+The sweep is therefore drained in chunks — `CRDT_SWEEP_CHUNK_NOTES` notes every
+`CRDT_SWEEP_CHUNK_INTERVAL_MS` — against **two independent server budgets**, both shared
+by every device on the account:
+
+| Endpoint                                                    | Bucket            | Limit      | Cost per chunk    |
+| ----------------------------------------------------------- | ----------------- | ---------- | ----------------- |
+| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 300 / 60 s | one GET per note  |
+| `POST /sync/crdt/updates/batch`                             | `crdt_batch_pull` | 30 / 60 s  | at least one POST |
+
+At 25 notes every 15 seconds that is 100 snapshot GETs and 4 batch POSTs per minute per
+sweeping device — 200 and 8 with two devices sweeping at once, inside both ceilings with
+room left for the record-change pull, pushes and attachment fetches, which draw on the
+same buckets. Only the _rate_ matters, not the total: a 1,000-note vault is 40 batch
+POSTs, which would blow the 30-per-minute bucket fired at once but is 4 per minute spread
+over the ten minutes the paced sweep takes. Cost per minute is constant in vault size;
+only the duration grows.
+
+The batch POST figure is a floor rather than an exact count, because a chunk loops while
+any of its notes still reports `hasMore`. That only binds on a first-sync backlog, and it
+is no longer destructive when it happens — see below.
+
+**Notes with a live editor skip the queue.** They are pulled in their own batch ahead of
+the paced drain, because the note the user is looking at is the one whose stale body is
+the bug, and a large vault's catch-up takes minutes. Their cost is bounded by the number
+of open editors.
+
+One drain runs at a time and one timer is armed at a time. A second sweep landing
+mid-drain re-queues into the running one instead of starting its own, which would double
+the request rate; engine teardown cancels the timer and drops the queue.
+
 ## Snapshot Failure Handling
 
 A snapshot is a **compaction optimization**, not the source of truth: the authoritative
@@ -291,6 +335,18 @@ The client mirrors this. CRDT pulls run in a **serial loop over notes**, so they
 retry `429`s inline — honouring `Retry-After` per note would stall the whole pass, and the
 sync cadence is the retry instead. A single note that fails its snapshot baseline is
 skipped and retried on the next pass rather than abandoning the remaining notes.
+
+"Retried on the next pass" is a property of the code, not an assumption: a pull that does
+not complete puts its notes back into the pending-pull set, which the next cycle drains.
+That covers a rate-limited chunk (all of its notes), a rate-limited snapshot baseline (only
+that note), a failed single-note pull, and a batch that could not obtain credentials. The
+rule is deliberately not 429-specific — a transient 5xx, an unreachable server and a rate
+limit all leave the same stale body, so "failed, retry next cycle" needs no taxonomy.
+
+Without that, a rate-limited note was logged and dropped, and its body stayed stale until
+the _next_ vault-wide sweep — a 60-second reconnect floor or a 15-minute interval away.
+Opening the note did not help, because that reads the main process's Y.Doc rather than the
+server.
 
 Whether a note still owes the server a snapshot is tracked per open doc as a byte count of
 the local updates applied since the last successful push; closing a note and the push-all

@@ -380,6 +380,8 @@ describe('CrdtSyncCoordinator', () => {
     const open = vi.fn().mockResolvedValue({})
     const ctx = {
       deps: {
+        getAccessToken: vi.fn(async () => 'token-1'),
+        getVaultKey: vi.fn(async () => new Uint8Array([9])),
         crdtProvider: {
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
@@ -395,6 +397,109 @@ describe('CrdtSyncCoordinator', () => {
 
     return { ctx, open }
   }
+
+  // A rate limit is what the desktop actually hits: the vault-wide sweep used to
+  // fire two GETs per note, so 121 notes meant 242 requests in about four
+  // seconds against a limit of 300/60s shared with the account's other devices,
+  // and 92 of those notes came back "Too many requests".
+  const rateLimited = (): Error => {
+    const err = new Error('Too many requests')
+    err.name = 'RateLimitError'
+    return err
+  }
+
+  it('re-queues every note in a chunk the server rate-limited', async () => {
+    // #given the batch POST for the chunk is refused
+    const { ctx } = createBatchContext()
+    postToServerMock.mockRejectedValue(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then the chunk failed as a unit, so every note in it is owed a retry.
+    // Dropping them (a log.warn and nothing else) left those bodies stale until
+    // the NEXT vault-wide sweep — a 60s reconnect floor or a 15-minute interval
+    // away — and opening the note did not help, because that reads main's Y.Doc
+    // rather than the server.
+    expect(coordinator.drainPendingPulls()).toEqual(['note-1', 'note-2'])
+  })
+
+  it('re-queues only the note whose snapshot baseline was rate-limited', async () => {
+    // #given note-2's baseline is refused; note-1 and note-3 are fine
+    const { ctx } = createBatchContext()
+    fetchCrdtSnapshotMock
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(rateLimited())
+      .mockResolvedValueOnce(null)
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-3': { updates: [], hasMore: false }
+      }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2', 'note-3'], 'token-1', new Uint8Array([4]))
+
+    // #then the baselines are still one GET per note even on the batch path, so
+    // they are the bulk of a sweep's requests and the first thing a rate limit
+    // sheds. Only the note that actually failed is owed — re-queueing the whole
+    // chunk would re-pull notes that already succeeded.
+    expect(coordinator.drainPendingPulls()).toEqual(['note-2'])
+  })
+
+  it('re-queues a single-note pull the server rate-limited', async () => {
+    // #given the `crdt_updated` / open-editor path, not the sweep
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockRejectedValue(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+    // #then the debt is not batch-specific: any pull that did not complete owes
+    // the note to the next cycle. Retrying in place is what `retryOn429: false`
+    // exists to prevent — three Retry-Afters of up to 60s inside a serial loop
+    // stalls every remaining note behind one.
+    expect(coordinator.drainPendingPulls()).toEqual(['note-1'])
+  })
+
+  it('owes the whole group when a batch pull cannot get credentials', async () => {
+    // #given a sign-out / locked-vault window mid-sweep
+    const { ctx } = createBatchContext()
+    ;(ctx.deps.getAccessToken as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.pullCrdtForNotes(['note-1', 'note-2'])
+
+    // #then the sweep hands this method the whole vault; returning silently
+    // would strand every stale body until the next sweep.
+    expect(coordinator.drainPendingPulls()).toEqual(['note-1', 'note-2'])
+  })
+
+  it('batches a pull issued outside a sync cycle, when the engine holds no abort controller', async () => {
+    // #given the paced sweep runs between cycles, and the engine only holds an
+    // AbortController for the duration of a pull or a push
+    const { ctx } = createBatchContext()
+    ;(ctx as unknown as { abortController: AbortController | null }).abortController = null
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.pullCrdtForNotes(['note-1'])
+
+    // #then reading ctx.abortController unconditionally made every out-of-cycle
+    // batch return having done nothing, which would have made the whole paced
+    // sweep a silent no-op.
+    expect(postToServerMock).toHaveBeenCalledWith(
+      '/sync/crdt/updates/batch',
+      { notes: [{ noteId: 'note-1', since: 0 }], limit: 100 },
+      'token-1'
+    )
+  })
 
   it('does not retry 429s inside the serial pull loop', async () => {
     // #given a normal batch pass

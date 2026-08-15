@@ -4,6 +4,8 @@ import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import {
   CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
   CRDT_RECONNECT_SWEEP_FLOOR_MS,
+  CRDT_SWEEP_CHUNK_INTERVAL_MS,
+  CRDT_SWEEP_CHUNK_NOTES,
   SYNC_STATE_KEYS,
   type SyncContext
 } from './sync-context'
@@ -52,6 +54,7 @@ vi.mock('../../database/client', () => ({
 class FakeCrdtSync {
   private pending = new Set<string>()
   pullCrdtForNote = vi.fn(async () => {})
+  pullCrdtForNotes = vi.fn(async (_noteIds: string[]) => {})
 
   addPendingPull(noteId: string): void {
     this.pending.add(noteId)
@@ -65,6 +68,22 @@ class FakeCrdtSync {
     const ids = [...this.pending]
     this.pending.clear()
     return ids
+  }
+}
+
+/**
+ * The runner asks the provider two things: which notes still have a live editor
+ * (those skip the paced queue, because that is the note the user is looking at),
+ * and how many docs it can hold open at once (so a paced chunk never outgrows
+ * the LRU and gets its docs closed underneath it).
+ */
+function fakeCrdtProvider({ activeNoteIds = [] as string[], inactiveDocCapacity = 32 } = {}): {
+  getOpenNoteIds: ReturnType<typeof vi.fn>
+  inactiveDocCapacity: number
+} {
+  return {
+    getOpenNoteIds: vi.fn(() => activeNoteIds),
+    inactiveDocCapacity
   }
 }
 
@@ -176,9 +195,13 @@ function createHarness(
     push: vi.fn(async () => {
       calls.push('push')
     }),
+    // The real SyncEngine.scheduleSync runs the callback (chained onto any
+    // in-flight sync). The paced CRDT drain arms its next chunk from the
+    // previous one's completion, so a harness that only recorded the call would
+    // wedge the pump after the first chunk and hide every later one.
     scheduleSync: vi.fn((fn: () => Promise<void>) => {
       calls.push('scheduleSync')
-      void fn
+      void fn().catch(() => {})
     })
   }
 
@@ -487,14 +510,14 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then CRDT pulls queued before the failure are still flushed', async () => {
-      const h = createHarness()
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       h.crdtSync.addPendingPull('note-1')
       h.crdtSync.addPendingPull('note-2')
       h.actions.pull.mockRejectedValue(new Error('boom'))
 
       await expect(h.runner.run()).rejects.toThrow('boom')
 
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-1', 'note-2'])
       expect(h.crdtSync.pendingPullCount).toBe(0)
     })
 
@@ -514,19 +537,22 @@ describe('FullSyncRunner', () => {
 
   describe('#given CRDT-backed notes #when the cycle ends', () => {
     it('#then every CRDT note is re-queued and scheduled for a pull', async () => {
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
       await h.runner.run()
 
       expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledWith({ __db: 'index' })
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      // One scheduled chunk for both notes, not one per note: the single-note
+      // path costs two GETs each, which is what put 242 requests on the wire in
+      // four seconds for a 121-note vault.
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
       expect(h.crdtSync.pendingPullCount).toBe(0)
     })
 
     it('#then the scheduled work pulls the specific note', async () => {
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-7'])
       const scheduled: Array<() => Promise<void>> = []
@@ -537,13 +563,13 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
       await scheduled[0]()
 
-      expect(h.crdtSync.pullCrdtForNote).toHaveBeenCalledWith('note-7')
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-7'])
     })
 
     it('#then the index DB is not touched while it is uninitialized', async () => {
       // Vault switch / teardown: reading an unopened index DB throws inside a
       // finally block, which would replace the real sync error.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(false)
 
       await h.runner.run()
@@ -562,7 +588,7 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then a completed sweep is stamped so the next cycle can throttle it', async () => {
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
 
@@ -579,7 +605,7 @@ describe('FullSyncRunner', () => {
       // `crdt_updated` broadcast and was pulled per note, so a sweep can only
       // re-discover what this device already has. A clock cannot see that: the
       // liveness signal must win over the interval, not the other way round.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -605,7 +631,7 @@ describe('FullSyncRunner', () => {
       // The gate only covers the blanket safety-net sweep. A `crdt_updated`
       // broadcast is a positive signal that THIS note changed remotely and must
       // never be swallowed.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -627,7 +653,7 @@ describe('FullSyncRunner', () => {
       // This is the one case where broadcasts were provably missed, and the
       // case where the user is most likely staring at a stale note. Deferring
       // it by the fallback interval would be exactly backwards.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -644,7 +670,7 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
 
     it('#then a sweep that ran moments ago for another reason does not hold it back', async () => {
@@ -655,7 +681,7 @@ describe('FullSyncRunner', () => {
       // even though this was its first reconnect and nothing needed collapsing.
       // The two-device body-CRDT E2E specs caught it as "the other device's
       // edit never arrives".
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -671,14 +697,14 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
 
     it('#then a socket that is still down falls back to the interval', async () => {
       // Down-and-not-yet-back is not a completed reconnect. Sweeping on every
       // cycle here would reinstate the storm for anyone whose socket is blocked
       // outright, so the interval bounds it instead.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -703,7 +729,7 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -721,7 +747,7 @@ describe('FullSyncRunner', () => {
     })
 
     async function reconnectInsideFloor(): Promise<Harness> {
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -757,7 +783,7 @@ describe('FullSyncRunner', () => {
       await vi.advanceTimersByTimeAsync(CRDT_RECONNECT_SWEEP_FLOOR_MS)
 
       expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
 
     it('#then repeated flaps inside the floor still cost exactly one sweep', async () => {
@@ -825,7 +851,7 @@ describe('FullSyncRunner', () => {
       // retry). An instance-only signal that re-armed an immediate sweep would
       // repeat the lastManifestCheckAt bug: a retry loop would sweep the whole
       // vault on every single cycle. The persisted stamp is the authority here.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
       h.getStateValue.mockImplementation((key: string) =>
@@ -840,7 +866,7 @@ describe('FullSyncRunner', () => {
     it('#then a stamp older than the interval sweeps', async () => {
       // A device that was offline for weeks discovers body-only remote edits
       // (which never enter the record change feed) only through this sweep.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
       h.getStateValue.mockImplementation((key: string) =>
@@ -851,11 +877,11 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
 
     it('#then a missing websocket manager falls back to the interval', async () => {
-      const h = createHarness({ crdtProvider: {}, ws: null })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
 
@@ -875,7 +901,7 @@ describe('FullSyncRunner', () => {
       // Clock skew or a machine migration can leave a stamp 30 days ahead.
       // Trusting it would disable the only discovery path for body-only remote
       // edits for a month.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
       h.getStateValue.mockImplementation((key: string) =>
@@ -890,7 +916,7 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then a non-numeric stamp is treated as never swept', async () => {
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
       h.getStateValue.mockImplementation((key: string) =>
@@ -908,7 +934,7 @@ describe('FullSyncRunner', () => {
       // Server rows this device has never seen (fresh install, restored vault,
       // index rebuild) mean local CRDT state cannot be trusted, whatever the
       // socket did.
-      const h = createHarness({ crdtProvider: {} })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -924,13 +950,13 @@ describe('FullSyncRunner', () => {
 
       await h.runner.run()
 
-      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(2)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
     })
 
     it('#then an offline cycle neither sweeps nor burns the throttle window', async () => {
       // Pulls scheduled while offline are guaranteed to fail; stamping the
       // sweep there would hide real remote edits for a whole interval.
-      const h = createHarness({ crdtProvider: {}, online: false })
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: false })
       mocks.isIndexDatabaseInitialized.mockReturnValue(true)
       mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
 
@@ -938,6 +964,155 @@ describe('FullSyncRunner', () => {
 
       expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
       expect(h.calls).not.toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+    })
+  })
+
+  describe('#given a vault bigger than one chunk #when the sweep runs', () => {
+    // The sweep is a catch-up, not a race. Fired all at once down the
+    // single-note path it cost two GETs per note — 242 requests in about four
+    // seconds for a 121-note vault, against a server limit of 300 per 60s shared
+    // with the account's other devices — and 92 of those 121 notes came back
+    // "Too many requests" and silently kept their stale bodies.
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    const noteIds = (count: number): string[] =>
+      Array.from({ length: count }, (_, index) => `note-${index}`)
+
+    function sweepingHarness(count: number, provider = fakeCrdtProvider()): Harness {
+      const h = createHarness({ crdtProvider: provider })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(noteIds(count))
+      return h
+    }
+
+    function pulledNoteIds(h: Harness): string[] {
+      return h.crdtSync.pullCrdtForNotes.mock.calls.flatMap(([ids]: [string[]]) => ids)
+    }
+
+    it('#then the chunk size and interval stay inside BOTH server rate limits', () => {
+      // The server meters these two paths in separate buckets, and both are
+      // shared by every device on the account:
+      //   GET  /sync/crdt/snapshot/:noteId + /sync/crdt/updates -> 300 / 60s
+      //   POST /sync/crdt/updates/batch                         ->  30 / 60s
+      // A chunk of N notes costs N snapshot GETs (the batch endpoint batches the
+      // incrementals, not the baselines) plus at least one batch POST, so tuning
+      // either constant has to be checked against both ceilings — the batch
+      // bucket is ten times tighter and easy to miss.
+      const chunksPerMinute = 60_000 / CRDT_SWEEP_CHUNK_INTERVAL_MS
+      const snapshotGetsPerMinute = CRDT_SWEEP_CHUNK_NOTES * chunksPerMinute
+      const batchPostsPerMinute = chunksPerMinute
+
+      // Two devices sweeping at once, and still room left for the record-change
+      // pull, pushes and attachment fetches drawing on the same buckets.
+      expect(snapshotGetsPerMinute * 2).toBeLessThan(300)
+      expect(batchPostsPerMinute * 2).toBeLessThan(30)
+    })
+
+    it('#then the whole sweep leaves through the batch path, never one pull per note', async () => {
+      const h = sweepingHarness(3)
+
+      await h.runner.run()
+
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledWith(['note-0', 'note-1', 'note-2'])
+      // The single-note path is two GETs per note (snapshot, then incrementals).
+      // The batch path shares one incrementals POST across the group — the
+      // snapshot baselines are still one GET each, so this halves the traffic
+      // rather than collapsing it.
+      expect(h.crdtSync.pullCrdtForNote).not.toHaveBeenCalled()
+    })
+
+    it('#then only one chunk goes out per interval, whatever the vault size', async () => {
+      const h = sweepingHarness(60)
+
+      await h.runner.run()
+
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toHaveLength(CRDT_SWEEP_CHUNK_NOTES)
+
+      // Nothing more may go out before the interval elapses: 25 notes is 25
+      // snapshot GETs plus one batch POST, and four of those per minute is what
+      // keeps a sweeping device near 104 requests/minute.
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS - 1)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(1)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(2)
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(3)
+
+      // Paced, not sampled: every note is still covered, exactly once.
+      const pulled = pulledNoteIds(h)
+      expect(pulled).toHaveLength(60)
+      expect(new Set(pulled)).toEqual(new Set(noteIds(60)))
+    })
+
+    it('#then a chunk never outgrows the provider doc cache', async () => {
+      // Handing applyCrdtBatch more notes than it can hold open makes it split
+      // the chunk internally and spend an extra batch POST doing it — the exact
+      // request the pacing arithmetic budgets for.
+      const h = sweepingHarness(60, fakeCrdtProvider({ inactiveDocCapacity: 4 }))
+
+      await h.runner.run()
+
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toHaveLength(4)
+    })
+
+    it('#then a note with a live editor is pulled before the paced queue', async () => {
+      const h = sweepingHarness(60, fakeCrdtProvider({ activeNoteIds: ['note-40'] }))
+
+      await h.runner.run()
+
+      // The note the user is looking at is the one whose stale body is the bug.
+      // It must not queue behind a catch-up that takes minutes on a large vault,
+      // so it leaves in its own batch first; the cost is bounded by the number
+      // of open editors.
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toEqual(['note-40'])
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[1][0]).not.toContain('note-40')
+    })
+
+    it('#then a second sweep joins the running drain instead of starting its own', async () => {
+      const h = sweepingHarness(60)
+
+      await h.runner.run()
+      // A reconnect past the floor, so the gate sweeps the vault again while the
+      // first drain is still working through it.
+      h.ws.connectionGeneration += 1
+      await h.runner.run()
+
+      // Two drains in parallel double the request rate and put the arithmetic
+      // straight back over the server's limit.
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(2)
+
+      // ...and the second sweep re-queues the vault once, not once per copy
+      // already waiting. 25 pulled by the first chunk, then the 60 the second
+      // sweep queued — the 35 still waiting were deduped into it. An array queue
+      // would have carried those 35 twice and pulled 120.
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 5)
+      expect(pulledNoteIds(h)).toHaveLength(CRDT_SWEEP_CHUNK_NOTES + 60)
+    })
+
+    it('#then disposing the runner cancels the rest of the paced sweep', async () => {
+      // Engine teardown (vault switch, sign-out): a timer left armed keeps
+      // pulling against a vault this engine no longer owns.
+      const h = sweepingHarness(60)
+
+      await h.runner.run()
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      h.runner.dispose()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 10)
+
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
     })
   })
 })
