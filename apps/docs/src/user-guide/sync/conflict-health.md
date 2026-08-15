@@ -93,16 +93,39 @@ This is the actionable punch list — fix everything here and sync should be cle
 
 ## Common Sync Errors
 
-| Error                            | Likely cause                                                                                             | Fix                                                                                                             |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| "Authentication expired"         | Refresh token expired                                                                                    | Sign in again                                                                                                   |
-| "Quota exceeded"                 | Vault size hit storage limit                                                                             | Upgrade plan or clean attachments                                                                               |
-| "A note is too large to sync"    | One note's encrypted sync payload is over the per-request limit — a payload problem, not account storage | Split the note into smaller notes, or move large pasted content into attachments; other notes keep syncing      |
-| "Network unreachable"            | Offline                                                                                                  | Reconnect; sync auto-resumes                                                                                    |
-| "Server temporarily unavailable" | Cloudflare hiccup                                                                                        | Wait; backoff retries automatically                                                                             |
-| "Blob hash mismatch"             | Corruption (rare)                                                                                        | Push the affected item again from the source device                                                             |
-| "Crypto version mismatch"        | Sync server behind a desktop release                                                                     | Wait for server to update or downgrade desktop                                                                  |
-| "All items failed to decrypt"    | This device's vault key no longer matches the account                                                    | The app signs you out and prompts recovery — sign in and enter your recovery phrase; your server data is intact |
+| Error                            | Likely cause                                                                                           | Fix                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| "Authentication expired"         | Refresh token expired                                                                                  | Sign in again                                                                                                   |
+| "Quota exceeded"                 | Vault size hit storage limit                                                                           | Upgrade plan or clean attachments                                                                               |
+| "'<name>' is too large to sync"  | That note's encrypted sync payload is over the per-note limit — a payload problem, not account storage | Split the note into smaller notes, or move large pasted content into attachments; other notes keep syncing      |
+| "Network unreachable"            | Offline                                                                                                | Reconnect; sync auto-resumes                                                                                    |
+| "Server temporarily unavailable" | Cloudflare hiccup                                                                                      | Wait; backoff retries automatically                                                                             |
+| "Blob hash mismatch"             | Corruption (rare)                                                                                      | Push the affected item again from the source device                                                             |
+| "Crypto version mismatch"        | Sync server behind a desktop release                                                                   | Wait for server to update or downgrade desktop                                                                  |
+| "All items failed to decrypt"    | This device's vault key no longer matches the account                                                  | The app signs you out and prompts recovery — sign in and enter your recovery phrase; your server data is intact |
+
+## When a Note Gets Too Big to Sync
+
+A note body has its own size ceiling, separate from your plan's storage quota and
+separate from the per-file limit that governs attachments. Past roughly 3.7 MB of
+text, a note's sync payload no longer fits in a single request and that note stops
+syncing. Every other note keeps syncing normally.
+
+This used to be silent. It is not any more:
+
+- **Before it breaks.** **Settings → Vault → Notes near the sync limit** lists any
+  note that is close to the ceiling, with its name, its location in the vault, and
+  its size. A note marked _Approaching the limit_ still syncs. The section is
+  hidden entirely when no note is near the ceiling, which is the normal case.
+- **When it breaks.** The note is named in the error, so you know which one to
+  split, and it is marked _Not syncing_ in the same list.
+- **In an existing vault.** A note that was already over the ceiling shows up in
+  that list too, rather than staying quietly broken.
+
+The fix is to split the note, or move the bulk of it out — a large pasted log or
+transcript usually belongs in an attachment rather than in the note body. Nothing
+is lost while a note is over the ceiling: the text is safe on the device you typed
+it on, and it syncs again once the note is small enough.
 
 ## Recovering an Overwritten Edit
 
