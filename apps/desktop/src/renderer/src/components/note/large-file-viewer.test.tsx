@@ -669,6 +669,46 @@ describe('LargeFileViewer', () => {
     expect(new Set(starts).size).toBe(starts.length)
   })
 
+  it('replaces a page it overlaps rather than leaving two claims on one line', async () => {
+    // #given a viewport parked mid-file, so the page fetched for it starts at
+    // line 50 and runs to 249 — pages no longer land on any fixed stride
+    const lineCount = 100_000
+    let generation = 0
+    mocks.visibleRows = 100
+    mocks.firstRow = 50
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 40_000_000
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockImplementation(
+      async (input: { startLine: number }): Promise<LargeFileLinesResult> => {
+        generation += 1
+        const at = generation
+        return {
+          startLine: input.startLine,
+          lines: Array.from({ length: 200 }, (_, i) => `row ${input.startLine + i} v${at}`),
+          truncated: [],
+          lineCount
+        }
+      }
+    )
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={40_000_000} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 40_000_000, lineCount })
+    expect(await screen.findByText('row 50 v1')).toBeInTheDocument()
+
+    // #when the reader scrolls back to the top, and the page fetched for line 0
+    // runs 200 lines — straight over the one that started at 50
+    await scrollTo(0, lineCount)
+
+    // #then every line reads from the page that arrived last. Two pages both
+    // claiming line 60 would answer differently depending on where the search
+    // landed, which is not a bug worth being able to have.
+    expect(await screen.findByText('row 60 v2')).toBeInTheDocument()
+    expect(screen.queryByText('row 60 v1')).not.toBeInTheDocument()
+  })
+
   it('renders the head of a very long line, with a way to see the rest', async () => {
     // #given one 18 KB minified record — a single file line that wraps into
     // ~200 visual rows, which is the layout cost the freeze was made of
