@@ -218,8 +218,9 @@ makes markdown slow to open is how dense one unbroken run of lines is, not how m
 has: 128 KB of paragraphs opens in about 50 ms, while 128 KB of table rows or minified JSON takes a
 full second. A file with no blank lines in it is one block, however long it is.
 
-A file that misses either limit still appears in the sidebar. Opening it shows a panel naming its
-size and the limit it passed, marked **read-only · not synced**:
+A file that misses either limit still appears in the sidebar. Opening it shows the file in a
+read-only viewer instead of the editor, under a bar naming its size, the limit it passed, and
+**read-only · not synced**:
 
 - It does not open in the editor, so it cannot be edited in memrynote.
 - It is not synced to your other devices.
@@ -229,6 +230,25 @@ size and the limit it passed, marked **read-only · not synced**:
 The limits apply to notes arriving over sync too. A device still running an older version can send
 you a note that is over them; memrynote keeps every byte of it and writes the file to your vault,
 but opens it read-only rather than in the editor, exactly as if you had dropped it in yourself.
+
+### Reading a large file
+
+The viewer scrolls the file without loading it. On first open it makes one pass over the file to
+find where each line starts, showing a progress bar while it does; after that, scrolling anywhere in
+the file is instant, and only the lines on screen are read. Switching tabs and coming back does not
+repeat the pass.
+
+Two things to expect:
+
+- **Line numbers, no editing.** There is no cursor and no way to type. Use Reveal in Finder or your
+  own editor to change the file.
+- **Very long single lines are cut.** A line longer than 64 KB — minified JSON, for example — is
+  shown up to that point and marked `long line cut here`. The rest of the line is still on disk,
+  untouched.
+
+The viewer opens files up to **2 GB**. Above that, the file still appears in the sidebar, and
+opening it explains that it is past the limit and offers to open it in your default app or show it
+in your file manager.
 
 Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
 existing notes under these limits are unaffected.

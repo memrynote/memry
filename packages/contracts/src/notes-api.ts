@@ -189,6 +189,19 @@ export const ApplyTemplateSchema = z.object({
   mode: z.enum(['full', 'body'])
 })
 
+/**
+ * One window of lines from an open large-file session.
+ *
+ * `count` is capped because the response is an IPC payload: the viewer only
+ * ever renders a screenful plus overscan, and an uncapped window would put the
+ * file back into one message.
+ */
+export const LargeFileReadLinesSchema = z.object({
+  sessionId: z.string(),
+  startLine: z.number().int().min(0),
+  count: z.number().int().min(1).max(2000)
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -215,6 +228,37 @@ export interface NoteLinksResponse {
   outgoing: NoteLink[]
   incoming: Backlink[]
 }
+
+// ============================================================================
+// Large-file viewer
+// ============================================================================
+
+/**
+ * The answer to clicking a large-file-class row.
+ *
+ * `'too-large'` carries the ceiling as well as the size so the renderer never
+ * restates a limit the main process owns, and so a row that cannot open still
+ * explains itself rather than reporting a bare failure.
+ */
+export type LargeFileOpenResult =
+  | { status: 'indexing'; sessionId: string; fileBytes: number }
+  | { status: 'ready'; sessionId: string; fileBytes: number; lineCount: number }
+  | { status: 'too-large'; fileBytes: number; maxBytes: number }
+  | { status: 'missing' }
+
+export interface LargeFileLinesResult {
+  startLine: number
+  lines: string[]
+  /** Absolute line numbers that were cut at the per-line byte cap. */
+  truncated: number[]
+  lineCount: number
+}
+
+/** Progress of the one streaming scan that builds a file's line-offset index. */
+export type LargeFileIndexEvent =
+  | { sessionId: string; status: 'scanning'; bytesScanned: number; fileBytes: number }
+  | { sessionId: string; status: 'ready'; fileBytes: number; lineCount: number }
+  | { sessionId: string; status: 'error'; message: string }
 
 // ============================================================================
 // Handler Signatures
@@ -267,6 +311,15 @@ export interface NotesHandlers {
   [NotesChannels.invoke.APPLY_TEMPLATE]: (
     input: z.infer<typeof ApplyTemplateSchema>
   ) => Promise<NoteUpdateResponse>
+
+  [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
+
+  /** `null` when the session is gone — after a main restart, or an eviction. */
+  [NotesChannels.invoke.LARGE_FILE_READ_LINES]: (
+    input: z.infer<typeof LargeFileReadLinesSchema>
+  ) => Promise<LargeFileLinesResult | null>
+
+  [NotesChannels.invoke.LARGE_FILE_CLOSE]: (sessionId: string) => Promise<void>
 }
 
 // ============================================================================
