@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, type RefObject } from 'react'
+import { memo, useEffect, useRef, useState, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
@@ -11,11 +11,16 @@ import { LargeFileNotice, largeFileReasonArgs } from './large-file-notice'
 import type { NoteLargeFileReason } from '@memry/contracts/notes-api'
 
 /**
- * Row height, in px. Fixed on purpose: the virtualizer addresses lines by
- * index, so a wrapped or measured row would put every offset below it out by
- * however much it grew.
+ * Starting guess at a row's height, in px — one visual line of note-sized text
+ * plus its block spacing.
+ *
+ * Only a guess: lines wrap, so a row is as tall as the number of visual lines
+ * the pane's width breaks it into, which nothing knows until the browser has
+ * laid it out. Rows that have been drawn are measured; every row that has not
+ * carries this number, which is what keeps the total size of a 33-million-line
+ * file computable without touching 33 million lines.
  */
-export const LARGE_FILE_LINE_HEIGHT = 22
+export const LARGE_FILE_LINE_HEIGHT = 32
 
 /** Rows rendered either side of the viewport, so scrolling stays ahead of IPC. */
 const OVERSCAN_ROWS = 24
@@ -80,6 +85,39 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   }, [ensureRange, firstRow, lastRow, lineCount])
 
   const isReady = state.status === 'ready'
+  const showRows = isReady && lineCount > 0
+
+  // The virtualizer instance is stable, but the resize effect below must not
+  // re-subscribe on every render to reach it.
+  const virtualizerRef = useRef(virtualizer)
+  useEffect(() => {
+    virtualizerRef.current = virtualizer
+  })
+
+  // Bumped on a width change to remount the drawn rows. Clearing the height
+  // cache is not enough on its own: a row already in the DOM whose own box the
+  // browser has settled never fires its own observer again, so it would be
+  // stranded on the estimate. Remounting makes it measure itself once more.
+  const [widthEpoch, setWidthEpoch] = useState(0)
+
+  // A row's height is only true at the width it was measured at — the wrap
+  // point is the pane's width. Heights measured before a resize are dropped;
+  // rows off screen fall back to the estimate until they are scrolled back to.
+  useEffect(() => {
+    const element = scrollRef.current
+    if (!element) return
+    let lastWidth = element.getBoundingClientRect().width
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width ?? element.getBoundingClientRect().width
+      if (width === lastWidth) return
+      lastWidth = width
+      virtualizerRef.current.measure()
+      setWidthEpoch((epoch) => epoch + 1)
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [showRows])
+
   const openFind = search.open
   const canFind = isReady && lineCount > 0
 
@@ -194,12 +232,12 @@ export const LargeFileViewer = memo(function LargeFileViewer({
         <CenteredMessage text={t('page.largeFile.viewer.empty')} />
       )}
 
-      {state.status === 'ready' && lineCount > 0 && (
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-          <div className="relative w-max min-w-full" style={{ height: virtualizer.getTotalSize() }}>
+      {showRows && (
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {rows.map((row) => (
               <LineRow
-                key={row.key}
+                key={`${widthEpoch}:${row.key}`}
                 line={row.index}
                 offset={row.start}
                 text={getLine(row.index)}
@@ -207,6 +245,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
                 truncatedLabel={t('page.largeFile.viewer.lineTruncated')}
                 query={search.isOpen ? search.query : ''}
                 activeOrdinal={currentHit?.line === row.index ? currentHit.ordinal : null}
+                measureRef={virtualizer.measureElement}
               />
             ))}
           </div>
@@ -251,7 +290,10 @@ function ViewerHeader({
   const { key, limit } = largeFileReasonArgs(reason)
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2">
+    // No horizontal padding: the note layout already sets the column this sits
+    // in, so the bar and the file's text share one edge, the way a note's own
+    // rules and text do.
+    <div className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border pb-2">
       <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
         {t('page.largeFile.badge')}
       </span>
@@ -375,6 +417,15 @@ function HighlightedLine({
   return <>{parts}</>
 }
 
+/**
+ * One line of the file, set as a note sets a paragraph.
+ *
+ * No line number and no monospace: a note has neither, and this surface is a
+ * note that happens to be too big to edit. The height is the DOM's to decide —
+ * `measureRef` reports it back — because a 17 KB line of minified JSON is one
+ * *file* line and something like 170 *visual* lines, and the number depends on
+ * how wide the pane is.
+ */
 const LineRow = memo(function LineRow({
   line,
   offset,
@@ -382,7 +433,8 @@ const LineRow = memo(function LineRow({
   truncated,
   truncatedLabel,
   query,
-  activeOrdinal
+  activeOrdinal,
+  measureRef
 }: {
   line: number
   offset: number
@@ -391,23 +443,28 @@ const LineRow = memo(function LineRow({
   truncatedLabel: string
   query: string
   activeOrdinal: number | null
+  measureRef: (node: HTMLElement | null) => void
 }) {
   return (
     <div
-      className="absolute top-0 start-0 flex w-max min-w-full items-center font-mono text-xs"
-      style={{ height: LARGE_FILE_LINE_HEIGHT, transform: `translateY(${offset}px)` }}
+      data-index={line}
+      ref={measureRef}
+      className="absolute top-0 start-0 w-full"
+      style={{ transform: `translateY(${offset}px)` }}
     >
-      <span className="w-16 shrink-0 select-none border-e border-border pe-3 text-end text-muted-foreground tabular-nums">
-        {line + 1}
-      </span>
-      <span className="ps-3 whitespace-pre text-foreground">
+      {/* `whitespace-pre-wrap` keeps the file's own spacing while letting the
+          line wrap; `break-words` is what lets it break at all, because a
+          minified record has no space in it to break at. `min-h-[1lh]` holds a
+          blank line — and a line whose page has not arrived — open at one line,
+          which a collapsed row would report as zero height. */}
+      <p className="min-h-[1lh] py-[3px] text-base leading-relaxed whitespace-pre-wrap break-words text-foreground">
         <HighlightedLine text={text ?? ''} query={query} activeOrdinal={activeOrdinal} />
-      </span>
-      {truncated && (
-        <span className="ms-2 shrink-0 rounded-sm bg-muted px-1 text-[10px] text-muted-foreground">
-          {truncatedLabel}
-        </span>
-      )}
+        {truncated && (
+          <span className="ms-2 rounded-sm bg-muted px-1 align-middle text-[0.7em] text-muted-foreground">
+            {truncatedLabel}
+          </span>
+        )}
+      </p>
     </div>
   )
 })

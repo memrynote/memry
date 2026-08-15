@@ -22,7 +22,10 @@ const mocks = vi.hoisted(() => ({
   revealInFinder: vi.fn(),
   indexListeners: [] as Array<(event: LargeFileIndexEvent) => void>,
   searchListeners: [] as Array<(event: LargeFileSearchProgressEvent) => void>,
-  scrollToIndex: vi.fn()
+  scrollToIndex: vi.fn(),
+  measureElement: vi.fn(),
+  measure: vi.fn(),
+  resizeObservers: [] as Array<{ emit: (width: number) => void }>
 }))
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -38,13 +41,42 @@ vi.mock('@tanstack/react-virtual', () => ({
           size: 22
         })),
       getTotalSize: () => count * 22,
-      measureElement: () => {},
+      measureElement: mocks.measureElement,
+      measure: mocks.measure,
       scrollToIndex: mocks.scrollToIndex
     }
   }
 }))
 
 import { LargeFileViewer } from './large-file-viewer'
+
+/**
+ * A ResizeObserver the test drives.
+ *
+ * jsdom never resizes anything, and the global stub in `setup-dom.ts` never
+ * calls its callback, so a resize has to be delivered by hand.
+ */
+class TestResizeObserver {
+  constructor(private readonly callback: ResizeObserverCallback) {
+    mocks.resizeObservers.push(this)
+  }
+  observe = (): void => {}
+  unobserve = (): void => {}
+  disconnect = (): void => {}
+  emit(width: number): void {
+    this.callback(
+      [{ contentRect: { width } } as ResizeObserverEntry],
+      this as unknown as ResizeObserver
+    )
+  }
+}
+
+/** Report a new pane width to whatever the viewer is observing. */
+function resizePane(width: number): void {
+  act(() => {
+    for (const observer of [...mocks.resizeObservers]) observer.emit(width)
+  })
+}
 
 function emitIndex(event: LargeFileIndexEvent): void {
   act(() => {
@@ -122,7 +154,11 @@ describe('LargeFileViewer', () => {
     mocks.firstRow = 0
     mocks.indexListeners = []
     mocks.searchListeners = []
+    mocks.resizeObservers = []
+    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver
     mocks.scrollToIndex.mockReset()
+    mocks.measureElement.mockReset()
+    mocks.measure.mockReset()
     mocks.search.mockReset().mockResolvedValue({
       status: 'complete',
       query: '',
@@ -371,6 +407,136 @@ describe('LargeFileViewer', () => {
 
     // #then
     expect(await screen.findByText('long line cut here')).toBeInTheDocument()
+  })
+
+  it('wraps a line too long for the pane instead of putting it out of reach', async () => {
+    // #given a file shaped like a real log dump: one minified JSON record per
+    // line, far wider than any pane and with no space in it to break at
+    const record = `{"ts":"2026-08-15T09:12:03Z","msg":"${'x'.repeat(400)}"}`
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 66_200_000
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockResolvedValue({
+      startLine: 0,
+      lines: [record],
+      truncated: [],
+      lineCount: 1
+    } satisfies LargeFileLinesResult)
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={66_200_000} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+
+    // #when
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 66_200_000, lineCount: 1 })
+
+    // #then — jsdom does no layout, so what is asserted is the rule that causes
+    // the wrap: whitespace still significant, and a break allowed inside a
+    // 17 KB token that has nowhere else to break.
+    const line = await screen.findByText(record)
+    expect(line).toHaveClass('whitespace-pre-wrap')
+    expect(line).toHaveClass('break-words')
+    // #and a row still holds one line open when it has nothing in it — a blank
+    // line, or a line whose page has not landed yet. Wrapping made the height
+    // content-driven, and a collapsed row would measure as zero.
+    expect(line).toHaveClass('min-h-[1lh]')
+
+    // #and nothing is sized to its content any more. Content-width rows inside
+    // an absolutely positioned virtualizer never gave the scroll container a
+    // horizontal scrollbar, which is what put the overflow out of reach.
+    const viewer = screen.getByTestId('large-file-viewer')
+    expect(viewer.querySelector('.w-max')).toBeNull()
+  })
+
+  it('measures the rows it draws, because a wrapped line is not one row tall', async () => {
+    // #given
+    await openReady(500)
+    const first = await screen.findByText('row 0')
+
+    // #then — the row is handed to the virtualizer to measure, under the index
+    // the measurement is filed against. Fixed row heights are what let a 2 GB
+    // file scroll; one wrapped 17 KB line is ~170 visual rows, so the height
+    // has to come from the DOM instead of from a constant.
+    const row = first.closest('[data-index]')
+    expect(row).toHaveAttribute('data-index', '0')
+    expect(mocks.measureElement).toHaveBeenCalledWith(row)
+
+    // #and nothing pins the row to one line's height, which would clip it again
+    expect((row as HTMLElement).style.height).toBe('')
+  })
+
+  it('reads like a note rather than a code viewer', async () => {
+    // #given
+    await openReady(500)
+    const viewer = await screen.findByTestId('large-file-viewer')
+    await screen.findByText('row 0')
+
+    // #then — no line-number gutter and no monospace. A note has neither, and
+    // this is a note that happens to be too big to edit.
+    expect(within(viewer).queryByText('1')).toBeNull()
+    expect(viewer.querySelector('.font-mono')).toBeNull()
+
+    // #and the two pieces of chrome that stop the refusal reading as breakage
+    // stay put: the badge, and the line naming the size against the limit
+    expect(within(viewer).getByText('Read-only · not synced')).toBeInTheDocument()
+    expect(within(viewer).getByText(/Notes stay editable up to/)).toBeInTheDocument()
+  })
+
+  it('keeps the cut mark on the line it cut, now that the line wraps', async () => {
+    // #given a line past the 64 KB per-line cap
+    const cut = 'y'.repeat(400)
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 5_000_000
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockResolvedValue({
+      startLine: 0,
+      lines: [cut, 'short'],
+      truncated: [0],
+      lineCount: 2
+    } satisfies LargeFileLinesResult)
+    render(<LargeFileViewer noteId="note-1" reason="block-bytes" measuredBytes={5_000_000} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+
+    // #when
+    emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 5_000_000, lineCount: 2 })
+
+    // #then — the mark rides with the text it belongs to. In a column of its
+    // own it would sit one wrapped screenful away from the cut it names.
+    const mark = await screen.findByText('long line cut here')
+    const row = mark.closest('[data-index]')
+    expect(row).toHaveAttribute('data-index', '0')
+    expect(row).toHaveTextContent(cut)
+  })
+
+  it('re-measures when the pane changes width, and not when it does not', async () => {
+    // #given a file drawn and measured at one width
+    await openReady(500)
+    await screen.findByText('row 0')
+    resizePane(900)
+    mocks.measure.mockReset()
+    const measuredBefore = mocks.measureElement.mock.calls.length
+
+    // #when the pane reports a size whose width did not change
+    resizePane(900)
+
+    // #then nothing is thrown away. A vertical resize does not move the wrap
+    // point, and dropping every height for one would be work for nothing.
+    expect(mocks.measure).not.toHaveBeenCalled()
+
+    // #when the width actually changes
+    resizePane(600)
+
+    // #then every cached height goes: a height measured at 900px is not true of
+    // any row at 600px
+    expect(mocks.measure).toHaveBeenCalled()
+    // #and the rows on screen measure themselves again. Clearing alone would
+    // strand them on the estimate — a row whose own box the browser has already
+    // settled never fires its own observer a second time.
+    await waitFor(() =>
+      expect(mocks.measureElement.mock.calls.length).toBeGreaterThan(measuredBefore)
+    )
   })
 
   it('reopens after the main process let the session go', async () => {
@@ -702,6 +868,63 @@ describe('LargeFileViewer', () => {
     await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
+
+  it.runIf(process.env.MEMRY_LARGE_FILE_STRESS === '1')(
+    'measures what one viewport of the worst-shaped file costs',
+    { timeout: 120_000 },
+    async () => {
+      // The real report: a 66.2 MB log of 3 863 lines, ~17 KB each, every line
+      // one minified JSON record. Reported, not asserted — jsdom has no layout
+      // engine, so what this bounds is the JS and DOM half: how much text the
+      // design commits to the document for one screen, and what React costs to
+      // put it there and to move it. Chromium's cost of breaking that text into
+      // line boxes is not measurable here and is not claimed.
+      //
+      //   MEMRY_LARGE_FILE_STRESS=1 npx vitest run --config config/vitest.config.ts \
+      //     --project renderer src/renderer/src/components/note/large-file-viewer.test.tsx
+      const lineCount = 3_863
+      const record = `{"ts":"2026-08-15T09:12:03Z","level":"info","msg":"${'x'.repeat(17_000)}"}`
+      // One 66.2 MB line at a time is far more than fits: rows tall enough to
+      // hold a wrapped 17 KB record leave one or two visible, and the overscan
+      // is 24 either side.
+      mocks.visibleRows = 50
+      mocks.open.mockResolvedValue({
+        status: 'indexing',
+        sessionId: 'session-1',
+        fileBytes: 66_200_000
+      } satisfies LargeFileOpenResult)
+      mocks.readLines.mockImplementation(
+        async (input: { startLine: number; count: number }): Promise<LargeFileLinesResult> => ({
+          startLine: input.startLine,
+          lines: Array.from({ length: Math.min(input.count, lineCount - input.startLine) }, () =>
+            record.slice()
+          ),
+          truncated: [],
+          lineCount
+        })
+      )
+
+      const openedAt = performance.now()
+      render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={66_200_000} />)
+      await waitFor(() => expect(mocks.open).toHaveBeenCalled())
+      emitIndex({ sessionId: 'session-1', status: 'ready', fileBytes: 66_200_000, lineCount })
+      const viewer = await screen.findByTestId('large-file-viewer')
+      await waitFor(() => expect(viewer.textContent?.length ?? 0).toBeGreaterThan(100_000))
+      const firstPaintMs = performance.now() - openedAt
+
+      const scrolledAt = performance.now()
+      await scrollTo(1_000, lineCount)
+      const scrollMs = performance.now() - scrolledAt
+
+      // eslint-disable-next-line no-console
+      console.info('large-file viewer, 66.2 MB / 17 KB lines:', {
+        rowsDrawn: viewer.querySelectorAll('[data-index]').length,
+        charsInDom: viewer.textContent?.length ?? 0,
+        firstPaintMs: Math.round(firstPaintMs),
+        scrollMs: Math.round(scrollMs)
+      })
+    }
+  )
 
   it("settles when something else takes the file's one search", async () => {
     // #given another window on the same file starting its own search, which

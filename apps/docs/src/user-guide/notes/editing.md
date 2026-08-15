@@ -238,13 +238,22 @@ find where each line starts, showing a progress bar while it does; after that, s
 the file is instant, and only the lines on screen are read. Switching tabs and coming back does not
 repeat the pass.
 
-Two things to expect:
+The file is set the way a note is — same type, same width, no line numbers and no gutter.
 
-- **Line numbers, no editing.** There is no cursor and no way to type. Use Reveal in Finder or your
-  own editor to change the file.
+Three things to expect:
+
+- **No editing.** There is no cursor and no way to type. Use Reveal in Finder or your own editor to
+  change the file.
+- **Long lines wrap.** A line wider than the pane continues on the next line, as a note's text does.
+  There is nothing to scroll sideways to, and nothing sitting past the edge.
 - **Very long single lines are cut.** A line longer than 64 KB — minified JSON, for example — is
-  shown up to that point and marked `long line cut here`. The rest of the line is still on disk,
-  untouched.
+  shown up to that point and marked `long line cut here` at the end of the wrapped text. The rest of
+  the line is still on disk, untouched.
+
+Because lines wrap, a row is as tall as the pane's width makes it, and that is only known for the
+part of the file you have looked at. In a file of very long lines the scrollbar is an estimate: it
+settles as you read, so it can shift while you scroll through a stretch for the first time. Which
+line you are on is never affected — only how far along the bar says you are.
 
 The viewer opens files up to **2 GB**. Above that, the file still appears in the sidebar, and
 opening it explains that it is past the limit and offers to open it in your default app or show it
