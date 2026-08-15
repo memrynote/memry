@@ -26,6 +26,24 @@ export interface NoteFrontmatter {
   [key: string]: unknown
 }
 
+/**
+ * Whether a vault file may be opened as an editable, CRDT-seeded note.
+ *
+ * Mirrors `MarkdownSizeClass` / `LargeFileReason` in `@memry/shared`, which owns
+ * the classifier. Contracts does not depend on shared, so the unions are
+ * restated here and their agreement is gated by a parity test in the desktop
+ * app, which depends on both.
+ */
+export type NoteSizeClass = 'note' | 'large-file'
+export type NoteLargeFileReason = 'file-bytes' | 'block-bytes'
+
+export interface NoteLargeFileInfo {
+  reason: NoteLargeFileReason
+  fileBytes: number
+  /** Null when the file was classified on `stat` alone and never read. */
+  largestBlockBytes: number | null
+}
+
 export interface Note {
   id: string
   path: string // Relative to vault root
@@ -38,6 +56,19 @@ export interface Note {
   aliases: string[]
   wordCount: number
   emoji?: string | null // Emoji icon for visual identification
+  /**
+   * Absent on notes written by older app versions, which is read as `'note'`.
+   * `'large-file'` means the file is too big, or holds too large a single block,
+   * to run through the BlockNote parser — it opens read-only instead.
+   */
+  sizeClass?: NoteSizeClass
+  /** The measurements behind `'large-file'`; absent for note class. */
+  largeFile?: NoteLargeFileInfo | null
+  /**
+   * True when `content` is empty because the body was deliberately not
+   * delivered, not because the file is empty. Always set for `'large-file'`.
+   */
+  contentOmitted?: boolean
 }
 
 /**

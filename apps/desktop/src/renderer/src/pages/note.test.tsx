@@ -32,8 +32,7 @@ const mocks = vi.hoisted(() => ({
   handlePropertyNameChange: vi.fn(),
   handlePropertyOrderChange: vi.fn(),
   propertyOnBlocked: null as
-    | ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void)
-    | null,
+    ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void) | null,
   setPropertiesCollapsed: vi.fn(),
   togglePropertiesCollapsed: vi.fn(),
   toggleBookmark: vi.fn(),
@@ -50,8 +49,7 @@ const mocks = vi.hoisted(() => ({
   onRenamed: vi.fn(),
   deletedHandler: null as ((event: { id: string }) => void) | null,
   updatedHandler: null as
-    | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
-    | null,
+    ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void) | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
   findInPage: {
     isOpen: true,
@@ -1214,6 +1212,72 @@ describe('NotePage', () => {
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))
       expect(mocks.closeTab).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================================================
+  // Large-file class: an explanation, never an empty editor
+  // ==========================================================================
+
+  describe('large-file class', () => {
+    it('explains the refusal instead of mounting an empty editor', async () => {
+      // #given a note the main process classified as large-file: no body was
+      // delivered, so mounting the editor would show a blank document
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then — the notice is what the user sees, quoting the file size against
+      // the byte ceiling...
+      const notice = await screen.findByTestId('large-file-notice')
+      expect(notice).toHaveTextContent('page.largeFile.reason.fileBytes')
+      expect(notice).toHaveTextContent('17.8 MB')
+      // ...and the editor never mounted, so there is no empty document to mistake
+      // for data loss
+      expect(mocks.contentAreaMounts).toBe(0)
+      expect(screen.queryByTestId('editor-content')).not.toBeInTheDocument()
+    })
+
+    it('names the block bound when that is what the file broke', async () => {
+      // #given the log-dump shape: under the byte ceiling, one giant block
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'block-bytes', fileBytes: 900_000, largestBlockBytes: 890_000 }
+      }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then — the reason has to name the block bound, or "too large" reads as
+      // a lie for a file well under the byte ceiling. The test i18n renders keys
+      // rather than English, so the key and its interpolation are the assertion.
+      const notice = await screen.findByTestId('large-file-notice')
+      expect(notice).toHaveTextContent('page.largeFile.reason.blockBytes')
+      expect(notice).not.toHaveTextContent('page.largeFile.reason.fileBytes')
+      // the size quoted is the offending block, not the whole file
+      expect(notice).toHaveTextContent('869.1 KB')
+      expect(notice).toHaveTextContent('page.largeFile.badge')
+    })
+
+    it('still mounts the editor for an ordinary note', async () => {
+      // #given the default note, which carries no sizeClass at all — the shape
+      // every existing vault produces
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then
+      expect(await screen.findByTestId('editor-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('large-file-notice')).not.toBeInTheDocument()
+      expect(mocks.contentAreaMounts).toBe(1)
     })
   })
 })

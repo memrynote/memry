@@ -17,8 +17,24 @@ import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('NoteRuntimeEffects')
 
-export function syncNoteCreate(noteId: string, title: string, tags: string[]): void {
+export interface SyncNoteCreateOptions {
+  /**
+   * Whether to give the note a CRDT doc. False for a large-file-class file: it
+   * is listed and tracked, but seeding it would run the BlockNote markdown
+   * parse over the whole file on the main process, which is the freeze.
+   */
+  initCrdt?: boolean
+}
+
+export function syncNoteCreate(
+  noteId: string,
+  title: string,
+  tags: string[],
+  options?: SyncNoteCreateOptions
+): void {
   enqueueLocalSyncCreate('note', noteId)
+  if (options?.initCrdt === false) return
+
   getCrdtProvider()
     ?.initForNote(noteId, { title }, tags)
     .catch((error) => {

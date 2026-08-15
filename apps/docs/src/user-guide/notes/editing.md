@@ -199,3 +199,31 @@ The comment text itself is stored in your note file as plain text, with the form
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.
+
+## Very Large Files
+
+A markdown file can be too big to edit. memrynote decides this when the file arrives in the vault,
+and it uses two limits, not one:
+
+| Limit                                                | Value  |
+| ---------------------------------------------------- | ------ |
+| File size                                            | 2 MB   |
+| Largest run of lines with no blank line between them | 128 KB |
+
+A file has to clear **both** to open as an editable note.
+
+The second limit is the one that catches log dumps and exported transcripts. The editor's markdown
+parser gets slower than linearly as a single block grows, so shape matters more than total size: the
+same 1.8 MB costs about half a second split into paragraphs and about seven seconds as one
+unbroken block. A file with no blank lines in it is one block, however long it is.
+
+A file that misses either limit still appears in the sidebar. Opening it shows a panel naming its
+size and the limit it passed, marked **read-only · not synced**:
+
+- It does not open in the editor, so it cannot be edited in memrynote.
+- It is not synced to your other devices.
+- **The file on disk is not touched.** Nothing is truncated, rewritten or deleted, and you can
+  still open it in any other editor.
+
+Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
+existing notes under these limits are unaffected.

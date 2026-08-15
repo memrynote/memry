@@ -4,6 +4,7 @@ import type {
   SelectOption,
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
+import type { NoteSizeClass, NoteLargeFileInfo } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -31,6 +32,15 @@ export interface Note {
   wordCount: number
   properties: Record<string, unknown>
   emoji?: string | null
+  /**
+   * Absent on notes from older app versions, which is read as `'note'`.
+   * `'large-file'` opens read-only instead of in the editor.
+   */
+  sizeClass?: NoteSizeClass
+  /** The measurements behind `'large-file'`; absent for note class. */
+  largeFile?: NoteLargeFileInfo | null
+  /** True when `content` is empty because the body was deliberately not sent. */
+  contentOmitted?: boolean
 }
 
 export interface NoteListItem {

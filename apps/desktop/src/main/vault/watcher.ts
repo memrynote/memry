@@ -33,6 +33,7 @@ import {
   processRename
 } from './rename-tracker'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
+import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
@@ -386,13 +387,29 @@ export class VaultWatcher {
       localOnly: false
     }
 
+    // A large-file-class file still gets a sidebar row, but never a Y.Doc.
+    // Seeding one runs the BlockNote markdown parse over the whole file on the
+    // main process with no yield point, and that parse is the freeze: its cost
+    // tracks single-block size, so a blank-line-free dump costs 14x the same
+    // bytes shaped as paragraphs.
+    const classification = classifyMarkdownContent(content)
+    const isLargeFile = classification.sizeClass === 'large-file'
+    if (isLargeFile) {
+      logger.warn('Ingested file is large-file class; skipping CRDT seed', {
+        path: relativePath,
+        reason: classification.reason,
+        fileBytes: classification.fileBytes,
+        largestBlockBytes: classification.largestBlockBytes
+      })
+    }
+
     // Enqueue sync push so other devices learn about the new file
     if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
       enqueueJournalCreate(noteId, journalDate)
-      void initializeJournalCrdt(noteId, journalDate, tags)
+      if (!isLargeFile) void initializeJournalCrdt(noteId, journalDate, tags)
     } else {
-      syncNoteCreate(noteId, parsed.title, tags)
+      syncNoteCreate(noteId, parsed.title, tags, { initCrdt: !isLargeFile })
     }
 
     // Emit event to renderer
