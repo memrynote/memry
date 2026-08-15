@@ -37,6 +37,13 @@ export interface NoteFrontmatter {
 export type NoteSizeClass = 'note' | 'large-file'
 export type NoteLargeFileReason = 'file-bytes' | 'block-bytes'
 
+export interface NoteLargeFileInfo {
+  reason: NoteLargeFileReason
+  fileBytes: number
+  /** Null when the file was classified on `stat` alone and never read. */
+  largestBlockBytes: number | null
+}
+
 export interface Note {
   id: string
   path: string // Relative to vault root
@@ -55,8 +62,8 @@ export interface Note {
    * to run through the BlockNote parser — it opens read-only instead.
    */
   sizeClass?: NoteSizeClass
-  /** Which bound put the file in `'large-file'`; null for note class. */
-  largeFileReason?: NoteLargeFileReason | null
+  /** The measurements behind `'large-file'`; absent for note class. */
+  largeFile?: NoteLargeFileInfo | null
   /**
    * True when `content` is empty because the body was deliberately not
    * delivered, not because the file is empty. Always set for `'large-file'`.

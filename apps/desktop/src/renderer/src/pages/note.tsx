@@ -14,6 +14,7 @@ import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
+import { LargeFileNotice } from '@/components/note/large-file-notice'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { NoteTitle } from '@/components/note/note-title'
@@ -1395,57 +1396,68 @@ export function NotePage({ noteId }: NotePageProps) {
           role="presentation"
           className="editor-click-area flex-1 pb-[30vh] relative"
         >
-          <EditorErrorBoundary
-            noteId={noteId}
-            onRecover={refetchNote}
-            onError={(error) => log.error('Editor error:', error)}
-          >
-            {/* `externalUpdateCount` is deliberately NOT part of the key: an
+          {note.sizeClass === 'large-file' ? (
+            <LargeFileNotice
+              reason={note.largeFile?.reason}
+              measuredBytes={
+                note.largeFile?.reason === 'block-bytes'
+                  ? note.largeFile.largestBlockBytes
+                  : note.largeFile?.fileBytes
+              }
+            />
+          ) : (
+            <EditorErrorBoundary
+              noteId={noteId}
+              onRecover={refetchNote}
+              onError={(error) => log.error('Editor error:', error)}
+            >
+              {/* `externalUpdateCount` is deliberately NOT part of the key: an
                 update that did not originate here is handed to the live editor
                 via `externalContentRevision` instead of destroying and
                 rebuilding the editor for every remote change. `noteId` stays —
                 a different note in this tab is a genuinely different document. */}
-            <ContentArea
-              key={noteId}
-              noteId={noteId}
-              notePath={note.path}
-              initialContent={review.editorInitialContent}
-              contentType="markdown"
-              externalContentRevision={externalUpdateCount}
-              placeholder={t('editor.content.placeholder')}
-              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-              spellCheck={editorSettings.spellCheck}
-              onContentChange={handleContentChange}
-              onMarkdownChange={handleMarkdownChange}
-              onHeadingsChange={handleHeadingsChange}
-              onLinkClick={handleLinkClick}
-              onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-              initialHighlight={initialHighlight}
-              initialAnchorId={initialAnchorId}
-              noteTags={note.tags}
-              tagColorMap={tagColorMap}
-              tagIconMap={tagIconMap}
-              onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
-              focusAtEndRef={focusAtEndRef}
-              marqueeZoneEl={marqueeZoneEl}
-              review={{
-                plainMarkdown: review.plainMarkdown,
-                marks: review.marks,
-                hoveredMarkId: review.hoveredMarkId,
-                onEditorReady: review.handleEditorReady,
-                onAddComment: review.openCommentComposer,
-                getMarkdownSourceOffsetForEditorOffset:
-                  review.getMarkdownSourceOffsetForEditorOffset,
-                getEditorOffsetForMarkdownSourceOffset:
-                  review.getEditorOffsetForMarkdownSourceOffset,
-                onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                onHoveredMarkChange: review.setHoveredMarkId,
-                onMarkPositionsChange: review.setMarkPositions,
-                onReplaceMarksFromYjs: review.replaceMarksFromYjs
-              }}
-            />
-          </EditorErrorBoundary>
+              <ContentArea
+                key={noteId}
+                noteId={noteId}
+                notePath={note.path}
+                initialContent={review.editorInitialContent}
+                contentType="markdown"
+                externalContentRevision={externalUpdateCount}
+                placeholder={t('editor.content.placeholder')}
+                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                spellCheck={editorSettings.spellCheck}
+                onContentChange={handleContentChange}
+                onMarkdownChange={handleMarkdownChange}
+                onHeadingsChange={handleHeadingsChange}
+                onLinkClick={handleLinkClick}
+                onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
+                initialHighlight={initialHighlight}
+                initialAnchorId={initialAnchorId}
+                noteTags={note.tags}
+                tagColorMap={tagColorMap}
+                tagIconMap={tagIconMap}
+                onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
+                focusAtEndRef={focusAtEndRef}
+                marqueeZoneEl={marqueeZoneEl}
+                review={{
+                  plainMarkdown: review.plainMarkdown,
+                  marks: review.marks,
+                  hoveredMarkId: review.hoveredMarkId,
+                  onEditorReady: review.handleEditorReady,
+                  onAddComment: review.openCommentComposer,
+                  getMarkdownSourceOffsetForEditorOffset:
+                    review.getMarkdownSourceOffsetForEditorOffset,
+                  getEditorOffsetForMarkdownSourceOffset:
+                    review.getEditorOffsetForMarkdownSourceOffset,
+                  onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                  onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                  onHoveredMarkChange: review.setHoveredMarkId,
+                  onMarkPositionsChange: review.setMarkPositions,
+                  onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                }}
+              />
+            </EditorErrorBoundary>
+          )}
           <ReviewBadgeLayer
             review={review}
             targetId={noteId}

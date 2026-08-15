@@ -28,14 +28,22 @@ export type MarkdownSizeClass = 'note' | 'large-file'
 /** Which bound pushed a file out of note class. */
 export type LargeFileReason = 'file-bytes' | 'block-bytes'
 
-export interface MarkdownClassification {
-  sizeClass: MarkdownSizeClass
-  /** Null for note class. */
-  reason: LargeFileReason | null
+interface MarkdownMeasurements {
   fileBytes: number
   /** Null when the file was classified on size alone and never read. */
   largestBlockBytes: number | null
 }
+
+/**
+ * Discriminated on `sizeClass` so `reason` narrows to a real bound wherever a
+ * caller has already established the file is large-file class.
+ */
+export type MarkdownClassification =
+  | (MarkdownMeasurements & { sizeClass: 'note'; reason: null })
+  | (MarkdownMeasurements & { sizeClass: 'large-file'; reason: LargeFileReason })
+
+/** The large-file arm on its own, for callers that have already decided. */
+export type LargeFileClassification = Extract<MarkdownClassification, { sizeClass: 'large-file' }>
 
 export interface MarkdownClassThresholds {
   maxFileBytes?: number
@@ -154,7 +162,7 @@ export function largestBlockByteLength(markdown: string): number {
 export function classifyMarkdownStat(
   fileBytes: number,
   thresholds?: MarkdownClassThresholds
-): MarkdownClassification | null {
+): LargeFileClassification | null {
   const maxFileBytes = thresholds?.maxFileBytes ?? NOTE_MAX_BYTES
   if (fileBytes <= maxFileBytes) return null
 
@@ -177,17 +185,11 @@ export function classifyMarkdownContent(
 
   // File size is reported first: it is the cheaper bound and the one a caller
   // can also reach from `stat` alone.
-  const reason: LargeFileReason | null =
-    fileBytes > maxFileBytes
-      ? 'file-bytes'
-      : largestBlockBytes > maxBlockBytes
-        ? 'block-bytes'
-        : null
-
-  return {
-    sizeClass: reason === null ? 'note' : 'large-file',
-    reason,
-    fileBytes,
-    largestBlockBytes
+  if (fileBytes > maxFileBytes) {
+    return { sizeClass: 'large-file', reason: 'file-bytes', fileBytes, largestBlockBytes }
   }
+  if (largestBlockBytes > maxBlockBytes) {
+    return { sizeClass: 'large-file', reason: 'block-bytes', fileBytes, largestBlockBytes }
+  }
+  return { sizeClass: 'note', reason: null, fileBytes, largestBlockBytes }
 }

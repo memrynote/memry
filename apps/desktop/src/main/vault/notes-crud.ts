@@ -47,7 +47,7 @@ import { generateNoteId } from '../lib/id'
 import {
   NotesChannels,
   type NoteSizeClass,
-  type NoteLargeFileReason
+  type NoteLargeFileInfo
 } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
@@ -103,7 +103,7 @@ export interface Note {
   emoji?: string | null
   /** See the same fields on the contracts `Note`, which this shape feeds. */
   sizeClass?: NoteSizeClass
-  largeFileReason?: NoteLargeFileReason | null
+  largeFile?: NoteLargeFileInfo | null
   contentOmitted?: boolean
 }
 
@@ -395,7 +395,11 @@ export async function getNoteById(id: string): Promise<Note | null> {
     return {
       ...largeFileNote(db, id, cached),
       sizeClass: bySize.sizeClass,
-      largeFileReason: bySize.reason,
+      largeFile: {
+        reason: bySize.reason,
+        fileBytes: bySize.fileBytes,
+        largestBlockBytes: bySize.largestBlockBytes
+      },
       contentOmitted: true
     }
   }
@@ -434,7 +438,11 @@ export async function getNoteById(id: string): Promise<Note | null> {
     return {
       ...largeFileNote(db, id, cached),
       sizeClass: byContent.sizeClass,
-      largeFileReason: byContent.reason,
+      largeFile: {
+        reason: byContent.reason,
+        fileBytes: byContent.fileBytes,
+        largestBlockBytes: byContent.largestBlockBytes
+      },
       contentOmitted: true
     }
   }

@@ -37,6 +37,17 @@
       "cancel": "Cancel",
       "confirm": "Delete",
       "deleting": "Deleting..."
+    },
+    "largeFile": {
+      "title": "This file is too large to open as a note",
+      "badge": "Read-only · not synced",
+      "reason": {
+        "fileBytes": "It is {size}. Notes stay editable up to {limit}.",
+        "blockBytes": "It has a {size} run with no blank line in it. Notes stay editable up to {limit} per block."
+      },
+      "explanation": "Editing it would mean parsing the whole thing at once, which would freeze the app. The file is untouched on disk.",
+      "openExternally": "Open in default app",
+      "revealInFolder": "Show in folder"
     }
   },
   "tree": {
