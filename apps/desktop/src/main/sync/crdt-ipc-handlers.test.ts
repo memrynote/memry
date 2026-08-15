@@ -59,7 +59,15 @@ vi.mock('./blocknote-converter', () => ({
   repairEmptyBlockIds: vi.fn(() => 0)
 }))
 vi.mock('./crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
-vi.mock('./crdt-preflight', () => ({ runCrdtPreflight: vi.fn(async () => ({ ok: true })) }))
+// Lets one test hold the store init open the way a real preflight child does,
+// so crdt:open-doc can arrive while it is still in flight.
+const preflight = vi.hoisted(() => ({ gate: null as Promise<void> | null }))
+vi.mock('./crdt-preflight', () => ({
+  runCrdtPreflight: vi.fn(async () => {
+    if (preflight.gate) await preflight.gate
+    return { ok: true }
+  })
+}))
 vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
@@ -94,10 +102,12 @@ vi.mock('y-leveldb', () => ({
 // ============================================================================
 
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import { runCrdtPreflight } from './crdt-preflight'
 import { _resetCrdtIpcHandlersForTests, registerCrdtIpcHandlers } from '../ipc/crdt-handlers'
 
 describe('CRDT IPC handlers — lifecycle resilience', () => {
   beforeEach(() => {
+    preflight.gate = null
     resetIpcMocks()
     mockIpcMain._clearHandlers()
     resetCrdtProvider()
@@ -219,6 +229,56 @@ describe('CRDT IPC handlers — lifecycle resilience', () => {
       // #then
       expect(result.success).toBe(false)
       expect(result.error).toMatch(/not initialized/i)
+    })
+  })
+
+  describe('the store init an editor with no session has to wait for', () => {
+    it('crdt:open-doc joins an init already in flight instead of rejecting', async () => {
+      // #given — openVault's un-awaited initPersistence() is still paying for
+      // its preflight child when the renderer reaches the note. Rejecting is
+      // permanent for that editor: it falls open to a non-collaborative
+      // markdown editor for the life of the mount, and its edits then get
+      // overwritten by the Y.Doc the next sign-in rebuilds from the server.
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+      let releasePreflight = (): void => {}
+      preflight.gate = new Promise<void>((resolve) => {
+        releasePreflight = () => resolve()
+      })
+
+      const provider = getCrdtProvider()
+      const init = provider.initPersistence()
+      expect(provider.isInitialized()).toBe(false)
+
+      // #when — the open lands mid-init
+      const open = invokeHandler<{ success: boolean; error?: string }>(CRDT_CHANNELS.OPEN_DOC, {
+        noteId: 'n1'
+      })
+      releasePreflight()
+      await init
+
+      // #then
+      await expect(open).resolves.toEqual({ success: true })
+      expect(provider.getOpenNoteIds()).toEqual(['n1'])
+    })
+
+    it('crdt:open-doc never starts a store init of its own', async () => {
+      // #given — the vault-switch window: closeVault resets the provider before
+      // it closes the databases, so an init started from here would resolve the
+      // OUTGOING vault's uuid and the incoming vault would then find the store
+      // already settled and keep its predecessor's history. Waiting for someone
+      // else's init is safe; deciding which vault it belongs to is not.
+      vi.mocked(runCrdtPreflight).mockClear()
+      mockGetNoteCacheById.mockReturnValue({ id: 'n1', path: 'n1.md', fileType: 'markdown' })
+
+      // #when — nobody has asked for a store
+      const result = await invokeHandler<{ success: boolean; error?: string }>(
+        CRDT_CHANNELS.OPEN_DOC,
+        { noteId: 'n1' }
+      )
+
+      // #then
+      expect(result.success).toBe(false)
+      expect(vi.mocked(runCrdtPreflight)).not.toHaveBeenCalled()
     })
   })
 

@@ -42,15 +42,13 @@ interface EntrySnapshot {
   doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
-  fallback: boolean
 }
 
 const CONNECTING_SNAPSHOT: EntrySnapshot = {
   fragment: null,
   doc: null,
   provider: null,
-  isReady: false,
-  fallback: false
+  isReady: false
 }
 
 interface DocEntry extends DocEntryHandle {
@@ -95,7 +93,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
     .then(() => {
       if (destroyed) return
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-      publish({ fragment, doc, provider, isReady: true, fallback: false })
+      publish({ fragment, doc, provider, isReady: true })
       log.debug('Collaboration ready', { noteId })
     })
     .catch((err) => {
@@ -104,7 +102,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false
-      publish({ fragment: null, doc: null, provider: null, isReady: true, fallback: true })
+      publish({ fragment: null, doc: null, provider: null, isReady: true })
     })
 
   return {
@@ -187,11 +185,23 @@ export function useYjsCollaboration(
     }
   }, [noteId, enabled, consumerId])
 
+  // `isReady` is the entry's own "connect() has settled" flag, published once —
+  // and connect() only resolves after performSyncHandshake has merged whatever
+  // main holds, so it is exactly the moment a fragment is safe to hand out. A
+  // late second consumer reads the same published snapshot, so it is right for
+  // them too.
+  //
+  // This used to read `provider.isSynced` live instead. That answers a
+  // different question: it also goes false when crdt:provider-reset marks the
+  // binding stale — which is sign-out, with the editor mounted and the user
+  // typing. Collapsing to DISABLED_STATE there pulled `yjsFragment` out from
+  // under a live BlockNote editor, and `useCreateBlockNote` builds its
+  // collaboration extension exactly once, so the fragment could never be
+  // re-attached. Staleness belongs to the rebind (yjs-ipc-provider.ts), which
+  // keeps this same Y.Doc and carries its unsent edits over on the next
+  // handshake; it must not unbind the editor.
   const state =
-    !noteId ||
-    !enabled ||
-    activeState.noteId !== noteId ||
-    (!activeState.fallback && !activeState.provider?.isSynced)
+    !noteId || !enabled || activeState.noteId !== noteId || !activeState.isReady
       ? DISABLED_STATE
       : {
           fragment: activeState.fragment,

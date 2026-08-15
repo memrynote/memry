@@ -338,6 +338,27 @@ describe('CrdtProvider', () => {
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
   })
 
+  it('persists and writes back an edit made with no session, and pushes nothing', async () => {
+    // Why the signed-out queue needs no pause: teardown drops it. The editor is
+    // no longer gated on a session, so this is now the steady state — every
+    // keystroke made signed out reaches the local store and the vault markdown,
+    // and nothing reaches the 1s flush loop, so nothing retries a push or reads
+    // the keychain for a token that is not there. Sign-out goes further still
+    // (resetCrdtProvider builds a fresh instance), which makes this the weaker
+    // of the two guarantees and therefore the one worth pinning.
+    createWindow(1)
+    await provider.destroy()
+    await provider.initPersistence()
+    await provider.open('note-1', 1, { skipSeed: true })
+    queue.enqueue.mockClear()
+
+    provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed while signed out'), 1)
+
+    expect(queue.enqueue).not.toHaveBeenCalled()
+    expect(mocks.persistenceInstances.at(-1)!.storeUpdate).toHaveBeenCalled()
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
   it('broadcasts one shared Uint8Array instead of a boxed copy per receiving window', async () => {
     createWindow(1)
     createWindow(2)
@@ -1173,7 +1194,6 @@ describe('CrdtProvider', () => {
     expect(mocks.persistenceInstances[0].destroy).toHaveBeenCalled()
     expect(provider.isInitialized()).toBe(false)
   })
-
 
   it('handles close, destroy, and push snapshot failures without leaking docs', async () => {
     createWindow(11, true)

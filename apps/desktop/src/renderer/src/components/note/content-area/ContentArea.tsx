@@ -28,8 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
-import { useSync } from '@/contexts/sync-context'
-import { isCollaborationActive } from '@/sync/collaboration-status'
+import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
@@ -1388,17 +1387,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 // =============================================================================
 
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
-  const { state } = useSync()
-  const syncActive = isCollaborationActive(state.status)
+  // The local Y.Doc, not the sync session. This used to read
+  // `isCollaborationActive(syncState.status)`, which meant no session → no
+  // Y.Doc → keystrokes reached markdown and the DB but never became CRDT
+  // operations; the sign-in that rebuilt the doc from the server then wrote it
+  // back over the file. The canvas note-card lock still reads the session
+  // predicate — see sync/collaboration-status.ts for why the two must not be
+  // re-merged.
+  const localDocLive = isLocalCrdtDocLive(props.noteId)
   const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,
-    enabled: syncActive
+    enabled: localDocLive
   })
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
 
-  if (syncActive && props.noteId && !isReady) {
+  // Hold the render until the binding has settled. `useCreateBlockNote` builds
+  // its collaboration extension once and never rebuilds it, so the fragment has
+  // to be there at editor-creation time or it can never attach — which is why
+  // this is a wait rather than a fail-open. It is bounded: connect() settles
+  // either way, and crdt:open-doc waits on the store instead of rejecting.
+  if (localDocLive && !isReady) {
     return (
       <div className={cn('content-area h-full flex flex-col', props.className)}>
         <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />

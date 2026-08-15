@@ -273,6 +273,7 @@ vi.mock('./ai-menu', () => ({
 vi.mock('./editor-schema', () => ({ editorSchema: {} }))
 
 import { ContentArea } from './ContentArea'
+import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -491,6 +492,53 @@ describe('ContentArea', () => {
     }
 
     const { container } = render(<ContentArea noteId="note-1" className="custom-class" />)
+
+    expect(container.querySelector('.animate-pulse')).toBeTruthy()
+    expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+  })
+
+  // The signed-out clobber: with no session the editor was never bound to a
+  // Y.Doc, so keystrokes reached markdown alone and the sign-in that rebuilt the
+  // doc from the server wrote it back over them. The local doc is the editor's
+  // store; the session only decides whether anything is synced.
+  it.each([
+    ['never signed in', 'unknown'],
+    ['signed out', 'error'],
+    ['sync paused', 'paused']
+  ])('binds the local Y.Doc with no sync session (%s)', (_case, status) => {
+    contentAreaMocks.useSyncState = { status }
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment('blocks')
+    contentAreaMocks.yjsState = {
+      fragment,
+      doc,
+      provider: { doc, isSynced: false },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(<ContentArea noteId="note-1" />)
+
+    expect(vi.mocked(useYjsCollaboration)).toHaveBeenCalledWith(
+      expect.objectContaining({ noteId: 'note-1', enabled: true })
+    )
+    expect(contentAreaMocks.blockNoteOptions.collaboration.fragment).toBe(fragment)
+  })
+
+  it('waits for the local Y.Doc binding with no sync session instead of opening a markdown editor', () => {
+    // `useCreateBlockNote` builds its collaboration extension exactly once, so a
+    // fragment that arrives after the editor exists can never attach. Rendering
+    // a non-collaborative editor here would be a decision, not a placeholder.
+    contentAreaMocks.useSyncState = { status: 'unknown' }
+    contentAreaMocks.yjsState = {
+      fragment: undefined,
+      doc: null,
+      provider: null,
+      isReady: false,
+      isRemoteUpdateRef: { current: false }
+    }
+
+    const { container } = render(<ContentArea noteId="note-1" />)
 
     expect(container.querySelector('.animate-pulse')).toBeTruthy()
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()

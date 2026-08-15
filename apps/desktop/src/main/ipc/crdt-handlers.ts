@@ -71,6 +71,25 @@ export function registerCrdtIpcHandlers(): void {
 
     const provider = getCrdtProvider()
     if (!provider.isInitialized()) {
+      // The editor is no longer gated on a sync session, so this can be the
+      // first open of the launch and it now loses a race it never used to run:
+      // openVault kicks initPersistence() off without awaiting it (it pays for
+      // a preflight child process) and the renderer can reach a note before it
+      // settles. Rejecting here is permanent for that editor — it falls open to
+      // a non-collaborative markdown editor for the life of the mount, which is
+      // exactly the clobber this gate was split to end.
+      //
+      // Join the init, never start one. Calling initPersistence() from here
+      // would let a vault SWITCH open the store against the outgoing vault:
+      // closeVault resets the provider before it closes the databases, so in
+      // that window the uuid this resolves is still the old vault's, and the
+      // incoming vault's own call would then find persistence already settled
+      // and keep it. openVault assigns the in-flight promise in the same
+      // synchronous run as initDatabase, so a note the renderer can reach at
+      // all is a note whose vault already has an init to join.
+      await provider.awaitPendingInit()
+    }
+    if (!provider.isInitialized()) {
       return { success: false, error: 'CRDT provider not initialized' }
     }
 

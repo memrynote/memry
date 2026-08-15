@@ -173,6 +173,26 @@ export class CrdtProvider {
     return this.persistenceReady
   }
 
+  /**
+   * Wait for a store init that is ALREADY in flight, and do nothing when there
+   * is none.
+   *
+   * The difference from `initPersistence()` matters: this never starts one. An
+   * editor is no longer gated on a sync session, so `crdt:open-doc` can arrive
+   * before the vault-open path's (deliberately un-awaited) init has settled,
+   * and it needs to wait rather than reject — but it must not be the caller
+   * that decides *which* vault the store belongs to. `closeVault` resets the
+   * provider before it closes the databases, so a self-starting init in that
+   * window would resolve the outgoing vault's uuid and the incoming vault would
+   * then inherit a settled store pointing at its predecessor's history.
+   *
+   * A failed init resolves here rather than rejecting: the caller's next
+   * question is `isInitialized()`, which is the honest answer either way.
+   */
+  async awaitPendingInit(): Promise<void> {
+    await this.persistenceInitPromise?.catch(() => {})
+  }
+
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
     const existing = this.docs.get(noteId)
     if (existing && !existing.closing) {

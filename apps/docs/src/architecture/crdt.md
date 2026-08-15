@@ -6,6 +6,40 @@ Notes and journal entries use Yjs CRDTs so concurrent edits across devices merge
 
 The Y.Doc is canonical. Markdown is a derived, lossy export — useful for `.md` interop but not authoritative.
 
+Which makes the corollary a rule rather than a preference: **the editor writes to the
+Y.Doc whenever a vault is open — signed in or not, online or not, with an account or
+with none.** An edit that does not enter the Y.Doc does not exist. It can be written to
+the markdown file and to the database and still be gone, because the next thing to
+rebuild the Y.Doc — a sign-in pulling this note's snapshot from the server — writes that
+doc back over the file. Nothing fails to merge in that sequence; there is simply nothing
+to merge.
+
+That is not hypothetical. Until this rule was made explicit, the note editor was gated on
+`isCollaborationActive(syncStatus)` — a predicate about whether a _remote sync session_
+exists. With no session the editor was never bound to a Y.Doc at all, so a signed-out
+edit reached markdown alone and was destroyed by the next sign-in, from the file on disk.
+
+The two questions are now two predicates, in
+`renderer/src/sync/collaboration-status.ts`:
+
+| Predicate                       | Question                        | Read by                                      |
+| ------------------------------- | ------------------------------- | -------------------------------------------- |
+| `isLocalCrdtDocLive(noteId)`    | Should the local Y.Doc be live? | `ContentArea` (the editor gate)              |
+| `isCollaborationActive(status)` | Is a remote session available?  | the canvas note-card lock, on its _negation_ |
+
+Session state may decide whether anything is **synced**. It may never decide whether the
+editor writes to the canonical store.
+
+One consequence is worth stating plainly: because
+[`useCreateBlockNote`](https://www.blocknotejs.org) builds its collaboration extension
+exactly once per editor instance, the fragment has to be present when the editor is
+created or it can never attach. So the note view waits on the binding rather than opening
+a non-collaborative editor and upgrading it later — and `crdt:open-doc` waits for a store
+init already in flight (`CrdtProvider.awaitPendingInit()`) instead of rejecting, since
+vault open starts that init without awaiting it and a rejection would be permanent for
+that editor. It waits for an init; it never starts one, because during a vault switch the
+uuid it would resolve is still the outgoing vault's.
+
 ## Where Y.Docs Live
 
 The **main process** owns Y.Doc instances, persists them to disk via y-leveldb, and exposes them to the renderer through an IPC provider.
@@ -490,6 +524,21 @@ fully editable signed out, offline, and with no account at all. Editors bound to
 the destroyed provider rebind on `crdt:provider-ready`, exactly as they do after
 any other reset (see
 [Rebinding After a Provider Reset](#rebinding-after-a-provider-reset)).
+
+The editor keeps the same Y.Doc across that whole cycle. A reset marks the
+binding stale, which is a statement about main, not about the doc: unbinding the
+fragment would tear the editor's collaboration extension off a document it can
+never re-attach to and re-arm the renderer's own markdown save against a body
+main is about to merge. Signed-out keystrokes land in that doc, `crdt:apply-update`
+carries them to main, and main persists them to this vault's store and writes the
+markdown back — no server involved at any step.
+
+Nothing about that reaches the push queue, and it does not need to be paused to
+stay quiet: teardown drops it. `CrdtProvider.destroy()` clears the queue
+reference and `resetCrdtProvider()` then replaces the instance outright, so
+`onDocUpdate` has nothing to enqueue into while there is no session. The 1s flush
+loop is stopped with the runtime that owned it, so a signed-out session never
+retries a push and never reads the keychain for a token that is not there.
 
 ## Sign-Out / Sign-In Ordering
 
