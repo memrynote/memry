@@ -92,7 +92,22 @@ function findByNote(noteId: string): Session | undefined {
   return undefined
 }
 
-async function disposeSession(session: Session): Promise<void> {
+/**
+ * Close a session's handle and drop it.
+ *
+ * `notifyHolders` is for the disposals the holders did not ask for — a rescan
+ * because the file changed, or eviction. Without it a consumer mid-scan is left
+ * on "Preparing…" forever: `startScan` returns silently once the session is
+ * gone, and the only other thing that would notice is a page read, which a
+ * viewer that never became ready never issues.
+ */
+async function disposeSession(
+  session: Session,
+  options: { notifyHolders?: boolean } = {}
+): Promise<void> {
+  if (options.notifyHolders && session.holders > 0) {
+    emit({ sessionId: session.id, status: 'closed' })
+  }
   sessions.delete(session.id)
   // A search left running would keep crossing a file nobody is looking at, and
   // its worker would outlive the handle it was opened for.
@@ -103,11 +118,32 @@ async function disposeSession(session: Session): Promise<void> {
   })
 }
 
+/**
+ * Make room under the open-session cap, if room can be made safely.
+ *
+ * Every session in the map has at least one holder — the last close disposes it
+ * — so "evict the oldest" always means taking a session away from a consumer
+ * that is using it. For a scanned session that is survivable: it is showing
+ * pages, so its next read returns null and it reopens, and it is told outright
+ * besides. For one still scanning there is nothing to recover from and no
+ * moment at which it would notice, so those are never the target.
+ *
+ * If every open session is still scanning, the cap yields. It exists to bound
+ * open file handles, not correctness, and a handful of extra descriptors is not
+ * worth a tab that never loads.
+ */
 async function evictOldest(): Promise<void> {
   while (sessions.size >= MAX_OPEN_SESSIONS) {
-    const oldest = sessions.values().next().value
-    if (!oldest) return
-    await disposeSession(oldest)
+    // Insertion-ordered, so the first match is the oldest.
+    const target = [...sessions.values()].find((session) => session.index !== null)
+    if (!target) {
+      logger.warn('Every open large-file session is still scanning; keeping them all', {
+        open: sessions.size,
+        max: MAX_OPEN_SESSIONS
+      })
+      return
+    }
+    await disposeSession(target, { notifyHolders: true })
   }
 }
 
@@ -179,8 +215,9 @@ export async function openLargeFileSession(noteId: string): Promise<LargeFileOpe
         : { status: 'indexing', sessionId: existing.id, fileBytes: existing.fileBytes }
     }
     // The file moved underneath the index: every checkpoint offset is now a
-    // guess. Start over rather than seek into stale positions.
-    await disposeSession(existing)
+    // guess. Start over rather than seek into stale positions — and tell anyone
+    // else on it, since this open belongs to only one of them.
+    await disposeSession(existing, { notifyHolders: true })
   }
 
   await evictOldest()

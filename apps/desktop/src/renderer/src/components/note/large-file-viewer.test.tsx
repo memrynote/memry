@@ -210,6 +210,37 @@ describe('LargeFileViewer', () => {
     expect(screen.getByText('Read-only · not synced')).toBeInTheDocument()
   })
 
+  it('reopens when the main process drops the session mid-scan', async () => {
+    // #given a viewer still waiting on the scan
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-1',
+      fileBytes: 18_700_000
+    } satisfies LargeFileOpenResult)
+    mocks.readLines.mockImplementation(
+      async (input: { startLine: number; count: number }): Promise<LargeFileLinesResult> =>
+        linePage(input.startLine, input.count, 500)
+    )
+    render(<LargeFileViewer noteId="note-1" reason="file-bytes" measuredBytes={18_700_000} />)
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledTimes(1))
+
+    // #when the session goes away before it was ever ready — the file changed
+    // on disk, or the main process made room
+    mocks.open.mockResolvedValue({
+      status: 'indexing',
+      sessionId: 'session-2',
+      fileBytes: 18_700_000
+    } satisfies LargeFileOpenResult)
+    emitIndex({ sessionId: 'session-1', status: 'closed' })
+
+    // #then the viewer reopens rather than showing a dead end. A page fetch is
+    // the only other thing that would notice, and a viewer that never became
+    // ready never fetches a page.
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledTimes(2))
+    emitIndex({ sessionId: 'session-2', status: 'ready', fileBytes: 18_700_000, lineCount: 500 })
+    expect(await screen.findByText('row 0')).toBeInTheDocument()
+  })
+
   it('shows the file rather than an editor', async () => {
     // #given/when
     await openReady(500)

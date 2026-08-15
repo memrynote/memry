@@ -278,6 +278,17 @@ export type LargeFileIndexEvent =
   | { sessionId: string; status: 'scanning'; bytesScanned: number; fileBytes: number }
   | { sessionId: string; status: 'ready'; fileBytes: number; lineCount: number }
   | { sessionId: string; status: 'error'; message: string }
+  /**
+   * The session went away while someone was still holding it — the file
+   * changed on disk, or the main process needed the handle back.
+   *
+   * Distinct from `error` on purpose: nothing failed and reopening resolves
+   * it, so the viewer reopens rather than showing a dead end. A consumer that
+   * is already showing pages would find out anyway, from a read that returns
+   * null; one still waiting on the scan never reads a page and would otherwise
+   * wait forever.
+   */
+  | { sessionId: string; status: 'closed' }
 
 /**
  * One match: which line, and which occurrence on that line.

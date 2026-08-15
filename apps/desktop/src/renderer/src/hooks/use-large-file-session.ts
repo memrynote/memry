@@ -91,6 +91,16 @@ export function useLargeFileSession(noteId: string): LargeFileSession {
         setState({ status: 'ready', fileBytes: event.fileBytes, lineCount: event.lineCount })
         return
       }
+      if (event.status === 'closed') {
+        // The main process let the session go — the file changed, or it needed
+        // the handle back. Nothing failed, so reopening is the answer rather
+        // than an error page, which is a dead end. This is the same recovery a
+        // null page read triggers; it is here because a viewer that never
+        // became ready never reads a page and would otherwise wait forever.
+        setState({ status: 'opening' })
+        setGeneration((n) => n + 1)
+        return
+      }
       log.warn('Line-offset scan failed', { message: event.message })
       setState({ status: 'error' })
     }

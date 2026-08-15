@@ -396,6 +396,73 @@ describe('large-file session', () => {
     expect(newest?.lines).toEqual(['x'])
   })
 
+  it('does not evict a session whose scan a viewer is still waiting on', async () => {
+    // #given the cap filled, with the oldest session still scanning. It is the
+    // eviction target by age, and it is the one session that cannot survive
+    // being evicted: a scan that finishes into a session that is gone emits
+    // neither ready nor error, and nothing else ever asks after it.
+    const body = 'one\ntwo\nthree\n'
+    await writeFile(join(mocks.vaultDir, 'slow.md'), body)
+    mocks.cache = { id: 'note-slow', path: 'slow.md' }
+    let finishSlowScan: ((index: LineIndex) => void) | null = null
+    mocks.buildLineIndex.mockImplementationOnce(
+      () =>
+        new Promise<LineIndex>((resolve) => {
+          finishSlowScan = resolve
+        })
+    )
+    const slow = await openLargeFileSession('note-slow')
+    const slowId = slow.status === 'indexing' ? slow.sessionId : ''
+
+    mocks.buildLineIndex.mockResolvedValue(indexFor('x\n'))
+    for (let i = 0; i < MAX_OPEN_SESSIONS; i++) {
+      await writeFile(join(mocks.vaultDir, `f${i}.md`), 'x\n')
+      mocks.cache = { id: `note-${i}`, path: `f${i}.md` }
+      await openLargeFileSession(`note-${i}`)
+    }
+
+    // #when the slow scan finally lands
+    finishSlowScan!(indexFor(body))
+    await new Promise((resolve) => setImmediate(resolve))
+
+    // #then the viewer that has been sitting on "Preparing…" gets its answer
+    expect(
+      indexEvents()
+        .filter((event) => event.sessionId === slowId)
+        .at(-1)
+    ).toMatchObject({
+      status: 'ready',
+      lineCount: 3
+    })
+    expect(
+      (await readLargeFileLines({ sessionId: slowId, startLine: 0, count: 1 }))?.lines
+    ).toEqual(['one'])
+  })
+
+  it('tells a consumer its session went away instead of letting it wait', async () => {
+    // #given two consumers on one session
+    const sessionId = await openReadySession('one\ntwo\n')
+    await openLargeFileSession('note-1')
+
+    // #when the file changes underneath them and one consumer reopens, which
+    // throws the shared session away and starts a new one
+    await writeVaultFile('log.md', 'one\ntwo\nthree\nfour\n')
+    mocks.buildLineIndex.mockResolvedValue(indexFor('one\ntwo\nthree\nfour\n'))
+    await openLargeFileSession('note-1')
+
+    // #then the consumer still holding the old id is told. Waiting for it to
+    // find out on its next page fetch only works once it is showing pages —
+    // a session dropped while still indexing never gets a page fetch at all.
+    expect(
+      indexEvents()
+        .filter((event) => event.sessionId === sessionId)
+        .at(-1)
+    ).toMatchObject({
+      sessionId,
+      status: 'closed'
+    })
+  })
+
   it('reports a failed scan instead of leaving the viewer waiting forever', async () => {
     // #given a scan that cannot finish
     await writeVaultFile('log.md', 'one\n')
