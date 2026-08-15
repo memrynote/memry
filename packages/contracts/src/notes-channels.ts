@@ -116,9 +116,17 @@ export const NotesChannels = {
     /** Get count of local-only notes */
     GET_LOCAL_ONLY_COUNT: 'notes:get-local-only-count',
     /** Apply a template to an existing note (replaces body; optionally merges metadata) */
-    APPLY_TEMPLATE: 'notes:apply-template'
+    APPLY_TEMPLATE: 'notes:apply-template',
+    /** Open a large-file-class file for read-only streaming */
+    LARGE_FILE_OPEN: 'notes:large-file-open',
+    /** Read one window of lines from an open large-file session */
+    LARGE_FILE_READ_LINES: 'notes:large-file-read-lines',
+    /** Release an open large-file session and its file handle */
+    LARGE_FILE_CLOSE: 'notes:large-file-close'
   },
   events: {
+    /** Progress, completion or failure of a large file's line-offset scan */
+    LARGE_FILE_INDEX: 'notes:large-file-index',
     /** Note was created (externally or internally) */
     CREATED: 'notes:created',
     /** Note was updated */

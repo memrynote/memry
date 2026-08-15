@@ -1279,7 +1279,7 @@ describe('NotePage', () => {
   // ==========================================================================
 
   describe('large-file class', () => {
-    it('explains the refusal instead of mounting an empty editor', async () => {
+    it('opens the read-only viewer instead of mounting an empty editor', async () => {
       // #given a note the main process classified as large-file: no body was
       // delivered, so mounting the editor would show a blank document
       mocks.noteState.note = {
@@ -1293,11 +1293,11 @@ describe('NotePage', () => {
       // #when
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      // #then — the notice is what the user sees, quoting the file size against
-      // the byte ceiling...
-      const notice = await screen.findByTestId('large-file-notice')
-      expect(notice).toHaveTextContent('page.largeFile.reason.fileBytes')
-      expect(notice).toHaveTextContent('17.8 MB')
+      // #then — the read-only viewer is what the user sees, quoting the file
+      // size against the byte ceiling...
+      const viewer = await screen.findByTestId('large-file-viewer')
+      expect(viewer).toHaveTextContent('page.largeFile.reason.fileBytes')
+      expect(viewer).toHaveTextContent('17.8 MB')
       // ...and the editor never mounted, so there is no empty document to mistake
       // for data loss
       expect(mocks.contentAreaMounts).toBe(0)
@@ -1320,12 +1320,13 @@ describe('NotePage', () => {
       // #then — the reason has to name the block bound, or "too large" reads as
       // a lie for a file well under the byte ceiling. The test i18n renders keys
       // rather than English, so the key and its interpolation are the assertion.
-      const notice = await screen.findByTestId('large-file-notice')
-      expect(notice).toHaveTextContent('page.largeFile.reason.blockBytes')
-      expect(notice).not.toHaveTextContent('page.largeFile.reason.fileBytes')
+      const viewer = await screen.findByTestId('large-file-viewer')
+      expect(viewer).toHaveTextContent('page.largeFile.reason.blockBytes')
+      expect(viewer).not.toHaveTextContent('page.largeFile.reason.fileBytes')
       // the size quoted is the offending block, not the whole file
-      expect(notice).toHaveTextContent('869.1 KB')
-      expect(notice).toHaveTextContent('page.largeFile.badge')
+      expect(viewer).toHaveTextContent('869.1 KB')
+      // and the badge rides along, so a read-only file never looks editable
+      expect(viewer).toHaveTextContent('page.largeFile.badge')
     })
 
     it('still mounts the editor for an ordinary note', async () => {
@@ -1335,7 +1336,7 @@ describe('NotePage', () => {
 
       // #then
       expect(await screen.findByTestId('editor-content')).toBeInTheDocument()
-      expect(screen.queryByTestId('large-file-notice')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('large-file-viewer')).not.toBeInTheDocument()
       expect(mocks.contentAreaMounts).toBe(1)
     })
   })

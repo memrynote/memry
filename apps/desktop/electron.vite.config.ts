@@ -73,6 +73,10 @@ export default defineConfig({
           // utilityProcess child that exercises the classic-level native
           // binding before main loads it (see crdt-preflight.ts)
           'crdt-preflight-child': resolve(appRoot, 'src/main/sync/crdt-preflight-child.ts'),
+          // worker_threads child that builds a large file's line-offset index
+          // (see large-file-index-bridge.ts). Without this entry the bridge
+          // silently falls back to scanning in-process.
+          'large-file-index-worker': resolve(appRoot, 'src/main/vault/large-file-index-worker.ts'),
           'image-processing-worker': resolve(appRoot, 'src/main/image-processing/worker.ts'),
           'voice-transcription-worker': resolve(
             appRoot,

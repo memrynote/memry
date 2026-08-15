@@ -4,7 +4,13 @@ import type {
   SelectOption,
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
-import type { NoteSizeClass, NoteLargeFileInfo } from '../../contracts/src/notes-api.ts'
+import type {
+  NoteSizeClass,
+  NoteLargeFileInfo,
+  LargeFileOpenResult,
+  LargeFileLinesResult,
+  LargeFileIndexEvent
+} from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -379,6 +385,29 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.GET_FILE,
       params: ['id']
     }),
+    /**
+     * Open a large-file-class file read-only. Resolves as soon as the handle is
+     * open; the line-offset scan reports on `onLargeFileIndex`.
+     */
+    largeFileOpen: defineMethod<(noteId: string) => Promise<LargeFileOpenResult>>({
+      channel: NotesChannels.invoke.LARGE_FILE_OPEN,
+      params: ['noteId']
+    }),
+    /** `null` once the session is gone, so the caller reopens rather than errors. */
+    largeFileReadLines: defineMethod<
+      (input: {
+        sessionId: string
+        startLine: number
+        count: number
+      }) => Promise<LargeFileLinesResult | null>
+    >({
+      channel: NotesChannels.invoke.LARGE_FILE_READ_LINES,
+      params: ['input']
+    }),
+    largeFileClose: defineMethod<(sessionId: string) => Promise<void>>({
+      channel: NotesChannels.invoke.LARGE_FILE_CLOSE,
+      params: ['sessionId']
+    }),
     resolveByTitle: defineMethod<(title: string) => Promise<WikiLinkResolution | null>>({
       channel: NotesChannels.invoke.RESOLVE_BY_TITLE,
       params: ['title']
@@ -639,6 +668,7 @@ export const notesRpc = defineDomain({
     onNoteExternalChange: defineEvent<NoteExternalChangeEvent>(
       NotesChannels.events.EXTERNAL_CHANGE
     ),
+    onLargeFileIndex: defineEvent<LargeFileIndexEvent>(NotesChannels.events.LARGE_FILE_INDEX),
     onTagsChanged: defineEvent<void>('notes:tags-changed'),
     onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)
   }
