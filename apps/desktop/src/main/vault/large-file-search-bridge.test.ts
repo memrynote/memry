@@ -10,7 +10,17 @@ const mocks = vi.hoisted(() => ({
   /** null = constructing a Worker throws, standing in for a missing bundle. */
   spawn: null as ((path: string) => EventEmitter) | null,
   spawned: [] as Array<{ path: string; input: LargeFileWorkerInput }>,
-  terminated: 0
+  terminated: 0,
+  warned: [] as unknown[]
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: (_message: string, context?: unknown) => mocks.warned.push(context),
+    error: vi.fn()
+  })
 }))
 
 vi.mock('worker_threads', () => ({
@@ -62,6 +72,7 @@ describe('runFileSearch', () => {
     mocks.spawn = null
     mocks.spawned = []
     mocks.terminated = 0
+    mocks.warned = []
   })
 
   it('searches on a worker thread, not on the thread that draws the UI', async () => {
@@ -174,5 +185,31 @@ describe('runFileSearch', () => {
 
     // #then
     expect(found.total).toBe(1)
+  })
+
+  it('keeps a non-Error worker failure debuggable', async () => {
+    // #given a thread that fails with something that is not an Error — a bare
+    // value is what a thrown string looks like once it has crossed the boundary
+    const emitter = new EventEmitter()
+    mocks.spawn = () => {
+      queueMicrotask(() => emitter.emit('error', 'ENOMEM'))
+      return emitter
+    }
+
+    // #when — the search still answers, on the fallback, so the worker failure
+    // only ever exists in the log
+    const found = await withOpenVaultFile(
+      'alpha\nbeta\n',
+      (path, read) => runFileSearch(path, 'beta', read, () => {}).result
+    )
+
+    // #then — the find bar is unaffected...
+    expect(found.total).toBe(1)
+    // ...and what was logged carries a stack, which is the one thing anyone
+    // reading a worker failure out of a user's log actually needs
+    const logged = mocks.warned.at(-1) as { err?: unknown } | undefined
+    expect(logged?.err).toBeInstanceOf(Error)
+    expect((logged?.err as Error).message).toContain('ENOMEM')
+    expect((logged?.err as Error).cause).toBe('ENOMEM')
   })
 })

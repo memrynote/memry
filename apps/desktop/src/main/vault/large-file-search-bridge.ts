@@ -20,6 +20,7 @@
 import { Worker } from 'worker_threads'
 import { join } from 'path'
 import { createLogger } from '../lib/logger'
+import { asError } from './large-file-index-bridge'
 import type { ByteReader } from './large-file-index'
 import { findMatches, MAX_SEARCH_HITS, type FindMatchesResult } from './large-file-search'
 import {
@@ -118,7 +119,10 @@ function searchOnWorker(
       if (message.type === 'error') finish(() => reject(new Error(message.message)))
     })
 
-    worker.on('error', (err) => finish(() => reject(err)))
+    // Same wrapping as the line-index bridge, for the same reason: the
+    // in-process fallback below keeps the find bar working, so this log line is
+    // the only trace that the worker was abandoned at all.
+    worker.on('error', (err: unknown) => finish(() => reject(asError(err))))
     worker.on('exit', (code) => {
       finish(() => reject(new Error(`Large-file worker exited with code ${code}`)))
     })

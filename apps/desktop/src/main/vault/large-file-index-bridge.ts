@@ -50,10 +50,13 @@ export async function buildLineIndex(
  * stack, which is the one thing anyone reading a worker failure out of a user's
  * log actually needs — so a non-Error is wrapped, keeping the original as
  * `cause` rather than flattening it into a string.
+ *
+ * Exported because the search bridge spawns the same worker entry and its
+ * failures reach the log the same way, through a fallback that hides them.
  */
-function asError(value: unknown): Error {
+export function asError(value: unknown): Error {
   if (value instanceof Error) return value
-  return new Error(`Line-index worker failed: ${String(value)}`, { cause: value })
+  return new Error(`Large-file worker failed: ${String(value)}`, { cause: value })
 }
 
 function scanOnWorker(
