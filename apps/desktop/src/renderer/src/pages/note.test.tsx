@@ -311,7 +311,7 @@ vi.mock('@/components/note', () => ({
     ) => void
     onLinkClick: (href: string) => void
     onInternalLinkClick: (target: string) => void
-    onInlineTagsChange: (tags: string[]) => void
+    onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
   }) => {
     const [content] = useState(initialContent)
@@ -357,10 +357,14 @@ vi.mock('@/components/note', () => ({
         <button type="button" onClick={() => onInternalLinkClick('Missing.png')}>
           Internal missing file
         </button>
-        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'])}>
+        {/* What opening the note reports: the tags the body already carried. */}
+        <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
+          Load inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'], 'edit')}>
           Sync inline tags
         </button>
-        <button type="button" onClick={() => onInlineTagsChange([])}>
+        <button type="button" onClick={() => onInlineTagsChange([], 'edit')}>
           Clear inline tags
         </button>
       </div>
@@ -795,6 +799,39 @@ describe('NotePage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
+  })
+
+  it('does not write the note when opening it reports its inline tags', async () => {
+    // #given a note opened with `#work` in its body (#1454)
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+
+    // #when the editor reports the tag set it loaded with
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // #then nothing is persisted — opening a note may not modify it
+    const tagWrites = mocks.updateNote.mock.calls.filter(
+      ([input]) => (input as { tags?: string[] }).tags !== undefined
+    )
+    expect(tagWrites).toEqual([])
+  })
+
+  it('still removes a tag when the user deletes the last inline tag after opening', async () => {
+    // #given a note opened with `#work` in its body, so the baseline is set by
+    // the load report rather than by a write
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+
+    // #when the user deletes it
+    fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+
+    // #then the tag comes off the note. Without the load baseline the page
+    // would have no record of `work` ever being inline and would drop this.
     await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
   })
 

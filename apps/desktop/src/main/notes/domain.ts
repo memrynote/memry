@@ -9,6 +9,7 @@ import {
   type NoteCreateInput,
   type NoteUpdateInput
 } from '../vault/notes'
+import { extractTags } from '../vault/frontmatter'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import {
   syncNoteCreate,
@@ -20,7 +21,10 @@ import {
 
 export async function createNoteCommand(input: NoteCreateInput): Promise<Note> {
   const note = await createNote(input)
-  syncNoteCreate(note.id, note.title, note.tags)
+  // Frontmatter tags only. `note.tags` merges the body's `#hashtag`s in for the
+  // index, and the CRDT tag array they would land in is what write-back writes
+  // back into the file's `tags:` block (#1454).
+  syncNoteCreate(note.id, note.title, extractTags(note.frontmatter))
   return note
 }
 
