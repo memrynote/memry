@@ -22,7 +22,12 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { classifyMarkdownContent, largestBlockByteLength } from '@memry/shared/markdown-class'
+import {
+  NOTE_MAX_BLOCK_BYTES,
+  NOTE_MAX_BYTES,
+  classifyMarkdownContent,
+  largestBlockByteLength
+} from '@memry/shared/markdown-class'
 import { markdownToBlocks } from './blocknote-converter'
 
 const ENABLED = process.env.MEMRY_PARSE_BUDGET === '1'
@@ -352,13 +357,17 @@ describe.skipIf(!ENABLED)('markdown parse budget (#1463)', () => {
       shapes.push(await timeParse('structured doc (2 MB)', structured(2 * MB), 1))
       shapes.push(await timeParse('obsidian vault note (2 MB)', obsidianVault(2 * MB), 1))
 
-      // -- Worst case admitted by a candidate pair of thresholds -------------
+      // -- Worst case the shipped bounds admit -------------------------------
+      // A file sitting on both bounds at once: NOTE_MAX_BYTES of content made
+      // entirely of NOTE_MAX_BLOCK_BYTES blocks. Sized one block short so the
+      // separators do not push it over the byte ceiling and change its class.
+      const worstBlocks = Math.floor(NOTE_MAX_BYTES / NOTE_MAX_BLOCK_BYTES) - 1
       const worst: Sample[] = []
       for (const { name, shape } of shapeSweeps) {
         worst.push(
           await timeParse(
-            `${name}: 2 MB as 16 x 128 KB blocks (current bounds)`,
-            blocksOf(shape, 2 * MB, 128 * KB),
+            `${name}: ${worstBlocks} x ${NOTE_MAX_BLOCK_BYTES / KB} KB blocks`,
+            blocksOf(shape, worstBlocks * NOTE_MAX_BLOCK_BYTES, NOTE_MAX_BLOCK_BYTES),
             1
           )
         )
@@ -393,17 +402,22 @@ describe.skipIf(!ENABLED)('markdown parse budget (#1463)', () => {
       for (const s of shapes) write(row(s))
 
       write('')
-      write('## Worst case admitted by the shipped 2 MB / 128 KB bounds')
+      write('## Worst case the shipped bounds admit (both bounds at once)')
       write(HEADER)
       for (const s of worst) write(row(s))
 
       write('')
-      write('## Predicted worst-case cost of candidate bounds (worst shape)')
+      write('## Additive LOWER BOUND for candidate bounds (worst shape)')
+      write('')
+      write('Read this as a floor, not an estimate. It assumes a file of N blocks')
+      write('costs N x one block, which the additivity table above disproves for')
+      write('tables (5x) and outlines (1.8x). Compare it against the measured')
+      write('worst-case row, not instead of it.')
       const worstShape = blockSweeps.reduce((acc, s) =>
         s.k * 128 ** s.p > acc.k * 128 ** acc.p ? s : acc
       )
       write(`worst shape by fit at 128 KB: ${worstShape.name}`)
-      write('| maxFileBytes | maxBlockBytes | blocks | predicted ms |')
+      write('| maxFileBytes | maxBlockBytes | blocks | lower-bound ms |')
       write('| --- | --- | --- | --- |')
       for (const fileMB of [1, 2, 4]) {
         for (const blockKB of [8, 16, 32, 64, 128]) {

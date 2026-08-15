@@ -184,8 +184,11 @@ worse than saying so.
 - **Cost per byte varies ~30x by shape** — 450 ms/MB for prose against
   ~13 600 ms/MB for a table-dense 512 KB document.
 - **Tables and dense punctuation are superlinear in file size, not block size.**
-  A 1 MB file of 8 × 128 KB tables sits inside both bounds and still costs
-  minutes. This is the residual, and it is real.
+  2 MB tiled as 16 × 128 KB tables measured **578 903 ms** — nine and a half
+  minutes — and the same tiling in minified JSON measured 120 126 ms. Halve the
+  file and it is still minutes. Both sit on the block bound, not over it, so
+  only the byte ceiling excludes them, and only at 1 MB rather than 2 MB. This
+  is the residual, and it is real.
 
 Neither bound can close that. It needs a different mechanism — a time-boxed
 parse that aborts into large-file class, or the parse moved off the main
