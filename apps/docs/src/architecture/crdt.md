@@ -355,6 +355,28 @@ not from any sweep — measuring it against the startup or interval sweep made t
 reconnect after app start wait out the whole floor, which left the device showing a stale
 body for that window.
 
+### When the server goes away but the network does not
+
+An unreachable **server** is not an offline **device**. `NetworkMonitor` reads OS-level
+connectivity, so a server that stops answering fires no `status-changed` event: the CRDT
+update queue is never paused, no full sync is scheduled when the server returns, and the
+durable pending-note replay — which only runs on a network transition — never fires
+either. Everything that heals a body edit across that kind of outage therefore rides on
+the two routes above, the `crdt_updated` broadcast and the reconnect catch-up, and both
+of them need the WebSocket back.
+
+Two things have to hold for that to work, and both are load-bearing:
+
+- **The socket must keep trying.** Every exit from `connect()` re-arms the retry,
+  including the one where the access token read comes back empty. That case is not
+  hypothetical during an outage: `/auth/refresh` lives on the same unreachable server, so
+  roughly fourteen minutes in, the access token passes its pre-expiry margin and cannot be
+  renewed. An exit that did not re-arm left the device with no socket for the rest of the
+  session, and with it no broadcast and no reconnect catch-up.
+- **The outbound backlog must survive.** The push function rejects rather than returns
+  when credentials are momentarily unavailable, so the queue re-buffers the batch instead
+  of losing it — see [Memory bounds while paused](#memory-bounds-while-paused).
+
 ### Pacing the sweep
 
 Deciding _whether_ to sweep is not enough, because a sweep that runs fires against every
@@ -496,6 +518,10 @@ While the queue is paused (offline, expired token, storage quota) nothing drains
 - **Across all notes** — the queue also caps its total buffered bytes, because the map keeps one live buffer per note touched since the pause. Crossing the ceiling first flushes whatever the server will take and merges every buffer, and only if that is not enough does it release the oldest notes' payloads.
 
 A release is never a drop. The note ids go to the durable pending-note store (`crdt-pending-notes.json`) **before** their payloads are freed, and `drainPendingCrdtNotes` pushes each note's full doc state — which supersedes the buffered updates — on the next reconnect or app start. If no durable store is wired up, or recording fails, the queue keeps the memory instead of releasing it.
+
+### A failed push keeps its batch
+
+`flushNote` takes a note's updates out of its buffer before it calls the push function, so only a **rejected** push puts them back. The push function therefore has to reject, not return, whenever it cannot send — including when the access token, vault key or device signing key is momentarily unavailable. That is never the signed-out steady state (the sync runtime does not wire the queue up at all without a session, a paid plan and a verified vault key), so a missing credential there is one that went away mid-session and will come back. The only exception is a non-retryable 4xx that is neither 429 nor 401, which the queue discards on purpose.
 
 ## BlockNote Compatibility
 
