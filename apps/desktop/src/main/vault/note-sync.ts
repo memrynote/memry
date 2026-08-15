@@ -27,6 +27,7 @@ import {
   saveCanonicalPropertyDefinition
 } from '@memry/domain-notes'
 import {
+  getNoteMetadataByPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
   updateNoteMetadata
 } from '@memry/storage-data'
@@ -60,6 +61,22 @@ function syncCanonicalMetadata(
       saveCanonicalPropertyDefinition(dataDb, { name, type: type })
     }
   }
+}
+
+/**
+ * The identity the vault already holds for `path`, if it holds one.
+ *
+ * `note_metadata.path` is unique, so a second row for the same path is not a
+ * duplicate to be resolved later — it is an INSERT that throws. An ingest that
+ * finds a path already claimed has to adopt that row's id rather than mint a
+ * fresh one: the id is what the note's CRDT doc, sync item and open tabs are
+ * keyed by, so renumbering it orphans all three.
+ */
+export function findCanonicalNoteByPath(path: string): { id: string; createdAt: string } | null {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return null
+  const existing = getNoteMetadataByPath(dataDb, path)
+  return existing ? { id: existing.id, createdAt: existing.createdAt } : null
 }
 
 function removeCanonicalMetadata(noteId: string): void {

@@ -84,6 +84,11 @@ vi.mock('./index', () => ({
   getConfig: vi.fn(() => baseConfig)
 }))
 
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: vi.fn(),
+  trackMainLog: vi.fn()
+}))
+
 import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
 import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { syncNoteCreate } from '../notes/runtime-effects'
@@ -92,6 +97,7 @@ import { getConfig } from './index'
 import { safeRead } from './file-ops'
 import { scanMarkdownFile } from './file-scan'
 import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
+import { trackMainError } from '../telemetry/diagnostics'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 
 describe('vault watcher', () => {
@@ -1009,5 +1015,111 @@ describe('vault watcher', () => {
       .get()
     expect(canonicalAfter?.path).toBe('notes/measured-renamed.md')
     expect(canonicalAfter?.propertyDefinitionNames).toEqual(['id', 'status', 'title'])
+  })
+
+  it('lists a path the vault already knows under the id it already has', async () => {
+    // #given a note whose canonical row exists but whose index-cache row does
+    // not. The index DB is derived — it is rebuilt, and the projector that
+    // fills it runs behind the canonical write — so this is the ordinary state
+    // of a path that is added a second time: overwritten from Finder, restored
+    // from a backup, or re-pasted.
+    const notePath = createTestNote(vault, { title: 'known', content: 'Body' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const reportedErrors: Error[] = []
+    watcher.onError = (error: Error) => reportedErrors.push(error)
+
+    await watcher.handleFileAdd(notePath)
+    const originalId = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.path, 'notes/known.md'))
+      .get()!.id
+
+    indexDb.db.delete(noteCache).where(eq(noteCache.path, 'notes/known.md')).run()
+    window.webContents.send.mockClear()
+
+    // #when the same path is added again
+    await watcher.handleFileAdd(notePath)
+
+    // #then the sidebar gets its row back, under the id the vault already had.
+    // A fresh id here is an INSERT against a unique `path`, which throws and
+    // costs the user the row entirely; renumbering the note would orphan the
+    // CRDT doc and sync item keyed by the old id.
+    expect(reportedErrors).toEqual([])
+    expect(
+      dataDb.db
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.path, 'notes/known.md'))
+        .all()
+        .map((row) => row.id)
+    ).toEqual([originalId])
+    expect(
+      indexDb.db.select().from(noteCache).where(eq(noteCache.path, 'notes/known.md')).get()?.id
+    ).toBe(originalId)
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      NotesChannels.events.CREATED,
+      expect.objectContaining({ note: expect.objectContaining({ id: originalId }) })
+    )
+  })
+
+  it('keeps the bookkeeping a re-add cannot have changed', async () => {
+    // #given a measured note carrying a property, whose index-cache row is gone
+    const notePath = createTestNote(vault, {
+      title: 'kept',
+      content: 'One two three four',
+      properties: { status: 'open' }
+    })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
+
+    const before = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.path, 'notes/kept.md'))
+      .get()!
+    expect(before.propertyDefinitionNames).toEqual(['id', 'status', 'title'])
+
+    indexDb.db.delete(noteCache).where(eq(noteCache.path, 'notes/kept.md')).run()
+
+    // #when the path is added again
+    await watcher.handleFileAdd(notePath)
+
+    // #then the canonical row keeps what a `stat` cannot reconstruct — the
+    // property names are how the note's properties reach other devices
+    const after = dataDb.db.select().from(noteMetadata).where(eq(noteMetadata.id, before.id)).get()!
+    expect(after.propertyDefinitionNames).toEqual(['id', 'status', 'title'])
+    expect(after.createdAt).toBe(before.createdAt)
+    expect(
+      indexDb.db.select().from(noteCache).where(eq(noteCache.path, 'notes/kept.md')).get()?.id
+    ).toBe(before.id)
+  })
+
+  it('reports an add that fails instead of dropping the row in silence', async () => {
+    // #given an add that cannot finish — the canonical write throws
+    const notePath = createTestNote(vault, { title: 'broken', content: 'Body' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const reportedErrors: Error[] = []
+    watcher.onError = (error: Error) => reportedErrors.push(error)
+
+    const failing = new Error('index database unavailable')
+    vi.mocked(getIndexDatabase).mockImplementationOnce(() => {
+      throw failing
+    })
+
+    // #when
+    await watcher.handleFileAdd(notePath)
+
+    // #then the user loses a sidebar row, so the failure has to be countable
+    // rather than swallowed by a promise nobody awaits
+    expect(reportedErrors).toEqual([failing])
+    expect(trackMainError).toHaveBeenCalledWith('vault', 'file_add', failing)
   })
 })

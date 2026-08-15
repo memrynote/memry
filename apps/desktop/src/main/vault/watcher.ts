@@ -28,7 +28,8 @@ import {
   syncNoteToCache,
   syncNoteStatToCache,
   syncFileToCache,
-  deleteNoteFromCache
+  deleteNoteFromCache,
+  findCanonicalNoteByPath
 } from './note-sync'
 import {
   getNoteCacheByPath,
@@ -331,13 +332,30 @@ export class VaultWatcher {
         return
       }
 
+      // The index cache is derived: it is rebuilt, and the projector that fills
+      // it runs behind the canonical write, so "no cache row" does not mean
+      // "the vault has never seen this path". The canonical row is the one with
+      // a unique path, and if it is already there this add has to adopt its id.
+      const claimed = findCanonicalNoteByPath(relativePath)
+
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileAdd(absolutePath, relativePath, db)
+        await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
       } else {
-        await this.handleNonMarkdownFileAdd(absolutePath, relativePath, fileType, db)
+        await this.handleNonMarkdownFileAdd(
+          absolutePath,
+          relativePath,
+          fileType,
+          db,
+          claimed?.id ?? null
+        )
       }
-    } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error(String(error)))
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      // A thrown add costs the user a sidebar row and says nothing on screen,
+      // so it has to be countable rather than left to a promise nobody awaits.
+      logger.error('Failed to add file', { path: absolutePath, error })
+      trackMainError('vault', 'file_add', error)
+      this.onError?.(error)
     }
   }
 
@@ -353,7 +371,8 @@ export class VaultWatcher {
   private async handleMarkdownFileAdd(
     absolutePath: string,
     relativePath: string,
-    db: ReturnType<typeof getIndexDatabase>
+    db: ReturnType<typeof getIndexDatabase>,
+    claimed: { id: string; createdAt: string } | null
   ): Promise<void> {
     const stats = await fs.stat(absolutePath).catch(() => null)
     if (!stats) {
@@ -366,11 +385,14 @@ export class VaultWatcher {
       return
     }
 
-    // Genuinely new external file: fresh internal id, fs-stat dates.
+    // Genuinely new external file: fresh internal id, fs-stat dates. A path the
+    // vault already has a canonical row for keeps that row's id and created
+    // date, and updates rather than inserts — a stat-only full save would erase
+    // bookkeeping a `stat` cannot reconstruct.
     // No watcher path writes files.
-    const noteId = generateNoteId()
+    const noteId = claimed?.id ?? generateNoteId()
     const title = extractTitleFromPath(relativePath)
-    const createdAt = stats.birthtime.toISOString()
+    const createdAt = claimed?.createdAt ?? stats.birthtime.toISOString()
     const modifiedAt = stats.mtime.toISOString()
 
     syncNoteStatToCache(
@@ -383,7 +405,7 @@ export class VaultWatcher {
         modifiedAt,
         fileSize: stats.size
       },
-      { isNew: true }
+      { isNew: claimed === null }
     )
     void flushProjectionEvents()
 
@@ -489,13 +511,14 @@ export class VaultWatcher {
     absolutePath: string,
     relativePath: string,
     fileType: 'pdf' | 'image' | 'audio' | 'video',
-    db: ReturnType<typeof getIndexDatabase>
+    db: ReturnType<typeof getIndexDatabase>,
+    claimedId: string | null
   ): Promise<void> {
     // Get file stats for metadata
     const stats = await fs.stat(absolutePath)
 
-    // Generate a new ID for this file
-    const id = generateNoteId()
+    // Generate a new ID for this file, unless the path already has one
+    const id = claimedId ?? generateNoteId()
 
     // Get MIME type
     const ext = getExtension(absolutePath)
