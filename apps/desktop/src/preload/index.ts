@@ -28,7 +28,8 @@ import {
   syncAttachments,
   syncCrdt,
   onCrdtStateChanged,
-  onCrdtProviderReset
+  onCrdtProviderReset,
+  onCrdtProviderReady
 } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
@@ -121,6 +122,7 @@ export const api = {
 
   onCrdtStateChanged,
   onCrdtProviderReset,
+  onCrdtProviderReady,
   ...syncEvents,
   ...updaterEvents,
   ...importEvents,

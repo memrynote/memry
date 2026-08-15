@@ -103,6 +103,14 @@ const dispatchCrdtStateChanged = (data: CrdtStateChangedPayload): void => {
 export const onCrdtProviderReset = (callback: () => void): (() => void) =>
   subscribe<void>(SYNC_EVENTS.PROVIDER_RESET, callback)
 
+/**
+ * A provider in main finished initializing and will serve crdt:open-doc again.
+ * Also note-less, and for the same reason: one provider serves every open doc,
+ * so each stranded provider hears it and re-opens its own note.
+ */
+export const onCrdtProviderReady = (callback: () => void): (() => void) =>
+  subscribe<void>(SYNC_EVENTS.PROVIDER_READY, callback)
+
 export const onCrdtStateChanged = (
   noteId: string,
   callback: CrdtStateChangedCallback

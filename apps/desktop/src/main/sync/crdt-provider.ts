@@ -135,6 +135,17 @@ export class CrdtProvider {
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(storagePath)
     this.persistenceReady = true
+
+    // The readiness signal a stranded editor waits on, announced from the exact
+    // assignment that makes crdt:open-doc stop rejecting — the IPC handler gates
+    // on isInitialized(), which is this flag. Announcing anywhere earlier would
+    // be optimistic: the store's preflight/probe is what the await above pays
+    // for, and a window that re-opened before it settled would be rejected all
+    // over again. Whatever else main attaches to a fresh provider (init()'s
+    // update queue and snapshot push) lands in the same microtask as this
+    // resolve, so a renderer's IPC round-trip can never beat it.
+    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY)
+    log.info('CRDT provider ready, asked stranded editors to rebind')
   }
 
   isInitialized(): boolean {
@@ -1064,9 +1075,15 @@ export function resetCrdtProvider(): void {
   // nothing else tells them it is gone: the next remote update is applied to a
   // doc in the fresh instance and broadcast to a window set that no longer
   // contains the editor, so the note silently goes stale until it is closed and
-  // reopened. Ask every window to re-open its notes and redo the handshake.
+  // reopened. Tell every window its binding is dead.
+  //
+  // Dead, not retryable-now. This runs mid-teardown — sign-out calls it with the
+  // old provider destroyed and no replacement initialized — so a window that
+  // answered by re-opening got 'CRDT provider not initialized' every single
+  // time. The re-open is driven by PROVIDER_READY instead, emitted when a
+  // provider can actually serve it.
   broadcastToAllWindows(CRDT_EVENTS.PROVIDER_RESET)
-  log.info('CRDT provider reset, asked windows to rebind their editors', {
+  log.info('CRDT provider reset, marked window editors stale', {
     strandedEditorDocs: previous.strandedEditorDocCount
   })
 }

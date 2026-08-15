@@ -1058,6 +1058,45 @@ describe('CrdtProvider', () => {
     // fresh instance and broadcasts them to a window set the editor is not in.
     const rebinds = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_RESET)
     expect(rebinds.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+
+    // #and the reset must NOT read as "you may re-open now". At this instant the
+    // old provider is destroyed and no replacement is initialized, so every
+    // OPEN_DOC is rejected — a window that treated the reset as its cue to
+    // re-open failed on every attempt and stayed unbound for good.
+    expect(mocks.sent.some((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)).toBe(false)
+    expect(getCrdtProvider().isInitialized()).toBe(false)
+  })
+
+  it('announces readiness only once persistence is up and open-doc will succeed', async () => {
+    // #given the windows holding stranded editors after a reset
+    createWindow(1)
+    createWindow(2)
+    resetCrdtProvider()
+    mocks.sent = []
+
+    // #when a provider is brought up — bootstrap, or the sync runtime's init()
+    // after a vault open / sign-in
+    const replacement = getCrdtProvider()
+    const initializedWhenAnnounced: boolean[] = []
+    for (const [windowId, win] of mocks.windows) {
+      win.webContents.send.mockImplementation((channel: string, payload: unknown) => {
+        if (channel === CRDT_EVENTS.PROVIDER_READY) {
+          initializedWhenAnnounced.push(replacement.isInitialized())
+        }
+        mocks.sent.push({ windowId, channel, payload })
+      })
+    }
+    await replacement.initPersistence()
+
+    // #then every window hears it, not just the one holding a note — one
+    // provider serves every open doc, so one announcement releases them all.
+    const readies = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)
+    expect(readies.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+
+    // #and it is announced from the exact assignment OPEN_DOC gates on:
+    // announcing any earlier sends the stranded editors straight back into the
+    // 'CRDT provider not initialized' rejection this whole signal exists to end.
+    expect(initializedWhenAnnounced).toEqual([true, true])
   })
 
   it('still reports the editors it stranded after destroy has emptied the doc map', async () => {

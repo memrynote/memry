@@ -47,6 +47,40 @@ function broadcastProviderReset(): void {
   for (const callback of [...resetSubscribers]) callback()
 }
 
+/**
+ * The counterpart signal: a provider in main finished initializing and will
+ * serve `crdt:open-doc` again. Also note-less — one provider serves every doc.
+ */
+const readySubscribers = new Set<() => void>()
+const mockOnCrdtProviderReady = vi.fn((callback: () => void) => {
+  readySubscribers.add(callback)
+  return () => readySubscribers.delete(callback)
+})
+
+function broadcastProviderReady(): void {
+  for (const callback of [...readySubscribers]) callback()
+}
+
+/**
+ * What main actually returns while the provider that owned this doc is being
+ * torn down and no replacement has been initialized — `crdt-handlers.ts` gates
+ * OPEN_DOC on `provider.isInitialized()`. Every rebind attempt made from the
+ * reset event itself got this, on every device, every time.
+ */
+const TEARDOWN_OPEN_DOC_RESULT = {
+  success: false,
+  error: 'CRDT provider not initialized'
+} as const
+
+/**
+ * Drain the promise chain a rebind runs on. Deterministic and fake-timer safe,
+ * which `vi.waitFor` is not — and these tests assert on `vi.getTimerCount()`,
+ * so a helper that itself schedules timers would be measuring itself.
+ */
+async function flushMicrotasks(cycles = 25): Promise<void> {
+  for (let i = 0; i < cycles; i += 1) await Promise.resolve()
+}
+
 beforeEach(() => {
   mockOpenDoc.mockResolvedValue({ success: true })
   mockCloseDoc.mockResolvedValue({ success: true })
@@ -62,7 +96,8 @@ beforeEach(() => {
         syncStep2: mockSyncStep2
       },
       onCrdtStateChanged: mockOnCrdtStateChanged,
-      onCrdtProviderReset: mockOnCrdtProviderReset
+      onCrdtProviderReset: mockOnCrdtProviderReset,
+      onCrdtProviderReady: mockOnCrdtProviderReady
     }
   }
 })
@@ -71,6 +106,7 @@ afterEach(() => {
   vi.clearAllMocks()
   noteSubscribers.clear()
   resetSubscribers.clear()
+  readySubscribers.clear()
 })
 
 vi.mock('@/lib/logger', () => ({
@@ -262,17 +298,56 @@ describe('YjsIpcProvider note-scoped subscription', () => {
 })
 
 describe('YjsIpcProvider provider reset', () => {
-  it('re-opens the note and redoes the handshake, carrying edits made while unbound', async () => {
-    // #given a connected editor, then main drops the provider that owned its doc
-    // (sign-out) while the editor stays mounted and the user keeps typing
+  it('does not re-open into the provider that is being torn down', async () => {
+    // #given a connected editor, and main mid-teardown: the provider that owned
+    // this doc is destroyed and no replacement is initialized, so OPEN_DOC is
+    // rejected outright
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+    await provider.connect()
+    mockOpenDoc.mockClear()
+    mockSyncStep1.mockClear()
+    mockOpenDoc.mockResolvedValue(TEARDOWN_OPEN_DOC_RESULT)
+
+    // #when the reset lands — which is exactly when teardown broadcasts it
+    broadcastProviderReset()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // #then no doomed IPC. Answering the reset by re-opening failed 100% of the
+    // time in the real app: `rebind()` caught, logged and dropped, so the editor
+    // stayed unbound forever and a remote edit only appeared after a close and
+    // reopen. The reset only records the death.
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+    expect(mockSyncStep1).not.toHaveBeenCalled()
+
+    // #and the binding must stop claiming to be live, while the doc stays
+    // editable — those edits exist only in this window.
+    expect(provider.isSynced).toBe(false)
+    expect(doc.isDestroyed).toBe(false)
+    doc.getMap('meta').set('title', 'Still typeable')
+    expect(doc.getMap('meta').get('title')).toBe('Still typeable')
+
+    provider.destroy()
+    doc.destroy()
+  })
+
+  it('rebinds when a provider becomes ready, carrying edits made while unbound', async () => {
+    // #given the full real sequence: connected editor → reset during teardown →
+    // the user keeps typing → a provider in main finishes initializing
     const doc = new Y.Doc()
     const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
     await provider.connect()
 
-    doc.getMap('meta').set('title', 'Typed while signed out')
+    mockOpenDoc.mockResolvedValue(TEARDOWN_OPEN_DOC_RESULT)
+    broadcastProviderReset()
+    await Promise.resolve()
+
+    doc.getMap('meta').set('title', 'Typed while unbound')
     mockOpenDoc.mockClear()
     mockSyncStep1.mockClear()
     mockSyncStep2.mockClear()
+    mockOpenDoc.mockResolvedValue({ success: true })
 
     const rebuiltDoc = new Y.Doc()
     mockSyncStep1.mockResolvedValueOnce({
@@ -281,7 +356,7 @@ describe('YjsIpcProvider provider reset', () => {
     })
 
     // #when
-    broadcastProviderReset()
+    broadcastProviderReady()
     await vi.waitFor(() => expect(mockSyncStep2).toHaveBeenCalled())
 
     // #then re-opening is what re-attributes this window to the fresh doc; without
@@ -297,12 +372,123 @@ describe('YjsIpcProvider provider reset', () => {
       noteId: 'note-42',
       diff: expect.any(Uint8Array)
     })
-    expect(doc.getMap('meta').get('title')).toBe('Typed while signed out')
+    expect(doc.getMap('meta').get('title')).toBe('Typed while unbound')
     expect(provider.isSynced).toBe(true)
 
     provider.destroy()
     doc.destroy()
     rebuiltDoc.destroy()
+  })
+
+  it('retries a failed rebind on the next ready rather than on a timer', async () => {
+    vi.useFakeTimers()
+    try {
+      const doc = new Y.Doc()
+      const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+      await provider.connect()
+
+      mockOpenDoc.mockResolvedValue(TEARDOWN_OPEN_DOC_RESULT)
+      broadcastProviderReset()
+      await Promise.resolve()
+
+      // #when a provider comes up but this note cannot be served yet (the vault
+      // index has not caught up, so validateNoteForCrdt fails)
+      mockOpenDoc.mockClear()
+      mockOpenDoc.mockResolvedValue({ success: false, error: 'Note not found: note-42' })
+      broadcastProviderReady()
+      await flushMicrotasks()
+
+      // #then the binding is still stale and nothing is scheduled — a blind
+      // retry loop is not the mechanism, and must not be left running
+      expect(mockOpenDoc).toHaveBeenCalledTimes(1)
+      expect(provider.isSynced).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+
+      // #when the next provider comes up
+      mockOpenDoc.mockClear()
+      mockOpenDoc.mockResolvedValue({ success: true })
+      broadcastProviderReady()
+      await flushMicrotasks()
+
+      // #then the retry rode the real signal, not a poll
+      expect(provider.isSynced).toBe(true)
+      expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
+      expect(vi.getTimerCount()).toBe(0)
+
+      provider.destroy()
+      doc.destroy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('rebinds once for two resets in a row and does not re-handshake a live binding', async () => {
+    // #given sign-out resets the provider twice (stopSyncRuntime, then again
+    // after wipeStorage), and the sync runtime that follows can announce more
+    // than one ready
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+    await provider.connect()
+
+    mockOpenDoc.mockResolvedValue(TEARDOWN_OPEN_DOC_RESULT)
+    broadcastProviderReset()
+    broadcastProviderReset()
+    await Promise.resolve()
+
+    mockOpenDoc.mockClear()
+    mockOpenDoc.mockResolvedValue({ success: true })
+
+    // #when
+    broadcastProviderReady()
+    broadcastProviderReady()
+    await vi.waitFor(() => expect(provider.isSynced).toBe(true))
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // #then exactly one re-open. A second handshake against a binding that is
+    // already live is not free — it round-trips the whole doc — and two of them
+    // interleaved would race each other's state vectors.
+    expect(mockOpenDoc).toHaveBeenCalledTimes(1)
+    // #and one subscription each, however many resets went by
+    expect(resetSubscribers.size).toBe(1)
+    expect(readySubscribers.size).toBe(1)
+
+    provider.destroy()
+    doc.destroy()
+  })
+
+  it('leaves nothing behind when a reset is never followed by a ready', async () => {
+    // #given the signed-out steady state: main resets the provider and never
+    // brings one up again, because collaboration is off without a session
+    vi.useFakeTimers()
+    try {
+      const doc = new Y.Doc()
+      const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+      await provider.connect()
+
+      mockOpenDoc.mockClear()
+      mockOpenDoc.mockResolvedValue(TEARDOWN_OPEN_DOC_RESULT)
+      for (let i = 0; i < 5; i += 1) broadcastProviderReset()
+      await flushMicrotasks()
+
+      // #then no IPC, no pending work, no stacked listeners
+      expect(mockOpenDoc).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+      expect(resetSubscribers.size).toBe(1)
+      expect(readySubscribers.size).toBe(1)
+
+      // #when the editor is finally unmounted
+      provider.destroy()
+
+      // #then both subscriptions are released — a provider that outlived its
+      // window would rebind a note nothing is looking at and re-pin the doc.
+      expect(resetSubscribers.size).toBe(0)
+      expect(readySubscribers.size).toBe(0)
+
+      doc.destroy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('stops rebinding once destroyed so a closed note cannot reopen itself', async () => {
@@ -313,11 +499,14 @@ describe('YjsIpcProvider provider reset', () => {
     mockOpenDoc.mockClear()
 
     broadcastProviderReset()
+    broadcastProviderReady()
+    await Promise.resolve()
     await Promise.resolve()
 
-    // #then a destroyed provider has released its subscription, so a reset must
-    // not resurrect the note in main and pin a doc nothing is looking at.
+    // #then a destroyed provider has released both subscriptions, so neither
+    // signal must resurrect the note in main and pin a doc nothing is looking at.
     expect(resetSubscribers.size).toBe(0)
+    expect(readySubscribers.size).toBe(0)
     expect(mockOpenDoc).not.toHaveBeenCalled()
 
     doc.destroy()

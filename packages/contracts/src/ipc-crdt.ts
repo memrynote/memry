@@ -15,10 +15,23 @@ export const CRDT_EVENTS = {
   /**
    * Main dropped the provider that owned every open Y.Doc, so each renderer
    * provider is now bound to a doc nothing serves. Sent on sign-out and any
-   * other provider reset; a renderer holding an editor open must re-open its
-   * note and redo the sync handshake, or it goes stale with no further signal.
+   * other provider reset; a renderer holding an editor open must mark its
+   * binding stale, or it goes on believing it is connected with no further
+   * signal.
+   *
+   * This is NOT the moment to re-open. The reset fires while the old provider
+   * is being torn down and no replacement has been initialized, so `crdt:open-doc`
+   * is rejected outright — wait for PROVIDER_READY.
    */
-  PROVIDER_RESET: 'crdt:provider-reset'
+  PROVIDER_RESET: 'crdt:provider-reset',
+  /**
+   * A CRDT provider in main finished initializing its persistence and will now
+   * serve `crdt:open-doc`. Emitted once per usable provider — at app bootstrap
+   * and again each time one is brought up after a reset (post-sign-in / vault
+   * open, via the sync runtime). A renderer whose binding was marked stale
+   * re-opens its note and redoes the sync handshake here.
+   */
+  PROVIDER_READY: 'crdt:provider-ready'
 } as const
 
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const

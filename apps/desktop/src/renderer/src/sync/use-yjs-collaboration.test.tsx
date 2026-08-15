@@ -22,8 +22,9 @@ beforeEach(() => {
       syncStep2: mockSyncStep2
     },
     onCrdtStateChanged: mockOnCrdtStateChanged,
-    // Every provider subscribes to the rebind event on connect.
-    onCrdtProviderReset: () => () => {}
+    // Every provider subscribes to both rebind signals on connect.
+    onCrdtProviderReset: () => () => {},
+    onCrdtProviderReady: () => () => {}
   }
 })
 

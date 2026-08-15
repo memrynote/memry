@@ -139,19 +139,40 @@ broadcasts them to a window set the editor is no longer in. Nothing about that i
 to the user, so the note silently shows stale content until it is closed and reopened or
 the app restarts.
 
-The reset therefore broadcasts `crdt:provider-reset` to every window, and each provider
-re-opens its note and redoes the sync handshake. Re-opening is the part that matters:
-that is what re-attributes the window to the fresh doc and puts the editor back in the
-broadcast set. The event carries no note id — one reset strands every open doc at once,
-so each provider hears it and rebinds its own note.
+Recovering from that takes two signals, because "the binding died" and "a binding is
+possible again" are not the same moment.
 
-The renderer's Y.Doc is merged rather than replaced. A note stays editable while signed
-out, so edits made in that window exist nowhere else; `crdt:sync-step-1` / `-2` reconcile
-them with whatever main now holds instead of discarding them.
+`crdt:provider-reset` is the first. It goes to every window — one reset strands every open
+doc at once — and a provider that hears it marks its binding **stale**: it stops reporting
+itself as synced, and it sends nothing. It explicitly does not re-open. The reset is
+broadcast from inside teardown, with the old instance destroyed and no replacement
+initialized, so `crdt:open-doc` is rejected with `CRDT provider not initialized` at exactly
+that instant. A provider that answered the reset by re-opening therefore failed every
+single time, logged the failure and dropped it, and stayed unbound for the rest of the
+session — the same stale note the reset exists to prevent.
+
+`crdt:provider-ready` is the second, and it is what drives the re-open. Main broadcasts it
+from the one assignment that makes `crdt:open-doc` stop rejecting: the flag
+`CrdtProvider.isInitialized()` reads, set when `initPersistence()` has finished opening
+(or deliberately given up on) the local store. That happens once per usable provider — at
+app bootstrap, and again whenever the sync runtime brings one up on vault open or
+sign-in. A provider whose binding is stale re-opens its note and redoes the sync handshake
+there. Re-opening is the part that matters: that is what re-attributes the window to the
+fresh doc and puts the editor back in the broadcast set.
+
+Marking the binding stale never touches the editor. The note stays mounted and fully
+editable — signed out, offline, and with no account at all — because those edits exist
+only in that window's Y.Doc. The doc is merged rather than replaced on rebind, and
+`crdt:sync-step-1` / `-2` are what carry them across to whatever main now holds.
+
+A rebind that fails leaves the binding stale, so the next ready signal re-drives it. That
+is the retry: there is no timer and no polling loop, which matters because a reset with no
+provider ever following it — the signed-out steady state — has to settle to nothing
+pending rather than to a retry that runs forever.
 
 The reset also logs how many docs had an editor attached when it happened. That is the
-number the rebind has to bring back, and it is the only signal that this class of failure
-occurred — a stale editor is otherwise indistinguishable from a quiet note.
+number the rebind has to bring back to zero, and it is the only signal that this class of
+failure occurred — a stale editor is otherwise indistinguishable from a quiet note.
 
 Local compaction runs under that same condition as closing and eviction — a doc with no
 windows attached — and it is asynchronous for the same reason, so the two can be in flight
