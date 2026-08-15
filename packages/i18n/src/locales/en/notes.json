@@ -47,7 +47,21 @@
       },
       "explanation": "Editing it would mean parsing the whole thing at once, which would freeze the app. The file is untouched on disk.",
       "openExternally": "Open in default app",
-      "revealInFolder": "Show in folder"
+      "revealInFolder": "Show in folder",
+      "viewer": {
+        "preparing": "Preparing {size} for reading…",
+        "preparingHint": "Indexing the lines so it can be scrolled without loading it all at once.",
+        "lines": "{count} lines",
+        "empty": "This file is empty.",
+        "failed": "This file could not be prepared for reading.",
+        "missing": "This file is no longer on disk.",
+        "lineTruncated": "long line cut here"
+      },
+      "tooLarge": {
+        "title": "This file is too large to open",
+        "reason": "It is {size}. Memry can display files up to {limit}.",
+        "explanation": "The file is untouched on disk. Open it in an app built for files this size."
+      }
     }
   },
   "tree": {

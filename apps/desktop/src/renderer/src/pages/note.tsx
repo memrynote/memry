@@ -14,7 +14,7 @@ import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
-import { LargeFileNotice } from '@/components/note/large-file-notice'
+import { LargeFileViewer } from '@/components/note/large-file-viewer'
 import {
   NoteLayout,
   HeadingItem,
@@ -1410,10 +1410,18 @@ export function NotePage({ noteId }: NotePageProps) {
         <div
           ref={editorContainerRef}
           role="presentation"
-          className="editor-click-area flex-1 pb-[30vh] relative"
+          className={cn(
+            'editor-click-area flex-1 relative',
+            // The tall bottom padding is an editor affordance — room to click
+            // below the last block. There is no editor here, so it would just
+            // be dead space under the viewer.
+            note.sizeClass !== 'large-file' && 'pb-[30vh]'
+          )}
         >
           {note.sizeClass === 'large-file' ? (
-            <LargeFileNotice
+            <LargeFileViewer
+              key={noteId}
+              noteId={noteId}
               reason={note.largeFile?.reason}
               measuredBytes={
                 note.largeFile?.reason === 'block-bytes'
