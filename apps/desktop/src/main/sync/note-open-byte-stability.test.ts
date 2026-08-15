@@ -171,17 +171,32 @@ const REL_PATH = path.join('notes', 'Byte Stability.md')
  * the sharp edge in #1428: a wiki link is one element inside a list item, a
  * quote and a table cell, and a text-matching parse claims the whole element.
  *
- * Deliberately absent: any wiki link carrying an inline MARK. That whole class
- * does not round-trip — see the `#1439` cases at the bottom of this file, which
- * pin the current behaviour without asserting it is correct. The fixtures here
- * gate the cases that DO converge; do not read their green as covering marks.
+ * Wiki links carrying an inline MARK are in here as of #1439. They used to be
+ * deliberately absent, because opening the note DELETED the mark from the vault
+ * file; the marks now ride in the node's props when the link is the whole
+ * styled run, and the promotion declines outright when it is not. Both halves
+ * are fixtures below — the acceptance table of #1439 is rows 1-5 of this list
+ * plus the unmarked `[[Wiki Link]]` guard.
  */
 const FIXTURES: ReadonlyArray<readonly [string, string]> = [
+  // #1439's acceptance table, in order. The first three promote and carry the
+  // mark in props; the fourth is the narrowing — the link sits inside a longer
+  // marked phrase, so it is left as literal text and the file is untouched.
+  ['bold around the whole link', '**[[Meeting]]**'],
+  ['strikethrough around the whole link', '~~[[Meeting]]~~'],
+  ['italic around the whole link', '*[[A]]*'],
+  ['a wiki link inside a marked phrase', '~~Cancelled: [[Meeting]]~~'],
+  ['a wiki link inside a bolded sentence', '**See [[Roadmap]] for details**'],
+  ['an aliased link, marked', '**[[Roadmap|the plan]]**'],
   ['a wiki link in a sentence', 'See [[Wiki Link]] for details.'],
   ['a wiki link alone in its block', '[[Wiki Link]]'],
   ['an aliased wiki link', 'See [[Roadmap|the plan]] today.'],
   ['a wiki link per list item', '- [[A]]\n- [[B]]'],
   ['a wiki link in a quote', '> [[Quoted]]'],
+  // BlockNote serializes inline content inside a TABLE through the spec's
+  // `render`, not `toExternalHTML`, so main's serialization-only variant has to
+  // emit the marks from both halves or a marked link in a cell loses them.
+  ['a marked wiki link in a table cell', '| **[[A]]** | b |\n| --------- | - |\n| c         | d |'],
   // Table cells are the case the server spec's `render` has to get right —
   // BlockNote serializes inline content inside a table through `render`, not
   // `toExternalHTML`. The separator row is written pre-padded because remark
@@ -316,11 +331,12 @@ describe('opening a note with collaboration active does not rewrite it', () => {
 
 describe('repeated open -> write-back cycles converge', () => {
   /**
-   * Five, not two. Two passes cannot tell "converged" apart from "grows by a
+   * Six, not two. Two passes cannot tell "converged" apart from "grows by a
    * constant", and a length that repeats once can still be the second term of a
-   * sequence that moves again on the third.
+   * sequence that moves again on the third. The #1439 attempt this one replaces
+   * grew by exactly four characters per pass (26→30→34→38→42→46).
    */
-  const PASSES = 5
+  const PASSES = 6
 
   it.each(FIXTURES)('%s is a fixed point from the first pass', async (_name, body) => {
     // #given
@@ -358,7 +374,7 @@ describe('repeated open -> write-back cycles converge', () => {
 
     // #then only the first change promotes; the rest find a document that is
     // already in canonical form, so the loop terminates instead of ping-ponging
-    expect(promotions).toEqual([true, false, false, false, false])
+    expect(promotions).toEqual([true, false, false, false, false, false])
     expect(fs.readFileSync(absolutePath, 'utf8')).toBe(body)
     expect(mocks.atomicWrites).toEqual([])
   })
@@ -453,26 +469,90 @@ describe('write-back does not delete a wiki link from the shared doc', () => {
   })
 })
 
+/**
+ * #1439's acceptance table, driven end to end and asserted as exact strings.
+ *
+ * Before this landed, a mark on a wiki link was DELETED from the vault file the
+ * first time the note was opened — verified at the time against a control run
+ * with the promotion step removed, which was flat in every row:
+ *
+ *   `**[[Meeting]]**`             -> `[[Meeting]]`                 bold DELETED
+ *   `~~[[Meeting]]~~`             -> `[[Meeting]]`                 strike DELETED
+ *   `*[[A]]*`                     -> `[[A]]`                       italic DELETED
+ *   `~~Cancelled: [[Meeting]]~~`  -> `~~Cancelled: ~~[[Meeting]]`  mark BROKEN
+ *
+ * The fourth was worse than its byte count suggested: GFM requires a closing
+ * `~~` not be preceded by whitespace, so `~~Cancelled: ~~` is strikethrough
+ * nowhere and the note showed four literal tildes.
+ *
+ * All five rows are now fixed points from pass zero. The cost is deliberate:
+ * the link inside a longer marked phrase gets no chip, because promoting it
+ * there is what produced markdown GFM cannot parse.
+ */
+describe('a marked wiki link is a fixed point (#1439)', () => {
+  const PASSES = 6
+
+  it.each([
+    ['bold around the whole link', '**[[Meeting]]**'],
+    ['strikethrough around the whole link', '~~[[Meeting]]~~'],
+    ['italic around the whole link', '*[[A]]*'],
+    ['a link inside a longer struck phrase', '~~Cancelled: [[Meeting]]~~'],
+    // The byte-stability guard: the unmarked link is what every existing vault
+    // is full of, and it must be untouched by all of the above.
+    ['an unmarked link', '[[A]]']
+  ])('%s is unchanged after six opens', async (_name, body) => {
+    // #given the note as it sits on disk
+    const absolutePath = seedVaultNote(body)
+    const lengths: number[] = [body.length]
+    const contents: string[] = []
+
+    // #when it is opened and written back six times
+    for (let pass = 0; pass < PASSES; pass++) {
+      const doc = await openNote(absolutePath)
+      await applyRendererPromotion(doc)
+      await runWriteback(doc)
+      const current = fs.readFileSync(absolutePath, 'utf8')
+      lengths.push(current.length)
+      contents.push(current)
+    }
+
+    // #then every pass produced the seed bytes exactly, and nothing was written
+    expect(contents).toEqual(Array<string>(PASSES).fill(body))
+    expect(lengths).toEqual(Array<number>(PASSES + 1).fill(body.length))
+    expect(mocks.atomicWrites).toEqual([])
+  })
+
+  it('the link is still a chip when the mark covers the whole run', async () => {
+    // #given
+    const absolutePath = seedVaultNote('**[[Meeting]]**')
+
+    // #when
+    const doc = await openNote(absolutePath)
+    expect(await applyRendererPromotion(doc)).toBe(true)
+
+    // #then the doc holds a real node — the point of carrying the marks in
+    // props rather than declining everywhere — and it writes the seed bytes
+    expect(countWikiLinkNodes(doc)).toBe(1)
+    expect(await yDocToMarkdown(doc)).toBe('**[[Meeting]]**')
+  })
+
+  it('the link inside a longer marked phrase is deliberately NOT promoted', async () => {
+    // #given
+    const absolutePath = seedVaultNote('~~Cancelled: [[Meeting]]~~')
+
+    // #when
+    const doc = await openNote(absolutePath)
+
+    // #then nothing to promote: splitting the strike run is what emitted
+    // `~~Cancelled: ~~~~[[Meeting]]~~`, four more characters on every pass. The
+    // file wins over the chip.
+    expect(await applyRendererPromotion(doc)).toBe(false)
+    expect(countWikiLinkNodes(doc)).toBe(0)
+    expect(await yDocToMarkdown(doc)).toBe('~~Cancelled: [[Meeting]]~~')
+  })
+})
+
 describe('known non-convergence, pinned not endorsed', () => {
-  /**
-   * #1439, and it is a CLASS, not one shape. BlockNote's
-   * `CustomInlineContentFromConfig` has no `styles` field, so the promotion has
-   * nowhere to put a mark and drops it. Verified against a control run with the
-   * promotion step removed — every one of these is flat without it:
-   *
-   *   `**[[Meeting]]**`             -> `[[Meeting]]`                 mark DELETED
-   *   `~~[[Meeting]]~~`             -> `[[Meeting]]`                 mark DELETED
-   *   `*[[A]]*`                     -> `[[A]]`                       mark DELETED
-   *   `~~Cancelled: [[Meeting]]~~`  -> `~~Cancelled: ~~[[Meeting]]`  mark BROKEN
-   *
-   * The last one is worse than its byte count suggests: GFM requires a closing
-   * `~~` not be preceded by whitespace, so `~~Cancelled: ~~` is strikethrough
-   * nowhere and the note ends up showing four literal tildes. Bold survives the
-   * same shape only because the serializer emits `&#x20;` entities around it.
-   *
-   * Each is a single rewrite and stable afterwards. Blocked on a product
-   * decision, so these assert what happens today, not what should.
-   */
   it('a note carrying CriticMarkup review marks is rewritten on first open', async () => {
     // #given review marks live in the Y.Doc, not in the fragment, and write-back
     // re-serializes them onto the body. That round trip is not byte-identical.
@@ -497,49 +577,37 @@ describe('known non-convergence, pinned not endorsed', () => {
     expect(current).toContain('note')
   })
 
-  it.each([
-    ['bold around the whole link', '**[[Meeting]]**', '[[Meeting]]'],
-    ['strikethrough around the whole link', '~~[[Meeting]]~~', '[[Meeting]]'],
-    ['italic around the whole link', '*[[A]]*', '[[A]]']
-  ])('%s loses the mark on first open, then holds', async (_name, seed, expected) => {
-    // #given a note whose wiki link carries a mark
-    let current = seed
-    const absolutePath = seedVaultNote(current)
-
-    // #when opened five times
-    const results: string[] = []
-    for (let pass = 0; pass < 5; pass++) {
-      const doc = await openNote(absolutePath)
-      await applyRendererPromotion(doc)
-      await runWriteback(doc)
-      current = fs.readFileSync(absolutePath, 'utf8')
-      results.push(current)
-    }
-
-    // #then the mark is gone after the first open and never comes back
-    expect(results[0]).toBe(expected)
-    expect(new Set(results).size).toBe(1)
-  })
-
-  it('a wiki link inside a marked phrase is rewritten once, then holds', async () => {
+  /**
+   * `code` on a wiki link is the one mark that cannot round-trip, and the cause
+   * predates this node: BlockNote's markdown PARSER drops every other mark off
+   * a run that also carries inline code, so `` `[[A]]` `` parses back as a run
+   * of `{ code: true }` and the outer emphasis is gone before promotion ever
+   * runs. `` `[[A]]` `` alone is stable; combined with emphasis it is not.
+   * Pinned as a limitation, not endorsed as correct.
+   */
+  it('inline code around a link is stable; code combined with bold is not', async () => {
     // #given
-    let current = '~~Cancelled: [[Meeting]]~~'
-    const lengths: number[] = [current.length]
+    const stable = seedVaultNote('`[[A]]`')
+    const stableDoc = await openNote(stable)
+    await applyRendererPromotion(stableDoc)
+    await runWriteback(stableDoc)
 
-    // #when
-    const absolutePath = seedVaultNote(current)
-    for (let pass = 0; pass < 5; pass++) {
-      const doc = await openNote(absolutePath)
-      await applyRendererPromotion(doc)
-      await runWriteback(doc)
-      current = fs.readFileSync(absolutePath, 'utf8')
-      lengths.push(current.length)
-    }
+    // #then code alone holds its bytes
+    expect(fs.readFileSync(stable, 'utf8')).toBe('`[[A]]`')
+    expect(mocks.atomicWrites).toEqual([])
 
-    // #then the first open rewrites the file, and every open after it is a
-    // no-op — the damage is a single rewrite, not unbounded growth
-    expect(current).toBe('~~Cancelled: ~~[[Meeting]]')
-    expect(lengths).toEqual([26, 26, 26, 26, 26, 26])
-    expect(mocks.atomicWrites).toHaveLength(1)
+    // #when the same link also carries bold — the parser flattens it on the way
+    // IN, so what reaches the doc is already `{ code: true }` only
+    const flattened = seedVaultNote('**`[[A]]`**')
+    const doc = await openNote(flattened)
+    await applyRendererPromotion(doc)
+    await runWriteback(doc)
+
+    // #then one rewrite that drops the bold, then a fixed point
+    expect(fs.readFileSync(flattened, 'utf8')).toBe('`[[A]]`')
+    const second = await openNote(flattened)
+    await applyRendererPromotion(second)
+    await runWriteback(second)
+    expect(fs.readFileSync(flattened, 'utf8')).toBe('`[[A]]`')
   })
 })

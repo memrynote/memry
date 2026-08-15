@@ -14,5 +14,8 @@ export {
   wikiLinkToText,
   parseWikiLinkText,
   createWikiLinkInlineContent,
+  hasWikiLinkMarks,
+  wikiLinkMarkProps,
+  type WikiLinkMarkProps,
   type WikiLinkParts
 } from '@memry/editor-schema/inline'

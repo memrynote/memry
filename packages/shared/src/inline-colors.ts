@@ -45,6 +45,7 @@ interface InlineNode {
   text?: string
   content?: InlineNode[]
   styles?: Record<string, unknown>
+  props?: Record<string, unknown>
 }
 
 interface BlockNode {
@@ -81,6 +82,16 @@ function pickColorStyles(styles: Record<string, unknown>): InlineColorStyles | n
     colors.backgroundColor = styles.backgroundColor
   }
   return colors.textColor || colors.backgroundColor ? colors : null
+}
+
+// `default` is BlockNote's "no colour" value, so a node whose props sit at
+// their schema defaults is not coloured and must not be wrapped in anything.
+function hasColorOrUnderline(props: Record<string, unknown>): boolean {
+  return (
+    (typeof props.textColor === 'string' && props.textColor !== 'default') ||
+    (typeof props.backgroundColor === 'string' && props.backgroundColor !== 'default') ||
+    props.underline === true
+  )
 }
 
 // Palette values are plain names; reject anything that could break out of the
@@ -165,8 +176,19 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
         }
         continue
       }
+      // A custom inline node (`wikiLink`) carries its marks in `props`: BlockNote
+      // gives custom inline content no `styles` field at all. Colour and
+      // underline are the marks markdown cannot express, so the node reaches
+      // disk down the same road a coloured text run does — wrapped in token
+      // spans — while bold/italic/strike/code ride its own toExternalHTML.
+      const nodeStyles =
+        typeof item.text !== 'string' && item.props && hasColorOrUnderline(item.props)
+          ? item.props
+          : null
       const styled =
-        typeof item.text === 'string' && item.text.length > 0 && item.styles ? item.styles : null
+        typeof item.text === 'string' && item.text.length > 0 && item.styles
+          ? item.styles
+          : nodeStyles
       const picked = styled ? pickColorStyles(styled) : null
       // An unsafe color value drops only the color span — underline is a
       // hardcoded literal, so it still round-trips on the same run.
@@ -199,13 +221,21 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
           closeUnderline()
         }
       }
-      const {
-        textColor: _t,
-        backgroundColor: _b,
-        underline: _u,
-        ...rest
-      } = styled as InlineColorStyles & Record<string, unknown>
-      out.push({ ...item, styles: rest })
+      if (nodeStyles) {
+        // Pass the node through untouched. Its colours live in its props, and
+        // this function builds a new array for the serialization copy — the
+        // props are the document's own record, while the token spans emitted
+        // around the node are what carries the colour to disk.
+        out.push(item)
+      } else {
+        const {
+          textColor: _t,
+          backgroundColor: _b,
+          underline: _u,
+          ...rest
+        } = styled as InlineColorStyles & Record<string, unknown>
+        out.push({ ...item, styles: rest })
+      }
       changed = true
     }
     closeGroup()

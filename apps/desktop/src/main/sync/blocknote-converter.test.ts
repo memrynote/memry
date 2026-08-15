@@ -22,6 +22,8 @@ import {
   serializeCalloutBlock,
   serializeYoutubeEmbed
 } from '@memry/editor-schema/blocks'
+import { createInlineContentSpec } from '@blocknote/core'
+import { createWikiLinkInlineContent, wikiLinkToText } from '@memry/editor-schema/inline'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
 import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
@@ -901,6 +903,358 @@ describe('custom inline nodes survive the CRDT write path', () => {
 })
 
 /**
+ * #1439: `**[[A]]**` lost its bold the moment the note was opened.
+ *
+ * The renderer promotes the styled run into a `wikiLink` node, and BlockNote's
+ * data model gives custom inline content no `styles` field — so the marks now
+ * ride in the node's PROPS and are re-emitted from `toExternalHTML`. These
+ * assert the exact bytes, because write-back byte-compares: a single character
+ * of drift here rewrites every note with a wiki link in every vault.
+ */
+describe('a wiki link carries its marks to disk', () => {
+  /** A doc holding one paragraph whose only content is the wiki link. */
+  async function markdownForProps(props: Record<string, unknown>): Promise<string | null> {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'b1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          content: [{ type: 'wikiLink', props }]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    return await yDocToMarkdown(doc)
+  }
+
+  // THE byte-stability guard. Every wiki link already in every vault takes this
+  // path; if it moves by one character, every one of those notes is rewritten
+  // on next open. Asserted as an exact string, never `toContain`.
+  it.each([
+    [{ target: 'A', alias: '' }, '[[A]]'],
+    [{ target: 'A', alias: 'b' }, '[[A|b]]'],
+    // Marks explicitly at their schema defaults are the same as no marks.
+    [
+      {
+        target: 'A',
+        alias: '',
+        bold: false,
+        italic: false,
+        underline: false,
+        strike: false,
+        code: false,
+        textColor: 'default',
+        backgroundColor: 'default'
+      },
+      '[[A]]'
+    ]
+  ])('an unmarked link serializes to exactly %j -> %j', async (props, expected) => {
+    expect(await markdownForProps(props)).toBe(expected)
+  })
+
+  // The marked forms are byte-identical to what BlockNote emits for the marked
+  // `[[A]]` TEXT run the link was promoted from — verified by the sibling test
+  // below, which serializes both and compares.
+  it.each([
+    [{ bold: true }, '**[[A]]**'],
+    [{ italic: true }, '*[[A]]*'],
+    [{ strike: true }, '~~[[A]]~~'],
+    [{ code: true }, '`[[A]]`'],
+    [{ bold: true, italic: true }, '***[[A]]***'],
+    [{ bold: true, italic: true, strike: true, code: true }, '***~~`[[A]]`~~***']
+  ])('a link marked %j serializes to %j', async (marks, expected) => {
+    expect(await markdownForProps({ target: 'A', alias: '', ...marks })).toBe(expected)
+  })
+
+  it('an aliased link keeps its marks', async () => {
+    expect(await markdownForProps({ target: 'A', alias: 'b', bold: true })).toBe('**[[A|b]]**')
+  })
+
+  // The seam between the two processes. `createWikiLinkInlineContent` is the
+  // shared factory the renderer's `normalizeWikiLinks` calls when it promotes a
+  // styled run, so building the node through it here means a change to the
+  // promotion's output shape fails on this side too.
+  it.each([
+    [{ bold: true }, '**[[A]]**'],
+    [{ italic: true }, '*[[A]]*'],
+    [{ bold: true, italic: true, strike: true, code: true }, '***~~`[[A]]`~~***'],
+    [{}, '[[A]]']
+  ])('serializes the node the renderer promotion builds for %j', async (styles, expected) => {
+    // #given exactly what the renderer puts in the shared doc
+    const promoted = createWikiLinkInlineContent('A', '', styles)
+
+    // #then
+    expect(await markdownForProps(promoted.props)).toBe(expected)
+  })
+
+  // The bar the whole fix is measured against: whatever BlockNote writes for a
+  // marked text run is what the promoted link must write, or opening a note
+  // rewrites it.
+  it.each([
+    [{ bold: true }],
+    [{ italic: true }],
+    [{ strike: true }],
+    [{ code: true }],
+    [{ bold: true, italic: true, strike: true, code: true }]
+  ])('marked %j serializes the same as the marked text it was promoted from', async (marks) => {
+    // #given the same paragraph twice: once as a styled text run, once as a
+    // promoted wikiLink node carrying the same marks
+    const textDoc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'b1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          content: [{ type: 'text', text: '[[A]]', styles: marks }]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      textDoc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #then
+    expect(await markdownForProps({ target: 'A', alias: '', ...marks })).toBe(
+      await yDocToMarkdown(textDoc)
+    )
+  })
+
+  // Colours and underline have no markdown syntax. A coloured TEXT run reaches
+  // disk as `<span style="color:red">` via the token masking in
+  // @memry/shared/inline-colors; a coloured link takes the same road.
+  it.each([
+    [{ textColor: 'red' }, '<span style="color:red">[[A]]</span>'],
+    [{ backgroundColor: 'blue' }, '<span style="background-color:blue">[[A]]</span>'],
+    [{ underline: true }, '<span style="text-decoration:underline">[[A]]</span>'],
+    [{ textColor: 'red', bold: true }, '<span style="color:red">**[[A]]**</span>']
+  ])('a link marked %j serializes to %j', async (marks, expected) => {
+    expect(await markdownForProps({ target: 'A', alias: '', ...marks })).toBe(expected)
+  })
+
+  // BlockNote serializes inline content inside a TABLE through the spec's
+  // `render`, not `toExternalHTML` — a marked link in a table cell would lose
+  // its marks if only one of the two emitted them.
+  it('keeps its marks inside a table cell', async () => {
+    // #given
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'tbl',
+          type: 'table',
+          props: {},
+          children: [],
+          content: {
+            type: 'tableContent',
+            columnWidths: [null],
+            rows: [
+              {
+                cells: [
+                  {
+                    type: 'tableCell',
+                    content: [{ type: 'wikiLink', props: { target: 'A', alias: '', bold: true } }],
+                    props: {
+                      colspan: 1,
+                      rowspan: 1,
+                      backgroundColor: 'default',
+                      textColor: 'default',
+                      textAlignment: 'left'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #when
+    const markdown = await yDocToMarkdown(doc)
+
+    // #then the conversion succeeds at all (a throwing render returns null)…
+    expect(markdown).not.toBeNull()
+    // …and the cell holds the marked form
+    expect(markdown).toContain('**[[A]]**')
+  })
+
+  /**
+   * The compat case, and the one that decides whether this may ship to a live
+   * beta. A `wikiLink` written by a build that predates the mark props carries
+   * `target`/`alias` and nothing else. ProseMirror's `computeAttrs` walks the
+   * SCHEMA's attributes and fills a default for every key the element lacks, so
+   * the node still builds and still serializes to the bytes it always did — no
+   * migration, no rewrite.
+   */
+  it('a node persisted by an older build, with no mark props, still serializes', async () => {
+    // #given the element shape an older build wrote: two attributes, no marks
+    const doc = new Y.Doc()
+    const group = new Y.XmlElement('blockGroup')
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const node = new Y.XmlElement('wikiLink')
+    node.setAttribute('target', 'Roadmap')
+    node.setAttribute('alias', 'the plan')
+    para.insert(0, [new Y.XmlText('See '), node, new Y.XmlText(' tomorrow.')])
+    block.insert(0, [para])
+    group.insert(0, [block])
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [group])
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when
+    const markdown = await yDocToMarkdown(doc)
+
+    // #then it converts to exactly the bytes it did before the props existed…
+    expect(markdown).toBe('See [[Roadmap|the plan]] tomorrow.')
+    // …the schema can still build it (an unbuildable node is DELETED)…
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+    // …and reading it did not touch the shared doc
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  // The other half of the same compat question: an old element read back as
+  // BLOCKS carries the schema defaults, which is what makes it serialize
+  // unchanged. Measured rather than reasoned about.
+  it('an older build’s node reads back with the mark props at their defaults', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const group = new Y.XmlElement('blockGroup')
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const node = new Y.XmlElement('wikiLink')
+    node.setAttribute('target', 'Old')
+    para.insert(0, [node])
+    block.insert(0, [para])
+    group.insert(0, [block])
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [group])
+
+    // #when
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #then
+    expect((blocks![0] as { content: unknown[] }).content).toEqual([
+      {
+        type: 'wikiLink',
+        props: {
+          target: 'Old',
+          alias: '',
+          bold: false,
+          italic: false,
+          underline: false,
+          strike: false,
+          code: false,
+          textColor: 'default',
+          backgroundColor: 'default'
+        }
+      }
+    ])
+  })
+
+  /**
+   * The downgrade direction, which is the half a live beta actually risks: a
+   * released build that has never heard of the mark props meets a document a
+   * NEWER build wrote with them.
+   *
+   * Run for real, not reasoned about — the `wikiLink` spec below is rebuilt with
+   * the pre-#1439 two-attribute propSchema and put in a live server editor, so
+   * the assertions below are ProseMirror actually executing the old schema
+   * against the new bytes. `_computeAttrs` iterates the SCHEMA's attrs, so keys
+   * it has never heard of are dropped; `_checkAttrs`, which does throw on an
+   * unknown key, is not on the `NodeType.create` path y-prosemirror uses.
+   */
+  it('an older build reads a node carrying the new props without throwing or deleting it', async () => {
+    // #given a document this build wrote: a marked wiki link, mark props and all
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'b1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          content: [
+            {
+              type: 'wikiLink',
+              props: { target: 'Roadmap', alias: 'the plan', bold: true, textColor: 'red' }
+            }
+          ]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    expect(fragment.toString()).toContain('bold="true"')
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when the build that predates the props reads it. Same spec, same
+    // implementation — only the propSchema is rolled back.
+    const oldSpec = createInlineContentSpec(
+      {
+        type: 'wikiLink' as const,
+        propSchema: { target: { default: '' }, alias: { default: '' } },
+        content: 'none' as const
+      },
+      {
+        render: (inlineContent) => {
+          const dom = document.createElement('span')
+          const props = inlineContent.props as unknown as { target: string; alias: string }
+          dom.textContent = wikiLinkToText(props.target || '', props.alias || '')
+          return { dom }
+        }
+      }
+    )
+    const oldEditor = ServerBlockNoteEditor.create({
+      schema: createMemrySchema({
+        blocks: createServerBlockSpecs(),
+        inline: {
+          ...createServerInlineSpecs(),
+          // The whole point: a spec whose propSchema is two keys short.
+          wikiLink: oldSpec as unknown as ReturnType<typeof createServerInlineSpecs>['wikiLink']
+        }
+      })
+    }) as ServerBlockNoteEditor
+
+    const blocks = oldEditor.yXmlFragmentToBlocks(fragment)
+
+    // #then the node is THERE — an unbuildable node is deleted from the shared
+    // doc by y-prosemirror, which replicates to every device — and it carries
+    // exactly the two props the old schema knows about
+    expect((blocks[0] as { content: unknown[] }).content).toEqual([
+      { type: 'wikiLink', props: { target: 'Roadmap', alias: 'the plan' } }
+    ])
+
+    // …it serializes to the pre-#1439 bytes: the mark is forgotten, never
+    // corrupted, which is exactly what that build did before this change…
+    expect(await oldEditor.blocksToMarkdownLossy(blocks)).toContain('[[Roadmap|the plan]]')
+
+    // …and reading it left the shared document byte-identical, so an old client
+    // merely OPENING the note does not strip the marks for everyone else.
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  /**
+   * `code` combined with any of bold/italic/strike is write-only, and has been
+   * since long before this node existed: BlockNote's markdown PARSER drops the
+   * emphasis off any run that also carries inline code — ``**`x`**`` parses to
+   * `{ code: true }` for plain text, no wiki link involved. The serializer
+   * above emits the combination faithfully; the read-back is what flattens it.
+   * Asserted so the limitation is recorded rather than rediscovered.
+   */
+  it('code combined with emphasis is a pre-existing parser limitation, not ours', async () => {
+    const blocks = await markdownToBlocks('**`x`**')
+    expect((blocks![0] as { content: unknown[] }).content).toEqual([
+      { type: 'text', text: 'x', styles: { code: true } }
+    ])
+  })
+})
+
+/**
  * The textual form each custom inline type takes on disk.
  *
  * Typed against `MEMRY_INLINE_CONTENT_TYPES`, so a new inline spec with no
@@ -985,6 +1339,20 @@ describe('registering the custom specs does not rewrite existing markdown', () =
   it.each([
     'See [[Roadmap|the plan]] tomorrow.',
     '[[Roadmap]]',
+    // Marked links, the #1439 shapes. Main has no wikiLink `parse` rule, so
+    // these stay styled TEXT runs on this path — which is exactly why the bytes
+    // must not move: the renderer promotes them to nodes on open, and the node
+    // has to serialize back to these same bytes.
+    '**[[Roadmap]]**',
+    '*[[A]]*',
+    '~~[[A]]~~',
+    '`[[A]]`',
+    '**[[A|b]]**',
+    'See **[[A]]** and *[[B]]* today.',
+    // The shape the narrowing declines to promote — it has to survive main's
+    // own round trip untouched, or declining would not help.
+    '~~Cancelled: [[Meeting]]~~',
+    '**See [[Roadmap]] for details**',
     '# Heading\n\n[[A]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline.',
     '- [[A]]\n- [[B]]',
     '> [[Quoted]]',

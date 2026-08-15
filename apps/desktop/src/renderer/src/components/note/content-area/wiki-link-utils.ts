@@ -2,7 +2,7 @@
 
 import type { Block } from '@blocknote/core'
 import type { HeadingInfo } from './types'
-import { createWikiLinkInlineContent } from './wiki-link'
+import { createWikiLinkInlineContent, hasWikiLinkMarks } from './wiki-link'
 
 // =============================================================================
 // HEADING EXTRACTION
@@ -76,6 +76,20 @@ export function splitTextWithWikiLinks(
   let lastIndex = 0
   let match: RegExpExecArray | null
 
+  // #1439, the narrowing. A marked run promotes ONLY when the link is the whole
+  // of it. `**[[A]]**` becomes a node carrying `bold`, which serializes back to
+  // `**[[A]]**`; `~~Cancelled: [[A]]~~` does not promote at all and stays
+  // literal text inside the strike run.
+  //
+  // Splitting a marked run is what makes the bytes unrepresentable: the node
+  // emits its own `<s>`/`<strong>` wrapper, and BlockNote merges adjacent
+  // identical marks across text runs but not across an element boundary. The
+  // result is `~~Cancelled: ~~~~[[A]]~~`, which GFM cannot parse (a closing `~~`
+  // may not follow whitespace) and which grows by four characters on every pass.
+  // The cost of declining is one missing link chip inside a marked sentence;
+  // the file, which is the thing the user owns, is left exactly as written.
+  const wholeRunOnly = hasWikiLinkMarks(styles)
+
   while ((match = pattern.exec(text)) !== null) {
     const [full, rawTarget, rawAlias] = match
     const target = rawTarget?.trim()
@@ -85,6 +99,12 @@ export function splitTextWithWikiLinks(
       continue
     }
 
+    // `full.length === text.length` alone implies the match starts at 0, so
+    // that is the whole test: does this link cover the entire styled run?
+    if (wholeRunOnly && full.length !== text.length) {
+      return { segments: [createStyledText(text, styles ?? {})], didChange: false }
+    }
+
     if (match.index > lastIndex) {
       const before = text.slice(lastIndex, match.index)
       if (before) {
@@ -92,7 +112,11 @@ export function splitTextWithWikiLinks(
       }
     }
 
-    segments.push(createWikiLinkInlineContent(target, alias))
+    // The run's marks go WITH the link. A custom inline node has no `styles`
+    // field in BlockNote's data model, so before #1439 they stopped here: the
+    // surrounding text segments kept them, the link silently did not, and
+    // `**[[A]]**` became `[[A]]` on disk the first time the note was opened.
+    segments.push(createWikiLinkInlineContent(target, alias, styles))
     didChange = true
     lastIndex = match.index + full.length
   }
