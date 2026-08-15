@@ -515,7 +515,23 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         if (!token || !vaultKey || !signingSecretKey) {
           if (vaultKey) secureCleanup(vaultKey)
           if (signingSecretKey) secureCleanup(signingSecretKey)
-          return
+          // Returning here DROPPED the batch: flushNote has already spliced
+          // these updates out of the note's buffer by the time this runs, and
+          // only its catch re-buffers them. Throwing is what keeps them —
+          // exactly why snapshotPushFn below throws on the same condition.
+          //
+          // The condition is transient by construction: startSyncRuntime does
+          // not get this far without a session, a paid entitlement and a
+          // verified vault key, so a null here is a credential that went away
+          // after the runtime started. The one that actually happens is the
+          // access token: a server this device cannot reach is also the server
+          // /auth/refresh lives on, so ~14 minutes into any outage
+          // getValidAccessToken starts returning null (60s pre-expiry margin on
+          // a 15-minute token) and the 1s flush loop then threw away every
+          // buffered update for every note, and every keystroke after them. The
+          // server came back to an empty queue, so nothing merged until a later
+          // edit pushed a snapshot that happened to carry the lost operations.
+          throw new Error('Missing credentials for CRDT update push')
         }
 
         try {

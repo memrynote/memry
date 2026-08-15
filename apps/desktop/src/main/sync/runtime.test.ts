@@ -717,9 +717,15 @@ describe('sync runtime', () => {
     await runtime.startSyncRuntime()
     const queue = runtimeMocks.CrdtUpdateQueue.instances[0]
 
+    // Must REJECT, not resolve: CrdtUpdateQueue has already taken these updates
+    // out of the note's buffer, and only a rejected push puts them back. A
+    // resolve here is a silent drop of the user's edits — see the same guard on
+    // snapshotPush below, which has always thrown.
     runtimeMocks.getValidAccessToken.mockResolvedValueOnce(null)
     runtimeMocks.postToServer.mockClear()
-    await queue.onBatch?.('note-missing-token', [new Uint8Array([1])])
+    await expect(queue.onBatch?.('note-missing-token', [new Uint8Array([1])])).rejects.toThrow(
+      'Missing credentials'
+    )
     expect(runtimeMocks.postToServer).not.toHaveBeenCalled()
 
     // A batch whose total is large but whose entries each fit a D1 row must be
