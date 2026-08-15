@@ -671,4 +671,27 @@ describe('LargeFileViewer', () => {
     await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
   })
+
+  it("settles when something else takes the file's one search", async () => {
+    // #given another window on the same file starting its own search, which
+    // supersedes this one in the main process
+    await openReady(400)
+    let supersede = (): void => {}
+    mocks.search.mockReturnValue(
+      new Promise((resolve) => {
+        supersede = () => resolve({ status: 'cancelled', query: 'row' })
+      })
+    )
+    const input = await findInFile('row')
+    const bar = input.parentElement as HTMLElement
+    expect(await screen.findByText(/0 so far/)).toBeInTheDocument()
+
+    // #when
+    act(() => supersede())
+
+    // #then — a query this bar did not replace has to settle here, or the bar
+    // counts forever against a pass that is not running
+    await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+  })
 })

@@ -103,8 +103,16 @@ export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
           setSearching(false)
           return
         }
-        // Superseded in the main process: its replacement will answer.
-        if (result.status === 'cancelled') return
+        if (result.status === 'cancelled') {
+          // Not superseded by this bar — a newer query here would have moved
+          // `queryRef` and returned above. Something else took the session's one
+          // search: another window on the same file, or the file being closed.
+          // Settling is the honest answer; staying "searching" would spin for
+          // as long as the bar is open.
+          searchingRef.current = false
+          setSearching(false)
+          return
+        }
         setHits(result.hits)
         setTotal(result.total)
         setLimited(result.limited)
