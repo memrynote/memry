@@ -306,13 +306,34 @@ export function calculateWordCount(content: string): number {
  * @param content - Full file content including frontmatter
  * @returns Hash string
  */
-export function generateContentHash(content: string): string {
+/**
+ * Incremental form of {@link generateContentHash}.
+ *
+ * djb2 folds one character at a time, so a file read in chunks hashes to the
+ * same value as the same file read whole. Rename detection compares the hash of
+ * a newly added file against the hash cached for a deleted one, and a file too
+ * big to hold as one string can only be hashed by streaming — the two have to
+ * agree or a rename reads as a delete plus a new note.
+ */
+export function createContentHasher(): { update: (chunk: string) => void; digest: () => string } {
   // Simple djb2 hash - fast and sufficient for change detection
   let hash = 5381
-  for (let i = 0; i < content.length; i++) {
-    hash = (hash * 33) ^ content.charCodeAt(i)
+  return {
+    update(chunk: string): void {
+      for (let i = 0; i < chunk.length; i++) {
+        hash = (hash * 33) ^ chunk.charCodeAt(i)
+      }
+    },
+    digest(): string {
+      return (hash >>> 0).toString(16).padStart(8, '0')
+    }
   }
-  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+export function generateContentHash(content: string): string {
+  const hasher = createContentHasher()
+  hasher.update(content)
+  return hasher.digest()
 }
 
 // ============================================================================

@@ -484,6 +484,13 @@ export function createSearchProjector(getVaultPath: () => string | null): Projec
             return
           }
 
+          // Body not read yet (tier 0 of ingest). The idle backfill republishes
+          // the note with its body and that is what reaches the index; writing
+          // an empty row here would put an FTS write back on the add path.
+          if (event.note.parsedContent === null) {
+            return
+          }
+
           insertFtsNote(
             getIndexDatabase(),
             event.note.noteId,

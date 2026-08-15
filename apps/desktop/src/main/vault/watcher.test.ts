@@ -62,6 +62,19 @@ vi.mock('../notes/runtime-effects', () => ({
   syncNoteUpdate: vi.fn()
 }))
 
+// Both readers are spied through to the real implementation: the add path must
+// not open the file at all, by either route, and only a spy can tell "did not
+// read" from "read and ignored".
+vi.mock('./file-ops', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./file-ops')>()
+  return { ...actual, safeRead: vi.fn(actual.safeRead) }
+})
+
+vi.mock('./file-scan', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./file-scan')>()
+  return { ...actual, scanMarkdownFile: vi.fn(actual.scanMarkdownFile) }
+})
+
 vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local',
   getCrdtProvider: vi.fn(() => ({ getDoc: vi.fn(() => null) }))
@@ -76,6 +89,9 @@ import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-
 import { syncNoteCreate } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
+import { safeRead } from './file-ops'
+import { scanMarkdownFile } from './file-scan'
+import { clearIngestBackfill, drainIngestBackfill } from './ingest-backfill'
 import { VaultWatcher, getWatcher, startWatcher, stopWatcher } from './watcher'
 
 describe('vault watcher', () => {
@@ -105,6 +121,7 @@ describe('vault watcher', () => {
 
   afterEach(async () => {
     await stopProjectionRuntime({ drain: true })
+    clearIngestBackfill()
     clearAllPendingDeletes()
     indexDb.close()
     dataDb.close()
@@ -195,6 +212,7 @@ describe('vault watcher', () => {
     })
 
     await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
 
     // Fresh internal id assigned on add — resolve it via the path
     const cached = indexDb.db
@@ -276,6 +294,7 @@ describe('vault watcher', () => {
     })
 
     await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
 
     const cached = indexDb.db
       .select()
@@ -311,6 +330,7 @@ describe('vault watcher', () => {
     })
 
     await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
 
     const noteId = indexDb.db
       .select()
@@ -536,6 +556,7 @@ describe('vault watcher', () => {
     )
 
     await watcher.handleFileAdd(journalPath)
+    await drainIngestBackfill()
 
     expect(window.webContents.send).toHaveBeenCalledWith(
       JournalChannels.events.ENTRY_CREATED,
@@ -656,6 +677,7 @@ describe('vault watcher', () => {
 
     // #when
     await watcher.handleFileAdd(dumpPath)
+    await drainIngestBackfill()
 
     // #then — the row still appears, so the file is not hidden from the user
     const cached = indexDb.db
@@ -665,7 +687,9 @@ describe('vault watcher', () => {
       .get()
     expect(cached).toBeDefined()
 
-    // ...but ingest asks for no CRDT doc, so the BlockNote parse never starts
+    // ...and it is classified large-file, so it gets neither a CRDT doc nor a
+    // sync item. The call happens in the backfill, which is the first point
+    // that has measured the block bound.
     expect(syncNoteCreate).toHaveBeenCalledWith(cached!.id, expect.any(String), expect.any(Array), {
       sizeClass: 'large-file'
     })
@@ -684,6 +708,7 @@ describe('vault watcher', () => {
 
     // #when
     await watcher.handleFileAdd(journalPath)
+    await drainIngestBackfill()
 
     // #then — listed locally, but nothing leaves this device and nothing seeds
     expect(enqueueJournalCreate).not.toHaveBeenCalled()
@@ -701,6 +726,7 @@ describe('vault watcher', () => {
 
     // #when
     await watcher.handleFileAdd(journalPath)
+    await drainIngestBackfill()
 
     // #then
     expect(enqueueJournalCreate).toHaveBeenCalledWith(expect.any(String), '2026-05-12')
@@ -718,13 +744,270 @@ describe('vault watcher', () => {
 
     // #when
     await watcher.handleFileAdd(notePath)
+    await drainIngestBackfill()
 
-    // #then — the guard must not cost note-class files their CRDT doc
-    expect(syncNoteCreate).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      expect.any(Array),
-      { sizeClass: 'note' }
+    // #then — the guard must not cost note-class files their CRDT doc. It is
+    // the backfill that asks for it now: the add path never reads the file, so
+    // the block bound cannot be measured there.
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/ordinary.md'))
+      .get()
+    expect(syncNoteCreate).toHaveBeenCalledWith(cached!.id, 'ordinary', expect.any(Array), {
+      sizeClass: 'note'
+    })
+  })
+
+  // ==========================================================================
+  // Tier 0: the sidebar row comes from `stat`, path and title alone
+  // ==========================================================================
+
+  it('lists a newly added file without reading it', async () => {
+    // #given a file whose body is expensive to touch at ingest
+    const body = Array.from({ length: 5_000 }, (_, i) => `2026-08-15 line ${i} payload`).join('\n')
+    const notePath = createTestNote(vault, { title: 'pasted-dump', content: body })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    vi.mocked(safeRead).mockClear()
+    vi.mocked(scanMarkdownFile).mockClear()
+    window.webContents.send.mockClear()
+
+    // #when
+    await watcher.handleFileAdd(notePath)
+
+    // #then the row is there, so the user sees the file immediately...
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/pasted-dump.md'))
+      .get()
+    expect(cached).toBeDefined()
+    expect(cached!.title).toBe('pasted-dump')
+
+    // ...and nothing on the add path opened the file, by either route: no
+    // whole-file read and no streaming pass over its bytes
+    expect(safeRead).not.toHaveBeenCalled()
+    expect(scanMarkdownFile).not.toHaveBeenCalled()
+
+    // ...so every content-derived field is unknown rather than wrong
+    expect(cached!.contentHash).toBeNull()
+    expect(cached!.wordCount).toBeNull()
+    expect(cached!.snippet).toBeNull()
+
+    const created = window.webContents.send.mock.calls.find(
+      ([channel]) => channel === NotesChannels.events.CREATED
     )
+    expect(created).toBeDefined()
+    const createdNote = (created![1] as { note: { wordCount: number | null; snippet?: string } })
+      .note
+    expect(createdNote.wordCount).toBeNull()
+    expect(createdNote.snippet).toBeUndefined()
+  })
+
+  // ==========================================================================
+  // Tier 1: the idle backfill fills in what tier 0 left unknown
+  // ==========================================================================
+
+  it('fills in word count, snippet, tags and search on the backfill', async () => {
+    const notePath = createTestNote(vault, {
+      title: 'later',
+      content: 'Some words here',
+      tags: ['alpha']
+    })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+
+    await watcher.handleFileAdd(notePath)
+    const before = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/later.md'))
+      .get()
+    expect(before!.wordCount).toBeNull()
+
+    window.webContents.send.mockClear()
+
+    // #when
+    await drainIngestBackfill()
+
+    // #then
+    const after = indexDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
+    expect(after!.wordCount).toBe(3)
+    expect(after!.snippet).toContain('Some words here')
+    expect(after!.contentHash).not.toBeNull()
+
+    const tags = indexDb.db
+      .select()
+      .from(noteTags)
+      .where(eq(noteTags.noteId, before!.id))
+      .all()
+      .map((row) => row.tag)
+    expect(tags).toEqual(['alpha'])
+
+    // the renderer's row is corrected in place
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      NotesChannels.events.UPDATED,
+      expect.objectContaining({
+        id: before!.id,
+        changes: expect.objectContaining({ wordCount: 3 })
+      })
+    )
+  })
+
+  it('backfills the smallest file first', async () => {
+    // #given two files queued largest-first
+    const bigPath = createTestNote(vault, { title: 'big', content: 'word '.repeat(20_000) })
+    const smallPath = createTestNote(vault, { title: 'small', content: 'tiny' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(bigPath)
+    await watcher.handleFileAdd(smallPath)
+
+    const bigId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/big.md'))
+      .get()?.id
+    const smallId = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/small.md'))
+      .get()?.id
+
+    window.webContents.send.mockClear()
+
+    // #when
+    await drainIngestBackfill()
+
+    // #then the cheap row is corrected first, so a queued 250 MB file never
+    // holds up the notes the user is actually looking at
+    const updatedIds = window.webContents.send.mock.calls
+      .filter(([channel]) => channel === NotesChannels.events.UPDATED)
+      .map(([, payload]) => (payload as { id: string }).id)
+    expect(updatedIds).toEqual([smallId, bigId])
+  })
+
+  it('measures a file over the note ceiling without reading it as one string', async () => {
+    // #given a file past NOTE_MAX_BYTES. Reading one of these whole is what
+    // throws ERR_STRING_TOO_LONG once a file passes the V8 string ceiling.
+    const hugePath = path.join(vault.notesDir, 'huge.md')
+    fs.writeFileSync(hugePath, 'alpha beta gamma delta epsilon\n'.repeat(90_000), 'utf8')
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    vi.mocked(syncNoteCreate).mockClear()
+
+    await watcher.handleFileAdd(hugePath)
+    vi.mocked(safeRead).mockClear()
+
+    // #when
+    await drainIngestBackfill()
+
+    // #then the whole file was measured, but never held as one string
+    expect(safeRead).not.toHaveBeenCalled()
+
+    const after = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/huge.md'))
+      .get()
+    expect(after!.wordCount).toBe(5 * 90_000)
+    expect(after!.snippet).toContain('alpha beta gamma')
+    expect(after!.contentHash).not.toBeNull()
+
+    // large-file class by `stat` alone: no CRDT doc and no sync item, at
+    // either tier
+    expect(syncNoteCreate).not.toHaveBeenCalled()
+  })
+
+  it('detects a rename of a file whose body was never read', async () => {
+    // #given a file added but not yet backfilled, so the cache row carries no
+    // content hash for the rename tracker to match on
+    vi.useFakeTimers()
+    const oldPath = createTestNote(vault, { title: 'fresh', content: 'Not yet backfilled' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(oldPath)
+
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/fresh.md'))
+      .get()
+    expect(cached!.contentHash).toBeNull()
+    const noteId = cached!.id
+
+    window.webContents.send.mockClear()
+
+    // #when Finder renames it before the backfill has run
+    const newPath = path.join(vault.notesDir, 'renamed.md')
+    fs.renameSync(oldPath, newPath)
+    await watcher.handleFileDelete(oldPath)
+    await watcher.handleFileAdd(newPath)
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then it is still the same note, not a delete plus a new one
+    const renamed = indexDb.db.select().from(noteCache).where(eq(noteCache.id, noteId)).get()
+    expect(renamed?.path).toBe('notes/renamed.md')
+    expect(renamed?.title).toBe('renamed')
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      NotesChannels.events.RENAMED,
+      expect.objectContaining({ id: noteId, newPath: 'notes/renamed.md' })
+    )
+  })
+
+  it('keeps the measurements a rename cannot have changed', async () => {
+    // #given a note the backfill has already measured, carrying a property
+    const oldPath = createTestNote(vault, {
+      title: 'measured',
+      content: 'One two three four',
+      properties: { status: 'open' }
+    })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(oldPath)
+    await drainIngestBackfill()
+
+    const before = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/measured.md'))
+      .get()
+    expect(before!.wordCount).toBe(4)
+    const canonicalBefore = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, before!.id))
+      .get()
+    expect(canonicalBefore?.propertyDefinitionNames).toEqual(['id', 'status', 'title'])
+
+    // #when the file is renamed, which changes no byte of its body. Asserted
+    // before the re-queued backfill runs: that is the window in which a
+    // stat-only write could erase state it knows nothing about.
+    const newPath = path.join(vault.notesDir, 'measured-renamed.md')
+    fs.renameSync(oldPath, newPath)
+    await watcher.handleFileDelete(oldPath)
+    await watcher.handleFileAdd(newPath)
+
+    // #then nothing the rename cannot have changed is blanked out
+    const after = indexDb.db.select().from(noteCache).where(eq(noteCache.id, before!.id)).get()
+    expect(after!.path).toBe('notes/measured-renamed.md')
+    expect(after!.wordCount).toBe(4)
+    expect(after!.snippet).toBe(before!.snippet)
+    expect(after!.contentHash).toBe(before!.contentHash)
+
+    const canonicalAfter = dataDb.db
+      .select()
+      .from(noteMetadata)
+      .where(eq(noteMetadata.id, before!.id))
+      .get()
+    expect(canonicalAfter?.path).toBe('notes/measured-renamed.md')
+    expect(canonicalAfter?.propertyDefinitionNames).toEqual(['id', 'status', 'title'])
   })
 })

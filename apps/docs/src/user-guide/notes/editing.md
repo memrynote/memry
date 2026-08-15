@@ -252,3 +252,26 @@ in your file manager.
 
 Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
 existing notes under these limits are unaffected.
+
+## When a New File Appears in the Sidebar
+
+Dropping a file into your vault folder from Finder or Explorer shows it in the sidebar
+straight away, whatever its size. To draw that row memrynote reads only the filename and the
+file's timestamps — not the file itself. A quarter-gigabyte paste costs the same as a one-line
+note.
+
+Everything that needs the file's contents happens a moment later, in the background, smallest
+file first:
+
+- word count
+- the preview snippet under the note title
+- search
+
+So a brand-new row can briefly show no word count and no snippet. That is the measurement not
+having arrived yet, not an empty note — it fills itself in within a second or two for ordinary
+notes, and a little later for very large ones. Nothing is lost if you quit before it finishes;
+the file is measured again next time it changes.
+
+Very large files are measured in pieces rather than loaded all at once, so even a file too big
+to fit in memory gets a word count and becomes searchable. For those, search covers the
+beginning of the file rather than all of it.
