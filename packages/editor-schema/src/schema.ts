@@ -7,6 +7,7 @@ import {
 } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
 import { createMemryInlineContentSpecs, type MemryInlineSpecs } from './inline'
+import { assertSpecKeysMatchNodeTypes, type SpecKeysMatchNodeTypes } from './spec-keys'
 
 /**
  * The one place a Memry BlockNote schema is built.
@@ -19,20 +20,32 @@ import { createMemryInlineContentSpecs, type MemryInlineSpecs } from './inline'
  *
  * Callers pass presentation only. `blocks` is generic so the renderer keeps the
  * precise schema type its typed block helpers depend on.
+ *
+ * It is also the last place both processes' FULL spec maps exist — the
+ * renderer's React blocks reach no factory in this package — so it is where
+ * `key ≡ config.type` is checked for blocks and inline content alike (#1455).
+ * The factories check their own maps as well, to name the one that is wrong;
+ * this is the check nothing can route around.
  */
 export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
-  blocks: Blocks
+  blocks: Blocks & SpecKeysMatchNodeTypes<Blocks>
   inline: MemryInlineSpecs
 }) {
-  return BlockNoteSchema.create({
-    blockSpecs: {
-      ...defaultBlockSpecs,
-      codeBlock: createCodeBlockSpec(codeBlockOptions),
-      ...impl.blocks
-    },
-    inlineContentSpecs: {
-      ...defaultInlineContentSpecs,
-      ...createMemryInlineContentSpecs(impl.inline)
-    }
-  })
+  const blockSpecs = {
+    ...defaultBlockSpecs,
+    codeBlock: createCodeBlockSpec(codeBlockOptions),
+    ...impl.blocks
+  }
+  const inlineContentSpecs = {
+    ...defaultInlineContentSpecs,
+    ...createMemryInlineContentSpecs(impl.inline)
+  }
+
+  // Once, at construction. Both processes call this at module scope, so a
+  // mis-keyed spec is a failed schema build — not a note that quietly loses a
+  // wiki link on its next write-back.
+  assertSpecKeysMatchNodeTypes('blockSpecs', blockSpecs)
+  assertSpecKeysMatchNodeTypes('inlineContentSpecs', inlineContentSpecs)
+
+  return BlockNoteSchema.create({ blockSpecs, inlineContentSpecs })
 }
