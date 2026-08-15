@@ -41,6 +41,18 @@ export async function buildLineIndex(
   }
 }
 
+/**
+ * A worker `error` event carries whatever the thread threw, and a thrown
+ * non-Error crosses the boundary as a bare value. Rejecting with that loses the
+ * stack, which is the one thing anyone reading a worker failure out of a user's
+ * log actually needs — so a non-Error is wrapped, keeping the original as
+ * `cause` rather than flattening it into a string.
+ */
+function asError(value: unknown): Error {
+  if (value instanceof Error) return value
+  return new Error(`Line-index worker failed: ${String(value)}`, { cause: value })
+}
+
 function scanOnWorker(
   absolutePath: string,
   fileBytes: number,
@@ -79,7 +91,7 @@ function scanOnWorker(
       finish(() => reject(new Error(message.message)))
     })
 
-    worker.on('error', (err) => finish(() => reject(err)))
+    worker.on('error', (err: unknown) => finish(() => reject(asError(err))))
     worker.on('exit', (code) => {
       finish(() => reject(new Error(`Line-index worker exited with code ${code}`)))
     })
