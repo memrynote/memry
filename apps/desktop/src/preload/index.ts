@@ -28,7 +28,7 @@ import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
-import { homePagesApi } from './api/home-pages'
+import { homePagesApi, homePagesEvents } from './api/home-pages'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -89,6 +89,7 @@ export const api = {
 
   ...vaultEvents,
   ...contentEvents,
+  ...homePagesEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,

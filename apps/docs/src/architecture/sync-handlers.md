@@ -28,6 +28,7 @@ apps/desktop/src/main/sync/item-handlers/
 ├─ project-handler.ts
 ├─ inbox-handler.ts
 ├─ template-handler.ts
+├─ home-page-handler.ts
 ├─ agent-conversation-handler.ts
 ├─ agent-message-handler.ts
 └─ index.ts              # registry: getHandler(type), getAllHandlers()
@@ -70,6 +71,37 @@ off disk and `applyUpsert` writes it there — the row only carries `file_path`,
 row whose document is unreadable pushes nothing rather than an empty scene, and the conflict copy
 gets its own file next to the winner. None of this touches key material; transport encryption is
 unchanged.
+
+## Home boards: the widget layout is an opaque string
+
+`home-page-handler.ts` carries a board's widgets as an **opaque JSON string**, declared
+`widgets: z.string().optional()` in `HomePageSyncPayloadSchema` — the same call `canvas.scene` makes,
+and for a sharper reason. A typed `z.array(WidgetInstanceSchema)` would zod-strip widget keys written
+by a newer build and reject the legacy `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts`
+turns a schema failure into `'skipped'`, **not** `'parse_error'`, and `'skipped'` still advances the
+cursor and never retries. The push would succeed, `synced_at` would be stamped, and the board would
+land on zero peers forever with nothing user-visible to notice.
+
+Shape is therefore validated at the apply site: `applyUpsert` refuses a `widgets` value that is
+present but does not `JSON.parse` to an array, and returns `'skipped'` **before** touching the clock
+so a later readable version of the same board still wins. An _absent_ `widgets` key is the different
+case — the sender predates the field — and keeps the local value.
+
+Two more decisions worth carrying to the next handler like this:
+
+- **Ghost guard.** `pull-coordinator` enqueues `payload: '{}'` on conflict and every payload field is
+  optional, so `{}` parses. Without a `if (!data.name) return 'skipped'` guard that materialises a
+  permanent ghost row whose empty clock makes every later real version compare as stale. Copied from
+  `template-handler.ts`.
+- **Hard delete.** Record-sync tombstones live on the server item (`deleted_at`), never in a local
+  column. A soft-delete column would also break downgrade inertness: an older build has no
+  `deletedAt` in its model and would list tombstoned boards. `applyDelete` refusing a delete when the
+  local clock is newer or concurrent — so manifest repair re-pushes the row and clears the server
+  tombstone — is the intended "a concurrent local edit beats a remote delete", not the canvas
+  resurrection hazard, which is about tombstoned rows in a soft-delete table.
+
+Board _selection_ is deliberately not synced: which board is open stays in
+`localStorage['memry-home-active-board']` on each device.
 
 ## Atomicity
 

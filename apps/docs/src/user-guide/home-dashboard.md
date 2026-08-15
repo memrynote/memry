@@ -12,7 +12,20 @@ A fresh vault auto-seeds a single board named **Home**. You can keep just that o
 - **Create a board** — use **New** in the switcher; give it a name (and optional icon).
 - **Reorder** — boards keep a stable position so the switcher order is predictable.
 
-Each board stores its own set of widgets and their layout, saved in the vault database on the device that made them. Boards are **not** part of sync yet, so each device keeps its own boards and arrangement.
+Each board stores its own set of widgets and their layout in the vault database.
+
+### Boards sync
+
+Boards travel with your account. Everything about a board syncs: its name and icon, which widgets are on it and how each one is configured, the exact grid position and size of every widget, and the order the boards appear in the switcher. Arrange Home once and the second machine opens looking the same — the grid keeps eight columns at every window width, so a layout means the same thing on a laptop and a desktop.
+
+One thing stays per-device on purpose: **which board is currently open**. Each machine remembers its own active board, so a laptop can sit on your Reading board while the desktop stays on Work.
+
+Two details worth knowing:
+
+- On a device that is signed in, Home waits for the first sync to finish before it seeds a starter board — otherwise every new machine would add one. If the server can't be reached it stops waiting after a few seconds and gives you a board anyway.
+- Boards you already had before this shipped are not lost. The first sync after upgrading uploads them, so nothing is orphaned on the machine that made them.
+
+If two devices reorder boards at the same time, the last write wins for position — both devices still end up showing the same order as each other, just not necessarily the order either one intended. Redrag once and it settles.
 
 ## Widgets
 

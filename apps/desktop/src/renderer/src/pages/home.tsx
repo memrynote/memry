@@ -5,6 +5,7 @@ import { BoardGrid } from '@/components/home/board-grid'
 import { BoardEmptyState } from '@/components/home/board-empty-state'
 import { HomeDisabledLauncher } from '@/components/home/home-disabled-launcher'
 import { useHomeBoards } from '@/hooks/use-home-boards'
+import { useHomeSeedGate } from '@/hooks/use-home-seed-gate'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { addWidget } from '@/lib/home/layout-reducer'
 import { createWidget as makeWidget } from '@/lib/home/widget-registry'
@@ -72,10 +73,18 @@ export default function HomePage(): React.JSX.Element {
     updateWidgets
   } = useHomeBoards()
 
+  // Boards sync, so seeding before the first pull lands would permanently add a
+  // default board on every new device. The gate holds until a pull has completed
+  // (or 10s, or there is no account at all — see use-home-seed-gate).
+  const seedAllowed = useHomeSeedGate()
+
   // First-run seed: exactly once when no boards exist.
+  // `flags.home` is part of the guard, not just the render below it: this effect
+  // runs before the `if (!flags.home)` early return, so without it a device with
+  // Home disabled would seed a board and push it to every other device.
   const seeded = useRef(false)
   useEffect(() => {
-    if (isLoading || boards.length > 0 || seeded.current) return
+    if (!flags.home || !seedAllowed || isLoading || boards.length > 0 || seeded.current) return
     seeded.current = true
     void (async () => {
       const board = await createBoard(t('home.board.defaultName'))
@@ -85,7 +94,16 @@ export default function HomePage(): React.JSX.Element {
       await updateWidgets(board.id, seed)
       setActiveBoardId(board.id)
     })()
-  }, [isLoading, boards.length, createBoard, updateWidgets, setActiveBoardId, t])
+  }, [
+    flags.home,
+    seedAllowed,
+    isLoading,
+    boards.length,
+    createBoard,
+    updateWidgets,
+    setActiveBoardId,
+    t
+  ])
 
   if (!flags.home) {
     return <HomeDisabledLauncher onCreateNote={() => void handleCreateNote()} />
@@ -93,6 +111,10 @@ export default function HomePage(): React.JSX.Element {
 
   const localBoards = boards.map(asLocalPage)
   const localActive = activeBoard ? asLocalPage(activeBoard) : null
+
+  // While the gate is closed there is no board to render and none to hand-create
+  // into — show the skeleton rather than a bare header.
+  const showSkeleton = isLoading || (boards.length === 0 && !seedAllowed)
 
   const handleChange = (next: HomePage) => {
     void updateWidgets(next.id, next.widgets)
@@ -128,7 +150,7 @@ export default function HomePage(): React.JSX.Element {
           onAddWidget={handleAddWidget}
         />
       </div>
-      {isLoading && (
+      {showSkeleton && (
         <output
           data-testid="home-board-loading"
           aria-busy="true"
@@ -146,7 +168,7 @@ export default function HomePage(): React.JSX.Element {
           </div>
         </output>
       )}
-      {!isLoading && localActive && (
+      {!showSkeleton && localActive && (
         <div className="px-6 pt-6 pb-8">
           <BoardGrid board={localActive} onChange={handleChange} />
           {localActive.widgets.length === 0 && (

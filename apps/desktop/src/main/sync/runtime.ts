@@ -29,6 +29,7 @@ import { initTaskActivitySyncService, resetTaskActivitySyncService } from './tas
 import { getCurrentDeviceId } from './current-device-id'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
+import { initHomePageSyncService, resetHomePageSyncService } from './home-page-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
 import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './canvas-folder-sync'
@@ -184,6 +185,7 @@ function resetSyncServiceSingletons(): void {
   resetTaskActivitySyncService()
   resetBookmarkSyncService()
   resetTemplateSyncService()
+  resetHomePageSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetCanvasFolderSyncService()
@@ -361,6 +363,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const taskActivitySync = initTaskActivitySyncService(recordSyncDeps)
       const bookmarkSync = initBookmarkSyncService(recordSyncDeps)
       const templateSync = initTemplateSyncService(recordSyncDeps)
+      const homePageSync = initHomePageSyncService(recordSyncDeps)
       const reminderSync = initReminderSyncService(recordSyncDeps)
       const canvasSync = initCanvasSyncService(recordSyncDeps)
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
@@ -402,6 +405,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           kind: 'record',
           local: templateSync,
           remote: getRemoteSyncAdapter('template')
+        },
+        {
+          type: 'home_page',
+          kind: 'record',
+          local: homePageSync,
+          remote: getRemoteSyncAdapter('home_page')
         },
         {
           type: 'reminder',

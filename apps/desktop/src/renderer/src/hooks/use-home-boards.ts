@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { HomePage, WidgetInstance } from '@memry/contracts/home-page-api'
 import { trackTelemetry } from '@/lib/telemetry'
@@ -31,6 +31,22 @@ export function useHomeBoards() {
   }, [])
 
   const invalidate = () => qc.invalidateQueries({ queryKey: homeBoardsKey })
+
+  // Boards sync, so a peer's create/rename/drag/delete arrives as a main-process
+  // event rather than a local mutation. Refetch on each of the three.
+  useEffect(() => {
+    const refetch = (): void => {
+      void qc.invalidateQueries({ queryKey: homeBoardsKey })
+    }
+    const unsubscribers = [
+      window.api.onHomePageCreated(refetch),
+      window.api.onHomePageUpdated(refetch),
+      window.api.onHomePageDeleted(refetch)
+    ]
+    return () => {
+      for (const unsubscribe of unsubscribers) unsubscribe()
+    }
+  }, [qc])
 
   const createMut = useMutation({
     mutationFn: (name: string) =>

@@ -1793,6 +1793,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTemplateCreated: (callback: (event: TemplateCreatedEvent) => void) => () => void
   onTemplateUpdated: (callback: (event: TemplateUpdatedEvent) => void) => () => void
   onTemplateDeleted: (callback: (event: TemplateDeletedEvent) => void) => () => void
+  // Home boards event subscriptions (local writes and remote applies both emit)
+  onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
+  onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
+  onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void

@@ -9,6 +9,7 @@ import { filterHandler } from './filter-handler'
 import { bookmarkHandler } from './bookmark-handler'
 import { reminderHandler } from './reminder-handler'
 import { templateHandler } from './template-handler'
+import { homePageHandler } from './home-page-handler'
 import { projectHandler } from './project-handler'
 import { settingsHandler } from './settings-handler'
 import { noteHandler } from './note-handler'
@@ -50,7 +51,8 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['agent_message', agentMessageHandler],
   ['canvas', canvasHandler],
   ['canvas_folder', canvasFolderHandler],
-  ['template', templateHandler]
+  ['template', templateHandler],
+  ['home_page', homePageHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>

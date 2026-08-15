@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { isNotNull } from 'drizzle-orm'
+import { eq, isNotNull } from 'drizzle-orm'
 import {
   createTestDataDb,
   createTestIndexDb,
@@ -11,6 +11,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { savedFilters, settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
@@ -252,6 +253,43 @@ describe('checkManifestIntegrity', () => {
       expect(queued).toBeDefined()
       expect(queued!.type).toBe('template')
       expect(items.find((i) => i.itemId === 'tpl-local')).toBeUndefined()
+    })
+  })
+
+  describe('#given clocked and unclocked home boards #when check runs', () => {
+    it('#then re-enqueues only the clocked board, with the full row as the payload', async () => {
+      // #given — an unclocked row belongs to seedUnclocked, not manifest repair
+      testDb.db
+        .insert(homePages)
+        .values([
+          { id: 'board-synced', name: 'Synced', clock: { 'device-A': 1 } as VectorClock },
+          { id: 'board-local', name: 'Local Only' }
+        ])
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — buildRefPayload must have a `home_page` arm; the default returns ''
+      const items = queue.dequeue(10)
+      const queued = items.find((i) => i.itemId === 'board-synced')
+      expect(queued).toBeDefined()
+      expect(queued!.type).toBe('home_page')
+      const [row] = testDb.db.select().from(homePages).where(eq(homePages.id, 'board-synced')).all()
+      expect(queued!.payload).toBe(JSON.stringify(row))
+      expect(items.find((i) => i.itemId === 'board-local')).toBeUndefined()
     })
   })
 
