@@ -8,13 +8,68 @@ The Y.Doc is canonical. Markdown is a derived, lossy export — useful for `.md`
 
 ## Where Y.Docs Live
 
-The **main process** owns Y.Doc instances, persists them to disk via y-leveldb (`<vault>/leveldb/`), and exposes them to the renderer through an IPC provider.
+The **main process** owns Y.Doc instances, persists them to disk via y-leveldb, and exposes them to the renderer through an IPC provider.
 
 ```
 renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──▶  disk
                                        │
                                        └──network sync──▶  /sync/crdt/updates
 ```
+
+## One Store Per Vault
+
+The store lives in `userData`, not inside the vault folder, and is scoped to the
+vault that owns the notes in it:
+
+```
+<userData>/crdt-stores/<vault uuid>/
+```
+
+The uuid is the vault's own identity — the `vault_metadata` singleton in its
+`data.db`, the same value `X-Memry-Vault-Id` carries to the sync server. It is
+stable across restarts, travels with the vault folder, and a linked device
+adopts the initiator's value so both ends of a shared vault agree on it. The
+directory name is the canonical uuid; anything that is not one is hashed rather
+than placed in a path.
+
+Scoping is not cosmetic. Store entries are keyed by **note id alone**, and note
+ids are not unique across vaults: journal notes use deterministic date-based ids
+(`j2026-08-13`), so two vaults' journals for the same day were genuinely one key
+in the one store every install used to share.
+
+Because the identity lives in the vault's database, the store can only be opened
+once a vault is open. `CrdtProvider.initPersistence()` called before that
+**defers** — it opens nothing and, importantly, does not mark itself settled, so
+the vault-open path's call runs it for real. Vault open is what brings the store
+up; a vault switch destroys the provider and the next vault's open brings up its
+own.
+
+### Inheriting the pre-scoping store
+
+Installs upgrading from a build that used the single `<userData>/crdt-store`
+directory hand it to the **first vault that opens after the upgrade, and to no
+other**. The claim is recorded in `memry-config.json`
+(`crdtStore.legacyStoreClaimedBy`) and the directory is then moved into that
+vault's path. Every other vault starts from an empty store and re-seeds from its
+own markdown, which is the ordinary path for a note with no stored history.
+
+The legacy store is deliberately **not** a read fallback for every vault: its
+contents belong to whichever vault last wrote a given note id, so sharing it out
+would recreate exactly the cross-vault bleed scoping exists to remove. For the
+overwhelming majority — single-vault installs — the one claimant is their vault,
+and nothing about the upgrade is visible.
+
+The claim is written **before** the move, which is what makes it crash-safe:
+
+- crash after the claim, before the move → the directory is still there and
+  still claimed, so the same vault finishes the move on its next launch and no
+  other vault may take it;
+- crash after the move → the directory is gone, so there is nothing left to
+  inherit and nothing to apply twice.
+
+The move is a plain directory rename (falling back to copy+delete on a locked
+Windows directory). Nothing about it bypasses the checks below: the inherited
+store still goes through the full preflight, quarantine and probe.
 
 ## Persistence Resilience
 
@@ -44,7 +99,7 @@ store from a machine that cannot start a child at all:
 
 Only a `store` verdict implicates the store. When it fails and a store
 exists, the store is **quarantined** (renamed to
-`crdt-store.broken-<timestamp>`) and the preflight retried once against a
+`<vault uuid>.broken-<timestamp>`, next to the store it came from) and the preflight retried once against a
 fresh directory: a pass means the data was at fault, so the app continues
 with a fresh store; a second failure means the binding itself is broken, so
 the original store is restored for a future launch and the provider goes
@@ -392,6 +447,28 @@ the widest window, since it encodes its snapshot up front and buffers only remot
 not local ones. Discarding the whole count marked that edit as pushed, and the note was
 then skipped until some later edit re-armed it.
 
+## Sign-Out Keeps the Store
+
+Signing out does **not** delete the CRDT store. It used to, and that was the
+containment for the cross-vault key collision described in
+[One Store Per Vault](#one-store-per-vault) — a problem the store path now makes
+structurally impossible, so the wipe has nothing left to defend.
+
+What the wipe cost was the merge history. Vault markdown survived it, but
+markdown is a lossy export with no causal information in it: with no local
+history left, a note edited while signed out could not _merge_ with the server's
+version on sign-in. It could only be taken wholesale, or re-seeded from markdown
+as an independent insertion, which duplicates the body. Sign out, edit a note,
+sign back in, and the edit was silently gone.
+
+Sign-out teardown therefore reopens the store rather than deleting it. It has to
+reopen it explicitly, because stopping the sync runtime destroys the provider on
+the way through, and **editing is never gated on a session** — the note stays
+fully editable signed out, offline, and with no account at all. Editors bound to
+the destroyed provider rebind on `crdt:provider-ready`, exactly as they do after
+any other reset (see
+[Rebinding After a Provider Reset](#rebinding-after-a-provider-reset)).
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:
@@ -476,6 +553,7 @@ untouched. A callout created in the editor round-trips through the live document
 
 ```
 apps/desktop/src/main/sync/
+├─ crdt-store-path.ts       # per-vault store path + legacy-store migration
 ├─ crdt-update-queue.ts
 └─ engine.ts                # ordering: pull → seed → per-batch push
 
