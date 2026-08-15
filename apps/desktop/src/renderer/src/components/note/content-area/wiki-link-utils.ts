@@ -99,7 +99,9 @@ export function splitTextWithWikiLinks(
       continue
     }
 
-    if (wholeRunOnly && (match.index !== 0 || full.length !== text.length)) {
+    // `full.length === text.length` alone implies the match starts at 0, so
+    // that is the whole test: does this link cover the entire styled run?
+    if (wholeRunOnly && full.length !== text.length) {
       return { segments: [createStyledText(text, styles ?? {})], didChange: false }
     }
 

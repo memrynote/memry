@@ -222,9 +222,10 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
         }
       }
       if (nodeStyles) {
-        // The node's colours live in its props, which ARE the document — strip
-        // them and the link loses them on the next read. The token spans around
-        // it carry them to disk; its own props carry them in the doc.
+        // Pass the node through untouched. Its colours live in its props, and
+        // this function builds a new array for the serialization copy — the
+        // props are the document's own record, while the token spans emitted
+        // around the node are what carries the colour to disk.
         out.push(item)
       } else {
         const {
