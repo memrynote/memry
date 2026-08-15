@@ -258,6 +258,17 @@ Deletion is gated on that second condition alone; a child whose re-apply fails f
 is left untouched and retried on the next cycle. A dangling `status_id` is not an orphan at all — the
 FK is `ON DELETE SET NULL`, so the reference is simply cleared rather than failing the apply.
 
+That tombstone is stamped with this device's clock before it is queued. The payload it is built from
+is the one just pulled, so its clock is the **server's own** clock for that row, and the server
+rejects any push whose clock has no entry greater than the one it already holds. Sent back unchanged
+the delete is answered `SYNC_REPLAY_DETECTED`, the queue row is cleared as already applied, the next
+pull serves the same orphan again, and the repair runs again — the loop it exists to end, running
+forever. A normal delete never hits this: it is built from a local row by the domain layer, which
+stamps the clock on the way out, and the push path sends `delete` payloads verbatim by design. An
+orphan has no local row, which is what makes it an orphan, so nothing else can stamp it. Without
+signing keys the stamp is impossible, and the orphan is left for the next pull rather than spending a
+push that would only be refused again.
+
 ## Sync Type Negotiation
 
 Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
