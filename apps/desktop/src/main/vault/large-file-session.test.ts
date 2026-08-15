@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
   cache: null as { id: string; path: string } | null,
   broadcast: vi.fn(),
   /** Resolves the in-flight index build, so progress can be driven by hand. */
-  buildLineIndex: vi.fn()
+  buildLineIndex: vi.fn(),
+  /** Stands in for the search worker, so a search can be driven by hand. */
+  runFileSearch: vi.fn()
 }))
 
 vi.mock('../database', () => ({
@@ -35,9 +37,14 @@ vi.mock('./large-file-index-bridge', () => ({
   buildLineIndex: (...args: unknown[]) => mocks.buildLineIndex(...args)
 }))
 
+vi.mock('./large-file-search-bridge', () => ({
+  runFileSearch: (...args: unknown[]) => mocks.runFileSearch(...args)
+}))
+
 import {
   openLargeFileSession,
   readLargeFileLines,
+  searchLargeFileSession,
   closeLargeFileSession,
   closeAllLargeFileSessions,
   VIEWER_MAX_BYTES,
@@ -70,11 +77,48 @@ async function writeVaultFile(name: string, contents: string | Buffer): Promise<
   mocks.cache = { id: 'note-1', path: name }
 }
 
+/** The search-progress payloads broadcast so far. */
+function searchEvents(): Array<Record<string, unknown>> {
+  return mocks.broadcast.mock.calls
+    .filter(([channel]) => channel === NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS)
+    .map(([, payload]) => payload as Record<string, unknown>)
+}
+
 /** The index-progress payloads broadcast so far. */
 function indexEvents(): Array<Record<string, unknown>> {
   return mocks.broadcast.mock.calls
     .filter(([channel]) => channel === NotesChannels.events.LARGE_FILE_INDEX)
     .map(([, payload]) => payload as Record<string, unknown>)
+}
+
+/** Opens `body` as a vault file and returns the id of its ready session. */
+async function openReadySession(body: string): Promise<string> {
+  await writeVaultFile('log.md', body)
+  mocks.buildLineIndex.mockResolvedValue(indexFor(body))
+  const opened = await openLargeFileSession('note-1')
+  const sessionId = opened.status === 'indexing' ? opened.sessionId : ''
+  await vi.waitFor(() => expect(indexEvents().at(-1)?.status).toBe('ready'))
+  return sessionId
+}
+
+/**
+ * A search run the test controls: `pending` never finishes by itself, so only
+ * `cancel` can settle it — which is what a superseded query does.
+ */
+function fakeSearch(
+  found: { hits: Array<{ line: number; ordinal: number }>; total: number; limited: boolean },
+  options: { pending?: boolean } = {}
+): { result: Promise<unknown>; cancel: ReturnType<typeof vi.fn> } {
+  let settle: ((value: unknown) => void) | null = null
+  const result = options.pending
+    ? new Promise<unknown>((resolve) => {
+        settle = resolve
+      })
+    : Promise.resolve({ ...found, cancelled: false, bytesSearched: 0 })
+  const cancel = vi.fn(() => {
+    settle?.({ hits: [], total: 0, limited: false, cancelled: true, bytesSearched: 0 })
+  })
+  return { result, cancel }
 }
 
 describe('large-file session', () => {
@@ -84,6 +128,7 @@ describe('large-file session', () => {
     mocks.broadcast.mockClear()
     // Default: the scan completes immediately with a real index for the file.
     mocks.buildLineIndex.mockReset()
+    mocks.runFileSearch.mockReset()
   })
 
   afterEach(async () => {
@@ -363,5 +408,139 @@ describe('large-file session', () => {
 
     // #then
     expect(await readLargeFileLines({ sessionId, startLine: 0, count: 1 })).toBeNull()
+  })
+
+  it('searches the file the session holds open, not a path the caller named', async () => {
+    // #given a ready session and a worker that finds two hits
+    const body = 'alpha\nbeta here\ngamma beta\n'
+    const sessionId = await openReadySession(body)
+    mocks.runFileSearch.mockReturnValue(
+      fakeSearch({ hits: [{ line: 1, ordinal: 0 }], total: 1, limited: false })
+    )
+
+    // #when
+    const found = await searchLargeFileSession({ sessionId, query: 'beta' })
+
+    // #then — the renderer names a session, never a path. The path behind it is
+    // the one already open inside the vault.
+    expect(mocks.runFileSearch.mock.calls[0][0]).toBe(join(mocks.vaultDir, 'log.md'))
+    expect(mocks.runFileSearch.mock.calls[0][1]).toBe('beta')
+    expect(found).toEqual({
+      status: 'complete',
+      query: 'beta',
+      hits: [{ line: 1, ordinal: 0 }],
+      total: 1,
+      limited: false
+    })
+  })
+
+  it('streams the count while the pass is still crossing the file', async () => {
+    // #given a search the test can advance step by step
+    const body = 'beta\n'.repeat(20)
+    const sessionId = await openReadySession(body)
+    // A holder, not a `let`: control-flow analysis would narrow a `let`
+    // assigned only inside the callback back to `null` at the call below.
+    const search: { emit?: (bytesSearched: number, total: number) => void } = {}
+    mocks.runFileSearch.mockImplementation(
+      (
+        _path: string,
+        _query: string,
+        _read: unknown,
+        onProgress: (bytesSearched: number, total: number) => void
+      ) => {
+        search.emit = onProgress
+        return fakeSearch({ hits: [], total: 20, limited: false })
+      }
+    )
+
+    // #when
+    const pending = searchLargeFileSession({ sessionId, query: 'beta' })
+    search.emit?.(40, 8)
+    await pending
+
+    // #then — a 2 GB pass takes seconds, so the count arrives as it grows and
+    // is marked as growing. Waiting in silence would read as "no matches".
+    expect(searchEvents()).toContainEqual(
+      expect.objectContaining({
+        sessionId,
+        query: 'beta',
+        bytesSearched: 40,
+        total: 8,
+        fileBytes: body.length
+      })
+    )
+  })
+
+  it('answers a search for an unknown session with null instead of throwing', async () => {
+    // #given no session at all — what the renderer sees after a main restart
+
+    // #when
+    const found = await searchLargeFileSession({ sessionId: 'gone', query: 'beta' })
+
+    // #then
+    expect(found).toBeNull()
+    expect(mocks.runFileSearch).not.toHaveBeenCalled()
+  })
+
+  it('cancels the query the user has already typed past', async () => {
+    // #given a search that never finishes on its own
+    const sessionId = await openReadySession('beta\n')
+    const first = fakeSearch({ hits: [], total: 0, limited: false }, { pending: true })
+    const second = fakeSearch({ hits: [{ line: 0, ordinal: 0 }], total: 1, limited: false })
+    mocks.runFileSearch.mockReturnValueOnce(first).mockReturnValueOnce(second)
+
+    // #when a second query arrives before the first has answered
+    const firstResult = searchLargeFileSession({ sessionId, query: 'bet' })
+    const secondResult = await searchLargeFileSession({ sessionId, query: 'beta' })
+
+    // #then — one pass per session. The abandoned one stops rather than
+    // finishing a crossing of the file nobody is waiting for.
+    expect(first.cancel).toHaveBeenCalled()
+    expect(await firstResult).toEqual({ status: 'cancelled', query: 'bet' })
+    expect(secondResult).toEqual(
+      expect.objectContaining({ status: 'complete', query: 'beta', total: 1 })
+    )
+  })
+
+  it('ignores the partial count of a query that has been superseded', async () => {
+    // #given a first search still running when a second starts
+    const sessionId = await openReadySession('beta\n')
+    const superseded: { emit?: (bytesSearched: number, total: number) => void } = {}
+    mocks.runFileSearch
+      .mockImplementationOnce(
+        (
+          _path: string,
+          _query: string,
+          _read: unknown,
+          onProgress: (bytesSearched: number, total: number) => void
+        ) => {
+          superseded.emit = onProgress
+          return fakeSearch({ hits: [], total: 0, limited: false }, { pending: true })
+        }
+      )
+      .mockReturnValueOnce(fakeSearch({ hits: [], total: 0, limited: false }))
+
+    // #when the older pass reports after the newer one started
+    void searchLargeFileSession({ sessionId, query: 'bet' })
+    await searchLargeFileSession({ sessionId, query: 'beta' })
+    superseded.emit?.(4, 99)
+
+    // #then — a count from the query before last would overwrite the current
+    // one in the find bar
+    expect(searchEvents().some((event) => event.query === 'bet')).toBe(false)
+  })
+
+  it('stops a running search when the session closes', async () => {
+    // #given a search still crossing the file
+    const sessionId = await openReadySession('beta\n')
+    const run = fakeSearch({ hits: [], total: 0, limited: false }, { pending: true })
+    mocks.runFileSearch.mockReturnValue(run)
+    void searchLargeFileSession({ sessionId, query: 'beta' })
+
+    // #when the viewer goes away
+    await closeLargeFileSession(sessionId)
+
+    // #then — the worker would otherwise outlive the handle it reads through
+    expect(run.cancel).toHaveBeenCalled()
   })
 })

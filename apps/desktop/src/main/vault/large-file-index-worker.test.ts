@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import type { IndexWorkerMessage } from './large-file-index-worker-protocol'
+import type { LargeFileWorkerMessage } from './large-file-index-worker-protocol'
 
 const mocks = vi.hoisted(() => ({
-  posted: [] as IndexWorkerMessage[],
+  posted: [] as LargeFileWorkerMessage[],
   workerData: {} as unknown
 }))
 
 vi.mock('worker_threads', () => ({
   parentPort: {
-    postMessage: (message: IndexWorkerMessage) => mocks.posted.push(message)
+    postMessage: (message: LargeFileWorkerMessage) => mocks.posted.push(message)
   },
   // A getter: the module reads `workerData` at import time, and each test
   // re-imports with a different file.
@@ -20,7 +20,7 @@ vi.mock('worker_threads', () => ({
   }
 }))
 
-/** Import the worker entry, which runs its scan as a side effect of loading. */
+/** Import the worker entry, which runs its job as a side effect of loading. */
 async function runWorker(input: unknown): Promise<void> {
   mocks.posted = []
   mocks.workerData = input
@@ -44,7 +44,7 @@ describe('large-file index worker', () => {
 
     try {
       // #when
-      await runWorker({ absolutePath: path, fileBytes: body.length })
+      await runWorker({ kind: 'index', absolutePath: path, fileBytes: body.length })
       await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('done'))
 
       // #then — the shape the bridge unpacks. A protocol drift here degrades
@@ -57,17 +57,65 @@ describe('large-file index worker', () => {
     }
   })
 
+  it('posts the hits of a search job back to the bridge', async () => {
+    // #given a file with the query on two of its lines
+    const dir = await mkdtemp(join(tmpdir(), 'memry-large-file-worker-'))
+    const path = join(dir, 'log.md')
+    await writeFile(path, 'alpha\nBETA here\ngamma beta\n')
+
+    try {
+      // #when
+      await runWorker({ kind: 'search', absolutePath: path, query: 'beta', maxHits: 50 })
+      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('search-done'))
+
+      // #then — one entry carries both whole-file passes, so a search at 2 GB
+      // runs where the scan does and never on the thread that draws the window
+      expect(mocks.posted.at(-1)).toMatchObject({
+        type: 'search-done',
+        hits: [
+          { line: 1, ordinal: 0 },
+          { line: 2, ordinal: 0 }
+        ],
+        total: 2,
+        limited: false
+      })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
   it('posts an error rather than dying silently', async () => {
     // #given a file that is not there
     const dir = await mkdtemp(join(tmpdir(), 'memry-large-file-worker-'))
 
     try {
       // #when
-      await runWorker({ absolutePath: join(dir, 'gone.md'), fileBytes: 10 })
+      await runWorker({ kind: 'index', absolutePath: join(dir, 'gone.md'), fileBytes: 10 })
       await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('error'))
 
       // #then — an unhandled rejection would leave the bridge waiting on a
       // thread that has already given up, and the viewer waiting on the bridge
+      expect(mocks.posted.at(-1)).toMatchObject({ type: 'error', message: expect.any(String) })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('posts an error when a search job cannot open the file', async () => {
+    // #given a file that went away between the open and the search
+    const dir = await mkdtemp(join(tmpdir(), 'memry-large-file-worker-'))
+
+    try {
+      // #when
+      await runWorker({
+        kind: 'search',
+        absolutePath: join(dir, 'gone.md'),
+        query: 'beta',
+        maxHits: 50
+      })
+      await vi.waitFor(() => expect(mocks.posted.at(-1)?.type).toBe('error'))
+
+      // #then — the bridge waits on a message; an unspoken failure is a hang
       expect(mocks.posted.at(-1)).toMatchObject({ type: 'error', message: expect.any(String) })
     } finally {
       await rm(dir, { recursive: true, force: true })

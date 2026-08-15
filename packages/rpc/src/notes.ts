@@ -9,7 +9,9 @@ import type {
   NoteLargeFileInfo,
   LargeFileOpenResult,
   LargeFileLinesResult,
-  LargeFileIndexEvent
+  LargeFileIndexEvent,
+  LargeFileSearchResult,
+  LargeFileSearchProgressEvent
 } from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
@@ -412,6 +414,18 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.LARGE_FILE_CLOSE,
       params: ['sessionId']
     }),
+    /**
+     * Find a literal query inside an open large file. Resolves when the pass
+     * finishes; the count as it grows arrives on `onLargeFileSearchProgress`.
+     * A newer query for the same session supersedes an older one, which then
+     * resolves `cancelled`.
+     */
+    largeFileSearch: defineMethod<
+      (input: { sessionId: string; query: string }) => Promise<LargeFileSearchResult | null>
+    >({
+      channel: NotesChannels.invoke.LARGE_FILE_SEARCH,
+      params: ['input']
+    }),
     resolveByTitle: defineMethod<(title: string) => Promise<WikiLinkResolution | null>>({
       channel: NotesChannels.invoke.RESOLVE_BY_TITLE,
       params: ['title']
@@ -673,6 +687,9 @@ export const notesRpc = defineDomain({
       NotesChannels.events.EXTERNAL_CHANGE
     ),
     onLargeFileIndex: defineEvent<LargeFileIndexEvent>(NotesChannels.events.LARGE_FILE_INDEX),
+    onLargeFileSearchProgress: defineEvent<LargeFileSearchProgressEvent>(
+      NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS
+    ),
     onTagsChanged: defineEvent<void>('notes:tags-changed'),
     onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)
   }
