@@ -60,7 +60,6 @@
     "src/renderer/src/components/note/content-area/hooks/coverage-hooks.test.tsx",
     "src/renderer/src/components/note/content-area/hooks/task-block-marquee-indent.test.ts",
     "src/renderer/src/components/note/content-area/hooks/use-block-marquee-selection.test.tsx",
-    "src/renderer/src/components/note/content-area/hooks/use-editor-sync.test.tsx",
     "src/renderer/src/components/note/content-area/list-type-conversion.integration.test.ts",
     "src/renderer/src/components/note/content-area/tag-suggestion-popover.test.tsx",
     "src/renderer/src/components/note/content-area/task-block/task-block-renderer.test.tsx",

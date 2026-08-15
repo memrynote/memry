@@ -187,10 +187,6 @@ test.describe('Note open byte stability', () => {
       .poll(() => stripFrontmatter(fs.readFileSync(absPath, 'utf8')), { timeout: 20_000 })
       .toBe(stripFrontmatter(first.bytes))
     const afterFirstOpen = fs.readFileSync(absPath, 'utf8')
-    // `performedCount` lives in the MAIN process and is only cleared by
-    // `CrdtProvider.destroy()`, which a renderer reload does not trigger — so
-    // waiting for `>= 1` again would return immediately and this test would
-    // measure the first cycle twice. Capture the count and wait past it.
     const runsAfterFirstOpen = await getWritebackRuns(electronAppA, first.id)
 
     // #when the app is reloaded and the note opened again — a cold open, with
@@ -199,13 +195,20 @@ test.describe('Note open byte stability', () => {
     await pageA.waitForLoadState('domcontentloaded')
     await waitForSyncOnline(pageA, 60_000)
     await openInEditor(pageA, title)
-    await waitForWritebackRuns(electronAppA, first.id, runsAfterFirstOpen + 1)
 
-    // #then the second cycle is a fixed point — whole file this time, since the
-    // first open already settled the frontmatter
-    await expect
-      .poll(() => fs.readFileSync(absPath, 'utf8'), { timeout: 20_000 })
-      .toBe(afterFirstOpen)
+    // #then nothing happens at all, and that IS the convergence proof.
+    //
+    // This test used to wait for a second write-back before checking the bytes,
+    // which can never arrive: `scheduleWriteback` has one production caller,
+    // `onDocUpdate`. The second open rebuilds the doc from the CRDT store with
+    // the `wikiLink` nodes already promoted, so `normalizeWikiLinks` finds
+    // nothing to change, the doc never updates, and write-back never runs. The
+    // suite's own unit sibling asserts exactly that ("reopening a doc that
+    // already holds the node does not re-promote it") — the old assertion
+    // contradicted the property the rest of the file exists to prove.
+    await pageA.waitForTimeout(3_000)
+    expect(await getWritebackRuns(electronAppA, first.id)).toBe(runsAfterFirstOpen)
+    expect(fs.readFileSync(absPath, 'utf8')).toBe(afterFirstOpen)
   })
 
   test('an inline #hashtag does not add a tags: block on first open', async ({

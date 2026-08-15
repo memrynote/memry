@@ -361,6 +361,9 @@ vi.mock('@/components/note', () => ({
         <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
           Load inline tags
         </button>
+        <button type="button" onClick={() => onInlineTagsChange(['Work'], 'load')}>
+          Load cased inline tags
+        </button>
         <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'], 'edit')}>
           Sync inline tags
         </button>
@@ -818,6 +821,25 @@ describe('NotePage', () => {
       ([input]) => (input as { tags?: string[] }).tags !== undefined
     )
     expect(tagWrites).toEqual([])
+  })
+
+  it('does not rewrite the note when a loaded tag differs only in case', async () => {
+    // #given the index keeps the frontmatter spelling ('work') while the body
+    // says '#Work'. Before the origin was threaded through, `tagsToAdd` saw
+    // 'Work' as new and merely OPENING the note wrote tags: ['work', 'Work'].
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load cased inline tags' })
+
+    // #when the editor reports what it loaded
+    fireEvent.click(screen.getByRole('button', { name: 'Load cased inline tags' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // #then nothing is written — a load is not an edit
+    expect(mocks.updateNote).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tags: expect.anything() })
+    )
   })
 
   it('still removes a tag when the user deletes the last inline tag after opening', async () => {

@@ -94,7 +94,7 @@ describe('vault watcher', () => {
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
     vi.mocked(updateFtsContent).mockImplementation(() => false)
     vi.mocked(updateNoteEmbedding).mockResolvedValue(false)
-    vi.mocked(getConfig).mockReturnValue(baseConfig)
+    vi.mocked(getConfig).mockReturnValue(baseConfig as never)
 
     window = new MockBrowserWindow()
     vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window as never])
@@ -296,7 +296,9 @@ describe('vault watcher', () => {
     expect(indexedTags).toEqual(['Declared', 'hashtag'])
 
     // …but only what the file itself declares is handed to the CRDT
-    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'inline-tag-note', ['Declared'])
+    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'inline-tag-note', ['Declared'], {
+      sizeClass: expect.any(String)
+    })
   })
 
   it('hands the CRDT no tags at all for a note whose only tag is in its body', async () => {
@@ -318,7 +320,9 @@ describe('vault watcher', () => {
 
     // An empty array is the whole fix: `mergeFrontmatter` only forces `tags:`
     // onto the file when the doc's tag array is non-empty.
-    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'body-only-tag-note', [])
+    expect(syncNoteCreate).toHaveBeenCalledWith(noteId, 'body-only-tag-note', [], {
+      sizeClass: expect.any(String)
+    })
   })
 
   // ==========================================================================

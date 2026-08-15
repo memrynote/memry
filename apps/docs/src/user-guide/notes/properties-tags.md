@@ -177,4 +177,20 @@ In the vault's markdown files, a note's frontmatter contains only your own prope
 
 Frontmatter in your `.md` files is treated as yours: memrynote re-emits the original block byte-for-byte (comments, key order, and quoting included) unless you actually edit a property, tag, or alias in the app. Saving a note without changing anything writes nothing to disk at all.
 
+### A `#tag` in the body stays in the body
+
+A tag written inline in a note's text is indexed like any other — it shows in the sidebar, in
+search, and on the tag's own page — but **opening that note does not lift it into the
+`tags:` frontmatter**. The file is left exactly as you wrote it, which matters if you keep
+your tags in the body the way an Obsidian vault often does.
+
+Adding or removing an inline tag while editing still updates the note's tags, as it always
+has. Only _opening_ a note is now a read.
+
+::: tip
+Notes that already had a `tags:` block added by an earlier version keep it. An injected block
+is indistinguishable from one you wrote yourself, so nothing tries to unpick it — delete the
+block by hand if you would rather the tag lived only in the body.
+:::
+
 If a note's frontmatter isn't valid YAML — an unterminated quote, an unclosed list — the note is still indexed. Its text stays searchable and its links still show up in the graph; only its properties, tags, and aliases are unavailable until the YAML is fixed. The broken block is left on disk untouched, so you can repair it in memrynote or any other editor.

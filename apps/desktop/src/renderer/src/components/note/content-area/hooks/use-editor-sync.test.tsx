@@ -42,7 +42,7 @@ function createEditor(parsedBlocks: any[] = []) {
   const transact = vi.fn((callback: (tr: any) => unknown) => {
     const tr = {
       setMeta: vi.fn().mockReturnThis()
-    }
+    } as { setMeta: ReturnType<typeof vi.fn>; __nextBlocks?: unknown }
     const result = callback(tr)
     if (Array.isArray(tr.__nextBlocks)) {
       document = tr.__nextBlocks
@@ -546,7 +546,7 @@ describe('useEditorSync', () => {
           initialContent: 'Body',
           contentType: 'markdown',
           isRemoteUpdateRef,
-          yjsFragment,
+          yjsFragment: yjsFragment as never,
           onContentChange,
           onMarkdownChange
         }),
