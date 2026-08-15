@@ -3,6 +3,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import { LEGACY_RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { deviceIdentifier, type RateLimitOptions } from '../middleware/rate-limit'
 import type { AppContext } from '../types'
 
 // ============================================================================
@@ -96,13 +97,25 @@ vi.mock('../middleware/paid-sync', () => ({
   })
 }))
 
-vi.mock('../middleware/rate-limit', () => ({
-  createRateLimiter: vi.fn().mockReturnValue(
-    vi.fn().mockImplementation(async (_c: any, next: any) => {
-      await next()
-    })
-  )
+// Records what each limiter was built with. The array is plain state, so it
+// survives the vi.clearAllMocks() below — the limiters are created once, at
+// module load, long before any test runs.
+const { rateLimiterOptions } = vi.hoisted(() => ({
+  rateLimiterOptions: [] as RateLimitOptions[]
 }))
+
+vi.mock('../middleware/rate-limit', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../middleware/rate-limit')>()
+  return {
+    ...actual,
+    createRateLimiter: vi.fn().mockImplementation((options: RateLimitOptions) => {
+      rateLimiterOptions.push(options)
+      return vi.fn().mockImplementation(async (_c: any, next: any) => {
+        await next()
+      })
+    })
+  }
+})
 
 vi.mock('../services/storage', () => ({
   getStorageBreakdown: vi.fn().mockResolvedValue({
@@ -1475,5 +1488,36 @@ describe('sync routes', () => {
       // #then
       expect(getChanges).toHaveBeenCalledWith(env.DB, 'user-1', 0, undefined, 'vault-1', ['note'])
     })
+  })
+})
+
+// ============================================================================
+// CRDT rate limit wiring
+//
+// The limiter itself is mocked out in this file, so its behaviour is covered in
+// middleware/rate-limit.test.ts. What is asserted here is the wiring: which
+// bucket key each CRDT route was built with, and how big the pull budget is.
+// ============================================================================
+
+describe('CRDT rate limit wiring', () => {
+  const optionsFor = (keyPrefix: string) =>
+    rateLimiterOptions.find((o) => o.keyPrefix === keyPrefix)
+
+  it('keys every CRDT limiter by device, not by account', () => {
+    // #then — a second device on one account is normal use, not contention
+    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull']) {
+      expect(optionsFor(keyPrefix)?.identifier).toBe(deviceIdentifier)
+    }
+  })
+
+  it('gives the CRDT pull budget room for a whole-vault body sweep', () => {
+    // #then — two GETs per note, so ~242 requests for a 121-note vault
+    expect(optionsFor('crdt_pull')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+  })
+
+  it('leaves the non-CRDT limiters keyed by the default user/IP chain', () => {
+    // #then — out of scope for this change
+    expect(optionsFor('sync_pull')?.identifier).toBeUndefined()
+    expect(optionsFor('sync_push')?.identifier).toBeUndefined()
   })
 })

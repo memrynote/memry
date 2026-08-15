@@ -539,6 +539,22 @@ them, and every client version already applies the snapshot as its baseline befo
 incrementals. If that fallback fails the push rejects, leaving the batch buffered for the next flush
 and — on quit — recorded for replay. No path discards an update.
 
+### CRDT rate limits
+
+The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
+**deviceId**, not by account. Body sync is device-local work: each device pulls the note bodies it
+does not already hold, so a second device on the same account is normal use rather than contention.
+Under the default per-user key the two devices split one budget, and a legitimate first sync on
+device B made device A's ordinary syncing start failing with 429s. A request that arrives without a
+deviceId keeps the existing userId → IP fallback, so nothing becomes less strict.
+
+`crdt_pull` allows 600 requests per 60 seconds, which is sized for one device pulling an entire
+vault's bodies after a fresh sign-in. That sweep costs two GETs per note — snapshot plus
+incrementals — so a 121-note vault spends roughly 242 requests within a few seconds, and the ceiling
+leaves room for a vault twice that size plus the editing traffic running alongside it. The client
+paces and batches the sweep itself; this limit is the safety margin for when that pacing is wrong or
+missing, not the mechanism that shapes the traffic.
+
 ### Server base URL
 
 Every path above is appended to a single resolved base URL. `resolveSyncServerUrl()`

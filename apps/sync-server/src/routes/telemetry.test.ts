@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../middleware/rate-limit', () => ({
+vi.mock('../middleware/rate-limit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../middleware/rate-limit')>()),
   createRateLimiter: vi.fn(() => async (_c: unknown, next: () => Promise<void>) => next())
 }))
 

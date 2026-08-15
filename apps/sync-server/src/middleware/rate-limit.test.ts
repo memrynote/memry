@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { AppError } from '../lib/errors'
 
-import { createRateLimiter } from './rate-limit'
+import { createRateLimiter, deviceIdentifier } from './rate-limit'
 
 // ============================================================================
 // Hono context / D1 mock helpers
@@ -208,5 +208,135 @@ describe('createRateLimiter', () => {
       expect.any(Number),
       expect.any(Number)
     )
+  })
+})
+
+// ============================================================================
+// Stateful D1 stand-in — the fixed-count mock above cannot show one caller
+// spending another caller's budget, which is the whole point of a bucket key.
+// ============================================================================
+
+interface RateLimitRow {
+  count: number
+  window_start: number
+}
+
+interface RecordingStatement {
+  args: unknown[]
+  bind: (...args: unknown[]) => RecordingStatement
+}
+
+const createRateLimitDb = () => {
+  const rows = new Map<string, RateLimitRow>()
+
+  const prepare = vi.fn(() => {
+    const stmt: RecordingStatement = {
+      args: [],
+      bind: (...args: unknown[]) => {
+        stmt.args = args
+        return stmt
+      }
+    }
+    return stmt
+  })
+
+  const batch = vi.fn(async (stmts: RecordingStatement[]) => {
+    const [insert, select] = stmts
+    const [key, now, windowStart] = insert.args as [string, number, number]
+    const existing = rows.get(key)
+    if (!existing || existing.window_start < windowStart) {
+      rows.set(key, { count: 1, window_start: now })
+    } else {
+      existing.count += 1
+    }
+    const row = rows.get(select.args[0] as string)
+    return [{ success: true }, { results: row ? [row] : [] }]
+  })
+
+  return { db: { prepare, batch }, rows }
+}
+
+const createDeviceContext = (
+  db: ReturnType<typeof createRateLimitDb>['db'],
+  vars: { userId?: string; deviceId?: string }
+) => {
+  const headers: Record<string, string> = {}
+  const c = {
+    env: { DB: db },
+    get: vi.fn((key: string) => (key === 'userId' ? vars.userId : vars.deviceId)),
+    req: {
+      header: vi.fn((name: string) => (name === 'CF-Connecting-IP' ? '1.2.3.4' : undefined))
+    },
+    header: vi.fn((name: string, value: string) => {
+      headers[name] = value
+    }),
+    _headers: headers
+  }
+  return { c, next: vi.fn().mockResolvedValue(undefined) }
+}
+
+// ============================================================================
+// Tests: deviceIdentifier
+// ============================================================================
+
+describe('deviceIdentifier', () => {
+  const limiterOptions = {
+    maxRequests: 3,
+    windowSeconds: 60,
+    keyPrefix: 'crdt_pull',
+    identifier: deviceIdentifier
+  }
+
+  it('should give two devices on the same account independent budgets', async () => {
+    // #given — device A spends its entire budget on a legitimate body sweep
+    const { db, rows } = createRateLimitDb()
+    const middleware = createRateLimiter(limiterOptions)
+    for (let i = 0; i < 3; i++) {
+      const { c, next } = createDeviceContext(db, { userId: 'user-1', deviceId: 'device-a' })
+      await middleware(c as never, next)
+    }
+    const exhausted = createDeviceContext(db, { userId: 'user-1', deviceId: 'device-a' })
+    await expect(middleware(exhausted.c as never, exhausted.next)).rejects.toThrow(AppError)
+
+    // #when — device B on the SAME account makes its first request
+    const deviceB = createDeviceContext(db, { userId: 'user-1', deviceId: 'device-b' })
+    await middleware(deviceB.c as never, deviceB.next)
+
+    // #then — device B is untouched by device A's spending
+    expect(deviceB.next).toHaveBeenCalled()
+    expect(deviceB.c._headers['X-RateLimit-Remaining']).toBe('2')
+    expect([...rows.keys()].sort()).toEqual([
+      'crdt_pull:device:device-a',
+      'crdt_pull:device:device-b'
+    ])
+  })
+
+  it('should fall back to the user bucket when the request has no deviceId', async () => {
+    // #given
+    const { db, rows } = createRateLimitDb()
+    const middleware = createRateLimiter(limiterOptions)
+    const { c, next } = createDeviceContext(db, { userId: 'user-1' })
+
+    // #when
+    await middleware(c as never, next)
+
+    // #then — the userId/IP chain still applies; no invented placeholder key
+    expect(next).toHaveBeenCalled()
+    expect([...rows.keys()]).toEqual(['crdt_pull:user-1'])
+  })
+
+  it('should not collapse deviceless requests from different users into one bucket', async () => {
+    // #given
+    const { db, rows } = createRateLimitDb()
+    const middleware = createRateLimiter(limiterOptions)
+
+    // #when — two accounts, neither carrying a deviceId
+    for (const userId of ['user-1', 'user-2']) {
+      const { c, next } = createDeviceContext(db, { userId })
+      await middleware(c as never, next)
+    }
+
+    // #then
+    expect([...rows.keys()].sort()).toEqual(['crdt_pull:user-1', 'crdt_pull:user-2'])
   })
 })
