@@ -72,6 +72,7 @@ vi.mock('./index', () => ({
 }))
 
 import { getIndexDatabase, getDatabase, updateFtsContent } from '../database'
+import { enqueueJournalCreate, initializeJournalCrdt } from '../journal/runtime-effects'
 import { syncNoteCreate } from '../notes/runtime-effects'
 import { updateNoteEmbedding } from '../inbox/suggestions'
 import { getConfig } from './index'
@@ -600,8 +601,44 @@ describe('vault watcher', () => {
 
     // ...but ingest asks for no CRDT doc, so the BlockNote parse never starts
     expect(syncNoteCreate).toHaveBeenCalledWith(cached!.id, expect.any(String), expect.any(Array), {
-      initCrdt: false
+      sizeClass: 'large-file'
     })
+  })
+
+  it('enqueues no journal sync item for a large-file-class journal entry', async () => {
+    // #given a dump dropped straight into the journal folder. It has no CRDT
+    // body, so a sync item would only draw a row another device cannot open.
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const journalPath = path.join(vault.journalDir, '2026-05-11.md')
+    const dump = Array.from({ length: 20_000 }, (_, i) => `2026-05-11 line ${i} payload`).join('\n')
+    fs.writeFileSync(journalPath, `---\nid: "journal-dump"\n---\n\n${dump}`, 'utf8')
+    vi.mocked(enqueueJournalCreate).mockClear()
+    vi.mocked(initializeJournalCrdt).mockClear()
+
+    // #when
+    await watcher.handleFileAdd(journalPath)
+
+    // #then — listed locally, but nothing leaves this device and nothing seeds
+    expect(enqueueJournalCreate).not.toHaveBeenCalled()
+    expect(initializeJournalCrdt).not.toHaveBeenCalled()
+  })
+
+  it('still enqueues a note-class journal entry for sync', async () => {
+    // #then the guard must cost note-class journal entries nothing
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const journalPath = path.join(vault.journalDir, '2026-05-12.md')
+    fs.writeFileSync(journalPath, '---\nid: "journal-small"\n---\n\nFirst entry', 'utf8')
+    vi.mocked(enqueueJournalCreate).mockClear()
+    vi.mocked(initializeJournalCrdt).mockClear()
+
+    // #when
+    await watcher.handleFileAdd(journalPath)
+
+    // #then
+    expect(enqueueJournalCreate).toHaveBeenCalledWith(expect.any(String), '2026-05-12')
+    expect(initializeJournalCrdt).toHaveBeenCalled()
   })
 
   it('still initiates a CRDT seed for a well-formed note', async () => {
@@ -621,7 +658,7 @@ describe('vault watcher', () => {
       expect.any(String),
       expect.any(String),
       expect.any(Array),
-      { initCrdt: true }
+      { sizeClass: 'note' }
     )
   })
 })

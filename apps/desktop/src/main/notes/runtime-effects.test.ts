@@ -32,28 +32,38 @@ describe('syncNoteCreate', () => {
     vi.clearAllMocks()
   })
 
-  it('gives a new note a CRDT doc by default', () => {
+  it('gives a new note a CRDT doc and a sync item by default', () => {
     // #when
     syncNoteCreate('note-1', 'Title', ['alpha'])
 
     // #then
     expect(mocks.initForNote).toHaveBeenCalledWith('note-1', { title: 'Title' }, ['alpha'])
+    expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('note', 'note-1')
   })
 
   it('skips the CRDT doc when the caller says the file is large-file class', () => {
     // #when — what the vault watcher does for a log dump
-    syncNoteCreate('big-note', 'Server Log', [], { initCrdt: false })
+    syncNoteCreate('big-note', 'Server Log', [], { sizeClass: 'large-file' })
 
     // #then — no Y.Doc, so the BlockNote markdown parse never starts
     expect(mocks.initForNote).not.toHaveBeenCalled()
   })
 
-  it('still enqueues the note for sync when the CRDT doc is skipped', () => {
-    // #given large-file class is a body decision, not a "forget this file"
-    // decision — #1461 is what stops it syncing.
-    syncNoteCreate('big-note', 'Server Log', [], { initCrdt: false })
+  it('enqueues no sync item for a large-file-class file', () => {
+    // #given a large-file-class file has no CRDT body, so the row another
+    // device would draw from a note sync item could never be opened there. A
+    // row that cannot be opened is worse than no row at all.
+    syncNoteCreate('big-note', 'Server Log', [], { sizeClass: 'large-file' })
 
     // #then
-    expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('note', 'big-note')
+    expect(mocks.enqueueLocalSyncCreate).not.toHaveBeenCalled()
+  })
+
+  it('still enqueues a note-class file for sync', () => {
+    // #then the guard must cost note-class files nothing
+    syncNoteCreate('note-1', 'Title', ['alpha'], { sizeClass: 'note' })
+
+    expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('note', 'note-1')
+    expect(mocks.initForNote).toHaveBeenCalledWith('note-1', { title: 'Title' }, ['alpha'])
   })
 })

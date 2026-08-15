@@ -387,15 +387,17 @@ export class VaultWatcher {
       localOnly: false
     }
 
-    // A large-file-class file still gets a sidebar row, but never a Y.Doc.
-    // Seeding one runs the BlockNote markdown parse over the whole file on the
-    // main process with no yield point, and that parse is the freeze: its cost
-    // tracks single-block size, so a blank-line-free dump costs 14x the same
-    // bytes shaped as paragraphs.
+    // A large-file-class file still gets a sidebar row here, but never a Y.Doc
+    // and never a sync item. No Y.Doc, because seeding one runs the BlockNote
+    // markdown parse over the whole file on the main process with no yield
+    // point, and that parse is the freeze: its cost tracks single-block size,
+    // so a blank-line-free dump costs 14x the same bytes shaped as paragraphs.
+    // No sync item, because the body only travels in that Y.Doc — the other
+    // device would get a row with nothing behind it.
     const classification = classifyMarkdownContent(content)
     const isLargeFile = classification.sizeClass === 'large-file'
     if (isLargeFile) {
-      logger.warn('Ingested file is large-file class; skipping CRDT seed', {
+      logger.warn('Ingested file is large-file class; not seeding or syncing it', {
         path: relativePath,
         reason: classification.reason,
         fileBytes: classification.fileBytes,
@@ -406,10 +408,12 @@ export class VaultWatcher {
     // Enqueue sync push so other devices learn about the new file
     if (isJournalPath(relativePath)) {
       const journalDate = extractJournalDate(relativePath)
-      enqueueJournalCreate(noteId, journalDate)
-      if (!isLargeFile) void initializeJournalCrdt(noteId, journalDate, tags)
+      if (!isLargeFile) {
+        enqueueJournalCreate(noteId, journalDate)
+        void initializeJournalCrdt(noteId, journalDate, tags)
+      }
     } else {
-      syncNoteCreate(noteId, parsed.title, tags, { initCrdt: !isLargeFile })
+      syncNoteCreate(noteId, parsed.title, tags, { sizeClass: classification.sizeClass })
     }
 
     // Emit event to renderer

@@ -1,4 +1,5 @@
 import { updateNoteMetadata } from '@memry/storage-data'
+import type { MarkdownSizeClass } from '@memry/shared/markdown-class'
 import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { attachmentEvents } from '../sync/attachment-events'
@@ -19,11 +20,15 @@ const logger = createLogger('NoteRuntimeEffects')
 
 export interface SyncNoteCreateOptions {
   /**
-   * Whether to give the note a CRDT doc. False for a large-file-class file: it
-   * is listed and tracked, but seeding it would run the BlockNote markdown
-   * parse over the whole file on the main process, which is the freeze.
+   * Defaults to note class, which is every caller that does not classify.
+   *
+   * A large-file-class file gets neither a CRDT doc nor a sync item. No doc,
+   * because seeding one runs the BlockNote markdown parse over the whole file
+   * on the main process, which is the freeze. No sync item, because the body
+   * lives only in that doc — a receiving device would draw a sidebar row it
+   * could never open, which is worse than drawing nothing.
    */
-  initCrdt?: boolean
+  sizeClass?: MarkdownSizeClass
 }
 
 export function syncNoteCreate(
@@ -32,8 +37,9 @@ export function syncNoteCreate(
   tags: string[],
   options?: SyncNoteCreateOptions
 ): void {
+  if (options?.sizeClass === 'large-file') return
+
   enqueueLocalSyncCreate('note', noteId)
-  if (options?.initCrdt === false) return
 
   getCrdtProvider()
     ?.initForNote(noteId, { title }, tags)
