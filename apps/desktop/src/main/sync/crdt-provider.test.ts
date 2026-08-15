@@ -62,6 +62,8 @@ const mocks = vi.hoisted(() => {
       { isDestroyed: ReturnType<typeof vi.fn>; webContents: { send: ReturnType<typeof vi.fn> } }
     >(),
     getNoteCacheById: vi.fn(),
+    /** Overridden by the one test that needs a path a real `stat` can reach. */
+    toAbsolutePath: vi.fn((path: string) => `/vault/${path}`),
     safeRead: vi.fn(),
     parseNote: vi.fn(),
     markdownToYFragment: vi.fn(),
@@ -133,7 +135,7 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 
 vi.mock('../vault/notes', () => ({
-  toAbsolutePath: (path: string) => `/vault/${path}`
+  toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
 }))
 
 vi.mock('../vault/file-ops', () => ({
@@ -188,6 +190,7 @@ vi.mock('./microtask-batch-broadcaster', () => ({
 }))
 
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { NOTE_MAX_BYTES } from '@memry/shared/markdown-class'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import type { SnapshotPushFn } from './crdt-provider'
 
@@ -232,6 +235,7 @@ describe('CrdtProvider', () => {
       title: 'Note',
       fileType: 'markdown'
     })
+    mocks.toAbsolutePath.mockImplementation((path: string) => `/vault/${path}`)
     mocks.safeRead.mockResolvedValue('# Note\n\nBody')
     mocks.parseNote.mockReturnValue({ content: 'Body' })
     mocks.markdownToYFragment.mockImplementation(
@@ -1193,6 +1197,35 @@ describe('CrdtProvider', () => {
     expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
     expect(provider.getDoc('log-dump')?.getXmlFragment('prosemirror').length).toBe(0)
+  })
+
+  it('refuses a file over the byte ceiling without reading it', async () => {
+    // #given a real file past NOTE_MAX_BYTES on disk. The vault-wide sweep
+    // reaches every note on every pass, and the reported case was 17 MB read
+    // in full each time only to be refused.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-seed-'))
+    const file = path.join(dir, 'dump.md')
+    fs.writeFileSync(file, 'x'.repeat(NOTE_MAX_BYTES + 1))
+    mocks.toAbsolutePath.mockReturnValue(file)
+
+    await provider.open('big-on-disk', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'big-on-disk',
+      path: 'notes/dump.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockClear()
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('big-on-disk')
+
+    // #then — `stat` settles it, so the bytes are never pulled into the main
+    // process at all
+    expect(mocks.safeRead).not.toHaveBeenCalled()
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 
   it('refuses to seed a file over the byte ceiling', async () => {

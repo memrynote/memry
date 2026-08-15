@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import path from 'path'
 import { rmSync } from 'fs'
+import fsp from 'fs/promises'
 import { app, BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -22,7 +23,7 @@ import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import { classifyMarkdownContent } from '@memry/shared/markdown-class'
+import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
@@ -577,14 +578,31 @@ export class CrdtProvider {
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
 
-    const raw = await safeRead(toAbsolutePath(cached.path))
+    const absolutePath = toAbsolutePath(cached.path)
+
+    // Classify from `stat` before reading. The byte ceiling settles a large
+    // file on its own, and the vault-wide sweep reaches every note on every
+    // pass — reading 17 MB into the main process each time only to refuse it
+    // is the read this guard exists to avoid. Same order as `getNoteById`.
+    const stats = await fsp.stat(absolutePath).catch(() => null)
+    const bySize = stats ? classifyMarkdownStat(stats.size) : null
+    if (bySize) {
+      log.warn('Refusing to seed a large-file-class note into CRDT', {
+        noteId,
+        reason: bySize.reason,
+        fileBytes: bySize.fileBytes
+      })
+      return
+    }
+
+    const raw = await safeRead(absolutePath)
     if (!raw) return
 
     // Before gray-matter, before BlockNote. The parse is what freezes the main
     // process — cost tracks single-block size, not file size — so a large-file
-    // class note never gets a Y.Doc body. This guard is not conditional on how
-    // the note arrived, so an oversized note already sitting in an existing
-    // vault stops freezing on open too.
+    // class note never gets a Y.Doc body. Under the byte ceiling the file is
+    // cheap to read, and the block bound still has to be measured: a
+    // sub-ceiling log dump is one enormous block and parses quadratically.
     const classification = classifyMarkdownContent(raw)
     if (classification.sizeClass === 'large-file') {
       log.warn('Refusing to seed a large-file-class note into CRDT', {
