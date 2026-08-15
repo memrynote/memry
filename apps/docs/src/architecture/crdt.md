@@ -229,6 +229,13 @@ document to its vault `.md` file and re-indexes it for search.
   exactly as it is and the pass reports `writeback_unrepresentable_node` rather than
   writing a version with that content missing. The note resumes normal write-back as soon
   as the document no longer holds such a node; the refusal does not latch.
+- **Constructible is not the same as serializable** — the scan above answers "can this
+  build construct this node name", which is exactly the question the converter's delete
+  depends on. It is not "will this node survive serialization". A node whose spec is
+  registered under a key that is not its `config.type` builds fine and serializes to
+  nothing, and the scan cannot see it. That invariant is enforced where it can be, at
+  schema construction in `@memry/editor-schema`: a mis-keyed spec fails the schema build
+  in both processes instead of quietly dropping content on the next write-back.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search

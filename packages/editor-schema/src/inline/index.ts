@@ -1,4 +1,5 @@
 import type { InlineContentSpec } from '@blocknote/core'
+import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 import { linkMentionConfig } from './link-mention'
 import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
@@ -42,14 +43,20 @@ export interface MemryInlineSpecs {
  * Every custom inline node type Memry can put in a document, ready to spread
  * into `BlockNoteSchema.create`. Both processes build from this one list, so a
  * spec cannot exist on one side only.
+ *
+ * The keys below are the node names BlockNote will key its `inlineContentSchema`
+ * by; each spec's `config.type` is the node name ProseMirror will build. They
+ * are asserted equal here rather than assumed — see spec-keys.ts (#1455).
  */
 export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
-  return {
+  const registered = {
     wikiLink: specs.wikiLink,
     linkMention: specs.linkMention,
     hashTag: specs.hashTag,
     dateMention: specs.dateMention
   }
+  assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
+  return registered
 }
 
 /** Node names of every custom inline spec — the parity gate reads this. */

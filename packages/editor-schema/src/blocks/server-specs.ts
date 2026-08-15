@@ -35,6 +35,7 @@ import {
   youtubeEmbedConfig
 } from './configs'
 import { fileBlockCommentData, type FileBlockProps } from './markdown'
+import { assertSpecKeysMatchNodeTypes } from '../spec-keys'
 
 /**
  * A block whose markdown is a plain `![alt](url)` embed. A real `<img>` is what
@@ -118,8 +119,13 @@ function taskBlockDom(block: { props: unknown }): { dom: HTMLElement } {
   return { dom }
 }
 
+/**
+ * The keys below are what BlockNote keys its `blockSchema` by; each spec's
+ * `config.type` is what ProseMirror builds. Asserted equal rather than assumed
+ * — see spec-keys.ts (#1455).
+ */
 export function createServerBlockSpecs() {
-  return {
+  const registered = {
     taskBlock: createBlockSpec(taskBlockConfig, {
       render: taskBlockDom,
       toExternalHTML: taskBlockDom
@@ -141,4 +147,6 @@ export function createServerBlockSpecs() {
       toExternalHTML: bookmarkDom
     })()
   }
+  assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)
+  return registered
 }

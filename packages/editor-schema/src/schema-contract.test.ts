@@ -40,7 +40,8 @@ import {
   dateMentionConfig,
   hashTagConfig,
   linkMentionConfig,
-  wikiLinkConfig
+  wikiLinkConfig,
+  type MemryInlineSpecs
 } from './inline'
 import {
   MEMRY_BLOCK_TYPES,
@@ -329,5 +330,105 @@ describe('every server implementation emits exactly what it serializes', () => {
 
     // #when / #then
     expect(() => impl.render({ type, props }, null)).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Gate 4 — every spec is registered under its own node name (#1455)
+// ---------------------------------------------------------------------------
+
+/**
+ * The registration key and `config.type` are two different names for the same
+ * node, and BlockNote does not make them agree. When they diverge, every guard
+ * in this epic reads healthy and the content is lost anyway: ProseMirror builds
+ * `config.type`, so y-prosemirror keeps the element and
+ * `findUnrepresentableNodes` returns `[]`, while BlockNote — whose
+ * `inlineContentSchema`/`blockSchema` is keyed by the REGISTRATION key — cannot
+ * resolve the node when serializing and drops it. Measured on a schema keyed
+ * `wikiLinkRenamed`: `See [[Wiki Link]] for details.` → `See for details.`
+ *
+ * Gates 1-3 above compare names, propSchemas and behaviour of the specs; this
+ * one compares each spec's name to the slot it was put in.
+ */
+describe('every spec is registered under its own node type', () => {
+  /** `config.type` for a spec object; the string itself for `text` / `link`. */
+  function nodeTypeOf(config: unknown): unknown {
+    return typeof config === 'string' ? config : (config as { type?: unknown }).type
+  }
+
+  it.each(MEMRY_BLOCK_TYPES)('the %s block spec is keyed by its config.type', (type) => {
+    // #given / #when / #then derived from the exported list, so a spec added
+    // under a mismatched key is covered without anyone remembering to add a case
+    expect(serverBlockSpecs()[type].config.type).toBe(type)
+  })
+
+  it.each(MEMRY_INLINE_CONTENT_TYPES)('the %s inline spec is keyed by its config.type', (type) => {
+    expect(serverInlineSpecs()[type].config.type).toBe(type)
+  })
+
+  it('every key in the assembled blockSchema is that block’s own type', () => {
+    // #given the WHOLE assembled map, BlockNote's defaults and the factory's
+    // syntax-highlighting `codeBlock` included — not just Memry's five
+    const schema = serverSchema().blockSchema as Record<string, unknown>
+
+    // #when / #then
+    for (const [key, config] of Object.entries(schema)) {
+      expect(nodeTypeOf(config)).toBe(key)
+    }
+  })
+
+  it('every key in the assembled inlineContentSchema is that node’s own type', () => {
+    // #given `text` and `link` are bare strings here rather than configs, and
+    // the string IS the node name — so they are checked, not skipped
+    const schema = serverSchema().inlineContentSchema as unknown as Record<string, unknown>
+
+    // #when / #then
+    for (const [key, config] of Object.entries(schema)) {
+      expect(nodeTypeOf(config)).toBe(key)
+    }
+  })
+
+  it('refuses a block spec registered under another name', () => {
+    // #given the issue's exact shape: a real spec put in the wrong slot. This is
+    // reachable for blocks because `createMemrySchema` takes them free-form —
+    // the renderer's React blocks reach no factory in this package. The cast is
+    // what a real mistake needs now: the parameter's mapped type maps a
+    // mis-keyed entry to `never`, so this is a compile error without it.
+    const blocks = createServerBlockSpecs()
+    const misKeyed = {
+      ...blocks,
+      bookmarkRenamed: blocks.bookmark
+    } as unknown as ReturnType<typeof createServerBlockSpecs>
+
+    // #when / #then the schema build fails, naming the slot and the node name
+    expect(() =>
+      createMemrySchema({ blocks: misKeyed, inline: createServerInlineSpecs() })
+    ).toThrowError(/blockSpecs.*\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
+  })
+
+  it('refuses an inline spec registered under another name', () => {
+    // #given the same divergence on the inline half: the wikiLink slot holding a
+    // spec that builds some other node. `createMemryInlineContentSpecs` writes
+    // the four keys itself, so this is the only direction a mis-key can take
+    // here — and it is the one that made y-prosemirror delete the element.
+    const inline = createServerInlineSpecs()
+    const renamed = {
+      ...inline.wikiLink,
+      config: { ...inline.wikiLink.config, type: 'wikiLinkRenamed' }
+    } as unknown as MemryInlineSpecs['wikiLink']
+
+    // #when / #then it throws at the factory, before any schema exists
+    expect(() => createMemryInlineContentSpecs({ ...inline, wikiLink: renamed })).toThrowError(
+      /inlineContentSpecs.*\["wikiLink"\].*config\.type is "wikiLinkRenamed"/s
+    )
+  })
+
+  it('builds the shipped schema without throwing', () => {
+    // #given both processes call `createMemrySchema` at MODULE SCOPE, so this
+    // assertion firing on a shipped spec is a launch failure, not a test failure
+    // #when / #then
+    expect(() => serverSchema()).not.toThrow()
+    expect(() => createServerBlockSpecs()).not.toThrow()
+    expect(() => createMemryInlineContentSpecs(createServerInlineSpecs())).not.toThrow()
   })
 })

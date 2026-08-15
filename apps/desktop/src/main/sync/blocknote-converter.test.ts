@@ -22,7 +22,12 @@ import {
   serializeCalloutBlock,
   serializeYoutubeEmbed
 } from '@memry/editor-schema/blocks'
-import { createInlineContentSpec } from '@blocknote/core'
+import {
+  BlockNoteSchema,
+  createInlineContentSpec,
+  defaultBlockSpecs,
+  defaultInlineContentSpecs
+} from '@blocknote/core'
 import { createWikiLinkInlineContent, wikiLinkToText } from '@memry/editor-schema/inline'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
@@ -785,6 +790,119 @@ describe('findUnrepresentableNodes', () => {
 
     // #then
     expect(unknown).toEqual([])
+  })
+})
+
+/**
+ * The hole `findUnrepresentableNodes` does NOT cover, and what closed it (#1455).
+ *
+ * The guard asks whether this build can CONSTRUCT a node name, because that is
+ * the question y-prosemirror's delete depends on. It is not the question "will
+ * this node survive serialization", and the difference is a whole class of
+ * silent loss: a spec registered under a key that is not its `config.type`
+ * builds fine (the node name comes from `config.type`) and serializes to
+ * nothing (BlockNote resolves nodes against a schema keyed by the REGISTRATION
+ * key). Every guard reads green while the text leaves the vault file.
+ *
+ * The first test measures that, with the mis-keyed schema built the only way it
+ * still can be — `BlockNoteSchema.create` directly. The second shows the door it
+ * came through is shut: `createMemrySchema` refuses the same divergence.
+ */
+describe('a spec registered under a key that is not its config.type', () => {
+  /** `See [[Wiki Link]] for details.` as the renderer puts it in the shared doc. */
+  function wikiLinkDoc(): Y.Doc {
+    const doc = new Y.Doc()
+    const ok = blocksToYFragment(
+      [
+        {
+          id: 'p1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          content: [
+            { type: 'text', text: 'See ', styles: {} },
+            { type: 'wikiLink', props: { target: 'Wiki Link', alias: '' } },
+            { type: 'text', text: ' for details.', styles: {} }
+          ]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    expect(ok).toBe(true)
+    return doc
+  }
+
+  it('drops the node while every constructibility check stays green', async () => {
+    // #given the shipped schema writes the note, and reads it back whole
+    const doc = wikiLinkDoc()
+    expect(await yDocToMarkdown(doc)).toBe('See [[Wiki Link]] for details.')
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+
+    // #given a schema whose wikiLink spec sits under the wrong key. Built
+    // through `BlockNoteSchema.create` because `createMemrySchema` no longer
+    // permits it — this is the shape that shipped-adjacent code could have had.
+    const inline = createServerInlineSpecs()
+    const misKeyed = ServerBlockNoteEditor.create({
+      schema: BlockNoteSchema.create({
+        blockSpecs: { ...defaultBlockSpecs, ...createServerBlockSpecs() },
+        inlineContentSpecs: {
+          ...defaultInlineContentSpecs,
+          wikiLinkRenamed: inline.wikiLink,
+          linkMention: inline.linkMention,
+          hashTag: inline.hashTag,
+          dateMention: inline.dateMention
+        }
+      })
+      // Through `unknown`: with `wikiLink` gone from the inline map the schema
+      // no longer overlaps the default-parameterised `ServerBlockNoteEditor` at
+      // all, which is the type system noticing the same divergence this test is
+      // about. Only the runtime behaviour is under test here.
+    }) as unknown as ServerBlockNoteEditor
+
+    // #then the node name ProseMirror knows is `config.type`, NOT the key — so
+    // y-prosemirror builds the element instead of deleting it, and a
+    // constructibility scan of this schema reports nothing wrong
+    const pmNodes = misKeyed.editor.pmSchema.nodes
+    expect('wikiLink' in pmNodes).toBe(true)
+    expect('wikiLinkRenamed' in pmNodes).toBe(false)
+
+    // …while BlockNote's own map is keyed by the registration key, so it cannot
+    // resolve the node it just built
+    expect(Object.keys(misKeyed.editor.schema.inlineContentSchema)).toContain('wikiLinkRenamed')
+    expect(Object.keys(misKeyed.editor.schema.inlineContentSchema)).not.toContain('wikiLink')
+
+    // #when the note is written back through that schema. `trimEnd` only
+    // removes the serializer's trailing newline, which `yDocToMarkdown`
+    // normalizes away before the vault file is written.
+    const blocks = misKeyed.yXmlFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const written = (await misKeyed.blocksToMarkdownLossy(blocks)).trimEnd()
+
+    // #then the link is gone from the bytes — 30 down to 16. BlockNote logs
+    // `unrecognized inline content type wikiLink` on the way past (visible in
+    // this run's stderr) and returns normally, so nothing rejects the write and
+    // the guard has nothing to refuse.
+    expect(written).toBe('See for details.')
+    expect('See [[Wiki Link]] for details.'.length).toBe(30)
+    expect(written.length).toBe(16)
+  })
+
+  it('cannot be built through createMemrySchema', () => {
+    // #given the same divergence, in the one map a caller still supplies
+    // free-form: `createMemrySchema` takes block specs as they come, so the
+    // renderer's React blocks reach no factory that could key them. The cast is
+    // what the mistake now costs — the parameter's mapped type makes a mis-keyed
+    // entry `never`, so this does not compile without one.
+    const blocks = createServerBlockSpecs()
+    const misKeyed = {
+      ...blocks,
+      bookmarkRenamed: blocks.bookmark
+    } as unknown as ReturnType<typeof createServerBlockSpecs>
+
+    // #when / #then the schema build throws, naming the slot and the node name,
+    // so no editor exists to reach `yDocToMarkdown` with
+    expect(() =>
+      createMemrySchema({ blocks: misKeyed, inline: createServerInlineSpecs() })
+    ).toThrowError(/blockSpecs\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
   })
 })
 
