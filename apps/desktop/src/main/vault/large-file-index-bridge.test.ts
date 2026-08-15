@@ -8,7 +8,17 @@ import { fileHandleReader, type ByteReader } from './large-file-index'
 const mocks = vi.hoisted(() => ({
   /** null = constructing a Worker throws, standing in for a missing bundle. */
   spawn: null as ((path: string) => EventEmitter) | null,
-  spawned: [] as string[]
+  spawned: [] as string[],
+  warned: [] as unknown[]
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: (_message: string, context?: unknown) => mocks.warned.push(context),
+    error: vi.fn()
+  })
 }))
 
 vi.mock('worker_threads', () => ({
@@ -56,6 +66,7 @@ describe('buildLineIndex', () => {
   beforeEach(() => {
     mocks.spawn = null
     mocks.spawned = []
+    mocks.warned = []
   })
 
   it('scans on a worker thread, not on the main thread', async () => {
@@ -122,6 +133,35 @@ describe('buildLineIndex', () => {
 
     // #then
     expect(index.lineCount).toBe(3)
+  })
+
+  it('keeps a non-Error worker failure debuggable', async () => {
+    // #given a worker thread that fails with something that is not an Error —
+    // a bare value is what a thrown string looks like once it has crossed the
+    // thread boundary
+    const body = 'one\ntwo\n'
+    const emitter = new EventEmitter()
+    mocks.spawn = () => {
+      queueMicrotask(() => emitter.emit('error', 'ENOMEM'))
+      return emitter
+    }
+
+    // #when — the scan itself still succeeds, on the fallback, so the worker
+    // failure only ever exists in the log
+    const index = await withOpenVaultFile(body, (path, read) =>
+      buildLineIndex(path, body.length, read, () => {})
+    )
+
+    // #then — the viewer is unaffected...
+    expect(index.lineCount).toBe(2)
+    // ...and the reason the worker was abandoned reached the log as a real
+    // Error, so it carries a stack. A bare string arrives with nothing to
+    // debug from, and this is the one failure someone will be reading a log to
+    // understand.
+    const logged = mocks.warned.at(-1) as { err?: unknown } | undefined
+    expect(logged?.err).toBeInstanceOf(Error)
+    expect((logged?.err as Error).message).toContain('ENOMEM')
+    expect((logged?.err as Error).cause).toBe('ENOMEM')
   })
 
   it('surfaces a read failure the fallback cannot fix', async () => {
