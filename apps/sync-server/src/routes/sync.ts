@@ -7,7 +7,7 @@ import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
-import { createRateLimiter } from '../middleware/rate-limit'
+import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
@@ -467,22 +467,37 @@ const NoteIdSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/)
   .max(128)
 
+// The CRDT budgets are per device, not per account. Body sync is device-local
+// work: each device pulls the note bodies it does not have yet, and a second
+// device on the same account is normal use rather than contention. Under the
+// default per-user bucket the two devices split one budget, so signing in on
+// device B made device A's ordinary syncing start failing with 429s. Requests
+// without a deviceId keep the userId/IP fallback, so nothing gets less strict.
 const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
   maxRequests: 300,
-  windowSeconds: 60
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
+// Sized for one device pulling an entire vault's bodies after a fresh sign-in.
+// That sweep costs two GETs per note (snapshot + updates), so a 121-note vault
+// spends ~242 requests in a few seconds; 600/min leaves room for a vault twice
+// that size plus the normal editing traffic running alongside it. The client
+// paces and batches its sweep, so treat this ceiling as the safety margin for
+// when that pacing is wrong or missing, not as the thing shaping the traffic.
 const crdtPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_pull',
-  maxRequests: 300,
-  windowSeconds: 60
+  maxRequests: 600,
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const crdtBatchPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_batch_pull',
   maxRequests: 30,
-  windowSeconds: 60
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const CrdtBatchPullSchema = z.object({

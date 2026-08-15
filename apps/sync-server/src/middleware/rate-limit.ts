@@ -15,6 +15,18 @@ export interface RateLimitOptions {
   identifier?: (c: Context<AppContext>) => Promise<string | null> | string | null
 }
 
+// Keys a bucket by the requesting device instead of the account. A second
+// device on the same account is normal use, not contention: with a per-user
+// bucket, a legitimate sign-in sweep on device B spent device A's budget and
+// both devices started collecting 429s for work neither of them did wrong.
+// Returns null when the request carries no deviceId so the userId/IP chain in
+// the limiter still applies — a placeholder key would put every anonymous
+// request into one shared bucket, which is worse than the per-user default.
+export const deviceIdentifier = (c: Context<AppContext>): string | null => {
+  const deviceId = c.get('deviceId')
+  return deviceId ? `device:${deviceId}` : null
+}
+
 export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<AppContext> => {
   const { maxRequests, windowSeconds, keyPrefix } = options
 
@@ -44,8 +56,7 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
     ])
 
     const row = (result[1] as D1Result).results?.[0] as
-      | { count: number; window_start: number }
-      | undefined
+      { count: number; window_start: number } | undefined
     const count = row?.count ?? 0
 
     if (count > maxRequests) {
