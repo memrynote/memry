@@ -9,7 +9,7 @@ import { stopSyncRuntime } from './runtime'
 import { resetTokenManagerState } from './token-manager'
 import { getValidAccessToken } from './token-manager'
 import { clearPendingSession, clearPendingLinkCompletion } from './linking-service'
-import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import { getCrdtProvider } from './crdt-provider'
 import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
@@ -109,12 +109,23 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
   store.set('sync', {})
 
   if (reason === 'logout') {
-    try {
-      await getCrdtProvider().wipeStorage()
-    } catch (err) {
-      log.warn('CRDT storage wipe failed', err)
-    }
-    resetCrdtProvider()
+    // Sign-out used to delete the whole CRDT store here. It no longer does.
+    //
+    // The store was global — one directory for every vault, keyed by note id —
+    // so the wipe was containment for a collision that per-vault store paths
+    // now make impossible (see crdt-store-path.ts). What it cost was the merge
+    // history: the vault markdown survived a wipe, but with no local history
+    // left, a note edited while signed out could not *merge* with the server's
+    // version on sign-in — it could only be replaced by it, or re-seeded from
+    // markdown as an independent insertion, which duplicates the body. Signing
+    // out, editing, and signing back in silently lost the edit.
+    //
+    // stopSyncRuntime() above already destroyed and reset the provider, so the
+    // store has to be reopened or the editor stays unbound until the app
+    // restarts. Editing is never gated on being signed in.
+    void getCrdtProvider()
+      .initPersistence()
+      .catch((err) => log.warn('CRDT persistence re-init after sign-out failed', err))
   }
 
   log.info('Session teardown complete', { reason, keychainFailures: keychainFailures.length })

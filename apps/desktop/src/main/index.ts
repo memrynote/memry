@@ -1609,11 +1609,10 @@ const appReady = app.whenReady().then(async () => {
     }
   )
 
-  // Initialize CRDT persistence early so offline-created notes survive app restarts.
+  // CRDT persistence is initialized by openVault (below, via autoOpenLastVault),
+  // not here: the store is scoped to the open vault's uuid, which lives in that
+  // vault's data DB. Bootstrapping it at this point could only ever defer.
   // Sync callbacks (queue, snapshot push) attach later when auth is ready.
-  getCrdtProvider()
-    .initPersistence()
-    .catch((err) => mainLog.warn('Early CRDT persistence init failed (non-fatal)', err))
 
   // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default).
   // The handler also runs on every later re-apply (keyboard settings save), so a save can no

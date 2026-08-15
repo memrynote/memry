@@ -87,6 +87,30 @@ export interface AgentStoreData {
 }
 
 /**
+ * Bookkeeping for the on-disk CRDT stores. They live in userData, outside every
+ * vault, so a vault's own database is not a place this can be recorded.
+ */
+export interface CrdtStoreData {
+  /**
+   * Vault uuid that inherited the pre-per-vault global `crdt-store` directory.
+   *
+   * Every build before per-vault scoping wrote one store for the whole install,
+   * keyed by note id — so its history belongs to whichever vault last wrote a
+   * given note, and journal notes (deterministic date ids like `j2026-08-13`)
+   * genuinely collided across vaults. Exactly one vault may take it over, and
+   * this records which: absent means the legacy store is still unclaimed,
+   * present means every other vault starts from an empty store and re-seeds
+   * from its own markdown.
+   *
+   * Optional: stores written by older app versions have no `crdtStore` key at
+   * all, which reads as "unclaimed" — the correct starting state.
+   */
+  legacyStoreClaimedBy?: string
+  /** When the claim was recorded (epoch ms). Diagnostics only. */
+  legacyStoreClaimedAt?: number
+}
+
+/**
  * Last known main-window geometry, restored on the next launch / dock reopen so
  * the window comes back at the size and position the user left it.
  */
@@ -131,6 +155,8 @@ interface StoreSchema {
   updater: UpdaterStoreData
   /** Last known main-window geometry (null until the window is first sized) */
   windowBounds: StoredWindowBounds | null
+  /** Cross-vault bookkeeping for the userData-level CRDT stores */
+  crdtStore: CrdtStoreData
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -143,7 +169,8 @@ const defaultData: StoreSchema = {
   agent: {},
   captureAllowedOrigins: [],
   updater: {},
-  windowBounds: null
+  windowBounds: null,
+  crdtStore: {}
 }
 
 /** In-memory cache — populated on first read, updated on every write. */
@@ -354,6 +381,30 @@ export function setDefaultVaultPath(vaultPath: string): StoredVaultInfo | null {
   store.set('vaults', updated)
 
   return updated.find((vault) => vault.path === vaultPath) ?? null
+}
+
+/**
+ * Which vault, if any, has already inherited the legacy global CRDT store.
+ */
+export function getLegacyCrdtStoreClaim(): string | undefined {
+  return store.get('crdtStore').legacyStoreClaimedBy
+}
+
+/**
+ * Record that `vaultUuid` owns the legacy global CRDT store.
+ *
+ * Written BEFORE the directory is moved, on purpose: a crash between the two
+ * leaves a claim with the move unfinished, which the same vault resumes on its
+ * next launch. The reverse order would leave the store movable by whichever
+ * vault opened next, which is exactly the cross-vault history bleed per-vault
+ * scoping exists to prevent.
+ */
+export function recordLegacyCrdtStoreClaim(vaultUuid: string): void {
+  store.set('crdtStore', {
+    ...store.get('crdtStore'),
+    legacyStoreClaimedBy: vaultUuid,
+    legacyStoreClaimedAt: Date.now()
+  })
 }
 
 /**

@@ -1,8 +1,6 @@
 import * as Y from 'yjs'
-import path from 'path'
-import { rmSync } from 'fs'
 import fsp from 'fs/promises'
-import { app, BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
@@ -17,6 +15,7 @@ import {
   resetWritebackState
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
@@ -114,6 +113,14 @@ export class CrdtProvider {
     log.debug('CrdtProvider sync callbacks updated')
   }
 
+  /**
+   * Open this vault's CRDT store, if a vault is open.
+   *
+   * Safe — and expected — to call more than once: main calls it at bootstrap,
+   * before any vault exists, and the vault open path calls it again once the
+   * store can actually be scoped. A settled init is never redone; a *deferred*
+   * one (no vault) is not settled and must be retried.
+   */
   async initPersistence(): Promise<void> {
     // Never retry a settled init: a failed probe means the native binding is
     // broken for this process — re-probing would just re-pay the timeout.
@@ -130,10 +137,24 @@ export class CrdtProvider {
   }
 
   private async doInitPersistence(): Promise<void> {
-    const storagePath = path.join(app.getPath('userData'), 'crdt-store')
+    // Scoped to the open vault, not to the install. One store for every vault
+    // was keyed by note id alone, and journal notes use deterministic
+    // date-based ids (`j2026-08-13`), so two vaults' journals for the same day
+    // shared a key — the collision sign-out used to "contain" by deleting the
+    // whole store, and with it every note's merge history.
+    const target = await prepareVaultCrdtStore()
+    if (!target) {
+      // No vault is open: main initializes the provider before
+      // autoOpenLastVault(), and the vault picker has no vault at all. Leaving
+      // persistenceReady false is the point — this is a deferral, not a settled
+      // init, so openVault's call runs it again for real.
+      log.info('CRDT store init deferred until a vault is open')
+      return
+    }
+
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
-    this.persistence = await openCrdtPersistence(storagePath)
+    this.persistence = await openCrdtPersistence(target.storagePath)
     this.persistenceReady = true
 
     // The readiness signal a stranded editor waits on, announced from the exact
@@ -485,17 +506,6 @@ export class CrdtProvider {
       totalEncodedSizeBytes: docs.reduce((total, doc) => total + doc.encodedSizeBytes, 0),
       totalAccumulatedBytes: docs.reduce((total, doc) => total + doc.accumulatedBytes, 0),
       docs
-    }
-  }
-
-  async wipeStorage(): Promise<void> {
-    await this.destroy()
-    const storagePath = path.join(app.getPath('userData'), 'crdt-store')
-    try {
-      rmSync(storagePath, { recursive: true, force: true })
-      log.info('CRDT storage wiped', { storagePath })
-    } catch (err) {
-      log.warn('Failed to wipe CRDT storage', { storagePath, error: err })
     }
   }
 

@@ -32,7 +32,19 @@ vi.mock('@main/database/queries/notes', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: () => ({})
+  getIndexDatabase: () => ({}),
+  // The CRDT store is scoped to the open vault's uuid, which lives in the data DB.
+  getDatabase: () => ({}),
+  isDatabaseInitialized: () => true
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: () => 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+}))
+
+vi.mock('../store', () => ({
+  getLegacyCrdtStoreClaim: () => 'someone-else',
+  recordLegacyCrdtStoreClaim: vi.fn()
 }))
 
 vi.mock('../vault/notes', () => ({ toAbsolutePath: vi.fn() }))

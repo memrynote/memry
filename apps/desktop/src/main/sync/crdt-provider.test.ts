@@ -18,6 +18,7 @@ type PreflightVerdict = {
 // locked store dir) without disturbing the real fs everything else here uses.
 const fsHooks = vi.hoisted(() => ({
   renameSync: null as null | ((from: string, to: string) => void),
+  cpSync: null as null | ((from: string, to: string) => void),
   realRenameSync: (from: string, to: string): void => {
     throw new Error(`fs mock not installed (${from} -> ${to})`)
   }
@@ -28,8 +29,21 @@ vi.mock('fs', async (importActual) => {
   fsHooks.realRenameSync = actual.renameSync
   const renameSync = (from: string, to: string): void =>
     (fsHooks.renameSync ?? actual.renameSync)(from, to)
-  return { ...actual, default: { ...actual, renameSync }, renameSync }
+  const cpSync = (from: string, to: string, options?: Parameters<typeof actual.cpSync>[2]): void =>
+    fsHooks.cpSync ? fsHooks.cpSync(from, to) : actual.cpSync(from, to, options)
+  return { ...actual, default: { ...actual, renameSync, cpSync }, renameSync, cpSync }
 })
+
+/** Makes every way of moving a directory fail, the way a full disk or AV does. */
+const failEveryMove = (): void => {
+  const fail = (): never => {
+    const err = new Error('EPERM: operation not permitted') as NodeJS.ErrnoException
+    err.code = 'EPERM'
+    throw err
+  }
+  fsHooks.renameSync = fail
+  fsHooks.cpSync = fail
+}
 
 const mocks = vi.hoisted(() => {
   // Simulates a broken classic-level native binding (napi_create_reference
@@ -50,6 +64,11 @@ const mocks = vi.hoisted(() => {
     // Per-run temp dir, assigned once the real fs is importable (below). A
     // fixed name in a world-writable dir is a symlink-swap target.
     userDataDir: '',
+    // The open vault's identity — what the CRDT store is scoped to. null for
+    // `dataDb` means no vault is open, which must defer the store init.
+    dataDb: {} as object | null,
+    vaultUuid: '11111111-2222-3333-4444-555555555555',
+    legacyStoreClaim: undefined as string | undefined,
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
@@ -127,7 +146,20 @@ vi.mock('y-leveldb', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: () => ({ kind: 'index-db' })
+  getIndexDatabase: () => ({ kind: 'index-db' }),
+  getDatabase: () => mocks.dataDb,
+  isDatabaseInitialized: () => mocks.dataDb !== null
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: () => mocks.vaultUuid
+}))
+
+vi.mock('../store', () => ({
+  getLegacyCrdtStoreClaim: () => mocks.legacyStoreClaim,
+  recordLegacyCrdtStoreClaim: (vaultUuid: string) => {
+    mocks.legacyStoreClaim = vaultUuid
+  }
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -196,6 +228,11 @@ import type { SnapshotPushFn } from './crdt-provider'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
+const VAULT_UUID = mocks.vaultUuid
+/** Where the store lands now that it is scoped to the open vault. */
+const vaultStoreDir = (uuid: string = VAULT_UUID): string =>
+  `${mocks.userDataDir}/crdt-stores/${uuid}`
+
 const createWindow = (id: number, destroyed = false) => {
   const win = {
     isDestroyed: vi.fn(() => destroyed),
@@ -229,6 +266,9 @@ describe('CrdtProvider', () => {
     mocks.preflightResult = { ok: true }
     mocks.preflightQueue.length = 0
     mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -1112,7 +1152,7 @@ describe('CrdtProvider', () => {
     expect(singleton.strandedEditorDocCount).toBe(1)
   })
 
-  it('covers provider singleton, idempotent init, and wipe storage lifecycle', async () => {
+  it('covers provider singleton, idempotent init, and destroy lifecycle', async () => {
     const singleton = getCrdtProvider()
     expect(getCrdtProvider()).toBe(singleton)
     resetCrdtProvider()
@@ -1129,10 +1169,11 @@ describe('CrdtProvider', () => {
     await expect(noSnapshotProvider.pushAllSnapshots()).resolves.toBe(0)
     await noSnapshotProvider.destroy()
 
-    await provider.wipeStorage()
+    await provider.destroy()
     expect(mocks.persistenceInstances[0].destroy).toHaveBeenCalled()
     expect(provider.isInitialized()).toBe(false)
   })
+
 
   it('handles close, destroy, and push snapshot failures without leaking docs', async () => {
     createWindow(11, true)
@@ -1319,6 +1360,175 @@ describe('CrdtProvider', () => {
   })
 })
 
+// One store for the whole install, keyed by note id, meant two vaults could
+// write the same key — journal notes use deterministic date-based ids such as
+// `j2026-08-13`. Sign-out "contained" that by deleting the store outright,
+// taking every note's merge history with it. The store is per vault now.
+describe('CrdtProvider store scoping', () => {
+  const OTHER_VAULT_UUID = '99999999-8888-7777-6666-555555555555'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
+    fs.rmSync(mocks.userDataDir, { recursive: true, force: true })
+  })
+
+  afterEach(() => {
+    fsHooks.renameSync = null
+    fsHooks.cpSync = null
+    fs.rmSync(mocks.userDataDir, { recursive: true, force: true })
+    resetCrdtProvider()
+  })
+
+  it('gives two vaults two different store directories', async () => {
+    await new CrdtProvider().initPersistence()
+
+    // A vault switch destroys and replaces the provider, so the next one
+    // resolves the path from scratch against the newly opened vault.
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    expect(mocks.preflightCalls).toEqual([vaultStoreDir(), vaultStoreDir(OTHER_VAULT_UUID)])
+  })
+
+  it('gives one vault the same store directory on every launch', async () => {
+    await new CrdtProvider().initPersistence()
+    await new CrdtProvider().initPersistence()
+
+    // A path that drifted between restarts would orphan the history as
+    // thoroughly as deleting it.
+    expect(mocks.preflightCalls[0]).toBe(mocks.preflightCalls[1])
+    expect(mocks.preflightCalls[0]).toBe(vaultStoreDir())
+  })
+
+  it('defers the init until a vault is open, without settling as ready', async () => {
+    // #given no vault: app bootstrap, or the vault picker
+    mocks.dataDb = null
+    const provider = new CrdtProvider()
+
+    await provider.initPersistence()
+
+    // #then nothing is probed or opened — there is no identity to scope to
+    expect(mocks.preflightCalls).toEqual([])
+    expect(mocks.persistenceInstances).toHaveLength(0)
+    // #and the init has NOT settled. A deferral that marked itself ready would
+    // pin the provider to in-memory mode for the rest of the session, dropping
+    // every note's history on the floor.
+    expect(provider.isInitialized()).toBe(false)
+
+    // #when the vault opens and the vault-open path calls it again
+    mocks.dataDb = {}
+    await provider.initPersistence()
+
+    expect(mocks.preflightCalls).toEqual([vaultStoreDir()])
+    expect(provider.isInitialized()).toBe(true)
+  })
+
+  it('hands the legacy global store to the first vault that opens, and to no other', async () => {
+    // #given the pre-upgrade store, with real history in it
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+
+    // #when the first vault opens after the upgrade
+    await new CrdtProvider().initPersistence()
+
+    // #then it inherits the store wholesale — a single-vault user, which is
+    // nearly everyone, keeps every note's history and sees no change at all
+    expect(fs.existsSync(legacyDir)).toBe(false)
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe('history')
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+
+    // #and when a second vault opens
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    // #then it does NOT see that history. The legacy store is keyed by note id
+    // with no vault dimension, so handing it to a second vault would replay the
+    // first vault's journal entries into it.
+    expect(fs.existsSync(`${vaultStoreDir(OTHER_VAULT_UUID)}/MANIFEST-000001`)).toBe(false)
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+  })
+
+  it('records the claim before it moves anything, so a failed move cannot be reassigned', async () => {
+    // #given the legacy store and a move that cannot succeed — a full disk, AV
+    // holding the directory, or the process dying mid-migration all land here
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+    failEveryMove()
+
+    await new CrdtProvider().initPersistence()
+
+    // #then the claim is already on record even though nothing moved. Recording
+    // it after the move instead would leave the store unowned in exactly this
+    // window, free for the next vault to take.
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+
+    // #and a second vault opening into that window still cannot have it
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+    expect(fs.existsSync(vaultStoreDir(OTHER_VAULT_UUID))).toBe(false)
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+  })
+
+  it('lets the claimant finish a migration that crashed between the claim and the move', async () => {
+    // #given a claim recorded but the directory never moved — the app died in
+    // the window between the two writes
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+    mocks.legacyStoreClaim = VAULT_UUID
+
+    // #when a DIFFERENT vault opens first on the next launch
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    // #then it must not take the store: the claim is what makes the migration
+    // exactly-once, and the crash window is the one place a second claimant
+    // could otherwise slip in
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+    expect(fs.existsSync(vaultStoreDir(OTHER_VAULT_UUID))).toBe(false)
+
+    // #and when the claimant opens, it resumes and completes the move
+    mocks.vaultUuid = VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    expect(fs.existsSync(legacyDir)).toBe(false)
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe('history')
+  })
+
+  it('does not re-apply the legacy store to a claimant that already moved it', async () => {
+    // #given the migration completed: claim recorded, store moved, and the
+    // claimant has been writing to it since
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(vaultStoreDir(), { recursive: true })
+    fs.writeFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'moved-then-written-to')
+    mocks.legacyStoreClaim = VAULT_UUID
+    // A legacy directory that survived because the move fell back to copy and
+    // the delete failed.
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'stale-duplicate')
+
+    await new CrdtProvider().initPersistence()
+
+    // #then the live store is untouched. Merging the leftover back in would
+    // replay a second copy of every update the claimant already has.
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe(
+      'moved-then-written-to'
+    )
+  })
+})
+
 // Regression suite for the broken classic-level native binding shipped in
 // 2026.705.1 on Windows: napi_create_reference failures made every CRDT
 // persistence op throw or hang, crashing the editor on first keystroke and
@@ -1333,6 +1543,9 @@ describe('CrdtProvider persistence resilience', () => {
     mocks.preflightResult = { ok: true }
     mocks.preflightQueue.length = 0
     mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -1391,7 +1604,11 @@ describe('CrdtProvider persistence resilience', () => {
   // The two are told apart empirically: quarantine the store, re-probe fresh.
   describe('store quarantine', () => {
     const userDataDir = mocks.userDataDir
-    const storeDir = `${userDataDir}/crdt-store`
+    const storeDir = vaultStoreDir()
+    const storeRoot = `${userDataDir}/crdt-stores`
+    /** Quarantine dirs sit next to the store they were moved aside from. */
+    const quarantinedDirs = (): string[] =>
+      fs.readdirSync(storeRoot).filter((f) => f.startsWith(`${VAULT_UUID}.broken-`))
 
     beforeEach(() => {
       fs.rmSync(userDataDir, { recursive: true, force: true })
@@ -1415,11 +1632,9 @@ describe('CrdtProvider persistence resilience', () => {
       // Corrupt store moved aside (preserved, not deleted), fresh store adopted.
       expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
       expect(fs.existsSync(storeDir)).toBe(false)
-      const quarantined = fs
-        .readdirSync(userDataDir)
-        .filter((f) => f.startsWith('crdt-store.broken-'))
+      const quarantined = quarantinedDirs()
       expect(quarantined).toHaveLength(1)
-      expect(fs.existsSync(`${userDataDir}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
+      expect(fs.existsSync(`${storeRoot}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
       expect(mocks.persistenceInstances).toHaveLength(1)
     })
 
@@ -1438,9 +1653,7 @@ describe('CrdtProvider persistence resilience', () => {
       // launch with a working binding finds the user's CRDT history intact.
       expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
       expect(mocks.persistenceInstances).toHaveLength(0)
       expect(provider.isInitialized()).toBe(true)
     })
@@ -1464,9 +1677,7 @@ describe('CrdtProvider persistence resilience', () => {
 
       expect(mocks.preflightCalls).toEqual([storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
       expect(mocks.persistenceInstances).toHaveLength(0)
       expect(provider.isInitialized()).toBe(true)
     })
@@ -1485,9 +1696,7 @@ describe('CrdtProvider persistence resilience', () => {
 
       expect(mocks.preflightCalls).toEqual([storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     // The failed re-probe leaves a partial fresh store behind; renaming the
@@ -1513,9 +1722,7 @@ describe('CrdtProvider persistence resilience', () => {
       expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
         'healthy-but-binding-broken'
       )
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     it('restores by copy when the rename keeps failing', async () => {
@@ -1551,9 +1758,7 @@ describe('CrdtProvider persistence resilience', () => {
       expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
         'healthy-but-binding-broken'
       )
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     it('does not re-probe when no store exists to quarantine', async () => {

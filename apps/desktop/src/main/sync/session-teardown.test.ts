@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   clearPendingSession: vi.fn(),
   clearPendingLinkCompletion: vi.fn(),
   clearInMemoryAuthState: vi.fn(),
+  initPersistence: vi.fn(),
+  // Not a method the provider has any more — kept on the mock so a re-added
+  // sign-out wipe fails here loudly instead of silently deleting history.
   wipeStorage: vi.fn(),
-  resetCrdtProvider: vi.fn(),
   isDatabaseInitialized: vi.fn(),
   getDatabase: vi.fn(),
   storeSet: vi.fn(),
@@ -49,8 +51,10 @@ vi.mock('./linking-service', () => ({
 }))
 
 vi.mock('./crdt-provider', () => ({
-  getCrdtProvider: () => ({ wipeStorage: mocks.wipeStorage }),
-  resetCrdtProvider: (...args: unknown[]) => mocks.resetCrdtProvider(...args)
+  getCrdtProvider: () => ({
+    initPersistence: mocks.initPersistence,
+    wipeStorage: mocks.wipeStorage
+  })
 }))
 
 vi.mock('../ipc/sync-core-handlers', () => ({
@@ -121,6 +125,7 @@ describe('session teardown', () => {
     mocks.listGoogleAccountIds.mockReturnValue(['calendar-a', 'calendar-b'])
     mocks.disconnectGoogleCalendar.mockResolvedValue(undefined)
     mocks.deleteKey.mockResolvedValue(undefined)
+    mocks.initPersistence.mockResolvedValue(undefined)
     mocks.wipeStorage.mockResolvedValue(undefined)
   })
 
@@ -145,11 +150,23 @@ describe('session teardown', () => {
     expect(mocks.clearPendingLinkCompletion).toHaveBeenCalled()
     expect(mocks.transaction).toHaveBeenCalled()
     expect(mocks.storeSet).toHaveBeenCalledWith('sync', {})
-    expect(mocks.wipeStorage).toHaveBeenCalled()
-    expect(mocks.resetCrdtProvider).toHaveBeenCalled()
   })
 
-  it('handles integrity teardown without revoking the server session or wiping CRDT storage', async () => {
+  // The store used to be deleted here. It held the only local record of how
+  // each note got to its current state, so a note edited while signed out had
+  // nothing to merge against on sign-in: the other device's version replaced it
+  // outright. Editing is never gated on a session, so the provider has to come
+  // back up too — stopSyncRuntime() destroyed it on the way in.
+  it('keeps the CRDT store on sign-out and reopens it', async () => {
+    const { teardownSession } = await importModule()
+
+    await teardownSession('logout')
+
+    expect(mocks.wipeStorage).not.toHaveBeenCalled()
+    expect(mocks.initPersistence).toHaveBeenCalled()
+  })
+
+  it('handles integrity teardown without revoking the server session or touching CRDT storage', async () => {
     const { teardownSession } = await importModule()
 
     await teardownSession('integrity')
@@ -161,6 +178,7 @@ describe('session teardown', () => {
     expect(mocks.deleteWhere).toHaveBeenCalled()
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(mocks.wipeStorage).not.toHaveBeenCalled()
+    expect(mocks.initPersistence).not.toHaveBeenCalled()
   })
 
   it('reuses an in-flight teardown promise', async () => {
