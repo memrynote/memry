@@ -225,6 +225,13 @@ export function createEmbeddingProjector(
         return
       }
 
+      // Body not read yet (tier 0 of ingest); the idle backfill republishes the
+      // note with its body. Embedding the title alone would be worse than
+      // waiting, and it would drop any embedding the note already has.
+      if (note.parsedContent === null) {
+        return
+      }
+
       // During the initial index pass, embedding is deferred: indexVault awaits
       // this projector per file (before the vault is marked open), and loading the
       // ~23MB model + running CPU inference here is what stranded vault-open for

@@ -50,8 +50,12 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string
+  /**
+   * Null until the file's body has been read. Vault ingest lists a new file
+   * from `stat` alone, so a freshly added row is not measured yet.
+   */
+  wordCount: number | null
+  snippet?: string | null
   emoji?: string | null
   localOnly?: boolean
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'

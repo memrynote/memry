@@ -274,6 +274,54 @@ describe('search projector', () => {
     ).toHaveLength(0)
   })
 
+  it('leaves a note out of the index until its body has been read', async () => {
+    // #given the projection vault ingest publishes from `stat` alone: identity
+    // only, every body-derived field null
+    const projector = createSearchProjector(() => vaultDir)
+    const statOnlyEvent = {
+      type: 'note.upserted',
+      note: {
+        kind: 'markdown',
+        noteId: 'note-1',
+        path: 'notes/pasted.md',
+        title: 'Pasted',
+        fileType: 'markdown',
+        localOnly: false,
+        contentHash: null,
+        wordCount: null,
+        characterCount: null,
+        snippet: null,
+        date: null,
+        emoji: null,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z',
+        parsedContent: null,
+        tags: [],
+        properties: {},
+        wikiLinks: []
+      }
+    } as const
+
+    // #when
+    await projector.project(statOnlyEvent)
+
+    // #then no FTS write happens on the add path at all
+    expect(getFtsCount(indexDb.db as never)).toBe(0)
+
+    // #when the backfill republishes the same note with its body
+    await projector.project({
+      ...statOnlyEvent,
+      note: { ...statOnlyEvent.note, parsedContent: 'measured at last', wordCount: 3 }
+    })
+
+    // #then it becomes searchable
+    expect(
+      indexDb.db.all<{ id: string }>(
+        sql`SELECT id FROM fts_notes WHERE fts_notes MATCH ${'measured'}`
+      )
+    ).toHaveLength(1)
+  })
+
   it('reconcile sweeps duplicate rows left behind by earlier versions', async () => {
     seedMarkdownNote('note-1', 'notes/searchable.md', 'Disk content', ['alpha'])
     seedTask('task-1')

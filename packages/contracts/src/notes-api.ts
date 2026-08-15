@@ -81,6 +81,11 @@ export interface Note {
  * per note across IPC on every list invalidation. Every field a caller can
  * rely on unconditionally stays required, so `'tree'` rows are still ordinary
  * `NoteListItem`s and no existing consumer needs a guard.
+ *
+ * `wordCount` and `snippet` are separately nullable, for a different reason:
+ * vault ingest lists a new file from `stat` alone and reads it later, so a
+ * freshly added row carries no measurements yet. Null means "not measured",
+ * never "empty".
  */
 export interface NoteListItem {
   id: string
@@ -89,8 +94,9 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string // First 200 chars of content — omitted when fields: 'tree'
+  /** Null until the file's body has been read. */
+  wordCount: number | null
+  snippet?: string | null // First 200 chars of content — omitted when fields: 'tree'
   emoji?: string | null // Emoji icon for visual identification
   localOnly?: boolean
 }

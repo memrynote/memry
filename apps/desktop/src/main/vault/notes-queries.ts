@@ -83,7 +83,9 @@ export function listNotes(options: NoteListOptions = {}): NoteListResponse {
     created: new Date(c.createdAt),
     modified: new Date(c.modifiedAt),
     tags: tagsMap.get(c.id) ?? [],
-    wordCount: c.wordCount ?? 0,
+    // Null, not zero: a row the ingest backfill has not reached yet has no
+    // measurement, and a file with no words is a different thing.
+    wordCount: c.wordCount ?? null,
     ...(treeShape ? {} : { snippet: c.snippet ?? undefined }),
     emoji: c.emoji,
     localOnly: c.localOnly ?? false,
