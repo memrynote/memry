@@ -65,7 +65,7 @@ const mocks = vi.hoisted(() => {
     safeRead: vi.fn(),
     parseNote: vi.fn(),
     markdownToYFragment: vi.fn(),
-    repairEmptyBlockIds: vi.fn(() => 0),
+    repairEmptyBlockIds: vi.fn((..._args: unknown[]) => 0),
     compactYDoc: vi.fn(),
     scheduleWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
@@ -189,6 +189,7 @@ vi.mock('./microtask-batch-broadcaster', () => ({
 
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import type { SnapshotPushFn } from './crdt-provider'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
@@ -214,7 +215,7 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 describe('CrdtProvider', () => {
   let provider: CrdtProvider
   let queue: { enqueue: ReturnType<typeof vi.fn> }
-  let pushSnapshot: ReturnType<typeof vi.fn>
+  let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -241,7 +242,7 @@ describe('CrdtProvider', () => {
     )
     mocks.compactYDoc.mockReturnValue(null)
     queue = { enqueue: vi.fn() }
-    pushSnapshot = vi.fn().mockResolvedValue(undefined)
+    pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     provider = new CrdtProvider()
     await provider.init(queue as any, pushSnapshot)
   })

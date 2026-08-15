@@ -129,7 +129,6 @@
     "src/main/sync/concurrency.test.ts",
     "src/main/sync/content-sync-base.test.ts",
     "src/main/sync/corrupt-recovery.test.ts",
-    "src/main/sync/crdt-provider.test.ts",
     "src/main/sync/device-keys.test.ts",
     "src/main/sync/device-registration.test.ts",
     "src/main/sync/dirty-recovery.test.ts",
@@ -175,7 +174,6 @@
     "src/main/vault/resolve-embed.test.ts",
     "src/main/vault/templates.test.ts",
     "src/main/vault/vault-preferences.test.ts",
-    "src/main/vault/watcher.test.ts",
     "src/preload/api/preload-api.test.ts",
     "src/preload/generated-rpc.test.ts"
   ],

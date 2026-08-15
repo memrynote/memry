@@ -6,7 +6,13 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
-import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import {
+  createTestDataDb,
+  createTestIndexDb,
+  asClientDb,
+  type TestDatabaseResult
+} from '@tests/utils/test-db'
+import type { VaultConfig } from '@memry/contracts/vault-api'
 import { MockBrowserWindow } from '@tests/utils/mock-electron'
 import { BrowserWindow } from 'electron'
 import { parseNote, serializeNote } from './frontmatter'
@@ -15,10 +21,11 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
 const mockWatch = vi.hoisted(() => vi.fn())
-const baseConfig = {
+const baseConfig: VaultConfig = {
   excludePatterns: [],
   defaultNoteFolder: 'notes',
   journalFolder: 'journal',
+  journalDateFormat: 'YYYY-MM-DD',
   attachmentsFolder: 'attachments'
 }
 
@@ -81,7 +88,7 @@ describe('vault watcher', () => {
     indexDb = createTestIndexDb()
     indexDb.sqlite.pragma('foreign_keys = ON')
 
-    vi.mocked(getDatabase).mockReturnValue(dataDb.db)
+    vi.mocked(getDatabase).mockReturnValue(asClientDb(dataDb.db))
     vi.mocked(getIndexDatabase).mockReturnValue(indexDb.db)
     vi.mocked(updateFtsContent).mockImplementation(() => false)
     vi.mocked(updateNoteEmbedding).mockResolvedValue(false)
