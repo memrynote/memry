@@ -28,7 +28,9 @@ vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useActiveTab: () => null,
-  useTabActions: () => ({ openTab: mockOpenTab })
+  useTabActions: () => ({ openTab: mockOpenTab }),
+  // Rendered outside a tab: view, anchor and filters fall back to plain state.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/services/calendar-service', () => ({
