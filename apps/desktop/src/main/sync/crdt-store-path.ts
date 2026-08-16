@@ -4,7 +4,14 @@ import { existsSync, mkdirSync } from 'fs'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
 import { moveStoreDir } from './crdt-store-move'
-import { getLegacyCrdtStoreClaim, recordLegacyCrdtStoreClaim } from '../store'
+import { setAsideAmbiguousLegacyDocs } from './crdt-legacy-partition'
+import {
+  clearLegacyCrdtStorePartitionPending,
+  getLegacyCrdtStoreClaim,
+  getLegacyCrdtStorePartitionPending,
+  getVaults,
+  recordLegacyCrdtStoreClaim
+} from '../store'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
@@ -69,6 +76,20 @@ export function resolveVaultCrdtStore(): VaultCrdtStore | null {
 }
 
 /**
+ * Could the legacy store hold a document that is not this vault's?
+ *
+ * Only if this install has ever opened more than one vault — that list is the
+ * only record of the fact, because the store itself has no vault dimension to
+ * read. Both ways of being wrong fail safe: an install that lost a vault from
+ * the list reads as single-vault and keeps today's behaviour, and a duplicate
+ * entry for a moved vault reads as multi-vault and only costs the deterministic
+ * ids their history, which markdown re-seeds.
+ */
+function legacyStoreCouldBeAnotherVaults(): boolean {
+  return getVaults().length > 1
+}
+
+/**
  * Hand the legacy global store to the first vault that opens after the upgrade,
  * and to no other.
  *
@@ -81,13 +102,28 @@ export function resolveVaultCrdtStore(): VaultCrdtStore | null {
  * empty and re-seeds from its own markdown — the normal path for a note with no
  * stored history.
  *
- * The claim is written before the move, which makes the whole thing crash-safe:
+ * One claimant is not enough on its own, though. On an install that has opened
+ * more than one vault, the claimant inherits entries for ids it does not own.
+ * Random note ids are inert — nothing ever asks for them. Deterministic ones
+ * are not: the store's `j2026-08-13` is every vault's journal for that day
+ * merged into one document, and a vault that loads it gets another vault's
+ * text, silently, because a document that already has content is never seeded
+ * from markdown. So the claim also records that those documents still have to
+ * be set aside (see `partitionInheritedLegacyStore`), and the pass runs before
+ * the provider opens the store.
+ *
+ * The claim, and the partition it owes, are one file write made before the
+ * move — which is what makes the whole thing crash-safe:
  *
  *  - crash after the claim, before the move → the legacy directory is still
  *    there and still claimed by this vault, so the next launch of the *same*
  *    vault finishes the move and no other vault may touch it;
- *  - crash after the move → the directory is gone, so there is nothing left to
- *    inherit and nothing to double-apply.
+ *  - crash after the move, before or during the partition → the pending record
+ *    still names this vault, and it is what drives the pass, not the legacy
+ *    directory that no longer exists. So the next launch partitions the store
+ *    it now owns;
+ *  - crash after both → the pending record is gone and the claim is settled,
+ *    so there is nothing to double-apply.
  *
  * Nothing here bypasses the store's own integrity handling: the move is a plain
  * directory rename, and `openCrdtPersistence` still runs its preflight,
@@ -116,7 +152,7 @@ export async function inheritLegacyCrdtStore({
   }
 
   if (claimedBy === undefined) {
-    recordLegacyCrdtStoreClaim(vaultUuid)
+    recordLegacyCrdtStoreClaim(vaultUuid, { partitionPending: legacyStoreCouldBeAnotherVaults() })
   }
 
   if (await moveStoreDir(legacyPath, storagePath)) {
@@ -129,6 +165,28 @@ export async function inheritLegacyCrdtStore({
       legacyPath,
       storagePath
     })
+  }
+}
+
+/**
+ * Settle the partition the claim owes, if this vault is the one that owes it.
+ *
+ * Driven by the durable record rather than by the move that preceded it, so a
+ * launch that crashed between the two still gets here. It is deliberately not
+ * gated on the legacy directory: by this point that directory is usually gone,
+ * and the documents to set aside are in this vault's own store.
+ */
+export async function partitionInheritedLegacyStore({
+  vaultUuid,
+  storagePath
+}: VaultCrdtStore): Promise<void> {
+  if (getLegacyCrdtStorePartitionPending() !== vaultUuid) return
+  // The move has not happened yet (it failed, and `inheritLegacyCrdtStore`
+  // logged why). Stay pending: the next launch moves, then partitions.
+  if (!existsSync(storagePath)) return
+
+  if (await setAsideAmbiguousLegacyDocs(storagePath)) {
+    clearLegacyCrdtStorePartitionPending()
   }
 }
 
@@ -153,5 +211,6 @@ export async function prepareVaultCrdtStore(): Promise<VaultCrdtStore | null> {
   }
 
   await inheritLegacyCrdtStore(target)
+  await partitionInheritedLegacyStore(target)
   return target
 }

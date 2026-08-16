@@ -44,7 +44,10 @@ vi.mock('../agent/storage/vault-id', () => ({
 
 vi.mock('../store', () => ({
   getLegacyCrdtStoreClaim: () => 'someone-else',
-  recordLegacyCrdtStoreClaim: vi.fn()
+  recordLegacyCrdtStoreClaim: vi.fn(),
+  getVaults: () => [],
+  getLegacyCrdtStorePartitionPending: () => undefined,
+  clearLegacyCrdtStorePartitionPending: vi.fn()
 }))
 
 vi.mock('../vault/notes', () => ({ toAbsolutePath: vi.fn() }))

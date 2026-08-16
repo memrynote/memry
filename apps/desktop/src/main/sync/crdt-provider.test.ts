@@ -159,7 +159,10 @@ vi.mock('../store', () => ({
   getLegacyCrdtStoreClaim: () => mocks.legacyStoreClaim,
   recordLegacyCrdtStoreClaim: (vaultUuid: string) => {
     mocks.legacyStoreClaim = vaultUuid
-  }
+  },
+  getVaults: () => [],
+  getLegacyCrdtStorePartitionPending: () => undefined,
+  clearLegacyCrdtStorePartitionPending: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({

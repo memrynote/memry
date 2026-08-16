@@ -108,6 +108,20 @@ export interface CrdtStoreData {
   legacyStoreClaimedBy?: string
   /** When the claim was recorded (epoch ms). Diagnostics only. */
   legacyStoreClaimedAt?: number
+  /**
+   * Vault uuid whose inherited legacy store still has to have its
+   * cross-vault-ambiguous documents set aside.
+   *
+   * Only written when the install has known more than one vault, because only
+   * then can the legacy store hold a document that is not this vault's. Written
+   * in the same file write as the claim and cleared only after a complete pass,
+   * so an interrupted migration is resumed rather than silently skipped. See
+   * `inheritLegacyCrdtStore` in sync/crdt-store-path.ts.
+   *
+   * Optional for the same reason as the claim: older stores have no `crdtStore`
+   * key at all, which reads as "nothing pending" — the correct starting state.
+   */
+  legacyStorePartitionPendingFor?: string
 }
 
 /**
@@ -398,13 +412,41 @@ export function getLegacyCrdtStoreClaim(): string | undefined {
  * next launch. The reverse order would leave the store movable by whichever
  * vault opened next, which is exactly the cross-vault history bleed per-vault
  * scoping exists to prevent.
+ *
+ * `partitionPending` rides along in the SAME write rather than in a second one:
+ * a claim recorded without its pending partition would move a store this vault
+ * cannot fully own and never revisit it.
  */
-export function recordLegacyCrdtStoreClaim(vaultUuid: string): void {
+export function recordLegacyCrdtStoreClaim(
+  vaultUuid: string,
+  options?: { partitionPending?: boolean }
+): void {
   store.set('crdtStore', {
     ...store.get('crdtStore'),
     legacyStoreClaimedBy: vaultUuid,
-    legacyStoreClaimedAt: Date.now()
+    legacyStoreClaimedAt: Date.now(),
+    ...(options?.partitionPending ? { legacyStorePartitionPendingFor: vaultUuid } : {})
   })
+}
+
+/**
+ * Which vault, if any, still owes its inherited legacy store a partition pass.
+ */
+export function getLegacyCrdtStorePartitionPending(): string | undefined {
+  return store.get('crdtStore').legacyStorePartitionPendingFor
+}
+
+/**
+ * Record that the partition pass has completed, so it is not run again.
+ *
+ * Cleared only after a full pass: a partial pass leaves the flag set and is
+ * simply re-run, which is safe because setting a document aside is idempotent.
+ */
+export function clearLegacyCrdtStorePartitionPending(): void {
+  const current = store.get('crdtStore')
+  if (current.legacyStorePartitionPendingFor === undefined) return
+  const { legacyStorePartitionPendingFor: _cleared, ...rest } = current
+  store.set('crdtStore', rest)
 }
 
 /**

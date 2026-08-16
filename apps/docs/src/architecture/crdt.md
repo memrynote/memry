@@ -93,17 +93,52 @@ would recreate exactly the cross-vault bleed scoping exists to remove. For the
 overwhelming majority — single-vault installs — the one claimant is their vault,
 and nothing about the upgrade is visible.
 
-The claim is written **before** the move, which is what makes it crash-safe:
+#### Documents two vaults could both have written
+
+One claimant is not enough on its own. On an install that has opened more than
+one vault, the claimant also inherits entries for ids it does not own. Random
+note ids are inert — nothing ever asks for them. Deterministic ids are not: the
+legacy store's `j2026-08-13` is _every_ vault's journal for that day merged into
+one document, and a document that already has content is never seeded from
+markdown, so the claimant would open its journal and silently get another
+vault's text.
+
+So on a multi-vault install the claim also records that those documents still
+have to be set aside (`crdtStore.legacyStorePartitionPendingFor`), and the pass
+runs before the provider opens the store. Each ambiguous document is copied to a
+reserved `__memry_unattributable__/` name — which no note id can collide with —
+and then cleared from its own, so the journal re-seeds from that vault's own
+markdown while the ambiguous history stays on disk rather than being deleted.
+
+Only an install that has known more than one vault pays for this. A single-vault
+install has nothing ambiguous to set aside and inherits its journal history
+whole.
+
+#### Crash safety
+
+The claim, and the partition it owes, are one file write made **before** the
+move:
 
 - crash after the claim, before the move → the directory is still there and
   still claimed, so the same vault finishes the move on its next launch and no
   other vault may take it;
-- crash after the move → the directory is gone, so there is nothing left to
-  inherit and nothing to apply twice.
+- crash after the move, before or during the partition → the pending record
+  still names that vault, and it — not the legacy directory, which by then is
+  gone — is what drives the pass, so the next launch partitions the store the
+  vault now owns;
+- crash after both → the record is gone and the claim is settled, so there is
+  nothing to apply twice.
+
+Setting a document aside is idempotent (re-archiving replays the identical Yjs
+update, which is a no-op, and clearing an already-cleared document does
+nothing), so an interrupted pass is simply repeated. The record is cleared only
+after a complete pass.
 
 The move is a plain directory rename (falling back to copy+delete on a locked
 Windows directory). Nothing about it bypasses the checks below: the inherited
-store still goes through the full preflight, quarantine and probe.
+store still goes through the full preflight, quarantine and probe — the
+partition pass opens it through `openCrdtPersistence` for exactly that reason,
+at the cost of one extra preflight child on the single launch that migrates.
 
 ## Persistence Resilience
 
@@ -775,6 +810,7 @@ untouched. A callout created in the editor round-trips through the live document
 ```
 apps/desktop/src/main/sync/
 ├─ crdt-store-path.ts       # per-vault store path + legacy-store migration
+├─ crdt-legacy-partition.ts # sets aside inherited docs no vault can claim
 ├─ crdt-update-queue.ts
 └─ engine.ts                # ordering: pull → seed → per-batch push
 
