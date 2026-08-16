@@ -5,11 +5,19 @@
  * @module components/viewers/image-viewer
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useLayoutEffect, useRef, useEffect } from 'react'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { mayAutoPositionFor } from '@/hooks/use-tab-auto-position'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import {
+  FILE_VIEW_STATE_KEYS,
+  parseNullableScale,
+  parseRotation,
+  parseViewerPosition
+} from '@/pages/file-view-state'
 
 // ============================================================================
 // Types
@@ -28,6 +36,9 @@ interface Position {
   x: number
   y: number
 }
+
+/** Stable identity, so the tab-state default does not churn on every render. */
+const ORIGIN: Position = { x: 0, y: 0 }
 
 /** Single source of truth for the image transform, shared by React and the imperative pan writes. */
 function buildTransform(position: Position, scale: number, rotation: number): string {
@@ -66,10 +77,29 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
-  const [scale, setScale] = useState(1)
-  const [rotation, setRotation] = useState(0)
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
+  // `null` is "the user has never zoomed this image", which is what lets
+  // fit-to-container run. See `hooks/use-tab-auto-position.ts`.
+  const [storedScale, setStoredScale] = useTabEntityViewState<number | null>({
+    key: FILE_VIEW_STATE_KEYS.imageScale,
+    defaultValue: null,
+    parse: parseNullableScale
+  })
+  const [scale, setScale] = useState(storedScale ?? 1)
+  const [rotation, setRotation] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.imageRotation,
+    defaultValue: 0,
+    parse: parseRotation
+  })
+  const [position, setPosition] = useTabEntityViewState<Position>({
+    key: FILE_VIEW_STATE_KEYS.imagePosition,
+    defaultValue: ORIGIN,
+    parse: parseViewerPosition
+  })
   const [isDragging, setIsDragging] = useState(false)
+  const storedScaleRef = useRef(storedScale)
+  useLayoutEffect(() => {
+    storedScaleRef.current = storedScale
+  })
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
@@ -79,26 +109,33 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   /** Live scale, so the zoom handlers can compute the next value without a stale closure. */
   const scaleRef = useRef(scale)
 
-  const commitPosition = useCallback((next: Position) => {
-    positionRef.current = next
-    setPosition(next)
-  }, [])
+  const commitPosition = useCallback(
+    (next: Position) => {
+      positionRef.current = next
+      setPosition(next)
+    },
+    [setPosition]
+  )
 
   // Every zoom write goes through here: dropping back to 1x recenters in the same batch as
   // the scale change. Doing it in the render body instead (`if (scale === 1) setPosition(...)`)
   // made React throw the render away and run the component a second time on every zoom-out.
   const applyScale = useCallback(
-    (raw: number) => {
+    (raw: number, options?: { persist?: boolean }) => {
       // Normalise before anything reads it, so the exact `=== 1` below and the `scale > 1`
       // reads downstream cannot disagree with the "100%" the toolbar prints.
       const next = normalizeScale(raw)
       scaleRef.current = next
       setScale(next)
+      // Fit-to-container is auto-positioning, not a choice: persisting its
+      // result would freeze one pane's width into the tab and stop the image
+      // fitting the next time it is opened somewhere narrower.
+      if (options?.persist !== false) setStoredScale(next)
       if (next === 1 && (positionRef.current.x !== 0 || positionRef.current.y !== 0)) {
         commitPosition({ x: 0, y: 0 })
       }
     },
-    [commitPosition]
+    [commitPosition, setStoredScale]
   )
 
   // Attach wheel event with passive: false to allow preventDefault
@@ -128,12 +165,12 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
 
   const resetZoom = useCallback(() => {
     applyScale(1)
-    commitPosition({ x: 0, y: 0 })
+    commitPosition(ORIGIN)
   }, [applyScale, commitPosition])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
-  }, [])
+  }, [setRotation])
 
   const fitToContainer = useCallback(() => {
     if (containerRef.current && imageRef.current) {
@@ -146,8 +183,8 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       const scaleY = containerHeight / imageHeight
       const newScale = Math.min(scaleX, scaleY, 1)
 
-      applyScale(newScale)
-      commitPosition({ x: 0, y: 0 })
+      applyScale(newScale, { persist: false })
+      commitPosition(ORIGIN)
     }
   }, [applyScale, commitPosition])
 
@@ -197,7 +234,9 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   const handleImageLoad = useCallback(() => {
     setLoaded(true)
     setError(false)
-    fitToContainer()
+    // A zoom this tab already holds beats fitting to the container — one rule,
+    // the same one the calendar's jump to "now" obeys.
+    if (mayAutoPositionFor(storedScaleRef.current)) fitToContainer()
   }, [fitToContainer])
 
   const handleImageError = useCallback(() => {

@@ -8,6 +8,7 @@
 import {
   useState,
   useCallback,
+  useEffect,
   useLayoutEffect,
   forwardRef,
   useRef,
@@ -17,6 +18,12 @@ import ReactPlayer from 'react-player'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import {
+  FILE_VIEW_STATE_KEYS,
+  parsePlaybackPosition,
+  shouldResumePlayback
+} from '@/pages/file-view-state'
 
 const log = createLogger('Component:VideoPlayer')
 
@@ -207,6 +214,56 @@ ensureCustomPlayerRegistered()
 export function VideoPlayer({ src, className }: VideoPlayerProps) {
   const { t: tPhaseF } = useT('notes')
   const [error, setError] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // The position was only ever read off the element and dropped. It is lifted
+  // here through the CONTAINER rather than through ReactPlayer's props: the
+  // `<video>` is mounted by a custom player ReactPlayer instantiates, so there
+  // is no stable prop contract to hang this on. Media events do not bubble, but
+  // capture-phase listeners on an ancestor still see them.
+  const [storedPosition, setStoredPosition] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.videoPosition,
+    defaultValue: 0,
+    parse: parsePlaybackPosition
+  })
+  const storedPositionRef = useRef(storedPosition)
+  const livePositionRef = useRef(storedPosition)
+  const setStoredPositionRef = useRef(setStoredPosition)
+  useLayoutEffect(() => {
+    setStoredPositionRef.current = setStoredPosition
+  })
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return undefined
+
+    const commitPosition = (): void => {
+      const next = livePositionRef.current
+      if (next === storedPositionRef.current) return
+      storedPositionRef.current = next
+      setStoredPositionRef.current(next)
+    }
+
+    const handleLoadedMetadata = (event: Event): void => {
+      const video = event.target as HTMLVideoElement
+      if (shouldResumePlayback(storedPositionRef.current, video.duration)) {
+        video.currentTime = storedPositionRef.current
+      }
+    }
+    const handleTimeUpdate = (event: Event): void => {
+      livePositionRef.current = (event.target as HTMLVideoElement).currentTime
+    }
+
+    container.addEventListener('loadedmetadata', handleLoadedMetadata, true)
+    container.addEventListener('timeupdate', handleTimeUpdate, true)
+    container.addEventListener('pause', commitPosition, true)
+    return () => {
+      container.removeEventListener('loadedmetadata', handleLoadedMetadata, true)
+      container.removeEventListener('timeupdate', handleTimeUpdate, true)
+      container.removeEventListener('pause', commitPosition, true)
+      commitPosition()
+    }
+  }, [])
 
   const handleError = useCallback(() => {
     setError(true)
@@ -231,7 +288,10 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
   }
 
   return (
-    <div className={cn('flex h-full flex-col bg-black min-h-0 overflow-hidden', className)}>
+    <div
+      ref={containerRef}
+      className={cn('flex h-full flex-col bg-black min-h-0 overflow-hidden', className)}
+    >
       <div className="flex-1 min-h-0 flex items-center justify-center">
         <ReactPlayer
           src={src}
