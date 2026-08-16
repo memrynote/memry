@@ -53,7 +53,6 @@
     "src/renderer/src/components/missing-small-components.test.tsx",
     "src/renderer/src/components/more-zero-renderer-surfaces.test.tsx",
     "src/renderer/src/components/note-sidebar-surfaces.test.tsx",
-    "src/renderer/src/components/note/content-area/ContentArea.test.tsx",
     "src/renderer/src/components/note/content-area/ai-surfaces.test.tsx",
     "src/renderer/src/components/note/content-area/delete-at-doc-end.integration.test.ts",
     "src/renderer/src/components/note/content-area/hash-tag-inline-plugin.test.ts",

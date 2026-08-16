@@ -6,10 +6,21 @@ import { createFileBlockContent } from '../file-block'
 import type { DropTarget } from '../drop-target-utils'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
 const log = createLogger('Hook:EditorFileUpload')
+
+// A rejected drop used to be log-only: the file simply never appeared and the
+// user was left guessing. The reasons are ones users hit (over the size cap, an
+// extension the vault does not accept), so they have to be said out loud.
+function reportUploadFailure(error: unknown): void {
+  const t = getI18n().getFixedT(null, 'notes')
+  toast.error(extractErrorMessage(error, t('editor.upload.failed')))
+}
 
 const IMAGE_TYPES = [
   'image/png',
@@ -108,6 +119,7 @@ export function useEditorFileUpload({
               'editor_attachment_upload',
               new Error(result.error || 'Upload failed')
             )
+            reportUploadFailure(result.error)
             continue
           }
 
@@ -145,6 +157,7 @@ export function useEditorFileUpload({
         } catch (error) {
           log.error('Failed to upload file', file.name, error)
           trackRendererError('editor_attachment_upload', error)
+          reportUploadFailure(error)
         }
       }
 

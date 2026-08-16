@@ -685,11 +685,41 @@ function FileBlockRender({
   )
 }
 
+/**
+ * What the file panel's picker offers, and what the paste/drop handler treats
+ * as file-block material.
+ *
+ * Mirrors `ALLOWED_IMAGE_EXTENSIONS` + `ALLOWED_FILE_EXTENSIONS` in
+ * `apps/desktop/src/main/vault/attachments.ts`, which is the source of truth —
+ * the renderer cannot import from main, so the list is restated here. Without
+ * it BlockNote's picker accepts every file type and lets the user choose
+ * something the main process then rejects.
+ *
+ * Extensions, not mime globs, on purpose: `image/*` here would compete with the
+ * built-in `image` block for pasted images.
+ */
+export const FILE_BLOCK_ACCEPT = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.txt',
+  '.md'
+]
+
 // Type/props/content come from the shared config so this block and the main
 // process's headless twin cannot disagree. `file` is the one that shadows a
 // BlockNote DEFAULT block: before the config was shared, main built the default
 // spec and silently dropped size/mimeType/width/height/align on the way to disk.
 export const createFileBlock = createReactBlockSpec(fileBlockConfig, {
+  meta: { fileBlockAccept: FILE_BLOCK_ACCEPT },
   render: FileBlockRender
 })
 

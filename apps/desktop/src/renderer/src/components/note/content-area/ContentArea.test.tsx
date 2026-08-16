@@ -24,6 +24,8 @@ const contentAreaMocks = vi.hoisted(() => ({
     uploadAttachment: vi.fn()
   },
   fetchLinkPreview: vi.fn(),
+  toastError: vi.fn(),
+  defaultFileItemClick: vi.fn(),
   createLinkMentionContent: vi.fn(
     (url: string, domain: string, title?: string, favicon?: string) => ({
       type: 'linkMention',
@@ -90,9 +92,24 @@ vi.mock('@blocknote/react', () => ({
     return <div data-testid={`grid-suggestion-${props.triggerCharacter}`} />
   },
   getDefaultReactSlashMenuItems: vi.fn(() => [
-    { title: 'Paragraph', aliases: ['text'] },
-    { title: 'Heading', aliases: ['title'] }
-  ])
+    { key: 'paragraph', title: 'Paragraph', aliases: ['text'] },
+    { key: 'heading', title: 'Heading', aliases: ['title'] },
+    { key: 'image', title: 'Image', aliases: ['image', 'img', 'picture'], group: 'Media' },
+    {
+      key: 'file',
+      title: 'File',
+      subtext: 'Embedded file',
+      aliases: ['file', 'upload'],
+      group: 'Media',
+      onItemClick: contentAreaMocks.defaultFileItemClick
+    }
+  ]),
+  FilePanelController: () => <div data-testid="file-panel-controller" />,
+  UploadTab: () => <div data-testid="upload-tab" />
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: contentAreaMocks.toastError, success: vi.fn() }
 }))
 
 vi.mock('@blocknote/shadcn', () => ({
@@ -561,6 +578,7 @@ describe('ContentArea', () => {
       <ContentArea
         noteId="note-1"
         review={{
+          plainMarkdown: '',
           marks: [
             {
               id: 'add-1',
@@ -690,6 +708,8 @@ describe('ContentArea', () => {
       contentAreaMocks.blockNoteOptions.uploadFile(new File(['b'], 'b.txt'))
     ).rejects.toThrow('blocked')
 
+    expect(contentAreaMocks.toastError).toHaveBeenCalledWith('blocked')
+
     await expect(
       contentAreaMocks.blockNoteOptions.uploadFile(new File(['c'], 'c.txt'))
     ).resolves.toBe('attachments/file.png')
@@ -697,6 +717,73 @@ describe('ContentArea', () => {
       'note-upload',
       expect.any(File)
     )
+  })
+
+  it('returns full file-block props for a file block and a bare url for an image block', async () => {
+    render(<ContentArea noteId="note-upload" />)
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
+
+    createBlock('pdf-block', { type: 'file', props: {} })
+    createBlock('image-block', { type: 'image', props: {} })
+
+    contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: 'attachments/manual.pdf',
+      name: 'manual.pdf',
+      size: 4096,
+      mimeType: 'application/pdf',
+      type: 'file'
+    })
+    // Without size + mimeType the block renders the download card instead of
+    // the inline PDF viewer — the whole point of this shape.
+    await expect(
+      contentAreaMocks.blockNoteOptions.uploadFile(
+        new File(['p'], 'manual.pdf', { type: 'application/pdf' }),
+        'pdf-block'
+      )
+    ).resolves.toEqual({
+      props: {
+        url: 'attachments/manual.pdf',
+        name: 'manual.pdf',
+        size: 4096,
+        mimeType: 'application/pdf'
+      }
+    })
+
+    // Image blocks have no size/mimeType props; unknown props break them.
+    contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: 'attachments/shot.png',
+      name: 'shot.png',
+      size: 128,
+      mimeType: 'image/png',
+      type: 'image'
+    })
+    await expect(
+      contentAreaMocks.blockNoteOptions.uploadFile(
+        new File(['i'], 'shot.png', { type: 'image/png' }),
+        'image-block'
+      )
+    ).resolves.toBe('attachments/shot.png')
+  })
+
+  it('offers a PDF slash item that runs the default file item', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const items = await slashController.getItems('pdf')
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ key: 'pdf', group: 'Media' })
+
+    items[0].onItemClick()
+    expect(contentAreaMocks.defaultFileItemClick).toHaveBeenCalledTimes(1)
+
+    // `/photo` is a new alias on BlockNote's image item.
+    await expect(slashController.getItems('photo')).resolves.toEqual([
+      expect.objectContaining({ key: 'image' })
+    ])
   })
 
   it('debounces standalone checkbox conversion and clears pending conversion on unmount', async () => {
