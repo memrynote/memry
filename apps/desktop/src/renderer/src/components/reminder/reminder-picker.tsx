@@ -171,7 +171,7 @@ export function ReminderPicker({
         )}
       </Picker.Trigger>
 
-      <Picker.Content className="w-80" align="start" collisionPadding={8}>
+      <Picker.Content className="w-80" align="start">
         {mode === 'presets' ? (
           <>
             <Picker.List>
