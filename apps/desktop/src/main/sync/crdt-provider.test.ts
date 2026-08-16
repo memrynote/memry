@@ -162,7 +162,9 @@ vi.mock('../store', () => ({
   },
   getVaults: () => [],
   getLegacyCrdtStorePartitionPending: () => undefined,
-  clearLegacyCrdtStorePartitionPending: vi.fn()
+  clearLegacyCrdtStorePartitionPending: vi.fn(),
+  getPendingCrdtStoreRename: () => undefined,
+  clearPendingCrdtStoreRename: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({

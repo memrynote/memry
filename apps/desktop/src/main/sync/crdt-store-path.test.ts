@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'fs'
+import { existsSync, mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import * as Y from 'yjs'
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   vaultCount: 1,
   claim: undefined as string | undefined,
   partitionPending: undefined as string | undefined,
+  pendingRenames: {} as Record<string, string>,
   openStore: null as ((storagePath: string) => Promise<unknown>) | null
 }))
 
@@ -42,6 +43,10 @@ vi.mock('../store', () => ({
   getLegacyCrdtStorePartitionPending: () => mocks.partitionPending,
   clearLegacyCrdtStorePartitionPending: () => {
     mocks.partitionPending = undefined
+  },
+  getPendingCrdtStoreRename: (vaultUuid: string) => mocks.pendingRenames[vaultUuid],
+  clearPendingCrdtStoreRename: (vaultUuid: string) => {
+    delete mocks.pendingRenames[vaultUuid]
   }
 }))
 
@@ -57,6 +62,33 @@ vi.mock('./crdt-persistence', () => ({
 
 import { prepareVaultCrdtStore, resolveVaultCrdtStore } from './crdt-store-path'
 import { UNATTRIBUTABLE_DOC_PREFIX } from './crdt-legacy-partition'
+
+async function withStore<T>(dir: string, fn: (store: LeveldbPersistence) => Promise<T>) {
+  const store = new LeveldbPersistence(dir)
+  try {
+    return await fn(store)
+  } finally {
+    await store.destroy()
+  }
+}
+
+async function writeDoc(dir: string, docName: string, text: string): Promise<void> {
+  await withStore(dir, async (store) => {
+    const doc = new Y.Doc()
+    doc.getText('body').insert(0, text)
+    await store.storeUpdate(docName, Y.encodeStateAsUpdate(doc))
+    doc.destroy()
+  })
+}
+
+async function readDoc(dir: string, docName: string): Promise<string> {
+  return await withStore(dir, async (store) => {
+    const doc = await store.getYDoc(docName)
+    const text = doc.getText('body').toString()
+    doc.destroy()
+    return text
+  })
+}
 
 describe('vault CRDT store path', () => {
   beforeEach(() => {
@@ -110,33 +142,6 @@ describe('inheriting the legacy global CRDT store', () => {
   const vaultStorePath = (vaultUuid = VAULT_A): string =>
     path.join(userData, 'crdt-stores', vaultUuid)
 
-  async function withStore<T>(dir: string, fn: (store: LeveldbPersistence) => Promise<T>) {
-    const store = new LeveldbPersistence(dir)
-    try {
-      return await fn(store)
-    } finally {
-      await store.destroy()
-    }
-  }
-
-  async function writeDoc(dir: string, docName: string, text: string): Promise<void> {
-    await withStore(dir, async (store) => {
-      const doc = new Y.Doc()
-      doc.getText('body').insert(0, text)
-      await store.storeUpdate(docName, Y.encodeStateAsUpdate(doc))
-      doc.destroy()
-    })
-  }
-
-  async function readDoc(dir: string, docName: string): Promise<string> {
-    return await withStore(dir, async (store) => {
-      const doc = await store.getYDoc(docName)
-      const text = doc.getText('body').toString()
-      doc.destroy()
-      return text
-    })
-  }
-
   beforeEach(async () => {
     userData = mkdtempSync(path.join(tmpdir(), 'memry-crdt-store-path-'))
     mocks.userDataDir = userData
@@ -145,6 +150,7 @@ describe('inheriting the legacy global CRDT store', () => {
     mocks.vaultCount = 1
     mocks.claim = undefined
     mocks.partitionPending = undefined
+    mocks.pendingRenames = {}
     mocks.openStore = null
 
     // One store, keyed by note id, written by every vault on this install: the
@@ -230,5 +236,104 @@ describe('inheriting the legacy global CRDT store', () => {
     expect(await readDoc(vaultStorePath(), JOURNAL_ID)).toBe('this vault’s own journal')
     // And the legacy store is still whole, waiting for the vault that claimed it.
     expect(await readDoc(legacyPath(), JOURNAL_ID)).toBe('the other vault’s journal')
+  })
+})
+
+describe('a CRDT store whose vault adopted another uuid', () => {
+  // The joiner's own uuid, minted locally, and the account vault's, adopted from
+  // the server when the device linked.
+  const OWN_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
+  const ADOPTED_UUID = '8945f5fd-0e05-45f5-bae5-2979737aa0d0'
+  const NOTE_ID = 'abcdefabcdef'
+
+  let userData: string
+
+  const storePath = (vaultUuid: string): string => path.join(userData, 'crdt-stores', vaultUuid)
+
+  beforeEach(() => {
+    userData = mkdtempSync(path.join(tmpdir(), 'memry-crdt-store-rename-'))
+    mocks.userDataDir = userData
+    mocks.dataDb = {}
+    // Restart state: the vault answers with the uuid it adopted, and the store
+    // it actually wrote is still named after the one it had before.
+    mocks.vaultUuid = ADOPTED_UUID
+    mocks.vaultCount = 1
+    mocks.claim = undefined
+    mocks.partitionPending = undefined
+    mocks.pendingRenames = { [ADOPTED_UUID]: OWN_UUID }
+    mocks.openStore = null
+  })
+
+  afterEach(() => {
+    rmSync(userData, { recursive: true, force: true })
+  })
+
+  it('opens the history the device wrote before it linked', async () => {
+    // The reported scenario end to end: a device with local CRDT history joins
+    // an existing vault, restarts, and must still merge with its own history
+    // rather than re-seed every note from markdown as a fresh insertion.
+    await writeDoc(storePath(OWN_UUID), NOTE_ID, 'written before linking')
+
+    const target = await prepareVaultCrdtStore()
+
+    expect(target?.storagePath).toBe(storePath(ADOPTED_UUID))
+    expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('written before linking')
+    expect(existsSync(storePath(OWN_UUID))).toBe(false)
+    expect(mocks.pendingRenames).toEqual({})
+  })
+
+  it('does not move the pre-adoption store on top of one the adopted uuid has', async () => {
+    // Reachable when two local vaults end up claiming one uuid, or when a
+    // previous move fell back to copy+delete and only the delete failed. The
+    // destination is somebody's history either way, so neither side is deleted
+    // and the record stays pending for a hand recovery.
+    await writeDoc(storePath(OWN_UUID), NOTE_ID, 'written before linking')
+    await writeDoc(storePath(ADOPTED_UUID), NOTE_ID, 'already under the adopted name')
+
+    await prepareVaultCrdtStore()
+
+    expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('already under the adopted name')
+    expect(await readDoc(storePath(OWN_UUID), NOTE_ID)).toBe('written before linking')
+    expect(mocks.pendingRenames).toEqual({ [ADOPTED_UUID]: OWN_UUID })
+  })
+
+  it('settles a vault that adopted a uuid before it ever opened a store', async () => {
+    // What `createDormantVault` produces: a vault provisioned for linking has no
+    // history to follow it. Nothing to move, and nothing to keep retrying.
+    await prepareVaultCrdtStore()
+
+    expect(existsSync(storePath(OWN_UUID))).toBe(false)
+    expect(mocks.pendingRenames).toEqual({})
+  })
+
+  it('leaves the store of a vault that adopted nothing where it is', async () => {
+    // The pass is reached on every vault open, so the record it reads is the
+    // only thing keeping it off stores it was never asked about.
+    mocks.pendingRenames = {}
+    await writeDoc(storePath(ADOPTED_UUID), NOTE_ID, 'this vault’s own history')
+    await writeDoc(storePath(OWN_UUID), NOTE_ID, 'another vault’s history')
+
+    await prepareVaultCrdtStore()
+
+    expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('this vault’s own history')
+    expect(await readDoc(storePath(OWN_UUID), NOTE_ID)).toBe('another vault’s history')
+  })
+
+  it('claims its own history ahead of the legacy store when both want the name', async () => {
+    // Only reachable when a legacy move already failed once and left the claim
+    // standing. Both migrations move a directory into this vault's name and only
+    // one can: the pre-adoption store is history this vault provably wrote, the
+    // legacy store is history it can only claim.
+    await writeDoc(storePath(OWN_UUID), NOTE_ID, 'written before linking')
+    await writeDoc(path.join(userData, 'crdt-store'), NOTE_ID, 'the legacy global store')
+    mocks.claim = ADOPTED_UUID
+
+    await prepareVaultCrdtStore()
+
+    expect(await readDoc(storePath(ADOPTED_UUID), NOTE_ID)).toBe('written before linking')
+    // And the legacy store is not deleted on the way past — it is still on disk.
+    expect(await readDoc(path.join(userData, 'crdt-store'), NOTE_ID)).toBe(
+      'the legacy global store'
+    )
   })
 })

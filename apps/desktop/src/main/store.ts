@@ -122,6 +122,25 @@ export interface CrdtStoreData {
    * key at all, which reads as "nothing pending" — the correct starting state.
    */
   legacyStorePartitionPendingFor?: string
+  /**
+   * Store directories left behind by a vault uuid that changed, as
+   * `adopted uuid -> uuid the directory is still named after`.
+   *
+   * A store is named after its vault's uuid, and that uuid is resolved once —
+   * when the provider opens the store. Device linking rewrites it afterwards
+   * (`adoptVaultLocally`), so from the *next* open onwards the vault looks for a
+   * directory that does not exist and its whole merge history is orphaned under
+   * the old name. This is what the next open reads to find it.
+   *
+   * A map rather than a single record because the rename is per vault and an
+   * install has many; entries are removed as they settle, so it holds one key
+   * per vault that linked and has not been opened since.
+   *
+   * Optional for the same reason as the two above: older stores have no
+   * `crdtStore` key at all, which reads as "nothing pending" — correct for
+   * every install that has not linked under a build that records this.
+   */
+  pendingRenames?: Record<string, string>
 }
 
 /**
@@ -447,6 +466,70 @@ export function clearLegacyCrdtStorePartitionPending(): void {
   if (current.legacyStorePartitionPendingFor === undefined) return
   const { legacyStorePartitionPendingFor: _cleared, ...rest } = current
   store.set('crdtStore', rest)
+}
+
+/**
+ * Which directory, if any, still holds `vaultUuid`'s CRDT store under the name
+ * it had before this vault adopted that uuid.
+ */
+export function getPendingCrdtStoreRename(vaultUuid: string): string | undefined {
+  return store.get('crdtStore').pendingRenames?.[vaultUuid]
+}
+
+/**
+ * Record that the store named after `from` now belongs to the vault identified
+ * as `to`.
+ *
+ * Written BEFORE the uuid itself is rewritten, for the same reason the legacy
+ * claim is written before its move: the failure that matters is a crash between
+ * the two. Recorded-but-not-rewritten leaves an entry for a uuid no vault has,
+ * which is inert and is re-recorded identically when the link is retried;
+ * rewritten-but-not-recorded is the orphan this exists to prevent.
+ *
+ * A uuid that changes twice before the store is next opened (link, unlink,
+ * relink) must still name the directory that was actually written, so a chain
+ * collapses onto its origin rather than pointing at a middle name no directory
+ * ever had. Adopting back to where the store already sits cancels the rename
+ * outright.
+ *
+ * The legacy claim and the partition it owes name a vault by uuid too, and that
+ * uuid is exactly what is changing — so they move with it, in the same write.
+ * Left behind they would name nobody: the legacy store could never be inherited
+ * and its ambiguous documents could never be set aside.
+ */
+export function recordCrdtStoreRename(from: string, to: string): void {
+  const current = store.get('crdtStore')
+  const pending = { ...(current.pendingRenames ?? {}) }
+
+  const origin = pending[from] ?? from
+  delete pending[from]
+  if (origin === to) {
+    delete pending[to]
+  } else {
+    pending[to] = origin
+  }
+
+  store.set('crdtStore', {
+    ...current,
+    pendingRenames: pending,
+    ...(current.legacyStoreClaimedBy === from ? { legacyStoreClaimedBy: to } : {}),
+    ...(current.legacyStorePartitionPendingFor === from
+      ? { legacyStorePartitionPendingFor: to }
+      : {})
+  })
+}
+
+/**
+ * Record that `vaultUuid`'s store now sits under its own name.
+ *
+ * Cleared only once the directory is where it belongs (or provably never
+ * existed), so an interrupted move is simply retried on the next open.
+ */
+export function clearPendingCrdtStoreRename(vaultUuid: string): void {
+  const current = store.get('crdtStore')
+  if (current.pendingRenames?.[vaultUuid] === undefined) return
+  const { [vaultUuid]: _settled, ...rest } = current.pendingRenames
+  store.set('crdtStore', { ...current, pendingRenames: rest })
 }
 
 /**

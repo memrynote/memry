@@ -140,6 +140,57 @@ store still goes through the full preflight, quarantine and probe — the
 partition pass opens it through `openCrdtPersistence` for exactly that reason,
 at the cost of one extra preflight child on the single launch that migrates.
 
+### When the vault's uuid changes
+
+A vault's uuid is stable for as long as it stays open, with one exception:
+**device linking**. A device joining an existing vault adopts the account's uuid
+(`adoptVaultLocally`), rewriting the `vault_metadata` singleton in place — and
+the store directory is named after the value that function replaces.
+
+Nothing breaks in the session where it happens; the directory is already open
+and stays open. The next open is the problem: it resolves the adopted uuid,
+finds no directory, and every note re-seeds from markdown as an independent
+insertion instead of merging with the history the device already had.
+
+So the adoption records where the store is (`crdtStore.pendingRenames`, adopted
+uuid → the name the directory still has), and `prepareVaultCrdtStore()` moves it
+before the store is opened. Doing it there rather than inside the linking flow
+is deliberate: at that point the previous provider has always been destroyed
+(`closeVault` awaits `destroy()`, which closes LevelDB, before
+`resetCrdtProvider()`), so the directory is never moved out from under an open
+LevelDB lock.
+
+The record is written **before** the uuid it describes, for the same reason the
+legacy claim is written before its move:
+
+- crash after the record, before the rewrite → the vault still has its old uuid,
+  so nothing fires and the store opens where it always was. The entry names a
+  uuid no vault holds and is inert; retrying the link records it again,
+  identically;
+- crash after the rewrite, before or during the move → the record still names
+  the old directory, so the next open finishes the move;
+- crash after both → the record is cleared and there is nothing to redo.
+
+Two edges are handled by leaving things alone rather than guessing. If the
+adopted uuid **already** has a store — two local vaults claiming one uuid, or a
+copy+delete whose delete failed — neither directory is touched and the record
+stays pending, because the destination is somebody's history too. And a uuid
+that changes twice before the store is next opened collapses onto the directory
+that was actually written, rather than pointing at a middle name no directory
+ever had.
+
+The rename settles **before** the legacy inherit above. Both want to move a
+directory into this vault's name and only one can: the pre-adoption store is
+history this vault provably wrote, while the legacy store is history it can only
+claim.
+
+A device that linked under a build without this has an orphaned directory under
+`<userData>/crdt-stores/<old uuid>`. Nothing recovers it automatically — the old
+uuid was never recorded, and guessing from the directory listing is how the
+wrong vault's history gets attached. No note content is at risk (markdown is the
+source of truth); what is lost is the merge history, so those notes behave like
+notes the account has never seen.
+
 ## Persistence Resilience
 
 Opening the store is a self-contained step that lives in `crdt-persistence.ts`,
