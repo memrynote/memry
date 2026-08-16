@@ -17,6 +17,8 @@ import { assignLanes } from './overlap-layout'
 import { useTimeGridMarquee } from './use-time-grid-marquee'
 import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { CALENDAR_SCROLL_KEYS } from '@/pages/calendar-view-state'
 import { useWeekInfiniteScroll } from './use-week-infinite-scroll'
 import { useOptionalDragContext } from '@/contexts/drag-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -108,6 +110,7 @@ export function CalendarWeekView({
       initialDate: anchorDate,
       onVisibleDayStartChange: notifyVisibleStart
     })
+  const getScrollEl = useCallback(() => scrollContainerRef.current, [scrollContainerRef])
 
   useEffect(() => {
     if (anchorDate === lastEmittedAnchorRef.current) return
@@ -202,7 +205,13 @@ export function CalendarWeekView({
     return false
   }, [visibleDayStart])
 
-  useScrollToCurrentTime(scrollContainerRef, weekContainsToday)
+  useScrollToCurrentTime(scrollContainerRef, weekContainsToday, CALENDAR_SCROLL_KEYS.week)
+  // Vertical only, and no virtualizer: this container is virtualized
+  // HORIZONTALLY, so its virtualizer drives scrollLeft — handing it to the
+  // restore would apply a saved hour-of-day offset as a day index. The
+  // horizontal position is restored by the anchor date instead, which is what
+  // `useWeekInfiniteScroll` already positions from on first layout.
+  useTabScrollRestore({ getScrollElement: getScrollEl, key: CALENDAR_SCROLL_KEYS.week })
 
   const { timedByDate, allDayByDate, maxAllDayPerDay } = useMemo(() => {
     const timed = new Map<string, CalendarProjectionItem[]>()

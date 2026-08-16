@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -41,6 +41,20 @@ import { tasksService } from '@/services/tasks-service'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { useActiveTab, useTabActions } from '@/contexts/tabs'
+import { useTabIdentity } from '@/contexts/tabs/tab-identity'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import {
+  CALENDAR_VIEW_STATE_KEYS,
+  parseAnchorDate,
+  parseCalendarBoolean,
+  parseCalendarView,
+  parseImportedSourceIds,
+  parseVisualTypes,
+  readGlobalCalendarView,
+  resolveAnchorSync,
+  resolveSelectedSourceIds,
+  writeGlobalCalendarView
+} from './calendar-view-state'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
 import { GoogleCalendarConnectPrompt } from '@/components/calendar/google-calendar-connect-prompt'
 import { AddEventToProjectDialog } from '@/components/tasks/projects/add-event-to-project-dialog'
@@ -51,21 +65,6 @@ const log = createLogger('CalendarPage')
 
 interface CalendarPageProps {
   className?: string
-}
-
-const CALENDAR_VIEW_KEY = 'calendar-view'
-const VALID_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year']
-
-function getPersistedView(): CalendarWorkspaceView {
-  try {
-    const stored = localStorage.getItem(CALENDAR_VIEW_KEY)
-    if (stored && VALID_VIEWS.includes(stored as CalendarWorkspaceView)) {
-      return stored as CalendarWorkspaceView
-    }
-  } catch {
-    /* localStorage unavailable */
-  }
-  return 'month'
 }
 
 function getTodayDate(): string {
@@ -185,24 +184,56 @@ function dueDateTimeFromDate(date: Date): { dueDate: string; dueTime: string } {
 
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
-  const [view, setViewRaw] = useState<CalendarWorkspaceView>(getPersistedView)
-  const setView = useCallback((next: CalendarWorkspaceView) => {
-    setViewRaw(next)
-    try {
-      localStorage.setItem(CALENDAR_VIEW_KEY, next)
-    } catch {
-      /* localStorage unavailable */
-    }
-  }, [])
+  // A NEW calendar tab opens on the view last used anywhere (the pre-existing
+  // global key), then keeps its own from that point on.
+  const [globalViewFallback] = useState(readGlobalCalendarView)
+  const [view, setViewState] = useTabViewState<CalendarWorkspaceView>({
+    key: CALENDAR_VIEW_STATE_KEYS.view,
+    defaultValue: globalViewFallback,
+    parse: parseCalendarView
+  })
+  const setView = useCallback(
+    (next: CalendarWorkspaceView) => {
+      setViewState(next)
+      // Still written: it is what an older build reads, and what the next new
+      // tab opens on.
+      writeGlobalCalendarView(next)
+    },
+    [setViewState]
+  )
   const { anchorDate, setAnchorDate } = useCalendarView()
+  const [storedAnchor, setStoredAnchor] = useTabViewState<string | null>({
+    key: CALENDAR_VIEW_STATE_KEYS.anchorDate,
+    defaultValue: null,
+    parse: parseAnchorDate
+  })
   const weekStartsOn = useWeekStartsOn()
   const [todayRequestKey, setTodayRequestKey] = useState(0)
-  const [showMemryItems, setShowMemryItems] = useState(true)
-  const [showImportedCalendars, setShowImportedCalendars] = useState(true)
-  const [selectedImportedSourceIds, setSelectedImportedSourceIds] = useState<string[]>([])
-  const [selectedVisualTypes, setSelectedVisualTypes] =
-    useState<CalendarProjectionVisualType[]>(VISUAL_TYPE_ORDER)
-  const importedSourcesInitializedRef = useRef(false)
+  const [showMemryItems, setShowMemryItems] = useTabViewState<boolean>({
+    key: CALENDAR_VIEW_STATE_KEYS.showMemryItems,
+    defaultValue: true,
+    parse: parseCalendarBoolean
+  })
+  const [showImportedCalendars, setShowImportedCalendars] = useTabViewState<boolean>({
+    key: CALENDAR_VIEW_STATE_KEYS.showImportedCalendars,
+    defaultValue: true,
+    parse: parseCalendarBoolean
+  })
+  // `null` is "the user has not picked a subset". The effective selection is
+  // derived from the sources query below, so there is no seeding effect to
+  // fight and no pre-selection of a source connected after they chose.
+  const [chosenImportedSourceIds, setChosenImportedSourceIds] = useTabViewState<string[] | null>({
+    key: CALENDAR_VIEW_STATE_KEYS.importedSourceIds,
+    defaultValue: null,
+    parse: parseImportedSourceIds
+  })
+  const [selectedVisualTypes, setSelectedVisualTypes] = useTabViewState<
+    CalendarProjectionVisualType[]
+  >({
+    key: CALENDAR_VIEW_STATE_KEYS.visualTypes,
+    defaultValue: VISUAL_TYPE_ORDER,
+    parse: parseVisualTypes
+  })
   const [popoverState, setPopoverState] = useState<{
     mode: 'create' | 'edit'
     eventId: string | null
@@ -271,6 +302,46 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     return () => {}
   }, [view, anchorDate, setDayPanelDate])
 
+  // ---------------------------------------------------------------------------
+  // Anchor date: LIVE in the shared context, DURABLE in the tab.
+  //
+  // The context stays the single live value because the day panel — which is
+  // not in a tab — writes it, and Day view reads it back. The tab is where that
+  // value survives a restart, so this page seeds the context from the tab once
+  // and mirrors every later change back. `resolveAnchorSync` owns the ordering:
+  // both effects run in the same commit, so without it the mirror would see the
+  // context still holding today and write today over the anchor being restored.
+  // ---------------------------------------------------------------------------
+  const identity = useTabIdentity()
+  const identityKey = identity ? `${identity.groupId}:${identity.tabId}` : ''
+  const seededForRef = useRef<string | null>(null)
+  const awaitingSeedRef = useRef<string | null>(null)
+  const storedAnchorRef = useRef(storedAnchor)
+  const anchorDateRef = useRef(anchorDate)
+  useLayoutEffect(() => {
+    storedAnchorRef.current = storedAnchor
+    anchorDateRef.current = anchorDate
+  })
+
+  useEffect(() => {
+    if (seededForRef.current === identityKey) return
+    seededForRef.current = identityKey
+    const stored = storedAnchorRef.current
+    if (stored === null || stored === anchorDateRef.current) return
+    awaitingSeedRef.current = stored
+    setAnchorDate(stored)
+  }, [identityKey, setAnchorDate])
+
+  useEffect(() => {
+    const decision = resolveAnchorSync({
+      awaitingSeed: awaitingSeedRef.current,
+      anchorDate,
+      storedAnchor
+    })
+    if (decision.clearAwaiting) awaitingSeedRef.current = null
+    if (decision.write !== null) setStoredAnchor(decision.write)
+  }, [anchorDate, storedAnchor, setStoredAnchor])
+
   const rangeInput = useMemo(
     () => ({
       ...getRangeForView(view, anchorDate, weekStartsOn),
@@ -294,19 +365,28 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     [sourcesData?.sources]
   )
 
-  useEffect(() => {
-    if (importedSourcesInitializedRef.current) {
-      setSelectedImportedSourceIds((current) =>
-        current.filter((sourceId) => importedSources.some((source) => source.id === sourceId))
+  const selectedImportedSourceIds = useMemo(
+    () =>
+      resolveSelectedSourceIds(
+        chosenImportedSourceIds,
+        importedSources.map((source) => source.id)
+      ),
+    [chosenImportedSourceIds, importedSources]
+  )
+
+  // Toggling records an EXPLICIT selection: the first toggle turns the derived
+  // "all sources" into a real list minus the one just switched off.
+  const handleToggleImportedSource = useCallback(
+    (sourceId: string) => {
+      const current = selectedImportedSourceIds
+      setChosenImportedSourceIds(
+        current.includes(sourceId)
+          ? current.filter((id) => id !== sourceId)
+          : [...current, sourceId]
       )
-      return
-    }
-
-    if (importedSources.length === 0) return
-
-    importedSourcesInitializedRef.current = true
-    setSelectedImportedSourceIds(importedSources.map((source) => source.id))
-  }, [importedSources])
+    },
+    [selectedImportedSourceIds, setChosenImportedSourceIds]
+  )
 
   const filteredItems = useMemo(
     () =>
@@ -336,7 +416,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setView('day')
     setAnchorDate(calendarFocusDate)
     setShowMemryItems(true)
-  }, [calendarFocusDate, calendarFocusEventId, calendarFocusToken, setAnchorDate, setView])
+  }, [
+    calendarFocusDate,
+    calendarFocusEventId,
+    calendarFocusToken,
+    setAnchorDate,
+    setShowMemryItems,
+    setView
+  ])
 
   useEffect(() => {
     if (!calendarFocusEventId || calendarFocusToken === null) return
@@ -849,13 +936,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         }
         onToggleMemryItems={() => setShowMemryItems((current) => !current)}
         onToggleImportedCalendars={() => setShowImportedCalendars((current) => !current)}
-        onToggleImportedSource={(sourceId) =>
-          setSelectedImportedSourceIds((current) =>
-            current.includes(sourceId)
-              ? current.filter((id) => id !== sourceId)
-              : [...current, sourceId]
-          )
-        }
+        onToggleImportedSource={(sourceId) => handleToggleImportedSource(sourceId)}
         onToggleVisualType={(visualType) =>
           setSelectedVisualTypes((current) =>
             current.includes(visualType)

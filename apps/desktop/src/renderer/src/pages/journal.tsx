@@ -508,13 +508,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const properties = useMemo(() => rawProperties.filter((p) => p.name !== 'date'), [rawProperties])
 
   // Navigation
-  const navigateToMonth = useCallback((year: number, month: number) => {
-    setDrill({ type: 'month', year, month })
-  }, [])
+  const navigateToMonth = useCallback(
+    (year: number, month: number) => {
+      setDrill({ type: 'month', year, month })
+    },
+    [setDrill]
+  )
 
-  const navigateToYear = useCallback((year: number) => {
-    setDrill({ type: 'year', year })
-  }, [])
+  const navigateToYear = useCallback(
+    (year: number) => {
+      setDrill({ type: 'year', year })
+    },
+    [setDrill]
+  )
 
   const navigateToDay = useCallback(
     (date: string) => {
@@ -532,7 +538,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         viewState: { date }
       })
     },
-    [openTab, t]
+    [openTab, setDrill, t]
   )
 
   const navigateBack = useCallback(() => {
@@ -562,7 +568,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         currentViewState.month === 0 ? currentViewState.year - 1 : currentViewState.year
       setDrill({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNextMonth = useCallback(() => {
     if (currentViewState.type === 'month') {
@@ -571,19 +577,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         currentViewState.month === 11 ? currentViewState.year + 1 : currentViewState.year
       setDrill({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handlePreviousYear = useCallback(() => {
     if (currentViewState.type === 'year') {
       setDrill({ type: 'year', year: currentViewState.year - 1 })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNextYear = useCallback(() => {
     if (currentViewState.type === 'year') {
       setDrill({ type: 'year', year: currentViewState.year + 1 })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNavigationPrevious = useCallback(() => {
     switch (currentViewState.type) {
