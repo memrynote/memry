@@ -356,7 +356,9 @@ describe('ReminderPicker', () => {
         })
       )
       await user.click(screen.getByRole('button', { name: 'Select May 12' }))
-      await user.click(screen.getByRole('button', { name: /Set Reminder/ }))
+      await user.click(
+        screen.getByRole('button', { name: /phaseF.componentsReminderReminderPicker.setReminder/ })
+      )
 
       expect(trackTelemetry).toHaveBeenCalledWith('reminder_created', {
         surface: 'journal',
