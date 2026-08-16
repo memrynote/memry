@@ -686,7 +686,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
               baseDelayMs: 2000
             }
           )
-          log.debug('Pushed CRDT snapshot', { noteId, size: state.byteLength, viaUpdates })
+          // Distinct message per endpoint on purpose: log triage greps these
+          // strings, and the notes someone is grepping for are exactly the ones
+          // that did not take the snapshot route.
+          log.debug(viaUpdates ? 'Pushed CRDT full state as an update' : 'Pushed CRDT snapshot', {
+            noteId,
+            size: state.byteLength
+          })
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
