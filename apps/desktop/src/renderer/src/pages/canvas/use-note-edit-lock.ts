@@ -1,7 +1,9 @@
 /**
- * Live inputs for the canvas note-edit lock: whether Yjs collaboration is
- * engaged (authenticated) and which notes are currently editable in a visible
- * pane. Kept separate from canvas-note-lock.ts so the decision stays pure.
+ * Live inputs for the canvas note-edit lock: whether a remote sync session is
+ * live — which is now a proxy for "main's CRDT provider is up", not for "this
+ * editor is collaborative"; see canvas-note-lock.ts — and which notes are
+ * currently editable in a visible pane. Kept separate from canvas-note-lock.ts
+ * so the decision stays pure.
  */
 import { useMemo } from 'react'
 import { useSync } from '@/contexts/sync-context'

@@ -1,16 +1,47 @@
 /**
- * Why a canvas note card sometimes refuses to become editable.
+ * Why a canvas note card sometimes refuses to become editable — and why the
+ * reason is no longer the one it was built for.
  *
- * ContentArea only engages Yjs collaboration for an authenticated sync session.
- * Unauthenticated users therefore edit through a NON-collaborative BlockNote
- * that debounce-saves whole markdown. Two such editors on one note (a note tab
- * in one pane + an active canvas card in another) clobber each other
- * last-save-wins, and each independently runs ContentArea's task
- * auto-conversion, so a checkbox can become two tasks.
+ * As built (M7 §3.1): ContentArea engaged Yjs only for an authenticated sync
+ * session, so an unauthenticated user edited through a NON-collaborative
+ * BlockNote that debounce-saved whole markdown. Two of those on one note — a
+ * note tab in one pane, an active canvas card in another — clobbered each other
+ * last-save-wins, and each ran ContentArea's task auto-conversion on its own
+ * onChange, so one checkbox became two tasks.
+ *
+ * `f89d23ed5` deleted that premise. ContentArea binds the local Y.Doc for every
+ * note, session or none, so a tab and a card in one window acquire ONE entry
+ * from the registry in sync/use-yjs-collaboration.ts and share its doc, exactly
+ * as an authenticated pair already did. Both halves close with it: the shared
+ * fragment suppresses the whole-markdown save (`!yjsFragment`, in
+ * content-area/hooks/use-editor-sync.ts), and the registry names exactly one
+ * `isSideEffectOwner` — the duplicate conversion only ever existed because a
+ * DISABLED mount defaulted that flag to true.
+ *
+ * What survives is the binding FAILING. `crdt:open-doc` answers
+ * `success: false` while main's provider is uninitialized; the entry then
+ * destroys its provider and publishes a null fragment for the life of the slot
+ * (use-yjs-collaboration.ts, "fails open") with no rebind — so the first editor
+ * to open that note, and every editor that later joins it, is a whole-markdown
+ * saver again. That is the original clobber, unchanged. Main is uninitialized
+ * only after `resetCrdtProvider()`, which nothing but the sync runtime's stop
+ * and start-failure paths calls: `teardownSession('integrity')` never re-inits
+ * (#1492), sign-out re-inits asynchronously, a failed `startSyncRuntime` leaves
+ * it dead. No such state reports idle/syncing/offline.
+ *
+ * So the first conjunct no longer says "there is no shared doc"; it
+ * over-approximates "there may not be one". The contrapositive is what carries
+ * it — a live session means `startSyncRuntime` awaited `initPersistence()`, so
+ * the doc is there and co-editing stays unlocked, as it always did. The cost of
+ * over-approximating is a healthy never-signed-in user locked out for no hazard
+ * at all: that user never reaches a provider reset. The tight predicate is
+ * "this window holds no fragment for this note", and it is not reachable from
+ * here — asking the registry for it would register a second consumer and make
+ * the sole editor report non-owner (see `useYjsSideEffectOwner`). Swapping the
+ * conjunct for it is a design change owing its own E2E, not a cleanup: #1504.
  *
  * The rule is "the tab always wins": a card refuses to activate and stays a
- * read-only preview with an open-in-tab affordance. Authenticated users never
- * satisfy the first conjunct, so their shared-Y.Doc co-editing is untouched.
+ * read-only preview with an open-in-tab affordance.
  *
  * Excalidraw-free and React-free so it unit-tests in jsdom, matching
  * canvas-active.ts.
@@ -20,7 +51,11 @@ import type { TabGroup } from '@/contexts/tabs'
 export type NoteLockReason = 'note-open-in-tab' | 'note-active-on-another-card'
 
 export interface NoteLockInput {
-  /** From isCollaborationActive(syncStatus). True => authenticated shared Y.Doc. */
+  /**
+   * From isCollaborationActive(syncStatus). No longer "this user has a shared
+   * Y.Doc" — every note has one now. Read it as "main's CRDT provider is
+   * provably up", which is the only thing still making a second editor safe.
+   */
   collaborationActive: boolean
   /** Note ids that are the ACTIVE tab of some pane (see collectVisibleNoteTabIds). */
   visibleNoteTabIds: ReadonlySet<string>

@@ -548,9 +548,12 @@ export const CanvasCardLayer = ({
       if (hit) {
         e.preventDefault()
         e.stopPropagation()
-        // Unauthenticated + the note already live elsewhere => stay read-only.
-        // Two non-collaborative editors on one note clobber each other and both
-        // run ContentArea's task auto-conversion (M6 design §12/6).
+        // No live sync session + the note already live elsewhere => stay
+        // read-only. Not because a second editor would be non-collaborative —
+        // it shares the tab's Y.Doc now — but because these are the statuses
+        // main's CRDT provider can be down under, and an editor that opens a
+        // note while it is down saves whole markdown for the life of its mount
+        // and clobbers the other one (M6 design §12/6; canvas-note-lock.ts).
         if (lockReasonForCard(lockCtxRef.current, hit)) {
           return
         }
