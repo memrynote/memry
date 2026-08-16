@@ -93,7 +93,9 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Reveal in navigation** — highlight the note in the sidebar
 - **Open in default app** — open the `.md` file in your system's default editor
 
-**Local only** keeps the note on this device (never synced).
+**Local only** keeps the note on this device (never synced). Both halves stay put — the note's
+details and its text — and editing is unaffected. Turning it back off uploads the note again,
+including everything you wrote while it was local only.
 
 **Delete note** moves the note to the trash after a confirmation, then closes its tab. This does the same thing as deleting from the note list — you no longer need to close the note first.
 

@@ -446,6 +446,64 @@ Notes flow through **both** sync paths:
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
 
+## Local-Only Notes Keep Their Body
+
+A note marked **Local only** never sends its body to the server. The record feed has always
+honoured this — `seedUnclockedNotes` excludes `localOnly IS NOT 1`, `incrementNoteClockOffline`
+returns early, `buildNotePushPayload` returns `null` — and the CRDT body path now does too.
+
+The flag is cached on the open doc, read once from the `note_cache` row in `doOpen`.
+`onDocUpdate` runs on every keystroke and cannot afford a database round-trip; opening a doc
+already pays an async store read plus, usually, a file stat, read and markdown parse, so one
+more primary-key lookup there is not measurable. `setNoteLocalOnlyState` corrects the cached
+flag in place after it writes both databases, so toggling takes effect on the next keystroke
+rather than the next time the note is closed and reopened.
+
+Five paths send a body, and each refuses independently:
+
+| Path                             | Guard                             |
+| -------------------------------- | --------------------------------- |
+| `onDocUpdate` → `CrdtUpdateQueue` | cached flag on the doc            |
+| `close()` snapshot                | cached flag on the doc            |
+| `pushAllSnapshots()` at shutdown  | cached flag on the doc            |
+| `compactDoc()` snapshot           | cached flag on the doc            |
+| `pushSnapshotForNote()`           | re-reads the `note_cache` row     |
+
+`pushSnapshotForNote` re-reads the row because it is the one push path reached for a note with
+no open doc — the pending-note replay and the push coordinator's `create` both land there.
+
+`pendingSnapshotBytes` keeps counting for a local-only note. It means "written locally, not yet
+on the server", which stays true, and suppressing it would make three of the guards above look
+redundant when they are the only thing holding the body back.
+
+Nothing local changes. The Y.Doc, the local CRDT store, the window broadcast and the markdown
+write-back all sit upstream of the single branch that sends bytes, so a local-only note edits
+exactly like any other — signed out, offline, or with no account.
+
+### Clearing the flag owes the server the whole document
+
+Turning **Local only** off is the case that would otherwise lose data. Nothing else pushes an
+existing note's body: the push coordinator's CRDT snapshot is gated on `operation === 'create'`
+and clearing the flag raises an `update`, an update payload carries `content: null`, and the
+vault sweep only pulls. The note would resume syncing its metadata with its body frozen wherever
+the server last saw it.
+
+So `setNoteLocalOnlyState` records the note in the durable pending-CRDT store when the flag
+clears. `drainPendingCrdtNotes` then pushes full document state — pulling and merging the
+server's state first, and keeping the id until that push actually lands. Setting the flag clears
+that record instead, the CRDT twin of the `removePendingNoteSyncItems` call beside it; nothing is
+lost, because the updates stay in the local store and a later clear re-records the note, whose
+replay pushes full state anyway.
+
+Either direction also drops the doc's snapshot debt, so the next `close()` cannot fire a *blind*
+snapshot ahead of the merge-first replay. A snapshot asserts completeness and the server prunes
+every incremental below it, and a note that has just stopped being local-only is the population
+most likely to have diverged from a peer.
+
+Two asymmetries remain, deliberately: a local-only note is still **pulled** from the server by
+the vault sweep, and updates already buffered in `CrdtUpdateQueue` when the flag is set can still
+flush within that queue's 1 s window.
+
 ## Reconnect Recovery
 
 A note body only ever travels as a CRDT update, so a remote body edit reaches a device
