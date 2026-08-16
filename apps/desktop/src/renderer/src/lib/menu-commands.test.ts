@@ -27,6 +27,18 @@ describe('applyEditorMenuCommand', () => {
     })
   })
 
+  it('offers every heading level the editor supports, 1 through 6', () => {
+    for (const level of [1, 2, 3, 4, 5, 6]) {
+      const block = { id: `h${level}` }
+      const editor = makeEditor(block)
+      expect(applyEditorMenuCommand(editor, `format.heading${level}`)).toBe(true)
+      expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+        type: 'heading',
+        props: { level }
+      })
+    }
+  })
+
   it('converts the current block to a bullet list', () => {
     const block = { id: 'b2' }
     const editor = makeEditor(block)

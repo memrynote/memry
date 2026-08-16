@@ -16,7 +16,7 @@ palette, or the editor's slash menu.
   Dictation, and Emoji & Symbols.
 - **Insert** — add a Code Block, Table, Bullet / Numbered / Task List, or an
   attachment to the note you're editing.
-- **Format** — Heading 1–3 or Body for the current block, plus Bold, Italics,
+- **Format** — Heading 1–6 or Body for the current block, plus Bold, Italics,
   Code, Highlight, and Strikethrough for the selected text.
 - **View** — Reload, Developer Tools, zoom, full screen, Toggle Sidebar, Toggle
   Day Panel, and a Theme submenu (Light, Dark, Paper, System).

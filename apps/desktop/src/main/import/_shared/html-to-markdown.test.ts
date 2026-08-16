@@ -13,6 +13,15 @@ describe('htmlToMarkdown', () => {
     expect(markdown).toBe('# Title\n\nBody text\n\n---\n\n### Sub')
   })
 
+  it('renders every heading level h1..h6 with its own hash count', () => {
+    const { markdown } = convert('<h1>a</h1><h2>b</h2><h3>c</h3><h4>d</h4><h5>e</h5><h6>f</h6>')
+    expect(markdown).toBe('# a\n\n## b\n\n### c\n\n#### d\n\n##### e\n\n###### f')
+  })
+
+  it('does not downgrade an h6 to an h5', () => {
+    expect(convert('<h6>deep</h6>').markdown).toBe('###### deep')
+  })
+
   it('renders bare text and loose inline content directly inside a div', () => {
     expect(convert('<div>plain text</div>').markdown).toBe('plain text')
     expect(convert('<div>some <b>bold</b> text</div>').markdown).toBe('some **bold** text')

@@ -478,6 +478,38 @@ describe('blocknote-converter list fidelity', () => {
   })
 })
 
+describe('blocknote-converter heading levels', () => {
+  const roundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  it('parses and round-trips all six heading levels', async () => {
+    // #given one heading per level — a `levels` option on the schema would cap this at 3
+    const md = '# a\n\n## b\n\n### c\n\n#### d\n\n##### e\n\n###### f'
+
+    // #when
+    const blocks = await markdownToBlocks(md)
+
+    // #then every heading keeps its own level, h4/h5/h6 included
+    expect(blocks).not.toBeNull()
+    expect(blocks!.map((b) => b.type)).toEqual([
+      'heading',
+      'heading',
+      'heading',
+      'heading',
+      'heading',
+      'heading'
+    ])
+    expect(blocks!.map((b) => (b.props as { level: number }).level)).toEqual([1, 2, 3, 4, 5, 6])
+
+    // #then the serializer emits the same hash counts back
+    expect(await roundTrip(md)).toBe(md)
+  })
+})
+
 describe('blocknote-converter color fidelity', () => {
   const roundTrip = async (md: string): Promise<string | null> => {
     const doc = new Y.Doc()
