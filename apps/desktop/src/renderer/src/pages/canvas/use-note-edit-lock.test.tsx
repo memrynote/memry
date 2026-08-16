@@ -9,7 +9,7 @@
  * lock now distinguishes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { screen, waitFor, act } from '@testing-library/react'
 import { TabProvider, useTabActions, useTabs } from '@/contexts/tabs'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
@@ -104,9 +104,19 @@ function Probe({ noteId }: { noteId: string }): React.JSX.Element {
       : noteGroupId === state.activeGroupId
         ? 'focused'
         : 'other'
+  // canvas-card-overlay.tsx memoizes its rendered card list on the lock
+  // context's IDENTITY (`lockCtx` is a dep of that useMemo, and of both the
+  // lockCtxRef sync and the yield-to-tab effect). Mirroring that memo here is
+  // what makes this a test of the BOUNDARY between the hook and its consumer
+  // rather than of the hook alone: the direct `lock` readout below recomputes on
+  // every render, so it stays green even if the context object never takes a new
+  // identity — and a context that keeps its identity across a fragment settle
+  // leaves a stale lock badge on a card that is now perfectly editable.
+  const memoizedLock = useMemo(() => String(lockReasonForCard(ctx, cardFor(noteId))), [ctx, noteId])
   return (
     <div>
       <span data-testid="lock">{String(lockReasonForCard(ctx, cardFor(noteId)))}</span>
+      <span data-testid="lock-memoized">{memoizedLock}</span>
       <span data-testid="group-count">{groupIds.length}</span>
       <span data-testid="note-location">{noteLocation}</span>
       <button type="button" onClick={() => splitView('horizontal', primaryGroupId)}>
@@ -239,6 +249,37 @@ describe('useNoteEditLock', () => {
     // The lock released without any tab or claim change: the only input that
     // moved is the registry's published snapshot, reaching the overlay through
     // useLiveFragmentQuery's subscription.
+    expect(screen.getByTestId('lock')).toHaveTextContent('null')
+  })
+
+  it('hands a consumer memoized on the lock context a NEW context when the fragment settles', async () => {
+    // The overlay does not call lockReasonForCard on every render — it renders
+    // from a useMemo keyed on the lock context. So "the decision changed" is not
+    // enough; the context object itself has to change identity, or the card list
+    // is never rebuilt and the badge never clears. Driving the real overlay
+    // component here would mean un-mocking use-note-edit-lock in a suite that
+    // also stubs Excalidraw, the tabs context and the entity loader — so this
+    // reproduces the exact memo shape (deps include the context) against the
+    // real hook instead, which is the property that memo depends on.
+    const user = userEvent.setup()
+    ipc.mode = 'pending'
+    renderProbe('note-memo')
+    await mountEditor(user, 'connecting')
+    await openNoteInOtherPane(user)
+    expect(screen.getByTestId('lock')).toHaveTextContent('note-open-in-tab')
+    expect(screen.getByTestId('lock-memoized')).toHaveTextContent('note-open-in-tab')
+
+    await act(async () => {
+      ipc.settle.forEach((resolve) => resolve())
+      await Promise.resolve()
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('editor-a-binding')).toHaveTextContent('fragment')
+    )
+    // Nothing about the tabs changed, so `visibleNoteTabIds` keeps its identity:
+    // the ONLY thing that can invalidate this memo is the query function taking a
+    // new identity with the registry's version.
+    await waitFor(() => expect(screen.getByTestId('lock-memoized')).toHaveTextContent('null'))
     expect(screen.getByTestId('lock')).toHaveTextContent('null')
   })
 
