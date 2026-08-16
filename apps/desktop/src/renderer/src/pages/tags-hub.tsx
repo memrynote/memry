@@ -27,6 +27,13 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import {
+  TAGS_HUB_SCROLL_KEY,
+  TAGS_HUB_VIEW_STATE_KEYS,
+  parseTagsHubQuery
+} from './tags-hub-view-state'
 import { Search } from '@/lib/icons'
 import { useTagCategories, type HubTag } from '@/hooks/use-tag-categories'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -148,8 +155,25 @@ export function TagsHubPage(): React.JSX.Element {
   const dragSessionRef = useRef<TagDragSession | null>(null)
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
 
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useTabViewState<string>({
+    key: TAGS_HUB_VIEW_STATE_KEYS.query,
+    defaultValue: '',
+    parse: parseTagsHubQuery
+  })
   const isSearching = query.trim().length > 0
+
+  // Radix puts the scrolling element INSIDE the root: `ScrollArea` renders a
+  // viewport that owns the overflow, and the root never scrolls. The restore
+  // hook takes a getter for exactly this — a ref on the root would attach the
+  // listener to an element whose scrollTop is always 0.
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+  const getScrollViewport = useCallback(
+    () =>
+      scrollRootRef.current?.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]') ??
+      null,
+    []
+  )
+  useTabScrollRestore({ getScrollElement: getScrollViewport, key: TAGS_HUB_SCROLL_KEY })
 
   const displayCategories = override?.categories ?? categories
   const displayUncategorized = override?.uncategorized ?? uncategorized
@@ -341,7 +365,7 @@ export function TagsHubPage(): React.JSX.Element {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea ref={scrollRootRef} className="h-full">
       {/* Full-bleed, not a centred measure: the column spans the window so
           section rules run the full width, while the content inside it stays
           on the start edge. Vertical rhythm comes from each section's own
