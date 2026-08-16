@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils'
 import { TaskList } from '@/components/tasks/task-list'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { useTasksContext } from '@/contexts/tasks'
-import { useTabActions, useActiveTab } from '@/contexts/tabs'
+import { useTabActions } from '@/contexts/tabs'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { TabScrollPane } from '@/components/tab-scroll-pane'
 import { useUndoableTaskActions } from '@/hooks/use-undoable-task-actions'
 import { useUndoTracker } from '@/hooks'
 import { getDefaultTodoStatus } from '@/lib/task-utils'
@@ -21,7 +23,15 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { Project } from '@/data/tasks-data'
 import type { ProjectLinkedEvent } from '@memry/rpc/tasks'
 import { useProjectHub, type ProjectTabKey } from './use-project-hub'
-import { PROJECT_RAIL_VISIBLE, readProjectTab, readRailOpen } from './project-view-state'
+import {
+  DEFAULT_PROJECT_TAB,
+  DEFAULT_RAIL_OPEN,
+  PROJECT_RAIL_VISIBLE,
+  PROJECT_SCROLL_KEYS,
+  PROJECT_VIEW_STATE_KEYS,
+  parseProjectTab,
+  parseRailOpen
+} from './project-view-state'
 import { ProjectTabBar } from './project-tab-bar'
 import { ProjectRail } from './project-rail'
 import { ProjectCaptureInput } from './project-capture-input'
@@ -41,8 +51,7 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
   const { t } = useT('tasks')
   const { tasks, projects, addTask, updateTask, deleteTask, updateProject } = useTasksContext()
   const { registerUndo, removeUndoEntry } = useUndoTracker()
-  const { openTab, saveTabState } = useTabActions()
-  const activeTab = useActiveTab()
+  const { openTab } = useTabActions()
 
   const hub = useProjectHub(projectId)
 
@@ -78,26 +87,22 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
     setIsScrolled(target.scrollTop > 0)
   }, [])
 
-  const activeTabKey = readProjectTab(activeTab?.viewState)
-  const railOpen = readRailOpen(activeTab?.viewState)
+  // Same keys and same total readers as the ad-hoc `saveTabState` this replaces,
+  // so project tabs persisted by older builds still restore. Keyed off the tab
+  // this page is rendered IN, not the globally active tab, which is the wrong
+  // one for the inactive pane of a split view.
+  const [activeTabKey, goToTab] = useTabViewState<ProjectTabKey>({
+    key: PROJECT_VIEW_STATE_KEYS.projectTab,
+    defaultValue: DEFAULT_PROJECT_TAB,
+    parse: parseProjectTab
+  })
+  const [railOpen, setRailOpen] = useTabViewState<boolean>({
+    key: PROJECT_VIEW_STATE_KEYS.railOpen,
+    defaultValue: DEFAULT_RAIL_OPEN,
+    parse: parseRailOpen
+  })
 
-  const writeViewState = useCallback(
-    (patch: Record<string, unknown>) => {
-      if (!activeTab) return
-      saveTabState(activeTab.id, { viewState: { ...activeTab.viewState, ...patch } })
-    },
-    [activeTab, saveTabState]
-  )
-
-  const goToTab = useCallback(
-    (tab: ProjectTabKey) => writeViewState({ projectTab: tab }),
-    [writeViewState]
-  )
-
-  const toggleRail = useCallback(
-    () => writeViewState({ railOpen: !railOpen }),
-    [writeViewState, railOpen]
-  )
+  const toggleRail = useCallback(() => setRailOpen((open) => !open), [setRailOpen])
 
   const handleOpenNote = useCallback(
     (noteId: string) => void openRelatedVaultItem(noteId, openTab),
@@ -335,9 +340,9 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
         */}
         <div className="flex min-w-0 flex-1 flex-col">
           {activeTabKey === 'overview' ? (
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <TabScrollPane scrollKey={PROJECT_SCROLL_KEYS.overview}>
               <OverviewTab project={project} hub={hub} handlers={handlers} />
-            </div>
+            </TabScrollPane>
           ) : activeTabKey === 'tasks' ? (
             <TaskList
               tasks={hub.tasks}
@@ -354,9 +359,12 @@ export const ProjectPage = ({ projectId, className }: ProjectPageProps): React.J
               onNoteClick={handleOpenNote}
             />
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            // Re-keyed per kind so each list gets its OWN element: one shared
+            // scroller would carry Notes' offset straight into Files, which is
+            // the very thing the per-pane scroll keys exist to prevent.
+            <TabScrollPane key={activeTabKey} scrollKey={PROJECT_SCROLL_KEYS[activeTabKey]}>
               <ListTab kind={activeTabKey} hub={hub} handlers={handlers} />
-            </div>
+            </TabScrollPane>
           )}
         </div>
 

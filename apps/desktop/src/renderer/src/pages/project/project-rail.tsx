@@ -1,6 +1,9 @@
+import { useCallback, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import type { ProjectLinkedNote } from '@memry/rpc/tasks'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { ProjectProgress } from './use-project-hub'
+import { PROJECT_SCROLL_KEYS } from './project-view-state'
 import { RailOverview } from './rail-overview'
 import { RailProgress } from './rail-progress'
 import { RailDetails } from './rail-details'
@@ -34,8 +37,16 @@ export const ProjectRail = ({
 }: ProjectRailProps): React.JSX.Element => {
   const { t } = useT('tasks')
 
+  // The rail scrolls beside whichever sub-tab is showing, so it needs its own
+  // key: a tab holds one scroll record and the rail's offset must never be
+  // applied to the tab pane's scroller, or the other way round.
+  const scrollRef = useRef<HTMLElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({ getScrollElement, key: PROJECT_SCROLL_KEYS.rail })
+
   return (
     <aside
+      ref={scrollRef}
       data-testid="project-rail"
       aria-label={t('projectHub.rail.details')}
       className="w-80 shrink-0 overflow-y-auto border-s border-border"
