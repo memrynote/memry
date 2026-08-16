@@ -579,11 +579,15 @@ export const notesRpc = defineDomain({
     >({
       channel: NotesChannels.invoke.UPLOAD_ATTACHMENT,
       params: ['noteId', 'file'],
+      // The ArrayBuffer goes over IPC as-is. Expanding it into a number[] first
+      // costs seconds and gigabytes of RSS on a large attachment (a 100 MB file
+      // becomes a 100-million-element array to build, clone, and validate); the
+      // main-side schema and handler accept both shapes.
       implementation: `async (noteId, file) =>
         invoke(${JSON.stringify(NotesChannels.invoke.UPLOAD_ATTACHMENT)}, {
           noteId,
           filename: file.name,
-          data: Array.from(new Uint8Array(await file.arrayBuffer()))
+          data: await file.arrayBuffer()
         })`
     }),
     listAttachments: defineMethod<(noteId: string) => Promise<AttachmentInfo[]>>({

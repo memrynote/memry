@@ -16,9 +16,11 @@ const sampleInput = {
   title: 'Title'
 }
 
+const attachmentBuffer = new Uint8Array([1, 2, 3]).buffer
+
 const createFileLike = () => ({
   name: 'attachment.bin',
-  arrayBuffer: vi.fn(async () => new Uint8Array([1, 2, 3]).buffer)
+  arrayBuffer: vi.fn(async () => attachmentBuffer)
 })
 
 const collectFunctionPaths = (value: unknown, prefix: string[] = []): string[][] => {
@@ -72,8 +74,15 @@ describe('createGeneratedRpcApi', () => {
     expect(invoke).toHaveBeenCalledWith('notes:upload-attachment', {
       noteId: 'note-1',
       filename: 'attachment.bin',
-      data: [1, 2, 3]
+      data: attachmentBuffer
     })
+    // The ArrayBuffer crosses the IPC boundary untouched. Expanding it into a
+    // number[] here is what made a large attachment cost seconds of parsing and
+    // gigabytes of RSS before it ever reached the main process.
+    const uploadPayload = invoke.mock.calls.find(
+      (call) => call[0] === 'notes:upload-attachment'
+    )?.[1] as { data: unknown } | undefined
+    expect(uploadPayload?.data).toBe(attachmentBuffer)
     expect(invoke).toHaveBeenCalledWith(
       'inbox:track-suggestion',
       'inbox-1',
