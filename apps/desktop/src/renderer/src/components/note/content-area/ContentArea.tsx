@@ -63,6 +63,7 @@ import {
   ReviewFormattingToolbarController
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
+import { registerEditorPlugin } from './register-editor-plugin'
 
 import {
   useBlockNoteSetup,
@@ -418,18 +419,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   useEffect(() => {
     if (!isReviewEnabled) return
-    const tiptap = (editor as any)._tiptapEditor
-    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
 
     const plugin = createCriticMarkupDecorationPlugin(
       () => reviewMarksRef.current,
       (sourceOffset) => reviewMarkdownToEditorOffsetRef.current?.(sourceOffset) ?? null
     )
-    tiptap.registerPlugin(plugin)
-
-    return () => {
-      tiptap.unregisterPlugin(plugin.spec.key!)
-    }
+    return registerEditorPlugin(editor, plugin)
   }, [editor, isReviewEnabled])
 
   // Hook #3: Wiki link suggestions
@@ -707,13 +702,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.
   useEffect(() => {
-    const tiptap = (editor as any)._tiptapEditor
-    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
     const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
-    tiptap.registerPlugin(plugin, (p: any, plugins: any[]) => [p, ...plugins])
-    return () => {
-      tiptap.unregisterPlugin(plugin.spec.key!)
-    }
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor, insertDatePillAtRange])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses

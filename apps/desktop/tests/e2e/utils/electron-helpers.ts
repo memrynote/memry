@@ -222,21 +222,56 @@ export async function navigateTo(
  * intercepts pointer events, so leaving it up makes nearly every interaction
  * time out. Escape closes the tour (allowClose); its onDestroyed persists the
  * seen-flag. We also set the flag explicitly so a later remount can't re-show it.
+ *
+ * The tour's onDestroyed also ARMS the GitHub star card unless the star key is
+ * already set, and that card is a `fixed bottom-4 end-4 z-50` region — it eats
+ * every click in the bottom-right corner (agent composer, day panel, task rows).
+ * Answering the prompt up front, before Escape, keeps it from ever mounting.
  */
 export async function dismissFirstRunOnboarding(page: Page, timeout = 5000): Promise<void> {
   const TOUR_KEY = 'memry:onboarding:tour:v1'
+  const STAR_KEY = 'memry:onboarding:star:v1'
+  const settleFlags = async (): Promise<void> => {
+    await page
+      .evaluate(
+        ([tourKey, starKey]) => {
+          localStorage.setItem(tourKey, '1')
+          localStorage.setItem(starKey, 'done')
+        },
+        [TOUR_KEY, STAR_KEY]
+      )
+      .catch(() => {})
+  }
+
+  await settleFlags()
+
   const overlay = page.locator('.driver-popover, .driver-overlay').first()
   try {
     await overlay.waitFor({ state: 'visible', timeout: 3000 })
   } catch {
-    // Tour never appeared (already dismissed or not first-run). Persist the flag
-    // and continue.
-    await page.evaluate((key) => localStorage.setItem(key, '1'), TOUR_KEY).catch(() => {})
+    // Tour never appeared (already dismissed or not first-run).
+    await dismissGithubStarCard(page)
     return
   }
   await page.keyboard.press('Escape')
   await overlay.waitFor({ state: 'hidden', timeout }).catch(() => {})
-  await page.evaluate((key) => localStorage.setItem(key, '1'), TOUR_KEY).catch(() => {})
+  await settleFlags()
+  await dismissGithubStarCard(page)
+}
+
+/**
+ * Close the GitHub star card if it is already on screen. Its visibility is React
+ * state seeded at mount, so a card that armed before `dismissFirstRunOnboarding`
+ * ran survives the localStorage write and has to be clicked away.
+ */
+async function dismissGithubStarCard(page: Page): Promise<void> {
+  const card = page.getByRole('region', { name: 'Onboarding complete' })
+  if (!(await card.isVisible().catch(() => false))) return
+  await card
+    .getByRole('button', { name: 'Close' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
+  await card.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
 }
 
 /**

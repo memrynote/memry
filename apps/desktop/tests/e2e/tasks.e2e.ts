@@ -314,9 +314,9 @@ test.describe('Tasks Management', () => {
       const secondHighTitle = `List DnD High B ${timestamp}`
 
       await showAllTasks(page)
-      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
-      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
-      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
+      await createTaskViaModal(page, `${sourceTitle} !medium`, sourceTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !high`, secondHighTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
       await page.getByRole('option', { name: 'Priority', exact: true }).click()
@@ -360,9 +360,9 @@ test.describe('Tasks Management', () => {
       const secondHighTitle = `List DnD High Row B ${timestamp}`
 
       await showAllTasks(page)
-      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
-      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
-      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
+      await createTaskViaModal(page, `${sourceTitle} !medium`, sourceTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !high`, secondHighTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
       await page.getByRole('option', { name: 'Priority', exact: true }).click()
@@ -416,10 +416,10 @@ test.describe('Tasks Management', () => {
       const sourceTitle = `List DnD Medium Stable ${timestamp}`
 
       await showAllTasks(page)
-      await createTaskViaModal(page, `${urgentTitle} !!urgent`, urgentTitle)
-      await createTaskViaModal(page, `${firstHighTitle} !!high`, firstHighTitle)
-      await createTaskViaModal(page, `${secondHighTitle} !!high`, secondHighTitle)
-      await createTaskViaModal(page, `${sourceTitle} !!medium`, sourceTitle)
+      await createTaskViaModal(page, `${urgentTitle} !urgent`, urgentTitle)
+      await createTaskViaModal(page, `${firstHighTitle} !high`, firstHighTitle)
+      await createTaskViaModal(page, `${secondHighTitle} !high`, secondHighTitle)
+      await createTaskViaModal(page, `${sourceTitle} !medium`, sourceTitle)
 
       await page.getByRole('button', { name: 'Group by options' }).click()
       await page.getByRole('option', { name: 'Priority', exact: true }).click()
