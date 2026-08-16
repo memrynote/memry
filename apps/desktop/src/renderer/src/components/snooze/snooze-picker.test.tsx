@@ -134,6 +134,43 @@ describe('SnoozePicker', () => {
     expect(onSnooze).toHaveBeenCalledWith(new Date(2026, 4, 11, 10, 30, 0, 0).toISOString())
   })
 
+  it('caps the custom dialog and keeps the snooze action out of the scrolling body', async () => {
+    // `DialogContent` sets no height of its own, so a dialog taller than the
+    // window hangs off both edges of a fixed, unscrollable box — and the snooze
+    // button, being last, is the first thing to leave. jsdom computes no layout,
+    // so this asserts the structure that makes an overflow survivable (a capped
+    // shell, a scrolling body, the action outside it), not that any pixel is on
+    // screen.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    renderWithProviders(
+      <SnoozePicker onSnooze={vi.fn()} trigger={<button>Custom trigger</button>} />
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Custom trigger' }))
+    await user.click(
+      screen.getByRole('menuitem', {
+        name: /phaseF.componentsSnoozeSnoozePicker.pickDateTime/
+      })
+    )
+
+    const content = screen.getByRole('dialog').firstElementChild
+    expect(content?.className).toContain('max-h-[85vh]')
+    expect(content?.className).toContain('overflow-hidden')
+
+    const body = content?.querySelector('.overflow-y-auto')
+    const snooze = screen.getByRole('button', {
+      name: 'phaseF.componentsSnoozeSnoozePicker.snooze3'
+    })
+
+    expect(body).not.toBeNull()
+    expect(body?.contains(screen.getByRole('button', { name: 'Select May 11' }))).toBe(true)
+    expect(body?.contains(screen.getByDisplayValue('09:00'))).toBe(true)
+    expect(body?.contains(snooze)).toBe(false)
+    // The error explaining the disabled button rides with the button.
+    expect(body?.contains(screen.getByText('Please select a future time'))).toBe(false)
+  })
+
   it('renders quick snooze button label and icon-only tooltip variants', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const onSnooze = vi.fn()
