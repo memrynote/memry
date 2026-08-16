@@ -18,8 +18,8 @@ export interface HeadingInfo {
   id: string
   /** Heading text content */
   text: string
-  /** Heading level: 1 (H1), 2 (H2), or 3 (H3) */
-  level: 1 | 2 | 3
+  /** Heading level: 1-6 (H1-H6) */
+  level: 1 | 2 | 3 | 4 | 5 | 6
   /** Vertical position in pixels (for outline visualization) */
   position: number
 }

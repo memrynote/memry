@@ -150,8 +150,9 @@ function renderBlock(ctx: Ctx, el: Element): string {
     case 'h4':
       return '#### ' + renderInline(ctx, el)
     case 'h5':
-    case 'h6':
       return '##### ' + renderInline(ctx, el)
+    case 'h6':
+      return '###### ' + renderInline(ctx, el)
     case 'p':
       return renderInline(ctx, el).trim()
     case 'ul':

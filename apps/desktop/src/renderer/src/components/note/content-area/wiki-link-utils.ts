@@ -14,7 +14,7 @@ export function extractHeadings(blocks: Block[]): HeadingInfo[] {
 
   function processBlock(block: Block): void {
     if (block.type === 'heading') {
-      const level = (block.props?.level as 1 | 2 | 3) || 1
+      const level = (block.props?.level as 1 | 2 | 3 | 4 | 5 | 6) || 1
       const text = Array.isArray(block.content)
         ? block.content
             .map((item) => {

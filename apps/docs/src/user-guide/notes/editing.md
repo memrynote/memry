@@ -31,7 +31,7 @@ right-click menu — including when that folder is closed.
 Available from the slash menu (`/`) or the block-handle drag-out:
 
 - Paragraph
-- Heading 1, 2, 3
+- Heading 1 through 6
 - Bullet list, numbered list, check list
 - Quote, callout
 - Code block (language picker)
@@ -52,6 +52,7 @@ Common markdown shortcuts work inline:
 | ------------ | ------------- |
 | `# `         | Heading 1     |
 | `## `        | Heading 2     |
+| `###### `    | Heading 6     |
 | `- `         | Bullet list   |
 | `1. `        | Numbered list |
 | `[ ] `       | Check list    |
