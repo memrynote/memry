@@ -563,21 +563,23 @@ note in the vault at once. Down the one-note-at-a-time path that was two GETs pe
 121 notes meant 242 requests in about four seconds, and the server refused most of them.
 
 The sweep is therefore drained in chunks — `CRDT_SWEEP_CHUNK_NOTES` notes every
-`CRDT_SWEEP_CHUNK_INTERVAL_MS` — against **two independent server budgets**, both shared
-by every device on the account:
+`CRDT_SWEEP_CHUNK_INTERVAL_MS` — against **two independent server budgets**, both keyed by
+device rather than by account:
 
 | Endpoint                                                    | Bucket            | Limit      | Cost per chunk    |
 | ----------------------------------------------------------- | ----------------- | ---------- | ----------------- |
-| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 300 / 60 s | one GET per note  |
+| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 600 / 60 s | one GET per note  |
 | `POST /sync/crdt/updates/batch`                             | `crdt_batch_pull` | 30 / 60 s  | at least one POST |
 
-At 25 notes every 15 seconds that is 100 snapshot GETs and 4 batch POSTs per minute per
-sweeping device — 200 and 8 with two devices sweeping at once, inside both ceilings with
-room left for the record-change pull, pushes and attachment fetches, which draw on the
-same buckets. Only the _rate_ matters, not the total: a 1,000-note vault is 40 batch
-POSTs, which would blow the 30-per-minute bucket fired at once but is 4 per minute spread
-over the ten minutes the paced sweep takes. Cost per minute is constant in vault size;
-only the duration grows.
+At 25 notes every 15 seconds that is 100 snapshot GETs and 4 batch POSTs per minute —
+16.7 % of the pull bucket and 13.3 % of the batch bucket. Because both buckets are per
+device, a second device sweeping at the same time spends its own rather than eating into
+this one. The pull bucket is still the tighter of the two if the cadence is raised — 600
+GETs buy 24 chunks a minute at 25 notes each, against the batch bucket's 30 — but the
+sweep sits a sixth of the way into it, not against the edge. Only the _rate_ matters, not
+the total: a 1,000-note vault is 40 batch POSTs, which would blow the 30-per-minute bucket
+fired at once but is 4 per minute spread over the ten minutes the paced sweep takes. Cost
+per minute is constant in vault size; only the duration grows.
 
 The batch POST figure is a floor rather than an exact count, because a chunk loops while
 any of its notes still reports `hasMore`. That only binds on a first-sync backlog, and it

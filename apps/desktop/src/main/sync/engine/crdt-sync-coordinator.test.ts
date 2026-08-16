@@ -403,8 +403,10 @@ describe('CrdtSyncCoordinator', () => {
 
   // A rate limit is what the desktop actually hits: the vault-wide sweep used to
   // fire two GETs per note, so 121 notes meant 242 requests in about four
-  // seconds against a limit of 300/60s shared with the account's other devices,
-  // and 92 of those notes came back "Too many requests".
+  // seconds against what was then a limit of 300/60s shared with the account's
+  // other devices, and 92 of those notes came back "Too many requests". The
+  // bucket is now 600/60s and keyed per device, but a large enough vault still
+  // reaches it, so the re-queue below is still what stops the data loss.
   const rateLimited = (): Error => {
     const err = new Error('Too many requests')
     err.name = 'RateLimitError'

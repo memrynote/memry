@@ -165,19 +165,27 @@ export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 // There are TWO independent budgets, and a sweep has to fit inside both:
 //
 //   GET  /sync/crdt/snapshot/:noteId  }  one `crdt_pull` bucket,
-//   GET  /sync/crdt/updates           }  300 requests / 60 s
+//   GET  /sync/crdt/updates           }  600 requests / 60 s
 //   POST /sync/crdt/updates/batch        `crdt_batch_pull`, 30 requests / 60 s
 //
-// Both are shared by every device on the account. One chunk of N notes through
-// applyCrdtBatch costs N snapshot GETs — the batch endpoint batches the
-// incrementals, NOT the snapshot baselines, which are still fetched one note at
-// a time — plus at least one batch POST.
+// Both are keyed by deviceId, NOT by account (sync.ts:476-501), so a second
+// device sweeping at the same time spends its own budget instead of eating into
+// this one. One chunk of N notes through applyCrdtBatch costs N snapshot GETs —
+// the batch endpoint batches the incrementals, NOT the snapshot baselines,
+// which are still fetched one note at a time — plus at least one batch POST.
 //
 //   25 notes per chunk, 60_000 / 15_000 = 4 chunks per minute
-//   GET  budget: 25 x 4 = 100/min per sweeping device, 200 for two devices,
-//                against 300 — the binding constraint, ~30% spare
-//   POST budget:  1 x 4 =   4/min per sweeping device,   8 for two devices,
-//                against 30 — 7.5x headroom on a single device
+//   GET  budget: 25 x 4 = 100/min against 600 — 16.7% of the bucket
+//   POST budget:  1 x 4 =   4/min against  30 — 13.3% of the bucket
+//
+// The GET bucket is still the tighter of the two, but only just, and only when
+// the cadence is scaled: 600 GETs buy 24 chunks a minute at 25 notes each,
+// against the batch bucket's 30. Neither is close to binding at the current
+// pacing. These constants were derived when this comment read 300 and doubled
+// the cost for a second device, i.e. against an effective 150 — which is where
+// the old "~30% spare" came from. The real figure is a sixth of one bucket and
+// an eighth of the other. Re-tuning the pacing is its own change with its own
+// arithmetic; this note only records where the ceilings actually are.
 //
 // Only the RATE matters, not the total: a 1,000-note vault is 40 chunks and 40
 // batch POSTs, which would blow the 30/60s batch bucket if fired at once but is
@@ -196,8 +204,11 @@ export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 // rate-limited batch re-queues its whole chunk for the next cycle instead of
 // dropping it.
 //
-// The GET headroom is not spare either — the record-change pull, pushes,
-// attachment fetches and the un-paced priority batch all draw on the same 300.
+// Not all of the GET headroom is spare: the un-paced priority batch and the
+// single-note pull path fetch snapshot baselines too, and those are `crdt_pull`
+// GETs on this same bucket. The record-change pull, record pushes and
+// attachment fetches are not — they meter under `sync_changes`, `sync_pull`,
+// `sync_push` and `crdt_push`, which are separate keys with separate budgets.
 export const CRDT_SWEEP_CHUNK_NOTES = 25
 export const CRDT_SWEEP_CHUNK_INTERVAL_MS = 15 * 1000
 export const PUSH_DEBOUNCE_MS = 2000

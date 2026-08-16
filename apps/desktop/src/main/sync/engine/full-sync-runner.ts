@@ -389,9 +389,12 @@ export class FullSyncRunner {
    * Everything leaves through the batch path rather than one
    * `pullCrdtForNote` per note. The single-note path costs two GETs per note, so
    * a 121-note sweep fired 242 requests in about four seconds against the
-   * server's `crdt_pull` bucket of 300 per 60s, shared with the account's other
-   * devices — 92 of those 121 notes came back "Too many requests" and, before
-   * the re-queue above, kept a stale body until the next sweep.
+   * server's `crdt_pull` bucket — then 300 per 60s and shared across the
+   * account's devices — and 92 of those 121 notes came back "Too many requests"
+   * and, before the re-queue above, kept a stale body until the next sweep.
+   * #1466 has since raised that bucket to 600 per 60s and keyed it per device,
+   * so that exact burst would fit today; the pacing stays because a vault twice
+   * the size still would not.
    *
    * Batching alone does not fix that; it only halves it, because the batch
    * endpoint batches the incrementals and not the per-note snapshot baselines.
