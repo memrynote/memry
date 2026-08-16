@@ -2,7 +2,10 @@ import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
+import { trackTelemetry } from '@/lib/telemetry'
 import { ReminderPicker } from './reminder-picker'
+
+vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 
 const pickerMocks = vi.hoisted(() => ({
   onValueChange: null as null | ((value: string) => void),
@@ -98,6 +101,7 @@ describe('ReminderPicker', () => {
     vi.setSystemTime(new Date(2026, 4, 10, 10, 0, 0, 0))
     pickerMocks.onValueChange = null
     pickerMocks.onOpenChange = null
+    vi.mocked(trackTelemetry).mockClear()
   })
 
   afterEach(() => {
@@ -316,5 +320,97 @@ describe('ReminderPicker', () => {
         name: /phaseF.componentsReminderReminderPicker.pickDateTime/
       })
     ).toBeInTheDocument()
+  })
+
+  describe('telemetry', () => {
+    it('reports a preset reminder as created, tagged with the preset id', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+      renderWithProviders(
+        <ReminderPicker onSelect={vi.fn()} showNote telemetrySurface="notes" size="lg" />
+      )
+
+      await user.click(screen.getByRole('button', { name: /remind/ }))
+      fireEvent.change(
+        screen.getByPlaceholderText('phaseF.componentsReminderReminderPicker.addANoteOptional'),
+        { target: { value: 'bring account notes' } }
+      )
+      await user.click(screen.getByRole('button', { name: /Later Today/ }))
+
+      expect(trackTelemetry).toHaveBeenCalledWith('reminder_created', {
+        surface: 'notes',
+        action: 'created',
+        source: 'preset',
+        dimensions: { value: 'later-today' }
+      })
+    })
+
+    it('reports a custom date & time reminder as created, with no preset dimension', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+      renderWithProviders(<ReminderPicker onSelect={vi.fn()} telemetrySurface="journal" />)
+
+      await user.click(
+        screen.getByRole('button', {
+          name: /phaseF.componentsReminderReminderPicker.pickDateTime/
+        })
+      )
+      await user.click(screen.getByRole('button', { name: 'Select May 12' }))
+      await user.click(screen.getByRole('button', { name: /Set Reminder/ }))
+
+      expect(trackTelemetry).toHaveBeenCalledWith('reminder_created', {
+        surface: 'journal',
+        action: 'created',
+        source: 'custom',
+        dimensions: undefined
+      })
+    })
+
+    it('reports a deleted reminder', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+      renderWithProviders(
+        <ReminderPicker
+          onSelect={vi.fn()}
+          reminders={MANAGED}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          telemetrySurface="tasks"
+        />
+      )
+
+      await user.click(
+        screen.getAllByRole('button', {
+          name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+        })[0]
+      )
+
+      expect(trackTelemetry).toHaveBeenCalledWith('reminder_deleted', {
+        surface: 'tasks',
+        action: 'deleted'
+      })
+    })
+
+    it('stays silent when no surface is supplied', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+      renderWithProviders(
+        <ReminderPicker
+          onSelect={vi.fn()}
+          reminders={MANAGED}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      )
+
+      await user.click(screen.getByRole('button', { name: /Later Today/ }))
+      await user.click(
+        screen.getAllByRole('button', {
+          name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+        })[0]
+      )
+
+      expect(trackTelemetry).not.toHaveBeenCalled()
+    })
   })
 })
