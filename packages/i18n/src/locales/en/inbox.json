@@ -485,7 +485,9 @@
       "set": "Set",
       "editReminder": "Edit reminder",
       "deleteReminder": "Delete reminder",
-      "save": "Save"
+      "save": "Save",
+      "setReminder": "Set reminder",
+      "setting": "Setting…"
     },
     "componentsSnoozeSnoozePicker": {
       "snooze": "Snooze",

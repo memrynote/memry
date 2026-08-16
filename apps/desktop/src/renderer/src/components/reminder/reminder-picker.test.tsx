@@ -59,6 +59,11 @@ vi.mock('@/components/ui/picker', () => {
       ),
       Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
       List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      Footer: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+        <div data-slot="picker-footer" className={className}>
+          {children}
+        </div>
+      ),
       Section: ({ label, children }: { label: string; children: React.ReactNode }) => (
         <section aria-label={label}>
           <h3>{label}</h3>
@@ -139,7 +144,9 @@ describe('ReminderPicker', () => {
       })
     )
 
-    expect(screen.getByRole('button', { name: /Set Reminder/ })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: /phaseF.componentsReminderReminderPicker.setReminder/ })
+    ).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: 'Select May 12' }))
     fireEvent.change(screen.getByLabelText(/phaseF.componentsReminderReminderPicker.time/), {
@@ -154,13 +161,49 @@ describe('ReminderPicker', () => {
 
     expect(screen.getByText('Tuesday at 15:45')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Set Reminder/ }))
+    await user.click(
+      screen.getByRole('button', { name: /phaseF.componentsReminderReminderPicker.setReminder/ })
+    )
 
     expect(onSelect).toHaveBeenCalledWith(
       new Date(2026, 4, 12, 15, 45, 0, 0),
       undefined,
       'custom note'
     )
+  })
+
+  it('pins the confirm button in the footer and scrolls the body above it', async () => {
+    // The custom panel is taller than the room Radix leaves under a trigger low
+    // in the window, and `Picker.Content` clips its overflow. Anything below the
+    // fold in an unscrollable body is unreachable, so the confirm action has to
+    // sit outside the part that shrinks.
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    renderWithProviders(<ReminderPicker onSelect={vi.fn()} showNoteField />)
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.pickDateTime/
+      })
+    )
+    await user.click(screen.getByRole('button', { name: 'Select May 12' }))
+
+    const footer = document.querySelector('[data-slot="picker-footer"]')
+    const confirm = screen.getByRole('button', {
+      name: /phaseF.componentsReminderReminderPicker.setReminder/
+    })
+    const body = document.querySelector('.overflow-y-auto')
+
+    expect(footer).not.toBeNull()
+    expect(body).not.toBeNull()
+    expect(footer?.contains(confirm)).toBe(true)
+    // The preview travels with the button: confirming without seeing what you
+    // are confirming is its own bug.
+    expect(footer?.contains(screen.getByText('Tuesday at 09:00'))).toBe(true)
+    expect(body?.contains(confirm)).toBe(false)
+    expect(
+      body?.contains(screen.getByLabelText(/phaseF.componentsReminderReminderPicker.time/))
+    ).toBe(true)
   })
 
   const MANAGED = [
@@ -258,7 +301,9 @@ describe('ReminderPicker', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Select May 12' }))
 
-    expect(screen.getByRole('button', { name: 'Setting...' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'phaseF.componentsReminderReminderPicker.setting' })
+    ).toBeDisabled()
 
     await user.click(
       screen.getByRole('button', {
