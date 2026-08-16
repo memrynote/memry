@@ -126,7 +126,7 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Pinned state
 - Split layout and ratios
 - Active tab per pane
-- Scroll position in note tabs
+- Scroll position, and what each tab was looking at
 
 The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
 
@@ -136,9 +136,44 @@ Note tabs — including the template editor and release-notes tabs — remember 
 
 If the tab navigates to a different note, the saved position is discarded rather than applied to the new content. Scrolling yourself while a position is being restored cancels the restore, so the app never fights you for control of the page.
 
-Pages that hold several scrolling areas — the Inbox's sub-views, a project's Overview, Notes, Files and Events tabs, a folder's list, table and gallery layouts — keep a position for each one. Going Overview → Notes → Overview returns to where you left Overview, not to the top, and the Notes position is still waiting for you as well. A tab remembers a handful of these areas at a time; if you visit more than that, the ones you have not been back to longest are forgotten first.
+Pages that hold several scrolling areas — the Inbox's sub-views, a project's Overview, Notes, Files and Events tabs, a folder's list, table and gallery layouts, Calendar's Day, Week and Year grids — keep a position for each one. Going Overview → Notes → Overview returns to where you left Overview, not to the top, and the Notes position is still waiting for you as well. A tab remembers a handful of these areas at a time; if you visit more than that, the ones you have not been back to longest are forgotten first.
 
-Calendar does not restore scroll yet.
+### When a Page Would Rather Put You Somewhere Else
+
+Some pages place themselves when they open: Calendar's Day and Week grids scroll to the current hour, an image is fitted to the pane it opens in, an agent conversation shows the newest message.
+
+One rule decides who wins, everywhere: **your position wins.** A page only places itself when the tab has nothing stored for it — that is, the first time you open it. Once you have scrolled, zoomed, or paged somewhere yourself, that is where the tab comes back to, and the page stops moving on its own.
+
+That also means Week view stops jumping. It used to snap back to the current hour any time you scrolled the weeks past today; now, once the tab has a position of its own, it stays where you put it.
+
+Agent conversations are the one deliberate exception, because "where you were" in a growing transcript is not a fixed place:
+
+- If you are at the bottom, you stay at the bottom — new messages and streamed text keep scrolling into view.
+- If you scroll up, the transcript stops following the stream and leaves you alone, even while a reply is still being written.
+- Whichever of the two you were doing is what you come back to.
+
+### What Each Tab Remembers
+
+| Tab           | Remembers                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| Note          | Reading position                                                                                  |
+| Journal       | The day you were on, whether you had drilled up to a month or a year, and where each day was left |
+| Calendar      | Day / Week / Month / Year, the date you were centred on, and your filters                         |
+| Inbox         | Sub-view, filters, and the item you had open                                                      |
+| Tasks         | View, sub-tab, project scope, and the task you had open                                           |
+| Project       | Sub-tab and rail                                                                                  |
+| Folder        | The named view you were on, and its search                                                        |
+| Tags          | The search box                                                                                    |
+| PDF           | Page, zoom, rotation, and whether the thumbnail rail was open                                     |
+| Image         | Zoom, rotation, and pan                                                                           |
+| Audio / video | Playback position — restored **paused**, never resumed for you                                    |
+| Agent chat    | Whether you were following the stream, or reading further up                                      |
+
+Calendar's view used to be one setting shared by the whole app; it now belongs to the tab, starting from whatever view you last used. Its filters used to reset every time you left the page.
+
+Anything that already has a home of its own is left there rather than copied into the tab: a folder's columns and filters live in the folder, task filters and sort live in Settings, and a project's contents live in the project.
+
+If a tab moves to a different note, file, or conversation, the position saved for the previous one is discarded rather than applied to the new content — including a preview tab that gets reused for the next file you click.
 
 ### If the layout can't be saved
 
