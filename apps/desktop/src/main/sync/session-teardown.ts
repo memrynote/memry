@@ -108,24 +108,36 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
 
   store.set('sync', {})
 
-  if (reason === 'logout') {
-    // Sign-out used to delete the whole CRDT store here. It no longer does.
-    //
-    // The store was global — one directory for every vault, keyed by note id —
-    // so the wipe was containment for a collision that per-vault store paths
-    // now make impossible (see crdt-store-path.ts). What it cost was the merge
-    // history: the vault markdown survived a wipe, but with no local history
-    // left, a note edited while signed out could not *merge* with the server's
-    // version on sign-in — it could only be replaced by it, or re-seeded from
-    // markdown as an independent insertion, which duplicates the body. Signing
-    // out, editing, and signing back in silently lost the edit.
-    //
-    // stopSyncRuntime() above already destroyed and reset the provider, so the
-    // store has to be reopened or the editor stays unbound until the app
-    // restarts. Editing is never gated on being signed in.
+  // Sign-out used to delete the whole CRDT store here. It no longer does.
+  //
+  // The store was global — one directory for every vault, keyed by note id —
+  // so the wipe was containment for a collision that per-vault store paths now
+  // make impossible (see crdt-store-path.ts). What it cost was the merge
+  // history: the vault markdown survived a wipe, but with no local history
+  // left, a note edited while signed out could not *merge* with the server's
+  // version on sign-in — it could only be replaced by it, or re-seeded from
+  // markdown as an independent insertion, which duplicates the body. Signing
+  // out, editing, and signing back in silently lost the edit.
+  //
+  // stopSyncRuntime() above already destroyed and reset the provider, so the
+  // store has to be reopened or the editor stays unbound to any Y.Doc until the
+  // app restarts. Editing is never gated on session state — it stays fully
+  // available signed out, offline, and with no account at all — so every reason
+  // that leaves the app running has to put the store back. That is 'logout' and
+  // 'integrity' alike: an integrity teardown is an involuntary sign-out the user
+  // did not ask for, so leaving *it* with a dead provider is the worse of the
+  // two. Note that getCrdtProvider() is called here, after stopSyncRuntime()
+  // reset the singleton, so this opens the fresh instance rather than reviving
+  // the destroyed one.
+  //
+  // 'shutdown' is the exception, and the only one: the app is quitting, so
+  // there is no editor left to serve, and reopening would resolve the vault
+  // uuid out of a data DB that closeVault() is about to close and leave a
+  // freshly opened LevelDB store behind on the way out.
+  if (reason !== 'shutdown') {
     void getCrdtProvider()
       .initPersistence()
-      .catch((err) => log.warn('CRDT persistence re-init after sign-out failed', err))
+      .catch((err) => log.warn('CRDT persistence re-init after session teardown failed', err))
   }
 
   log.info('Session teardown complete', { reason, keychainFailures: keychainFailures.length })

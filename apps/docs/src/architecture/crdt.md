@@ -526,6 +526,21 @@ the destroyed provider rebind on `crdt:provider-ready`, exactly as they do after
 any other reset (see
 [Rebinding After a Provider Reset](#rebinding-after-a-provider-reset)).
 
+That is a property of teardown, not of sign-out. `teardownSession` takes a
+reason, and every reason that leaves the app running reopens the store:
+
+| Reason      | Reopens the store | Why                                                                                                                                                                                                              |
+| ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logout`    | yes               | The user signed out and kept working. Editing is never gated on a session.                                                                                                                                       |
+| `integrity` | yes               | An involuntary sign-out, triggered when the device signing key reads back absent. The user did not ask for it and is not told the editor went read-only, so leaving the provider dead here is worse, not better. |
+| `shutdown`  | no                | The app is quitting: no editor is left to serve, and the vault uuid the store is scoped to is read from a data DB that `closeVault()` is about to close.                                                         |
+
+The store path resolves through `getOrCreateVaultUuid` against the open data DB,
+which is why `shutdown` is the exception rather than a harmless no-op — a reopen
+racing the close would leave a freshly opened LevelDB store behind on the way
+out. Nothing routes an app quit through `teardownSession` today; `before-quit`
+calls `stopSyncRuntime()` directly and then `closeVault()`.
+
 The editor keeps the same Y.Doc across that whole cycle. A reset marks the
 binding stale, which is a statement about main, not about the doc: unbinding the
 fragment would tear the editor's collaboration extension off a document it can
