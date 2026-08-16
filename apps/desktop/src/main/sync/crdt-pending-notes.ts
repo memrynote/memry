@@ -1,11 +1,26 @@
+import { randomBytes } from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { createLogger } from '../lib/logger'
+import { trackMainError } from '../telemetry/diagnostics'
 
 const log = createLogger('CrdtPendingNotes')
 
 const FILE_NAME = 'crdt-pending-notes.json'
+
+/**
+ * Where an unreadable store is moved so the next write cannot clobber it.
+ *
+ * One fixed name rather than the `.corrupt-${Date.now()}` scheme used for the
+ * secret store: this file is written on the edit path, so a device that corrupts
+ * it repeatedly would accumulate copies in userData forever — a recovery
+ * mechanism that is its own leak. Rename overwrites, so there is at most one
+ * copy, and it is the newest one. That loses nothing: the read that moved a copy
+ * aside also salvaged its ids back into the live file, so a later copy already
+ * contains everything an earlier one contributed.
+ */
+const CORRUPT_FILE_NAME = 'crdt-pending-notes.corrupt.json'
 
 /**
  * Durable record of notes whose CRDT updates never reached the server.
@@ -32,6 +47,15 @@ function storePath(): string {
   return path.join(app.getPath('userData'), FILE_NAME)
 }
 
+function corruptStorePath(): string {
+  return path.join(app.getPath('userData'), CORRUPT_FILE_NAME)
+}
+
+/**
+ * The on-disk shape has never been anything but a JSON array of note ids, and
+ * this still reads exactly the file the pre-atomic writer produced — same path,
+ * same bytes. Only *how* the file is replaced changed.
+ */
 export function readPendingCrdtNotes(): string[] {
   let raw: string
   try {
@@ -42,23 +66,128 @@ export function readPendingCrdtNotes(): string[] {
   }
   try {
     const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (Array.isArray(parsed)) {
+      return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    }
   } catch (err) {
-    log.warn('Pending CRDT note store is unreadable, ignoring it', { error: err })
-    return []
+    return recoverCorruptStore(raw, err)
   }
+  // Parsed, but not the array this file has always held. Same treatment: it is
+  // not a shape any version of the writer produced, so it is damage, not a
+  // format to tolerate.
+  return recoverCorruptStore(raw, new Error('Pending CRDT note store is not a JSON array'))
+}
+
+/**
+ * Pull the note ids out of a store that no longer parses.
+ *
+ * A truncated JSON array — the shape a torn write leaves — still holds every
+ * complete `"id"` token before the cut, and those tokens are the entire content
+ * of this file. Returning `[]` instead would report "nothing was pending" for a
+ * device that has a backlog, which is the failure being fixed here: the edits
+ * themselves survive in the local CRDT store, but nothing would ever push them.
+ *
+ * Deliberately permissive about what counts as an id. A salvaged string that is
+ * not really a note id costs nothing — `drainOnce` asks `isSyncable` first and
+ * clears anything that does not resolve — while dropping a real id is silent and
+ * permanent.
+ */
+function salvageNoteIds(raw: string): string[] {
+  const ids = new Set<string>()
+  for (const [token] of raw.matchAll(/"(?:[^"\\]|\\.)*"/g)) {
+    try {
+      const value: unknown = JSON.parse(token)
+      if (typeof value === 'string' && value.length > 0) ids.add(value)
+    } catch {
+      // Not a complete JSON string after all; the cut landed inside an escape.
+    }
+  }
+  return Array.from(ids)
+}
+
+function recoverCorruptStore(raw: string, err: unknown): string[] {
+  const salvaged = salvageNoteIds(raw)
+  // Move the damaged bytes aside BEFORE rewriting the live path, so the two can
+  // never both hold a partial answer — and so a second read does not report the
+  // same corruption again forever.
+  try {
+    fs.renameSync(storePath(), corruptStorePath())
+  } catch (renameErr) {
+    log.error('Could not preserve the unreadable pending CRDT note store', { error: renameErr })
+  }
+  // Repair in place, not just in memory. `drainOnce` reads the store, works,
+  // then reads it *again* through `clearPendingCrdtNotes` to remove only what it
+  // managed to push; without writing the salvage back, that second read would
+  // find the file gone and drop every id the drain had not cleared yet.
+  if (salvaged.length > 0) writePendingCrdtNotes(salvaged)
+  log.error('Pending CRDT note store was unreadable; preserved it and salvaged what it held', {
+    error: err,
+    salvaged: salvaged.length
+  })
+  trackMainError('sync', 'crdt_pending_notes_corrupt', err)
+  return salvaged
 }
 
 function writePendingCrdtNotes(noteIds: string[]): void {
   try {
     if (noteIds.length === 0) {
+      // Unlink stays a plain unlink: it is already atomic, there is no state
+      // between "the file holds ids" and "there is no file", and "there is no
+      // file" is exactly what "nothing pending" has always meant here.
       fs.rmSync(storePath(), { force: true })
       return
     }
-    fs.writeFileSync(storePath(), JSON.stringify(noteIds), 'utf8')
+    writeStoreAtomically(JSON.stringify(noteIds))
   } catch (err) {
     log.error('Failed to write the pending CRDT note store', { error: err })
+    trackMainError('sync', 'crdt_pending_notes_write', err)
+  }
+}
+
+/**
+ * Write to a temp file in the SAME directory, then rename over the live path.
+ *
+ * Same directory is the whole point: `rename` is only atomic within a
+ * filesystem, so a temp under `os.tmpdir()` would degrade to a copy and put the
+ * torn write straight back. Rename replaces the target on all three platforms
+ * (libuv passes MOVEFILE_REPLACE_EXISTING on Windows).
+ *
+ * The temp name is random and opened `wx` with owner-only permissions: a
+ * predictable name in a user-writable directory is a symlink-swap target, and a
+ * leftover temp from a killed run must not be reused. Mirrors
+ * `writeCanvasFileSync`.
+ *
+ * **fsync is paid on purpose.** Rename alone is atomic against a *process*
+ * crash, but after a power cut a filesystem is free to have made the rename
+ * durable while the temp file's bytes are not — which lands exactly the
+ * truncated (or zero-length) live file this is meant to rule out, and this
+ * recorder exists precisely to survive that class of stop. The cost is bounded
+ * by the caller, not by typing speed: `CrdtProvider.recordUnqueuedUpdate`
+ * dedupes per note for the whole queue-less stretch, so this is one flush per
+ * note *touched*, and the payload is a JSON array of ids. On macOS this is
+ * `fsync`, not `F_FULLFSYNC` — Node exposes no way to ask for the latter — so it
+ * orders the bytes ahead of the rename without paying a full drive-cache flush.
+ */
+function writeStoreAtomically(contents: string): void {
+  const tmpPath = `${storePath()}.${randomBytes(6).toString('hex')}.tmp`
+  try {
+    // ONE exclusive handle for write + flush: reopening the path to fsync hands
+    // a window to anything that can swap it in between.
+    const fd = fs.openSync(tmpPath, 'wx', 0o600)
+    try {
+      fs.writeFileSync(fd, contents, 'utf8')
+      fs.fsyncSync(fd)
+    } finally {
+      fs.closeSync(fd)
+    }
+    fs.renameSync(tmpPath, storePath())
+  } catch (err) {
+    try {
+      fs.rmSync(tmpPath, { force: true })
+    } catch {
+      // Cleanup is best effort; the original error is what matters.
+    }
+    throw err
   }
 }
 
