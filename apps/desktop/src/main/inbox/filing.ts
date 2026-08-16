@@ -39,7 +39,7 @@ import {
 import type { FilingAction } from '@memry/contracts/inbox-api'
 import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { saveAttachment } from '../vault/attachments'
-import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
+import { emitNoteAttachmentSaved, syncNoteCreate } from '../notes/runtime-effects'
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
 import type { NoteListItem } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
@@ -255,6 +255,43 @@ async function indexFiledBinary(
 function announceFiledBinary(note: NoteListItem | null): void {
   if (!note) return
   broadcastToAllWindows(NotesChannels.events.CREATED, { note, source: 'internal' })
+}
+
+/**
+ * Push a filed binary to the other devices: the note row, and the bytes it
+ * points at.
+ *
+ * The vault watcher does both halves for a binary that appears in the vault on
+ * its own (`handleNonMarkdownFileAdd`), but `handleFileAdd` returns early on a
+ * path the index cache already holds — and `indexFiledBinary` fills that cache
+ * the moment the file lands, so filing always wins that race. Nobody else picks
+ * it up.
+ *
+ * Both calls matter and for different reasons. Without `syncNoteCreate` there
+ * is no sync item, so the peer has no row until this device's next full sync
+ * seeds the clock-less one. Without the saved-attachment event no upload is
+ * ever queued, and a binary's push payload carries `attachmentId` — which stays
+ * null forever — so that seeded row would point the peer at a blob it can never
+ * download. A row for a file that cannot arrive is worse than no row.
+ *
+ * Tags stay behind either way: the binary push payload has no tags field. That
+ * is a protocol gap, not something this call can close.
+ *
+ * Best-effort like the other filing enqueues: the file has already moved, so a
+ * sync outage must not fail a filing that succeeded — but it has to stay
+ * countable.
+ */
+function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void {
+  if (!note) return
+  try {
+    // `[]` for tags mirrors the watcher: a binary has no frontmatter to seed a
+    // CRDT tag array from.
+    syncNoteCreate(note.id, note.title, [])
+    emitNoteAttachmentSaved(note.id, absolutePath)
+  } catch (error) {
+    log.warn('Filed binary sync enqueue failed; the file is filed locally', error)
+    trackMainError('inbox', 'filed_binary_sync_enqueue', error)
+  }
 }
 
 /**
@@ -640,8 +677,11 @@ async function fileBinaryToFolder(
     // Calculate relative path from vault root for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Index the filed file and announce it, so the tree picks it up live.
-    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
+    // Index the filed file, announce it so the tree picks it up live, and push
+    // it — the watcher that would normally do the pushing never sees this file.
+    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    announceFiledBinary(filedBinary)
+    syncFiledBinary(filedBinary, finalPath)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -1310,8 +1350,11 @@ async function linkBinaryToNotes(
     // Calculate relative path for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Index the filed file and announce it, so the tree picks it up live.
-    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
+    // Index the filed file, announce it so the tree picks it up live, and push
+    // it — the watcher that would normally do the pushing never sees this file.
+    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    announceFiledBinary(filedBinary)
+    syncFiledBinary(filedBinary, finalPath)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')

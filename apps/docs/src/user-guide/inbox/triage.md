@@ -68,7 +68,9 @@ If a device is offline when you file, the decision is queued and pushes on its n
 
 Items you filed on an older version of Memry are repaired automatically: the first time each device starts up and syncs after updating, it sends any triage decision that never reached your other devices. You do not need to re-file anything.
 
-The note, task, event, or reminder a triage decision creates syncs the same way. File an item into a folder on your laptop and the note lands in that folder on your desktop too, with its text, tags, and properties.
+Whatever a triage decision creates syncs the same way — a note, a task, an event, a reminder, or the file itself. File an item into a folder on your laptop and the note lands in that folder on your desktop too, with its text, tags, and properties. File an image, PDF, voice memo, or video and the file is uploaded and downloaded onto your other devices, not just listed there.
+
+One limit worth knowing: tags you add to an image, PDF, voice memo, or video while filing it stay on the device that filed it. A file has no text to carry them in. Tags on notes, tasks, and events sync normally.
 
 Notes created by filing on an older version of Memry are repaired the same way as the triage decisions themselves: the next time that device starts up and syncs, it sends them. They arrive in the folder you originally chose. Nothing was lost in the meantime — the note has been on the device that filed it all along.
 
