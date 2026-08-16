@@ -744,10 +744,20 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Created here rather than beside `engine.start()`, where it used to be:
       // the replay below is also triggered by the network monitor, whose
       // listener is attached further down, so the signal has to exist before
-      // anything can fire. Held in a local as well as the module slot — the
-      // closures below belong to THIS runtime and must carry this runtime's
-      // signal even after teardown has cleared the slot or a new session has
-      // filled it.
+      // anything can fire.
+      //
+      // Held in a local as well as the module slot, and the closures below read
+      // the LOCAL. They belong to this runtime and must carry this runtime's
+      // signal, which the module slot stops holding well before those closures
+      // stop being reachable: `stopSyncRuntime` nulls the slot up front, then
+      // awaits `pushAllSnapshots`, `engine.stop` and `workerBridge.stop` before
+      // it finally calls `network.removeListener`. NetworkMonitor's poll timer
+      // is live for all of it, so an offline→online transition landing in that
+      // window invokes `replayPendingCrdtNotes` again — and it rebuilds its deps
+      // per call. Reading the slot there would hand the drain `undefined` (no
+      // liveness check at all), or, if a new session had already filled the
+      // slot, the NEW session's live signal — either way the old runtime's drain
+      // would keep merging into the provider this teardown is about to destroy.
       const runtimeAbort = (runtimeAbortController = new AbortController())
 
       // Notes the server is owed and has no other way to learn about:

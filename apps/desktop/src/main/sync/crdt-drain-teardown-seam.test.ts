@@ -53,6 +53,7 @@ const runtimeMocks = vi.hoisted(() => {
   }
 
   class NetworkMonitor {
+    static instances: NetworkMonitor[] = []
     online = true
     listeners = new Map<string, (event: { online: boolean }) => void>()
     start = vi.fn()
@@ -63,6 +64,9 @@ const runtimeMocks = vi.hoisted(() => {
     removeListener = vi.fn((event: string, cb: (payload: { online: boolean }) => void) => {
       if (this.listeners.get(event) === cb) this.listeners.delete(event)
     })
+    constructor() {
+      NetworkMonitor.instances.push(this)
+    }
   }
 
   class WebSocketManager {
@@ -421,10 +425,23 @@ function openedNotes(): string[] {
   return runtimeMocks.crdtProvider.open.mock.calls.map((call) => (call as unknown[])[0] as string)
 }
 
+/**
+ * Let every pending microtask AND macrotask turn run out.
+ *
+ * Needed for the negative assertions: "the drain never opened this note" is only
+ * worth anything once the drain has had every chance to. A drain that is not
+ * aborted reaches `crdtProvider.open` in a handful of turns, so this is far more
+ * headroom than it needs.
+ */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 25; i++) await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    runtimeMocks.NetworkMonitor.instances = []
     runtimeMocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-drain-seam-'))
     runtimeMocks.indexRows = [{ id: 'note-a', title: 'Note A', date: null }]
     runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
@@ -521,6 +538,52 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     // #and its id survives in the durable store. An aborted drain must not clear
     // what it did not push; leaving note-b for the next session is the point.
     expect(readPendingCrdtNotes()).toEqual(['note-b'])
+  })
+
+  it('aborts a replay triggered by a reconnect that lands mid-teardown', async () => {
+    // The window is real, and it is wide. `stopSyncRuntime` clears the module
+    // slot early — `runtimeAbortController = null`, before it destroys anything
+    // — but it does not remove the network listener until the very end, after
+    // `await pushAllSnapshots()`, `await engine.stop()` and
+    // `await workerBridge.stop()`. NetworkMonitor's poll timer is still running
+    // for that whole stretch (`network.stop()` is the line after
+    // `removeListener`), and a pre-shutdown snapshot push is a real R2 round
+    // trip per dirty note — seconds on a flaky connection, which is exactly the
+    // connection an offline→online transition comes from.
+    //
+    // So `replayPendingCrdtNotes` CAN be invoked with the slot already null. It
+    // rebuilds its deps object on every call, so reading the slot instead of the
+    // captured local would hand the drain `signal: undefined` — no liveness
+    // check at all — and it would merge the whole backlog into a provider this
+    // same teardown destroys three lines later.
+    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+    const runtime = await import('./runtime')
+
+    // #given a session that started with nothing owed, so the startup replay is
+    // a no-op and this test observes only the teardown-window drain
+    await runtime.startSyncRuntime()
+    await settle()
+    expect(openedNotes()).toEqual([])
+
+    // #and an edit recorded during the session with no queue to take it
+    recordPendingCrdtNotes(['note-x'])
+
+    // #when the device comes back online while teardown is awaiting the
+    // pre-shutdown snapshot push
+    const network = runtimeMocks.NetworkMonitor.instances.at(-1)!
+    runtimeMocks.crdtProvider.pushAllSnapshots.mockImplementation(async () => {
+      const onStatusChanged = network.listeners.get('status-changed')
+      expect(onStatusChanged).toBeDefined()
+      onStatusChanged!({ online: true })
+      return 0
+    })
+    await runtime.stopSyncRuntime()
+    await settle()
+
+    // #then the replay that reconnect triggered reads the torn-down runtime's
+    // own signal — already tripped — and never opens the note.
+    expect(openedNotes()).toEqual([])
+    expect(readPendingCrdtNotes()).toEqual(['note-x'])
   })
 
   it('replays the surviving backlog under the next runtime, which the old signal must not abort', async () => {
