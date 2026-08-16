@@ -22,7 +22,8 @@ import type {
   TabSettings,
   OpenTabOptions,
   SidebarItem,
-  SplitDirection
+  SplitDirection,
+  TabScrollState
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem, generateId } from './helpers'
@@ -177,9 +178,23 @@ interface TabActionsContextType {
    */
   saveTabState: (
     tabId: string,
-    state: { scrollPosition?: number; viewState?: Record<string, unknown> },
+    state: {
+      scrollPosition?: number
+      scrollState?: TabScrollState
+      viewState?: Record<string, unknown>
+    },
     groupId?: string
   ) => void
+
+  /**
+   * Read a tab out of the current state WITHOUT subscribing to it.
+   *
+   * Backed by a ref, so the returned function is stable and the caller never
+   * re-renders on unrelated tab changes. Callers that need to re-render when the
+   * tab changes should use `useTabs`/`useTabGroup` instead — this exists for
+   * hooks that only need a one-shot read (restore-on-mount, state seeding).
+   */
+  getTab: (tabId: string, groupId?: string) => Tab | null
 
   /**
    * Split the view.
@@ -620,10 +635,19 @@ export const TabProvider = ({
     []
   )
 
+  const getTab = useCallback((tabId: string, groupId?: string): Tab | null => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    return stateRef.current.tabGroups[actualGroupId]?.tabs.find((t) => t.id === tabId) ?? null
+  }, [])
+
   const saveTabState = useCallback(
     (
       tabId: string,
-      tabState: { scrollPosition?: number; viewState?: Record<string, unknown> },
+      tabState: {
+        scrollPosition?: number
+        scrollState?: TabScrollState
+        viewState?: Record<string, unknown>
+      },
       groupId?: string
     ) => {
       const actualGroupId = groupId ?? activeGroupIdRef.current
@@ -761,6 +785,7 @@ export const TabProvider = ({
       reorderTabs,
       moveTabToGroup,
       saveTabState,
+      getTab,
       splitView,
       closeSplit,
       moveTabToNewSplit,
@@ -795,6 +820,7 @@ export const TabProvider = ({
       reorderTabs,
       moveTabToGroup,
       saveTabState,
+      getTab,
       splitView,
       closeSplit,
       moveTabToNewSplit,
@@ -969,4 +995,14 @@ export const useTabActions = (): TabActionsContextType => {
     throw new Error('useTabActions must be used within a TabProvider')
   }
   return context
+}
+
+/**
+ * Tab actions when there is a TabProvider, `null` when there is not.
+ *
+ * For shared components that render both inside a tab and standalone (dialogs,
+ * previews, tests): they must degrade rather than throw.
+ */
+export const useTabActionsOptional = (): TabActionsContextType | null => {
+  return useContext(TabActionsContext)
 }

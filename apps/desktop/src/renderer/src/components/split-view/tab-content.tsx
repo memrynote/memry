@@ -12,6 +12,7 @@
 import React, { useRef, useEffect, useMemo } from 'react'
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabActions } from '@/contexts/tabs'
+import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
@@ -270,7 +271,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       className={cn('h-full overflow-y-auto overflow-x-hidden', className)}
       data-tab-content={tab.id}
     >
-      <React.Suspense fallback={null}>{content}</React.Suspense>
+      <TabIdentityProvider tabId={tab.id} groupId={groupId} entityId={tab.entityId}>
+        <React.Suspense fallback={null}>{content}</React.Suspense>
+      </TabIdentityProvider>
     </div>
   )
 }

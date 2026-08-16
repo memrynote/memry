@@ -34,7 +34,7 @@ function mergeViewState(
 export function sessionReducer(state: TabSystemState, action: SessionAction): TabSystemState {
   switch (action.type) {
     case 'SAVE_TAB_STATE': {
-      const { tabId, groupId, scrollPosition, viewState } = action.payload
+      const { tabId, groupId, scrollPosition, scrollState, viewState } = action.payload
       const group = state.tabGroups[groupId]
       if (!group) return state
 
@@ -49,6 +49,7 @@ export function sessionReducer(state: TabSystemState, action: SessionAction): Ta
                 ? {
                     ...t,
                     ...(scrollPosition !== undefined && { scrollPosition }),
+                    ...(scrollState !== undefined && { scrollState }),
                     ...(viewState !== undefined && {
                       viewState: mergeViewState(t.viewState, viewState)
                     })

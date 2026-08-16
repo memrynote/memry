@@ -55,7 +55,8 @@ export {
   useIsTabActive,
   useTabLayout,
   useTabCounts,
-  useTabActions
+  useTabActions,
+  useTabActionsOptional
 } from './context'
 
 export type { TabCloseGuard } from './close-guard'

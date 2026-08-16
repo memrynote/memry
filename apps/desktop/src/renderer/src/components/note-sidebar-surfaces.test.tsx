@@ -64,7 +64,9 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
     openTab: mocks.openTab
-  })
+  }),
+  // NoteLayout's scroll-restore hook renders outside a TabProvider here.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/hooks/use-active-heading', () => ({
