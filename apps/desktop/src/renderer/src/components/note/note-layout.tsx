@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
 import { OutlineInfoPanel, type OutlineInfoPanelProps } from '../shared/outline-info-panel'
 
@@ -57,6 +58,10 @@ export function NoteLayout({
     scrollRef.current = el
     setScrollEl(el)
   }, [])
+  // This div — not the tab wrapper — is what the note and template-editor pages
+  // actually scroll, so tab scroll restore has to attach here.
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({ getScrollElement })
   const { activeHeadingId, setActiveHeading } = useActiveHeading({
     headings,
     offset: 120,

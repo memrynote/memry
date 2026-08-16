@@ -42,6 +42,7 @@ const snapshotClosedTab = (tab: Tab, groupId: string, index: number): ClosedTabE
     isPreview: false,
     isDeleted: false,
     scrollPosition: tab.scrollPosition,
+    scrollState: tab.scrollState,
     viewState: tab.viewState
   },
   groupId,

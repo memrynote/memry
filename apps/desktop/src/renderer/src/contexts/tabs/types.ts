@@ -62,6 +62,20 @@ export const isSingletonTabType = (type: TabType): boolean => {
 // =============================================================================
 
 /**
+ * A tab's saved scroll offset, stamped with the entity it was measured against.
+ *
+ * The stamp is what makes the record safe to restore: a tab keeps its identity
+ * when it navigates to another note, so an offset saved against the previous
+ * entity must be discarded rather than applied to the new content.
+ */
+export interface TabScrollState {
+  /** Saved scroll offset in pixels. `0` is a valid, restorable value. */
+  offset: number
+  /** `Tab.entityId` at the moment the offset was recorded. */
+  entityId?: string
+}
+
+/**
  * Individual tab interface
  */
 export interface Tab {
@@ -91,8 +105,10 @@ export interface Tab {
   isDeleted: boolean
 
   // Preserved state
-  /** Scroll position to restore */
+  /** Scroll position to restore (legacy, unstamped) */
   scrollPosition?: number
+  /** Scroll offset to restore, stamped with the entity it was measured against */
+  scrollState?: TabScrollState
   /** View-specific state (filters, expanded sections, etc.) */
   viewState?: Record<string, unknown>
 
@@ -280,6 +296,7 @@ export type TabAction =
         tabId: string
         groupId: string
         scrollPosition?: number
+        scrollState?: TabScrollState
         viewState?: Record<string, unknown>
       }
     }

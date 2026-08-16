@@ -126,8 +126,17 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Pinned state
 - Split layout and ratios
 - Active tab per pane
+- Scroll position in note tabs
 
 The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
+
+### Scroll Position
+
+Note tabs — including the template editor and release-notes tabs — remember where you were reading. Switch to another tab and back, or restart with **Restore Session** on, and the note returns to the same place.
+
+If the tab navigates to a different note, the saved position is discarded rather than applied to the new content. Scrolling yourself while a position is being restored cancels the restore, so the app never fights you for control of the page.
+
+Other surfaces — Tasks, Inbox, Calendar, folder views — do not restore scroll yet.
 
 ### If the layout can't be saved
 

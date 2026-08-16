@@ -3,7 +3,7 @@
  * Serializable types for tab state storage
  */
 
-import type { TabType, TabSettings, SplitLayout } from '@/contexts/tabs/types'
+import type { TabType, TabSettings, SplitLayout, TabScrollState } from '@/contexts/tabs/types'
 
 // =============================================================================
 // STORAGE SCHEMA VERSION
@@ -69,8 +69,10 @@ export interface PersistedTab {
   entityId?: string
   /** Whether pinned */
   isPinned: boolean
-  /** Scroll position */
+  /** Scroll position (legacy, unstamped) */
   scrollPosition?: number
+  /** Scroll offset stamped with the entity it was measured against */
+  scrollState?: TabScrollState
   /** View-specific state */
   viewState?: Record<string, unknown>
 }
