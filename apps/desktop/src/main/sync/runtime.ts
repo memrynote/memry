@@ -165,7 +165,18 @@ function emitLocalOnly(): void {
 
 let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
-let seedAbortController: AbortController | null = null
+/**
+ * Liveness for the work this runtime starts and then does not await.
+ *
+ * Two things hang off it and neither is awaited by `stopSyncRuntime`: the
+ * initial CRDT seed, and the pending-note replay. A replay that outlives its
+ * runtime calls `crdtProvider.open` on a destroyed provider, whose persistence
+ * is null — so it builds a doc from markdown, applies the server's updates to
+ * it, and nothing ever saves the result, against a vault this session may no
+ * longer own. One signal stops both, and it is tripped before teardown touches
+ * the provider.
+ */
+let runtimeAbortController: AbortController | null = null
 let deferredStartTimer: NodeJS.Timeout | null = null
 
 const DEFERRED_START_GRACE_MS = 2_000
@@ -730,6 +741,25 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const crdtProvider = getCrdtProvider()
       await crdtProvider.init(crdtQueue, snapshotPushFn)
 
+      // Created here rather than beside `engine.start()`, where it used to be:
+      // the replay below is also triggered by the network monitor, whose
+      // listener is attached further down, so the signal has to exist before
+      // anything can fire.
+      //
+      // Held in a local as well as the module slot, and the closures below read
+      // the LOCAL. They belong to this runtime and must carry this runtime's
+      // signal, which the module slot stops holding well before those closures
+      // stop being reachable: `stopSyncRuntime` nulls the slot up front, then
+      // awaits `pushAllSnapshots`, `engine.stop` and `workerBridge.stop` before
+      // it finally calls `network.removeListener`. NetworkMonitor's poll timer
+      // is live for all of it, so an offline→online transition landing in that
+      // window invokes `replayPendingCrdtNotes` again — and it rebuilds its deps
+      // per call. Reading the slot there would hand the drain `undefined` (no
+      // liveness check at all), or, if a new session had already filled the
+      // slot, the NEW session's live signal — either way the old runtime's drain
+      // would keep merging into the provider this teardown is about to destroy.
+      const runtimeAbort = (runtimeAbortController = new AbortController())
+
       // Notes the server is owed and has no other way to learn about:
       //
       //   - updates still buffered when the app last quit paused (offline /
@@ -751,11 +781,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // referenced lazily: this closure only ever runs after the const below
       // is initialised (startup calls it at the end, and no network event can
       // be delivered between `network.on` and that assignment).
+      //
+      // Nothing awaits the returned promise, here or at either call site, so the
+      // drain is handed this runtime's abort signal as its liveness check. Both
+      // of the fns above are bound to objects `stopSyncRuntime` destroys, and
+      // the merge is the one that does damage after that point — see #1514.
       const replayPendingCrdtNotes = (): void => {
         void drainPendingCrdtNotes({
           mergeRemote: (noteId) => engine.mergeRemoteCrdtForNote(noteId),
           pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
-          isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok
+          isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok,
+          signal: runtimeAbort.signal
         }).catch((err) => log.warn('Pending CRDT note replay failed', err))
       }
 
@@ -900,8 +936,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
       runtime = pendingRuntime
 
-      seedAbortController = new AbortController()
-
       await engine.start()
       log.info('Sync runtime started')
 
@@ -933,7 +967,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         result: 'success'
       })
 
-      seedPromise = seedExistingCrdtDocs(crdtProvider, seedAbortController.signal).catch((err) => {
+      seedPromise = seedExistingCrdtDocs(crdtProvider, runtimeAbort.signal).catch((err) => {
         log.warn('Post-engine CRDT seed failed (non-fatal)', err)
       })
 
@@ -951,6 +985,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await pendingRuntime.workerBridge.stop().catch(() => {})
         await pendingRuntime.engine.stop().catch(() => {})
       }
+      // Same reason as the teardown path: this branch destroys the provider, and
+      // the network monitor can have fired a pending-note replay at any point
+      // after `network.on` above. That replay must not keep merging into it.
+      runtimeAbortController?.abort()
+      runtimeAbortController = null
       await getCrdtProvider()
         .destroy()
         .catch((err) => {
@@ -989,10 +1028,13 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
     await startPromise.catch(() => {})
   }
 
-  if (seedAbortController) {
-    seedAbortController.abort()
-    seedAbortController = null
-  }
+  // After the in-flight start is awaited, so this is the controller belonging to
+  // the runtime being stopped — and before everything else, in particular before
+  // the provider is destroyed below. The seed and the pending-note replay both
+  // run unawaited, and the replay's next `mergeRemote` is the call that would
+  // open a note on a provider with no persistence left.
+  runtimeAbortController?.abort()
+  runtimeAbortController = null
   if (seedPromise) {
     await seedPromise.catch(() => {})
     seedPromise = null

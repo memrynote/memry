@@ -404,6 +404,120 @@ describe('crdt pending note store', () => {
     expect(readPendingCrdtNotes()).toEqual(['note-a'])
   })
 
+  it('stops before merging the next note once its runtime is torn down', async () => {
+    // Nothing awaits this drain — stopSyncRuntime fires it and moves on — so a
+    // run started by a dying session can still be walking the backlog while the
+    // provider is destroyed underneath it. `mergeRemote` is the dangerous half:
+    // it opens the note on that provider, whose persistence is now null, so the
+    // server state it applies goes into a doc nothing will ever save.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-b', 'note-c'])
+
+    const controller = new AbortController()
+    const merged: string[] = []
+    const result = await drainPendingCrdtNotes({
+      isSyncable: () => true,
+      mergeRemote: async (noteId) => {
+        merged.push(noteId)
+        // Teardown lands while the first note's pull is in flight.
+        controller.abort()
+        return true
+      },
+      pushSnapshot: async () => true,
+      signal: controller.signal
+    })
+
+    expect(merged).toEqual(['note-a'])
+    expect(result).toEqual({ cleared: 1, retained: 2 })
+    // Only the note that genuinely reached the server is cleared. The two the
+    // run never got to stay owed, for the next session to replay.
+    expect(readPendingCrdtNotes()).toEqual(['note-b', 'note-c'])
+  })
+
+  it('clears nothing when a deferred run starts after its session is already gone', async () => {
+    // The queued run holds the newest caller's deps, and a teardown with nothing
+    // replacing it leaves those pointing at the dead session. It starts anyway —
+    // the deferral queue has no idea a session ended — and must find itself
+    // aborted before it touches anything.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-b'])
+
+    const controller = new AbortController()
+    controller.abort()
+    const mergeRemote = vi.fn(async (_noteId: string) => true)
+    const pushSnapshot = vi.fn(async (_noteId: string) => true)
+
+    const result = await drainPendingCrdtNotes({
+      isSyncable: () => true,
+      mergeRemote,
+      pushSnapshot,
+      signal: controller.signal
+    })
+
+    expect(mergeRemote).not.toHaveBeenCalled()
+    expect(pushSnapshot).not.toHaveBeenCalled()
+    expect(result).toEqual({ cleared: 0, retained: 2 })
+    expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b'])
+  })
+
+  it('issues no merge for a note whose signal tripped after the loop looked', async () => {
+    // The top-of-iteration check is a whole loop body away from the merge, and
+    // everything in between is the caller's code: `isSyncable` is
+    // `crdtProvider.validateNoteForCrdt`, which reaches the index database. The
+    // merge is the half that opens the note on a provider teardown has already
+    // destroyed, so it re-reads the signal for itself rather than trusting a
+    // read taken before arbitrary caller code ran.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a'])
+
+    const controller = new AbortController()
+    const mergeRemote = vi.fn(async (_noteId: string) => true)
+
+    await drainPendingCrdtNotes({
+      isSyncable: () => {
+        controller.abort()
+        return true
+      },
+      mergeRemote,
+      pushSnapshot: async () => true,
+      signal: controller.signal
+    })
+
+    expect(mergeRemote).not.toHaveBeenCalled()
+    expect(readPendingCrdtNotes()).toEqual(['note-a'])
+  })
+
+  it('keeps draining after a note whose syncability check throws', async () => {
+    // `isSyncable` is `crdtProvider.validateNoteForCrdt`, which reaches the index
+    // database — and `closeVault` calls `closeAllDatabases()`. Outside the
+    // per-note try that throw abandoned the whole pass, so every remaining note
+    // was skipped for that run even though the databases might be back.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-boom', 'note-c'])
+
+    const pushed: string[] = []
+    const result = await drainPendingCrdtNotes({
+      isSyncable: (noteId) => {
+        if (noteId === 'note-boom') throw new Error('The index database is closed')
+        return true
+      },
+      mergeRemote: async () => true,
+      pushSnapshot: async (noteId) => {
+        pushed.push(noteId)
+        return true
+      }
+    })
+
+    expect(pushed).toEqual(['note-a', 'note-c'])
+    expect(result).toEqual({ cleared: 2, retained: 1 })
+    // The note that threw is not cleared, so the next pass retries it.
+    expect(readPendingCrdtNotes()).toEqual(['note-boom'])
+  })
+
   it('drops notes that no longer exist instead of retrying them forever', async () => {
     const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
       await import('./crdt-pending-notes')

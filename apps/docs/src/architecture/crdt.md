@@ -774,15 +774,57 @@ working. The queued run uses the **newest** trigger's dependencies: those close
 over one runtime's `SyncEngine` and `CrdtProvider`, and neither survives
 `stopSyncRuntime`, so a session torn down and replaced mid-drain hands the
 deferred run to the live session rather than replaying the dead one's closure. A
-teardown with nothing replacing it fails closed the same way an already-running
-drain does — `CrdtProvider.destroy()` nulls the snapshot push function, and
-`pushSnapshotForNote` returns `false` without one, so nothing is cleared and
-every id stays in the store for the next session.
+teardown with nothing replacing it leaves the queued run holding the dead
+session's dependencies — which is safe for the reason the next subsection
+describes, not because the queue knows a session ended.
 
 Notes that no longer exist, or never sync via CRDT (binaries), are dropped at
 drain time rather than retried forever, and a doc with no content is not pushed
 at all — a snapshot is a full note body and an R2 write, so the replay only pays
 for notes that need it.
+
+### A drain stops when the runtime that started it does
+
+Nothing awaits the replay. `startSyncRuntime` fires it and returns, the network
+monitor fires it from an event handler, and `stopSyncRuntime` does not wait for
+it — so a drain can still be walking the backlog while the session that owns its
+`SyncEngine` and `CrdtProvider` is torn down underneath it.
+
+The push half of each note already failed closed: `CrdtProvider.destroy()` nulls
+the snapshot push function, and `pushSnapshotForNote` returns `false` without
+one. The **merge runs first**, and it had no equivalent guard. It reaches
+`crdtProvider.open(noteId)` on the destroyed provider, whose persistence is now
+`null`, so the provider builds a fresh doc, seeds it from markdown and applies
+the server's merged updates to something nothing will ever save — and can drive
+a markdown write-back into a vault the session no longer owns.
+
+So the runtime owns a liveness signal. One `AbortController` per session covers
+both pieces of work started and not awaited — the initial CRDT seed and the
+pending-note replay — and it is created before the network listener that can
+trigger a replay exists. `stopSyncRuntime` trips it **before** it destroys the
+provider, and the start-failure path trips it too, because that path destroys the
+provider as well. The drain checks it at the top of each note and again
+immediately before the merge, since `isSyncable` runs the caller's code in
+between and the merge is the destructive half.
+
+The signal travels **with the drain's dependencies**, not in the drain module's
+own state, and that is what makes the deferral queue correct without teaching it
+about sessions. A queued run holding a dead session's dependencies reads that
+session's tripped signal and clears nothing; a queued run whose dependencies were
+replaced by a new session reads the new session's live signal and runs in full.
+Liveness kept as module state would latch on the first teardown and silently
+strand every backlog for the rest of the process.
+
+An aborted drain still clears only the ids whose state actually reached the
+server. Everything it did not get to stays in `crdt-pending-notes.json` for the
+next session, which is what makes stopping early a delay rather than a loss.
+
+One note's failure also no longer abandons the rest of the pass. `isSyncable` is
+`CrdtProvider.validateNoteForCrdt`, which reads the index database, and
+`closeVault` closes it — so it throws for every remaining id. It is inside the
+per-note `try` now, the same shape the CRDT batch pull uses: a note that throws
+is not cleared and is retried next pass, and the notes behind it are still
+attempted.
 
 ### Merge before push, and fail closed
 
