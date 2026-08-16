@@ -6,8 +6,11 @@ const mocks = vi.hoisted(() => ({
   uploadAttachment: vi.fn(),
   getFile: vi.fn(),
   warn: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
+  toastError: vi.fn()
 }))
+
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }))
 
 vi.mock('@/services/notes-service', () => ({
   notesService: { uploadAttachment: mocks.uploadAttachment, getFile: mocks.getFile }
@@ -163,6 +166,28 @@ describe('useEditorFileUpload', () => {
       'target-block',
       'before'
     )
+  })
+
+  // A rejected drop used to be silent: log + telemetry, nothing on screen.
+  it('tells the user why a dropped file was rejected', async () => {
+    const { result, editor } = setup()
+    mocks.uploadAttachment.mockResolvedValueOnce({
+      success: false,
+      error: 'File too large. Maximum size is 100.0 MB, got 140.2 MB'
+    })
+
+    await act(async () => {
+      await result.current.handleNonImageDrop({
+        dataTransfer: { files: [new File(['x'], 'huge.pdf', { type: 'application/pdf' })] },
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn()
+      } as unknown as React.DragEvent)
+    })
+
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'File too large. Maximum size is 100.0 MB, got 140.2 MB'
+    )
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
   })
 
   it('handles no-note and read-only drops without inserting blocks', async () => {

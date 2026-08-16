@@ -168,6 +168,13 @@ describe('getMimeType', () => {
 })
 
 describe('validateFileSize', () => {
+  it('caps vault attachments at 100MB', () => {
+    // Pinned, not derived: the number is a product decision (a large PDF may be
+    // attached as a local-only file), so a silent drift back toward the sync
+    // limits should fail here.
+    expect(MAX_FILE_SIZE).toBe(100 * 1024 * 1024)
+  })
+
   it('T395: does not throw for valid size', () => {
     expect(() => validateFileSize(1024)).not.toThrow()
     expect(() => validateFileSize(MAX_FILE_SIZE)).not.toThrow()
@@ -295,6 +302,20 @@ describe('attachment operations', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('too large')
+    })
+
+    it('saves a 60MB PDF that no sync plan would accept', async () => {
+      // The whole point of the 100MB cap: this file is far past every plan's
+      // per-file sync limit, and it still lands in the vault. Sync refuses it
+      // separately (file_too_large, no retry) and it stays on this device.
+      const data = Buffer.alloc(60 * 1024 * 1024)
+
+      const result = await saveAttachment('note123', data, 'thesis.pdf')
+
+      expect(result.success).toBe(true)
+      expect(result.size).toBe(data.length)
+      expect(result.mimeType).toBe('application/pdf')
+      expect(result.type).toBe('file')
     })
   })
 

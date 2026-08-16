@@ -703,6 +703,27 @@ describe('notes-handlers', () => {
       expect(result).toEqual(mockResult)
     })
 
+    it('UPLOAD_ATTACHMENT should accept an ArrayBuffer payload', async () => {
+      const mockResult = { success: true, path: 'attachments/note123/file.pdf', type: 'file' }
+      ;(attachmentsVault.saveAttachment as Mock).mockResolvedValue(mockResult)
+      const bytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]) // PDF magic bytes
+
+      // The preload sends the file's ArrayBuffer as-is; the number[] shape above
+      // stays supported but is no longer what the renderer produces.
+      const result = await invokeHandler(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
+        noteId: 'note123',
+        filename: 'file.pdf',
+        data: bytes.buffer
+      })
+
+      expect(result).toEqual(mockResult)
+      expect(attachmentsVault.saveAttachment).toHaveBeenCalledWith(
+        'note123',
+        Buffer.from(bytes),
+        'file.pdf'
+      )
+    })
+
     it('LIST_ATTACHMENTS should list attachments', async () => {
       const mockAttachments = [
         { name: 'file1.pdf', size: 1024 },

@@ -175,6 +175,18 @@
       "warning": "Warning",
       "error": "Error",
       "success": "Success"
+    },
+    "slashMenu": {
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Attach a PDF and read it inline"
+      }
+    },
+    "filePanel": {
+      "uploadTab": "Upload"
+    },
+    "upload": {
+      "failed": "Could not attach that file"
     }
   },
   "dateMention": {

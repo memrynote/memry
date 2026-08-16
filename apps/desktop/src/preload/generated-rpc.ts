@@ -106,7 +106,7 @@ export function createGeneratedRpcApi({
         invoke("notes:upload-attachment", {
           noteId,
           filename: file.name,
-          data: Array.from(new Uint8Array(await file.arrayBuffer()))
+          data: await file.arrayBuffer()
         })) as GeneratedRpcApi["notes"]["uploadAttachment"],
       "listAttachments": ((noteId) => invoke("notes:list-attachments", noteId)) as GeneratedRpcApi["notes"]["listAttachments"],
       "deleteAttachment": ((noteId, filename) => invoke("notes:delete-attachment", { noteId, filename })) as GeneratedRpcApi["notes"]["deleteAttachment"],

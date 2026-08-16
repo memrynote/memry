@@ -6,7 +6,11 @@ import {
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
+  useComponentsContext,
   getDefaultReactSlashMenuItems,
+  FilePanelController,
+  UploadTab,
+  type FilePanelProps,
   type SuggestionMenuProps
 } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -86,6 +90,8 @@ import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
@@ -117,6 +123,36 @@ function findBookmarkBlock(blocks: any[], url: string): any {
     }
   }
   return null
+}
+
+/**
+ * BlockNote's file panel with its "Embed" tab removed.
+ *
+ * Embed writes a remote URL onto the block: the content then lives outside the
+ * vault and renders as a broken box offline, which is the opposite of what an
+ * offline-first note app promises. Upload is the only way in.
+ *
+ * This assembles the stock panel rather than reimplementing it — `UploadTab`
+ * and the panel Root both come from BlockNote. Root is used directly instead of
+ * `<FilePanel tabs={...} />` only so the `loading` flag `UploadTab` sets stays
+ * wired to the panel's spinner; `FilePanel` keeps that state private.
+ */
+function UploadOnlyFilePanel({ blockId }: FilePanelProps): React.ReactElement {
+  const Components = useComponentsContext()!
+  const { t } = useT('notes')
+  const [loading, setLoading] = useState(false)
+  const tabName = t('editor.filePanel.uploadTab')
+
+  return (
+    <Components.FilePanel.Root
+      className="bn-panel"
+      defaultOpenTab={tabName}
+      openTab={tabName}
+      setOpenTab={() => {}}
+      tabs={[{ name: tabName, tabPanel: <UploadTab blockId={blockId} setLoading={setLoading} /> }]}
+      loading={loading}
+    />
+  )
 }
 
 // =============================================================================
@@ -199,14 +235,53 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     noteIdRef.current = noteId
   }, [noteId])
 
-  // Upload function — defined before editor creation so BlockNote can use it
-  const uploadFile = useCallback(async (file: File): Promise<string> => {
-    const currentNoteId = noteIdRef.current
-    if (!currentNoteId) throw new Error('Cannot upload: no note selected')
-    const result = await notesService.uploadAttachment(currentNoteId, file)
-    if (!result.success || !result.path) throw new Error(result.error || 'Upload failed')
-    return result.path
-  }, [])
+  // `uploadFile` is handed to BlockNote once, at editor creation, so anything it
+  // needs has to come through a ref or it goes stale (same reason as noteIdRef).
+  const editorRef = useRef<any>(null)
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
+  // Upload function — defined before editor creation so BlockNote can use it.
+  //
+  // BlockNote passes whatever this resolves to straight to `updateBlock`, and
+  // only wraps it when it is a plain string — as `{ props: { name, url } }`.
+  // For Memry's `file` block that wrapper is lossy: `size` stays 0 and
+  // `mimeType` stays '', so a PDF added through the `/file` panel rendered the
+  // download card while the same PDF dropped from Finder rendered the inline
+  // viewer. Returning the full props for `file` blocks makes both paths agree.
+  // Image/video/audio keep the string: they have no size/mimeType props and
+  // unknown props break them.
+  const uploadFile = useCallback(
+    async (file: File, blockId?: string): Promise<string | Record<string, unknown>> => {
+      const currentNoteId = noteIdRef.current
+      if (!currentNoteId) throw new Error('Cannot upload: no note selected')
+      try {
+        const result = await notesService.uploadAttachment(currentNoteId, file)
+        if (!result.success || !result.path) throw new Error(result.error || 'Upload failed')
+
+        const block = blockId ? editorRef.current?.getBlock?.(blockId) : undefined
+        if (block?.type === 'file') {
+          return {
+            props: {
+              url: result.path,
+              name: result.name || file.name,
+              size: result.size ?? file.size,
+              mimeType: result.mimeType || file.type
+            }
+          }
+        }
+        return result.path
+      } catch (error) {
+        // BlockNote's upload tab only shows a generic "upload failed" line, so
+        // the real reason (too large, type not allowed) never reached the user.
+        toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        throw error
+      }
+    },
+    []
+  )
 
   // Vaults written by other apps reference media with a plain relative path
   // (`../Images/Media/photo.png`). Without this, BlockNote hands that string to
@@ -250,6 +325,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       : {})
   })
+
+  // Closes the loop for `uploadFile`, which is built before the editor exists
+  // but needs `getBlock` to know whether it is filling a `file` block.
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
 
   // Hook #1: Editor setup (AI extension, spellcheck, links, highlight scroll)
   const { aiReady } = useBlockNoteSetup({
@@ -1224,6 +1305,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           formattingToolbar={false}
           slashMenu={false}
           emojiPicker={false}
+          filePanel={false}
         >
           {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
@@ -1234,10 +1316,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
           )}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+          <FilePanelController filePanel={UploadOnlyFilePanel} />
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={async (query) => {
-              const defaults = getDefaultReactSlashMenuItems(editor)
+              // `img` and `picture` already ship as image aliases; `photo` did
+              // not, and is what people actually type.
+              const defaults = getDefaultReactSlashMenuItems(editor).map((item) =>
+                (item as { key?: string }).key === 'image'
+                  ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
+                  : item
+              )
+              // `/pdf` is the same item as `/file` — same insert, same panel —
+              // relabelled, because "attach a PDF" is what most people are
+              // actually after and `/pdf` matched nothing before.
+              const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
+              const pdfItems = fileItem
+                ? [
+                    {
+                      ...fileItem,
+                      key: 'pdf',
+                      title: t('editor.slashMenu.pdf.title'),
+                      subtext: t('editor.slashMenu.pdf.subtext'),
+                      aliases: ['pdf', 'document', 'attachment']
+                    }
+                  ]
+                : []
               const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
               const calloutItem = getCalloutSlashMenuItem(editor, {
                 title: t('editor.callout.title'),
@@ -1272,6 +1376,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 : []
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
+                ...pdfItems,
                 calloutItem,
                 ...(taskItem ? [taskItem] : []),
                 ...dateItems,
