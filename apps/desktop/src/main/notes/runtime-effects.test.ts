@@ -2,18 +2,31 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   initForNote: vi.fn(async () => ({}) as never),
-  enqueueLocalSyncCreate: vi.fn()
+  setNoteLocalOnly: vi.fn(),
+  enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncUpdate: vi.fn(),
+  removePendingNoteSyncItems: vi.fn(),
+  recordPendingCrdtNotes: vi.fn(),
+  clearPendingCrdtNotes: vi.fn()
 }))
 
 vi.mock('../sync/crdt-provider', () => ({
-  getCrdtProvider: () => ({ initForNote: mocks.initForNote })
+  getCrdtProvider: () => ({
+    initForNote: mocks.initForNote,
+    setNoteLocalOnly: mocks.setNoteLocalOnly
+  })
+}))
+
+vi.mock('../sync/crdt-pending-notes', () => ({
+  recordPendingCrdtNotes: mocks.recordPendingCrdtNotes,
+  clearPendingCrdtNotes: mocks.clearPendingCrdtNotes
 }))
 
 vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncCreate: mocks.enqueueLocalSyncCreate,
   enqueueLocalSyncDelete: vi.fn(),
-  enqueueLocalSyncUpdate: vi.fn(),
-  removePendingNoteSyncItems: vi.fn()
+  enqueueLocalSyncUpdate: mocks.enqueueLocalSyncUpdate,
+  removePendingNoteSyncItems: mocks.removePendingNoteSyncItems
 }))
 
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
@@ -25,7 +38,7 @@ vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
 vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
-import { syncNoteCreate } from './runtime-effects'
+import { setNoteLocalOnlyState, syncNoteCreate } from './runtime-effects'
 
 describe('syncNoteCreate', () => {
   beforeEach(() => {
@@ -65,5 +78,36 @@ describe('syncNoteCreate', () => {
 
     expect(mocks.enqueueLocalSyncCreate).toHaveBeenCalledWith('note', 'note-1')
     expect(mocks.initForNote).toHaveBeenCalledWith('note-1', { title: 'Title' }, ['alpha'])
+  })
+})
+
+describe('setNoteLocalOnlyState', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('tells the CRDT provider, so an open doc stops pushing its body immediately', () => {
+    // The provider caches the flag per open doc — `onDocUpdate` runs per
+    // keystroke and cannot afford a database read — so without this the note
+    // keeps pushing until it is closed and reopened.
+    setNoteLocalOnlyState('note-1', true)
+
+    expect(mocks.setNoteLocalOnly).toHaveBeenCalledWith('note-1', true)
+    expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
+    expect(mocks.clearPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
+    expect(mocks.recordPendingCrdtNotes).not.toHaveBeenCalled()
+  })
+
+  it('owes the server the whole body again when local-only is cleared', () => {
+    // The metadata `update` this raises carries `content: null`, and the push
+    // coordinator only pushes a CRDT snapshot for `operation === 'create'`. So
+    // without the pending record the note would resume syncing its metadata
+    // with its body frozen wherever the server last saw it.
+    setNoteLocalOnlyState('note-1', false)
+
+    expect(mocks.setNoteLocalOnly).toHaveBeenCalledWith('note-1', false)
+    expect(mocks.enqueueLocalSyncUpdate).toHaveBeenCalledWith('note', 'note-1')
+    expect(mocks.recordPendingCrdtNotes).toHaveBeenCalledWith(['note-1'])
+    expect(mocks.clearPendingCrdtNotes).not.toHaveBeenCalled()
   })
 })

@@ -124,7 +124,14 @@ function DateTimeField({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end" sideOffset={6}>
+      {/* Same cap as the due-date badge: a raw `PopoverContent` never applies
+          the available height Radix measures, and this field is reached from an
+          event popover that can itself sit low in the calendar grid. */}
+      <PopoverContent
+        className="w-auto p-0 overflow-clip flex flex-col max-h-(--radix-popover-content-available-height)"
+        align="end"
+        sideOffset={6}
+      >
         <DatePickerContent
           selected={date ?? undefined}
           onSelect={(next) => {

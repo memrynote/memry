@@ -27,6 +27,11 @@ That button and the summary of what you are about to set stay pinned to the bott
 they stay in reach even when the picker opens somewhere with little room and the rest of the panel
 has to scroll.
 
+The first panel holds the relative buttons, the optional note, and — once a note has reminders — the
+list of the ones already set, each with its own edit and delete button. All of it scrolls together
+when the panel is taller than the room the picker has, so the reminders at the end of the list stay
+editable however low in the window you opened it from.
+
 The optional note is available on both paths: type it before you press a relative button and it is
 saved with that reminder too. It is kept everywhere the picker appears — notes, journal entries,
 tasks and inbox items.

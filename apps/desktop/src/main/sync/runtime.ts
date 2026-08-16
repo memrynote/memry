@@ -642,32 +642,42 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           // The snapshot endpoint is the only destructive one. `storeSnapshot`
           // overwrites the note's single R2 blob and `pruneUpdatesBeforeSnapshot`
           // then deletes every `crdt_updates` row at or below the stored
-          // watermark. That is correct when this device really does contain
-          // everything the server has — and a lie when a merge pass skipped a
-          // payload it could not verify, because that payload is by definition
-          // absent from the snapshot replacing it. It is then gone for every
-          // device, permanently, and the vault key that could still decrypt it
-          // no longer has anything to decrypt.
+          // watermark — every device's rows, not just this one's. That is
+          // correct when this device really does contain everything the server
+          // has, and a lie whenever it does not: a merge pass that skipped a
+          // payload it could not verify (#1489), and equally a pull that failed,
+          // was rate-limited, was aborted, or has simply not run yet for a note
+          // the server has already told us a peer wrote (#1503). The rows it
+          // deletes are by definition absent from the snapshot replacing them.
+          // They are then gone for every device, permanently, and the vault key
+          // that could still decrypt them no longer has anything to decrypt.
           //
-          // Failing closed instead — holding the note back until the signer
-          // resolves — is not available: `GET /auth/devices` lists only
-          // non-revoked devices, so a revoked peer's key never returns and the
-          // note would be held forever, stranding this device's own offline
-          // backlog. So the same doc state goes to the incremental endpoint,
-          // which stores and broadcasts it exactly like any other update and
-          // prunes nothing. This device's edits reach every peer; the skipped
-          // payload stays on the server for a later pass — or a later app
-          // version — to make sense of.
+          // Every one of those funnels through this single choke point, so the
+          // routing decision belongs here rather than at each caller: the 30s
+          // `CrdtSnapshotScheduler`, the pending-note replay, `close()`,
+          // `pushAllSnapshots`, `compactDoc` and the push coordinator all reach
+          // the server through this fn.
+          //
+          // Failing closed instead — holding the note back until it merges — is
+          // not available: `GET /auth/devices` lists only non-revoked devices,
+          // so a revoked peer's key never returns, and a device that is offline
+          // or rate-limited may not merge for a long time. Either way the note
+          // would be held indefinitely, stranding this device's own edits. So
+          // the same doc state goes to the incremental endpoint, which stores
+          // and broadcasts it exactly like any other update and prunes nothing.
+          // This device's edits reach every peer; the unmerged payload stays on
+          // the server for a later pass to take in.
           //
           // The incremental route has a size ceiling the snapshot's R2 blob does
-          // not (`pushCrdtFullUpdate` throws past it), which keeps that one
-          // note pending and retried — a stall, not a loss, since its content is
-          // already durable in the local CRDT store.
+          // not (`pushCrdtFullUpdate` throws past MAX_CRDT_UPDATE_PAYLOAD_CHARS),
+          // which keeps that one note pending and retried — a stall, not a loss,
+          // since its content is already durable in the local CRDT store, and it
+          // ends as soon as the note merges and the snapshot route reopens.
           //
           // `engine` is referenced lazily for the same reason
           // `replayPendingCrdtNotes` does: nothing invokes this fn between
           // `crdtProvider.init` below and the `const engine` assignment.
-          const viaUpdates = engine.hasUnverifiedRemoteCrdtUpdate(noteId)
+          const viaUpdates = engine.hasUnmergedRemoteCrdtState(noteId)
           await withRetry(
             () =>
               withAuthRetry(

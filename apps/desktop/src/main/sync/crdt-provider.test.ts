@@ -81,6 +81,10 @@ const mocks = vi.hoisted(() => {
       { isDestroyed: ReturnType<typeof vi.fn>; webContents: { send: ReturnType<typeof vi.fn> } }
     >(),
     getNoteCacheById: vi.fn(),
+    updateNoteCache: vi.fn(),
+    updateNoteMetadata: vi.fn(),
+    enqueueLocalSyncUpdate: vi.fn(),
+    removePendingNoteSyncItems: vi.fn(),
     /** Overridden by the one test that needs a path a real `stat` can reach. */
     toAbsolutePath: vi.fn((path: string) => `/vault/${path}`),
     safeRead: vi.fn(),
@@ -168,8 +172,34 @@ vi.mock('../store', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
+  updateNoteCache: (...args: unknown[]) => mocks.updateNoteCache(...args)
 }))
+
+// Everything below stands up `setNoteLocalOnlyState` — the real toggle — so the
+// local-only suite can drive the whole chain rather than two mocks of each
+// other. Only the two databases and the record feed are faked; the provider and
+// the durable pending store on the other side of the seam are real. None of
+// these modules is reachable from crdt-provider.ts, so they are inert for every
+// other test in this file.
+vi.mock('../database', () => ({
+  getDatabase: () => mocks.dataDb,
+  getIndexDatabase: () => ({ kind: 'index-db' })
+}))
+vi.mock('@memry/storage-data', () => ({
+  updateNoteMetadata: (...args: unknown[]) => mocks.updateNoteMetadata(...args)
+}))
+vi.mock('./local-mutations', () => ({
+  enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn(),
+  enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
+  removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
+}))
+vi.mock('./attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
+vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
+vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
+vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
+vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
 
 vi.mock('../vault/notes', () => ({
   toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
@@ -234,6 +264,8 @@ import type { SnapshotPushFn } from './crdt-provider'
 // recorder and the replay meet on the same durable store, so both halves run
 // for real against the temp userData dir.
 import { drainPendingCrdtNotes, readPendingCrdtNotes } from './crdt-pending-notes'
+// The real toggle, so the local-only suite crosses the seam for real.
+import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
@@ -1566,6 +1598,239 @@ describe('CrdtProvider', () => {
       expect(readPendingCrdtNotes()).toEqual(['note-2'])
 
       await signedOut.destroy()
+    })
+  })
+
+  // The record feed has always honoured this — `seedUnclockedNotes` excludes
+  // `localOnly IS NOT 1`, and so does the offline clock — but the CRDT body
+  // path did not, so a note the user marked local-only went on pushing its
+  // *body* while its metadata stayed put. E2E-encrypted, so never a
+  // confidentiality breach, but "local-only" reads as a promise, and the UI hid
+  // the gap because the metadata genuinely did not sync.
+  describe('a local-only note', () => {
+    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+
+    const noteRow = (localOnly: boolean): Record<string, unknown> => ({
+      id: 'note-1',
+      path: 'notes/Note.md',
+      title: 'Note',
+      fileType: 'markdown',
+      localOnly
+    })
+
+    beforeEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    afterEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    it('never hands an edit to the update queue', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed in a local-only note')
+
+      expect(queue.enqueue).not.toHaveBeenCalled()
+    })
+
+    it('records no CRDT backlog when there is no update queue to take the edit', async () => {
+      // The queue-less recorder exists to get a body to the server later. A
+      // local-only note owes the server nothing, so there is nothing to record.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', undefined, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      expect(readPendingCrdtNotes()).toEqual([])
+      await signedOut.destroy()
+    })
+
+    it('refuses a snapshot push, from any caller', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+
+      // The one push path reached for a note with no open doc — the pending
+      // replay and the push coordinator's create both land here.
+      expect(await provider.pushSnapshotForNote('note-1')).toBe(false)
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('pushes no snapshot when its last editor closes, nor at shutdown', async () => {
+      // The debt is deliberately real — pendingSnapshotBytes counts what was
+      // written and not pushed, for every note — so these two doors have to
+      // refuse on the flag itself and nothing else can be doing the work.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed in a local-only note')
+      expect(provider.getDocSizeMetrics()[0]!.pendingSnapshotBytes).toBeGreaterThan(0)
+
+      // Shutdown flush first: close() would otherwise consume the debt.
+      expect(await provider.pushAllSnapshots()).toBe(0)
+      await provider.close('note-1', 1)
+
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('pushes no snapshot when the compaction pass reaches it', async () => {
+      // Third door, and the one that fires without any user action: the doc is
+      // editor-less by definition here, so nothing on screen hints at a push.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      const compactedDoc = new Y.Doc()
+      compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+      mocks.compactYDoc.mockReturnValue({
+        compacted: Y.encodeStateAsUpdate(compactedDoc),
+        savedBytes: 120
+      })
+
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Needs compaction' })
+      await provider.compactDoc('note-1')
+
+      // Compaction itself still happens — it is a local win — and only the push
+      // is refused.
+      expect(pushSnapshot).not.toHaveBeenCalled()
+      expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
+    })
+
+    it('still reaches the local doc, the local store, every window and the vault file', async () => {
+      // The whole point: editing is untouched. Nothing here may depend on a
+      // session, a plan or a network — only what leaves the machine changes.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      createWindow(2)
+      await provider.open('note-1', 1, { skipSeed: true })
+      await provider.open('note-1', 2, { skipSeed: true })
+
+      provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed in a local-only note'), 1)
+
+      expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe(
+        'typed in a local-only note'
+      )
+      expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
+      expect(mocks.sent).toHaveLength(1)
+      expect(mocks.sent[0]).toMatchObject({
+        windowId: 2,
+        channel: CRDT_EVENTS.STATE_CHANGED,
+        payload: { noteId: 'note-1', origin: 'ipc' }
+      })
+      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    })
+
+    it('costs an ordinary note nothing', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(false))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed in a syncing note')
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+
+      await provider.close('note-1', 1)
+      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    })
+
+    // Crosses the seam for real: the toggle is the shipped function, the flag
+    // is resolved by the shipped doOpen, the edit is a real Yjs transaction and
+    // the assertion is on what the update queue actually received. Both halves
+    // mocked against each other is exactly what nearly shipped a broken #1489.
+    it('starts pushing again the moment the real toggle clears it, with no reopen', async () => {
+      // #given the singleton the toggle reaches, not this suite's instance
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+
+      // #and an index cache the toggle genuinely writes through
+      const row = noteRow(true)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      createWindow(1)
+      const doc = await singleton.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'written while local-only')
+      expect(queue.enqueue).not.toHaveBeenCalled()
+
+      // #when the user turns local-only off
+      setNoteLocalOnlyState('note-1', false)
+
+      // #then the very next keystroke goes up, without closing and reopening
+      doc.getMap('meta').set('title', 'written after un-toggling')
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+      expect(queue.enqueue.mock.calls[0]![0]).toBe('note-1')
+
+      // #and the body written while it was local-only is not stranded. Nothing
+      // else would push it: the push coordinator's snapshot is gated on
+      // `operation === 'create'` and this raised an `update`, an update payload
+      // carries `content: null`, and the vault sweep only pulls — so an
+      // incremental carrying the last keystroke alone would leave every peer
+      // with a body frozen where the server last saw it.
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      const replayed = await drainPendingCrdtNotes({
+        mergeRemote: async () => true,
+        pushSnapshot: (noteId) => singleton.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => singleton.validateNoteForCrdt(noteId).ok
+      })
+
+      expect(replayed).toEqual({ cleared: 1, retained: 0 })
+      const received = new Y.Doc()
+      Y.applyUpdate(received, pushSnapshot.mock.calls.at(-1)![1])
+      expect(received.getMap('meta').get('title')).toBe('written after un-toggling')
+
+      await singleton.destroy()
+    })
+
+    it('hands its body to the merge-first replay when the toggle clears, not to a blind close()', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const row = noteRow(true)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      createWindow(1)
+      const doc = await singleton.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'written while local-only')
+
+      setNoteLocalOnlyState('note-1', false)
+      await singleton.close('note-1', 1)
+
+      // close() pushes blind — it never pulls first — and a snapshot asserts
+      // completeness, so the server prunes every incremental below it. A note
+      // that has just stopped being local-only is the population most likely to
+      // have diverged from a peer, so its body goes up through
+      // drainPendingCrdtNotes, which merges before it pushes.
+      expect(pushSnapshot).not.toHaveBeenCalled()
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      await singleton.destroy()
+    })
+
+    it('drops a CRDT backlog the server is no longer owed when the real toggle sets it', async () => {
+      // The CRDT twin of `removePendingNoteSyncItems`. Nothing is lost: the
+      // updates stay in the local store, and clearing the flag re-records the
+      // note, whose replay pushes full doc state and supersedes them.
+      const singleton = getCrdtProvider()
+      await singleton.init()
+
+      const row = noteRow(false)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      const doc = await singleton.open('note-1', undefined, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      setNoteLocalOnlyState('note-1', true)
+
+      expect(readPendingCrdtNotes()).toEqual([])
+      expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
+      await singleton.destroy()
     })
   })
 })

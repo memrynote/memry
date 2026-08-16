@@ -84,8 +84,16 @@ export const InteractiveDueDateBadge = ({
           <div className="text-[12px] leading-4">{dateLabel}</div>
         </button>
       </PopoverTrigger>
+      {/* A raw `PopoverContent` has no height management: Radix's popper sets
+          `--radix-popover-content-available-height` but never applies it, and
+          its `shift` runs with `crossAxis: false`, so a panel taller than the
+          room beside its trigger is never pulled back. This badge sits in
+          scrolling task lists, so the trigger can be anywhere in the window.
+          Cap at the height Radix measured and lay out as a column so
+          `DatePickerContent` can shrink and scroll instead of being swallowed
+          by `overflow-clip`. */}
       <PopoverContent
-        className="w-auto p-0 rounded-md overflow-clip"
+        className="w-auto p-0 rounded-md overflow-clip flex flex-col max-h-(--radix-popover-content-available-height)"
         align="end"
         onClick={handleTriggerClick}
       >
