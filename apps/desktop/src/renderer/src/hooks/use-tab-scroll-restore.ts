@@ -59,6 +59,17 @@ function scrollRangeOf(element: HTMLElement): number {
   return Math.max(0, element.scrollHeight - element.clientHeight)
 }
 
+/**
+ * The slice of `@tanstack/react-virtual`'s `Virtualizer` this hook needs.
+ * Structural rather than imported so the hook stays free of the virtual
+ * library's generics (and so tests can drive it with a stub).
+ */
+export interface TabScrollVirtualizer {
+  /** Current total scrollable height. An ESTIMATE until every row measures. */
+  getTotalSize: () => number
+  scrollToOffset: (offset: number, options?: { align?: 'start'; behavior?: 'auto' }) => void
+}
+
 export interface UseTabScrollRestoreOptions {
   /**
    * Returns the scrolling element. A getter rather than a ref so callers can
@@ -70,15 +81,26 @@ export interface UseTabScrollRestoreOptions {
   enabled?: boolean
   /**
    * Extra identity discriminator. Changing it flushes the current offset and
-   * re-runs restore, exactly like a tab or entity change does.
+   * re-runs restore, exactly like a tab or entity change does. It is also
+   * stamped into the saved record, so a page with several scrollers never
+   * restores one pane's offset into another.
    */
   key?: string
+  /**
+   * Pass the list's virtualizer when the scroller is virtualized. Raw
+   * `scrollTop` is wrong there: the total height is an estimate until the rows
+   * measure, so an early write lands on the wrong row and the content then
+   * shifts under the user. With a virtualizer the offset is applied through its
+   * own API and re-applied until the total size stops moving.
+   */
+  virtualizer?: TabScrollVirtualizer | null
 }
 
 export function useTabScrollRestore({
   getScrollElement,
   enabled = true,
-  key
+  key,
+  virtualizer
 }: UseTabScrollRestoreOptions): void {
   const identity = useTabIdentity()
   // Optional: `NoteLayout` and friends also render outside a tab (previews,
@@ -90,12 +112,19 @@ export function useTabScrollRestore({
   /** Live scroll offset. The single source of truth for every save. */
   const offsetRef = useRef(0)
   const getScrollElementRef = useRef(getScrollElement)
+  const virtualizerRef = useRef(virtualizer)
 
   // Layout effects all run before any passive effect in the same commit, so the
   // main effect below always sees the current render's getter.
   useLayoutEffect(() => {
     getScrollElementRef.current = getScrollElement
   }, [getScrollElement])
+
+  // Kept out of the effect's deps: a virtualizer is a stable instance whose
+  // internals mutate, and re-running the effect for it would restart restore.
+  useLayoutEffect(() => {
+    virtualizerRef.current = virtualizer
+  }, [virtualizer])
 
   const tabId = identity?.tabId
   const groupId = identity?.groupId
@@ -115,6 +144,11 @@ export function useTabScrollRestore({
     let lastRange = scrollRangeOf(element)
     /** The offset the last dispatch actually put into tab state. */
     let lastDispatchedOffset: number | null = null
+    /**
+     * Total size reported by the virtualizer at the previous apply. `NaN` never
+     * equals itself, so the first apply can never claim the list has measured.
+     */
+    let lastTotalSize = Number.NaN
     /** Whether anything happened that is worth persisting at teardown. */
     let touched = false
     let restoring = false
@@ -134,7 +168,7 @@ export function useTabScrollRestore({
       lastDispatchedOffset = offset
       dispatch({
         type: 'SAVE_TAB_STATE',
-        payload: { tabId, groupId, scrollState: { offset, entityId } }
+        payload: { tabId, groupId, scrollState: { offset, entityId, key } }
       })
     }
 
@@ -168,6 +202,20 @@ export function useTabScrollRestore({
     const applyOffset = (target: number): boolean => {
       const scroller = getScrollElementRef.current()
       if (!scroller) return false
+      const virtual = virtualizerRef.current
+
+      if (virtual) {
+        // The total size before the write is what the offset was interpreted
+        // against. If it moved since the last attempt, rows are still measuring
+        // and the row now under the offset is not the row the user left.
+        const totalSize = virtual.getTotalSize()
+        const measured = totalSize === lastTotalSize
+        lastTotalSize = totalSize
+        virtual.scrollToOffset(target, { align: 'start' })
+        lastWrittenOffset = scroller.scrollTop
+        return measured && Math.abs(lastWrittenOffset - target) <= OFFSET_EPSILON
+      }
+
       scroller.scrollTop = target
       lastWrittenOffset = scroller.scrollTop
       return Math.abs(lastWrittenOffset - target) <= OFFSET_EPSILON
@@ -222,9 +270,13 @@ export function useTabScrollRestore({
 
     const saved = getTab(tabId, groupId)?.scrollState
     // A tab keeps its identity when it navigates to another note, so an offset
-    // stamped with a different entity describes content that is gone.
+    // stamped with a different entity describes content that is gone — and one
+    // stamped with a different scroller describes a different pane of this page.
     const restorable =
-      saved !== undefined && saved.entityId === entityId && Number.isFinite(saved.offset)
+      saved !== undefined &&
+      saved.entityId === entityId &&
+      saved.key === key &&
+      Number.isFinite(saved.offset)
 
     if (restorable) {
       const target = saved.offset
@@ -242,10 +294,13 @@ export function useTabScrollRestore({
         const scroller = getScrollElementRef.current()
         if (!scroller) return
         const range = scrollRangeOf(scroller)
-        if (range > grownTo) {
-          // Content is still arriving, so the target is not yet unreachable:
-          // give it another settle window.
-          grownTo = range
+        const virtual = virtualizerRef.current
+        // Content is still arriving, so the target is not yet unreachable: give
+        // it another settle window. A virtualized list's total size can SHRINK
+        // as rows measure under their estimate, so there any movement counts.
+        const stillArriving = virtual ? virtual.getTotalSize() !== lastTotalSize : range > grownTo
+        if (range > grownTo) grownTo = range
+        if (stillArriving) {
           if (restoreSettle !== null) clearTimeout(restoreSettle)
           restoreSettle = setTimeout(stopRestoring, RESTORE_SETTLE_MS)
         }
@@ -278,11 +333,13 @@ export function useTabScrollRestore({
       // DOM here is exactly the bug this hook replaces. A tab that was never
       // scrolled and has no record to correct has nothing to persist — writing
       // `{ offset: 0 }` for every tab the user merely opens is churn in state
-      // that gets serialised to disk.
-      if (touched || saved !== undefined) {
+      // that gets serialised to disk. A record belonging to a DIFFERENT scroller
+      // is not ours to correct either: merely opening the insights pane must not
+      // wipe the list pane's offset.
+      if (touched || (saved !== undefined && saved.key === key)) {
         dispatch({
           type: 'SAVE_TAB_STATE',
-          payload: { tabId, groupId, scrollState: { offset: offsetRef.current, entityId } }
+          payload: { tabId, groupId, scrollState: { offset: offsetRef.current, entityId, key } }
         })
       }
       offsetRef.current = 0

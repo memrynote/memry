@@ -144,6 +144,43 @@ function savedPayloads(): Array<{ tabId: string; offset: number; entityId?: stri
     })
 }
 
+function savedKeys(): Array<string | undefined> {
+  return mocks.dispatch.mock.calls
+    .map(([action]) => action as { type: string; payload: Record<string, unknown> })
+    .filter((action) => action.type === 'SAVE_TAB_STATE' && 'scrollState' in action.payload)
+    .map((action) => (action.payload.scrollState as { key?: string }).key)
+}
+
+/**
+ * A virtualizer stub. `getTotalSize` is the estimate the list currently
+ * believes; `scrollToOffset` goes through the same clamping the element does,
+ * which is what a real virtualizer's `scrollToOffset` ends up doing.
+ */
+function makeVirtualizer(
+  scroller: { element: HTMLElement },
+  totalSize: number
+): {
+  virtualizer: { getTotalSize: () => number; scrollToOffset: (offset: number) => void }
+  setTotalSize: (next: number) => void
+  calls: number[]
+} {
+  let size = totalSize
+  const calls: number[] = []
+  return {
+    virtualizer: {
+      getTotalSize: () => size,
+      scrollToOffset: (offset: number) => {
+        calls.push(offset)
+        scroller.element.scrollTop = offset
+      }
+    },
+    setTotalSize: (next: number) => {
+      size = next
+    },
+    calls
+  }
+}
+
 describe('useTabScrollRestore', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -497,6 +534,128 @@ describe('useTabScrollRestore', () => {
     TestResizeObserver.fireAll()
 
     expect(scroller.element.scrollTop).toBe(0)
+  })
+
+  // -------------------------------------------------------------------------
+  // Per-scroller key: pages with several panes (Inbox's sub-views, the project
+  // hub's tabs, folder view's per-type scrollers) share one tab record.
+  // -------------------------------------------------------------------------
+
+  it('stamps the scroller key into every save', () => {
+    const scroller = makeScroller(1000)
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
+    )
+
+    scroller.userScrollTo(250)
+    vi.advanceTimersByTime(500)
+
+    expect(savedKeys()).toEqual(['inbox-list'])
+  })
+
+  it('does not apply one pane offset to another pane', () => {
+    const scroller = makeScroller(1000)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
+
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-insights' })
+    )
+
+    expect(scroller.element.scrollTop).toBe(0)
+  })
+
+  it('restores an offset saved by the same pane', () => {
+    const scroller = makeScroller(1000)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
+
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
+    )
+
+    expect(scroller.element.scrollTop).toBe(400)
+  })
+
+  it('leaves another pane record alone when this pane was never scrolled', () => {
+    const scroller = makeScroller(1000)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1', key: 'inbox-list' }))
+
+    const { unmount } = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-insights' })
+    )
+    unmount()
+
+    // Merely opening the insights pane must not wipe the list pane's offset.
+    expect(mocks.dispatch).not.toHaveBeenCalled()
+  })
+
+  // -------------------------------------------------------------------------
+  // Virtualized mode
+  // -------------------------------------------------------------------------
+
+  it('restores through the virtualizer rather than writing scrollTop', () => {
+    const scroller = makeScroller(1000)
+    const { virtualizer, calls } = makeVirtualizer(scroller, 1400)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+
+    expect(calls).toEqual([400])
+    expect(scroller.element.scrollTop).toBe(400)
+  })
+
+  it('keeps re-applying until the estimated total size stops moving', () => {
+    const scroller = makeScroller(1000)
+    const { virtualizer, setTotalSize, calls } = makeVirtualizer(scroller, 1400)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+
+    // The write stuck, but the total size is still an estimate: the row now
+    // under 400px is not the row the user left.
+    expect(TestResizeObserver.live).toHaveLength(1)
+
+    // Rows measure shorter than estimated — the offset has to be re-applied
+    // against the new total, and shrinking counts as movement.
+    setTotalSize(1150)
+    TestResizeObserver.fireAll()
+    expect(TestResizeObserver.live).toHaveLength(1)
+
+    // Two consecutive reads agree: the list has measured.
+    TestResizeObserver.fireAll()
+    expect(TestResizeObserver.live).toHaveLength(0)
+    expect(calls).toEqual([400, 400, 400])
+  })
+
+  it('gives up in virtualized mode once the list stops measuring short', () => {
+    const scroller = makeScroller(0)
+    const { virtualizer, setTotalSize } = makeVirtualizer(scroller, 0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+
+    vi.advanceTimersByTime(2000)
+    expect(TestResizeObserver.live).toHaveLength(0)
+
+    setTotalSize(2000)
+    scroller.setMaxScroll(1600)
+    TestResizeObserver.fireAll()
+
+    expect(scroller.element.scrollTop).toBe(0)
+  })
+
+  it('cancels a virtualized restore once the user scrolls', () => {
+    const scroller = makeScroller(1000)
+    const { virtualizer, calls } = makeVirtualizer(scroller, 1400)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element, virtualizer }))
+    expect(calls).toEqual([400])
+
+    scroller.userScrollTo(120)
+    TestResizeObserver.fireAll()
+
+    expect(calls).toEqual([400])
+    expect(scroller.element.scrollTop).toBe(120)
   })
 
   it('keeps re-applying while only our own programmatic writes are observed', () => {

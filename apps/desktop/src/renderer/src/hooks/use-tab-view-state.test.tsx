@@ -130,6 +130,60 @@ describe('useTabViewState', () => {
     expect(result.current[0]).toBe('list')
   })
 
+  it('reads a legacy alias key when the current key is absent', () => {
+    mocks.getTab.mockReturnValue(tabWith({ activeTab: 'board' }))
+
+    const { result } = renderHook(() =>
+      useTabViewState({
+        key: 'activeInternalTab',
+        aliasKeys: ['activeTab'],
+        defaultValue: 'list' as const,
+        parse: parseMode
+      })
+    )
+
+    expect(result.current[0]).toBe('board')
+  })
+
+  it('prefers the current key over its alias', () => {
+    mocks.getTab.mockReturnValue(tabWith({ activeInternalTab: 'board', activeTab: 'list' }))
+
+    const { result } = renderHook(() =>
+      useTabViewState({
+        key: 'activeInternalTab',
+        aliasKeys: ['activeTab'],
+        defaultValue: 'list' as const,
+        parse: parseMode
+      })
+    )
+
+    expect(result.current[0]).toBe('board')
+  })
+
+  it('writes the alias alongside the current key', () => {
+    const { result } = renderHook(() =>
+      useTabViewState({
+        key: 'activeInternalTab',
+        aliasKeys: ['activeTab'],
+        defaultValue: 'list' as const,
+        parse: parseMode
+      })
+    )
+
+    act(() => result.current[1]('board'))
+
+    // A session written here still restores on a build that only knows the old
+    // name.
+    expect(mocks.dispatch).toHaveBeenCalledWith({
+      type: 'SAVE_TAB_STATE',
+      payload: {
+        tabId: 'tab-a',
+        groupId: 'group-1',
+        viewState: { activeInternalTab: 'board', activeTab: 'board' }
+      }
+    })
+  })
+
   it('degrades to plain local state outside a tab', () => {
     mocks.identity.current = null
 

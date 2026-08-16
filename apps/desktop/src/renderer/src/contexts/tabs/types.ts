@@ -73,6 +73,14 @@ export interface TabScrollState {
   offset: number
   /** `Tab.entityId` at the moment the offset was recorded. */
   entityId?: string
+  /**
+   * Which scroller inside the tab the offset was measured against, for pages
+   * that own several (Inbox's three sub-views, the project hub's tabs, folder
+   * view's per-type scrollers). A tab keeps ONE offset, so switching sub-view
+   * forgets the previous one — but it must never apply it to the wrong pane.
+   * Absent on records written by a single-scroller page.
+   */
+  key?: string
 }
 
 /**
