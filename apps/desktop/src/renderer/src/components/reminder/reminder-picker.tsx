@@ -203,7 +203,17 @@ export function ReminderPicker({
 
       <Picker.Content className="w-80" align="start">
         {mode === 'presets' ? (
-          <>
+          // The presets, the optional note and the managed-reminder list share a
+          // single scrolling body. `Picker.Content` caps its height and clips its
+          // overflow, and only an item that can shrink absorbs that cap: with
+          // `Picker.List` the sole shrinkable sibling it collapsed to nothing and
+          // the two trailing blocks were clipped anyway, taking the per-reminder
+          // edit and delete buttons with them. `Picker.List` keeps its own
+          // overflow rule but never uses it here — as a block child of this
+          // scroller it lays out at its content height. `overflow-x-hidden` stops
+          // the separators' `-mx-1` full-bleed from turning the vertical
+          // scroll container into a horizontal one as well.
+          <div className="min-h-0 overflow-y-auto overflow-x-hidden">
             <Picker.List>
               <Picker.Section label={tPhaseF('phaseF.componentsReminderReminderPicker.remindMe')}>
                 {presets.map((preset) => (
@@ -304,7 +314,7 @@ export function ReminderPicker({
                 </div>
               </>
             )}
-          </>
+          </div>
         ) : (
           // The confirm button lives in a pinned footer so the height cap on
           // `Picker.Content` can only ever eat into the scrolling body above it.

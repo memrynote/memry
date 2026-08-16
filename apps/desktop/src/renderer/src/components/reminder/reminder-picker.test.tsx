@@ -215,6 +215,48 @@ describe('ReminderPicker', () => {
     { id: 'r2', remindAt: '2026-05-20T08:00:00.000Z', status: 'pending', note: undefined }
   ]
 
+  it('keeps the presets, the note field and the managed list in one scrolling body', () => {
+    // `Picker.Content` caps its height and clips its overflow, so anything that
+    // can outgrow the popover has to sit inside something that scrolls. When
+    // `Picker.List` was the only scroller the note field and the managed list
+    // hung outside it: the list collapsed first and the tail was clipped, with
+    // the last reminder's edit and delete buttons going with it.
+    //
+    // jsdom computes no layout and never resolves
+    // `--radix-popover-content-available-height`, and `Picker.Content` is mocked
+    // here without its cap or its clip, so this asserts the structure that makes
+    // scrolling possible — it cannot claim anything is visible on screen.
+    renderWithProviders(
+      <ReminderPicker
+        onSelect={vi.fn()}
+        showNote
+        reminders={MANAGED}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+
+    const body = document.querySelector('.overflow-y-auto')
+    expect(body).not.toBeNull()
+    // Without `min-h-0` the body keeps its content height and the cap never
+    // reaches it; with `flex-1` it would collapse whenever the popover is
+    // shorter than its cap.
+    expect(body?.className).toContain('min-h-0')
+    expect(body?.className).not.toContain('flex-1')
+
+    expect(body?.contains(screen.getByRole('button', { name: /Later Today/ }))).toBe(true)
+    expect(
+      body?.contains(
+        screen.getByPlaceholderText('phaseF.componentsReminderReminderPicker.addANoteOptional')
+      )
+    ).toBe(true)
+    const deleteButtons = screen.getAllByRole('button', {
+      name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+    })
+    expect(deleteButtons).toHaveLength(2)
+    expect(deleteButtons.every((button) => body?.contains(button))).toBe(true)
+  })
+
   it('lists existing reminders with edit and delete actions', () => {
     renderWithProviders(
       <ReminderPicker onSelect={vi.fn()} reminders={MANAGED} onEdit={vi.fn()} onDelete={vi.fn()} />
