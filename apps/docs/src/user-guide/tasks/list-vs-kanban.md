@@ -21,6 +21,11 @@ the note or file viewer. When a task has multiple related items, the indicator o
 
 Click the row body to open the task detail drawer. Inline status and priority controls open their own pickers without opening the drawer.
 
+The due-date chip opens its own picker too: quick presets, a month calendar, and an **Add time**
+row below them. On a short window, or for a row near the bottom of the list, the presets and the
+calendar scroll inside the picker while the time row stays pinned at its foot, so adding a time is
+always reachable.
+
 Drag the drawer's left edge to resize it; double-click the edge to reset to the default width. The width is remembered across restarts.
 
 Rows can be drag-reordered. Multi-select with shift-click for bulk actions.
