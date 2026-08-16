@@ -1496,9 +1496,9 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // `isCollaborationActive(syncState.status)`, which meant no session → no
   // Y.Doc → keystrokes reached markdown and the DB but never became CRDT
   // operations; the sign-in that rebuilt the doc from the server then wrote it
-  // back over the file. The canvas note-card lock still reads the session
-  // predicate — see sync/collaboration-status.ts for why the two must not be
-  // re-merged.
+  // back over the file. The canvas note-card lock reads the fragment this hook
+  // produces (pages/canvas/canvas-note-lock.ts), not the session — see
+  // sync/collaboration-status.ts for why nothing may re-derive this from it.
   const localDocLive = isLocalCrdtDocLive(props.noteId)
   const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,

@@ -1,14 +1,13 @@
 /**
- * Live inputs for the canvas note-edit lock: whether a remote sync session is
- * live — which is now a proxy for "main's CRDT provider is up", not for "this
- * editor is collaborative"; see canvas-note-lock.ts — and which notes are
- * currently editable in a visible pane. Kept separate from canvas-note-lock.ts
- * so the decision stays pure.
+ * Live inputs for the canvas note-edit lock: whether this window already holds a
+ * live Yjs fragment for a given note — the thing that actually makes a second
+ * editor safe, see canvas-note-lock.ts — and which notes are currently editable
+ * in a visible pane. Kept separate from canvas-note-lock.ts so the decision
+ * stays pure.
  */
 import { useMemo } from 'react'
-import { useSync } from '@/contexts/sync-context'
 import { useTabs } from '@/contexts/tabs'
-import { isCollaborationActive } from '@/sync/collaboration-status'
+import { useLiveFragmentQuery } from '@/sync/use-yjs-collaboration'
 import type { CanvasCardRef } from './canvas-cards'
 import {
   collectVisibleNoteTabIds,
@@ -18,21 +17,27 @@ import {
 } from './canvas-note-lock'
 
 export interface NoteEditLockContext {
-  collaborationActive: boolean
+  /**
+   * Per-note, because the lock is asked per card. Identity changes only when an
+   * answer could have changed, so this context object — and the card list
+   * memoized on it in canvas-card-overlay.tsx — stays stable between them.
+   */
+  hasLiveFragment: (noteId: string) => boolean
   visibleNoteTabIds: ReadonlySet<string>
 }
 
 export function useNoteEditLock(): NoteEditLockContext {
-  const { state: syncState } = useSync()
   const { state: tabState } = useTabs()
-  const collaborationActive = isCollaborationActive(syncState.status)
+  // Read-only: this registers no registry consumer, so it does not make the
+  // note's sole editor report non-owner (#1495).
+  const hasLiveFragment = useLiveFragmentQuery()
   const visibleNoteTabIds = useMemo(
     () => collectVisibleNoteTabIds(tabState.tabGroups),
     [tabState.tabGroups]
   )
   return useMemo(
-    () => ({ collaborationActive, visibleNoteTabIds }),
-    [collaborationActive, visibleNoteTabIds]
+    () => ({ hasLiveFragment, visibleNoteTabIds }),
+    [hasLiveFragment, visibleNoteTabIds]
   )
 }
 
@@ -47,7 +52,7 @@ export function lockReasonForCard(
 ): NoteLockReason | null {
   if (card.entityType !== 'note') return null
   return evaluateNoteLock({
-    collaborationActive: ctx.collaborationActive,
+    fragmentLive: ctx.hasLiveFragment(card.entityId),
     visibleNoteTabIds: ctx.visibleNoteTabIds,
     claimedBy: noteCardClaims.claimedBy(card.entityId),
     cardElementId: card.elementId,

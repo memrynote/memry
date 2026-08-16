@@ -548,12 +548,12 @@ export const CanvasCardLayer = ({
       if (hit) {
         e.preventDefault()
         e.stopPropagation()
-        // No live sync session + the note already live elsewhere => stay
-        // read-only. Not because a second editor would be non-collaborative —
-        // it shares the tab's Y.Doc now — but because these are the statuses
-        // main's CRDT provider can be down under, and an editor that opens a
-        // note while it is down saves whole markdown for the life of its mount
-        // and clobbers the other one (M6 design §12/6; canvas-note-lock.ts).
+        // No live fragment for this note in this window + the note already live
+        // elsewhere => stay read-only. Not because a second editor would be
+        // non-collaborative — with a fragment it shares the tab's Y.Doc — but
+        // because a binding that failed or has not settled makes every editor on
+        // the note a whole-markdown saver for the life of its mount, and two of
+        // those clobber each other (M6 design §12/6; canvas-note-lock.ts).
         if (lockReasonForCard(lockCtxRef.current, hit)) {
           return
         }
