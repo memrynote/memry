@@ -71,6 +71,25 @@ interface ActiveDoc {
   lastEncodedSize: number
   lastSizeCheckAt: number
   lastTouchedAt: number
+  /**
+   * "This note never leaves the device", cached off the index row at doOpen.
+   *
+   * Cached rather than read per update because the only reader that matters is
+   * `onDocUpdate`, which runs on every keystroke: a `getIndexDatabase()` lookup
+   * there would put a synchronous SQLite round-trip on the typing path. Opening
+   * a doc already pays an async store read plus (usually) a file stat, read and
+   * markdown parse, so one more primary-key SELECT there is noise.
+   *
+   * Kept in step by `setNoteLocalOnly`, which the note runtime calls from the
+   * same function that writes the flag to both databases. A doc that is closed
+   * when the toggle happens needs nothing: its next doOpen re-reads the row.
+   *
+   * Every path that would send this doc's bytes to the server reads it: the
+   * update-queue branch of `onDocUpdate`, and the three snapshot pushes in
+   * `close`, `pushAllSnapshots` and `compactDoc`. `pushSnapshotForNote` is
+   * reached for notes with no open doc at all and re-reads the row instead.
+   */
+  localOnly: boolean
   closing?: boolean
 }
 
@@ -290,7 +309,8 @@ export class CrdtProvider {
       pendingSnapshotBytes: 0,
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
-      lastTouchedAt: this.now()
+      lastTouchedAt: this.now(),
+      localOnly: this.resolveLocalOnly(noteId)
     }
     this.docs.set(noteId, entry)
 
@@ -301,6 +321,52 @@ export class CrdtProvider {
     await this.evictInactiveDocsIfNeeded()
 
     return doc
+  }
+
+  /**
+   * Read the note's "never leaves this device" flag off the index row.
+   *
+   * Falls back to "not local-only" when the row cannot be read at all — an
+   * index database that is closed or missing, which `doOpen` can hit on the
+   * `skipSeed` path that otherwise never touches it. That is the behaviour this
+   * provider has always had, so an unreadable row costs sync nothing; the
+   * authoritative check for the payload that actually carries a body — the
+   * snapshot — re-reads the row live in `pushSnapshotForNote`.
+   */
+  private resolveLocalOnly(noteId: string): boolean {
+    try {
+      return getNoteCacheById(getIndexDatabase(), noteId)?.localOnly === true
+    } catch (err) {
+      log.warn('Could not read the local-only flag for a note; treating it as syncable', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
+  /**
+   * Point the open doc's cached flag at the value both databases now hold.
+   *
+   * Called by `setNoteLocalOnlyState` — the single place the toggle is written
+   * — immediately after the two writes, so a doc opened concurrently and this
+   * doc agree. A note with no open doc needs nothing: `doOpen` re-reads.
+   *
+   * Either direction also hands the doc's snapshot debt to the pending-note
+   * replay, by clearing it here. Clearing it going ON is obvious. Going OFF
+   * matters more: `setNoteLocalOnlyState` records the note for
+   * `drainPendingCrdtNotes`, which pulls and merges the server's state before
+   * it pushes, and a note that has just stopped being local-only is precisely
+   * the population most likely to have diverged from a peer. Leaving the debt
+   * would let the next `close()` fire a *blind* snapshot first — and a snapshot
+   * asserts completeness, so the server prunes the peer edits it does not
+   * contain. The replay is the carrier for this body; close() must not race it.
+   */
+  setNoteLocalOnly(noteId: string, localOnly: boolean): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+    entry.localOnly = localOnly
+    entry.pendingSnapshotBytes = 0
   }
 
   async close(noteId: string, windowId?: number): Promise<void> {
@@ -316,7 +382,7 @@ export class CrdtProvider {
 
     this.flushNetworkBroadcast(noteId)
 
-    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
       const state = Y.encodeStateAsUpdate(entry.doc)
       await this.snapshotPushFn(noteId, state).catch((err) => {
         log.warn('Failed to push snapshot on close', { noteId, error: err })
@@ -549,6 +615,7 @@ export class CrdtProvider {
 
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
+      if (entry.localOnly) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {
         const state = Y.encodeStateAsUpdate(entry.doc)
@@ -574,6 +641,19 @@ export class CrdtProvider {
         noteId,
         fileType: cached.fileType
       })
+      return false
+    }
+
+    // The row is already in hand, so the authoritative read costs nothing here
+    // — and this is the one push path that is reached for a note with no open
+    // doc (the pending-note replay, and the push coordinator's create), so it
+    // cannot lean on the per-doc cached flag.
+    //
+    // `false` is honest to both callers: the replay reads it as "not settled"
+    // and keeps the id, which is what a note that may be un-toggled later wants
+    // — a `true` here would be the provider claiming a push it refused to make.
+    if (cached?.localOnly) {
+      log.debug('Skipping CRDT snapshot push for a local-only note', { noteId })
       return false
     }
 
@@ -775,6 +855,11 @@ export class CrdtProvider {
     if (!entry) return
 
     this.touchDoc(entry)
+    // Both counters stay honest for a local-only note. accumulatedBytes drives
+    // local compaction, which a local-only doc needs like any other; and
+    // pendingSnapshotBytes means "written locally, not yet on the server", which
+    // is exactly true here. Suppressing the debt would make the guards below
+    // read as redundant when they are the only thing holding the body back.
     entry.accumulatedBytes += update.byteLength
     if (origin !== ORIGIN_NETWORK) {
       entry.pendingSnapshotBytes += update.byteLength
@@ -791,7 +876,14 @@ export class CrdtProvider {
     this.persistUpdate(noteId, update)
     this.maybeCompact(noteId)
 
-    if (origin !== ORIGIN_NETWORK) {
+    // Everything above this line is local — the doc, the local CRDT store, the
+    // window broadcast, the markdown write-back scheduled below — and stays
+    // exactly the same for a local-only note. This is the only branch that
+    // sends bytes off the machine, and it is the one the record feed already
+    // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
+    // Recording the note for later replay is skipped for the same reason the
+    // push is: the pending store exists to get a body to the server.
+    if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
       if (this.updateQueue) {
         this.updateQueue.enqueue(noteId, update)
       } else {
@@ -992,7 +1084,7 @@ export class CrdtProvider {
     this.compactionBuffers.set(noteId, [])
 
     try {
-      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
         // Credit only the bytes this payload actually covers. result.compacted
         // was encoded before the await, and applyIpcUpdate writes straight to
         // entry.doc with no compaction guard (only remote updates are
