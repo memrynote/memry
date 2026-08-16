@@ -663,6 +663,30 @@ id has to survive a crash or a kill, and after the first update for a note there
 is nothing left to pay. `CrdtProvider.init()` clears the dedupe set, so the next
 queue-less stretch starts fresh.
 
+That write is **crash-atomic**, because a recorder whose whole purpose is to
+survive a crash cannot be the thing the crash truncates. The full list is staged
+in a fresh temp file in the same directory — `rename` is only atomic within a
+filesystem — flushed, then renamed over the live path, so the previous list
+stands until a complete replacement is in place and there is no moment where the
+store holds half a JSON array. The flush is one `fsync` per note touched, not per
+keystroke, which is what the per-note dedupe buys. Clearing the last id still
+unlinks the file: unlink is already atomic, and "no file" has always meant
+"nothing pending".
+
+A store that does not parse is **preserved, salvaged, and reported** rather than
+treated as an empty backlog. Failing open would be right for a cache; this file
+is the only record that a signed-out edit is owed to the server, so reading it as
+"nothing pending" discards that debt in silence. The damaged bytes are moved to
+`crdt-pending-notes.corrupt.json` — one fixed name, so a device with a failing
+disk cannot accumulate copies in userData forever — every complete `"id"` token
+still in them is recovered, and the recovered list is written back to the live
+store so the drain's second read (`clearPendingCrdtNotes`) does not find it gone.
+An id the damage landed inside is a prefix, not an id, and is lost; a recovered
+string that is not really a note id costs nothing, because the drain checks
+`isSyncable` before it pushes. The on-disk format is unchanged — a plain JSON
+array of note ids at the same path — so stores written by older builds read
+exactly as before.
+
 `startSyncRuntime` drains that store once, after `crdtProvider.init()` has
 installed the snapshot push function and after `engine.start()` has awaited the
 first full sync. Signing in runs `startSyncRuntime`, which is what makes a
