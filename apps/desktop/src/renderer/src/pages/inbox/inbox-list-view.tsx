@@ -6,6 +6,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { useTabs } from '@/contexts/tabs'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { useResolvedEntityId } from '@/hooks/use-resolved-entity-id'
+import { INBOX_SCROLL_KEYS, INBOX_VIEW_STATE_KEYS, parseItemId } from './inbox-view-state'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { Button } from '@/components/ui/button'
 import { ListView } from '@/components/list-view'
@@ -85,7 +89,15 @@ export function InboxListView({
   const [isCapturingImage, setIsCapturingImage] = useState(false)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [dismissedSuggestionKeys, setDismissedSuggestionKeys] = useState<Set<string>>(new Set())
-  const [activeDetailItemId, setActiveDetailItemId] = useState<string | null>(null)
+  // The open detail item belongs to the tab: switching tabs unmounts the page.
+  const [storedDetailItemId, setActiveDetailItemId] = useTabViewState<string | null>({
+    key: INBOX_VIEW_STATE_KEYS.detailItemId,
+    defaultValue: null,
+    parse: parseItemId
+  })
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({ getScrollElement, key: INBOX_SCROLL_KEYS.list })
   const [isBulkFilePanelOpen, setIsBulkFilePanelOpen] = useState(false)
   const [isBulkTagPopoverOpen, setIsBulkTagPopoverOpen] = useState(false)
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
@@ -94,7 +106,6 @@ export function InboxListView({
   const lastConsumedFocusTokenRef = useRef<number | null>(null)
   const focusSequence = focusToken ?? null
 
-  const isDetailPanelOpen = activeDetailItemId !== null
   const isInBulkMode = selectedItemIds.size > 0
   const selectedCount = selectedItemIds.size
 
@@ -153,7 +164,7 @@ export function InboxListView({
       setFocusedItemIdState(focusItemId)
     }, 0)
     return () => window.clearTimeout(focusTimer)
-  }, [focusItemId, focusSequence])
+  }, [focusItemId, focusSequence, setActiveDetailItemId])
 
   // Computed values
   const selectedItems = useMemo(
@@ -161,13 +172,28 @@ export function InboxListView({
     [items, selectedItemIds]
   )
 
-  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(activeDetailItemId)
+  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(storedDetailItemId)
 
-  const activeDetailItem = useMemo(() => {
-    if (!activeDetailItemId) return null
+  const storedDetailItem = useMemo(() => {
+    if (!storedDetailItemId) return null
     if (fullDetailItem) return fullDetailItem
-    return items.find((item) => item.id === activeDetailItemId) || null
-  }, [activeDetailItemId, fullDetailItem, items])
+    return items.find((item) => item.id === storedDetailItemId) || null
+  }, [storedDetailItemId, fullDetailItem, items])
+
+  const clearDetailItemId = useCallback(() => setActiveDetailItemId(null), [setActiveDetailItemId])
+
+  // Archiving sets the item query to `null` outright, and a restored id can name
+  // an item that is gone entirely. The panel's close button lives inside its
+  // `item ?` branch, so an unresolvable id would paint a blank drawer the user
+  // cannot dismiss.
+  const activeDetailItemId = useResolvedEntityId({
+    id: storedDetailItemId,
+    exists: storedDetailItem !== null,
+    ready: !isDetailLoading && !isLoading,
+    onMissing: clearDetailItemId
+  })
+  const activeDetailItem = activeDetailItemId === null ? null : storedDetailItem
+  const isDetailPanelOpen = activeDetailItemId !== null
 
   const aiSuggestion = useMemo((): ClusterSuggestion | null => {
     if (!aiEnabled) return null
@@ -223,7 +249,15 @@ export function InboxListView({
         })()
       }, 200)
     },
-    [items, activeDetailItemId, archiveWithUndo, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
+    [
+      items,
+      activeDetailItemId,
+      setActiveDetailItemId,
+      archiveWithUndo,
+      scheduleEmptyStateReveal,
+      clearEmptyStateDelay,
+      t
+    ]
   )
 
   // === KEYBOARD SHORTCUTS ===
@@ -412,7 +446,7 @@ export function InboxListView({
         })
       )
     },
-    [openTab, t]
+    [openTab, t, setActiveDetailItemId]
   )
 
   const handlePreview = useCallback(
@@ -427,7 +461,7 @@ export function InboxListView({
         setFocusedItemIdState(id)
       }
     },
-    [isDetailPanelOpen, activeDetailItemId, items]
+    [isDetailPanelOpen, activeDetailItemId, items, setActiveDetailItemId]
   )
 
   const handleFocusedItemChange = useCallback(
@@ -435,7 +469,7 @@ export function InboxListView({
       setFocusedItemIdState(id)
       if (isDetailPanelOpen && id) setActiveDetailItemId(id)
     },
-    [isDetailPanelOpen]
+    [isDetailPanelOpen, setActiveDetailItemId]
   )
 
   const handleArchive = useCallback(
@@ -504,7 +538,15 @@ export function InboxListView({
         })()
       }, 200)
     },
-    [items, activeDetailItemId, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
+    [
+      items,
+      activeDetailItemId,
+      setActiveDetailItemId,
+      queryClient,
+      scheduleEmptyStateReveal,
+      clearEmptyStateDelay,
+      t
+    ]
   )
 
   // === BULK HANDLERS ===
@@ -614,6 +656,7 @@ export function InboxListView({
     selectedItemIds,
     items,
     activeDetailItemId,
+    setActiveDetailItemId,
     bulkArchiveMutation,
     scheduleEmptyStateReveal,
     clearEmptyStateDelay,
@@ -696,6 +739,7 @@ export function InboxListView({
       selectedItemIds,
       items,
       activeDetailItemId,
+      setActiveDetailItemId,
       queryClient,
       scheduleEmptyStateReveal,
       clearEmptyStateDelay,
@@ -867,6 +911,7 @@ export function InboxListView({
 
         {/* Content */}
         <div
+          ref={scrollRef}
           data-inbox-scroll
           className={cn(
             'flex-1 overflow-y-auto',
