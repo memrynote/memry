@@ -998,6 +998,42 @@ describe('TasksPage', () => {
     expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
   })
 
+  it('never opens the drawer onto a task the restored id no longer resolves to', () => {
+    // A session can name a task deleted on another device. The real drawer keeps
+    // its close button inside a `task && …` branch, so opening on a dead id
+    // paints a full-width blank panel with no way to dismiss it.
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeTab: 'all',
+      activeView: 'list',
+      selectedProjectId: null,
+      openTaskId: 'task-deleted-elsewhere'
+    }
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
+    // …and the dead id is dropped from tab state, so it cannot come back.
+    expectSavedViewState({ openTaskId: null })
+  })
+
+  it('keeps the drawer shut on a restored id while nothing has loaded to check it against', () => {
+    // The existence guard deliberately holds its fire here — an empty list mid
+    // fetch is not proof the task is gone — so the drawer's own open condition
+    // is the only thing standing between the user and a blank, closeless panel.
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeTab: 'all',
+      activeView: 'list',
+      selectedProjectId: null,
+      openTaskId: 'task-1'
+    }
+
+    renderPage({ tasks: [], projects: [] })
+
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
+  })
+
   it('opens related audio items in the file viewer', async () => {
     const user = userEvent.setup()
     mocks.notesGetFile.mockResolvedValue({

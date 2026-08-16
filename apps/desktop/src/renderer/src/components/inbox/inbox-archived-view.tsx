@@ -286,7 +286,11 @@ export function InboxArchivedView({
   })
   const activeDetailItem = activeDetailItemId === null ? null : storedDetailItem
 
-  const isDetailPanelOpen = activeDetailItemId !== null
+  // Open only with something to show, or while genuinely fetching it — the
+  // panel's close button lives inside its `item ?` branch, so "open, not
+  // loading, no item" is a blank drawer the user cannot dismiss.
+  const isDetailPanelOpen =
+    activeDetailItemId !== null && (isDetailLoading || storedDetailItem !== null)
 
   const noopFile = useCallback((): void => {}, [])
 

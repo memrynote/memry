@@ -193,7 +193,13 @@ export function InboxListView({
     onMissing: clearDetailItemId
   })
   const activeDetailItem = activeDetailItemId === null ? null : storedDetailItem
-  const isDetailPanelOpen = activeDetailItemId !== null
+  // Open only with something to show, or while genuinely fetching it. The
+  // panel's close button lives inside its `item ?` branch, so "open, not
+  // loading, no item" is a blank drawer with no way out. `useResolvedEntityId`
+  // clears such an id, but only once BOTH queries have settled; this also
+  // covers the window where the list is refetching around a dead id.
+  const isDetailPanelOpen =
+    activeDetailItemId !== null && (isDetailLoading || storedDetailItem !== null)
 
   const aiSuggestion = useMemo((): ClusterSuggestion | null => {
     if (!aiEnabled) return null

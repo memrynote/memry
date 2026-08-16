@@ -1288,7 +1288,13 @@ export const TasksPage = ({
         <TaskDetailDrawer
           key={detailTask?.id ?? 'none'}
           task={detailTask}
-          isOpen={!!detailTaskId}
+          // Opened off the RESOLVED task, not the id. `detailTask` is found
+          // synchronously in `tasks`, so an id with no task behind it is always
+          // a dead id — and the drawer's close button lives inside its `task &&`
+          // branch, so opening on one paints a full-width blank panel the user
+          // cannot dismiss. `useResolvedEntityId` clears such an id, but only
+          // once the task list has loaded; this closes the window before that.
+          isOpen={detailTask !== null}
           onClose={handleCloseDetail}
           tasks={tasks}
           projects={projects}
