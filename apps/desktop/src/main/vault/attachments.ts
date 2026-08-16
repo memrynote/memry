@@ -54,9 +54,15 @@ export class AttachmentError extends Error {
 // ============================================================================
 
 /**
- * Maximum file size: 10MB
+ * Maximum file size: 100MB.
+ *
+ * Deliberately set above the sync file limits rather than in step with them: a
+ * large PDF is allowed to live in the vault as a local-only attachment. Sync
+ * has its own gate (the plan preflight in sync/attachments.ts, then the 500MB
+ * hard cap), which rejects the file as `file_too_large` without retrying, so it
+ * stays on this device instead of being refused from the note entirely.
  */
-export const MAX_FILE_SIZE = 10 * 1024 * 1024
+export const MAX_FILE_SIZE = 100 * 1024 * 1024
 
 /**
  * Allowed image file extensions

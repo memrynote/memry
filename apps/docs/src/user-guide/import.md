@@ -327,4 +327,4 @@ Pages land as one note each under `OneNote/<notebook>/<section group…>/<sectio
 - **Skip previously imported pages** (default on) — imported page ids are remembered per vault (`.memry/import/onenote.json`), so re-running an import only picks up new pages. Turn it off to re-import everything.
 - **Import incompatible attachments** (default off) — also saves file types Memry can't embed natively (presentations, media, archives, and image formats the editor can't render such as EMF/TIFF clipboard art). They render as file blocks and open externally. Executables are never imported, even with this on.
 
-**Limitations:** attachments are capped at 10 MB each (Memry's vault attachment limit); larger files are skipped and counted. Microsoft throttles the OneNote API — large imports may pause for up to a minute at a time and continue automatically.
+**Limitations:** attachments are capped at 100 MB each (Memry's vault attachment limit); larger files are skipped and counted. Microsoft throttles the OneNote API — large imports may pause for up to a minute at a time and continue automatically.
