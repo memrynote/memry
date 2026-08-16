@@ -53,7 +53,8 @@ import {
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { IconPickerButton } from '@/components/icon-picker-button'
-import { getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
+import { extractFolderFromPath, getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
+import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { useT } from '@memry/i18n/renderer'
 
@@ -133,6 +134,12 @@ interface VirtualizedNotesTreeProps {
   noteMap: Map<string, NoteListItem>
   /** Whether drag operations are disabled */
   isDragDisabled?: boolean
+  /**
+   * Vault-relative folder an in-flight external file drag is aimed at, or null
+   * when no file is being dragged. Only drives the highlight — the drop itself
+   * reads the destination straight off the DOM.
+   */
+  fileDropFolder?: string | null
   /** Custom class name */
   className?: string
   /** Optional scroll container for virtualized rendering */
@@ -212,6 +219,8 @@ interface FolderRowProps {
   isLastSelected: boolean
   isDragging: boolean
   isDropTarget: boolean
+  /** True while an external file drag is aimed at this row's folder. */
+  isFileDropTarget: boolean
   dropPosition: DropPosition | null
   selectedCount: number
   draggable: boolean
@@ -242,6 +251,7 @@ function FolderRow({
   isLastSelected,
   isDragging,
   isDropTarget,
+  isFileDropTarget,
   dropPosition,
   selectedCount,
   draggable,
@@ -331,6 +341,7 @@ function FolderRow({
           aria-selected={isSelected}
           tabIndex={0}
           draggable={draggable}
+          {...{ [FILE_DROP_FOLDER_ATTR]: item.folder.path }}
           className={cn(
             'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
             'hover:bg-muted focus-visible:outline-none',
@@ -365,6 +376,14 @@ function FolderRow({
 
           {/* Drop indicator - inside (for folders) */}
           {isDropTarget && dropPosition === 'inside' && (
+            <div
+              className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - external file landing in this folder */}
+          {isFileDropTarget && (
             <div
               className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
               aria-hidden="true"
@@ -581,6 +600,8 @@ function NoteRow({
           aria-selected={isSelected}
           tabIndex={0}
           draggable={draggable}
+          // A file dropped on a note belongs in the folder that note lives in.
+          {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(item.note.path) }}
           className={cn(
             'group/note relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
             'hover:bg-muted focus-visible:outline-none',
@@ -726,6 +747,7 @@ export function VirtualizedNotesTree({
   onSetNoteIcon,
   noteMap,
   isDragDisabled = false,
+  fileDropFolder = null,
   className,
   scrollContainerRef
 }: VirtualizedNotesTreeProps) {
@@ -992,6 +1014,9 @@ export function VirtualizedNotesTree({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent, itemId: string, hasChildren: boolean) => {
+      // A file coming from outside the app is not a reorder — the sidebar's file
+      // drop zone handles it, and a before/after indicator would lie about it.
+      if (e.dataTransfer.types.includes('Files')) return
       if (isDragDisabled || dragState.draggedId === itemId) return
 
       e.preventDefault()
@@ -1115,6 +1140,7 @@ export function VirtualizedNotesTree({
                   isLastSelected={isLastSelected}
                   isDragging={isDragging}
                   isDropTarget={isDropTarget}
+                  isFileDropTarget={fileDropFolder === item.folder.path}
                   dropPosition={isDropTarget ? dragState.dropPosition : null}
                   selectedCount={selectedCount}
                   draggable={draggable}

@@ -739,6 +739,10 @@ export const TreeNodeTrigger = ({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
+      // A file coming from outside the app is not a reorder. Leaving it alone
+      // keeps the before/after/inside indicator off and lets the sidebar's file
+      // drop zone claim the event on the way up.
+      if (e.dataTransfer.types.includes('Files')) return
       if (!draggable || dragState.draggedId === nodeId) return
 
       e.preventDefault()
@@ -778,6 +782,11 @@ export const TreeNodeTrigger = ({
 
   const handleDropEvent = useCallback(
     (e: React.DragEvent) => {
+      // This runs in the capture phase, so stopping propagation here cancels the
+      // bubble phase outright. For an external file that silently swallowed the
+      // drop before the sidebar's importer ever saw it — let those through.
+      if (e.dataTransfer.types.includes('Files')) return
+
       e.preventDefault()
       e.stopPropagation()
       handleDrop()

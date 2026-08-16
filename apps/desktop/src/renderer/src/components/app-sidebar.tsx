@@ -66,7 +66,7 @@ import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { useFileDrop } from '@/hooks/use-file-drop'
+import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { useT } from '@memry/i18n/renderer'
@@ -115,9 +115,10 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const sidebarScrollRef = useRef<HTMLDivElement>(null)
   const targetFolderRef = useRef('')
 
-  const handleFileDrop = useCallback(async (paths: string[]) => {
+  const handleFileDrop = useCallback(async (paths: string[], targetFolder: string) => {
     try {
-      const result = await notesService.importFiles(paths, targetFolderRef.current)
+      // Where the file was dropped, not what happened to be selected.
+      const result = await notesService.importFiles(paths, targetFolder)
       const tCommon = getI18n().getFixedT(null, 'common')
 
       if (result.imported > 0) {
@@ -149,7 +150,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     [setSelectedFolder]
   )
 
-  const { isDraggingFiles, dropHandlers } = useFileDrop({ onDrop: handleFileDrop })
+  const { isDraggingFiles, dropFolder, dropHandlers } = useFileDrop({ onDrop: handleFileDrop })
 
   // Calculate today's tasks count for Tasks badge in sidebar
   const todayTasksCount = useMemo(() => {
@@ -480,6 +481,8 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         ref={sidebarScrollRef}
         data-tour="sidebar-collections"
         className="relative flex-1 min-h-0 overflow-y-auto scrollbar-thin group-data-[collapsible=icon]:overflow-hidden"
+        // Anything dropped outside a folder row lands in the vault root.
+        {...{ [FILE_DROP_FOLDER_ATTR]: '' }}
         {...dropHandlers}
       >
         {/* COLLECTIONS Section */}
@@ -551,6 +554,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <NotesTree
             ref={notesActionsRef}
             onTargetFolderChange={handleTargetFolderChange}
+            fileDropFolder={isDraggingFiles ? dropFolder : null}
             scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
           />
         </SidebarSection>
@@ -643,19 +647,27 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           <SidebarTagList maxVisible={6} onActionsReady={setTagsActions} />
         </SidebarSection>
 
-        {/* Drop overlay — covers entire scrollable area, blocks pointer events when visible */}
+        {/*
+          Drop affordance. It never takes pointer events and never covers the
+          tree: the row under the cursor has to stay both the drop target and
+          visible, or there is no way to aim at a folder.
+        */}
         <div
           className={cn(
-            'absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-150',
-            isDraggingFiles ? 'opacity-100' : 'opacity-0 invisible pointer-events-none'
+            'pointer-events-none absolute inset-0 z-50 transition-opacity duration-150',
+            isDraggingFiles ? 'opacity-100' : 'opacity-0 invisible'
           )}
         >
-          <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
-            <Upload className="size-6 text-primary" />
-            <span className="text-sm font-medium">
+          <div className="absolute inset-1 rounded-md border-2 border-dashed border-primary/50" />
+          <div className="absolute inset-x-3 bottom-3 flex flex-col items-center gap-0.5 rounded-md border border-primary/40 bg-background/95 px-3 py-2 shadow-sm">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <Upload className="size-4 text-primary" />
               {tPhaseF('phaseF.componentsAppSidebar.dropFilesToImport')}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="max-w-full truncate text-xs font-medium text-primary">
+              {dropFolder || tPhaseF('phaseF.componentsAppSidebar.dropFilesIntoVaultRoot')}
+            </span>
+            <span className="line-clamp-2 text-center text-[10px] leading-tight text-muted-foreground">
               {getAllSupportedExtensions().join(', ')}
             </span>
           </div>
