@@ -739,58 +739,85 @@ note, both on the `crdt_pull` bucket (600 / 60 s per device). The pending list i
 tens of notes in practice, so ~40–50 GETs, alongside the paced sweep's 100/min —
 comfortably inside the budget, and no pacing is added.
 
-### An unverifiable signer routes the push away from the snapshot endpoint
+### Unmerged server state routes the push away from the snapshot endpoint
 
-Failing closed covers a pull that did not complete. It does **not** cover a pull
-that completed while stepping over something. Every apply path — the single-note
-incrementals loop, the batch chunk, and the snapshot baseline — verifies each
-payload's Ed25519 signature against its signer device's public key, and skips
-the payload when `resolveDeviceKey` returns no key for that device.
+Failing closed covers the one caller that reads a merge's return value — the
+pending-note replay. Nothing else does. The 30 s snapshot scheduler, `close()`,
+`pushAllSnapshots`, `compactDoc` and the push coordinator never see it, so a
+snapshot push can still assert a completeness this device does not have.
 
-Treating that skip as "not merged" would be wrong, because the skip can be
-**permanent**. `GET /auth/devices` returns only non-revoked devices, so once a
-peer device is revoked its key never comes back, and a note held back until the
-signer resolves would be held forever — stranding this device's own offline
-backlog. Nor can the client tell the two apart: `getDeviceSigningKey` already
-refetches the device list on a cache miss, so a surviving `null` carries no
-signal about whether it will ever clear.
+The condition that makes a push destructive is **known-unmerged server state**,
+not any one cause of it. `CrdtSyncCoordinator` keeps a per-note set,
+`unmergedRemoteNotes`, read through `hasUnmergedRemoteState` and surfaced as
+`SyncEngine.hasUnmergedRemoteCrdtState`. A note is in it when:
 
-Treating it as "merged" is what the fix replaces. It let the note's next
-snapshot push destroy the skipped payload: `storeSnapshot` upserts the note's
-one R2 blob, and `pruneUpdatesBeforeSnapshot` then deletes the `crdt_updates`
-rows the snapshot claims to contain — including the row the device could not
-verify and therefore could not have included. The signer key is only ever a
-signature check; the payload itself is sealed with a file key wrapped by the
-vault key, so what is deleted is still-decryptable user content.
+- a merge pass skipped a payload whose signer `resolveDeviceKey` could not
+  resolve;
+- a merge pass failed — a rate-limited or failed snapshot baseline, failed or
+  dead-lettered incrementals, an aborted pass, a missing token or vault key, a
+  doc that would not open;
+- the server named the note in a `crdt_updated` broadcast, or a vault-wide
+  sweep queued it, and its pull has not run yet.
 
-The endpoint is what resolves this. `pruneUpdatesBeforeSnapshot` has exactly one
-caller, `POST /sync/crdt/snapshot`. `POST /sync/crdt/updates` appends, prunes
-nothing, and wakes peers the same way. So:
+Every one of those is destructive at the same moment, and the moment is
+**before a note's first snapshot**. `storeSnapshot` computes
+`sequenceNum = existingSnapshot?.sequence_num ?? currentSeq`, so the watermark
+freezes at the first snapshot: the first prune deletes every row the note has,
+and every later one deletes nothing new. Until its first snapshot lands, every
+note is in that window.
 
-- `CrdtSyncCoordinator` records the notes a pass merged _around_
-  (`hasUnverifiedRemoteUpdate`, surfaced as
-  `SyncEngine.hasUnverifiedRemoteCrdtUpdate`).
-- The snapshot push fn sends those notes' full doc state through
-  `pushCrdtFullUpdate` — the same encrypted bytes, on the update endpoint —
-  instead of `pushCrdtSnapshot`.
+Failing closed is not available for any of them. `GET /auth/devices` returns
+only non-revoked devices, so once a peer is revoked its key never comes back and
+a note held until the signer resolves is held forever; a device that is offline
+or rate-limited may not merge for a long time either. Holding the note back
+strands this device's own edits to protect a peer's — a certain loss traded for
+a possible one. The client also cannot tell transient from permanent:
+`getDeviceSigningKey` already refetches the device list on a cache miss, so a
+surviving `null` carries no signal.
 
-Every push path inherits this, because they all funnel through that one
-function: the pending-note replay, the 30 s snapshot scheduler, the push
-coordinator's create-time snapshots, and the oversized-update fallback.
+Nor is a skipped payload dead bytes. The signer key is only ever a signature
+check; the payload itself is sealed with a file key wrapped by the vault key, so
+what a prune deletes is still-decryptable user content.
 
-The flag is per note and per pass. It is raised the moment a skip happens, so a
-failure later in the same pass cannot leave a stale "safe to snapshot", and it
-is cleared only by a pass that walks the note end to end without one. A skip
-also re-queues the note for a pull, so a transiently unresolvable signer — an
-expired access token is the case that actually occurs — clears the flag on the
-next pass and the note resumes normal compaction.
+The endpoint resolves it. `pruneUpdatesBeforeSnapshot` has exactly one caller,
+`POST /sync/crdt/snapshot`. `POST /sync/crdt/updates` appends, prunes nothing,
+and wakes peers the same way. So the snapshot push fn sends a flagged note's
+full doc state through `pushCrdtFullUpdate` — the same encrypted bytes, on the
+update endpoint — instead of `pushCrdtSnapshot`. Every push path inherits this,
+because they all funnel through that one function.
 
-One narrow cost: `pushCrdtFullUpdate` throws above
+The flag is deliberately **not** `pendingPulls`. That set is emptied by
+`drainPendingPulls()` at the top of a cycle and refilled only on failure, so a
+note is in it for neither the minutes it waits in the paced sweep queue (25
+notes / 15 s) nor the seconds it is actually being pulled — which is exactly the
+window the bug loses data in. `unmergedRemoteNotes` is instead raised whenever a
+note enters `pendingPulls` and cleared only by a pass that walked the note end
+to end. A pass settles its own debt up front, so an entry still standing at the
+end was raised _while_ the pass ran — a broadcast, a concurrent failure — and
+its payload is by definition not in the doc that pass walked, so the flag
+survives.
+
+Cost. Routing does not change the request count: both endpoints share the
+`crdt_push` bucket (300 / 60 s per device), one request either way. It changes
+what the server stores — a flagged push writes one full-state `crdt_updates` row
+instead of upserting one R2 blob, at most one per note per 30 s quiet period,
+and only for notes edited while flagged. For a note with no snapshot yet, every
+such row is reclaimed by the first unflagged snapshot push, which prunes at
+`currentSeq`. Pull cost rises by at most one 100-row page.
+
+One narrow failure mode: `pushCrdtFullUpdate` throws above
 `MAX_CRDT_UPDATE_PAYLOAD_CHARS`, because the update endpoint stores each payload
-in a D1 row rather than an R2 object. A note that is both over that ceiling and
-holding an unverifiable payload stays pending and retried rather than
-snapshotted. That is a stall, not a loss — its content is already durable in the
-local CRDT store — whereas snapshotting it would be a loss.
+in a D1 row rather than an R2 object. A flagged note over that ceiling stays
+pending and retried rather than snapshotted — a stall, not a loss, its content
+already durable in the local CRDT store — and it ends as soon as the note merges
+and the snapshot route reopens.
+
+The set is in-memory and per session; `clearCaches()` empties it on vault switch
+and teardown. A note whose pull failed in one session carries no flag in the
+next, and a restart does not necessarily re-flag it: `shouldSweepAllCrdtNotes`
+reads the _persisted_ `LAST_CRDT_SWEEP_AT`, so a restart inside the sweep
+interval with no reconnect gap sweeps nothing. Closing that would need the flag
+on disk, which is a new format and a migration.
 
 ## Sign-Out / Sign-In Ordering
 

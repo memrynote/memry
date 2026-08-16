@@ -709,11 +709,7 @@ describe('CrdtSyncCoordinator', () => {
     const coordinator = new CrdtSyncCoordinator(ctx, resolveDeviceKey)
 
     // #when
-    const merged = await coordinator.applyCrdtIncrementals(
-      'note-1',
-      'token-1',
-      new Uint8Array([4])
-    )
+    const merged = await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
 
     // #then the pass still reports merged, so the pending-note replay is not
     // held back — an unresolvable signer can be permanent, and refusing to push
@@ -721,7 +717,7 @@ describe('CrdtSyncCoordinator', () => {
     // carried as a flag instead, and the push path answers it by choosing the
     // endpoint that does not prune.
     expect(merged).toBe(true)
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
     // And it is owed a pull, so a signer that was only transiently unresolvable
     // (an expired token, say) is retried rather than flagged forever.
     expect(coordinator.drainPendingPulls()).toEqual(['note-1'])
@@ -744,7 +740,7 @@ describe('CrdtSyncCoordinator', () => {
     // #then a snapshot push would overwrite the single R2 blob this pass just
     // declined to read — a larger loss than a pruned incremental, and equally
     // permanent.
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
   })
 
   it('flags only the batched note that skipped an unverifiable update', async () => {
@@ -774,8 +770,8 @@ describe('CrdtSyncCoordinator', () => {
     // #then the flag is per note. Flagging the whole chunk would push every
     // note in a sweep onto the non-pruning path and leave the server with no
     // compaction point anywhere in the vault.
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-2')).toBe(true)
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(false)
+    expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
   })
 
   it('clears the flag once a later pass verifies every signer', async () => {
@@ -787,13 +783,11 @@ describe('CrdtSyncCoordinator', () => {
     })
     decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
     let signerResolves = false
-    const resolveDeviceKey = vi.fn(async () =>
-      signerResolves ? new Uint8Array([1, 2, 3]) : null
-    )
+    const resolveDeviceKey = vi.fn(async () => (signerResolves ? new Uint8Array([1, 2, 3]) : null))
     const coordinator = new CrdtSyncCoordinator(ctx, resolveDeviceKey)
 
     await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
 
     // #when the signer resolves on a later pass — the transient case, which is
     // what a missing access token or an un-refreshed device list looks like.
@@ -804,7 +798,7 @@ describe('CrdtSyncCoordinator', () => {
 
     // #then the note goes back to the snapshot path. A flag that only ever
     // latched would permanently cost this note its compaction point.
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(false)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
   })
 
   it('keeps the flag when a pass throws after skipping an unverifiable update', async () => {
@@ -826,7 +820,104 @@ describe('CrdtSyncCoordinator', () => {
     // #then the flag has to survive the throw. Computing it only at the end of
     // a clean pass would leave a note that skipped an update looking safe to
     // snapshot the moment anything later in the same pass failed.
-    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+  })
+
+  /**
+   * #1503 — the general case of #1489. The flag is not "an unverifiable signer
+   * was skipped", it is "this device has not merged the server's state for this
+   * note", because that is the whole set of conditions under which a snapshot
+   * push asserts a completeness it does not have.
+   */
+  it('flags a note whose incrementals pull was rate-limited', async () => {
+    // #given the server sheds the pull — the routine way #1503 step 2 happens.
+    // The per-note baselines are the bulk of a sweep's requests and the first
+    // thing a rate limit takes, and `retryOn429: false` means the pass gives up
+    // rather than waiting it out.
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockRejectedValue(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+    // #then a snapshot push now would run pruneUpdatesBeforeSnapshot over rows
+    // this device never read. With no stored snapshot the watermark is
+    // `currentSeq`, so that is every row the note has.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+  })
+
+  it('flags every note in a chunk whose batch pull failed', async () => {
+    // #given the chunk POST is refused, which takes every note in it
+    const { ctx } = createBatchContext()
+    postToServerMock.mockRejectedValue(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then both, unlike the unresolvable-signer case which is per note: here
+    // the failure really is the whole chunk's, so scoping it narrower would
+    // leave notes looking merged that were never fetched.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(true)
+  })
+
+  it('keeps a queued note flagged across the drain that hands it to the paced sweep', async () => {
+    // #given a note the vault sweep queued, or a `crdt_updated` broadcast named
+    const { ctx } = createBatchContext()
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+    coordinator.addPendingPull('note-1')
+
+    // #when the cycle drains the queue — `flushPendingCrdtPulls` empties it up
+    // front and then paces the actual pulls at 25 notes / 15s, so a large vault
+    // spends minutes here
+    expect(coordinator.drainPendingPulls()).toEqual(['note-1'])
+
+    // #then the note is in NEITHER pendingPulls nor a completed merge, and that
+    // gap is exactly where #1503 loses data: the user edits the note, the 30s
+    // scheduler fires, and the snapshot prunes updates whose pull has not run.
+    // Reading `pendingPulls` as the predicate would call this note safe.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+  })
+
+  it('clears the flag once a pass merges the note end to end', async () => {
+    // #given a note flagged by a failed pull
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockRejectedValueOnce(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+
+    // #when the next pass completes
+    getFromServerMock.mockResolvedValue({ updates: [], hasMore: false })
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+    // #then compaction resumes. A flag that only latched would be safe and
+    // permanently expensive — the note would never be snapshotted again this
+    // session, so the server would keep every full-state row it ever received.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+  })
+
+  it('does not clear the flag when a new pull is owed while the pass runs', async () => {
+    // #given a pass that walks the note cleanly, but a `crdt_updated` broadcast
+    // for the same note lands while its incrementals are in flight
+    const { ctx } = createBatchContext()
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+    getFromServerMock.mockImplementation(async () => {
+      coordinator.addPendingPull('note-1')
+      return { updates: [], hasMore: false }
+    })
+
+    // #when
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+    // #then the payload that broadcast announced is by definition not in the
+    // doc this pass just finished walking, so the pass may not call the note
+    // merged. Clearing on its own clean result alone reopens #1503 through the
+    // narrowest door in the file.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+    getFromServerMock.mockReset()
   })
 
   it('does not seed from markdown when a doc was closed underneath the pass', async () => {

@@ -23,26 +23,45 @@ export class CrdtSyncCoordinator {
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
   /**
-   * Notes whose last pass left a server payload this device could not verify,
-   * because `resolveDeviceKey` had no public key for its signer.
+   * Notes this device knows it has NOT merged the server's state for.
    *
-   * Refusing to push at all is not an option: an unresolvable signer can be
-   * permanent — `GET /auth/devices` only lists non-revoked devices, so a
-   * revoked or deleted peer's key never comes back — and a note held back
-   * forever strands this device's own offline backlog forever. It is also not
-   * reliably transient: `getDeviceSigningKey` already refetches the device list
-   * on a cache miss, so the stale-list case largely self-heals and a `null`
-   * that survives that is more often permanent than not.
+   * A snapshot push is an assertion that the pushed doc contains everything the
+   * server holds: `storeSnapshot` overwrites the note's single R2 blob and
+   * `pruneUpdatesBeforeSnapshot` then deletes every `crdt_updates` row at or
+   * below the stored watermark — every device's rows, not just this one's. So
+   * the assertion is a lie for any note whose remote state this device has not
+   * actually taken in, and the peer edits it destroys are absent from the
+   * snapshot replacing them. That is #1503, and #1489 is one slice of it.
    *
-   * The signer key is only ever a *signature* check — the payload itself is
-   * sealed with a file key wrapped by the vault key (`crdt-encrypt.ts`) — so a
-   * skipped update still holds real, still-decryptable user content. Deleting
-   * it server-side is a real loss, not the disposal of already-dead bytes.
+   * Membership is therefore "known-unmerged", not "unverifiable signer":
    *
-   * So the note is flagged instead, and the push path routes it away from the
-   * snapshot endpoint, which is the only thing that prunes.
+   *   - a merge pass that skipped a payload whose signer could not be resolved
+   *     (#1489 — the payload is sealed with a file key wrapped by the vault
+   *     key, so the signer key is only ever a *signature* check and a skipped
+   *     update still holds recoverable user content);
+   *   - a merge pass that failed outright — rate-limited or failed baseline,
+   *     failed or dead-lettered incrementals, an aborted pass, missing token or
+   *     vault key, a doc that would not open;
+   *   - a note the server named in a `crdt_updated` broadcast, or that a
+   *     vault-wide sweep queued, before its pull has run.
+   *
+   * Refusing to push at all is not an option for any of them. An unresolvable
+   * signer can be permanent — `GET /auth/devices` only lists non-revoked
+   * devices, so a revoked peer's key never comes back — and an unmergeable note
+   * held back forever strands this device's own edits forever, trading a rare
+   * loss for a certain one. So the note is flagged instead and the push path
+   * routes it away from the snapshot endpoint, which is the only thing that
+   * prunes. `/sync/crdt/updates` stores and broadcasts the same doc state and
+   * prunes nothing.
+   *
+   * This is deliberately NOT `pendingPulls`. That set is emptied by
+   * `drainPendingPulls()` at the top of a cycle and refilled only when a pull
+   * fails, so a note is in it for neither the seconds nor the minutes it spends
+   * queued in the paced sweep and actually being pulled — precisely the window
+   * #1503 loses data in. This set is raised whenever a note enters `pendingPulls`
+   * and cleared only by a pass that walked the note end to end.
    */
-  private unverifiedRemoteNotes = new Set<string>()
+  private unmergedRemoteNotes = new Set<string>()
 
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
@@ -51,6 +70,25 @@ export class CrdtSyncCoordinator {
 
   addPendingPull(noteId: string): void {
     this.pendingPulls.add(noteId)
+    // A note queued for a pull is by definition a note whose server state is
+    // not in the local doc yet. It stays flagged across the drain into the
+    // paced sweep queue and across the pull itself, because that whole span is
+    // time in which a snapshot push would prune rows this device never read.
+    this.markRemoteStateUnmerged(noteId)
+  }
+
+  /**
+   * Record that this note holds server state the local doc does not, without
+   * queueing a pull.
+   *
+   * For the `crdt_updated` broadcast that is pulled immediately rather than
+   * queued: the server has just named the note, so the state is unmerged from
+   * that moment until that pull completes cleanly. Going through
+   * `addPendingPull` there instead would buy the note a redundant second pull
+   * in the next sweep.
+   */
+  markRemoteStateUnmerged(noteId: string): void {
+    this.unmergedRemoteNotes.add(noteId)
   }
 
   /**
@@ -69,9 +107,13 @@ export class CrdtSyncCoordinator {
    * note in the pass on one rate-limited note. Nor is this failure-kind-specific
    * — a transient 5xx, an unreachable server and a 429 all leave the same stale
    * body, and "failed, so retry next cycle" needs no taxonomy to be correct.
+   *
+   * It also raises `unmergedRemoteNotes`, via `addPendingPull`: a failed merge
+   * is the state #1503 destroys data from, and the flag is what keeps the note's
+   * pushes off the pruning endpoint until a pass actually completes.
    */
   private owePendingPull(noteId: string): void {
-    this.pendingPulls.add(noteId)
+    this.addPendingPull(noteId)
   }
 
   drainPendingPulls(): string[] {
@@ -95,32 +137,37 @@ export class CrdtSyncCoordinator {
     this.pendingPulls.clear()
     this.lastAppliedSequence.clear()
     this.applyFailureReported.clear()
-    this.unverifiedRemoteNotes.clear()
+    this.unmergedRemoteNotes.clear()
   }
 
   /**
-   * Does this note hold server state this device merged around rather than into
-   * its doc?
+   * Does this note hold server state this device has not merged into its doc?
    *
    * `true` means a snapshot push for this note would destroy that state:
    * `storeSnapshot` overwrites the note's single R2 snapshot blob and
    * `pruneUpdatesBeforeSnapshot` then deletes every `crdt_updates` row at or
-   * below the stored watermark — including the row this device skipped, which
-   * is by definition absent from the snapshot replacing it. Pushing the same
-   * doc state to `/sync/crdt/updates` instead has neither effect.
+   * below the stored watermark — including the rows this device never read,
+   * which are by definition absent from the snapshot replacing them. Pushing
+   * the same doc state to `/sync/crdt/updates` instead has neither effect.
    */
-  hasUnverifiedRemoteUpdate(noteId: string): boolean {
-    return this.unverifiedRemoteNotes.has(noteId)
+  hasUnmergedRemoteState(noteId: string): boolean {
+    return this.unmergedRemoteNotes.has(noteId)
   }
 
   /**
-   * A pass is only allowed to clear the flag it did not raise. Skips are
-   * recorded the moment they happen and cleared only once a pass has walked a
-   * note end to end without one, so a pass that throws half-way leaves the
-   * conservative answer standing rather than a stale "safe".
+   * A pass is only allowed to clear the flag it did not raise. Skips and
+   * failures are recorded the moment they happen and cleared only once a pass
+   * has walked a note end to end without one, so a pass that throws half-way
+   * leaves the conservative answer standing rather than a stale "safe".
+   *
+   * `pendingPulls` is consulted too, and it closes the last window: something
+   * else — a `crdt_updated` broadcast, a sibling failure path — may have owed
+   * this note a pull while the pass was in flight, and that pull's payload is
+   * by definition not in the doc this pass just finished walking. Clearing on
+   * the pass's own clean result alone would call such a note safe to snapshot.
    */
-  private clearUnverifiedIfClean(noteId: string, sawUnverified: boolean): void {
-    if (!sawUnverified) this.unverifiedRemoteNotes.delete(noteId)
+  private clearUnmergedIfClean(noteId: string, sawUnmerged: boolean): void {
+    if (!sawUnmerged && !this.pendingPulls.has(noteId)) this.unmergedRemoteNotes.delete(noteId)
   }
 
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
@@ -178,8 +225,13 @@ export class CrdtSyncCoordinator {
    * An update skipped for an unresolvable signer is deliberately NOT a `false`.
    * That skip can be permanent, so `false` would hold this note back forever and
    * trade a rare loss for a certain one. It is recorded in
-   * `unverifiedRemoteNotes` instead, and the push path answers it by sending the
+   * `unmergedRemoteNotes` instead, and the push path answers it by sending the
    * doc state to the incremental endpoint, which prunes nothing.
+   *
+   * Every `false` below is recorded there too. Failing closed only protects the
+   * one caller that reads the return value (the pending-note replay); the 30s
+   * snapshot scheduler and every other push path never see it, so the flag is
+   * what carries an incomplete merge to them.
    */
   async applyCrdtIncrementals(
     noteId: string,
@@ -196,18 +248,33 @@ export class CrdtSyncCoordinator {
     const wasOpen = crdtProvider.getDoc(noteId) != null
     try {
       const doc = await crdtProvider.open(noteId, undefined, { skipSeed: true })
-      if (!doc) return false
+      if (!doc) {
+        this.owePendingPull(noteId)
+        return false
+      }
+
+      // This pass IS the pull the note may already have been owed, so the debt
+      // is settled here rather than at the end. That is what lets
+      // `clearUnmergedIfClean` tell "still owed from before" from "owed again
+      // while this pass ran": a `crdt_updated` broadcast or a sibling failure
+      // landing mid-pass leaves an entry this pass did not put there, and the
+      // note stays flagged. Every failure path below re-owes it.
+      this.pendingPulls.delete(noteId)
 
       const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
       let since = baseline.since
-      let sawUnverified = !baseline.verified
-      if (sawUnverified) this.unverifiedRemoteNotes.add(noteId)
+      let sawUnmerged = !baseline.verified
+      // Owed a pull as well as flagged, matching the batch path: a signer that
+      // was only transiently unresolvable then clears the flag on a later pass
+      // rather than costing this note its compaction point for the session.
+      if (sawUnmerged) this.owePendingPull(noteId)
 
       let hasMore = true
 
       while (hasMore) {
         if (effectiveSignal.aborted) {
           log.debug('applyCrdtIncrementals aborted', { noteId, lastSeq: since })
+          this.owePendingPull(noteId)
           return false
         }
 
@@ -253,8 +320,7 @@ export class CrdtSyncCoordinator {
             // Flagged before the loop can throw, and the note is owed another
             // pull: a signer that becomes resolvable (a token that was simply
             // expired here) clears the flag on the next pass.
-            sawUnverified = true
-            this.unverifiedRemoteNotes.add(noteId)
+            sawUnmerged = true
             this.owePendingPull(noteId)
             since = entry.sequenceNum
             continue
@@ -268,7 +334,7 @@ export class CrdtSyncCoordinator {
         hasMore = result.hasMore
       }
 
-      this.clearUnverifiedIfClean(noteId, sawUnverified)
+      this.clearUnmergedIfClean(noteId, sawUnmerged)
 
       const postVector = crdtProvider.getStateVector(noteId)
       if (!postVector || postVector.length <= 2) {
@@ -351,7 +417,16 @@ export class CrdtSyncCoordinator {
     const syncOpenedNoteIds = new Set<string>()
     // Per-pass record, so only a note this pass walked cleanly may have its
     // standing flag cleared at the end.
-    const sawUnverified = new Set<string>()
+    const sawUnmerged = new Set<string>()
+    // No `pendingPulls.delete` here, deliberately — the single-note path needs
+    // one and this does not. Every caller of this path (the priority pull and
+    // the paced sweep chunks) is handed notes that `drainPendingPulls()` has
+    // already emptied out of the set, so a note that IS in it at this point was
+    // put back by something running concurrently, and its payload is not in
+    // this chunk. Keeping the flag standing is the right answer there.
+    // `pullCrdtForNote` has no drain in front of it — the `crdt_updated`
+    // broadcast and the pending-note replay call it directly — so a note's own
+    // earlier debt would otherwise block its clear forever.
     try {
       const sinceMap = new Map<string, number>()
 
@@ -365,6 +440,10 @@ export class CrdtSyncCoordinator {
             noteId,
             error: err instanceof Error ? err.message : String(err)
           })
+          // Owed like every other failure in this pass. Without it this note is
+          // never retried, so the unmerged flag it is carrying never clears and
+          // it spends the rest of the session off the snapshot endpoint.
+          this.owePendingPull(noteId)
           continue
         }
 
@@ -372,8 +451,7 @@ export class CrdtSyncCoordinator {
           const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
           sinceMap.set(noteId, baseline.since)
           if (!baseline.verified) {
-            sawUnverified.add(noteId)
-            this.unverifiedRemoteNotes.add(noteId)
+            sawUnmerged.add(noteId)
             this.owePendingPull(noteId)
           }
         } catch (err) {
@@ -396,7 +474,12 @@ export class CrdtSyncCoordinator {
       const activeSince = new Map(sinceMap)
 
       while (activeSince.size > 0) {
-        if (signal.aborted) return
+        if (signal.aborted) {
+          // Same reason as the open failure above: the notes still in flight
+          // were never walked to the end, so they must stay owed and flagged.
+          for (const noteId of activeSince.keys()) this.owePendingPull(noteId)
+          return
+        }
 
         const notes = Array.from(activeSince, ([noteId, since]) => ({ noteId, since }))
 
@@ -437,8 +520,7 @@ export class CrdtSyncCoordinator {
               // Same reasoning as the single-note path: flag now so a throw
               // later in the chunk cannot leave a stale "safe to snapshot",
               // and owe the note a pull so a transient signer self-heals.
-              sawUnverified.add(noteId)
-              this.unverifiedRemoteNotes.add(noteId)
+              sawUnmerged.add(noteId)
               this.owePendingPull(noteId)
               activeSince.set(noteId, entry.sequenceNum)
               continue
@@ -454,13 +536,16 @@ export class CrdtSyncCoordinator {
         for (const [noteId] of activeSince) {
           if (!result.notes[noteId]) {
             log.warn('Server omitted noteId from batch response, removing', { noteId })
+            // Dropped without its updates ever arriving, so this pass did not
+            // walk it to the end and may not clear its flag.
+            sawUnmerged.add(noteId)
             activeSince.delete(noteId)
           }
         }
       }
 
       for (const noteId of sinceMap.keys()) {
-        this.clearUnverifiedIfClean(noteId, sawUnverified.has(noteId))
+        this.clearUnmergedIfClean(noteId, sawUnmerged.has(noteId))
       }
 
       // Seed only notes whose snapshot baseline succeeded. A note skipped at :205
@@ -513,11 +598,20 @@ export class CrdtSyncCoordinator {
   /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */
   async pullCrdtForNote(noteId: string): Promise<boolean> {
     log.debug('pullCrdtForNote entered', { noteId })
+    // Owed on both misses, exactly as the group sibling does. This is the entry
+    // point a `crdt_updated` broadcast uses, so returning silently here left a
+    // note the server had just named unpulled, unflagged and unretried.
     const token = await this.ctx.deps.getAccessToken()
-    if (!token) return false
+    if (!token) {
+      this.owePendingPull(noteId)
+      return false
+    }
 
     const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) return false
+    if (!vaultKey) {
+      this.owePendingPull(noteId)
+      return false
+    }
 
     const localAbort = new AbortController()
     try {
