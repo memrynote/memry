@@ -105,6 +105,7 @@ const runtimeMocks = vi.hoisted(() => {
     bookmarkSync: service('bookmark'),
     reminderSync: service('reminder'),
     templateSync: service('template'),
+    homePageSync: service('home_page'),
     projectSync: service('project'),
     settingsSync: service('settings'),
     noteSync: service('note'),
@@ -275,6 +276,10 @@ vi.mock('./bookmark-sync', () => ({
 vi.mock('./template-sync', () => ({
   initTemplateSyncService: runtimeMocks.templateSync.init,
   resetTemplateSyncService: runtimeMocks.templateSync.reset
+}))
+vi.mock('./home-page-sync', () => ({
+  initHomePageSyncService: runtimeMocks.homePageSync.init,
+  resetHomePageSyncService: runtimeMocks.homePageSync.reset
 }))
 vi.mock('./reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,

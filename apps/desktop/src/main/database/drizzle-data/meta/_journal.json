@@ -351,6 +351,13 @@
       "when": 1785585345000,
       "tag": "0049_task_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1785585346000,
+      "tag": "0050_home_page_sync",
+      "breakpoints": true
     }
   ]
 }

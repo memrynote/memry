@@ -10,6 +10,7 @@ import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -221,6 +222,22 @@ export function incrementTemplateClockOffline(db: DataDb, templateId: string): v
     log.debug('Incremented offline template clock', { templateId })
   } catch (err) {
     log.warn('Failed to increment offline template clock', { templateId, error: err })
+  }
+}
+
+export function incrementHomePageClockOffline(db: DataDb, boardId: string): void {
+  try {
+    const board = db.select().from(homePages).where(eq(homePages.id, boardId)).get()
+    if (!board) return
+
+    const existingClock = (board.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(homePages).set({ clock: newClock }).where(eq(homePages.id, boardId)).run()
+
+    log.debug('Incremented offline home board clock', { boardId })
+  } catch (err) {
+    log.warn('Failed to increment offline home board clock', { boardId, error: err })
   }
 }
 

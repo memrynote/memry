@@ -4,6 +4,7 @@ import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/ut
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { noteMetadata } from '@memry/db-schema/data-schema'
@@ -31,7 +32,8 @@ import {
   incrementNoteClockOffline,
   incrementReminderClockOffline,
   incrementTaskClocksOffline,
-  incrementTemplateClockOffline
+  incrementTemplateClockOffline,
+  incrementHomePageClockOffline
 } from './offline-clock'
 
 const TEST_BOOKMARK = {
@@ -142,6 +144,38 @@ describe('offline clock helpers', () => {
     it('#given the template does not exist #then no-ops without throwing', () => {
       expect(() => incrementTemplateClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
       expect(testDb.db.select().from(templates).all()).toHaveLength(0)
+    })
+  })
+
+  describe('incrementHomePageClockOffline', () => {
+    it('#given an unclocked board #then seeds the clock under the offline device key', () => {
+      testDb.db.insert(homePages).values({ id: 'board-1', name: 'Work' }).run()
+
+      incrementHomePageClockOffline(asClientDb(testDb.db), 'board-1')
+
+      const row = testDb.db.select().from(homePages).where(eq(homePages.id, 'board-1')).get()
+      expect(row?.clock).toEqual({ [OFFLINE_DEVICE_KEY]: 1 })
+    })
+
+    it('#given an existing clock #then increments from the persisted value', () => {
+      testDb.db
+        .insert(homePages)
+        .values({
+          id: 'board-1',
+          name: 'Work',
+          clock: { [OFFLINE_DEVICE_KEY]: 2, 'device-A': 5 }
+        })
+        .run()
+
+      incrementHomePageClockOffline(asClientDb(testDb.db), 'board-1')
+
+      const row = testDb.db.select().from(homePages).where(eq(homePages.id, 'board-1')).get()
+      expect(row?.clock).toEqual({ [OFFLINE_DEVICE_KEY]: 3, 'device-A': 5 })
+    })
+
+    it('#given the board does not exist #then no-ops without throwing', () => {
+      expect(() => incrementHomePageClockOffline(asClientDb(testDb.db), 'missing')).not.toThrow()
+      expect(testDb.db.select().from(homePages).all()).toHaveLength(0)
     })
   })
 

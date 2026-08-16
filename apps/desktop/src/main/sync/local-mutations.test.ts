@@ -32,6 +32,10 @@ vi.mock('./template-sync', () => ({
   getTemplateSyncService: vi.fn()
 }))
 
+vi.mock('./home-page-sync', () => ({
+  getHomePageSyncService: vi.fn()
+}))
+
 vi.mock('./note-sync', () => ({
   getNoteSyncService: vi.fn()
 }))
@@ -80,6 +84,7 @@ vi.mock('./offline-clock', () => ({
   incrementBookmarkClockOffline: vi.fn(),
   incrementReminderClockOffline: vi.fn(),
   incrementTemplateClockOffline: vi.fn(),
+  incrementHomePageClockOffline: vi.fn(),
   incrementNoteClockOffline: vi.fn()
 }))
 
@@ -99,11 +104,13 @@ import {
   incrementProjectClocksOffline,
   incrementReminderClockOffline,
   incrementTaskClocksOffline,
-  incrementTemplateClockOffline
+  incrementTemplateClockOffline,
+  incrementHomePageClockOffline
 } from './offline-clock'
 import { getBookmarkSyncService } from './bookmark-sync'
 import { getReminderSyncService } from './reminder-sync'
 import { getTemplateSyncService } from './template-sync'
+import { getHomePageSyncService } from './home-page-sync'
 import { getProjectSyncService } from './project-sync'
 import { getNoteSyncService } from './note-sync'
 import { getSettingsSyncManager } from './settings-sync'
@@ -139,7 +146,8 @@ describe('local-mutations', () => {
       getCalendarExternalEventSyncService,
       getBookmarkSyncService,
       getReminderSyncService,
-      getTemplateSyncService
+      getTemplateSyncService,
+      getHomePageSyncService
     ]) {
       ;(getter as Mock).mockReset().mockReturnValue(null)
     }
@@ -168,6 +176,12 @@ describe('local-mutations', () => {
       getService: getTemplateSyncService,
       offlineBump: incrementTemplateClockOffline,
       itemId: 'tpl-1'
+    },
+    {
+      type: 'home_page' as const,
+      getService: getHomePageSyncService,
+      offlineBump: incrementHomePageClockOffline,
+      itemId: 'board-1'
     }
   ])('$type local mutations', ({ type, getService, offlineBump, itemId }) => {
     it('routes creates to the live service', () => {

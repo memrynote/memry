@@ -6,6 +6,7 @@ import { trackMainLog } from '../telemetry/diagnostics'
 import {
   incrementBookmarkClockOffline,
   incrementTemplateClockOffline,
+  incrementHomePageClockOffline,
   incrementCanvasClockOffline,
   incrementCanvasFolderClockOffline,
   incrementFilterClockOffline,
@@ -18,6 +19,7 @@ import {
 } from './offline-clock'
 import { getBookmarkSyncService } from './bookmark-sync'
 import { getTemplateSyncService } from './template-sync'
+import { getHomePageSyncService } from './home-page-sync'
 import { getCanvasSyncService } from './canvas-sync'
 import { getCanvasFolderSyncService } from './canvas-folder-sync'
 import { getFilterSyncService } from './filter-sync'
@@ -227,6 +229,37 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         svcOrTrackDrop('template', getTemplateSyncService())?.enqueueDelete(itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'home_page',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getHomePageSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementHomePageClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getHomePageSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementHomePageClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        svcOrTrackDrop('home_page', getHomePageSyncService())?.enqueueDelete(
+          itemId,
+          snapshotPayload
+        )
       }
     }
   },

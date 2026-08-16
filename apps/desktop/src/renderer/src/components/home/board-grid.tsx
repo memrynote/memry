@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout/legacy'
 import 'react-grid-layout/css/styles.css'
@@ -61,6 +61,23 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
     [board.widgets]
   )
 
+  // Boards sync, so a peer's apply can invalidate ['home-boards'] mid-drag: the `board` prop
+  // changes and the controlled `layout` prop is swapped under react-grid-layout while the pointer
+  // is still down, which snaps the widget back and discards the drag. Hold the pre-interaction
+  // layout until the pointer lifts; the next render picks up whatever arrived in the meantime.
+  const interacting = useRef(false)
+  const frozenLayout = useRef<Layout | null>(null)
+  const effectiveLayout = interacting.current ? (frozenLayout.current ?? layout) : layout
+
+  const beginInteraction = (): void => {
+    interacting.current = true
+    frozenLayout.current = layout
+  }
+  const endInteraction = (): void => {
+    interacting.current = false
+    frozenLayout.current = null
+  }
+
   // The grid has one column count at every width, so what RGL reports here IS the board's
   // arrangement — persist it. (It used to be responsive: below the `lg` width RGL reported a
   // collapsed layout that could not be persisted without destroying the stored arrangement, so
@@ -73,7 +90,7 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
   return (
     <Grid
       className="home-grid"
-      layout={layout}
+      layout={effectiveLayout}
       cols={GRID_COLS}
       rowHeight={GRID_ROW_HEIGHT}
       margin={GRID_MARGIN}
@@ -82,6 +99,10 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
       draggableCancel=".widget-no-drag"
       resizeHandles={['se']}
       isBounded
+      onDragStart={beginInteraction}
+      onDragStop={endInteraction}
+      onResizeStart={beginInteraction}
+      onResizeStop={endInteraction}
       onLayoutChange={handleLayoutChange}
     >
       {board.widgets.map((w, index) => {

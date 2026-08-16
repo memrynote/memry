@@ -21,6 +21,7 @@ type SyncDomain =
   | 'bookmarks'
   | 'reminders'
   | 'templates'
+  | 'home'
 
 const logger = createLogger('SyncTelemetry')
 
@@ -71,6 +72,8 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
       return 'reminders'
     case 'template':
       return 'templates'
+    case 'home_page':
+      return 'home'
   }
 }
 

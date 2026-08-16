@@ -43,6 +43,48 @@ describe('home-pages queries', () => {
     expect(listHomePages(db).map((r) => r.id)).toEqual(['b2', 'b1'])
   })
 
+  it('returns only the ids whose position changed, and bumps updatedAt on those alone', () => {
+    insertHomePage(db, { id: 'b1', name: 'A', position: 0, widgets: '[]' })
+    insertHomePage(db, { id: 'b2', name: 'B', position: 1, widgets: '[]' })
+    insertHomePage(db, { id: 'b3', name: 'C', position: 2, widgets: '[]' })
+    const before = new Map(listHomePages(db).map((r) => [r.id, r.updatedAt]))
+
+    // b3 stays put — a one-slot move must not push every board on the account.
+    const changed = reorderHomePages(db, ['b2', 'b1', 'b3'])
+
+    expect(changed.sort()).toEqual(['b1', 'b2'])
+    const after = new Map(listHomePages(db).map((r) => [r.id, r.updatedAt]))
+    expect(after.get('b3')).toBe(before.get('b3'))
+    expect(reorderHomePages(db, ['b2', 'b1', 'b3'])).toEqual([])
+  })
+
+  it('tiebreaks equal positions on createdAt then id so every device lists the same order', () => {
+    // Concurrent creates on two devices both take `position: boards.length`.
+    insertHomePage(db, {
+      id: 'zzz',
+      name: 'Older',
+      position: 0,
+      widgets: '[]',
+      createdAt: '2026-08-01T00:00:00.000Z'
+    })
+    insertHomePage(db, {
+      id: 'aaa',
+      name: 'Newer',
+      position: 0,
+      widgets: '[]',
+      createdAt: '2026-08-02T00:00:00.000Z'
+    })
+    insertHomePage(db, {
+      id: 'bbb',
+      name: 'Same instant',
+      position: 0,
+      widgets: '[]',
+      createdAt: '2026-08-02T00:00:00.000Z'
+    })
+
+    expect(listHomePages(db).map((r) => r.id)).toEqual(['zzz', 'aaa', 'bbb'])
+  })
+
   it('deletes a board', () => {
     insertHomePage(db, { id: 'b1', name: 'A', position: 0, widgets: '[]' })
     deleteHomePage(db, 'b1')
