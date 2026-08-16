@@ -973,9 +973,11 @@ describe('FullSyncRunner', () => {
   describe('#given a vault bigger than one chunk #when the sweep runs', () => {
     // The sweep is a catch-up, not a race. Fired all at once down the
     // single-note path it cost two GETs per note — 242 requests in about four
-    // seconds for a 121-note vault, against a server limit of 300 per 60s shared
-    // with the account's other devices — and 92 of those 121 notes came back
-    // "Too many requests" and silently kept their stale bodies.
+    // seconds for a 121-note vault, against what was then a limit of 300 per 60s
+    // shared with the account's other devices — and 92 of those 121 notes came
+    // back "Too many requests" and silently kept their stale bodies. That bucket
+    // is now 600 per 60s and per device, but the pacing still has to hold for
+    // vaults large enough to blow the wider ceiling.
     beforeEach(() => {
       vi.useFakeTimers()
     })
@@ -999,22 +1001,22 @@ describe('FullSyncRunner', () => {
     }
 
     it('#then the chunk size and interval stay inside BOTH server rate limits', () => {
-      // The server meters these two paths in separate buckets, and both are
-      // shared by every device on the account:
-      //   GET  /sync/crdt/snapshot/:noteId + /sync/crdt/updates -> 300 / 60s
+      // The server meters these two paths in separate buckets, both keyed by
+      // deviceId rather than by account (sync-server routes/sync.ts:476-501):
+      //   GET  /sync/crdt/snapshot/:noteId + /sync/crdt/updates -> 600 / 60s
       //   POST /sync/crdt/updates/batch                         ->  30 / 60s
       // A chunk of N notes costs N snapshot GETs (the batch endpoint batches the
       // incrementals, not the baselines) plus at least one batch POST, so tuning
       // either constant has to be checked against both ceilings — the batch
-      // bucket is ten times tighter and easy to miss.
+      // bucket is twenty times tighter and easy to miss.
       const chunksPerMinute = 60_000 / CRDT_SWEEP_CHUNK_INTERVAL_MS
       const snapshotGetsPerMinute = CRDT_SWEEP_CHUNK_NOTES * chunksPerMinute
       const batchPostsPerMinute = chunksPerMinute
 
-      // Two devices sweeping at once, and still room left for the record-change
-      // pull, pushes and attachment fetches drawing on the same buckets.
-      expect(snapshotGetsPerMinute * 2).toBeLessThan(300)
-      expect(batchPostsPerMinute * 2).toBeLessThan(30)
+      // No doubling for a second device: the buckets are per device, so a second
+      // device sweeping at the same time spends its own.
+      expect(snapshotGetsPerMinute).toBeLessThan(600)
+      expect(batchPostsPerMinute).toBeLessThan(30)
     })
 
     it('#then the whole sweep leaves through the batch path, never one pull per note', async () => {
