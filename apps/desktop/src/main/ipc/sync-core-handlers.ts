@@ -225,7 +225,9 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       return { success: false, error: 'errors:sync.engineNotInitialized' }
     }
     return withErrorHandler(async () => {
-      await engine.fullSync()
+      // The user asked for this one, so it sweeps for remote body edits whatever
+      // the automatic throttle would have said — see FullSyncRunner.run.
+      await engine.fullSync({ forceCrdtSweep: true })
       return { success: true }
     }, 'errors:sync.triggerFailed')()
   })

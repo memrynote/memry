@@ -649,6 +649,27 @@ describe('FullSyncRunner', () => {
       expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
       expect(h.crdtSync.pendingPullCount).toBe(0)
     })
+
+    it('#then a sync the user asked for by name sweeps anyway', async () => {
+      // "Sync now" is the escape hatch for a note that looks stale, and note
+      // bodies are invisible to the record change feed — so a live socket that
+      // provably missed nothing is still the wrong answer to give the person
+      // who just pressed the button. The throttle is there to stop an automatic
+      // reconnect loop buying one O(vault) pass per flap; a hand-pressed button
+      // cannot flap.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+      h.actions.scheduleSync.mockClear()
+
+      await h.runner.run({ forceCrdtSweep: true })
+
+      expect(mocks.getAllCrdtNoteIds).toHaveBeenCalledTimes(1)
+      expect(h.actions.scheduleSync).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('#given the socket dropped and came back #when another full sync starts', () => {

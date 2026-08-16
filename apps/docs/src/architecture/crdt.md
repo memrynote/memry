@@ -256,6 +256,28 @@ can land in the gap between opening a note and being wired to it. Unsubscribing 
 provider for a note drops its entry, and the channel listener is released once nothing is
 listening — note close, window reload, and vault switch all take that path.
 
+## Undo Belongs to the Doc, Not the Plugin
+
+With a Yjs fragment bound, undo is no longer ProseMirror's `history` plugin — it is a
+`Y.UndoManager` scoped to the note's fragment, created once by y-prosemirror's yUndo
+plugin and shared by every surface on that doc.
+
+That manager does not survive a plugin registration on its own. ProseMirror rebuilds
+**every plugin view** whenever `state.plugins` changes identity, which
+`registerPlugin` / `unregisterPlugin` both do, and the yUndo view destroys the manager on
+teardown. `reconfigure` keeps plugin _state_, so the replacement view hands back the same
+destroyed manager: detached from the doc's `afterTransaction` and dropped from its own
+`trackedOrigins`. Nothing is captured after that, and undo is a silent no-op for the rest
+of the session.
+
+So a plugin registered after mount goes through
+`content-area/register-editor-plugin.ts`, which re-arms both on the way in and on the way
+out. The editor registers three that way today — CriticMarkup decorations, the `@`-date
+ghost, and the hash-tag inline plugin — and any new one must take the same path.
+
+This only became reachable once every note got a local Y.Doc: before that, a signed-out
+editor fell back to ProseMirror's `history`, whose state survives a view rebuild.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also
@@ -525,6 +547,15 @@ WebSocket connection generation: same generation and still connected means no br
 could have been missed, so the sweep is skipped; a new generation means the socket
 dropped and came back, so it runs. A manifest re-pull forces it, being offline skips it,
 and when the socket cannot answer at all a 15-minute interval decides.
+
+**A sync the user asked for by name forces it.** "Sync now" is the escape hatch for a note
+that looks stale, and it is the one caller that cannot flap, so it sweeps whatever the gate
+would otherwise have said. Without that, a live socket that provably missed no broadcast
+still answered the button with "nothing to fetch" — and if the broadcast had in fact been
+lost (the device was offline at the HTTP layer while its socket stayed nominally up), the
+body stayed stale for the whole 15-minute interval with the app reporting a clean sync.
+The throttle still applies to every automatic caller: reconnects, auth refresh, and
+rate-limit release.
 
 A reconnect sweep is also floored at one per 60 seconds so a flapping connection cannot
 buy one pass per flap; inside the floor it is deferred on a single re-used timer rather

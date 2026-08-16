@@ -259,13 +259,22 @@ export class FullSyncRunner {
     this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
   }
 
-  async run(): Promise<void> {
+  /**
+   * `forceCrdtSweep` is for a sync the user asked for by name. The throttle on
+   * the vault-wide sweep exists to stop an automatic reconnect loop buying one
+   * O(vault) pass per flap; it was never meant to make "Sync now" incomplete.
+   * Without it that button can skip the only discovery path for body-only
+   * remote edits — bodies never travel in the record change feed — and leave a
+   * note reading stale for up to CRDT_FULL_SWEEP_MIN_INTERVAL_MS with the app
+   * reporting a clean sync.
+   */
+  async run(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
     log.debug('fullSync started')
     this.ctx.fullSyncActive = true
     // A manifest re-pull means the server holds items this device has never
     // seen (fresh install, restored vault, rebuilt index): local CRDT state
     // cannot be trusted, so the sweep runs regardless of the throttle.
-    let forceCrdtSweep = false
+    let forceCrdtSweep = options.forceCrdtSweep === true
     try {
       await this.actions.pull()
       log.debug('fullSync: pull complete')

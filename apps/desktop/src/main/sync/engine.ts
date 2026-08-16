@@ -418,10 +418,10 @@ export class SyncEngine extends EventEmitter {
     return this.crdtSync.hasUnmergedRemoteState(noteId)
   }
 
-  async fullSync(): Promise<void> {
+  async fullSync(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
     const start = Date.now()
     try {
-      await this.fullSyncRunner.run()
+      await this.fullSyncRunner.run(options)
       trackMainEvent('sync_run_completed', {
         surface: 'sync',
         action: 'full_completed',
