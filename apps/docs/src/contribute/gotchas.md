@@ -123,6 +123,19 @@ Two rules when anchoring floating UI on a virtualized grid:
 
 `computePopoverPosition` in `popover-position.ts` owns the clamp for every calendar popover (task, note, event, inbox-snooze, quick-create).
 
+## The Notes Sidebar Has Two Renderers, and Row Features Must Land in Both
+
+`notes-tree.tsx` swaps components wholesale at `VIRTUALIZATION_THRESHOLD` (100 tree items, `lib/virtualized-tree-utils.ts`): below it a plain `TreeProvider` tree renders every row inline, at or above it `VirtualizedNotesTree` renders its own rows. Any row-level interaction — inline rename, badges, hover actions, drop targets — has to be implemented in **both**, or it silently works only for small vaults.
+
+Inline rename shipped this way: the virtualized tree offered a "Rename" context-menu item that set `renamingFolderPath` / `renamingNoteId` but rendered no input reading them, so above 100 items renaming a folder or note did nothing at all, and a folder created from the sidebar (which enters rename mode immediately) could never be named. Nothing threw, so no telemetry fired either.
+
+Two rules:
+
+1. When adding a row feature, grep both `notes-tree.tsx` and `virtualized-notes-tree.tsx`. Parent-owned state reaches the virtualized rows only if it is prop-drilled through `VirtualizedNotesTreeProps` → `FolderRow` / `NoteRow`.
+2. A virtualized row that is scrolled out of view **is not mounted**. State that expects a row to be on screen (rename mode, focus) must also reveal it — expand ancestors, then `virtualizer.scrollToIndex` on the next frame, the way `revealRow` does.
+
+Tests must exercise the real component: `notes-tree.test.tsx` pins `shouldVirtualize` to `false` **and** stubs `VirtualizedNotesTree`, so it can never catch this class of gap. `notes-tree-virtualized-rename.test.tsx` renders the real tree on both sides of the threshold; follow that shape.
+
 ## Editor-Zone Mousedown Handlers Steal Focus from BlockNote Menus
 
 BlockNote's shadcn menus (drag-handle menu, side menu, toolbars and their nested dropdowns) render **inline inside `.bn-container`, not portaled**. Any editor-zone mousedown handler — such as the "click the marquee zone to focus the editor at end" handler in `note.tsx` / `journal.tsx`, or the marquee selection hook — therefore also sees clicks on menu items. If such a handler focuses the editor on mousedown, the menu unmounts between `pointerdown` and `pointerup`, so the item's click never lands and the action silently does nothing (for example, drag-handle Colors/Delete appear to do nothing).
