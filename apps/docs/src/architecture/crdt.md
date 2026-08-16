@@ -394,7 +394,8 @@ body for that window.
 An unreachable **server** is not an offline **device**. `NetworkMonitor` reads OS-level
 connectivity, so a server that stops answering fires no `status-changed` event: the CRDT
 update queue is never paused, no full sync is scheduled when the server returns, and the
-durable pending-note replay — which only runs on a network transition — never fires
+durable pending-note replay — which runs on a network transition and once per sync-runtime
+start, neither of which happens here — never fires
 either. Everything that heals a body edit across that kind of outage therefore rides on
 the two routes above, the `crdt_updated` broadcast and the reconnect catch-up, and both
 of them need the WebSocket back.
@@ -540,6 +541,43 @@ reference and `resetCrdtProvider()` then replaces the instance outright, so
 loop is stopped with the runtime that owned it, so a signed-out session never
 retries a push and never reads the keychain for a token that is not there.
 
+### Recording what the server is owed
+
+Having nothing to enqueue into is not the same as owing nothing. A signed-out
+edit is durable locally and **unknown to sync**: the queue never saw it, so the
+queue's own shutdown recorder — which reports the updates it accepted but could
+not flush — cannot report it either. Left there, the edit reached no other
+device, ever; not on sign-in, not on reconnect, not on restart.
+
+So `onDocUpdate` records the note id instead. Any non-network update that
+arrives with no update queue goes to the same durable pending-note store
+(`crdt-pending-notes.json`) the paused queue writes to, through the same
+`recordPendingCrdtNotes`. Only the id: the update itself is already in this
+vault's local CRDT store, and full doc state is what the replay pushes anyway.
+
+The write is deduped per note for the lifetime of the queue-less stretch, so a
+signed-out editing session costs one small synchronous JSON write **per note
+touched**, not one per keystroke. It is eager rather than debounced because the
+id has to survive a crash or a kill, and after the first update for a note there
+is nothing left to pay. `CrdtProvider.init()` clears the dedupe set, so the next
+queue-less stretch starts fresh.
+
+`startSyncRuntime` drains that store once, after `crdtProvider.init()` has
+installed the snapshot push function and after `engine.start()` has awaited the
+first full sync — so the device has merged what the server already had before it
+pushes full state over the top. Signing in runs `startSyncRuntime`, which is what
+makes a signed-out backlog reach the server **with no further user input**;
+leaving the replay to `NetworkMonitor` alone was not enough, because signing in
+is not a network transition. `drainPendingCrdtNotes` is re-entrant-safe and
+clears an id only once its state has actually reached the server, so the startup
+replay and a network-transition replay firing together cannot double-push, and a
+still-offline start leaves the entry queued for the next attempt.
+
+Notes that no longer exist, or never sync via CRDT (binaries), are dropped at
+drain time rather than retried forever, and a doc with no content is not pushed
+at all — a snapshot is a full note body and an R2 write, so the replay only pays
+for notes that need it.
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:
@@ -567,6 +605,8 @@ While the queue is paused (offline, expired token, storage quota) nothing drains
 - **Across all notes** — the queue also caps its total buffered bytes, because the map keeps one live buffer per note touched since the pause. Crossing the ceiling first flushes whatever the server will take and merges every buffer, and only if that is not enough does it release the oldest notes' payloads.
 
 A release is never a drop. The note ids go to the durable pending-note store (`crdt-pending-notes.json`) **before** their payloads are freed, and `drainPendingCrdtNotes` pushes each note's full doc state — which supersedes the buffered updates — on the next reconnect or app start. If no durable store is wired up, or recording fails, the queue keeps the memory instead of releasing it.
+
+The same store carries edits the queue never saw at all, because there was no queue: see [Recording What the Server Is Owed](#recording-what-the-server-is-owed). For those, full doc state is not merely a superset — it is the only shape available, since a queue-less edit produced no incrementals to replay.
 
 ### A failed push keeps its batch
 
