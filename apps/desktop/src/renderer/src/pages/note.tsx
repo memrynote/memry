@@ -1140,7 +1140,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const actionIcons = (
     <div className="flex items-center gap-0.5">
       <ReminderPicker
-        onSelect={(date, _title, reminderNote) => void handleSetReminder(date, reminderNote)}
+        onSelect={(date, reminderNote) => void handleSetReminder(date, reminderNote)}
         presetType="standard"
         telemetrySurface="notes"
         showNote

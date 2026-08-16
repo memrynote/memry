@@ -212,7 +212,7 @@ export const ConvertActions = ({
             </PropRow>
             <PropRow label={t('convert.reminder')}>
               <ReminderPicker
-                onSelect={(date, _title, note) => {
+                onSelect={(date, note) => {
                   setRemindAt(date)
                   setRemindNote(note ?? null)
                 }}

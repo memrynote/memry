@@ -28,7 +28,13 @@ export interface ManagedReminder {
 }
 
 export interface ReminderPickerProps {
-  onSelect: (date: Date, title?: string, note?: string) => void
+  /**
+   * Called with the chosen time and the optional note typed into the picker.
+   * There is deliberately no third `title` argument: the picker never collected
+   * one, so a middle parameter that was always `undefined` only ever bound a
+   * consumer's note variable to nothing.
+   */
+  onSelect: (date: Date, note?: string) => void
   presetType?: 'standard' | 'journal'
   trigger?: React.ReactNode
   size?: 'sm' | 'md' | 'lg'
@@ -119,7 +125,7 @@ export function ReminderPicker({
 
   const handlePresetSelect = (preset: ReminderPreset): void => {
     const date = preset.getDate()
-    onSelect(date, undefined, note || undefined)
+    onSelect(date, note || undefined)
     trackReminderCreated('preset', preset.id)
     setOpen(false)
     resetState()
@@ -129,7 +135,7 @@ export function ReminderPicker({
     const date = buildSelectedDate()
     if (!date) return
 
-    onSelect(date, undefined, note || undefined)
+    onSelect(date, note || undefined)
     trackReminderCreated('custom')
     setOpen(false)
     resetState()
