@@ -66,6 +66,46 @@ describe('crdt pending note store', () => {
     expect(readPendingCrdtNotes()).toEqual(['note-offline', 'note-throws'])
   })
 
+  it('does not push a note again on the next replay', async () => {
+    // A snapshot push is a full note body plus an R2 write. The startup replay
+    // and the network-transition replay both run drainPendingCrdtNotes against
+    // the same store, so an entry that already reached the server must not be
+    // paid for twice.
+    const { drainPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-b'])
+
+    const pushSnapshot = vi.fn(async (_noteId: string) => true)
+    await drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    expect(pushSnapshot.mock.calls).toHaveLength(2)
+
+    await drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    expect(pushSnapshot.mock.calls).toHaveLength(2)
+  })
+
+  it('does not double-push when the startup replay and a network transition overlap', async () => {
+    // startSyncRuntime fires one replay at the end of startup; the network
+    // monitor fires another the moment it reports online. Coming back from
+    // offline does both within the same second.
+    const { drainPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-b'])
+
+    let release: (() => void) | undefined
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const pushSnapshot = vi.fn(async (_noteId: string) => {
+      await inFlight
+      return true
+    })
+
+    const startup = drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    const onReconnect = drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    release!()
+    await Promise.all([startup, onReconnect])
+
+    expect(pushSnapshot.mock.calls.map((call) => call[0])).toEqual(['note-a', 'note-b'])
+  })
+
   it('drops notes that no longer exist instead of retrying them forever', async () => {
     const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
       await import('./crdt-pending-notes')

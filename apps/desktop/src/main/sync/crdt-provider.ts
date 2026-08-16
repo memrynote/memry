@@ -15,6 +15,7 @@ import {
   resetWritebackState
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
@@ -81,6 +82,12 @@ export class CrdtProvider {
   private persistenceInitPromise: Promise<void> | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
+  /**
+   * Notes already written to the durable pending store during the current
+   * queue-less stretch — see `recordUnqueuedUpdate`. Purely a write-dedupe: the
+   * ids themselves live on disk.
+   */
+  private recordedUnqueuedNotes = new Set<string>()
   private readonly inactiveDocLimit: number
   private readonly now: () => number
   private compactingDocs = new Set<string>()
@@ -110,6 +117,11 @@ export class CrdtProvider {
 
     this.updateQueue = queue ?? null
     this.snapshotPushFn = snapshotPush ?? null
+    // Start the next queue-less stretch from a clean slate. Whatever was
+    // recorded during the previous one is on disk and is the drain's problem
+    // now; keeping the ids here would suppress the re-record if this provider
+    // ever went queue-less again with the store already cleared.
+    this.recordedUnqueuedNotes.clear()
     log.debug('CrdtProvider sync callbacks updated')
   }
 
@@ -779,8 +791,12 @@ export class CrdtProvider {
     this.persistUpdate(noteId, update)
     this.maybeCompact(noteId)
 
-    if (origin !== ORIGIN_NETWORK && this.updateQueue) {
-      this.updateQueue.enqueue(noteId, update)
+    if (origin !== ORIGIN_NETWORK) {
+      if (this.updateQueue) {
+        this.updateQueue.enqueue(noteId, update)
+      } else {
+        this.recordUnqueuedUpdate(noteId)
+      }
     }
 
     if (origin === ORIGIN_NETWORK) {
@@ -790,6 +806,37 @@ export class CrdtProvider {
     if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
       scheduleWriteback(noteId, entry.doc)
     }
+  }
+
+  /**
+   * Remember a local edit that had no update queue to hand it to.
+   *
+   * `init(queue, ...)` runs from `startSyncRuntime` and nowhere else, and
+   * `destroy()` nulls the queue again, so with no session — signed out, not on
+   * a paid plan, before the vault opens — there is no queue at all. The update
+   * still reaches the doc and the local CRDT store, but until now it was
+   * recorded as owed *nowhere*: the queue's own shutdown path
+   * (`persistUnflushed`) only ever covers updates the queue accepted and could
+   * not flush, never updates it never saw. That is the whole of "edit while
+   * signed out, sign back in, the other device never sees it" — the edit was
+   * safe locally and invisible forever. `drainPendingCrdtNotes` on the next
+   * runtime start pushes the note's full doc state, which is the only shape
+   * this backlog has: there are no incrementals to replay.
+   *
+   * Deduped per note for the lifetime of the queue-less stretch, so the cost is
+   * one small synchronous JSON write per *note touched*, not per update — the
+   * same recorder the shutdown path uses, called at a rate it was built for.
+   * Eager rather than debounced on purpose: the id has to be on disk before a
+   * crash or a kill, and the dedupe means the second update for a note never
+   * pays for the write again. The mark goes up before the write for the same
+   * reason — a store that cannot be written (full disk) must not turn every
+   * later keystroke into another failing disk write.
+   */
+  private recordUnqueuedUpdate(noteId: string): void {
+    if (this.recordedUnqueuedNotes.has(noteId)) return
+    this.recordedUnqueuedNotes.add(noteId)
+    recordPendingCrdtNotes([noteId])
+    log.debug('Recorded a local CRDT edit made with no update queue', { noteId })
   }
 
   private broadcastToWindows(

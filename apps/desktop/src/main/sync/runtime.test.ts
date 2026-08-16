@@ -154,6 +154,13 @@ const runtimeMocks = vi.hoisted(() => {
     createCrdtSyncAdapter: vi.fn((type: string, options: unknown) => ({ type, options })),
     getRemoteSyncAdapter: vi.fn((type: string) => ({ remote: type })),
     getDeviceSigningKey: vi.fn(),
+    recordPendingCrdtNotes: vi.fn(),
+    drainPendingCrdtNotes: vi.fn(
+      async (_deps: {
+        pushSnapshot: (noteId: string) => Promise<boolean>
+        isSyncable: (noteId: string) => boolean
+      }) => ({ cleared: 0, retained: 0 })
+    ),
     resetCrdtProvider: vi.fn(),
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
@@ -339,6 +346,11 @@ vi.mock('./crdt-provider', () => ({
   resetCrdtProvider: runtimeMocks.resetCrdtProvider
 }))
 
+vi.mock('./crdt-pending-notes', () => ({
+  recordPendingCrdtNotes: runtimeMocks.recordPendingCrdtNotes,
+  drainPendingCrdtNotes: runtimeMocks.drainPendingCrdtNotes
+}))
+
 vi.mock('./dirty-recovery', () => ({
   recoverDirtyItems: runtimeMocks.recoverDirtyItems
 }))
@@ -519,6 +531,35 @@ describe('sync runtime', () => {
       'Sync worker failed to start — continuing with main-thread crypto',
       workerError
     )
+  })
+
+  it('replays the pending CRDT backlog on startup, wired and ordered', async () => {
+    const runtime = await loadRuntime()
+
+    await runtime.startSyncRuntime()
+
+    // Signing in runs startSyncRuntime, so this call is the whole reason a
+    // backlog recorded while signed out ever reaches the server without the
+    // user touching anything. Leaving the replay to the network monitor is not
+    // enough: signing in is not a network transition, and a device that never
+    // went offline never fires that handler at all.
+    expect(runtimeMocks.drainPendingCrdtNotes).toHaveBeenCalledTimes(1)
+
+    const drainOrder = runtimeMocks.drainPendingCrdtNotes.mock.invocationCallOrder[0]!
+    // After crdtProvider.init(), which installs the snapshot push fn — without
+    // it every replayed note reports failure and stays queued forever.
+    expect(drainOrder).toBeGreaterThan(runtimeMocks.crdtProvider.init.mock.invocationCallOrder[0]!)
+    // And after the engine's awaited first full sync, so this device has merged
+    // what the server already had before it pushes full state over the top.
+    expect(drainOrder).toBeGreaterThan(
+      runtimeMocks.SyncEngine.instances[0]!.start.mock.invocationCallOrder[0]!
+    )
+
+    const deps = runtimeMocks.drainPendingCrdtNotes.mock.calls[0]![0]
+    await deps.pushSnapshot('note-1')
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+
+    await runtime.stopSyncRuntime()
   })
 
   it('skips startup when recovery phrase confirmation is still pending', async () => {

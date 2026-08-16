@@ -225,6 +225,10 @@ import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { NOTE_MAX_BYTES } from '@memry/shared/markdown-class'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import type { SnapshotPushFn } from './crdt-provider'
+// Deliberately NOT mocked: the point of the signed-out suite below is that the
+// recorder and the replay meet on the same durable store, so both halves run
+// for real against the temp userData dir.
+import { drainPendingCrdtNotes, readPendingCrdtNotes } from './crdt-pending-notes'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
 
@@ -1377,6 +1381,104 @@ describe('CrdtProvider', () => {
     ;(provider as any).docs.get('closing-note').closing = false
     provider.applyIpcUpdate('closing-note', makeRemoteUpdate('local'), 99)
     expect(mocks.sent).toEqual([])
+  })
+
+  // An edit made with no session reaches the doc and the local store — that has
+  // been true since the provider stopped being gated on a session. What it did
+  // NOT reach was anything that remembers the server is owed it: `init(queue)`
+  // runs only from startSyncRuntime, so signed out there is no update queue,
+  // and the queue's own shutdown recorder can only report updates it accepted.
+  // The edit was safe locally and invisible to every other device forever.
+  describe('signed-out CRDT backlog', () => {
+    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+
+    beforeEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    afterEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    it('pushes an edit made with no session once the session comes back, with no further input', async () => {
+      // #given the provider as it exists after sign-out: persistence re-opened
+      // (session-teardown does that), no update queue, no snapshot push fn
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+
+      // #when the user types
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      // #then nothing in the live sync path saw it — there is nothing to see it
+      expect(queue.enqueue).not.toHaveBeenCalled()
+      // #and the debt is durable, which is the only thing that can outlive this
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // #when the user signs back in. startSyncRuntime calls init() on THIS
+      // instance — sign-out already reset the singleton, sign-in does not — and
+      // then fires the replay. No editing, no clicking, no restart.
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+      const replayed = await drainPendingCrdtNotes({
+        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      // #then the note's full state reaches the server. Full state is the only
+      // shape available: a queue-less edit produced no incrementals to replay.
+      expect(replayed).toEqual({ cleared: 1, retained: 0 })
+      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
+      expect(pushAfterSignIn.mock.calls[0]![0]).toBe('note-1')
+
+      const received = new Y.Doc()
+      Y.applyUpdate(received, pushAfterSignIn.mock.calls[0]![1])
+      expect(received.getMap('meta').get('title')).toBe('typed while signed out')
+
+      // #and the debt is settled, so the next replay does not pay for it again
+      expect(readPendingCrdtNotes()).toEqual([])
+
+      await signedOut.destroy()
+    })
+
+    it('records nothing when there is an update queue to take the edit', async () => {
+      // The queue owns the update from here: it flushes it as an incremental,
+      // and its own stop()/budget paths record it if that flush never lands.
+      // Recording here too would mean a redundant full-snapshot push per note.
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed in')
+
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+      expect(readPendingCrdtNotes()).toEqual([])
+    })
+
+    it('writes once per note touched, not once per update', async () => {
+      // This fires on roughly every keystroke, and recordPendingCrdtNotes is a
+      // synchronous read-modify-write of a file in userData. Per update that is
+      // a disk write per keystroke; per note it is negligible.
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'first')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // Blank the store behind the provider's back: any further write for this
+      // note would put the id back, so the file staying empty is proof that no
+      // second write happened.
+      fs.writeFileSync(pendingStoreFile(), '[]', 'utf8')
+      for (const title of ['second', 'third', 'fourth', 'fifth']) {
+        doc.getMap('meta').set('title', title)
+      }
+      expect(readPendingCrdtNotes()).toEqual([])
+
+      // A different note is still a different debt.
+      const other = await signedOut.open('note-2', 1, { skipSeed: true })
+      other.getMap('meta').set('title', 'other note')
+      expect(readPendingCrdtNotes()).toEqual(['note-2'])
+
+      await signedOut.destroy()
+    })
   })
 })
 

@@ -672,9 +672,18 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const crdtProvider = getCrdtProvider()
       await crdtProvider.init(crdtQueue, snapshotPushFn)
 
-      // Notes whose updates were still buffered when the app last quit paused
-      // (offline / expired token / quota). Their content is safe in the local
-      // CRDT store; pushing the full state is what the server missed.
+      // Notes the server is owed and has no other way to learn about:
+      //
+      //   - updates still buffered when the app last quit paused (offline /
+      //     expired token / quota), or released by the queue's memory budget;
+      //   - local edits made with no update queue at all, which is every edit
+      //     made while signed out, unpaid, or before the vault opened. The
+      //     provider records those as they happen (recordUnqueuedUpdate) —
+      //     nothing else in the system knows they exist.
+      //
+      // Their content is safe in the local CRDT store; pushing the full state
+      // is what the server missed. Full state is also the only shape that
+      // works: a queue-less edit produced no incrementals to replay.
       const replayPendingCrdtNotes = (): void => {
         void drainPendingCrdtNotes({
           pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
@@ -838,6 +847,16 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .then(({ drainAttachmentOutbox }) => drainAttachmentOutbox())
         .catch(() => {})
 
+      // Deliberately here and not next to crdtProvider.init(): the drain needs
+      // the snapshot push fn that init installs, but it also has to come after
+      // `engine.start()` awaits the first full sync, so this device has merged
+      // whatever the server already had before it pushes a full snapshot over
+      // it. Sign-in reaches this line the same way a cold start does —
+      // startSyncRuntime is what runs on both — so a signed-out backlog is
+      // replayed with no further user input. The network `status-changed`
+      // handler above calls the same fn; drainPendingCrdtNotes is re-entrant-
+      // safe and clears each id only once its state actually reached the
+      // server, so the two firing close together cannot double-push.
       replayPendingCrdtNotes()
 
       trackMainEvent('sync_enabled', {

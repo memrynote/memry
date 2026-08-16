@@ -10,13 +10,22 @@ const FILE_NAME = 'crdt-pending-notes.json'
 /**
  * Durable record of notes whose CRDT updates never reached the server.
  *
- * The in-memory update queue no-ops its flush while paused (offline, expired
- * token, quota), so quitting in that state used to discard everything buffered:
- * the edits stayed on this device but silently never synced. The buffered
- * updates themselves are already durable — the CRDT provider persists every one
- * of them to the local store — so only the note ids need to survive the
- * shutdown. On the next start their full doc state is pushed as a snapshot,
- * which strictly supersedes the individual updates that were buffered.
+ * Two things fill it, and they are not the same case:
+ *
+ *  - The in-memory update queue no-ops its flush while paused (offline,
+ *    expired token, quota), so quitting in that state used to discard
+ *    everything buffered: the edits stayed on this device but silently never
+ *    synced. Same for the notes its memory budget releases.
+ *  - Local edits made with no update queue at all — signed out, unpaid, or
+ *    before the vault opens. The queue never sees those, so its shutdown path
+ *    cannot record them; `CrdtProvider.recordUnqueuedUpdate` does it instead,
+ *    as the edits happen.
+ *
+ * The updates themselves are already durable either way — the CRDT provider
+ * persists every one of them to the local store — so only the note ids need to
+ * survive. `drainPendingCrdtNotes` pushes each note's full doc state, which
+ * strictly supersedes any individual buffered updates and is the *only* shape
+ * available for a queue-less edit, which produced no incrementals at all.
  */
 
 function storePath(): string {
@@ -54,8 +63,12 @@ function writePendingCrdtNotes(noteIds: string[]): void {
 }
 
 /**
- * Add note ids to the durable set. Synchronous on purpose: the only caller is
- * the update queue's `stop()`, which runs while the process is quitting.
+ * Add note ids to the durable set. Synchronous on purpose: one caller is the
+ * update queue's `stop()`, which runs while the process is quitting and cannot
+ * await anything. The provider's queue-less recorder relies on the same
+ * property — the id is on disk before the call returns, so a crash a keystroke
+ * later still replays — and dedupes per note so this stays one small write per
+ * note touched rather than one per update.
  */
 export function recordPendingCrdtNotes(noteIds: string[]): void {
   if (noteIds.length === 0) return
