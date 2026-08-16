@@ -208,4 +208,45 @@ describe('DatePickerContent', () => {
       expect(onTimeChange).toHaveBeenCalledWith('09:15')
     })
   })
+
+  /**
+   * These assert structure, not pixels. jsdom computes no layout and never
+   * resolves `--radix-popover-content-available-height`, so no test here can
+   * claim any of this is visibly on screen — only that the panel is laid out so
+   * a host that caps its height shrinks the scroller and not the time row.
+   * A short-viewport check in the running app remains the real gate.
+   */
+  describe('height management', () => {
+    const scrollerFor = (el: HTMLElement): HTMLElement | null =>
+      el.closest<HTMLElement>('.overflow-y-auto')
+
+    it('can shrink inside a host that caps its height', () => {
+      // Without `min-h-0` a flex item keeps its content height no matter what
+      // the cap says, and the overflow leaves the popover instead of scrolling.
+      const { container } = renderPicker({ selected: new Date(2026, 2, 16) })
+
+      expect((container.firstElementChild as HTMLElement).className).toContain('min-h-0')
+    })
+
+    it('puts the presets and the calendar in one scroll container', () => {
+      renderPicker({ selected: new Date(2026, 2, 16) })
+
+      const scroller = scrollerFor(screen.getByText('Today'))
+      expect(scroller).not.toBeNull()
+      expect(scroller?.className).toContain('min-h-0')
+      expect(scroller).toContainElement(screen.getByText('March 2026'))
+    })
+
+    it('pins the time row below the scroll container', () => {
+      // The time row is the panel's last child, so it is the first thing lost
+      // when the popover runs out of room. It has to sit outside the scroller
+      // and refuse to shrink, or the cap eats the only way to set a time.
+      renderPicker({ selected: new Date(2026, 2, 16), onTimeChange: vi.fn() })
+
+      const timeRow = screen.getByText('Add time').closest('button')?.parentElement
+      expect(timeRow).not.toBeNull()
+      expect(timeRow?.className).toContain('shrink-0')
+      expect(scrollerFor(timeRow!)).toBeNull()
+    })
+  })
 })
