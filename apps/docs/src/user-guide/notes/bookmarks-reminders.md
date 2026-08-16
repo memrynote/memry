@@ -32,6 +32,10 @@ list of the ones already set, each with its own edit and delete button. All of i
 when the panel is taller than the room the picker has, so the reminders at the end of the list stay
 editable however low in the window you opened it from.
 
+The optional note is available on both paths: type it before you press a relative button and it is
+saved with that reminder too. It is kept everywhere the picker appears — notes, journal entries,
+tasks and inbox items.
+
 Selecting text in the editor does not open a separate reminder action; reminders are set at the note level.
 
 When the reminder fires, memrynote shows an in-app toast with:

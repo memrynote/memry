@@ -461,13 +461,13 @@ rather than the next time the note is closed and reopened.
 
 Five paths send a body, and each refuses independently:
 
-| Path                             | Guard                             |
-| -------------------------------- | --------------------------------- |
-| `onDocUpdate` → `CrdtUpdateQueue` | cached flag on the doc            |
-| `close()` snapshot                | cached flag on the doc            |
-| `pushAllSnapshots()` at shutdown  | cached flag on the doc            |
-| `compactDoc()` snapshot           | cached flag on the doc            |
-| `pushSnapshotForNote()`           | re-reads the `note_cache` row     |
+| Path                              | Guard                         |
+| --------------------------------- | ----------------------------- |
+| `onDocUpdate` → `CrdtUpdateQueue` | cached flag on the doc        |
+| `close()` snapshot                | cached flag on the doc        |
+| `pushAllSnapshots()` at shutdown  | cached flag on the doc        |
+| `compactDoc()` snapshot           | cached flag on the doc        |
+| `pushSnapshotForNote()`           | re-reads the `note_cache` row |
 
 `pushSnapshotForNote` re-reads the row because it is the one push path reached for a note with
 no open doc — the pending-note replay and the push coordinator's `create` both land there.
@@ -495,7 +495,7 @@ that record instead, the CRDT twin of the `removePendingNoteSyncItems` call besi
 lost, because the updates stay in the local store and a later clear re-records the note, whose
 replay pushes full state anyway.
 
-Either direction also drops the doc's snapshot debt, so the next `close()` cannot fire a *blind*
+Either direction also drops the doc's snapshot debt, so the next `close()` cannot fire a _blind_
 snapshot ahead of the merge-first replay. A snapshot asserts completeness and the server prunes
 every incremental below it, and a note that has just stopped being local-only is the population
 most likely to have diverged from a peer.

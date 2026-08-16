@@ -121,11 +121,7 @@ describe('ReminderPicker', () => {
     )
     await user.click(screen.getByRole('button', { name: /Later Today/ }))
 
-    expect(onSelect).toHaveBeenCalledWith(
-      new Date(2026, 4, 10, 14, 0, 0, 0),
-      undefined,
-      'bring account notes'
-    )
+    expect(onSelect).toHaveBeenCalledWith(new Date(2026, 4, 10, 14, 0, 0, 0), 'bring account notes')
   })
 
   it('moves into custom mode, formats the selected time, and submits a custom reminder', async () => {
@@ -169,11 +165,7 @@ describe('ReminderPicker', () => {
       screen.getByRole('button', { name: /phaseF.componentsReminderReminderPicker.setReminder/ })
     )
 
-    expect(onSelect).toHaveBeenCalledWith(
-      new Date(2026, 4, 12, 15, 45, 0, 0),
-      undefined,
-      'custom note'
-    )
+    expect(onSelect).toHaveBeenCalledWith(new Date(2026, 4, 12, 15, 45, 0, 0), 'custom note')
   })
 
   it('pins the confirm button in the footer and scrolls the body above it', async () => {
