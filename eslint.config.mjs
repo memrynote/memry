@@ -215,6 +215,10 @@ export default defineConfig(
       'apps/desktop/src/main/inbox/filing.ts',
       'apps/desktop/src/main/inbox/suggestions.ts',
       'apps/desktop/src/main/sync/attachments.ts',
+      // Sat at exactly 800 countable lines, so the local-only body guard (#1511)
+      // could not land without either this or a speculative split of the CRDT
+      // provider — the wrong refactor to attach to a privacy fix.
+      'apps/desktop/src/main/sync/crdt-provider.ts',
       'apps/desktop/src/main/vault/watcher.ts'
     ],
     rules: {
