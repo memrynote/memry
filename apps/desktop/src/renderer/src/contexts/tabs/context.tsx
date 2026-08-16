@@ -23,7 +23,8 @@ import type {
   OpenTabOptions,
   SidebarItem,
   SplitDirection,
-  TabScrollState
+  TabScrollState,
+  TabScrollPanes
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem, generateId } from './helpers'
@@ -181,6 +182,7 @@ interface TabActionsContextType {
     state: {
       scrollPosition?: number
       scrollState?: TabScrollState
+      scrollPanes?: TabScrollPanes
       viewState?: Record<string, unknown>
     },
     groupId?: string
@@ -646,6 +648,7 @@ export const TabProvider = ({
       tabState: {
         scrollPosition?: number
         scrollState?: TabScrollState
+        scrollPanes?: TabScrollPanes
         viewState?: Record<string, unknown>
       },
       groupId?: string

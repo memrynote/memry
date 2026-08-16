@@ -10,7 +10,8 @@ import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useTabScrollRestore } from './use-tab-scroll-restore'
-import type { Tab } from '@/contexts/tabs/types'
+import { mergeScrollPanes } from '@/contexts/tabs/scroll-panes'
+import type { Tab, TabScrollPanes } from '@/contexts/tabs/types'
 import type { TabIdentity } from '@/contexts/tabs/tab-identity'
 
 const mocks = vi.hoisted(() => ({
@@ -126,29 +127,41 @@ function makeScroller(maxScroll: number): {
   }
 }
 
-function tabWith(scrollState: Tab['scrollState']): Tab {
+/** A tab holding one pane entry, in the per-pane shape the hook writes. */
+function tabWith(entry: { offset: number; entityId?: string; key?: string }): Tab {
+  const { key, ...rest } = entry
+  return { id: 'tab-a', scrollPanes: { [key ?? '']: rest } } as Tab
+}
+
+/**
+ * A tab holding the SINGLE-record shape shipped by PR #1549 — the shape live
+ * beta sessions in local storage still carry.
+ */
+function tabWithLegacyRecord(scrollState: Tab['scrollState']): Tab {
   return { id: 'tab-a', scrollState } as Tab
 }
 
-function savedPayloads(): Array<{ tabId: string; offset: number; entityId?: string }> {
+/** Every dispatched pane patch, flattened: these hooks write one pane at a time. */
+function panePatches(): Array<{ tabId: string; key: string; offset: number; entityId?: string }> {
   return mocks.dispatch.mock.calls
     .map(([action]) => action as { type: string; payload: Record<string, unknown> })
-    .filter((action) => action.type === 'SAVE_TAB_STATE' && 'scrollState' in action.payload)
-    .map((action) => {
-      const scrollState = action.payload.scrollState as { offset: number; entityId?: string }
-      return {
+    .filter((action) => action.type === 'SAVE_TAB_STATE' && 'scrollPanes' in action.payload)
+    .flatMap((action) =>
+      Object.entries(action.payload.scrollPanes as TabScrollPanes).map(([key, entry]) => ({
         tabId: action.payload.tabId as string,
-        offset: scrollState.offset,
-        entityId: scrollState.entityId
-      }
-    })
+        key,
+        offset: entry.offset,
+        entityId: entry.entityId
+      }))
+    )
 }
 
-function savedKeys(): Array<string | undefined> {
-  return mocks.dispatch.mock.calls
-    .map(([action]) => action as { type: string; payload: Record<string, unknown> })
-    .filter((action) => action.type === 'SAVE_TAB_STATE' && 'scrollState' in action.payload)
-    .map((action) => (action.payload.scrollState as { key?: string }).key)
+function savedPayloads(): Array<{ tabId: string; offset: number; entityId?: string }> {
+  return panePatches().map(({ tabId, offset, entityId }) => ({ tabId, offset, entityId }))
+}
+
+function savedKeys(): string[] {
+  return panePatches().map(({ key }) => key)
 }
 
 /**
@@ -184,7 +197,7 @@ function makeVirtualizer(
 describe('useTabScrollRestore', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    mocks.dispatch.mockClear()
+    mocks.dispatch.mockReset()
     mocks.getTab.mockReset()
     mocks.getTab.mockReturnValue(null)
     mocks.identity.current = { tabId: 'tab-a', groupId: 'group-1', entityId: 'note-1' }
@@ -586,6 +599,79 @@ describe('useTabScrollRestore', () => {
 
     // Merely opening the insights pane must not wipe the list pane's offset.
     expect(mocks.dispatch).not.toHaveBeenCalled()
+  })
+
+  it('keeps each pane its own offset across a round trip between them', () => {
+    // A live tab record: the reducer's merge, driven by the hook's own writes.
+    let panes: TabScrollPanes | undefined
+    mocks.getTab.mockImplementation(() => ({ id: 'tab-a', scrollPanes: panes }) as Tab)
+    mocks.dispatch.mockImplementation(
+      (action: { type: string; payload: Record<string, unknown> }) => {
+        if (action.type !== 'SAVE_TAB_STATE') return
+        const patch = action.payload.scrollPanes as TabScrollPanes | undefined
+        if (patch === undefined) return
+        panes = mergeScrollPanes(panes, patch)
+      }
+    )
+
+    const list = makeScroller(1000)
+    const listVisit = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => list.element, key: 'inbox-list' })
+    )
+    list.userScrollTo(250)
+    listVisit.unmount()
+
+    // The second pane the user scrolls is the one that used to overwrite the
+    // tab's only record and take the list's 250 with it.
+    const archived = makeScroller(1000)
+    const archivedVisit = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => archived.element, key: 'inbox-archived' })
+    )
+    archived.userScrollTo(700)
+    archivedVisit.unmount()
+
+    const listAgain = makeScroller(1000)
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => listAgain.element, key: 'inbox-list' })
+    )
+    expect(listAgain.element.scrollTop).toBe(250)
+
+    const archivedAgain = makeScroller(1000)
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => archivedAgain.element, key: 'inbox-archived' })
+    )
+    expect(archivedAgain.element.scrollTop).toBe(700)
+  })
+
+  // -------------------------------------------------------------------------
+  // Legacy single-record sessions (PR #1549), still in local storage in the wild
+  // -------------------------------------------------------------------------
+
+  it('restores a legacy single-record session into the pane it names', () => {
+    const scroller = makeScroller(1000)
+    mocks.getTab.mockReturnValue(
+      tabWithLegacyRecord({ offset: 400, entityId: 'note-1', key: 'inbox-list' })
+    )
+
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element, key: 'inbox-list' })
+    )
+
+    expect(scroller.element.scrollTop).toBe(400)
+  })
+
+  it('gives a legacy unkeyed record to the unkeyed pane and to no other', () => {
+    mocks.getTab.mockReturnValue(tabWithLegacyRecord({ offset: 400, entityId: 'note-1' }))
+
+    const keyed = makeScroller(1000)
+    renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => keyed.element, key: 'inbox-list' })
+    )
+    expect(keyed.element.scrollTop).toBe(0)
+
+    const unkeyed = makeScroller(1000)
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => unkeyed.element }))
+    expect(unkeyed.element.scrollTop).toBe(400)
   })
 
   // -------------------------------------------------------------------------

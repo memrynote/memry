@@ -22,6 +22,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useTabActionsOptional } from '@/contexts/tabs'
+import { readScrollPane, scrollPaneKey } from '@/contexts/tabs/scroll-panes'
 import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 
 /** How often the live offset is committed to tab state while scrolling. */
@@ -81,9 +82,9 @@ export interface UseTabScrollRestoreOptions {
   enabled?: boolean
   /**
    * Extra identity discriminator. Changing it flushes the current offset and
-   * re-runs restore, exactly like a tab or entity change does. It is also
-   * stamped into the saved record, so a page with several scrollers never
-   * restores one pane's offset into another.
+   * re-runs restore, exactly like a tab or entity change does. It also names
+   * the pane's own slot in the tab's scroll record, so a page with several
+   * scrollers keeps every pane's offset and never reads or writes another's.
    */
   key?: string
   /**
@@ -136,6 +137,9 @@ export function useTabScrollRestore({
     const element = getScrollElementRef.current()
     if (!element) return undefined
 
+    /** This pane's slot. Every read and every write goes through it, only it. */
+    const paneKey = scrollPaneKey(key)
+
     let saveTimer: ReturnType<typeof setTimeout> | null = null
     let pendingSave = false
     /** The offset our own programmatic write actually produced. */
@@ -168,7 +172,7 @@ export function useTabScrollRestore({
       lastDispatchedOffset = offset
       dispatch({
         type: 'SAVE_TAB_STATE',
-        payload: { tabId, groupId, scrollState: { offset, entityId, key } }
+        payload: { tabId, groupId, scrollPanes: { [paneKey]: { offset, entityId } } }
       })
     }
 
@@ -268,15 +272,13 @@ export function useTabScrollRestore({
     element.addEventListener('touchmove', handleUserIntent, { passive: true })
     element.addEventListener('keydown', handleKeyDown, { passive: true })
 
-    const saved = getTab(tabId, groupId)?.scrollState
-    // A tab keeps its identity when it navigates to another note, so an offset
-    // stamped with a different entity describes content that is gone — and one
-    // stamped with a different scroller describes a different pane of this page.
+    // Only this pane's entry, so another pane's offset can never be seen here,
+    // let alone applied. A tab keeps its identity when it navigates to another
+    // note, so an entry stamped with a different entity describes content that
+    // is gone.
+    const saved = readScrollPane(getTab(tabId, groupId) ?? undefined, key)
     const restorable =
-      saved !== undefined &&
-      saved.entityId === entityId &&
-      saved.key === key &&
-      Number.isFinite(saved.offset)
+      saved !== undefined && saved.entityId === entityId && Number.isFinite(saved.offset)
 
     if (restorable) {
       const target = saved.offset
@@ -330,16 +332,19 @@ export function useTabScrollRestore({
       if (saveTimer !== null) clearTimeout(saveTimer)
 
       // Final save under THIS effect's identity, read from the ref. Reading the
-      // DOM here is exactly the bug this hook replaces. A tab that was never
-      // scrolled and has no record to correct has nothing to persist — writing
-      // `{ offset: 0 }` for every tab the user merely opens is churn in state
-      // that gets serialised to disk. A record belonging to a DIFFERENT scroller
-      // is not ours to correct either: merely opening the insights pane must not
-      // wipe the list pane's offset.
-      if (touched || (saved !== undefined && saved.key === key)) {
+      // DOM here is exactly the bug this hook replaces. A pane that was never
+      // scrolled and has no entry of its own to correct has nothing to persist —
+      // writing `{ offset: 0 }` for every tab the user merely opens is churn in
+      // state that gets serialised to disk. `saved` is already this pane's entry
+      // alone, so merely opening the insights pane cannot touch the list pane's.
+      if (touched || saved !== undefined) {
         dispatch({
           type: 'SAVE_TAB_STATE',
-          payload: { tabId, groupId, scrollState: { offset: offsetRef.current, entityId, key } }
+          payload: {
+            tabId,
+            groupId,
+            scrollPanes: { [paneKey]: { offset: offsetRef.current, entityId } }
+          }
         })
       }
       offsetRef.current = 0

@@ -225,6 +225,7 @@ export const useSessionRestore = (
                     isDeleted: false,
                     scrollPosition: tab.scrollPosition,
                     scrollState: tab.scrollState,
+                    scrollPanes: tab.scrollPanes,
                     viewState: tab.viewState
                   },
                   background: true

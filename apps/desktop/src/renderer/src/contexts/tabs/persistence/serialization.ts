@@ -54,6 +54,7 @@ export const serializeTabState = (state: TabSystemState): PersistedTabState => {
         isPinned: tab.isPinned,
         scrollPosition: tab.scrollPosition,
         scrollState: tab.scrollState,
+        scrollPanes: tab.scrollPanes,
         viewState: tab.viewState
       }))
 

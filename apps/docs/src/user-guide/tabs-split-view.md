@@ -136,7 +136,9 @@ Note tabs — including the template editor and release-notes tabs — remember 
 
 If the tab navigates to a different note, the saved position is discarded rather than applied to the new content. Scrolling yourself while a position is being restored cancels the restore, so the app never fights you for control of the page.
 
-Other surfaces — Tasks, Inbox, Calendar, folder views — do not restore scroll yet.
+Pages that hold several scrolling areas — the Inbox's sub-views, a project's Overview, Notes, Files and Events tabs, a folder's list, table and gallery layouts — keep a position for each one. Going Overview → Notes → Overview returns to where you left Overview, not to the top, and the Notes position is still waiting for you as well. A tab remembers a handful of these areas at a time; if you visit more than that, the ones you have not been back to longest are forgotten first.
+
+Calendar does not restore scroll yet.
 
 ### If the layout can't be saved
 
