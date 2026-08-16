@@ -16,10 +16,18 @@ export type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | '
  * Is a remote sync session available?
  *
  * The canvas note-card lock (pages/canvas/canvas-note-lock.ts) gates on its
- * NEGATION and must keep reading this one predicate: if two copies drift, the
- * canvas guard silently stops matching the condition it exists to guard, and
- * unauthenticated split-view body clobber comes back without any test going
- * red. These statuses are produced in contexts/sync-context.tsx.
+ * NEGATION, and still must — but not for the reason it was written. It no
+ * longer means "this user has no shared Y.Doc": since `f89d23ed5` every note
+ * has one, signed in or not, so a note tab and a canvas card in one window
+ * share it either way. What the negation now selects is "main's CRDT provider
+ * may be down", because the only thing that leaves it uninitialized is
+ * `resetCrdtProvider()` from the sync runtime's stop and start-failure paths —
+ * and an editor that opens a note while main is down falls open to a
+ * whole-markdown saver for the life of its mount, which is the original
+ * clobber. Still one predicate, then: a second copy that drifts stops matching
+ * a live data-loss path with no test going red. The full argument, and what
+ * would replace this, is in canvas-note-lock.ts. These statuses are produced in
+ * contexts/sync-context.tsx.
  *
  * NOT the editor's gate. ContentArea used to call this and no longer does — see
  * `isLocalCrdtDocLive`.
