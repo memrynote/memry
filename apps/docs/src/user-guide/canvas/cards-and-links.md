@@ -91,16 +91,17 @@ If a note card shows **Open in tab to edit**, in-place editing is unavailable
 for it right now. That happens when the same note is already open in another
 visible pane, or is already being edited on another canvas card.
 
-Editing the same note in two places at once, on a device without an active,
-authenticated sync session, would let the two editors overwrite each other's
-text. Rather than risk losing what you typed, the card stays a read-only
-preview and points you at the surface that owns the edit. Click **Open in tab
-to edit** to jump there.
+Editing one note in two places at once is only safe when both surfaces are
+backed by the same live document. An active, authenticated sync session is the
+signal Memry uses to be sure of that — so without one it will not take the
+chance that two editors end up overwriting each other's text. The card stays a
+read-only preview and points you at the surface that owns the edit. Click
+**Open in tab to edit** to jump there.
 
-On a device with an active sync session, both surfaces share a single live
-document, so this does not apply and you can edit in either place. This
-read-only fallback applies to note cards only — task and event cards always
-edit in place.
+On a device with an active sync session, both surfaces are known to share a
+single live document, so this does not apply and you can edit in either place.
+This read-only fallback applies to note cards only — task and event cards
+always edit in place.
 
 ## Opening an item in a tab
 
