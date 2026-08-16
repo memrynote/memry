@@ -31,13 +31,18 @@ describe('mergeScrollPanes', () => {
   })
 
   it('re-writing a pane keeps it alive against eviction', () => {
+    // The pane the user keeps coming back to must not be evicted just because
+    // it was the FIRST one they ever scrolled — a write is a use.
     let panes: TabScrollPanes = { keeper: entry(10) }
     for (let i = 0; i < MAX_SCROLL_PANES; i += 1) {
-      panes = mergeScrollPanes(panes, { [`pane-${i}`]: entry(i) })
+      // Re-written BEFORE the newcomer, so only recency (not insertion) saves it.
       panes = mergeScrollPanes(panes, { keeper: entry(10 + i) })
+      panes = mergeScrollPanes(panes, { [`pane-${i}`]: entry(i) })
     }
 
+    expect(Object.keys(panes)).toHaveLength(MAX_SCROLL_PANES)
     expect(panes.keeper).toEqual(entry(10 + MAX_SCROLL_PANES - 1))
+    expect(panes['pane-0']).toBeUndefined()
   })
 })
 
