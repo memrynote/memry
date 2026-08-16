@@ -3,7 +3,7 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ userDataDir: '' }))
+const mocks = vi.hoisted(() => ({ userDataDir: '', trackMainError: vi.fn() }))
 
 vi.mock('electron', () => ({
   app: { getPath: () => mocks.userDataDir }
@@ -18,15 +18,22 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: (...args: unknown[]) => mocks.trackMainError(...args)
+}))
+
 const storeFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+const corruptFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.corrupt.json')
 
 describe('crdt pending note store', () => {
   beforeEach(() => {
     mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-pending-'))
+    mocks.trackMainError.mockClear()
   })
 
   afterEach(() => {
     fs.rmSync(mocks.userDataDir, { recursive: true, force: true })
+    vi.restoreAllMocks()
     vi.resetModules()
   })
 
@@ -39,13 +46,133 @@ describe('crdt pending note store', () => {
     expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b', 'note-c'])
   })
 
-  it('returns an empty list when nothing was ever recorded or the file is corrupt', async () => {
+  it('returns an empty list when nothing was ever recorded', async () => {
     const { readPendingCrdtNotes } = await import('./crdt-pending-notes')
 
     expect(readPendingCrdtNotes()).toEqual([])
+    expect(mocks.trackMainError).not.toHaveBeenCalled()
+  })
 
-    fs.writeFileSync(storeFile(), '{ not json', 'utf8')
-    expect(readPendingCrdtNotes()).toEqual([])
+  it('reads a store written by an older build byte for byte, and writes one it can read back', async () => {
+    // Live beta: every install already has a plain crdt-pending-notes.json
+    // written by the pre-atomic writer. The format is the contract in both
+    // directions — an older build must still be able to read what this one
+    // leaves behind after an update is rolled back.
+    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+
+    fs.writeFileSync(storeFile(), JSON.stringify(['note-a', 'note-b']), 'utf8')
+
+    expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b'])
+    expect(fs.existsSync(corruptFile())).toBe(false)
+    expect(mocks.trackMainError).not.toHaveBeenCalled()
+
+    recordPendingCrdtNotes(['note-c'])
+    expect(JSON.parse(fs.readFileSync(storeFile(), 'utf8'))).toEqual(['note-a', 'note-b', 'note-c'])
+  })
+
+  it('salvages the ids a torn write left behind instead of reporting nothing pending', async () => {
+    // This is what a crash mid-write used to leave: a prefix of the JSON array.
+    // Every id before the cut is intact, and this file is the only record that
+    // those notes are owed to the server — the edits themselves are safe in the
+    // local CRDT store, but nothing else knows they were never pushed.
+    //
+    // The id the cut landed inside is genuinely gone: `"note-c` is a prefix, and
+    // a prefix is not an id. Two of three beats none of three.
+    const { readPendingCrdtNotes } = await import('./crdt-pending-notes')
+
+    fs.writeFileSync(storeFile(), '["note-a","note-b","note-c', 'utf8')
+
+    expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b'])
+  })
+
+  it('preserves an unreadable store and reports it, rather than dropping it with a warning', async () => {
+    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+
+    fs.writeFileSync(storeFile(), '["note-a","note-b","note-c', 'utf8')
+    recordPendingCrdtNotes(['note-d'])
+
+    // The damaged bytes are kept, not clobbered by the next write — the tail the
+    // salvage could not use is still there to be read by a human.
+    expect(fs.readFileSync(corruptFile(), 'utf8')).toBe('["note-a","note-b","note-c')
+    // ...and the salvage is repaired into the live file, so the next reader —
+    // clearPendingCrdtNotes at the tail of a drain — does not find it empty.
+    expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b', 'note-d'])
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'sync',
+      'crdt_pending_notes_corrupt',
+      expect.anything()
+    )
+  })
+
+  it('replays a salvaged store and still retains what it could not push', async () => {
+    // The drain reads the store, works, then reads it AGAIN through
+    // clearPendingCrdtNotes to remove only what reached the server. A salvage
+    // that lived in memory would be gone by that second read — the file has been
+    // moved aside — and the note that failed to push would be dropped, which is
+    // the same silent loss with an extra step. The salvage is repaired to disk.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes } = await import('./crdt-pending-notes')
+
+    fs.writeFileSync(storeFile(), '["note-ok","note-offline","note-t', 'utf8')
+
+    const result = await drainPendingCrdtNotes({
+      isSyncable: () => true,
+      mergeRemote: async () => true,
+      pushSnapshot: async (noteId) => noteId === 'note-ok'
+    })
+
+    expect(result).toEqual({ cleared: 1, retained: 1 })
+    expect(readPendingCrdtNotes()).toEqual(['note-offline'])
+  })
+
+  it('keeps at most one preserved copy no matter how often the store is damaged', async () => {
+    // The recovery path must not become its own leak: this file is written on
+    // the edit path, so a timestamped copy per corruption would accumulate in
+    // userData forever on a device with a failing disk.
+    const { readPendingCrdtNotes } = await import('./crdt-pending-notes')
+
+    fs.writeFileSync(storeFile(), '["note-a', 'utf8')
+    readPendingCrdtNotes()
+    fs.writeFileSync(storeFile(), '["note-a","note-b', 'utf8')
+    readPendingCrdtNotes()
+
+    expect(fs.readdirSync(mocks.userDataDir).filter((name) => name.includes('corrupt'))).toEqual([
+      'crdt-pending-notes.corrupt.json'
+    ])
+    // The surviving copy is the newest, which is also the one that subsumes the
+    // earlier one: the read that moved that copy aside salvaged its ids forward.
+    expect(fs.readFileSync(corruptFile(), 'utf8')).toBe('["note-a","note-b')
+  })
+
+  it('leaves the previous list intact when a write is cut short', async () => {
+    // A full disk or a power cut mid-write. The live path must never hold a
+    // half-written list: the old bytes stand until a complete replacement is
+    // staged and renamed over them, so there is no window in which the store
+    // parses as "nothing pending".
+    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a', 'note-b'])
+
+    const realWriteFileSync = fs.writeFileSync
+    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementationOnce(((
+      target: fs.PathOrFileDescriptor,
+      data: string
+    ) => {
+      // Half the bytes land, then the write dies — wherever it was aimed.
+      const half = data.slice(0, Math.floor(data.length / 2))
+      if (typeof target === 'number') fs.writeSync(target, half)
+      else realWriteFileSync(target, half, 'utf8')
+      const err = new Error('ENOSPC: no space left on device') as NodeJS.ErrnoException
+      err.code = 'ENOSPC'
+      throw err
+    }) as unknown as typeof fs.writeFileSync)
+
+    recordPendingCrdtNotes(['note-c'])
+    spy.mockRestore()
+
+    expect(readPendingCrdtNotes()).toEqual(['note-a', 'note-b'])
+    // Nothing was corrupt, so nothing was moved aside, and the failed attempt
+    // left no temp file behind.
+    expect(fs.existsSync(corruptFile())).toBe(false)
+    expect(fs.readdirSync(mocks.userDataDir).filter((name) => name.endsWith('.tmp'))).toEqual([])
   })
 
   it('clears only the notes whose state actually reached the server', async () => {
