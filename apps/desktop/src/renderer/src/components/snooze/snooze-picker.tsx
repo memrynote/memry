@@ -238,7 +238,13 @@ function SnoozeCustomDialog({
       modal
     >
       <DialogContent
-        className="sm:max-w-[400px] z-[10000]"
+        // `DialogContent` is a fixed, viewport-centred box with no height cap of
+        // its own, so a dialog taller than the window simply hangs off both
+        // edges with nothing to scroll. The calendar alone makes this one about
+        // 570px tall, which a 150%-scaled 768px display cannot fit — and the
+        // snooze button, being last, is the first thing to go. Cap the dialog,
+        // give the tall part a scrollbar and keep the action out of it.
+        className="sm:max-w-[400px] z-[10000] grid-rows-[auto_1fr] max-h-[85vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
@@ -256,49 +262,56 @@ function SnoozeCustomDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Calendar - properly sized with larger cells */}
-          <DatePickerCalendar
-            selected={selectedDate}
-            onSelect={(d) => setSelectedDate(d)}
-            disabled={(date) => {
-              const today = new Date()
-              today.setHours(0, 0, 0, 0)
-              const compareDate = new Date(date)
-              compareDate.setHours(0, 0, 0, 0)
-              return compareDate < today
-            }}
-            className="rounded-md border mx-auto"
-          />
-
-          {/* Time Picker */}
-          <div className="flex items-center gap-2 px-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <Input
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="flex-1"
+        <div className="flex min-h-0 flex-col gap-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto">
+            {/* Calendar - properly sized with larger cells */}
+            <DatePickerCalendar
+              selected={selectedDate}
+              onSelect={(d) => setSelectedDate(d)}
+              disabled={(date) => {
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const compareDate = new Date(date)
+                compareDate.setHours(0, 0, 0, 0)
+                return compareDate < today
+              }}
+              className="rounded-md border mx-auto"
             />
+
+            {/* Time Picker */}
+            <div className="flex items-center gap-2 px-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Input
+                type="time"
+                value={selectedTime}
+                onChange={(e) => setSelectedTime(e.target.value)}
+                className="flex-1"
+              />
+            </div>
           </div>
 
-          {/* Preview & Error */}
-          {selectedDate ? (
-            <div
-              className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
-            >
-              {timeError || (previewDate ? formatSnoozeTime(previewDate, clockFormat) : '')}
-            </div>
-          ) : null}
+          {/* The preview travels with the button it explains: it is the only
+              place the "past time" error appears, so scrolling it away would
+              leave a disabled button with no stated reason. */}
+          <div className="shrink-0 space-y-4">
+            {/* Preview & Error */}
+            {selectedDate ? (
+              <div
+                className={`text-xs text-center ${timeError ? 'text-destructive' : 'text-muted-foreground'}`}
+              >
+                {timeError || (previewDate ? formatSnoozeTime(previewDate, clockFormat) : '')}
+              </div>
+            ) : null}
 
-          {/* Snooze Button */}
-          <Button
-            onClick={handleCustomSnooze}
-            disabled={!selectedDate || !!timeError}
-            className="w-full"
-          >
-            {tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze3')}
-          </Button>
+            {/* Snooze Button */}
+            <Button
+              onClick={handleCustomSnooze}
+              disabled={!selectedDate || !!timeError}
+              className="w-full"
+            >
+              {tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze3')}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

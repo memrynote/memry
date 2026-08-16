@@ -20,7 +20,9 @@ Snoozing an inbox item hides it until the wake time arrives. The item leaves the
 
 ### Custom Snooze
 
-The custom dialog accepts any future date and time. Past times are rejected.
+The custom dialog accepts any future date and time. Past times are rejected. When the window is too
+short for the whole dialog, the calendar and time field scroll while the **Snooze** button stays
+pinned below them.
 
 ### Snoozed View
 
