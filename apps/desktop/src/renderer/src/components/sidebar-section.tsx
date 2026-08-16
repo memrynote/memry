@@ -14,6 +14,12 @@ interface SidebarSectionProps {
   children: React.ReactNode
   className?: string
   actions?: React.ReactNode
+  /**
+   * Pins the actions open instead of revealing them on hover. Only for the case
+   * where the section body has nothing in it to point at: an empty section whose
+   * one way in is a hover-only control is a section with no way in at all.
+   */
+  actionsAlwaysVisible?: boolean
 }
 
 function SectionChevron({ expanded }: { expanded: boolean }): React.JSX.Element {
@@ -40,7 +46,8 @@ export const SidebarSection = ({
   totalCount,
   children,
   className,
-  actions
+  actions,
+  actionsAlwaysVisible = false
 }: SidebarSectionProps): React.JSX.Element => {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
@@ -158,7 +165,11 @@ export const SidebarSection = ({
               // Every action in here is in the tab order, so hover cannot be
               // the only thing that reveals them — a keyboard user would land
               // on a control painted at `opacity-0` (WCAG 2.4.7).
-              className="flex shrink-0 items-center gap-0.5 pe-2 opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100 transition-opacity duration-150"
+              className={cn(
+                'flex shrink-0 items-center gap-0.5 pe-2 transition-opacity duration-150',
+                !actionsAlwaysVisible &&
+                  'opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100'
+              )}
               onClick={(e) => e.stopPropagation()}
             >
               {actions}

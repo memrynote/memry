@@ -564,6 +564,28 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           id="projects"
           label={tPhaseF('phaseF.componentsAppSidebar.projects')}
           defaultExpanded={false}
+          totalCount={activeProjects.length}
+          // With no projects the section body is an empty-state CTA nobody sees
+          // while the section is collapsed — which it is by default. Pinning the
+          // "+" open is then the only entry point on screen.
+          actionsAlwaysVisible={activeProjects.length === 0}
+          actions={
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleCreateProject}
+                  className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                  aria-label={tPhaseF('phaseF.componentsAppSidebar.newProject')}
+                >
+                  <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {tPhaseF('phaseF.componentsAppSidebar.newProject')}
+              </TooltipContent>
+            </Tooltip>
+          }
         >
           <SortableProjectList
             projects={activeProjects}

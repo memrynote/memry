@@ -10,7 +10,7 @@ Projects appear in the sidebar with incomplete-task counts. Drag to reorder. Use
 
 ## Creating a Project
 
-The **+** affordance in the sidebar Projects section opens a creation dialog:
+The **+** affordance sits in the sidebar **PROJECTS** section header. It appears when you hover the header — except while you have no projects yet, when it stays visible so the section is never a dead end. It opens a creation dialog:
 
 - **Name** — display title
 - **Color** — accent for the sidebar entry and project header

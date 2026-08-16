@@ -36,6 +36,36 @@ beforeEach(() => {
   localStorage.clear()
 })
 
+describe('sidebar section pinned actions', () => {
+  // An empty section has nothing in its body to click, and every section starts
+  // collapsed, so hover-only actions leave a section with no entry point at all.
+  it('keeps the actions on screen without hover or focus when pinned', () => {
+    render(
+      <SidebarProvider>
+        <SidebarSection
+          id="pinned"
+          label="Projects"
+          actionsAlwaysVisible
+          actions={<button type="button">New project</button>}
+        >
+          <div>child</div>
+        </SidebarSection>
+      </SidebarProvider>
+    )
+
+    const actions = screen.getByRole('button', { name: 'New project' }).parentElement
+    expect(actions).not.toBeNull()
+    expect(isRevealed(actions!)).toBe(true)
+  })
+
+  it('falls back to the hover reveal when not pinned', () => {
+    renderSection()
+
+    const actions = screen.getByRole('button', { name: 'New canvas' }).parentElement
+    expect(isRevealed(actions!)).toBe(false)
+  })
+})
+
 describe('sidebar section focus reveal', () => {
   it('keeps the actions hidden while nothing in the section has focus', () => {
     renderSection()
