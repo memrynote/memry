@@ -52,6 +52,22 @@ export function readScrollPane(
 }
 
 /**
+ * Whether an entry describes a position this pane may restore.
+ *
+ * The single predicate behind BOTH halves of the scroll story: the restore
+ * itself, and the auto-positioning precedence rule (see
+ * `hooks/use-tab-auto-position.ts`). They have to agree — a pane that refuses
+ * to restore a stale-entity entry but still lets that entry suppress
+ * auto-positioning leaves the user staring at the top of the page.
+ */
+export function isRestorableEntry(
+  entry: TabScrollEntry | undefined,
+  entityId: string | undefined
+): entry is TabScrollEntry {
+  return entry !== undefined && entry.entityId === entityId && Number.isFinite(entry.offset)
+}
+
+/**
  * Merge a pane patch over the tab's existing entries, bounded.
  *
  * Insertion order is the recency order eviction reads, so a written pane is

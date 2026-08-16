@@ -22,7 +22,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useTabActionsOptional } from '@/contexts/tabs'
-import { readScrollPane, scrollPaneKey } from '@/contexts/tabs/scroll-panes'
+import { isRestorableEntry, readScrollPane, scrollPaneKey } from '@/contexts/tabs/scroll-panes'
 import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 
 /** How often the live offset is committed to tab state while scrolling. */
@@ -276,11 +276,12 @@ export function useTabScrollRestore({
     // let alone applied. A tab keeps its identity when it navigates to another
     // note, so an entry stamped with a different entity describes content that
     // is gone.
+    // The same predicate the auto-positioning gate reads, so "this pane has a
+    // position to restore" and "auto-positioning must stand down" can never
+    // disagree.
     const saved = readScrollPane(getTab(tabId, groupId) ?? undefined, key)
-    const restorable =
-      saved !== undefined && saved.entityId === entityId && Number.isFinite(saved.offset)
 
-    if (restorable) {
+    if (isRestorableEntry(saved, entityId)) {
       const target = saved.offset
       offsetRef.current = target
       // Tab state already holds exactly this record, so a save that reproduces
