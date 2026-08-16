@@ -22,6 +22,10 @@ Snoozing an inbox item, task, or note's reminder hides it until the wake time ar
 
 The custom dialog lets you pick any future date and time. Past times are rejected with a clear error.
 
+On a short window the calendar and the time field scroll inside the dialog. The chosen time and the
+**Snooze** button stay pinned below them, so the action — and the error explaining a disabled
+button — never scrolls out of reach.
+
 ### Where Snooze Is Available
 
 | Surface       | Snooze                                                      |
