@@ -586,6 +586,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onMove={(...args) => void actions.handleMove(...args)}
           onBulkDelete={actions.handleBulkDelete}
           onRenameNote={actions.handleRenameClick}
+          renamingNoteId={actions.renamingNoteId}
+          renameValue={actions.renameValue}
+          onRenameValueChange={actions.handleRenameInputChange}
+          onRenameSubmit={(...args) => void actions.handleRenameSubmit(...args)}
+          onRenameCancel={actions.handleRenameCancel}
+          isRenaming={actions.isRenaming}
           onApplyTemplateToNote={setApplyTemplateNote}
           onDeleteNote={actions.handleDeleteClick}
           onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
@@ -594,6 +600,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onCreateNote={(...args) => void actions.handleCreateNoteInFolder(...args)}
           onCreateFolder={(...args) => void actions.handleCreateSubfolder(...args)}
           onRenameFolder={actions.handleRenameFolderClick}
+          renamingFolderPath={actions.renamingFolderPath}
+          folderRenameValue={actions.folderRenameValue}
+          onFolderRenameValueChange={actions.setFolderRenameValue}
+          onFolderRenameSubmit={(...args) => void actions.handleFolderRenameSubmit(...args)}
+          onFolderRenameCancel={actions.handleFolderRenameCancel}
+          isFolderRenaming={actions.isFolderRenaming}
           onSetFolderTemplate={actions.handleSetFolderTemplate}
           onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
           folderTemplateNames={data.folderTemplateNames}
