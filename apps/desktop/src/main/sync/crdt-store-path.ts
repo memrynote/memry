@@ -7,8 +7,10 @@ import { moveStoreDir } from './crdt-store-move'
 import { setAsideAmbiguousLegacyDocs } from './crdt-legacy-partition'
 import {
   clearLegacyCrdtStorePartitionPending,
+  clearPendingCrdtStoreRename,
   getLegacyCrdtStoreClaim,
   getLegacyCrdtStorePartitionPending,
+  getPendingCrdtStoreRename,
   getVaults,
   recordLegacyCrdtStoreClaim
 } from '../store'
@@ -51,6 +53,11 @@ function storeDirName(vaultUuid: string): string {
   return createHash('sha256').update(vaultUuid).digest('hex').slice(0, 32)
 }
 
+/** Where the store for `vaultUuid` lives, whether or not any vault holds it now. */
+function vaultCrdtStorePath(vaultUuid: string): string {
+  return path.join(app.getPath('userData'), STORE_ROOT_DIRNAME, storeDirName(vaultUuid))
+}
+
 /**
  * Where the currently open vault's CRDT store lives, or null when there is no
  * vault to scope it to.
@@ -65,10 +72,7 @@ export function resolveVaultCrdtStore(): VaultCrdtStore | null {
   try {
     const vaultUuid = getOrCreateVaultUuid(getDatabase())
     if (!vaultUuid) return null
-    return {
-      vaultUuid,
-      storagePath: path.join(app.getPath('userData'), STORE_ROOT_DIRNAME, storeDirName(vaultUuid))
-    }
+    return { vaultUuid, storagePath: vaultCrdtStorePath(vaultUuid) }
   } catch (err) {
     log.error('Could not resolve the vault CRDT store path', { error: err })
     return null
@@ -191,6 +195,86 @@ export async function partitionInheritedLegacyStore({
 }
 
 /**
+ * Rename this vault's store to match a uuid it has adopted since the store was
+ * last opened.
+ *
+ * The uuid is resolved once, when the provider opens the store, and device
+ * linking rewrites it in place afterwards (`adoptVaultLocally`) — so nothing
+ * breaks for the rest of that session, and then the *next* open looks under the
+ * adopted name, finds nothing, and every note re-seeds from markdown as an
+ * independent insertion instead of merging with the history it already had.
+ * `resetVaultUuidCache()` exists in that same function for exactly this class of
+ * reason; the store directory is the same problem one layer out.
+ *
+ * Safe to do here and nowhere else: this runs immediately before the store is
+ * opened, and the provider that held the previous directory has always been
+ * destroyed by then — `closeVault` awaits `destroy()` (which closes LevelDB)
+ * before `resetCrdtProvider()`, and a still-initialized provider never re-enters
+ * `initPersistence`. Moving the directory underneath an open LevelDB lock, which
+ * is what doing it inside the linking flow would mean, is never attempted.
+ *
+ * Crash safety is the same shape as the legacy claim's. The record is written
+ * before the uuid it describes, and it — not the directory, which the failed
+ * launch may or may not have moved — is what drives this:
+ *
+ *  - crash after the record, before the uuid rewrite → the vault still has its
+ *    old uuid, so this never fires and the store opens where it always was;
+ *  - crash after the rewrite, before or during the move → the record still
+ *    names the old directory, so the next open finishes the move;
+ *  - crash after both → the record is cleared and there is nothing to redo.
+ *
+ * A half-move cannot lose data: `moveStoreDir` is a rename, and its copy
+ * fallback deletes the destination rather than leaving two halves.
+ */
+export async function settlePendingCrdtStoreRename({
+  vaultUuid,
+  storagePath
+}: VaultCrdtStore): Promise<void> {
+  const previousUuid = getPendingCrdtStoreRename(vaultUuid)
+  if (previousUuid === undefined) return
+
+  const previousPath = vaultCrdtStorePath(previousUuid)
+  if (!existsSync(previousPath)) {
+    // The vault adopted a uuid without ever having opened a store under its own
+    // — a vault provisioned for linking (`createDormantVault`) is the ordinary
+    // way to get here. There is nothing to move and never will be.
+    clearPendingCrdtStoreRename(vaultUuid)
+    return
+  }
+
+  if (existsSync(storagePath)) {
+    // Two local vaults have ended up claiming one uuid, or a previous move fell
+    // back to copy+delete and the delete failed. Either way the destination is
+    // somebody's history: moving on top of it would destroy that instead of the
+    // duplicate. Stay pending — deleting the leftover by hand is a recovery, and
+    // this then completes on the next open.
+    log.warn('Pre-adoption CRDT store left in place: the adopted uuid already has a store', {
+      vaultUuid,
+      previousPath,
+      storagePath
+    })
+    return
+  }
+
+  if (await moveStoreDir(previousPath, storagePath)) {
+    clearPendingCrdtStoreRename(vaultUuid)
+    log.info('CRDT store followed the vault uuid it adopted', {
+      vaultUuid,
+      previousUuid,
+      storagePath
+    })
+  } else {
+    // The record stands, so the next open retries rather than opening an empty
+    // store next to a full one.
+    log.warn('Could not move the pre-adoption CRDT store; will retry on the next open', {
+      vaultUuid,
+      previousPath,
+      storagePath
+    })
+  }
+}
+
+/**
  * Resolve the open vault's store, create its parent directory, and settle the
  * legacy-store migration — everything that has to happen before the store is
  * opened. Null when no vault is open yet.
@@ -210,6 +294,13 @@ export async function prepareVaultCrdtStore(): Promise<VaultCrdtStore | null> {
     })
   }
 
+  // Before the legacy inherit, because both want to move a directory into this
+  // vault's name and only one can. The pre-adoption store is history this vault
+  // provably wrote itself; the legacy store is history it can only *claim*, and
+  // whose ownership is ambiguous enough that half of it may have to be set
+  // aside. When the two collide — only reachable when a legacy move already
+  // failed once — the unambiguous one wins and the legacy store stays put.
+  await settlePendingCrdtStoreRename(target)
   await inheritLegacyCrdtStore(target)
   await partitionInheritedLegacyStore(target)
   return target
