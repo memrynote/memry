@@ -691,6 +691,144 @@ describe('CrdtSyncCoordinator', () => {
     expect(batched).toEqual([['n1', 'n2'], ['n3', 'n4'], ['n5']])
   })
 
+  it('flags a note whose single-note pass skipped an update it could not verify', async () => {
+    // #given one of two updates is signed by a device this client has no key
+    // for — a revoked peer, or a device list it could not refresh
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockResolvedValue({
+      updates: [
+        { sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'gone-device' },
+        { sequenceNum: 5, data: 'eQ==', createdAt: 2, signerDeviceId: 'device-a' }
+      ],
+      hasMore: false
+    })
+    decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+    const resolveDeviceKey = vi.fn(async (id: string) =>
+      id === 'gone-device' ? null : new Uint8Array([1, 2, 3])
+    )
+    const coordinator = new CrdtSyncCoordinator(ctx, resolveDeviceKey)
+
+    // #when
+    const merged = await coordinator.applyCrdtIncrementals(
+      'note-1',
+      'token-1',
+      new Uint8Array([4])
+    )
+
+    // #then the pass still reports merged, so the pending-note replay is not
+    // held back — an unresolvable signer can be permanent, and refusing to push
+    // would strand this device's own offline backlog forever. The hazard is
+    // carried as a flag instead, and the push path answers it by choosing the
+    // endpoint that does not prune.
+    expect(merged).toBe(true)
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+    // And it is owed a pull, so a signer that was only transiently unresolvable
+    // (an expired token, say) is retried rather than flagged forever.
+    expect(coordinator.drainPendingPulls()).toEqual(['note-1'])
+  })
+
+  it('flags a note whose server snapshot baseline could not be verified', async () => {
+    // #given the note's stored snapshot is signed by an unresolvable device
+    const { ctx } = createBatchContext()
+    fetchCrdtSnapshotMock.mockResolvedValue({
+      snapshot: new Uint8Array([9]),
+      sequenceNum: 12,
+      signerDeviceId: 'gone-device'
+    })
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn().mockResolvedValue(null))
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+    // #then a snapshot push would overwrite the single R2 blob this pass just
+    // declined to read — a larger loss than a pruned incremental, and equally
+    // permanent.
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+  })
+
+  it('flags only the batched note that skipped an unverifiable update', async () => {
+    // #given note-2 carries an update from a signer this client cannot resolve
+    const { ctx } = createBatchContext()
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': {
+          updates: [{ sequenceNum: 3, data: 'eA==', createdAt: 1, signerDeviceId: 'device-a' }],
+          hasMore: false
+        },
+        'note-2': {
+          updates: [{ sequenceNum: 4, data: 'eQ==', createdAt: 1, signerDeviceId: 'gone-device' }],
+          hasMore: false
+        }
+      }
+    })
+    decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+    const resolveDeviceKey = vi.fn(async (id: string) =>
+      id === 'gone-device' ? null : new Uint8Array([1, 2, 3])
+    )
+    const coordinator = new CrdtSyncCoordinator(ctx, resolveDeviceKey)
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then the flag is per note. Flagging the whole chunk would push every
+    // note in a sweep onto the non-pruning path and leave the server with no
+    // compaction point anywhere in the vault.
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-2')).toBe(true)
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(false)
+  })
+
+  it('clears the flag once a later pass verifies every signer', async () => {
+    // #given a pass that skipped an update because the signer was unresolvable
+    const { ctx } = createBatchContext()
+    getFromServerMock.mockResolvedValue({
+      updates: [{ sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'flaky-device' }],
+      hasMore: false
+    })
+    decryptCrdtUpdateMock.mockReturnValue(new Uint8Array([7]))
+    let signerResolves = false
+    const resolveDeviceKey = vi.fn(async () =>
+      signerResolves ? new Uint8Array([1, 2, 3]) : null
+    )
+    const coordinator = new CrdtSyncCoordinator(ctx, resolveDeviceKey)
+
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+
+    // #when the signer resolves on a later pass — the transient case, which is
+    // what a missing access token or an un-refreshed device list looks like.
+    // Deliberately NOT via clearCaches(): that drops the flag wholesale, so a
+    // test that used it would assert nothing about the clean pass.
+    signerResolves = true
+    await coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+
+    // #then the note goes back to the snapshot path. A flag that only ever
+    // latched would permanently cost this note its compaction point.
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(false)
+  })
+
+  it('keeps the flag when a pass throws after skipping an unverifiable update', async () => {
+    // #given the first page skips an update, and the second page fails
+    const { ctx } = createBatchContext()
+    getFromServerMock
+      .mockResolvedValueOnce({
+        updates: [{ sequenceNum: 4, data: 'eA==', createdAt: 1, signerDeviceId: 'gone-device' }],
+        hasMore: true
+      })
+      .mockRejectedValueOnce(rateLimited())
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn().mockResolvedValue(null))
+
+    // #when
+    await expect(
+      coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    ).resolves.toBe(false)
+
+    // #then the flag has to survive the throw. Computing it only at the end of
+    // a clean pass would leave a note that skipped an update looking safe to
+    // snapshot the moment anything later in the same pass failed.
+    expect(coordinator.hasUnverifiedRemoteUpdate('note-1')).toBe(true)
+  })
+
   it('does not seed from markdown when a doc was closed underneath the pass', async () => {
     // #given note-2's doc is gone by the time the pass checks it: getStateVector
     // reports null (no doc) rather than an empty vector (open but empty doc)

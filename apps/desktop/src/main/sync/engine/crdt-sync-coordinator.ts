@@ -22,6 +22,27 @@ export class CrdtSyncCoordinator {
   private resolveDeviceKey: ResolveDeviceKey
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
+  /**
+   * Notes whose last pass left a server payload this device could not verify,
+   * because `resolveDeviceKey` had no public key for its signer.
+   *
+   * Refusing to push at all is not an option: an unresolvable signer can be
+   * permanent — `GET /auth/devices` only lists non-revoked devices, so a
+   * revoked or deleted peer's key never comes back — and a note held back
+   * forever strands this device's own offline backlog forever. It is also not
+   * reliably transient: `getDeviceSigningKey` already refetches the device list
+   * on a cache miss, so the stale-list case largely self-heals and a `null`
+   * that survives that is more often permanent than not.
+   *
+   * The signer key is only ever a *signature* check — the payload itself is
+   * sealed with a file key wrapped by the vault key (`crdt-encrypt.ts`) — so a
+   * skipped update still holds real, still-decryptable user content. Deleting
+   * it server-side is a real loss, not the disposal of already-dead bytes.
+   *
+   * So the note is flagged instead, and the push path routes it away from the
+   * snapshot endpoint, which is the only thing that prunes.
+   */
+  private unverifiedRemoteNotes = new Set<string>()
 
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
@@ -74,6 +95,32 @@ export class CrdtSyncCoordinator {
     this.pendingPulls.clear()
     this.lastAppliedSequence.clear()
     this.applyFailureReported.clear()
+    this.unverifiedRemoteNotes.clear()
+  }
+
+  /**
+   * Does this note hold server state this device merged around rather than into
+   * its doc?
+   *
+   * `true` means a snapshot push for this note would destroy that state:
+   * `storeSnapshot` overwrites the note's single R2 snapshot blob and
+   * `pruneUpdatesBeforeSnapshot` then deletes every `crdt_updates` row at or
+   * below the stored watermark — including the row this device skipped, which
+   * is by definition absent from the snapshot replacing it. Pushing the same
+   * doc state to `/sync/crdt/updates` instead has neither effect.
+   */
+  hasUnverifiedRemoteUpdate(noteId: string): boolean {
+    return this.unverifiedRemoteNotes.has(noteId)
+  }
+
+  /**
+   * A pass is only allowed to clear the flag it did not raise. Skips are
+   * recorded the moment they happen and cleared only once a pass has walked a
+   * note end to end without one, so a pass that throws half-way leaves the
+   * conservative answer standing rather than a stale "safe".
+   */
+  private clearUnverifiedIfClean(noteId: string, sawUnverified: boolean): void {
+    if (!sawUnverified) this.unverifiedRemoteNotes.delete(noteId)
   }
 
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
@@ -83,15 +130,20 @@ export class CrdtSyncCoordinator {
     return next
   }
 
+  /**
+   * `verified: false` means the server's snapshot for this note was left out of
+   * the local doc. The caller has to carry that up: a snapshot push would
+   * overwrite the very blob that was skipped.
+   */
   private async applySnapshotBaseline(
     noteId: string,
     token: string,
     vaultKey: Uint8Array,
     mode: 'single' | 'batch'
-  ): Promise<number> {
+  ): Promise<{ since: number; verified: boolean }> {
     const snapshotResult = await fetchCrdtSnapshot(noteId, token)
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
-      return 0
+      return { since: 0, verified: true }
     }
 
     const signerPubKey = await this.resolveDeviceKey(snapshotResult.signerDeviceId)
@@ -100,7 +152,7 @@ export class CrdtSyncCoordinator {
         noteId,
         signerDeviceId: snapshotResult.signerDeviceId
       })
-      return 0
+      return { since: 0, verified: false }
     }
 
     const decrypted = decryptCrdtUpdate(snapshotResult.snapshot, vaultKey, noteId, signerPubKey)
@@ -111,7 +163,7 @@ export class CrdtSyncCoordinator {
       mode,
       sequenceNum: snapshotResult.sequenceNum
     })
-    return baselineSequence
+    return { since: baselineSequence, verified: true }
   }
 
   /**
@@ -122,6 +174,12 @@ export class CrdtSyncCoordinator {
    * up to here" and it acts on that by deleting the peer's incrementals, so a
    * push on top of an incomplete merge destroys them. `false` therefore has to
    * mean "do not push", which makes every early return below a `false` too.
+   *
+   * An update skipped for an unresolvable signer is deliberately NOT a `false`.
+   * That skip can be permanent, so `false` would hold this note back forever and
+   * trade a rare loss for a certain one. It is recorded in
+   * `unverifiedRemoteNotes` instead, and the push path answers it by sending the
+   * doc state to the incremental endpoint, which prunes nothing.
    */
   async applyCrdtIncrementals(
     noteId: string,
@@ -140,7 +198,10 @@ export class CrdtSyncCoordinator {
       const doc = await crdtProvider.open(noteId, undefined, { skipSeed: true })
       if (!doc) return false
 
-      let since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
+      const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
+      let since = baseline.since
+      let sawUnverified = !baseline.verified
+      if (sawUnverified) this.unverifiedRemoteNotes.add(noteId)
 
       let hasMore = true
 
@@ -189,6 +250,12 @@ export class CrdtSyncCoordinator {
               signerDeviceId: entry.signerDeviceId,
               sequenceNum: entry.sequenceNum
             })
+            // Flagged before the loop can throw, and the note is owed another
+            // pull: a signer that becomes resolvable (a token that was simply
+            // expired here) clears the flag on the next pass.
+            sawUnverified = true
+            this.unverifiedRemoteNotes.add(noteId)
+            this.owePendingPull(noteId)
             since = entry.sequenceNum
             continue
           }
@@ -200,6 +267,8 @@ export class CrdtSyncCoordinator {
 
         hasMore = result.hasMore
       }
+
+      this.clearUnverifiedIfClean(noteId, sawUnverified)
 
       const postVector = crdtProvider.getStateVector(noteId)
       if (!postVector || postVector.length <= 2) {
@@ -280,6 +349,9 @@ export class CrdtSyncCoordinator {
     if (!crdtProvider) return
 
     const syncOpenedNoteIds = new Set<string>()
+    // Per-pass record, so only a note this pass walked cleanly may have its
+    // standing flag cleared at the end.
+    const sawUnverified = new Set<string>()
     try {
       const sinceMap = new Map<string, number>()
 
@@ -297,8 +369,13 @@ export class CrdtSyncCoordinator {
         }
 
         try {
-          const since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
-          sinceMap.set(noteId, since)
+          const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
+          sinceMap.set(noteId, baseline.since)
+          if (!baseline.verified) {
+            sawUnverified.add(noteId)
+            this.unverifiedRemoteNotes.add(noteId)
+            this.owePendingPull(noteId)
+          }
         } catch (err) {
           if (err instanceof DOMException && err.name === 'AbortError') throw err
           // A single note's baseline failure must not abandon every note left in
@@ -357,6 +434,12 @@ export class CrdtSyncCoordinator {
                 signerDeviceId: entry.signerDeviceId,
                 sequenceNum: entry.sequenceNum
               })
+              // Same reasoning as the single-note path: flag now so a throw
+              // later in the chunk cannot leave a stale "safe to snapshot",
+              // and owe the note a pull so a transient signer self-heals.
+              sawUnverified.add(noteId)
+              this.unverifiedRemoteNotes.add(noteId)
+              this.owePendingPull(noteId)
               activeSince.set(noteId, entry.sequenceNum)
               continue
             }
@@ -374,6 +457,10 @@ export class CrdtSyncCoordinator {
             activeSince.delete(noteId)
           }
         }
+      }
+
+      for (const noteId of sinceMap.keys()) {
+        this.clearUnverifiedIfClean(noteId, sawUnverified.has(noteId))
       }
 
       // Seed only notes whose snapshot baseline succeeded. A note skipped at :205

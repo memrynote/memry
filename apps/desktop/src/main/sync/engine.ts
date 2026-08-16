@@ -407,6 +407,16 @@ export class SyncEngine extends EventEmitter {
     return this.crdtSync.pullCrdtForNote(noteId)
   }
 
+  /**
+   * `true` when a merge pass left server state for this note out of the local
+   * doc because it could not verify the signer, so a snapshot push would delete
+   * or overwrite it. The CRDT snapshot push fn asks this before choosing an
+   * endpoint; see `CrdtSyncCoordinator.hasUnverifiedRemoteUpdate`.
+   */
+  hasUnverifiedRemoteCrdtUpdate(noteId: string): boolean {
+    return this.crdtSync.hasUnverifiedRemoteUpdate(noteId)
+  }
+
   async fullSync(): Promise<void> {
     const start = Date.now()
     try {
