@@ -520,17 +520,33 @@ list.
 
 ## Endpoints
 
-| Path                      | Direction | Purpose                                                                        |
-| ------------------------- | --------- | ------------------------------------------------------------------------------ |
-| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs)                                   |
-| `POST /sync/pull`         | down      | Fetch updates since cursor                                                     |
-| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates                                                 |
-| `GET /sync/vaults`        | down      | List the account's registered vaults                                           |
-| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name                                    |
-| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out                                                |
-| `GET /auth/key-verifier`  | down      | Account key verifier for an established session (vault-key mismatch detection) |
-| `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
-| `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
+| Path                              | Direction | Purpose                                                                          |
+| --------------------------------- | --------- | -------------------------------------------------------------------------------- |
+| `POST /sync/push`                 | up        | Upload new sync items (metadata + blob refs)                                     |
+| `POST /sync/pull`                 | down      | Fetch updates since cursor                                                       |
+| `POST /sync/crdt/updates`         | up        | Incremental Yjs binary updates                                                   |
+| `GET /sync/crdt/updates`          | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)        |
+| `POST /sync/crdt/updates/batch`   | down      | Incremental updates for up to 100 notes in one request; never snapshot baselines |
+| `POST /sync/crdt/snapshot`        | up        | Full Yjs document baseline; prunes the note's stored updates at or below it      |
+| `GET /sync/crdt/snapshot/:noteId` | down      | The note's snapshot baseline, applied before its incrementals                    |
+| `GET /sync/vaults`                | down      | List the account's registered vaults                                             |
+| `POST /sync/vaults`               | up        | Register or update a vault's encrypted name                                      |
+| `POST /auth/*`                    | mixed     | OTP, sign-in, refresh, sign-out                                                  |
+| `GET /auth/key-verifier`          | down      | Account key verifier for an established session (vault-key mismatch detection)   |
+| `POST /devices/*`                 | mixed     | Linking, listing, revoking                                                       |
+| `POST /keys/*`                    | mixed     | Key sealing during link, rotation                                                |
+
+The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
+moves metadata only. A device reads a body by applying the baseline from
+`GET /sync/crdt/snapshot/:noteId` and then replaying incrementals from `GET /sync/crdt/updates`.
+`POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
+request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
+per note and dominate a first-sync sweep's request count.
+
+Pushing a snapshot is an assertion, not just a write: once the snapshot is stored,
+`pruneUpdatesBeforeSnapshot` deletes every `crdt_updates` row for that note at or below the
+snapshot's sequence number. A snapshot that does not already contain those updates does not merely
+fail to add them — it removes them from the server.
 
 ### CRDT update sizing
 
