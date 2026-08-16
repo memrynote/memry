@@ -67,12 +67,18 @@ class TestResizeObserver {
 // ---------------------------------------------------------------------------
 // Scroller stub: `scrollTop` clamps to the currently reachable range, which is
 // the only thing that makes "content has not loaded yet" observable in jsdom.
+// `scrollHeight`/`clientHeight` are modelled too, because the scrollable range
+// is how the hook tells a user scroll from a content collapse.
 // ---------------------------------------------------------------------------
+
+/** Fixed viewport height; only the content height moves in these tests. */
+const VIEWPORT_HEIGHT = 400
 
 function makeScroller(maxScroll: number): {
   element: HTMLElement
   setMaxScroll: (next: number) => void
   userScrollTo: (offset: number) => void
+  collapseContentTo: (nextMax: number) => void
 } {
   const element = document.createElement('div')
   element.append(document.createElement('div'))
@@ -88,6 +94,14 @@ function makeScroller(maxScroll: number): {
       offset = Math.max(0, Math.min(next, max))
     }
   })
+  Object.defineProperty(element, 'clientHeight', {
+    configurable: true,
+    get: () => VIEWPORT_HEIGHT
+  })
+  Object.defineProperty(element, 'scrollHeight', {
+    configurable: true,
+    get: () => max + VIEWPORT_HEIGHT
+  })
 
   return {
     element,
@@ -97,6 +111,17 @@ function makeScroller(maxScroll: number): {
     userScrollTo: (next) => {
       offset = Math.max(0, Math.min(next, max))
       element.dispatchEvent(new Event('scroll'))
+    },
+    /**
+     * What a page body remounting under a surviving scroller does: the content
+     * height collapses, the browser clamps `scrollTop` into the new range and
+     * emits a scroll event carrying the clamped value.
+     */
+    collapseContentTo: (nextMax) => {
+      const previous = Math.min(offset, max)
+      max = nextMax
+      offset = Math.max(0, Math.min(offset, nextMax))
+      if (offset !== previous) element.dispatchEvent(new Event('scroll'))
     }
   }
 }
@@ -168,6 +193,91 @@ describe('useTabScrollRestore', () => {
     unmount()
 
     expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 250, entityId: 'note-1' }])
+  })
+
+  it('keeps the user offset when a content collapse clamps the scroller', () => {
+    const scroller = makeScroller(1000)
+    const { unmount } = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    )
+
+    scroller.userScrollTo(250)
+    // Switching to an already-cached note: the scroller survives, but the page
+    // body remounts, its height collapses, and the browser clamps `scrollTop`
+    // to 0 and fires a scroll event for it. That is not the user scrolling.
+    scroller.collapseContentTo(0)
+
+    unmount()
+
+    expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 250, entityId: 'note-1' }])
+  })
+
+  it('does not commit a content-collapse clamp as the live offset', () => {
+    const scroller = makeScroller(1000)
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    scroller.userScrollTo(250)
+    scroller.collapseContentTo(0)
+    vi.advanceTimersByTime(500)
+
+    // The throttled save that was already pending must still carry the user's
+    // offset, not the value the clamp wrote over it.
+    expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 250, entityId: 'note-1' }])
+  })
+
+  it('still saves a genuine user scroll back to the top', () => {
+    const scroller = makeScroller(1000)
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    scroller.userScrollTo(250)
+    vi.advanceTimersByTime(500)
+    // Range unchanged: this is the user, not a clamp.
+    scroller.userScrollTo(0)
+    vi.advanceTimersByTime(500)
+
+    expect(savedPayloads()).toEqual([
+      { tabId: 'tab-a', offset: 250, entityId: 'note-1' },
+      { tabId: 'tab-a', offset: 0, entityId: 'note-1' }
+    ])
+  })
+
+  it('does not re-dispatch an offset already in tab state', () => {
+    const scroller = makeScroller(1000)
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    scroller.userScrollTo(250)
+    vi.advanceTimersByTime(500)
+    // A scroll that ends where the last committed save already left it.
+    scroller.userScrollTo(300)
+    scroller.userScrollTo(250)
+    vi.advanceTimersByTime(500)
+
+    expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 250, entityId: 'note-1' }])
+  })
+
+  it('writes nothing at teardown for a tab that was never scrolled', () => {
+    const scroller = makeScroller(1000)
+    const { unmount } = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    )
+
+    unmount()
+
+    expect(mocks.dispatch).not.toHaveBeenCalled()
+  })
+
+  it('still writes at teardown when a previous record exists', () => {
+    const scroller = makeScroller(1000)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 400, entityId: 'note-old' }))
+
+    const { unmount } = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    )
+
+    unmount()
+
+    // The stale record has to be corrected, not left pointing at gone content.
+    expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 0, entityId: 'note-1' }])
   })
 
   it('flushes under the previous tab identity when the tab changes', () => {
@@ -263,14 +373,98 @@ describe('useTabScrollRestore', () => {
     expect(TestResizeObserver.live).toHaveLength(0)
   })
 
-  it('gives up re-applying after the restore timeout', () => {
+  it('gives up once the content has settled short of the target', () => {
     const scroller = makeScroller(0)
     mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
 
     renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
     expect(TestResizeObserver.live).toHaveLength(1)
 
-    vi.advanceTimersByTime(1000)
+    // RESTORE_SETTLE_MS with no growth: the target is provably unreachable.
+    vi.advanceTimersByTime(2000)
+    expect(TestResizeObserver.live).toHaveLength(0)
+
+    scroller.setMaxScroll(1000)
+    TestResizeObserver.fireAll()
+
+    expect(scroller.element.scrollTop).toBe(0)
+  })
+
+  it('keeps chasing a slow note well past a one-second deadline', () => {
+    const scroller = makeScroller(0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    // Lazy chunk + note fetch: nothing for well over a second.
+    vi.advanceTimersByTime(1500)
+    // Editor mounts and lays out in stages; each growth buys another window.
+    scroller.setMaxScroll(120)
+    TestResizeObserver.fireAll()
+    vi.advanceTimersByTime(1500)
+    scroller.setMaxScroll(1000)
+    TestResizeObserver.fireAll()
+
+    expect(scroller.element.scrollTop).toBe(500)
+    expect(TestResizeObserver.live).toHaveLength(0)
+  })
+
+  it('stops at the hard cap even while content keeps growing', () => {
+    const scroller = makeScroller(0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 5000, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    // Growth every second keeps resetting the settle window; RESTORE_MAX_MS is
+    // the only thing that can end this.
+    for (let elapsed = 0; elapsed < 15000; elapsed += 1000) {
+      scroller.setMaxScroll(10 + elapsed / 100)
+      TestResizeObserver.fireAll()
+      vi.advanceTimersByTime(1000)
+    }
+
+    expect(TestResizeObserver.live).toHaveLength(0)
+    scroller.setMaxScroll(9000)
+    TestResizeObserver.fireAll()
+    // Frozen at the last clamp the abandoned restore produced (10 + 14000/100).
+    expect(scroller.element.scrollTop).toBe(150)
+  })
+
+  it('persists the target, not the clamp, when a tab is left mid-restore', () => {
+    // Content never arrives before the user switches away again.
+    const scroller = makeScroller(0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
+
+    const { unmount } = renderHook(() =>
+      useTabScrollRestore({ getScrollElement: () => scroller.element })
+    )
+    expect(scroller.element.scrollTop).toBe(0)
+
+    unmount()
+
+    expect(savedPayloads()).toEqual([{ tabId: 'tab-a', offset: 500, entityId: 'note-1' }])
+  })
+
+  it('ignores typing while a restore is in flight', () => {
+    const scroller = makeScroller(0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    scroller.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a' }))
+    scroller.setMaxScroll(1000)
+    TestResizeObserver.fireAll()
+
+    expect(scroller.element.scrollTop).toBe(500)
+  })
+
+  it('cancels re-application on a key that scrolls', () => {
+    const scroller = makeScroller(0)
+    mocks.getTab.mockReturnValue(tabWith({ offset: 500, entityId: 'note-1' }))
+
+    renderHook(() => useTabScrollRestore({ getScrollElement: () => scroller.element }))
+
+    scroller.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown' }))
     scroller.setMaxScroll(1000)
     TestResizeObserver.fireAll()
 
