@@ -616,6 +616,59 @@ note, both on the `crdt_pull` bucket (600 / 60 s per device). The pending list i
 tens of notes in practice, so ~40–50 GETs, alongside the paced sweep's 100/min —
 comfortably inside the budget, and no pacing is added.
 
+### An unverifiable signer routes the push away from the snapshot endpoint
+
+Failing closed covers a pull that did not complete. It does **not** cover a pull
+that completed while stepping over something. Every apply path — the single-note
+incrementals loop, the batch chunk, and the snapshot baseline — verifies each
+payload's Ed25519 signature against its signer device's public key, and skips
+the payload when `resolveDeviceKey` returns no key for that device.
+
+Treating that skip as "not merged" would be wrong, because the skip can be
+**permanent**. `GET /auth/devices` returns only non-revoked devices, so once a
+peer device is revoked its key never comes back, and a note held back until the
+signer resolves would be held forever — stranding this device's own offline
+backlog. Nor can the client tell the two apart: `getDeviceSigningKey` already
+refetches the device list on a cache miss, so a surviving `null` carries no
+signal about whether it will ever clear.
+
+Treating it as "merged" is what the fix replaces. It let the note's next
+snapshot push destroy the skipped payload: `storeSnapshot` upserts the note's
+one R2 blob, and `pruneUpdatesBeforeSnapshot` then deletes the `crdt_updates`
+rows the snapshot claims to contain — including the row the device could not
+verify and therefore could not have included. The signer key is only ever a
+signature check; the payload itself is sealed with a file key wrapped by the
+vault key, so what is deleted is still-decryptable user content.
+
+The endpoint is what resolves this. `pruneUpdatesBeforeSnapshot` has exactly one
+caller, `POST /sync/crdt/snapshot`. `POST /sync/crdt/updates` appends, prunes
+nothing, and wakes peers the same way. So:
+
+- `CrdtSyncCoordinator` records the notes a pass merged _around_
+  (`hasUnverifiedRemoteUpdate`, surfaced as
+  `SyncEngine.hasUnverifiedRemoteCrdtUpdate`).
+- The snapshot push fn sends those notes' full doc state through
+  `pushCrdtFullUpdate` — the same encrypted bytes, on the update endpoint —
+  instead of `pushCrdtSnapshot`.
+
+Every push path inherits this, because they all funnel through that one
+function: the pending-note replay, the 30 s snapshot scheduler, the push
+coordinator's create-time snapshots, and the oversized-update fallback.
+
+The flag is per note and per pass. It is raised the moment a skip happens, so a
+failure later in the same pass cannot leave a stale "safe to snapshot", and it
+is cleared only by a pass that walks the note end to end without one. A skip
+also re-queues the note for a pull, so a transiently unresolvable signer — an
+expired access token is the case that actually occurs — clears the flag on the
+next pass and the note resumes normal compaction.
+
+One narrow cost: `pushCrdtFullUpdate` throws above
+`MAX_CRDT_UPDATE_PAYLOAD_CHARS`, because the update endpoint stores each payload
+in a D1 row rather than an R2 object. A note that is both over that ceiling and
+holding an unverifiable payload stays pending and retried rather than
+snapshotted. That is a stall, not a loss — its content is already durable in the
+local CRDT store — whereas snapshotting it would be a loss.
+
 ## Sign-Out / Sign-In Ordering
 
 A sign out → sign in cycle has a sharp ordering rule:

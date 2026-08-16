@@ -119,6 +119,12 @@ let draining = false
  *
  * A merge that does not complete leaves the note pending and unpushed. Delaying
  * one device's backlog is recoverable; deleting another device's edits is not.
+ *
+ * A merge that completed but skipped a payload whose signer could not be
+ * resolved is a third case, and it is NOT held back here: that skip can be
+ * permanent, so waiting for it would delay the backlog forever. `pushSnapshot`
+ * answers it by sending the same doc state to the incremental endpoint, which
+ * prunes nothing — see the endpoint choice in `runtime.ts`.
  */
 export async function drainPendingCrdtNotes(
   deps: PendingCrdtDrainDeps

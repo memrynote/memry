@@ -66,7 +66,7 @@ import { planCrdtUpdatePush } from './crdt-payload'
 import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
 import { encryptCrdtUpdate } from './crdt-encrypt'
-import { postToServer, pushCrdtSnapshot, SyncServerError } from './http-client'
+import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
@@ -638,10 +638,43 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
         try {
           const encrypted = encryptCrdtUpdate(state, vaultKey, noteId, signingSecretKey)
+
+          // The snapshot endpoint is the only destructive one. `storeSnapshot`
+          // overwrites the note's single R2 blob and `pruneUpdatesBeforeSnapshot`
+          // then deletes every `crdt_updates` row at or below the stored
+          // watermark. That is correct when this device really does contain
+          // everything the server has — and a lie when a merge pass skipped a
+          // payload it could not verify, because that payload is by definition
+          // absent from the snapshot replacing it. It is then gone for every
+          // device, permanently, and the vault key that could still decrypt it
+          // no longer has anything to decrypt.
+          //
+          // Failing closed instead — holding the note back until the signer
+          // resolves — is not available: `GET /auth/devices` lists only
+          // non-revoked devices, so a revoked peer's key never returns and the
+          // note would be held forever, stranding this device's own offline
+          // backlog. So the same doc state goes to the incremental endpoint,
+          // which stores and broadcasts it exactly like any other update and
+          // prunes nothing. This device's edits reach every peer; the skipped
+          // payload stays on the server for a later pass — or a later app
+          // version — to make sense of.
+          //
+          // The incremental route has a size ceiling the snapshot's R2 blob does
+          // not (`pushCrdtFullUpdate` throws past it), which keeps that one
+          // note pending and retried — a stall, not a loss, since its content is
+          // already durable in the local CRDT store.
+          //
+          // `engine` is referenced lazily for the same reason
+          // `replayPendingCrdtNotes` does: nothing invokes this fn between
+          // `crdtProvider.init` below and the `const engine` assignment.
+          const viaUpdates = engine.hasUnverifiedRemoteCrdtUpdate(noteId)
           await withRetry(
             () =>
               withAuthRetry(
-                (authToken) => pushCrdtSnapshot(noteId, encrypted, authToken),
+                (authToken) =>
+                  viaUpdates
+                    ? pushCrdtFullUpdate(noteId, encrypted, authToken)
+                    : pushCrdtSnapshot(noteId, encrypted, authToken),
                 token!,
                 crdtAuthRetryDeps,
                 (fresh) => {
@@ -653,7 +686,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
               baseDelayMs: 2000
             }
           )
-          log.debug('Pushed CRDT snapshot', { noteId, size: state.byteLength })
+          // Distinct message per endpoint on purpose: log triage greps these
+          // strings, and the notes someone is grepping for are exactly the ones
+          // that did not take the snapshot route.
+          log.debug(viaUpdates ? 'Pushed CRDT full state as an update' : 'Pushed CRDT snapshot', {
+            noteId,
+            size: state.byteLength
+          })
         } catch (err) {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
