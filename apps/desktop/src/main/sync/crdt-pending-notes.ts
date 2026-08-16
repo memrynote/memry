@@ -223,6 +223,22 @@ export interface PendingCrdtDrainDeps {
   pushSnapshot: (noteId: string) => Promise<boolean>
   /** `false` for notes that no longer exist or never sync via CRDT (binaries). */
   isSyncable: (noteId: string) => boolean
+  /**
+   * Tripped when the runtime that supplied these deps is torn down.
+   *
+   * `mergeRemote` and `pushSnapshot` both close over one `SyncEngine` and one
+   * `CrdtProvider`, and neither survives `stopSyncRuntime`. Nothing awaits this
+   * drain — `replayPendingCrdtNotes` is fire-and-forget — so without a liveness
+   * signal a run started by a dying session keeps merging server state into a
+   * destroyed provider: `destroy()` nulls its persistence, so `open()` builds a
+   * fresh doc from markdown and applies the server's updates to something
+   * nothing will ever save, possibly against a vault the session no longer owns.
+   *
+   * Optional so the contract stays "no signal means the caller cannot be torn
+   * down mid-drain" — the shape `pullCrdtForNotes` already uses for the same
+   * problem. runtime.ts is the only production caller and always passes one.
+   */
+  signal?: AbortSignal
 }
 
 interface PendingCrdtDrainResult {
@@ -252,11 +268,21 @@ interface PendingCrdtDrainResult {
  * and a new one starts while a drain is still running, the new session's
  * trigger replaces the dead session's closure rather than queueing behind it.
  *
- * A teardown with nothing replacing it leaves the queued run holding the dead
- * runtime's deps — the same exposure a drain already in flight has, since
- * teardown does not await it. It fails closed: `CrdtProvider.destroy()` nulls
- * `snapshotPushFn`, and `pushSnapshotForNote` returns false without one, so
- * nothing is cleared and every id stays in the durable store for next session.
+ * Abort travels with the deps rather than with this module's state, and that is
+ * what settles the remaining case. A teardown with nothing replacing it leaves
+ * the queued run holding the dead runtime's deps — but that same teardown has
+ * already tripped their `signal`, so the deferred run starts, finds itself
+ * aborted at its first note and clears nothing. A teardown that *is* followed by
+ * a new session has had `deferredDeps` swapped for the live session's, and the
+ * live signal is the one that run reads. Aborting the in-flight run while a
+ * deferred run begins with a fresh signal is the intended outcome, not a race:
+ * every run is "replay whatever the store holds when you start", and the ids the
+ * aborted run did not reach are still in the store for the new one to take.
+ *
+ * The old argument here was that a dead session's queued run fails closed on
+ * `snapshotPushFn` being nulled by `CrdtProvider.destroy()`. That is still true
+ * of the push, and it is still not enough: the merge runs first and had no
+ * equivalent guard, which is exactly what the signal supplies.
  */
 let inFlight: Promise<PendingCrdtDrainResult> | null = null
 let deferredRun: Promise<PendingCrdtDrainResult> | null = null
@@ -335,28 +361,63 @@ async function drainOnce(deps: PendingCrdtDrainDeps): Promise<PendingCrdtDrainRe
   if (pending.length === 0) return { cleared: 0, retained: 0 }
 
   const cleared: string[] = []
+  let aborted = false
   try {
     for (const noteId of pending) {
-      if (!deps.isSyncable(noteId)) {
-        cleared.push(noteId)
-        continue
+      // The runtime whose engine and provider these deps close over is gone.
+      // Stop here rather than at the end of the pass: every remaining note would
+      // be worked against destroyed objects, and the ids stay in the store.
+      if (deps.signal?.aborted) {
+        aborted = true
+        break
       }
       try {
+        if (!deps.isSyncable(noteId)) {
+          cleared.push(noteId)
+          continue
+        }
+        // Checked again, and this is the check that matters. `isSyncable` is the
+        // caller's code — today it reaches the index database, which `closeVault`
+        // closes — so control can spend real time between the top of the
+        // iteration and here, and the loop awaits twice per note besides. The
+        // merge is the destructive half: it opens the note on the caller's
+        // CrdtProvider, and a destroyed provider has no persistence, so the
+        // server state it applies lands in a doc nothing will ever save.
+        if (deps.signal?.aborted) {
+          aborted = true
+          break
+        }
         if (!(await deps.mergeRemote(noteId))) {
           log.warn('Not replaying a CRDT note whose server state did not merge', { noteId })
           continue
         }
         if (await deps.pushSnapshot(noteId)) cleared.push(noteId)
       } catch (err) {
+        // Per note, not per pass — the shape `applyCrdtBatchChunk` already uses.
+        // `isSyncable` is inside this try on purpose: `closeVault` calls
+        // `closeAllDatabases()`, after which `validateNoteForCrdt` throws for
+        // every remaining id, and one throw used to abandon the whole drain.
+        // A note that threw is not cleared, so the next pass retries it.
         log.warn('Failed to replay a pending CRDT note', { noteId, error: err })
       }
     }
   } finally {
+    // Abort or not, only ids whose state actually reached the server — or that
+    // resolve to nothing to send — are cleared. Everything this run did not get
+    // to stays in the durable store for the next session, which is the whole
+    // reason stopping early is safe.
     clearPendingCrdtNotes(cleared)
   }
 
   const retained = pending.length - cleared.length
-  if (retained > 0) {
+  if (aborted) {
+    // Distinct from the warning below on purpose: this is an expected teardown,
+    // not a device that cannot reach the server, and log triage greps these.
+    log.info('Stopped replaying CRDT notes: the sync runtime that started the replay is gone', {
+      cleared: cleared.length,
+      retained
+    })
+  } else if (retained > 0) {
     log.warn('Some CRDT notes buffered at shutdown still have not synced', {
       cleared: cleared.length,
       retained
