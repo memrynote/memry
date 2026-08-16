@@ -19,6 +19,8 @@ import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { useDragContext } from '@/contexts/drag-context'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { PROJECT_TASKS_SCROLL_KEY } from '@/pages/tasks-view-state'
 import { annotateProjectStatusVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
@@ -279,6 +281,11 @@ export const VirtualizedProjectTaskList = ({
     getItemKey: (index) => virtualItems[index]?.id ?? index,
     overscan: 5
   })
+
+  // Virtualized: restoring by writing `scrollTop` would land on the wrong row
+  // while the total height is still an estimate.
+  const getScrollElement = useCallback(() => parentRef.current, [])
+  useTabScrollRestore({ getScrollElement, virtualizer, key: PROJECT_TASKS_SCROLL_KEY })
 
   useEffect(() => {
     virtualizer.measure()

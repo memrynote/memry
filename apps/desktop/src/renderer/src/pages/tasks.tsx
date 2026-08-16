@@ -74,6 +74,14 @@ import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
 import { createLogger } from '@/lib/logger'
 import { useTabActions, useActiveTab } from '@/contexts/tabs'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useResolvedEntityId } from '@/hooks/use-resolved-entity-id'
+import {
+  TASKS_VIEW_STATE_KEYS,
+  parseInternalTab,
+  parseNullableId,
+  parseViewMode
+} from './tasks-view-state'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 
 const log = createLogger('Page:Tasks')
@@ -167,17 +175,30 @@ export const TasksPage = ({
   )
 
   const taskTabViewState = activeTab?.viewState ?? {}
-  const activeInternalTab =
-    (taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
-    (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
-    taskPrefs.defaultView
+
+  // These read and write the tab this page is rendered IN, not the globally
+  // active tab. Same keys and same reader fallbacks as before, so sessions
+  // already on disk keep restoring.
+  const [storedInternalTab, setStoredInternalTab] = useTabViewState<TasksInternalTab | undefined>({
+    key: TASKS_VIEW_STATE_KEYS.activeInternalTab,
+    aliasKeys: [TASKS_VIEW_STATE_KEYS.activeInternalTabLegacy],
+    defaultValue: undefined,
+    parse: parseInternalTab
+  })
+  // Left absent until the user picks one, so the preference — which loads
+  // asynchronously — stays live instead of being frozen at first render.
+  const activeInternalTab = storedInternalTab ?? taskPrefs.defaultView
+
   const defaultProjectId = useMemo(
     () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
     [selectedType, taskPrefs.defaultProjectId, projects]
   )
-  const selectedProjectIdState = taskTabViewState.selectedProjectId as string | null | undefined
-  const selectedProjectId =
-    selectedProjectIdState === undefined ? defaultProjectId : (selectedProjectIdState ?? null)
+  const [storedProjectId, setStoredProjectId] = useTabViewState<string | null | undefined>({
+    key: TASKS_VIEW_STATE_KEYS.selectedProjectId,
+    defaultValue: undefined,
+    parse: parseNullableId
+  })
+  const requestedProjectId = storedProjectId === undefined ? defaultProjectId : storedProjectId
 
   const availableViews = useMemo((): ViewMode[] => {
     if (activeInternalTab === 'today') {
@@ -186,9 +207,45 @@ export const TasksPage = ({
     return ['list', 'kanban']
   }, [activeInternalTab])
 
-  const requestedActiveView = (taskTabViewState.activeView as ViewMode | undefined) ?? 'list'
+  const [requestedActiveView, setActiveView] = useTabViewState<ViewMode>({
+    key: TASKS_VIEW_STATE_KEYS.activeView,
+    defaultValue: 'list',
+    parse: parseViewMode
+  })
   const activeView = availableViews.includes(requestedActiveView) ? requestedActiveView : 'list'
-  const detailTaskId = (taskTabViewState.openTaskId as string | null | undefined) ?? null
+  const [storedDetailTaskId, setDetailTaskId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.openTaskId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+
+  // Both ids outlive what they point at — a task gets deleted, a project gets
+  // archived — and neither failure is recoverable from the UI: the drawer's
+  // close button lives inside its `task &&` branch, and a dead project id keeps
+  // filtering tasks out while the picker cheerfully reports "All projects".
+  // An empty list is not proof on its own, hence the shared readiness signal.
+  const isTaskDataReady = tasks.length > 0 || projects.length > 0
+
+  const storedDetailTask = useMemo(
+    () => (storedDetailTaskId ? (tasks.find((t) => t.id === storedDetailTaskId) ?? null) : null),
+    [storedDetailTaskId, tasks]
+  )
+  const clearDetailTaskId = useCallback(() => setDetailTaskId(null), [setDetailTaskId])
+  const detailTaskId = useResolvedEntityId({
+    id: storedDetailTaskId,
+    exists: storedDetailTask !== null,
+    ready: isTaskDataReady,
+    onMissing: clearDetailTaskId
+  })
+  const detailTask = detailTaskId === null ? null : storedDetailTask
+
+  const clearSelectedProjectId = useCallback(() => setStoredProjectId(null), [setStoredProjectId])
+  const selectedProjectId = useResolvedEntityId({
+    id: requestedProjectId,
+    exists: projects.some((project) => project.id === requestedProjectId),
+    ready: isTaskDataReady,
+    onMissing: clearSelectedProjectId
+  })
 
   // Modal states
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
@@ -223,49 +280,8 @@ export const TasksPage = ({
     persistFilters: true
   })
 
-  const updateTaskViewState = useCallback(
-    (updates: Record<string, unknown>) => {
-      if (!activeTab?.id) return
-      saveTabState(activeTab.id, {
-        viewState: {
-          ...(activeTab.viewState ?? {}),
-          ...updates
-        }
-      })
-    },
-    [activeTab, saveTabState]
-  )
-
-  const setActiveView = useCallback(
-    (view: ViewMode) => {
-      updateTaskViewState({ activeView: view })
-    },
-    [updateTaskViewState]
-  )
-
-  const setActiveInternalTab = useCallback(
-    (tab: TasksInternalTab) => {
-      updateTaskViewState({
-        activeInternalTab: tab,
-        activeTab: tab
-      })
-    },
-    [updateTaskViewState]
-  )
-
-  const setSelectedProjectId = useCallback(
-    (projectId: string | null) => {
-      updateTaskViewState({ selectedProjectId: projectId })
-    },
-    [updateTaskViewState]
-  )
-
-  const setDetailTaskId = useCallback(
-    (taskId: string | null) => {
-      updateTaskViewState({ openTaskId: taskId })
-    },
-    [updateTaskViewState]
-  )
+  const setActiveInternalTab = setStoredInternalTab
+  const setSelectedProjectId = setStoredProjectId
 
   // Quick-add focus: viewState.focusQuickAddAt is the single source of truth, fed to
   // CaptureBar.focusSignal. Both the sidebar "Tasks" click and the empty-state
@@ -274,10 +290,15 @@ export const TasksPage = ({
     typeof taskTabViewState.focusQuickAddAt === 'number'
       ? taskTabViewState.focusQuickAddAt
       : undefined
-  const focusQuickAdd = useCallback(
-    () => updateTaskViewState({ focusQuickAddAt: Date.now() }),
-    [updateTaskViewState]
-  )
+  // Stays a direct tab write: this nonce is stamped by OTHER surfaces (the
+  // sidebar's "Tasks" click, the empty state's "Add task") and has to be read
+  // live off the tab, which a `useState`-shaped hook does not do.
+  const focusQuickAdd = useCallback(() => {
+    if (!activeTab?.id) return
+    saveTabState(activeTab.id, {
+      viewState: { [TASKS_VIEW_STATE_KEYS.focusQuickAddAt]: Date.now() }
+    })
+  }, [activeTab?.id, saveTabState])
 
   // Saved filters
   const {
@@ -286,7 +307,25 @@ export const TasksPage = ({
     deleteFilter: deleteSavedFilter,
     toggleStar: toggleStarFilter
   } = useSavedFilters()
-  const [activeSavedFilterId, setActiveSavedFilterId] = useState<string | null>(null)
+  // Which saved filter is applied belongs to the tab; the filter values it
+  // applied are already persisted by `useFilterState`.
+  const [storedSavedFilterId, setActiveSavedFilterId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.activeSavedFilterId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+  const clearSavedFilterId = useCallback(
+    () => setActiveSavedFilterId(null),
+    [setActiveSavedFilterId]
+  )
+  // A saved filter deleted on another device leaves the toolbar highlighting a
+  // filter that no longer exists.
+  const activeSavedFilterId = useResolvedEntityId({
+    id: storedSavedFilterId,
+    exists: savedFilters.some((filter) => filter.id === storedSavedFilterId),
+    ready: savedFilters.length > 0,
+    onMissing: clearSavedFilterId
+  })
 
   const starredFilters = useMemo(() => savedFilters.filter((f) => f.starred), [savedFilters])
 
@@ -300,13 +339,13 @@ export const TasksPage = ({
       setActiveSavedFilterId(null)
       updateFilters(updates)
     },
-    [updateFilters]
+    [updateFilters, setActiveSavedFilterId]
   )
 
   const clearFiltersAndClearSaved = useCallback(() => {
     setActiveSavedFilterId(null)
     clearFilters()
-  }, [clearFilters])
+  }, [clearFilters, setActiveSavedFilterId])
 
   const handleTabChange = useCallback(
     (tab: TasksInternalTab) => {
@@ -316,7 +355,7 @@ export const TasksPage = ({
       }
       setActiveInternalTab(tab)
     },
-    [activeSavedFilterId, clearFilters, setActiveInternalTab]
+    [activeSavedFilterId, clearFilters, setActiveInternalTab, setActiveSavedFilterId]
   )
 
   // Bulk delete dialog state
@@ -466,12 +505,6 @@ export const TasksPage = ({
   const showFilterBar = true
 
   // ========== HANDLERS ==========
-
-  // Task detail drawer
-  const detailTask = useMemo(
-    () => (detailTaskId ? (tasks.find((t) => t.id === detailTaskId) ?? null) : null),
-    [detailTaskId, tasks]
-  )
 
   const handleTaskClick = useCallback(
     (taskId: string) => {
@@ -875,7 +908,7 @@ export const TasksPage = ({
       }
       toast.success(t('toasts.filterDeleted'))
     },
-    [deleteSavedFilter, activeSavedFilterId, clearFilters, t]
+    [deleteSavedFilter, activeSavedFilterId, clearFilters, setActiveSavedFilterId, t]
   )
 
   const handleApplySavedFilter = useCallback(
@@ -892,7 +925,7 @@ export const TasksPage = ({
       setActiveSavedFilterId(savedFilter.id)
       toast.success(t('toasts.filterApplied', { name: savedFilter.name }))
     },
-    [activeSavedFilterId, updateFilters, updateSort, clearFilters, t]
+    [activeSavedFilterId, updateFilters, updateSort, clearFilters, setActiveSavedFilterId, t]
   )
 
   const currentProjectStatuses = useMemo(() => {
