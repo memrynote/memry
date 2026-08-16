@@ -38,7 +38,7 @@
  * "this window holds no fragment for this note", and it is not reachable from
  * here — asking the registry for it would register a second consumer and make
  * the sole editor report non-owner (see `useYjsSideEffectOwner`). Swapping the
- * conjunct for it is a design change owing its own E2E, not a cleanup: #1495.
+ * conjunct for it is a design change owing its own E2E, not a cleanup: #1504.
  *
  * The rule is "the tab always wins": a card refuses to activate and stays a
  * read-only preview with an open-in-tab affordance.
