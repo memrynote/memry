@@ -1421,6 +1421,7 @@ describe('CrdtProvider', () => {
       const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
       await signedOut.init(queue as any, pushAfterSignIn)
       const replayed = await drainPendingCrdtNotes({
+        mergeRemote: async () => true,
         pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
         isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
       })
@@ -1437,6 +1438,88 @@ describe('CrdtProvider', () => {
 
       // #and the debt is settled, so the next replay does not pay for it again
       expect(readPendingCrdtNotes()).toEqual([])
+
+      await signedOut.destroy()
+    })
+
+    // The server prunes every crdt_updates row at or below a stored snapshot's
+    // sequence number, so a snapshot is an assertion that it contains
+    // everything up to that point. Push one for a note whose peer edits this
+    // device has not merged and those edits are deleted server-side AND absent
+    // from the snapshot — destroyed for every device. The pending list is
+    // precisely the notes this device edited while it could not push, so it is
+    // also the population most likely to have diverged from a peer.
+    it('keeps both sides of a note edited on two devices across a sign-out', async () => {
+      // #given the same note edited on the peer while this device was signed out
+      const peer = new Y.Doc()
+      peer.getMap('meta').set('fromPeer', 'edited on device A')
+      const peerUpdate = Y.encodeStateAsUpdate(peer)
+
+      // #and this device's own signed-out edit, recorded with no queue
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('fromThisDevice', 'edited while signed out')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // #when the user signs in and the replay runs. mergeRemote stands in for
+      // engine.mergeRemoteCrdtForNote, whose only effect on the doc is the
+      // applyRemoteUpdate this performs.
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+
+      const order: string[] = []
+      await drainPendingCrdtNotes({
+        mergeRemote: async (noteId) => {
+          order.push('merge')
+          await signedOut.open(noteId, undefined, { skipSeed: true })
+          signedOut.applyRemoteUpdate(noteId, peerUpdate)
+          return true
+        },
+        pushSnapshot: async (noteId) => {
+          order.push('push')
+          return signedOut.pushSnapshotForNote(noteId)
+        },
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      // #then the pull happened first — after the push it would be worthless,
+      // the destructive prune has already run server-side by then.
+      expect(order).toEqual(['merge', 'push'])
+
+      // #and the snapshot the server is told to keep carries BOTH edits, so the
+      // prune that follows it deletes nothing that is not already inside it.
+      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
+      const stored = new Y.Doc()
+      Y.applyUpdate(stored, pushAfterSignIn.mock.calls[0]![1])
+      expect(stored.getMap('meta').get('fromThisDevice')).toBe('edited while signed out')
+      expect(stored.getMap('meta').get('fromPeer')).toBe('edited on device A')
+
+      await signedOut.destroy()
+    })
+
+    it('does not push a note whose pre-push pull failed, and keeps it pending', async () => {
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+
+      const replayed = await drainPendingCrdtNotes({
+        // What an offline start, an expired token, or a 429 on the baseline GET
+        // looks like from here.
+        mergeRemote: async () => false,
+        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      expect(pushAfterSignIn).not.toHaveBeenCalled()
+      expect(replayed).toEqual({ cleared: 0, retained: 1 })
+      // Still owed, so the next start or reconnect tries again rather than
+      // dropping this device's signed-out edit.
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
 
       await signedOut.destroy()
     })

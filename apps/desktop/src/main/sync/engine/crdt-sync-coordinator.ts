@@ -114,22 +114,31 @@ export class CrdtSyncCoordinator {
     return baselineSequence
   }
 
+  /**
+   * Returns whether this note's server state was fully merged into the local
+   * doc. Every caller before the pending-note replay ignored it — a failure is
+   * owed a retry and reported, and that was the whole contract. The replay
+   * cannot ignore it: pushing a snapshot tells the server "I contain everything
+   * up to here" and it acts on that by deleting the peer's incrementals, so a
+   * push on top of an incomplete merge destroys them. `false` therefore has to
+   * mean "do not push", which makes every early return below a `false` too.
+   */
   async applyCrdtIncrementals(
     noteId: string,
     token: string,
     vaultKey: Uint8Array,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<boolean> {
     const crdtProvider = this.ctx.deps.crdtProvider
-    if (!crdtProvider) return
+    if (!crdtProvider) return false
 
     const effectiveSignal = signal ?? this.ctx.abortController?.signal
-    if (!effectiveSignal) return
+    if (!effectiveSignal) return false
 
     const wasOpen = crdtProvider.getDoc(noteId) != null
     try {
       const doc = await crdtProvider.open(noteId, undefined, { skipSeed: true })
-      if (!doc) return
+      if (!doc) return false
 
       let since = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
 
@@ -138,7 +147,7 @@ export class CrdtSyncCoordinator {
       while (hasMore) {
         if (effectiveSignal.aborted) {
           log.debug('applyCrdtIncrementals aborted', { noteId, lastSeq: since })
-          return
+          return false
         }
 
         const result = await withRetry(
@@ -199,10 +208,11 @@ export class CrdtSyncCoordinator {
           noteId
         })
       }
+      return true
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         log.debug('applyCrdtIncrementals aborted via signal', { noteId })
-        return
+        return false
       }
       log.warn('Failed to apply CRDT incrementals', {
         noteId,
@@ -215,6 +225,7 @@ export class CrdtSyncCoordinator {
         this.applyFailureReported.add(noteId)
         trackMainError('sync', 'crdt_apply_failed', err)
       }
+      return false
     } finally {
       if (!wasOpen) {
         await crdtProvider.closeIfInactive(noteId)
@@ -412,18 +423,20 @@ export class CrdtSyncCoordinator {
     }
   }
 
-  async pullCrdtForNote(noteId: string): Promise<void> {
+  /** `false` = this note's server state was NOT fully merged; see `applyCrdtIncrementals`. */
+  async pullCrdtForNote(noteId: string): Promise<boolean> {
     log.debug('pullCrdtForNote entered', { noteId })
     const token = await this.ctx.deps.getAccessToken()
-    if (!token) return
+    if (!token) return false
 
     const vaultKey = await this.ctx.deps.getVaultKey()
-    if (!vaultKey) return
+    if (!vaultKey) return false
 
     const localAbort = new AbortController()
     try {
-      await this.applyCrdtIncrementals(noteId, token, vaultKey, localAbort.signal)
-      log.debug('pullCrdtForNote completed', { noteId })
+      const merged = await this.applyCrdtIncrementals(noteId, token, vaultKey, localAbort.signal)
+      log.debug('pullCrdtForNote completed', { noteId, merged })
+      return merged
     } finally {
       secureCleanup(vaultKey)
     }

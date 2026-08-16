@@ -684,8 +684,18 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Their content is safe in the local CRDT store; pushing the full state
       // is what the server missed. Full state is also the only shape that
       // works: a queue-less edit produced no incrementals to replay.
+      //
+      // `mergeRemote` is not optional and is not an optimisation. A snapshot
+      // push asserts "I contain everything up to here" and the server acts on
+      // it by pruning the peer's incrementals, so each note's server state is
+      // pulled and merged immediately before its own push — and a merge that
+      // does not complete leaves the note pending and unpushed. `engine` is
+      // referenced lazily: this closure only ever runs after the const below
+      // is initialised (startup calls it at the end, and no network event can
+      // be delivered between `network.on` and that assignment).
       const replayPendingCrdtNotes = (): void => {
         void drainPendingCrdtNotes({
+          mergeRemote: (noteId) => engine.mergeRemoteCrdtForNote(noteId),
           pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
           isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok
         }).catch((err) => log.warn('Pending CRDT note replay failed', err))

@@ -84,6 +84,12 @@ export function clearPendingCrdtNotes(noteIds: string[]): void {
 }
 
 export interface PendingCrdtDrainDeps {
+  /**
+   * Pull this note's server state and merge it into the local doc. `false`
+   * means the merge did not complete, and the snapshot must NOT be pushed —
+   * see the ordering note on `drainPendingCrdtNotes`.
+   */
+  mergeRemote: (noteId: string) => Promise<boolean>
   /** Push the note's full CRDT state to the server. `false` means try again. */
   pushSnapshot: (noteId: string) => Promise<boolean>
   /** `false` for notes that no longer exist or never sync via CRDT (binaries). */
@@ -93,9 +99,26 @@ export interface PendingCrdtDrainDeps {
 let draining = false
 
 /**
- * Replay the notes recorded at the last shutdown. An entry is cleared only once
- * its state has actually reached the server, so a still-offline start leaves it
- * queued for the next attempt rather than losing it.
+ * Replay the recorded notes. An entry is cleared only once its state has
+ * actually reached the server, so a still-offline start leaves it queued for
+ * the next attempt rather than losing it.
+ *
+ * **Merge before push, and fail closed.** A snapshot push is an assertion that
+ * the pushed state contains everything the server has: `storeSnapshot` is
+ * followed by `pruneUpdatesBeforeSnapshot`, which deletes every `crdt_updates`
+ * row at or below the new snapshot's sequence number. Push a snapshot for a
+ * note whose peer edits this device has not merged and those edits are gone
+ * from the server and absent from the snapshot — destroyed for every device.
+ *
+ * Every note here is one this device edited while it could not push, which is
+ * exactly the population most likely to have diverged from a peer, so the
+ * merge is not optional. It is done per note immediately before that note's
+ * push rather than by waiting for the vault sweep: the sweep is paced at 25
+ * notes / 15 s, so waiting for it would stall the replay for minutes and still
+ * not guarantee a given note had been reached.
+ *
+ * A merge that does not complete leaves the note pending and unpushed. Delaying
+ * one device's backlog is recoverable; deleting another device's edits is not.
  */
 export async function drainPendingCrdtNotes(
   deps: PendingCrdtDrainDeps
@@ -114,9 +137,13 @@ export async function drainPendingCrdtNotes(
         continue
       }
       try {
+        if (!(await deps.mergeRemote(noteId))) {
+          log.warn('Not replaying a CRDT note whose server state did not merge', { noteId })
+          continue
+        }
         if (await deps.pushSnapshot(noteId)) cleared.push(noteId)
       } catch (err) {
-        log.warn('Failed to replay a CRDT note buffered at shutdown', { noteId, error: err })
+        log.warn('Failed to replay a pending CRDT note', { noteId, error: err })
       }
     }
   } finally {

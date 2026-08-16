@@ -153,7 +153,7 @@ describe('CrdtSyncCoordinator', () => {
 
   it('pullCrdtForNote exits without credentials and cleans up the vault key after pulls', async () => {
     const applyCrdtIncrementals = vi.spyOn(CrdtSyncCoordinator.prototype, 'applyCrdtIncrementals')
-    applyCrdtIncrementals.mockResolvedValue(undefined)
+    applyCrdtIncrementals.mockResolvedValue(true)
 
     const ctx = {
       deps: {
@@ -171,9 +171,12 @@ describe('CrdtSyncCoordinator', () => {
     } as unknown as SyncContext
     const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
 
-    await coordinator.pullCrdtForNote('note-no-token')
-    await coordinator.pullCrdtForNote('note-no-key')
-    await coordinator.pullCrdtForNote('note-ok')
+    // Missing credentials must read as "not merged", not as a quiet success:
+    // the pending-note replay pushes a snapshot on a `true`, and the server
+    // prunes the peer's incrementals underneath it.
+    await expect(coordinator.pullCrdtForNote('note-no-token')).resolves.toBe(false)
+    await expect(coordinator.pullCrdtForNote('note-no-key')).resolves.toBe(false)
+    await expect(coordinator.pullCrdtForNote('note-ok')).resolves.toBe(true)
 
     expect(applyCrdtIncrementals).toHaveBeenCalledTimes(1)
     expect(applyCrdtIncrementals).toHaveBeenCalledWith(
@@ -532,6 +535,26 @@ describe('CrdtSyncCoordinator', () => {
       expect.any(Function),
       expect.objectContaining({ retryOn429: false })
     )
+  })
+
+  it('reports a single-note pull as unmerged when it fails, and as merged when it does not', async () => {
+    // The pending-note replay gates its snapshot push on this boolean. A push
+    // makes the server delete every crdt_updates row at or below it, so a pull
+    // that failed must never come back as `true` — a note that skips its
+    // replay is late, a note that pushes over an unfetched peer edit destroys
+    // it for every device.
+    const { ctx } = createBatchContext()
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    getFromServerMock.mockRejectedValueOnce(rateLimited())
+    await expect(
+      coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    ).resolves.toBe(false)
+
+    getFromServerMock.mockResolvedValueOnce({ updates: [], hasMore: false })
+    await expect(
+      coordinator.applyCrdtIncrementals('note-1', 'token-1', new Uint8Array([4]))
+    ).resolves.toBe(true)
   })
 
   it('keeps syncing the remaining notes when one note fails its snapshot baseline', async () => {

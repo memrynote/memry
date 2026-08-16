@@ -391,6 +391,22 @@ export class SyncEngine extends EventEmitter {
     this.pushCoordinator.requestPush()
   }
 
+  /**
+   * Pull and merge one note's server-side CRDT state into the local doc, and
+   * say whether that actually completed.
+   *
+   * Exists for the pending-note replay, which must not push a snapshot for a
+   * note it has not merged first: the server prunes every `crdt_updates` row at
+   * or below a stored snapshot's sequence number, so a snapshot pushed over an
+   * unmerged peer edit deletes that edit for every device. Deliberately NOT
+   * routed through `scheduleSync`: the replay is fire-and-forget at the end of
+   * startup and must not queue behind — or in front of — a sync cycle. The
+   * paced vault sweep calls the coordinator directly for the same reason.
+   */
+  async mergeRemoteCrdtForNote(noteId: string): Promise<boolean> {
+    return this.crdtSync.pullCrdtForNote(noteId)
+  }
+
   async fullSync(): Promise<void> {
     const start = Date.now()
     try {
@@ -734,7 +750,11 @@ export class SyncEngine extends EventEmitter {
         if (this.ctx.fullSyncActive) {
           this.crdtSync.addPendingPull(noteId)
         } else {
-          this.scheduleSync(() => this.crdtSync.pullCrdtForNote(noteId))
+          // The merged/failed answer is the replay's concern; a broadcast-driven
+          // pull that fails is already owed a retry by the coordinator.
+          this.scheduleSync(async () => {
+            await this.crdtSync.pullCrdtForNote(noteId)
+          })
         }
         break
       }

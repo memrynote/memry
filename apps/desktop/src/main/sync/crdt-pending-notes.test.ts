@@ -56,6 +56,7 @@ describe('crdt pending note store', () => {
 
     const result = await drainPendingCrdtNotes({
       isSyncable: () => true,
+      mergeRemote: async () => true,
       pushSnapshot: async (noteId) => {
         if (noteId === 'note-throws') throw new Error('offline')
         return noteId === 'note-ok'
@@ -75,10 +76,11 @@ describe('crdt pending note store', () => {
     recordPendingCrdtNotes(['note-a', 'note-b'])
 
     const pushSnapshot = vi.fn(async (_noteId: string) => true)
-    await drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    const deps = { isSyncable: () => true, mergeRemote: async () => true, pushSnapshot }
+    await drainPendingCrdtNotes(deps)
     expect(pushSnapshot.mock.calls).toHaveLength(2)
 
-    await drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    await drainPendingCrdtNotes(deps)
     expect(pushSnapshot.mock.calls).toHaveLength(2)
   })
 
@@ -98,12 +100,52 @@ describe('crdt pending note store', () => {
       return true
     })
 
-    const startup = drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
-    const onReconnect = drainPendingCrdtNotes({ isSyncable: () => true, pushSnapshot })
+    const deps = { isSyncable: () => true, mergeRemote: async () => true, pushSnapshot }
+    const startup = drainPendingCrdtNotes(deps)
+    const onReconnect = drainPendingCrdtNotes(deps)
     release!()
     await Promise.all([startup, onReconnect])
 
     expect(pushSnapshot.mock.calls.map((call) => call[0])).toEqual(['note-a', 'note-b'])
+  })
+
+  it('leaves a note pending and unpushed when its pre-push pull fails', async () => {
+    // Pushing a snapshot makes the server prune every crdt_updates row at or
+    // below it. A device that could not pull first does not know what those
+    // rows contain, so pushing would delete a peer's edits and ship a snapshot
+    // that does not contain them. Being late is recoverable; that is not.
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-unmerged', 'note-merged'])
+
+    const pushSnapshot = vi.fn(async (_noteId: string) => true)
+    const result = await drainPendingCrdtNotes({
+      isSyncable: () => true,
+      mergeRemote: async (noteId) => noteId !== 'note-unmerged',
+      pushSnapshot
+    })
+
+    expect(pushSnapshot.mock.calls.map((call) => call[0])).toEqual(['note-merged'])
+    expect(result).toEqual({ cleared: 1, retained: 1 })
+    expect(readPendingCrdtNotes()).toEqual(['note-unmerged'])
+  })
+
+  it('does not push when the pre-push pull throws', async () => {
+    const { drainPendingCrdtNotes, readPendingCrdtNotes, recordPendingCrdtNotes } =
+      await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-a'])
+
+    const pushSnapshot = vi.fn(async (_noteId: string) => true)
+    await drainPendingCrdtNotes({
+      isSyncable: () => true,
+      mergeRemote: async () => {
+        throw new Error('offline')
+      },
+      pushSnapshot
+    })
+
+    expect(pushSnapshot).not.toHaveBeenCalled()
+    expect(readPendingCrdtNotes()).toEqual(['note-a'])
   })
 
   it('drops notes that no longer exist instead of retrying them forever', async () => {
@@ -112,7 +154,11 @@ describe('crdt pending note store', () => {
     recordPendingCrdtNotes(['note-deleted'])
 
     const pushSnapshot = vi.fn(async () => true)
-    await drainPendingCrdtNotes({ isSyncable: () => false, pushSnapshot })
+    await drainPendingCrdtNotes({
+      isSyncable: () => false,
+      mergeRemote: async () => true,
+      pushSnapshot
+    })
 
     expect(pushSnapshot).not.toHaveBeenCalled()
     expect(readPendingCrdtNotes()).toEqual([])

@@ -68,6 +68,7 @@ const runtimeMocks = vi.hoisted(() => {
     })
     stop = vi.fn(async () => undefined)
     requestPush = vi.fn()
+    mergeRemoteCrdtForNote = vi.fn(async (_noteId: string) => true)
     constructor(public deps: Record<string, unknown>) {
       SyncEngine.instances.push(this)
     }
@@ -157,6 +158,7 @@ const runtimeMocks = vi.hoisted(() => {
     recordPendingCrdtNotes: vi.fn(),
     drainPendingCrdtNotes: vi.fn(
       async (_deps: {
+        mergeRemote: (noteId: string) => Promise<boolean>
         pushSnapshot: (noteId: string) => Promise<boolean>
         isSyncable: (noteId: string) => boolean
       }) => ({ cleared: 0, retained: 0 })
@@ -558,6 +560,14 @@ describe('sync runtime', () => {
     const deps = runtimeMocks.drainPendingCrdtNotes.mock.calls[0]![0]
     await deps.pushSnapshot('note-1')
     expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+
+    // The merge the drain runs before each push has to reach the engine's
+    // single-note CRDT pull; a stub that always says "merged" would let the
+    // replay push a snapshot over a peer edit it never fetched.
+    const engine = runtimeMocks.SyncEngine.instances[0]!
+    engine.mergeRemoteCrdtForNote.mockResolvedValue(true)
+    await expect(deps.mergeRemote('note-1')).resolves.toBe(true)
+    expect(engine.mergeRemoteCrdtForNote).toHaveBeenCalledWith('note-1')
 
     await runtime.stopSyncRuntime()
   })

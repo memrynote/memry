@@ -564,19 +564,57 @@ queue-less stretch starts fresh.
 
 `startSyncRuntime` drains that store once, after `crdtProvider.init()` has
 installed the snapshot push function and after `engine.start()` has awaited the
-first full sync — so the device has merged what the server already had before it
-pushes full state over the top. Signing in runs `startSyncRuntime`, which is what
-makes a signed-out backlog reach the server **with no further user input**;
-leaving the replay to `NetworkMonitor` alone was not enough, because signing in
-is not a network transition. `drainPendingCrdtNotes` is re-entrant-safe and
-clears an id only once its state has actually reached the server, so the startup
-replay and a network-transition replay firing together cannot double-push, and a
+first full sync. Signing in runs `startSyncRuntime`, which is what makes a
+signed-out backlog reach the server **with no further user input**; leaving the
+replay to `NetworkMonitor` alone was not enough, because signing in is not a
+network transition. `drainPendingCrdtNotes` is re-entrant-safe and clears an id
+only once its state has actually reached the server, so the startup replay and a
+network-transition replay firing together cannot double-push, and a
 still-offline start leaves the entry queued for the next attempt.
 
 Notes that no longer exist, or never sync via CRDT (binaries), are dropped at
 drain time rather than retried forever, and a doc with no content is not pushed
 at all — a snapshot is a full note body and an R2 write, so the replay only pays
 for notes that need it.
+
+### Merge before push, and fail closed
+
+A snapshot push is not an addition, it is an **assertion**: `storeSnapshot` is
+followed by `pruneUpdatesBeforeSnapshot`, which runs
+
+```sql
+DELETE FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?
+```
+
+bound to the new snapshot's sequence number. The server takes the pushing device
+at its word that the snapshot contains everything up to that point. Push a
+snapshot for a note whose peer edits this device has not merged, and those edits
+are deleted from the server _and_ absent from the snapshot — destroyed for every
+device.
+
+The pending list is exactly the notes this device edited while it could not
+push, which is also the population most likely to have diverged from a peer, so
+the merge is mandatory. `drainPendingCrdtNotes` therefore pulls and merges each
+note's server state (`SyncEngine.mergeRemoteCrdtForNote` →
+`CrdtSyncCoordinator.pullCrdtForNote` → `applyRemoteUpdate`) **immediately
+before that note's own push**.
+
+Per note, not "once the sweep finishes": the vault sweep is paced at 25 notes /
+15 s, so waiting on it would stall the replay for minutes and still not
+guarantee a given note had been reached. Being placed after `engine.start()` is
+necessary — the first full sync is awaited there — but not sufficient, because
+that sync only _queues_ the paced body sweep.
+
+A pull that does not complete leaves the note pending and **unpushed**.
+`pullCrdtForNote` returns `false` for every incomplete outcome: missing token or
+vault key, an abort, a rate-limited or failed baseline or incrementals fetch.
+Being late is recoverable — the next runtime start or network transition retries
+— while deleting another device's edits is not.
+
+Cost: one extra snapshot GET plus at least one incrementals GET per replayed
+note, both on the `crdt_pull` bucket (600 / 60 s per device). The pending list is
+tens of notes in practice, so ~40–50 GETs, alongside the paced sweep's 100/min —
+comfortably inside the budget, and no pacing is added.
 
 ## Sign-Out / Sign-In Ordering
 
