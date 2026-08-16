@@ -913,9 +913,14 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     throw new Error('No vault is open')
   }
 
-  const notesPath = path.join(status.path, 'notes', targetFolder)
+  // `targetFolder` is vault-relative, the same contract `createNote` and the
+  // folder APIs have used since #1204. Joining a literal `notes/` here
+  // re-prefixed a path that already carried its own folders, so the import
+  // landed in a folder that did not exist, and the misplaced file's own
+  // vault-relative path fed the next drop — one extra `notes/` per drop.
+  const targetDir = targetFolder ? path.join(status.path, targetFolder) : getDefaultNoteDir()
 
-  await ensureDirectory(notesPath)
+  await ensureDirectory(targetDir)
 
   const errors: string[] = []
   const importedFiles: ImportedFileInfo[] = []
@@ -929,7 +934,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       const filename = path.basename(sourcePath)
 
       let destFilename = filename
-      let destPath = path.join(notesPath, destFilename)
+      let destPath = path.join(targetDir, destFilename)
       let counter = 1
 
       while (true) {
@@ -938,7 +943,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
           const ext = path.extname(filename)
           const base = path.basename(filename, ext)
           destFilename = `${base} (${counter})${ext}`
-          destPath = path.join(notesPath, destFilename)
+          destPath = path.join(targetDir, destFilename)
           counter++
         } catch {
           break
