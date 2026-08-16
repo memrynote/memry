@@ -332,7 +332,7 @@ describe('SyncEngine', () => {
    * The wire between the two halves of the #1489 fix.
    *
    * `CrdtSyncCoordinator` raises the flag and the CRDT snapshot push fn reads it
-   * through `SyncEngine.hasUnverifiedRemoteCrdtUpdate` to pick an endpoint. Both
+   * through `SyncEngine.hasUnmergedRemoteCrdtState` to pick an endpoint. Both
    * halves had tests, and both suites stubbed the other side — so replacing the
    * engine method with `return false` disabled the entire fix in production and
    * left all 151 sync test files green. These drive a real coordinator, a real
@@ -360,9 +360,7 @@ describe('SyncEngine', () => {
 
       vi.spyOn(await import('./http-client'), 'fetchCrdtSnapshot').mockResolvedValue(null)
       vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
-        updates: [
-          { sequenceNum: 7, data: 'eA==', createdAt: 1, signerDeviceId: 'revoked-device' }
-        ],
+        updates: [{ sequenceNum: 7, data: 'eA==', createdAt: 1, signerDeviceId: 'revoked-device' }],
         hasMore: false
       })
 
@@ -372,7 +370,30 @@ describe('SyncEngine', () => {
 
       // #then a `return false` here sends the note back to /sync/crdt/snapshot,
       // whose pruneUpdatesBeforeSnapshot deletes the row that was just skipped.
-      expect(engine.hasUnverifiedRemoteCrdtUpdate('note-1')).toBe(true)
+      expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(true)
+
+      vi.restoreAllMocks()
+    })
+
+    it('#then a `crdt_updated` broadcast marks the note before its pull runs', async () => {
+      const deps = createMockDeps(getDb(), {
+        crdtProvider: crdtProviderStub() as unknown as SyncEngineDeps['crdtProvider']
+      })
+      const engine = new SyncEngine(deps)
+
+      // #when the server tells this device a peer wrote the note. The handler is
+      // private and only bound inside `start()`, which brings up the socket, so
+      // this drives the branch directly rather than standing the socket up.
+      ;(engine as unknown as { handleWsMessage: (message: unknown) => void }).handleWsMessage({
+        type: 'crdt_updated',
+        payload: { noteId: 'note-ws' }
+      })
+
+      // #then the note is unmerged from this moment, not from whenever
+      // `scheduleSync` gets around to the pull. In between, the 30s snapshot
+      // scheduler would otherwise push a snapshot and prune the very update the
+      // broadcast announced — #1503 with the server itself as the witness.
+      expect(engine.hasUnmergedRemoteCrdtState('note-ws')).toBe(true)
 
       vi.restoreAllMocks()
     })
@@ -398,7 +419,7 @@ describe('SyncEngine', () => {
 
       // #then the safe route has to stay the exception — a bridge hard-wired to
       // `true` would cost every note in the vault its compaction point.
-      expect(engine.hasUnverifiedRemoteCrdtUpdate('note-2')).toBe(false)
+      expect(engine.hasUnmergedRemoteCrdtState('note-2')).toBe(false)
 
       vi.restoreAllMocks()
     })

@@ -408,13 +408,14 @@ export class SyncEngine extends EventEmitter {
   }
 
   /**
-   * `true` when a merge pass left server state for this note out of the local
-   * doc because it could not verify the signer, so a snapshot push would delete
-   * or overwrite it. The CRDT snapshot push fn asks this before choosing an
-   * endpoint; see `CrdtSyncCoordinator.hasUnverifiedRemoteUpdate`.
+   * `true` when this device knows it has not merged the server's state for this
+   * note — an unverifiable signer, a failed or aborted pass, or a pull that is
+   * queued and has not run — so a snapshot push would delete or overwrite that
+   * state. The CRDT snapshot push fn asks this before choosing an endpoint; see
+   * `CrdtSyncCoordinator.hasUnmergedRemoteState`.
    */
-  hasUnverifiedRemoteCrdtUpdate(noteId: string): boolean {
-    return this.crdtSync.hasUnverifiedRemoteUpdate(noteId)
+  hasUnmergedRemoteCrdtState(noteId: string): boolean {
+    return this.crdtSync.hasUnmergedRemoteState(noteId)
   }
 
   async fullSync(): Promise<void> {
@@ -760,6 +761,13 @@ export class SyncEngine extends EventEmitter {
         if (this.ctx.fullSyncActive) {
           this.crdtSync.addPendingPull(noteId)
         } else {
+          // Marked before the pull is even scheduled. The broadcast is the
+          // server telling us a peer's state for this note is not in our doc,
+          // and `scheduleSync` may not run the callback for a while — that
+          // whole span is time in which the 30s snapshot scheduler would
+          // otherwise push a snapshot and prune the very update we were just
+          // told about. A clean pull clears it.
+          this.crdtSync.markRemoteStateUnmerged(noteId)
           // The merged/failed answer is the replay's concern; a broadcast-driven
           // pull that fails is already owed a retry by the coordinator.
           this.scheduleSync(async () => {
