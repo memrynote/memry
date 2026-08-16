@@ -258,7 +258,9 @@ If your chosen hotkey is already claimed by another app, memrynote keeps its bui
 
 ### Shortcut List
 
-Searchable, grouped by category (Navigation, Tabs, Editor, View). Click any row to capture a new binding. Custom bindings show a badge.
+Searchable, grouped by category (Navigation, Tabs, Editor, View). Click any row to capture a new binding; it takes effect immediately, without a restart. Custom bindings show a badge.
+
+Editor rows (Bold, Italic, Underline) are read-only — those keys are handled by the note editor itself.
 
 ### Reset All
 

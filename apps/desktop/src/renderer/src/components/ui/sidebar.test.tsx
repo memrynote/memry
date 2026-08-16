@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
+import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
 import {
   Sidebar,
   SidebarContent,
@@ -56,6 +57,12 @@ describe('SidebarProvider shortcuts', () => {
     setWindowWidth(1024)
   })
 
+  afterEach(() => {
+    act(() => {
+      __setShortcutOverridesForTests({})
+    })
+  })
+
   it('toggles the desktop sidebar with Meta/Ctrl+B', () => {
     render(
       <SidebarProvider defaultOpen>
@@ -72,6 +79,53 @@ describe('SidebarProvider shortcuts', () => {
     fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
 
     expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+  })
+
+  it('leaves Meta/Ctrl+B to the editor while the caret is in rich text', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+        <div
+          data-testid="rich-text"
+          contentEditable="true"
+          suppressContentEditableWarning
+          tabIndex={-1}
+        />
+      </SidebarProvider>
+    )
+
+    const editor = screen.getByTestId('rich-text')
+    editor.focus()
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    // Bold owns the chord here — the sidebar must not move too.
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+
+    editor.blur()
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('toggles on a rebound chord and ignores the replaced one', () => {
+    __setShortcutOverridesForTests({
+      'view.toggleSidebar': { key: 'b', modifiers: { alt: true } }
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+
+    fireEvent.keyDown(window, { key: 'b', altKey: true })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
   })
 
   it('collapses the desktop sidebar when a resize drag passes below the minimum width', () => {

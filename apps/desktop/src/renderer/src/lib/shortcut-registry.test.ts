@@ -50,6 +50,31 @@ describe('shortcut-registry', () => {
       }
     })
 
+    it('only lists shortcuts that a runtime owner reads back', () => {
+      // A registry row with no owner is a settings row that silently does
+      // nothing. nav.goTo*/nav.newTask/editor.save were exactly that.
+      const ids = SHORTCUT_REGISTRY.map((e) => e.id)
+
+      expect(ids).not.toContain('nav.newTask')
+      expect(ids).not.toContain('nav.goToInbox')
+      expect(ids).not.toContain('nav.goToNotes')
+      expect(ids).not.toContain('nav.goToTasks')
+      expect(ids).not.toContain('editor.save')
+    })
+
+    it('uses the search chord the app actually listens for', () => {
+      // Meta+F is find-in-page, never global search.
+      const search = SHORTCUT_REGISTRY.find((entry) => entry.id === 'nav.search')
+
+      expect(search?.defaultBinding).toEqual({ key: 'k', modifiers: { meta: true } })
+    })
+
+    it('marks editor formatting keys as owned by the editor', () => {
+      for (const id of ['editor.bold', 'editor.italic', 'editor.underline']) {
+        expect(SHORTCUT_REGISTRY.find((entry) => entry.id === id)?.rebindable).toBe(false)
+      }
+    })
+
     it('uses Meta/Ctrl+B as the default sidebar toggle shortcut', () => {
       const toggleSidebar = SHORTCUT_REGISTRY.find((entry) => entry.id === 'view.toggleSidebar')
 
@@ -103,7 +128,7 @@ describe('shortcut-registry', () => {
 
   describe('resolveBinding', () => {
     const entry: ShortcutEntry = {
-      id: 'test.shortcut',
+      id: 'nav.newNote',
       i18nKey: 'test.shortcut',
       label: 'Test',
       description: 'Test shortcut',
@@ -117,7 +142,7 @@ describe('shortcut-registry', () => {
 
     it('returns override when present', () => {
       const override: ShortcutBinding = { key: 'x', modifiers: { meta: true, shift: true } }
-      expect(resolveBinding(entry, { 'test.shortcut': override })).toEqual(override)
+      expect(resolveBinding(entry, { 'nav.newNote': override })).toEqual(override)
     })
 
     it('ignores overrides for different IDs', () => {
@@ -168,11 +193,18 @@ describe('shortcut-registry', () => {
     })
 
     it('detects conflict with existing default binding', () => {
-      const conflicting: ShortcutBinding = { key: 'f', modifiers: { meta: true } }
+      const conflicting: ShortcutBinding = { key: 'k', modifiers: { meta: true } }
       const conflicts = findConflicts('custom.id', conflicting, {})
       expect(conflicts.length).toBeGreaterThan(0)
       expect(conflicts[0].conflictingId).toBe('nav.search')
       expect(conflicts[0].conflictingLabel).toBe('Search')
+    })
+
+    it('does not flag editor formatting keys, which focus resolves at keypress time', () => {
+      const bold = SHORTCUT_REGISTRY.find((e) => e.id === 'editor.bold')!
+      const conflicts = findConflicts('view.toggleSidebar', bold.defaultBinding, {})
+
+      expect(conflicts.every((c) => c.conflictingId !== 'editor.bold')).toBe(true)
     })
 
     it('excludes self from conflict check', () => {
