@@ -268,70 +268,68 @@ export function ReminderPicker({
             )}
           </>
         ) : (
-          <div className="p-2">
-            <button
-              type="button"
-              onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
-              className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ChevronRight className="h-3 w-3 rotate-180" />
+          // The confirm button lives in a pinned footer so the height cap on
+          // `Picker.Content` can only ever eat into the scrolling body above it.
+          <>
+            <div className="min-h-0 overflow-y-auto p-2">
+              <button
+                type="button"
+                onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
+                className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className="h-3 w-3 rotate-180" />
 
-              {mode === 'edit'
-                ? tPhaseF('phaseF.componentsReminderReminderPicker.editReminder')
-                : tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
-            </button>
+                {mode === 'edit'
+                  ? tPhaseF('phaseF.componentsReminderReminderPicker.editReminder')
+                  : tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
+              </button>
 
-            <DatePickerCalendar
-              selected={selectedDate}
-              onSelect={(d) => setSelectedDate(d)}
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-              className="rounded-md border p-2"
-            />
+              <DatePickerCalendar
+                selected={selectedDate}
+                onSelect={(d) => setSelectedDate(d)}
+                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                className="rounded-md border p-2"
+              />
 
-            <div className="mt-3 space-y-3 px-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
-                  <Clock className="h-4 w-4" />
+              <div className="mt-3 space-y-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-4 w-4" />
 
-                  {tPhaseF('phaseF.componentsReminderReminderPicker.time')}
-                </Label>
-                <Input
-                  id="reminder-time"
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="h-8 w-28"
-                />
-              </div>
-
-              {shouldShowNote && (
-                <div>
-                  <Label htmlFor="reminder-note" className="text-sm">
-                    {tPhaseF('phaseF.componentsReminderReminderPicker.noteOptional')}
+                    {tPhaseF('phaseF.componentsReminderReminderPicker.time')}
                   </Label>
-                  <Textarea
-                    id="reminder-note"
-                    placeholder={tPhaseF(
-                      'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
-                    )}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="mt-1.5 h-16 resize-none text-sm"
+                  <Input
+                    id="reminder-time"
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="h-8 w-28"
                   />
                 </div>
-              )}
 
+                {shouldShowNote && (
+                  <div>
+                    <Label htmlFor="reminder-note" className="text-sm">
+                      {tPhaseF('phaseF.componentsReminderReminderPicker.noteOptional')}
+                    </Label>
+                    <Textarea
+                      id="reminder-note"
+                      placeholder={tPhaseF(
+                        'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
+                      )}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      className="mt-1.5 h-16 resize-none text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Picker.Footer className="space-y-2 p-2">
               {selectedDate && (
                 <div className="text-xs text-muted-foreground">
-                  {formatReminderDate(
-                    (() => {
-                      const [hours, minutes] = selectedTime.split(':').map(Number)
-                      const date = new Date(selectedDate)
-                      date.setHours(hours, minutes, 0, 0)
-                      return date
-                    })(),
-                    clockFormat
-                  )}
+                  {formatReminderDate(buildSelectedDate() ?? selectedDate, clockFormat)}
                 </div>
               )}
 
@@ -344,11 +342,11 @@ export function ReminderPicker({
                 {mode === 'edit'
                   ? tPhaseF('phaseF.componentsReminderReminderPicker.save')
                   : isLoading
-                    ? 'Setting...'
-                    : 'Set Reminder'}
+                    ? tPhaseF('phaseF.componentsReminderReminderPicker.setting')
+                    : tPhaseF('phaseF.componentsReminderReminderPicker.setReminder')}
               </Button>
-            </div>
-          </div>
+            </Picker.Footer>
+          </>
         )}
       </Picker.Content>
     </Picker>

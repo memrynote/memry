@@ -74,6 +74,26 @@ describe('PickerContent', () => {
   })
 })
 
+describe('PickerFooter', () => {
+  it('holds its height so the cap eats the scrolling body instead of the footer', () => {
+    // The footer carries the confirm action. Left shrinkable, a popover anchored
+    // low in the window squeezes it away along with the only way to commit —
+    // which is how the reminder picker lost its "Set reminder" button.
+    render(
+      <Picker defaultOpen>
+        <Picker.Trigger>trigger</Picker.Trigger>
+        <Picker.Content>
+          <Picker.Footer>footer</Picker.Footer>
+        </Picker.Content>
+      </Picker>
+    )
+
+    const footer = document.querySelector('[data-slot="picker-footer"]')
+    expect(footer).not.toBeNull()
+    expect(footer?.className).toContain('shrink-0')
+  })
+})
+
 describe('PickerList', () => {
   it('scrolls instead of clipping when the list outgrows the popover', () => {
     renderPicker()
