@@ -101,6 +101,28 @@ export const folderViewKeys = {
   notes: (scope: ViewScope) => [...folderViewKeys.all, 'notes', scopeKey(scope)] as const
 }
 
+/**
+ * Resolves a saved view NAME against the folder's current views.
+ *
+ * Callers persist the name rather than the index on purpose: indices shift the
+ * moment a view is added, deleted or reordered in `.folder.md` — possibly by
+ * another device, or by hand — and a stale index silently lands on someone
+ * else's view. A stale name simply fails to match, and the folder's own
+ * `defaultIndex` takes over. An out-of-range `defaultIndex` (a `.folder.md`
+ * edited down to fewer views) falls back to the first view rather than to
+ * `null`, which would render an empty table with no way back.
+ */
+export function resolveViewIndex(
+  views: readonly { name: string }[],
+  storedName: string | null | undefined,
+  defaultIndex: number
+): number {
+  const fallback = defaultIndex >= 0 && defaultIndex < views.length ? defaultIndex : 0
+  if (typeof storedName !== 'string') return fallback
+  const named = views.findIndex((view) => view.name === storedName)
+  return named >= 0 ? named : fallback
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -316,15 +338,18 @@ export function useFolderView({
   // Sync activeViewIndex when views load (only on initial load or invalidation).
   // Done during render via the React-recommended "adjusting state when a prop changes"
   // pattern instead of an effect, so we avoid no-derived-state warnings.
-  // When initialViewName is provided (Home widget), prefer the named view over the default.
+  // When initialViewName is provided (the Home widget, and a folder tab restoring
+  // the view it was left on), prefer the named view over the default. A name that
+  // no longer matches — renamed, deleted, or reordered away since it was
+  // recorded — falls back to the folder's own default rather than an arbitrary
+  // index.
   const [initKey, setInitKey] = useState<string | null>(null)
   const desiredInitKey = `${scopeKey(scope)}::${initialViewName ?? ''}`
   if (viewsQuery.data && initKey !== desiredInitKey) {
     setInitKey(desiredInitKey)
-    const namedIndex = initialViewName
-      ? viewsQuery.data.views.findIndex((view) => view.name === initialViewName)
-      : -1
-    setActiveViewIndex(namedIndex >= 0 ? namedIndex : viewsQuery.data.defaultIndex)
+    setActiveViewIndex(
+      resolveViewIndex(viewsQuery.data.views, initialViewName, viewsQuery.data.defaultIndex)
+    )
   }
 
   // Get active view

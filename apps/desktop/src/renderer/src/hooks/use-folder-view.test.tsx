@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type React from 'react'
 import { toast } from 'sonner'
-import { useFolderView, folderViewKeys } from './use-folder-view'
+import { useFolderView, folderViewKeys, resolveViewIndex } from './use-folder-view'
 import type { ViewScope } from '@memry/contracts/folder-view-api'
 
 const workScope: ViewScope = { kind: 'folder', path: 'Work' }
@@ -565,5 +565,39 @@ describe('useFolderView', () => {
     await waitFor(() => expect(window.api.folderView.listWithProperties).toHaveBeenCalled())
 
     expect(mocks.onTagNotesChanged).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveViewIndex', () => {
+  const views = [{ name: 'Table' }, { name: 'Board' }, { name: 'Gallery' }]
+
+  it('resolves a stored name to its CURRENT index, not the one it had', () => {
+    // The whole point of storing the name: `.folder.md` can be reordered by
+    // another device or by hand, and an index recorded before that lands on a
+    // different view entirely.
+    expect(resolveViewIndex(views, 'Gallery', 0)).toBe(2)
+    expect(resolveViewIndex([{ name: 'Gallery' }, ...views.slice(0, 2)], 'Gallery', 0)).toBe(0)
+  })
+
+  it("falls back to the folder's default when the name is gone", () => {
+    expect(resolveViewIndex(views, 'Deleted', 1)).toBe(1)
+  })
+
+  it('falls back to the default when nothing is stored', () => {
+    expect(resolveViewIndex(views, null, 2)).toBe(2)
+    expect(resolveViewIndex(views, undefined, 1)).toBe(1)
+  })
+
+  it('clamps a default index that no longer exists', () => {
+    // A `.folder.md` edited down to fewer views leaves `defaultIndex` past the
+    // end; returning it would render `views[n] === undefined` — an empty table
+    // with no view selected and no way back.
+    expect(resolveViewIndex(views, null, 9)).toBe(0)
+    expect(resolveViewIndex(views, null, -1)).toBe(0)
+    expect(resolveViewIndex(views, 'Deleted', 9)).toBe(0)
+  })
+
+  it('prefers the stored name over the default', () => {
+    expect(resolveViewIndex(views, 'Table', 2)).toBe(0)
   })
 })
