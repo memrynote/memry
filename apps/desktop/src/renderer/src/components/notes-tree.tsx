@@ -37,12 +37,15 @@ import {
   type TreeActionsHandle
 } from '@/components/note-tree-internal'
 import {
+  extractFolderFromPath,
   getDisplayName,
   getFileExtensionLabel,
   getFileIcon,
   collectAllFolderIds,
   type FolderNode
 } from '@/components/notes-tree-utils'
+import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { cn } from '@/lib/utils'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
@@ -83,10 +86,16 @@ export interface NotesTreeActions {
 interface NotesTreeProps {
   onTargetFolderChange?: (folder: string) => void
   scrollContainerRef?: React.RefObject<HTMLElement>
+  /**
+   * Vault-relative folder an in-flight external file drag is aimed at, or null
+   * when no file is being dragged. Highlight only — the drop reads its own
+   * destination off `FILE_DROP_FOLDER_ATTR` in the DOM.
+   */
+  fileDropFolder?: string | null
 }
 
 export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
-  { onTargetFolderChange, scrollContainerRef }: NotesTreeProps = {},
+  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps = {},
   ref
 ) {
   const { t } = useT('notes')
@@ -302,6 +311,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         canvasNoteId={note.id}
       >
         <TreeNodeTrigger
+          // A file dropped on a note belongs in the folder that note lives in.
+          {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(note.path) }}
           contextMenuContent={
             <>
               {!isPartOfSelection && (
@@ -423,7 +434,11 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         hasChildren={hasChildren}
       >
         <TreeNodeTrigger
-          className=""
+          {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
+          className={cn(
+            fileDropFolder === folder.path &&
+              'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'
+          )}
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
@@ -590,6 +605,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           isDragDisabled={
             !!actions.renamingNoteId || !!actions.renamingFolderPath || actions.isMoving
           }
+          fileDropFolder={fileDropFolder}
           scrollContainerRef={scrollContainerRef}
         />
       ) : (

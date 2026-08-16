@@ -359,6 +359,7 @@
       "bookmarks": "Bookmarks",
       "tags": "Tags",
       "dropFilesToImport": "Drop files to import",
+      "dropFilesIntoVaultRoot": "Vault root",
       "newNoteN": "New note (⌘N)",
       "new": "New",
       "newItemMenu": "Create new…",

@@ -151,7 +151,8 @@ vi.mock('@/hooks/use-inbox', () => ({
 }))
 
 vi.mock('@/hooks/use-file-drop', () => ({
-  useFileDrop: () => ({ isDraggingFiles: false, dropHandlers: {} })
+  FILE_DROP_FOLDER_ATTR: 'data-file-drop-folder',
+  useFileDrop: () => ({ isDraggingFiles: false, dropFolder: null, dropHandlers: {} })
 }))
 
 vi.mock('@/components/ui/picker', () => ({

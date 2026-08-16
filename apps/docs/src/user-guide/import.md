@@ -26,6 +26,24 @@ Progress lines, preview warnings and import errors are shown in your selected la
 | Todoist       | Project CSV `.csv`              | Tasks                 | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks                 | See [Import from TickTick](./tasks/import-ticktick.md) |
 
+## Dropping Files onto the Sidebar
+
+For a handful of files, skip **Settings → Import** entirely: drag them from Finder or Explorer straight onto the sidebar. They are **copied** into your vault, so the originals can be moved or deleted afterwards without breaking anything.
+
+**Where they land is where you drop them:**
+
+| Drop target        | Destination                                               |
+| ------------------ | --------------------------------------------------------- |
+| A folder row       | That folder                                               |
+| A note or file row | The folder that note lives in                             |
+| Empty space        | Your vault root (or your **default note folder**, if set) |
+
+Whatever is currently selected in the sidebar makes no difference — only the drop position counts. While you drag, the target folder is outlined and named at the bottom of the sidebar, so you can confirm the destination before letting go.
+
+A name collision never overwrites: a second `report.pdf` becomes `report (1).pdf`.
+
+Unsupported file types are skipped rather than failing the whole drop; the supported extensions are listed in the sidebar while you drag. To attach a file **inside** a note instead of adding it to the vault, drop it onto the editor — see [Attachments](./notes/attachments.md).
+
 ## Importing from Notion
 
 memrynote imports a Notion **HTML** export (not the Markdown or CSV export).

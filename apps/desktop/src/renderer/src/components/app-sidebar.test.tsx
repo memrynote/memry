@@ -20,7 +20,9 @@ const mocks = vi.hoisted(() => ({
   notesTreeCreateNote: vi.fn(),
   notesTreeCreateFolder: vi.fn(),
   canvasTreeCreateFolder: vi.fn(),
-  fileDrop: { onDrop: null as ((paths: string[]) => Promise<void> | void) | null },
+  fileDrop: {
+    onDrop: null as ((paths: string[], targetFolder: string) => Promise<void> | void) | null
+  },
   // Keyless calls collapse to the last key segment; interpolated ones append
   // their values so a test can prove the caller passed them through.
   translate: (key: string, values?: Record<string, unknown>): string => {
@@ -278,9 +280,12 @@ vi.mock('@/hooks/use-inbox', () => ({
 }))
 
 vi.mock('@/hooks/use-file-drop', () => ({
-  useFileDrop: (options: { onDrop: (paths: string[]) => Promise<void> | void }) => {
+  FILE_DROP_FOLDER_ATTR: 'data-file-drop-folder',
+  useFileDrop: (options: {
+    onDrop: (paths: string[], targetFolder: string) => Promise<void> | void
+  }) => {
     mocks.fileDrop.onDrop = options.onDrop
-    return { isDraggingFiles: false, dropHandlers: {} }
+    return { isDraggingFiles: false, dropFolder: null, dropHandlers: {} }
   }
 }))
 
@@ -466,12 +471,27 @@ describe('AppSidebar', () => {
     })
 
     await act(async () => {
-      await mocks.fileDrop.onDrop?.(['a.md', 'b.md', 'bad.zip'])
+      await mocks.fileDrop.onDrop?.(['a.md', 'b.md', 'bad.zip'], '')
     })
 
     expect(toast.success).toHaveBeenCalledWith('filesImported:{"count":2}')
     expect(toast.error).toHaveBeenCalledWith('filesImportFailed:{"count":1}', {
       description: 'bad.zip: unsupported'
     })
+  })
+
+  it('imports into the folder the drop landed on, ignoring the selected folder', async () => {
+    // #given — the tree mock reports `Projects` as the selected folder, which is
+    // what used to decide the destination on its own
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    mocks.importFiles.mockResolvedValueOnce({ imported: 1, failed: 0, errors: [] })
+
+    // #when — the file is dropped over a different folder row
+    await act(async () => {
+      await mocks.fileDrop.onDrop?.(['/tmp/sample.pdf'], 'movies')
+    })
+
+    // #then — the drop wins over the selection
+    expect(mocks.importFiles).toHaveBeenCalledWith(['/tmp/sample.pdf'], 'movies')
   })
 })

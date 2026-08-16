@@ -171,10 +171,13 @@ function renderTree(
   return { onSelectionChange, onMove, onIconChange }
 }
 
-function dataTransfer() {
+function dataTransfer(types: string[] = []) {
   return {
     effectAllowed: '',
     dropEffect: '',
+    // A real DataTransfer always exposes `types`; the tree reads it to tell an
+    // internal reorder from a file dragged in from the OS.
+    types,
     setData: vi.fn()
   }
 }
@@ -273,6 +276,27 @@ describe('TreeProvider and tree primitives', () => {
 
     fireEvent.dragLeave(childB, { relatedTarget: document.body })
     fireEvent.dragEnd(root)
+  })
+
+  it('lets a file dragged in from the OS reach the sidebar instead of swallowing it', () => {
+    // #given — the row's drop handler runs in the capture phase, so stopping
+    // propagation there cancels the bubble phase and the sidebar importer with it
+    const { onMove } = renderTree()
+    const sidebarDrop = vi.fn()
+    const childB = screen.getByText('Child B').closest('[data-tree-node-id]') as HTMLElement
+    document.body.addEventListener('drop', sidebarDrop)
+
+    const transfer = dataTransfer(['Files'])
+
+    // #when
+    fireEvent.dragOver(childB, { dataTransfer: transfer, clientY: 20 })
+    fireEvent.drop(childB, { dataTransfer: transfer })
+
+    // #then — no reorder claimed, and the event still bubbles out of the tree
+    expect(onMove).not.toHaveBeenCalled()
+    expect(sidebarDrop).toHaveBeenCalled()
+
+    document.body.removeEventListener('drop', sidebarDrop)
   })
 
   it('supports controlled selection, disabled selection, hidden chrome, and outside-context errors', () => {
