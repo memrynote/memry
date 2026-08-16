@@ -71,6 +71,7 @@ export function JournalReminderButton({
           <ReminderPicker
             onSelect={(time, note) => void handleSetReminder(time, note)}
             presetType="journal"
+            telemetrySurface="journal"
             showNote
             disabled={disabled}
             trigger={
@@ -95,7 +96,7 @@ export function JournalReminderButton({
 
           {/* Badge indicator for multiple reminders */}
           {activeReminderCount > 1 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-medium text-white">
+            <span className="absolute -top-0.5 -end-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500 text-[9px] font-medium text-white">
               {activeReminderCount > 9 ? '9+' : activeReminderCount}
             </span>
           )}

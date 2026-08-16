@@ -58,6 +58,7 @@ export function TaskReminderButton({
     <ReminderPicker
       onSelect={(date, _title, note) => void actions.setReminder(date, note)}
       presetType="standard"
+      telemetrySurface="tasks"
       showNote
       disabled={disabled}
       reminders={activeReminders}

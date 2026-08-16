@@ -217,6 +217,7 @@ export const ConvertActions = ({
                   setRemindNote(note ?? null)
                 }}
                 presetType="standard"
+                telemetrySurface="inbox"
                 showNote
                 trigger={
                   <button

@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { trackTelemetry } from '@/lib/telemetry'
+import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
 import { useT } from '@memry/i18n/renderer'
 import {
   type ReminderPreset,
@@ -41,6 +43,16 @@ export interface ReminderPickerProps {
   onEdit?: (id: string, date: Date, note?: string) => void
   /** Delete an existing reminder by id. Required for the delete affordance. */
   onDelete?: (id: string) => void
+  /**
+   * Surface this picker was opened from. Supplying it turns on `reminder_created`
+   * / `reminder_deleted` telemetry; leaving it out keeps the picker silent.
+   *
+   * The picker is the one place that knows whether a reminder time came from a
+   * relative preset or from the custom date & time pane, so it is also where the
+   * event is emitted — see components/reminder/reminder-picker.tsx in
+   * apps/docs/src/architecture/observability.md.
+   */
+  telemetrySurface?: TelemetrySurface
 }
 
 type PickerMode = 'presets' | 'custom' | 'edit'
@@ -65,7 +77,8 @@ export function ReminderPicker({
   className,
   reminders,
   onEdit,
-  onDelete
+  onDelete,
+  telemetrySurface
 }: ReminderPickerProps): React.ReactElement {
   const { t: tPhaseF } = useT('inbox')
   const {
@@ -89,9 +102,25 @@ export function ReminderPicker({
     return date
   }
 
+  /**
+   * Nothing derived from the reminder itself ships: not its note, not its title,
+   * not the target's id or name, not the time it is set for. `presetId` is one of
+   * the fixed ids in reminder-presets.ts, so the dimension stays a bounded enum.
+   */
+  const trackReminderCreated = (origin: 'preset' | 'custom', presetId?: string): void => {
+    if (!telemetrySurface) return
+    void trackTelemetry('reminder_created', {
+      surface: telemetrySurface,
+      action: 'created',
+      source: origin,
+      dimensions: presetId ? { value: presetId } : undefined
+    })
+  }
+
   const handlePresetSelect = (preset: ReminderPreset): void => {
     const date = preset.getDate()
     onSelect(date, undefined, note || undefined)
+    trackReminderCreated('preset', preset.id)
     setOpen(false)
     resetState()
   }
@@ -101,6 +130,7 @@ export function ReminderPicker({
     if (!date) return
 
     onSelect(date, undefined, note || undefined)
+    trackReminderCreated('custom')
     setOpen(false)
     resetState()
   }
@@ -255,7 +285,15 @@ export function ReminderPicker({
                           aria-label={tPhaseF(
                             'phaseF.componentsReminderReminderPicker.deleteReminder'
                           )}
-                          onClick={() => onDelete(reminder.id)}
+                          onClick={() => {
+                            onDelete(reminder.id)
+                            if (telemetrySurface) {
+                              void trackTelemetry('reminder_deleted', {
+                                surface: telemetrySurface,
+                                action: 'deleted'
+                              })
+                            }
+                          }}
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                         >
                           <Trash2 className="size-3.5" />
