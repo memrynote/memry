@@ -617,10 +617,32 @@ installed the snapshot push function and after `engine.start()` has awaited the
 first full sync. Signing in runs `startSyncRuntime`, which is what makes a
 signed-out backlog reach the server **with no further user input**; leaving the
 replay to `NetworkMonitor` alone was not enough, because signing in is not a
-network transition. `drainPendingCrdtNotes` is re-entrant-safe and clears an id
-only once its state has actually reached the server, so the startup replay and a
-network-transition replay firing together cannot double-push, and a
-still-offline start leaves the entry queued for the next attempt.
+network transition. `drainPendingCrdtNotes` clears an id only once its state has
+actually reached the server, so the startup replay and a network-transition
+replay firing together cannot double-push, and a still-offline start leaves the
+entry queued for the next attempt.
+
+Those two triggers can arrive within the same second — coming back from offline
+does both — so the replay serialises itself: two runs must never overlap,
+because each one re-reads the durable store at the top and rewrites it at the
+end. A trigger that lands mid-drain is **deferred, not dropped**. Dropping it
+was safe in the sense that nothing was lost, but the running drain had already
+read the store, so an id recorded in between waited on some unrelated later
+event to be replayed — and pulling before pushing made each drain slow enough
+for that to matter.
+
+Deferral **coalesces**: at most one run waits behind the running one. Every run
+is "replay whatever the store holds when you start", and that is re-read per
+run, so a third trigger asks for nothing the second has not already asked for,
+and a deferred run naturally picks up ids recorded while its predecessor was
+working. The queued run uses the **newest** trigger's dependencies: those close
+over one runtime's `SyncEngine` and `CrdtProvider`, and neither survives
+`stopSyncRuntime`, so a session torn down and replaced mid-drain hands the
+deferred run to the live session rather than replaying the dead one's closure. A
+teardown with nothing replacing it fails closed the same way an already-running
+drain does — `CrdtProvider.destroy()` nulls the snapshot push function, and
+`pushSnapshotForNote` returns `false` without one, so nothing is cleared and
+every id stays in the store for the next session.
 
 Notes that no longer exist, or never sync via CRDT (binaries), are dropped at
 drain time rather than retried forever, and a doc with no content is not pushed

@@ -96,12 +96,54 @@ export interface PendingCrdtDrainDeps {
   isSyncable: (noteId: string) => boolean
 }
 
-let draining = false
+interface PendingCrdtDrainResult {
+  cleared: number
+  retained: number
+}
+
+/**
+ * Serialisation state for the replay. Two runs must never overlap: each one
+ * re-reads the durable store at the top and rewrites it at the end, so a second
+ * run started mid-flight would re-push notes the first one is already pushing
+ * and could write its own id set over the first run's result.
+ *
+ * The guard used to *drop* the concurrent trigger and return "nothing to do".
+ * That leaned on both triggers being idempotent and on something firing the
+ * replay again later, and `2d6afbd95` widened the window a trigger can be lost
+ * in by making every note pull before it pushes. It defers instead.
+ *
+ * Deferral *coalesces*: at most one run waits behind the running one. A third
+ * trigger asks for nothing the second has not already asked for — every run is
+ * "replay whatever the store holds when you start", and that is re-read per run
+ * — so a queue of N would be one real pass and N-1 passes over an empty store.
+ *
+ * The queued run uses the *newest* caller's deps. `deps` closes over one
+ * runtime's `engine` and `crdtProvider` (runtime.ts's `replayPendingCrdtNotes`)
+ * and neither instance survives `stopSyncRuntime`, so if a session is torn down
+ * and a new one starts while a drain is still running, the new session's
+ * trigger replaces the dead session's closure rather than queueing behind it.
+ *
+ * A teardown with nothing replacing it leaves the queued run holding the dead
+ * runtime's deps — the same exposure a drain already in flight has, since
+ * teardown does not await it. It fails closed: `CrdtProvider.destroy()` nulls
+ * `snapshotPushFn`, and `pushSnapshotForNote` returns false without one, so
+ * nothing is cleared and every id stays in the durable store for next session.
+ */
+let inFlight: Promise<PendingCrdtDrainResult> | null = null
+let deferredRun: Promise<PendingCrdtDrainResult> | null = null
+let deferredDeps: PendingCrdtDrainDeps | null = null
 
 /**
  * Replay the recorded notes. An entry is cleared only once its state has
  * actually reached the server, so a still-offline start leaves it queued for
  * the next attempt rather than losing it.
+ *
+ * Triggered from two places, both in runtime.ts: the tail of `startSyncRuntime`
+ * (cold start and sign-in alike) and the network monitor going online. Coming
+ * back from offline does both within the same second, so the returned promise
+ * may be for a run deferred behind one already in flight — `{cleared, retained}`
+ * always describes the run this call is responsible for, never a run it merely
+ * waited on.
  *
  * **Merge before push, and fail closed.** A snapshot push is an assertion that
  * the pushed state contains everything the server has: `storeSnapshot` is
@@ -126,15 +168,43 @@ let draining = false
  * answers it by sending the same doc state to the incremental endpoint, which
  * prunes nothing — see the endpoint choice in `runtime.ts`.
  */
-export async function drainPendingCrdtNotes(
-  deps: PendingCrdtDrainDeps
-): Promise<{ cleared: number; retained: number }> {
-  if (draining) return { cleared: 0, retained: 0 }
+export function drainPendingCrdtNotes(deps: PendingCrdtDrainDeps): Promise<PendingCrdtDrainResult> {
+  if (!inFlight) return startDrain(deps)
 
+  deferredDeps = deps
+  deferredRun ??= runAfter(inFlight)
+  return deferredRun
+}
+
+async function runAfter(
+  previous: Promise<PendingCrdtDrainResult>
+): Promise<PendingCrdtDrainResult> {
+  // A predecessor that threw is not a reason to skip this run: the trigger
+  // behind it is an independent attempt, not a retry of that one.
+  await previous.catch(() => undefined)
+  const deps = deferredDeps!
+  deferredDeps = null
+  deferredRun = null
+  return startDrain(deps)
+}
+
+function startDrain(deps: PendingCrdtDrainDeps): Promise<PendingCrdtDrainResult> {
+  const run = drainOnce(deps).finally(() => {
+    // Stay marked in-flight while a run is queued behind this one. The handoff
+    // in `runAfter` is asynchronous, and a trigger landing inside it has to join
+    // that run rather than start a third drain alongside it.
+    if (inFlight === run && !deferredRun) inFlight = null
+  })
+  inFlight = run
+  return run
+}
+
+async function drainOnce(deps: PendingCrdtDrainDeps): Promise<PendingCrdtDrainResult> {
+  // Re-read per run, so a run deferred behind another one picks up the ids that
+  // one recorded while it was working as well as the ones it could not clear.
   const pending = readPendingCrdtNotes()
   if (pending.length === 0) return { cleared: 0, retained: 0 }
 
-  draining = true
   const cleared: string[] = []
   try {
     for (const noteId of pending) {
@@ -153,7 +223,6 @@ export async function drainPendingCrdtNotes(
       }
     }
   } finally {
-    draining = false
     clearPendingCrdtNotes(cleared)
   }
 
