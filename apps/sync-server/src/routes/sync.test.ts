@@ -1347,6 +1347,104 @@ describe('sync routes', () => {
       expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1')
     })
 
+    // A snapshot is the only shape edits made while signed out can leave in, so a
+    // stored-but-unannounced snapshot is invisible on every peer until the next
+    // vault sweep — up to 15 minutes.
+    it('broadcasts crdt_updated to the other devices after a snapshot push', async () => {
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', { noteId: 'note_1', snapshot: btoa('snapshot') }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockDoStub.fetch).toHaveBeenCalledTimes(1)
+      const broadcast = mockDoStub.fetch.mock.calls[0][0] as Request
+      expect(new URL(broadcast.url).pathname).toBe('/broadcast')
+      expect(broadcast.method).toBe('POST')
+      expect(await broadcast.json()).toEqual({
+        excludeDeviceId: 'device-1',
+        vaultId: 'vault-1',
+        type: 'crdt_updated',
+        noteId: 'note_1'
+      })
+    })
+
+    // A peer told early can pull while the pre-snapshot updates are still being
+    // removed, so the broadcast must trail both writes.
+    it('broadcasts only after the snapshot is stored and prior updates are pruned', async () => {
+      const order: string[] = []
+      vi.mocked(storeSnapshot).mockImplementationOnce(async () => {
+        order.push('store')
+        return { sequenceNum: 12 }
+      })
+      vi.mocked(pruneUpdatesBeforeSnapshot).mockImplementationOnce(async () => {
+        order.push('prune')
+        return 0
+      })
+      mockDoStub.fetch.mockImplementationOnce(async () => {
+        order.push('broadcast')
+        return Response.json({ sent: 1 })
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', { noteId: 'note_1', snapshot: btoa('snapshot') }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(order).toEqual(['store', 'prune', 'broadcast'])
+    })
+
+    it('captures a failed snapshot broadcast without failing the push response', async () => {
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+      mockDoStub.fetch.mockRejectedValueOnce(new Error('broadcast failed'))
+      const scheduled: Promise<unknown>[] = []
+      const localExecutionCtx = {
+        waitUntil: vi.fn((promise: Promise<unknown>) => {
+          scheduled.push(promise)
+        }),
+        passThroughOnException: vi.fn(),
+        props: {}
+      }
+      const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+      vi.stubGlobal('fetch', fetchSpy)
+      const localEnv = {
+        ...env,
+        POSTHOG_KEY: 'phc_test',
+        POSTHOG_HOST: 'https://us.i.posthog.com'
+      }
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', { noteId: 'note_1', snapshot: btoa('snapshot') }),
+        localEnv,
+        localExecutionCtx
+      )
+      await scheduled[0]
+
+      // The snapshot is already durable; a broadcast failure must not ask the
+      // client to push it again.
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+      expect(captureCall).toBeDefined()
+      const point = JSON.parse((captureCall![1] as RequestInit).body as string).batch[0] as {
+        event: string
+        properties: Record<string, unknown>
+      }
+      expect(point.event).toBe('server_error_seen')
+      expect(point.properties.action).toBe('crdt_snapshot_broadcast_failed')
+      expect(point.properties.source).toBe('UserSyncState')
+      expect(point.properties.error_code).toBe('WAIT_UNTIL_REJECTED')
+      expect(point.properties.path).toBe('/sync/crdt/snapshot')
+    })
+
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
       vi.mocked(storeUpdates).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)

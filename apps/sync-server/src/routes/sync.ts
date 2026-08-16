@@ -732,6 +732,39 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
 
+  // A snapshot is a body write like any other and has to wake the peers the way
+  // an incremental does. It is not a duplicate of the update path: a device that
+  // edited while signed out never enqueued those edits as updates — they exist
+  // only as document state — so a snapshot is the only shape they can leave in.
+  // Silently stored, that backlog stayed invisible on every other device, because
+  // note bodies never travel in the record feed and the next vault sweep is up to
+  // 15 minutes away. Typing one more character used to be the only cure: the
+  // incremental broadcast, and the pull it triggered picked up the snapshot too.
+  //
+  // Ordering is deliberate — after the store and after the prune, never between
+  // them, so a peer is never told to pull while the pre-snapshot updates are
+  // still being removed. Delivery is best-effort for the same reason as the
+  // update path: the write already succeeded, so a failed broadcast is captured
+  // in the background rather than returned as an error the client would retry.
+  const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+  const stub = c.env.USER_SYNC_STATE.get(doId)
+  waitUntilCaptured(
+    c,
+    stub.fetch(
+      new Request(new URL('/broadcast', c.req.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludeDeviceId: deviceId,
+          vaultId,
+          type: 'crdt_updated',
+          noteId: parsed.noteId
+        })
+      })
+    ),
+    { source: 'UserSyncState', action: 'crdt_snapshot_broadcast_failed' }
+  )
+
   logCrdtTraffic({
     endpoint,
     event: 'snapshot_stored',

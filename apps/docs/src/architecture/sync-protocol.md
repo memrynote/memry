@@ -550,6 +550,28 @@ them, and every client version already applies the snapshot as its baseline befo
 incrementals. If that fallback fails the push rejects, leaving the batch buffered for the next flush
 and — on quit — recorded for replay. No path discards an update.
 
+### CRDT write notifications
+
+Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts
+`crdt_updated` carrying the note id to every socket on that vault except the pushing device, and
+each peer pulls that one note. Nothing else carries a body — the record feed moves metadata only —
+so a body write that does not broadcast stays invisible until the receiving device's next vault
+sweep, which is up to 15 minutes away.
+
+The symmetry matters most for `POST /sync/crdt/snapshot`, which is not only the oversized-update
+fallback. Edits made while signed out do enter the local Y.Doc, but with no session they are never
+enqueued as incremental updates, so on the next sign-in that whole accumulated state can only leave
+the device as a snapshot. Before the snapshot path broadcast, such a push was stored and announced
+to nobody: the peer's socket stayed connected and silent, its 60-second tick pulled only the record
+feed, and the backlog appeared solely once someone typed one more character — that produced an
+incremental, which did broadcast, and the pull it triggered picked up the snapshot's content too.
+
+The snapshot broadcast is issued after the snapshot is stored and after `pruneUpdatesBeforeSnapshot`
+has run, never between them, so no peer is told to pull while the superseded updates are still being
+removed. Delivery is best-effort on both paths: the write has already succeeded, so a failed
+broadcast is captured in the background rather than returned to the client, which would otherwise
+retry a write that already landed.
+
 ### CRDT rate limits
 
 The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
