@@ -88,20 +88,24 @@ responsive.
 ### When a note card stays read-only
 
 If a note card shows **Open in tab to edit**, in-place editing is unavailable
-for it right now. That happens when the same note is already open in another
-visible pane, or is already being edited on another canvas card.
+for it right now. Two things cause that:
 
-Editing one note in two places at once is only safe when both surfaces are
-backed by the same live document. An active, authenticated sync session is the
-signal Memry uses to be sure of that — so without one it will not take the
-chance that two editors end up overwriting each other's text. The card stays a
-read-only preview and points you at the surface that owns the edit. Click
-**Open in tab to edit** to jump there.
+- The note is **already being edited on another canvas card**. A note is owned
+  by one card at a time.
+- The note is **open in another visible pane** and Memry cannot confirm that
+  both surfaces are backed by the same live document — because that document is
+  still opening, or failed to open on this device.
 
-On a device with an active sync session, both surfaces are known to share a
-single live document, so this does not apply and you can edit in either place.
-This read-only fallback applies to note cards only — task and event cards
-always edit in place.
+Editing one note in two places at once is only safe when both are backed by the
+same live document, and normally they are: every note has a live document on
+your device whether or not you are signed in, so a note tab and a canvas card
+share it and both stay editable. Signing in is not what unlocks this. The
+read-only fallback appears only in the narrow case where that document is not
+live here, and rather than risk two editors overwriting each other's text the
+card stays a read-only preview and points you at the surface that owns the edit.
+Click **Open in tab to edit** to jump there.
+
+This applies to note cards only — task and event cards always edit in place.
 
 ## Opening an item in a tab
 
