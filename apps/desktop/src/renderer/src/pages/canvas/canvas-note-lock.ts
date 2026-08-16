@@ -1,6 +1,5 @@
 /**
- * Why a canvas note card sometimes refuses to become editable — and why the
- * reason is no longer the one it was built for.
+ * Why a canvas note card sometimes refuses to become editable.
  *
  * As built (M7 §3.1): ContentArea engaged Yjs only for an authenticated sync
  * session, so an unauthenticated user edited through a NON-collaborative
@@ -23,22 +22,26 @@
  * destroys its provider and publishes a null fragment for the life of the slot
  * (use-yjs-collaboration.ts, "fails open") with no rebind — so the first editor
  * to open that note, and every editor that later joins it, is a whole-markdown
- * saver again. That is the original clobber, unchanged. Main is uninitialized
- * only after `resetCrdtProvider()`, which nothing but the sync runtime's stop
- * and start-failure paths calls: `teardownSession('integrity')` never re-inits
- * (#1492), sign-out re-inits asynchronously, a failed `startSyncRuntime` leaves
- * it dead. No such state reports idle/syncing/offline.
+ * saver again. That is the original clobber, unchanged.
  *
- * So the first conjunct no longer says "there is no shared doc"; it
- * over-approximates "there may not be one". The contrapositive is what carries
- * it — a live session means `startSyncRuntime` awaited `initPersistence()`, so
- * the doc is there and co-editing stays unlocked, as it always did. The cost of
- * over-approximating is a healthy never-signed-in user locked out for no hazard
- * at all: that user never reaches a provider reset. The tight predicate is
- * "this window holds no fragment for this note", and it is not reachable from
- * here — asking the registry for it would register a second consumer and make
- * the sole editor report non-owner (see `useYjsSideEffectOwner`). Swapping the
- * conjunct for it is a design change owing its own E2E, not a cleanup: #1504.
+ * Until #1504 this gate asked the SYNC SESSION about that (`!isCollaborationActive`),
+ * because main is uninitialized only after `resetCrdtProvider()` and no such
+ * state reports idle/syncing/offline. That was a conservative over-approximation
+ * and wrong in both directions: it locked every healthy never-signed-in user —
+ * who cannot reach a provider reset at all — out of canvas editing, and it never
+ * saw the signed-in fail-open, where a live `idle` session sits on a note whose
+ * own `connect()` rejected. It asks the fragment directly now:
+ * `fragmentLive` is `useLiveFragmentQuery()` over the registry's read-only
+ * `peek`, which registers no consumer and so does not make the note's sole
+ * editor report non-owner — the hazard that blocked this in #1495.
+ *
+ * Note that `fragmentLive` short-circuits ONLY the tab conjunct. It is a safety
+ * answer ("a second editor cannot clobber the first"), not the one-active-card
+ * invariant: `canvas-card-overlay.tsx` refuses a second activation through
+ * `noteCardClaims.claim` regardless, so leaving the claim conjunct behind the
+ * safety answer would have made that refusal silent — the card would show no
+ * lock badge and simply not activate, and `claimFailedTick` (which exists to
+ * re-evaluate this decision after exactly that refusal) would be dead.
  *
  * The rule is "the tab always wins": a card refuses to activate and stays a
  * read-only preview with an open-in-tab affordance.
@@ -52,11 +55,16 @@ export type NoteLockReason = 'note-open-in-tab' | 'note-active-on-another-card'
 
 export interface NoteLockInput {
   /**
-   * From isCollaborationActive(syncStatus). No longer "this user has a shared
-   * Y.Doc" — every note has one now. Read it as "main's CRDT provider is
-   * provably up", which is the only thing still making a second editor safe.
+   * Does THIS window hold a live Yjs fragment for this note — a settled
+   * `connect()` that produced one? See `useLiveFragmentQuery`. True means every
+   * editor that binds this note here shares that fragment, so a second one
+   * cannot clobber the first. False covers all three unsafe shapes at once: the
+   * fail-open (settled, no fragment), the still-connecting slot, and no slot at
+   * all. Cross-window is out of its reach and always was — the registry and
+   * `visibleNoteTabIds` are both window-local, so a note open in ANOTHER window
+   * has never reached this decision.
    */
-  collaborationActive: boolean
+  fragmentLive: boolean
   /** Note ids that are the ACTIVE tab of some pane (see collectVisibleNoteTabIds). */
   visibleNoteTabIds: ReadonlySet<string>
   /** Card element id currently claiming this note, or null. */
@@ -67,8 +75,7 @@ export interface NoteLockInput {
 }
 
 export function evaluateNoteLock(input: NoteLockInput): NoteLockReason | null {
-  if (input.collaborationActive) return null
-  if (input.visibleNoteTabIds.has(input.noteId)) return 'note-open-in-tab'
+  if (!input.fragmentLive && input.visibleNoteTabIds.has(input.noteId)) return 'note-open-in-tab'
   if (input.claimedBy !== null && input.claimedBy !== input.cardElementId) {
     return 'note-active-on-another-card'
   }

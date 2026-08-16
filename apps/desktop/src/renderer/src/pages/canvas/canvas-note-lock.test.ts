@@ -71,18 +71,37 @@ describe('collectVisibleNoteTabIds', () => {
 
 describe('evaluateNoteLock', () => {
   const base = {
-    collaborationActive: false,
+    fragmentLive: false,
     visibleNoteTabIds: new Set<string>(),
     claimedBy: null as string | null,
     cardElementId: 'card-1',
     noteId: 'n1'
   }
 
-  it('never locks when collaboration is active (authenticated co-edit is safe)', () => {
+  it('does not lock against a tab when this window holds a live fragment (co-edit is safe)', () => {
+    // The relax #1504 exists for: both editors bind the same fragment, so the
+    // whole-markdown save is suppressed on both and neither can clobber.
     expect(
-      evaluateNoteLock({ ...base, collaborationActive: true, visibleNoteTabIds: new Set(['n1']) })
+      evaluateNoteLock({ ...base, fragmentLive: true, visibleNoteTabIds: new Set(['n1']) })
     ).toBeNull()
-    expect(evaluateNoteLock({ ...base, collaborationActive: true, claimedBy: 'card-2' })).toBeNull()
+  })
+
+  it('still locks against a tab when the fragment is not live (fail-open / connecting / no slot)', () => {
+    // The signed-in fail-open the session predicate could not see: a live
+    // session, a note whose own connect() rejected, both editors whole-markdown
+    // savers. `fragmentLive: false` is the ONLY input; the session is not asked.
+    expect(
+      evaluateNoteLock({ ...base, fragmentLive: false, visibleNoteTabIds: new Set(['n1']) })
+    ).toBe('note-open-in-tab')
+  })
+
+  it('locks a second card even with a live fragment (the claim is an invariant, not a safety answer)', () => {
+    // canvas-card-overlay refuses the second activation through
+    // noteCardClaims.claim regardless of the fragment, so this reason must not
+    // sit behind the safety short-circuit or the refusal would be silent.
+    expect(evaluateNoteLock({ ...base, fragmentLive: true, claimedBy: 'card-2' })).toBe(
+      'note-active-on-another-card'
+    )
   })
 
   it('locks when the note is the active tab of a visible pane', () => {

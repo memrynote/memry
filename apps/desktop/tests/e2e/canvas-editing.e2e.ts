@@ -172,15 +172,30 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
   })
 
-  // Positive split-view case, for real. Split with the renderer's own ⌘\ /
-  // Ctrl+\ shortcut (use-tab-keyboard-shortcuts.ts registers a plain
-  // `window` keydown handler for it — nothing native-menu-only about it), open
-  // the seeded note in the newly-created pane so it becomes that pane's ACTIVE
-  // tab (collectVisibleNoteTabIds only counts active tabs — tab-pane.tsx mounts
-  // only each group's active tab), then refocus the canvas pane and confirm
-  // the guard actually engages: the E2E vault is unauthenticated, so this is
-  // exactly the clobber-risk path the M7 guard exists for.
-  test('a note open in the split pane locks the canvas card (M7 guard, real split)', async ({
+  // Split-view co-edit, for real — and since #1504 the assertion is INVERTED.
+  // This used to assert the lock, on the premise that an unauthenticated pair of
+  // editors could not share a Y.Doc. `f89d23ed5` killed that premise and #1504
+  // re-keyed the lock on the fragment: the tab's ContentArea binds the local
+  // Y.Doc with no session at all, the card acquires that same registry entry, so
+  // the whole-markdown save is suppressed on both and there is nothing to
+  // clobber. This E2E vault is exactly the healthy signed-out population that
+  // the old session predicate locked out for no hazard, so what it now pins is
+  // that they can edit.
+  //
+  // Split with the renderer's own ⌘\ / Ctrl+\ shortcut
+  // (use-tab-keyboard-shortcuts.ts registers a plain `window` keydown handler
+  // for it — nothing native-menu-only about it), open the seeded note in the
+  // newly-created pane so it becomes that pane's ACTIVE tab
+  // (collectVisibleNoteTabIds only counts active tabs — tab-pane.tsx mounts only
+  // each group's active tab), then refocus the canvas pane.
+  //
+  // The other side of the predicate — a settled binding with NO fragment, the
+  // signed-in fail-open — is not reachable from here: it needs main's CRDT
+  // provider to be down, which only `resetCrdtProvider()` does and which no
+  // renderer-visible API can trigger. It is covered in
+  // src/renderer/src/pages/canvas/use-note-edit-lock.test.tsx against the real
+  // registry with the IPC provider faked.
+  test('a note open in the split pane no longer locks the canvas card (shared local Y.Doc)', async ({
     page
   }) => {
     await openVault(page)
@@ -251,9 +266,29 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     const canvasPane = page.locator(`[data-testid="tab-pane"][data-pane-id="${canvasPaneId}"]`)
     await expect(canvasPane).toHaveAttribute('data-pane-active', 'true')
 
+    // The card is not locked, and double-click really does activate it — both,
+    // because "no lock badge" alone would also be true of a card the overlay
+    // silently refuses to activate.
+    await expect(card).not.toHaveAttribute('data-canvas-card-locked', 'true')
     await dblclickCard(page, `note:${noteId}`)
-    await expect(card).toHaveAttribute('data-canvas-card-locked', 'true', { timeout: 20000 })
-    await expect(card).not.toHaveAttribute('data-canvas-card-state', 'active')
+    await expect(card).toHaveAttribute('data-canvas-card-state', 'active', { timeout: 20000 })
+
+    // And the edit made on the card while the note is live in the other pane
+    // lands exactly once — the clobber the lock existed to prevent would show up
+    // here as a lost or duplicated marker.
+    const marker = `SPLITEDIT_${Date.now()}`
+    const cardEditor = page.locator('[data-canvas-active-card] [contenteditable="true"]').first()
+    await cardEditor.click()
+    await cardEditor.pressSequentially(` ${marker}`, { delay: 20 })
+    await expect
+      .poll(
+        async () => {
+          const note = await page.evaluate(async (id) => window.api.notes.get(id), noteId)
+          return (note?.content?.match(new RegExp(marker, 'g')) ?? []).length
+        },
+        { timeout: 20000 }
+      )
+      .toBe(1)
   })
 
   test('↗ redirect and double-click do not cross-fire (matrix #20)', async ({ page }) => {
@@ -352,12 +387,11 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
     await expect(card).toBeVisible({ timeout: 20000 })
   })
 
-  // Matrix #19 — sequential consistency, no duplicate/echo. True SIMULTANEOUS
-  // two-editor co-editing is unreachable here: switching to the note tab
-  // unmounts the canvas (tab-content renders only the active tab), and the E2E
-  // vault is unauthenticated so ContentArea's Yjs collaboration is OFF (gated
-  // on syncActive) — both editors use the non-collaborative markdown-save path.
-  // R17's shared-Y.Doc path is covered by unit tests (yjs-doc-registry.test.ts).
+  // Matrix #19 — sequential consistency, no duplicate/echo, in a SINGLE pane:
+  // switching to the note tab unmounts the canvas (tab-content renders only the
+  // active tab), so the two editors here are sequential, not simultaneous. (The
+  // simultaneous split-view case is the co-edit test above; since `f89d23ed5`
+  // both editors bind the local Y.Doc even with no session.)
   // So this asserts the honest, achievable invariant: an edit made on the card
   // is persisted exactly ONCE (no duplicate blocks), and re-opening the same
   // note in a tab shows that edit with no echo or duplication.
