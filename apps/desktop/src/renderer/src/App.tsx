@@ -43,6 +43,8 @@ import {
   useHintActivation,
   isInputFocused
 } from '@/hooks'
+import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
@@ -220,6 +222,7 @@ const AppContent = (): React.JSX.Element => {
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
   const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
+  const shortcutsHelpBinding = useShortcutBinding('view.shortcuts')
   useSearchShortcut(toggleSearch)
   useHintActivation()
   useMenuCommands({
@@ -242,9 +245,13 @@ const AppContent = (): React.JSX.Element => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const isQuestionShortcut =
         event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey
-      const isSlashShortcut = (event.metaKey || event.ctrlKey) && event.key === '/'
+      const isBoundShortcut = matchesShortcut(
+        event,
+        shortcutsHelpBinding.key,
+        shortcutsHelpBinding.modifiers
+      )
 
-      if (!isQuestionShortcut && !isSlashShortcut) return
+      if (!isQuestionShortcut && !isBoundShortcut) return
       if (isQuestionShortcut && isInputFocused()) return
 
       event.preventDefault()
@@ -254,7 +261,7 @@ const AppContent = (): React.JSX.Element => {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [toggleShortcutsDialog])
+  }, [shortcutsHelpBinding, toggleShortcutsDialog])
 
   useEffect(() => {
     const openTestNote = (

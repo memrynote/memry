@@ -67,9 +67,10 @@ function ShortcutRow({
   const captureRef = useRef<HTMLDivElement>(null)
 
   const startCapture = useCallback(() => {
+    if (entry.rebindable === false) return
     setIsCapturing(true)
     setConflict(null)
-  }, [])
+  }, [entry.rebindable])
 
   const stopCapture = useCallback(() => {
     setIsCapturing(false)
@@ -119,6 +120,12 @@ function ShortcutRow({
   }, [isCapturing, entry.id, overrides, onRebind, stopCapture, t])
 
   const label = shortcutLabel(t, entry)
+  // Editor formatting keys belong to the note editor; a rebind here would be
+  // recorded and then ignored at runtime, so the row is read-only.
+  const canRebind = entry.rebindable !== false
+  const keyCaps = formatBinding(effectiveBinding)
+    .split(' ')
+    .map((part) => <Kbd key={part}>{part}</Kbd>)
 
   useEffect(() => {
     if (!isCapturing) return
@@ -164,21 +171,24 @@ function ShortcutRow({
             </div>
           ) : (
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={startCapture}
-                className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
-                title={t('shortcuts.rebindTitle')}
-              >
-                <KbdGroup>
-                  {formatBinding(effectiveBinding)
-                    .split(' ')
-                    .map((part) => (
-                      <Kbd key={part}>{part}</Kbd>
-                    ))}
-                </KbdGroup>
-              </button>
-              {!isDefault && (
+              {canRebind ? (
+                <button
+                  type="button"
+                  onClick={startCapture}
+                  className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
+                  title={t('shortcuts.rebindTitle')}
+                >
+                  <KbdGroup>{keyCaps}</KbdGroup>
+                </button>
+              ) : (
+                <span
+                  className="flex items-center gap-0.5 opacity-60"
+                  title={t('shortcuts.editorManagedTitle')}
+                >
+                  <KbdGroup>{keyCaps}</KbdGroup>
+                </span>
+              )}
+              {canRebind && !isDefault && (
                 <Button
                   variant="ghost"
                   size="sm"

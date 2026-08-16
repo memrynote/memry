@@ -1,19 +1,27 @@
 import { useEffect, useCallback } from 'react'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
+import { matchesShortcut } from './use-keyboard-shortcuts-base'
 
+/**
+ * Global search. The primary chord is rebindable (`nav.search`, ⌘K by default);
+ * ⌘P stays as a fixed alias for muscle memory from other editors.
+ */
 export function useSearchShortcut(onToggle: () => void): void {
+  const binding = useShortcutBinding('nav.search')
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-      const modifier = isMac ? e.metaKey : e.ctrlKey
+      const matches =
+        matchesShortcut(e, binding.key, binding.modifiers) ||
+        matchesShortcut(e, 'p', { meta: true })
 
-      const key = e.key.toLowerCase()
-      if (modifier && (key === 'k' || key === 'p')) {
+      if (matches) {
         e.preventDefault()
         e.stopPropagation()
         onToggle()
       }
     },
-    [onToggle]
+    [binding, onToggle]
   )
 
   useEffect(() => {

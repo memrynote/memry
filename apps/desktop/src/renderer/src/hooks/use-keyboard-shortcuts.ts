@@ -38,6 +38,26 @@ export const isInputFocused = (): boolean => {
 }
 
 /**
+ * Check if the caret sits in rich text — the note editor, a task description,
+ * or any other contenteditable surface where formatting keys apply.
+ *
+ * App-level shortcuts that share a chord with an editor formatting command
+ * (⌘B is both Bold and Toggle Sidebar) must stand down here: the editor owns
+ * the keystroke, and both firing at once is what users report as a double
+ * action. Plain inputs are not rich text — there is nothing to bold — so they
+ * do not claim the chord.
+ */
+export const isRichTextFocused = (): boolean => {
+  const activeElement = document.activeElement as HTMLElement | null
+  if (!activeElement) return false
+  if (activeElement.isContentEditable) return true
+  // jsdom does not implement isContentEditable; fall back to the attribute.
+  return (
+    activeElement.closest('[contenteditable="true"], [contenteditable="plaintext-only"]') !== null
+  )
+}
+
+/**
  * Check if a specific input element is the Quick-File input
  * Quick-File inputs should still allow certain shortcuts
  */

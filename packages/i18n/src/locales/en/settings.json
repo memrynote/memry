@@ -1343,6 +1343,7 @@
     "pressShortcut": "Press shortcut…",
     "cancelTitle": "Cancel",
     "rebindTitle": "Click to rebind",
+    "editorManagedTitle": "Handled by the note editor — cannot be reassigned",
     "resetTitle": "Reset to default",
     "clearTitle": "Clear shortcut",
     "clickToSet": "Click to set",

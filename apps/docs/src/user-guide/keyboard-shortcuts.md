@@ -1,21 +1,17 @@
 # Keyboard Shortcuts
 
-Default shortcuts. Every entry in the Navigation, Tabs, Editor, and View categories is rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts).
+Default shortcuts. Entries in the Navigation, Tabs, and View categories are rebindable in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts); Editor formatting keys belong to the note editor and are listed there read-only.
 
 > macOS uses <kbd>⌘</kbd>; Windows / Linux use <kbd>Ctrl</kbd> for the same action. <kbd>Ctrl</kbd>+<kbd>Tab</kbd> always uses <kbd>Ctrl</kbd> on every platform.
 
 ## Navigation
 
-| Action                | Shortcut                                              |
-| --------------------- | ----------------------------------------------------- |
-| New note              | <kbd>⌘</kbd>+<kbd>N</kbd>                             |
-| New task              | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd>                |
-| Go to Inbox           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>I</kbd>                |
-| Go to Notes           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd>                |
-| Go to Tasks           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd>                |
-| Go to sidebar section | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd> |
-| Open search           | <kbd>⌘</kbd>+<kbd>F</kbd>                             |
-| Open settings         | <kbd>⌘</kbd>+<kbd>,</kbd>                             |
+| Action                | Shortcut                                               |
+| --------------------- | ------------------------------------------------------ |
+| New note              | <kbd>⌘</kbd>+<kbd>N</kbd>                              |
+| Go to sidebar section | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>6</kbd>  |
+| Open search           | <kbd>⌘</kbd>+<kbd>K</kbd> or <kbd>⌘</kbd>+<kbd>P</kbd> |
+| Open settings         | <kbd>⌘</kbd>+<kbd>,</kbd>                              |
 
 > Hold <kbd>⌘</kbd> (<kbd>Ctrl</kbd> on Windows / Linux) to reveal the section numbers on the sidebar icons, then press the number to jump — <kbd>⌘</kbd>+<kbd>1</kbd> opens Home, <kbd>⌘</kbd>+<kbd>2</kbd> Inbox, and so on. Numbers follow the sidebar's visible top-to-bottom order (Home is always 1), so they shift if you hide a section. This shortcut works everywhere, including inside the editor, and is fixed rather than rebindable.
 
@@ -54,17 +50,16 @@ A chord indicator briefly flashes when the prefix is active.
 
 ## Editor
 
-| Action              | Shortcut                               |
-| ------------------- | -------------------------------------- |
-| Undo                | <kbd>⌘</kbd>+<kbd>Z</kbd>              |
-| Redo                | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>Z</kbd> |
-| Save (manual flush) | <kbd>⌘</kbd>+<kbd>S</kbd>              |
-| Bold                | <kbd>⌘</kbd>+<kbd>B</kbd>              |
-| Italic              | <kbd>⌘</kbd>+<kbd>I</kbd>              |
-| Underline           | <kbd>⌘</kbd>+<kbd>U</kbd>              |
-| Insert wiki link    | Type `[[`                              |
-| Open block menu     | Type `/`                               |
-| Find in page        | <kbd>⌘</kbd>+<kbd>F</kbd>              |
+| Action           | Shortcut                               |
+| ---------------- | -------------------------------------- |
+| Undo             | <kbd>⌘</kbd>+<kbd>Z</kbd>              |
+| Redo             | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>Z</kbd> |
+| Bold             | <kbd>⌘</kbd>+<kbd>B</kbd>              |
+| Italic           | <kbd>⌘</kbd>+<kbd>I</kbd>              |
+| Underline        | <kbd>⌘</kbd>+<kbd>U</kbd>              |
+| Insert wiki link | Type `[[`                              |
+| Open block menu  | Type `/`                               |
+| Find in page     | <kbd>⌘</kbd>+<kbd>F</kbd>              |
 
 ## View
 
@@ -72,6 +67,10 @@ A chord indicator briefly flashes when the prefix is active.
 | ------------------------------ | ----------------------------------------- |
 | Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                 |
 | Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd> |
+
+> <kbd>⌘</kbd>+<kbd>B</kbd> is shared on purpose: with the caret in a note it bolds
+> the selection and nothing else, and everywhere else it toggles the sidebar. Rebind
+> **Toggle Sidebar** if you would rather keep the two apart.
 
 The same shortcut reference opens from the question-mark button in the sidebar footer.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
@@ -149,6 +148,8 @@ responsive on screens with a lot of targets.
 
 ## Customizing
 
-Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. Conflicts are flagged inline. **Reset All** restores defaults; it's only visible if you've made changes.
+Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. A rebind applies immediately — no restart. Conflicts are flagged inline. **Reset All** restores defaults; it's only visible if you've made changes.
+
+Editor formatting rows (Bold, Italic, Underline) are shown for reference and cannot be reassigned: the note editor owns those keys.
 
 You can also set a **Global Capture** hotkey there to bring memrynote to focus from any app (macOS requires Accessibility permission).

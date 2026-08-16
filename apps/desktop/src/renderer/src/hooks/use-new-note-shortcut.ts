@@ -1,7 +1,10 @@
 import { useEffect, useCallback } from 'react'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
+import { matchesShortcut } from './use-keyboard-shortcuts-base'
 
 /**
- * Hook to register global ⌘N (Mac) / Ctrl+N (Windows/Linux) shortcut for creating a new note.
+ * Hook to register the New Note shortcut (⌘N / Ctrl+N by default, rebindable
+ * from Settings → Shortcuts as `nav.newNote`).
  *
  * @param onNewNote - Callback to create and open a new note
  *
@@ -11,18 +14,16 @@ import { useEffect, useCallback } from 'react'
  * ```
  */
 export function useNewNoteShortcut(onNewNote: () => void): void {
+  const binding = useShortcutBinding('nav.newNote')
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // ⌘N on Mac, Ctrl+N on Windows/Linux
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-      const modifier = isMac ? e.metaKey : e.ctrlKey
-
-      if (modifier && e.key.toLowerCase() === 'n') {
+      if (matchesShortcut(e, binding.key, binding.modifiers)) {
         e.preventDefault()
         onNewNote()
       }
     },
-    [onNewNote]
+    [binding, onNewNote]
   )
 
   useEffect(() => {
