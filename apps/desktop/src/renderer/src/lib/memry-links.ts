@@ -25,9 +25,17 @@ export type OpenableTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
 export type MemryLinkKind =
   'note' | 'file' | 'task' | 'inbox' | 'journal' | 'project' | 'folder' | 'calendar_event'
 
-export type ParsedMemryHref =
+/**
+ * `label` is the item's title as it read when the link was written. It exists so
+ * a surface that can only render the link string — Excalidraw's link bubble
+ * shows `element.link` verbatim, with no hook to change it — can still show a
+ * name instead of an id, without a lookup and without being online. It is a
+ * cached display hint, never an identity: the id is what resolves.
+ */
+export type ParsedMemryHref = { label: string | null } & (
   | { kind: Exclude<MemryLinkKind, 'calendar_event'>; id: string }
   | { kind: 'calendar_event'; id: string; date: string | null }
+)
 
 /** Hostnames whose whole path is the item id. */
 const SIMPLE_HOSTS = ['note', 'file', 'task', 'inbox', 'journal', 'project', 'folder'] as const
@@ -51,8 +59,10 @@ export function parseMemryHref(href: string): ParsedMemryHref | null {
   const id = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
   if (!id) return null
 
+  const label = url.searchParams.get('label')
+
   if (isSimpleHost(url.hostname)) {
-    return { kind: url.hostname, id }
+    return { kind: url.hostname, id, label }
   }
 
   if (url.hostname === 'calendar') {
@@ -61,7 +71,8 @@ export function parseMemryHref(href: string): ParsedMemryHref | null {
     return {
       kind: 'calendar_event',
       id: decodeURIComponent(parts[1]),
-      date: url.searchParams.get('date')
+      date: url.searchParams.get('date'),
+      label
     }
   }
 
@@ -73,6 +84,8 @@ export interface MemryHrefInput {
   id: string
   /** `YYYY-MM-DD` — required for `calendar_event`, ignored otherwise. */
   date?: string | null
+  /** The item's title, carried along as a display hint. See `ParsedMemryHref`. */
+  label?: string | null
 }
 
 /**
@@ -80,15 +93,22 @@ export interface MemryHrefInput {
  * link that resolves — a calendar event with no date has no day to focus, so a
  * link to it would parse and then refuse to open.
  */
-export function buildMemryHref({ kind, id, date }: MemryHrefInput): string | null {
+export function buildMemryHref({ kind, id, date, label }: MemryHrefInput): string | null {
   if (!id) return null
 
+  const params = new URLSearchParams()
   if (kind === 'calendar_event') {
     if (!date) return null
-    return `memry://calendar/event/${encodeURIComponent(id)}?date=${encodeURIComponent(date)}`
+    params.set('date', date)
   }
+  if (label) params.set('label', label)
 
-  return `memry://${kind}/${encodeURIComponent(id)}`
+  const path =
+    kind === 'calendar_event'
+      ? `memry://calendar/event/${encodeURIComponent(id)}`
+      : `memry://${kind}/${encodeURIComponent(id)}`
+  const query = params.toString()
+  return query ? `${path}?${query}` : path
 }
 
 export interface TabFromHrefOptions {
@@ -126,7 +146,7 @@ export function tabFromMemryHref(
       return {
         ...BASE,
         type: 'note',
-        title: title ?? 'Note',
+        title: title ?? parsed.label ?? 'Note',
         icon: 'file-text',
         path: `/note/${parsed.id}`,
         entityId: parsed.id
@@ -135,7 +155,7 @@ export function tabFromMemryHref(
       return {
         ...BASE,
         type: 'file',
-        title: title ?? 'File',
+        title: title ?? parsed.label ?? 'File',
         icon: 'file-text',
         path: `/file/${parsed.id}`,
         entityId: parsed.id
@@ -172,7 +192,7 @@ export function tabFromMemryHref(
       return {
         ...BASE,
         type: 'project',
-        title: title ?? 'Project',
+        title: title ?? parsed.label ?? 'Project',
         icon: 'folder',
         path: `/project/${parsed.id}`,
         entityId: parsed.id
@@ -181,7 +201,7 @@ export function tabFromMemryHref(
       return {
         ...BASE,
         type: 'folder',
-        title: title ?? parsed.id,
+        title: title ?? parsed.label ?? parsed.id,
         icon: 'folder',
         path: `/folder/${encodeURIComponent(parsed.id)}`,
         entityId: parsed.id

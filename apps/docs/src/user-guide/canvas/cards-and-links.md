@@ -157,8 +157,16 @@ the list, so the same box handles both. A bare host like `example.com` is read a
 An event with no date is not offered: there would be no day for the Calendar to
 open to.
 
-To remove a link, select the shape and use the **remove** button in the link
-bubble that appears over it — that part is unchanged.
+Select a linked shape and a small bubble appears above it. For a link to
+something in your vault it shows the item's **name**, the way a wiki link in a
+note shows a title rather than a path. For a web link it shows the address,
+which is the useful thing there.
+
+That name is remembered when the link is made. Rename the item afterwards and
+the bubble keeps the old name until the link is set again — the link still opens
+the right item either way, because it points at the item, not at its name.
+
+To remove a link, use the **remove** button in that same bubble.
 
 ## Connecting cards
 
