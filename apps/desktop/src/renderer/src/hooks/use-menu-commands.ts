@@ -10,6 +10,7 @@ import {
   runEditorMenuCommand,
   runHistoryMenuCommand
 } from '@/lib/menu-commands'
+import { runMenuUpdateCheck } from '@/lib/menu-update-check'
 
 interface MenuCommandHandlers {
   onNewNote: () => void
@@ -44,6 +45,7 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
     'edit.redo': () => runHistoryMenuCommand('redo'),
     'edit.find': () => window.dispatchEvent(new CustomEvent('memry:menu-find')),
     'app.preferences': () => openSettings(),
+    'app.checkForUpdates': () => void runMenuUpdateCheck(),
     'view.toggleSidebar': toggleSidebar,
     'view.toggleDayPanel': toggleDayPanel,
     'view.shortcuts': () => window.dispatchEvent(new CustomEvent('memry:open-shortcuts')),

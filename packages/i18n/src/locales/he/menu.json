@@ -2,6 +2,7 @@
   "app": {
     "quit": "צא",
     "preferences": "הגדרות…",
+    "checkForUpdates": "חיפוש עדכונים…",
     "exit": "יציאה",
     "hide": "הסתר את MemryNote",
     "hideOthers": "הסתר אחרים",

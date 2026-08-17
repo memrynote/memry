@@ -2,6 +2,7 @@
   "app": {
     "quit": "Izađi",
     "preferences": "Postavke…",
+    "checkForUpdates": "Provjeri ima li ažuriranja…",
     "exit": "Izlaz",
     "hide": "Sakrij MemryNote",
     "hideOthers": "Sakrij ostale",

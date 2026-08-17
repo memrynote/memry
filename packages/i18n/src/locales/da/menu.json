@@ -2,6 +2,7 @@
   "app": {
     "quit": "Slut",
     "preferences": "Indstillinger…",
+    "checkForUpdates": "Søg efter opdateringer…",
     "exit": "Afslut",
     "hide": "Skjul MemryNote",
     "hideOthers": "Skjul andre",

@@ -2,6 +2,7 @@
   "app": {
     "quit": "MemryNote beenden",
     "preferences": "Einstellungen…",
+    "checkForUpdates": "Nach Updates suchen…",
     "exit": "Beenden",
     "hide": "MemryNote ausblenden",
     "hideOthers": "Andere ausblenden",

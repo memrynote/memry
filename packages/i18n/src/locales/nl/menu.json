@@ -2,6 +2,7 @@
   "app": {
     "quit": "Stoppen",
     "preferences": "Instellingen…",
+    "checkForUpdates": "Zoeken naar updates…",
     "exit": "Afsluiten",
     "hide": "Verberg MemryNote",
     "hideOthers": "Verberg andere",

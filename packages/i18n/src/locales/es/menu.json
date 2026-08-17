@@ -2,6 +2,7 @@
   "app": {
     "quit": "Salir de MemryNote",
     "preferences": "Ajustes…",
+    "checkForUpdates": "Buscar actualizaciones…",
     "exit": "Salir",
     "hide": "Ocultar MemryNote",
     "hideOthers": "Ocultar otros",

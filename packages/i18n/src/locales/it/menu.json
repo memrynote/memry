@@ -2,6 +2,7 @@
   "app": {
     "quit": "Esci",
     "preferences": "Impostazioni…",
+    "checkForUpdates": "Cerca aggiornamenti…",
     "exit": "Esci",
     "hide": "Nascondi MemryNote",
     "hideOthers": "Nascondi altre",

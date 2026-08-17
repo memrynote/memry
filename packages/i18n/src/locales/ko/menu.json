@@ -2,6 +2,7 @@
   "app": {
     "quit": "종료",
     "preferences": "설정…",
+    "checkForUpdates": "업데이트 확인…",
     "exit": "끝내기",
     "hide": "MemryNote 가리기",
     "hideOthers": "기타 가리기",

@@ -2,6 +2,7 @@
   "app": {
     "quit": "Thoát",
     "preferences": "Cài đặt…",
+    "checkForUpdates": "Kiểm tra bản cập nhật…",
     "exit": "Thoát",
     "hide": "Ẩn MemryNote",
     "hideOthers": "Ẩn ứng dụng khác",

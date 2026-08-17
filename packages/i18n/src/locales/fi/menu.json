@@ -2,6 +2,7 @@
   "app": {
     "quit": "Lopeta",
     "preferences": "Asetukset…",
+    "checkForUpdates": "Tarkista päivitykset…",
     "exit": "Lopeta",
     "hide": "Kätke MemryNote",
     "hideOthers": "Kätke muut",

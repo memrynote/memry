@@ -2,6 +2,7 @@
   "app": {
     "quit": "Çık",
     "preferences": "Ayarlar…",
+    "checkForUpdates": "Güncellemeleri Denetle…",
     "exit": "Çıkış",
     "hide": "MemryNote'u Gizle",
     "hideOthers": "Diğerlerini Gizle",
