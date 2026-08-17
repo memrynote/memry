@@ -516,18 +516,28 @@
 
 .review-formatting-toolbar-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
+/* The button sits inside a pointer-capture span, so the span is the grid item
+   and has to stretch before `width: 100%` on the button means anything. */
+.review-formatting-toolbar-action {
+  display: block;
+  width: 100%;
+}
+
 .review-formatting-toolbar-actions .bn-button {
+  display: flex !important;
   width: 100% !important;
   min-width: 0 !important;
-  gap: 4px;
-  padding: 0 6px !important;
-  font-size: 11px !important;
+  height: 28px !important;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px !important;
+  font-size: 12px !important;
   line-height: 1;
   white-space: nowrap;
 }

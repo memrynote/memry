@@ -81,21 +81,24 @@ vi.mock('@blocknote/react', () => ({
         icon,
         onClick,
         isDisabled,
+        children,
         ...props
       }: {
         label: string
         icon?: React.ReactNode
         onClick?: () => void
         isDisabled?: boolean
+        children?: React.ReactNode
       }) => (
         <button
           type="button"
+          aria-label={label}
           data-test={props['data-test' as keyof typeof props] as string}
           disabled={isDisabled}
           onClick={onClick}
         >
           {icon}
-          {label}
+          {children}
         </button>
       )
     }
@@ -119,7 +122,23 @@ describe('ReviewFormattingToolbar', () => {
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
     expect(screen.getByText('bold')).toBeInTheDocument()
-    expect(screen.getByText('Comment')).toBeInTheDocument()
+    expect(screen.getByLabelText('Comment')).toBeInTheDocument()
+  })
+
+  // The comment action used to render its icon only, with the text living in
+  // the aria-label and tooltip — an unlabelled glyph in the popup's corner.
+  it('spells out the comment action instead of showing a bare icon', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    const button = screen.getByTestId('comment-icon').closest('button')
+    expect(button).toHaveTextContent('Comment')
+  })
+
+  // Inline code had no button anywhere; backticks were the only entry point.
+  it('offers an inline code toggle in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('code')).toBeInTheDocument()
   })
 
   // The floating toolbar is what every note gets by default (note.tsx always
@@ -140,23 +159,23 @@ describe('ReviewFormattingToolbar', () => {
   it('offers bulleted, numbered and check list toggles in the floating toolbar', () => {
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
-    expect(screen.getByText('Bulleted list')).toBeInTheDocument()
-    expect(screen.getByText('Numbered list')).toBeInTheDocument()
-    expect(screen.getByText('Check list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Check list')).toBeInTheDocument()
   })
 
   it('offers the list toggles in the sticky toolbar too', () => {
     render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
 
-    expect(screen.getByText('Bulleted list')).toBeInTheDocument()
-    expect(screen.getByText('Numbered list')).toBeInTheDocument()
-    expect(screen.getByText('Check list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Check list')).toBeInTheDocument()
   })
 
   it('converts every selected block, not just the first', () => {
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
-    fireEvent.click(screen.getByText('Bulleted list'))
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
 
     expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(2)
     expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(
@@ -178,7 +197,7 @@ describe('ReviewFormattingToolbar', () => {
     ]
 
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
-    fireEvent.click(screen.getByText('Bulleted list'))
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
 
     expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(1, expect.anything(), {
       type: 'paragraph'
@@ -192,7 +211,7 @@ describe('ReviewFormattingToolbar', () => {
     ]
 
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
-    fireEvent.click(screen.getByText('Bulleted list'))
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
 
     expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(1)
     expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledWith(
@@ -208,9 +227,9 @@ describe('ReviewFormattingToolbar', () => {
 
     toolbarMocks.editor.prosemirrorState.selection.empty = true
     rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
-    expect(screen.getByText('Comment')).toBeEnabled()
+    expect(screen.getByLabelText('Comment')).toBeEnabled()
 
-    fireEvent.click(screen.getByText('Comment'))
+    fireEvent.click(screen.getByLabelText('Comment'))
     expect(onAddComment).toHaveBeenCalledWith(
       expect.objectContaining({
         text: 'selected text',
@@ -228,9 +247,9 @@ describe('ReviewFormattingToolbar', () => {
 
     toolbarMocks.editor.prosemirrorState.doc.textBetween.mockReturnValue('')
     rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
-    expect(screen.getByText('Comment')).toBeEnabled()
+    expect(screen.getByLabelText('Comment')).toBeEnabled()
 
-    fireEvent.click(screen.getByText('Comment'))
+    fireEvent.click(screen.getByLabelText('Comment'))
     expect(onAddComment).toHaveBeenCalledWith(
       expect.objectContaining({
         text: 'selected text',
@@ -257,7 +276,7 @@ describe('ReviewFormattingToolbar', () => {
 
     render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
 
-    expect(screen.getByText('Comment')).toBeDisabled()
+    expect(screen.getByLabelText('Comment')).toBeDisabled()
   })
 
   // Regression for #541: TipTap 3.x `editor.view` returns a Proxy that throws
