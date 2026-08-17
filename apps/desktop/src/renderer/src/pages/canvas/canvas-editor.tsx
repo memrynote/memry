@@ -32,6 +32,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { CanvasLinkDialog } from './canvas-link-dialog'
+import { HYPERLINK_ANCHOR_SELECTOR, linkBubbleLabel } from './canvas-link-label'
 import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
@@ -242,6 +243,34 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       persisterRef.current = null
     }
   }, [canvasId, initialScene, corrupt])
+
+  /**
+   * Excalidraw's link bubble prints `element.link` verbatim, so a link to a note
+   * reads as `memry://note/s5b2qadr6tg4`. There is no prop to change what it
+   * renders, so the text is swapped in place once the bubble appears, using the
+   * title the href carries. If Excalidraw ever renames that class the swap stops
+   * happening and the URL shows again — the pre-existing behaviour, not a break.
+   */
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper || corrupt || typeof MutationObserver === 'undefined') return
+
+    const relabel = (): void => {
+      for (const anchor of wrapper.querySelectorAll<HTMLAnchorElement>(HYPERLINK_ANCHOR_SELECTOR)) {
+        // `href` is resolved by the DOM (and a custom scheme survives it); the
+        // attribute is what Excalidraw actually wrote.
+        const label = linkBubbleLabel(anchor.getAttribute('href'))
+        if (label && anchor.textContent !== label) {
+          anchor.textContent = label
+        }
+      }
+    }
+
+    relabel()
+    const observer = new MutationObserver(relabel)
+    observer.observe(wrapper, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [corrupt])
 
   // Agent MCP writes to THIS canvas must reach this live instance rather than a
   // headless read-modify-write, or our next autosave overwrites them (#916 §2e).

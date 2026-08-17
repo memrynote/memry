@@ -9,13 +9,13 @@ import { buildMemryHref, parseMemryHref, tabFromMemryHref } from './memry-links'
  */
 describe('parseMemryHref', () => {
   it.each([
-    ['memry://note/abc', { kind: 'note', id: 'abc' }],
-    ['memry://file/pdf-1', { kind: 'file', id: 'pdf-1' }],
-    ['memry://task/t1', { kind: 'task', id: 't1' }],
-    ['memry://inbox/i1', { kind: 'inbox', id: 'i1' }],
-    ['memry://journal/2026-08-17', { kind: 'journal', id: '2026-08-17' }],
-    ['memry://project/p1', { kind: 'project', id: 'p1' }],
-    ['memry://folder/Work%2FNotes', { kind: 'folder', id: 'Work/Notes' }]
+    ['memry://note/abc', { kind: 'note', id: 'abc', label: null }],
+    ['memry://file/pdf-1', { kind: 'file', id: 'pdf-1', label: null }],
+    ['memry://task/t1', { kind: 'task', id: 't1', label: null }],
+    ['memry://inbox/i1', { kind: 'inbox', id: 'i1', label: null }],
+    ['memry://journal/2026-08-17', { kind: 'journal', id: '2026-08-17', label: null }],
+    ['memry://project/p1', { kind: 'project', id: 'p1', label: null }],
+    ['memry://folder/Work%2FNotes', { kind: 'folder', id: 'Work/Notes', label: null }]
   ])('parses %s', (href, expected) => {
     expect(parseMemryHref(href)).toEqual(expected)
   })
@@ -24,7 +24,8 @@ describe('parseMemryHref', () => {
     expect(parseMemryHref('memry://calendar/event/e1?date=2026-08-17')).toEqual({
       kind: 'calendar_event',
       id: 'e1',
-      date: '2026-08-17'
+      date: '2026-08-17',
+      label: null
     })
   })
 
@@ -32,7 +33,8 @@ describe('parseMemryHref', () => {
     expect(parseMemryHref('memry://calendar/event/e1')).toEqual({
       kind: 'calendar_event',
       id: 'e1',
-      date: null
+      date: null,
+      label: null
     })
   })
 
@@ -53,14 +55,18 @@ describe('buildMemryHref', () => {
     for (const kind of ['note', 'file', 'task', 'inbox', 'journal', 'project'] as const) {
       const href = buildMemryHref({ kind, id: 'x1' })
       expect(href).not.toBeNull()
-      expect(parseMemryHref(href as string)).toEqual({ kind, id: 'x1' })
+      expect(parseMemryHref(href as string)).toEqual({ kind, id: 'x1', label: null })
     }
   })
 
   it('escapes a folder path so the slash survives the round trip', () => {
     const href = buildMemryHref({ kind: 'folder', id: 'Work/Notes' })
     expect(href).toBe('memry://folder/Work%2FNotes')
-    expect(parseMemryHref(href as string)).toEqual({ kind: 'folder', id: 'Work/Notes' })
+    expect(parseMemryHref(href as string)).toEqual({
+      kind: 'folder',
+      id: 'Work/Notes',
+      label: null
+    })
   })
 
   it('round-trips a calendar event with its date', () => {
@@ -68,7 +74,8 @@ describe('buildMemryHref', () => {
     expect(parseMemryHref(href as string)).toEqual({
       kind: 'calendar_event',
       id: 'e1',
-      date: '2026-08-17'
+      date: '2026-08-17',
+      label: null
     })
   })
 
@@ -78,6 +85,36 @@ describe('buildMemryHref', () => {
 
   it('refuses an empty id', () => {
     expect(buildMemryHref({ kind: 'note', id: '' })).toBeNull()
+  })
+
+  it('carries a title as a display label, escaped', () => {
+    const href = buildMemryHref({ kind: 'note', id: 'n1', label: 'memrynote Launch' })
+    expect(href).toBe('memry://note/n1?label=memrynote+Launch')
+    expect(parseMemryHref(href as string)).toEqual({
+      kind: 'note',
+      id: 'n1',
+      label: 'memrynote Launch'
+    })
+  })
+
+  it('keeps the date and the label side by side for an event', () => {
+    const href = buildMemryHref({
+      kind: 'calendar_event',
+      id: 'e1',
+      date: '2026-08-17',
+      label: 'Standup'
+    })
+    expect(parseMemryHref(href as string)).toEqual({
+      kind: 'calendar_event',
+      id: 'e1',
+      date: '2026-08-17',
+      label: 'Standup'
+    })
+  })
+
+  it('omits the label entirely when there is none, so old links stay byte-identical', () => {
+    expect(buildMemryHref({ kind: 'note', id: 'n1' })).toBe('memry://note/n1')
+    expect(buildMemryHref({ kind: 'note', id: 'n1', label: '' })).toBe('memry://note/n1')
   })
 })
 
@@ -93,6 +130,16 @@ describe('tabFromMemryHref', () => {
 
   it('falls back to a generic note title', () => {
     expect(tabFromMemryHref('memry://note/n1')).toMatchObject({ title: 'Note' })
+  })
+
+  it("titles a tab from the link's own label when the caller has none", () => {
+    expect(tabFromMemryHref('memry://note/n1?label=Roadmap')).toMatchObject({ title: 'Roadmap' })
+  })
+
+  it('prefers a caller-supplied title over the stored label, which can be stale', () => {
+    expect(
+      tabFromMemryHref('memry://note/n1?label=Old%20name', { title: 'New name' })
+    ).toMatchObject({ title: 'New name' })
   })
 
   it('opens a filed binary in the file viewer, never the markdown editor', () => {

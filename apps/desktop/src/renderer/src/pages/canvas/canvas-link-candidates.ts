@@ -33,7 +33,14 @@ export function candidateKey(candidate: Pick<LinkCandidate, 'kind' | 'id'>): str
 function withHref(
   input: Omit<LinkCandidate, 'href'> & { date?: string | null }
 ): LinkCandidate | null {
-  const href = buildMemryHref({ kind: input.kind, id: input.id, date: input.date })
+  // The title travels inside the href as a display hint, so Excalidraw's link
+  // bubble can say "memrynote Launch" rather than "memry://note/s5b2qadr6tg4".
+  const href = buildMemryHref({
+    kind: input.kind,
+    id: input.id,
+    date: input.date,
+    label: input.title
+  })
   if (!href) return null
   const { date: _date, ...rest } = input
   return { ...rest, href }

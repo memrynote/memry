@@ -648,3 +648,59 @@ describe('CanvasEditor native link action', () => {
     expect(mocks.updateScene).not.toHaveBeenCalled()
   })
 })
+
+/**
+ * Excalidraw's link bubble prints `element.link` verbatim, so a link to a note
+ * read as `memry://note/s5b2qadr6tg4`. There is no prop to change what it
+ * renders, so the editor swaps the text in place once the bubble appears.
+ */
+describe('CanvasEditor link bubble label', () => {
+  async function mountAnchor(container: HTMLElement, href: string): Promise<HTMLAnchorElement> {
+    const wrapper = container.querySelector('[data-canvas-editor]') as HTMLElement
+    const anchor = document.createElement('a')
+    anchor.className = 'excalidraw-hyperlinkContainer-link'
+    anchor.setAttribute('href', href)
+    anchor.textContent = href
+    await act(async () => {
+      wrapper.appendChild(anchor)
+      await Promise.resolve()
+    })
+    return anchor
+  }
+
+  beforeEach(() => {
+    mocks.api.isLoading = false
+    mocks.api.elements = []
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
+    }
+  })
+
+  it("shows the linked item's name instead of its id", async () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(
+      container,
+      'memry://note/s5b2qadr6tg4?label=memrynote%20Launch'
+    )
+
+    expect(anchor.textContent).toBe('memrynote Launch')
+  })
+
+  it('leaves a web address as written, where the URL is the honest label', async () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, 'https://example.com/docs')
+
+    expect(anchor.textContent).toBe('https://example.com/docs')
+  })
+
+  it('leaves a link written before labels existed as written', async () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, 'memry://note/n1')
+
+    expect(anchor.textContent).toBe('memry://note/n1')
+  })
+})

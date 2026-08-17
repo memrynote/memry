@@ -41,7 +41,7 @@ describe('candidatesFromSearch', () => {
       title: 'Roadmap',
       subtitle: 'Work/Roadmap.md',
       emoji: '🗺️',
-      href: 'memry://note/n1'
+      href: 'memry://note/n1?label=Roadmap'
     })
   })
 
@@ -54,7 +54,7 @@ describe('candidatesFromSearch', () => {
       })
     ])
 
-    expect(candidate).toMatchObject({ kind: 'file', href: 'memry://file/p1' })
+    expect(candidate).toMatchObject({ kind: 'file', href: 'memry://file/p1?label=Spec.pdf' })
   })
 
   it('links a journal by its date rather than the index row id', () => {
@@ -67,7 +67,10 @@ describe('candidatesFromSearch', () => {
       })
     ])
 
-    expect(candidate).toMatchObject({ kind: 'journal', href: 'memry://journal/2026-08-17' })
+    expect(candidate).toMatchObject({
+      kind: 'journal',
+      href: 'memry://journal/2026-08-17?label=17+August'
+    })
   })
 
   it('shows a task under its project', () => {
@@ -93,7 +96,7 @@ describe('candidatesFromSearch', () => {
     expect(candidate).toMatchObject({
       kind: 'task',
       subtitle: 'Launch',
-      href: 'memry://task/t1'
+      href: 'memry://task/t1?label=Ship+it'
     })
   })
 
@@ -117,7 +120,7 @@ describe('candidatesFromSearch', () => {
       kind: 'inbox',
       itemType: 'link',
       subtitle: 'Example',
-      href: 'memry://inbox/i1'
+      href: 'memry://inbox/i1?label=A+clipped+article'
     })
   })
 })
@@ -131,7 +134,7 @@ describe('candidatesFromEvents', () => {
     ).toEqual([
       expect.objectContaining({
         kind: 'calendar_event',
-        href: 'memry://calendar/event/e1?date=2026-08-17'
+        href: 'memry://calendar/event/e1?date=2026-08-17&label=Standup'
       })
     ])
   })
@@ -174,7 +177,7 @@ describe('candidatesFromFolders', () => {
         title: 'Notes',
         subtitle: 'Work/Notes',
         emoji: '📁',
-        href: 'memry://folder/Work%2FNotes'
+        href: 'memry://folder/Work%2FNotes?label=Notes'
       })
     ])
   })
