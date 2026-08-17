@@ -71,6 +71,8 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
   const [linkPickerOpen, setLinkPickerOpen] = useState(false)
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
+  /** Latched while Excalidraw's own link editor is being intercepted. */
+  const linkEditorHandledRef = useRef(false)
 
   // Parse the stored scene up front only to decide whether it is loadable —
   // and deliberately throw the parsed graph away. Retaining it (as a useMemo
@@ -438,6 +440,35 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     [linkTargetId, t]
   )
 
+  /**
+   * Excalidraw's own "Create link" action — the chain button under Actions, and
+   * Cmd/Ctrl+K — only knows how to take a typed address. It works by setting
+   * `appState.showHyperlinkPopup` to "editor", which reaches us through
+   * onChange, so the button can be answered with our item picker instead of
+   * its URL box without touching Excalidraw's DOM.
+   *
+   * Its "info" popup is left alone: that is where an existing link's edit and
+   * remove buttons live, and removing a link stays Excalidraw's job.
+   */
+  const interceptLinkEditor = useCallback(
+    (appState: { showHyperlinkPopup: false | 'info' | 'editor' }): void => {
+      if (appState.showHyperlinkPopup !== 'editor') {
+        linkEditorHandledRef.current = false
+        return
+      }
+      // onChange fires repeatedly while the popup is open; act once per opening.
+      if (linkEditorHandledRef.current) return
+      linkEditorHandledRef.current = true
+
+      apiRef.current?.updateScene({
+        appState: { showHyperlinkPopup: false },
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+      openLinkPicker()
+    },
+    [openLinkPicker]
+  )
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -505,7 +536,10 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
             saveToActiveFile: false
           }
         }}
-        onChange={() => persisterRef.current?.notifyChange()}
+        onChange={(_elements, appState) => {
+          persisterRef.current?.notifyChange()
+          interceptLinkEditor(appState)
+        }}
         onLinkOpen={handleLinkOpen}
         // Three Memry themes exist (light/dark/white); anything not dark maps
         // to Excalidraw's light theme.

@@ -316,7 +316,8 @@
       "groupInbox": "Inbox",
       "groupJournals": "Journals",
       "groupProjects": "Projects",
-      "groupFolders": "Folders"
+      "groupFolders": "Folders",
+      "useUrl": "Link to {{url}}"
     },
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 import {
+  urlFromQuery,
   candidatesFromEvents,
   candidatesFromFolders,
   candidatesFromProjects,
@@ -195,5 +196,33 @@ describe('groupCandidates', () => {
     expect(groups.task).toHaveLength(0)
     expect(hasAnyCandidate(groups)).toBe(true)
     expect(hasAnyCandidate(groupCandidates([]))).toBe(false)
+  })
+})
+
+describe('urlFromQuery', () => {
+  it.each([
+    ['https://example.com/docs', 'https://example.com/docs'],
+    ['http://localhost:3000', 'http://localhost:3000'],
+    ['mailto:kaan@example.com', 'mailto:kaan@example.com'],
+    ['example.com', 'https://example.com'],
+    ['example.com/a/b?c=d', 'https://example.com/a/b?c=d'],
+    ['  example.com  ', 'https://example.com']
+  ])('reads %s as an address', (query, expected) => {
+    expect(urlFromQuery(query)).toBe(expected)
+  })
+
+  it.each([
+    ['a note title', 'Meeting notes'],
+    ['a single word', 'roadmap'],
+    ['a filename fragment mid-typing', 'spec.'],
+    ['nothing', '   ']
+  ])('does not mistake %s for an address', (_label, query) => {
+    expect(urlFromQuery(query)).toBeNull()
+  })
+
+  it('reads a bare filename as an address, which the https guess makes harmless', () => {
+    // "Spec.md" is indistinguishable from a host at this level; the row is
+    // offered alongside the real note hits rather than instead of them.
+    expect(urlFromQuery('Spec.md')).toBe('https://Spec.md')
   })
 })

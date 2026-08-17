@@ -134,8 +134,9 @@ of opening an empty tab. A link it cannot make sense of is left alone.
 
 ## Linking a shape to something in your vault
 
-Pasting an address is fine for the web, but a shape can also point at something
-you already have. Select a single shape and press **Cmd/Ctrl+Shift+K**.
+A shape can point at something you already have, not just at the web. Select a
+single shape and click the **link** button under **Actions** in the properties
+panel — or press **Cmd/Ctrl+K**, or **Cmd/Ctrl+Shift+K**.
 
 A search box opens. Type, and matches appear grouped by what they are — notes,
 files, tasks, events, inbox items, journal days, projects and folders — each with
@@ -149,8 +150,15 @@ Two things it will not do:
 - Link a card. A card already opens its own item, so a second link on it would
   contradict the card itself.
 
+Typing a web address works here too: an address gets its own row at the top of
+the list, so the same box handles both. A bare host like `example.com` is read as
+`https://example.com`.
+
 An event with no date is not offered: there would be no day for the Calendar to
 open to.
+
+To remove a link, select the shape and use the **remove** button in the link
+bubble that appears over it — that part is unchanged.
 
 ## Connecting cards
 
