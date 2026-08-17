@@ -1309,6 +1309,17 @@ describe('notes operations', () => {
         expect(folderPaths).toContain('folder1/nested')
       })
 
+      it('hides the canvases folder — canvases have their own sidebar section', async () => {
+        // #given — the canvas store creates `<vault>/canvases` the first time a
+        // canvas is saved, plus a subfolder for a foldered canvas.
+        await notes.createFolder('canvases/work')
+
+        const folderPaths = (await notes.getFolders()).map((f) => f.path)
+
+        expect(folderPaths).not.toContain('canvases')
+        expect(folderPaths).not.toContain('canvases/work')
+      })
+
       it('includes folder icons from database config rows', async () => {
         const { folderConfigs } = await import('@memry/db-schema/schema/folder-configs')
         await notes.createFolder('configured')

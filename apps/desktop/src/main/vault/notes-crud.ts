@@ -62,6 +62,7 @@ import {
   toAbsolutePath,
   toRelativePath
 } from './notes-io'
+import { CANVAS_DIR } from '../canvas/scene-file'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
@@ -807,10 +808,11 @@ export async function deleteNote(id: string): Promise<void> {
 export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getVaultRoot()
   const config = getConfig()
-  // Hide structural/excluded top-level folders (journal, attachments, node_modules,
-  // etc.) from the collection tree; journals live in the Journal view.
+  // Hide structural/excluded top-level folders (journal, attachments, canvases,
+  // node_modules, etc.) from the collection tree; journals live in the Journal
+  // view and canvases have their own sidebar section with their own tree.
   const hiddenRoots = new Set(
-    [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+    [config.journalFolder, config.attachmentsFolder, CANVAS_DIR, ...config.excludePatterns]
       .filter(Boolean)
       .map((p) => p.replace(/\/+$/, '').split('/')[0])
   )
