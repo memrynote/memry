@@ -9,6 +9,10 @@ file `canvases/Work/Q3/Plan.excalidraw`, so the tree in the sidebar and the
 folders in your file manager are the same thing — make a folder either way and
 it shows up in the other.
 
+The `canvases` directory itself stays out of the **Collections** section. Your
+boards live in one place in the sidebar — the **Canvases** section — so the note
+tree never shows a second copy of the same tree.
+
 ## Creating folders
 
 - **At the top level**, hover the **Canvases** section header and click the
