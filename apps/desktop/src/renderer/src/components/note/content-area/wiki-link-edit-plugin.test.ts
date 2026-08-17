@@ -132,6 +132,40 @@ describe('wiki-link edit plugin', () => {
     expect(state.selection.from).toBe(1 + 10)
   })
 
+  // The bug this pins: the menu anchors its query window wherever the caret is
+  // when it opens. Opened at the END of the target, the query starts empty, so
+  // typing `#` yields the query `#`, the note half is empty, heading mode never
+  // engages and the picker reports "no notes found" for a note that plainly
+  // exists. Only the ORDER was wrong — the caret ends up in the same place
+  // either way, which is why every other assertion here stayed green.
+  it('opens the menu while the caret is still just after the `[[`', () => {
+    const caretAtOpen: number[] = []
+    const view = viewOf(stateWith([chip({ target: 'Toplantı' })], 2))
+    const plugin = createWikiLinkEditPlugin({
+      openMenu: () => caretAtOpen.push(view.state.selection.from)
+    })
+
+    plugin.props.handleKeyDown!.call(
+      plugin,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      view as any,
+      {
+        key: 'Backspace',
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any
+    )
+
+    // Right after the `[[`, so the menu's query window starts where a
+    // hand-typed link's would.
+    expect(caretAtOpen).toEqual([1 + 2])
+    // And only then to the end of the target, which makes the query the target.
+    expect(view.state.selection.from).toBe(1 + 2 + 'Toplantı'.length)
+  })
+
   it('un-promotes on ArrowLeft too', () => {
     const { handled, state } = keyDown(stateWith([chip({ target: 'Toplantı' })], 2), 'ArrowLeft')
 
