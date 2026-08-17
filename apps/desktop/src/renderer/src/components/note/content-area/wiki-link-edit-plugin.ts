@@ -179,12 +179,16 @@ function unpromote(state: EditorState, node: ProseMirrorNode, pos: number): Tran
     pos + node.nodeSize,
     state.schema.text(text, marksFromProps(state.schema, node.attrs))
   )
-  // At the END OF THE TARGET, which for `[[Target]]` is "just before the `]]`"
-  // and for `[[Target|Alias]]` is just before the `|`. Both are the same spot
-  // for the common case, and the alias case is the reason not to say "before
-  // the `]]`" and leave it there: a `#` typed after an alias reads as part of
-  // the ALIAS, so the link would point at a heading nobody can resolve.
-  tr.setSelection(TextSelection.create(tr.doc, pos + 2 + target.length))
+  // Immediately after the `[[`, NOT at the end of the target — the caller opens
+  // the suggestion menu here and the menu anchors its query window wherever the
+  // caret is at that moment, then moves the caret to the end of the target so
+  // the query becomes the target itself.
+  //
+  // Getting this backwards is not a subtle failure: anchoring at the end of the
+  // target makes the query start empty, so typing `#` produces the query `#`,
+  // the note half is empty, heading mode never engages and the menu reports "no
+  // notes found" on a link whose note plainly exists.
+  tr.setSelection(TextSelection.create(tr.doc, pos + 2))
   tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
   return tr
 }
@@ -270,21 +274,22 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
 
         view.dispatch(tr)
 
-        // Bind the raw text to a live suggestion session, in three steps that
-        // have to stay in this order. `unpromote` leaves the caret immediately
-        // after the `[[`, which is where the menu anchors its query window;
-        // opening it there and only then moving the caret to the end of the
-        // target makes the query the target itself. Typing `#` from there
-        // extends that query, so the heading picker opens on a note whose title
-        // is exact by construction — no guessing, no typo to get wrong.
-        if (options.openMenu) {
-          options.openMenu()
-          const end = before.pos + 2 + target.length
-          if (end <= view.state.doc.content.size) {
-            const move = view.state.tr.setSelection(TextSelection.create(view.state.doc, end))
-            move.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
-            view.dispatch(move)
-          }
+        // Bind the raw text to a live suggestion session. Three steps, and the
+        // order is the whole trick: `unpromote` left the caret right after the
+        // `[[`, the menu anchors its query window at the caret, and only then
+        // does the caret move to the end of the target — which makes the query
+        // the target itself. Typing `#` extends that query, so the heading
+        // picker opens on a note whose title is exact by construction, with no
+        // typing it out and no typo to get wrong.
+        if (options.openMenu) options.openMenu()
+
+        // Unconditional: with no menu to open, the caret still belongs at the
+        // end of the target rather than parked between the brackets.
+        const end = before.pos + 2 + target.length
+        if (end <= view.state.doc.content.size) {
+          const move = view.state.tr.setSelection(TextSelection.create(view.state.doc, end))
+          move.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+          view.dispatch(move)
         }
 
         return true
