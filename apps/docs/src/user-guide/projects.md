@@ -6,7 +6,7 @@ Projects group tasks under a custom status workflow.
 
 ## Project Tree
 
-Projects appear in the sidebar with incomplete-task counts. Drag to reorder. Use the right-click context menu to rename, recolor, change icon, or delete.
+Projects appear in the sidebar with incomplete-task counts. Drag to reorder. Use a project's edit gear to rename, recolor, change icon, or delete.
 
 ## Creating a Project
 
@@ -102,13 +102,9 @@ Files and calendar events, which have no frontmatter, show small **project chips
 
 ## Deleting a Project
 
-Deleting asks you to choose what to do with the tasks:
+Open the project in the edit modal and use **Delete Project** in the footer. A confirmation dialog names the project, tells you how many tasks go with it, and states that the action cannot be undone. Cancel leaves everything untouched; confirming deletes the project and closes the modal.
 
-- **Move to another project** — pick from the project list
-- **Move to no project** — keep the tasks, drop the project assignment
-- **Delete with project** — destructive; tasks go too
-
-Each path is reversible via undo within the 10-second window.
+**The project's tasks are deleted with it.** There is no move-the-tasks-elsewhere option, and the deletion is not undoable — move any tasks you want to keep to another project before deleting.
 
 Linked **notes, events, and files are never deleted** with a project — only the project's tasks and its links are removed. Your notes, events, and files stay in your vault and simply lose the project link, so a project is safe to delete without losing the material collected under it.
 
