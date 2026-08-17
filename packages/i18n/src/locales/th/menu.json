@@ -2,6 +2,7 @@
   "app": {
     "quit": "ออก",
     "preferences": "การตั้งค่า…",
+    "checkForUpdates": "ตรวจสอบการอัปเดต…",
     "exit": "ออก",
     "hide": "ซ่อน MemryNote",
     "hideOthers": "ซ่อนรายการอื่น",

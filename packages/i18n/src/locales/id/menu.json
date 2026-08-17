@@ -2,6 +2,7 @@
   "app": {
     "quit": "Keluar dari MemryNote",
     "preferences": "Pengaturan…",
+    "checkForUpdates": "Periksa Pembaruan…",
     "exit": "Keluar",
     "hide": "Sembunyikan MemryNote",
     "hideOthers": "Sembunyikan Lainnya",

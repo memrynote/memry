@@ -118,6 +118,26 @@ describe('buildAppMenu', () => {
     expect(openExternal).toHaveBeenCalledWith('https://docs.memrynote.com')
   })
 
+  it('offers Check for Updates… on every platform and routes it to the renderer', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    // macOS puts it in the app menu, Windows/Linux in Help — either way it sits
+    // in the built template and dispatches the same renderer command.
+    const item = findMenuItem('Check for Updates…')
+    expect(item).toMatchObject({ id: 'app.checkForUpdates' })
+
+    item?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
+      command: 'app.checkForUpdates'
+    })
+  })
+
   it('routes Edit undo/redo through the renderer instead of native roles', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()

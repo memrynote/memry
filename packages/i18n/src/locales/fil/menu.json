@@ -2,6 +2,7 @@
   "app": {
     "quit": "I-quit",
     "preferences": "Mga Setting…",
+    "checkForUpdates": "Maghanap ng Mga Update…",
     "exit": "Lumabas",
     "hide": "Itago ang MemryNote",
     "hideOthers": "Itago ang Iba",

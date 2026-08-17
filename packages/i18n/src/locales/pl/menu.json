@@ -2,6 +2,7 @@
   "app": {
     "quit": "Zakończ",
     "preferences": "Ustawienia…",
+    "checkForUpdates": "Sprawdź aktualizacje…",
     "exit": "Wyjdź",
     "hide": "Ukryj MemryNote",
     "hideOthers": "Ukryj pozostałe",

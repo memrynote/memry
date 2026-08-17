@@ -2,6 +2,7 @@
   "app": {
     "quit": "Τερματισμός",
     "preferences": "Ρυθμίσεις…",
+    "checkForUpdates": "Έλεγχος για ενημερώσεις…",
     "exit": "Έξοδος",
     "hide": "Απόκρυψη MemryNote",
     "hideOthers": "Απόκρυψη άλλων",

@@ -2,6 +2,7 @@
   "app": {
     "quit": "Ukončiť",
     "preferences": "Nastavenia…",
+    "checkForUpdates": "Skontrolovať aktualizácie…",
     "exit": "Ukončiť",
     "hide": "Skryť MemryNote",
     "hideOthers": "Skryť ostatné",

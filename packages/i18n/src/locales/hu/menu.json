@@ -2,6 +2,7 @@
   "app": {
     "quit": "Kilépés a MemryNote-ból",
     "preferences": "Beállítások…",
+    "checkForUpdates": "Frissítések keresése…",
     "exit": "Kilépés",
     "hide": "MemryNote elrejtése",
     "hideOthers": "Egyebek elrejtése",

@@ -2,6 +2,7 @@
   "app": {
     "quit": "Quit",
     "preferences": "Settings…",
+    "checkForUpdates": "Check for Updates…",
     "services": "Services",
     "hide": "Hide MemryNote",
     "hideOthers": "Hide Others",

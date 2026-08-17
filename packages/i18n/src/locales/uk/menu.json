@@ -2,6 +2,7 @@
   "app": {
     "quit": "Завершити",
     "preferences": "Налаштування…",
+    "checkForUpdates": "Перевірити оновлення…",
     "exit": "Вихід",
     "hide": "Сховати MemryNote",
     "hideOthers": "Сховати інші",

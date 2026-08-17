@@ -2,6 +2,7 @@
   "app": {
     "quit": "Ieșire din MemryNote",
     "preferences": "Setări…",
+    "checkForUpdates": "Caută actualizări…",
     "exit": "Ieșire",
     "hide": "Ascunde MemryNote",
     "hideOthers": "Ascunde celelalte",
