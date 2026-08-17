@@ -37,6 +37,26 @@ vi.mock('@/lib/url-metadata', () => ({
   })
 }))
 
+/**
+ * The smallest ProseMirror-shaped state `isEditingWikiLinkText` can read: one
+ * text block and a collapsed caret at `offset`. Enough to say whether the caret
+ * is inside a raw `[[…]]` run, which is the only question asked of it here.
+ */
+function caretState(text: string, offset: number): any {
+  const parent = {
+    isTextblock: true,
+    type: { spec: {} },
+    content: { size: text.length },
+    textBetween: () => text
+  }
+  return {
+    selection: {
+      empty: true,
+      $from: { parent, parentOffset: offset, start: () => 1 }
+    }
+  }
+}
+
 function createEditor(parsedBlocks: any[] = []) {
   let document = [{ id: 'initial', type: 'paragraph', props: {}, content: [], children: [] }]
   const transact = vi.fn((callback: (tr: any) => unknown) => {
@@ -189,6 +209,47 @@ describe('useEditorSync', () => {
     await waitFor(() =>
       expect(editor.updateBlock).toHaveBeenCalledWith(nestedMention, expect.anything())
     )
+  })
+
+  it('does not promote the wiki link the caret is inside, and promotes the others', async () => {
+    const editor = createEditor() as any
+    const { result } = renderHook(() =>
+      useEditorSync({ editor, initialContent: '', contentType: 'markdown' })
+    )
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    editor.replaceBlocks(
+      [],
+      [
+        {
+          id: 'editing',
+          type: 'paragraph',
+          props: {},
+          content: 'Read [[Daily Note]]',
+          children: []
+        }
+      ]
+    )
+    editor.replaceBlocks.mockClear()
+
+    // Caret inside the run: a whole-document replace here would yank the text
+    // out from under it mid-edit (`wiki-link-edit-plugin.ts`).
+    editor.getTextCursorPosition = vi.fn(() => ({ block: { id: 'editing' } }))
+    editor._tiptapEditor.state = caretState('Read [[Daily Note]]', 10)
+    act(() => {
+      result.current.handleChange()
+    })
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+
+    // Caret in the same block but OUTSIDE the brackets: the exemption is the
+    // link run, not the block the user happens to be standing in. A hand-typed
+    // `[[Note]]` still becomes a chip the moment it is complete.
+    editor._tiptapEditor.state = caretState('Read [[Daily Note]]', 0)
+    act(() => {
+      result.current.handleChange()
+    })
+    expect(editor.replaceBlocks).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(editor.document)).toContain('wikiLink')
   })
 
   it('does not mark markdown content ready when parsing fails', async () => {

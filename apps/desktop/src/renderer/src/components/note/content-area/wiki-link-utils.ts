@@ -254,7 +254,25 @@ export function normalizeTableContent(tableContent: any): { content: any; didCha
   return { content: { ...tableContent, rows }, didChange: true }
 }
 
-export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
+export interface NormalizeWikiLinksOptions {
+  /**
+   * The block holding the caret, left alone.
+   *
+   * Promotion is what makes a wiki link a chip, and normally that is exactly
+   * right. It is wrong for the one block the user is editing IN: un-promoting a
+   * chip (`wiki-link-edit-plugin.ts`) leaves real `[[…]]` text under the caret,
+   * which this would promote straight back on the next keystroke — through a
+   * whole-document `replaceBlocks`, under a caret, mid-word. Skipping the whole
+   * block is coarser than skipping the run, and enough: leaving the block
+   * promotes it, and so does the plugin the moment the caret leaves the run.
+   */
+  skipBlockId?: string
+}
+
+export function normalizeWikiLinks(
+  blocks: Block[],
+  options?: NormalizeWikiLinksOptions
+): { blocks: Block[]; didChange: boolean } {
   const blockStr = JSON.stringify(blocks)
   if (!blockStr.includes('[[')) {
     return { blocks, didChange: false }
@@ -270,7 +288,9 @@ export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChang
     let blockChanged = false
     let nextBlock: Block = block
 
-    if (block.content) {
+    // Children are still walked: a sibling block nested under the caret's block
+    // is a different block, and its links promote as usual.
+    if (block.content && block.id !== options?.skipBlockId) {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
         const normalized = normalizeInlineContent(block.content as any)
         if (normalized.didChange) {
@@ -287,7 +307,7 @@ export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChang
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeWikiLinks(block.children as Block[])
+      const normalizedChildren = normalizeWikiLinks(block.children as Block[], options)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

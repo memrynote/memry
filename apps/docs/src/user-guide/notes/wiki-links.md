@@ -39,6 +39,22 @@ Because an exact title is what switches modes, `[[Sprint #` still lists notes: `
 not a note here, so nothing about `[[Sprint #4]]` changes. Block references (`#^`) are never
 offered.
 
+### Adding a heading to a link you already inserted
+
+A finished link is a single chip, so there is nothing to type a `#` into. Press
+<kbd>Backspace</kbd> (or <kbd>←</kbd>) right after one and it opens back up as its plain text
+— `[[Meeting]]`, or `[[Meeting|the outcome]]` — with the cursor at the end of the title and
+the `[[` `]]` dimmed. Type `#` and the heading dropdown appears, exactly as when writing the
+link from scratch. Move the cursor out of the brackets, or click elsewhere, and it becomes a
+chip again.
+
+::: warning Backspace next to a link now opens it instead of deleting it
+This applies to **every** wiki link, not only ones with a heading. To delete a link, press
+<kbd>Backspace</kbd> a second time once it is plain text, or select it and delete. Removing
+the `[[` or `]]` yourself is also allowed — that turns the link back into ordinary prose,
+which is sometimes what you want.
+:::
+
 Heading matching ignores case and surrounding spaces, and the first heading with that text
 wins — the link records the heading's text, not its level or its position. If the heading
 has since been renamed or deleted, the note still opens, at the top.

@@ -2637,6 +2637,13 @@ del.bn-inline-content {
   color: rgb(251, 191, 36) !important;
 }
 
+/* A wiki link opened for editing: the `[[` and `]]` are real characters the
+   user can delete, so they are dimmed rather than hidden — the text still reads
+   as a link without the brackets shouting. */
+.wiki-link-bracket {
+  opacity: 0.4;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,
