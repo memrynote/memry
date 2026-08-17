@@ -56,7 +56,7 @@ import {
   entityFromDndData,
   pointerFromDragEnd
 } from './canvas-drop-entity'
-import { buildRedirectTab } from './canvas-redirect'
+import { buildMemryHref, tabFromMemryHref } from '@/lib/memry-links'
 import { noteCardClaims } from './canvas-note-lock'
 import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
 import { CanvasAddCardDialog } from './canvas-add-card-dialog'
@@ -307,14 +307,17 @@ export const CanvasCardLayer = ({
   const redirect = useCallback(
     (card: CanvasCardRef): void => {
       const state = entitiesRef.current.get(entityKey(card.entityType, card.entityId))
-      const tab = buildRedirectTab({
-        entityType: card.entityType,
-        entityId: card.entityId,
-        title: state?.status === 'ready' && state.kind === 'note' ? state.title : '',
-        startAt:
-          state?.status === 'ready' && state.kind === 'calendar_event' ? state.startAt : null,
-        now: Date.now()
+      const title = state?.status === 'ready' && state.kind === 'note' ? state.title : undefined
+      const startAt =
+        state?.status === 'ready' && state.kind === 'calendar_event' ? state.startAt : null
+      // A card opens through the same `memry://` grammar as an agent-chat link
+      // or a canvas element link, so all three stay in step as kinds are added.
+      const href = buildMemryHref({
+        kind: card.entityType,
+        id: card.entityId,
+        date: startAt ? startAt.slice(0, 10) : null
       })
+      const tab = href ? tabFromMemryHref(href, { title, now: Date.now() }) : null
       if (tab) {
         openTab(tab)
       }
