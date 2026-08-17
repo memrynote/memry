@@ -115,6 +115,23 @@ Calendar.
 
 Double-click edits in place; ↗ opens a tab. The two never trigger each other.
 
+## Links on a shape
+
+A shape you draw is not a card, but it can still carry a link. Select it, choose
+**Create link** from the shape's toolbar, and paste an address.
+
+Clicking the link icon that appears on the shape now does what the address asks:
+
+- A web address opens in your default browser. Memry does not open web pages in
+  its own window.
+- **Link to object** — Excalidraw's own "link to a shape on this canvas" — moves
+  the canvas to that shape and selects it. It no longer reloads the canvas.
+- A link to a vault item opens that item in a tab, the same way the ↗ button on
+  a card does.
+
+If a link points at something that has since been deleted, Memry says so instead
+of opening an empty tab. A link it cannot make sense of is left alone.
+
 ## Connecting cards
 
 Draw an arrow from one card to another and it binds to both. Move a card and the
