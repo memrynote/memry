@@ -151,6 +151,8 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 
 Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
+The floating toolbar also carries **inline code** (`` `code` ``) next to bold, italic, underline and strikethrough, and ends with a full-width **Comment** button that opens a comment on the selection.
+
 ### Turning existing lines into a list
 
 Select the lines — a whole pasted block of them if you like — and press **Bulleted list**, **Numbered list**, or **Check list** on the toolbar. Every selected line is converted, not just the one holding the cursor, and pressing the same button again turns them back into paragraphs. Blocks that cannot become list items, such as tasks and files, are left as they are.
