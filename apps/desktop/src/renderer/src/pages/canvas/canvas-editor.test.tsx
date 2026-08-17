@@ -33,8 +33,10 @@ const mocks = vi.hoisted(() => ({
   // Mutable fake-Excalidraw state each test drives to simulate init phases.
   api: {
     elements: [] as unknown[],
-    isLoading: true
+    isLoading: true,
+    selectedElementIds: {} as Record<string, boolean>
   },
+  linkDialogProps: {} as Record<string, unknown>,
   onChange: null as (() => void) | null,
   excalidrawProps: {} as Record<string, unknown>,
   liveOpened: vi.fn(),
@@ -64,7 +66,10 @@ vi.mock('@excalidraw/excalidraw', () => ({
     React.useEffect(() => {
       props.excalidrawAPI({
         getSceneElements: () => mocks.api.elements,
-        getAppState: () => ({ isLoading: mocks.api.isLoading }),
+        getAppState: () => ({
+          isLoading: mocks.api.isLoading,
+          selectedElementIds: mocks.api.selectedElementIds
+        }),
         getFiles: () => ({}),
         scrollToContent: (...args: unknown[]) => mocks.scrollToContent(...args),
         updateScene: (...args: unknown[]) => mocks.updateScene(...args)
@@ -106,6 +111,25 @@ vi.mock('@/services/canvas-service', () => ({
 }))
 vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
 vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+// The link picker is mounted (closed) alongside Excalidraw, so its data
+// sources have to exist even for the suites that never open it.
+// The picker's own rows are covered by canvas-link-candidates.test.ts; here the
+// subject is the wiring, so the dialog is a prop recorder.
+vi.mock('./canvas-link-dialog', () => ({
+  CanvasLinkDialog: (props: Record<string, unknown>) => {
+    mocks.linkDialogProps = props
+    return null
+  }
+}))
+vi.mock('@/hooks/use-projects-list', () => ({
+  useProjectsList: () => ({ projects: [], isLoading: false })
+}))
+vi.mock('@/services/search-service', () => ({
+  searchService: { quick: () => Promise.resolve({ results: [], queryTimeMs: 0 }) }
+}))
+vi.mock('@/services/calendar-service', () => ({
+  calendarService: { searchEvents: () => Promise.resolve({ events: [] }) }
+}))
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     get: (...args: unknown[]) => mocks.noteGet(...args),
@@ -139,13 +163,15 @@ describe('CanvasEditor persistence safety', () => {
     mocks.serializeAsJSON.mockClear()
     mocks.api.elements = []
     mocks.api.isLoading = true
+    mocks.api.selectedElementIds = {}
     mocks.onChange = null
     // The editor reports live-canvas ownership to main so agent writes can be
     // routed to this instance (#916); this suite only needs the calls to land.
     mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
     mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
     ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed }
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
     }
   })
 
@@ -349,6 +375,10 @@ describe('CanvasEditor link opening', () => {
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.isLoading = false
     window.open = mocks.windowOpen as unknown as typeof window.open
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
+    }
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: PROD_DOC }
@@ -427,5 +457,116 @@ describe('CanvasEditor link opening', () => {
     expect(mocks.windowOpen).not.toHaveBeenCalled()
     expect(mocks.openTab).not.toHaveBeenCalled()
     expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * The "Link to item" picker's wiring. What the picker itself lists is covered
+ * by canvas-link-candidates.test.ts; here the subject is which selection may
+ * open it and what selecting a row writes onto the scene.
+ */
+describe('CanvasEditor link picker', () => {
+  function pressShortcut(container: HTMLElement): void {
+    fireEvent.keyDown(container.querySelector('[data-canvas-editor]') as Element, {
+      key: 'K',
+      metaKey: true,
+      shiftKey: true
+    })
+  }
+
+  beforeEach(() => {
+    mocks.toastError.mockReset()
+    mocks.toastSuccess.mockReset()
+    mocks.updateScene.mockReset()
+    mocks.linkDialogProps = {}
+    mocks.api.isLoading = false
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
+    }
+  })
+
+  it('opens the picker for a single selected shape', () => {
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.selectedElementIds = { 'shape-1': true }
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    pressShortcut(container)
+
+    expect(mocks.linkDialogProps.open).toBe(true)
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('refuses to guess which of several selected shapes to link', () => {
+    mocks.api.elements = [
+      { id: 'shape-1', type: 'rectangle' },
+      { id: 'shape-2', type: 'ellipse' }
+    ]
+    mocks.api.selectedElementIds = { 'shape-1': true, 'shape-2': true }
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    pressShortcut(container)
+
+    expect(mocks.linkDialogProps.open).toBe(false)
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.selectOneShape')
+  })
+
+  it('says so when nothing is selected', () => {
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.selectedElementIds = {}
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    pressShortcut(container)
+
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.selectOneShape')
+  })
+
+  it('will not put a second link on a card, which already opens its own item', () => {
+    mocks.api.elements = [
+      { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
+    ]
+    mocks.api.selectedElementIds = { 'card-1': true }
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    pressShortcut(container)
+
+    expect(mocks.linkDialogProps.open).toBe(false)
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.cardsCannotLink')
+  })
+
+  it('writes the chosen href onto the shape and marks the scene dirty', () => {
+    mocks.api.elements = [
+      { id: 'shape-1', type: 'rectangle' },
+      { id: 'shape-2', type: 'ellipse' }
+    ]
+    mocks.api.selectedElementIds = { 'shape-1': true }
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    pressShortcut(container)
+
+    act(() => {
+      ;(mocks.linkDialogProps.onPick as (href: string) => void)('memry://note/n1')
+    })
+
+    const [call] = mocks.updateScene.mock.calls as [{ elements: { id: string; link?: string }[] }][]
+    expect(call[0].elements).toEqual([
+      { id: 'shape-1', type: 'rectangle', link: 'memry://note/n1' },
+      { id: 'shape-2', type: 'ellipse' }
+    ])
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('canvas.link.linked')
+  })
+
+  it('reports a shape deleted while the picker was open instead of writing nowhere', () => {
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.selectedElementIds = { 'shape-1': true }
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    pressShortcut(container)
+
+    mocks.api.elements = []
+    act(() => {
+      ;(mocks.linkDialogProps.onPick as (href: string) => void)('memry://note/n1')
+    })
+
+    expect(mocks.updateScene).not.toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.elementMissing')
   })
 })

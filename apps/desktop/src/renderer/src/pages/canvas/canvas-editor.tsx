@@ -31,6 +31,7 @@ import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { CanvasLinkDialog } from './canvas-link-dialog'
 import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
@@ -49,6 +50,12 @@ const log = createLogger('SpatialCanvas')
 
 const SCENE_SAVE_DEBOUNCE_MS = 800
 
+/** A scene element as this file reads it: cards carry `customData`. */
+interface LinkableElement {
+  id: string
+  customData?: { entityType?: string } | null
+}
+
 interface CanvasEditorProps {
   canvasId: string
   /** Serialized scene as stored (serializeAsJSON output), '' when never drawn on. */
@@ -62,6 +69,8 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
 
   // Parse the stored scene up front only to decide whether it is loadable —
   // and deliberately throw the parsed graph away. Retaining it (as a useMemo
@@ -367,6 +376,68 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     [openMemryTarget, t]
   )
 
+  /**
+   * Opens the "Link to item" picker for the current selection.
+   *
+   * Exactly one shape must be selected: a link lives on a single element, and
+   * silently picking one out of several would attach it somewhere the user did
+   * not look. Memry cards are excluded — a card already opens its own entity,
+   * so a second, possibly different, link on it is a contradiction.
+   */
+  const openLinkPicker = useCallback((): void => {
+    const api = apiRef.current
+    if (!api) return
+
+    const selectedIds = Object.entries(api.getAppState().selectedElementIds)
+      .filter(([, selected]) => selected)
+      .map(([id]) => id)
+
+    if (selectedIds.length !== 1) {
+      toast.error(t('canvas.link.selectOneShape'))
+      return
+    }
+
+    const element = api.getSceneElements().find((el) => el.id === selectedIds[0]) as
+      LinkableElement | undefined
+    if (!element) {
+      toast.error(t('canvas.link.selectOneShape'))
+      return
+    }
+    if (element.customData?.entityType) {
+      toast.error(t('canvas.link.cardsCannotLink'))
+      return
+    }
+
+    setLinkTargetId(element.id)
+    setLinkPickerOpen(true)
+  }, [t])
+
+  /** Writes the chosen item's href onto the shape the picker was opened for. */
+  const applyLink = useCallback(
+    (href: string): void => {
+      const api = apiRef.current
+      const targetId = linkTargetId
+      if (!api || !targetId) return
+
+      const elements = api.getSceneElements()
+      if (!elements.some((el) => el.id === targetId)) {
+        // Deleted while the picker was open.
+        toast.error(t('canvas.link.elementMissing'))
+        return
+      }
+
+      api.updateScene({
+        elements: elements.map((el) => (el.id === targetId ? { ...el, link: href } : el)) as never,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      // updateScene does not run the editor's onChange, so the persister has to
+      // be told or the link would sit unsaved until the next unrelated edit.
+      persisterRef.current?.notifyChange()
+      toast.success(t('canvas.link.linked'))
+    },
+    [linkTargetId, t]
+  )
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -394,6 +465,20 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       event.stopPropagation()
       void persisterRef.current?.flush()
       toast.success(t('canvas.savedToVault'))
+      return
+    }
+    // Cmd/Ctrl+Shift+K opens the item picker for the selected shape. Caught in
+    // the capture phase for the same reason Cmd+S is: Excalidraw listens on
+    // document and would otherwise act on the key first.
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === 'k' &&
+      !event.altKey
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      openLinkPicker()
     }
   }
 
@@ -434,6 +519,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           onSceneMutated={() => persisterRef.current?.notifyChange()}
         />
       ) : null}
+      <CanvasLinkDialog
+        open={linkPickerOpen}
+        onOpenChange={setLinkPickerOpen}
+        onPick={(href) => applyLink(href)}
+      />
     </div>
   )
 }

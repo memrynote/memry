@@ -132,6 +132,26 @@ Clicking the link icon that appears on the shape now does what the address asks:
 If a link points at something that has since been deleted, Memry says so instead
 of opening an empty tab. A link it cannot make sense of is left alone.
 
+## Linking a shape to something in your vault
+
+Pasting an address is fine for the web, but a shape can also point at something
+you already have. Select a single shape and press **Cmd/Ctrl+Shift+K**.
+
+A search box opens. Type, and matches appear grouped by what they are — notes,
+files, tasks, events, inbox items, journal days, projects and folders — each with
+its own icon, including the custom icon you gave a note or folder. Pick one and
+the shape carries a link to it; its link icon then opens that item in a tab.
+
+Two things it will not do:
+
+- Link when several shapes are selected, or none. A link belongs to one shape,
+  and Memry will not choose for you.
+- Link a card. A card already opens its own item, so a second link on it would
+  contradict the card itself.
+
+An event with no date is not offered: there would be no day for the Calendar to
+open to.
+
 ## Connecting cards
 
 Draw an arrow from one card to another and it binds to both. Move a card and the
