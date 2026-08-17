@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Block } from '@blocknote/core'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
 import type { HeadingInfo } from './types'
 import { createWikiLinkInlineContent, hasWikiLinkMarks } from './wiki-link'
 
@@ -57,6 +58,32 @@ export function splitWikiLinkQuery(query: string): { search: string; alias: stri
     search: rawTarget?.trim() ?? '',
     alias: rawAlias?.trim() ?? ''
   }
+}
+
+export interface WikiLinkQueryParts {
+  /** The whole target as typed, `#` and all — what the note list searches on. */
+  search: string
+  /** The note half of `note#heading`; equal to `search` when no `#` was typed. */
+  note: string
+  /** The heading half: `null` when no `#` was typed, `''` immediately after one. */
+  heading: string | null
+  alias: string
+}
+
+/**
+ * `Note#Heading|alias` → its three parts.
+ *
+ * `#` binds tighter than `|` because that is the order the grammar reads in,
+ * and `search` is kept alongside the split so the caller can fall back to it.
+ * That fallback is not optional: `#` is legal in a note title, so `Sprint #4`
+ * splits into note `Sprint` + heading `4`, and only an EXACT match on the note
+ * half may switch the menu into heading mode — everything else keeps searching
+ * titles for the raw string, exactly as before.
+ */
+export function parseWikiLinkQuery(query: string): WikiLinkQueryParts {
+  const { search, alias } = splitWikiLinkQuery(query)
+  const { note, heading } = splitWikiTarget(search)
+  return { search, note, heading, alias }
 }
 
 function createStyledText(

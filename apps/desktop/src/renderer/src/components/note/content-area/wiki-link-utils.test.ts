@@ -5,6 +5,7 @@ import {
   normalizeMarkdownHardBreaks,
   normalizeTableContent,
   normalizeWikiLinks,
+  parseWikiLinkQuery,
   splitTextWithWikiLinks,
   splitWikiLinkQuery
 } from './wiki-link-utils'
@@ -33,6 +34,51 @@ describe('wiki-link utils', () => {
       { id: 'h1', text: 'Plan', level: 2, position: 0 },
       { id: 'h2', text: 'Next', level: 3, position: 40 }
     ])
+  })
+
+  describe('parseWikiLinkQuery', () => {
+    it('reads the note, heading and alias halves', () => {
+      expect(parseWikiLinkQuery('Toplantı#Kararlar|notlar')).toEqual({
+        search: 'Toplantı#Kararlar',
+        note: 'Toplantı',
+        heading: 'Kararlar',
+        alias: 'notlar'
+      })
+    })
+
+    it('reports no heading at all when no # was typed', () => {
+      expect(parseWikiLinkQuery('Toplantı')).toEqual({
+        search: 'Toplantı',
+        note: 'Toplantı',
+        heading: null,
+        alias: ''
+      })
+    })
+
+    it('reports an empty heading the moment # is typed', () => {
+      expect(parseWikiLinkQuery('Toplantı#')).toEqual({
+        search: 'Toplantı#',
+        note: 'Toplantı',
+        heading: '',
+        alias: ''
+      })
+    })
+
+    it('keeps the raw search so a # inside a title can still be looked up', () => {
+      expect(parseWikiLinkQuery('Sprint #4')).toEqual({
+        search: 'Sprint #4',
+        note: 'Sprint',
+        heading: '4',
+        alias: ''
+      })
+    })
+
+    it('takes the last segment of a nested heading path', () => {
+      expect(parseWikiLinkQuery('Note#One#Two')).toMatchObject({
+        note: 'Note',
+        heading: 'Two'
+      })
+    })
   })
 
   it('splits wiki link queries and inline text segments', () => {
