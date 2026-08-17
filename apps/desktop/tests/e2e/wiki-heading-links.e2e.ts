@@ -80,17 +80,31 @@ test.describe('Wiki heading links', () => {
               scroller = scroller.parentElement
             }
 
+            const headingTop = node.getBoundingClientRect().top
+            const scrollerTop = scroller?.getBoundingClientRect().top ?? 0
+
             return {
               // Two independent signals: the page moved, and the heading is
               // where the user would look for it.
               scrolled: (scroller?.scrollTop ?? 0) > 0,
-              // Near the top of the window, allowing for the note's own chrome.
-              nearTop: node.getBoundingClientRect().top < 300
+              // Within a line or two of the top of the scrolling area. Measured
+              // against the scroller's own top rather than the window's,
+              // because the app chrome above it is not part of the note.
+              nearTop: headingTop - scrollerTop < 120,
+              // Reported, not asserted. A boolean-only failure says "it landed
+              // in the wrong place" and nothing about where, which cost a
+              // 30-minute CI cycle to learn once already.
+              headingTop: Math.round(headingTop),
+              scrollerTop: Math.round(scrollerTop),
+              scrollTop: Math.round(scroller?.scrollTop ?? 0),
+              scrollerTag: scroller
+                ? `${scroller.tagName}.${scroller.className}`.slice(0, 80)
+                : null
             }
           }, heading),
         { timeout: 20_000 }
       )
-      .toEqual({ scrolled: true, nearTop: true })
+      .toMatchObject({ scrolled: true, nearTop: true })
 
     // 3. No note was created for the raw target. This is the file that used to
     //    be written into the vault and synced to every device.
