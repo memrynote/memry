@@ -249,7 +249,22 @@ describe('useWikiLinkSuggestions', () => {
 
       expect(mocks.getByPath).not.toHaveBeenCalled()
       expect(items.map((item) => item.type)).toEqual(['create'])
-      expect(items[0]).toMatchObject({ target: 'Daily#' })
+      // The row names the note that would actually be created, and the trailing
+      // `#` — a half-typed separator, not a heading — is dropped rather than
+      // written into the link as `[[Daily#]]`.
+      expect(items[0]).toMatchObject({ title: 'Daily', target: 'Daily' })
+    })
+
+    it('keeps a real heading on the create row while naming only the note', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily#Standup')
+      })
+
+      expect(items.map((item) => item.type)).toEqual(['create'])
+      expect(items[0]).toMatchObject({ title: 'Daily', target: 'Daily#Standup' })
     })
 
     it('does not offer headings for a block reference', async () => {

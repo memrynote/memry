@@ -712,7 +712,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // a heading can be typed into it. Prepended for the same reason as above: the
   // default Backspace keymap would delete the chip before we saw the key.
   useEffect(() => {
-    return registerEditorPlugin(editor, createWikiLinkEditPlugin(), (p, plugins) => [p, ...plugins])
+    const plugin = createWikiLinkEditPlugin({
+      // `deleteTriggerCharacter: false` because the `[[` is already in the
+      // document — the slash item above passes `true` precisely because there it
+      // is not. Without this the heading picker is unreachable from the path
+      // users actually take: pick a note from the dropdown, then try to add `#`.
+      openMenu: () =>
+        editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+          deleteTriggerCharacter: false
+        })
+    })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
