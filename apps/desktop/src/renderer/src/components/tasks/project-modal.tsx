@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ProjectIcon } from '@/components/tasks/project-icon'
 import { ColorPicker } from '@/components/tasks/color-picker'
 import { StatusEditor } from '@/components/tasks/status-editor'
+import { DeleteProjectDialog } from '@/components/tasks/delete-project-dialog'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -152,6 +153,7 @@ const ProjectModalDialog = ({
 
   // Unsaved changes dialog
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(
@@ -214,9 +216,17 @@ const ProjectModalDialog = ({
   }
 
   const handleDelete = (): void => {
+    setShowDeleteDialog(true)
+  }
+
+  const handleConfirmDelete = (): void => {
     if (onDelete && project) {
       onDelete(project.id)
     }
+    // Close like handleSave does. Call sites only run the mutation + toast;
+    // without this the modal stayed open on top of the "Project deleted" toast,
+    // still editing a project that no longer exists.
+    onClose()
   }
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -405,6 +415,13 @@ const ProjectModalDialog = ({
       </Dialog>
 
       {/* Unsaved Changes Confirmation */}
+      <DeleteProjectDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleConfirmDelete}
+        project={project ?? null}
+      />
+
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -428,9 +428,12 @@ describe('missing small component surfaces', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('radio', { name: /deleteAllTasksPermanently/ }))
+    // Tasks always go with the project (main's deleteProject cascades them), so
+    // the dialog states the count instead of offering a move-vs-delete choice.
+    expect(screen.getByText(/thisProjectHas/)).toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('phaseF.componentsTasksDeleteProjectDialog.deleteProject'))
-    expect(onConfirm).toHaveBeenCalledWith('delete')
+    expect(onConfirm).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalled()
 
     rerender(
