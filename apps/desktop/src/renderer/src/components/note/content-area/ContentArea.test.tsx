@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
+import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -27,6 +28,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   defaultFileItemClick: vi.fn(),
   openSuggestionMenu: vi.fn(),
+  registerPlugin: vi.fn(),
   createLinkMentionContent: vi.fn(
     (url: string, domain: string, title?: string, favicon?: string) => ({
       type: 'linkMention',
@@ -350,7 +352,9 @@ function resetEditor(): void {
     prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
     _tiptapEditor: {
       state: { selection: { empty: true, $from: { parentOffset: 0 } } },
-      destroy: vi.fn()
+      destroy: vi.fn(),
+      registerPlugin: contentAreaMocks.registerPlugin,
+      unregisterPlugin: vi.fn()
     }
   }
 }
@@ -834,6 +838,20 @@ describe('ContentArea', () => {
     await expect(slashController.getItems('photo')).resolves.toEqual([
       expect.objectContaining({ key: 'image' })
     ])
+  })
+
+  it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const call = contentAreaMocks.registerPlugin.mock.calls.find(
+      ([plugin]) => plugin?.spec?.key === WIKI_LINK_EDIT_PLUGIN_KEY
+    )
+    expect(call).toBeDefined()
+
+    // Prepended, or the default Backspace keymap deletes the chip before the
+    // plugin ever sees the key.
+    const [plugin, handlePlugins] = call!
+    expect(handlePlugins(plugin, ['existing'])).toEqual([plugin, 'existing'])
   })
 
   it('offers a "link to note" slash item that hands over to the [[ menu', async () => {

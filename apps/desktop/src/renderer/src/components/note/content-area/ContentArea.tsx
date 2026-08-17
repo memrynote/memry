@@ -88,6 +88,7 @@ import {
   isDateMentionActive,
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
+import { createWikiLinkEditPlugin } from './wiki-link-edit-plugin'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
@@ -706,6 +707,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor, insertDatePillAtRange])
+
+  // Backspace/ArrowLeft next to a wiki-link chip opens it as raw `[[…]]` text so
+  // a heading can be typed into it. Prepended for the same reason as above: the
+  // default Backspace keymap would delete the chip before we saw the key.
+  useEffect(() => {
+    return registerEditorPlugin(editor, createWikiLinkEditPlugin(), (p, plugins) => [p, ...plugins])
+  }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
   // as a date, plus recent notes (insert as wiki links). The bound menu is
