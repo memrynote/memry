@@ -193,7 +193,53 @@ function hasPlainModifiers(event: KeyboardEvent): boolean {
   return !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
 }
 
-export function createWikiLinkEditPlugin(): Plugin {
+/**
+ * Replaces the raw `[[…]]` run the caret is in with a finished chip.
+ *
+ * Used when a suggestion is picked while editing an existing link. The menu's
+ * own `clearQuery` has already removed the query TEXT by then, but it knows
+ * nothing about the brackets around it — with `deleteTriggerCharacter: false`
+ * they are left behind, so inserting a chip at the caret would produce
+ * `[[<chip>]]`. Replacing the whole run instead leaves exactly the chip.
+ *
+ * Returns false when the caret is not in a run, so the caller can fall back to
+ * an ordinary insert (the from-scratch path, where the menu owns the brackets).
+ */
+export function replaceActiveRunWithWikiLink(
+  editor: { _tiptapEditor?: { state?: EditorState; view?: EditorView } } | undefined,
+  attrs: Record<string, unknown>
+): boolean {
+  const view = editor?._tiptapEditor?.view
+  const state = view?.state
+  if (!view || !state) return false
+
+  const run = activeRun(state)
+  if (!run) return false
+
+  const type = state.schema.nodes.wikiLink
+  if (!type) return false
+
+  const tr = state.tr.replaceWith(run.from, run.to, type.create(attrs))
+  tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+  view.dispatch(tr)
+  return true
+}
+
+export interface WikiLinkEditPluginOptions {
+  /**
+   * Opens the `[[` suggestion menu at the caret WITHOUT inserting a trigger.
+   *
+   * The menu is a live plugin session, not something derived from document text
+   * — a claim this file's header used to get wrong. Un-promoting a chip left
+   * well-formed `[[…]]` text with no session attached, so typing `#` inside it
+   * opened nothing and the heading picker was unreachable from the path users
+   * actually take. The caret is parked right after the `[[` before this runs, so
+   * the menu's query window starts where a hand-typed link's would.
+   */
+  openMenu?: () => void
+}
+
+export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}): Plugin {
   return new Plugin({
     key: WIKI_LINK_EDIT_PLUGIN_KEY,
 
@@ -218,10 +264,29 @@ export function createWikiLinkEditPlugin(): Plugin {
         const before = wikiLinkBeforeCursor(view.state)
         if (!before) return false
 
+        const target = typeof before.node.attrs.target === 'string' ? before.node.attrs.target : ''
         const tr = unpromote(view.state, before.node, before.pos)
         if (!tr) return false
 
         view.dispatch(tr)
+
+        // Bind the raw text to a live suggestion session, in three steps that
+        // have to stay in this order. `unpromote` leaves the caret immediately
+        // after the `[[`, which is where the menu anchors its query window;
+        // opening it there and only then moving the caret to the end of the
+        // target makes the query the target itself. Typing `#` from there
+        // extends that query, so the heading picker opens on a note whose title
+        // is exact by construction — no guessing, no typo to get wrong.
+        if (options.openMenu) {
+          options.openMenu()
+          const end = before.pos + 2 + target.length
+          if (end <= view.state.doc.content.size) {
+            const move = view.state.tr.setSelection(TextSelection.create(view.state.doc, end))
+            move.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+            view.dispatch(move)
+          }
+        }
+
         return true
       }
     },

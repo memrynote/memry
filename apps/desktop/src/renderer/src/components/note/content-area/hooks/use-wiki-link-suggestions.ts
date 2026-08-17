@@ -8,6 +8,7 @@ import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { parseWikiLinkQuery } from '../wiki-link-utils'
+import { replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
 import type { WikiLinkSuggestionItem } from '../wiki-link-menu'
 import { createLogger } from '@/lib/logger'
 
@@ -170,14 +171,23 @@ export function useWikiLinkSuggestions(editor: any) {
         : true
 
       if (search && !hasExactMatch) {
-        suggestions.push({
-          id: `create:${search}`,
-          title: search,
-          target: search,
-          alias,
-          exists: false,
-          type: 'create'
-        })
+        // The row names the note that will actually be created, which is the
+        // note half — `resolveWikiLink` never mints a filename carrying a `#`.
+        // A trailing `#` with nothing after it is a half-typed separator rather
+        // than a heading, so it is dropped from the link text too instead of
+        // being written to the file as `[[tokyo tip#]]`.
+        const createTitle = heading !== null ? notePart : search
+        const createTarget = heading ? search : createTitle
+        if (createTitle) {
+          suggestions.push({
+            id: `create:${createTitle}`,
+            title: createTitle,
+            target: createTarget,
+            alias,
+            exists: false,
+            type: 'create'
+          })
+        }
       }
 
       return suggestions
@@ -188,9 +198,16 @@ export function useWikiLinkSuggestions(editor: any) {
   const insertWikiLink = useCallback(
     (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
-      editor.insertInlineContent([createWikiLinkInlineContent(item.target, item.alias ?? '')], {
-        updateSelection: true
-      })
+
+      const content = createWikiLinkInlineContent(item.target, item.alias ?? '')
+
+      // Editing an existing link: the menu's `clearQuery` removed the query text
+      // but left the `[[` and `]]` around it, so inserting here would produce
+      // `[[<chip>]]`. Replace the whole run instead. Also no trailing space —
+      // that belongs to the from-scratch path, where the user is still writing.
+      if (replaceActiveRunWithWikiLink(editor, content.props)) return
+
+      editor.insertInlineContent([content], { updateSelection: true })
       editor.insertInlineContent([' '], { updateSelection: true })
     },
     [editor]
