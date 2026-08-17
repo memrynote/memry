@@ -180,6 +180,10 @@
       "pdf": {
         "title": "PDF",
         "subtext": "Attach a PDF and read it inline"
+      },
+      "linkToNote": {
+        "title": "Link to note",
+        "subtext": "Search notes — or type [[ anywhere"
       }
     },
     "filePanel": {
@@ -207,7 +211,9 @@
       "embed": "Embed",
       "wikiLink": "Wiki link",
       "embedAria": "Embed {title}",
-      "wikiLinkAria": "Wiki link {title}"
+      "wikiLinkAria": "Wiki link {title}",
+      "noHeadings": "{title} has no headings",
+      "noMatchingHeadings": "No headings in {title} match"
     },
     "mention": {
       "aria": "Date and note suggestions",

@@ -13,6 +13,7 @@ import {
   type FilePanelProps,
   type SuggestionMenuProps
 } from '@blocknote/react'
+import { SuggestionMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
@@ -1364,12 +1365,29 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     }
                   ]
                 : []
+              // `/link` types `[[` for you and hands over to the wiki-link
+              // menu that trigger already owns — one search UI, one place `#`
+              // heading support lives, and the row teaches the shortcut. The
+              // trigger characters have to enter the doc through the suggestion
+              // plugin's own opener; inserting the text some other way leaves
+              // the plugin with no state and no menu.
+              const linkToNoteItem = {
+                title: t('editor.slashMenu.linkToNote.title'),
+                onItemClick: () =>
+                  editor
+                    .getExtension(SuggestionMenu)
+                    ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
+                aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
+                group: 'Basic blocks',
+                subtext: t('editor.slashMenu.linkToNote.subtext')
+              }
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
                 ...pdfItems,
                 calloutItem,
                 ...(taskItem ? [taskItem] : []),
                 ...dateItems,
+                linkToNoteItem,
                 ...aiItems
               ])
               if (!query) return all
