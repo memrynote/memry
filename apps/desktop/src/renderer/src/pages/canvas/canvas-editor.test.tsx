@@ -20,6 +20,7 @@ import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasEditor } from './canvas-editor'
+import { clearCardTitleCache } from './canvas-link-target-title'
 
 interface FakeApi {
   getSceneElements: () => unknown[]
@@ -49,6 +50,8 @@ const mocks = vi.hoisted(() => ({
   updateScene: vi.fn(),
   noteGet: vi.fn(),
   fileGet: vi.fn(),
+  taskGet: vi.fn(),
+  eventGet: vi.fn(),
   windowOpen: vi.fn()
 }))
 
@@ -136,7 +139,14 @@ vi.mock('@/services/search-service', () => ({
   searchService: { quick: () => Promise.resolve({ results: [], queryTimeMs: 0 }) }
 }))
 vi.mock('@/services/calendar-service', () => ({
-  calendarService: { searchEvents: () => Promise.resolve({ events: [] }) }
+  calendarService: {
+    searchEvents: () => Promise.resolve({ events: [] }),
+    getEvent: (...args: unknown[]) => mocks.eventGet(...args)
+  }
+}))
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: { get: (...args: unknown[]) => mocks.taskGet(...args) },
+  onProjectUpdated: () => () => {}
 }))
 vi.mock('@/services/notes-service', () => ({
   notesService: {
@@ -702,5 +712,117 @@ describe('CanvasEditor link bubble label', () => {
     const anchor = await mountAnchor(container, 'memry://note/n1')
 
     expect(anchor.textContent).toBe('memry://note/n1')
+  })
+})
+
+/**
+ * An element link ("link to object") is built by Excalidraw from the app's own
+ * URL plus ?element=<id>, so the bubble read as "http://localhost:5173/?element=…".
+ * Excalidraw elements have no name, so the target is named from the live scene.
+ */
+describe('CanvasEditor element link label', () => {
+  const PROD_DOC = 'file:///Applications/Memry.app/Contents/renderer/index.html'
+
+  async function mountAnchor(container: HTMLElement, href: string): Promise<HTMLAnchorElement> {
+    const wrapper = container.querySelector('[data-canvas-editor]') as HTMLElement
+    const anchor = document.createElement('a')
+    anchor.className = 'excalidraw-hyperlinkContainer-link'
+    anchor.setAttribute('href', href)
+    anchor.textContent = href
+    await act(async () => {
+      wrapper.appendChild(anchor)
+      await Promise.resolve()
+    })
+    return anchor
+  }
+
+  beforeEach(() => {
+    clearCardTitleCache()
+    mocks.api.isLoading = false
+    mocks.noteGet.mockReset().mockResolvedValue({ id: 'n1', title: 'memrynote Launch' })
+    mocks.taskGet.mockReset().mockResolvedValue(null)
+    mocks.eventGet.mockReset().mockResolvedValue(null)
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
+    }
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { href: PROD_DOC }
+    })
+  })
+
+  it('names a linked card by the item it shows, not by the app URL', async () => {
+    mocks.api.elements = [
+      { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
+    ]
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, `${PROD_DOC}?element=card-1`)
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mocks.noteGet).toHaveBeenCalledWith('n1')
+    expect(anchor.textContent).toBe('memrynote Launch')
+  })
+
+  it('keeps writing the same text on later relabels, so the observer settles', async () => {
+    // Writing a placeholder first and the title second fed this observer its own
+    // mutation forever (placeholder → title → relabel → placeholder → …), which
+    // hung the suite. Every relabel after the title is known must be a no-op.
+    mocks.api.elements = [
+      { id: 'card-1', type: 'rectangle', customData: { entityType: 'note', entityId: 'n1' } }
+    ]
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const wrapper = container.querySelector('[data-canvas-editor]') as HTMLElement
+
+    const anchor = await mountAnchor(container, `${PROD_DOC}?element=card-1`)
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(anchor.textContent).toBe('memrynote Launch')
+
+    // Force another mutation, which runs the observer again.
+    await act(async () => {
+      wrapper.appendChild(document.createElement('span'))
+      await Promise.resolve()
+    })
+
+    expect(anchor.textContent).toBe('memrynote Launch')
+    // One read only: the title is remembered, not re-fetched per relabel.
+    expect(mocks.noteGet).toHaveBeenCalledTimes(1)
+  })
+
+  it('names a linked shape by the text on it', async () => {
+    mocks.api.elements = [
+      { id: 'r-1', type: 'rectangle' },
+      { id: 't-1', type: 'text', text: 'Phase two', containerId: 'r-1' }
+    ]
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
+
+    expect(anchor.textContent).toBe('Phase two')
+  })
+
+  it('falls back to a generic name for a shape carrying no text', async () => {
+    mocks.api.elements = [{ id: 'r-1', type: 'ellipse' }]
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
+
+    expect(anchor.textContent).toBe('canvas.link.shapeTarget')
+  })
+
+  it('says so when the linked shape is gone', async () => {
+    mocks.api.elements = [{ id: 'other', type: 'rectangle' }]
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
+
+    expect(anchor.textContent).toBe('canvas.link.missingTarget')
   })
 })

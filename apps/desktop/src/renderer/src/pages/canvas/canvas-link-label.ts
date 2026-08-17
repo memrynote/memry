@@ -37,3 +37,66 @@ export function linkBubbleLabel(href: string | null | undefined): string | null 
 
   return parsed.label
 }
+
+/** Longest label the bubble shows before it starts eliding. */
+export const MAX_LABEL_LENGTH = 48
+
+export function truncateLabel(text: string): string {
+  const collapsed = text.replace(/\s+/g, ' ').trim()
+  return collapsed.length > MAX_LABEL_LENGTH
+    ? `${collapsed.slice(0, MAX_LABEL_LENGTH - 1)}…`
+    : collapsed
+}
+
+/** The subset of a scene element this file reads. */
+export interface LabelElement {
+  id: string
+  type: string
+  text?: string
+  containerId?: string | null
+  isDeleted?: boolean
+  customData?: Record<string, unknown> | null
+}
+
+/**
+ * What an element link points at, as far as naming it goes.
+ *
+ * Excalidraw elements have no name, so unlike a `memry://` link there is nothing
+ * to bake into the href — and nothing needs to be: the target is in the same
+ * scene, so it is read live and a renamed or re-typed target is never stale.
+ */
+export type ElementLinkTarget =
+  /** A Memry card: name it by the item it shows. */
+  | { kind: 'entity'; entityType: string; entityId: string }
+  /** A text element, or a shape with text bound into it. */
+  | { kind: 'text'; text: string }
+  /** Present, but carries nothing to name it by. */
+  | { kind: 'shape' }
+  /** Deleted, or from a scene this element link no longer matches. */
+  | { kind: 'missing' }
+
+export function elementLinkTarget(
+  elementId: string,
+  elements: readonly LabelElement[]
+): ElementLinkTarget {
+  const target = elements.find((element) => element.id === elementId && !element.isDeleted)
+  if (!target) return { kind: 'missing' }
+
+  const entityType = target.customData?.['entityType']
+  const entityId = target.customData?.['entityId']
+  if (typeof entityType === 'string' && typeof entityId === 'string') {
+    return { kind: 'entity', entityType, entityId }
+  }
+
+  // A text element carries its own text; a rectangle carries it in a separate
+  // text element bound back to the container.
+  const own = target.text?.trim()
+  if (own) return { kind: 'text', text: own }
+
+  const bound = elements
+    .find((element) => element.containerId === elementId && !element.isDeleted)
+    ?.text?.trim()
+  if (bound) return { kind: 'text', text: bound }
+
+  return { kind: 'shape' }
+}

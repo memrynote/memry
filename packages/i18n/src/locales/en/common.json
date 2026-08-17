@@ -317,7 +317,9 @@
       "groupJournals": "Journals",
       "groupProjects": "Projects",
       "groupFolders": "Folders",
-      "useUrl": "Link to {{url}}"
+      "useUrl": "Link to {{url}}",
+      "shapeTarget": "A shape on this canvas",
+      "missingTarget": "No longer on this canvas"
     },
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
