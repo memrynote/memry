@@ -53,9 +53,14 @@ test.describe('Wiki heading links', () => {
     // 1. The link opened the TARGET note — not a new one named after the link.
     await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(targetTitle)
 
-    // 2. It landed on the heading rather than the top of the note. Asserted
-    //    against the heading's own position, not a raw scroll offset: the
-    //    latter would pass for any scroll at all.
+    // 2. It landed on the heading rather than the top of the note.
+    //
+    // Measured against the VIEWPORT, and cross-checked against the scroller's
+    // own offset. An earlier version of this subtracted the editor wrapper's
+    // rect from the heading's — but both move together when the page scrolls,
+    // so the difference is the heading's offset within the content and is the
+    // same number scrolled or not. It reported an identical 2095 across two
+    // builds, which is what a scroll-invariant measurement looks like.
     await expect
       .poll(
         async () =>
@@ -66,15 +71,26 @@ test.describe('Wiki heading links', () => {
               (el) => el.textContent?.trim() === headingText
             )
             if (!node) return null
-            const scroller = node.closest('.bn-editor')?.parentElement ?? null
-            const top = node.getBoundingClientRect().top
-            const frame = scroller?.getBoundingClientRect().top ?? 0
-            return Math.round(top - frame)
+
+            // The page's real scroller. Every surface here is `h-full`
+            // `overflow-hidden` wrapping an inner element that actually
+            // scrolls, so walk up until one of them can.
+            let scroller: HTMLElement | null = editor as HTMLElement
+            while (scroller && scroller.scrollHeight - scroller.clientHeight <= 1) {
+              scroller = scroller.parentElement
+            }
+
+            return {
+              // Two independent signals: the page moved, and the heading is
+              // where the user would look for it.
+              scrolled: (scroller?.scrollTop ?? 0) > 0,
+              // Near the top of the window, allowing for the note's own chrome.
+              nearTop: node.getBoundingClientRect().top < 300
+            }
           }, heading),
         { timeout: 20_000 }
       )
-      // Near the top of the visible frame, in either direction by a line or so.
-      .toBeLessThan(120)
+      .toEqual({ scrolled: true, nearTop: true })
 
     // 3. No note was created for the raw target. This is the file that used to
     //    be written into the vault and synced to every device.
