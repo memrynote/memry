@@ -61,7 +61,7 @@ describe('runCrdtPreflight', () => {
     const pending = runCrdtPreflight(STORE_DIR)
     child.emit('exit', 0)
 
-    await expect(pending).resolves.toEqual({ ok: true })
+    await expect(pending).resolves.toEqual({ ok: true, transport: 'utility' })
     expect(mockFork).toHaveBeenCalledTimes(1)
     const [childPath, args] = mockFork.mock.calls[0] as [string, string[]]
     expect(childPath).toContain('crdt-preflight-child.js')
@@ -117,7 +117,7 @@ describe('runCrdtPreflight', () => {
     const second = runCrdtPreflight(STORE_DIR)
     child.emit('exit', 0)
 
-    await expect(second).resolves.toEqual({ ok: true })
+    await expect(second).resolves.toEqual({ ok: true, transport: 'utility' })
     expect(mockFork).toHaveBeenCalledTimes(2)
   })
 
@@ -166,7 +166,9 @@ describe('runCrdtPreflight', () => {
       await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
       nodeChild.emit('exit', 0)
 
-      await expect(pending).resolves.toEqual({ ok: true })
+      // The transport is what the persistence layer reports: a verdict from
+      // 'node' means the Chromium-free fallback was the one that decided.
+      await expect(pending).resolves.toEqual({ ok: true, transport: 'node' })
       const [execPath, args, options] = mockSpawn.mock.calls[0] as [
         string,
         string[],

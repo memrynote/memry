@@ -23,9 +23,16 @@ export interface CrdtPreflightResult {
   reason?: string
   /** How far the child got before failing. Only meaningful when `ok` is false. */
   stage?: CrdtPreflightStage
+  /**
+   * Which child transport produced this verdict. Reported as telemetry: a
+   * `node` verdict means the Chromium-free fallback ALSO failed, which is the
+   * difference between "the utility process can't boot on this machine" (we
+   * recover) and "the binding is broken for this machine" (we don't).
+   */
+  transport?: Transport
 }
 
-type Transport = 'utility' | 'node'
+export type Transport = 'utility' | 'node'
 
 /** The bits of UtilityProcess and ChildProcess this module actually uses. */
 interface ProbeChild {
@@ -96,7 +103,10 @@ async function probeWithFallback(storeDir: string): Promise<CrdtPreflightResult>
 async function execPreflight(storeDir: string, transport: Transport): Promise<CrdtPreflightResult> {
   const childPath = path.join(__dirname, 'crdt-preflight-child.js')
 
-  return await new Promise<CrdtPreflightResult>((resolve) => {
+  // Stamped once on the way out rather than at each settle site below — every
+  // verdict in this promise came from this transport, and there are five ways
+  // to reach one.
+  const result = await new Promise<CrdtPreflightResult>((resolve) => {
     let settled = false
     let stderr = ''
 
@@ -171,6 +181,8 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       })
     })
   })
+
+  return { ...result, transport }
 }
 
 function fork(childPath: string, storeDir: string, transport: Transport): ProbeChild {
