@@ -301,7 +301,22 @@
     "libraryStoreFailed": "Could not save your shape library. Recent changes to it may be lost.",
     "link": {
       "itemMissing": "That linked item no longer exists.",
-      "elementMissing": "That link points to something that is no longer on this canvas."
+      "elementMissing": "That link points to something that is no longer on this canvas.",
+      "title": "Link to item",
+      "placeholder": "Search notes, tasks, events, inbox, projects…",
+      "hint": "Start typing to find an item to link.",
+      "empty": "Nothing matches that.",
+      "selectOneShape": "Select a single shape to link it to an item.",
+      "cardsCannotLink": "A card already opens its own item, so it cannot carry a second link.",
+      "linked": "Linked.",
+      "groupNotes": "Notes",
+      "groupFiles": "Files",
+      "groupTasks": "Tasks",
+      "groupEvents": "Events",
+      "groupInbox": "Inbox",
+      "groupJournals": "Journals",
+      "groupProjects": "Projects",
+      "groupFolders": "Folders"
     },
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
