@@ -299,6 +299,10 @@
     "tooLargeToSync": "This canvas is too large to sync. It's saved on this device but won't reach your other devices until it's smaller.",
     "savedToVault": "All changes are saved to your vault automatically",
     "libraryStoreFailed": "Could not save your shape library. Recent changes to it may be lost.",
+    "link": {
+      "itemMissing": "That linked item no longer exists.",
+      "elementMissing": "That link points to something that is no longer on this canvas."
+    },
     "disabledTitle": "Canvas is not enabled",
     "disabledBody": "This tab belongs to a feature that is not enabled on this device.",
     "unreadable": "This canvas's document is missing or cannot be read. Reveal it in your file manager, or delete the entry.",
