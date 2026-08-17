@@ -18,6 +18,36 @@ The link displays the target's current title, but the underlying reference uses 
 
 Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
 
+## Linking to a Heading
+
+A link can name a heading inside its target, the way an Obsidian vault writes it:
+
+- `[[Meeting#Decisions]]` — opens **Meeting** and scrolls to its "Decisions" heading
+- `[[#Decisions]]` — stays in the note you're reading and scrolls to that heading
+- `[[Meeting#Q3#Decisions]]` — a nested heading path; the last part names the heading
+- `[[Meeting#Decisions|the outcome]]` — an alias works exactly as it does elsewhere
+
+Heading matching ignores case and surrounding spaces, and the first heading with that text
+wins — the link records the heading's text, not its level or its position. If the heading
+has since been renamed or deleted, the note still opens, at the top.
+
+A note whose title genuinely contains `#` still works: `[[Sprint #4]]` opens the note called
+"Sprint #4" if there is one, and is only read as a heading link when there isn't.
+
+Backlinks and the graph treat `[[Meeting#Decisions]]` as a link to **Meeting** — the heading
+narrows where you land, not what the link points at.
+
+::: warning Block references are not supported
+`[[Meeting#^block-id]]` opens **Meeting** at the top rather than jumping to the block.
+memrynote does not assign persistent block ids, so there is nothing to scroll to.
+:::
+
+::: tip Journal entries
+Clicking a heading link written in a journal entry opens the target note and scrolls to the
+heading as usual. `[[#Heading]]` inside a journal entry does not scroll — the journal uses a
+different editor, and that is tracked with its migration.
+:::
+
 ## Formatting a Link
 
 Write the formatting around the link **in markdown** and it is kept, on screen and in the
@@ -134,6 +164,6 @@ If you need to repair broken links, use the inline link menu: it lets you re-tar
 
 ## Power Tip
 
-Wiki link autocomplete also matches on tags and audio files. Typing `[[#topic]]` searches notes that
-carry that tag. (Tags themselves are tracked separately — see
-[Properties & Tags](/user-guide/notes/properties-tags).)
+Wiki link autocomplete matches note titles, including audio and other attached files. It
+does not search tags — `[[#topic]]` is a heading link, not a tag search. Tags are tracked
+separately; see [Properties & Tags](/user-guide/notes/properties-tags).
