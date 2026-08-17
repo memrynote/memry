@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { notesService } from '@/services/notes-service'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
 
 interface HoverPosition {
   top: number
@@ -94,7 +95,16 @@ export function useWikiLinkHover(
       }
 
       try {
-        const preview = await notesService.previewByTitle(target)
+        // Split first, raw second — the same order `resolveWikiLink` uses, so
+        // the card previews the note the click would open. Without it a
+        // `[[Note#Heading]]` looked up `Note#Heading`, found nothing, and the
+        // link silently had no preview at all.
+        const { note, heading } = splitWikiTarget(target)
+        const preview =
+          heading !== null && note
+            ? ((await notesService.previewByTitle(note)) ??
+              (await notesService.previewByTitle(target)))
+            : await notesService.previewByTitle(target)
         if (cache.size >= CACHE_LIMIT) {
           const firstKey = cache.keys().next().value
           if (firstKey !== undefined) cache.delete(firstKey)

@@ -668,6 +668,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             })
             break
           case 'note':
+            // The heading rides along; the note page does the positioning. A
+            // `[[#Heading]]` written IN a journal entry stays unhandled — the
+            // journal is a separate Tiptap editor with no heading anchor of its
+            // own, and that waits on the BlockNote migration (#1547).
             openTab({
               type: 'note',
               title: resolution.title,
@@ -677,7 +681,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isPinned: false,
               isModified: false,
               isPreview: false,
-              isDeleted: false
+              isDeleted: false,
+              ...(resolution.heading && { viewState: { headingText: resolution.heading } })
             })
             break
           case 'create':
