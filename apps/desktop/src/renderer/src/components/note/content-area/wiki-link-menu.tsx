@@ -3,7 +3,7 @@
  */
 
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { FileAudio, FileText, Plus } from '@/lib/icons'
+import { FileAudio, FileText, Hash, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -16,12 +16,28 @@ export type WikiLinkSuggestionItem = {
   target: string
   alias?: string
   exists: boolean
-  type: 'note' | 'create'
+  /**
+   * `heading` is a heading inside the note the query already named exactly.
+   * `headingEmpty` is that note having no heading to offer — a row rather than
+   * a separate empty state so the menu stays open while the user backspaces
+   * over the `#`, and it carries no target, so picking it does nothing.
+   */
+  type: 'note' | 'create' | 'heading' | 'headingEmpty'
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
   fileSize?: number | null
   insertMode?: WikiLinkInsertMode
+  /** Heading rows only: indents the row so the note's outline is readable. */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6
+  /** `headingEmpty` only: whether a heading filter is what emptied the list. */
+  filtered?: boolean
+}
+
+const HEADING_INDENTS = ['', 'ms-2', 'ms-4', 'ms-6', 'ms-6', 'ms-6'] as const
+
+function headingIndent(level: WikiLinkSuggestionItem['headingLevel']): string {
+  return HEADING_INDENTS[(level ?? 1) - 1] ?? ''
 }
 
 export function WikiLinkMenu({
@@ -72,6 +88,45 @@ export function WikiLinkMenu({
           'hover:bg-accent hover:text-accent-foreground',
           isSelected && 'bg-accent text-accent-foreground'
         )
+
+        if (item.type === 'headingEmpty') {
+          return (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
+              role="option"
+              aria-selected={false}
+              aria-disabled
+            >
+              <Hash className="h-4 w-4 shrink-0 opacity-70" />
+              <span className="truncate">
+                {item.filtered
+                  ? t('menus.wiki.noMatchingHeadings', { title: item.title })
+                  : t('menus.wiki.noHeadings', { title: item.title })}
+              </span>
+            </div>
+          )
+        }
+
+        if (item.type === 'heading') {
+          return (
+            <button
+              type="button"
+              key={`${item.type}-${item.id}`}
+              className={itemClassName}
+              onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              role="option"
+              aria-selected={isSelected}
+            >
+              <Hash className="h-4 w-4 shrink-0 opacity-70" />
+              {/* Indent on the label, not the row: the row's own `px-2` and a
+                  logical `ps-*` would be two competing padding rules. */}
+              <span className={cn('truncate text-start', headingIndent(item.headingLevel))}>
+                {item.title}
+              </span>
+            </button>
+          )
+        }
 
         if (isAudio) {
           return (
