@@ -162,6 +162,16 @@ something in your vault it shows the item's **name**, the way a wiki link in a
 note shows a title rather than a path. For a web link it shows the address,
 which is the useful thing there.
 
+A **Link to object** — a shape pointing at another shape on the same canvas —
+used to show the app's own internal address. It now names its target:
+
+- A card is named by the item it shows.
+- A shape with text on it is named by that text.
+- A shape with nothing on it says only that it is a shape on this canvas.
+  Excalidraw shapes have no name, and inventing one would be worse than saying
+  so.
+- A target that has been deleted says it is no longer on this canvas.
+
 That name is remembered when the link is made. Rename the item afterwards and
 the bubble keeps the old name until the link is set again — the link still opens
 the right item either way, because it points at the item, not at its name.

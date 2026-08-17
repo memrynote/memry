@@ -32,7 +32,14 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { CanvasLinkDialog } from './canvas-link-dialog'
-import { HYPERLINK_ANCHOR_SELECTOR, linkBubbleLabel } from './canvas-link-label'
+import {
+  elementLinkTarget,
+  truncateLabel,
+  HYPERLINK_ANCHOR_SELECTOR,
+  linkBubbleLabel,
+  type LabelElement
+} from './canvas-link-label'
+import { lookupCardTitle } from './canvas-link-target-title'
 import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
@@ -74,6 +81,8 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
   /** Latched while Excalidraw's own link editor is being intercepted. */
   const linkEditorHandledRef = useRef(false)
+  /** Card titles already resolved for the link bubble, so relabels are stable. */
+  const cardTitles = useRef(new Map<string, string>())
 
   // Parse the stored scene up front only to decide whether it is loadable —
   // and deliberately throw the parsed graph away. Retaining it (as a useMemo
@@ -255,14 +264,62 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     const wrapper = wrapperRef.current
     if (!wrapper || corrupt || typeof MutationObserver === 'undefined') return
 
+    const setText = (anchor: HTMLAnchorElement, label: string): void => {
+      if (anchor.isConnected && anchor.textContent !== label) {
+        anchor.textContent = label
+      }
+    }
+
     const relabel = (): void => {
       for (const anchor of wrapper.querySelectorAll<HTMLAnchorElement>(HYPERLINK_ANCHOR_SELECTOR)) {
         // `href` is resolved by the DOM (and a custom scheme survives it); the
         // attribute is what Excalidraw actually wrote.
-        const label = linkBubbleLabel(anchor.getAttribute('href'))
-        if (label && anchor.textContent !== label) {
-          anchor.textContent = label
+        const href = anchor.getAttribute('href')
+        const label = linkBubbleLabel(href)
+        if (label) {
+          setText(anchor, label)
+          continue
         }
+
+        // An element link ("link to object") reads as the app's own URL with
+        // ?element=<id>. Excalidraw elements have no name, so the target is
+        // read out of the live scene instead: a card is named by the item it
+        // shows, a shape by the text on it.
+        const action = resolveCanvasLink(href, window.location.href)
+        if (action.kind !== 'element') {
+          continue
+        }
+        const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as LabelElement[]
+        const target = elementLinkTarget(action.elementId, elements)
+
+        if (target.kind === 'text') {
+          setText(anchor, truncateLabel(target.text))
+          continue
+        }
+        if (target.kind === 'shape') {
+          setText(anchor, t('canvas.link.shapeTarget'))
+          continue
+        }
+        if (target.kind === 'missing') {
+          setText(anchor, t('canvas.link.missingTarget'))
+          continue
+        }
+        // A card costs one read. Writing a placeholder first and the title
+        // second would feed this observer its own mutation forever (placeholder
+        // → title → relabel → placeholder → …), so nothing is written until the
+        // title is known, and it is remembered so every later relabel writes
+        // the SAME text and the loop terminates.
+        const cardKey = `${target.entityType}:${target.entityId}`
+        const known = cardTitles.current.get(cardKey)
+        if (known) {
+          setText(anchor, known)
+          continue
+        }
+        void lookupCardTitle(target.entityType, target.entityId).then((title) => {
+          if (!title) return
+          cardTitles.current.set(cardKey, truncateLabel(title))
+          setText(anchor, truncateLabel(title))
+        })
       }
     }
 
@@ -270,7 +327,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     const observer = new MutationObserver(relabel)
     observer.observe(wrapper, { childList: true, subtree: true })
     return () => observer.disconnect()
-  }, [corrupt])
+  }, [corrupt, t])
 
   // Agent MCP writes to THIS canvas must reach this live instance rather than a
   // headless read-modify-write, or our next autosave overwrites them (#916 §2e).
