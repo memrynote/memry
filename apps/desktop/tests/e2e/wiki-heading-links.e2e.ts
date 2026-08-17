@@ -14,10 +14,22 @@ import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { openNoteByTitle } from './utils/note-sync-helpers'
 import { SELECTORS } from './utils/electron-helpers'
 
-/** Enough filler above the heading that reaching it requires real scrolling. */
+/**
+ * A heading far enough down to need real scrolling, and with a viewport's worth
+ * of content BELOW it.
+ *
+ * The filler after the heading is not padding. `scrollIntoView({block: 'start'})`
+ * can only bring the heading to the top if there is enough content beneath it to
+ * scroll past; otherwise the browser clamps at maximum scroll and the heading
+ * stops partway down. The first version of this fixture put the heading at the
+ * end of the note, so the page scrolled to its very bottom — `scrollTop` came
+ * back as exactly `scrollHeight - clientHeight` — and the assertion read that
+ * correct behaviour as a failure.
+ */
 function bodyWithHeadingFarDown(heading: string): string {
-  const filler = Array.from({ length: 60 }, (_, i) => `Filler paragraph ${i + 1}.`).join('\n\n')
-  return `Intro paragraph.\n\n${filler}\n\n## ${heading}\n\nThe section body.\n`
+  const filler = (label: string): string =>
+    Array.from({ length: 60 }, (_, i) => `${label} paragraph ${i + 1}.`).join('\n\n')
+  return `Intro paragraph.\n\n${filler('Before')}\n\n## ${heading}\n\n${filler('After')}\n`
 }
 
 test.describe('Wiki heading links', () => {
