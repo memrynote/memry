@@ -8,7 +8,7 @@
  * component exists to prevent.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
@@ -856,6 +856,52 @@ describe('CaptureBar — shared geometry', () => {
     ]) {
       expect(field().className).toContain(cls)
     }
+  })
+
+  // A narrow window wraps the placeholder over several lines, and an empty
+  // textarea measures that placeholder — so the bar used to open at placeholder
+  // height in a narrow toolbar. Height is only measured once there is text.
+  describe('auto-grow', () => {
+    // jsdom never lays out, so stand in for the wrapped measurement.
+    const stubScrollHeight = (px: number): void => {
+      Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+        configurable: true,
+        get: () => px
+      })
+    }
+
+    afterEach(() => {
+      Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight')
+    })
+
+    it('keeps the empty field at one row however tall the placeholder wraps', () => {
+      stubScrollHeight(320)
+      renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
+
+      expect(field().style.height).toBe('auto')
+    })
+
+    it('grows to the typed text, up to the ceiling', async () => {
+      const user = userEvent.setup()
+      stubScrollHeight(320)
+      renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
+
+      await user.type(field(), 'a long capture that wraps')
+
+      expect(field().style.height).toBe('200px')
+    })
+
+    it('falls back to one row when the text is cleared', async () => {
+      const user = userEvent.setup()
+      stubScrollHeight(320)
+      renderBar(<CaptureBar {...baseProps} onSubmit={vi.fn()} />)
+
+      await user.type(field(), 'draft')
+      expect(field().style.height).toBe('200px')
+
+      await user.clear(field())
+      expect(field().style.height).toBe('auto')
+    })
   })
 
   it('paints the focus border with the surface accent instead of a per-page colour', async () => {
