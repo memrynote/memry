@@ -26,6 +26,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   fetchLinkPreview: vi.fn(),
   toastError: vi.fn(),
   defaultFileItemClick: vi.fn(),
+  openSuggestionMenu: vi.fn(),
   createLinkMentionContent: vi.fn(
     (url: string, domain: string, title?: string, favicon?: string) => ({
       type: 'linkMention',
@@ -344,6 +345,7 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    getExtension: vi.fn(() => ({ openSuggestionMenu: contentAreaMocks.openSuggestionMenu })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
     prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
     _tiptapEditor: {
@@ -832,6 +834,23 @@ describe('ContentArea', () => {
     await expect(slashController.getItems('photo')).resolves.toEqual([
       expect.objectContaining({ key: 'image' })
     ])
+  })
+
+  it('offers a "link to note" slash item that hands over to the [[ menu', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const items = await slashController.getItems('wikilink')
+    expect(items).toHaveLength(1)
+
+    items[0].onItemClick()
+    // Through the suggestion plugin's own opener, so `[[` reaches the doc with
+    // the plugin state that makes the wiki-link menu open.
+    expect(contentAreaMocks.openSuggestionMenu).toHaveBeenCalledWith('[[', {
+      deleteTriggerCharacter: true
+    })
   })
 
   it('debounces standalone checkbox conversion and clears pending conversion on unmount', async () => {

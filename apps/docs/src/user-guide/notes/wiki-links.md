@@ -12,6 +12,8 @@ Type `[[` and start typing the title. An autocomplete dropdown appears with matc
 - **No match**: pressing <kbd>Enter</kbd> creates a new note with that title and links it.
 - **Audio file found**: pick **Link** for a normal reference or **Embed** for an inline audio block.
 
+The slash menu's **Link to note** item types the `[[` for you and opens the same dropdown.
+
 The link displays the target's current title, but the underlying reference uses a stable ID — renaming the target doesn't break the link.
 
 ## Following a Link
@@ -26,6 +28,16 @@ A link can name a heading inside its target, the way an Obsidian vault writes it
 - `[[#Decisions]]` — stays in the note you're reading and scrolls to that heading
 - `[[Meeting#Q3#Decisions]]` — a nested heading path; the last part names the heading
 - `[[Meeting#Decisions|the outcome]]` — an alias works exactly as it does elsewhere
+
+You don't have to remember the heading. Once the part before the `#` is a note's title
+**exactly**, typing `#` swaps the dropdown for that note's headings, indented as an outline;
+keep typing to filter them, and pick one to write the whole `[[Note#Heading]]` link. Delete
+the `#` and the note list comes back. If the note has no headings, the dropdown says so —
+memrynote will not add a heading to someone else's note.
+
+Because an exact title is what switches modes, `[[Sprint #` still lists notes: `Sprint` is
+not a note here, so nothing about `[[Sprint #4]]` changes. Block references (`#^`) are never
+offered.
 
 Heading matching ignores case and surrounding spaces, and the first heading with that text
 wins — the link records the heading's text, not its level or its position. If the heading
