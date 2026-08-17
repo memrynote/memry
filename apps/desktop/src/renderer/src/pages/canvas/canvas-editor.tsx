@@ -24,10 +24,14 @@ import { useTheme } from 'next-themes'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
+import { useTabActions } from '@/contexts/tabs'
+import { parseMemryHref, tabFromMemryHref } from '@/lib/memry-links'
+import { notesService } from '@/services/notes-service'
 import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
@@ -54,6 +58,7 @@ interface CanvasEditorProps {
 export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): React.JSX.Element => {
   const { t } = useT('common')
   const { resolvedTheme } = useTheme()
+  const { openTab } = useTabActions()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
@@ -279,6 +284,89 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
 
   useHandleLibrary({ excalidrawAPI: api, adapter: libraryAdapter })
 
+  /**
+   * Opens the vault item a `memry://` link points at.
+   *
+   * Kinds that get a tab of their own (a note, a filed binary) are read first:
+   * the item may have been deleted since the link was drawn, and a note tab
+   * whose entity is gone opens blank with no way back to what went wrong. The
+   * singleton views (Tasks, Inbox, Calendar) open regardless of whether their
+   * focus target still exists, so they are not worth the round trip.
+   */
+  const openMemryTarget = useCallback(
+    async (href: string): Promise<void> => {
+      const parsed = parseMemryHref(href)
+      if (!parsed) return
+
+      let title: string | undefined
+      if (parsed.kind === 'note' || parsed.kind === 'file') {
+        const item =
+          parsed.kind === 'file'
+            ? await notesService.getFile(parsed.id).catch(() => null)
+            : await notesService.get(parsed.id).catch(() => null)
+        if (!item) {
+          toast.error(t('canvas.link.itemMissing'))
+          return
+        }
+        title = item.title
+      }
+
+      const tab = tabFromMemryHref(href, { title, now: Date.now() })
+      if (!tab) {
+        toast.error(t('canvas.link.itemMissing'))
+        return
+      }
+      openTab(tab)
+    },
+    [openTab, t]
+  )
+
+  /**
+   * Every link click on this canvas is ours. Excalidraw's fallback ends in
+   * `window.open(undefined, target)` + `newWindow.location = url`, which under
+   * Electron either does nothing at all (the real URL never reaches the
+   * main-process allowlist, so `newWindow` is null) or — for its own element
+   * links, when `isLocalLink` matches — assigns `window.location` and reloads
+   * the entire app. Preventing the event's default is what disables both.
+   */
+  const handleLinkOpen = useCallback<
+    NonNullable<React.ComponentProps<typeof Excalidraw>['onLinkOpen']>
+  >(
+    (element, event) => {
+      event.preventDefault()
+      const action = resolveCanvasLink(element.link, window.location.href)
+
+      switch (action.kind) {
+        case 'memry':
+          void openMemryTarget(action.href)
+          return
+        case 'element': {
+          const api = apiRef.current
+          if (!api) return
+          const target = api.getSceneElements().find((el) => el.id === action.elementId)
+          if (!target) {
+            toast.error(t('canvas.link.elementMissing'))
+            return
+          }
+          api.scrollToContent(target, { fitToContent: true, animate: true })
+          api.updateScene({
+            appState: { selectedElementIds: { [action.elementId]: true } },
+            captureUpdate: CaptureUpdateAction.EVENTUALLY
+          })
+          return
+        }
+        case 'external':
+          // `_blank` is what reaches setWindowOpenHandler, whose allowlist is
+          // the single gate on which schemes may leave the app.
+          window.open(action.url, '_blank', 'noopener,noreferrer')
+          return
+        case 'ignore':
+          return
+      }
+    },
+    [openMemryTarget, t]
+  )
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -333,6 +421,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           }
         }}
         onChange={() => persisterRef.current?.notifyChange()}
+        onLinkOpen={handleLinkOpen}
         // Three Memry themes exist (light/dark/white); anything not dark maps
         // to Excalidraw's light theme.
         theme={resolvedTheme === 'dark' ? 'dark' : 'light'}

@@ -39,7 +39,14 @@ const mocks = vi.hoisted(() => ({
   excalidrawProps: {} as Record<string, unknown>,
   liveOpened: vi.fn(),
   liveClosed: vi.fn(),
-  serializeAsJSON: vi.fn((elements: unknown[]) => JSON.stringify({ elements }))
+  serializeAsJSON: vi.fn((elements: unknown[]) => JSON.stringify({ elements })),
+  openTab: vi.fn(),
+  toastError: vi.fn(),
+  scrollToContent: vi.fn(),
+  updateScene: vi.fn(),
+  noteGet: vi.fn(),
+  fileGet: vi.fn(),
+  windowOpen: vi.fn()
 }))
 
 vi.mock('@excalidraw/excalidraw', () => ({
@@ -58,7 +65,9 @@ vi.mock('@excalidraw/excalidraw', () => ({
       props.excalidrawAPI({
         getSceneElements: () => mocks.api.elements,
         getAppState: () => ({ isLoading: mocks.api.isLoading }),
-        getFiles: () => ({})
+        getFiles: () => ({}),
+        scrollToContent: (...args: unknown[]) => mocks.scrollToContent(...args),
+        updateScene: (...args: unknown[]) => mocks.updateScene(...args)
       })
       // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only, like the real API handoff
     }, [])
@@ -73,7 +82,8 @@ vi.mock('@excalidraw/excalidraw', () => ({
   defaultLang: { code: 'en' },
   // Library persistence is covered by the adapter's own tests; here it only
   // needs to exist so the hook call does not blow up the component.
-  useHandleLibrary: () => {}
+  useHandleLibrary: () => {},
+  CaptureUpdateAction: { EVENTUALLY: 'eventually', IMMEDIATELY: 'immediately', NEVER: 'never' }
 }))
 vi.mock('@excalidraw/excalidraw/index.css', () => ({}))
 vi.mock('next-themes', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }))
@@ -82,7 +92,10 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 vi.mock('react-i18next', () => ({ getI18n: () => ({ language: 'en' }) }))
 vi.mock('sonner', () => ({
-  toast: { error: vi.fn(), success: (...args: unknown[]) => mocks.toastSuccess(...args) }
+  toast: {
+    error: (...args: unknown[]) => mocks.toastError(...args),
+    success: (...args: unknown[]) => mocks.toastSuccess(...args)
+  }
 }))
 vi.mock('@/services/canvas-service', () => ({
   canvasService: {
@@ -92,6 +105,13 @@ vi.mock('@/services/canvas-service', () => ({
   onCanvasTooLarge: () => () => {}
 }))
 vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
+vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    get: (...args: unknown[]) => mocks.noteGet(...args),
+    getFile: (...args: unknown[]) => mocks.fileGet(...args)
+  }
+}))
 vi.mock('@/lib/save-registry', () => ({
   registerPendingSave: vi.fn(),
   unregisterPendingSave: vi.fn()
@@ -290,5 +310,122 @@ describe('CanvasEditor persistence safety', () => {
     expect(mocks.excalidrawProps.UIOptions).toEqual({
       canvasActions: { export: false, loadScene: false, saveToActiveFile: false }
     })
+  })
+})
+
+/**
+ * Link clicks (#Aurelie): Excalidraw's own handler ends in
+ * `window.open(undefined, target)` + `newWindow.location = url`, which under
+ * Electron either silently no-ops (the real URL never reaches the main-process
+ * allowlist) or reloads the whole SPA document. The editor takes the click over
+ * via `onLinkOpen` and must always prevent that fallback.
+ */
+describe('CanvasEditor link opening', () => {
+  const PROD_DOC = 'file:///Applications/Memry.app/Contents/renderer/index.html'
+
+  function clickLink(link: string): { defaultPrevented: boolean } {
+    const onLinkOpen = mocks.excalidrawProps.onLinkOpen as (
+      element: { id: string; link: string },
+      event: { preventDefault: () => void; defaultPrevented: boolean }
+    ) => void
+    const event = {
+      defaultPrevented: false,
+      preventDefault(): void {
+        this.defaultPrevented = true
+      }
+    }
+    onLinkOpen({ id: 'shape-1', link }, event)
+    return event
+  }
+
+  beforeEach(() => {
+    mocks.openTab.mockReset()
+    mocks.toastError.mockReset()
+    mocks.scrollToContent.mockReset()
+    mocks.updateScene.mockReset()
+    mocks.noteGet.mockReset().mockResolvedValue({ id: 'n1', title: 'Roadmap' })
+    mocks.fileGet.mockReset().mockResolvedValue(null)
+    mocks.windowOpen.mockReset()
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.isLoading = false
+    window.open = mocks.windowOpen as unknown as typeof window.open
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { href: PROD_DOC }
+    })
+  })
+
+  it('opens a linked note in a tab instead of letting Excalidraw navigate', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const event = clickLink('memry://note/n1')
+    await act(async () => {})
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(mocks.noteGet).toHaveBeenCalledWith('n1')
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', path: '/note/n1', title: 'Roadmap' })
+    )
+    expect(mocks.windowOpen).not.toHaveBeenCalled()
+  })
+
+  it('reports a deleted target rather than opening a blank tab', async () => {
+    mocks.noteGet.mockResolvedValue(null)
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    clickLink('memry://note/gone')
+    await act(async () => {})
+
+    expect(mocks.openTab).not.toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.itemMissing')
+  })
+
+  it('moves the viewport to an element link instead of reloading the app', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const event = clickLink(`${PROD_DOC}?element=shape-1`)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(
+      { id: 'shape-1', type: 'rectangle' },
+      expect.objectContaining({ fitToContent: true })
+    )
+    expect(mocks.updateScene).toHaveBeenCalledWith(
+      expect.objectContaining({ appState: { selectedElementIds: { 'shape-1': true } } })
+    )
+    expect(mocks.windowOpen).not.toHaveBeenCalled()
+  })
+
+  it('reports an element link whose target has since been deleted', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    clickLink(`${PROD_DOC}?element=deleted-shape`)
+
+    expect(mocks.scrollToContent).not.toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.elementMissing')
+  })
+
+  it('hands a web link to the OS browser through the allowlisted _blank path', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const event = clickLink('https://example.com/docs')
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(mocks.windowOpen).toHaveBeenCalledWith(
+      'https://example.com/docs',
+      '_blank',
+      'noopener,noreferrer'
+    )
+  })
+
+  it('still blocks Excalidraw entirely when there is nothing to act on', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const event = clickLink('   ')
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(mocks.windowOpen).not.toHaveBeenCalled()
+    expect(mocks.openTab).not.toHaveBeenCalled()
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 })
