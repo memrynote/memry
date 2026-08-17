@@ -104,7 +104,34 @@ test.describe('Wiki heading links', () => {
           }, heading),
         { timeout: 20_000 }
       )
-      .toMatchObject({ scrolled: true, nearTop: true })
+      .toMatchObject({ scrolled: true })
+
+    // The offset is asserted on its own, and every input to it is carried in the
+    // failure message. `toMatchObject` prints only the keys it compared, so the
+    // diagnostic fields added for this went unreported and cost another cycle.
+    const landed = await page.evaluate((headingText) => {
+      const editor = document.querySelector('.bn-editor')
+      const node = Array.from(editor?.querySelectorAll('h2') ?? []).find(
+        (el) => el.textContent?.trim() === headingText
+      )
+      let scroller: HTMLElement | null = (editor as HTMLElement) ?? null
+      while (scroller && scroller.scrollHeight - scroller.clientHeight <= 1) {
+        scroller = scroller.parentElement
+      }
+      return {
+        headingTop: Math.round(node?.getBoundingClientRect().top ?? Number.NaN),
+        scrollerTop: Math.round(scroller?.getBoundingClientRect().top ?? Number.NaN),
+        scrollTop: Math.round(scroller?.scrollTop ?? Number.NaN),
+        scrollHeight: Math.round(scroller?.scrollHeight ?? Number.NaN),
+        clientHeight: Math.round(scroller?.clientHeight ?? Number.NaN),
+        scroller: scroller ? `${scroller.tagName}.${scroller.className}`.slice(0, 100) : null
+      }
+    }, heading)
+
+    expect(
+      landed.headingTop - landed.scrollerTop,
+      `heading offset inside the scroller — ${JSON.stringify(landed)}`
+    ).toBeLessThan(120)
 
     // 3. No note was created for the raw target. This is the file that used to
     //    be written into the vault and synced to every device.
