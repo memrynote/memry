@@ -6,7 +6,15 @@ import { getI18n } from 'react-i18next'
  * Loads real note data via useNotes() hook and saves changes via updateNote().
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  type RefObject
+} from 'react'
 import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -42,7 +50,7 @@ import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
-import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
+import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
@@ -683,29 +691,39 @@ export function NotePage({ noteId }: NotePageProps) {
     saveTabState(activeTab.id, { viewState: { headingText: undefined } })
   }, [activeTab?.id, saveTabState])
 
-  // Consume the heading anchor once the editor has actually produced headings.
-  // `headings` starts empty and fills in after the note loads and the editor
-  // mounts, so this re-runs on every change until the jump lands.
+  // The block id the anchor names, or null until the editor has emitted headings.
+  const headingAnchorId = useMemo(() => {
+    if (!initialHeadingText) return null
+    const wanted = normalizeHeading(initialHeadingText)
+    return headings.find((heading) => normalizeHeading(heading.text) === wanted)?.id ?? null
+  }, [initialHeadingText, headings])
+
+  // Read through a ref so headings arriving late are picked up without
+  // restarting the wait below — restarting it would also restart its deadline.
+  const headingAnchorIdRef = useRef(headingAnchorId)
+  useLayoutEffect(() => {
+    headingAnchorIdRef.current = headingAnchorId
+  }, [headingAnchorId])
+
+  // Consume the heading anchor. This waits rather than looking once: the block's
+  // `[data-id]` node is not in the document at the moment `headings` lands,
+  // because ContentArea holds its render behind a placeholder until the CRDT
+  // binding settles. A single lookup loses that race, and a note nobody edits
+  // emits no second set of headings to retry on.
   useEffect(() => {
-    if (!initialHeadingText) return
+    if (!initialHeadingText) return undefined
     // Never smooth: the note has only just appeared, so there is no starting
     // position for an animation to be relative to.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- the
-    // click happens in the SOURCE note's page; this page does not exist yet when
-    // it fires. What is being waited on is `headings`, which arrives after the
-    // note loads and the editor mounts, so there is no handler to fold this into.
-    if (!scrollToHeadingText(initialHeadingText, false)) return
-    clearHeadingAnchor()
-  }, [initialHeadingText, scrollToHeadingText, clearHeadingAnchor])
-
-  // A heading that never arrives — deleted, renamed, or a `#^block-id` we cannot
-  // address — must not pin the anchor to the tab forever, which would also keep
-  // scroll restore suppressed on every later visit. Same deadline restore uses,
-  // so the two can never disagree about when content has settled.
-  useEffect(() => {
-    if (!initialHeadingText) return
-    const timer = setTimeout(clearHeadingAnchor, RESTORE_MAX_MS)
-    return () => clearTimeout(timer)
+    return scrollToHeadingWhenReady({
+      getContainer: () => editorContainerRef.current,
+      getHeadingId: () => headingAnchorIdRef.current,
+      smooth: false,
+      // Same deadline scroll restore uses, so the two can never disagree about
+      // when content has settled — and so a heading that never arrives stops
+      // suppressing restore instead of pinning the anchor to the tab forever.
+      timeoutMs: RESTORE_MAX_MS,
+      onSettled: clearHeadingAnchor
+    })
   }, [initialHeadingText, clearHeadingAnchor])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
