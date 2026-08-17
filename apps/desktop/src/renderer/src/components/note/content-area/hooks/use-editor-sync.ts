@@ -21,9 +21,33 @@ import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { isEditingWikiLinkText } from '../wiki-link-edit-plugin'
 
 const log = createLogger('Hook:EditorSync')
 const activeNoteEditors = new Map<string, any>()
+
+/**
+ * The block to exempt from wiki-link promotion, or undefined when there is none.
+ *
+ * Narrow on purpose: ONLY while the caret sits inside a raw `[[…]]` run that the
+ * user is editing (`wiki-link-edit-plugin.ts`). Exempting the caret's block
+ * unconditionally would also stop a hand-typed `[[Note]]` from becoming a chip
+ * until the caret left the block — that promotion is immediate today and there
+ * is no reason for this to change it.
+ *
+ * Every lookup is defensive. BlockNote throws rather than returning null when the
+ * selection is not in a block with content (an image block, a fresh editor), and
+ * a normalization pass is not the place to care.
+ */
+function editingWikiLinkBlockId(editor: any): string | undefined {
+  const state = editor?._tiptapEditor?.state
+  if (!state || !isEditingWikiLinkText(state)) return undefined
+  try {
+    return editor.getTextCursorPosition?.()?.block?.id as string | undefined
+  } catch {
+    return undefined
+  }
+}
 
 function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void {
   if (typeof editor.transact !== 'function') {
@@ -333,7 +357,12 @@ export function useEditorSync({
   const handleChange = useCallback(() => {
     const blocks = editor.document
 
-    const normalized = normalizeWikiLinks(blocks as Block[])
+    // The block under the caret is exempt from wiki-link promotion while the
+    // user is editing a link's raw `[[…]]` text — see `wiki-link-edit-plugin.ts`
+    // and `NormalizeWikiLinksOptions`.
+    const normalized = normalizeWikiLinks(blocks as Block[], {
+      skipBlockId: editingWikiLinkBlockId(editor)
+    })
     if (normalized.didChange) {
       editor.replaceBlocks(editor.document, normalized.blocks)
       return

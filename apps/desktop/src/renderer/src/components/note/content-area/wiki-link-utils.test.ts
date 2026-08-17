@@ -81,6 +81,59 @@ describe('wiki-link utils', () => {
     })
   })
 
+  describe('the caret block is exempt from promotion', () => {
+    const blocks = () =>
+      [
+        { id: 'editing', type: 'paragraph', content: 'Read [[Daily Note]] now' },
+        { id: 'other', type: 'paragraph', content: 'Also [[Roadmap]]' }
+      ] as any
+
+    it('promotes every block when no block is skipped', () => {
+      const result = normalizeWikiLinks(blocks())
+      expect(result.didChange).toBe(true)
+      expect(JSON.stringify(result.blocks)).not.toContain('[[')
+    })
+
+    it('leaves the skipped block as raw text and still promotes the others', () => {
+      const result = normalizeWikiLinks(blocks(), { skipBlockId: 'editing' })
+
+      expect(result.didChange).toBe(true)
+      expect(result.blocks[0].content).toBe('Read [[Daily Note]] now')
+      expect(result.blocks[1].content).toEqual([
+        'Also ',
+        { type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }
+      ])
+    })
+
+    it('reports no change at all when the skipped block holds the only link', () => {
+      const result = normalizeWikiLinks(
+        [{ id: 'editing', type: 'paragraph', content: 'Read [[Daily Note]] now' }] as any,
+        { skipBlockId: 'editing' }
+      )
+
+      expect(result.didChange).toBe(false)
+    })
+
+    it('still promotes a child block nested under the skipped one', () => {
+      const result = normalizeWikiLinks(
+        [
+          {
+            id: 'editing',
+            type: 'paragraph',
+            content: '[[Daily Note]]',
+            children: [{ id: 'child', type: 'paragraph', content: '[[Roadmap]]' }]
+          }
+        ] as any,
+        { skipBlockId: 'editing' }
+      )
+
+      expect(result.blocks[0].content).toBe('[[Daily Note]]')
+      expect(result.blocks[0].children?.[0].content).toEqual([
+        { type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }
+      ])
+    })
+  })
+
   it('splits wiki link queries and inline text segments', () => {
     expect(splitWikiLinkQuery('Target | Alias')).toEqual({ search: 'Target', alias: 'Alias' })
 
