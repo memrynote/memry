@@ -34,8 +34,15 @@ const SAVE_THROTTLE_MS = 500
  * large note's lazy chunk, note fetch and editor mount routinely take seconds.
  */
 const RESTORE_SETTLE_MS = 2000
-/** Hard upper bound on re-application, so the observer can never leak. */
-const RESTORE_MAX_MS = 15000
+/**
+ * Hard upper bound on re-application, so the observer can never leak.
+ *
+ * Exported because anything else that positions the same scroller while content
+ * is still arriving — a `[[Note#Heading]]` jump, say — has to give up on the
+ * same schedule. Two mechanisms racing the same element on different deadlines
+ * is how "it only sometimes lands on the heading" gets built.
+ */
+export const RESTORE_MAX_MS = 15000
 /** Sub-pixel tolerance when deciding whether a target offset was reached. */
 const OFFSET_EPSILON = 1
 /**
@@ -81,6 +88,17 @@ export interface UseTabScrollRestoreOptions {
   /** Set false to leave scrolling alone entirely (default true). */
   enabled?: boolean
   /**
+   * Set false to keep SAVING the offset but never re-apply the saved one on
+   * this mount (default true).
+   *
+   * The caller then owns the initial position — the case being a heading link,
+   * where the user just named a destination and "where you left off" is the
+   * staler intent of the two. Read once, when the effect arms: flipping it back
+   * after the jump has landed must not re-arm restore and yank the user away
+   * from the heading they asked for.
+   */
+  restore?: boolean
+  /**
    * Extra identity discriminator. Changing it flushes the current offset and
    * re-runs restore, exactly like a tab or entity change does. It also names
    * the pane's own slot in the tab's scroll record, so a page with several
@@ -101,7 +119,8 @@ export function useTabScrollRestore({
   getScrollElement,
   enabled = true,
   key,
-  virtualizer
+  virtualizer,
+  restore = true
 }: UseTabScrollRestoreOptions): void {
   const identity = useTabIdentity()
   // Optional: `NoteLayout` and friends also render outside a tab (previews,
@@ -114,6 +133,8 @@ export function useTabScrollRestore({
   const offsetRef = useRef(0)
   const getScrollElementRef = useRef(getScrollElement)
   const virtualizerRef = useRef(virtualizer)
+  // A ref, and deliberately NOT an effect dependency: see the option's docs.
+  const restoreRef = useRef(restore)
 
   // Layout effects all run before any passive effect in the same commit, so the
   // main effect below always sees the current render's getter.
@@ -126,6 +147,10 @@ export function useTabScrollRestore({
   useLayoutEffect(() => {
     virtualizerRef.current = virtualizer
   }, [virtualizer])
+
+  useLayoutEffect(() => {
+    restoreRef.current = restore
+  }, [restore])
 
   const tabId = identity?.tabId
   const groupId = identity?.groupId
@@ -281,12 +306,46 @@ export function useTabScrollRestore({
     // disagree.
     const saved = readScrollPane(getTab(tabId, groupId) ?? undefined, key)
 
+    const teardown = (): void => {
+      stopRestoring()
+      element.removeEventListener('scroll', handleScroll)
+      element.removeEventListener('wheel', handleUserIntent)
+      element.removeEventListener('touchmove', handleUserIntent)
+      element.removeEventListener('keydown', handleKeyDown)
+      if (saveTimer !== null) clearTimeout(saveTimer)
+
+      // Final save under THIS effect's identity, read from the ref. Reading the
+      // DOM here is exactly the bug this hook replaces. A pane that was never
+      // scrolled and has no entry of its own to correct has nothing to persist —
+      // writing `{ offset: 0 }` for every tab the user merely opens is churn in
+      // state that gets serialised to disk. `saved` is already this pane's entry
+      // alone, so merely opening the insights pane cannot touch the list pane's.
+      if (touched || saved !== undefined) {
+        dispatch({
+          type: 'SAVE_TAB_STATE',
+          payload: {
+            tabId,
+            groupId,
+            scrollPanes: { [paneKey]: { offset: offsetRef.current, entityId } }
+          }
+        })
+      }
+      offsetRef.current = 0
+    }
+
     if (isRestorableEntry(saved, entityId)) {
       const target = saved.offset
       offsetRef.current = target
       // Tab state already holds exactly this record, so a save that reproduces
       // it is a no-op re-render.
       lastDispatchedOffset = target
+
+      // Someone else owns the initial position on this mount. The offset is
+      // still seeded from the saved entry so that a teardown which sees no
+      // scroll at all re-writes the value that was already there, rather than
+      // reporting `0` and erasing where the user actually was.
+      if (!restoreRef.current) return teardown
+
       restoring = true
 
       /** Largest scrollable range seen since re-application began. */
@@ -324,31 +383,6 @@ export function useTabScrollRestore({
       }
     }
 
-    return () => {
-      stopRestoring()
-      element.removeEventListener('scroll', handleScroll)
-      element.removeEventListener('wheel', handleUserIntent)
-      element.removeEventListener('touchmove', handleUserIntent)
-      element.removeEventListener('keydown', handleKeyDown)
-      if (saveTimer !== null) clearTimeout(saveTimer)
-
-      // Final save under THIS effect's identity, read from the ref. Reading the
-      // DOM here is exactly the bug this hook replaces. A pane that was never
-      // scrolled and has no entry of its own to correct has nothing to persist —
-      // writing `{ offset: 0 }` for every tab the user merely opens is churn in
-      // state that gets serialised to disk. `saved` is already this pane's entry
-      // alone, so merely opening the insights pane cannot touch the list pane's.
-      if (touched || saved !== undefined) {
-        dispatch({
-          type: 'SAVE_TAB_STATE',
-          payload: {
-            tabId,
-            groupId,
-            scrollPanes: { [paneKey]: { offset: offsetRef.current, entityId } }
-          }
-        })
-      }
-      offsetRef.current = 0
-    }
+    return teardown
   }, [enabled, tabId, groupId, entityId, key, dispatch, getTab])
 }

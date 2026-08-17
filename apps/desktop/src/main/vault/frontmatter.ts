@@ -15,6 +15,7 @@ import {
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
 
 // ============================================================================
 // Types
@@ -214,6 +215,20 @@ export function validateNoteId(id: string): boolean {
  * Extract all wiki-style links from markdown content.
  * Matches [[Link Title]] and [[Link Title|Display Text]] patterns.
  *
+ * `[[Note#Heading]]` yields `Note`: this table answers "which notes does this
+ * note point at", and a heading link points at the note. Before that, the whole
+ * string went in as a title, resolved to nothing, and the note it named never
+ * listed the link as a backlink. The graph view has always read these targets
+ * this way (`wikilinks` in @memry/app-core/graph), so this makes the two link
+ * pipelines agree rather than introducing a second reading.
+ *
+ * The cost is the `Sprint #4` case: a note really called that is indexed here
+ * under `Sprint`. Navigation and hover still reach it — they fall back to the
+ * raw title against the database, which this function has no access to.
+ *
+ * Existing vaults keep their old rows until each note is next projected; no
+ * reindex is forced for a backlink row.
+ *
  * @param content - Markdown content
  * @returns Array of link targets
  */
@@ -223,7 +238,10 @@ export function extractWikiLinks(content: string): string[] {
   let match
 
   while ((match = linkPattern.exec(content)) !== null) {
-    links.add(match[1].trim())
+    const { note, heading } = splitWikiTarget(match[1])
+    // `[[#Heading]]` addresses the note it sits in — a self-link, not an edge.
+    if (heading !== null && !note) continue
+    links.add(heading !== null ? note : match[1].trim())
   }
 
   return Array.from(links)

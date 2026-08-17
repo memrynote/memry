@@ -15,7 +15,8 @@
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",
     "./task-block": "./src/task-block.ts",
-    "./markdown-class": "./src/markdown-class.ts"
+    "./markdown-class": "./src/markdown-class.ts",
+    "./wiki-target": "./src/wiki-target.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

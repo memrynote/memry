@@ -42,6 +42,9 @@ import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
+import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
+import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
@@ -157,7 +160,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab } = useTabs()
+  const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
   const queryClient = useQueryClient()
@@ -187,6 +190,14 @@ export function NotePage({ noteId }: NotePageProps) {
   const initialAnchorId = useMemo(() => {
     const viewState = activeTab?.viewState as { anchorId?: string } | undefined
     return viewState?.anchorId
+  }, [activeTab?.viewState])
+
+  // The heading half of the `[[Note#Heading]]` that opened this tab. Carried
+  // as text because that is all the link stores — never a block id, which is
+  // minted per document and means nothing to the note that wrote the link.
+  const initialHeadingText = useMemo(() => {
+    const viewState = activeTab?.viewState as { headingText?: string } | undefined
+    return viewState?.headingText
   }, [activeTab?.viewState])
 
   // Convert query error to string
@@ -634,12 +645,68 @@ export function NotePage({ noteId }: NotePageProps) {
   // Handlers
   // ============================================================================
 
-  const handleHeadingClick = useCallback((headingId: string) => {
-    const element = document.querySelector(`[data-id="${headingId}"]`)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [])
+  const handleHeadingClick = useCallback(
+    (headingId: string) => {
+      // Scoped to this pane. `document.querySelector` returns whichever pane is
+      // first in the DOM, so in split view the outline scrolled the pane the
+      // user was not looking at. Smooth is right here — the jump happens inside
+      // content already on screen — unless the user asked for less motion.
+      scrollToHeadingBlock(editorContainerRef.current, headingId, {
+        smooth: !prefersReducedMotion
+      })
+    },
+    [prefersReducedMotion]
+  )
+
+  /**
+   * Scrolls to a heading by TEXT, which is all `[[Note#Heading]]` carries — a
+   * block id is minted per document and means nothing to the note that wrote
+   * the link. Matching is trimmed and case-folded, and the first heading that
+   * matches wins: the link records no level and no ordinal, so there is nothing
+   * to tell two identically-worded headings apart with.
+   */
+  const scrollToHeadingText = useCallback(
+    (headingText: string, smooth: boolean): boolean => {
+      const wanted = normalizeHeading(headingText)
+      const match = headings.find((heading) => normalizeHeading(heading.text) === wanted)
+      if (!match) return false
+      return scrollToHeadingBlock(editorContainerRef.current, match.id, { smooth })
+    },
+    [headings]
+  )
+
+  const clearHeadingAnchor = useCallback(() => {
+    if (!activeTab?.id) return
+    // `undefined` deletes a `viewState` key — the only way to drop one now that
+    // writes are merged (see `mergeViewState`). Leaving it set would re-fire the
+    // jump every time the user came back to this tab.
+    saveTabState(activeTab.id, { viewState: { headingText: undefined } })
+  }, [activeTab?.id, saveTabState])
+
+  // Consume the heading anchor once the editor has actually produced headings.
+  // `headings` starts empty and fills in after the note loads and the editor
+  // mounts, so this re-runs on every change until the jump lands.
+  useEffect(() => {
+    if (!initialHeadingText) return
+    // Never smooth: the note has only just appeared, so there is no starting
+    // position for an animation to be relative to.
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- the
+    // click happens in the SOURCE note's page; this page does not exist yet when
+    // it fires. What is being waited on is `headings`, which arrives after the
+    // note loads and the editor mounts, so there is no handler to fold this into.
+    if (!scrollToHeadingText(initialHeadingText, false)) return
+    clearHeadingAnchor()
+  }, [initialHeadingText, scrollToHeadingText, clearHeadingAnchor])
+
+  // A heading that never arrives — deleted, renamed, or a `#^block-id` we cannot
+  // address — must not pin the anchor to the tab forever, which would also keep
+  // scroll restore suppressed on every later visit. Same deadline restore uses,
+  // so the two can never disagree about when content has settled.
+  useEffect(() => {
+    if (!initialHeadingText) return
+    const timer = setTimeout(clearHeadingAnchor, RESTORE_MAX_MS)
+    return () => clearTimeout(timer)
+  }, [initialHeadingText, clearHeadingAnchor])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
     setHeadings(
@@ -992,6 +1059,14 @@ export function NotePage({ noteId }: NotePageProps) {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
 
+      // `[[#Heading]]` addresses the note it is written in: no tab, no lookup,
+      // just a jump inside content already on screen.
+      const sameNote = splitWikiTarget(target)
+      if (sameNote.heading && !sameNote.note) {
+        scrollToHeadingText(sameNote.heading, !prefersReducedMotion)
+        return
+      }
+
       try {
         // Use format-aware resolution to handle notes and files
         const resolution = await resolveWikiLink(target)
@@ -1013,7 +1088,9 @@ export function NotePage({ noteId }: NotePageProps) {
             break
 
           case 'note':
-            // Open note in editor
+            // Open note in editor, carrying the heading the link named. The
+            // target page consumes it once its own editor has produced headings
+            // — text is all we have, and block ids only exist over there.
             openTab({
               type: 'note',
               title: resolution.title,
@@ -1023,13 +1100,17 @@ export function NotePage({ noteId }: NotePageProps) {
               isPinned: false,
               isModified: false,
               isPreview: false,
-              isDeleted: false
+              isDeleted: false,
+              ...(resolution.heading && { viewState: { headingText: resolution.heading } })
             })
             break
 
           case 'create': {
-            // Create new note with this title
-            const result = await createNote.mutateAsync({ title: target })
+            // Create new note under the resolution's title, NOT the raw target:
+            // for `[[Note#Heading]]` that is `Note`. Minting `Note#Heading.md`
+            // is the bug this fixes — a heading separator has no business in a
+            // filename, and the file was written to the vault and synced.
+            const result = await createNote.mutateAsync({ title: resolution.title })
             if (!result.success || !result.note) {
               toast.error(t('page.toast.createLinkedFailed'))
               return
@@ -1058,7 +1139,7 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openTab, createNote, t]
+    [openTab, createNote, t, scrollToHeadingText, prefersReducedMotion]
   )
 
   const handleBacklinkClick = useCallback(
@@ -1320,6 +1401,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   return (
     <NoteLayout
+      suppressScrollRestore={Boolean(initialHeadingText)}
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}

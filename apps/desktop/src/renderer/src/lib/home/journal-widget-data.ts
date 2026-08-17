@@ -9,9 +9,7 @@ export interface WeekDay {
 }
 
 export type RelativeDayLabel =
-  | { kind: 'today' }
-  | { kind: 'yesterday' }
-  | { kind: 'date'; text: string }
+  { kind: 'today' } | { kind: 'yesterday' } | { kind: 'date'; text: string }
 
 function toLocalIso(d: Date): string {
   const y = d.getFullYear()
@@ -69,7 +67,9 @@ export function entrySnippet(content: string, max = 140): string {
   const text = content
     .replace(/^---\n[\s\S]*?\n---\n?/, '')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[\[([^\]]*)\]\]/g, '$1')
+    // The heading half goes with the brackets. Keeping it left `Note#Heading`,
+    // and the `#` strip two lines down then welded that into `NoteHeading`.
+    .replace(/\[\[([^\]#]*)(?:#[^\]]*)?\]\]/g, '$1')
     .replace(/[#>*_`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
