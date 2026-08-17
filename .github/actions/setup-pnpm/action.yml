@@ -1,0 +1,53 @@
+name: Setup pnpm
+description: >-
+  Put the pnpm pinned in package.json#packageManager on PATH without fetching
+  pnpm/action-setup from codeload.
+
+  A push to main starts ~22 jobs in this workflow and every one of them asks
+  codeload for the same third-party action tarball within the same second.
+  GitHub answers a share of those with 429/503, and because the download happens
+  in "Set up job" the runner gives up before a single step runs — the job goes
+  red having tested nothing. It killed one job on 32044696407 and four on
+  32042541960. Actions that live in this repo are already on disk after the
+  checkout, so there is nothing left to rate limit; pnpm itself comes from the
+  npm registry, which serves this fan-out without complaint.
+
+  Must run before actions/setup-node when that step uses `cache: pnpm`, exactly
+  where pnpm/action-setup used to sit. pnpm is installed outside the workspace
+  and exposed through its npm bin shim, which resolves node at call time — so it
+  survives setup-node swapping the node version out from under it, and it leaves
+  the checkout clean for the steps that diff it.
+
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned pnpm
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        version="$(node -p "require('./package.json').packageManager.split('@')[1]")"
+        if [ -z "$version" ]; then
+          echo "package.json#packageManager does not pin a pnpm version" >&2
+          exit 1
+        fi
+
+        # RUNNER_TEMP is a Windows path on windows-2022; the shell here is Git
+        # Bash, so filesystem work needs the POSIX form and GITHUB_PATH needs the
+        # native one back.
+        root="$RUNNER_TEMP"
+        if command -v cygpath >/dev/null 2>&1; then
+          root="$(cygpath -u "$RUNNER_TEMP")"
+        fi
+
+        dest="$root/memry-pnpm"
+        mkdir -p "$dest"
+        npm install --prefix "$dest" --no-save --no-audit --no-fund --loglevel error "pnpm@$version"
+
+        bin="$dest/node_modules/.bin"
+        if command -v cygpath >/dev/null 2>&1; then
+          bin="$(cygpath -w "$bin")"
+        fi
+        printf '%s\n' "$bin" >> "$GITHUB_PATH"
+
+        echo "pnpm $version installed at $bin"
