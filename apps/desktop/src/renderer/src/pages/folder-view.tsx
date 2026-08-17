@@ -48,6 +48,14 @@ import { getTagSegments } from '@/lib/tag-utils'
 import { cn } from '@/lib/utils'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { useFolderView } from '@/hooks/use-folder-view'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import {
+  FOLDER_VIEW_STATE_KEYS,
+  folderScrollKey,
+  parseSearchOpen,
+  parseSearchQuery,
+  parseViewName
+} from './folder-view-state'
 import { useNoteMutations, useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { tagsService, onTagRenamed, onTagDeleted } from '@/services/tags-service'
@@ -91,6 +99,17 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Use mutations hook for creating new notes (with folder template support)
   const { createNote } = useNoteMutations()
 
+  // Which of the folder's named views this tab is on. Stored by NAME, never by
+  // index: `.folder.md` is a file other devices and the user's own editor can
+  // reorder, and a stale index would quietly land on a different view. A name
+  // that no longer matches falls through to the folder's own `defaultIndex`
+  // inside `useFolderView`.
+  const [storedViewName, setStoredViewName] = useTabViewState<string | null>({
+    key: FOLDER_VIEW_STATE_KEYS.viewName,
+    defaultValue: null,
+    parse: parseViewName
+  })
+
   // Use the folder view hook
   const {
     views,
@@ -126,13 +145,19 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     removeNotesOptimistically,
     updateNoteProperty,
     updateNoteTags
-  } = useFolderView({ scope })
+  } = useFolderView({ scope, initialViewName: storedViewName ?? undefined })
 
   // Get first note for formula preview in editor
   const sampleNote = notes.length > 0 ? notes[0] : null
 
   // Active view render mode (table / list / grid) — persisted via the view config.
   const viewType = activeView?.type ?? 'table'
+
+  // Only one of the four scrollers is mounted at a time, and the tab holds ONE
+  // scroll record, so the key says which one wrote it. Without that, turning on
+  // grouping — or switching to the gallery — would apply the table's row offset
+  // to a completely differently-sized list.
+  const activeScrollKey = folderScrollKey(viewType, activeView?.groupBy !== undefined)
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -213,12 +238,22 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Column search state for highlighting
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
 
-  // Global search state with debounce (T073, T076)
-  const [searchQuery, setSearchQuery] = useState('')
+  // Global search state with debounce (T073, T076). Belongs to the tab: only
+  // the active tab is mounted, so local state threw the query away on every
+  // tab switch and the user came back to an unfiltered folder.
+  const [searchQuery, setSearchQuery] = useTabViewState<string>({
+    key: FOLDER_VIEW_STATE_KEYS.searchQuery,
+    defaultValue: '',
+    parse: parseSearchQuery
+  })
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 200)
 
   // Search icon toggles an inline input; stays open while a query is active.
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useTabViewState<boolean>({
+    key: FOLDER_VIEW_STATE_KEYS.searchOpen,
+    defaultValue: false,
+    parse: parseSearchOpen
+  })
   const showSearch = searchOpen || searchQuery.length > 0
 
   // Compute which columns should be highlighted based on search query
@@ -554,6 +589,48 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     return Promise.resolve()
   }, [t])
 
+  /**
+   * Everything that moves the active view also records its NAME, so the tab
+   * comes back to the same view rather than to whatever now sits at that index.
+   */
+  const handleViewChange = useCallback(
+    (index: number): void => {
+      setActiveViewIndex(index)
+      setStoredViewName(views[index]?.name ?? null)
+    },
+    [setActiveViewIndex, setStoredViewName, views]
+  )
+
+  // Making a view the folder's default also switches to it (see `useFolderView`).
+  const handleSetViewAsDefault = useCallback(
+    async (index: number): Promise<void> => {
+      await setViewAsDefault(index)
+      setStoredViewName(views[index]?.name ?? null)
+    },
+    [setViewAsDefault, setStoredViewName, views]
+  )
+
+  // Renaming is live, per keystroke. Without this the stored name would still
+  // hold the pre-rename spelling and the next restore would miss it entirely.
+  const handleRenameView = useCallback(
+    async (index: number, newName: string): Promise<void> => {
+      await renameView(index, newName)
+      if (index === activeViewIndex) setStoredViewName(newName)
+    },
+    [renameView, activeViewIndex, setStoredViewName]
+  )
+
+  // A deleted view leaves the stored name pointing at nothing; clearing it here
+  // is what makes the next restore fall back to the folder's default instead of
+  // to an index that has since shifted under it.
+  const handleDeleteView = useCallback(
+    async (viewName: string): Promise<void> => {
+      await deleteView(viewName)
+      if (viewName === storedViewName) setStoredViewName(null)
+    },
+    [deleteView, storedViewName, setStoredViewName]
+  )
+
   // Handle opening note in new tab (for context menu)
   const handleOpenInNewTab = useCallback(
     (noteId: string): void => {
@@ -745,7 +822,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const handleClearAll = useCallback(() => {
     setSearchQuery('')
     void updateFilters(undefined)
-  }, [updateFilters])
+  }, [updateFilters, setSearchQuery])
 
   // ============================================================================
   // Phase 21: Toolbar Action Handlers
@@ -1039,12 +1116,12 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             views={views}
             activeViewIndex={activeViewIndex}
             activeView={activeView}
-            onViewChange={setActiveViewIndex}
+            onViewChange={handleViewChange}
             onAddView={addView}
             onUpdateView={updateView}
-            onRenameView={scope.kind === 'folder' ? renameView : handleRenameViewUnavailable}
-            onSetViewAsDefault={setViewAsDefault}
-            onDeleteView={deleteView}
+            onRenameView={scope.kind === 'folder' ? handleRenameView : handleRenameViewUnavailable}
+            onSetViewAsDefault={handleSetViewAsDefault}
+            onDeleteView={handleDeleteView}
           />
 
           {/* New Note button */}
@@ -1099,6 +1176,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             <FolderListView
               notes={notes}
               searchQuery={debouncedSearchQuery}
+              scrollKey={activeScrollKey}
               density="compact"
               tagMetaMap={tagMetaMap}
               onNoteOpen={onRowOpen}
@@ -1111,6 +1189,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
             <FolderGalleryView
               notes={notes}
               searchQuery={debouncedSearchQuery}
+              scrollKey={activeScrollKey}
               tagMetaMap={tagMetaMap}
               onNoteOpen={onRowOpen}
               onTagClick={handleTagClick}
@@ -1151,6 +1230,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
               exitingRowIds={exitingRowIds}
+              scrollKey={activeScrollKey}
               className="h-full"
             />
           ) : (
@@ -1185,6 +1265,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
               showSummaries={activeView?.showSummaries ?? false}
               summaries={summaries}
               exitingRowIds={exitingRowIds}
+              scrollKey={activeScrollKey}
               className="h-full"
             />
           )}

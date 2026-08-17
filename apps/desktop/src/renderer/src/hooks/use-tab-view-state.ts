@@ -17,9 +17,22 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:TabViewState')
 
+/**
+ * Joins alias keys into one stable dependency token. NUL cannot occur in a
+ * viewState key, and writing it as an escape keeps this file text: a literal
+ * NUL byte makes git treat the source as binary, so it shows no diff in review.
+ */
+const ALIAS_SEPARATOR = '\u0000'
+
 export interface UseTabViewStateOptions<T> {
   /** Key inside the tab's `viewState` record. */
   key: string
+  /**
+   * Older names for the same value, most recent first. Read as a fallback when
+   * `key` is absent, and written alongside `key`, so a session written by this
+   * build still restores on a build that only knows the old name.
+   */
+  aliasKeys?: string[]
   /** Value used when nothing is stored, or when the stored value fails to parse. */
   defaultValue: T
   /**
@@ -35,6 +48,7 @@ export type TabViewStateSetter<T> = (next: T | ((previous: T) => T)) => void
 
 export function useTabViewState<T>({
   key,
+  aliasKeys,
   defaultValue,
   parse
 }: UseTabViewStateOptions<T>): [T, TabViewStateSetter<T>] {
@@ -53,23 +67,31 @@ export function useTabViewState<T>({
     identityRef.current = identity
   })
 
+  // Joined so a fresh array literal on every render does not re-run the effects
+  // that depend on `read`.
+  const aliasToken = aliasKeys?.join(ALIAS_SEPARATOR) ?? ''
+
   const read = useCallback((): T => {
     const current = identityRef.current
     if (!current) return defaultValueRef.current
 
-    const raw = getTab?.(current.tabId, current.groupId)?.viewState?.[key]
-    if (raw === undefined) return defaultValueRef.current
+    const viewState = getTab?.(current.tabId, current.groupId)?.viewState
+    const names = aliasToken === '' ? [key] : [key, ...aliasToken.split(ALIAS_SEPARATOR)]
 
-    try {
-      const parsed = parseRef.current(raw)
-      return parsed === undefined ? defaultValueRef.current : parsed
-    } catch (err) {
-      // Diagnostic only — a rejected view-state value is never surfaced to the
-      // user, the hook just falls back to the default.
-      log.warn('discarding unparseable tab view state', { key, error: String(err) })
-      return defaultValueRef.current
+    for (const name of names) {
+      const raw = viewState?.[name]
+      if (raw === undefined) continue
+      try {
+        const parsed = parseRef.current(raw)
+        if (parsed !== undefined) return parsed
+      } catch (err) {
+        // Diagnostic only — a rejected view-state value is never surfaced to the
+        // user, the hook just falls back to the default.
+        log.warn('discarding unparseable tab view state', { key: name, error: String(err) })
+      }
     }
-  }, [getTab, key])
+    return defaultValueRef.current
+  }, [getTab, key, aliasToken])
 
   const [value, setValue] = useState<T>(read)
   const valueRef = useRef(value)
@@ -96,16 +118,20 @@ export function useTabViewState<T>({
 
       const current = identityRef.current
       if (!current || !dispatch) return
+      const viewState: Record<string, unknown> = { [key]: resolved }
+      if (aliasToken !== '') {
+        for (const alias of aliasToken.split(ALIAS_SEPARATOR)) viewState[alias] = resolved
+      }
       dispatch({
         type: 'SAVE_TAB_STATE',
         payload: {
           tabId: current.tabId,
           groupId: current.groupId,
-          viewState: { [key]: resolved }
+          viewState
         }
       })
     },
-    [dispatch, key]
+    [dispatch, key, aliasToken]
   )
 
   return [value, setTabViewState]

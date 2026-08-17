@@ -63,7 +63,10 @@ vi.mock('@/contexts/tabs', () => ({
     closeTab: mocks.closeTab,
     getActiveTab: mocks.getActiveTab
   }),
-  useActiveTab: () => mocks.activeTab
+  useActiveTab: () => mocks.activeTab,
+  // The page's view name and search now live in the tab; outside a tab provider
+  // the hook degrades to plain local state, which is what these tests exercise.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/services/tags-service', async (importOriginal) => {

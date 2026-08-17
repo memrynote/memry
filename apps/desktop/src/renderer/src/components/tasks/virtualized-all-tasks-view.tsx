@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useCallback, useState, memo } from 'react'
+import { useMemo, useRef, useEffect, useCallback, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
@@ -22,6 +22,14 @@ import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { useDragContext } from '@/contexts/drag-context'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  DEFAULT_COLLAPSED_GROUPS,
+  TASKS_VIEW_STATE_KEYS,
+  parseStringArray,
+  tasksScrollKey
+} from '@/pages/tasks-view-state'
 import { annotateFlatVirtualItems, annotateGroupedVirtualItems } from '@/lib/task-list-dnd-utils'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
@@ -257,19 +265,28 @@ export const VirtualizedAllTasksView = ({
   })
   const { dragState } = useDragContext()
 
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set(['done']))
+  // Which groups are collapsed belongs to the tab: re-seeding `new Set(['done'])`
+  // on every mount reopened every group the user had closed, on every tab switch.
+  // Stored as an array — `viewState` is serialised to disk, and a Set is not.
+  const [collapsedGroupList, setCollapsedGroupList] = useTabViewState<string[]>({
+    key: TASKS_VIEW_STATE_KEYS.collapsedGroups,
+    defaultValue: DEFAULT_COLLAPSED_GROUPS,
+    parse: parseStringArray
+  })
+  const collapsedGroups = useMemo(() => new Set(collapsedGroupList), [collapsedGroupList])
 
-  const handleToggleGroup = useCallback((groupKey: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(groupKey)) {
-        next.delete(groupKey)
-      } else {
-        next.add(groupKey)
-      }
-      return next
-    })
-  }, [])
+  const handleToggleGroup = useCallback(
+    (groupKey: string) => {
+      setCollapsedGroupList((previous) =>
+        previous.includes(groupKey)
+          ? previous.filter((entry) => entry !== groupKey)
+          : [...previous, groupKey]
+      )
+    },
+    [setCollapsedGroupList]
+  )
+
+  const getScrollElement = useCallback(() => parentRef.current, [])
 
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
 
@@ -337,6 +354,14 @@ export const VirtualizedAllTasksView = ({
     estimateSize: (index) => estimateItemHeight(allVirtualItems[index], expandedIds, combinedTasks),
     getItemKey: (index) => allVirtualItems[index]?.id ?? index,
     overscan: 5
+  })
+
+  // Virtualized: restoring by writing `scrollTop` would land on the wrong row
+  // while the total height is still an estimate.
+  useTabScrollRestore({
+    getScrollElement,
+    virtualizer,
+    key: tasksScrollKey(storageKey)
   })
 
   useEffect(() => {

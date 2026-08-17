@@ -26,6 +26,14 @@ import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { useInboxJobs, useInboxList } from '@/hooks/use-inbox'
 import { useInboxRemindersPanel } from '@/hooks/use-inbox-reminders-panel'
 import { useActiveTab } from '@/contexts/tabs'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import {
+  INBOX_ITEM_TYPES,
+  INBOX_VIEW_STATE_KEYS,
+  parseBoolean,
+  parseInboxView,
+  parseTypeFilter
+} from './inbox/inbox-view-state'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
@@ -33,18 +41,6 @@ import { InboxArchivedView } from './inbox/inbox-archived-view'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Page:Inbox')
-
-const INBOX_ITEM_TYPES: InboxItemType[] = [
-  'link',
-  'note',
-  'image',
-  'voice',
-  'video',
-  'clip',
-  'pdf',
-  'social',
-  'reminder'
-]
 
 const INBOX_TYPE_ICONS: Record<InboxItemType, React.ComponentType<{ className?: string }>> = {
   link: Link2,
@@ -58,15 +54,35 @@ const INBOX_TYPE_ICONS: Record<InboxItemType, React.ComponentType<{ className?: 
   reminder: Bell
 }
 
+/** Stable identity, so the type filter's default never re-seeds the hook. */
+const NO_TYPES: InboxItemType[] = []
+
 interface InboxPageProps {
   className?: string
 }
 
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const { t } = useT('inbox')
-  const [currentView, setCurrentView] = useState<InboxView>('inbox')
-  const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
-  const [showSnoozedItems, setShowSnoozedItems] = useState(false)
+  // Which sub-view, which type filter and whether snoozed items show all belong
+  // to the tab: only the active tab is mounted, so plain local state is thrown
+  // away every time the user switches tabs.
+  const [currentView, setCurrentView] = useTabViewState<InboxView>({
+    key: INBOX_VIEW_STATE_KEYS.view,
+    defaultValue: 'inbox',
+    parse: parseInboxView
+  })
+  // Stored as an array — `viewState` is serialised to disk, and a Set is not.
+  const [selectedTypeFilter, setSelectedTypeFilter] = useTabViewState<InboxItemType[]>({
+    key: INBOX_VIEW_STATE_KEYS.typeFilter,
+    defaultValue: NO_TYPES,
+    parse: parseTypeFilter
+  })
+  const [showSnoozedItems, setShowSnoozedItems] = useTabViewState<boolean>({
+    key: INBOX_VIEW_STATE_KEYS.showSnoozed,
+    defaultValue: false,
+    parse: parseBoolean
+  })
+  const selectedTypes = useMemo(() => new Set(selectedTypeFilter), [selectedTypeFilter])
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isArchivedSearchOpen, setIsArchivedSearchOpen] = useState(false)
   const [archivedSearchQuery, setArchivedSearchQuery] = useState('')
@@ -112,7 +128,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
       setCurrentView('inbox')
     }, 0)
     return () => window.clearTimeout(focusTimer)
-  }, [focusInboxItemId, focusToken])
+  }, [focusInboxItemId, focusToken, setCurrentView, setShowSnoozedItems])
 
   const itemCountsByType = useMemo(() => {
     const counts: Record<InboxItemType, number> = {
@@ -132,8 +148,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     return counts
   }, [items])
 
-  const hasActiveFilters = selectedTypes.size > 0
-  const selectedTypesArray = useMemo(() => Array.from(selectedTypes), [selectedTypes])
+  const hasActiveFilters = selectedTypeFilter.length > 0
   const typeLabels = useMemo(
     () => ({
       link: t('type.links'),
@@ -149,15 +164,15 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     [t]
   )
 
-  const handleTypeToggle = useCallback((value: string) => {
-    const type = value as InboxItemType
-    setSelectedTypes((prev) => {
-      const next = new Set(prev)
-      if (next.has(type)) next.delete(type)
-      else next.add(type)
-      return next
-    })
-  }, [])
+  const handleTypeToggle = useCallback(
+    (value: string) => {
+      const type = value as InboxItemType
+      setSelectedTypeFilter((prev) =>
+        prev.includes(type) ? prev.filter((entry) => entry !== type) : [...prev, type]
+      )
+    },
+    [setSelectedTypeFilter]
+  )
 
   const closeArchivedSearch = useCallback(() => {
     setArchivedSearchQuery('')
@@ -177,7 +192,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         closeArchivedSearch()
       }
     },
-    [closeArchivedSearch]
+    [closeArchivedSearch, setCurrentView]
   )
 
   // The sub-views own their scroll containers (marked data-inbox-scroll);
@@ -195,7 +210,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     if (!focusCaptureSignal) return
     const timer = window.setTimeout(() => setCurrentView('inbox'), 0)
     return () => window.clearTimeout(timer)
-  }, [focusCaptureSignal])
+  }, [focusCaptureSignal, setCurrentView])
 
   return (
     <>
@@ -327,7 +342,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
               <Picker
                 mode="multi"
-                value={selectedTypesArray}
+                value={selectedTypeFilter}
                 onValueChange={handleTypeToggle}
                 open={isFilterOpen}
                 onOpenChange={setIsFilterOpen}
@@ -358,7 +373,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     </svg>
                     {hasActiveFilters && (
                       <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
-                        {selectedTypes.size}
+                        {selectedTypeFilter.length}
                       </span>
                     )}
                   </button>
@@ -390,7 +405,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                     <Picker.Footer className="py-1.5 px-1">
                       <button
                         type="button"
-                        onClick={() => setSelectedTypes(new Set())}
+                        onClick={() => setSelectedTypeFilter(NO_TYPES)}
                         className="flex w-full items-center rounded-[5px] py-1.5 px-2 text-[13px] text-muted-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
                       >
                         {t('view.filter.clearAll')}

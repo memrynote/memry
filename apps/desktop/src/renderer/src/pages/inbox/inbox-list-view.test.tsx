@@ -57,7 +57,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/contexts/tabs', () => ({
-  useTabs: () => ({ openTab: mocks.openTab })
+  useTabs: () => ({ openTab: mocks.openTab }),
+  // The detail panel's open item lives in the tab; outside a tab provider the
+  // hook degrades to plain local state, which is what these tests exercise.
+  useTabActionsOptional: () => null
 }))
 
 // Spread the real (dependency-free) module so DENSITY_CONFIG is always complete; a

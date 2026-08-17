@@ -1,5 +1,6 @@
 import type { TabAction, TabSystemState } from '../types'
 import { createInitialState } from '../helpers'
+import { mergeScrollPanes } from '../scroll-panes'
 import { mergeSettingsPatch } from '@/lib/settings-patch'
 
 type SessionAction = Extract<
@@ -34,7 +35,7 @@ function mergeViewState(
 export function sessionReducer(state: TabSystemState, action: SessionAction): TabSystemState {
   switch (action.type) {
     case 'SAVE_TAB_STATE': {
-      const { tabId, groupId, scrollPosition, scrollState, viewState } = action.payload
+      const { tabId, groupId, scrollPosition, scrollState, scrollPanes, viewState } = action.payload
       const group = state.tabGroups[groupId]
       if (!group) return state
 
@@ -50,6 +51,11 @@ export function sessionReducer(state: TabSystemState, action: SessionAction): Ta
                     ...t,
                     ...(scrollPosition !== undefined && { scrollPosition }),
                     ...(scrollState !== undefined && { scrollState }),
+                    // A patch, not a replacement: panes are independent writers
+                    // on the same tab, exactly like `viewState`'s keys.
+                    ...(scrollPanes !== undefined && {
+                      scrollPanes: mergeScrollPanes(t.scrollPanes, scrollPanes)
+                    }),
                     ...(viewState !== undefined && {
                       viewState: mergeViewState(t.viewState, viewState)
                     })

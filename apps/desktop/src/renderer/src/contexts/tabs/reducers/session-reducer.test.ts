@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { sessionReducer } from './session-reducer'
 import { createInitialState } from '../helpers'
-import type { TabSystemState } from '../types'
+import type { TabScrollPanes, TabSystemState } from '../types'
 
 /** Initial state with a single known tab carrying the given `viewState`. */
 function stateWithViewState(viewState?: Record<string, unknown>): {
@@ -100,6 +100,122 @@ describe('sessionReducer SAVE_TAB_STATE viewState merge', () => {
     })
 
     expect(next).toBe(state)
+  })
+})
+
+describe('sessionReducer SAVE_TAB_STATE scrollPanes merge', () => {
+  /** Initial state with a single known tab carrying the given pane entries. */
+  function stateWithPanes(scrollPanes?: TabScrollPanes): {
+    state: TabSystemState
+    groupId: string
+    tabId: string
+  } {
+    const base = createInitialState()
+    const groupId = Object.keys(base.tabGroups)[0]
+    const group = base.tabGroups[groupId]
+    const tabId = group.tabs[0].id
+
+    return {
+      state: {
+        ...base,
+        tabGroups: {
+          ...base.tabGroups,
+          [groupId]: {
+            ...group,
+            tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, scrollPanes } : t))
+          }
+        }
+      },
+      groupId,
+      tabId
+    }
+  }
+
+  it('keeps the panes the incoming patch does not mention', () => {
+    // The bug this replaces: one pane's write wiped the tab's only record, so
+    // Overview → Notes → Overview lost the Overview offset every round trip.
+    const { state, groupId, tabId } = stateWithPanes({
+      'project-overview': { offset: 250, entityId: 'project-1' }
+    })
+
+    const next = sessionReducer(state, {
+      type: 'SAVE_TAB_STATE',
+      payload: {
+        tabId,
+        groupId,
+        scrollPanes: { 'project-notes': { offset: 700, entityId: 'project-1' } }
+      }
+    })
+
+    expect(readTab(next, groupId, tabId).scrollPanes).toEqual({
+      'project-overview': { offset: 250, entityId: 'project-1' },
+      'project-notes': { offset: 700, entityId: 'project-1' }
+    })
+  })
+
+  it('overwrites only the pane the patch names', () => {
+    const { state, groupId, tabId } = stateWithPanes({
+      'project-overview': { offset: 250 },
+      'project-notes': { offset: 700 }
+    })
+
+    const next = sessionReducer(state, {
+      type: 'SAVE_TAB_STATE',
+      payload: { tabId, groupId, scrollPanes: { 'project-overview': { offset: 310 } } }
+    })
+
+    expect(readTab(next, groupId, tabId).scrollPanes).toEqual({
+      'project-overview': { offset: 310 },
+      'project-notes': { offset: 700 }
+    })
+  })
+
+  it('seeds the map when the tab had no panes', () => {
+    const { state, groupId, tabId } = stateWithPanes(undefined)
+
+    const next = sessionReducer(state, {
+      type: 'SAVE_TAB_STATE',
+      payload: { tabId, groupId, scrollPanes: { 'inbox-list': { offset: 40 } } }
+    })
+
+    expect(readTab(next, groupId, tabId).scrollPanes).toEqual({ 'inbox-list': { offset: 40 } })
+  })
+
+  it('does not mutate the previous pane map', () => {
+    const previous: TabScrollPanes = { 'inbox-list': { offset: 40 } }
+    const { state, groupId, tabId } = stateWithPanes(previous)
+
+    sessionReducer(state, {
+      type: 'SAVE_TAB_STATE',
+      payload: { tabId, groupId, scrollPanes: { 'inbox-archived': { offset: 90 } } }
+    })
+
+    expect(previous).toEqual({ 'inbox-list': { offset: 40 } })
+  })
+
+  it('leaves a legacy single-record scrollState in place', () => {
+    // Still readable by the build that wrote it if the user rolls back.
+    const { state, groupId, tabId } = stateWithPanes(undefined)
+    const legacy = { offset: 400, entityId: 'note-1', key: 'inbox-list' }
+    const seeded: TabSystemState = {
+      ...state,
+      tabGroups: {
+        ...state.tabGroups,
+        [groupId]: {
+          ...state.tabGroups[groupId],
+          tabs: state.tabGroups[groupId].tabs.map((t) =>
+            t.id === tabId ? { ...t, scrollState: legacy } : t
+          )
+        }
+      }
+    }
+
+    const next = sessionReducer(seeded, {
+      type: 'SAVE_TAB_STATE',
+      payload: { tabId, groupId, scrollPanes: { 'inbox-list': { offset: 500 } } }
+    })
+
+    expect(readTab(next, groupId, tabId).scrollState).toEqual(legacy)
   })
 })
 

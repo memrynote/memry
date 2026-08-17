@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Archive, ArrowTurnBackward, Loader2, Trash2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { useResolvedEntityId } from '@/hooks/use-resolved-entity-id'
+import {
+  INBOX_SCROLL_KEYS,
+  INBOX_VIEW_STATE_KEYS,
+  parseItemId
+} from '@/pages/inbox/inbox-view-state'
 import {
   useInboxArchived,
   useInboxItem,
@@ -160,7 +168,15 @@ export function InboxArchivedView({
 }: InboxArchivedViewProps): React.JSX.Element {
   const { t } = useT('inbox')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [activeDetailItemId, setActiveDetailItemId] = useState<string | null>(null)
+  // The archived pane has its OWN detail panel, independent of the list pane's,
+  // so it gets its own key rather than sharing one.
+  const [storedDetailItemId, setActiveDetailItemId] = useTabViewState<string | null>({
+    key: INBOX_VIEW_STATE_KEYS.archivedDetailItemId,
+    defaultValue: null,
+    parse: parseItemId
+  })
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -171,6 +187,11 @@ export function InboxArchivedView({
   const { items, hasMore, isLoading, loadMore, isLoadingMore } = useInboxArchived({
     search: debouncedSearch || undefined
   })
+
+  // The first load replaces the whole pane with a spinner, so there is no
+  // scroller to restore into yet; enabling on arrival re-runs the restore.
+  const hasScroller = !(isLoading && items.length === 0 && !searchQuery)
+  useTabScrollRestore({ getScrollElement, key: INBOX_SCROLL_KEYS.archived, enabled: hasScroller })
 
   const unarchiveMutation = useUnarchiveInboxItem()
   const deleteMutation = useDeletePermanentInboxItem()
@@ -220,39 +241,56 @@ export function InboxArchivedView({
   const handleUnarchive = useCallback(
     (id: string): void => {
       unarchiveMutation.mutate(id)
-      if (activeDetailItemId === id) setActiveDetailItemId(null)
+      if (storedDetailItemId === id) setActiveDetailItemId(null)
     },
-    [unarchiveMutation, activeDetailItemId]
+    [unarchiveMutation, storedDetailItemId, setActiveDetailItemId]
   )
 
   const handleDelete = useCallback(
     (id: string): void => {
       deleteMutation.mutate(id)
-      if (activeDetailItemId === id) setActiveDetailItemId(null)
+      if (storedDetailItemId === id) setActiveDetailItemId(null)
     },
-    [deleteMutation, activeDetailItemId]
+    [deleteMutation, storedDetailItemId, setActiveDetailItemId]
   )
 
   const handlePreview = useCallback(
     (id: string): void => {
-      if (activeDetailItemId === id) {
+      if (storedDetailItemId === id) {
         setActiveDetailItemId(null)
       } else {
         setActiveDetailItemId(id)
         setFocusedItemId(id)
       }
     },
-    [activeDetailItemId]
+    [storedDetailItemId, setActiveDetailItemId]
   )
 
-  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(activeDetailItemId)
-  const activeDetailItem = useMemo(() => {
-    if (!activeDetailItemId) return null
+  const { item: fullDetailItem, isLoading: isDetailLoading } = useInboxItem(storedDetailItemId)
+  const storedDetailItem = useMemo(() => {
+    if (!storedDetailItemId) return null
     if (fullDetailItem) return fullDetailItem
-    return sortedItems.find((item) => item.id === activeDetailItemId) || null
-  }, [activeDetailItemId, fullDetailItem, sortedItems])
+    return sortedItems.find((item) => item.id === storedDetailItemId) || null
+  }, [storedDetailItemId, fullDetailItem, sortedItems])
 
-  const isDetailPanelOpen = activeDetailItemId !== null
+  const clearDetailItemId = useCallback(() => setActiveDetailItemId(null), [setActiveDetailItemId])
+
+  // A restored id can name an item that was unarchived or deleted permanently.
+  // The panel's close button lives inside its `item ?` branch, so an
+  // unresolvable id leaves a blank drawer with no way out.
+  const activeDetailItemId = useResolvedEntityId({
+    id: storedDetailItemId,
+    exists: storedDetailItem !== null,
+    ready: !isDetailLoading && !isLoading,
+    onMissing: clearDetailItemId
+  })
+  const activeDetailItem = activeDetailItemId === null ? null : storedDetailItem
+
+  // Open only with something to show, or while genuinely fetching it — the
+  // panel's close button lives inside its `item ?` branch, so "open, not
+  // loading, no item" is a blank drawer the user cannot dismiss.
+  const isDetailPanelOpen =
+    activeDetailItemId !== null && (isDetailLoading || storedDetailItem !== null)
 
   const noopFile = useCallback((): void => {}, [])
 
@@ -267,6 +305,7 @@ export function InboxArchivedView({
   return (
     <div className={cn('flex h-full overflow-hidden', className)}>
       <div
+        ref={scrollRef}
         data-inbox-scroll
         className="flex flex-col flex-1 min-w-0 h-full px-4 lg:px-6 pt-[46px] pb-4 lg:pb-6 overflow-y-auto"
       >

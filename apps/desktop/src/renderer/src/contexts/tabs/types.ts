@@ -62,17 +62,44 @@ export const isSingletonTabType = (type: TabType): boolean => {
 // =============================================================================
 
 /**
- * A tab's saved scroll offset, stamped with the entity it was measured against.
+ * One pane's saved scroll offset, stamped with the entity it was measured
+ * against.
  *
  * The stamp is what makes the record safe to restore: a tab keeps its identity
  * when it navigates to another note, so an offset saved against the previous
  * entity must be discarded rather than applied to the new content.
+ */
+export interface TabScrollEntry {
+  /** Saved scroll offset in pixels. `0` is a valid, restorable value. */
+  offset: number
+  /** `Tab.entityId` at the moment the offset was recorded. */
+  entityId?: string
+}
+
+/**
+ * Every pane's offset, keyed by the scroller it was measured against.
+ *
+ * Pages own several scrollers (Inbox's three sub-views, the project hub's tabs,
+ * folder view's per-render-mode scrollers) and each keeps its own entry, so
+ * Overview → Notes → Overview returns to where the user left Overview. A pane
+ * only ever reads and writes its own key; a single-scroller page uses the
+ * unkeyed slot. Bounded — see `MAX_SCROLL_PANES`.
+ */
+export type TabScrollPanes = Record<string, TabScrollEntry>
+
+/**
+ * LEGACY single-record shape, written by builds up to and including the one
+ * that shipped `Tab.scrollState` (PR #1549). Sessions carrying it are still in
+ * the wild, so it is still read: it is the entry for its own `key`, and an
+ * unkeyed record belongs to the unkeyed pane. Never written any more.
  */
 export interface TabScrollState {
   /** Saved scroll offset in pixels. `0` is a valid, restorable value. */
   offset: number
   /** `Tab.entityId` at the moment the offset was recorded. */
   entityId?: string
+  /** Which scroller the offset was measured against. Absent = the unkeyed one. */
+  key?: string
 }
 
 /**
@@ -107,8 +134,10 @@ export interface Tab {
   // Preserved state
   /** Scroll position to restore (legacy, unstamped) */
   scrollPosition?: number
-  /** Scroll offset to restore, stamped with the entity it was measured against */
+  /** Scroll offset to restore (legacy single-record shape, read-only now) */
   scrollState?: TabScrollState
+  /** Per-pane scroll offsets to restore, each stamped with its entity */
+  scrollPanes?: TabScrollPanes
   /** View-specific state (filters, expanded sections, etc.) */
   viewState?: Record<string, unknown>
 
@@ -297,6 +326,8 @@ export type TabAction =
         groupId: string
         scrollPosition?: number
         scrollState?: TabScrollState
+        /** Patch: merged over the tab's existing panes, never replaces them. */
+        scrollPanes?: TabScrollPanes
         viewState?: Record<string, unknown>
       }
     }
