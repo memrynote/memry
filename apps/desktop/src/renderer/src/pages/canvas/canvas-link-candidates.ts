@@ -183,6 +183,27 @@ export function candidatesFromFolders(
   return out
 }
 
+// Scheme + colon, so mailto: and tel: count too. Two characters minimum keeps
+// a Windows drive letter ("C:\\...") from reading as one.
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]+:/i
+const LOOKS_LIKE_HOST = /^[^\s/?#]+\.[^\s/?#]{2,}(?:[/?#]\S*)?$/
+
+/**
+ * A typed address, if the query is one.
+ *
+ * Our picker replaces Excalidraw's own URL box (its "Create link" action opens
+ * this instead), so a plain web address has to remain linkable from here or the
+ * feature would have taken something away. A bare host gets https:// — the same
+ * assumption a browser's address bar makes.
+ */
+export function urlFromQuery(query: string): string | null {
+  const trimmed = query.trim()
+  if (!trimmed) return null
+  if (HAS_SCHEME.test(trimmed)) return trimmed
+  if (LOOKS_LIKE_HOST.test(trimmed)) return `https://${trimmed}`
+  return null
+}
+
 /** Display order: the kinds a canvas links most often come first. */
 export const LINK_GROUP_ORDER = [
   'note',

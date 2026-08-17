@@ -34,7 +34,8 @@ const mocks = vi.hoisted(() => ({
   api: {
     elements: [] as unknown[],
     isLoading: true,
-    selectedElementIds: {} as Record<string, boolean>
+    selectedElementIds: {} as Record<string, boolean>,
+    showHyperlinkPopup: false as false | 'info' | 'editor'
   },
   linkDialogProps: {} as Record<string, unknown>,
   onChange: null as (() => void) | null,
@@ -58,7 +59,14 @@ vi.mock('@excalidraw/excalidraw', () => ({
     [key: string]: unknown
   }) => {
     mocks.excalidrawProps = props
-    mocks.onChange = props.onChange
+    // The real Excalidraw passes (elements, appState, files); the editor reads
+    // appState from it, so the fake has to hand one over too.
+    mocks.onChange = () =>
+      (props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
+        mocks.api.elements,
+        { showHyperlinkPopup: mocks.api.showHyperlinkPopup },
+        {}
+      )
     // The real Excalidraw hands out its imperative API on mount — long before
     // initialData is applied. A child effect still runs before the parent's
     // persistence effect, so the ordering under test is preserved (calling it
@@ -164,6 +172,7 @@ describe('CanvasEditor persistence safety', () => {
     mocks.api.elements = []
     mocks.api.isLoading = true
     mocks.api.selectedElementIds = {}
+    mocks.api.showHyperlinkPopup = false
     mocks.onChange = null
     // The editor reports live-canvas ownership to main so agent writes can be
     // routed to this instance (#916); this suite only needs the calls to land.
@@ -480,6 +489,7 @@ describe('CanvasEditor link picker', () => {
     mocks.updateScene.mockReset()
     mocks.linkDialogProps = {}
     mocks.api.isLoading = false
+    mocks.api.showHyperlinkPopup = false
     ;(window as Window & { api: unknown }).api = {
       canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
       notes: { getFolders: () => Promise.resolve([]) }
@@ -568,5 +578,73 @@ describe('CanvasEditor link picker', () => {
 
     expect(mocks.updateScene).not.toHaveBeenCalled()
     expect(mocks.toastError).toHaveBeenCalledWith('canvas.link.elementMissing')
+  })
+})
+
+/**
+ * Excalidraw's own "Create link" action — the chain button under Actions and
+ * Cmd/Ctrl+K — opens a box that only takes a typed address. It works by setting
+ * appState.showHyperlinkPopup to "editor", which reaches the editor through
+ * onChange, so the button is answered with our item picker instead.
+ */
+describe('CanvasEditor native link action', () => {
+  beforeEach(() => {
+    mocks.toastError.mockReset()
+    mocks.updateScene.mockReset()
+    mocks.linkDialogProps = {}
+    mocks.api.isLoading = false
+    mocks.api.showHyperlinkPopup = false
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.selectedElementIds = { 'shape-1': true }
+    ;(window as Window & { api: unknown }).api = {
+      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+      notes: { getFolders: () => Promise.resolve([]) }
+    }
+  })
+
+  it('answers the built-in link button with the item picker, and closes its URL box', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    mocks.api.showHyperlinkPopup = 'editor'
+    act(() => mocks.onChange?.())
+
+    expect(mocks.linkDialogProps.open).toBe(true)
+    expect(mocks.updateScene).toHaveBeenCalledWith(
+      expect.objectContaining({ appState: { showHyperlinkPopup: false } })
+    )
+  })
+
+  it('acts once per opening, not on every change while the popup is up', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    mocks.api.showHyperlinkPopup = 'editor'
+    act(() => mocks.onChange?.())
+    act(() => mocks.onChange?.())
+    act(() => mocks.onChange?.())
+
+    expect(mocks.updateScene).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-arms after the popup closes, so the next click opens the picker again', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    mocks.api.showHyperlinkPopup = 'editor'
+    act(() => mocks.onChange?.())
+    mocks.api.showHyperlinkPopup = false
+    act(() => mocks.onChange?.())
+    mocks.api.showHyperlinkPopup = 'editor'
+    act(() => mocks.onChange?.())
+
+    expect(mocks.updateScene).toHaveBeenCalledTimes(2)
+  })
+
+  it("leaves the 'info' popup alone, where the remove-link button lives", () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    mocks.api.showHyperlinkPopup = 'info'
+    act(() => mocks.onChange?.())
+
+    expect(mocks.linkDialogProps.open).toBe(false)
+    expect(mocks.updateScene).not.toHaveBeenCalled()
   })
 })

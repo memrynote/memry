@@ -24,8 +24,16 @@ import {
   Video
 } from '@/lib/icons'
 import { SidebarCalendar, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
-import { candidateKey, LINK_GROUP_ORDER, type LinkCandidate } from './canvas-link-candidates'
+import {
+  candidateKey,
+  LINK_GROUP_ORDER,
+  urlFromQuery,
+  type LinkCandidate
+} from './canvas-link-candidates'
 import { useCanvasLinkSearch } from './use-canvas-link-search'
+
+/** cmdk value for the pinned "use this address" row; never a candidate key. */
+const URL_VALUE = '__typed_url__'
 
 type IconComponent = React.ComponentType<{ className?: string }>
 
@@ -75,8 +83,8 @@ function RowIcon({ candidate }: { candidate: LinkCandidate }): React.JSX.Element
 export interface CanvasLinkDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Receives the chosen item's `memry://` href. */
-  onPick: (href: string, candidate: LinkCandidate) => void
+  /** Receives the chosen item's `memry://` href, or a typed web address. */
+  onPick: (href: string, candidate: LinkCandidate | null) => void
 }
 
 export function CanvasLinkDialog({
@@ -88,6 +96,7 @@ export function CanvasLinkDialog({
   const [query, setQuery] = useState('')
   const [value, setValue] = useState('')
   const { groups, hasResults, loading } = useCanvasLinkSearch(open, query)
+  const typedUrl = urlFromQuery(query)
 
   // Reset between openings so a stale query never greets the next one. The
   // query is genuinely owned state (the user types it), not something derived
@@ -107,14 +116,18 @@ export function CanvasLinkDialog({
     return null
   }, [groups])
 
+  // A typed address is unambiguous — the user is not half-way through a title
+  // that happens to look like a domain — so it takes the highlight.
+  const initialValue = typedUrl ? URL_VALUE : first ? candidateKey(first) : ''
+
   // cmdk resets its highlight to the first mounted row whenever the search
   // value changes; re-point it at the first real match so Enter links that.
   // Not derived state: arrow keys move the highlight from here on, so it has
   // to be storage cmdk can write back into, seeded on each new result set.
   useEffect(() => {
     // eslint-disable-next-line react-you-might-not-need-an-effect/no-derived-state -- see above
-    setValue(first ? candidateKey(first) : '')
-  }, [first])
+    setValue(initialValue)
+  }, [initialValue])
 
   const groupLabels: Record<(typeof LINK_GROUP_ORDER)[number], string> = {
     note: t('canvas.link.groupNotes'),
@@ -151,6 +164,20 @@ export function CanvasLinkDialog({
         className="w-full border-b border-border bg-transparent px-3 py-3 text-sm outline-none"
       />
       <Command.List className="max-h-80 overflow-y-auto p-2">
+        {typedUrl ? (
+          <Command.Item
+            value={URL_VALUE}
+            data-testid="canvas-link-url"
+            onSelect={() => {
+              onPick(typedUrl, null)
+              onOpenChange(false)
+            }}
+            className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-muted"
+          >
+            <Link2 className="size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+            <span className="truncate">{t('canvas.link.useUrl', { url: typedUrl })}</span>
+          </Command.Item>
+        ) : null}
         {query.trim() === '' ? (
           <div
             data-testid="canvas-link-hint"
@@ -159,7 +186,7 @@ export function CanvasLinkDialog({
             {t('canvas.link.hint')}
           </div>
         ) : null}
-        {query.trim() !== '' && !hasResults && !loading ? (
+        {query.trim() !== '' && !hasResults && !typedUrl && !loading ? (
           <div
             data-testid="canvas-link-empty"
             className="px-2 py-6 text-center text-sm text-text-tertiary"
