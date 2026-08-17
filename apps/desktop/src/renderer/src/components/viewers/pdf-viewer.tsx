@@ -25,6 +25,16 @@ import {
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  FILE_VIEW_STATE_KEYS,
+  parsePdfPage,
+  parseRotation,
+  parseScale,
+  parseViewerBoolean,
+  pdfPageScrollKey
+} from '@/pages/file-view-state'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -160,12 +170,37 @@ function PdfThumbnailRail({
 export function PdfViewer({ src, className }: PdfViewerProps) {
   const { t: tPhaseF } = useT('notes')
   const containerRef = useRef<HTMLDivElement>(null)
+  const pageScrollRef = useRef<HTMLDivElement>(null)
   const [numPages, setNumPages] = useState<number>(0)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [scale, setScale] = useState(1.0)
-  const [rotation, setRotation] = useState(0)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // The main pane shows one page at a time, so the page number IS the reading
+  // position — the scroll offset only refines it within that page.
+  const [currentPage, setCurrentPage] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.pdfPage,
+    defaultValue: 1,
+    parse: parsePdfPage
+  })
+  const [scale, setScale] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.pdfScale,
+    defaultValue: 1.0,
+    parse: parseScale
+  })
+  const [rotation, setRotation] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.pdfRotation,
+    defaultValue: 0,
+    parse: parseRotation
+  })
+  const [sidebarOpen, setSidebarOpen] = useTabEntityViewState<boolean>({
+    key: FILE_VIEW_STATE_KEYS.pdfSidebarOpen,
+    defaultValue: true,
+    parse: parseViewerBoolean
+  })
   const [error, setError] = useState<string | null>(null)
+
+  const getPageScrollEl = useCallback(() => pageScrollRef.current, [])
+  useTabScrollRestore({
+    getScrollElement: getPageScrollEl,
+    key: pdfPageScrollKey(currentPage)
+  })
 
   const handleLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -186,20 +221,20 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
         setCurrentPage(page)
       }
     },
-    [numPages]
+    [numPages, setCurrentPage]
   )
 
   const zoomIn = useCallback(() => {
     setScale((s) => Math.min(s + 0.25, 3))
-  }, [])
+  }, [setScale])
 
   const zoomOut = useCallback(() => {
     setScale((s) => Math.max(s - 0.25, 0.5))
-  }, [])
+  }, [setScale])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
-  }, [])
+  }, [setRotation])
 
   const fitToWidth = useCallback(() => {
     if (containerRef.current) {
@@ -208,7 +243,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
       const newScale = containerWidth / 612
       setScale(Math.min(Math.max(newScale, 0.5), 3))
     }
-  }, [sidebarOpen])
+  }, [setScale, sidebarOpen])
 
   if (error) {
     return (
@@ -345,7 +380,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           )}
 
           {/* PDF content - with both horizontal and vertical scrolling */}
-          <div className="flex-1 overflow-auto min-h-0">
+          <div ref={pageScrollRef} className="flex-1 overflow-auto min-h-0">
             <div className="inline-flex justify-center min-w-full p-4">
               <Page
                 pageNumber={currentPage}

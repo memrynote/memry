@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { MAX_SCROLL_PANES, mergeScrollPanes, readScrollPane } from './scroll-panes'
+import {
+  MAX_SCROLL_PANES,
+  isRestorableEntry,
+  mergeScrollPanes,
+  readScrollPane
+} from './scroll-panes'
 import type { Tab, TabScrollPanes } from './types'
 
 const entry = (offset: number): { offset: number } => ({ offset })
@@ -62,5 +67,28 @@ describe('readScrollPane', () => {
     expect(readScrollPane(tab, 'list')).toEqual({ offset: 900, entityId: 'note-1' })
     expect(readScrollPane(tab, 'archived')).toBeUndefined()
     expect(readScrollPane(tab)).toBeUndefined()
+  })
+})
+
+describe('isRestorableEntry', () => {
+  it("accepts an entry stamped with the tab's current entity", () => {
+    expect(isRestorableEntry({ offset: 120, entityId: 'note-1' }, 'note-1')).toBe(true)
+    expect(isRestorableEntry({ offset: 120 }, undefined)).toBe(true)
+  })
+
+  it('rejects an entry whose entity the tab has navigated away from', () => {
+    expect(isRestorableEntry({ offset: 120, entityId: 'note-1' }, 'note-2')).toBe(false)
+    expect(isRestorableEntry({ offset: 120 }, 'note-2')).toBe(false)
+    expect(isRestorableEntry({ offset: 120, entityId: 'note-1' }, undefined)).toBe(false)
+  })
+
+  it('accepts `0`, which is a position and not an absence', () => {
+    expect(isRestorableEntry({ offset: 0 }, undefined)).toBe(true)
+  })
+
+  it('rejects nothing stored, and a non-finite offset written by an older build', () => {
+    expect(isRestorableEntry(undefined, undefined)).toBe(false)
+    expect(isRestorableEntry({ offset: Number.NaN }, undefined)).toBe(false)
+    expect(isRestorableEntry({ offset: Number.POSITIVE_INFINITY }, undefined)).toBe(false)
   })
 })

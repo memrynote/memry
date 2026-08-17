@@ -68,8 +68,20 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
-  useTabs: () => ({ openTab: mocks.openTab }),
-  useActiveTab: () => mocks.activeTab
+  // The page reads its date off ITS OWN tab now, not off the globally active
+  // one, so the mocked session has to actually contain the tab.
+  useTabs: () => ({
+    openTab: mocks.openTab,
+    state: {
+      tabGroups: { 'group-1': { tabs: [{ id: 'tab-1', ...mocks.activeTab }] } }
+    }
+  }),
+  useActiveTab: () => mocks.activeTab,
+  useTabActionsOptional: () => null
+}))
+
+vi.mock('@/contexts/tabs/tab-identity', () => ({
+  useTabIdentity: () => ({ tabId: 'tab-1', groupId: 'group-1' })
 }))
 
 vi.mock('@/contexts/settings-modal-context', () => ({

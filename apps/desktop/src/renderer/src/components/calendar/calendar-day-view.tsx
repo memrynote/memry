@@ -15,6 +15,8 @@ import { useEventDrag, isEventMovable, isEventResizable } from './use-event-drag
 import { MarqueeSelectionOverlay } from './marquee-selection-overlay'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { useScrollToCurrentTime } from './use-scroll-to-current-time'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { CALENDAR_SCROLL_KEYS } from '@/pages/calendar-view-state'
 import { useOptionalDragContext } from '@/contexts/drag-context'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import { HOUR_HEIGHT } from './time-grid-constants'
@@ -63,6 +65,7 @@ export function CalendarDayView({
   const isTaskDragInFlight = useOptionalDragContext()?.dragState.isDragging ?? false
   const gridRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollEl = useCallback(() => scrollRef.current, [])
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
   const { selection, isDragging, handlers, clearSelection } = useTimeGridMarquee({
     gridRef,
@@ -82,7 +85,10 @@ export function CalendarDayView({
     [onSelectItem, wasDragged]
   )
   const today = isToday(anchorDate)
-  useScrollToCurrentTime(scrollRef, today)
+  useScrollToCurrentTime(scrollRef, today, CALENDAR_SCROLL_KEYS.day)
+  // Deliberately NOT date-keyed: the offset here is a time of day, and the hour
+  // the user reads at is the same hour whatever day they move to.
+  useTabScrollRestore({ getScrollElement: getScrollEl, key: CALENDAR_SCROLL_KEYS.day })
   const dayItems = items.filter((item) => toLocalDateKey(item.startAt) === anchorDate)
   const timedItems = dayItems.filter((item) => !item.isAllDay)
   const allDayItems = dayItems.filter((item) => item.isAllDay)
