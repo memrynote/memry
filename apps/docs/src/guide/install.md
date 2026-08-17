@@ -43,6 +43,14 @@ works around this on its own now, and it writes an `install.log` next to the app
 (typically `%LOCALAPPDATA%\Programs\memrynote`) that names the file it could not move.
 That log is the most useful thing you can send us if an update still fails.
 
+One caveat if you are already affected. On Windows the step that removes the old files
+is run by the version you currently have installed, not by the one being installed — so
+these workarounds only take effect on updates _away from_ a build that contains them. If
+your updates are failing today, install the latest version manually once
+(uninstall from **Settings → Apps**, then run the installer from
+[the download page](https://memrynote.com/download); your vault and settings are kept).
+Updates after that run on their own.
+
 ## Run from Source
 
 Use the source workflow if you are contributing or testing local changes.
