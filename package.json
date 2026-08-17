@@ -48,6 +48,7 @@
     "lint": "pnpm lint:desktop",
     "lint:desktop": "pnpm --filter @memry/desktop lint",
     "lint:landing": "pnpm --filter @memry/landing lint",
+    "lint:anti-slop": "oxlint",
     "i18n:check": "pnpm --filter @memry/desktop i18n:check",
     "i18n:codemod:todo": "pnpm --filter @memry/desktop i18n:codemod:todo",
     "i18n:codemod:todo:check": "pnpm --filter @memry/desktop i18n:codemod:todo:check",
@@ -70,8 +71,10 @@
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
+    "@oxlint/plugins": "1.78.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
+    "oxlint": "1.78.0",
     "prettier": "^3.9.6",
     "react-doctor": "^0.9.0",
     "turbo": "^2.9.16",
