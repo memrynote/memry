@@ -45,6 +45,8 @@ export interface NoteTreeActionsDeps {
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>
   computeTargetFolder: (selectedIds: string[]) => string
   expandFolderPath: (path: string) => void
+  /** Carry a folder's expanded state over to the path it just moved to. */
+  renameFolderPath: (oldPath: string, newPath: string) => void
 }
 
 export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
@@ -394,6 +396,25 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     [revertOptimisticTitle]
   )
 
+  // ---- Folder tree refresh ----
+
+  /**
+   * Refresh both sources the sidebar tree is built from.
+   *
+   * `buildTreeFromNotes` unions the folder list read off disk with the folder
+   * paths it synthesizes from every note's `path`. Renaming, moving or deleting
+   * a folder rewrites those note paths, so refreshing only the folder query
+   * leaves the old path in the tree as a phantom row still carrying every note
+   * — and that row is wired to the same rename and delete handlers as a real
+   * one, so the next click is aimed at a directory that no longer exists.
+   */
+  const refreshFolderTree = useCallback(async () => {
+    await Promise.all([
+      deps.refreshFolders(),
+      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    ])
+  }, [deps, queryClient])
+
   // ---- Folder rename ----
 
   const handleRenameFolderClick = useCallback((folderPath: string) => {
@@ -425,7 +446,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           : folderRenameValue.trim()
 
         await notesService.renameFolder(oldPath, newPath)
-        await deps.refreshFolders()
+        deps.renameFolderPath(oldPath, newPath)
+        await refreshFolderTree()
       } catch (err) {
         trackRendererError('folder_rename_failed', err)
         log.error('Failed to rename folder', err)
@@ -440,7 +462,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingFolderPath(null)
       }
     },
-    [folderRenameValue, isFolderRenaming, deps]
+    [folderRenameValue, isFolderRenaming, deps, refreshFolderTree]
   )
 
   const handleFolderRenameCancel = useCallback(() => {
@@ -501,7 +523,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
 
       if (foldersToDelete.length > 0) {
-        await deps.refreshFolders()
+        await refreshFolderTree()
       }
 
       setIsDeleteDialogOpen(false)
@@ -513,7 +535,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [notesToDelete, foldersToDelete, isDeleting, deps, closeTab])
+  }, [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree])
 
   // ---- External / Finder ----
 
@@ -673,14 +695,15 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
       try {
         await notesService.renameFolder(sourceFolderPath, newPath)
-        await deps.refreshFolders()
+        deps.renameFolderPath(sourceFolderPath, newPath)
+        await refreshFolderTree()
         return true
       } catch (err) {
         log.error('Failed to move folder', err)
         return false
       }
     },
-    [deps]
+    [deps, refreshFolderTree]
   )
 
   const handleReorderInFolder = useCallback(

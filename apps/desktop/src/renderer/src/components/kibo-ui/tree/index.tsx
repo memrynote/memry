@@ -23,6 +23,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
+import { remapExpandedFolderIds } from '@/components/notes-tree-utils'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useT } from '@memry/i18n/renderer'
 
@@ -77,6 +78,7 @@ type TreeContextType = {
   expandAll: () => void
   expandNodes: (nodeIds: string[]) => void
   collapseAll: () => void
+  renameNode: (oldNodeId: string, newNodeId: string) => void
   setDragState: (state: Partial<DragState>) => void
   handleDrop: () => void
   setNodeIcon: (nodeId: string, iconName: string | null) => void
@@ -376,6 +378,12 @@ export const TreeProvider = ({
     setExpandedIds(new Set())
   }, [])
 
+  // A renamed node keeps whatever it had open: itself and anything expanded
+  // beneath it, since expansion is keyed by the path that just changed.
+  const renameNode = useCallback((oldNodeId: string, newNodeId: string) => {
+    setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
+  }, [])
+
   const toggleExpanded = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -460,6 +468,7 @@ export const TreeProvider = ({
     expandAll,
     expandNodes,
     collapseAll,
+    renameNode,
     setDragState,
     handleDrop,
     setNodeIcon,

@@ -138,6 +138,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     }
   }, [])
 
+  // Expansion is keyed by folder path, so a folder that moves would otherwise
+  // come back collapsed — along with everything open inside it.
+  const renameFolderPath = useCallback((oldPath: string, newPath: string) => {
+    const oldNodeId = `folder-${oldPath}`
+    const newNodeId = `folder-${newPath}`
+    treeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+    virtualTreeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+  }, [])
+
   const actions = useNoteTreeActions({
     noteMap: data.noteMap,
     tree: data.tree,
@@ -153,7 +162,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     selectedIds,
     setSelectedIds,
     computeTargetFolder: data.computeTargetFolder,
-    expandFolderPath
+    expandFolderPath,
+    renameFolderPath
   })
 
   const notifyTargetFolderChange = useCallback(

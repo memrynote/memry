@@ -162,6 +162,7 @@ export type TreeActionsHandle = {
   expandAll: () => void
   expandNode: (nodeId: string) => void
   expandNodes: (nodeIds: string[]) => void
+  renameNode: (oldNodeId: string, newNodeId: string) => void
 }
 
 export function TreeActionsExposer({
@@ -169,14 +170,14 @@ export function TreeActionsExposer({
 }: {
   actionsRef: React.MutableRefObject<TreeActionsHandle | null>
 }) {
-  const { collapseAll, expandAll, expandNode, expandNodes } = useTree()
+  const { collapseAll, expandAll, expandNode, expandNodes, renameNode } = useTree()
 
   useEffect(() => {
-    actionsRef.current = { collapseAll, expandAll, expandNode, expandNodes }
+    actionsRef.current = { collapseAll, expandAll, expandNode, expandNodes, renameNode }
     return () => {
       actionsRef.current = null
     }
-  }, [collapseAll, expandAll, expandNode, expandNodes, actionsRef])
+  }, [collapseAll, expandAll, expandNode, expandNodes, renameNode, actionsRef])
 
   return null
 }

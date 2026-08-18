@@ -138,6 +138,7 @@ const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
     setSelectedIds: vi.fn(),
     computeTargetFolder: vi.fn().mockReturnValue('Work'),
     expandFolderPath: vi.fn(),
+    renameFolderPath: vi.fn(),
     ...overrides
   }
 
