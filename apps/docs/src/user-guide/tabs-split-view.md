@@ -14,7 +14,9 @@ Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
 
 Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. If your system is set to reduce motion (macOS **Reduce motion**, Windows **Animation effects** off, or the equivalent on Linux), the bar jumps straight to the active tab instead of sliding, and the chevrons and wheel scrolling stop animating too — the tab is still brought into view either way. Changing the setting takes effect on the next scroll; no restart needed. The **+** button stays pinned at the end of the bar while it scrolls.
 
-There is no limit on how many tabs you can have open, and memrynote never closes one for you: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
+There is no limit on how many tabs you can have open: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
+
+The one thing that closes a tab without being asked is deleting what it shows. Delete a canvas — from the sidebar, or on another device — and its tab closes everywhere it was open, in both panes of a split view. Deleted notes keep their tab and show the title struck through instead, because the text is still there to read.
 
 ### Tab Context Menu
 
@@ -36,6 +38,8 @@ Pin a tab to keep it at the front of the bar. Pinned tabs:
 - Don't close on middle-click
 - Survive bulk-close commands
 - Restore first on app launch
+
+A pin keeps a tab from being closed by accident; it does not keep the item alive. Delete the canvas a pinned tab shows and the tab goes with it.
 
 Useful for: today's journal, your "now" note, the shared project.
 
