@@ -197,6 +197,8 @@ A small dot appears on a tab title when there are unsaved changes (rare — memr
 
 Canvases open as tabs too, so you can keep a board in one pane and a note in the other. Note that a note open in a visible pane is edited there, not on the canvas card — see [Cards & Links](./canvas/cards-and-links.md).
 
+Renaming a canvas retitles its tab as soon as the new name is saved. It does not matter where the rename came from — the sidebar, an agent, or another device syncing the change — or whether the tab is the one you are looking at: a canvas sitting in a background tab is retitled too, so you never have to close and reopen a tab to see its real name.
+
 ## Links in Split Panes
 
 Each pane handles its own links. Clicking an external link or a `[[wiki link]]` in either pane opens it from that pane, and closing one pane leaves the other pane's links working.
