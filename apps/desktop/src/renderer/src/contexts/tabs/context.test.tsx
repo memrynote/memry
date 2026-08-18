@@ -244,6 +244,39 @@ describe('TabProvider context', () => {
     expect(rendered.ctx.state.tabGroups.main.tabs[0].type).toBe('home')
   })
 
+  it('retitles every tab showing the entity, in every group', () => {
+    const left = makeTab({ id: 'left', entityId: 'canvas-1', title: 'Old name' })
+    const right = makeTab({ id: 'right', entityId: 'canvas-1', title: 'Old name' })
+    const other = makeTab({ id: 'other', entityId: 'canvas-2', title: 'Untouched' })
+    const rendered = captureContext(
+      makeState([makeGroup('main', [left, other]), makeGroup('side', [right])])
+    )
+
+    act(() => {
+      rendered.ctx.updateTabTitleByEntityId('canvas-1', 'New name')
+    })
+
+    const titleOf = (groupId: string, tabId: string): string | undefined =>
+      rendered.ctx.state.tabGroups[groupId].tabs.find((tab) => tab.id === tabId)?.title
+
+    expect(titleOf('main', 'left')).toBe('New name')
+    expect(titleOf('side', 'right')).toBe('New name')
+    expect(titleOf('main', 'other')).toBe('Untouched')
+  })
+
+  it('returns the same state when a retitle names a tab what it is already called', () => {
+    const rendered = captureContext(
+      makeState([makeGroup('main', [makeTab({ id: 'only', title: 'Same name' })])])
+    )
+    const before = rendered.ctx.state.tabGroups
+
+    act(() => {
+      rendered.ctx.updateTabTitle('only', 'Same name')
+    })
+
+    expect(rendered.ctx.state.tabGroups).toBe(before)
+  })
+
   it('opens sidebar tabs, splits panes, moves tabs, restores sessions, and resets', async () => {
     const first = makeTab({ id: 'first', entityId: 'first' })
     const second = makeTab({ id: 'second', entityId: 'second' })

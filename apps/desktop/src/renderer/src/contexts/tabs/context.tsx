@@ -595,15 +595,26 @@ export const TabProvider = ({
     })
   }, [])
 
+  /**
+   * Retitles EVERY tab showing `entityId`, in every group.
+   *
+   * Every tab, not the first one found: an entity can be open in more than one
+   * pane, and retitling one of them leaves the other reading a name the entity
+   * no longer has — the same bug this function exists to prevent, one pane over.
+   *
+   * A tab that already carries the title is skipped, because the loudest caller
+   * hears an event on every SAVE and not only on a rename: dispatching per
+   * autosave would re-render the tab tree and re-arm the debounced write of tab
+   * state to disk, for a title that did not change.
+   */
   const updateTabTitleByEntityId = useCallback((entityId: string, title: string) => {
     for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
-      const tab = group.tabs.find((t) => t.entityId === entityId)
-      if (tab) {
+      for (const tab of group.tabs) {
+        if (tab.entityId !== entityId || tab.title === title) continue
         dispatch({
           type: 'UPDATE_TAB_TITLE',
           payload: { tabId: tab.id, groupId, title }
         })
-        return
       }
     }
   }, [])

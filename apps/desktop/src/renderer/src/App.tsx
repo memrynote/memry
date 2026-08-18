@@ -82,6 +82,7 @@ import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
 import { AgentFeatureProvider } from '@/agent-chat/agent-feature-provider'
 import { AgentTabTitleSync } from '@/agent-chat/agent-tab-title-sync'
+import { CanvasTabTitleSync } from '@/components/tabs/canvas-tab-title-sync'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -336,6 +337,7 @@ const AppContent = (): React.JSX.Element => {
   return (
     <TabDragProvider>
       <AgentTabTitleSync />
+      <CanvasTabTitleSync />
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
       </div>

@@ -102,6 +102,11 @@ export function tabModifyReducer(state: TabSystemState, action: ModifyAction): T
       const group = state.tabGroups[groupId]
       if (!group) return state
 
+      // A retitle to the name the tab already has returns the SAME state object,
+      // so the context value stays referentially stable: a redundant dispatch
+      // cannot re-render the tab tree or re-arm the debounced save of tab state.
+      if (!group.tabs.some((t) => t.id === tabId && t.title !== title)) return state
+
       return {
         ...state,
         tabGroups: {
