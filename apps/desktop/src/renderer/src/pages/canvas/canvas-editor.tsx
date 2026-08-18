@@ -6,7 +6,7 @@
  * public/excalidraw-asset-path.js) because the CSP blocks Excalidraw's CDN.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Excalidraw,
   serializeAsJSON,
@@ -25,6 +25,7 @@ import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useTabActions } from '@/contexts/tabs'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
 import { parseMemryHref, tabFromMemryHref } from '@/lib/memry-links'
 import { notesService } from '@/services/notes-service'
 import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
@@ -53,10 +54,41 @@ import {
   type LiveCanvasHandle
 } from './canvas-live-registry'
 import type { SceneEditElement } from './canvas-scene-edit'
+import {
+  CANVAS_VIEWPORT_KEY,
+  parseCanvasViewport,
+  sameViewport,
+  viewportFromAppState,
+  type CanvasViewport,
+  type ViewportAppState
+} from './canvas-viewport'
 
 const log = createLogger('SpatialCanvas')
 
 const SCENE_SAVE_DEBOUNCE_MS = 800
+/**
+ * How often the camera is committed to tab state while the user pans or zooms.
+ * Excalidraw's onChange fires per frame, and every commit mints a new
+ * tab-system state object and re-renders every `useTabGroup` consumer.
+ */
+const VIEWPORT_SAVE_THROTTLE_MS = 500
+
+/**
+ * The appState slice that positions the camera.
+ *
+ * Cast because `zoom` is typed as a branded `NormalizedZoomValue` that the
+ * library does not export a constructor for. The number is Excalidraw's own,
+ * round-tripped through tab state, and `parseCanvasViewport` has already held it
+ * to the library's range.
+ */
+const viewportAppState = (
+  viewport: CanvasViewport
+): NonNullable<ExcalidrawInitialDataState['appState']> =>
+  ({
+    scrollX: viewport.scrollX,
+    scrollY: viewport.scrollY,
+    zoom: { value: viewport.zoom }
+  }) as NonNullable<ExcalidrawInitialDataState['appState']>
 
 /** A scene element as this file reads it: cards carry `customData`. */
 interface LinkableElement {
@@ -105,9 +137,92 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     }
   }, [initialScene])
 
+  // Where this TAB was last looking. Stored per tab rather than in the scene:
+  // the scene's exported appState carries no viewport at all (see
+  // `canvas-viewport.ts`), and two split panes on one canvas are two cameras.
+  const [storedViewport, setStoredViewport] = useTabEntityViewState<CanvasViewport | null>({
+    key: CANVAS_VIEWPORT_KEY,
+    defaultValue: null,
+    parse: parseCanvasViewport
+  })
+  /**
+   * Mount-time snapshot of that camera. `initialData` is read once, from
+   * componentDidMount, so reading the live value inside `loadInitialData` would
+   * only churn the callback's identity on every write we make ourselves.
+   */
+  const restoredViewportRef = useRef(storedViewport)
+  /** Live camera, mirrored out of onChange. The only thing teardown may persist. */
+  const viewportRef = useRef(storedViewport)
+  /** Last camera actually written, so a commit that changes nothing is skipped. */
+  const committedViewportRef = useRef(storedViewport)
+  const viewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setStoredViewportRef = useRef(setStoredViewport)
+
+  useLayoutEffect(() => {
+    setStoredViewportRef.current = setStoredViewport
+  }, [setStoredViewport])
+
+  const commitViewport = useCallback((): void => {
+    viewportTimerRef.current = null
+    const next = viewportRef.current
+    if (next === null || sameViewport(next, committedViewportRef.current)) {
+      return
+    }
+    committedViewportRef.current = next
+    setStoredViewportRef.current(next)
+  }, [])
+
+  /**
+   * Mirrors the camera out of onChange, throttled.
+   *
+   * Ignored while `isLoading`: Excalidraw fires onChange during init carrying
+   * its default appState (origin, 100%), and recording that would overwrite the
+   * stored camera with the origin before initialData has even been applied —
+   * the same init-window hazard the serialize guard below exists for.
+   */
+  const recordViewport = useCallback(
+    (appState: ViewportAppState & { isLoading?: boolean }): void => {
+      if (appState.isLoading) {
+        return
+      }
+      const next = viewportFromAppState(appState)
+      if (!next) {
+        return
+      }
+      viewportRef.current = next
+      if (viewportTimerRef.current === null) {
+        viewportTimerRef.current = setTimeout(commitViewport, VIEWPORT_SAVE_THROTTLE_MS)
+      }
+    },
+    [commitViewport]
+  )
+
+  // Final write at teardown, from the REF — never from the API. On a tab switch
+  // React destroys the Excalidraw child before this parent's cleanup runs, so by
+  // then `getAppState()` describes a torn-down editor; that is the same reason
+  // the serialize path checks `wrapperRef.isConnected`.
+  useEffect(() => {
+    return () => {
+      if (viewportTimerRef.current !== null) {
+        clearTimeout(viewportTimerRef.current)
+        viewportTimerRef.current = null
+      }
+      commitViewport()
+    }
+  }, [commitViewport])
+
   const loadInitialData = useCallback((): ExcalidrawInitialDataState | null => {
+    const viewport = restoredViewportRef.current
     if (!initialScene) {
-      return null
+      // Never drawn on — but the user may still have panned or zoomed here, and
+      // an empty canvas is the easiest place of all to get lost in.
+      return viewport
+        ? ({
+            elements: [],
+            appState: viewportAppState(viewport),
+            scrollToContent: false
+          } satisfies ExcalidrawInitialDataState)
+        : null
     }
     // serializeAsJSON output: { elements, appState, files } plus metadata
     // keys initialData ignores. Its exported appState is already cleaned
@@ -118,9 +233,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
     return {
       elements: parsed.elements ?? [],
-      appState: parsed.appState ?? {},
+      appState: { ...(parsed.appState ?? {}), ...(viewport ? viewportAppState(viewport) : {}) },
       files: parsed.files,
-      scrollToContent: true
+      // `scrollToContent` runs AFTER the appState restore and would undo it, so
+      // it stays the fallback for a tab that has no camera of its own yet.
+      scrollToContent: viewport === null
     } satisfies ExcalidrawInitialDataState
   }, [initialScene])
 
@@ -624,6 +741,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         }}
         onChange={(_elements, appState) => {
           persisterRef.current?.notifyChange()
+          recordViewport(appState)
           interceptLinkEditor(appState)
         }}
         onLinkOpen={handleLinkOpen}

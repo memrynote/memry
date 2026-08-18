@@ -24,8 +24,22 @@ import { clearCardTitleCache } from './canvas-link-target-title'
 
 interface FakeApi {
   getSceneElements: () => unknown[]
-  getAppState: () => { isLoading: boolean }
+  getAppState: () => { isLoading: boolean; selectedElementIds: Record<string, boolean> }
   getFiles: () => Record<string, unknown>
+  scrollToContent: (...args: unknown[]) => void
+  updateScene: (...args: unknown[]) => void
+}
+
+/**
+ * Installs the slice of the preload API this suite drives. Cast through
+ * `unknown` because `Window['api']` is the full typed surface and these tests
+ * only stand up the two namespaces the editor touches.
+ */
+function installWindowApi(): void {
+  ;(window as unknown as { api: unknown }).api = {
+    canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
+    notes: { getFolders: () => Promise.resolve([]) }
+  }
 }
 
 const mocks = vi.hoisted(() => ({
@@ -36,14 +50,25 @@ const mocks = vi.hoisted(() => ({
     elements: [] as unknown[],
     isLoading: true,
     selectedElementIds: {} as Record<string, boolean>,
-    showHyperlinkPopup: false as false | 'info' | 'editor'
+    showHyperlinkPopup: false as false | 'info' | 'editor',
+    /** The camera onChange reports. `null` = pre-init, no camera in appState. */
+    viewport: null as { scrollX: number; scrollY: number; zoom: { value: number } } | null
   },
+  dispatch: vi.fn(),
+  getTab: vi.fn(() => ({ viewState: {} }) as { viewState: Record<string, unknown> }),
+  identity: { tabId: 't1', groupId: 'g1', entityId: 'c1' } as {
+    tabId: string
+    groupId: string
+    entityId?: string
+  } | null,
   linkDialogProps: {} as Record<string, unknown>,
   onChange: null as (() => void) | null,
   excalidrawProps: {} as Record<string, unknown>,
   liveOpened: vi.fn(),
   liveClosed: vi.fn(),
-  serializeAsJSON: vi.fn((elements: unknown[]) => JSON.stringify({ elements })),
+  serializeAsJSON: vi.fn((elements: unknown[], ..._rest: unknown[]) =>
+    JSON.stringify({ elements })
+  ),
   openTab: vi.fn(),
   toastError: vi.fn(),
   scrollToContent: vi.fn(),
@@ -67,7 +92,11 @@ vi.mock('@excalidraw/excalidraw', () => ({
     mocks.onChange = () =>
       (props.onChange as unknown as (e: unknown[], a: unknown, f: unknown) => void)(
         mocks.api.elements,
-        { showHyperlinkPopup: mocks.api.showHyperlinkPopup },
+        {
+          showHyperlinkPopup: mocks.api.showHyperlinkPopup,
+          isLoading: mocks.api.isLoading,
+          ...(mocks.api.viewport ?? {})
+        },
         {}
       )
     // The real Excalidraw hands out its imperative API on mount — long before
@@ -91,9 +120,6 @@ vi.mock('@excalidraw/excalidraw', () => ({
   },
   serializeAsJSON: (elements: unknown[], ...rest: unknown[]) =>
     mocks.serializeAsJSON(elements, ...rest),
-  // The editor installs the vault-backed shape library on mount; this suite is
-  // about scene persistence, so the hook is a no-op here.
-  useHandleLibrary: () => undefined,
   languages: [],
   defaultLang: { code: 'en' },
   // Library persistence is covered by the adapter's own tests; here it only
@@ -121,7 +147,13 @@ vi.mock('@/services/canvas-service', () => ({
   onCanvasTooLarge: () => () => {}
 }))
 vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
-vi.mock('@/contexts/tabs', () => ({ useTabActions: () => ({ openTab: mocks.openTab }) }))
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mocks.openTab }),
+  // The camera lives in the owning tab's viewState, so the view-state hooks
+  // need a dispatch/getTab pair even in the suites that never look at it.
+  useTabActionsOptional: () => ({ dispatch: mocks.dispatch, getTab: mocks.getTab })
+}))
+vi.mock('@/contexts/tabs/tab-identity', () => ({ useTabIdentity: () => mocks.identity }))
 // The link picker is mounted (closed) alongside Excalidraw, so its data
 // sources have to exist even for the suites that never open it.
 // The picker's own rows are covered by canvas-link-candidates.test.ts; here the
@@ -188,10 +220,7 @@ describe('CanvasEditor persistence safety', () => {
     // routed to this instance (#916); this suite only needs the calls to land.
     mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
     mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
   })
 
   afterEach(() => {
@@ -394,10 +423,7 @@ describe('CanvasEditor link opening', () => {
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.isLoading = false
     window.open = mocks.windowOpen as unknown as typeof window.open
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: PROD_DOC }
@@ -500,10 +526,7 @@ describe('CanvasEditor link picker', () => {
     mocks.linkDialogProps = {}
     mocks.api.isLoading = false
     mocks.api.showHyperlinkPopup = false
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
   })
 
   it('opens the picker for a single selected shape', () => {
@@ -606,10 +629,7 @@ describe('CanvasEditor native link action', () => {
     mocks.api.showHyperlinkPopup = false
     mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
     mocks.api.selectedElementIds = { 'shape-1': true }
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
   })
 
   it('answers the built-in link button with the item picker, and closes its URL box', () => {
@@ -681,10 +701,7 @@ describe('CanvasEditor link bubble label', () => {
   beforeEach(() => {
     mocks.api.isLoading = false
     mocks.api.elements = []
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
   })
 
   it("shows the linked item's name instead of its id", async () => {
@@ -742,10 +759,7 @@ describe('CanvasEditor element link label', () => {
     mocks.noteGet.mockReset().mockResolvedValue({ id: 'n1', title: 'memrynote Launch' })
     mocks.taskGet.mockReset().mockResolvedValue(null)
     mocks.eventGet.mockReset().mockResolvedValue(null)
-    ;(window as Window & { api: unknown }).api = {
-      canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-      notes: { getFolders: () => Promise.resolve([]) }
-    }
+    installWindowApi()
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { href: PROD_DOC }
@@ -824,5 +838,202 @@ describe('CanvasEditor element link label', () => {
     const anchor = await mountAnchor(container, `${PROD_DOC}?element=r-1`)
 
     expect(anchor.textContent).toBe('canvas.link.missingTarget')
+  })
+})
+
+/**
+ * Viewport restore (#1508 A6, Aurelie): a canvas tab used to come back at 100%
+ * zoom looking at the middle of the drawing, because the stored scene carries no
+ * camera (`serializeAsJSON` drops scrollX/scrollY/zoom) and every mount fell
+ * back to `scrollToContent`.
+ */
+describe('CanvasEditor viewport restore', () => {
+  const CAMERA = { scrollX: -420, scrollY: 96, zoom: 2 }
+
+  interface InitialData {
+    elements?: unknown[]
+    appState?: Record<string, unknown>
+    scrollToContent?: boolean
+  }
+
+  /** The stamped record `useTabEntityViewState` persists under the tab. */
+  function storedCamera(entityId: string | undefined, value: unknown): void {
+    mocks.getTab.mockReturnValue({ viewState: { canvasViewport: { entityId, value } } })
+  }
+
+  function readInitialData(): InitialData | null {
+    return (mocks.excalidrawProps.initialData as () => InitialData | null)()
+  }
+
+  /** Only the writes that carry a camera; the tab has other view-state writers. */
+  function cameraWrites(): unknown[] {
+    return mocks.dispatch.mock.calls
+      .map(
+        ([action]) => action as { type: string; payload: { viewState?: Record<string, unknown> } }
+      )
+      .filter(
+        (action) => action.type === 'SAVE_TAB_STATE' && action.payload.viewState?.canvasViewport
+      )
+      .map((action) => action.payload.viewState?.canvasViewport)
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mocks.update.mockReset().mockResolvedValue({ id: 'c1' })
+    mocks.dispatch.mockReset()
+    mocks.getTab.mockReset().mockReturnValue({ viewState: {} })
+    mocks.identity = { tabId: 't1', groupId: 'g1', entityId: 'c1' }
+    mocks.api.elements = []
+    mocks.api.isLoading = true
+    mocks.api.viewport = null
+    mocks.onChange = null
+    mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
+    mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
+    installWindowApi()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('hands the tab camera to initialData and stands scrollToContent down', () => {
+    storedCamera('c1', CAMERA)
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+
+    const data = readInitialData()
+
+    expect(data?.appState).toMatchObject({
+      scrollX: CAMERA.scrollX,
+      scrollY: CAMERA.scrollY,
+      zoom: { value: CAMERA.zoom }
+    })
+    // Excalidraw applies scrollToContent AFTER restoring appState, so leaving it
+    // on would silently undo the camera we just restored.
+    expect(data?.scrollToContent).toBe(false)
+    expect(data?.elements).toEqual([{ id: 'stroke-1', type: 'freedraw' }])
+  })
+
+  it('centres on the drawing when the tab has no camera yet', () => {
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+
+    const data = readInitialData()
+
+    expect(data?.scrollToContent).toBe(true)
+    expect(data?.appState).not.toHaveProperty('scrollX')
+  })
+
+  it('restores the camera on a canvas that was never drawn on', () => {
+    storedCamera('c1', CAMERA)
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    const data = readInitialData()
+
+    expect(data).not.toBeNull()
+    expect(data?.elements).toEqual([])
+    expect(data?.appState).toMatchObject({ zoom: { value: CAMERA.zoom } })
+    expect(data?.scrollToContent).toBe(false)
+  })
+
+  it('still hands Excalidraw nothing for an untouched empty canvas', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    expect(readInitialData()).toBeNull()
+  })
+
+  it('ignores a camera stamped with a different canvas', () => {
+    // A preview tab is reused for the next item the user clicks, so the tab
+    // outlives the entity its camera was measured against.
+    storedCamera('another-canvas', CAMERA)
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+
+    expect(readInitialData()?.scrollToContent).toBe(true)
+  })
+
+  it('ignores a stored camera an older build could have written badly', () => {
+    storedCamera('c1', { scrollX: 10, scrollY: 10, zoom: 900 })
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+
+    expect(readInitialData()?.scrollToContent).toBe(true)
+  })
+
+  it('records a pan/zoom once per throttle window, not once per frame', () => {
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    finishInit()
+    mocks.api.viewport = { scrollX: -10, scrollY: -20, zoom: { value: 1.5 } }
+
+    act(() => {
+      mocks.onChange?.()
+      mocks.api.viewport = {
+        scrollX: CAMERA.scrollX,
+        scrollY: CAMERA.scrollY,
+        zoom: { value: CAMERA.zoom }
+      }
+      mocks.onChange?.()
+      mocks.onChange?.()
+    })
+    expect(cameraWrites()).toHaveLength(0)
+
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(cameraWrites()).toEqual([{ entityId: 'c1', value: CAMERA }])
+  })
+
+  it('ignores the camera Excalidraw reports before initialData is applied', () => {
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    // Still initialising: appState is Excalidraw's default (origin, 100%), and
+    // recording it would overwrite the stored camera with the origin.
+    mocks.api.viewport = { scrollX: 0, scrollY: 0, zoom: { value: 1 } }
+
+    act(() => {
+      mocks.onChange?.()
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(cameraWrites()).toHaveLength(0)
+  })
+
+  it('writes the last camera at teardown', () => {
+    // The fake API exposes no camera at all, so a camera in this write can only
+    // have come from the ref — which is the point: on a tab switch React
+    // destroys the Excalidraw child before this cleanup runs.
+    const { unmount } = render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    finishInit()
+    mocks.api.viewport = {
+      scrollX: CAMERA.scrollX,
+      scrollY: CAMERA.scrollY,
+      zoom: { value: CAMERA.zoom }
+    }
+
+    act(() => {
+      mocks.onChange?.()
+    })
+    expect(cameraWrites()).toHaveLength(0)
+
+    act(() => {
+      unmount()
+    })
+
+    expect(cameraWrites()).toEqual([{ entityId: 'c1', value: CAMERA }])
+  })
+
+  it('does not rewrite a camera that has not moved', () => {
+    storedCamera('c1', CAMERA)
+    const { unmount } = render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE} />)
+    finishInit()
+    mocks.api.viewport = {
+      scrollX: CAMERA.scrollX,
+      scrollY: CAMERA.scrollY,
+      zoom: { value: CAMERA.zoom }
+    }
+
+    act(() => {
+      mocks.onChange?.()
+      vi.advanceTimersByTime(500)
+      unmount()
+    })
+
+    expect(cameraWrites()).toHaveLength(0)
   })
 })
