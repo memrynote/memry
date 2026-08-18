@@ -131,9 +131,16 @@ application, memrynote picks the change up the next time it opens the vault.
 - Deleting a **folder** takes everything inside it — the confirmation tells you
   how many canvases that is — and sends the whole directory to the trash.
 
-Deletions sync, so a canvas you delete on one device disappears on the others.
-On those other devices the file is removed outright; only the device you deleted
-from keeps a copy in its trash.
+If the canvas was open, its tab closes with it — in both panes of a split view,
+and even if the tab was pinned. Deleting a folder closes the tabs of every
+canvas inside it the same way. The tab does not come back with
+<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>: reopening it would only show a
+canvas that no longer exists.
+
+Deletions sync, so a canvas you delete on one device disappears on the others —
+including its open tab, which closes on those devices too. On those other
+devices the file is removed outright; only the device you deleted from keeps a
+copy in its trash.
 
 That trash copy is a copy of the **file**, not an undo. Putting it back in your
 vault does not bring the canvas back into memrynote: the delete is what every
