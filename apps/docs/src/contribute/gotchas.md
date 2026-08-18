@@ -136,6 +136,23 @@ Two rules:
 
 Tests must exercise the real component: `notes-tree.test.tsx` pins `shouldVirtualize` to `false` **and** stubs `VirtualizedNotesTree`, so it can never catch this class of gap. `notes-tree-virtualized-rename.test.tsx` renders the real tree on both sides of the threshold; follow that shape.
 
+## The Notes Sidebar Tree Is the Union of Two Data Sources
+
+`buildTreeFromNotes` (`notes-tree-utils.tsx`) draws a folder node from **either** source, independently:
+
+1. the folder list read off disk — `getFolders` → `listDirectories`
+2. every folder path it synthesizes from the `path` of each note in the index
+
+They are backed by different queries (`notesKeys.folders()` and `notesKeys.lists()`), so refreshing one and not the other makes the tree render a folder that exists in only one of them.
+
+Moving a folder rewrites the note paths, so **every folder-path mutation must refresh both**. Renaming a folder used to `await refreshFolders()` alone: the folder list already said `New`, the notes list still said `Old/…`, and the tree drew both — the real, now-empty `New`, plus a phantom `Old` carrying every note. The phantom is a normal row wired to the same handlers, so the next action targets a directory that no longer exists: `deleteFolder` is `rm -rf` with `force: true` and no-ops silently, `renameFolder` is `fs.rename` and throws `ENOENT`, which is caught, toasted, and skips the refresh — so the row appears to revert to its old name.
+
+`useNoteTreeActions.refreshFolderTree()` refreshes both and is what rename, delete and drag-move call. Folder **creation** does not move note paths, so it still refreshes folders alone.
+
+An empty folder cannot produce a phantom, so this class of bug hides until a folder has notes in it — the first rename after creating a folder always looks correct.
+
+Related: folder expanded state is keyed by the `folder-<path>` node id and persisted, in both renderers. A path change must **remap** those keys (`remapExpandedFolderIds`, exposed as `renameNode` on both tree handles), or the folder and everything open inside it collapse on rename and the dead ids linger in storage.
+
 ## Editor-Zone Mousedown Handlers Steal Focus from BlockNote Menus
 
 BlockNote's shadcn menus (drag-handle menu, side menu, toolbars and their nested dropdowns) render **inline inside `.bn-container`, not portaled**. Any editor-zone mousedown handler — such as the "click the marquee zone to focus the editor at end" handler in `note.tsx` / `journal.tsx`, or the marquee selection hook — therefore also sees clicks on menu items. If such a handler focuses the editor on mousedown, the menu unmounts between `pointerdown` and `pointerup`, so the item's click never lands and the action silently does nothing (for example, drag-handle Colors/Delete appear to do nothing).
