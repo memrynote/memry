@@ -422,34 +422,57 @@
   position: sticky !important;
   /* Stick below the floating note chrome (var set by NoteLayout, 0 elsewhere) */
   top: var(--note-chrome-height, 0px) !important;
-  z-index: 20;
+  /* position + z-index makes this element a stacking context, so its
+     un-portaled Select/Tooltip/Popover popper content (see the ::before
+     comment below) paints within THIS context's z-order, not the viewport's.
+     A tooltip popping up from a button near the top row can rise above the
+     toolbar's own top edge into the note-chrome (.note-chrome, z-30) — it
+     has to outrank that z-index or the chrome paints over it. */
+  z-index: 40;
   width: 100%;
+  /* @blocknote/shadcn's base .bn-toolbar sets overflow-x: auto + max-width:
+     100vw for the floating popup case; the sticky bar wraps instead of
+     scrolling, so items that don't fit flow to a second row. */
+  max-width: none !important;
+  overflow: visible !important;
+  flex-wrap: wrap !important;
   margin: 0 0 8px 0 !important;
   padding: 4px 0 8px 0 !important;
-  background: color-mix(in srgb, var(--background) 72%, transparent) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  /* Background lives on ::before (below) rather than here: a background/
+     backdrop-filter on this element would make it the CSS containing block
+     for its own descendants' position: fixed content. BlockNote's shadcn
+     Select/Tooltip/Popover render un-portaled, so their popper content would
+     then be positioned and clipped relative to this bar instead of the
+     viewport — trapped inside it, unreachable and mostly invisible. */
   border: none !important;
   border-radius: 0 !important;
-  /* Soft scroll-edge instead of a hard divider: softened hairline + short falloff */
-  box-shadow:
-    0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
-    0 1px 10px -4px rgb(0 0 0 / 0.08) !important;
+  box-shadow: none !important;
   transform: none !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  .sticky-toolbar-enabled .bn-formatting-toolbar {
-    background: var(--background) !important;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+.sticky-toolbar-enabled .bn-formatting-toolbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Same solid color as the note body — the bar reads as part of the note,
+     not a separate floating panel, so no seam/divider against the content
+     scrolling under it. */
+  background: var(--background);
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {
   gap: 2px;
+}
+
+/* Without flex-shrink: 0, the forced min-width below replaces the browser's
+   default content-based min-width protection, so items (esp. the block type
+   select's "Paragraph" trigger) shrink narrower than their text and overflow
+   onto neighboring buttons instead of wrapping to the next row. */
+.sticky-toolbar-enabled .bn-formatting-toolbar > * {
+  flex-shrink: 0;
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar button {
@@ -523,8 +546,11 @@
 }
 
 /* The button sits inside a pointer-capture span, so the span is the grid item
-   and has to stretch before `width: 100%` on the button means anything. */
-.review-formatting-toolbar-action {
+   and has to stretch before `width: 100%` on the button means anything. This
+   is compact-popup only — in the sticky toolbar the same span must stay an
+   inline flex item, or `width: 100%` claims the whole row width and forces
+   the icon-only button onto its own line. */
+.review-formatting-toolbar-compact .review-formatting-toolbar-action {
   display: block;
   width: 100%;
 }

@@ -62,7 +62,7 @@ export function ReviewFormattingToolbar({
       <FormattingToolbar {...toolbarProps}>
         {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
         <ListTypeButtons />
-        <ReviewToolbarButton onSelect={onAddComment} />
+        <ReviewToolbarButton onSelect={onAddComment} iconOnly />
       </FormattingToolbar>
     )
   }
@@ -109,7 +109,13 @@ export function ReviewFormattingToolbar({
   )
 }
 
-function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelection) => void }) {
+function ReviewToolbarButton({
+  onSelect,
+  iconOnly = false
+}: {
+  onSelect?: (selection: ReviewSelection) => void
+  iconOnly?: boolean
+}) {
   const { t } = useT('notes')
   const Components = useComponentsContext()
   const editor = useBlockNoteEditor()
@@ -263,10 +269,12 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
           runAction()
         }}
       >
-        {/* The icon alone read as an unlabelled glyph in the corner of the
-            popup; the row is a single full-width button so the action is
-            spelled out. `label` stays for the aria-label. */}
-        {label}
+        {/* The compact popup is a single full-width button, so the icon alone
+            reads as an unlabelled glyph in the corner — spell it out there.
+            The sticky toolbar sits inline with the other icon-only buttons;
+            spelling it out there is what pushed it onto its own row. Either
+            way `label` stays for the aria-label/tooltip. */}
+        {!iconOnly && label}
       </Components.FormattingToolbar.Button>
     </span>
   )
