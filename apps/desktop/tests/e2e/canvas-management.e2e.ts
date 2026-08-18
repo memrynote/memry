@@ -268,22 +268,23 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await commitInlineName(page, 'folder:Untitled Folder', 'Folder name', 'Boards')
 
     // Two canvases in the folder, each opened in its own tab by the create.
+    // Counted rather than named: a canvas rename does not rewrite its tab
+    // title, so both of these tabs read the same thing and only the COUNT can
+    // tell them apart.
+    const tabs = page.locator('[role="tab"]')
+    const tabsBefore = await tabs.count()
+
     await rowAction(page, 'folder:Boards', 'New canvas here')
     await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 30_000 })
     await expect.poll(async () => (await listCanvases(page)).length).toBe(1)
     const alpha = (await listCanvases(page))[0]
-    await rowAction(page, `canvas:${alpha.id}`, 'Rename')
-    await commitInlineName(page, `canvas:${alpha.id}`, 'Canvas name', 'Alpha')
 
     await rowAction(page, 'folder:Boards', 'New canvas here')
+    await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 30_000 })
     await expect.poll(async () => (await listCanvases(page)).length).toBe(2)
     const beta = (await listCanvases(page)).find((c) => c.id !== alpha.id)
-    await rowAction(page, `canvas:${beta.id}`, 'Rename')
-    await commitInlineName(page, `canvas:${beta.id}`, 'Canvas name', 'Beta')
 
-    const tab = (name: string) => page.locator('[role="tab"]').filter({ hasText: name })
-    await expect(tab('Alpha')).toHaveCount(1)
-    await expect(tab('Beta')).toHaveCount(1)
+    await expect(tabs).toHaveCount(tabsBefore + 2)
 
     // ------------------------------------------------------- one canvas gone
     await rowAction(page, `canvas:${alpha.id}`, 'Delete')
@@ -291,13 +292,13 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await expect(confirm.getByText(/Delete this canvas\?/)).toBeVisible()
     await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
 
-    await expect(tab('Alpha')).toHaveCount(0)
-    // Its neighbour is untouched: the close is keyed on the deleted canvas, not
-    // on "a canvas was deleted".
-    await expect(tab('Beta')).toHaveCount(1)
+    // Exactly one tab went: the close is keyed on the canvas that was deleted,
+    // not on "a canvas was deleted".
+    await expect(tabs).toHaveCount(tabsBefore + 1)
     await expect(row(page, `canvas:${alpha.id}`)).toHaveCount(0)
+    await expect(row(page, `canvas:${beta.id}`)).toBeVisible()
 
-    // ------------------------------------------------------ the folder cascade
+    // ---------------------------------------------------- the folder cascade
     // The folder event carries a path, so the canvases it takes with it are
     // announced one by one — without that, this tab would survive its canvas.
     await rowAction(page, 'folder:Boards', 'Delete')
@@ -305,7 +306,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await expect(folderConfirm.getByText(/Delete this canvas folder\?/)).toBeVisible()
     await folderConfirm.getByRole('button', { name: 'Delete', exact: true }).click()
 
-    await expect(tab('Beta')).toHaveCount(0)
+    await expect(tabs).toHaveCount(tabsBefore)
     await expect.poll(async () => (await listCanvases(page)).length).toBe(0)
   })
 })

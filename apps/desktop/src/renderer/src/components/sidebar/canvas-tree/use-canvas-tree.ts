@@ -97,7 +97,7 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
   }, [refresh])
 
   /**
-   * Coalesces a burst of tree events into one re-read.
+   * Coalesces a burst of tree events into two re-reads at most.
    *
    * Deleting a folder emits one `canvas:deleted` per canvas it took with it
    * (`ipc/canvas-folder-handlers`) on top of the folder event, so a folder of
@@ -105,14 +105,29 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
    * fifty-one — each of them a pair of IPC list calls, for a tree whose final
    * shape is the same either way.
    *
-   * Trailing edge, so the last event in a burst is always the one that
-   * refreshes: no event is dropped, the listing just lands this many ms later.
+   * LEADING edge, deliberately, after a trailing-only version turned
+   * `canvas-management.e2e` red: a refresh landing while a row is being renamed
+   * closes the inline field, and merely deferring the refresh by this many ms
+   * moved it out of the quiet gap after the event and into the window where the
+   * user is typing. Refreshing on the first event of a burst keeps the timing
+   * every existing interaction was built against; only the events that arrive
+   * behind it are merged into one trailing catch-up.
+   *
+   * So this never schedules a refresh an event would not already have caused,
+   * and never delays the first one.
    */
-  const refreshTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshWindow = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshQueued = React.useRef(false)
   const scheduleRefresh = React.useCallback(() => {
-    if (refreshTimer.current) clearTimeout(refreshTimer.current)
-    refreshTimer.current = setTimeout(() => {
-      refreshTimer.current = null
+    if (refreshWindow.current) {
+      refreshQueued.current = true
+      return
+    }
+    void refresh()
+    refreshWindow.current = setTimeout(() => {
+      refreshWindow.current = null
+      if (!refreshQueued.current) return
+      refreshQueued.current = false
       void refresh()
     }, TREE_REFRESH_COALESCE_MS)
   }, [refresh])
@@ -144,7 +159,7 @@ export function useCanvasTree({ onFolderPathChanged }: CanvasTreeOptions = {}): 
     ]
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe())
-      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+      if (refreshWindow.current) clearTimeout(refreshWindow.current)
     }
   }, [scheduleRefresh])
 
