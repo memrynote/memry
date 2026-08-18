@@ -17,6 +17,7 @@ type CrudAction = Extract<
     type:
       | 'OPEN_TAB'
       | 'CLOSE_TAB'
+      | 'CLOSE_TABS_BY_ENTITY'
       | 'CLOSE_OTHER_TABS'
       | 'CLOSE_TABS_TO_RIGHT'
       | 'CLOSE_ALL_TABS'
@@ -345,6 +346,45 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           [groupId]: { ...pruned, tabs: newTabs, activeTabId: newActiveTabId }
         }
       }
+    }
+
+    /**
+     * Closes every tab showing an entity that has just been deleted.
+     *
+     * Across ALL groups, not just the active one: `closeTab` defaults to the
+     * active group, and the same canvas can sit in both panes of a split — a
+     * per-group close leaves the copy the user is looking at open, which is the
+     * bug this action exists to fix.
+     *
+     * PINNED tabs close too. A pin means "do not close this by accident", not
+     * "keep this entity alive"; leaving one behind writes a tab pointing at a
+     * tombstone into the persisted session, so it comes back as a permanent
+     * not-found screen on every launch.
+     *
+     * Delegated to CLOSE_TAB per tab rather than reimplemented, because closing
+     * the last tab in a group has to collapse the split, re-seed a lone group
+     * with Home, and prune nav history — three behaviours that would drift the
+     * moment they were written twice.
+     *
+     * `recentlyClosed` is then restored to what it was: ⌘⇧T promises "reopen
+     * the tab you closed", and reopening this one gives a dead tab whose canvas
+     * is in the OS trash. We do not offer to undo the delete, so we must not
+     * offer a shortcut that looks like it does.
+     */
+    case 'CLOSE_TABS_BY_ENTITY': {
+      const { entityId } = action.payload
+      const targets = Object.entries(state.tabGroups).flatMap(([groupId, group]) =>
+        group.tabs
+          .filter((tab) => tab.entityId === entityId)
+          .map((tab) => ({ tabId: tab.id, groupId }))
+      )
+      if (targets.length === 0) return state
+
+      const closed = targets.reduce(
+        (acc, payload) => tabCrudReducer(acc, { type: 'CLOSE_TAB', payload }),
+        state
+      )
+      return { ...closed, recentlyClosed: state.recentlyClosed }
     }
 
     case 'CLOSE_OTHER_TABS': {

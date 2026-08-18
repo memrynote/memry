@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { CanvasFolderChannels } from '@memry/contracts/canvas-folder-api'
+import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { enErrors } from '@memry/i18n/locales/en-errors'
 import {
   CANVAS_FOLDER_ERROR_KEYS,
@@ -394,6 +395,36 @@ describe('canvasFolder:delete', () => {
       path: 'Work'
     })
     expect(result).toEqual({ success: true, deletedCanvasIds: ['canvas-1', 'canvas-2'] })
+  })
+
+  it('announces each canvas the folder took with it, before the folder itself', async () => {
+    // The folder event carries a path, and a listener holding a canvas ID —
+    // the tab closer — cannot match a path against it. Without these, a folder
+    // delete reads as no canvas deletes at all.
+    await withWorkingCanvasContext()
+    vi.mocked(deleteCanvasFolder).mockResolvedValue(['canvas-1', 'canvas-2'])
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasFolderChannels.invoke.DELETE]({}, { path: 'Work' })
+
+    const broadcasts = vi.mocked(broadcastToAllWindows).mock.calls
+    expect(broadcasts).toEqual([
+      [CanvasChannels.events.DELETED, { id: 'canvas-1' }],
+      [CanvasChannels.events.DELETED, { id: 'canvas-2' }],
+      [CanvasFolderChannels.events.DELETED, { path: 'Work' }]
+    ])
+  })
+
+  it('announces no canvas deletes when the folder held none', async () => {
+    await withWorkingCanvasContext()
+    vi.mocked(deleteCanvasFolder).mockResolvedValue([])
+    const handlers = await registerAndGetHandlers()
+
+    await handlers[CanvasFolderChannels.invoke.DELETE]({}, { path: 'Empty' })
+
+    expect(vi.mocked(broadcastToAllWindows).mock.calls).toEqual([
+      [CanvasFolderChannels.events.DELETED, { path: 'Empty' }]
+    ])
   })
 
   it('rejects a blank path without touching the store', async () => {

@@ -285,6 +285,8 @@ export type TabAction =
       }
     }
   | { type: 'CLOSE_TAB'; payload: { tabId: string; groupId: string } }
+  /** Every tab showing an entity that no longer exists — see the reducer case. */
+  | { type: 'CLOSE_TABS_BY_ENTITY'; payload: { entityId: string } }
   | { type: 'CLOSE_OTHER_TABS'; payload: { tabId: string; groupId: string } }
   | { type: 'CLOSE_TABS_TO_RIGHT'; payload: { tabId: string; groupId: string } }
   | { type: 'CLOSE_ALL_TABS'; payload: { groupId: string } }

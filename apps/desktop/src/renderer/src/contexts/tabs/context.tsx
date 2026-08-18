@@ -64,6 +64,16 @@ interface TabActionsContextType {
   closeTab: (tabId: string, groupId?: string) => void
 
   /**
+   * Close every tab showing `entityId`, in every group, because the entity it
+   * showed has been deleted.
+   *
+   * Deliberately NOT routed through the close guards: they exist to offer
+   * "save before closing", and the row this tab would save to is already
+   * tombstoned. Prompting would hand the user a Save button that cannot work.
+   */
+  closeTabsByEntityId: (entityId: string) => void
+
+  /**
    * Register a veto for this tab's close while it holds unsaved work.
    * Returns an unregister function.
    */
@@ -423,6 +433,10 @@ export const TabProvider = ({
     [requestTabClose]
   )
 
+  const closeTabsByEntityId = useCallback((entityId: string) => {
+    dispatch({ type: 'CLOSE_TABS_BY_ENTITY', payload: { entityId } })
+  }, [])
+
   const closeOtherTabs = useCallback(
     (tabId: string, groupId?: string) => {
       const actualGroupId = groupId ?? activeGroupIdRef.current
@@ -776,6 +790,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      closeTabsByEntityId,
       registerCloseGuard,
       closeOtherTabs,
       closeTabsToRight,
@@ -811,6 +826,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      closeTabsByEntityId,
       registerCloseGuard,
       closeOtherTabs,
       closeTabsToRight,
