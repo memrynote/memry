@@ -24,6 +24,7 @@ import {
   type CanvasFolderListResponse,
   type CanvasFolderMutationResponse
 } from '@memry/contracts/canvas-folder-api'
+import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { createHandler, createValidatedHandler } from './validate'
 import { getCanvasContext } from '../canvas/vault-key'
 import { reconcileCanvasAssets } from '../canvas/assets/asset-service'
@@ -199,6 +200,18 @@ export function registerCanvasFolderHandlers(): void {
           }
         }
 
+        // One `canvas:deleted` per canvas the folder took with it, alongside the
+        // folder event. The folder event carries a path, and a path is not
+        // something a listener holding a canvas ID can match — so without these,
+        // every consumer keyed on canvas identity (tab closing today) sees a
+        // folder delete as no deletes at all. `deletedCanvasIds` covers
+        // descendants too, so a canvas nested three folders down is included.
+        //
+        // Emitted BEFORE the folder event: a listener that reacts to the folder
+        // event by re-reading the tree should already have seen the canvases go.
+        for (const id of deletedCanvasIds) {
+          broadcastToAllWindows(CanvasChannels.events.DELETED, { id })
+        }
         broadcastToAllWindows(CanvasFolderChannels.events.DELETED, { path: input.path })
         return { success: true, deletedCanvasIds }
       }
