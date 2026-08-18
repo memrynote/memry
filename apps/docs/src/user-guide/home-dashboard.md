@@ -2,6 +2,8 @@
 
 Your landing surface when a vault opens: one or more **boards** of resizable **widgets** that surface what matters — recent notes, bookmarks, tasks, the inbox, and more.
 
+Opening a board paints it in one pass — no entrance animation, so a full board arrives at once instead of blurring and settling into place.
+
 <!-- screenshot: home dashboard with a board of widgets -->
 
 ## Boards
