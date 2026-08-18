@@ -145,7 +145,6 @@
     "src/renderer/src/lib/virtual-list-utils.test.ts",
     "src/renderer/src/pages/calendar-callbacks.test.tsx",
     "src/renderer/src/pages/calendar.test.tsx",
-    "src/renderer/src/pages/canvas/canvas-editor.test.tsx",
     "src/renderer/src/pages/canvas/index.test.tsx",
     "src/renderer/src/pages/project/project-capture-input.test.tsx",
     "src/renderer/src/pages/project/tabs/list-tab.test.tsx",

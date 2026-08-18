@@ -29,6 +29,12 @@ canvas you have already made.
 - Canvases open in the normal tab system, so you can split the view and keep a
   canvas beside a note. See [Tabs & Split View](../tabs-split-view.md).
 
+Switching to another tab and back returns the board as you left it: same zoom
+level, same part of the board. That position belongs to the tab, so it comes back
+with your session after a restart, two split panes showing the same canvas each
+keep their own view, and it is never written into the file or sent to your other
+devices. Opening a canvas in a fresh tab starts centred on the drawing.
+
 ## Drawing
 
 The canvas uses a full drawing surface: freehand ink, shapes, arrows, text,
@@ -67,7 +73,8 @@ save by hand. Pressing **Cmd/Ctrl+S** simply confirms this with a short
 
 Only changes to the drawing itself are written. Moving around a board — panning,
 zooming, selecting — leaves the file untouched, so a board you are only reading
-does not keep rewriting itself or churning through sync. Whatever you have drawn
+does not keep rewriting itself or churning through sync; where you were looking
+is remembered by the tab instead. Whatever you have drawn
 is still written when you close the tab, quit, or press **Cmd/Ctrl+S**.
 
 Each canvas is a plain `.excalidraw` file in your vault's `canvases/` folder,
