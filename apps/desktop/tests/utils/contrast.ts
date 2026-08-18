@@ -26,7 +26,13 @@ const BASE_CSS = join(process.cwd(), 'src/renderer/src/assets/base.css')
  * the root element, so `:root` still applies underneath them and seeds both.
  */
 function readPalettes(): Map<ThemeSelector, Map<string, string>> {
-  const css = readFileSync(BASE_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  // Statement at-rules go first, and before comments: `@source
+  // "…/streamdown/dist/*.js";` contains a literal `/*`, so stripping comments
+  // straight away reads it as a comment opener and swallows every line up to
+  // the next `*/` — about sixty of them, palette blocks included.
+  const css = readFileSync(BASE_CSS, 'utf8')
+    .replace(/^[ \t]*@[a-z-]+[^;{}\n]*;[ \t]*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
   const palettes = new Map<ThemeSelector, Map<string, string>>(
     THEMES.map((selector) => [selector, new Map<string, string>()])
   )
