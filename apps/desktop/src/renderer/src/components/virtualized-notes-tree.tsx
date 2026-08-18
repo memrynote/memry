@@ -53,7 +53,12 @@ import {
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { IconPickerButton } from '@/components/icon-picker-button'
-import { extractFolderFromPath, getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
+import {
+  extractFolderFromPath,
+  getDisplayName,
+  getFileIcon,
+  remapExpandedFolderIds
+} from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { useT } from '@memry/i18n/renderer'
@@ -81,6 +86,8 @@ export interface VirtualizedTreeActions {
   collapseAll: () => void
   expandNode: (nodeId: string) => void
   expandNodes: (nodeIds: string[]) => void
+  /** Carry a folder's expanded state, and its open descendants', to a new id. */
+  renameNode: (oldNodeId: string, newNodeId: string) => void
   /**
    * Expand every folder on a note's path and scroll the row into view. The
    * plain tree gets this from `RevealHandler` + `scrollIntoView`; here the row
@@ -1044,6 +1051,9 @@ export function VirtualizedNotesTree({
       },
       expandNodes: (nodeIds: string[]) => {
         setExpandedIds(new Set(nodeIds))
+      },
+      renameNode: (oldNodeId: string, newNodeId: string) => {
+        setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
       },
       revealNote: (noteId: string) => {
         const note = noteMap.get(noteId)
