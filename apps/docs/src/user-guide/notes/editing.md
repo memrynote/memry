@@ -173,6 +173,17 @@ Color and underline are kept on separate nested spans, so an older version of Me
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
 
+### Text colours
+
+The nine text colours are tuned so each one is legible and tellable apart from the others in every theme. Each clears the WCAG AA contrast floor for small text against the page, carries enough colour to be nameable rather than reading as grey, and stays clear of the default body text. Grey is the deliberate exception: it stays neutral, and reads as a muted colour rather than a hue.
+
+Two consequences worth knowing:
+
+- Yellow is a gold rather than a lemon. A yellow light enough to look like lemon cannot meet the contrast floor against a white page.
+- Brown, orange and yellow share a warm range, so they are separated by how dark they are. Brown is the darkest of the three.
+
+Colours are stored by name, not as a fixed shade, so notes you coloured in an earlier version pick up the current tuning when you open them. Highlight (background) colours are unchanged — a filled background does not need the same treatment to stay readable.
+
 ## Link Previews
 
 Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.

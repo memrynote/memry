@@ -69,6 +69,63 @@
 :root .bn-container {
   --bn-colors-editor-text: var(--foreground);
   --bn-colors-editor-background: var(--background);
+
+  /* Text-colour palette, re-cut from BlockNote's Notion-legacy stock.
+     Reported: green read as plain grey while blue looked vivid. Measuring the
+     whole palette found three defects, and green had only the second:
+
+       1. AA. gray 2.58, red 3.90, orange 3.00, yellow 1.93 against the paper
+          background — all below the 4.5 WCAG AA floor for text.
+       2. Chroma. green sat at OKLCH hue 186 (teal, not green) with chroma
+          0.028, and brown at 0.045, against ~0.11 for blue. Below roughly 0.05
+          the eye cannot name a hue and the swatch reads as grey. This is why
+          green failed while measuring a comfortable 6.34 contrast: WCAG is
+          luminance-only and blind to it.
+       3. Separation from body text. brown sat 0.105 away in OKLab.
+
+     Re-cut so every swatch clears 4.5 on both light backgrounds, carries at
+     least 0.08 chroma (gray excepted — it is the one deliberate neutral), and
+     stays at least 0.15 from the body text. brown < orange < yellow in
+     lightness is held deliberately: they share the warm hue arc and lightness
+     order is the only thing that keeps brown from reading as dull orange.
+     AA is why yellow lands as gold rather than lemon — a light enough yellow
+     cannot clear 4.5 on white at all.
+
+     Backgrounds stay stock: a fill needs no chroma to be identified, and the
+     reporter confirmed the green background reads fine.
+
+     Presentation only. Colours persist by NAME (`textColor: "green"`, and
+     `<!-- colors:{...} -->` in vault markdown), never as hex, so existing notes
+     re-render under the new palette with no migration. */
+  --bn-colors-highlights-gray-text: #696969;
+  --bn-colors-highlights-brown-text: #824a32;
+  --bn-colors-highlights-red-text: #ba3f38;
+  --bn-colors-highlights-orange-text: #9d5b00;
+  --bn-colors-highlights-yellow-text: #7e7100;
+  --bn-colors-highlights-green-text: #007a44;
+  --bn-colors-highlights-blue-text: #0070a5;
+  --bn-colors-highlights-purple-text: #8550b8;
+  --bn-colors-highlights-pink-text: #b33e74;
+}
+
+/* The dark palette lives on `.bn-container[data-color-scheme=dark]` (0,2,0) in
+   @blocknote/shadcn, so this needs the extra attribute to win on specificity
+   rather than on stylesheet order.
+
+   Same three defects on the dark side: brown 3.69, purple 3.73 and pink 4.09
+   missed AA; green again had no chroma (0.037); and gray #bebdb8 sat 0.009 from
+   the #bcbab6 body text, close enough that "gray" was not a distinguishable
+   colour at all. */
+:root .bn-container[data-color-scheme='dark'] {
+  --bn-colors-highlights-gray-text: #838383;
+  --bn-colors-highlights-brown-text: #aa6f55;
+  --bn-colors-highlights-red-text: #da5c52;
+  --bn-colors-highlights-orange-text: #c07104;
+  --bn-colors-highlights-yellow-text: #998800;
+  --bn-colors-highlights-green-text: #199758;
+  --bn-colors-highlights-blue-text: #008ccd;
+  --bn-colors-highlights-purple-text: #a06cd5;
+  --bn-colors-highlights-pink-text: #d25a8f;
 }
 
 :root .bn-editor,
