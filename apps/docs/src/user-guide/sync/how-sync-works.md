@@ -135,6 +135,13 @@ Linking another device requires a one-time approval from a currently-signed-in d
 
 See [Linking Another Device](/user-guide/sync/linking-devices).
 
+### When Lists Refresh
+
+Tasks and projects that arrive from another device appear as sync applies them — nothing to click. If a
+device has been sitting untouched for a long time, returning to its window refreshes those lists as well,
+so coming back to a machine you left alone is enough to see the other one's changes. Restarting the app
+is never required to pick up tasks or completed tasks from another device.
+
 ## Deleting a Vault
 
 Remove a vault you no longer want from **Settings -> Vault** or the sidebar vault switcher.
