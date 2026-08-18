@@ -191,6 +191,9 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
   const projectsQuery = useQuery({
     queryKey: taskKeys.projects(),
     enabled,
+    // Opted out of the app-wide `refetchOnWindowFocus: false` default for the
+    // same reason as the tasks query below.
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<UiProject[]> => {
       const projectsResponse = await tasksService.listProjects()
       const baseProjects = projectsResponse.projects.map(dbProjectToUiProject)
@@ -216,6 +219,12 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
   const tasksQuery = useQuery({
     queryKey: taskKeys.tasks(),
     enabled,
+    // This list is refreshed purely by events, and a pull on a second machine
+    // is the only writer the user cannot see. One dropped ITEM_SYNCED leaves it
+    // stale forever, because the app-wide default is `refetchOnWindowFocus:
+    // false` and there is no interval. Coming back to the window is the cheapest
+    // reconcile point we have; the query reads local SQLite.
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<UiTask[]> => {
       const tasksResponse = await tasksService.list({
         includeCompleted: true,
@@ -257,7 +266,19 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
           })
         : () => {}
 
+    // A window that never loses focus never reaches the refetchOnWindowFocus
+    // reconcile above, so a dropped ITEM_SYNCED would still strand the list
+    // until restart. A sync leaving the `syncing` state is the other reconcile
+    // point, and it fires at most once per sync rather than once per item.
+    let wasSyncing = false
+    const unsubscribeSyncSettled = window.api.onSyncStatusChanged((event) => {
+      const syncing = event.status === 'syncing'
+      if (wasSyncing && !syncing) invalidateAll()
+      wasSyncing = syncing
+    })
+
     const unsubscribers = [
+      unsubscribeSyncSettled,
       onTaskCreated(invalidateAll),
       onTaskUpdated(invalidateAll),
       onTaskDeleted(invalidateAll),
