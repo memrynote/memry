@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Plus } from '@/lib/icons/icon-map'
 import { useT } from '@memry/i18n/renderer'
@@ -14,14 +13,10 @@ interface BoardEmptyStateProps {
  */
 export function BoardEmptyState({ onAddFirstWidget }: BoardEmptyStateProps): React.JSX.Element {
   const { t } = useT('common')
-  const reduceMotion = useReducedMotion()
   return (
-    <motion.div
+    <div
       data-testid="board-empty-state"
       className="mx-auto flex max-w-sm flex-col items-center gap-3 px-6 py-20 text-center"
-      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97, filter: 'blur(6px)' }}
-      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)' }}
-      transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
     >
       <div
         aria-hidden="true"
@@ -43,6 +38,6 @@ export function BoardEmptyState({ onAddFirstWidget }: BoardEmptyStateProps): Rea
         <Plus className="size-4" aria-hidden="true" />
         {t('home.empty.cta')}
       </Button>
-    </motion.div>
+    </div>
   )
 }

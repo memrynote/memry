@@ -1,5 +1,4 @@
 import { Fragment } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
@@ -54,7 +53,6 @@ export function HomeHeader({
   onAddWidget
 }: HomeHeaderProps): React.JSX.Element {
   const { t, i18n } = useT('common')
-  const reduceMotion = useReducedMotion()
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
@@ -75,12 +73,7 @@ export function HomeHeader({
 
   return (
     <div className="flex items-end justify-between px-6 pt-7 pb-5.5 [font-synthesis:none] antialiased">
-      <motion.div
-        className="flex flex-col gap-2"
-        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10, filter: 'blur(6px)' }}
-        animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ type: 'spring', bounce: 0, duration: 0.55 }}
-      >
+      <div className="flex flex-col gap-2">
         <h1 className="font-serif font-semibold tracking-[-0.022em] text-foreground text-[34px]/10">
           {greeting}
         </h1>
@@ -98,7 +91,7 @@ export function HomeHeader({
             </Fragment>
           ))}
         </div>
-      </motion.div>
+      </div>
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger

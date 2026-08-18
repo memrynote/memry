@@ -1,5 +1,4 @@
 import { useMemo, useRef } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
 import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout/legacy'
 import 'react-grid-layout/css/styles.css'
 import './home-grid.css'
@@ -42,7 +41,6 @@ function unchanged(board: HomePage, next: Layout): boolean {
 
 export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Element {
   const { t } = useT('common')
-  const reduceMotion = useReducedMotion()
 
   const layout: Layout = useMemo(
     () =>
@@ -105,31 +103,15 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
       onResizeStop={endInteraction}
       onLayoutChange={handleLayoutChange}
     >
-      {board.widgets.map((w, index) => {
+      {board.widgets.map((w) => {
         const def = WIDGET_REGISTRY[w.type]
         const size = sizeTier(w.w, w.h)
         // react-grid-layout clones this plain wrapper div (injecting position styles, drag handlers,
         // and appending the resize handle). Keeping it a vanilla element — rather than letting RGL
-        // clone WidgetFrame directly — is what makes drag/resize wiring reliable. The materialize
-        // animation therefore lives on an inner motion.div: RGL owns the wrapper's transform for
-        // positioning, so the two never fight over the same element.
+        // clone WidgetFrame directly — is what makes drag/resize wiring reliable.
         return (
           <div key={w.id} className="overflow-visible">
-            <motion.div
-              className="h-full w-full"
-              initial={
-                reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, filter: 'blur(6px)' }
-              }
-              animate={
-                reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, filter: 'blur(0px)' }
-              }
-              transition={{
-                type: 'spring',
-                bounce: 0,
-                duration: 0.45,
-                delay: Math.min(index * 0.04, 0.32)
-              }}
-            >
+            <div className="h-full w-full">
               {def ? (
                 <WidgetFrame
                   widget={w}
@@ -157,7 +139,7 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
                   }
                 />
               )}
-            </motion.div>
+            </div>
           </div>
         )
       })}
