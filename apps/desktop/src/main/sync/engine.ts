@@ -184,6 +184,11 @@ export class SyncEngine extends EventEmitter {
       },
       (itemId, itemType) => this.quarantine.isQuarantined(itemId, itemType)
     )
+    // Wired after the runner exists, for the same reason the coordinators above
+    // are: the coordinator raises the debt and the runner is what persists it,
+    // and neither can be constructed holding the other.
+    this.crdtSync.onUnmergedDebtChange = (hasDebt) =>
+      this.fullSyncRunner.recordCrdtUnmergedDebt(hasDebt)
     this.ctx.doPush = () => this.push()
     SyncEngine.activeInstance = this
   }
@@ -405,9 +410,16 @@ export class SyncEngine extends EventEmitter {
    * queued and has not run — so a snapshot push would delete or overwrite that
    * state. The CRDT snapshot push fn asks this before choosing an endpoint; see
    * `CrdtSyncCoordinator.hasUnmergedRemoteState`.
+   *
+   * It is also `true` for every note while this session cannot yet name them:
+   * the per-note set does not survive a quit, so a session that starts after one
+   * that ended holding debt has to answer for the whole vault until a sweep
+   * rebuilds the flags. See `FullSyncRunner.crdtUnmergedStateUnknown`.
    */
   hasUnmergedRemoteCrdtState(noteId: string): boolean {
-    return this.crdtSync.hasUnmergedRemoteState(noteId)
+    return (
+      this.fullSyncRunner.crdtUnmergedStateUnknown || this.crdtSync.hasUnmergedRemoteState(noteId)
+    )
   }
 
   async fullSync(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {

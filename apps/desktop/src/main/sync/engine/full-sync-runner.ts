@@ -92,6 +92,15 @@ export class FullSyncRunner {
    * controller stays aborted and a later engine must not inherit it.
    */
   private pacedCrdtPullAbort: AbortController | null = null
+  /**
+   * Did the *previous* session end holding notes whose server state it had not
+   * merged? Null until the persisted answer is read.
+   *
+   * Read lazily rather than in the constructor: this runner is built inside the
+   * SyncEngine constructor, and a `sync_state` lookup belongs to the first cycle
+   * that needs it rather than to construction.
+   */
+  private carriedUnmergedDebt: boolean | null = null
 
   constructor(
     ctx: SyncContext,
@@ -126,6 +135,57 @@ export class FullSyncRunner {
    * most likely looking at a stale note, so it must not wait out the interval.
    * Only when the trigger is unknowable does the interval decide.
    */
+  /**
+   * Can this session still not name the notes whose server state it has not
+   * merged?
+   *
+   * `CrdtSyncCoordinator.unmergedRemoteNotes` is per session and `clearCaches()`
+   * empties it at teardown, so an unmerged note came back on the next launch
+   * looking merged — and "merged" is the answer that routes its push to the
+   * endpoint that prunes every peer row at or below the new snapshot's
+   * watermark. Nor did the launch necessarily re-raise the flag on its own:
+   * `shouldSweepAllCrdtNotes` falls through to a *persisted* interval stamp, so
+   * a restart inside that interval with no reconnect gap queues no pulls at all.
+   * A single edit 30 s later was then enough to destroy a peer's updates.
+   *
+   * While this is true the answer for **every** note is "unmerged", which is the
+   * same conservative answer the per-note flag gives, applied vault-wide until
+   * the flags exist again. It costs those pushes the snapshot endpoint — they go
+   * to `/sync/crdt/updates`, which stores and broadcasts the same bytes and
+   * prunes nothing — and nothing else.
+   *
+   * It is dropped by the first vault-wide sweep, which queues a pull for every
+   * note in the vault and so flags every one of them individually: the blanket
+   * is retired because it has been made redundant, not because it went stale.
+   * That sweep is at most `CRDT_FULL_SWEEP_MIN_INTERVAL_MS` away.
+   *
+   * Persisting the note ids instead was the obvious alternative and is worse on
+   * both counts: it needs a new on-disk format in a live beta, and a crash can
+   * still leave it missing whatever it had not written yet, while a boolean that
+   * is already `'1'` cannot become wrong by not being written again.
+   */
+  get crdtUnmergedStateUnknown(): boolean {
+    this.carriedUnmergedDebt ??=
+      this.stateManager.getStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT) === '1'
+    return this.carriedUnmergedDebt
+  }
+
+  /**
+   * Persist the coordinator's empty ↔ non-empty transitions.
+   *
+   * Written as they happen rather than at teardown, because the case this has to
+   * survive is a session that never runs its teardown at all — a crash, a kill,
+   * a power cut. A transition is two writes per sweep cycle at worst: one when
+   * the sweep queues the vault, one when the paced drain finishes it.
+   */
+  recordCrdtUnmergedDebt(hasDebt: boolean): void {
+    // An empty set is not an answer while the flags have not been rebuilt — it
+    // is the emptiness this session *started* with, and clearing the key on it
+    // would hand the next launch the same false "everything is merged".
+    if (!hasDebt && this.crdtUnmergedStateUnknown) return
+    this.stateManager.setStateValue(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, hasDebt ? '1' : '0')
+  }
+
   private shouldSweepAllCrdtNotes(force: boolean): boolean {
     // Nothing is fetchable while offline. Sweeping here would schedule pulls
     // that are guaranteed to fail and then stamp the interval, hiding real
@@ -254,6 +314,16 @@ export class FullSyncRunner {
     for (const noteId of getAllCrdtNoteIds(getIndexDatabase())) {
       this.crdtSync.addPendingPull(noteId)
     }
+    // Every note in the vault now carries its own flag, so the vault-wide
+    // blanket a carried-over debt raised has nothing left to cover. Dropped
+    // after the loop and never before it: in between, a push would read a
+    // not-yet-flagged note as safe to snapshot.
+    this.carriedUnmergedDebt = false
+    // Re-state the key from this session's own set now that it is authoritative.
+    // Without this, a sweep that flags nothing — an empty vault, or one whose
+    // notes all cleared before the key was ever written — would leave the
+    // previous session's `'1'` standing and blanket every launch from here on.
+    this.recordCrdtUnmergedDebt(this.crdtSync.hasUnmergedNotes)
     this.lastSweepConnectionGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
     this.crdtSweepOwed = false
     this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))

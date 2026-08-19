@@ -85,7 +85,21 @@ export const SYNC_STATE_KEYS = {
   INITIAL_SEED_DONE: 'initialSeedDone',
   QUARANTINED_ITEMS: 'quarantinedItems',
   LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
-  LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt'
+  LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
+  /**
+   * `'1'` while some note's server state is known-unmerged, `'0'` once none is.
+   *
+   * The set of *which* notes lives in `CrdtSyncCoordinator.unmergedRemoteNotes`
+   * and is per session — `clearCaches()` empties it at teardown — so a quit
+   * between a failed merge and the next launch used to leave the note looking
+   * merged and therefore safe to snapshot. Only the boolean is persisted; the
+   * ids are re-derived by the next vault-wide sweep, which flags every note it
+   * queues. See `FullSyncRunner.crdtUnmergedStateUnknown`.
+   *
+   * A missing row reads as `'0'`, which is what every install written before
+   * this key existed has and what a vault with nothing outstanding means.
+   */
+  CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag

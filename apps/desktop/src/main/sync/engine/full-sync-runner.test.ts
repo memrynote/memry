@@ -53,11 +53,22 @@ vi.mock('../../database/client', () => ({
 
 class FakeCrdtSync {
   private pending = new Set<string>()
+  /**
+   * Mirrors the real coordinator: a note queued for a pull is by definition one
+   * whose server state is not in the local doc yet, so it is flagged too. The
+   * runner reads this back after a sweep to re-state the persisted debt.
+   */
+  unmerged = new Set<string>()
   pullCrdtForNote = vi.fn(async () => {})
   pullCrdtForNotes = vi.fn(async (_noteIds: string[], _signal?: AbortSignal) => {})
 
+  get hasUnmergedNotes(): boolean {
+    return this.unmerged.size > 0
+  }
+
   addPendingPull(noteId: string): void {
     this.pending.add(noteId)
+    this.unmerged.add(noteId)
   }
 
   get pendingPullCount(): number {
@@ -598,6 +609,84 @@ describe('FullSyncRunner', () => {
       await h.runner.run()
 
       expect(h.calls).toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+    })
+  })
+
+  // The per-note unmerged set is in-memory and per session, so a note left
+  // unmerged at quit came back on the next launch looking merged — and a launch
+  // inside the sweep interval queues nothing that would re-raise it. One edit
+  // 30 s later then pushed a snapshot, and the server prunes every `crdt_updates`
+  // row at or below the new watermark, including the peer rows this device never
+  // read. Only the fact that debt existed is persisted; the ids are re-derived.
+  describe('#given the previous session ended holding unmerged notes', () => {
+    it('#then every note reads as unmerged until a sweep rebuilds the flags', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
+      )
+
+      expect(h.runner.crdtUnmergedStateUnknown).toBe(true)
+    })
+
+    it('#then a clean set cannot clear the persisted debt before that sweep', () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
+      )
+
+      // An empty set here is the emptiness this session started with, not an
+      // answer about what the last one left behind.
+      h.runner.recordCrdtUnmergedDebt(false)
+
+      expect(h.setStateValue).not.toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
+      expect(h.runner.crdtUnmergedStateUnknown).toBe(true)
+    })
+
+    it('#then the sweep drops the blanket only once every note carries its own flag', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
+      )
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1', 'note-2'])
+
+      await h.runner.run()
+
+      expect(h.runner.crdtUnmergedStateUnknown).toBe(false)
+      expect(h.crdtSync.unmerged).toEqual(new Set(['note-1', 'note-2']))
+      // The vault's own set is authoritative from here, so the key is re-stated
+      // from it rather than left holding the previous session's answer.
+      expect(h.setStateValue).toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '1')
+    })
+
+    it('#then a sweep that finds nothing to flag clears the carried-over debt', async () => {
+      // Otherwise an empty vault — or one whose notes all cleared before the key
+      // was written — blankets every launch from here on, forever.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT ? '1' : undefined
+      )
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue([])
+
+      await h.runner.run()
+
+      expect(h.setStateValue).toHaveBeenCalledWith(SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
+      expect(h.runner.crdtUnmergedStateUnknown).toBe(false)
+    })
+  })
+
+  describe('#given no carried-over debt #when the coordinator reports a transition', () => {
+    it('#then it is persisted as it happens, not at teardown', () => {
+      // A session that is killed rather than stopped never runs a teardown, and
+      // that is exactly the session whose debt has to survive.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+
+      h.runner.recordCrdtUnmergedDebt(true)
+      h.runner.recordCrdtUnmergedDebt(false)
+
+      expect(h.setStateValue).toHaveBeenNthCalledWith(1, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '1')
+      expect(h.setStateValue).toHaveBeenNthCalledWith(2, SYNC_STATE_KEYS.CRDT_UNMERGED_DEBT, '0')
     })
   })
 

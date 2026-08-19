@@ -77,7 +77,11 @@ describe('SYNC_STATE_KEYS', () => {
         LAST_MANIFEST_CHECK_AT: 'lastManifestCheckAt',
         // Additive: absent on installs written by older builds, which reads
         // back as 0 and simply runs the vault-wide CRDT sweep once.
-        LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt'
+        LAST_CRDT_SWEEP_AT: 'lastCrdtSweepAt',
+        // Additive too: absent reads as '0' — "the last session ended with
+        // every note merged" — which is both what an older build's install
+        // means and the answer that changes nothing.
+        CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
       })
     })
 

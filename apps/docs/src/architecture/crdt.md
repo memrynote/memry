@@ -1054,12 +1054,43 @@ pending and retried rather than snapshotted — a stall, not a loss, its content
 already durable in the local CRDT store — and it ends as soon as the note merges
 and the snapshot route reopens.
 
+### The flag does not survive a session; the fact that debt existed does
+
 The set is in-memory and per session; `clearCaches()` empties it on vault switch
-and teardown. A note whose pull failed in one session carries no flag in the
-next, and a restart does not necessarily re-flag it: `shouldSweepAllCrdtNotes`
-reads the _persisted_ `LAST_CRDT_SWEEP_AT`, so a restart inside the sweep
-interval with no reconnect gap sweeps nothing. Closing that would need the flag
-on disk, which is a new format and a migration.
+and teardown. A note whose pull failed in one session therefore carried no flag
+in the next, and the next launch did not necessarily re-raise it:
+`shouldSweepAllCrdtNotes` reads the _persisted_ `LAST_CRDT_SWEEP_AT`, so a
+restart inside the sweep interval with no reconnect gap sweeps nothing. Edit
+that note, wait out the 30 s quiet period, and its snapshot push prunes at
+`currentSeq` — the peer rows the last session failed to merge, gone.
+
+What is persisted is one boolean, `sync_state.crdtUnmergedDebt`, written on the
+set's empty ↔ non-empty edges (`CrdtSyncCoordinator.onUnmergedDebtChange` →
+`FullSyncRunner.recordCrdtUnmergedDebt`). Written as the edges happen rather
+than at teardown, because the session this has to survive is one that never runs
+a teardown at all.
+
+While it reads `'1'`, `FullSyncRunner.crdtUnmergedStateUnknown` is true and
+`SyncEngine.hasUnmergedRemoteCrdtState` answers `true` for **every** note — the
+same conservative answer the per-note flag gives, applied vault-wide because
+this session cannot yet name the notes the last one left behind. It is dropped
+by the first vault-wide sweep, which queues a pull for every note in the vault
+and so flags each one individually: the blanket retires because it has been made
+redundant, not because it went stale. That sweep is at most
+`CRDT_FULL_SWEEP_MIN_INTERVAL_MS` away, and it re-states the key from this
+session's own set so an empty or already-clean vault cannot carry a stale `'1'`
+into every launch from then on.
+
+Cost while the blanket is up: those pushes take the update endpoint instead of
+the snapshot one, with the request count and the `MAX_CRDT_UPDATE_PAYLOAD_CHARS`
+stall described above, and nothing else. A missing row reads as `'0'`, which is
+what every install written before the key existed has and what a vault with
+nothing outstanding means, so no migration is involved.
+
+Persisting the note ids instead is worse on both counts: a new on-disk format in
+a live beta, and a crash can still leave it missing whatever it had not written
+yet, while a boolean already at `'1'` cannot become wrong by not being written
+again.
 
 ## Sign-Out / Sign-In Ordering
 

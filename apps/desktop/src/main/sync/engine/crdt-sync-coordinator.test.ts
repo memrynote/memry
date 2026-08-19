@@ -1034,6 +1034,57 @@ describe('CrdtSyncCoordinator', () => {
     // merely stale, and the next pass has nothing left to reconcile against.
     expect(seedFromMarkdownPublic).not.toHaveBeenCalled()
   })
+
+  it('reports unmerged debt on the empty/non-empty edges only, and never on teardown', async () => {
+    // #given the set is per session: `clearCaches()` empties it, so a note left
+    // unmerged at quit came back on the next launch looking merged — and merged
+    // is the answer that lets a snapshot push prune a peer's rows. Only the
+    // *fact* of debt is durable, so only its edges are worth reporting.
+    const { ctx } = createBatchContext()
+    postToServerMock.mockResolvedValue({ notes: { 'note-1': { updates: [], hasMore: false } } })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+    const onUnmergedDebtChange = vi.fn()
+    coordinator.onUnmergedDebtChange = onUnmergedDebtChange
+
+    // #when a second flagged note joins the first
+    coordinator.markRemoteStateUnmerged('note-1')
+    coordinator.markRemoteStateUnmerged('note-2')
+
+    // #then one report, not one per note
+    expect(onUnmergedDebtChange.mock.calls).toEqual([[true]])
+    expect(coordinator.hasUnmergedNotes).toBe(true)
+
+    // #when a pass walks one of them end to end, leaving the other flagged
+    await coordinator.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
+
+    // #then still nothing to say: debt outstanding is debt outstanding
+    expect(onUnmergedDebtChange.mock.calls).toEqual([[true]])
+    expect(coordinator.hasUnmergedNotes).toBe(true)
+
+    // #when the last one clears
+    postToServerMock.mockResolvedValue({ notes: { 'note-2': { updates: [], hasMore: false } } })
+    await coordinator.applyCrdtBatch(['note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then the durable record can be dropped
+    expect(onUnmergedDebtChange.mock.calls).toEqual([[true], [false]])
+    expect(coordinator.hasUnmergedNotes).toBe(false)
+  })
+
+  it('does not report the emptying of the set at teardown as debt paid', async () => {
+    // #given a vault close or sign-out with a note still unmerged
+    const { ctx } = createBatchContext()
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+    const onUnmergedDebtChange = vi.fn()
+    coordinator.markRemoteStateUnmerged('note-1')
+    coordinator.onUnmergedDebtChange = onUnmergedDebtChange
+
+    // #when
+    coordinator.clearCaches()
+
+    // #then reporting "no debt" here would erase the one record that survives
+    // the session — which is exactly the note the next launch must not snapshot.
+    expect(onUnmergedDebtChange).not.toHaveBeenCalled()
+  })
 })
 
 describe('CrdtSyncCoordinator.clearCaches', () => {
