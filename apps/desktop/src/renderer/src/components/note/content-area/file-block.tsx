@@ -417,8 +417,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
           )}
         </div>
 
-        {/* Corner resize brackets — sit just outside the bottom corners,
-            revealed on hover or when the embed is selected. */}
+        {/* Corner resize brackets — sit just outside the bottom corners. Faint
+            at rest rather than hidden: a control that only exists on hover is a
+            control most readers never find out about. */}
         {!loading && !error && (
           <>
             <div
@@ -434,7 +435,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
-              className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             />
             <div
               role="button"
@@ -445,7 +446,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
-              className="absolute -bottom-1 -start-1 z-10 h-3.5 w-3.5 cursor-nesw-resize touch-none border-b-2 border-s-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute -bottom-1 -start-1 z-10 h-3.5 w-3.5 cursor-nesw-resize touch-none border-b-2 border-s-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             />
           </>
         )}
