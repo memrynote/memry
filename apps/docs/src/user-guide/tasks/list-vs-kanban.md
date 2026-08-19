@@ -53,17 +53,20 @@ Columns reflect statuses. Drag cards across columns to update status.
 - Status-focused workflows (Todo / In Progress / Done)
 - Per-project standups
 
-## Internal Tabs
+## Scope Dropdown
 
-Above both views, internal tabs scope without changing filters:
+The first control in the tasks toolbar scopes the list by due date, without changing filters:
 
-| Tab       | Scope                                   |
-| --------- | --------------------------------------- |
-| All       | Everything that matches current filters |
-| Today     | Due today (or earlier, undone)          |
-| Completed | Recently completed (last 30 days)       |
+| Scope       | Shows                                              |
+| ----------- | -------------------------------------------------- |
+| All         | Everything that matches current filters            |
+| Today       | Overdue work, then everything due today            |
+| Tomorrow    | Only what is due tomorrow — no overdue backlog     |
+| Next 7 days | Overdue work, then everything due in the next week |
 
-Internal tabs are not filters in the saveable sense — they're shortcuts for the most common scopes.
+Each scope carries its open-task count next to its name, and stacks with the project dropdown beside it: pick **Work** + **Tomorrow** and you get Work's tomorrow, pick **All projects** + **Tomorrow** and you get everybody's.
+
+These scopes are not filters in the saveable sense — they're shortcuts for the most common windows. Kanban is available on **All** only; the date windows are list-only.
 
 ## Switching
 

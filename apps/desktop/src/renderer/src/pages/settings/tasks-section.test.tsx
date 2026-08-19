@@ -228,6 +228,30 @@ describe('TasksSettings', () => {
     })
   })
 
+  it('offers the due-date scopes as default views', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TasksSettings />)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading settings...')).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getAllByRole('combobox')[2])
+
+    await waitFor(() => {
+      expect(screen.getByText('Next 7 days')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Tomorrow')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Next 7 days'))
+
+    await waitFor(() => {
+      expect(window.api.settings.setTaskSettings).toHaveBeenCalledWith({
+        defaultView: 'next7'
+      })
+    })
+  })
+
   it('updates stale inbox threshold on input change', async () => {
     renderWithProviders(<TasksSettings />)
 

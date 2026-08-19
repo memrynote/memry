@@ -66,12 +66,20 @@ const mocks = vi.hoisted(() => ({
     sort: { field: 'createdAt', direction: 'desc' },
     hasActiveFilters: false
   },
+  // Both tab keys are optional: one test drops them to prove the page falls
+  // back to the default-view preference when a tab has saved neither.
   activeTabViewState: {
     activeInternalTab: 'all',
     activeTab: 'all',
     activeView: 'list',
     selectedProjectId: null as string | null,
     openTaskId: null as string | null
+  } as {
+    activeInternalTab?: string
+    activeTab?: string
+    activeView: string
+    selectedProjectId: string | null
+    openTaskId: string | null
   },
   savedFilters: [
     {
@@ -729,6 +737,7 @@ const task: Task = {
   repeatConfig: null,
   linkedNoteIds: ['note-1'],
   sourceNoteId: null,
+  tags: [],
   parentId: null,
   subtaskIds: [],
   createdAt: new Date('2026-05-09'),
@@ -1212,6 +1221,25 @@ describe('TasksPage', () => {
 
     renderPage()
 
+    await user.click(screen.getByRole('button', { name: 'Empty filters' }))
+    expect(mocks.clearFilters).toHaveBeenCalled()
+  })
+
+  // A filter and a due-date window can contradict each other — "No due date"
+  // inside Today matches nothing by construction — and the window used to go
+  // blank with nothing saying the filters were the reason.
+  it('explains an empty due-date window with the filter empty state', async () => {
+    const user = userEvent.setup()
+    mocks.filterState.hasActiveFilters = true
+    mocks.activeTabViewState = {
+      ...mocks.activeTabViewState,
+      activeInternalTab: 'today',
+      activeTab: 'today'
+    }
+
+    renderPage({ tasks: [{ ...task, dueDate: null }] })
+
+    expect(screen.queryByTestId('task-list')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Empty filters' }))
     expect(mocks.clearFilters).toHaveBeenCalled()
   })

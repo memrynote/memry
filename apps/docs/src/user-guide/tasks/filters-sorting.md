@@ -27,6 +27,21 @@ Tag matching ignores case, so `MIT` and `mit` are one tag. The filter matches ta
 filtering on `work` will not pull in tasks tagged `work/urgent`. (The tag view in the
 sidebar does include those — see [Properties & Tags](/user-guide/notes/properties-tags).)
 
+### Finding Tasks With No Due Date
+
+The **Due date** filter opens on a calendar, with **No due date** as the first row above it.
+Pick it and the list narrows to tasks that carry no date at all — the one set every date
+scope hides, since [Today, Tomorrow, and Next 7 days](/user-guide/tasks/list-vs-kanban) are
+all due-date windows. Pick the row again to go back to any due date.
+
+Two things to know:
+
+- The scope dropdown still applies. **No due date** inside **Today** matches nothing by
+  construction; the page says so and offers to clear the filters. Set the scope to **All**.
+- Save it (see below) and the Home dashboard's Tasks widget can point at it, which is how
+  undated work gets a permanent home on the dashboard — see
+  [Home Dashboard](/user-guide/home-dashboard).
+
 ## Quick Filter Chips
 
 Pre-built chips at the start of the bar for the most common scopes:

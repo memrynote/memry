@@ -3,6 +3,8 @@
     "tabs": {
       "label": "Task views",
       "today": "Today",
+      "tomorrow": "Tomorrow",
+      "next7": "Next 7 days",
       "all": "All"
     },
     "viewMode": {
