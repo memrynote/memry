@@ -8,7 +8,7 @@ Settings are organized into six groups:
 - **Application** — app-wide behavior and personal taste (General, Appearance, Keyboard Shortcuts, Command Line)
 - **Editing** — the writing surface (Editor, Templates)
 - **Modules** — feature toggles and per-module settings (Features, Journal, Tasks, Inbox, Calendar)
-- **Services** — external integrations and AI (AI Assistant, Integrations)
+- **Services** — AI (AI Assistant)
 - **Data** — what's on disk and metadata (Vault, Tags, Properties, Import)
 
 <!-- screenshot: settings modal with sidebar of sections -->
@@ -212,6 +212,14 @@ Show or hide journal sidebar panes:
 
 ## Calendar
 
+### Google Calendar
+
+Link a Google account to show external events alongside vault events on the [Calendar](/user-guide/calendar). Status and source pickers appear here.
+
+**Add account** links a second (or third) Google account. Each account is listed with its own calendars and its own Disconnect. Tick the calendars you want in memrynote — unticking one [removes its events](/user-guide/calendar#multiple-accounts-and-calendars).
+
+**Show memrynote events in Google Calendar** controls sync direction. Leave it on for two-way sync, or turn it off for [one-way (inbound only)](/user-guide/calendar#sync-direction) — Google events still appear in memrynote, but memrynote events are not pushed to Google.
+
 ### Week Start
 
 **Week Start** — Sunday or Monday. Sets the first day of the week everywhere in memrynote: the Calendar month, year, and mini views, the sidebar mini-calendar, task date pickers, task week filters, and relative date labels.
@@ -336,18 +344,6 @@ update tools require active Agent Chat context; by default they are accepted aut
 as collapsed tool rows, or they can require inline approval when **Tool Confirmations** is set to
 **Ask first**. Plain external clients can use read tools, but context-free writes are denied. See
 [Agent MCP Server](/user-guide/ai/agent-mcp).
-
----
-
-## Integrations
-
-### Google Calendar
-
-Link a Google account to show external events alongside vault events on the [Calendar](/user-guide/calendar). Status and source pickers appear here.
-
-**Add account** links a second (or third) Google account. Each account is listed with its own calendars and its own Disconnect. Tick the calendars you want in memrynote — unticking one [removes its events](/user-guide/calendar#multiple-accounts-and-calendars).
-
-**Show memrynote events in Google Calendar** controls sync direction. Leave it on for two-way sync, or turn it off for [one-way (inbound only)](/user-guide/calendar#sync-direction) — Google events still appear in memrynote, but memrynote events are not pushed to Google.
 
 ---
 

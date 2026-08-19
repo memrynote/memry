@@ -88,7 +88,7 @@ Tasks live alongside notes. Two views — **list** and **kanban**. Group tasks u
 
 - **Workspace** — Account, General, Templates, Editor, Journal, Tasks, Calendar
 - **Preferences** — Appearance, Keyboard Shortcuts
-- **Services** — AI, Integrations
+- **Services** — AI
 - **Data** — Vault, Tags, Properties
 
 ## Keyboard-First
