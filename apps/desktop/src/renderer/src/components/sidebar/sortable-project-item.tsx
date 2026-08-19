@@ -12,6 +12,9 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useOptionalDragContext } from '@/contexts/drag-context'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -147,24 +150,42 @@ export const SortableProjectItem = ({
       )}
 
       {/* Geometry mirrors TreeNodeTrigger so projects read as one list with the notes tree */}
-      <SidebarMenuButton
-        tooltip={project.name}
-        isActive={isActive}
-        onClick={onClick}
-        className="h-7 gap-1.5 rounded-[5px] py-0 ps-1"
-      >
-        {/* Leading block mirrors the tree: expander slot + icon slot */}
-        <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
-          <span className="size-4" />
-          <span className="flex size-5 items-center justify-center">
-            <span className="size-2.5 rounded-full" style={{ backgroundColor: project.color }} />
-          </span>
-        </span>
-        {/* flex-1 keeps the fade mask over the row's trailing space, so short names stay crisp */}
-        <span className="sidebar-label-fade flex-1 text-[13px] leading-4 font-medium">
-          {project.name}
-        </span>
-      </SidebarMenuButton>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <SidebarMenuButton
+            tooltip={project.name}
+            isActive={isActive}
+            onClick={onClick}
+            className="h-7 gap-1.5 rounded-[5px] py-0 ps-1"
+          >
+            {/* Leading block mirrors the tree: expander slot + icon slot */}
+            <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+              <span className="size-4" />
+              <span className="flex size-5 items-center justify-center">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ backgroundColor: project.color }}
+                />
+              </span>
+            </span>
+            {/* flex-1 keeps the fade mask over the row's trailing space, so short names stay crisp */}
+            <span className="sidebar-label-fade flex-1 text-[13px] leading-4 font-medium">
+              {project.name}
+            </span>
+          </SidebarMenuButton>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <OpenTargetMenuItems
+            tab={createTabFromSidebarItem({
+              type: 'project',
+              title: project.name,
+              icon: 'folder',
+              path: `/project/${project.id}`,
+              entityId: project.id
+            })}
+          />
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Task count badge - hide when showing drop indicator */}
       {!isOver && (

@@ -20,8 +20,15 @@ import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useT } from '@memry/i18n/renderer'
 
 type TagSortOption = 'manual' | 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
@@ -256,6 +263,16 @@ function TagTreeItem({
             </button>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-48">
+            <OpenTargetMenuItems
+              tab={createTabFromSidebarItem({
+                type: 'tag',
+                title: node.name,
+                path: '/tags/' + node.fullPath,
+                entityId: node.fullPath,
+                color: node.color ?? ''
+              })}
+            />
+            <ContextMenuSeparator />
             <BookmarkMenuItem itemType="tag" itemId={node.fullPath} />
           </ContextMenuContent>
         </ContextMenu>

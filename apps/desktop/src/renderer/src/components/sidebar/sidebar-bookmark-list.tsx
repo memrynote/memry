@@ -26,8 +26,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
@@ -164,26 +168,33 @@ export function SidebarBookmarkList({
 
         return (
           <SidebarMenuItem key={bookmark.id}>
-            <SidebarMenuButton
-              tooltip={title}
-              onClick={handleBookmarkClick(bookmark)}
-              isActive={isActiveItem(sidebarItem)}
-              className="group pr-8"
-            >
-              {/* Icon or emoji */}
-              {emoji ? (
-                <NoteIconDisplay
-                  value={emoji}
-                  className="size-4 flex items-center justify-center text-sm shrink-0"
-                />
-              ) : (
-                <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
-              )}
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <SidebarMenuButton
+                  tooltip={title}
+                  onClick={handleBookmarkClick(bookmark)}
+                  isActive={isActiveItem(sidebarItem)}
+                  className="group pe-8"
+                >
+                  {/* Icon or emoji */}
+                  {emoji ? (
+                    <NoteIconDisplay
+                      value={emoji}
+                      className="size-4 flex items-center justify-center text-sm shrink-0"
+                    />
+                  ) : (
+                    <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
+                  )}
 
-              <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
-                {title}
-              </span>
-            </SidebarMenuButton>
+                  <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
+                    {title}
+                  </span>
+                </SidebarMenuButton>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
+              </ContextMenuContent>
+            </ContextMenu>
 
             {/* Actions dropdown */}
             <DropdownMenu>
@@ -199,11 +210,16 @@ export function SidebarBookmarkList({
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
+                <OpenTargetMenuItems
+                  tab={createTabFromSidebarItem(sidebarItem)}
+                  component={DropdownMenuItem}
+                />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(...args) => void handleRemoveBookmark(bookmark)(...args)}
                   className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="size-4 mr-2" />
+                  <Trash2 className="size-4 me-2" />
 
                   {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.remove')}
                 </DropdownMenuItem>

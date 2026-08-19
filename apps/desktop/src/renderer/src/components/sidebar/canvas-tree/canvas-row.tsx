@@ -46,6 +46,7 @@ import {
   type CanvasMenuEntry
 } from './canvas-row-menu'
 import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
+import { canvasTabData } from '@/lib/sidebar-tab-data'
 
 const CANVAS_ICON_SPACER = <div className="h-4 w-4" />
 
@@ -122,9 +123,19 @@ export function CanvasRow({
 
   // Nothing offered for an unreadable canvas may pretend the document is
   // there: no rename, no duplicate, no move. Find it on disk, or drop the entry.
+  // Absent for an unreadable canvas: "open it beside this one" is a promise the
+  // document cannot keep.
+  const openEntry: CanvasMenuEntry = {
+    kind: 'open-target',
+    id: 'open-target',
+    tab: canvasTabData(canvas, t('canvas.untitled'))
+  }
+
   const entries: CanvasMenuEntry[] = unreadable
     ? [revealEntry, { kind: 'separator', id: 'sep-delete' }, deleteEntry]
     : [
+        openEntry,
+        { kind: 'separator', id: 'sep-open' },
         {
           kind: 'item',
           id: 'rename',

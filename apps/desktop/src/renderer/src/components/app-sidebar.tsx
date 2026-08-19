@@ -46,6 +46,7 @@ import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import type { OpenSidebarItemOptions } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useModifierHeld } from '@/hooks/use-modifier-held'
@@ -218,7 +219,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // Open a top-level section as a tab. Shared by sidebar clicks and the
   // ⌘/Ctrl+number shortcuts so both land the user in exactly the same state.
   const navigateToPage = useCallback(
-    (page: AppPage) => {
+    (page: AppPage, options?: OpenSidebarItemOptions) => {
       // Map page to tab type and title
       const pageToTabType: Record<AppPage, TabType> = {
         home: 'home',
@@ -252,14 +253,19 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         path: `/${page}`,
         viewState: pageToViewState[page]
       }
-      openSidebarItem(item)
+      openSidebarItem(item, options)
     },
     [openSidebarItem]
   )
 
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
-    navigateToPage(page)
+    // ⌘/Ctrl-click asks for a second tab, +Shift asks for it without focus.
+    // Nav pages are singletons, so openSidebarItem declines to duplicate them and
+    // focuses the one that exists — the modifiers still matter for the pages that
+    // are not singletons, and the gesture stays consistent across the sidebar.
+    const inNewTab = e.metaKey || e.ctrlKey
+    navigateToPage(page, { inNewTab, inBackground: e.shiftKey && inNewTab })
   }
 
   // Sections visible in the sidebar (Home always; others gated by feature flags).

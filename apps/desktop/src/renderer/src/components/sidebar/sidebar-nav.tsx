@@ -5,6 +5,9 @@ import {
   SidebarMenuButton,
   SidebarMenuBadge
 } from '@/components/ui/sidebar'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import type { AppPage } from '@/App'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
 
@@ -58,15 +61,25 @@ export function SidebarNav({
 
           return (
             <SidebarMenuItem key={item.page}>
-              <SidebarMenuButton
-                isActive={active}
-                data-tour={`nav-${item.page}`}
-                onClick={onNavClick(item.page)}
-                className="h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
-              >
-                {isModifierHeld && number <= 9 ? <NavNumber n={number} /> : <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
+              {/* Home, Inbox, Calendar, … are singletons, so OpenTargetMenuItems
+                  drops "Open in New Tab" for them on its own and the menu is just
+                  "Open to the Side". */}
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <SidebarMenuButton
+                    isActive={active}
+                    data-tour={`nav-${item.page}`}
+                    onClick={onNavClick(item.page)}
+                    className="h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
+                  >
+                    {isModifierHeld && number <= 9 ? <NavNumber n={number} /> : <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
+                </ContextMenuContent>
+              </ContextMenu>
               {badgeCount > 0 && (
                 <SidebarMenuBadge>{badgeCount > 9 ? '9+' : badgeCount}</SidebarMenuBadge>
               )}

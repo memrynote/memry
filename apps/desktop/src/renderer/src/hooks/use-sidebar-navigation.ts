@@ -18,6 +18,7 @@ import {
 import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
 import { useIsItemActive } from './use-is-item-active'
+import { useOpenTarget } from './use-open-target'
 import { useFeatureFlags } from './use-feature-flags'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { featureForTabType } from '@memry/contracts/feature-flags'
@@ -138,7 +139,9 @@ export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boole
  */
 export const useSidebarNavigation = () => {
   // PERFORMANCE: useTabActions returns stable references - doesn't trigger re-renders
-  const { openTab, setActiveTab, splitView } = useTabActions()
+  const { openTab, setActiveTab } = useTabActions()
+  // Shared with the note/canvas/tag rows, which never build a SidebarItem
+  const { openToTheSide } = useOpenTarget()
   // We still need state for finding existing tabs, but access it via ref
   const { state } = useTabs()
   // PERFORMANCE: Optimized active item checking - stable callback reference
@@ -202,19 +205,16 @@ export const useSidebarNavigation = () => {
       const tabData = createTabFromSidebarItem(item, false)
 
       if (toTheSide) {
-        // Split, then open into the pane the split just created — by id, not by
-        // timing. SPLIT_VIEW leaves activeGroupId on the source pane, so an open
-        // that relies on "whatever is active next" lands back in the pane we
-        // split from, leaving the new pane holding only the cloned tab.
-        // Both dispatches queue on the same reducer, so OPEN_TAB always sees the
-        // group SPLIT_VIEW created, however late the render commits.
-        const newGroupId = splitView('horizontal', currentState.activeGroupId)
-        openTab(tabData, { groupId: newGroupId ?? undefined, background: inBackground })
+        // Reuse the sibling pane when there is one, split when there is not, and
+        // never let the new pane arrive holding a clone of what we are opening
+        // away from. useOpenTarget owns all three details so the note, canvas
+        // and tag rows get identical behaviour without repeating them.
+        openToTheSide(tabData, { background: inBackground })
       } else {
         openTab(tabData, { background: inBackground, forceNew: forceNewTab })
       }
     },
-    [openTab, setActiveTab, splitView, flags, openSettings]
+    [openTab, setActiveTab, openToTheSide, flags, openSettings]
   )
 
   /**

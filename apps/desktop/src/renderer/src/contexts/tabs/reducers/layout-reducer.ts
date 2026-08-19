@@ -35,7 +35,7 @@ const resetRatiosInTree = (layout: SplitLayout): SplitLayout => {
 export function layoutReducer(state: TabSystemState, action: LayoutAction): TabSystemState {
   switch (action.type) {
     case 'SPLIT_VIEW': {
-      const { direction, groupId, newGroupId } = action.payload
+      const { direction, groupId, newGroupId, cloneActiveTab = true } = action.payload
 
       const sourceGroup = state.tabGroups[groupId]
       if (!sourceGroup) return state
@@ -51,10 +51,15 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
           }
         : createDefaultTab()
 
+      // Opting out leaves the pane empty for the OPEN_TAB that queued behind this
+      // one to fill. Both dispatches land in the same reducer batch, so the empty
+      // state never paints; if that open somehow fails, EmptyPaneState covers it.
+      const seedTabs = cloneActiveTab ? [clonedTab] : []
+
       const newGroup: TabGroup = {
         id: newGroupId ?? generateId(),
-        tabs: [clonedTab],
-        activeTabId: clonedTab.id,
+        tabs: seedTabs,
+        activeTabId: cloneActiveTab ? clonedTab.id : null,
         isActive: false,
         back: [],
         forward: []

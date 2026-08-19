@@ -3,6 +3,7 @@ import { createRef, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NotesTree, type NotesTreeActions } from './notes-tree'
+import { TabProvider } from '@/contexts/tabs'
 import { isRevealed } from '@tests/utils/reveal'
 
 const mocks = vi.hoisted(() => ({
@@ -349,7 +350,11 @@ describe('NotesTree isolated coverage', () => {
     const ref = createRef<NotesTreeActions>()
     const onTargetFolderChange = vi.fn()
 
-    render(<NotesTree ref={ref} onTargetFolderChange={onTargetFolderChange} />)
+    render(
+      <TabProvider>
+        <NotesTree ref={ref} onTargetFolderChange={onTargetFolderChange} />
+      </TabProvider>
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'select root' }))
     expect(mocks.actions.handleSelectionChange).toHaveBeenCalledWith(['root'])
@@ -433,7 +438,11 @@ describe('NotesTree isolated coverage', () => {
     // A note created a moment ago reaches the sidebar only after the list query
     // refetches. Checking `noteMap` here used to drop the request outright,
     // which is what made a brand-new note impossible to reveal.
-    render(<NotesTree />)
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
 
     act(() => {
       window.dispatchEvent(
@@ -448,7 +457,11 @@ describe('NotesTree isolated coverage', () => {
     // The "open folder view" button is in the tab order but painted at
     // `opacity-0` until hover, so a keyboard user landed on a control that was
     // not on screen (WCAG 2.4.7).
-    render(<NotesTree />)
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
 
     const [openFolderView] = screen.getAllByRole('button', {
       name: 'tree.aria.openFolderView'
@@ -472,7 +485,11 @@ describe('NotesTree isolated coverage', () => {
       renamingFolderPath: 'Work'
     })
 
-    render(<NotesTree />)
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
 
     const noteInput = screen.getByDisplayValue('Root renamed')
     fireEvent.change(noteInput, { target: { value: 'Root v2' } })
@@ -500,7 +517,11 @@ describe('NotesTree isolated coverage', () => {
     mocks.actions = createActions({ renamingNoteId: 'root', isMoving: true })
     const ref = createRef<NotesTreeActions>()
 
-    render(<NotesTree ref={ref} />)
+    render(
+      <TabProvider>
+        <NotesTree ref={ref} />
+      </TabProvider>
+    )
 
     expect(screen.getByTestId('virtual-tree')).toHaveAttribute('data-drag-disabled', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'virtual select' }))
@@ -542,12 +563,20 @@ describe('NotesTree isolated coverage', () => {
   })
 
   it('surfaces the truncation footer only when notes are missing from the page', () => {
-    const { unmount } = render(<NotesTree />)
+    const { unmount } = render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
     expect(screen.queryByTestId('truncation-notice')).toBeNull()
     unmount()
 
     mocks.data = { ...createData(), hiddenNoteCount: 500 }
-    render(<NotesTree />)
+    render(
+      <TabProvider>
+        <NotesTree />
+      </TabProvider>
+    )
 
     const notice = screen.getByTestId('truncation-notice')
     expect(notice).toHaveTextContent('hidden:500')

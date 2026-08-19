@@ -135,9 +135,15 @@ vi.mock('@/contexts/day-panel-context', () => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useTabGroup: () => mocks.tabGroup,
+  useTabActions: () => ({ openTab: mocks.openTab, splitView: vi.fn(() => 'side-pane') }),
   useTabs: () => ({
     openTab: mocks.openTab,
-    getActiveTab: () => mocks.activeTab
+    getActiveTab: () => mocks.activeTab,
+    state: {
+      tabGroups: { 'pane-1': { id: 'pane-1', tabs: [], activeTabId: null } },
+      layout: { type: 'leaf', tabGroupId: 'pane-1' },
+      activeGroupId: 'pane-1'
+    }
   })
 }))
 
@@ -178,6 +184,7 @@ vi.mock('@/components/ui/sidebar', () => ({
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DropdownMenuContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DropdownMenuSeparator: () => <hr />,
   DropdownMenuItem: ({ children, onClick }: { children: ReactNode; onClick?: any }) => (
     <button type="button" onClick={(event) => onClick?.(event)}>
       {children}

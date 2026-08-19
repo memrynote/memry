@@ -340,8 +340,19 @@ export type TabAction =
       /**
        * `newGroupId` lets the caller name the pane before it exists, so it can
        * target it in the same dispatch batch. Omitted, the reducer mints one.
+       *
+       * `cloneActiveTab` defaults to true: a split from the keyboard or the tab
+       * menu wants the pane to arrive holding what you were already looking at.
+       * A caller that opens something specific into the new pane passes false,
+       * otherwise the pane arrives with a clone it never asked for and the tab
+       * it did ask for lands beside it.
        */
-      payload: { direction: SplitDirection; groupId: string; newGroupId?: string }
+      payload: {
+        direction: SplitDirection
+        groupId: string
+        newGroupId?: string
+        cloneActiveTab?: boolean
+      }
     }
   | { type: 'RESIZE_SPLIT'; payload: { path: number[]; ratio: number } }
   | { type: 'CLOSE_SPLIT'; payload: { groupId: string } }

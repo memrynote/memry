@@ -57,6 +57,9 @@ function Probe(): React.JSX.Element {
       <span data-testid="group-count">{groupIds.length}</span>
       <span data-testid="item-locations">{itemLocations.join(',') || 'not-open'}</span>
       <span data-testid="active-pane-has-item">{String(holdsItem(state.activeGroupId))}</span>
+      <span data-testid="pane-tab-counts">
+        {groupIds.map((groupId) => state.tabGroups[groupId].tabs.length).join(',')}
+      </span>
       <button type="button" onClick={() => openSidebarItem(NOTE_ITEM, { toTheSide: true })}>
         open-to-the-side
       </button>
@@ -127,6 +130,18 @@ const renderProbe = (): void => {
 }
 
 describe('useSidebarNavigation — open to the side', () => {
+  it('leaves the new pane holding only the item, not a clone of the source tab', async () => {
+    const user = userEvent.setup()
+    renderProbe()
+
+    await user.click(screen.getByText('open-to-the-side'))
+
+    // SPLIT_VIEW seeds a new pane with a copy of the source's active tab so a
+    // keyboard split is never empty. Here that copy is noise: you asked to see
+    // this note beside what you were reading, not beside a second copy of it.
+    expect(screen.getByTestId('pane-tab-counts')).toHaveTextContent('1,1')
+  })
+
   it('opens the item in the pane the split created, not the pane it split from', async () => {
     const user = userEvent.setup()
     renderProbe()
@@ -139,7 +154,7 @@ describe('useSidebarNavigation — open to the side', () => {
     expect(screen.getByTestId('active-pane-has-item')).toHaveTextContent('true')
   })
 
-  it('still lands in the split-created pane when focus moves before the open resolves', async () => {
+  it('lands in the target pane when focus moves before the open resolves', async () => {
     const user = userEvent.setup()
     renderProbe()
 
@@ -150,13 +165,14 @@ describe('useSidebarNavigation — open to the side', () => {
 
     await user.click(screen.getByText('open-to-the-side-then-refocus'))
 
-    // Three panes now; the item must be in the one this gesture created, not in
-    // the pane that took focus a beat later.
-    expect(screen.getByTestId('group-count')).toHaveTextContent('3')
-    expect(screen.getByTestId('item-locations')).toHaveTextContent(/^split-created-pane$/)
+    // Still two panes — the gesture reuses the pane beside this one rather than
+    // minting a third. The item must be in that sibling, not in the pane that
+    // took focus a beat later.
+    expect(screen.getByTestId('group-count')).toHaveTextContent('2')
+    expect(screen.getByTestId('item-locations')).toHaveTextContent(/^pre-existing-pane$/)
   })
 
-  it('splits again and opens in the new pane when the view is already split', async () => {
+  it('reuses the pane beside this one instead of splitting again', async () => {
     const user = userEvent.setup()
     renderProbe()
 
@@ -164,9 +180,10 @@ describe('useSidebarNavigation — open to the side', () => {
     await user.click(screen.getByText('snapshot-panes'))
     await user.click(screen.getByText('open-to-the-side'))
 
-    expect(screen.getByTestId('group-count')).toHaveTextContent('3')
-    expect(screen.getByTestId('item-locations')).toHaveTextContent(/^split-created-pane$/)
-    expect(screen.getByTestId('active-pane-has-item')).toHaveTextContent('true')
+    // Without this, every right-click grows the layout by a pane: three
+    // "Open to the Side"s would leave four panes on screen.
+    expect(screen.getByTestId('group-count')).toHaveTextContent('2')
+    expect(screen.getByTestId('item-locations')).toHaveTextContent(/^pre-existing-pane$/)
   })
 
   it('gives the item its own tab in the new pane even when it is already open elsewhere', async () => {

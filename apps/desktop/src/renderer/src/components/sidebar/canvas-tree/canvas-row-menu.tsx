@@ -38,6 +38,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { CANVAS_ROW_INDENT_PX } from './folder-options'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import type { OpenTargetTab } from '@/hooks/use-open-target'
 
 /** One row of a "Move to folder" submenu. `depth` draws the hierarchy. */
 export interface CanvasMenuSubItem {
@@ -60,6 +62,7 @@ export type CanvasMenuEntry =
       onSelect: () => void
     }
   | { kind: 'bookmark'; id: string; itemType: string; itemId: string }
+  | { kind: 'open-target'; id: string; tab: OpenTargetTab }
   | {
       kind: 'submenu'
       id: string
@@ -176,6 +179,10 @@ export function CanvasContextMenuBody({
           )
         }
 
+        if (entry.kind === 'open-target') {
+          return <OpenTargetMenuItems key={entry.id} tab={entry.tab} component={ContextMenuItem} />
+        }
+
         if (entry.kind === 'submenu') {
           return (
             <ContextMenuSub key={entry.id}>
@@ -234,6 +241,10 @@ export function CanvasDropdownMenuBody({
               component={DropdownMenuItem}
             />
           )
+        }
+
+        if (entry.kind === 'open-target') {
+          return <OpenTargetMenuItems key={entry.id} tab={entry.tab} component={DropdownMenuItem} />
         }
 
         if (entry.kind === 'submenu') {
