@@ -11,6 +11,7 @@ import {
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import { trackMainError } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
+import type { CrdtProvider } from '../crdt-provider'
 
 const log = createLogger('CrdtSyncCoordinator')
 
@@ -25,12 +26,13 @@ export class CrdtSyncCoordinator {
    * note's doc — half of the watermark the sweep's conditional skip compares
    * against, `lastAppliedSequence` being the other half.
    *
-   * Session-scoped and in memory on purpose. A persisted watermark can outlive
-   * the document it describes (an evicted, quarantined, rebuilt or re-pathed
-   * store), and a watermark that claims a baseline the doc never kept makes the
-   * sweep skip that baseline forever against a note whose body is stale. In
-   * memory the store and the watermark share one lifetime by construction.
-   * Persisting it is a separate change with its own invalidation to carry.
+   * Backed by the store, not by the session. Both halves are read out of, and
+   * written back into, the per-vault CRDT store as a y-leveldb doc meta key —
+   * see `crdt-snapshot-watermark.ts` for why that location is forced rather than
+   * chosen. These two maps are a per-pass working copy of it, and they are
+   * dropped the moment `crdtProvider.storeId` says the store underneath them
+   * changed, so "the store is gone" still implies "the watermark is gone" for
+   * the in-memory half too.
    *
    * Written only where a snapshot was genuinely decrypted and applied, never
    * where one was merely advertised: `getSnapshot` returns null when the D1 row
@@ -38,6 +40,21 @@ export class CrdtSyncCoordinator {
    * never arrived is exactly how a note keeps a stale body forever.
    */
   private mergedSnapshotRevision = new Map<string, string>()
+  /**
+   * The store the two maps above were filled from. A different value — a vault
+   * switch, a quarantine-and-reopen, a re-path, a provider destroyed and rebuilt
+   * — invalidates every watermark held in memory, because they describe
+   * documents that store does not have.
+   */
+  private watermarkStoreId: string | null = null
+  /**
+   * Notes whose persisted watermark this session has already looked for, so a
+   * note absent from the store is asked about once rather than once per chunk.
+   * A miss is remembered as a miss; it must never become a zero.
+   */
+  private hydratedWatermarks = new Set<string>()
+  /** Notes whose in-memory watermark has moved and has not reached the store yet. */
+  private dirtyWatermarks = new Set<string>()
   /**
    * Set once a batch response comes back without `snapshotMeta`, which is how
    * an older server answers.
@@ -197,10 +214,12 @@ export class CrdtSyncCoordinator {
    */
   clearCaches(): void {
     this.pendingPulls.clear()
-    this.lastAppliedSequence.clear()
-    // Cleared with the sequence half, never separately: the two are one
-    // watermark, and half a watermark is a skip decision made on a guess.
-    this.mergedSnapshotRevision.clear()
+    // The in-memory copy only. The durable record lives in the CRDT store and is
+    // deliberately left alone: a restart or a fresh sign-in re-reads it, which is
+    // the entire point of persisting it, and this teardown is not evidence about
+    // any document. Only the store going away is.
+    this.dropWatermarks()
+    this.watermarkStoreId = null
     this.applyFailureReported.clear()
     // Deliberately silent: `reportUnmergedDebt` is not called here. This is a
     // teardown, not a note that finished merging, and reporting "no debt" for it
@@ -243,8 +262,129 @@ export class CrdtSyncCoordinator {
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
     const known = this.lastAppliedSequence.get(noteId) ?? 0
     const next = Math.max(known, sequenceNum)
+    if (!this.lastAppliedSequence.has(noteId) || next !== known) {
+      this.dirtyWatermarks.add(noteId)
+    }
     this.lastAppliedSequence.set(noteId, next)
     return next
+  }
+
+  /**
+   * Throw away every watermark held in memory. Never touches the store: the
+   * durable record is dropped by the store's own lifetime, not by this.
+   */
+  private dropWatermarks(): void {
+    // Cleared together, never separately: the two maps are one watermark, and
+    // half a watermark is a skip decision made on a guess.
+    this.lastAppliedSequence.clear()
+    this.mergedSnapshotRevision.clear()
+    this.hydratedWatermarks.clear()
+    this.dirtyWatermarks.clear()
+  }
+
+  /**
+   * The store the watermarks may be read from and written to right now, after
+   * reconciling anything held in memory with it.
+   *
+   * **This is the in-memory half of FM2 and it is not optional.** The durable
+   * watermarks cannot outlive their store — they are keys inside it. The working
+   * copy in `lastAppliedSequence` / `mergedSnapshotRevision` can: this process
+   * keeps running across a vault switch, a store quarantined and reopened, and a
+   * store re-pathed after device linking. Carrying watermarks across one of those
+   * would skip a baseline against documents the new store never had. So every
+   * read and every write goes through here first, and a changed `storeId` drops
+   * the lot in the same operation.
+   *
+   * `null` means there is no store — no vault open yet, or the provider degraded
+   * to in-memory mode because the store could not be trusted. Nothing is read
+   * and nothing is written then, which is correct twice over: an in-memory
+   * document is seeded from vault markdown rather than restored from CRDT
+   * history, so there is no merge state a watermark could truthfully describe.
+   */
+  private watermarkStore(): CrdtProvider | null {
+    const provider = this.ctx.deps.crdtProvider ?? null
+    const storeId = provider?.storeId ?? null
+    if (storeId !== this.watermarkStoreId) {
+      this.dropWatermarks()
+      this.watermarkStoreId = storeId
+    }
+    return storeId === null ? null : provider
+  }
+
+  /**
+   * Fill the in-memory watermarks for a chunk from the store, so the first sweep
+   * after a relaunch or a fresh sign-in is warm instead of cold.
+   *
+   * Runs before the probe, because the probe's `since` values and its
+   * "has anything merged at all" test both read the maps this fills.
+   *
+   * A note the store has no record for is left absent, never zeroed: absent is
+   * what `snapshotBaselineSkip` reads as unknown, and unknown fetches. A build
+   * that predates the meta key wrote no records at all, so every note on such a
+   * store lands there and the sweep costs exactly what it cost before.
+   */
+  private async hydrateWatermarks(noteIds: string[]): Promise<void> {
+    const store = this.watermarkStore()
+    if (!store) return
+
+    for (const noteId of noteIds) {
+      if (this.hydratedWatermarks.has(noteId)) continue
+      // Marked before the await, so a concurrent chunk holding the same note
+      // does not issue a second read for it.
+      this.hydratedWatermarks.add(noteId)
+      // Anything this session merged is newer than anything on disk, and it is
+      // already in the maps.
+      if (this.lastAppliedSequence.has(noteId)) continue
+
+      const watermark = await store.getSnapshotWatermark(noteId)
+      if (!watermark) continue
+      // The store may have been swapped while the read was in flight, which
+      // `dropWatermarks` would have cleared the hydration memo for. Writing this
+      // record in now would put a watermark from the old store into the new
+      // one's working copy.
+      if (store.storeId !== this.watermarkStoreId) return
+
+      this.lastAppliedSequence.set(noteId, watermark.appliedSequence)
+      if (watermark.snapshotRevision) {
+        this.mergedSnapshotRevision.set(noteId, watermark.snapshotRevision)
+      } else {
+        this.mergedSnapshotRevision.delete(noteId)
+      }
+    }
+  }
+
+  /**
+   * Write back the watermarks this pass moved.
+   *
+   * Deferred to the end of the pass rather than written per update: a pass that
+   * throws half way through then persists nothing for the notes it did not
+   * finish, and losing a watermark is the free direction. Ordering against the
+   * document bytes is safe by construction — `applyRemoteUpdate` hands each
+   * update to the store before this runs, and y-leveldb serialises its
+   * transactions — so the document is durable before the watermark that
+   * describes it.
+   */
+  private async flushWatermarks(): Promise<void> {
+    if (this.dirtyWatermarks.size === 0) return
+    const store = this.watermarkStore()
+    if (!store) {
+      // No store to write to. `watermarkStore()` has already dropped the
+      // in-memory copy if the store changed under this pass, which also empties
+      // the dirty set.
+      this.dirtyWatermarks.clear()
+      return
+    }
+
+    const pending = Array.from(this.dirtyWatermarks)
+    this.dirtyWatermarks.clear()
+    for (const noteId of pending) {
+      const appliedSequence = this.lastAppliedSequence.get(noteId)
+      if (appliedSequence === undefined) continue
+      await store.putSnapshotWatermark(noteId, {
+        appliedSequence,
+        snapshotRevision: this.mergedSnapshotRevision.get(noteId)
+      })
+    }
   }
 
   /**
@@ -288,6 +428,9 @@ export class CrdtSyncCoordinator {
     } else {
       this.mergedSnapshotRevision.delete(noteId)
     }
+    // Queued for the store from this one place too, for the same reason: only a
+    // baseline that reached the document may leave a durable record of itself.
+    this.dirtyWatermarks.add(noteId)
     log.debug('Applied CRDT snapshot baseline', {
       noteId,
       mode,
@@ -343,6 +486,13 @@ export class CrdtSyncCoordinator {
       log.debug('Skipping CRDT pull for a local-only note', { noteId })
       return false
     }
+
+    // Reconcile with the store BEFORE this pass records anything, not only in
+    // the flush at the end: the first reconcile of a session drops whatever the
+    // maps held, and doing it after the pass would drop the very watermark this
+    // pass just moved. Deliberately not a hydrate — this path never reads a
+    // watermark (FM4), it only moves one.
+    this.watermarkStore()
 
     const wasOpen = crdtProvider.getDoc(noteId) != null
     try {
@@ -461,6 +611,10 @@ export class CrdtSyncCoordinator {
       }
       return false
     } finally {
+      // The single-note path never *consults* a watermark — that is FM4, and it
+      // stays unconditional — but it does move one, and a move it did not record
+      // is a cold baseline the next sweep pays for.
+      await this.flushWatermarks()
       if (!wasOpen) {
         await crdtProvider.closeIfInactive(noteId)
       }
@@ -533,10 +687,12 @@ export class CrdtSyncCoordinator {
     signal: AbortSignal
   ): Promise<CrdtBatchPullResponse | null> {
     if (this.snapshotMetaUnsupported) return null
-    // Nothing merged this session means nothing can match, so every note would
-    // fall through to a fetch anyway and the probe would be a request spent to
-    // learn nothing. This is the first sweep after launch: it costs exactly
-    // what it cost before this feature existed.
+    // No watermark for any note in the chunk means nothing can match, so every
+    // note would fall through to a fetch anyway and the probe would be a request
+    // spent to learn nothing. Reached on a genuinely cold vault — a first sync,
+    // or a store rebuilt or quarantined under this one — and it costs exactly
+    // what it cost before this feature existed. `hydrateWatermarks` has already
+    // run, so a relaunch over an existing store is NOT cold here.
     if (!noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))) return null
 
     const result = await withRetry(
@@ -600,9 +756,10 @@ export class CrdtSyncCoordinator {
     // this code did before the token existed.
     if (!snapshotMeta) return null
 
-    // A note this session has merged nothing for — never opened, absent from
-    // the local store, or a store rebuilt under it — has no watermark to
-    // compare, so it cannot be shown to already hold the baseline.
+    // A note with no watermark — never merged, absent from the local store, a
+    // store rebuilt or quarantined under it, or a store written by a build that
+    // predates the persisted watermark — cannot be shown to already hold the
+    // baseline. Unknown fetches; it never reads as sequence 0.
     const appliedSequence = this.lastAppliedSequence.get(noteId)
     if (appliedSequence === undefined) return null
 
@@ -651,6 +808,13 @@ export class CrdtSyncCoordinator {
     // broadcast and the pending-note replay call it directly — so a note's own
     // earlier debt would otherwise block its clear forever.
     try {
+      // PHASE 0 — hydrate. Read this chunk's watermarks out of the CRDT store,
+      // so the first sweep after a relaunch or a fresh sign-in can skip the
+      // baselines whose bodies are already sitting in that same store. No
+      // network, no docs opened; a note the store has no record for stays
+      // unknown and therefore takes the full path.
+      await this.hydrateWatermarks(noteIds)
+
       // PHASE 1 — probe. One request for the whole chunk, no docs opened.
       //
       // Every note in the chunk is still visited: this decides what a note
@@ -876,6 +1040,9 @@ export class CrdtSyncCoordinator {
         trackMainError('sync', 'crdt_apply_failed', err)
       }
     } finally {
+      // Before the docs are closed, so the store is still the one these
+      // watermarks describe.
+      await this.flushWatermarks()
       for (const noteId of syncOpenedNoteIds) {
         await crdtProvider.closeIfInactive(noteId)
       }
