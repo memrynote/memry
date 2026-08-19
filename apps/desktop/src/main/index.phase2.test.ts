@@ -65,6 +65,9 @@ const getCrdtProviderMock = vi.fn(() => ({
   getDoc: getProviderDocMock
 }))
 const stopSyncRuntimeMock = vi.fn(async () => undefined)
+const flushPendingWritebacksMock = vi.fn(async () => undefined)
+const closeAllDatabasesMock = vi.fn()
+const markShutdownFailureMock = vi.fn()
 const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
@@ -277,7 +280,19 @@ vi.mock('./sync/runtime', () => ({
 }))
 
 vi.mock('./database/client', () => ({
-  getIndexDatabase: vi.fn(() => ({}))
+  getIndexDatabase: vi.fn(() => ({})),
+  closeAllDatabases: closeAllDatabasesMock
+}))
+
+vi.mock('./sync/crdt-writeback', () => ({
+  flushPendingWritebacks: flushPendingWritebacksMock
+}))
+
+vi.mock('./telemetry/crash-marker', () => ({
+  clearCrashMarker: vi.fn(),
+  detectUncleanShutdown: vi.fn(),
+  installCrashMarker: vi.fn(),
+  markShutdownFailure: markShutdownFailureMock
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -2004,7 +2019,40 @@ describe('main index phase2 exports', () => {
     expect(createSnapshotMock).toHaveBeenCalledTimes(2)
   })
 
-  it('forces exit on graceful shutdown timeout', async () => {
+  it('flushes pending write-backs and closes the databases before the forced exit', async () => {
+    // #given a vault close that never settles, so the budget runs out on the
+    // last teardown step (#1586)
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    closeVaultMock.mockImplementationOnce(() => new Promise(() => {}))
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+    const { SHUTDOWN_BUDGET_MS } = await import('./shutdown-sequence')
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    completeFlush(browserWindows[0])
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
+
+    // #when the shutdown budget expires
+    await vi.advanceTimersByTimeAsync(SHUTDOWN_BUDGET_MS)
+
+    // #then the marker names the step that overran, and the last chance to make
+    // the user's data durable runs BEFORE the process is killed
+    expect(markShutdownFailureMock).toHaveBeenCalledWith('timeout', 'close-vault')
+    await flushUntil(() => vi.mocked(app.exit).mock.calls.length > 0)
+    expect(flushPendingWritebacksMock).toHaveBeenCalled()
+    expect(closeAllDatabasesMock).toHaveBeenCalled()
+    expect(app.exit).toHaveBeenCalledWith(1)
+  })
+
+  it('does not force-exit before the graceful budget is spent', async () => {
+    // #given the same wedged vault close
     vi.useFakeTimers()
     whenReadyMock.mockResolvedValue(undefined)
     closeVaultMock.mockImplementationOnce(() => new Promise(() => {}))
@@ -2019,12 +2067,14 @@ describe('main index phase2 exports', () => {
     beforeQuitHandler({ preventDefault: vi.fn() })
 
     completeFlush(browserWindows[0])
-    for (let i = 0; i < 20; i++) {
-      await Promise.resolve()
-    }
-    vi.advanceTimersByTime(5000)
+    await flushUntil(() => closeVaultMock.mock.calls.length > 0)
 
-    expect(app.exit).toHaveBeenCalledWith(1)
+    // #when the old 5s deadline passes — the point at which the app used to be
+    // killed with write-back timers still armed
+    await vi.advanceTimersByTimeAsync(5000)
+
+    // #then the chain is still allowed to finish
+    expect(app.exit).not.toHaveBeenCalled()
   })
 
   it('exits with failure when graceful cleanup rejects', async () => {

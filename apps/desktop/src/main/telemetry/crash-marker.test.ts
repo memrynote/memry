@@ -124,6 +124,69 @@ describe('crash marker', () => {
     )
   })
 
+  it('names the overrunning step in the errorCode so a timeout is diagnosable', () => {
+    // #given a shutdown whose budget ran out while the sync runtime was stopping
+    installCrashMarker('session-1', '1.2.3')
+    markShutdownFailure('timeout', 'stop-sync-runtime')
+
+    // #when the next launch detects the leftover marker
+    detectUncleanShutdown()
+
+    // #then the code still starts with SHUTDOWN_TIMEOUT (dashboards keep
+    // matching) but says which step overran
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({ errorCode: 'SHUTDOWN_TIMEOUT_STOP_SYNC_RUNTIME' })
+    )
+  })
+
+  it('falls back to the plain code when the stamped step is not a known token', () => {
+    // #given a marker whose step field did not survive intact
+    const startedAt = new Date('2026-08-06T10:00:00.000Z').toISOString()
+    fs.writeFileSync(
+      markerFile(),
+      JSON.stringify({
+        sessionId: 'prior',
+        startedAt,
+        lastAliveAt: startedAt,
+        shutdownFailure: 'timeout',
+        shutdownStep: '/Users/someone/Notes/secret plan.md'
+      })
+    )
+
+    // #when the next launch detects it
+    detectUncleanShutdown()
+
+    // #then nothing unbounded reaches the errorCode
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({ errorCode: 'SHUTDOWN_TIMEOUT' })
+    )
+  })
+
+  it('reads a marker written before shutdown steps were recorded', () => {
+    // #given a marker from an older build: timeout stamped, no step field
+    const startedAt = new Date('2026-08-06T10:00:00.000Z').toISOString()
+    fs.writeFileSync(
+      markerFile(),
+      JSON.stringify({
+        sessionId: 'prior',
+        startedAt,
+        lastAliveAt: startedAt,
+        shutdownFailure: 'timeout'
+      })
+    )
+
+    // #when the next launch detects it
+    detectUncleanShutdown()
+
+    // #then it still reports the timeout it always did
+    expect(trackMainEvent).toHaveBeenCalledWith(
+      'app_crashed',
+      expect.objectContaining({ errorCode: 'SHUTDOWN_TIMEOUT' })
+    )
+  })
+
   it('survives an unwritable userData without throwing', () => {
     // #given a userData path that cannot be written
     mockApp.getPath.mockImplementation(() => path.join(tempDir, 'missing', 'nested'))
