@@ -323,7 +323,8 @@ const maximalEvent = (dimensions?: Record<string, string>): TelemetryEvent => {
     result: 'success',
     errorCode: 'SYNC_TIMEOUT',
     metrics: maximalMetrics,
-    error: { message: 'boom', stack: 'at boom (a.js:1:1)', componentStack: 'at Note' }
+    error: { message: 'boom', stack: 'at boom (a.js:1:1)', componentStack: 'at Note' },
+    failure: { httpStatus: 503, serverCode: 'SYNC_UNAVAILABLE', retryable: true }
   }
   return dimensions ? { ...event, dimensions } : event
 }
@@ -358,7 +359,10 @@ describe('productEvent trusted-key collisions', () => {
         'result_count',
         'retry_count',
         'active_seconds',
-        'value'
+        'value',
+        'http_status',
+        'server_code',
+        'retryable'
       ].sort()
     )
   })
