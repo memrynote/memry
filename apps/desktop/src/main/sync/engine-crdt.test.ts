@@ -341,6 +341,7 @@ describe('SyncEngine', () => {
    */
   describe('#given a CRDT pull whose signer device key cannot be resolved', () => {
     const crdtProviderStub = (): Record<string, ReturnType<typeof vi.fn>> => ({
+      isNoteLocalOnly: vi.fn(() => false),
       getDoc: vi.fn().mockReturnValue(undefined),
       open: vi.fn().mockResolvedValue({}),
       closeIfInactive: vi.fn().mockResolvedValue(true),

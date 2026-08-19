@@ -299,7 +299,7 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 
 describe('CrdtProvider', () => {
   let provider: CrdtProvider
-  let queue: { enqueue: ReturnType<typeof vi.fn> }
+  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
   let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
@@ -330,7 +330,7 @@ describe('CrdtProvider', () => {
       }
     )
     mocks.compactYDoc.mockReturnValue(null)
-    queue = { enqueue: vi.fn() }
+    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
     pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     provider = new CrdtProvider()
     await provider.init(queue as any, pushSnapshot)
@@ -1810,6 +1810,52 @@ describe('CrdtProvider', () => {
       // drainPendingCrdtNotes, which merges before it pushes.
       expect(pushSnapshot).not.toHaveBeenCalled()
       expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      await singleton.destroy()
+    })
+
+    it('empties the update queue buffer the toggle cannot otherwise reach', async () => {
+      // The guard is at enqueue time (`onDocUpdate`) but the queue flushes on a
+      // ~1s loop, so everything typed in the second before the toggle is already
+      // buffered and past it. `setNoteLocalOnlyState` clears the pending-note
+      // store and zeroes the snapshot debt; neither reaches into the buffer.
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+
+      const row = noteRow(false)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      createWindow(1)
+      const doc = await singleton.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed a moment before the toggle')
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+
+      // #when the user marks it local-only before the flush loop ticks
+      setNoteLocalOnlyState('note-1', true)
+
+      // #then the buffered bytes are dropped rather than pushed on the next tick
+      expect(queue.dropNote).toHaveBeenCalledWith('note-1')
+      await singleton.destroy()
+    })
+
+    it('drops the queue buffer even for a note whose doc the LRU already evicted', async () => {
+      // `setNoteLocalOnly` returns early when there is no open doc, so the drop
+      // has to happen ahead of that lookup: a note can be enqueued and then have
+      // its doc closed underneath it, leaving the buffer as the only holder.
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+
+      const row = noteRow(false)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      setNoteLocalOnlyState('note-1', true)
+
+      expect(queue.dropNote).toHaveBeenCalledWith('note-1')
       await singleton.destroy()
     })
 

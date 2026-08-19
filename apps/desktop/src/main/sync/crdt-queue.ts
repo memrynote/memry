@@ -51,6 +51,8 @@ export class CrdtUpdateQueue {
   private buffers = new Map<string, BufferedUpdate[]>()
   private flushTimer: ReturnType<typeof setInterval> | null = null
   private flushingNotes = new Set<string>()
+  /** Notes `dropNote` reached mid-push; their batch must not be re-buffered. */
+  private droppedInFlight = new Set<string>()
   private pushFn: ((noteId: string, updates: Uint8Array[]) => Promise<void>) | null = null
   private paused = false
   private bufferedBytes = 0
@@ -131,6 +133,33 @@ export class CrdtUpdateQueue {
     if (this.bufferedBytes >= this.nextBudgetSweepBytes) {
       this.enforceTotalBudget()
     }
+  }
+
+  /**
+   * Forget everything buffered for a note, without pushing it.
+   *
+   * The one caller is `CrdtProvider.setNoteLocalOnly` going ON: the note has
+   * just been told never to leave this device, and the guard that enforces that
+   * sits at `onDocUpdate`, i.e. at enqueue time. Anything the ~1s flush loop had
+   * not taken yet is already past that guard and would go out on the next tick.
+   *
+   * Dropping loses nothing. Every update here is also in the local CRDT store,
+   * which is what the doc is rebuilt from; the queue only ever held a copy bound
+   * for the server, and there is no longer a server for this note.
+   *
+   * A push already in flight cannot be recalled, but its failure path must not
+   * put the batch back — a 429 or a 5xx re-buffers, and the next flush would
+   * then push a note that stopped syncing seconds ago. `flushingNotes` is what
+   * distinguishes "in flight" from "settled", and the entry is cleared when the
+   * push settles.
+   */
+  dropNote(noteId: string): void {
+    const buffer = this.buffers.get(noteId)
+    if (buffer) {
+      this.bufferedBytes -= bytesOf(buffer)
+      this.buffers.delete(noteId)
+    }
+    if (this.flushingNotes.has(noteId)) this.droppedInFlight.add(noteId)
   }
 
   getPendingCount(): number {
@@ -322,6 +351,8 @@ export class CrdtUpdateQueue {
           err.statusCode !== 429 &&
           err.statusCode !== 401
         if (nonRetryable) return
+        // Dropped while this push was in flight — see `dropNote`.
+        if (this.droppedInFlight.has(noteId)) return
 
         let existing = this.buffers.get(noteId)
         if (!existing) {
@@ -333,6 +364,7 @@ export class CrdtUpdateQueue {
       })
       .finally(() => {
         this.flushingNotes.delete(noteId)
+        this.droppedInFlight.delete(noteId)
       })
   }
 }

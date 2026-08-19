@@ -801,7 +801,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         void drainPendingCrdtNotes({
           mergeRemote: (noteId) => engine.mergeRemoteCrdtForNote(noteId),
           pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
-          isSyncable: (noteId) => crdtProvider.validateNoteForCrdt(noteId).ok,
+          // Deliberately `isNoteSyncable` and not `validateNoteForCrdt`: the
+          // latter also gates the renderer's editor handshake, where a
+          // local-only note must still open. Without the local-only half, an id
+          // that reached the store through the toggle race is retained for good
+          // — `pushSnapshotForNote` correctly refuses a local-only note, so the
+          // drain never clears it and warns once per session forever.
+          isSyncable: (noteId) => crdtProvider.isNoteSyncable(noteId),
           signal: runtimeAbort.signal
         }).catch((err) => log.warn('Pending CRDT note replay failed', err))
       }

@@ -322,7 +322,7 @@ export class CrdtProvider {
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
       lastTouchedAt: this.now(),
-      localOnly: this.resolveLocalOnly(noteId)
+      localOnly: this.isNoteLocalOnly(noteId)
     }
     this.docs.set(noteId, entry)
 
@@ -344,8 +344,13 @@ export class CrdtProvider {
    * provider has always had, so an unreadable row costs sync nothing; the
    * authoritative check for the payload that actually carries a body — the
    * snapshot — re-reads the row live in `pushSnapshotForNote`.
+   *
+   * Public because the flag is not only a push-side concern: `CrdtSyncCoordinator`
+   * asks the same question before it pulls, and the pending-note replay asks it
+   * before it decides a note is syncable at all. Both want the live row rather
+   * than a doc's cached copy — neither is guaranteed to have the doc open.
    */
-  private resolveLocalOnly(noteId: string): boolean {
+  isNoteLocalOnly(noteId: string): boolean {
     try {
       return getNoteCacheById(getIndexDatabase(), noteId)?.localOnly === true
     } catch (err) {
@@ -373,8 +378,19 @@ export class CrdtProvider {
    * would let the next `close()` fire a *blind* snapshot first — and a snapshot
    * asserts completeness, so the server prunes the peer edits it does not
    * contain. The replay is the carrier for this body; close() must not race it.
+   *
+   * Going ON also empties the update queue's buffer for this note, and that is
+   * not the same window as the flag above. `onDocUpdate` reads the flag at
+   * *enqueue* time, but the queue flushes on a ~1s loop, so every update typed
+   * in the second before the toggle is already buffered and would still be
+   * pushed. The queue is the only thing holding those bytes — clearing the
+   * pending-note store cannot reach into it — so the drop has to happen here,
+   * ahead of the `docs` lookup: a doc the LRU has since evicted still leaves a
+   * buffer behind.
    */
   setNoteLocalOnly(noteId: string, localOnly: boolean): void {
+    if (localOnly) this.updateQueue?.dropNote(noteId)
+
     const entry = this.docs.get(noteId)
     if (!entry) return
     entry.localOnly = localOnly
@@ -1210,6 +1226,19 @@ export class CrdtProvider {
       return { ok: false, error: `Binary notes do not use CRDT: ${noteId}` }
     }
     return { ok: true }
+  }
+
+  /**
+   * May the CRDT feed still carry this note's body to the server?
+   *
+   * The union of both refusals, for the pending-note replay — which has to
+   * decide whether an id in the durable store is still owed a push at all. The
+   * two halves stay separate because `validateNoteForCrdt` also gates the
+   * renderer's editor handshake, and a local-only note opens and edits there
+   * like any other; only its *sync* is off.
+   */
+  isNoteSyncable(noteId: string): boolean {
+    return this.validateNoteForCrdt(noteId).ok && !this.isNoteLocalOnly(noteId)
   }
 
   applyIpcUpdate(noteId: string, update: Uint8Array, sourceWindowId: number): void {

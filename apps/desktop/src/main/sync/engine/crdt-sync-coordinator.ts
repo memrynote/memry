@@ -232,6 +232,17 @@ export class CrdtSyncCoordinator {
    * one caller that reads the return value (the pending-note replay); the 30s
    * snapshot scheduler and every other push path never see it, so the flag is
    * what carries an incomplete merge to them.
+   *
+   * **A local-only note is not pulled at all.** #1511 closed the push half of
+   * "this note never leaves the device"; this is the other half, and the setting
+   * means nothing else: a note that can never push has no business taking the
+   * server's state either, and pulling it spends `crdt_pull` budget the notes
+   * that *can* sync are competing for. The answer is `false` — the contract is
+   * "the server's state is in this doc", and here it deliberately is not — but
+   * NOT an owed pull: a debt nothing will ever settle would re-queue the note in
+   * every sweep forever. Its `unmergedRemoteNotes` flag is left standing on
+   * purpose; it costs nothing while the note cannot push, and if the toggle is
+   * ever turned off it is the conservative answer for that note's first push.
    */
   async applyCrdtIncrementals(
     noteId: string,
@@ -244,6 +255,11 @@ export class CrdtSyncCoordinator {
 
     const effectiveSignal = signal ?? this.ctx.abortController?.signal
     if (!effectiveSignal) return false
+
+    if (crdtProvider.isNoteLocalOnly(noteId)) {
+      log.debug('Skipping CRDT pull for a local-only note', { noteId })
+      return false
+    }
 
     const wasOpen = crdtProvider.getDoc(noteId) != null
     try {
@@ -383,6 +399,18 @@ export class CrdtSyncCoordinator {
     const effectiveSignal = signal ?? this.ctx.abortController?.signal
     if (!crdtProvider || !effectiveSignal) return
 
+    // Same guard as the single-note path — see `applyCrdtIncrementals` — and
+    // applied before the chunking below rather than inside it, so a vault with
+    // many local-only notes still fills each chunk with notes that can sync
+    // instead of spending whole paced chunks on ones that are all skipped.
+    const syncable = noteIds.filter((noteId) => !crdtProvider.isNoteLocalOnly(noteId))
+    if (syncable.length !== noteIds.length) {
+      log.debug('Skipping local-only notes in a CRDT batch pull', {
+        skipped: noteIds.length - syncable.length
+      })
+    }
+    if (syncable.length === 0) return
+
     // A pass holds every one of its notes open from before the request is sent
     // until that note's updates are applied, so it must never open more than
     // the provider keeps cached: past the limit the LRU closes the notes it
@@ -394,10 +422,10 @@ export class CrdtSyncCoordinator {
     // Chunking here also keeps each request under the server's 100-note cap on
     // /sync/crdt/updates/batch, which a whole-vault pass otherwise blows past.
     const chunkSize = crdtProvider.inactiveDocCapacity
-    for (let i = 0; i < noteIds.length; i += chunkSize) {
+    for (let i = 0; i < syncable.length; i += chunkSize) {
       if (effectiveSignal.aborted) return
       await this.applyCrdtBatchChunk(
-        noteIds.slice(i, i + chunkSize),
+        syncable.slice(i, i + chunkSize),
         token,
         vaultKey,
         effectiveSignal
