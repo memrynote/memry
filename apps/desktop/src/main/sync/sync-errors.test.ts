@@ -201,3 +201,58 @@ describe('classifyError', () => {
     expect(result.retryable).toBe(true)
   })
 })
+
+// #1584: `server_error` covered 400, 403, 404, 409 and every 5xx with no status
+// and no server code anywhere in the event, so a permanent client-side contract
+// bug and a transient edge 5xx were the same row in every chart.
+describe('classifyError request detail', () => {
+  it('#given a 400 with a server code #then the status and the code both survive', () => {
+    const err = new SyncServerError(
+      'Invalid push request: Record sync item type "calendar_external_event" requires clock metadata',
+      400,
+      'VALIDATION_ERROR: Invalid push request: Record sync item type "calendar_external_event" requires clock metadata'
+    )
+    const result = classifyError(err)
+
+    expect(result.category).toBe('server_error')
+    expect(result.statusCode).toBe(400)
+    expect(result.serverCode).toBe('VALIDATION_ERROR')
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given a 503 with no structured body #then the status survives and the code is absent', () => {
+    // A code-less 5xx never reached the Worker's error handler, so the backend
+    // has no record of it. That absence is the signal that says "edge, not us".
+    const err = new SyncServerError('Server returned 503', 503)
+    const result = classifyError(err)
+
+    expect(result.category).toBe('server_error')
+    expect(result.statusCode).toBe(503)
+    expect(result.serverCode).toBeUndefined()
+    expect(result.retryable).toBe(true)
+  })
+
+  it('#given a raw JSON error body #then the code is read out of it', () => {
+    // The attachment upload paths pass the response body through verbatim
+    // instead of the `CODE: message` shape http-client builds.
+    const body = '{"error":{"code":"STORAGE_FILE_TOO_LARGE","message":"File too large"}}'
+    const err = new SyncServerError(`Failed to initiate upload: ${body}`, 413, body)
+    const result = classifyError(err)
+
+    expect(result.statusCode).toBe(413)
+    expect(result.serverCode).toBe('STORAGE_FILE_TOO_LARGE')
+  })
+
+  it('#given a DeadLetterError #then the wrapped request detail is preserved', () => {
+    const inner = new SyncServerError('Bad Gateway', 502)
+    const result = classifyError(new DeadLetterError(inner, 5))
+
+    expect(result.statusCode).toBe(502)
+    expect(result.retryable).toBe(false)
+  })
+
+  it('#given a non-HTTP failure #then no status is invented', () => {
+    expect(classifyError(new NetworkError('fetch failed')).statusCode).toBeUndefined()
+    expect(classifyError(new Error('boom')).statusCode).toBeUndefined()
+  })
+})

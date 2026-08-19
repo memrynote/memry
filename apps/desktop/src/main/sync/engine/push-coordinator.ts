@@ -10,6 +10,7 @@ import { withRetry } from '../retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
+import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { parallelWithLimit } from '../concurrency'
 import { SyncTimer } from '../sync-timer'
@@ -325,7 +326,7 @@ export class PushCoordinator {
           surface: 'sync',
           action: 'push_failed',
           result: 'failed',
-          errorCode: errorInfo.category,
+          ...syncErrorTelemetry(errorInfo),
           metrics: { durationMs: Date.now() - startTime },
           source: 'push',
           dimensions: { transport: 'record' }
