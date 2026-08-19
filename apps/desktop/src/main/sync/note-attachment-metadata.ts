@@ -2,6 +2,7 @@ import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
+import { clearAttachmentDownloadFailure } from './attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 
 const log = createLogger('NoteAttachmentMetadata')
@@ -22,6 +23,11 @@ export function recordUploadedAttachment(noteId: string, attachmentId: string): 
     attachmentReferences: merged
   })
   updateNoteCache(getIndexDatabase(), noteId, { attachmentId })
+
+  // The way back out of a recorded "the server does not have this" verdict: the
+  // server demonstrably has it now, so any stale failure row must not keep this
+  // device from materializing it.
+  clearAttachmentDownloadFailure(db, noteId, attachmentId)
 
   if (!updated) {
     // No sync row for this note, so the reference is not in — and will never

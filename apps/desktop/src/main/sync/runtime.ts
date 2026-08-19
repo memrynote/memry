@@ -36,7 +36,7 @@ import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './can
 import { initProjectSyncService, resetProjectSyncService } from './project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
-import { resetRequestedAttachmentDownloads } from './item-handlers/note-handler'
+import { resetAttachmentDownloadSession } from './attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
 import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
@@ -225,9 +225,11 @@ function resetSyncServiceSingletons(): void {
   resetCalendarSourceSyncService()
   resetCalendarBindingSyncService()
   resetCalendarExternalEventSyncService()
-  // Module-level state on the note item handler, not a service singleton, but
-  // it is per-vault and torn down on exactly the same paths.
-  resetRequestedAttachmentDownloads()
+  // Session half of the attachment download guard (in-flight claims + this
+  // session's successes): per-vault, torn down on exactly the same paths. The
+  // recorded FAILURES are deliberately NOT cleared — outliving this teardown is
+  // the whole point, or a dead reference is re-probed on every restart.
+  resetAttachmentDownloadSession()
   // The attachment UploadQueue lives in the IPC layer but captures THIS
   // runtime's NetworkMonitor, so it has to die with the runtime: a carried-over
   // queue stays subscribed to a stopped monitor (reconnect wake-up dead, its

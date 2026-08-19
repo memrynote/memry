@@ -137,7 +137,13 @@ vi.mock('../../vault/index', () => ({
   getStatus: vi.fn(() => ({ path: VAULT_ROOT }))
 }))
 
-import { noteHandler, resetRequestedAttachmentDownloads } from './note-handler'
+import { noteHandler } from './note-handler'
+import {
+  MISSING_PROBE_LIMIT,
+  markDownloadFailed,
+  resetAttachmentDownloadSession
+} from '../attachment-download-state'
+import { createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
 import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
@@ -760,11 +766,112 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     expect(downloadEvents).toHaveLength(1)
 
     // #when — the vault is switched (stopSyncRuntime → resetSyncServiceSingletons)
-    resetRequestedAttachmentDownloads()
+    resetAttachmentDownloadSession()
     noteHandler.applyUpsert(ctx, 'note-att-vault', payload, {})
 
     // #then — the guard no longer carries the previous vault's keys, so the new
     // vault's copy of the note asks for its attachment again
     expect(downloadEvents).toHaveLength(2)
+  })
+})
+
+/**
+ * The 404 loop of #1588, at the seam that produced it: a real data DB behind
+ * `ctx.db`, the real event bus, and the real handler deciding what to ask for.
+ */
+describe('noteHandler.applyUpsert — attachments the server does not have', () => {
+  let ctx: ApplyContext
+  let testDb: TestDatabaseResult
+  let downloadEvents: Array<{ noteId: string; attachmentId: string }>
+  const listener = (e: { noteId: string; attachmentId: string }): void => {
+    downloadEvents.push({ noteId: e.noteId, attachmentId: e.attachmentId })
+  }
+  const notFound = (): Error => Object.assign(new Error('404'), { statusCode: 404 })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-19T10:00:00.000Z'))
+    resetAttachmentDownloadSession()
+    testDb = createTestDatabase()
+    ctx = makeCtx(testDb)
+    downloadEvents = []
+    mockGetNoteMetadataById.mockReturnValue(undefined)
+    fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
+    fs.mkdirSync(VAULT_ROOT, { recursive: true })
+    attachmentEvents.onDownloadNeeded(listener)
+  })
+
+  afterEach(() => {
+    attachmentEvents.offDownloadNeeded(listener)
+    resetAttachmentDownloadSession()
+    testDb.close()
+    vi.useRealTimers()
+  })
+
+  it('stops asking for a 404 attachment across sync stop/start, and finally prunes it', () => {
+    const payload = makeNotePayload({ attachmentReferences: ['att-dead'] })
+    const syncDb = ctx.db
+
+    // #given — every probe the policy allows, each followed by the server's 404
+    // and by the runtime teardown that used to wipe the only guard there was.
+    for (let probe = 1; probe <= MISSING_PROBE_LIMIT; probe++) {
+      noteHandler.applyUpsert(ctx, 'note-dead', payload, {})
+      expect(downloadEvents).toHaveLength(probe)
+      markDownloadFailed(syncDb, 'note-dead', 'att-dead', notFound())
+      resetAttachmentDownloadSession()
+      vi.setSystemTime(new Date(Date.now() + 25 * 60 * 60 * 1000))
+    }
+
+    // #when — the note is pulled again, on a fresh runtime, a year later
+    vi.setSystemTime(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000))
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-dead',
+      path: path.join('a1', 'a1.md'),
+      title: 'a1',
+      emoji: null,
+      fileType: 'markdown',
+      clock: { d1: 1 },
+      attachmentReferences: ['att-dead']
+    } as unknown as ReturnType<typeof mockGetNoteMetadataById>)
+    mockUpdateNoteMetadata.mockClear()
+    noteHandler.applyUpsert(ctx, 'note-dead', payload, { d1: 2 })
+
+    // #then — no further request, and the dead id is gone from the note's
+    // manifest instead of being handed to every future device.
+    expect(downloadEvents).toHaveLength(MISSING_PROBE_LIMIT)
+    const call = mockUpdateNoteMetadata.mock.calls.find((c) => c[1] === 'note-dead')
+    expect((call![2] as Record<string, unknown>).attachmentReferences).toEqual([])
+  })
+
+  it('keeps requesting and keeps the reference when the failure is transient', () => {
+    const payload = makeNotePayload({ attachmentReferences: ['att-flaky'] })
+    const syncDb = ctx.db
+
+    noteHandler.applyUpsert(ctx, 'note-flaky', payload, {})
+    expect(downloadEvents).toHaveLength(1)
+    markDownloadFailed(syncDb, 'note-flaky', 'att-flaky', new Error('server unreachable'))
+
+    // Backoff holds the immediate re-pull off…
+    noteHandler.applyUpsert(ctx, 'note-flaky', payload, {})
+    expect(downloadEvents).toHaveLength(1)
+
+    // …and once it elapses the attachment is asked for again.
+    vi.setSystemTime(new Date(Date.now() + 61 * 1000))
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-flaky',
+      path: path.join('a1', 'a1.md'),
+      title: 'a1',
+      emoji: null,
+      fileType: 'markdown',
+      clock: { d1: 1 },
+      attachmentReferences: ['att-flaky']
+    } as unknown as ReturnType<typeof mockGetNoteMetadataById>)
+    mockUpdateNoteMetadata.mockClear()
+    noteHandler.applyUpsert(ctx, 'note-flaky', payload, { d1: 2 })
+    expect(downloadEvents).toHaveLength(2)
+
+    const call = mockUpdateNoteMetadata.mock.calls.find((c) => c[1] === 'note-flaky')
+    expect((call![2] as Record<string, unknown>).attachmentReferences).toEqual(['att-flaky'])
   })
 })

@@ -449,6 +449,28 @@ across devices:
   finishing during quit, a vault switch, re-auth — the note is marked for
   [recovery](#recovering-pushes-that-never-landed) instead, so the push happens
   at the next runtime start rather than waiting for an unrelated later edit.
+- **Durable download verdicts** — a download that does not succeed is recorded
+  in the data DB (`attachment_download_failures`, migration 0051), keyed by
+  (note, attachment). Only the outcome writes here: the request itself no longer
+  counts as a result, so a 404 and a success are no longer the same event. A
+  transient failure (5xx, network, decrypt) keeps its retry on an exponential
+  backoff from one minute. A `404`/`410` — the server saying it does not have
+  this blob — is re-probed at most once a day, three times, and then never
+  automatically again. Session state (in-flight claims and this session's
+  successes) is still in memory and still cleared on runtime teardown, because
+  the file is on disk and a re-request is cheap; the verdicts deliberately are
+  not, since surviving a sync stop/start is the whole point.
+- **Reference pruning** — `attachmentReferences` merges union-only, so a
+  reference to a blob that is genuinely gone would otherwise live in the note's
+  payload forever and be handed to every device that ever pulls it. On the pull
+  that applies a note, ids whose 404 probes are exhausted are dropped from the
+  stored list. The rule is positive evidence only: this device watched the
+  server 404 that exact manifest three times, and the note has no pending
+  `attachment_upload_queue` row (bytes still on their way up are never pruned).
+  An id that has merely not uploaded yet has no verdict and is never touched,
+  and nothing on disk is ever deleted. The way back is that attachment ids are
+  minted per upload — re-inserting the file produces a new id with no verdict
+  against it — and a local upload of the same id clears its row outright.
 
 `attachmentReferences` is the only signal that tells another device a note
 embeds a file — the markdown link alone points at a path that exists nowhere
