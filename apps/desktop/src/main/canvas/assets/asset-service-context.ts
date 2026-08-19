@@ -14,6 +14,7 @@ import { getOrCreateVaultUuid } from '../../agent/storage/vault-id'
 import { getDatabase, isDatabaseInitialized } from '../../database/client'
 import { getCanvasAssetIO } from '../../ipc/sync-attachment-handlers'
 import { markWritebackIgnored } from '../../sync/crdt-writeback'
+import { getSyncEngine } from '../../sync/runtime'
 import { resolveSyncServerUrl } from '../../sync/sync-server-url'
 import { getValidAccessToken } from '../../sync/token-manager'
 import { trackMainEvent } from '../../telemetry/track'
@@ -64,5 +65,26 @@ export function buildAssetServiceContext(): AssetServiceContext | null {
     },
     markWritebackIgnored,
     trackEvent: trackMainEvent
+  }
+}
+
+/**
+ * Can canvas images be externalized right now?
+ *
+ * Never throws — like `dereference` above, "no" is an ordinary answer, not a
+ * failure: editing a canvas while signed out or offline is a supported state,
+ * and the images simply stay inline until sync is available again. Deliberately
+ * does NOT call `getCanvasAssetIO()`: that CONSTRUCTS the shared upload queue,
+ * which binds the NetworkMonitor of the moment, so asking the question early
+ * (before the sync runtime exists) would leave the queue bound to nothing for
+ * the rest of the session. A live sync engine is the cheap proxy for "the
+ * runtime that owns that monitor is up".
+ */
+export async function canUploadCanvasAssets(): Promise<boolean> {
+  if (!getSyncEngine()) return false
+  try {
+    return (await getValidAccessToken()) !== null
+  } catch {
+    return false
   }
 }

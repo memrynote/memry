@@ -13,6 +13,7 @@ import {
   type CanvasListResponse,
   type CanvasDeleteResponse,
   type CanvasUploadAssetResponse,
+  type CanvasCanUploadAssetResponse,
   type CanvasGetAssetResponse,
   type CanvasListAssetsResponse,
   type CanvasCreatedEvent,
@@ -102,6 +103,13 @@ export const canvasRpc = defineDomain({
           mimeType: input.mimeType,
           data: Array.from(new Uint8Array(input.data))
         })`
+    }),
+    // Asked once per save, before any image bytes are decoded or shipped: a
+    // signed-out / sync-less device answers false and the scene keeps its
+    // inline images instead of failing one upload per image per save (#1581).
+    canUploadAsset: defineMethod<() => Promise<CanvasCanUploadAssetResponse>>({
+      channel: CanvasChannels.invoke.CAN_UPLOAD_ASSET,
+      params: []
     }),
     getAsset: defineMethod<(canvasId: string, fileId: string) => Promise<CanvasGetAssetResponse>>({
       channel: CanvasChannels.invoke.GET_ASSET,

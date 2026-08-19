@@ -331,6 +331,7 @@ export function createGeneratedRpcApi({
           mimeType: input.mimeType,
           data: Array.from(new Uint8Array(input.data))
         })) as GeneratedRpcApi["canvas"]["uploadAsset"],
+      "canUploadAsset": (() => invoke("canvas:can-upload-asset")) as GeneratedRpcApi["canvas"]["canUploadAsset"],
       "getAsset": ((canvasId, fileId) => invoke("canvas:get-asset", { canvasId, fileId })) as GeneratedRpcApi["canvas"]["getAsset"],
       "listAssets": ((canvasId) => invoke("canvas:list-assets", { canvasId })) as GeneratedRpcApi["canvas"]["listAssets"],
       "libraryList": (() => invoke("canvas:library-list")) as GeneratedRpcApi["canvas"]["libraryList"],

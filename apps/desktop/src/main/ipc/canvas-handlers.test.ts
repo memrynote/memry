@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { CanvasChannels } from '@memry/contracts/canvas-api'
 import { registerCanvasHandlers, unregisterCanvasHandlers } from './canvas-handlers'
-import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
+import {
+  buildAssetServiceContext,
+  canUploadCanvasAssets
+} from '../canvas/assets/asset-service-context'
 import {
   getCanvasAssetRef,
   listCanvasAssetDescriptors,
@@ -78,7 +81,8 @@ vi.mock('../telemetry/track', () => ({
 // context builder pulls the whole attachment + writeback graph. Returning null
 // makes the asset handlers degrade to their offline-safe branches.
 vi.mock('../canvas/assets/asset-service-context', () => ({
-  buildAssetServiceContext: vi.fn(() => null)
+  buildAssetServiceContext: vi.fn(() => null),
+  canUploadCanvasAssets: vi.fn(async () => true)
 }))
 // The asset service itself is unit-tested elsewhere (asset-service.test.ts);
 // here we only need to verify the handlers call it with the right args.
@@ -221,6 +225,33 @@ describe('canvas asset IPC handlers', () => {
       expect(bytesArg).toBeInstanceOf(Uint8Array)
       expect(Array.from(bytesArg as Uint8Array)).toEqual([137, 80, 78, 71])
       expect(result).toMatchObject({ deduped: false })
+    })
+  })
+
+  describe('canvas:can-upload-asset', () => {
+    it('answers false without asking sync when no vault is open', async () => {
+      vi.mocked(buildAssetServiceContext).mockReturnValue(null)
+      const handlers = await registerAndGetHandlers()
+
+      await expect(handlers[CanvasChannels.invoke.CAN_UPLOAD_ASSET]({})).resolves.toEqual({
+        canUpload: false
+      })
+      expect(canUploadCanvasAssets).not.toHaveBeenCalled()
+    })
+
+    it('reports what the sync-side gate says when a vault is open', async () => {
+      vi.mocked(buildAssetServiceContext).mockReturnValue({ marker: 'ctx' } as never)
+      vi.mocked(canUploadCanvasAssets).mockResolvedValue(false)
+      const handlers = await registerAndGetHandlers()
+
+      await expect(handlers[CanvasChannels.invoke.CAN_UPLOAD_ASSET]({})).resolves.toEqual({
+        canUpload: false
+      })
+
+      vi.mocked(canUploadCanvasAssets).mockResolvedValue(true)
+      await expect(handlers[CanvasChannels.invoke.CAN_UPLOAD_ASSET]({})).resolves.toEqual({
+        canUpload: true
+      })
     })
   })
 

@@ -10,6 +10,7 @@ const {
   getOrCreateVaultUuid,
   getCanvasAssetIO,
   getValidAccessToken,
+  getSyncEngine,
   resolveSyncServerUrl,
   markWritebackIgnored,
   trackMainEvent,
@@ -21,6 +22,7 @@ const {
   getOrCreateVaultUuid: vi.fn(),
   getCanvasAssetIO: vi.fn(),
   getValidAccessToken: vi.fn(),
+  getSyncEngine: vi.fn(),
   resolveSyncServerUrl: vi.fn(),
   markWritebackIgnored: vi.fn(),
   trackMainEvent: vi.fn(),
@@ -32,12 +34,13 @@ vi.mock('../../vault/index', () => ({ getStatus: getVaultStatus }))
 vi.mock('../../agent/storage/vault-id', () => ({ getOrCreateVaultUuid }))
 vi.mock('../../ipc/sync-attachment-handlers', () => ({ getCanvasAssetIO }))
 vi.mock('../../sync/token-manager', () => ({ getValidAccessToken }))
+vi.mock('../../sync/runtime', () => ({ getSyncEngine }))
 vi.mock('../../sync/sync-server-url', () => ({ resolveSyncServerUrl }))
 vi.mock('../../sync/crdt-writeback', () => ({ markWritebackIgnored }))
 vi.mock('../../telemetry/track', () => ({ trackMainEvent }))
 vi.mock('./attachment-dereference', () => ({ dereferenceChunks }))
 
-import { buildAssetServiceContext } from './asset-service-context'
+import { buildAssetServiceContext, canUploadCanvasAssets } from './asset-service-context'
 
 describe('buildAssetServiceContext', () => {
   const fakeDb = { marker: 'db' }
@@ -152,5 +155,42 @@ describe('buildAssetServiceContext', () => {
 
       expect(result).toEqual({ ok: false })
     })
+  })
+})
+
+describe('canUploadCanvasAssets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('says no — without reading the keychain — while the sync runtime is down', async () => {
+    getSyncEngine.mockReturnValue(null)
+
+    await expect(canUploadCanvasAssets()).resolves.toBe(false)
+    expect(getValidAccessToken).not.toHaveBeenCalled()
+    // Asking must never construct the shared upload queue: it would bind the
+    // NetworkMonitor of the moment, which does not exist yet.
+    expect(getCanvasAssetIO).not.toHaveBeenCalled()
+  })
+
+  it('says no when the session has no access token (signed out / refresh rejected)', async () => {
+    getSyncEngine.mockReturnValue({ marker: 'engine' })
+    getValidAccessToken.mockResolvedValue(null)
+
+    await expect(canUploadCanvasAssets()).resolves.toBe(false)
+  })
+
+  it('says no rather than throwing when the token lookup itself fails', async () => {
+    getSyncEngine.mockReturnValue({ marker: 'engine' })
+    getValidAccessToken.mockRejectedValue(new Error('keychain unavailable'))
+
+    await expect(canUploadCanvasAssets()).resolves.toBe(false)
+  })
+
+  it('says yes when sync is running and the session has a token', async () => {
+    getSyncEngine.mockReturnValue({ marker: 'engine' })
+    getValidAccessToken.mockResolvedValue('token-abc')
+
+    await expect(canUploadCanvasAssets()).resolves.toBe(true)
   })
 })

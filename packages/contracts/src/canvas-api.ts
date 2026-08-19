@@ -179,6 +179,15 @@ export interface CanvasUploadAssetResponse {
   deduped: boolean
 }
 
+/**
+ * Answer to the pre-upload gate. `false` means externalization must be a quiet
+ * no-op this save (images stay inline and are retried once sync is available),
+ * NOT that anything failed.
+ */
+export interface CanvasCanUploadAssetResponse {
+  canUpload: boolean
+}
+
 export interface CanvasGetAssetResponse {
   ref: string | null
 }

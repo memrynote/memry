@@ -724,6 +724,13 @@ export const CanvasChannels = {
     /** Mirrors notes:open-external, canvas-id scoped. */
     OPEN_EXTERNAL: 'canvas:open-external',
     UPLOAD_ASSET: 'canvas:upload-asset',
+    /**
+     * Cheap "can this device externalize scene images right now?" gate the
+     * renderer asks BEFORE it decodes and ships image bytes. False while the
+     * session has no access token or sync is not running — a normal
+     * signed-out/offline state, not an error.
+     */
+    CAN_UPLOAD_ASSET: 'canvas:can-upload-asset',
     GET_ASSET: 'canvas:get-asset',
     LIST_ASSETS: 'canvas:list-assets',
     /** Excalidraw library (shapes panel) — vault-global, not per canvas. */

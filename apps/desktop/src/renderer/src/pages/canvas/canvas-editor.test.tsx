@@ -38,7 +38,10 @@ interface FakeApi {
 function installWindowApi(): void {
   ;(window as unknown as { api: unknown }).api = {
     canvas: { liveOpened: mocks.liveOpened, liveClosed: mocks.liveClosed },
-    notes: { getFolders: () => Promise.resolve([]) }
+    notes: { getFolders: () => Promise.resolve([]) },
+    // The editor unblocks previously-failed asset uploads on a sync state
+    // change; the subscription only has to exist for these suites.
+    onSyncStatusChanged: () => () => {}
   }
 }
 
@@ -142,7 +145,8 @@ vi.mock('sonner', () => ({
 vi.mock('@/services/canvas-service', () => ({
   canvasService: {
     update: (...args: unknown[]) => mocks.update(...args),
-    uploadAsset: vi.fn()
+    uploadAsset: vi.fn(),
+    canUploadAsset: vi.fn(async () => ({ canUpload: true }))
   },
   onCanvasTooLarge: () => () => {}
 }))
