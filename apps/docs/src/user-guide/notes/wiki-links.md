@@ -14,6 +14,20 @@ Type `[[` and start typing the title. An autocomplete dropdown appears with matc
 
 The slash menu's **Link to note** item types the `[[` for you and opens the same dropdown.
 
+Every row in that dropdown can be given a **display name**: type `|` after the title and
+write the words you want in the sentence — `[[Continent#North America|North of America]]`.
+Once both halves are settled the dropdown becomes a single **Display as** row that commits
+it. The link still points at the note; only the visible text changes.
+
+## Linking Selected Text
+
+Select a word or a sentence and press **Link to note** in the selection toolbar (next to the
+external-link button). The selected text becomes the link's display name and the dropdown
+opens for you to choose the target — any note, or a heading inside one by typing `#`. The
+sentence reads exactly as it did before; the words are now a link.
+
+Pick nothing and click away, and the text goes back to being ordinary text.
+
 The link displays the target's current title, but the underlying reference uses a stable ID — renaming the target doesn't break the link.
 
 ## Following a Link
@@ -35,9 +49,29 @@ keep typing to filter them, and pick one to write the whole `[[Note#Heading]]` l
 the `#` and the note list comes back. If the note has no headings, the dropdown says so —
 memrynote will not add a heading to someone else's note.
 
+**A heading picked this way labels itself with the heading.** `[[Continent#North America]]`
+reads "North America" in the note rather than the whole `Continent#North America`; hovering
+it still names the note it points at. The label is written into the link as an alias —
+`[[Continent#North America|North America]]` — so the file says exactly what you see, and
+Obsidian shows the same thing. Change the heading later and the label follows it; write your
+own and yours is kept.
+
+Links you wrote before this are left as they are. Open one (below) and pick its heading again
+to give it a label.
+
 Because an exact title is what switches modes, `[[Sprint #` still lists notes: `Sprint` is
 not a note here, so nothing about `[[Sprint #4]]` changes. Block references (`#^`) are never
 offered.
+
+### Seeing a link's markdown
+
+Put the cursor immediately before or after a link — by arrow key or by clicking there —
+and that link shows its markdown for as long as the cursor stays beside it:
+`[[Continent#North America|North America]]`, exactly what the vault file holds. Move the
+cursor away and it goes back to reading as a link.
+
+This is display only. Nothing is written, so moving the cursor around a note never marks it
+edited and never lands on the undo stack. To actually change the link, open it:
 
 ### Adding a heading to a link you already inserted
 
@@ -47,6 +81,9 @@ A finished link is a single chip, so there is nothing to type a `#` into. Press
 the `[[` `]]` dimmed. Type `#` and the heading dropdown appears, exactly as when writing the
 link from scratch. Move the cursor out of the brackets, or click elsewhere, and it becomes a
 chip again.
+
+This is also where a link's display name is edited: type `|` and the words you want. If the
+link already carried a label the heading picker wrote, the new one replaces it.
 
 ::: warning Backspace next to a link now opens it instead of deleting it
 This applies to **every** wiki link, not only ones with a heading. To delete a link, press
