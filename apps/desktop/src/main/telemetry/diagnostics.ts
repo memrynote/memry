@@ -181,6 +181,30 @@ export const trackMainError = (source: string, action: string, error: unknown): 
   })
 }
 
+/**
+ * Report a failure that is a normal condition rather than a defect: it stays
+ * fully queryable as an `app_log_recorded` `warn`, but never lands in Error
+ * Tracking. Same error-code derivation and same on-device redaction as
+ * trackMainError — only the severity moves, so nothing is lost by the demotion
+ * and the volume itself is still the diagnostic (issue #1587).
+ */
+export const trackMainWarning = (
+  source: string,
+  action: string,
+  error: unknown,
+  metrics?: { retryCount?: number }
+): void => {
+  if (isExpectedConditionError(error)) return
+
+  trackMainLog('warn', {
+    scope: source,
+    action,
+    errorCode: toErrorCode(error),
+    error: buildErrorDetail(error, undefined, getMainRedactOptions()),
+    metrics
+  })
+}
+
 // A rejection reason can be any value — a string, a plain object, or a
 // cross-realm Error that fails `instanceof Error` — and those carry no stack,
 // landing in telemetry as an unactionable bare `Error` with an empty stack.

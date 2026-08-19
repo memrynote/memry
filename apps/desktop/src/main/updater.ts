@@ -8,9 +8,16 @@ import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
 import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
-import { trackMainError } from './telemetry/diagnostics'
+import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 import { trackMainEvent } from './telemetry/track'
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
+import {
+  classifyUpdaterError,
+  isUpdaterCheckPhase,
+  recordUpdaterCheckFailure,
+  recordUpdaterCheckSuccess,
+  resetUpdaterCheckHealth
+} from './updater-error-severity'
 
 const logger = createLogger('Updater')
 
@@ -138,6 +145,30 @@ export function describeUpdaterError(
  * electron-updater's `error` event carries no phase of its own, so derive it from the
  * status the updater was in when it fired.
  */
+/**
+ * Route a failure to the telemetry severity it deserves. A background check that
+ * could not reach the network is the user being offline, not a defect, so it
+ * ships as a `warn` log line — queryable, but out of Error Tracking. Everything
+ * else, plus an install whose checks have been failing for a day straight, stays
+ * an exception: those users cannot receive a fix. See updater-error-severity.ts.
+ */
+function reportUpdaterFailure(error: unknown, phase: UpdaterErrorPhase): void {
+  if (!isUpdaterCheckPhase(phase)) {
+    trackMainError('updater', phase, error)
+    return
+  }
+  // Every failed check advances the streak, including the ones already reported
+  // as errors — the streak measures "this install cannot update", not severity.
+  const { consecutiveFailures, stuck } = recordUpdaterCheckFailure()
+  if (stuck || classifyUpdaterError(error, phase) === 'error') {
+    trackMainError('updater', phase, error)
+    return
+  }
+  // retryCount carries the streak length so a cross-install signal can separate
+  // one laptop failing 40 times from 40 laptops failing 3 times in a row.
+  trackMainWarning('updater', phase, error, { retryCount: consecutiveFailures })
+}
+
 function currentErrorPhase(): UpdaterErrorPhase {
   switch (state.status) {
     case 'checking':
@@ -196,6 +227,7 @@ export function initializeUpdater(): void {
   }
 
   initialized = true
+  resetUpdaterCheckHealth()
   autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
   const autoDownloadEnabled = prefs.autoDownload ?? false
@@ -215,6 +247,7 @@ export function initializeUpdater(): void {
   })
 
   autoUpdater.on('update-available', (info) => {
+    recordUpdaterCheckSuccess()
     const displayVersion = formatUpdateVersion(info)
 
     // Honor "Skip This Version": suppress the prompt for a version the user
@@ -251,6 +284,7 @@ export function initializeUpdater(): void {
   })
 
   autoUpdater.on('update-not-available', () => {
+    recordUpdaterCheckSuccess()
     logger.info('no update available')
     setState({
       status: 'up-to-date',
@@ -291,10 +325,13 @@ export function initializeUpdater(): void {
   autoUpdater.on('error', (error) => {
     const message =
       error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
-    logger.error('updater error', error, describeUpdaterError(error, currentErrorPhase()))
+    const phase = currentErrorPhase()
+    // The local main.log line and the user-facing state stay at error severity:
+    // only the telemetry severity is classified.
+    logger.error('updater error', error, describeUpdaterError(error, phase))
     // Update-pipeline breakage (feed 404s, signature failures, disk-full
     // downloads) must reach error tracking: affected users cannot update to a fix.
-    trackMainError('updater', currentErrorPhase(), error)
+    reportUpdaterFailure(error, phase)
     setState({
       status: 'error',
       error: message
