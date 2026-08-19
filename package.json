@@ -18,6 +18,7 @@
     "docs:preview": "pnpm --filter @memry/docs preview",
     "release": "node scripts/release.mjs",
     "seed": "pnpm --filter @memry/desktop seed:vault",
+    "seed1k": "pnpm --filter @memry/desktop seed:bench",
     "release:humanize": "node scripts/humanize-release-notes.mjs",
     "release:reddit": "node scripts/build-reddit-release-post.mjs",
     "docs:impact": "node scripts/docs-impact.mjs",
