@@ -184,6 +184,12 @@ Two consequences worth knowing:
 
 Colours are stored by name, not as a fixed shade, so notes you coloured in an earlier version pick up the current tuning when you open them. Highlight (background) colours are unchanged — a filled background does not need the same treatment to stay readable.
 
+## Pasting a Link
+
+Pasting a URL offers four ways to keep it: plain **URL**, an inline **Mention** pill, an **Embed** (for a video the app recognises), or a **Bookmark** card.
+
+This works inside a table cell too. **Mention** replaces the pasted URL in that one cell and leaves the rest of the table alone. **Embed** and **Bookmark** are blocks in their own right and a cell holds text only, so they take the URL out of the cell and place the card after the whole table.
+
 ## Link Previews
 
 Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.
