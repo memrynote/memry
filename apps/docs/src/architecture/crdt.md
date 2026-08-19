@@ -214,7 +214,7 @@ store from a machine that cannot start a child at all:
 - `binding` — the child ran but the native binding failed to load. The store
   was never opened.
 - `store` — the binding loaded and the probe died using it. The child also
-  announces each store operation *before* running it (`open`, `write`, `read`,
+  announces each store operation _before_ running it (`open`, `write`, `read`,
   `clear`, `close`), so a native abort — which unwinds nothing — still names
   the operation that was in flight.
 - `binding-in-use` — a `store` failure that reproduced against an empty
@@ -504,6 +504,14 @@ document to its vault `.md` file and re-indexes it for search.
   nothing, and the scan cannot see it. That invariant is enforced where it can be, at
   schema construction in `@memry/editor-schema`: a mis-keyed spec fails the schema build
   in both processes instead of quietly dropping content on the next write-back.
+- **An empty serialization of a note that is not empty is refused** — empty markdown is a
+  real body, the body of a note nobody has written in, so the pass cannot simply reject
+  every empty result. It uses the document's own emptiness to tell them apart: every block
+  a note holds is a `blockContainer`, so a fragment that holds one and converts to no
+  blocks means the converter's repair deleted the whole document on the way out. The scan
+  above stays silent for that — an emptied table row is still a registered node name — so
+  without this the emptied file would be written and replicated. The pass keeps the file
+  instead, and reports it the way it reports a failed conversion.
 
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
