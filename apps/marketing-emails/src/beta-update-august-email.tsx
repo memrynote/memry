@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import type { CSSProperties, ReactElement, ReactNode } from 'react'
 import {
   Body,
@@ -51,13 +52,63 @@ const defaultProps = {
 
 const homeUrl = trackedMemryUrl('/', campaign, 'logo')
 const docsUrl = trackedMemryUrl('https://docs.memrynote.com/', campaign, 'docs')
-const importDocsUrl = trackedMemryUrl('https://docs.memrynote.com/', campaign, 'import_docs')
-const clipperUrl = trackedMemryUrl('/features/web-clipper', campaign, 'web_clipper')
+const importDocsUrl = trackedMemryUrl(
+  'https://docs.memrynote.com/user-guide/import',
+  campaign,
+  'import_docs'
+)
+const clipperChromeUrl = trackedMemryUrl('/features/web-clipper', campaign, 'web_clipper_chrome')
+const clipperFirefoxUrl = trackedMemryUrl('/features/web-clipper', campaign, 'web_clipper_firefox')
 const changelogUrl = trackedMemryUrl('/changelog', campaign, 'changelog')
 const footerDownloadUrl = trackedMemryUrl('/download/desktop', campaign, 'footer_download')
 const footerHomeUrl = trackedMemryUrl('/', campaign, 'footer_home')
-const redditUrl = 'https://www.reddit.com/r/MemryNote/'
+const redditUrl = trackedMemryUrl('https://www.reddit.com/r/MemryNote/', campaign, 'reddit')
 const twitterUrl = trackedMemryUrl('https://x.com/h4yfans', campaign, 'twitter')
+
+const importSources = [
+  { label: 'Notion', slug: 'notion', path: '/user-guide/import#importing-from-notion' },
+  {
+    label: 'Obsidian and any markdown folder',
+    slug: 'markdown',
+    path: '/user-guide/import#importing-from-markdown'
+  },
+  {
+    label: 'Apple Notes',
+    slug: 'apple_notes',
+    path: '/user-guide/import#importing-from-apple-notes'
+  },
+  {
+    label: 'Apple Journal',
+    slug: 'apple_journal',
+    path: '/user-guide/import#importing-from-apple-journal'
+  },
+  { label: 'Bear', slug: 'bear', path: '/user-guide/import#importing-from-bear' },
+  { label: 'Evernote', slug: 'evernote', path: '/user-guide/import#importing-from-evernote' },
+  { label: 'Roam Research', slug: 'roam', path: '/user-guide/import#importing-from-roam-research' },
+  { label: 'NotePlan', slug: 'noteplan', path: '/user-guide/import#importing-from-noteplan' },
+  {
+    label: 'Google Keep',
+    slug: 'google_keep',
+    path: '/user-guide/import#importing-from-google-keep'
+  },
+  { label: 'HTML files', slug: 'html', path: '/user-guide/import#importing-from-html' },
+  { label: 'CSV', slug: 'csv', path: '/user-guide/import#importing-from-csv' },
+  { label: 'Todoist', slug: 'todoist', path: '/user-guide/tasks/import-todoist' },
+  { label: 'TickTick', slug: 'ticktick', path: '/user-guide/tasks/import-ticktick' },
+  { label: 'Raindrop', slug: 'raindrop', path: '/user-guide/import#importing-from-raindrop' }
+].map((source) => ({
+  ...source,
+  url: trackedMemryUrl(
+    `https://docs.memrynote.com${source.path}`,
+    campaign,
+    `import_${source.slug}`
+  )
+}))
+
+const noteImportSources = importSources.slice(0, 11)
+const todoistSource = importSources[11]!
+const ticktickSource = importSources[12]!
+const raindropSource = importSources[13]!
 
 type EmailComponent = {
   (props: BetaUpdateAugustEmailProps): ReactElement
@@ -253,11 +304,15 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
             </li>
             <li style={styles.listItem}>
               <p style={styles.listParagraph}>
-                The web clipper is live on the{' '}
-                <Link href={clipperUrl} style={styles.link}>
-                  Chrome Web Store
+                The web clipper is live for{' '}
+                <Link href={clipperChromeUrl} style={styles.link}>
+                  Chrome
+                </Link>{' '}
+                and{' '}
+                <Link href={clipperFirefoxUrl} style={styles.link}>
+                  Firefox
                 </Link>
-                , and on Firefox.
+                , and clipping a tab that is a PDF now saves the actual PDF.
               </p>
             </li>
             <li style={styles.listItem}>
@@ -269,6 +324,61 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
             <li style={styles.listItem}>
               <p style={styles.listParagraph}>
                 Optional, redacted diagnostic reports for when something breaks.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                A wiki link can point at a heading, not just a note: type{' '}
+                <span style={styles.code}>[[Note#Heading]]</span> and you land on the right part of
+                the page.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Canvas grew up a little more: shapes can link to anything in your vault, and
+                canvases now live in the folder tree, with rename, duplicate and delete.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Tabs come back where you left them — the same note, scrolled to the same place,
+                instead of snapping back to the top.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>Home boards sync across your devices.</p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Quick-add reads plain language: “review notes every Tuesday at 9” becomes a
+                repeating task with a real due date.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Every task keeps an activity log, so you can see what changed and when.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Comments have proper formatting now, and the editor’s floating toolbar picked up
+                inline code and a labelled Comment button.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                Calendar handles multiple Google accounts, with per-account calendar selection.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                The graph view is live: nodes settle into place and you can drag them around.
+              </p>
+            </li>
+            <li style={styles.listItem}>
+              <p style={styles.listParagraph}>
+                In the inbox you can rename an attachment before filing it, and choose whether an
+                image lands as an embed or as a wiki link.
               </p>
             </li>
             <li style={styles.listItem}>
@@ -291,8 +401,29 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
             <Link href={importDocsUrl} style={styles.link}>
               import
             </Link>{' '}
-            from Notion, Obsidian, Apple Notes, Bear, and plain markdown folders in a few clicks. It
-            is usually faster than people expect.{' '}
+            from{' '}
+            {noteImportSources.map((source, index) => (
+              <Fragment key={source.slug}>
+                {index > 0 ? (index === noteImportSources.length - 1 ? ', and ' : ', ') : null}
+                <Link href={source.url} style={styles.link}>
+                  {source.label}
+                </Link>
+              </Fragment>
+            ))}{' '}
+            — plus your tasks from{' '}
+            <Link href={todoistSource.url} style={styles.link}>
+              Todoist
+            </Link>{' '}
+            and{' '}
+            <Link href={ticktickSource.url} style={styles.link}>
+              TickTick
+            </Link>
+            , and your bookmarks from{' '}
+            <Link href={raindropSource.url} style={styles.link}>
+              Raindrop
+            </Link>
+            . Each name goes straight to its guide. A few clicks, and it is usually faster than
+            people expect.{' '}
             <Link href={downloadUrl} style={styles.link}>
               Get the latest version
             </Link>
@@ -319,6 +450,14 @@ export const BetaUpdateAugustEmail: EmailComponent = (props) => {
               docs
             </Link>
             .
+          </Text>
+
+          <Text style={styles.paragraph}>
+            One last thing: <strong>please reply to this email.</strong> It is not a no-reply
+            address — every reply lands in my inbox and I answer all of them, personally. Bugs,
+            half-formed ideas, things you hate, the feature you keep waiting for: all of it is
+            genuinely valuable, and most of this update exists because someone took two minutes to
+            write in.
           </Text>
 
           <Text style={styles.paragraph}>See you next month!</Text>
