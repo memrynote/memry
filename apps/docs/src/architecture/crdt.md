@@ -780,6 +780,37 @@ the paced drain, because the note the user is looking at is the one whose stale 
 the bug, and a large vault's catch-up takes minutes. Their cost is bounded by the number
 of open editors.
 
+#### Sweep priority
+
+A paced drain on a large vault takes minutes, and it is FIFO, so the order the work list
+arrives in decides which stale body a user watches get repaired first. There are three
+tiers:
+
+1. **Notes with a live editor** — pulled in their own batch, outside the pace, as above.
+2. **Open-but-inactive docs** — everything `crdtProvider.getOpenNoteIds()` reports minus
+   the active set, spliced in at the _front_ of the paced queue. The provider's LRU is
+   already a list of up to 32 recently-opened notes held in memory, so this costs nothing
+   to read and names exactly the notes the user is one click away from. It is front-
+   inserted rather than appended because a sweep landing mid-drain would otherwise put
+   those notes behind everything the previous pass still had waiting.
+3. **The rest of the vault**, `modifiedAt DESC` — `getAllCrdtNoteIds` orders by
+   `note_cache.modified_at`, covered by the existing `idx_note_cache_modified`. A note
+   that changed recently, by this user or by the device being caught up with, is both the
+   likeliest to actually be stale and the likeliest to be opened next.
+
+Priority is never filtering. The sweep is the only channel by which a body-only remote
+edit reaches a device that missed the `crdt_updated` broadcast — bodies do not travel in
+the record change feed — so every markdown note still enters the queue, exactly once, and
+only its position changes. A vault whose mtimes are uniform (restored from backup,
+freshly cloned, bulk-imported) simply falls back to an arbitrary tail order.
+
+Notes a chunk failed are re-added to the pending set by `owePendingPull`, so they rejoin
+at the _end_ of the next drain rather than at the front: a note that just failed is the
+worst candidate for an immediate retry.
+
+Ordering changes perceived latency only. It does not change the request count, the
+request rate, or how long a full catch-up takes — the budgets above are untouched.
+
 One drain runs at a time and one timer is armed at a time. A second sweep landing
 mid-drain re-queues into the running one instead of starting its own, which would double
 the request rate; engine teardown cancels the timer and drops the queue.
