@@ -32,6 +32,70 @@ function bodyWithHeadingFarDown(heading: string): string {
   return `Intro paragraph.\n\n${filler('Before')}\n\n## ${heading}\n\n${filler('After')}\n`
 }
 
+/**
+ * #1563 E2 — selected text becomes the link's display name.
+ *
+ * The selection is the half the suggestion query cannot see: it is parked in the
+ * raw `[[|…]]` run behind the caret, so this only holds if the run survives the
+ * menu round trip. Nothing in jsdom exercises the selection toolbar's
+ * pointer-down handoff either, which is the other reason this is here.
+ */
+test.describe('Linking selected text', () => {
+  test('keeps the selected words as the label and links them to a note', async ({ page }) => {
+    await ready(page)
+
+    const targetTitle = uniqueLabel('Continent')
+    const sourceTitle = uniqueLabel('Selection Source')
+    const selected = 'kuzeyde bir yer'
+
+    await page.evaluate(
+      async ({ sourceTitle, targetTitle, selected }) => {
+        const api = window.api
+        const target = await api.notes.create({ title: targetTitle, content: 'Bir kıta.\n' })
+        const source = await api.notes.create({ title: sourceTitle, content: `${selected}\n` })
+        if (!target.success || !source.success) throw new Error('failed to seed selection notes')
+      },
+      { sourceTitle, targetTitle, selected }
+    )
+
+    await openNoteByTitle(page, sourceTitle)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    await editor.click()
+    await page.keyboard.press('Home')
+    await page.keyboard.press('Shift+End')
+
+    const linkButton = page.locator('[data-test="link-to-note"]').first()
+    await expect(linkButton).toBeEnabled()
+    // Pointer-down, not click: by the time `click` fires the button has focus
+    // and ProseMirror's selection is gone. Playwright's click sends both.
+    await linkButton.click()
+
+    await page.keyboard.type(targetTitle)
+    const noteRow = page.locator('.wiki-link-menu [role="option"]').first()
+    await expect(noteRow).toHaveText(targetTitle)
+    await noteRow.click()
+
+    const chip = page.locator('[data-wiki-link]').first()
+    await expect(chip).toBeVisible()
+    await expect(chip).toHaveText(selected)
+    await expect(chip).toHaveAttribute('data-target', targetTitle)
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async (title) => {
+            const found = await window.api.notes.resolveByTitle(title)
+            if (!found?.id) return null
+            const note = await window.api.notes.get(found.id)
+            return note?.content ?? null
+          }, sourceTitle),
+        { message: 'source note body on disk', timeout: 15000 }
+      )
+      .toContain(`[[${targetTitle}|${selected}]]`)
+  })
+})
+
 test.describe('Wiki heading links', () => {
   test('opens the note and scrolls to the heading instead of creating a note', async ({ page }) => {
     await ready(page)
@@ -154,6 +218,70 @@ test.describe('Wiki heading links', () => {
     expect(junk).toBeNull()
 
     expect(seeded.targetId).toBeTruthy()
+  })
+
+  /**
+   * #1563 D2 — a heading link picked from the dropdown labels itself with the
+   * heading, and says so in the file.
+   *
+   * The label rides in the alias because that is the only channel a display name
+   * survives a markdown round trip in; deriving it at render time would read
+   * `[[Sprint #4]]` (a real title, covered by the test below) as a split. So the
+   * assertion has two halves and both matter: what the chip shows, and what the
+   * vault file holds.
+   */
+  test('labels a heading picked from the dropdown with the heading alone', async ({ page }) => {
+    await ready(page)
+
+    const targetTitle = uniqueLabel('Continent')
+    const sourceTitle = uniqueLabel('Label Source')
+    const heading = 'North America'
+
+    await page.evaluate(
+      async ({ sourceTitle, targetTitle, body }) => {
+        const api = window.api
+        const target = await api.notes.create({ title: targetTitle, content: body })
+        const source = await api.notes.create({ title: sourceTitle, content: 'Bkz ' })
+        if (!target.success || !source.success) throw new Error('failed to seed label notes')
+      },
+      { sourceTitle, targetTitle, body: bodyWithHeadingFarDown(heading) }
+    )
+
+    await openNoteByTitle(page, sourceTitle)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    await editor.click()
+    await page.keyboard.press('End')
+    // The `[[` has to enter the document through the suggestion plugin's own
+    // trigger, so type it rather than pasting.
+    await page.keyboard.type(`[[${targetTitle}`)
+    // An exact title is what switches the dropdown into heading mode.
+    await page.keyboard.type('#North')
+
+    const headingRow = page.locator('.wiki-link-menu [role="option"]').first()
+    await expect(headingRow).toHaveText(heading)
+    await headingRow.click()
+
+    const chip = page.locator('[data-wiki-link]').first()
+    await expect(chip).toBeVisible()
+    // The chip reads the heading alone — not `Continent#North America`.
+    await expect(chip).toHaveText(heading)
+    await expect(chip).toHaveAttribute('data-target', `${targetTitle}#${heading}`)
+    await expect(chip).toHaveAttribute('data-alias', heading)
+
+    // And the file says exactly what the screen does.
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(async (title) => {
+            const found = await window.api.notes.resolveByTitle(title)
+            if (!found?.id) return null
+            const note = await window.api.notes.get(found.id)
+            return note?.content ?? null
+          }, sourceTitle),
+        { message: 'source note body on disk', timeout: 15000 }
+      )
+      .toContain(`[[${targetTitle}#${heading}|${heading}]]`)
   })
 
   test('still opens a note whose title really contains a hash', async ({ page }) => {

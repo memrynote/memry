@@ -18,9 +18,11 @@ import {
   useEditorState,
   type FormattingToolbarProps
 } from '@blocknote/react'
-import { MessageCircle } from '@/lib/icons'
+import { SuggestionMenu } from '@blocknote/core/extensions'
+import { Link2, MessageCircle } from '@/lib/icons'
 import type { ReviewSelection } from './types'
 import { ListTypeButtons } from './list-type-buttons'
+import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 import { useT } from '@memry/i18n/renderer'
 
 interface ReviewFormattingToolbarProps {
@@ -62,6 +64,7 @@ export function ReviewFormattingToolbar({
       <FormattingToolbar {...toolbarProps}>
         {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
         <ListTypeButtons />
+        <LinkToNoteButton />
         <ReviewToolbarButton onSelect={onAddComment} iconOnly />
       </FormattingToolbar>
     )
@@ -100,12 +103,91 @@ export function ReviewFormattingToolbar({
           <NestBlockButton />
           <UnnestBlockButton />
           <CreateLinkButton />
+          <LinkToNoteButton />
         </div>
         <div className="review-formatting-toolbar-actions">
           <ReviewToolbarButton onSelect={onAddComment} />
         </div>
       </div>
     </FormattingToolbar>
+  )
+}
+
+/**
+ * "Link this selection to a note or heading" (#1563 E2) — the internal
+ * counterpart to `CreateLinkButton`, which only ever offered an external URL.
+ *
+ * It hands the selection to the wiki-link edit plugin, which turns it into the
+ * same raw `[[…]]` run an edited chip becomes and binds the `[[` suggestion
+ * menu to it. One search UI, one place heading support lives.
+ *
+ * The work happens on pointer-down, before the toolbar button takes focus and
+ * ProseMirror's selection collapses — the same reason `ReviewToolbarButton`
+ * below captures pointer events.
+ */
+function LinkToNoteButton() {
+  const { t } = useT('notes')
+  const Components = useComponentsContext()
+  const editor = useBlockNoteEditor()
+  const handledRef = useRef(false)
+
+  const hasSelection = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      const selection = getProseMirrorState(editor as BlockNoteEditor)?.selection
+      if (!selection || selection.empty || (selection as { node?: unknown }).node) return false
+      // Read the resolved positions defensively, like everything else that
+      // reaches into the editor from this file: this selector runs on every
+      // editor state, including ones from before the view is mounted.
+      const { $from, $to } = selection as {
+        $from?: { parent?: unknown }
+        $to?: { parent?: unknown }
+      }
+      return Boolean($from?.parent) && $from?.parent === $to?.parent
+    }
+  })
+
+  if (!Components) return null
+
+  const label = t('editor.toolbar.linkToNote')
+
+  const run = (event: PointerEvent<HTMLElement> | MouseEvent<HTMLElement>): void => {
+    event.preventDefault()
+    if (handledRef.current) return
+
+    const opened = openWikiLinkForSelection(editor as never, {
+      openMenu: () =>
+        editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+          // The `[[` is already in the document — this button wrote it.
+          deleteTriggerCharacter: false
+        })
+    })
+    if (!opened) return
+
+    handledRef.current = true
+    window.setTimeout(() => {
+      handledRef.current = false
+    }, 0)
+  }
+
+  return (
+    <span
+      className="review-formatting-toolbar-action"
+      onPointerDownCapture={run}
+      onMouseDownCapture={run}
+    >
+      <Components.FormattingToolbar.Button
+        className="bn-button"
+        data-test="link-to-note"
+        label={label}
+        mainTooltip={label}
+        isDisabled={!hasSelection}
+        icon={<Link2 size={16} />}
+        onClick={() => {
+          handledRef.current = false
+        }}
+      />
+    </span>
   )
 }
 

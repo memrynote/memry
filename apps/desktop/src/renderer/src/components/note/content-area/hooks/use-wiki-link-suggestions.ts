@@ -7,8 +7,8 @@ import { fuzzySearch } from '@/lib/fuzzy-search'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
 import { createWikiLinkInlineContent } from '../wiki-link'
-import { parseWikiLinkQuery } from '../wiki-link-utils'
-import { replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
+import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
+import { activeRunWikiLink, replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
 import type { WikiLinkSuggestionItem } from '../wiki-link-menu'
 import { createLogger } from '@/lib/logger'
 
@@ -36,6 +36,22 @@ function blockHasContent(block: any): boolean {
     if (item?.type === 'text') return Boolean((item.text ?? '').trim())
     return Boolean(item)
   })
+}
+
+/**
+ * The single row the menu becomes once BOTH halves of `[[target|alias]]` are
+ * settled — the target names something exactly and a label was typed after the
+ * `|`. Picking anything else at that point would be picking a target again.
+ */
+function aliasRow(target: string, alias: string): WikiLinkSuggestionItem {
+  return {
+    id: `alias:${target}`,
+    title: alias,
+    target,
+    alias,
+    exists: true,
+    type: 'alias'
+  }
 }
 
 function createAudioFileBlockContent(props: {
@@ -124,6 +140,13 @@ export function useWikiLinkSuggestions(editor: any) {
         const headings = await loadHeadings(headingTarget, now)
         const matches = heading ? fuzzySearch(headings, heading, ['text']) : headings
 
+        // Target already settled and a label typed after `|`: there is nothing
+        // left to choose, so the menu becomes the one row that commits it.
+        const exactHeading = heading ? headings.find((item) => item.text === heading) : undefined
+        if (alias && exactHeading) {
+          return [aliasRow(`${headingTarget.title}#${exactHeading.text}`, alias)]
+        }
+
         if (matches.length === 0) {
           return [
             {
@@ -151,6 +174,14 @@ export function useWikiLinkSuggestions(editor: any) {
       }
 
       const filtered = search ? fuzzySearch(notes, search, ['title']) : notes
+
+      const exactNote = search
+        ? filtered.find((note) => note.title.toLowerCase() === search.toLowerCase())
+        : undefined
+      if (alias && exactNote) {
+        return [aliasRow(exactNote.title, alias)]
+      }
+
       const sorted = filtered.slice(0, 10)
 
       const suggestions: WikiLinkSuggestionItem[] = sorted.map((note) => ({
@@ -166,9 +197,7 @@ export function useWikiLinkSuggestions(editor: any) {
         ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
       }))
 
-      const hasExactMatch = search
-        ? filtered.some((note) => note.title.toLowerCase() === search.toLowerCase())
-        : true
+      const hasExactMatch = search ? Boolean(exactNote) : true
 
       if (search && !hasExactMatch) {
         // The row names the note that will actually be created, which is the
@@ -199,7 +228,13 @@ export function useWikiLinkSuggestions(editor: any) {
     (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
 
-      const content = createWikiLinkInlineContent(item.target, item.alias ?? '')
+      // The raw run holds the half the query cannot see — an edited chip's own
+      // label, or the text "link this selection" parked there. Read it before
+      // the run is replaced.
+      const content = createWikiLinkInlineContent(
+        item.target,
+        pickAlias(item, activeRunWikiLink(editor))
+      )
 
       // Editing an existing link: the menu's `clearQuery` removed the query text
       // but left the `[[` and `]]` around it, so inserting here would produce

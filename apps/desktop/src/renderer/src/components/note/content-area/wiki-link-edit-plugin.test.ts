@@ -13,9 +13,11 @@ import { EditorState, TextSelection } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
 import { describe, expect, it } from 'vitest'
 import {
+  activeRunWikiLink,
   createWikiLinkEditPlugin,
   findWikiLinkRunAt,
-  isEditingWikiLinkText
+  isEditingWikiLinkText,
+  openWikiLinkForSelection
 } from './wiki-link-edit-plugin'
 
 const schema = new Schema({
@@ -266,5 +268,192 @@ describe('wiki-link edit plugin', () => {
 
     expect(isEditingWikiLinkText(state)).toBe(false)
     expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
+  })
+
+  // The label a heading link carries is written when the link is, so editing one
+  // starts from `[[A#B|B]]` with the caret at the end of the TARGET — typing a
+  // new label there necessarily leaves the old one trailing behind it.
+  it('drops the stale label when a new one is typed in front of it', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A#B', alias: 'B' })], 2), 'Backspace').state
+    expect(paragraphText(opened)).toBe('[[A#B|B]]')
+
+    const typed = opened.apply(opened.tr.insertText('|Yeni', opened.selection.from))
+    expect(paragraphText(typed)).toBe('[[A#B|Yeni|B]]')
+
+    const closed = typed.apply(
+      typed.tr.setSelection(TextSelection.create(typed.doc, typed.doc.content.size - 1))
+    )
+    expect(firstWikiLink(closed)?.attrs).toMatchObject({ target: 'A#B', alias: 'Yeni' })
+  })
+})
+
+/**
+ * A chip reads as its markdown while the caret is parked beside it — either
+ * side, arrow key or mouse click, since this keys off the SELECTION and not off
+ * a keystroke.
+ *
+ * Every assertion here is about decorations, and that is the point: the document
+ * is untouched. Swapping the node for text on caret movement would push a Y.Doc
+ * update to every device and put the cursor move on the Yjs undo stack, so the
+ * next Cmd+Z would undo the caret instead of the paragraph the user deleted.
+ */
+describe('markdown shown beside the caret', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function decorationsOf(state: EditorState): any[] {
+    const plugin = createWikiLinkEditPlugin()
+    const set = plugin.props.decorations!.call(plugin, state)
+    if (!set) return []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (
+      (set as any)
+        .find()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((d: any) => ({ from: d.from, to: d.to, class: d.type.attrs?.class, raw: d.spec?.raw }))
+    )
+  }
+
+  // `a ` is 1..3, the chip 3..4, ` b` 4..6.
+  function sentence(attrs: Record<string, unknown>, cursorAt: number): EditorState {
+    return stateWith([schema.text('a '), chip(attrs), schema.text(' b')], cursorAt)
+  }
+
+  it('shows the markdown when the caret sits on the right of the chip', () => {
+    const found = decorationsOf(sentence({ target: 'Toplantı' }, 4))
+
+    // The widget sorts ahead of the node decoration: it sits at the chip's
+    // start with `side: -1`, so the markdown renders where the chip was.
+    expect(found).toEqual([
+      { from: 3, to: 3, class: undefined, raw: '[[Toplantı]]' },
+      { from: 3, to: 4, class: 'wiki-link-hidden', raw: undefined }
+    ])
+  })
+
+  it('shows it on the left of the chip too — the old flow only worked from the right', () => {
+    const found = decorationsOf(sentence({ target: 'Toplantı' }, 3))
+
+    expect(found.map((d) => d.raw ?? d.class)).toEqual(['[[Toplantı]]', 'wiki-link-hidden'])
+  })
+
+  it('writes the alias out, exactly as the vault file holds it', () => {
+    const found = decorationsOf(
+      sentence({ target: 'Continent#North America', alias: 'the north' }, 4)
+    )
+
+    expect(found.find((d) => d.raw)?.raw).toBe('[[Continent#North America|the north]]')
+  })
+
+  it('paints nothing once the caret is a character away', () => {
+    expect(decorationsOf(sentence({ target: 'Toplantı' }, 2))).toEqual([])
+    expect(decorationsOf(sentence({ target: 'Toplantı' }, 5))).toEqual([])
+  })
+
+  it('paints nothing while text is selected — that is a selection, not a caret', () => {
+    const state = sentence({ target: 'Toplantı' }, 4)
+    const selected = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 1, 4)))
+
+    expect(decorationsOf(selected)).toEqual([])
+  })
+
+  it('shows both when the caret sits between two chips', () => {
+    const state = stateWith([chip({ target: 'A' }), chip({ target: 'B' })], 2)
+    const raws = decorationsOf(state)
+      .map((d) => d.raw)
+      .filter(Boolean)
+
+    expect(raws).toEqual(['[[A]]', '[[B]]'])
+  })
+})
+
+describe('openWikiLinkForSelection', () => {
+  function selectionState(text: string, from: number, to: number): EditorState {
+    const doc = schema.node('doc', null, [schema.node('paragraph', null, [schema.text(text)])])
+    const state = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
+    return state.apply(state.tr.setSelection(TextSelection.create(state.doc, from, to)))
+  }
+
+  function editorOf(view: ReturnType<typeof viewOf>) {
+    return {
+      _tiptapEditor: {
+        view,
+        get state() {
+          return view.state
+        }
+      }
+    }
+  }
+
+  it('turns the selection into a link whose target is still unchosen', () => {
+    // `Kuzey Amerika` is characters 3..16 of the paragraph (doc offsets 4..17).
+    const view = viewOf(selectionState('bkz Kuzey Amerika ve', 5, 18))
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+
+    expect(paragraphText(view.state)).toBe('bkz [[|Kuzey Amerika]] ve')
+    // The caret is right after the `[[`, which is where the suggestion menu
+    // anchors its query window — the `|alias` sits behind it, invisible to the
+    // query and untouched by typing.
+    expect(view.state.selection.from).toBe(5 + 2)
+    expect(activeRunWikiLink(editorOf(view) as never)).toEqual({
+      target: '',
+      alias: 'Kuzey Amerika'
+    })
+  })
+
+  it('opens the menu only after the text and caret are in place', () => {
+    const view = viewOf(selectionState('bir cümle', 1, 4))
+    const seen: Array<{ text: string; caret: number }> = []
+
+    openWikiLinkForSelection(editorOf(view) as never, {
+      openMenu: () =>
+        seen.push({ text: paragraphText(view.state), caret: view.state.selection.from })
+    })
+
+    expect(seen).toEqual([{ text: '[[|bir]] cümle', caret: 3 }])
+  })
+
+  it('strips the characters that would break the grammar out of the label', () => {
+    const view = viewOf(selectionState('a [x|y] b', 3, 8))
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+    expect(paragraphText(view.state)).toBe('a [[|xy]] b')
+  })
+
+  it('declines a collapsed selection and one that is only syntax characters', () => {
+    const collapsed = viewOf(selectionState('metin', 2, 2))
+    expect(openWikiLinkForSelection(editorOf(collapsed) as never)).toBe(false)
+
+    const unusable = viewOf(selectionState('a || b', 3, 5))
+    expect(openWikiLinkForSelection(editorOf(unusable) as never)).toBe(false)
+    expect(paragraphText(unusable.state)).toBe('a || b')
+  })
+
+  it('carries the selection marks so the finished chip keeps them', () => {
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('kalın', [schema.marks.bold.create()])])
+    ])
+    const base = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
+    const view = viewOf(base.apply(base.tr.setSelection(TextSelection.create(base.doc, 1, 6))))
+
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+    expect(
+      view.state.doc
+        .resolve(3)
+        .marks()
+        .map((mark) => mark.type.name)
+    ).toEqual(['bold'])
+  })
+
+  // Abandoning the picker must not leave `[[|Kuzey Amerika]]` behind: that text
+  // is what would be written to the vault file, verbatim.
+  it('unwraps back to the plain text when no target is ever picked', () => {
+    const view = viewOf(selectionState('bkz Kuzey Amerika ve', 5, 18))
+    openWikiLinkForSelection(editorOf(view) as never)
+
+    const closed = view.state.apply(
+      view.state.tr.setSelection(
+        TextSelection.create(view.state.doc, view.state.doc.content.size - 1)
+      )
+    )
+
+    expect(firstWikiLink(closed)).toBeNull()
+    expect(paragraphText(closed)).toBe('bkz Kuzey Amerika ve')
   })
 })

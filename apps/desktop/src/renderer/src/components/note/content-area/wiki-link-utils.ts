@@ -86,6 +86,57 @@ export function parseWikiLinkQuery(query: string): WikiLinkQueryParts {
   return { search, note, heading, alias }
 }
 
+/**
+ * Whether an alias is one the heading picker wrote rather than one a person did.
+ *
+ * The two are indistinguishable on disk — the alias is the ONLY channel a
+ * display name survives a markdown round trip in, so a heading link's label and
+ * a hand-written one are the same bytes. The test is therefore structural: an
+ * alias that is exactly its own target's heading text is derived, and follows
+ * the heading when the link is retargeted. Anything else is the user's words.
+ */
+export function isDerivedAlias(target: string, alias: string): boolean {
+  if (!alias) return false
+  const { heading } = splitWikiTarget(target)
+  return heading !== null && heading === alias
+}
+
+export interface WikiLinkAliasItem {
+  type: string
+  /** Heading rows: the heading text, which is also the row's label. */
+  title: string
+  alias?: string
+}
+
+/**
+ * The display name a picked suggestion should carry, highest priority first:
+ *
+ * 1. What was typed after `|` in the query — the user just wrote it.
+ * 2. The alias already sitting in the raw `[[…]]` run, when it is not derived.
+ *    That is where an edited chip's own label lives, and where "link this
+ *    selection" parks the selected text; neither reaches the query, because the
+ *    caret sits before the `|`.
+ * 3. A heading row labels itself with its heading text, so `[[A#B]]` reads `B`
+ *    rather than `A#B` (#1563 D2). Note rows deliberately do NOT: their target
+ *    may legitimately BE a title carrying a `#` (`Sprint #4`), and nothing here
+ *    can tell those apart — which is also why this is decided when the link is
+ *    written and never derived at render time.
+ */
+export function pickAlias(
+  item: WikiLinkAliasItem,
+  run: { target: string; alias: string } | null
+): string {
+  const typed = item.alias?.trim()
+  if (typed) return typed
+
+  if (run) {
+    const carried = run.alias.trim()
+    if (carried && !isDerivedAlias(run.target, carried)) return carried
+  }
+
+  return item.type === 'heading' ? item.title : ''
+}
+
 function createStyledText(
   text: string,
   styles: Record<string, boolean | string>

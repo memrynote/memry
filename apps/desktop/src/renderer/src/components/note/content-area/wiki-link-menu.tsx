@@ -3,7 +3,7 @@
  */
 
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { FileAudio, FileText, Hash, Plus } from '@/lib/icons'
+import { FileAudio, FileText, Hash, Plus, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -21,8 +21,10 @@ export type WikiLinkSuggestionItem = {
    * `headingEmpty` is that note having no heading to offer — a row rather than
    * a separate empty state so the menu stays open while the user backspaces
    * over the `#`, and it carries no target, so picking it does nothing.
+   * `alias` is the whole menu once both halves of `[[target|alias]]` are
+   * settled: one row that commits the display name.
    */
-  type: 'note' | 'create' | 'heading' | 'headingEmpty'
+  type: 'note' | 'create' | 'heading' | 'headingEmpty' | 'alias'
   lastEdited?: string
   fileType?: WikiLinkFileType
   mimeType?: string | null
@@ -105,6 +107,27 @@ export function WikiLinkMenu({
                   : t('menus.wiki.noHeadings', { title: item.title })}
               </span>
             </div>
+          )
+        }
+
+        if (item.type === 'alias') {
+          return (
+            <button
+              type="button"
+              key={`${item.type}-${item.id}`}
+              className={itemClassName}
+              onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              role="option"
+              aria-selected={isSelected}
+            >
+              <Type className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
+                <div className="font-medium">{t('menus.wiki.displayAs')}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {item.alias} → {item.target}
+                </div>
+              </div>
+            </button>
           )
         }
 
@@ -198,6 +221,13 @@ export function WikiLinkMenu({
           </button>
         )
       })}
+      {/* The `|` grammar works and always has, but nothing ever said so — a
+          heading link's label was only reachable by knowing to type it. One
+          quiet footer line rather than a hint per row, which would turn the
+          list into noise. */}
+      <div className="mt-1 border-t px-2 pb-0.5 pt-1.5 text-[11px] text-muted-foreground">
+        {t('menus.wiki.aliasHint')}
+      </div>
     </div>
   )
 }

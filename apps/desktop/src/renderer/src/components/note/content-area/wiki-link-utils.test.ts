@@ -5,7 +5,9 @@ import {
   normalizeMarkdownHardBreaks,
   normalizeTableContent,
   normalizeWikiLinks,
+  isDerivedAlias,
   parseWikiLinkQuery,
+  pickAlias,
   splitTextWithWikiLinks,
   splitWikiLinkQuery
 } from './wiki-link-utils'
@@ -308,5 +310,57 @@ describe('wiki-link utils', () => {
     expect(normalizeMarkdownHardBreaks('one\\\ntwo')).toBe('one\ntwo')
     expect(normalizeMarkdownHardBreaks('```\\\ncode\\\n```')).toBe('```\\\ncode\\\n```')
     expect(normalizeMarkdownHardBreaks('keep\\\\\nnext')).toBe('keep\\\\\nnext')
+  })
+})
+
+describe('isDerivedAlias', () => {
+  it('recognizes the label the heading picker writes', () => {
+    expect(isDerivedAlias('Continent#North America', 'North America')).toBe(true)
+    expect(isDerivedAlias('#Kararlar', 'Kararlar')).toBe(true)
+  })
+
+  it('leaves a label the user wrote alone', () => {
+    expect(isDerivedAlias('Continent#North America', 'North of America')).toBe(false)
+    expect(isDerivedAlias('Continent', 'North America')).toBe(false)
+    expect(isDerivedAlias('Continent#North America', '')).toBe(false)
+  })
+
+  // `#` is legal in a note title, so a note link's target can look split without
+  // being one. It carries no alias, and nothing here may invent it one.
+  it('does not read a `#` in a real note title as a heading label', () => {
+    expect(isDerivedAlias('Sprint #4', '4')).toBe(true)
+    expect(isDerivedAlias('Sprint #4', '')).toBe(false)
+  })
+})
+
+describe('pickAlias', () => {
+  const heading = { type: 'heading', title: 'North America' }
+  const note = { type: 'note', title: 'Sprint #4' }
+
+  it('prefers what was typed after the `|`', () => {
+    expect(pickAlias({ ...heading, alias: 'North of America' }, null)).toBe('North of America')
+    expect(
+      pickAlias({ ...heading, alias: 'Typed' }, { target: 'Continent', alias: 'Carried' })
+    ).toBe('Typed')
+  })
+
+  it('carries a label the run already holds — an edited chip, or a linked selection', () => {
+    expect(pickAlias(heading, { target: 'Continent', alias: 'North of America' })).toBe(
+      'North of America'
+    )
+    expect(pickAlias(note, { target: '', alias: 'this sprint' })).toBe('this sprint')
+  })
+
+  // The auto label is indistinguishable from a typed one on disk, so keeping it
+  // across a retarget would leave `[[A#New|Old]]` — a label naming a heading the
+  // link no longer points at.
+  it('refreshes a derived label instead of carrying it to the new heading', () => {
+    expect(pickAlias(heading, { target: 'Continent#Asia', alias: 'Asia' })).toBe('North America')
+  })
+
+  it('labels a heading row with its heading text and a note row with nothing', () => {
+    expect(pickAlias(heading, null)).toBe('North America')
+    expect(pickAlias(note, null)).toBe('')
+    expect(pickAlias({ type: 'create', title: 'Missing' }, null)).toBe('')
   })
 })
