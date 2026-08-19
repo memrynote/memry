@@ -35,6 +35,35 @@ export interface ReleaseDownloadsEnv {
   fetch?: typeof fetch
 }
 
+/**
+ * GitHub answered and refused the read.
+ *
+ * A 403/429 from the Releases API is upstream backpressure, not a bug in this
+ * cron: unauthenticated calls are capped at 60 requests/hour PER IP and Workers
+ * egress from shared addresses, so other tenants spend the budget before our one
+ * daily request arrives. Configure the `GITHUB_TOKEN` worker secret (public-repo
+ * read scope is enough) for the authenticated 5,000/hour budget.
+ *
+ * `code` and `statusCode` are read by `captureServerError`, so this reports as a
+ * handled 4xx with its own error code instead of a 500-level `UNHANDLED_ERROR`
+ * every day. The message records whether a token was in play, which is the one
+ * thing triage needs to know first.
+ */
+export class GitHubReleasesRefusedError extends Error {
+  readonly code = 'GITHUB_RELEASES_REFUSED'
+  readonly statusCode: number
+
+  constructor(status: number, authenticated: boolean) {
+    super(
+      `GitHub releases request refused with status ${status} (${
+        authenticated ? 'authenticated' : 'unauthenticated — GITHUB_TOKEN is not set'
+      })`
+    )
+    this.name = 'GitHubReleasesRefusedError'
+    this.statusCode = status
+  }
+}
+
 interface AssetSnapshot {
   assetId: string
   releaseTag: string
@@ -94,6 +123,7 @@ const parseAssets = (payload: unknown): AssetSnapshot[] => {
 }
 
 const fetchReleaseAssets = async (env: ReleaseDownloadsEnv): Promise<AssetSnapshot[]> => {
+  const authenticated = Boolean(env.GITHUB_TOKEN)
   const response = await (env.fetch ?? fetch)(
     `${GITHUB_API}/repos/${RELEASES_REPO}/releases?per_page=${RELEASES_PER_PAGE}`,
     {
@@ -102,12 +132,19 @@ const fetchReleaseAssets = async (env: ReleaseDownloadsEnv): Promise<AssetSnapsh
         'user-agent': USER_AGENT,
         // Optional: unauthenticated GitHub API calls are limited to 60/hour per IP,
         // and Workers egress from shared addresses.
-        ...(env.GITHUB_TOKEN ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {})
+        ...(authenticated ? { authorization: `Bearer ${env.GITHUB_TOKEN}` } : {})
       }
     }
   )
 
   if (!response.ok) {
+    // GitHub's own rate limiter answers 403 (budget spent) or 429 (secondary
+    // limit). Both are expected upstream conditions with a known remedy, so they
+    // get their own quiet code — see GitHubReleasesRefusedError. Anything else is
+    // a genuine unexpected failure and stays a 500.
+    if (response.status === 403 || response.status === 429) {
+      throw new GitHubReleasesRefusedError(response.status, authenticated)
+    }
     throw new Error(`GitHub releases request failed with status ${response.status}`)
   }
 

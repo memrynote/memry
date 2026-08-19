@@ -263,9 +263,19 @@ export interface IndexRecoveredEvent {
  * Sent after automatic recovery from corrupt or missing index.
  */
 export function emitIndexRecovered(event: IndexRecoveredEvent): void {
-  // Automatic recovery from a corrupt/missing index (or a failed index
-  // migration) is user-visible data-corruption recovery — count it in telemetry.
-  trackMainLog('warn', {
+  // Automatic recovery from a corrupt index or a failed index migration is
+  // user-visible data-corruption recovery — count it, at `warn`.
+  //
+  // `missing` is not that. `checkIndexHealth` reports it when index.db is simply
+  // not on disk, which is the expected first open of a vault: fresh install,
+  // newly linked device, or a user who deleted the file. The index is a fully
+  // derived cache — data.db and the markdown are untouched — so rebuilding it is
+  // the healthy path, with no user impact. Logged at `warn` it landed in the
+  // error dashboard and, spread across ~24 installs, read as the most widespread
+  // problem in the release while being no problem at all. Still emitted, with the
+  // same action and errorCode, so the event stays queryable; only the level moves.
+  const level = event.reason === 'missing' ? 'info' : 'warn'
+  trackMainLog(level, {
     scope: 'vault',
     action: 'index_recovered',
     errorCode: event.reason,

@@ -30,6 +30,7 @@ import {
 import { createLogger } from './lib/logger'
 import { captureServerError } from './services/analytics'
 import { syncReleaseDownloadCounts } from './services/release-downloads'
+import { logCrdtTraffic } from './services/sync-telemetry'
 import type { Bindings, AppContext } from './types'
 
 const logger = createLogger('Server')
@@ -55,7 +56,34 @@ const MAX_BODY_BYTES_SYNC = 8 * 1024 * 1024
 const MAX_BODY_BYTES_BLOB = 10 * 1024 * 1024
 const MAX_BODY_BYTES_TELEMETRY = 128 * 1024
 
-const bodyLimitError = () => {
+// A body over the cap dies HERE, before any route runs. For `/sync/crdt/*` that
+// meant the route's own `snapshot_rejected` / `updates_rejected` event — the one
+// carrying `totalBytes`, the single most useful number for diagnosing an
+// oversized CRDT payload — was never emitted, and the only trace left was a bare
+// 413 with no size in it. Emit the route's event here instead, with the size we
+// observed, so a rejection stays diagnosable wherever it is caught. `totalBytes`
+// is the ENCODED request body (base64 + JSON envelope), roughly 4/3 of the
+// decoded snapshot the route would have measured.
+const CRDT_REJECTION_EVENT: Record<string, 'snapshot_rejected' | 'updates_rejected'> = {
+  '/sync/crdt/snapshot': 'snapshot_rejected',
+  '/sync/crdt/updates': 'updates_rejected'
+}
+
+const logOversizedCrdtBody = (path: string, observedBytes: number): void => {
+  const event = CRDT_REJECTION_EVENT[path]
+  if (!event) return
+
+  logCrdtTraffic({
+    endpoint: path,
+    event,
+    totalBytes: observedBytes,
+    latencyMs: 0,
+    reason: 'body_limit_exceeded'
+  })
+}
+
+const bodyLimitError = (path: string, observedBytes: number) => {
+  logOversizedCrdtBody(path, observedBytes)
   throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Request body too large', 413)
 }
 
@@ -74,14 +102,26 @@ const getMaxBodyBytes = (path: string): number => {
   return path.startsWith('/sync/') ? MAX_BODY_BYTES_SYNC : MAX_BODY_BYTES_API
 }
 
-const isBodyWithinLimit = async (request: Request, maxBodyBytes: number): Promise<boolean> => {
+// `observedBytes` is what was counted before the read stopped: exact when the
+// body fits, and a lower bound (just past the cap) when it does not — the stream
+// is deliberately abandoned rather than buffered to measure a payload we are
+// about to reject.
+interface BodyLimitCheck {
+  withinLimit: boolean
+  observedBytes: number
+}
+
+const isBodyWithinLimit = async (
+  request: Request,
+  maxBodyBytes: number
+): Promise<BodyLimitCheck> => {
   if (!request.body) {
-    return true
+    return { withinLimit: true, observedBytes: 0 }
   }
 
   const reader = request.clone().body?.getReader()
   if (!reader) {
-    return true
+    return { withinLimit: true, observedBytes: 0 }
   }
 
   let totalBytes = 0
@@ -89,12 +129,12 @@ const isBodyWithinLimit = async (request: Request, maxBodyBytes: number): Promis
     while (true) {
       const { done, value } = await reader.read()
       if (done) {
-        return true
+        return { withinLimit: true, observedBytes: totalBytes }
       }
 
       totalBytes += value.byteLength
       if (totalBytes > maxBodyBytes) {
-        return false
+        return { withinLimit: false, observedBytes: totalBytes }
       }
     }
   } finally {
@@ -107,13 +147,13 @@ app.use('*', async (c, next) => {
 
   const contentLength = c.req.header('Content-Length')
   if (contentLength && Number(contentLength) > maxBodyBytes) {
-    bodyLimitError()
+    bodyLimitError(c.req.path, Number(contentLength))
   }
 
   if (!METHOD_WITHOUT_BODY.has(c.req.method)) {
-    const withinLimit = await isBodyWithinLimit(c.req.raw, maxBodyBytes)
+    const { withinLimit, observedBytes } = await isBodyWithinLimit(c.req.raw, maxBodyBytes)
     if (!withinLimit) {
-      bodyLimitError()
+      bodyLimitError(c.req.path, observedBytes)
     }
   }
 
@@ -212,7 +252,10 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
         error: result.reason,
         source: 'cron',
         action: tasks[i][0],
-        statusCode: 500,
+        // No hardcoded 500 any more: an error that carries its own status says
+        // so (GitHub's rate limiter answering the release pull is a handled
+        // 403, not a server fault), and everything else still defaults to 500
+        // inside captureServerError.
         handled: true
       })
     }
