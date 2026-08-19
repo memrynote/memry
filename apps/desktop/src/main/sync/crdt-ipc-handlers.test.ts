@@ -49,7 +49,9 @@ vi.mock('../store', () => ({
   getLegacyCrdtStorePartitionPending: () => undefined,
   clearLegacyCrdtStorePartitionPending: vi.fn(),
   getPendingCrdtStoreRename: () => undefined,
-  clearPendingCrdtStoreRename: vi.fn()
+  clearPendingCrdtStoreRename: vi.fn(),
+  getCrdtInMemorySessions: () => 0,
+  recordCrdtPersistenceOutcome: vi.fn(() => 0)
 }))
 
 vi.mock('../vault/notes', () => ({ toAbsolutePath: vi.fn() }))

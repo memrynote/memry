@@ -24,6 +24,7 @@ import { type Locale } from '@memry/i18n/shared'
 import App from './App'
 import { setActiveLocale } from './lib/active-locale'
 import QuickCapture from './components/quick-capture'
+import { CrdtPersistenceNotice } from './components/crdt-persistence-notice'
 import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
 import { AISettingsProvider } from './contexts/ai-settings-context'
@@ -126,6 +127,8 @@ async function boot(): Promise<void> {
           <AuthProvider>
             <SyncProvider>
               <App />
+              {/* After <App />, so the Toaster it renders is already mounted. */}
+              <CrdtPersistenceNotice />
             </SyncProvider>
           </AuthProvider>
         </QueryClientProvider>

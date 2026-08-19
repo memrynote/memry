@@ -141,6 +141,21 @@ export interface CrdtStoreData {
    * every install that has not linked under a build that records this.
    */
   pendingRenames?: Record<string, string>
+  /**
+   * Consecutive launches that ended with no on-disk CRDT store, reset to 0 the
+   * moment one opens.
+   *
+   * Persisted because the thing worth telling the user about is not one bad
+   * launch — the store recovers from those on its own — but a machine that has
+   * been running CRDT state in memory for a while and has no idea. A whole
+   * Windows population did exactly that with a single log line as the only
+   * signal (issue #1583); this is what the notice counts.
+   *
+   * Optional for the same reason as the keys above: stores written by older app
+   * versions have no `crdtStore` key at all, which reads as 0 — the correct
+   * starting state for an install that has never degraded.
+   */
+  inMemorySessions?: number
 }
 
 /**
@@ -530,6 +545,29 @@ export function clearPendingCrdtStoreRename(vaultUuid: string): void {
   if (current.pendingRenames?.[vaultUuid] === undefined) return
   const { [vaultUuid]: _settled, ...rest } = current.pendingRenames
   store.set('crdtStore', { ...current, pendingRenames: rest })
+}
+
+/**
+ * How many launches in a row have had no on-disk CRDT store. 0 = healthy.
+ */
+export function getCrdtInMemorySessions(): number {
+  return store.get('crdtStore').inMemorySessions ?? 0
+}
+
+/**
+ * Record this launch's CRDT persistence outcome and return the resulting streak.
+ *
+ * Idempotent when nothing changed (a healthy install at 0 writes no config), so
+ * the common path costs a read.
+ */
+export function recordCrdtPersistenceOutcome(healthy: boolean): number {
+  const current = store.get('crdtStore')
+  const previous = current.inMemorySessions ?? 0
+  const next = healthy ? 0 : previous + 1
+  if (next !== previous) {
+    store.set('crdtStore', { ...current, inMemorySessions: next })
+  }
+  return next
 }
 
 /**

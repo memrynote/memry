@@ -15,6 +15,7 @@ import {
   resetWritebackState
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import { recordCrdtPersistenceOutcome } from '../store'
 import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
@@ -187,6 +188,7 @@ export class CrdtProvider {
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
     this.persistenceReady = true
+    recordSessionPersistenceOutcome(this.persistence !== null)
 
     // The readiness signal a stranded editor waits on, announced from the exact
     // assignment that makes crdt:open-doc stop rejecting — the IPC handler gates
@@ -202,6 +204,16 @@ export class CrdtProvider {
 
   isInitialized(): boolean {
     return this.persistenceReady
+  }
+
+  /**
+   * Whether this provider is backed by the on-disk store. False means CRDT
+   * state lives only in this process: notes are still read from and written
+   * back to vault markdown, but edit history and the local state vector are
+   * gone at quit. Only meaningful once `isInitialized()` is true.
+   */
+  hasPersistence(): boolean {
+    return this.persistence !== null
   }
 
   /**
@@ -1224,6 +1236,44 @@ function isIpcOrigin(origin: unknown): origin is IpcOrigin {
     'source' in origin &&
     (origin as IpcOrigin).source === 'ipc'
   )
+}
+
+let sessionOutcomeRecorded = false
+
+/**
+ * Count this LAUNCH once, not each store this launch opens.
+ *
+ * A vault switch brings up a second provider, and a user who switches five
+ * times would otherwise look like five degraded launches — which is the number
+ * the user-facing notice is thresholded on. The first verdict of the process is
+ * the honest one; the rest of the session is the same binary and the same
+ * machine.
+ *
+ * There is deliberately no bounded retry behind this. The failure it counts is
+ * a native abort in the binding, which issue #1583 shows is deterministic per
+ * machine (19/19 win32 installs, every launch, six releases) rather than
+ * transient, and every retry costs a multi-second child process on the launch
+ * path. The one transient-shaped cause — a utility process that cannot boot —
+ * already gets its retry inside a single `openCrdtPersistence` call, on the
+ * Chromium-free transport.
+ */
+function recordSessionPersistenceOutcome(healthy: boolean): void {
+  if (sessionOutcomeRecorded) return
+  sessionOutcomeRecorded = true
+  try {
+    const sessions = recordCrdtPersistenceOutcome(healthy)
+    if (sessions > 0) {
+      log.warn('CRDT persistence has been unavailable for consecutive launches', { sessions })
+    }
+  } catch (err) {
+    // Bookkeeping for a notice must never be what stops the store from opening.
+    log.warn('Could not record the CRDT persistence outcome', { error: err })
+  }
+}
+
+/** Test seam for the once-per-launch latch above. */
+export function _resetCrdtSessionOutcomeForTests(): void {
+  sessionOutcomeRecorded = false
 }
 
 let instance: CrdtProvider | null = null
