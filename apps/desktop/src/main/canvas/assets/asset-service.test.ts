@@ -91,14 +91,12 @@ describe('canvas asset service', () => {
     vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'canvas-assets-'))
 
     let counter = 0
-    uploadAttachment = vi.fn(
-      async (): Promise<AssetUploadResult> => ({
-        attachmentId: `attachment-${++counter}`,
-        manifest: {
-          chunks: [{ encryptedHash: `enc-${counter}-0` }, { encryptedHash: `enc-${counter}-1` }]
-        }
-      })
-    )
+    uploadAttachment = vi.fn(async (): Promise<AssetUploadResult> => ({
+      attachmentId: `attachment-${++counter}`,
+      manifest: {
+        chunks: [{ encryptedHash: `enc-${counter}-0` }, { encryptedHash: `enc-${counter}-1` }]
+      }
+    }))
     downloadAttachment = vi.fn(async (_attachmentId: string, targetPath: string) => {
       fs.mkdirSync(path.dirname(targetPath), { recursive: true })
       fs.writeFileSync(targetPath, Buffer.from('downloaded'))
@@ -241,6 +239,33 @@ describe('canvas asset service', () => {
       expect(uploadAttachment).not.toHaveBeenCalled()
       expect(markWritebackIgnored).toHaveBeenCalledWith(diskPath)
       expect(fs.existsSync(diskPath)).toBe(true)
+      expect(fs.readFileSync(diskPath)).toEqual(bytes)
+    })
+
+    it('does not rewrite the bytes when a failed upload is retried (content is already on disk)', async () => {
+      const bytes = Buffer.from('bytes-whose-upload-keeps-failing')
+      const diskPath = canvasAssetDiskPath(
+        vaultPath,
+        assetFilename(hashAssetContent(bytes), 'image/png')
+      )
+      uploadAttachment.mockRejectedValue(new Error('Not authenticated — no access token'))
+
+      await expect(
+        uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
+      ).rejects.toThrow('Not authenticated')
+      expect(fs.existsSync(diskPath)).toBe(true)
+      expect(markWritebackIgnored).toHaveBeenCalledTimes(1)
+
+      const writtenAt = fs.statSync(diskPath).mtimeMs
+      markWritebackIgnored.mockClear()
+
+      await expect(
+        uploadCanvasAsset(ctx, 'canvas-a', 'file-1', 'image/png', bytes)
+      ).rejects.toThrow('Not authenticated')
+
+      // Same content-addressed path, same bytes: the retry must not churn the disk.
+      expect(markWritebackIgnored).not.toHaveBeenCalled()
+      expect(fs.statSync(diskPath).mtimeMs).toBe(writtenAt)
       expect(fs.readFileSync(diskPath)).toEqual(bytes)
     })
   })
