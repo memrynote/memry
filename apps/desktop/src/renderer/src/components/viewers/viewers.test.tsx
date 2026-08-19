@@ -69,14 +69,34 @@ vi.mock('react-pdf', () => ({
     file
   }: {
     children: React.ReactNode
-    onLoadSuccess?: (result: { numPages: number }) => void
+    onLoadSuccess?: (result: {
+      numPages: number
+      getPage: (page: number) => Promise<{
+        getViewport: (params: { scale: number }) => { width: number; height: number }
+      }>
+    }) => void
     onLoadError?: (error: Error) => void
     loading?: React.ReactNode
     file: string
   }) => (
     <section data-testid="pdf-document" data-file={file}>
       {loading}
-      <button type="button" onClick={() => onLoadSuccess?.({ numPages: 3 })}>
+      <button
+        type="button"
+        onClick={() =>
+          onLoadSuccess?.({
+            numPages: 3,
+            // Letter portrait, the size fit-to-width measures against.
+            getPage: () =>
+              Promise.resolve({
+                getViewport: ({ scale }: { scale: number }) => ({
+                  width: 612 * scale,
+                  height: 792 * scale
+                })
+              })
+          })
+        }
+      >
         load pdf
       </button>
       <button type="button" onClick={() => onLoadError?.(new Error('pdf failed'))}>
@@ -468,12 +488,10 @@ describe('viewer components', () => {
 
   it('loads PDFs, navigates pages, changes zoom/sidebar/rotation, and reports load errors', async () => {
     const user = userEvent.setup()
-    const { container } = render(<PdfViewer src="memry-file://spec.pdf" />)
-    Object.defineProperty(container.firstElementChild, 'clientWidth', {
-      value: 1156,
-      configurable: true
-    })
+    render(<PdfViewer src="memry-file://spec.pdf" />)
 
+    // jsdom gives the page pane no width, so the automatic fit cannot run and
+    // the zoom steps below start from a plain 100%.
     await user.click(screen.getAllByRole('button', { name: 'load pdf' })[0])
     expect(screen.getByText('1 / 3')).toBeInTheDocument()
     expect(screen.getByText(/page 1 scale 1 rotate 0/)).toBeInTheDocument()
@@ -490,8 +508,15 @@ describe('viewer components', () => {
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.rotate'))
     expect(screen.getByText(/rotate 90/)).toBeInTheDocument()
 
+    // Give the pane a width so fit-to-width has something to measure against.
+    // The page is rotated a quarter turn, so it is fitted across its 792pt
+    // height rather than its 612pt width: (1156 - 32) / 792 = 1.4192 -> 142%.
+    Object.defineProperty(screen.getByTestId('pdf-page-view'), 'clientWidth', {
+      value: 1156,
+      configurable: true
+    })
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.fitToWidth'))
-    expect(screen.getAllByText((_, node) => node?.textContent === '155%').length).toBeGreaterThan(0)
+    expect(screen.getAllByText((_, node) => node?.textContent === '142%').length).toBeGreaterThan(0)
     await user.click(screen.getByTitle('Hide thumbnails'))
     expect(screen.getByTitle('Show thumbnails')).toBeInTheDocument()
 
