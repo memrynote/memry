@@ -254,17 +254,54 @@ dimension.
 
 `errorCode` separates the failure modes:
 
-| `errorCode`               | Meaning                                                                      |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| `UNCLEAN_SHUTDOWN`        | no shutdown was attempted — hard crash, OOM kill, force quit                 |
-| `SHUTDOWN_TIMEOUT`        | shutdown ran but the 5s cleanup timeout fired before the forced `app.exit()` |
-| `SHUTDOWN_CLEANUP_FAILED` | the cleanup chain rejected                                                   |
+| `errorCode`               | Meaning                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `UNCLEAN_SHUTDOWN`        | no shutdown was attempted — hard crash, OOM kill, force quit         |
+| `SHUTDOWN_TIMEOUT_<STEP>` | shutdown ran but its budget expired while `<STEP>` was still running |
+| `SHUTDOWN_TIMEOUT`        | same, but the marker carries no step (written by an older build)     |
+| `SHUTDOWN_CLEANUP_FAILED` | the cleanup chain rejected                                           |
 
-The last two are stamped by `markShutdownFailure()` immediately before the forced exit: the log
+The last three are stamped by `markShutdownFailure()` immediately before the forced exit: the log
 line for that failure never flushes, but the marker survives to the next launch. Only the process
 that wrote a marker may remove one — a second instance that loses the single-instance lock shares
 `userData` and must not erase the primary's marker on its way out. Marker write failures are
 logged and swallowed; a read-only disk must never break startup.
+
+The overrunning step rides in the `errorCode` rather than in a dimension, because an event ships
+at most one dimension and that slot already carries `prior_app_version`. The `SHUTDOWN_TIMEOUT`
+prefix is preserved so a query written against the old code still matches. Only a bounded
+kebab-case token is accepted from the marker; anything else degrades to the plain code.
+
+### Shutdown Budget
+
+`before-quit` runs its cleanup as an ordered list of named steps under **one shared deadline**
+(`apps/desktop/src/main/shutdown-sequence.ts`):
+
+| Constant                    | Value     | Role                                                         |
+| --------------------------- | --------- | ------------------------------------------------------------ |
+| `SHUTDOWN_BUDGET_MS`        | 8,000 ms  | the whole graceful chain                                     |
+| `SHUTDOWN_LAST_CHANCE_MS`   | 1,500 ms  | durability flush granted after the budget is gone            |
+| `SHUTDOWN_HARD_BACKSTOP_MS` | 10,000 ms | timer outside the sequence; the process always exits by then |
+
+The budget is derived from the bounded waits the chain contains, not guessed: 2,000 ms for the
+renderer flush handshake (windows in parallel) plus 3,000 ms for the voice, image-processing and
+embeddings utility stops — which run **concurrently**, so 3,000 ms together rather than 9,000 ms
+in a row — leaves 3,000 ms of headroom for the unbounded steps. Every step is also handed a
+`cap()` that clamps its own bounded wait to what is left of the shared deadline, so no set of
+waits can collectively overrun it.
+
+Two rules keep a slow quit from becoming a lossy one:
+
+- **Order by durability.** The window flush and `flushPendingWritebacks()` run first, so a wedged
+  teardown step behind them degrades a quit to slow rather than to lost edits.
+- **Never force-exit with pending writes.** When the budget expires, the step that overran is
+  stamped into the marker, then `flushPendingWritebacks()` and `closeAllDatabases()` run inside
+  the last-chance window before `app.exit(1)`. `closeAllDatabases()` matters because both SQLite
+  files run `synchronous = NORMAL`, which defers durability to the checkpoint that `close()`
+  performs. The cleanup-error path does the same.
+
+A quit where nothing is wedged still completes in milliseconds; these ceilings are only reached
+when a teardown step is genuinely stuck.
 
 ### Durable Queues
 

@@ -423,7 +423,15 @@ document to its vault `.md` file and re-indexes it for search.
   at roughly a tenth of wall clock instead of saturating a core while the user types.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
-  destroyed, which covers app quit and vault switch.
+  destroyed, which covers vault switch.
+- **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
+  of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
+  spend the whole shutdown budget and the forced exit would kill the process with the
+  debounce timers still armed, losing up to 5 s of typing. `before-quit` therefore runs
+  the window flush and `flushPendingWritebacks()` as its first two steps, and runs the
+  write-back flush again — followed by `closeAllDatabases()` — on the timeout and
+  cleanup-error paths before it force-exits. See
+  [Shutdown Budget](/architecture/observability#shutdown-budget).
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise
