@@ -133,6 +133,7 @@ function SidebarCalendarHarness() {
         isActive={() => false}
         isDisabled={() => false}
         onNavClick={() => () => openSidebarItem(CALENDAR_ITEM)}
+        onNavMiddleClick={() => () => {}}
         inboxCount={0}
         todayTasksCount={0}
       />

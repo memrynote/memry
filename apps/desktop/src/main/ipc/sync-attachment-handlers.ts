@@ -31,6 +31,11 @@ import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
 import { attachmentEvents } from '../sync/attachment-events'
 import {
+  markDownloadFailed,
+  markDownloadSucceeded,
+  releaseDownloadAttempt
+} from '../sync/attachment-download-state'
+import {
   enqueueUpload,
   clearUpload,
   markUploadFailed,
@@ -437,16 +442,21 @@ export function registerAttachmentHandlers(): void {
 
   attachmentEvents.onDownloadNeeded(({ noteId, attachmentId, diskPath, intoDir }) => {
     void (async () => {
+      // Only the OUTCOME may settle the guard. The requester marks the attempt
+      // in flight before emitting, so every exit from here has to either record
+      // a result or release the claim — otherwise the attachment is never asked
+      // for again for the life of the process.
       const token = await getValidAccessToken()
-      if (!token) return
+      if (!token) return releaseDownloadAttempt(noteId, attachmentId)
 
       const service = getOrCreateAttachmentService()
-      if (!service) return
+      if (!service) return releaseDownloadAttempt(noteId, attachmentId)
       try {
         markWritebackIgnored(diskPath)
         const result = intoDir
           ? await service.downloadAttachment(attachmentId, diskPath, { targetIsDir: true })
           : await service.downloadAttachment(attachmentId, diskPath)
+        markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
         // Embedded attachments land inside attachments/<noteId>/ — the note's
         // own fileSize (a binary-note concept) must not be overwritten by them.
         if (!intoDir) {
@@ -457,10 +467,20 @@ export function registerAttachmentHandlers(): void {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
+        // A 404 means the server does not have this attachment and never will:
+        // persist that so the request is not replayed on every launch. Anything
+        // else keeps its retry, on a backoff.
+        const reason = markDownloadFailed(
+          isDatabaseInitialized() ? getDatabase() : null,
+          noteId,
+          attachmentId,
+          err
+        )
         logger.error('Attachment download failed', {
           noteId,
           attachmentId,
           diskPath,
+          reason,
           error: message
         })
         // Mirrors the upload path above — a download-side outage (auth, R2,

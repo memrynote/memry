@@ -16,6 +16,12 @@ import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { emitNoteUpdated } from '../note-events'
 import { attachmentEvents } from '../attachment-events'
+import {
+  markDownloadRequested,
+  pruneUnresolvableReferences,
+  releaseDownloadAttempt,
+  shouldAttemptDownload
+} from '../attachment-download-state'
 import { getIndexDatabase } from '../../database/client'
 import {
   deleteFile,
@@ -115,33 +121,6 @@ function mergeWithLocalBodyTags(remoteTags: string[], relPath: string): string[]
   return [...byKey.values()]
 }
 
-// Session-scoped guard so re-applying the same note (steady-state pulls) does
-// not re-emit a download request per pull; the downloader additionally skips
-// files that already exist on disk.
-const requestedAttachmentDownloads = new Set<string>()
-
-/**
- * Ceiling on that guard. Entries are never retired individually, so without one
- * the Set grows by every note×attachment this device has ever pulled — across
- * vaults, since it is module-level. Insertion order is FIFO, so the oldest key
- * goes first; re-requesting it later is cheap because the downloader skips
- * files that already exist on disk.
- */
-const MAX_REQUESTED_ATTACHMENT_DOWNLOADS = 5000
-
-/** Vault switch / sync-runtime stop: these keys belong to the old vault's notes. */
-export function resetRequestedAttachmentDownloads(): void {
-  requestedAttachmentDownloads.clear()
-}
-
-function rememberAttachmentDownload(key: string): void {
-  if (requestedAttachmentDownloads.size >= MAX_REQUESTED_ATTACHMENT_DOWNLOADS) {
-    const oldest = requestedAttachmentDownloads.values().next().value
-    if (oldest !== undefined) requestedAttachmentDownloads.delete(oldest)
-  }
-  requestedAttachmentDownloads.add(key)
-}
-
 function mergeAttachmentReferences(
   local: string[] | null | undefined,
   remote: string[] | null | undefined
@@ -161,6 +140,7 @@ function mergeAttachmentReferences(
  * the encrypted blob store into its own vault.
  */
 function requestEmbeddedAttachmentDownloads(
+  db: DrizzleDb,
   itemId: string,
   refs: string[] | null | undefined
 ): void {
@@ -169,22 +149,22 @@ function requestEmbeddedAttachmentDownloads(
   if (!vaultPath) return
   const attachmentsDir = getNoteAttachmentsDir(vaultPath, itemId)
   for (const attachmentId of refs) {
-    const key = `${itemId}:${attachmentId}`
-    if (requestedAttachmentDownloads.has(key)) continue
+    // Skips what is already in flight, what already downloaded this session,
+    // and what the server has answered 404 for — that last one persisted, so a
+    // sync stop/start or a relaunch no longer replays the dead request.
+    if (!shouldAttemptDownload(db, itemId, attachmentId)) continue
+    markDownloadRequested(itemId, attachmentId)
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
       intoDir: true
     })
-    // Only remember the request once it actually reached the downloader.
     // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
-    // on sync-runtime restart, sign-out/in and token churn, and this Set is
-    // never cleared — so marking a dropped emit as requested meant the image was
-    // never asked for again for the life of the process. Skipping the record
-    // lets the next pull of the same note re-request it; the downloader still
-    // skips files that already exist on disk, so a re-request is cheap.
-    if (delivered) rememberAttachmentDownload(key)
+    // on sync-runtime restart, sign-out/in and token churn, so a dropped emit
+    // has no downloader to report an outcome. Release the claim immediately or
+    // the attachment is never asked for again for the life of the process.
+    if (!delivered) releaseDownloadAttempt(itemId, attachmentId)
   }
 }
 
@@ -484,10 +464,18 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         applyPinnedTags(indexDb, itemId, data.pinnedTags)
       }
 
+      // Union-only merge with no prune path is why a reference to a deleted
+      // attachment lived in the note's payload forever. Peers on older builds
+      // still send it, so the merge stays union — pruning is the deliberate,
+      // evidence-based exit: only ids this device has itself watched the server
+      // 404 are dropped.
       const mergedAttachmentRefs = mergeAttachmentReferences(
         existing.attachmentReferences,
         data.attachmentReferences
       )
+      const prunedAttachmentRefs = mergedAttachmentRefs
+        ? pruneUnresolvableReferences(ctx.db, itemId, mergedAttachmentRefs)
+        : undefined
 
       updateNoteCache(indexDb, itemId, updateFields)
       updateNoteMetadata(ctx.db, itemId, {
@@ -497,14 +485,14 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         clock: resolution.mergedClock,
         syncedAt: now,
         modifiedAt: data.modifiedAt ?? now,
-        ...(mergedAttachmentRefs ? { attachmentReferences: mergedAttachmentRefs } : {}),
+        ...(prunedAttachmentRefs ? { attachmentReferences: prunedAttachmentRefs } : {}),
         propertyDefinitionNames:
           remoteProperties && Object.keys(remoteProperties).length > 0
             ? Object.keys(remoteProperties).sort((a, b) => a.localeCompare(b))
             : undefined
       })
 
-      requestEmbeddedAttachmentDownloads(itemId, data.attachmentReferences)
+      requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences)
 
       // Frontmatter is the source of truth for a markdown note's project
       // membership, and this branch just rewrote it. The create path derives the
@@ -664,7 +652,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     fs.writeFileSync(tmpPath, fileContent, 'utf-8')
     fs.renameSync(tmpPath, absolutePath)
 
-    requestEmbeddedAttachmentDownloads(itemId, data.attachmentReferences)
+    requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences)
 
     ctx.emit(NotesChannels.events.CREATED, {
       note: { id: itemId, path: relPath, title },

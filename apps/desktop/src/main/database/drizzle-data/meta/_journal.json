@@ -365,6 +365,13 @@
       "when": 1785585347000,
       "tag": "0051_sync_pending_deletes",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "6",
+      "when": 1787168001774,
+      "tag": "0052_attachment_download_failures",
+      "breakpoints": true
     }
   ]
 }

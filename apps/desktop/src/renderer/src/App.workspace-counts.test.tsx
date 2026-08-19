@@ -99,6 +99,18 @@ let lastViewCounts: Record<string, number> = {}
 let lastProjectCounts: Record<string, number> = {}
 
 const openTab = vi.fn()
+// `useTabActions` is a separate subscription from `useTabs`, so the mock has to
+// publish it too or every consumer under App throws at render.
+const tabActions = {
+  openTab,
+  closeTab: vi.fn(),
+  closeTabsByEntityId: vi.fn(),
+  updateTabTitleByEntityId: vi.fn(),
+  setActiveTab: vi.fn(),
+  setActiveGroup: vi.fn(),
+  splitView: vi.fn(),
+  dispatch: vi.fn()
+}
 const openSettings = vi.fn()
 const createNote = vi.fn()
 
@@ -180,6 +192,7 @@ vi.mock('@/features/tasks/use-task-ui-store', () => ({
 vi.mock('@/contexts/tabs', () => ({
   TabProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTabs: () => ({ openTab }),
+  useTabActions: () => tabActions,
   useActiveTab: () => ({ type: 'inbox' })
 }))
 

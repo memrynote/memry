@@ -39,6 +39,7 @@ describe('SidebarNav', () => {
         items={items}
         isActive={() => false}
         onNavClick={noop}
+        onNavMiddleClick={noop}
         isModifierHeld={false}
         inboxCount={0}
         todayTasksCount={0}
@@ -56,6 +57,7 @@ describe('SidebarNav', () => {
         items={items}
         isActive={() => false}
         onNavClick={noop}
+        onNavMiddleClick={noop}
         isModifierHeld
         inboxCount={0}
         todayTasksCount={0}
