@@ -101,16 +101,70 @@ import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
-function findBlockWithLinkMention(
+/**
+ * Rewrite the first inline node in `content` that `match` accepts.
+ *
+ * A text block's content is a flat inline-content array, but a table block's is
+ * `{ type: 'tableContent', rows: [{ cells: [...] }] }` — the inline content
+ * lives one level down, per cell. Reading `content.findIndex` on a table throws,
+ * and spreading it silently yields `[]`, which would wipe the table. Both
+ * shapes are walked here so callers never touch `block.content` directly.
+ *
+ * Returns the block content to write back, or null when nothing matched.
+ */
+function rewriteInlineContent(
+  content: any,
+  match: (node: any) => boolean,
+  rewrite: (inline: any[], index: number) => any[]
+): any {
+  if (Array.isArray(content)) {
+    const index = content.findIndex((c: any) => match(c))
+    return index === -1 ? null : rewrite(content, index)
+  }
+
+  if (content?.type !== 'tableContent' || !Array.isArray(content.rows)) return null
+
+  let matched = false
+  const rows = content.rows.map((row: any) => {
+    if (matched || !Array.isArray(row?.cells)) return row
+
+    let rowMatched = false
+    const cells = row.cells.map((cell: any) => {
+      if (matched) return cell
+      // A cell is a bare inline array in older documents and a `tableCell`
+      // object (with props) in newer ones; both still have to round-trip.
+      const inline = Array.isArray(cell) ? cell : Array.isArray(cell?.content) ? cell.content : null
+      if (!inline) return cell
+
+      const index = inline.findIndex((c: any) => match(c))
+      if (index === -1) return cell
+
+      matched = true
+      rowMatched = true
+      const next = rewrite(inline, index)
+      return Array.isArray(cell) ? next : { ...cell, content: next }
+    })
+
+    return rowMatched ? { ...row, cells } : row
+  })
+
+  return matched ? { ...content, rows } : null
+}
+
+function rewriteBlockWithLinkMention(
   blocks: any[],
-  url: string
-): { block: any; index: number } | null {
+  url: string,
+  rewrite: (inline: any[], index: number) => any[]
+): { block: any; content: any } | null {
   for (const block of blocks) {
-    const content = (block.content ?? []) as any[]
-    const idx = content.findIndex((c: any) => c.type === 'linkMention' && c.props?.url === url)
-    if (idx !== -1) return { block, index: idx }
+    const content = rewriteInlineContent(
+      block.content,
+      (c: any) => c?.type === 'linkMention' && c.props?.url === url,
+      rewrite
+    )
+    if (content !== null) return { block, content }
     if (block.children?.length) {
-      const found = findBlockWithLinkMention(block.children, url)
+      const found = rewriteBlockWithLinkMention(block.children, url, rewrite)
       if (found) return found
     }
   }
@@ -461,48 +515,58 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (option: PasteLinkOption, url: string) => {
       const block = editor.getTextCursorPosition()?.block
       if (!block) return
-      const inlineContent = (block.content ?? []) as any[]
-
-      const urlNodeIndex = inlineContent.findIndex(
-        (c: any) =>
-          (c.type === 'link' && c.href === url) ||
-          (c.type === 'text' && typeof c.text === 'string' && c.text.includes(url))
-      )
 
       if (option === 'url') return
 
+      // The pasted URL sits in the block as either a link node or plain text
+      // containing it. Inside a table it sits in one of the cells instead.
+      const isPastedUrl = (c: any): boolean =>
+        (c?.type === 'link' && c.href === url) ||
+        (c?.type === 'text' && typeof c.text === 'string' && c.text.includes(url))
+
+      const dropPastedUrl = (inline: any[], index: number): any[] =>
+        inline.filter((_: any, i: number) => i !== index)
+
       if (option === 'mention') {
-        if (urlNodeIndex === -1) return
         const domain = extractDomain(url)
-        const newContent = [...inlineContent]
-        newContent[urlNodeIndex] = createLinkMentionContent(url, domain)
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, (inline, index) => {
+          const next = [...inline]
+          next[index] = createLinkMentionContent(url, domain)
+          return next
+        })
+        if (newContent === null) return
         editor.updateBlock(block, { content: newContent })
 
         fetchLinkPreview(url)
           .then((metadata) => {
-            const found = findBlockWithLinkMention(editor.document, url)
+            const found = rewriteBlockWithLinkMention(editor.document, url, (inline, index) => {
+              const updated = [...inline]
+              updated[index] = createLinkMentionContent(
+                url,
+                metadata.domain || domain,
+                metadata.title,
+                metadata.favicon,
+                metadata.siteName
+              )
+              return updated
+            })
             if (!found) return
-            const updatedContent = [...((found.block.content ?? []) as any[])]
-            updatedContent[found.index] = createLinkMentionContent(
-              url,
-              metadata.domain || domain,
-              metadata.title,
-              metadata.favicon,
-              metadata.siteName
-            )
-            editor.updateBlock(found.block, { content: updatedContent })
+            editor.updateBlock(found.block, { content: found.content })
           })
           .catch(() => {})
         return
       }
 
+      // Embeds and bookmarks are blocks of their own, so they land after the
+      // cursor's block — after the whole table when the paste happened in a
+      // cell, since a table cell holds inline content only.
       if (option === 'embed') {
         const videoId = extractYouTubeVideoId(url)
         if (!videoId) return
 
-        if (urlNodeIndex !== -1) {
-          const newContent = inlineContent.filter((_: any, i: number) => i !== urlNodeIndex)
-          editor.updateBlock(block, { content: newContent.length > 0 ? newContent : [] })
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, dropPastedUrl)
+        if (newContent !== null) {
+          editor.updateBlock(block, { content: newContent })
         }
         editor.insertBlocks(
           [{ type: 'youtubeEmbed' as any, props: { videoId, videoUrl: url } }],
@@ -514,9 +578,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       if (option === 'bookmark') {
         const domain = extractDomain(url)
-        if (urlNodeIndex !== -1) {
-          const newContent = inlineContent.filter((_: any, i: number) => i !== urlNodeIndex)
-          editor.updateBlock(block, { content: newContent.length > 0 ? newContent : [] })
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, dropPastedUrl)
+        if (newContent !== null) {
+          editor.updateBlock(block, { content: newContent })
         }
         editor.insertBlocks([{ type: 'bookmark' as any, props: { url, domain } }], block, 'after')
 
@@ -574,7 +638,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [dateMentionState.anchorId])
 
   // Walk the (nested) block tree — a pill can live inside a list item's
-  // children[], so recurse like findBlockWithLinkMention does — find the
+  // children[], so recurse like rewriteBlockWithLinkMention does — find the
   // dateMention with `anchorId`, and write back the content `mutate` returns.
   // Stops at the first match.
   const mutateDateMention = useCallback(
