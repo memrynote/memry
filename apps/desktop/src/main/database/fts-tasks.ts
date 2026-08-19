@@ -79,6 +79,17 @@ export function clearFtsTasksTable(db: DataDb): void {
   db.run(sql`DELETE FROM fts_tasks`)
 }
 
+/**
+ * Drops the virtual table and re-creates it empty — the repair for a corrupt
+ * fts5 index, which `DELETE FROM fts_tasks` cannot perform. See `resetFtsTable`
+ * in fts.ts for why. Derived from the `tasks` rows in the same database, so a
+ * reset costs a re-index and nothing else.
+ */
+export function resetFtsTasksTable(db: DataDb): void {
+  db.run(sql`DROP TABLE IF EXISTS fts_tasks`)
+  createFtsTasksTable(db)
+}
+
 export function initializeFtsTasks(db: DataDb): void {
   createFtsTasksTable(db)
   createFtsTasksTriggers(db)

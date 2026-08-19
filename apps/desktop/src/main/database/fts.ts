@@ -165,6 +165,25 @@ export function clearFtsTable(db: IndexDb): void {
 }
 
 /**
+ * Drops the virtual table and re-creates it empty.
+ *
+ * The repair for an fts5 index that is internally corrupt. `DELETE FROM
+ * fts_notes` cannot do it: emptying the table means reading the very structures
+ * that are broken, so it raises SQLITE_CORRUPT and the rebuild that was
+ * supposed to fix the install fails at its first statement (#1585). DROP only
+ * unlinks the shadow tables, which stays readable however damaged their
+ * contents are.
+ *
+ * Safe for callers to reach for unconditionally: this table is derived from
+ * `note_cache` plus the markdown on disk, and every caller repopulates from
+ * those. Nothing user-authored lives here.
+ */
+export function resetFtsTable(db: IndexDb): void {
+  db.run(sql`DROP TABLE IF EXISTS fts_notes`)
+  createFtsTable(db)
+}
+
+/**
  * Gets the count of entries in the FTS index.
  *
  * @param db - Drizzle database instance

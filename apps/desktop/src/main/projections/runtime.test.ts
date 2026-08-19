@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createProjectionRuntime } from './runtime'
+import { createProjectionRuntime, isReconcileFailure } from './runtime'
 import type { ProjectionEvent, ProjectionProjector } from './types'
 
 function markdownEvent(noteId: string, parsedContent: string): ProjectionEvent {
@@ -344,6 +344,42 @@ describe('projection runtime', () => {
     expect(second.reconcile).toHaveBeenCalledOnce()
   })
 
+  it('keeps reconciling the other projectors after one of them throws', async () => {
+    // #given the search projector's position in the real list: one before the
+    // three that self-repair embeddings, inbox counts and note↔project links
+    const failure = new Error('fts_notes is corrupt')
+    const first = createProjector('noteDerivedState', { reconcile: vi.fn() })
+    const broken = createProjector('search', {
+      reconcile: vi.fn(() => Promise.reject(failure))
+    })
+    const third = createProjector('embedding', { reconcile: vi.fn() })
+    const fourth = createProjector('inboxStats', { reconcile: vi.fn() })
+    const logger = { error: vi.fn(), warn: vi.fn() }
+    const runtime = createProjectionRuntime({
+      projectors: [first, broken, third, fourth],
+      logger
+    })
+
+    // #when the second projector throws — the pass used to abandon everything
+    // behind it, silently, on every launch
+    const results = await runtime.reconcile()
+
+    // #then every sibling still ran
+    expect(first.reconcile).toHaveBeenCalledOnce()
+    expect(third.reconcile).toHaveBeenCalledOnce()
+    expect(fourth.reconcile).toHaveBeenCalledOnce()
+
+    // #then the failure is recorded rather than swallowed, so the caller can
+    // report it and repair what it points at
+    expect(isReconcileFailure(results.search)).toBe(true)
+    expect(results.search).toMatchObject({ projector: 'search', error: failure })
+    expect(isReconcileFailure(results.embedding)).toBe(false)
+    expect(logger.error).toHaveBeenCalledWith(
+      'Projection reconcile failed',
+      expect.objectContaining({ projector: 'search', error: failure })
+    )
+  })
+
   it('stop aborts an in-flight reconcile and waits for it to unwind', async () => {
     const steps: number[] = []
     let unwound = false
@@ -505,7 +541,9 @@ describe('projection runtime', () => {
     const failing = runtime.reconcile()
     const next = runtime.reconcile()
 
-    await expect(failing).rejects.toThrow('reconcile exploded')
+    // The pass records the failure instead of rejecting: projectors are
+    // isolated from each other, so one throwing no longer ends the pass.
+    expect(isReconcileFailure((await failing).search)).toBe(true)
     await next
     expect(seen).toHaveLength(2)
 
