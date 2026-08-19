@@ -19,12 +19,23 @@ import { resolveNoteRelativeUrl } from './resolve-note-relative-url'
 
 export function createNoteFileUrlResolver(
   getNotePath: () => string | undefined,
-  fetchVaultPath: () => Promise<string | null>
+  fetchVaultPath: () => Promise<string | null>,
+  /**
+   * Where the note's path comes from on the surfaces that mount the editor
+   * knowing only the note's id — the journal, a canvas card, a project's home
+   * note. Only `pages/note.tsx` passes the path as a prop, and attachments are
+   * now written relative to the note wherever they are saved, so without this
+   * the image a user just dropped into their journal would render against the
+   * renderer's own base URL and 404.
+   *
+   * Caching is the caller's job: it knows which note the fallback belongs to.
+   */
+  fetchNotePath?: () => Promise<string | undefined>
 ): (url: string) => Promise<string> {
   let vaultPath: Promise<string | null> | null = null
 
   return async (url: string) => {
-    const notePath = getNotePath()
+    const notePath = getNotePath() ?? (await fetchNotePath?.().catch(() => undefined))
     if (!notePath) return url
     if (!vaultPath) vaultPath = fetchVaultPath().catch(() => null)
     return resolveNoteRelativeUrl(url, notePath, await vaultPath)

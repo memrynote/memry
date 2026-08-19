@@ -28,7 +28,7 @@ import { getFileType } from '@memry/shared/file-types'
 import { getStatus } from '../vault/index'
 import { inboxItems, inboxItemTags, filingHistory } from '@memry/db-schema/schema/inbox'
 import { generateId } from '../lib/id'
-import { normalizeRelativePath } from '../lib/paths'
+import { noteRelativeRef, normalizeRelativePath } from '../lib/paths'
 import { eq } from 'drizzle-orm'
 import {
   InboxChannels,
@@ -1143,18 +1143,13 @@ function attachmentFilenameFromUrl(url: string): string {
 }
 
 /**
- * A markdown ref from `notePath` to a file at `targetPath`, both vault-relative.
- *
- * Relative to the *note*, not the vault: that is what the editor resolves at
- * render time (`resolve-note-relative-url.ts`) and what keeps the vault
- * readable by Obsidian. A `memry-file://` URL would render here and break on
- * every other device, since it carries this machine's absolute path.
+ * A markdown-safe ref from `notePath` to a file at `targetPath`, both
+ * vault-relative. The path math is shared with `saveAttachment`; only the
+ * percent-encoding is added here, since this one is spliced straight into
+ * `![alt](...)` where a space or paren would truncate the link.
  */
-function noteRelativeRef(notePath: string, targetPath: string): string {
-  const noteDir = path.posix.dirname(normalizeRelativePath(notePath))
-  const from = noteDir === '.' ? '' : noteDir
-  const relative = path.posix.relative(from, normalizeRelativePath(targetPath))
-  return encodeAttachmentUrl(relative)
+function noteRelativeMarkdownRef(notePath: string, targetPath: string): string {
+  return encodeAttachmentUrl(noteRelativeRef(notePath, targetPath))
 }
 
 /**
@@ -1197,7 +1192,7 @@ async function embedImageInNotes(
   const inboxCapturesRegex = /^## Inbox Captures$/m
 
   for (const targetNote of targetNotes) {
-    const entry = `![${alt}](${noteRelativeRef(targetNote.path, attachmentRelativePath)})\n*(${dateStr})*`
+    const entry = `![${alt}](${noteRelativeMarkdownRef(targetNote.path, attachmentRelativePath)})\n*(${dateStr})*`
     const updatedContent = inboxCapturesRegex.test(targetNote.content)
       ? targetNote.content.replace(/^(## Inbox Captures)$/m, `$1\n\n${entry}`)
       : `${targetNote.content.trimEnd()}\n\n## Inbox Captures\n\n${entry}`

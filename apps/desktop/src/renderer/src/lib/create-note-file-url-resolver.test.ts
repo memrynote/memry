@@ -74,3 +74,44 @@ describe('createNoteFileUrlResolver', () => {
     expect(await resolve(REF)).toBe(RESOLVED)
   })
 })
+
+describe('createNoteFileUrlResolver without a note path prop', () => {
+  // Only pages/note.tsx passes `notePath`. The journal, canvas cards and a
+  // project's home note mount the editor knowing only the note's id — and
+  // attachments are written relative to their note on every one of those
+  // surfaces, so without the fallback the image a user just dropped into their
+  // journal resolves against the renderer's own base URL and 404s.
+  it('falls back to the looked-up path', async () => {
+    const resolve = createNoteFileUrlResolver(
+      () => undefined,
+      async () => VAULT,
+      async () => NOTE
+    )
+
+    expect(await resolve(REF)).toBe(RESOLVED)
+  })
+
+  it('prefers the prop and never looks anything up when it is there', async () => {
+    const fetchNotePath = vi.fn(async () => 'Other/Note.md')
+    const resolve = createNoteFileUrlResolver(
+      () => NOTE,
+      async () => VAULT,
+      fetchNotePath
+    )
+
+    expect(await resolve(REF)).toBe(RESOLVED)
+    expect(fetchNotePath).not.toHaveBeenCalled()
+  })
+
+  it('hands the URL back untouched when the lookup fails', async () => {
+    const resolve = createNoteFileUrlResolver(
+      () => undefined,
+      async () => VAULT,
+      async () => {
+        throw new Error('no such note')
+      }
+    )
+
+    expect(await resolve(REF)).toBe(REF)
+  })
+})

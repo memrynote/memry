@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
+import { useResolvedFileUrl } from './note-file-url-context'
 import type { FileBlockProps } from './file-block-markers'
 
 export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
@@ -635,6 +636,12 @@ function FileBlockRender({
   const isPdf = mimeType === 'application/pdf'
   const isAudio = mimeType.startsWith('audio/')
 
+  // Attachments are stored as a ref relative to the note (`../attachments/…`),
+  // which the browser would resolve against the renderer's own base URL. The
+  // result is for rendering only — writing it back to `block.props` would put
+  // this machine's vault path into the note's markdown.
+  const resolvedUrl = useResolvedFileUrl(url)
+
   // Persist the user-chosen PDF width + crop height to the block props
   // (round-trips to the vault marker via serializeFileBlock). Declared before
   // the early return to keep hook order stable.
@@ -665,11 +672,18 @@ function FileBlockRender({
     )
   }
 
+  // Still resolving a note-relative ref: render the frame without a target
+  // rather than letting the viewer fetch the unresolved path and latch its
+  // load error.
+  if (resolvedUrl === null) {
+    return <div ref={contentRef} className="file-block my-2" contentEditable={false} />
+  }
+
   return (
     <div ref={contentRef} className="file-block my-2" contentEditable={false}>
       {isPdf ? (
         <PdfPreview
-          url={url}
+          url={resolvedUrl}
           name={name}
           width={width ?? 0}
           height={height ?? 0}
@@ -678,9 +692,9 @@ function FileBlockRender({
           onAlign={handleAlign}
         />
       ) : isAudio ? (
-        <AudioPreview url={url} name={name} size={size} mimeType={mimeType} />
+        <AudioPreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
       ) : (
-        <FilePreview url={url} name={name} size={size} mimeType={mimeType} />
+        <FilePreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
       )}
     </div>
   )
