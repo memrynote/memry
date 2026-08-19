@@ -22,19 +22,35 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 
 const mocks = vi.hoisted(() => ({
   scrollToIndex: vi.fn(),
-  renameFolder: vi.fn().mockResolvedValue({})
+  renameFolder: vi.fn().mockResolvedValue({}),
+  openTab: vi.fn(),
+  splitView: vi.fn(() => 'side-pane')
 }))
 
 vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (_err: unknown, fallback: string) => fallback
 }))
 
+// `useOpenTarget` reads layout/activeGroupId off the state, so the stub has to
+// be a believable single-pane layout rather than an empty object. Which pane the
+// tab lands in is proved against the real reducer in
+// use-sidebar-navigation.split.test.tsx; here we only care that the rows exist
+// and are wired, in both renderers.
 vi.mock('@/contexts/tabs', () => ({
-  useTabs: () => ({ openTab: vi.fn(), closeTab: vi.fn() }),
+  useTabs: () => ({
+    state: {
+      tabGroups: { 'pane-1': { id: 'pane-1', tabs: [], activeTabId: null } },
+      layout: { type: 'leaf', tabGroupId: 'pane-1' },
+      activeGroupId: 'pane-1'
+    },
+    openTab: mocks.openTab,
+    closeTab: vi.fn()
+  }),
   useTabActions: () => ({
-    openTab: vi.fn(),
+    openTab: mocks.openTab,
     closeTab: vi.fn(),
-    updateTabTitleByEntityId: vi.fn()
+    updateTabTitleByEntityId: vi.fn(),
+    splitView: mocks.splitView
   })
 }))
 
@@ -200,6 +216,63 @@ const largeVault = [
   ...Array.from({ length: 150 }, (_, i) => createNote(`n${i}`, `Note ${i}.md`)),
   createNote('p1', 'Projects/Alpha.md')
 ]
+
+const openInNewTabOnNote = async (noteTitle: string) => {
+  const user = userEvent.setup()
+  const row = screen.getAllByText(noteTitle)[0].closest('[data-testid="row"]')
+  expect(row).not.toBeNull()
+  await user.click(within(row as HTMLElement).getByRole('button', { name: /open in new tab/i }))
+}
+
+describe('"Open in New Tab" / "Open to the Side" across the virtualization threshold', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('below the threshold: a note row offers both open targets', async () => {
+    setupMocks(smallVault)
+    renderTree()
+
+    // A root-level note: notes inside 'Projects' only mount once it is expanded.
+    await openInNewTabOnNote('Root')
+
+    // forceNew is the whole difference from a plain click: without it the open
+    // finds the note already elsewhere and just focuses it.
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'n3', type: 'note' }),
+      expect.objectContaining({ forceNew: true })
+    )
+  })
+
+  it('above the threshold: the virtualized note row offers them too', async () => {
+    setupMocks(largeVault)
+    renderTree()
+
+    await openInNewTabOnNote('Note 0')
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'n0', type: 'note' }),
+      expect.objectContaining({ forceNew: true })
+    )
+  })
+
+  it('above the threshold: a folder row offers them too', async () => {
+    setupMocks(largeVault)
+    renderTree()
+
+    const user = userEvent.setup()
+    const row = screen.getAllByText('Projects')[0].closest('[data-testid="row"]')
+    await user.click(within(row as HTMLElement).getByRole('button', { name: /open to the side/i }))
+
+    // No pane beside this one yet, so the gesture has to make one — and must not
+    // seed it with a clone of what we are opening away from.
+    expect(mocks.splitView).toHaveBeenCalledWith('horizontal', 'pane-1', { cloneActiveTab: false })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'Projects', type: 'folder' }),
+      expect.objectContaining({ groupId: 'side-pane' })
+    )
+  })
+})
 
 describe('sidebar folder rename across the virtualization threshold', () => {
   beforeEach(() => {

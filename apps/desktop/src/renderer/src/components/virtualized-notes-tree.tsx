@@ -50,7 +50,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
-import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import {
@@ -61,6 +60,8 @@ import {
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -532,6 +533,8 @@ function FolderRow({
         ) : (
           // Single item actions
           <>
+            <OpenTargetMenuItems tab={folderTabData(item.folder.path, item.folder.icon)} />
+            <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
               <FilePlus className="me-2 h-4 w-4" />
               {t('tree.actions.newNote')}
@@ -808,6 +811,8 @@ function NoteRow({
         ) : (
           // Single item actions
           <>
+            <OpenTargetMenuItems tab={noteTabData(item.note)} />
+            <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
               <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
@@ -1113,21 +1118,7 @@ export function VirtualizedNotesTree({
         if (!isFolder(itemId)) {
           const note = noteMap.get(itemId)
           if (note) {
-            const fileType = (note.fileType ?? 'markdown') as FileType
-            const isMarkdown = fileType === 'markdown'
-
-            openTab({
-              type: isMarkdown ? 'note' : 'file',
-              title: getDisplayName(note.path),
-              icon: getTabIconForFileType(fileType),
-              emoji: isMarkdown ? note.emoji : undefined,
-              path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
-              entityId: note.id,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false
-            })
+            openTab(noteTabData(note))
           }
         }
       }
@@ -1138,21 +1129,7 @@ export function VirtualizedNotesTree({
   // Handle note double-click
   const handleNoteDoubleClick = useCallback(
     (note: NoteListItem) => {
-      const fileType = (note.fileType ?? 'markdown') as FileType
-      const isMarkdown = fileType === 'markdown'
-
-      openTab({
-        type: isMarkdown ? 'note' : 'file',
-        title: getDisplayName(note.path),
-        icon: getTabIconForFileType(fileType),
-        emoji: isMarkdown ? note.emoji : undefined,
-        path: isMarkdown ? `/notes/${note.id}` : `/file/${note.id}`,
-        entityId: note.id,
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false
-      })
+      openTab(noteTabData(note))
     },
     [openTab]
   )
@@ -1160,19 +1137,7 @@ export function VirtualizedNotesTree({
   // Handle opening folder view from hover icon
   const handleOpenFolderView = useCallback(
     (folderPath: string, icon?: string | null) => {
-      const folderName = folderPath.split('/').pop() || 'Folder'
-      openTab({
-        type: 'folder',
-        title: folderName,
-        icon: 'folder',
-        emoji: icon ?? undefined,
-        path: `/folder/${encodeURIComponent(folderPath)}`,
-        entityId: folderPath,
-        isPinned: false,
-        isModified: false,
-        isPreview: false,
-        isDeleted: false
-      })
+      openTab(folderTabData(folderPath, icon))
     },
     [openTab]
   )

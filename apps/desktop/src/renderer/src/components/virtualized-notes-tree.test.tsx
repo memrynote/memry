@@ -18,6 +18,13 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({
+    state: {
+      tabGroups: { 'pane-1': { id: 'pane-1', tabs: [], activeTabId: null } },
+      layout: { type: 'leaf', tabGroupId: 'pane-1' },
+      activeGroupId: 'pane-1'
+    }
+  }),
   useTabActions: () => ({ openTab: mocks.openTab })
 }))
 

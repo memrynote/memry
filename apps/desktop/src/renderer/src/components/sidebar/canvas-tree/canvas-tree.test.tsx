@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CanvasTree, type CanvasTreeActions } from './canvas-tree'
 import { SidebarProvider } from '@/components/ui/sidebar'
+import { TabProvider } from '@/contexts/tabs'
 import type { CanvasSummary } from '@/services/canvas-service'
 import type { CanvasFolder } from '@/services/canvas-folder-service'
 import { isRevealed } from '@tests/utils/reveal'
@@ -135,9 +136,11 @@ function setData(canvases: CanvasSummary[], folders: CanvasFolder[] = []): void 
 
 function renderTree(props: Partial<React.ComponentProps<typeof CanvasTree>> = {}) {
   return render(
-    <SidebarProvider>
-      <CanvasTree {...props} />
-    </SidebarProvider>
+    <TabProvider>
+      <SidebarProvider>
+        <CanvasTree {...props} />
+      </SidebarProvider>
+    </TabProvider>
   )
 }
 

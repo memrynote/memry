@@ -85,6 +85,8 @@
       "loadMore": "Load more"
     },
     "actions": {
+      "openInNewTab": "Open in New Tab",
+      "openToTheSide": "Open to the Side",
       "newNote": "New Note",
       "newFolder": "New Folder",
       "rename": "Rename",

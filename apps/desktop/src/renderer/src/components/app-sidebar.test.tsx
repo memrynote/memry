@@ -249,6 +249,13 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({
+    state: {
+      tabGroups: { 'pane-1': { id: 'pane-1', tabs: [], activeTabId: null } },
+      layout: { type: 'leaf', tabGroupId: 'pane-1' },
+      activeGroupId: 'pane-1'
+    }
+  }),
   useTabActions: () => ({ openTab: mocks.openTab })
 }))
 
@@ -371,13 +378,16 @@ describe('AppSidebar', () => {
     expect(mocks.setSelectedFolder).toHaveBeenCalledWith('Projects')
 
     fireEvent.click(screen.getByRole('button', { name: 'Inbox' }))
+    // A plain click carries the modifier state too, so ⌘/Ctrl-click can ask for a
+    // second tab through the same path.
     expect(mocks.openSidebarItem).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'inbox',
         title: 'Inbox',
         path: '/inbox',
         viewState: { focusCaptureAt: expect.any(Number) }
-      })
+      }),
+      { inNewTab: false, inBackground: false }
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'new' }))

@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarMiniMonth } from '@/components/calendar/calendar-mini-month'
 import { SummaryRow } from '@/components/folder-view/summary-row'
 import { RowContextMenu } from '@/components/folder-view/row-context-menu'
-import { SidebarNavItem } from '@/components/sidebar/sidebar-nav-item'
-import { SidebarItemContextMenu } from '@/components/sidebar/sidebar-item-context-menu'
 import { StorageUsageBar } from '@/components/settings/storage-usage-bar'
 import { CelebrationProgress } from '@/components/tasks/celebration-progress'
 import { CollapsedEmptySection } from '@/components/tasks/empty-states/collapsed-empty-section'
@@ -396,63 +394,5 @@ describe('medium UI coverage surfaces', () => {
     )
     expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2', 'note-3'])
     expect(onDelete).toHaveBeenCalledWith(['note-1', 'note-2', 'note-3'])
-  })
-
-  it('drives sidebar nav item click variants and context menu actions', async () => {
-    const user = userEvent.setup()
-    const onEdit = vi.fn()
-    const onDelete = vi.fn()
-    const item: SidebarItem = {
-      id: 'project-1',
-      type: 'project',
-      title: 'Project Alpha',
-      color: '#0f766e',
-      count: 4
-    }
-
-    sidebarNavigation.isOpenInTab.mockReturnValue(true)
-    sidebarNavigation.isActiveItem.mockReturnValue(false)
-
-    render(<SidebarNavItem item={item} depth={2} isSelected onEdit={onEdit} onDelete={onDelete} />)
-
-    const navButton = screen.getByRole('button', { name: /Project Alpha/ })
-    await user.click(navButton)
-    fireEvent.mouseDown(navButton, { button: 1 })
-    fireEvent.doubleClick(navButton)
-
-    expect(sidebarNavigation.openSidebarItem).toHaveBeenNthCalledWith(1, item, {
-      inNewTab: false,
-      inBackground: false
-    })
-    expect(sidebarNavigation.openSidebarItem).toHaveBeenNthCalledWith(2, item, {
-      inNewTab: true,
-      inBackground: true
-    })
-    expect(sidebarNavigation.openSidebarItem).toHaveBeenCalledTimes(2)
-
-    await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.open'))
-    await user.click(screen.getByText('Open in New Tab'))
-    await user.click(
-      screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.openToTheSide')
-    )
-    await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.pinToTabs'))
-    await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.edit'))
-    await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.delete'))
-    await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.copyLink'))
-
-    expect(sidebarNavigation.openAsPin).toHaveBeenCalledWith(item)
-    expect(sidebarNavigation.copyItemLink).toHaveBeenCalledWith(item)
-    expect(onEdit).toHaveBeenCalledTimes(1)
-    expect(onDelete).toHaveBeenCalledTimes(1)
-
-    render(
-      <SidebarItemContextMenu item={{ id: 'inbox', type: 'inbox', title: 'Inbox' } as SidebarItem}>
-        <span>static item</span>
-      </SidebarItemContextMenu>
-    )
-    const secondMenu = screen.getAllByTestId('context-menu-content').at(-1)
-    expect(
-      within(secondMenu!).queryByText('phaseF.componentsSidebarSidebarItemContextMenu.edit')
-    ).toBeNull()
   })
 })

@@ -97,6 +97,8 @@ vi.mock('@/contexts/tabs', () => ({
   useTabSettings: () => ({ restoreSessionOnStart: true, tabCloseButton: 'hover' }),
   useTabs: () => ({
     state: {
+      // useOpenTarget reads the layout to find the pane beside this one.
+      layout: { type: 'leaf', tabGroupId: 'group-1' },
       activeGroupId: 'group-1',
       tabGroups: {
         'group-1': {
@@ -269,7 +271,9 @@ describe('more major hooks coverage', () => {
       { type: 'collection', title: 'Folder', path: '/folder/new' } as never,
       { toTheSide: true }
     )
-    expect(mocks.splitView).toHaveBeenCalledWith('horizontal', 'group-1')
+    expect(mocks.splitView).toHaveBeenCalledWith('horizontal', 'group-1', {
+      cloneActiveTab: false
+    })
     // The open targets the pane splitView reports creating, in the same turn —
     // no timer to flush, and no dependence on which pane is active by then.
     expect(mocks.openTab).toHaveBeenLastCalledWith(
