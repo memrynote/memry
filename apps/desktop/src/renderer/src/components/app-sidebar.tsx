@@ -268,6 +268,14 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     navigateToPage(page, { inNewTab, inBackground: e.shiftKey && inNewTab })
   }
 
+  // Read on mousedown: a middle click never produces a `click` event, so the
+  // gesture is invisible to onClick.
+  const handleNavMiddleClick = (page: AppPage) => (e: React.MouseEvent) => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    navigateToPage(page, { inNewTab: true, inBackground: true })
+  }
+
   // Sections visible in the sidebar (Home always; others gated by feature flags).
   // Drives both the rendered numbers and the ⌘/Ctrl+number shortcut mapping so
   // they never drift.
@@ -780,6 +788,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           items={visibleNav}
           isActive={isActiveItem}
           onNavClick={handleNavClick}
+          onNavMiddleClick={handleNavMiddleClick}
           isModifierHeld={isModifierHeld}
           inboxCount={inboxCount}
           todayTasksCount={todayTasksCount}

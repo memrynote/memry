@@ -22,6 +22,8 @@ interface SidebarNavProps {
   items: NavItem[]
   isActive: (item: SidebarItem) => boolean
   onNavClick: (page: AppPage) => (e: React.MouseEvent) => void
+  /** Middle-click opens a background tab; fires on mousedown, where button 1 is readable. */
+  onNavMiddleClick: (page: AppPage) => (e: React.MouseEvent) => void
   /** When the ⌘/Ctrl modifier is held, icons swap to their 1-based shortcut number. */
   isModifierHeld: boolean
   inboxCount: number
@@ -41,6 +43,7 @@ export function SidebarNav({
   items,
   isActive,
   onNavClick,
+  onNavMiddleClick,
   isModifierHeld,
   inboxCount,
   todayTasksCount
@@ -70,6 +73,7 @@ export function SidebarNav({
                     isActive={active}
                     data-tour={`nav-${item.page}`}
                     onClick={onNavClick(item.page)}
+                    onMouseDown={onNavMiddleClick(item.page)}
                     className="h-7 rounded-[5px] p-0 ps-1 pe-2.5 gap-1.5 text-[13px] leading-4 font-medium text-sidebar-foreground"
                   >
                     {isModifierHeld && number <= 9 ? <NavNumber n={number} /> : <item.icon />}
