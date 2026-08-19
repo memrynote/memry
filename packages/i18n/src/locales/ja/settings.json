@@ -24,7 +24,6 @@
         "appearance": "外観",
         "shortcuts": "ショートカット",
         "ai": "AIアシスタント",
-        "integrations": "統合",
         "vault": "保管庫",
         "tags": "タグ",
         "properties": "プロパティ",
@@ -461,6 +460,48 @@
         "monday": "月曜日",
         "sunday": "日曜日"
       }
+    },
+    "google": {
+      "name": "Googleカレンダー",
+      "description": "memrynote イベントとインポートされた Google カレンダーの双方向同期。",
+      "statuses": {
+        "connected": "接続済み",
+        "notConnected": "接続されていません",
+        "reconnectRequired": "再接続が必要です"
+      },
+      "accountReconnect": "Google を再接続する",
+      "importedCalendars": "インポートされたカレンダー",
+      "selected": "{count} が選択されました",
+      "syncNow": "今すぐ同期",
+      "disconnect": "切断する",
+      "reconnect": "Google を再接続する",
+      "syncFailed": "何か問題が発生しました",
+      "connectFailed": "Googleカレンダーに接続できませんでした",
+      "refreshFailed": "Google カレンダーを更新できませんでした",
+      "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
+      "retryFailed": "カレンダー同期の再試行に失敗しました",
+      "pushToGoogle": {
+        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
+        "error": "同期方向の更新に失敗しました",
+        "label": "memrynote の予定を Google カレンダーに表示"
+      },
+      "agentAccess": {
+        "description": "デフォルトではオフです。オンにすると AI エージェントが Google の予定を読み取れるようになり、オフにすると予定について質問しても何も返されません。どちらの場合も、memrynote では引き続き予定が表示されます。",
+        "error": "AI アクセスの更新に失敗しました",
+        "label": "AI に Google Calendar の予定の読み取りを許可"
+      },
+      "connect": "接続する",
+      "sourcePicker": {
+        "empty": "このデバイスでは、インポートされた Google カレンダーをまだ使用できません。",
+        "statuses": {
+          "synced": "同期済み",
+          "error": "エラー",
+          "pending": "保留中",
+          "idle": "アイドル状態"
+        },
+        "retrying": "再試行中…",
+        "retryNow": "今すぐ再試行してください"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "接続に失敗しました",
       "testFailed": "接続テストに失敗しました",
       "updateFailed": "設定の更新に失敗しました"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "統合",
-      "subtitle": "外部サービスを接続してワークフローを充実させる"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "APIキー",
-      "none": "システム"
-    },
-    "comingSoon": "近日公開予定",
-    "connect": "接続する",
-    "googleCalendar": {
-      "name": "Googleカレンダー",
-      "description": "memrynote イベントとインポートされた Google カレンダーの双方向同期。",
-      "statuses": {
-        "connected": "接続済み",
-        "notConnected": "接続されていません",
-        "reconnectRequired": "再接続が必要です"
-      },
-      "accountReconnect": "Google を再接続する",
-      "importedCalendars": "インポートされたカレンダー",
-      "selected": "{count} が選択されました",
-      "syncNow": "今すぐ同期",
-      "disconnect": "切断する",
-      "reconnect": "Google を再接続する",
-      "syncFailed": "何か問題が発生しました",
-      "connectFailed": "Googleカレンダーに接続できませんでした",
-      "refreshFailed": "Google カレンダーを更新できませんでした",
-      "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
-      "retryFailed": "カレンダー同期の再試行に失敗しました",
-      "pushToGoogle": {
-        "description": "一方向同期にするにはオフにします — memrynote では引き続き Google の予定を表示しますが、memrynote の予定は Google に表示されません。",
-        "error": "同期方向の更新に失敗しました",
-        "label": "memrynote の予定を Google カレンダーに表示"
-      },
-      "agentAccess": {
-        "description": "デフォルトではオフです。オンにすると AI エージェントが Google の予定を読み取れるようになり、オフにすると予定について質問しても何も返されません。どちらの場合も、memrynote では引き続き予定が表示されます。",
-        "error": "AI アクセスの更新に失敗しました",
-        "label": "AI に Google Calendar の予定の読み取りを許可"
-      }
-    },
-    "sourcePicker": {
-      "empty": "このデバイスでは、インポートされた Google カレンダーをまだ使用できません。",
-      "statuses": {
-        "synced": "同期済み",
-        "error": "エラー",
-        "pending": "保留中",
-        "idle": "アイドル状態"
-      },
-      "retrying": "再試行中…",
-      "retryNow": "今すぐ再試行してください"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Googleカレンダー",
-        "description": "memrynote イベント、タスク、リマインダー、インポートされたカレンダーの双方向同期"
-      },
-      "appleCalendar": {
-        "name": "アップルカレンダー",
-        "description": "システム API を介したローカル カレンダーの統合"
-      },
-      "notion": {
-        "name": "概念",
-        "description": "ボールトへの 1 回限りのページのインポート"
-      },
-      "readwise": {
-        "name": "リードワイズ",
-        "description": "ハイライトをボールトに同期する"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "双方向のタスク同期"
-      }
     }
   },
   "vault": {

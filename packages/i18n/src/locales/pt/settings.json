@@ -24,7 +24,6 @@
         "appearance": "Aparência",
         "shortcuts": "Atalhos",
         "ai": "Assistente de IA",
-        "integrations": "Integrações",
         "vault": "Cofre",
         "tags": "Etiquetas",
         "properties": "Propriedades",
@@ -461,6 +460,48 @@
         "monday": "Segunda-feira",
         "sunday": "Domingo"
       }
+    },
+    "google": {
+      "name": "Google Agenda",
+      "description": "Sincronização bidirecional para eventos memrynote e calendários importados do Google.",
+      "statuses": {
+        "connected": "Conectado",
+        "notConnected": "Não conectado",
+        "reconnectRequired": "É necessário reconectar"
+      },
+      "accountReconnect": "Reconectar o Google",
+      "importedCalendars": "Calendários importados",
+      "selected": "{count} selecionado",
+      "syncNow": "Sincronizar agora",
+      "disconnect": "Desconectar",
+      "reconnect": "Reconectar o Google",
+      "syncFailed": "Algo deu errado",
+      "connectFailed": "Falha ao conectar o Google Agenda",
+      "refreshFailed": "Falha ao atualizar o Google Agenda",
+      "disconnectFailed": "Falha ao desconectar o Google Agenda",
+      "retryFailed": "Falha ao tentar novamente a sincronização do calendário",
+      "pushToGoogle": {
+        "description": "Desative para sincronização unidirecional — continuará a ver os seus eventos Google no memrynote, mas os eventos do memrynote não aparecerão no Google.",
+        "error": "Falha ao atualizar a direção da sincronização",
+        "label": "Mostrar eventos do memrynote no Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Desativado por padrão. Se ativar, o agente de IA pode ler os seus eventos Google; se desativar, não obtém nada em resposta quando lhe perguntar sobre eles. Continuará a vê-los no memrynote de qualquer forma.",
+        "error": "Falha ao atualizar o acesso da IA",
+        "label": "Permitir que a IA leia eventos do Google Calendar"
+      },
+      "connect": "Conectar",
+      "sourcePicker": {
+        "empty": "Ainda não há calendários importados do Google disponíveis neste dispositivo.",
+        "statuses": {
+          "synced": "Sincronizado",
+          "error": "Erro",
+          "pending": "Pendente",
+          "idle": "Inativo"
+        },
+        "retrying": "Tentando novamente…",
+        "retryNow": "Tente novamente agora"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Falha ao conectar",
       "testFailed": "Falha no teste de conexão",
       "updateFailed": "Falha ao atualizar a configuração"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrações",
-      "subtitle": "Conecte serviços externos para enriquecer seu fluxo de trabalho"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Chave de API",
-      "none": "Sistema"
-    },
-    "comingSoon": "Em breve",
-    "connect": "Conectar",
-    "googleCalendar": {
-      "name": "Google Agenda",
-      "description": "Sincronização bidirecional para eventos memrynote e calendários importados do Google.",
-      "statuses": {
-        "connected": "Conectado",
-        "notConnected": "Não conectado",
-        "reconnectRequired": "É necessário reconectar"
-      },
-      "accountReconnect": "Reconectar o Google",
-      "importedCalendars": "Calendários importados",
-      "selected": "{count} selecionado",
-      "syncNow": "Sincronizar agora",
-      "disconnect": "Desconectar",
-      "reconnect": "Reconectar o Google",
-      "syncFailed": "Algo deu errado",
-      "connectFailed": "Falha ao conectar o Google Agenda",
-      "refreshFailed": "Falha ao atualizar o Google Agenda",
-      "disconnectFailed": "Falha ao desconectar o Google Agenda",
-      "retryFailed": "Falha ao tentar novamente a sincronização do calendário",
-      "pushToGoogle": {
-        "description": "Desative para sincronização unidirecional — continuará a ver os seus eventos Google no memrynote, mas os eventos do memrynote não aparecerão no Google.",
-        "error": "Falha ao atualizar a direção da sincronização",
-        "label": "Mostrar eventos do memrynote no Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Desativado por padrão. Se ativar, o agente de IA pode ler os seus eventos Google; se desativar, não obtém nada em resposta quando lhe perguntar sobre eles. Continuará a vê-los no memrynote de qualquer forma.",
-        "error": "Falha ao atualizar o acesso da IA",
-        "label": "Permitir que a IA leia eventos do Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Ainda não há calendários importados do Google disponíveis neste dispositivo.",
-      "statuses": {
-        "synced": "Sincronizado",
-        "error": "Erro",
-        "pending": "Pendente",
-        "idle": "Inativo"
-      },
-      "retrying": "Tentando novamente…",
-      "retryNow": "Tente novamente agora"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Agenda",
-        "description": "Sincronização bidirecional para eventos, tarefas, lembretes e calendários importados memrynote"
-      },
-      "appleCalendar": {
-        "name": "Calendário da Apple",
-        "description": "Integração de calendário local por meio de APIs do sistema"
-      },
-      "notion": {
-        "name": "Noção",
-        "description": "Importação única de página para o seu cofre"
-      },
-      "readwise": {
-        "name": "Leitura",
-        "description": "Sincronize destaques em seu cofre"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Sincronização de tarefas bidirecional"
-      }
     }
   },
   "vault": {

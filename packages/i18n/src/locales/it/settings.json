@@ -24,7 +24,6 @@
         "appearance": "Aspetto",
         "shortcuts": "Scorciatoie",
         "ai": "Assistente AI",
-        "integrations": "Integrazioni",
         "vault": "Volta",
         "tags": "Tag",
         "properties": "Proprietà",
@@ -461,6 +460,48 @@
         "monday": "Lunedì",
         "sunday": "Domenica"
       }
+    },
+    "google": {
+      "name": "Calendario di Google",
+      "description": "Sincronizzazione bidirezionale per eventi memrynote e calendari Google importati.",
+      "statuses": {
+        "connected": "Connesso",
+        "notConnected": "Non connesso",
+        "reconnectRequired": "Riconnessione obbligatoria"
+      },
+      "accountReconnect": "Ricollega Google",
+      "importedCalendars": "Calendari importati",
+      "selected": "{count} selezionato",
+      "syncNow": "Sincronizza ora",
+      "disconnect": "Disconnetti",
+      "reconnect": "Ricollega Google",
+      "syncFailed": "Qualcosa è andato storto",
+      "connectFailed": "Impossibile connettere Google Calendar",
+      "refreshFailed": "Impossibile aggiornare Google Calendar",
+      "disconnectFailed": "Impossibile disconnettere Google Calendar",
+      "retryFailed": "Impossibile riprovare la sincronizzazione del calendario",
+      "pushToGoogle": {
+        "description": "Disattiva per la sincronizzazione unidirezionale — vedrai comunque i tuoi eventi Google in memrynote, ma gli eventi memrynote non appariranno in Google.",
+        "error": "Impossibile aggiornare la direzione di sincronizzazione",
+        "label": "Mostra gli eventi memrynote in Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Disattivato per impostazione predefinita. Attivalo e l'agente AI potrà leggere i tuoi eventi Google; disattivalo e non riceverà nulla quando glieli chiedi. In entrambi i casi continuerai a vederli in memrynote.",
+        "error": "Impossibile aggiornare l'accesso AI",
+        "label": "Consenti all'AI di leggere gli eventi di Google Calendar"
+      },
+      "connect": "Connettiti",
+      "sourcePicker": {
+        "empty": "Nessun calendario Google importato è ancora disponibile su questo dispositivo.",
+        "statuses": {
+          "synced": "Sincronizzato",
+          "error": "Errore",
+          "pending": "In sospeso",
+          "idle": "Inattivo"
+        },
+        "retrying": "Nuovo tentativo…",
+        "retryNow": "Riprova ora"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Impossibile connettersi",
       "testFailed": "Il test di connessione è fallito",
       "updateFailed": "Impossibile aggiornare l'impostazione"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrazioni",
-      "subtitle": "Connetti servizi esterni per arricchire il tuo flusso di lavoro"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Chiave API",
-      "none": "Sistema"
-    },
-    "comingSoon": "Prossimamente",
-    "connect": "Connettiti",
-    "googleCalendar": {
-      "name": "Calendario di Google",
-      "description": "Sincronizzazione bidirezionale per eventi memrynote e calendari Google importati.",
-      "statuses": {
-        "connected": "Connesso",
-        "notConnected": "Non connesso",
-        "reconnectRequired": "Riconnessione obbligatoria"
-      },
-      "accountReconnect": "Ricollega Google",
-      "importedCalendars": "Calendari importati",
-      "selected": "{count} selezionato",
-      "syncNow": "Sincronizza ora",
-      "disconnect": "Disconnetti",
-      "reconnect": "Ricollega Google",
-      "syncFailed": "Qualcosa è andato storto",
-      "connectFailed": "Impossibile connettere Google Calendar",
-      "refreshFailed": "Impossibile aggiornare Google Calendar",
-      "disconnectFailed": "Impossibile disconnettere Google Calendar",
-      "retryFailed": "Impossibile riprovare la sincronizzazione del calendario",
-      "pushToGoogle": {
-        "description": "Disattiva per la sincronizzazione unidirezionale — vedrai comunque i tuoi eventi Google in memrynote, ma gli eventi memrynote non appariranno in Google.",
-        "error": "Impossibile aggiornare la direzione di sincronizzazione",
-        "label": "Mostra gli eventi memrynote in Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Disattivato per impostazione predefinita. Attivalo e l'agente AI potrà leggere i tuoi eventi Google; disattivalo e non riceverà nulla quando glieli chiedi. In entrambi i casi continuerai a vederli in memrynote.",
-        "error": "Impossibile aggiornare l'accesso AI",
-        "label": "Consenti all'AI di leggere gli eventi di Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Nessun calendario Google importato è ancora disponibile su questo dispositivo.",
-      "statuses": {
-        "synced": "Sincronizzato",
-        "error": "Errore",
-        "pending": "In sospeso",
-        "idle": "Inattivo"
-      },
-      "retrying": "Nuovo tentativo…",
-      "retryNow": "Riprova ora"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Calendario di Google",
-        "description": "Sincronizzazione bidirezionale per eventi, attività, promemoria e calendari importati di memrynote"
-      },
-      "appleCalendar": {
-        "name": "Calendario Apple",
-        "description": "Integrazione del calendario locale tramite API di sistema"
-      },
-      "notion": {
-        "name": "Nozione",
-        "description": "Importazione di pagine una tantum nel tuo vault"
-      },
-      "readwise": {
-        "name": "Leggi attentamente",
-        "description": "Sincronizza i momenti salienti nel tuo caveau"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Sincronizzazione delle attività bidirezionale"
-      }
     }
   },
   "vault": {

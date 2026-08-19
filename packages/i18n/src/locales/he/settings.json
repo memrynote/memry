@@ -24,7 +24,6 @@
         "appearance": "מראה",
         "shortcuts": "קיצורי דרך",
         "ai": "עוזר AI",
-        "integrations": "אינטגרציות",
         "vault": "כספת",
         "tags": "תגים",
         "properties": "נכסים",
@@ -461,6 +460,48 @@
         "monday": "שני",
         "sunday": "ראשון"
       }
+    },
+    "google": {
+      "name": "יומן גוגל",
+      "description": "סנכרון דו-כיווני עבור אירועי memrynote ויומנים מיובאים של Google.",
+      "statuses": {
+        "connected": "מחובר",
+        "notConnected": "לא מחובר",
+        "reconnectRequired": "דרוש חיבור מחדש"
+      },
+      "accountReconnect": "חבר מחדש את גוגל",
+      "importedCalendars": "יומנים מיובאים",
+      "selected": "{count} נבחר",
+      "syncNow": "סנכרן עכשיו",
+      "disconnect": "התנתק",
+      "reconnect": "חבר מחדש את גוגל",
+      "syncFailed": "משהו השתבש",
+      "connectFailed": "חיבור יומן Google נכשל",
+      "refreshFailed": "רענון יומן Google נכשל",
+      "disconnectFailed": "ניתוק יומן Google נכשל",
+      "retryFailed": "נכשל הניסיון לסנכרן לוח שנה",
+      "pushToGoogle": {
+        "description": "כבה לסנכרון חד-כיווני — עדיין תראה את אירועי Google שלך ב-memrynote, אך אירועי memrynote לא יופיעו ב-Google.",
+        "error": "עדכון כיוון הסנכרון נכשל",
+        "label": "הצג אירועי memrynote ב-Google Calendar"
+      },
+      "agentAccess": {
+        "description": "כבוי כברירת מחדל. כשההגדרה מופעלת סוכן ה-AI יכול לקרוא את אירועי Google שלך; כשהיא כבויה הוא לא מקבל דבר כששואלים אותו עליהם. כך או כך תמשיך לראות אותם ב-memrynote.",
+        "error": "עדכון גישת ה-AI נכשל",
+        "label": "אפשר ל-AI לקרוא אירועי Google Calendar"
+      },
+      "connect": "התחבר",
+      "sourcePicker": {
+        "empty": "אין עדיין יומנים מיובאים של Google זמינים במכשיר זה.",
+        "statuses": {
+          "synced": "מסונכרן",
+          "error": "שגיאה",
+          "pending": "בהמתנה",
+          "idle": "בטלה"
+        },
+        "retrying": "מנסה שוב...",
+        "retryNow": "נסה שוב עכשיו"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "החיבור נכשל",
       "testFailed": "בדיקת החיבור נכשלה",
       "updateFailed": "עדכון ההגדרה נכשל"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "אינטגרציות",
-      "subtitle": "חבר שירותים חיצוניים כדי להעשיר את זרימת העבודה שלך"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "מפתח API",
-      "none": "מערכת"
-    },
-    "comingSoon": "בקרוב",
-    "connect": "התחבר",
-    "googleCalendar": {
-      "name": "יומן גוגל",
-      "description": "סנכרון דו-כיווני עבור אירועי memrynote ויומנים מיובאים של Google.",
-      "statuses": {
-        "connected": "מחובר",
-        "notConnected": "לא מחובר",
-        "reconnectRequired": "דרוש חיבור מחדש"
-      },
-      "accountReconnect": "חבר מחדש את גוגל",
-      "importedCalendars": "יומנים מיובאים",
-      "selected": "{count} נבחר",
-      "syncNow": "סנכרן עכשיו",
-      "disconnect": "התנתק",
-      "reconnect": "חבר מחדש את גוגל",
-      "syncFailed": "משהו השתבש",
-      "connectFailed": "חיבור יומן Google נכשל",
-      "refreshFailed": "רענון יומן Google נכשל",
-      "disconnectFailed": "ניתוק יומן Google נכשל",
-      "retryFailed": "נכשל הניסיון לסנכרן לוח שנה",
-      "pushToGoogle": {
-        "description": "כבה לסנכרון חד-כיווני — עדיין תראה את אירועי Google שלך ב-memrynote, אך אירועי memrynote לא יופיעו ב-Google.",
-        "error": "עדכון כיוון הסנכרון נכשל",
-        "label": "הצג אירועי memrynote ב-Google Calendar"
-      },
-      "agentAccess": {
-        "description": "כבוי כברירת מחדל. כשההגדרה מופעלת סוכן ה-AI יכול לקרוא את אירועי Google שלך; כשהיא כבויה הוא לא מקבל דבר כששואלים אותו עליהם. כך או כך תמשיך לראות אותם ב-memrynote.",
-        "error": "עדכון גישת ה-AI נכשל",
-        "label": "אפשר ל-AI לקרוא אירועי Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "אין עדיין יומנים מיובאים של Google זמינים במכשיר זה.",
-      "statuses": {
-        "synced": "מסונכרן",
-        "error": "שגיאה",
-        "pending": "בהמתנה",
-        "idle": "בטלה"
-      },
-      "retrying": "מנסה שוב...",
-      "retryNow": "נסה שוב עכשיו"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "יומן גוגל",
-        "description": "סנכרון דו-כיווני עבור אירועים, משימות, תזכורות ולוחות שנה מיובאים של memrynote"
-      },
-      "appleCalendar": {
-        "name": "לוח שנה של אפל",
-        "description": "שילוב לוח שנה מקומי באמצעות ממשקי API של מערכת"
-      },
-      "notion": {
-        "name": "מושג",
-        "description": "ייבוא עמוד חד פעמי לכספת שלך"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "סנכרן דגשים לכספת שלך"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "סנכרון משימות דו כיווני"
-      }
     }
   },
   "vault": {

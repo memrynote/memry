@@ -24,7 +24,6 @@
         "appearance": "المظهر",
         "shortcuts": "الاختصارات",
         "ai": "مساعد الذكاء الاصطناعي",
-        "integrations": "التكامل",
         "vault": "قبو",
         "tags": "العلامات",
         "properties": "خصائص",
@@ -461,6 +460,48 @@
         "monday": "الإثنين",
         "sunday": "الأحد"
       }
+    },
+    "google": {
+      "name": "تقويم جوجل",
+      "description": "مزامنة ثنائية الاتجاه لأحداث memrynote وتقويمات Google المستوردة.",
+      "statuses": {
+        "connected": "متصل",
+        "notConnected": "غير متصل",
+        "reconnectRequired": "إعادة الاتصال مطلوبة"
+      },
+      "accountReconnect": "أعد الاتصال بجوجل",
+      "importedCalendars": "التقويمات المستوردة",
+      "selected": "تم تحديد {count}",
+      "syncNow": "مزامنة الآن",
+      "disconnect": "قطع الاتصال",
+      "reconnect": "أعد الاتصال بجوجل",
+      "syncFailed": "حدث خطأ ما",
+      "connectFailed": "فشل في ربط تقويم Google",
+      "refreshFailed": "فشل تحديث تقويم Google",
+      "disconnectFailed": "فشل في قطع اتصال تقويم Google",
+      "retryFailed": "فشلت إعادة محاولة مزامنة التقويم",
+      "pushToGoogle": {
+        "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
+        "error": "فشل تحديث اتجاه المزامنة",
+        "label": "إظهار أحداث memrynote في تقويم Google"
+      },
+      "agentAccess": {
+        "description": "متوقف افتراضيًا. شغّله ليتمكن وكيل الذكاء الاصطناعي من قراءة أحداث Google الخاصة بك؛ أوقفه فلا يحصل على شيء عند سؤاله عنها. وستظل تراها في memrynote في الحالتين.",
+        "error": "فشل تحديث وصول الذكاء الاصطناعي",
+        "label": "السماح للذكاء الاصطناعي بقراءة أحداث Google Calendar"
+      },
+      "connect": "الاتصال",
+      "sourcePicker": {
+        "empty": "لا تتوفر تقاويم Google المستوردة على هذا الجهاز حتى الآن.",
+        "statuses": {
+          "synced": "تمت المزامنة",
+          "error": "خطأ",
+          "pending": "في انتظار",
+          "idle": "خامل"
+        },
+        "retrying": "جارٍ إعادة المحاولة...",
+        "retryNow": "أعد المحاولة الآن"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "فشل الاتصال",
       "testFailed": "فشل اختبار الاتصال",
       "updateFailed": "فشل تحديث الإعداد"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "التكامل",
-      "subtitle": "قم بتوصيل الخدمات الخارجية لإثراء سير عملك"
-    },
-    "auth": {
-      "oauth2": "أووث 2.0",
-      "apiKey": "مفتاح واجهة برمجة التطبيقات",
-      "none": "النظام"
-    },
-    "comingSoon": "قريبا",
-    "connect": "الاتصال",
-    "googleCalendar": {
-      "name": "تقويم جوجل",
-      "description": "مزامنة ثنائية الاتجاه لأحداث memrynote وتقويمات Google المستوردة.",
-      "statuses": {
-        "connected": "متصل",
-        "notConnected": "غير متصل",
-        "reconnectRequired": "إعادة الاتصال مطلوبة"
-      },
-      "accountReconnect": "أعد الاتصال بجوجل",
-      "importedCalendars": "التقويمات المستوردة",
-      "selected": "تم تحديد {count}",
-      "syncNow": "مزامنة الآن",
-      "disconnect": "قطع الاتصال",
-      "reconnect": "أعد الاتصال بجوجل",
-      "syncFailed": "حدث خطأ ما",
-      "connectFailed": "فشل في ربط تقويم Google",
-      "refreshFailed": "فشل تحديث تقويم Google",
-      "disconnectFailed": "فشل في قطع اتصال تقويم Google",
-      "retryFailed": "فشلت إعادة محاولة مزامنة التقويم",
-      "pushToGoogle": {
-        "description": "أوقفه للمزامنة أحادية الاتجاه — ستظل ترى أحداث Google في memrynote، لكن أحداث memrynote لن تظهر في Google.",
-        "error": "فشل تحديث اتجاه المزامنة",
-        "label": "إظهار أحداث memrynote في تقويم Google"
-      },
-      "agentAccess": {
-        "description": "متوقف افتراضيًا. شغّله ليتمكن وكيل الذكاء الاصطناعي من قراءة أحداث Google الخاصة بك؛ أوقفه فلا يحصل على شيء عند سؤاله عنها. وستظل تراها في memrynote في الحالتين.",
-        "error": "فشل تحديث وصول الذكاء الاصطناعي",
-        "label": "السماح للذكاء الاصطناعي بقراءة أحداث Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "لا تتوفر تقاويم Google المستوردة على هذا الجهاز حتى الآن.",
-      "statuses": {
-        "synced": "تمت المزامنة",
-        "error": "خطأ",
-        "pending": "في انتظار",
-        "idle": "خامل"
-      },
-      "retrying": "جارٍ إعادة المحاولة...",
-      "retryNow": "أعد المحاولة الآن"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "تقويم جوجل",
-        "description": "مزامنة ثنائية الاتجاه لأحداث ومهام وتذكيرات memrynote والتقويمات المستوردة"
-      },
-      "appleCalendar": {
-        "name": "تقويم أبل",
-        "description": "تكامل التقويم المحلي عبر واجهات برمجة تطبيقات النظام"
-      },
-      "notion": {
-        "name": "فكرة",
-        "description": "استيراد الصفحة لمرة واحدة إلى مخزنك"
-      },
-      "readwise": {
-        "name": "قراءة حكيمة",
-        "description": "مزامنة النقاط البارزة في قبوتك"
-      },
-      "todoist": {
-        "name": "تودويست",
-        "description": "مزامنة المهام في اتجاهين"
-      }
     }
   },
   "vault": {

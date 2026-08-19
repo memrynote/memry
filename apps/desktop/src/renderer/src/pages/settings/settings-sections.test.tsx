@@ -212,6 +212,14 @@ vi.mock('@/hooks/use-calendar-preferences', () => ({
   useCalendarPreferences: () => mocks.calendarPreferences
 }))
 
+// The Google connection card lives in Calendar settings but owns its own React
+// Query + calendar-service stack. This suite covers the preference controls, so
+// stub it out rather than stand up a QueryClientProvider for it here — it has
+// its own test in google-calendar-connection.test.tsx.
+vi.mock('@/components/settings/google-calendar-connection', () => ({
+  GoogleCalendarConnection: () => null
+}))
+
 vi.mock('@/hooks/use-editor-settings', () => ({
   useEditorSettings: () => mocks.editorSettings
 }))

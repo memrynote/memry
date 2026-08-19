@@ -24,7 +24,6 @@
         "appearance": "外观",
         "shortcuts": "快捷键",
         "ai": "AI 助手",
-        "integrations": "集成",
         "vault": "保险库",
         "tags": "标签",
         "properties": "属性",
@@ -461,6 +460,48 @@
         "monday": "周一",
         "sunday": "周日"
       }
+    },
+    "google": {
+      "name": "Google 日历",
+      "description": "memrynote 活动和导入的 Google 日历的双向同步。",
+      "statuses": {
+        "connected": "已连接",
+        "notConnected": "未连接",
+        "reconnectRequired": "需要重新连接"
+      },
+      "accountReconnect": "重新连接 Google",
+      "importedCalendars": "已导入的日历",
+      "selected": "已选择 {count} ",
+      "syncNow": "立即同步",
+      "disconnect": "断开连接",
+      "reconnect": "重新连接 Google",
+      "syncFailed": "发生错误",
+      "connectFailed": "连接 Google 日历失败",
+      "refreshFailed": "刷新 Google 日历失败",
+      "disconnectFailed": "断开 Google 日历失败",
+      "retryFailed": "重试日历同步失败",
+      "pushToGoogle": {
+        "description": "关闭以进行单向同步——你仍会在 memrynote 中看到你的 Google 事件，但 memrynote 事件不会出现在 Google 中。",
+        "error": "更新同步方向失败",
+        "label": "在 Google Calendar 中显示 memrynote 事件"
+      },
+      "agentAccess": {
+        "description": "默认关闭。开启后，AI 助手可以读取你的 Google 事件；关闭时，即使向它询问这些事件，它也得不到任何内容。无论哪种设置，你都会继续在 memrynote 中看到它们。",
+        "error": "更新 AI 访问权限失败",
+        "label": "允许 AI 读取 Google Calendar 事件"
+      },
+      "connect": "连接",
+      "sourcePicker": {
+        "empty": "此设备上还没有可用的已导入 Google 日历。",
+        "statuses": {
+          "synced": "已同步",
+          "error": "错误",
+          "pending": "待定",
+          "idle": "空闲"
+        },
+        "retrying": "正在重试…",
+        "retryNow": "立即重试"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "连接失败",
       "testFailed": "连接测试失败",
       "updateFailed": "更新设置失败"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "集成",
-      "subtitle": "连接外部服务以丰富您的工作流程"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API 密钥",
-      "none": "系统"
-    },
-    "comingSoon": "即将推出",
-    "connect": "连接",
-    "googleCalendar": {
-      "name": "Google 日历",
-      "description": "memrynote 活动和导入的 Google 日历的双向同步。",
-      "statuses": {
-        "connected": "已连接",
-        "notConnected": "未连接",
-        "reconnectRequired": "需要重新连接"
-      },
-      "accountReconnect": "重新连接 Google",
-      "importedCalendars": "已导入的日历",
-      "selected": "已选择 {count} ",
-      "syncNow": "立即同步",
-      "disconnect": "断开连接",
-      "reconnect": "重新连接 Google",
-      "syncFailed": "发生错误",
-      "connectFailed": "连接 Google 日历失败",
-      "refreshFailed": "刷新 Google 日历失败",
-      "disconnectFailed": "断开 Google 日历失败",
-      "retryFailed": "重试日历同步失败",
-      "pushToGoogle": {
-        "description": "关闭以进行单向同步——你仍会在 memrynote 中看到你的 Google 事件，但 memrynote 事件不会出现在 Google 中。",
-        "error": "更新同步方向失败",
-        "label": "在 Google Calendar 中显示 memrynote 事件"
-      },
-      "agentAccess": {
-        "description": "默认关闭。开启后，AI 助手可以读取你的 Google 事件；关闭时，即使向它询问这些事件，它也得不到任何内容。无论哪种设置，你都会继续在 memrynote 中看到它们。",
-        "error": "更新 AI 访问权限失败",
-        "label": "允许 AI 读取 Google Calendar 事件"
-      }
-    },
-    "sourcePicker": {
-      "empty": "此设备上还没有可用的已导入 Google 日历。",
-      "statuses": {
-        "synced": "已同步",
-        "error": "错误",
-        "pending": "待定",
-        "idle": "空闲"
-      },
-      "retrying": "正在重试…",
-      "retryNow": "立即重试"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google 日历",
-        "description": "memrynote 的事件、任务、提醒和导入日历的双向同步"
-      },
-      "appleCalendar": {
-        "name": "Apple 日历",
-        "description": "通过系统 API 进行本地日历集成"
-      },
-      "notion": {
-        "name": "Notion",
-        "description": "一次性将页面导入到您的保险库"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "将高亮内容同步到您的保险库"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "双向任务同步"
-      }
     }
   },
   "vault": {

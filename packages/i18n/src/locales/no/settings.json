@@ -24,7 +24,6 @@
         "appearance": "Utseende",
         "shortcuts": "Snarveier",
         "ai": "AI-assistent",
-        "integrations": "Integrasjoner",
         "vault": "Hvelv",
         "tags": "Tagger",
         "properties": "Egenskaper",
@@ -461,6 +460,48 @@
         "monday": "Mandag",
         "sunday": "Søndag"
       }
+    },
+    "google": {
+      "name": "Google Kalender",
+      "description": "Toveis synkronisering for memrynote-hendelser og importerte Google-kalendere.",
+      "statuses": {
+        "connected": "Tilkoblet",
+        "notConnected": "Ikke tilkoblet",
+        "reconnectRequired": "Koble til på nytt kreves"
+      },
+      "accountReconnect": "Koble til Google på nytt",
+      "importedCalendars": "Importerte kalendere",
+      "selected": "{count} er valgt",
+      "syncNow": "Synkroniser nå",
+      "disconnect": "Koble fra",
+      "reconnect": "Koble til Google på nytt",
+      "syncFailed": "Noe gikk galt",
+      "connectFailed": "Kunne ikke koble til Google Kalender",
+      "refreshFailed": "Kunne ikke oppdatere Google Kalender",
+      "disconnectFailed": "Kunne ikke koble fra Google Kalender",
+      "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt",
+      "pushToGoogle": {
+        "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
+        "error": "Kunne ikke oppdatere synkroniseringsretning",
+        "label": "Vis memrynote-hendelser i Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Av som standard. Slå på, så kan AI-agenten lese Google-hendelsene dine; slå av, og den får ingenting tilbake når den blir spurt om dem. Du ser dem i memrynote uansett.",
+        "error": "Kunne ikke oppdatere AI-tilgangen",
+        "label": "La AI lese Google Calendar-hendelser"
+      },
+      "connect": "Koble til",
+      "sourcePicker": {
+        "empty": "Ingen importerte Google-kalendere er tilgjengelige på denne enheten ennå.",
+        "statuses": {
+          "synced": "Synkronisert",
+          "error": "Feil",
+          "pending": "Venter",
+          "idle": "Inaktiv"
+        },
+        "retrying": "Prøver på nytt …",
+        "retryNow": "Prøv på nytt nå"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Kunne ikke koble til",
       "testFailed": "Tilkoblingstest mislyktes",
       "updateFailed": "Kunne ikke oppdatere innstillingen"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrasjoner",
-      "subtitle": "Koble til eksterne tjenester for å berike arbeidsflyten din"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API-nøkkel",
-      "none": "System"
-    },
-    "comingSoon": "Kommer snart",
-    "connect": "Koble til",
-    "googleCalendar": {
-      "name": "Google Kalender",
-      "description": "Toveis synkronisering for memrynote-hendelser og importerte Google-kalendere.",
-      "statuses": {
-        "connected": "Tilkoblet",
-        "notConnected": "Ikke tilkoblet",
-        "reconnectRequired": "Koble til på nytt kreves"
-      },
-      "accountReconnect": "Koble til Google på nytt",
-      "importedCalendars": "Importerte kalendere",
-      "selected": "{count} er valgt",
-      "syncNow": "Synkroniser nå",
-      "disconnect": "Koble fra",
-      "reconnect": "Koble til Google på nytt",
-      "syncFailed": "Noe gikk galt",
-      "connectFailed": "Kunne ikke koble til Google Kalender",
-      "refreshFailed": "Kunne ikke oppdatere Google Kalender",
-      "disconnectFailed": "Kunne ikke koble fra Google Kalender",
-      "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt",
-      "pushToGoogle": {
-        "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
-        "error": "Kunne ikke oppdatere synkroniseringsretning",
-        "label": "Vis memrynote-hendelser i Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Av som standard. Slå på, så kan AI-agenten lese Google-hendelsene dine; slå av, og den får ingenting tilbake når den blir spurt om dem. Du ser dem i memrynote uansett.",
-        "error": "Kunne ikke oppdatere AI-tilgangen",
-        "label": "La AI lese Google Calendar-hendelser"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Ingen importerte Google-kalendere er tilgjengelige på denne enheten ennå.",
-      "statuses": {
-        "synced": "Synkronisert",
-        "error": "Feil",
-        "pending": "Venter",
-        "idle": "Inaktiv"
-      },
-      "retrying": "Prøver på nytt …",
-      "retryNow": "Prøv på nytt nå"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Kalender",
-        "description": "Toveis synkronisering for memrynote-hendelser, oppgaver, påminnelser og importerte kalendere"
-      },
-      "appleCalendar": {
-        "name": "Apple-kalender",
-        "description": "Lokal kalenderintegrasjon via system-APIer"
-      },
-      "notion": {
-        "name": "Forestilling",
-        "description": "Engangssideimport til hvelvet ditt"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "Synkroniser høydepunkter til hvelvet ditt"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Toveis oppgavesynkronisering"
-      }
     }
   },
   "vault": {

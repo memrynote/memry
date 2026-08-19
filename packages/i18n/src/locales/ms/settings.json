@@ -24,7 +24,6 @@
         "appearance": "Penampilan",
         "shortcuts": "Jalan pintas",
         "ai": "Penolong AI",
-        "integrations": "Integrasi",
         "vault": "Bilik kebal",
         "tags": "Tag",
         "properties": "Hartanah",
@@ -461,6 +460,48 @@
         "monday": "Isnin",
         "sunday": "Ahad"
       }
+    },
+    "google": {
+      "name": "Kalendar Google",
+      "description": "Penyegerakan dua hala untuk acara memrynote dan kalendar Google yang diimport.",
+      "statuses": {
+        "connected": "Bersambung",
+        "notConnected": "Tidak Bersambung",
+        "reconnectRequired": "Sambung semula Diperlukan"
+      },
+      "accountReconnect": "Sambung semula Google",
+      "importedCalendars": "Kalendar yang diimport",
+      "selected": "{count} dipilih",
+      "syncNow": "Segerakkan Sekarang",
+      "disconnect": "Putuskan sambungan",
+      "reconnect": "Sambung semula Google",
+      "syncFailed": "Sesuatu telah berlaku",
+      "connectFailed": "Gagal menyambungkan Kalendar Google",
+      "refreshFailed": "Gagal memuat semula Kalendar Google",
+      "disconnectFailed": "Gagal memutuskan sambungan Kalendar Google",
+      "retryFailed": "Gagal mencuba semula penyegerakan kalendar",
+      "pushToGoogle": {
+        "description": "Matikan untuk penyegerakan sehala — anda masih akan melihat acara Google anda dalam memrynote, tetapi acara memrynote tidak akan muncul dalam Google.",
+        "error": "Gagal mengemas kini arah penyegerakan",
+        "label": "Tunjukkan acara memrynote dalam Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dimatikan secara lalai. Hidupkan dan ejen AI boleh membaca acara Google anda; matikan dan ia tidak mendapat apa-apa apabila ditanya tentangnya. Anda tetap melihatnya dalam memrynote, walau apa pun pilihan anda.",
+        "error": "Gagal mengemas kini akses AI",
+        "label": "Benarkan AI membaca acara Google Calendar"
+      },
+      "connect": "Sambung",
+      "sourcePicker": {
+        "empty": "Tiada kalendar Google yang diimport tersedia pada peranti ini lagi.",
+        "statuses": {
+          "synced": "disegerakkan",
+          "error": "ralat",
+          "pending": "Belum selesai",
+          "idle": "terbiar"
+        },
+        "retrying": "Mencuba semula…",
+        "retryNow": "Cuba semula sekarang"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Gagal menyambung",
       "testFailed": "Ujian sambungan gagal",
       "updateFailed": "Gagal mengemas kini tetapan"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrasi",
-      "subtitle": "Sambungkan perkhidmatan luaran untuk memperkayakan aliran kerja anda"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Kunci API",
-      "none": "Sistem"
-    },
-    "comingSoon": "Akan Datang",
-    "connect": "Sambung",
-    "googleCalendar": {
-      "name": "Kalendar Google",
-      "description": "Penyegerakan dua hala untuk acara memrynote dan kalendar Google yang diimport.",
-      "statuses": {
-        "connected": "Bersambung",
-        "notConnected": "Tidak Bersambung",
-        "reconnectRequired": "Sambung semula Diperlukan"
-      },
-      "accountReconnect": "Sambung semula Google",
-      "importedCalendars": "Kalendar yang diimport",
-      "selected": "{count} dipilih",
-      "syncNow": "Segerakkan Sekarang",
-      "disconnect": "Putuskan sambungan",
-      "reconnect": "Sambung semula Google",
-      "syncFailed": "Sesuatu telah berlaku",
-      "connectFailed": "Gagal menyambungkan Kalendar Google",
-      "refreshFailed": "Gagal memuat semula Kalendar Google",
-      "disconnectFailed": "Gagal memutuskan sambungan Kalendar Google",
-      "retryFailed": "Gagal mencuba semula penyegerakan kalendar",
-      "pushToGoogle": {
-        "description": "Matikan untuk penyegerakan sehala — anda masih akan melihat acara Google anda dalam memrynote, tetapi acara memrynote tidak akan muncul dalam Google.",
-        "error": "Gagal mengemas kini arah penyegerakan",
-        "label": "Tunjukkan acara memrynote dalam Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Dimatikan secara lalai. Hidupkan dan ejen AI boleh membaca acara Google anda; matikan dan ia tidak mendapat apa-apa apabila ditanya tentangnya. Anda tetap melihatnya dalam memrynote, walau apa pun pilihan anda.",
-        "error": "Gagal mengemas kini akses AI",
-        "label": "Benarkan AI membaca acara Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Tiada kalendar Google yang diimport tersedia pada peranti ini lagi.",
-      "statuses": {
-        "synced": "disegerakkan",
-        "error": "ralat",
-        "pending": "Belum selesai",
-        "idle": "terbiar"
-      },
-      "retrying": "Mencuba semula…",
-      "retryNow": "Cuba semula sekarang"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Kalendar Google",
-        "description": "Penyegerakan dua hala untuk acara memrynote, tugasan, peringatan dan kalendar yang diimport"
-      },
-      "appleCalendar": {
-        "name": "Kalendar Apple",
-        "description": "Penyepaduan kalendar tempatan melalui API sistem"
-      },
-      "notion": {
-        "name": "Tanggapan",
-        "description": "Import halaman sekali ke dalam peti besi anda"
-      },
-      "readwise": {
-        "name": "Bacaan",
-        "description": "Segerakkan sorotan ke dalam peti besi anda"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Penyegerakan tugas dua hala"
-      }
     }
   },
   "vault": {

@@ -27,13 +27,13 @@ function statusDotClass(status: CalendarSourceRecord['syncStatus']): string {
 function statusLabelKey(status: CalendarSourceRecord['syncStatus']): string {
   switch (status) {
     case 'ok':
-      return 'integrations.sourcePicker.statuses.synced'
+      return 'calendar.google.sourcePicker.statuses.synced'
     case 'error':
-      return 'integrations.sourcePicker.statuses.error'
+      return 'calendar.google.sourcePicker.statuses.error'
     case 'pending':
-      return 'integrations.sourcePicker.statuses.pending'
+      return 'calendar.google.sourcePicker.statuses.pending'
     default:
-      return 'integrations.sourcePicker.statuses.idle'
+      return 'calendar.google.sourcePicker.statuses.idle'
   }
 }
 
@@ -47,7 +47,9 @@ export function GoogleCalendarSourcePicker({
   const { t } = useT('settings')
 
   if (sources.length === 0) {
-    return <p className="text-xs text-muted-foreground">{t('integrations.sourcePicker.empty')}</p>
+    return (
+      <p className="text-xs text-muted-foreground">{t('calendar.google.sourcePicker.empty')}</p>
+    )
   }
 
   return (
@@ -100,8 +102,8 @@ export function GoogleCalendarSourcePicker({
                     data-testid={`calendar-source-retry-${source.id}`}
                   >
                     {isRetrying
-                      ? t('integrations.sourcePicker.retrying')
-                      : t('integrations.sourcePicker.retryNow')}
+                      ? t('calendar.google.sourcePicker.retrying')
+                      : t('calendar.google.sourcePicker.retryNow')}
                   </Button>
                 )}
                 <Checkbox

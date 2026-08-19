@@ -24,7 +24,6 @@
         "appearance": "Aspectul",
         "shortcuts": "Comenzi rapide",
         "ai": "Asistent AI",
-        "integrations": "Integrari",
         "vault": "Seif",
         "tags": "Etichete",
         "properties": "Proprietăți",
@@ -461,6 +460,48 @@
         "monday": "Luni",
         "sunday": "Duminică"
       }
+    },
+    "google": {
+      "name": "Google Calendar",
+      "description": "Sincronizare bidirecțională pentru evenimentele memrynote și calendarele Google importate.",
+      "statuses": {
+        "connected": "Conectat",
+        "notConnected": "Nu este conectat",
+        "reconnectRequired": "Reconectare obligatorie"
+      },
+      "accountReconnect": "Reconectați Google",
+      "importedCalendars": "Calendare importate",
+      "selected": "{count} selectat",
+      "syncNow": "Sincronizează acum",
+      "disconnect": "Deconectați-vă",
+      "reconnect": "Reconectați Google",
+      "syncFailed": "Ceva a mers prost",
+      "connectFailed": "Nu s-a putut conecta Google Calendar",
+      "refreshFailed": "Nu s-a reîmprospătat Google Calendar",
+      "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
+      "retryFailed": "Nu s-a reîncercat sincronizarea calendarului",
+      "pushToGoogle": {
+        "description": "Dezactivează pentru sincronizare într-un singur sens — vei vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
+        "error": "Actualizarea direcției de sincronizare a eșuat",
+        "label": "Arată evenimentele memrynote în Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Dezactivat implicit. Când e activat, agentul AI poate citi evenimentele tale Google; când e dezactivat, nu primește nimic dacă este întrebat despre ele. Oricum le vei vedea în continuare în memrynote.",
+        "error": "Actualizarea accesului AI a eșuat",
+        "label": "Permite AI-ului să citească evenimentele din Google Calendar"
+      },
+      "connect": "Conectați-vă",
+      "sourcePicker": {
+        "empty": "Încă nu sunt disponibile calendare Google importate pe acest dispozitiv.",
+        "statuses": {
+          "synced": "Sincronizat",
+          "error": "Eroare",
+          "pending": "În așteptare",
+          "idle": "Inactiv"
+        },
+        "retrying": "Se reîncercă…",
+        "retryNow": "Reîncercați acum"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Nu s-a putut conecta",
       "testFailed": "Testul de conectare a eșuat",
       "updateFailed": "Setarea nu a fost actualizată"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrari",
-      "subtitle": "Conectați servicii externe pentru a vă îmbogăți fluxul de lucru"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Cheia API",
-      "none": "Sistem"
-    },
-    "comingSoon": "În curând",
-    "connect": "Conectați-vă",
-    "googleCalendar": {
-      "name": "Google Calendar",
-      "description": "Sincronizare bidirecțională pentru evenimentele memrynote și calendarele Google importate.",
-      "statuses": {
-        "connected": "Conectat",
-        "notConnected": "Nu este conectat",
-        "reconnectRequired": "Reconectare obligatorie"
-      },
-      "accountReconnect": "Reconectați Google",
-      "importedCalendars": "Calendare importate",
-      "selected": "{count} selectat",
-      "syncNow": "Sincronizează acum",
-      "disconnect": "Deconectați-vă",
-      "reconnect": "Reconectați Google",
-      "syncFailed": "Ceva a mers prost",
-      "connectFailed": "Nu s-a putut conecta Google Calendar",
-      "refreshFailed": "Nu s-a reîmprospătat Google Calendar",
-      "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
-      "retryFailed": "Nu s-a reîncercat sincronizarea calendarului",
-      "pushToGoogle": {
-        "description": "Dezactivează pentru sincronizare într-un singur sens — vei vedea în continuare evenimentele Google în memrynote, dar evenimentele memrynote nu vor apărea în Google.",
-        "error": "Actualizarea direcției de sincronizare a eșuat",
-        "label": "Arată evenimentele memrynote în Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Dezactivat implicit. Când e activat, agentul AI poate citi evenimentele tale Google; când e dezactivat, nu primește nimic dacă este întrebat despre ele. Oricum le vei vedea în continuare în memrynote.",
-        "error": "Actualizarea accesului AI a eșuat",
-        "label": "Permite AI-ului să citească evenimentele din Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Încă nu sunt disponibile calendare Google importate pe acest dispozitiv.",
-      "statuses": {
-        "synced": "Sincronizat",
-        "error": "Eroare",
-        "pending": "În așteptare",
-        "idle": "Inactiv"
-      },
-      "retrying": "Se reîncercă…",
-      "retryNow": "Reîncercați acum"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Calendar",
-        "description": "Sincronizare bidirecțională pentru evenimente, sarcini, mementouri și calendare importate memrynote"
-      },
-      "appleCalendar": {
-        "name": "Calendar Apple",
-        "description": "Integrarea calendarului local prin intermediul API-urilor de sistem"
-      },
-      "notion": {
-        "name": "Noțiune",
-        "description": "Import unic de pagină în seif"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "Sincronizați evidențierile în seif"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Sincronizare bidirecțională a sarcinilor"
-      }
     }
   },
   "vault": {

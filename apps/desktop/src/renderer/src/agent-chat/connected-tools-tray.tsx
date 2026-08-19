@@ -9,10 +9,9 @@ import {
 } from '@/components/calendar/google-calendar-connect-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plug } from '@/lib/icons'
-import { getIntegration } from '@/lib/integration-registry'
 import { getGoogleCalendarStatus } from '@/services/calendar-service'
 
-const GOOGLE_CALENDAR_NAME = getIntegration('google-calendar')?.name ?? 'Google Calendar'
+const GOOGLE_CALENDAR_NAME = 'Google Calendar'
 
 /**
  * Google Calendar brand mark, drawn inline so it stays crisp at 16px and needs

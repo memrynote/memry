@@ -24,7 +24,6 @@
         "appearance": "Izgled",
         "shortcuts": "Prečaci",
         "ai": "AI pomoćnik",
-        "integrations": "Integracije",
         "vault": "Trezor",
         "tags": "oznake",
         "properties": "Svojstva",
@@ -461,6 +460,48 @@
         "monday": "Ponedjeljak",
         "sunday": "Nedjelja"
       }
+    },
+    "google": {
+      "name": "Google kalendar",
+      "description": "Dvosmjerna sinkronizacija za memrynote događaje i uvezene Google kalendare.",
+      "statuses": {
+        "connected": "Povezan",
+        "notConnected": "Nije povezano",
+        "reconnectRequired": "Potrebno ponovno povezivanje"
+      },
+      "accountReconnect": "Ponovno povežite Google",
+      "importedCalendars": "Uvezeni kalendari",
+      "selected": "{count} odabran",
+      "syncNow": "Sinkroniziraj sada",
+      "disconnect": "Prekini vezu",
+      "reconnect": "Ponovno povežite Google",
+      "syncFailed": "Nešto nije u redu",
+      "connectFailed": "Povezivanje Google kalendara nije uspjelo",
+      "refreshFailed": "Osvježavanje Google kalendara nije uspjelo",
+      "disconnectFailed": "Odspajanje Google kalendara nije uspjelo",
+      "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio",
+      "pushToGoogle": {
+        "description": "Isključite za jednosmjernu sinkronizaciju — i dalje ćete vidjeti Google događaje u memrynote, ali memrynote događaji neće se pojaviti u Googleu.",
+        "error": "Neuspješno ažuriranje smjera sinkronizacije",
+        "label": "Prikaži memrynote događaje u Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Prema zadanim postavkama isključeno. Kada je uključeno, AI agent može čitati vaše Google događaje; kada je isključeno, ne dobiva ništa kada ga se pita o njima. Vi ih u memrynote vidite u oba slučaja.",
+        "error": "Ažuriranje AI pristupa nije uspjelo",
+        "label": "Dopusti da AI čita događaje iz Google Calendara"
+      },
+      "connect": "Poveži se",
+      "sourcePicker": {
+        "empty": "Na ovom uređaju još nisu dostupni uvezeni Google kalendari.",
+        "statuses": {
+          "synced": "Sinkronizirano",
+          "error": "Greška",
+          "pending": "Na čekanju",
+          "idle": "besposlen"
+        },
+        "retrying": "Ponovni pokušaj...",
+        "retryNow": "Pokušajte ponovo"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Povezivanje nije uspjelo",
       "testFailed": "Test veze nije uspio",
       "updateFailed": "Ažuriranje postavke nije uspjelo"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integracije",
-      "subtitle": "Povežite vanjske usluge kako biste obogatili svoj tijek rada"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API ključ",
-      "none": "sustav"
-    },
-    "comingSoon": "Dolazi uskoro",
-    "connect": "Poveži se",
-    "googleCalendar": {
-      "name": "Google kalendar",
-      "description": "Dvosmjerna sinkronizacija za memrynote događaje i uvezene Google kalendare.",
-      "statuses": {
-        "connected": "Povezan",
-        "notConnected": "Nije povezano",
-        "reconnectRequired": "Potrebno ponovno povezivanje"
-      },
-      "accountReconnect": "Ponovno povežite Google",
-      "importedCalendars": "Uvezeni kalendari",
-      "selected": "{count} odabran",
-      "syncNow": "Sinkroniziraj sada",
-      "disconnect": "Prekini vezu",
-      "reconnect": "Ponovno povežite Google",
-      "syncFailed": "Nešto nije u redu",
-      "connectFailed": "Povezivanje Google kalendara nije uspjelo",
-      "refreshFailed": "Osvježavanje Google kalendara nije uspjelo",
-      "disconnectFailed": "Odspajanje Google kalendara nije uspjelo",
-      "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio",
-      "pushToGoogle": {
-        "description": "Isključite za jednosmjernu sinkronizaciju — i dalje ćete vidjeti Google događaje u memrynote, ali memrynote događaji neće se pojaviti u Googleu.",
-        "error": "Neuspješno ažuriranje smjera sinkronizacije",
-        "label": "Prikaži memrynote događaje u Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Prema zadanim postavkama isključeno. Kada je uključeno, AI agent može čitati vaše Google događaje; kada je isključeno, ne dobiva ništa kada ga se pita o njima. Vi ih u memrynote vidite u oba slučaja.",
-        "error": "Ažuriranje AI pristupa nije uspjelo",
-        "label": "Dopusti da AI čita događaje iz Google Calendara"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Na ovom uređaju još nisu dostupni uvezeni Google kalendari.",
-      "statuses": {
-        "synced": "Sinkronizirano",
-        "error": "Greška",
-        "pending": "Na čekanju",
-        "idle": "besposlen"
-      },
-      "retrying": "Ponovni pokušaj...",
-      "retryNow": "Pokušajte ponovo"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google kalendar",
-        "description": "Dvosmjerna sinkronizacija za memrynote događaje, zadatke, podsjetnike i uvezene kalendare"
-      },
-      "appleCalendar": {
-        "name": "Apple kalendar",
-        "description": "Integracija lokalnog kalendara putem API-ja sustava"
-      },
-      "notion": {
-        "name": "Pojam",
-        "description": "Jednokratni uvoz stranice u vaš trezor"
-      },
-      "readwise": {
-        "name": "Čitajte",
-        "description": "Sinkronizirajte istaknute stavke u svoj trezor"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Dvosmjerna sinkronizacija zadataka"
-      }
     }
   },
   "vault": {
