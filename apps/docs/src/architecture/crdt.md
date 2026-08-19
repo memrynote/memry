@@ -254,6 +254,31 @@ restarts is lost for that session. A mid-session load failure for a single doc
 falls back to seeding from the vault file instead of blocking the note from
 opening.
 
+### What else the store holds
+
+Besides each note's update log and state vector, the store holds one **snapshot
+watermark** per note — `{ appliedSequence, snapshotRevision }`, written as a
+y-leveldb document meta key. It is what lets the vault-wide sweep skip a
+snapshot baseline the document already contains, across app restarts and a fresh
+sign-in (see
+[the sweep's conditional baseline](/architecture/sync-protocol#the-vault-sweep-s-conditional-baseline)).
+
+It lives here rather than in the index DB or in settings because a watermark
+that outlives the document it describes makes the sweep skip that baseline
+forever, leaving a permanently stale body. Inside the store, the two share one
+lifetime by construction:
+
+- a meta key is inside the key range `clearDocument` clears, so purging a note
+  or setting a legacy document aside drops its watermark in the same operation;
+- quarantine, a rebuild and a re-path all move or destroy the whole directory,
+  so watermarks travel with the documents or vanish with them;
+- in-memory mode has no store handle at all, so nothing is read and nothing is
+  written — every note falls back to downloading its baseline.
+
+Losing a watermark costs one extra request. Keeping a stale one costs a note
+body, so every unknown — no record, an unreadable record, a store written by a
+build that predates the key — resolves to "download the baseline".
+
 ### Telling the user
 
 In-memory mode is silent by design for one launch — a store that quarantined
