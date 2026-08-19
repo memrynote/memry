@@ -17,6 +17,7 @@ import {
   getNoteAttachmentsDir,
   getAttachmentPath,
   getAbsoluteAttachmentUrl,
+  getAttachmentRef,
   generateUniqueFilename,
   saveAttachment,
   deleteAttachment,
@@ -198,6 +199,20 @@ describe('formatFileSize', () => {
 // generateUniqueFilename Tests (T392)
 // ============================================================================
 
+describe('getAttachmentRef', () => {
+  it('returns a note-relative ref when the note path is known', () => {
+    expect(getAttachmentRef('/vault', 'note123', 'x.png', 'notes/Meeting.md')).toBe(
+      '../attachments/note123/x.png'
+    )
+  })
+
+  it('returns an absolute URL when it is not', () => {
+    expect(getAttachmentRef('/vault', 'note123', 'x.png', undefined)).toBe(
+      getAbsoluteAttachmentUrl('/vault', 'note123', 'x.png')
+    )
+  })
+})
+
 describe('generateUniqueFilename', () => {
   it('T392: generates unique filename with prefix', () => {
     const result = generateUniqueFilename('my-image.png')
@@ -304,6 +319,47 @@ describe('attachment operations', () => {
       expect(result.error).toContain('too large')
     })
 
+    it('references the attachment relative to the note that owns it', async () => {
+      // The whole point of #1488: an absolute URL carries this machine's vault
+      // path, so the same note on a second device resolves it to nothing.
+      const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf', {
+        notePath: 'notes/Meeting.md'
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.path).toMatch(/^\.\.\/attachments\/note123\/[a-z0-9]{6}-plan\.pdf$/)
+      expect(result.path).not.toContain('memry-file://')
+      expect(result.path).not.toContain(tempVault.path)
+    })
+
+    it('climbs once per folder between the note and the attachments tree', async () => {
+      const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf', {
+        notePath: 'notes/work/q3/Review.md'
+      })
+
+      expect(result.path?.startsWith('../../../attachments/note123/')).toBe(true)
+    })
+
+    it('falls back to an absolute URL when the note path is unknown', async () => {
+      // Not a failure: this is what every attachment carried before the ref
+      // became note-relative, so an unindexed note is left no worse off.
+      const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf')
+
+      expect(result.success).toBe(true)
+      expect(result.path?.startsWith('memry-file://')).toBe(true)
+    })
+
+    it('writes the bytes under the note folder whichever ref shape it returns', async () => {
+      const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf', {
+        notePath: 'notes/Meeting.md'
+      })
+
+      const filename = path.basename(result.path!)
+      expect(fs.existsSync(path.join(tempVault.path, 'attachments', 'note123', filename))).toBe(
+        true
+      )
+    })
+
     it('saves a 60MB PDF that no sync plan would accept', async () => {
       // The whole point of the 100MB cap: this file is far past every plan's
       // per-file sync limit, and it still lands in the vault. Sync refuses it
@@ -368,6 +424,18 @@ describe('attachment operations', () => {
       expect(attachments.length).toBe(2)
       expect(attachments.some((a) => a.type === 'image')).toBe(true)
       expect(attachments.some((a) => a.type === 'file')).toBe(true)
+    })
+
+    it('keeps absolute URLs, unlike the ref a note carries', async () => {
+      // This listing answers "where is this file on this machine" for IPC/MCP
+      // callers; nothing writes it into a note, so it must stay openable as-is.
+      await saveAttachment('note123', Buffer.from('data'), 'image.png', {
+        notePath: 'notes/Meeting.md'
+      })
+
+      const [attachment] = await listNoteAttachments('note123')
+
+      expect(attachment.path.startsWith('memry-file://')).toBe(true)
     })
 
     it('T394: returns empty array for note without attachments', async () => {

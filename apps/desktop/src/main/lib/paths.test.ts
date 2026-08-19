@@ -10,6 +10,7 @@ import {
   getTitleFromPath,
   safeJoin,
   ensureMarkdownExtension,
+  noteRelativeRef,
   toMemryFileUrl,
   fromMemryFileUrl
 } from './paths'
@@ -105,5 +106,37 @@ describe('paths utils', () => {
     const url = toMemryFileUrl(original)
     const restored = fromMemryFileUrl(url)
     expect(restored).toBe(original)
+  })
+})
+
+describe('noteRelativeRef', () => {
+  it('climbs out of the note folder to reach the attachments tree', () => {
+    expect(noteRelativeRef('notes/Meeting.md', 'attachments/note123/abc-plan.pdf')).toBe(
+      '../attachments/note123/abc-plan.pdf'
+    )
+  })
+
+  it('needs no climb for a note at the vault root', () => {
+    expect(noteRelativeRef('Meeting.md', 'attachments/note123/abc-plan.pdf')).toBe(
+      'attachments/note123/abc-plan.pdf'
+    )
+  })
+
+  it('climbs once per nested folder', () => {
+    expect(noteRelativeRef('notes/work/q3/Review.md', 'attachments/n/x.png')).toBe(
+      '../../../attachments/n/x.png'
+    )
+  })
+
+  it('keeps the shared prefix instead of climbing past it', () => {
+    expect(noteRelativeRef('notes/Trip.md', 'notes/images/photo.png')).toBe('images/photo.png')
+  })
+
+  // A ref goes into markdown, where a backslash is not a path separator. Windows
+  // hands back `notes\Trip.md` from path APIs, so both sides normalize first.
+  it('emits forward slashes for a Windows-shaped input', () => {
+    expect(noteRelativeRef('notes\\work\\Trip.md', 'attachments\\n\\x.png')).toBe(
+      '../../attachments/n/x.png'
+    )
   })
 })

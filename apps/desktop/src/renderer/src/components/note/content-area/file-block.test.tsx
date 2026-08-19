@@ -7,6 +7,7 @@ import {
   parseFileBlockMarker,
   serializeFileBlock
 } from './file-block'
+import { NoteFileUrlProvider } from './note-file-url-context'
 
 const mocks = vi.hoisted(() => ({
   syncState: {
@@ -39,14 +40,16 @@ vi.mock('@blocknote/react', () => ({
 vi.mock('react-pdf', () => ({
   Document: ({
     children,
+    file,
     onLoadSuccess,
     onLoadError
   }: {
     children: React.ReactNode
+    file: string
     onLoadSuccess?: (payload: { numPages: number }) => void
     onLoadError?: (error: Error) => void
   }) => (
-    <div data-testid="pdf-document">
+    <div data-testid="pdf-document" data-file={file}>
       <button type="button" onClick={() => onLoadSuccess?.({ numPages: mocks.pdfPageCount })}>
         load pdf
       </button>
@@ -333,5 +336,58 @@ describe('file block helpers', () => {
     expect(updateBlock).toHaveBeenCalledWith(block, {
       props: expect.objectContaining({ align: 'right' })
     })
+  })
+})
+
+describe('FileBlock url resolution', () => {
+  // #1488: attachments are stored as a ref relative to the note. The `file`
+  // block is a custom spec, so BlockNote's own resolveFileUrl never reaches it
+  // — without this the PDF viewer fetches `../attachments/...` against the
+  // renderer's base URL and shows a broken card.
+  const RELATIVE = '../attachments/note1/abc123-manual.pdf'
+  const ABSOLUTE = 'memry-file://local/Users/me/vault/attachments/note1/abc123-manual.pdf'
+
+  function renderBlock(url: string, resolveFileUrl?: (url: string) => Promise<string>) {
+    const Render = (createFileBlock as any).render
+    const block = {
+      props: { url, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
+    }
+    const ui = <Render contentRef={vi.fn()} editor={{ updateBlock: vi.fn() }} block={block} />
+    const result = render(
+      resolveFileUrl ? (
+        <NoteFileUrlProvider resolveFileUrl={resolveFileUrl}>{ui}</NoteFileUrlProvider>
+      ) : (
+        ui
+      )
+    )
+    return { ...result, block }
+  }
+
+  it('renders a note-relative ref through the resolver', async () => {
+    const { block } = renderBlock(RELATIVE, async () => ABSOLUTE)
+
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('pdf-document')).toHaveAttribute('data-file', ABSOLUTE)
+    )
+    // Render-time only: writing the resolved URL back would serialize this
+    // machine's vault path into the note's markdown — the bug itself.
+    expect(block.props.url).toBe(RELATIVE)
+  })
+
+  it('renders an absolute URL on the first paint, with no resolver round trip', () => {
+    const resolveFileUrl = vi.fn(async () => 'never used')
+    renderBlock(ABSOLUTE, resolveFileUrl)
+
+    expect(screen.getByTestId('pdf-document')).toHaveAttribute('data-file', ABSOLUTE)
+    expect(resolveFileUrl).not.toHaveBeenCalled()
+  })
+
+  it('leaves the ref alone outside a provider rather than inventing a path', () => {
+    // Read-only surfaces that render a file block without the editor's resolver
+    // get the stored ref verbatim — the same "leave it alone" fallback the
+    // resolver itself uses, not a guess at where the vault lives.
+    renderBlock(RELATIVE)
+
+    expect(screen.getByTestId('pdf-document')).toHaveAttribute('data-file', RELATIVE)
   })
 })

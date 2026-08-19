@@ -59,6 +59,7 @@ import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { vaultService } from '@/services/vault-service'
 import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
+import { NoteFileUrlProvider } from './note-file-url-context'
 import {
   ReviewFormattingToolbar,
   ReviewFormattingToolbarController
@@ -352,10 +353,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     notePathRef.current = notePath
   }, [notePath])
 
+  // Only `pages/note.tsx` passes `notePath`; the journal, canvas cards and a
+  // project's home note mount this editor knowing only the note's id. Since
+  // attachments are now written relative to their note wherever they are saved,
+  // those surfaces need the path too — one lookup per note, reused by every
+  // block in it, and re-fetched when the mounted note changes.
+  const notePathLookupRef = useRef<{ noteId: string; path: Promise<string | undefined> } | null>(
+    null
+  )
+  const fetchNotePath = useCallback(async (): Promise<string | undefined> => {
+    const id = noteIdRef.current
+    if (!id) return undefined
+    const cached = notePathLookupRef.current
+    if (cached?.noteId === id) return cached.path
+    const lookup = notesService
+      .get(id)
+      .then((note) => note?.path)
+      .catch(() => undefined)
+    notePathLookupRef.current = { noteId: id, path: lookup }
+    return lookup
+  }, [])
+
   const resolveFileUrl = useRef(
     createNoteFileUrlResolver(
       () => notePathRef.current,
-      async () => (await vaultService.getStatus()).path ?? null
+      async () => (await vaultService.getStatus()).path ?? null,
+      fetchNotePath
     )
   ).current
 
@@ -507,7 +530,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     containerRef,
     noteIdRef,
     dropTarget,
-    onDragReset: handleDrop
+    onDragReset: handleDrop,
+    fetchNotePath
   })
 
   // Hook #7: Paste link menu (URL / Mention / Embed)
@@ -1267,313 +1291,328 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return () => container.removeEventListener('keydown', handleKeyDown, true)
   }, [editor])
 
+  // Memry's `file` block renders its own URL, so BlockNote's resolver never
+  // reaches it. Handing the same resolver down the tree is what lets a
+  // note-relative PDF/attachment ref load — see `note-file-url-context`.
   return (
-    <div
-      ref={containerRef}
-      role="region"
-      aria-label={t('editor.content.regionAria')}
-      className={cn('content-area h-full flex flex-col relative', className)}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {isDragging && dropTarget && (
-        <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
-      )}
-      {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
-
-      {aiEnabled && aiError && (
-        <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
-          <span className="truncate">{aiError}</span>
-          <button type="button" onClick={retryAI} className="shrink-0 underline hover:no-underline">
-            {tCommon('button.retry')}
-          </button>
-        </div>
-      )}
-
+    <NoteFileUrlProvider resolveFileUrl={resolveFileUrl}>
       <div
-        ref={setEditorContainerRef}
-        className={cn(
-          'bn-container flex-1 min-h-[300px] relative',
-          stickyToolbar && 'sticky-toolbar-enabled'
-        )}
-        role="application"
-        aria-label={t('editor.content.richTextAria')}
-        onContextMenu={handleEditorContextMenu}
+        ref={containerRef}
+        role="region"
+        aria-label={t('editor.content.regionAria')}
+        className={cn('content-area h-full flex flex-col relative', className)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
-        {!marqueeZoneEl && (
-          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+        {isDragging && dropTarget && (
+          <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
         )}
-        <BlockNoteView
-          editor={editor}
-          editable={editable}
-          onChange={(): void => {
-            void handleChange()
+        {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
-            // A non-owner editor (a sibling on the same note in this window, R17)
-            // must not run task auto-conversion — exactly one editor owns it.
-            // Rendering + Yjs binding above are unaffected.
-            if (!runSideEffects) return
+        {aiEnabled && aiError && (
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
+            <span className="truncate">{aiError}</span>
+            <button
+              type="button"
+              onClick={retryAI}
+              className="shrink-0 underline hover:no-underline"
+            >
+              {tCommon('button.retry')}
+            </button>
+          </div>
+        )}
 
-            const intents = analyzeTaskIntents(editor.document as any[], dismissedBlocksRef.current)
-
-            // Subtasks are unambiguous (the user already structured them as
-            // children of a taskBlock) and convert immediately. Standalone
-            // checkboxes are debounced so the user has time to press Tab to
-            // promote them into a subtask before the read-only taskBlock
-            // renderer steals focus.
-            if (intents.subtaskCandidate) {
-              cancelPendingConvert()
-              convertCheckboxToSubtask(
-                intents.subtaskCandidate.blockId,
-                intents.subtaskCandidate.parentTaskId
-              )
-            } else if (intents.standaloneCandidate) {
-              schedulePendingConvert(intents.standaloneCandidate.blockId)
-            } else if (
-              pendingConvertBlockIdRef.current &&
-              !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
-            ) {
-              cancelPendingConvert()
-            }
-
-            if (intents.draftTaskBlock) {
-              createTaskForDraftBlock(intents.draftTaskBlock.blockId, intents.draftTaskBlock.title)
-            }
-
-            // Tab-indented (demote): a top-level taskBlock that became a
-            // child of another taskBlock via Tab. Wire up parentTaskId in the
-            // block prop AND in the DB row.
-            for (const demoted of intents.demotedTaskBlocks) {
-              const block = editor.getBlock(demoted.blockId)
-              if (!block) continue
-              editor.updateBlock(block, {
-                props: { ...block.props, parentTaskId: demoted.newParentTaskId }
-              })
-              void tasksService.update({
-                id: demoted.taskId,
-                parentId: demoted.newParentTaskId
-              })
-            }
-
-            // Shift+Tab promoted: a top-level taskBlock that still carries a
-            // stale parentTaskId. Clear both block prop and DB linkage.
-            for (const orphan of intents.unindentedTaskBlocks) {
-              const block = editor.getBlock(orphan.blockId)
-              if (!block) continue
-              editor.updateBlock(block, {
-                props: { ...block.props, parentTaskId: '' }
-              })
-              void tasksService.update({ id: orphan.taskId, parentId: null })
-            }
-
-            for (const prevId of knownTaskBlockIdsRef.current) {
-              if (!intents.currentTaskIds.has(prevId)) {
-                void tasksService.delete(prevId)
-              }
-            }
-            knownTaskBlockIdsRef.current = intents.currentTaskIds
-          }}
-          theme={editorTheme}
-          formattingToolbar={false}
-          slashMenu={false}
-          emojiPicker={false}
-          filePanel={false}
+        <div
+          ref={setEditorContainerRef}
+          className={cn(
+            'bn-container flex-1 min-h-[300px] relative',
+            stickyToolbar && 'sticky-toolbar-enabled'
+          )}
+          role="application"
+          aria-label={t('editor.content.richTextAria')}
+          onContextMenu={handleEditorContextMenu}
         >
-          {/* Memry's toolbar on every surface, review or not: BlockNote's stock
+          {!marqueeZoneEl && (
+            <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+          )}
+          <BlockNoteView
+            editor={editor}
+            editable={editable}
+            onChange={(): void => {
+              void handleChange()
+
+              // A non-owner editor (a sibling on the same note in this window, R17)
+              // must not run task auto-conversion — exactly one editor owns it.
+              // Rendering + Yjs binding above are unaffected.
+              if (!runSideEffects) return
+
+              const intents = analyzeTaskIntents(
+                editor.document as any[],
+                dismissedBlocksRef.current
+              )
+
+              // Subtasks are unambiguous (the user already structured them as
+              // children of a taskBlock) and convert immediately. Standalone
+              // checkboxes are debounced so the user has time to press Tab to
+              // promote them into a subtask before the read-only taskBlock
+              // renderer steals focus.
+              if (intents.subtaskCandidate) {
+                cancelPendingConvert()
+                convertCheckboxToSubtask(
+                  intents.subtaskCandidate.blockId,
+                  intents.subtaskCandidate.parentTaskId
+                )
+              } else if (intents.standaloneCandidate) {
+                schedulePendingConvert(intents.standaloneCandidate.blockId)
+              } else if (
+                pendingConvertBlockIdRef.current &&
+                !intents.currentTaskIds.has(pendingConvertBlockIdRef.current)
+              ) {
+                cancelPendingConvert()
+              }
+
+              if (intents.draftTaskBlock) {
+                createTaskForDraftBlock(
+                  intents.draftTaskBlock.blockId,
+                  intents.draftTaskBlock.title
+                )
+              }
+
+              // Tab-indented (demote): a top-level taskBlock that became a
+              // child of another taskBlock via Tab. Wire up parentTaskId in the
+              // block prop AND in the DB row.
+              for (const demoted of intents.demotedTaskBlocks) {
+                const block = editor.getBlock(demoted.blockId)
+                if (!block) continue
+                editor.updateBlock(block, {
+                  props: { ...block.props, parentTaskId: demoted.newParentTaskId }
+                })
+                void tasksService.update({
+                  id: demoted.taskId,
+                  parentId: demoted.newParentTaskId
+                })
+              }
+
+              // Shift+Tab promoted: a top-level taskBlock that still carries a
+              // stale parentTaskId. Clear both block prop and DB linkage.
+              for (const orphan of intents.unindentedTaskBlocks) {
+                const block = editor.getBlock(orphan.blockId)
+                if (!block) continue
+                editor.updateBlock(block, {
+                  props: { ...block.props, parentTaskId: '' }
+                })
+                void tasksService.update({ id: orphan.taskId, parentId: null })
+              }
+
+              for (const prevId of knownTaskBlockIdsRef.current) {
+                if (!intents.currentTaskIds.has(prevId)) {
+                  void tasksService.delete(prevId)
+                }
+              }
+              knownTaskBlockIdsRef.current = intents.currentTaskIds
+            }}
+            theme={editorTheme}
+            formattingToolbar={false}
+            slashMenu={false}
+            emojiPicker={false}
+            filePanel={false}
+          >
+            {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
               one out with no visible way to turn selected lines into a list. */}
-          {stickyToolbar ? (
-            <ReviewFormattingToolbar variant="sticky" onAddComment={review?.onAddComment} />
-          ) : (
-            <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
-          )}
-          {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
-          <FilePanelController filePanel={UploadOnlyFilePanel} />
-          <SuggestionMenuController
-            triggerCharacter="/"
-            getItems={async (query) => {
-              // `img` and `picture` already ship as image aliases; `photo` did
-              // not, and is what people actually type.
-              const defaults = getDefaultReactSlashMenuItems(editor).map((item) =>
-                (item as { key?: string }).key === 'image'
-                  ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
-                  : item
-              )
-              // `/pdf` is the same item as `/file` — same insert, same panel —
-              // relabelled, because "attach a PDF" is what most people are
-              // actually after and `/pdf` matched nothing before.
-              const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
-              const pdfItems = fileItem
-                ? [
-                    {
-                      ...fileItem,
-                      key: 'pdf',
-                      title: t('editor.slashMenu.pdf.title'),
-                      subtext: t('editor.slashMenu.pdf.subtext'),
-                      aliases: ['pdf', 'document', 'attachment']
-                    }
-                  ]
-                : []
-              const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
-              const calloutItem = getCalloutSlashMenuItem(editor, {
-                title: t('editor.callout.title'),
-                group: t('editor.callout.group'),
-                subtext: t('editor.callout.subtext')
-              })
-              const taskItem = isFeatureEnabled('tasks')
-                ? getTaskSlashMenuItem(editor, noteId)
-                : null
-              // `/date` and `/remind` both surface the same two-row Date group:
-              // a plain date and a "Remind me — <subtitle>" (aliases overlap so
-              // either trigger shows both). Selecting inserts a configurable pill.
-              const suggestion = buildDateSuggestions('')
-              const dateAliases = ['date', 'remind', 'reminder', 'when']
-              const dateItems = suggestion
-                ? [
-                    {
-                      title: suggestion.dateLabel,
-                      onItemClick: () => insertDatePill(suggestion.dateValue),
-                      aliases: dateAliases,
-                      group: 'Basic blocks',
-                      subtext: 'Insert a date'
-                    },
-                    {
-                      title: 'Remind me',
-                      onItemClick: () => insertDatePill(suggestion.remindValue),
-                      aliases: dateAliases,
-                      group: 'Basic blocks',
-                      subtext: suggestion.remindSubtitle
-                    }
-                  ]
-                : []
-              // `/link` types `[[` for you and hands over to the wiki-link
-              // menu that trigger already owns — one search UI, one place `#`
-              // heading support lives, and the row teaches the shortcut. The
-              // trigger characters have to enter the doc through the suggestion
-              // plugin's own opener; inserting the text some other way leaves
-              // the plugin with no state and no menu.
-              const linkToNoteItem = {
-                title: t('editor.slashMenu.linkToNote.title'),
-                onItemClick: () =>
-                  editor
-                    .getExtension(SuggestionMenu)
-                    ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
-                aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
-                group: 'Basic blocks',
-                subtext: t('editor.slashMenu.linkToNote.subtext')
-              }
-              const all = orderSlashMenuItemsByGroup([
-                ...defaults,
-                ...pdfItems,
-                calloutItem,
-                ...(taskItem ? [taskItem] : []),
-                ...dateItems,
-                linkToNoteItem,
-                ...aiItems
-              ])
-              if (!query) return all
-              const lower = query.toLowerCase()
-              return all.filter(
-                (item) =>
-                  item.title.toLowerCase().includes(lower) ||
-                  item.aliases?.some((a) => a.toLowerCase().includes(lower))
-              )
-            }}
-          />
-          <SuggestionMenuController
-            triggerCharacter="[["
-            getItems={getWikiLinkItems}
-            suggestionMenuComponent={WikiLinkMenu}
-            onItemClick={(item) => void handleWikiLinkSelect(item)}
-          />
-          <SuggestionMenuController
-            triggerCharacter="@"
-            getItems={getMentionItems}
-            suggestionMenuComponent={MentionSuggestionMenu}
-            onItemClick={(item) => handleMentionSelect(item)}
-            // While the inline date ghost still has text to fill (e.g. a time
-            // being typed: `@today 12` → ghost `:00`), keep this menu closed so
-            // Tab is owned by the ghost (which fills the time) instead of the menu
-            // committing a no-time date pill.
-            shouldOpen={(tr) => !dateMentionHasGhostFill(tr)}
-          />
-          {/* Re-add BlockNote's default `:` emoji picker (disabled above via
+            {stickyToolbar ? (
+              <ReviewFormattingToolbar variant="sticky" onAddComment={review?.onAddComment} />
+            ) : (
+              <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
+            )}
+            {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+            <FilePanelController filePanel={UploadOnlyFilePanel} />
+            <SuggestionMenuController
+              triggerCharacter="/"
+              getItems={async (query) => {
+                // `img` and `picture` already ship as image aliases; `photo` did
+                // not, and is what people actually type.
+                const defaults = getDefaultReactSlashMenuItems(editor).map((item) =>
+                  (item as { key?: string }).key === 'image'
+                    ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
+                    : item
+                )
+                // `/pdf` is the same item as `/file` — same insert, same panel —
+                // relabelled, because "attach a PDF" is what most people are
+                // actually after and `/pdf` matched nothing before.
+                const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
+                const pdfItems = fileItem
+                  ? [
+                      {
+                        ...fileItem,
+                        key: 'pdf',
+                        title: t('editor.slashMenu.pdf.title'),
+                        subtext: t('editor.slashMenu.pdf.subtext'),
+                        aliases: ['pdf', 'document', 'attachment']
+                      }
+                    ]
+                  : []
+                const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
+                const calloutItem = getCalloutSlashMenuItem(editor, {
+                  title: t('editor.callout.title'),
+                  group: t('editor.callout.group'),
+                  subtext: t('editor.callout.subtext')
+                })
+                const taskItem = isFeatureEnabled('tasks')
+                  ? getTaskSlashMenuItem(editor, noteId)
+                  : null
+                // `/date` and `/remind` both surface the same two-row Date group:
+                // a plain date and a "Remind me — <subtitle>" (aliases overlap so
+                // either trigger shows both). Selecting inserts a configurable pill.
+                const suggestion = buildDateSuggestions('')
+                const dateAliases = ['date', 'remind', 'reminder', 'when']
+                const dateItems = suggestion
+                  ? [
+                      {
+                        title: suggestion.dateLabel,
+                        onItemClick: () => insertDatePill(suggestion.dateValue),
+                        aliases: dateAliases,
+                        group: 'Basic blocks',
+                        subtext: 'Insert a date'
+                      },
+                      {
+                        title: 'Remind me',
+                        onItemClick: () => insertDatePill(suggestion.remindValue),
+                        aliases: dateAliases,
+                        group: 'Basic blocks',
+                        subtext: suggestion.remindSubtitle
+                      }
+                    ]
+                  : []
+                // `/link` types `[[` for you and hands over to the wiki-link
+                // menu that trigger already owns — one search UI, one place `#`
+                // heading support lives, and the row teaches the shortcut. The
+                // trigger characters have to enter the doc through the suggestion
+                // plugin's own opener; inserting the text some other way leaves
+                // the plugin with no state and no menu.
+                const linkToNoteItem = {
+                  title: t('editor.slashMenu.linkToNote.title'),
+                  onItemClick: () =>
+                    editor
+                      .getExtension(SuggestionMenu)
+                      ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
+                  aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
+                  group: 'Basic blocks',
+                  subtext: t('editor.slashMenu.linkToNote.subtext')
+                }
+                const all = orderSlashMenuItemsByGroup([
+                  ...defaults,
+                  ...pdfItems,
+                  calloutItem,
+                  ...(taskItem ? [taskItem] : []),
+                  ...dateItems,
+                  linkToNoteItem,
+                  ...aiItems
+                ])
+                if (!query) return all
+                const lower = query.toLowerCase()
+                return all.filter(
+                  (item) =>
+                    item.title.toLowerCase().includes(lower) ||
+                    item.aliases?.some((a) => a.toLowerCase().includes(lower))
+                )
+              }}
+            />
+            <SuggestionMenuController
+              triggerCharacter="[["
+              getItems={getWikiLinkItems}
+              suggestionMenuComponent={WikiLinkMenu}
+              onItemClick={(item) => void handleWikiLinkSelect(item)}
+            />
+            <SuggestionMenuController
+              triggerCharacter="@"
+              getItems={getMentionItems}
+              suggestionMenuComponent={MentionSuggestionMenu}
+              onItemClick={(item) => handleMentionSelect(item)}
+              // While the inline date ghost still has text to fill (e.g. a time
+              // being typed: `@today 12` → ghost `:00`), keep this menu closed so
+              // Tab is owned by the ghost (which fills the time) instead of the menu
+              // committing a no-time date pill.
+              shouldOpen={(tr) => !dateMentionHasGhostFill(tr)}
+            />
+            {/* Re-add BlockNote's default `:` emoji picker (disabled above via
               emojiPicker={false}), but gated so it never opens while the caret
               is inside an inline date/reminder — the `:` in `@today 23:20` must
               type a time, not pop clock emojis. */}
-          <GridSuggestionMenuController
-            triggerCharacter=":"
-            columns={10}
-            minQueryLength={2}
-            shouldOpen={(tr) => !isDateMentionActive(tr)}
-          />
-        </BlockNoteView>
+            <GridSuggestionMenuController
+              triggerCharacter=":"
+              columns={10}
+              minQueryLength={2}
+              shouldOpen={(tr) => !isDateMentionActive(tr)}
+            />
+          </BlockNoteView>
 
-        {aiEnabled && (
-          <TagSuggestionPopover
-            editor={editor}
-            editorContainerRef={editorContainerRef}
-            onSelect={handleTagSuggestionSelect}
-          />
-        )}
-
-        {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
-          <WikiLinkPreviewCard
-            preview={wikiLinkHover.preview}
-            position={wikiLinkHover.position}
-            onMouseEnter={wikiLinkHover.handleCardMouseEnter}
-            onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-            onTagClick={(tag, color) =>
-              openSidebarItem({
-                type: 'tag',
-                title: tag,
-                path: '/tags/' + tag,
-                entityId: tag,
-                color
-              })
-            }
-            onNoteClick={onInternalLinkClick}
-          />
-        )}
-
-        {linkMentionHover.isVisible &&
-          linkMentionHover.url &&
-          linkMentionHover.preview &&
-          linkMentionHover.position && (
-            <LinkMentionPreviewCard
-              url={linkMentionHover.url}
-              preview={linkMentionHover.preview}
-              position={linkMentionHover.position}
-              onMouseEnter={linkMentionHover.handleCardMouseEnter}
-              onMouseLeave={linkMentionHover.handleCardMouseLeave}
+          {aiEnabled && (
+            <TagSuggestionPopover
+              editor={editor}
+              editorContainerRef={editorContainerRef}
+              onSelect={handleTagSuggestionSelect}
             />
           )}
 
-        <PasteLinkMenu
-          isOpen={pasteLinkState.isOpen}
-          position={pasteLinkState.position}
-          options={pasteLinkState.options}
-          selectedIndex={pasteLinkState.selectedIndex}
-          onSelect={handlePasteLinkOptionSelect}
-        />
+          {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
+            <WikiLinkPreviewCard
+              preview={wikiLinkHover.preview}
+              position={wikiLinkHover.position}
+              onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+              onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+              onTagClick={(tag, color) =>
+                openSidebarItem({
+                  type: 'tag',
+                  title: tag,
+                  path: '/tags/' + tag,
+                  entityId: tag,
+                  color
+                })
+              }
+              onNoteClick={onInternalLinkClick}
+            />
+          )}
 
-        <DateMentionPopover
-          open={dateMentionState.open}
-          anchorId={dateMentionState.anchorId}
-          value={dateMentionState.value}
-          clockFormat={dateMentionClockFormat}
-          onChange={handleDateMentionChange}
-          onClear={handleDateMentionClear}
-          onClose={handleDateMentionClose}
-        />
+          {linkMentionHover.isVisible &&
+            linkMentionHover.url &&
+            linkMentionHover.preview &&
+            linkMentionHover.position && (
+              <LinkMentionPreviewCard
+                url={linkMentionHover.url}
+                preview={linkMentionHover.preview}
+                position={linkMentionHover.position}
+                onMouseEnter={linkMentionHover.handleCardMouseEnter}
+                onMouseLeave={linkMentionHover.handleCardMouseLeave}
+              />
+            )}
+
+          <PasteLinkMenu
+            isOpen={pasteLinkState.isOpen}
+            position={pasteLinkState.position}
+            options={pasteLinkState.options}
+            selectedIndex={pasteLinkState.selectedIndex}
+            onSelect={handlePasteLinkOptionSelect}
+          />
+
+          <DateMentionPopover
+            open={dateMentionState.open}
+            anchorId={dateMentionState.anchorId}
+            value={dateMentionState.value}
+            clockFormat={dateMentionClockFormat}
+            onChange={handleDateMentionChange}
+            onClear={handleDateMentionClear}
+            onClose={handleDateMentionClose}
+          />
+        </div>
+        {marqueeZoneEl &&
+          createPortal(
+            <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />,
+            marqueeZoneEl
+          )}
       </div>
-      {marqueeZoneEl &&
-        createPortal(
-          <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />,
-          marqueeZoneEl
-        )}
-    </div>
+    </NoteFileUrlProvider>
   )
 })
 

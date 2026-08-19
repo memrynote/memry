@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveNoteRelativeUrl } from './resolve-note-relative-url'
+import { noteRelativeRef, resolveNoteRelativeUrl } from './resolve-note-relative-url'
 
 const VAULT = '/Users/me/vault'
 const NOTE = 'People (1)/Person.md'
@@ -97,5 +97,45 @@ describe('resolveNoteRelativeUrl', () => {
         '/Users/me/vault/cap'
       )
     ).toBe('memry-file://local/Users/me/vault/cap/Images/Media/01KX65VSYZ9NBBNP9PG7ARJKD2.png')
+  })
+})
+
+describe('noteRelativeRef', () => {
+  // Mirrors `noteRelativeRef` in apps/desktop/src/main/lib/paths.ts, which
+  // covers the same cases — the renderer cannot import from main.
+  it('climbs out of the note folder to reach the attachments tree', () => {
+    expect(noteRelativeRef('notes/Meeting.md', 'attachments/note123/abc-plan.pdf')).toBe(
+      '../attachments/note123/abc-plan.pdf'
+    )
+  })
+
+  it('needs no climb for a note at the vault root', () => {
+    expect(noteRelativeRef('Meeting.md', 'attachments/n/x.png')).toBe('attachments/n/x.png')
+  })
+
+  it('climbs once per nested folder', () => {
+    expect(noteRelativeRef('notes/work/q3/Review.md', 'attachments/n/x.png')).toBe(
+      '../../../attachments/n/x.png'
+    )
+  })
+
+  it('keeps the shared prefix instead of climbing past it', () => {
+    expect(noteRelativeRef('notes/Trip.md', 'notes/images/photo.png')).toBe('images/photo.png')
+  })
+
+  it('emits forward slashes for a Windows-shaped input', () => {
+    expect(noteRelativeRef('notes\\work\\Trip.md', 'attachments\\n\\x.png')).toBe(
+      '../../attachments/n/x.png'
+    )
+  })
+
+  // The round trip that matters: what this writes, the render-time resolver
+  // has to be able to turn back into a file inside the vault.
+  it('round-trips through resolveNoteRelativeUrl', () => {
+    const ref = noteRelativeRef('notes/work/Review.md', 'attachments/n1/abc-plan.pdf')
+
+    expect(resolveNoteRelativeUrl(ref, 'notes/work/Review.md', '/Users/me/vault')).toBe(
+      'memry-file://local/Users/me/vault/attachments/n1/abc-plan.pdf'
+    )
   })
 })

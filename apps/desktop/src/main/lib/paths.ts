@@ -41,6 +41,24 @@ export function getRelativePath(vaultPath: string, filePath: string): string | n
 }
 
 /**
+ * A vault-relative target expressed relative to the note that references it.
+ *
+ * Relative to the *note*, not the vault: that is what the editor resolves at
+ * render time (`renderer/lib/resolve-note-relative-url.ts`) and what keeps the
+ * vault readable by Obsidian. An absolute `memry-file://` URL renders on the
+ * machine that wrote it and nowhere else, since it carries that machine's vault
+ * path — see `resolve-embed.ts`, which picks the same shape for the same reason.
+ *
+ * Both arguments are vault-relative; the result always uses forward slashes,
+ * because it goes into markdown rather than onto a Windows command line.
+ */
+export function noteRelativeRef(notePath: string, targetPath: string): string {
+  const noteDir = path.posix.dirname(normalizeRelativePath(notePath))
+  const from = noteDir === '.' ? '' : noteDir
+  return path.posix.relative(from, normalizeRelativePath(targetPath))
+}
+
+/**
  * Checks if a path is safely within the vault directory.
  */
 export function isPathInVault(vaultPath: string, filePath: string): boolean {

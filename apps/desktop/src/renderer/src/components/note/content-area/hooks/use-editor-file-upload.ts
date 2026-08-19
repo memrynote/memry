@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { noteRelativeRef } from '@/lib/resolve-note-relative-url'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
 const log = createLogger('Hook:EditorFileUpload')
@@ -43,6 +44,12 @@ interface EditorFileUploadParams {
   noteIdRef: React.RefObject<string | undefined>
   dropTarget: DropTarget | null
   onDragReset: () => void
+  /**
+   * The note's own vault-relative path, so a dropped vault file can be
+   * referenced relative to it. Resolves to undefined when the note is not in
+   * the index, which drops the embed back to an absolute URL.
+   */
+  fetchNotePath: () => Promise<string | undefined>
 }
 
 interface EditorFileUploadResult {
@@ -58,7 +65,8 @@ export function useEditorFileUpload({
   containerRef,
   noteIdRef,
   dropTarget,
-  onDragReset
+  onDragReset,
+  fetchNotePath
 }: EditorFileUploadParams): EditorFileUploadResult {
   const uploadFile = useCallback(
     async (file: File): Promise<string> => {
@@ -167,8 +175,8 @@ export function useEditorFileUpload({
   )
 
   // Embed a file-type item dragged out of the left sidebar. Unlike an OS file
-  // drop, the bytes already live in the vault, so we reference the item by its
-  // own path (memry-file:// URL) instead of copying into attachments/.
+  // drop, the bytes already live in the vault, so we reference the item where it
+  // already is instead of copying into attachments/.
   const handleInternalItemDrop = useCallback(
     async (dataTransfer: DataTransfer): Promise<void> => {
       const itemId = dataTransfer.getData(MEMRY_NOTE_DRAG_MIME)
@@ -195,7 +203,15 @@ export function useEditorFileUpload({
           return
         }
 
-        const url = toMemryFileUrl(file.absolutePath)
+        // Relative to the note, so the embed survives reaching another device
+        // where the vault sits at a different absolute path. Falls back to the
+        // absolute URL when the note's own path is unknown — the same trade
+        // `saveAttachment` makes in the main process.
+        const notePath = await fetchNotePath()
+        const url =
+          notePath && file.path
+            ? noteRelativeRef(notePath, file.path)
+            : toMemryFileUrl(file.absolutePath)
         const name = file.title || 'file'
         const mimeType = file.mimeType || ''
 
@@ -216,7 +232,7 @@ export function useEditorFileUpload({
         log.error('Failed to embed dropped item', itemId, error)
       }
     },
-    [editable, editor, dropTarget, onDragReset]
+    [editable, editor, dropTarget, onDragReset, fetchNotePath]
   )
 
   // Capture-phase drop handler to intercept before BlockNote

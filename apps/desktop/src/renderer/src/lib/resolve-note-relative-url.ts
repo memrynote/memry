@@ -77,3 +77,32 @@ export function resolveNoteRelativeUrl(
 
   return toMemryFileUrl(`${vaultPath.replace(/[/\\]+$/, '')}/${resolved}`)
 }
+
+/**
+ * The inverse: a vault-relative target written the way `notePath` should carry
+ * it. Used when the editor embeds a file the renderer already knows the vault
+ * path of (a sidebar drop), where `saveAttachment` — which does this in the main
+ * process — is never involved.
+ *
+ * Restated rather than imported: this is the renderer, and `main/lib/paths.ts`
+ * is not importable from here. Both sides are covered by tests over the same
+ * cases, the way `FILE_BLOCK_ACCEPT` mirrors the main-process extension list.
+ */
+export function noteRelativeRef(notePath: string, targetPath: string): string {
+  const noteSegments = notePath.split(SEPARATOR).filter(Boolean)
+  // Drop the note's own filename: refs are relative to the folder holding it.
+  noteSegments.pop()
+  const targetSegments = targetPath.split(SEPARATOR).filter(Boolean)
+
+  let shared = 0
+  while (
+    shared < noteSegments.length &&
+    shared < targetSegments.length &&
+    noteSegments[shared] === targetSegments[shared]
+  ) {
+    shared++
+  }
+
+  const up = Array(noteSegments.length - shared).fill('..')
+  return [...up, ...targetSegments.slice(shared)].join('/')
+}

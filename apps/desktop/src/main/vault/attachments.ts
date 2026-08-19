@@ -10,7 +10,9 @@ import { existsSync } from 'fs'
 import path from 'path'
 import { customAlphabet } from 'nanoid'
 import { ensureDirectory, sanitizeFilename } from './file-ops'
-import { toMemryFileUrl } from '../lib/paths'
+import { noteRelativeRef, toMemryFileUrl } from '../lib/paths'
+import { getIndexDatabase } from '../database'
+import { getNoteCacheById } from '../database/queries/notes/note-crud'
 import { getStatus } from './index'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { createLogger } from '../lib/logger'
@@ -97,11 +99,22 @@ export interface SaveAttachmentOptions {
    * executables.
    */
   extraAllowedExtensions?: string[]
+  /**
+   * The owning note's vault-relative path, for callers that already know it.
+   * Everyone else gets the index lookup in {@link resolveNotePath}; the option
+   * exists for the window where the note is written but not yet indexed.
+   */
+  notePath?: string
 }
 
 export interface AttachmentResult {
   success: boolean
-  /** Relative path from note to attachment (e.g., ../attachments/{noteId}/abc123-image.png) */
+  /**
+   * How the note should reference the file it just saved — see
+   * {@link getAttachmentRef}. Note-relative
+   * (`../attachments/{noteId}/abc123-image.png`) whenever the note's own path is
+   * known, and an absolute `memry-file://` URL when it is not.
+   */
   path?: string
   /** Original filename */
   name?: string
@@ -117,6 +130,12 @@ export interface AttachmentResult {
 
 export interface AttachmentInfo {
   filename: string
+  /**
+   * Absolute `memry-file://` URL, unlike {@link AttachmentResult.path}. Nothing
+   * writes this into a note — it answers "where is this file on this machine"
+   * for the IPC/MCP listing, so it stays directly openable rather than needing
+   * a note to resolve against.
+   */
   path: string
   size: number
   mimeType: string
@@ -233,6 +252,50 @@ export function getAbsoluteAttachmentUrl(
 }
 
 /**
+ * The owning note's vault-relative path, or undefined when nothing knows it.
+ *
+ * The index is the only thing that maps a note id back to a path here, and it
+ * is legitimately empty for a note that has not been indexed yet — an importer
+ * saving assets before the note is written, most of all. That is not an error:
+ * the caller falls back to an absolute URL, which is what every attachment
+ * carried before this became note-relative.
+ */
+function resolveNotePath(noteId: string): string | undefined {
+  try {
+    return getNoteCacheById(getIndexDatabase(), noteId)?.path
+  } catch (error) {
+    logger.warn('Note path lookup failed; attachment stays absolute', { noteId, error })
+    return undefined
+  }
+}
+
+/**
+ * How a note references an attachment that was just saved for it.
+ *
+ * Note-relative when the note's path is known, because that is the only shape
+ * that survives reaching a second device: an absolute `memry-file://` URL
+ * carries this machine's vault path, so on any other install it resolves to
+ * nothing — a broken image, or a PDF card that cannot load.
+ *
+ * The absolute fallback is deliberate rather than a failure: it is exactly what
+ * this returned before, so a note whose path we cannot resolve is left no worse
+ * off than it already was. It is logged so "some attachments are still
+ * absolute" is a question with an answer.
+ */
+export function getAttachmentRef(
+  vaultPath: string,
+  noteId: string,
+  filename: string,
+  notePath: string | undefined
+): string {
+  if (!notePath) {
+    logger.warn('Attachment written with an absolute URL: note path unknown', { noteId })
+    return getAbsoluteAttachmentUrl(vaultPath, noteId, filename)
+  }
+  return noteRelativeRef(notePath, `attachments/${noteId}/${filename}`)
+}
+
+/**
  * Generate a unique filename with prefix
  * Format: {6-char-prefix}-{sanitized-original-name}
  */
@@ -330,10 +393,15 @@ export async function saveAttachment(
     // Write file
     await writeFile(filePath, data)
 
-    // Return success with metadata (using absolute file:// URL for Electron)
+    // Return success with metadata; `path` is the ref the note will carry.
     return {
       success: true,
-      path: getAbsoluteAttachmentUrl(vaultPath, noteId, uniqueFilename),
+      path: getAttachmentRef(
+        vaultPath,
+        noteId,
+        uniqueFilename,
+        options?.notePath ?? resolveNotePath(noteId)
+      ),
       name: originalFilename,
       size: data.length,
       mimeType: getMimeType(originalFilename),

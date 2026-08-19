@@ -99,6 +99,10 @@ describe('useEditorFileUpload', () => {
       noteIdRef: { current: 'note-1' },
       dropTarget: null,
       onDragReset: vi.fn(),
+      // Default to "no note path": the existing drop assertions below then
+      // cover the absolute fallback, and the relative case is asserted
+      // explicitly where a path is supplied.
+      fetchNotePath: vi.fn(async () => undefined as string | undefined),
       ...overrides
     }
 
@@ -252,6 +256,28 @@ describe('useEditorFileUpload', () => {
       'target-block',
       'after'
     )
+  })
+
+  it('references a dropped sidebar file relative to the note that receives it', async () => {
+    // #1488: an absolute URL carries this machine's vault path, so the note
+    // renders the embed here and nowhere else.
+    mocks.getFile.mockResolvedValue({
+      absolutePath: '/vault/notes/report.pdf',
+      path: 'notes/report.pdf',
+      fileType: 'pdf',
+      title: 'report',
+      fileSize: 1234,
+      mimeType: 'application/pdf'
+    })
+    const { result, editor } = setup({
+      fetchNotePath: vi.fn(async () => 'notes/work/Review.md' as string | undefined)
+    })
+
+    await act(async () => {
+      await result.current.handleInternalItemDrop(internalDrop('file-id'))
+    })
+
+    expect(editor.insertBlocks.mock.calls[0][0][0].props.url).toBe('../report.pdf')
   })
 
   it('embeds a dropped sidebar image as an image block at the cursor', async () => {
