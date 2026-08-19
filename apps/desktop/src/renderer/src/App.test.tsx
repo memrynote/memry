@@ -9,6 +9,19 @@ const treeRenders = { appSidebar: 0, splitView: 0, settingsModal: 0, taskDragOve
 
 const queryClientClear = vi.fn()
 const openTab = vi.fn()
+// `useTabActions` is a separate subscription from `useTabs` (actions only, so
+// tab-state changes don't re-render the caller), so the mock has to publish it
+// too or every consumer under App throws at render.
+const tabActions = {
+  openTab,
+  closeTab: vi.fn(),
+  closeTabsByEntityId: vi.fn(),
+  updateTabTitleByEntityId: vi.fn(),
+  setActiveTab: vi.fn(),
+  setActiveGroup: vi.fn(),
+  splitView: vi.fn(),
+  dispatch: vi.fn()
+}
 const openSettings = vi.fn()
 const trackTelemetry = vi.fn()
 const setProjects = vi.fn()
@@ -165,6 +178,7 @@ vi.mock('@/contexts/tabs', () => ({
     <div data-testid="tab-provider">{children}</div>
   ),
   useTabs: () => ({ openTab }),
+  useTabActions: () => tabActions,
   useActiveTab: () => activeTab
 }))
 

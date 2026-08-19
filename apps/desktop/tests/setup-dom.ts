@@ -523,6 +523,8 @@ const createMockApi = () => ({
   onNoteRenamed: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
+  onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
+  onCanvasDeleted: vi.fn().mockReturnValue(() => {}),
   onLargeFileIndex: vi.fn().mockReturnValue(() => {}),
   onLargeFileSearchProgress: vi.fn().mockReturnValue(() => {}),
   onTagsChanged: vi.fn().mockReturnValue(() => {}),
