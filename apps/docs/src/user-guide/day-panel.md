@@ -38,7 +38,7 @@ Click a task to open its detail drawer; right-click for the context menu (status
 
 Calendar events for the focused date plus a preview of that day's journal entry (when applicable).
 
-If the [Google Calendar integration](/user-guide/settings#integrations) is linked, external events appear here too.
+If the [Google Calendar integration](/user-guide/settings#google-calendar) is linked, external events appear here too.
 
 ## Resizing
 

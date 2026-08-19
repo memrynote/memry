@@ -141,7 +141,7 @@ Press **Cmd/Ctrl+Z** to undo a move or resize.
 
 ## External Calendar Integration
 
-If a Google Calendar account is linked in [Settings → Integrations](/user-guide/settings#integrations), external events appear alongside your vault events with a source badge.
+If a Google Calendar account is linked in [Settings → Calendar](/user-guide/settings#google-calendar), external events appear alongside your vault events with a source badge.
 
 External events are **read-mostly**: titles and times sync in. Inline edits propagate back if the integration supports it.
 
@@ -151,7 +151,7 @@ While no Google account is linked, the calendar toolbar shows a **Connect Google
 
 ### Multiple Accounts and Calendars
 
-You can link more than one Google account. In [Settings → Integrations](/user-guide/settings#integrations) → Google Calendar, **Add account** starts the connect flow again and Google shows its account chooser, so you can pick a different account than the one your browser is already signed in to.
+You can link more than one Google account. In [Settings → Calendar](/user-guide/settings#google-calendar) → Google Calendar, **Add account** starts the connect flow again and Google shows its account chooser, so you can pick a different account than the one your browser is already signed in to.
 
 Each linked account gets its own group listing every calendar on that account — shared calendars, team calendars, holiday calendars, all of them — with a checkbox each. Tick a calendar to bring its events into memrynote; untick it to take them out. Only your primary calendar is ticked when an account is first linked, so nothing else arrives until you ask for it.
 
@@ -169,7 +169,7 @@ The **selected** count above the account groups reflects the calendars listed th
 
 By default Google Calendar sync is **two-way**: events, tasks, reminders, and snoozes you create in memrynote are pushed up to Google, and changes made in Google flow back into memrynote.
 
-To switch to **one-way (inbound only)**, open [Settings → Integrations](/user-guide/settings#integrations) and turn off **Show memrynote events in Google Calendar**. You'll still see your Google events inside memrynote, but memrynote events will no longer appear in Google.
+To switch to **one-way (inbound only)**, open [Settings → Calendar](/user-guide/settings#google-calendar) and turn off **Show memrynote events in Google Calendar**. You'll still see your Google events inside memrynote, but memrynote events will no longer appear in Google.
 
 Switching to one-way is non-destructive — anything already synced to Google before the change stays there; only new pushes, updates, and deletes are stopped.
 
@@ -213,7 +213,7 @@ events?** Both answers are recorded, so you are asked only that one time.
   you created in memrynote. Ask it about a Google event and it gets nothing back.
 - **Allow** — the assistant can read events from your imported Google calendars.
 
-Change your answer any time at [Settings → Integrations](/user-guide/settings#integrations) →
+Change your answer any time at [Settings → Calendar](/user-guide/settings#google-calendar) →
 Google Calendar → **Let AI read Google Calendar events**. Turning it off takes effect on the next
 question you ask; turning it on likewise applies from that point forward.
 
