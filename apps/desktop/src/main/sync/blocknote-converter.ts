@@ -87,12 +87,40 @@ export async function yDocToMarkdown(
     Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     const editor = getEditor()
     const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
-    if (blocks.length === 0) return ''
+    if (blocks.length === 0) {
+      // `''` is a real body — the body of a note that has never been written —
+      // so an empty result cannot simply be refused. It is only that body when
+      // the fragment is empty too: every block a note holds is a
+      // `blockContainer`, so a fragment that holds one and converts to no
+      // blocks means the repair pass deleted the whole document on the way out
+      // (an emptied `tableRow` fails `createChecked`, and
+      // `findUnrepresentableNodes` stays silent because it only asks whether
+      // the NAME is registered). Writing that empties the user's file and
+      // replicates it, so report it the way a failed conversion is reported.
+      // Read the ORIGINAL doc here, not the snapshot: the repair already ran
+      // over the snapshot and took the evidence with it.
+      if (holdsBlockContainer(doc.getXmlFragment(fragmentName))) {
+        log.error('Fragment holds blocks but converted to none, refusing to serialize')
+        return null
+      }
+      return ''
+    }
     return await blocksToMarkdownPreserving(editor, blocks as Block[])
   } catch (err) {
     log.error('Yjs-to-markdown conversion failed', err)
     return null
   }
+}
+
+/** True when the fragment holds at least one block, at any depth. Reads only. */
+function holdsBlockContainer(node: Y.XmlFragment | Y.XmlElement): boolean {
+  for (const child of node.toArray()) {
+    const el = child as Y.XmlElement
+    if (typeof el.nodeName !== 'string') continue
+    if (el.nodeName === 'blockContainer') return true
+    if (holdsBlockContainer(el)) return true
+  }
+  return false
 }
 
 /**
@@ -112,7 +140,9 @@ export async function yDocToMarkdown(
  * is registered, while `schema.node(name, attrs, children)` additionally throws
  * on invalid content and on a required attribute with no default. Measured: a
  * childless `tableRow` is a registered name, so nothing is reported here, and
- * `yDocToMarkdown` returns `''` for the whole document.
+ * the whole document converts to no blocks. That case is caught downstream
+ * instead — `yDocToMarkdown` refuses an empty conversion of a non-empty
+ * fragment rather than returning the `''` that would empty the file (#1475).
  *
  * One case worth naming, because it is the one this guard reads as safe: a spec
  * registered under a key that is not its `config.type`. ProseMirror builds the node (its name comes from

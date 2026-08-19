@@ -826,6 +826,82 @@ describe('findUnrepresentableNodes', () => {
 })
 
 /**
+ * An empty conversion of a non-empty document (#1475).
+ *
+ * `''` is the body of a note nobody has written in yet, so `yDocToMarkdown`
+ * cannot refuse every empty result — the write-back would then never write an
+ * emptied note. What it can refuse is an empty result from a fragment that
+ * plainly holds blocks: that is the repair pass having deleted the document,
+ * and writing it makes the loss the file's permanent content and replicates it.
+ */
+describe('a document that converts to nothing', () => {
+  /** Empties every `tableRow` in place — a row's cells lost to interleaving. */
+  function emptyTableRows(doc: Y.Doc): void {
+    const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+      for (const child of node.toArray()) {
+        const el = child as Y.XmlElement
+        if (typeof el.nodeName !== 'string') continue
+        if (el.nodeName === 'tableRow') el.delete(0, el.length)
+        else visit(el)
+      }
+    }
+    visit(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+  }
+
+  it('refuses to serialize a doc whose only block was deleted on the way out', async () => {
+    // #given a note holding one table, whose rows have been emptied — a
+    // childless `tableRow` fails ProseMirror's content check, so y-prosemirror
+    // deletes it, and the table and its container go with it
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(
+      '| a | b |\n| --- | --- |\n| 1 | 2 |\n',
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    expect(ok).toBe(true)
+    emptyTableRows(doc)
+
+    // #when — the constructibility guard is silent here: `tableRow` IS a
+    // registered name, so nothing upstream stops this write
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+    const result = await yDocToMarkdown(doc)
+
+    // #then the caller is told the conversion produced nothing usable, rather
+    // than handed the `''` that would empty the vault file
+    expect(result).toBeNull()
+  })
+
+  it('still returns an empty body for a note that has never been written in', async () => {
+    // #given the two shapes an untouched note actually has: a fragment with
+    // nothing in it, and the fragment an empty markdown file parses to
+    const untouched = new Y.Doc()
+    const emptyFile = new Y.Doc()
+    expect(await markdownToYFragment('', emptyFile.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+
+    // #when / #then — neither holds a block, so neither is a loss
+    expect(await yDocToMarkdown(untouched)).toBe('')
+    expect(await yDocToMarkdown(emptyFile)).toBe('')
+  })
+
+  it('leaves the doc untouched when it refuses', async () => {
+    // #given
+    const doc = new Y.Doc()
+    await markdownToYFragment(
+      '| a | b |\n| --- | --- |\n| 1 | 2 |\n',
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    emptyTableRows(doc)
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when
+    expect(await yDocToMarkdown(doc)).toBeNull()
+
+    // #then the refusal is a read — the live doc still holds what it held, so a
+    // build that can serialize it still can
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+})
+
+/**
  * The hole `findUnrepresentableNodes` does NOT cover, and what closed it (#1455).
  *
  * The guard asks whether this build can CONSTRUCT a node name, because that is
