@@ -215,6 +215,9 @@ describe('file block helpers', () => {
       'phaseF.componentsNoteContentAreaFileBlock.resizePdf'
     )
     expect(resizeHandle).toHaveAttribute('aria-valuenow')
+    // Faint at rest, not hidden: a hover-only handle is one most readers never
+    // discover, which is how the embed came to be reported as unresizable.
+    expect(resizeHandle.className).not.toContain('opacity-0')
     // Alignment controls render for a loaded PDF.
     expect(
       screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.alignCenter')
