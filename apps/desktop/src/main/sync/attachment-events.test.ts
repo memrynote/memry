@@ -328,11 +328,11 @@ describe('attachmentEvents — failure surfacing', () => {
     // `EventEmitter.emit` already returns `false` when there is no listener,
     // but the wrapper declares `: void` and discards it. The caller
     // (`requestEmbeddedAttachmentDownloads` in item-handlers/note-handler.ts)
-    // adds `"<noteId>:<attachmentId>"` to its `requestedAttachmentDownloads`
-    // dedupe set BEFORE emitting and never removes it, so an event dropped
-    // here is never re-requested for the lifetime of the process — the image
-    // simply never arrives, with nothing above debug level in the log.
-    // Returning the boolean is the minimal fix that lets the caller retry.
+    // claims the attempt BEFORE emitting, so an undelivered event would strand
+    // that claim and the image would never arrive — nothing above debug level
+    // says so. Returning the boolean is what lets the caller release the claim
+    // and retry. (The claim now lives in `attachment_download_failures`; it used
+    // to be a module-level Set that a sync stop silently wiped.)
     const delivered = attachmentEvents.emitDownloadNeeded({
       noteId: 'note-1',
       attachmentId: 'att-1',

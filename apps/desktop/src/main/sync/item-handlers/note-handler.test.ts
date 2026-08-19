@@ -24,6 +24,9 @@ vi.mock('../../vault/frontmatter', () => ({
   })),
   serializeNote: vi.fn(() => '---\n---\ncontent'),
   serializeParsedNote: vi.fn(() => '---\n---\ncontent'),
+  // No body hashtags in this suite's fixtures — the real body-tag merge is
+  // covered against real files in note-handler.body-tags.test.ts.
+  extractInlineTagsFromMarkdown: vi.fn(() => []),
   inferPropertyType: vi.fn(() => 'number'),
   resolvePropertyType: vi.fn(
     (
