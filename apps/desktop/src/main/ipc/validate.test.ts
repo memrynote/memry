@@ -21,7 +21,15 @@ vi.mock('../telemetry/diagnostics', () => ({
 import { getDatabase } from '../database'
 import { trackMainError } from '../telemetry/diagnostics'
 import { markExpectedCondition } from '../telemetry/expected-conditions'
-import { withErrorHandler, withDb, ipcErrorThrottleKeyCount } from './validate'
+import { z } from 'zod'
+import {
+  withErrorHandler,
+  withDb,
+  ipcErrorThrottleKeyCount,
+  createValidatedHandler,
+  setIpcHandlerChannel
+} from './validate'
+import type { IpcMainInvokeEvent } from 'electron'
 
 const mockGetDatabase = vi.mocked(getDatabase)
 const mockTrackMainError = vi.mocked(trackMainError)
@@ -455,5 +463,57 @@ describe('IPC error telemetry', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('validated handler attribution', () => {
+  const invokeEvent = {} as IpcMainInvokeEvent
+  const TitleSchema = z.object({ title: z.string().min(1) })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('#given a handler labelled with its channel #then a ZodError names that channel', async () => {
+    // #given the exact production shape: an inline arrow, so `handler.name` is ''
+    const listener = createValidatedHandler(TitleSchema, async (input) => input)
+    setIpcHandlerChannel(listener, 'notes:create')
+
+    // #when the renderer submits a blank title
+    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow('Validation failed: title:')
+
+    // #then the failure is pinned to a handler instead of collapsing to a
+    // single label shared by every inline handler in the app
+    expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'notes:create', expect.anything())
+  })
+
+  it('#given two labelled handlers #then each reports its own channel', async () => {
+    const notes = createValidatedHandler(TitleSchema, async (input) => input)
+    const tasks = createValidatedHandler(TitleSchema, async (input) => input)
+    setIpcHandlerChannel(notes, 'notes:create:distinct')
+    setIpcHandlerChannel(tasks, 'tasks:create:distinct')
+
+    await expect(notes(invokeEvent, { title: '' })).rejects.toThrow()
+    await expect(tasks(invokeEvent, { title: '' })).rejects.toThrow()
+
+    // Not one throttled event under a shared key — two, one per channel.
+    expect(mockTrackMainError.mock.calls.map((call) => call[1])).toEqual([
+      'notes:create:distinct',
+      'tasks:create:distinct'
+    ])
+  })
+
+  it('#given an unlabelled handler #then it still reports the generic label', async () => {
+    // Registration paths that never reach ipcMain.handle keep the old behaviour.
+    const listener = createValidatedHandler(TitleSchema, async (input) => input)
+
+    await expect(listener(invokeEvent, { title: '' })).rejects.toThrow()
+
+    expect(mockTrackMainError).toHaveBeenCalledWith('ipc', 'validated_handler', expect.anything())
+  })
+
+  it('#given a non-function or empty channel #then labelling is a no-op', () => {
+    expect(() => setIpcHandlerChannel(undefined, 'notes:create')).not.toThrow()
+    expect(() => setIpcHandlerChannel(() => undefined, '')).not.toThrow()
   })
 })

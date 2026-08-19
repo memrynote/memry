@@ -41,6 +41,12 @@ steady states at `debug`:
 - Vector-clock bumps the `increment*ClockOffline` helpers make while the sync runtime is down
   (`main/sync/offline-clock.ts`) — the normal offline-edit path, one call per edited row (per
   changed field for tasks and projects).
+- An index rebuild triggered by a **missing** index DB (`emitIndexRecovered` in
+  `main/vault/index.ts`) — `checkIndexHealth` reports `missing` when `index.db` is not on disk,
+  which is the expected first open of a vault: fresh install, newly linked device, or a deleted
+  file. The index is a derived cache, so rebuilding it costs nothing but time. It is emitted at
+  `info`, with the same `index_recovered` action and `errorCode` as before. `corrupt` and
+  `migration_failed` stay at `warn` — those are genuine data-corruption recovery.
 
 A log payload is built before the transport decides whether to keep it, so a hot path pays for
 its arguments at every level. Keep these lines to identifiers: log the row id and the changed
@@ -602,6 +608,14 @@ traffic does not go through `/telemetry/batch`. The old `POST /telemetry/web` en
   `VITE_VERCEL_ENV` when present, otherwise a production/development split on Vite's build
   `MODE` — so landing traffic is filterable apart from desktop/server events in the same PostHog
   project.
+- **Scanner noise**: a `before_send` filter drops one `$exception` fingerprint —
+  `Object Not Found Matching Id:N, MethodName:update, ParamCount:4`. That is Microsoft Office /
+  Outlook **SafeLinks** pre-fetching a link out of an email, injecting its own scanner into the
+  page, and then losing its own object handle; `MethodName` / `ParamCount` are a COM bridge's
+  idioms and appear nowhere in this repo. It arrives in same-day bursts from a handful of readers a
+  few times a quarter and has no type and no usable stack, so it is pure noise in the error list.
+  The match is deliberately narrow — only that exact COM signature. A broad "drop every non-Error
+  rejection" rule would hide real bugs.
 
 ## Error Reporting
 
@@ -662,6 +676,17 @@ files); any home-directory prefix (`/Users/<name>`, `C:\Users\<name>`) is rewrit
 emails, UUIDs, JWTs, and bearer tokens are scrubbed from anything that ships.
 
 ### IPC Error Throttling
+
+The `action` an IPC error reports is the **channel it was registered on** (`notes:create`), not the
+handler's function name. Handlers are registered as
+`ipcMain.handle(Channel, createValidatedHandler(Schema, async (input) => …))`, and an arrow passed
+straight in as an argument has an empty `name` — so every inline handler in the app used to collapse
+into one literal action, `validated_handler`, and a schema rejection could not be attributed to a
+channel from the wire data alone (the captured stack names only the bundled wrapper, and Zod strips
+its own frames). `installIpcChannelLabels` (`main/ipc/lib/ipc-channel-labels.ts`) records the pairing
+once at the `ipcMain.handle` boundary — the only place that knows both halves — and
+`registerAllHandlers` calls it before the first registration. A handler registered without it keeps
+the old generic label.
 
 Every IPC envelope error becomes a telemetry event, so a handler stuck in a failure loop could
 flood the queue. `trackIpcError` (`main/ipc/validate.ts`) therefore emits at most one event per
@@ -985,11 +1010,31 @@ POSTHOG_KEY=...                          # wrangler secret (PostHog project toke
 POSTHOG_HOST=https://us.i.posthog.com    # wrangler var (staging and production)
 ```
 
-`GITHUB_TOKEN` is optional and only used by the daily
-[release download-count](#release-download-counts) cron. Without it the pull is unauthenticated
-and shares the 60-requests-per-hour-per-IP limit with every other Worker on the same egress
-address; a public-repo read token lifts that. A failed pull throws and is reported as a
-`release_download_counts` cron failure rather than silently skewing the numbers.
+`GITHUB_TOKEN` is only used by the daily [release download-count](#release-download-counts) cron,
+and in practice it is **required in staging and production**. Without it the pull is
+unauthenticated and shares the 60-requests-per-hour-per-IP budget with every other Worker on the
+same Cloudflare egress address, which other tenants routinely exhaust before our one daily request
+arrives — GitHub then answers 403 and no `release_asset_downloaded` event is emitted that day. A
+fine-grained PAT with public-repo read access is enough (this reads a public repo's Releases API and
+needs no write scope), and authenticated calls get 5,000/hour:
+
+```bash
+wrangler secret put GITHUB_TOKEN --env staging
+wrangler secret put GITHUB_TOKEN --env production
+```
+
+No workflow uploads it; it is set by hand, like every other Worker secret. It is deliberately not in
+the `requiredSecrets` fail-fast list — a missing token must not take the whole Worker down for a
+once-a-day measurement.
+
+A failed pull throws and is reported as a `release_download_counts` cron failure rather than silently
+skewing the numbers, and the two failure shapes are separable. GitHub's own 403/429 raises
+`GitHubReleasesRefusedError`, which carries `code: 'GITHUB_RELEASES_REFUSED'` and the upstream status,
+so it reports as a handled 4xx logged at `warn` — expected upstream backpressure, with the message
+recording whether a token was in play. Anything else stays an unhandled 500. Nothing is corrupted
+either way: the throw happens before the D1 read/write, so the stored baseline is untouched and the
+next successful run emits the accumulated delta. The distortion is in the daily series (a zero, then
+a spike), not the running total.
 
 ### Diagnostic Log Endpoints
 

@@ -28,6 +28,12 @@ function createEnv(overrides?: Partial<Record<string, unknown>>) {
 }
 
 describe('sync-server app entry point', () => {
+  // Several tests here silence console output; without this the spies would
+  // outlive them and swallow the next describe's assertions.
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('returns health metadata in development even when secrets are missing', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const response = await app.request('http://localhost/health', {}, createEnv())
@@ -224,6 +230,65 @@ describe('sync-server app entry point', () => {
         message: 'Request body too large'
       }
     })
+  })
+
+  // The route's own snapshot_rejected event is unreachable here: the body dies in
+  // the middleware, so without this the only trace of an oversized CRDT payload
+  // was a bare 413 carrying no size at all.
+  it('reports the observed size of an oversized CRDT snapshot body', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const request = new Request('http://localhost/sync/crdt/snapshot', {
+      method: 'POST',
+      body: new Uint8Array(8 * ONE_MB + 1)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+    expect(response.status).toBe(413)
+
+    const emitted = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((line) => line.event === 'snapshot_rejected')
+
+    expect(emitted).toHaveLength(1)
+    expect(emitted[0].endpoint).toBe('/sync/crdt/snapshot')
+    expect(emitted[0].reason).toBe('body_limit_exceeded')
+    expect(emitted[0].transport).toBe('crdt')
+    expect(Number(emitted[0].totalBytes)).toBeGreaterThan(8 * ONE_MB)
+  })
+
+  it('reports an oversized CRDT update batch as updates_rejected', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const request = new Request('http://localhost/sync/crdt/updates', {
+      method: 'POST',
+      body: new Uint8Array(8 * ONE_MB + 1)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+    expect(response.status).toBe(413)
+
+    const events = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .map((line) => line.event)
+
+    expect(events).toContain('updates_rejected')
+    expect(events).not.toContain('snapshot_rejected')
+  })
+
+  it('stays quiet for oversized non-CRDT bodies', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const request = new Request('http://localhost/sync/blob/blob-key', {
+      method: 'PUT',
+      body: new Uint8Array(TEN_MB + 1)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+    expect(response.status).toBe(413)
+
+    const crdtEvents = infoSpy.mock.calls
+      .map(([line]) => JSON.parse(String(line)) as Record<string, unknown>)
+      .filter((line) => line.transport === 'crdt')
+
+    expect(crdtEvents).toEqual([])
   })
 })
 

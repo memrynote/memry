@@ -65,7 +65,8 @@ const mocks = vi.hoisted(() => ({
   registerLazyAgentHandlers: vi.fn(),
   unregisterLazyAgentHandlers: vi.fn(),
   startAgent: vi.fn(),
-  agentShutdown: vi.fn()
+  agentShutdown: vi.fn(),
+  trackMainLog: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -180,7 +181,7 @@ vi.mock('../sync/crdt-provider', () => ({
 
 vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
-  trackMainLog: vi.fn()
+  trackMainLog: (...args: unknown[]) => mocks.trackMainLog(...args)
 }))
 
 vi.mock('../projections', async () => {
@@ -261,6 +262,7 @@ import {
   autoOpenLastVault,
   closeVault,
   emitIndexProgress,
+  emitIndexRecovered,
   emitVaultError,
   getAllVaults,
   getConfig,
@@ -860,4 +862,37 @@ describe('vault lifecycle', () => {
     expect(mocks.sent).toContainEqual({ channel: 'vault:index-progress', payload: 55 })
     expect(mocks.sent).toContainEqual({ channel: 'vault:error', payload: 'boom' })
   })
+})
+
+describe('index recovery severity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('#given a missing index #then the rebuild is reported at info, not warn', () => {
+    // #given the index DB was simply absent — the expected first open of a vault
+    emitIndexRecovered({ reason: 'missing', filesIndexed: 12, duration: 340 })
+
+    // #then it stays queryable, but out of the error dashboard
+    expect(mocks.trackMainLog).toHaveBeenCalledWith('info', {
+      scope: 'vault',
+      action: 'index_recovered',
+      errorCode: 'missing',
+      metrics: { durationMs: 340, itemCount: 12 }
+    })
+  })
+
+  it.each(['corrupt', 'migration_failed'] as const)(
+    '#given a %s index #then the rebuild is still a warning',
+    (reason) => {
+      // #given genuine data-corruption recovery
+      emitIndexRecovered({ reason, filesIndexed: 5, duration: 90 })
+
+      // #then the level someone triages is unchanged
+      expect(mocks.trackMainLog).toHaveBeenCalledWith(
+        'warn',
+        expect.objectContaining({ action: 'index_recovered', errorCode: reason })
+      )
+    }
+  )
 })
