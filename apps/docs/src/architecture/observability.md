@@ -159,6 +159,42 @@ validates `/telemetry/batch` with that schema and rejects a whole batch on one b
 narrowing it would make a newly deployed server 400 batches sent by already-shipped desktop
 builds. The allowlist is enforced on the client, where the data still is.
 
+#### Failure detail on a failed request
+
+An event that reports a failed HTTP request may also carry a `failure` object
+(`TelemetryFailureDetailSchema`) with three bounded fields:
+
+| Field        | Shape                                        | PostHog property |
+| ------------ | -------------------------------------------- | ---------------- |
+| `httpStatus` | integer 100–599                              | `http_status`    |
+| `serverCode` | the server's `SCREAMING_SNAKE` `error.code`  | `server_code`    |
+| `retryable`  | boolean — was the failure classified retryable | `retryable`     |
+
+This exists because `sync_error` used to ship one opaque `server_error` label covering 400, 403,
+404, 409 and every 5xx alike (#1584): a permanent client-side contract bug and a transient edge 5xx
+were the same row, so no chart separated them and no alert threshold could be set. The label is
+unchanged — `error_code` still reads `server_error` — and these fields sit beside it, so
+`error_code='server_error' AND http_status >= 500` now answers "is the backend down?" and
+`retryable=false` answers "how many of these will never succeed?".
+
+An absent `server_code` on a 5xx is itself the signal: the response never reached the Worker's
+error handler, so it came from the edge and the backend has no record of it.
+
+It is a field of its own rather than a dimension for two reasons. An event may carry at most **one**
+dimension and `sync_error` already spends it on `transport`; and unlike a dimension value, every
+field here is bounded by construction (a 3-digit range, an anchored enum-ish token, a boolean), so
+it can never become a free-text channel. `sanitizeTelemetryFailure` runs at the same
+`createTelemetryClient.track()` chokepoint as the dimension allowlist and drops any field that
+would fail validation — one bad field must never cost the whole batch.
+
+The schema addition is optional and additive in both directions: an older desktop simply omits it,
+and a sync-server on older contracts strips the unknown key rather than rejecting the batch, so
+neither deploy order can 400 events from an already-shipped build.
+
+On the desktop the fields are assembled in one place —
+`apps/desktop/src/main/sync/sync-error-telemetry.ts` — from what `classifyError` already computed,
+so a new `sync_error` call site cannot forward the category and forget the rest.
+
 Because `warn`/`error` log records ship too (Path A, see [What Ships](#what-ships) and
 [Error & Diagnostic Logs in PostHog](#error-diagnostic-logs-in-posthog)), the same rule applies to
 log lines and thrown error messages in content-handling code: the inbox scraper
@@ -227,7 +263,7 @@ offline quit never stalls the exit.
 | Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                                                                                                                |
 | Settings        | `setting_changed` — surface only, never the value                                                                                                                                                                                |
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)                                                                                                                                                          |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request))                                                                                           |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
@@ -653,7 +689,10 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   redaction as a backstop) and **redacted stack frames**, `log_action` — the operational
   breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable —
   and `exit_code`, the platform exit status for process-lifecycle events (empty string when
-  absent, since exit code `0` is itself meaningful).
+  absent, since exit code `0` is itself meaningful). A failed request additionally contributes
+  `http_status`, `server_code` and `retryable` (see
+  [Failure detail on a failed request](#failure-detail-on-a-failed-request)) — also empty string
+  when absent, because `retryable: false` is a real answer and must not read as "not reported".
 - **Redacted diagnostic logs (`kind=log`, Path A, always-on)**: a main-process electron-log
   transport (`apps/desktop/src/main/telemetry/log-ship.ts`, installed once from `main/index.ts` —
   never from `logger.ts`, which must stay electron-free for worker bundling) intercepts every
