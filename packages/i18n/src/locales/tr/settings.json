@@ -24,7 +24,6 @@
         "appearance": "Görünüm",
         "shortcuts": "Kısayollar",
         "ai": "AI Asistanı",
-        "integrations": "Entegrasyonlar",
         "vault": "Kasa",
         "tags": "Etiketler",
         "properties": "Özellikler",
@@ -461,6 +460,48 @@
         "monday": "Pazartesi",
         "sunday": "Pazar"
       }
+    },
+    "google": {
+      "name": "Google Calendar",
+      "description": "memrynote etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
+      "statuses": {
+        "connected": "Bağlı",
+        "notConnected": "Bağlı Değil",
+        "reconnectRequired": "Yeniden Bağlanma Gerekli"
+      },
+      "accountReconnect": "Google'ı yeniden bağlayın",
+      "importedCalendars": "İçe Aktarılan Takvimler",
+      "selected": "{count} seçilmiş",
+      "syncNow": "Şimdi Senkronize Et",
+      "disconnect": "Bağlantıyı kes",
+      "reconnect": "Google'ı yeniden bağlayın",
+      "syncFailed": "Bir şeyler ters gitti",
+      "connectFailed": "Google Calendar'e bağlanılamadı",
+      "refreshFailed": "Google Calendar yenilenemedi",
+      "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
+      "retryFailed": "Takvim senkronizasyonu yeniden denenemedi",
+      "pushToGoogle": {
+        "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
+        "error": "Eşitleme yönü güncellenemedi",
+        "label": "memrynote etkinliklerini Google Calendar'da göster"
+      },
+      "agentAccess": {
+        "description": "Varsayılan olarak kapalı. Açarsanız yapay zeka asistanı Google etkinliklerinizi okuyabilir; kapatırsanız onlara dair hiçbir yanıt alamaz. Her iki durumda da etkinlikleri memrynote'ta görmeye devam edersiniz.",
+        "error": "Yapay zeka erişimi güncellenemedi",
+        "label": "Yapay zeka Google Calendar etkinliklerini okuyabilsin"
+      },
+      "connect": "Bağlan",
+      "sourcePicker": {
+        "empty": "Bu cihazda henüz içe aktarılan Google takvimi yok.",
+        "statuses": {
+          "synced": "Senkronize edildi",
+          "error": "Hata",
+          "pending": "Beklemede",
+          "idle": "Boşta"
+        },
+        "retrying": "Yeniden deneniyor…",
+        "retryNow": "Şimdi yeniden dene"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Bağlantı başarısız oldu",
       "testFailed": "Bağlantı testi başarısız oldu",
       "updateFailed": "Ayar güncellenemedi"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Entegrasyonlar",
-      "subtitle": "İş akışınızı zenginleştirmek için harici hizmetleri bağlayın"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API Anahtarı",
-      "none": "Sistem"
-    },
-    "comingSoon": "Yakında",
-    "connect": "Bağlan",
-    "googleCalendar": {
-      "name": "Google Calendar",
-      "description": "memrynote etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
-      "statuses": {
-        "connected": "Bağlı",
-        "notConnected": "Bağlı Değil",
-        "reconnectRequired": "Yeniden Bağlanma Gerekli"
-      },
-      "accountReconnect": "Google'ı yeniden bağlayın",
-      "importedCalendars": "İçe Aktarılan Takvimler",
-      "selected": "{count} seçilmiş",
-      "syncNow": "Şimdi Senkronize Et",
-      "disconnect": "Bağlantıyı kes",
-      "reconnect": "Google'ı yeniden bağlayın",
-      "syncFailed": "Bir şeyler ters gitti",
-      "connectFailed": "Google Calendar'e bağlanılamadı",
-      "refreshFailed": "Google Calendar yenilenemedi",
-      "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
-      "retryFailed": "Takvim senkronizasyonu yeniden denenemedi",
-      "pushToGoogle": {
-        "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
-        "error": "Eşitleme yönü güncellenemedi",
-        "label": "memrynote etkinliklerini Google Calendar'da göster"
-      },
-      "agentAccess": {
-        "description": "Varsayılan olarak kapalı. Açarsanız yapay zeka asistanı Google etkinliklerinizi okuyabilir; kapatırsanız onlara dair hiçbir yanıt alamaz. Her iki durumda da etkinlikleri memrynote'ta görmeye devam edersiniz.",
-        "error": "Yapay zeka erişimi güncellenemedi",
-        "label": "Yapay zeka Google Calendar etkinliklerini okuyabilsin"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Bu cihazda henüz içe aktarılan Google takvimi yok.",
-      "statuses": {
-        "synced": "Senkronize edildi",
-        "error": "Hata",
-        "pending": "Beklemede",
-        "idle": "Boşta"
-      },
-      "retrying": "Yeniden deneniyor…",
-      "retryNow": "Şimdi yeniden dene"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Calendar",
-        "description": "memrynote etkinlikleri, görevleri, hatırlatıcıları ve içe aktarılan takvimler için iki yönlü senkronizasyon"
-      },
-      "appleCalendar": {
-        "name": "Apple Takvim",
-        "description": "API sistemi aracılığıyla yerel takvim entegrasyonu"
-      },
-      "notion": {
-        "name": "fikir",
-        "description": "Kasanıza tek seferlik sayfa aktarımı"
-      },
-      "readwise": {
-        "name": "Okuma yönünde",
-        "description": "Vurguları kasanızla senkronize edin"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "İki yönlü görev senkronizasyonu"
-      }
     }
   },
   "vault": {

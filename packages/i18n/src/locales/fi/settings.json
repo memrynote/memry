@@ -24,7 +24,6 @@
         "appearance": "Ulkonäkö",
         "shortcuts": "Pikanäppäimet",
         "ai": "AI-avustaja",
-        "integrations": "Integraatiot",
         "vault": "Holvi",
         "tags": "Tunnisteet",
         "properties": "Ominaisuudet",
@@ -461,6 +460,48 @@
         "monday": "Maanantai",
         "sunday": "Sunnuntai"
       }
+    },
+    "google": {
+      "name": "Google-kalenteri",
+      "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille ja tuotuille Google-kalentereille.",
+      "statuses": {
+        "connected": "Yhdistetty",
+        "notConnected": "Ei yhdistetty",
+        "reconnectRequired": "Yhdistä uudelleen Pakollinen"
+      },
+      "accountReconnect": "Yhdistä Google uudelleen",
+      "importedCalendars": "Tuodut kalenterit",
+      "selected": "{count} valittu",
+      "syncNow": "Synkronoi nyt",
+      "disconnect": "Katkaise yhteys",
+      "reconnect": "Yhdistä Google uudelleen",
+      "syncFailed": "Jotain meni pieleen",
+      "connectFailed": "Google-kalenterin yhdistäminen epäonnistui",
+      "refreshFailed": "Google-kalenterin päivittäminen epäonnistui",
+      "disconnectFailed": "Google-kalenterin yhteyden katkaiseminen epäonnistui",
+      "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen",
+      "pushToGoogle": {
+        "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
+        "error": "Synkronointisuunnan päivitys epäonnistui",
+        "label": "Näytä memrynote-tapahtumat Google Calendarissa"
+      },
+      "agentAccess": {
+        "description": "Pois käytöstä oletuksena. Kun otat tämän käyttöön, tekoälyagentti voi lukea Google-tapahtumasi; kun poistat sen käytöstä, se ei saa niistä mitään tietoa, vaikka niistä kysyttäisiin. Näet ne memrynotessa joka tapauksessa.",
+        "error": "Tekoälyn pääsyn päivittäminen epäonnistui",
+        "label": "Salli tekoälyn lukea Google Calendar -tapahtumia"
+      },
+      "connect": "Yhdistä",
+      "sourcePicker": {
+        "empty": "Tuotuja Google-kalentereita ei ole vielä saatavilla tällä laitteella.",
+        "statuses": {
+          "synced": "Synkronoitu",
+          "error": "Virhe",
+          "pending": "Odottaa",
+          "idle": "Tyhjäkäynti"
+        },
+        "retrying": "Yritetään uudelleen…",
+        "retryNow": "Yritä nyt uudelleen"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Yhteyden muodostaminen epäonnistui",
       "testFailed": "Yhteystesti epäonnistui",
       "updateFailed": "Asetuksen päivittäminen epäonnistui"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integraatiot",
-      "subtitle": "Yhdistä ulkoiset palvelut rikastuttaaksesi työnkulkuasi"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API-avain",
-      "none": "Järjestelmä"
-    },
-    "comingSoon": "Tulossa pian",
-    "connect": "Yhdistä",
-    "googleCalendar": {
-      "name": "Google-kalenteri",
-      "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille ja tuotuille Google-kalentereille.",
-      "statuses": {
-        "connected": "Yhdistetty",
-        "notConnected": "Ei yhdistetty",
-        "reconnectRequired": "Yhdistä uudelleen Pakollinen"
-      },
-      "accountReconnect": "Yhdistä Google uudelleen",
-      "importedCalendars": "Tuodut kalenterit",
-      "selected": "{count} valittu",
-      "syncNow": "Synkronoi nyt",
-      "disconnect": "Katkaise yhteys",
-      "reconnect": "Yhdistä Google uudelleen",
-      "syncFailed": "Jotain meni pieleen",
-      "connectFailed": "Google-kalenterin yhdistäminen epäonnistui",
-      "refreshFailed": "Google-kalenterin päivittäminen epäonnistui",
-      "disconnectFailed": "Google-kalenterin yhteyden katkaiseminen epäonnistui",
-      "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen",
-      "pushToGoogle": {
-        "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
-        "error": "Synkronointisuunnan päivitys epäonnistui",
-        "label": "Näytä memrynote-tapahtumat Google Calendarissa"
-      },
-      "agentAccess": {
-        "description": "Pois käytöstä oletuksena. Kun otat tämän käyttöön, tekoälyagentti voi lukea Google-tapahtumasi; kun poistat sen käytöstä, se ei saa niistä mitään tietoa, vaikka niistä kysyttäisiin. Näet ne memrynotessa joka tapauksessa.",
-        "error": "Tekoälyn pääsyn päivittäminen epäonnistui",
-        "label": "Salli tekoälyn lukea Google Calendar -tapahtumia"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Tuotuja Google-kalentereita ei ole vielä saatavilla tällä laitteella.",
-      "statuses": {
-        "synced": "Synkronoitu",
-        "error": "Virhe",
-        "pending": "Odottaa",
-        "idle": "Tyhjäkäynti"
-      },
-      "retrying": "Yritetään uudelleen…",
-      "retryNow": "Yritä nyt uudelleen"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google-kalenteri",
-        "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille, tehtäville, muistutuksille ja tuoduille kalentereille"
-      },
-      "appleCalendar": {
-        "name": "Applen kalenteri",
-        "description": "Paikallisen kalenterin integrointi järjestelmän sovellusliittymien kautta"
-      },
-      "notion": {
-        "name": "Käsitys",
-        "description": "Kertaluonteinen sivun tuonti holviin"
-      },
-      "readwise": {
-        "name": "Lue viisaasti",
-        "description": "Synkronoi kohokohdat holviin"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Kaksisuuntainen tehtävien synkronointi"
-      }
     }
   },
   "vault": {

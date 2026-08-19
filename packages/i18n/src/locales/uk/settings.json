@@ -24,7 +24,6 @@
         "appearance": "Зовнішній вигляд",
         "shortcuts": "Скорочення",
         "ai": "AI Асистент",
-        "integrations": "Інтеграції",
         "vault": "Сховище",
         "tags": "Теги",
         "properties": "Властивості",
@@ -461,6 +460,48 @@
         "monday": "Понеділок",
         "sunday": "Неділя"
       }
+    },
+    "google": {
+      "name": "Google Календар",
+      "description": "Двозначна синхронізація для подій memrynote та імпортованих календарів Google.",
+      "statuses": {
+        "connected": "Підключено",
+        "notConnected": "Не підключено",
+        "reconnectRequired": "Потрібне повторне підключення"
+      },
+      "accountReconnect": "Відновити підключення Google",
+      "importedCalendars": "Імпортовані календарі",
+      "selected": "Вибрано {count}",
+      "syncNow": "Синхронізація зараз",
+      "disconnect": "Відключення",
+      "reconnect": "Відновити підключення Google",
+      "syncFailed": "Щось пішло не так",
+      "connectFailed": "Не вдалося підключити Google Calendar",
+      "refreshFailed": "Не вдалося оновити Google Календар",
+      "disconnectFailed": "Не вдалося відключити Google Календар",
+      "retryFailed": "Не вдалося повторити синхронізацію календаря",
+      "pushToGoogle": {
+        "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
+        "error": "Не вдалося оновити напрямок синхронізації",
+        "label": "Показувати події memrynote в Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Вимкнено за замовчуванням. Якщо увімкнути, агент ШІ зможе читати ваші події Google; якщо вимкнути, він нічого не отримає у відповідь на запитання про них. Ви в будь-якому разі бачитимете їх у memrynote.",
+        "error": "Не вдалося оновити доступ ШІ",
+        "label": "Дозволити ШІ читати події Google Calendar"
+      },
+      "connect": "Підключити",
+      "sourcePicker": {
+        "empty": "На цьому пристрої поки що немає імпортованих календарів Google.",
+        "statuses": {
+          "synced": "Синхронізовано",
+          "error": "Помилка",
+          "pending": "Очікує",
+          "idle": "Бездіяльність"
+        },
+        "retrying": "Спробувати знову...",
+        "retryNow": "Спробуйте знову зараз"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Не вдалося підключитися",
       "testFailed": "Тест з'єднання не вдався",
       "updateFailed": "Не вдалося оновити налаштування"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Інтеграції",
-      "subtitle": "Підключіть зовнішні сервіси, щоб покращити ваш робочий процес"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API ключ",
-      "none": "Системний"
-    },
-    "comingSoon": "Скоро буде",
-    "connect": "Підключити",
-    "googleCalendar": {
-      "name": "Google Календар",
-      "description": "Двозначна синхронізація для подій memrynote та імпортованих календарів Google.",
-      "statuses": {
-        "connected": "Підключено",
-        "notConnected": "Не підключено",
-        "reconnectRequired": "Потрібне повторне підключення"
-      },
-      "accountReconnect": "Відновити підключення Google",
-      "importedCalendars": "Імпортовані календарі",
-      "selected": "Вибрано {count}",
-      "syncNow": "Синхронізація зараз",
-      "disconnect": "Відключення",
-      "reconnect": "Відновити підключення Google",
-      "syncFailed": "Щось пішло не так",
-      "connectFailed": "Не вдалося підключити Google Calendar",
-      "refreshFailed": "Не вдалося оновити Google Календар",
-      "disconnectFailed": "Не вдалося відключити Google Календар",
-      "retryFailed": "Не вдалося повторити синхронізацію календаря",
-      "pushToGoogle": {
-        "description": "Вимкніть для односторонньої синхронізації — ви все ще бачитимете події Google у memrynote, але події memrynote не з’являтимуться в Google.",
-        "error": "Не вдалося оновити напрямок синхронізації",
-        "label": "Показувати події memrynote в Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Вимкнено за замовчуванням. Якщо увімкнути, агент ШІ зможе читати ваші події Google; якщо вимкнути, він нічого не отримає у відповідь на запитання про них. Ви в будь-якому разі бачитимете їх у memrynote.",
-        "error": "Не вдалося оновити доступ ШІ",
-        "label": "Дозволити ШІ читати події Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "На цьому пристрої поки що немає імпортованих календарів Google.",
-      "statuses": {
-        "synced": "Синхронізовано",
-        "error": "Помилка",
-        "pending": "Очікує",
-        "idle": "Бездіяльність"
-      },
-      "retrying": "Спробувати знову...",
-      "retryNow": "Спробуйте знову зараз"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Календар",
-        "description": "Двостороння синхронізація для memrynote подій, завдань, нагадувань і імпортованих календарів"
-      },
-      "appleCalendar": {
-        "name": "Apple Calendar",
-        "description": "Локальна інтеграція календаря через системні API"
-      },
-      "notion": {
-        "name": "Поняття",
-        "description": "Одноразовий імпорт сторінки у ваш сейф"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "Синхронізуйте виділені моменти у своєму сховищі"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Дворівнева синхронізація завдань"
-      }
     }
   },
   "vault": {

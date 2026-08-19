@@ -22,9 +22,6 @@ vi.mock('./appearance-section', () => ({
   AppearanceSettings: () => <div data-testid="appearance-panel" />
 }))
 vi.mock('./ai-section', () => ({ AISettings: () => <div data-testid="ai-panel" /> }))
-vi.mock('./integrations-section', () => ({
-  IntegrationsSettings: () => <div data-testid="integrations-panel" />
-}))
 vi.mock('./tags-section', () => ({ TagsSettings: () => <div data-testid="tags-panel" /> }))
 vi.mock('./properties-section', () => ({
   PropertiesSettings: () => <div data-testid="properties-panel" />
@@ -75,7 +72,6 @@ describe('SettingsPage i18n', () => {
       'Shortcuts',
       'Command Line',
       'AI Assistant',
-      'Integrations',
       'Vault',
       'Tags',
       'Properties'
@@ -111,7 +107,6 @@ describe('SettingsPage i18n', () => {
       ['Shortcuts', 'shortcuts-panel'],
       ['Command Line', 'command-line-panel'],
       ['AI Assistant', 'ai-panel'],
-      ['Integrations', 'integrations-panel'],
       ['Vault', 'vault-panel'],
       ['Tags', 'tags-panel'],
       ['Properties', 'properties-panel'],

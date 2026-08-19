@@ -24,7 +24,6 @@
         "appearance": "外觀",
         "shortcuts": "快速鍵",
         "ai": "AI 助手",
-        "integrations": "整合",
         "vault": "保險庫",
         "tags": "標籤",
         "properties": "屬性",
@@ -461,6 +460,48 @@
         "monday": "星期一",
         "sunday": "星期日"
       }
+    },
+    "google": {
+      "name": "Google 日曆",
+      "description": "對 memrynote 事件和匯入的 Google 日曆進行雙向同步。",
+      "statuses": {
+        "connected": "已連線",
+        "notConnected": "未連線",
+        "reconnectRequired": "重新連線所需"
+      },
+      "accountReconnect": "重新連線 Google",
+      "importedCalendars": "已匯入的行事曆",
+      "selected": "已選擇 {count}",
+      "syncNow": "立即同步",
+      "disconnect": "斷開連線",
+      "reconnect": "重新連線 Google",
+      "syncFailed": "出了問題",
+      "connectFailed": "連線 Google 行事曆失敗",
+      "refreshFailed": "刷新 Google 行事曆失敗",
+      "disconnectFailed": "斷開 Google 行事曆失敗",
+      "retryFailed": "重試行事曆同步失敗",
+      "pushToGoogle": {
+        "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
+        "error": "更新同步方向失敗",
+        "label": "在 Google Calendar 中顯示 memrynote 活動"
+      },
+      "agentAccess": {
+        "description": "預設為關閉。開啟後，AI 代理可以讀取您的 Google 活動；關閉時，即使詢問也不會取得任何內容。不論開啟或關閉，您都仍會在 memrynote 中看到這些活動。",
+        "error": "更新 AI 存取權失敗",
+        "label": "讓 AI 讀取 Google Calendar 活動"
+      },
+      "connect": "連接",
+      "sourcePicker": {
+        "empty": "此裝置尚無匯入的 Google 行事曆可用。",
+        "statuses": {
+          "synced": "已同步",
+          "error": "錯誤",
+          "pending": "待定",
+          "idle": "閒置"
+        },
+        "retrying": "正在重試…",
+        "retryNow": "立即重試"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "連線失敗",
       "testFailed": "連線測試失敗",
       "updateFailed": "更新設定失敗"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "整合",
-      "subtitle": "連接外部服務以豐富您的工作流程"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API 密鑰",
-      "none": "系統"
-    },
-    "comingSoon": "即將推出",
-    "connect": "連接",
-    "googleCalendar": {
-      "name": "Google 日曆",
-      "description": "對 memrynote 事件和匯入的 Google 日曆進行雙向同步。",
-      "statuses": {
-        "connected": "已連線",
-        "notConnected": "未連線",
-        "reconnectRequired": "重新連線所需"
-      },
-      "accountReconnect": "重新連線 Google",
-      "importedCalendars": "已匯入的行事曆",
-      "selected": "已選擇 {count}",
-      "syncNow": "立即同步",
-      "disconnect": "斷開連線",
-      "reconnect": "重新連線 Google",
-      "syncFailed": "出了問題",
-      "connectFailed": "連線 Google 行事曆失敗",
-      "refreshFailed": "刷新 Google 行事曆失敗",
-      "disconnectFailed": "斷開 Google 行事曆失敗",
-      "retryFailed": "重試行事曆同步失敗",
-      "pushToGoogle": {
-        "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
-        "error": "更新同步方向失敗",
-        "label": "在 Google Calendar 中顯示 memrynote 活動"
-      },
-      "agentAccess": {
-        "description": "預設為關閉。開啟後，AI 代理可以讀取您的 Google 活動；關閉時，即使詢問也不會取得任何內容。不論開啟或關閉，您都仍會在 memrynote 中看到這些活動。",
-        "error": "更新 AI 存取權失敗",
-        "label": "讓 AI 讀取 Google Calendar 活動"
-      }
-    },
-    "sourcePicker": {
-      "empty": "此裝置尚無匯入的 Google 行事曆可用。",
-      "statuses": {
-        "synced": "已同步",
-        "error": "錯誤",
-        "pending": "待定",
-        "idle": "閒置"
-      },
-      "retrying": "正在重試…",
-      "retryNow": "立即重試"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google 日曆",
-        "description": "memrynote 事件、任務、提醒事項及已匯入行事曆的雙向同步"
-      },
-      "appleCalendar": {
-        "name": "Apple 行事曆",
-        "description": "透過系統 API 整合本地行事曆"
-      },
-      "notion": {
-        "name": "Notion",
-        "description": "一次性將頁面匯入您的保險庫"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "將重點同步到您的保險庫"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "雙向任務同步"
-      }
     }
   },
   "vault": {

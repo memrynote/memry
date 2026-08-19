@@ -7,7 +7,6 @@ import {
   BookOpen,
   Brain,
   PenLine,
-  Plug,
   Tags,
   ListChecks,
   Inbox,
@@ -27,7 +26,6 @@ import { JournalSettings } from './settings/journal-section'
 import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
-import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { PropertiesSettings } from './settings/properties-section'
 import { TasksSettings } from './settings/tasks-section'
@@ -148,12 +146,6 @@ export function SettingsPage() {
             isActive={isAssistantSection}
             onClick={() => setActiveSection('ai')}
           />
-          <SettingsNavItem
-            icon={<Plug className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.integrations')}
-            isActive={activeSection === 'integrations'}
-            onClick={() => setActiveSection('integrations')}
-          />
         </SettingsNavGroup>
 
         <SettingsNavGroup label={t('page.nav.groups.data')}>
@@ -203,7 +195,6 @@ export function SettingsPage() {
                 focusRequestId={focusRequestId}
               />
             )}
-            {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}
             {activeSection === 'import' && <ImportSettings />}

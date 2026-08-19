@@ -15,7 +15,6 @@ export type SettingsSection =
   | 'ai'
   | 'agent-providers'
   | 'agent-mcp'
-  | 'integrations'
   | 'import'
   | 'tags'
   | 'properties'

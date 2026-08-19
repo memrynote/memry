@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { Calendar } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   calendarService,
@@ -53,7 +52,7 @@ function accountToneClass(status: GoogleAccountStatus['status']): string {
   }
 }
 
-export function GoogleCalendarIntegrationRow(): React.JSX.Element {
+export function GoogleCalendarConnection(): React.JSX.Element {
   const { t } = useT('settings')
   const queryClient = useQueryClient()
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -81,7 +80,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async () => {
       const result = await connectGoogleCalendarProvider()
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.connectFailed'))
+        throw new Error(result.error ?? t('calendar.google.connectFailed'))
       }
       return result
     },
@@ -100,7 +99,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async () => {
       const result = await refreshGoogleCalendarProvider()
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.refreshFailed'))
+        throw new Error(result.error ?? t('calendar.google.refreshFailed'))
       }
       return result
     },
@@ -113,7 +112,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async (accountId?: string) => {
       const result = await disconnectGoogleCalendarProvider(accountId)
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.disconnectFailed'))
+        throw new Error(result.error ?? t('calendar.google.disconnectFailed'))
       }
       return result
     },
@@ -134,7 +133,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async (sourceId: string) => {
       const result = await retryGoogleCalendarSourceSync({ sourceId })
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.retryFailed'))
+        throw new Error(result.error ?? t('calendar.google.retryFailed'))
       }
       return result
     },
@@ -147,7 +146,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async (pushEventsToGoogle: boolean) => {
       const result = await window.api.settings.setCalendarGoogleSettings({ pushEventsToGoogle })
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.pushToGoogle.error'))
+        throw new Error(result.error ?? t('calendar.google.pushToGoogle.error'))
       }
       return result
     },
@@ -162,7 +161,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
         agentReadEventsConsent
       })
       if (!result.success) {
-        throw new Error(result.error ?? t('integrations.googleCalendar.agentAccess.error'))
+        throw new Error(result.error ?? t('calendar.google.agentAccess.error'))
       }
       return result
     },
@@ -246,41 +245,25 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   return (
     <div className="px-4 py-3">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted">
-            <Calendar className="size-4 text-muted-foreground" />
-          </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <Badge
+            variant="secondary"
+            className="h-4 w-fit border-0 px-1.5 py-0 text-[10px]/3 text-foreground"
+          >
+            {status?.connected
+              ? reconnectRequired && !status.hasLocalAuth
+                ? t('calendar.google.statuses.reconnectRequired')
+                : t('calendar.google.statuses.connected')
+              : t('calendar.google.statuses.notConnected')}
+          </Badge>
 
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[13px]/4 font-medium text-foreground">
-                {t('integrations.googleCalendar.name')}
-              </span>
-              <Badge variant="secondary" className="h-4 border-0 px-1.5 py-0 text-[10px]/3">
-                {t('integrations.auth.oauth2')}
-              </Badge>
-              <Badge
-                variant="secondary"
-                className="h-4 border-0 px-1.5 py-0 text-[10px]/3 text-foreground"
-              >
-                {status?.connected
-                  ? reconnectRequired && !status.hasLocalAuth
-                    ? t('integrations.googleCalendar.statuses.reconnectRequired')
-                    : t('integrations.googleCalendar.statuses.connected')
-                  : t('integrations.googleCalendar.statuses.notConnected')}
-              </Badge>
-            </div>
+          <p className="text-xs/4 text-muted-foreground">{t('calendar.google.description')}</p>
 
-            <p className="text-xs/4 text-muted-foreground">
-              {t('integrations.googleCalendar.description')}
+          {mutationError && (
+            <p className="text-xs text-destructive">
+              {extractErrorMessage(mutationError, t('calendar.google.syncFailed'))}
             </p>
-
-            {mutationError && (
-              <p className="text-xs text-destructive">
-                {extractErrorMessage(mutationError, t('integrations.googleCalendar.syncFailed'))}
-              </p>
-            )}
-          </div>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -294,7 +277,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => connectMutation.mutate()}
                 >
-                  {t('integrations.googleCalendar.reconnect')}
+                  {t('calendar.google.reconnect')}
                 </Button>
               ) : (
                 <Button
@@ -304,7 +287,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => refreshMutation.mutate()}
                 >
-                  {t('integrations.googleCalendar.syncNow')}
+                  {t('calendar.google.syncNow')}
                 </Button>
               )}
               <Button
@@ -315,7 +298,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                 disabled={isPending}
                 onClick={() => connectMutation.mutate()}
               >
-                {t('integrations.googleCalendar.addAccount')}
+                {t('calendar.google.addAccount')}
               </Button>
               {/* Per-account disconnect lives in each group below. This is the
                   way out for an install that reports no account rows at all —
@@ -329,7 +312,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => disconnectMutation.mutate(undefined)}
                 >
-                  {t('integrations.googleCalendar.disconnect')}
+                  {t('calendar.google.disconnect')}
                 </Button>
               )}
             </>
@@ -341,7 +324,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               disabled={isPending}
               onClick={() => connectMutation.mutate()}
             >
-              {t('integrations.connect')}
+              {t('calendar.google.connect')}
             </Button>
           )}
         </div>
@@ -351,10 +334,10 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
         <div className="mt-3 grid gap-2">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[11px]/3.5 font-medium uppercase tracking-[0.05em] text-muted-foreground">
-              {t('integrations.googleCalendar.importedCalendars')}
+              {t('calendar.google.importedCalendars')}
             </span>
             <span className="text-xs text-muted-foreground">
-              {t('integrations.googleCalendar.selected', { count: importedSelectedCount })}
+              {t('calendar.google.selected', { count: importedSelectedCount })}
             </span>
           </div>
 
@@ -372,9 +355,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   title={account.lastError ?? undefined}
                 >
                   <span className="truncate">{account.email}</span>
-                  {accountDetail(account, t('integrations.googleCalendar.accountReconnect')) && (
+                  {accountDetail(account, t('calendar.google.accountReconnect')) && (
                     <span className="max-w-[12rem] truncate text-[10px]/3 opacity-75">
-                      · {accountDetail(account, t('integrations.googleCalendar.accountReconnect'))}
+                      · {accountDetail(account, t('calendar.google.accountReconnect'))}
                     </span>
                   )}
                 </span>
@@ -387,7 +370,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => disconnectMutation.mutate(account.accountId)}
                 >
-                  {t('integrations.googleCalendar.disconnect')}
+                  {t('calendar.google.disconnect')}
                 </Button>
               </div>
 
@@ -420,34 +403,34 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
           <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[13px]/4 font-medium text-foreground">
-                {t('integrations.googleCalendar.pushToGoogle.label')}
+                {t('calendar.google.pushToGoogle.label')}
               </span>
               <p className="text-xs/4 text-muted-foreground">
-                {t('integrations.googleCalendar.pushToGoogle.description')}
+                {t('calendar.google.pushToGoogle.description')}
               </p>
             </div>
             <Switch
               checked={pushEventsToGoogle}
               disabled={pushSettingMutation.isPending || googleSettingsIsLoading}
               onCheckedChange={(checked) => pushSettingMutation.mutate(checked)}
-              aria-label={t('integrations.googleCalendar.pushToGoogle.label')}
+              aria-label={t('calendar.google.pushToGoogle.label')}
             />
           </div>
 
           <div className="mt-1 flex items-start justify-between gap-3 border-t border-border/60 pt-3">
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="text-[13px]/4 font-medium text-foreground">
-                {t('integrations.googleCalendar.agentAccess.label')}
+                {t('calendar.google.agentAccess.label')}
               </span>
               <p className="text-xs/4 text-muted-foreground">
-                {t('integrations.googleCalendar.agentAccess.description')}
+                {t('calendar.google.agentAccess.description')}
               </p>
             </div>
             <Switch
               checked={agentReadEventsConsent}
               disabled={agentAccessMutation.isPending || googleSettingsIsLoading}
               onCheckedChange={(checked) => agentAccessMutation.mutate(checked)}
-              aria-label={t('integrations.googleCalendar.agentAccess.label')}
+              aria-label={t('calendar.google.agentAccess.label')}
             />
           </div>
         </div>
@@ -464,4 +447,4 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
   )
 }
 
-export default GoogleCalendarIntegrationRow
+export default GoogleCalendarConnection

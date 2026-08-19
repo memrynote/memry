@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
-import { IntegrationList } from './integration-list'
+import { GoogleCalendarConnection } from './google-calendar-connection'
 import type { CalendarProviderStatus, CalendarSourceRecord } from '@/services/calendar-service'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -132,6 +132,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -153,6 +154,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -174,6 +176,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -195,6 +198,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -205,15 +209,15 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
 
 let i18nEn: I18nInstance
 
-function renderIntegrationList() {
+function renderGoogleCalendarConnection() {
   return renderWithProviders(
     <I18nextProvider i18n={i18nEn}>
-      <IntegrationList />
+      <GoogleCalendarConnection />
     </I18nextProvider>
   )
 }
 
-describe('Google Calendar integration row', () => {
+describe('Google Calendar connection (Settings → Calendar)', () => {
   beforeAll(async () => {
     i18nEn = await createRendererI18n({ locale: 'en' })
   })
@@ -284,7 +288,7 @@ describe('Google Calendar integration row', () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     expect(await screen.findByText('1 selected')).toBeInTheDocument()
     expect(screen.queryByText('2 selected')).not.toBeInTheDocument()
@@ -294,7 +298,7 @@ describe('Google Calendar integration row', () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
     mockListSources.mockResolvedValue({ sources: TWO_ACCOUNT_SOURCES })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     const aliceGroup = await screen.findByTestId('calendar-account-group-alice@example.com')
     const bobGroup = await screen.findByTestId('calendar-account-group-bob@example.com')
@@ -319,7 +323,7 @@ describe('Google Calendar integration row', () => {
       status: TWO_ACCOUNT_STATUS
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     const addAccount = await screen.findByTestId('calendar-add-account')
     await user.click(addAccount)
@@ -337,7 +341,7 @@ describe('Google Calendar integration row', () => {
       status: CONNECTED_STATUS
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     const disconnectBob = await screen.findByTestId('calendar-account-disconnect-bob@example.com')
     await user.click(disconnectBob)
@@ -361,7 +365,7 @@ describe('Google Calendar integration row', () => {
       status: DISCONNECTED_STATUS
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     const disconnect = await screen.findByTestId('calendar-disconnect-all')
     await user.click(disconnect)
@@ -379,7 +383,7 @@ describe('Google Calendar integration row', () => {
       status: CONNECTED_STATUS
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
 
@@ -402,7 +406,7 @@ describe('Google Calendar integration row', () => {
       source: { ...CONNECTED_SOURCES[3], isSelected: true }
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
 
@@ -422,7 +426,7 @@ describe('Google Calendar integration row', () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(DISCONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: [] })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
     expect(screen.queryByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeInTheDocument()
@@ -439,7 +443,7 @@ describe('Google Calendar integration row', () => {
       agentReadEventsConsent: true
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
@@ -457,7 +461,7 @@ describe('Google Calendar integration row', () => {
       agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).not.toBeChecked()
@@ -476,7 +480,7 @@ describe('Google Calendar integration row', () => {
       agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeInTheDocument()
@@ -500,7 +504,7 @@ describe('Google Calendar integration row', () => {
       agentReadEventsConsent: true
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL })).toBeChecked()
@@ -518,10 +522,12 @@ describe('Google Calendar integration row', () => {
     vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: false,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => {
       expect(
@@ -544,7 +550,7 @@ describe('Google Calendar integration row', () => {
       source: { ...erroredSources[2], syncStatus: 'ok', lastError: null }
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByText('Work')).toBeInTheDocument())
 
@@ -571,10 +577,12 @@ describe('Google Calendar integration row', () => {
     vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument())
     expect(screen.getByText('bob@example.com')).toBeInTheDocument()
@@ -598,10 +606,12 @@ describe('Google Calendar integration row', () => {
     vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     await waitFor(() => expect(screen.getByText('Reconnect Required')).toBeInTheDocument())
 
@@ -619,10 +629,12 @@ describe('Google Calendar integration row', () => {
     vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToGoogle: true,
+      agentReadEventsConsent: null
     })
 
-    renderIntegrationList()
+    renderGoogleCalendarConnection()
 
     // Wait for the connected row to render, then confirm no dialog appeared
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())

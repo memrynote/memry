@@ -24,7 +24,6 @@
         "appearance": "Penampilan",
         "shortcuts": "Jalan pintas",
         "ai": "Asisten AI",
-        "integrations": "Integrasi",
         "vault": "Gudang",
         "tags": "Tag",
         "properties": "Properti",
@@ -461,6 +460,48 @@
         "monday": "Senin",
         "sunday": "Minggu"
       }
+    },
+    "google": {
+      "name": "Google Kalender",
+      "description": "Sinkronisasi dua arah untuk acara memrynote dan kalender Google yang diimpor.",
+      "statuses": {
+        "connected": "Terhubung",
+        "notConnected": "Tidak Terhubung",
+        "reconnectRequired": "Diperlukan Sambungan Kembali"
+      },
+      "accountReconnect": "Hubungkan kembali Google",
+      "importedCalendars": "Kalender yang Diimpor",
+      "selected": "{count} dipilih",
+      "syncNow": "Sinkronkan Sekarang",
+      "disconnect": "Putuskan sambungan",
+      "reconnect": "Hubungkan kembali Google",
+      "syncFailed": "Ada yang tidak beres",
+      "connectFailed": "Gagal menghubungkan Google Kalender",
+      "refreshFailed": "Gagal menyegarkan Google Kalender",
+      "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
+      "retryFailed": "Gagal mencoba lagi sinkronisasi kalender",
+      "pushToGoogle": {
+        "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
+        "error": "Gagal memperbarui arah sinkronisasi",
+        "label": "Tampilkan acara memrynote di Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Nonaktif secara bawaan. Aktifkan dan agen AI dapat membaca acara Google Anda; nonaktifkan dan ia tidak mendapat apa pun saat ditanya tentang acara itu. Anda tetap melihatnya di memrynote, apa pun pilihan Anda.",
+        "error": "Gagal memperbarui akses AI",
+        "label": "Izinkan AI membaca acara Google Calendar"
+      },
+      "connect": "Hubungkan",
+      "sourcePicker": {
+        "empty": "Belum ada kalender Google yang diimpor yang tersedia di perangkat ini.",
+        "statuses": {
+          "synced": "Disinkronkan",
+          "error": "Kesalahan",
+          "pending": "Tertunda",
+          "idle": "Menganggur"
+        },
+        "retrying": "Mencoba lagi…",
+        "retryNow": "Coba lagi sekarang"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Gagal terhubung",
       "testFailed": "Uji koneksi gagal",
       "updateFailed": "Gagal memperbarui setelan"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrasi",
-      "subtitle": "Hubungkan layanan eksternal untuk memperkaya alur kerja Anda"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Kunci API",
-      "none": "Sistem"
-    },
-    "comingSoon": "Segera Hadir",
-    "connect": "Hubungkan",
-    "googleCalendar": {
-      "name": "Google Kalender",
-      "description": "Sinkronisasi dua arah untuk acara memrynote dan kalender Google yang diimpor.",
-      "statuses": {
-        "connected": "Terhubung",
-        "notConnected": "Tidak Terhubung",
-        "reconnectRequired": "Diperlukan Sambungan Kembali"
-      },
-      "accountReconnect": "Hubungkan kembali Google",
-      "importedCalendars": "Kalender yang Diimpor",
-      "selected": "{count} dipilih",
-      "syncNow": "Sinkronkan Sekarang",
-      "disconnect": "Putuskan sambungan",
-      "reconnect": "Hubungkan kembali Google",
-      "syncFailed": "Ada yang tidak beres",
-      "connectFailed": "Gagal menghubungkan Google Kalender",
-      "refreshFailed": "Gagal menyegarkan Google Kalender",
-      "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
-      "retryFailed": "Gagal mencoba lagi sinkronisasi kalender",
-      "pushToGoogle": {
-        "description": "Nonaktifkan untuk sinkronisasi satu arah — Anda tetap melihat acara Google Anda di memrynote, tetapi acara memrynote tidak akan muncul di Google.",
-        "error": "Gagal memperbarui arah sinkronisasi",
-        "label": "Tampilkan acara memrynote di Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Nonaktif secara bawaan. Aktifkan dan agen AI dapat membaca acara Google Anda; nonaktifkan dan ia tidak mendapat apa pun saat ditanya tentang acara itu. Anda tetap melihatnya di memrynote, apa pun pilihan Anda.",
-        "error": "Gagal memperbarui akses AI",
-        "label": "Izinkan AI membaca acara Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Belum ada kalender Google yang diimpor yang tersedia di perangkat ini.",
-      "statuses": {
-        "synced": "Disinkronkan",
-        "error": "Kesalahan",
-        "pending": "Tertunda",
-        "idle": "Menganggur"
-      },
-      "retrying": "Mencoba lagi…",
-      "retryNow": "Coba lagi sekarang"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Kalender",
-        "description": "Sinkronisasi dua arah untuk acara memrynote, tugas, pengingat, dan kalender yang diimpor"
-      },
-      "appleCalendar": {
-        "name": "Kalender Apple",
-        "description": "Integrasi kalender lokal melalui API sistem"
-      },
-      "notion": {
-        "name": "Gagasan",
-        "description": "Impor halaman satu kali ke brankas Anda"
-      },
-      "readwise": {
-        "name": "Bacalah",
-        "description": "Sinkronkan sorotan ke brankas Anda"
-      },
-      "todoist": {
-        "name": "Todois",
-        "description": "Sinkronisasi tugas dua arah"
-      }
     }
   },
   "vault": {

@@ -24,7 +24,6 @@
         "appearance": "Uiterlijk",
         "shortcuts": "Snelkoppelingen",
         "ai": "AI-assistent",
-        "integrations": "Integraties",
         "vault": "Kluis",
         "tags": "Labels",
         "properties": "Eigenschappen",
@@ -461,6 +460,48 @@
         "monday": "Maandag",
         "sunday": "Zondag"
       }
+    },
+    "google": {
+      "name": "Google Agenda",
+      "description": "Tweerichtingssynchronisatie voor memrynote-evenementen en geïmporteerde Google-agenda's.",
+      "statuses": {
+        "connected": "Verbonden",
+        "notConnected": "Niet verbonden",
+        "reconnectRequired": "Opnieuw verbinden vereist"
+      },
+      "accountReconnect": "Maak opnieuw verbinding met Google",
+      "importedCalendars": "Geïmporteerde kalenders",
+      "selected": "{count} geselecteerd",
+      "syncNow": "Synchroniseer nu",
+      "disconnect": "Verbreek de verbinding",
+      "reconnect": "Maak opnieuw verbinding met Google",
+      "syncFailed": "Er is iets misgegaan",
+      "connectFailed": "Kan geen verbinding maken met Google Agenda",
+      "refreshFailed": "Kan Google Agenda niet vernieuwen",
+      "disconnectFailed": "Kan Google Agenda niet ontkoppelen",
+      "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen",
+      "pushToGoogle": {
+        "description": "Schakel uit voor eenrichtingssynchronisatie — je ziet je Google-gebeurtenissen nog in memrynote, maar memrynote-gebeurtenissen verschijnen niet in Google.",
+        "error": "Kan synchronisatierichting niet bijwerken",
+        "label": "memrynote-gebeurtenissen tonen in Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-gebeurtenissen lezen; zet je het uit, dan krijgt hij er niets over terug wanneer je ernaar vraagt. Je blijft ze hoe dan ook in memrynote zien.",
+        "error": "Kan AI-toegang niet bijwerken",
+        "label": "AI Google Calendar-gebeurtenissen laten lezen"
+      },
+      "connect": "Verbinden",
+      "sourcePicker": {
+        "empty": "Er zijn nog geen geïmporteerde Google-agenda's beschikbaar op dit apparaat.",
+        "statuses": {
+          "synced": "Gesynchroniseerd",
+          "error": "Fout",
+          "pending": "In behandeling",
+          "idle": "Inactief"
+        },
+        "retrying": "Opnieuw proberen…",
+        "retryNow": "Probeer het nu opnieuw"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Kan geen verbinding maken",
       "testFailed": "Verbindingstest mislukt",
       "updateFailed": "Kan de instelling niet updaten"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integraties",
-      "subtitle": "Sluit externe services aan om uw workflow te verrijken"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API-sleutel",
-      "none": "Systeem"
-    },
-    "comingSoon": "Binnenkort beschikbaar",
-    "connect": "Verbinden",
-    "googleCalendar": {
-      "name": "Google Agenda",
-      "description": "Tweerichtingssynchronisatie voor memrynote-evenementen en geïmporteerde Google-agenda's.",
-      "statuses": {
-        "connected": "Verbonden",
-        "notConnected": "Niet verbonden",
-        "reconnectRequired": "Opnieuw verbinden vereist"
-      },
-      "accountReconnect": "Maak opnieuw verbinding met Google",
-      "importedCalendars": "Geïmporteerde kalenders",
-      "selected": "{count} geselecteerd",
-      "syncNow": "Synchroniseer nu",
-      "disconnect": "Verbreek de verbinding",
-      "reconnect": "Maak opnieuw verbinding met Google",
-      "syncFailed": "Er is iets misgegaan",
-      "connectFailed": "Kan geen verbinding maken met Google Agenda",
-      "refreshFailed": "Kan Google Agenda niet vernieuwen",
-      "disconnectFailed": "Kan Google Agenda niet ontkoppelen",
-      "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen",
-      "pushToGoogle": {
-        "description": "Schakel uit voor eenrichtingssynchronisatie — je ziet je Google-gebeurtenissen nog in memrynote, maar memrynote-gebeurtenissen verschijnen niet in Google.",
-        "error": "Kan synchronisatierichting niet bijwerken",
-        "label": "memrynote-gebeurtenissen tonen in Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Staat standaard uit. Zet je dit aan, dan kan de AI-agent je Google-gebeurtenissen lezen; zet je het uit, dan krijgt hij er niets over terug wanneer je ernaar vraagt. Je blijft ze hoe dan ook in memrynote zien.",
-        "error": "Kan AI-toegang niet bijwerken",
-        "label": "AI Google Calendar-gebeurtenissen laten lezen"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Er zijn nog geen geïmporteerde Google-agenda's beschikbaar op dit apparaat.",
-      "statuses": {
-        "synced": "Gesynchroniseerd",
-        "error": "Fout",
-        "pending": "In behandeling",
-        "idle": "Inactief"
-      },
-      "retrying": "Opnieuw proberen…",
-      "retryNow": "Probeer het nu opnieuw"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Agenda",
-        "description": "Tweerichtingssynchronisatie voor memrynote-evenementen, taken, herinneringen en geïmporteerde agenda's"
-      },
-      "appleCalendar": {
-        "name": "Apple-agenda",
-        "description": "Lokale agenda-integratie via systeem-API's"
-      },
-      "notion": {
-        "name": "Begrip",
-        "description": "Eenmalige pagina-import in uw kluis"
-      },
-      "readwise": {
-        "name": "Lees verstandig",
-        "description": "Synchroniseer hoogtepunten met uw kluis"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Taaksynchronisatie in twee richtingen"
-      }
     }
   },
   "vault": {

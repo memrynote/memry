@@ -24,7 +24,6 @@
         "appearance": "외관",
         "shortcuts": "단축키",
         "ai": "AI 어시스턴트",
-        "integrations": "통합",
         "vault": "금고",
         "tags": "태그",
         "properties": "속성",
@@ -461,6 +460,48 @@
         "monday": "월요일",
         "sunday": "일요일"
       }
+    },
+    "google": {
+      "name": "구글캘린더",
+      "description": "memrynote 이벤트 및 가져온 Google 캘린더에 대한 양방향 동기화.",
+      "statuses": {
+        "connected": "연결됨",
+        "notConnected": "연결되지 않음",
+        "reconnectRequired": "다시 연결 필요"
+      },
+      "accountReconnect": "Google을 다시 연결하세요",
+      "importedCalendars": "가져온 캘린더",
+      "selected": "{count} 선택됨",
+      "syncNow": "지금 동기화",
+      "disconnect": "연결 끊기",
+      "reconnect": "Google을 다시 연결하세요",
+      "syncFailed": "문제가 발생했습니다.",
+      "connectFailed": "Google 캘린더를 연결하지 못했습니다.",
+      "refreshFailed": "Google 캘린더를 새로고침하지 못했습니다.",
+      "disconnectFailed": "Google 캘린더 연결을 해제하지 못했습니다.",
+      "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다.",
+      "pushToGoogle": {
+        "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
+        "error": "동기화 방향을 업데이트하지 못했습니다",
+        "label": "Google Calendar에 memrynote 일정 표시"
+      },
+      "agentAccess": {
+        "description": "기본값은 꺼짐입니다. 켜면 AI 에이전트가 Google 일정을 읽을 수 있고, 끄면 일정에 대해 물어봐도 아무것도 받지 못합니다. 어느 쪽이든 memrynote에서는 계속 볼 수 있습니다.",
+        "error": "AI 접근을 업데이트하지 못했습니다",
+        "label": "AI가 Google Calendar 일정을 읽도록 허용"
+      },
+      "connect": "연결하다",
+      "sourcePicker": {
+        "empty": "아직 이 기기에서는 가져온 Google 캘린더를 사용할 수 없습니다.",
+        "statuses": {
+          "synced": "동기화됨",
+          "error": "오류",
+          "pending": "보류 중",
+          "idle": "유휴"
+        },
+        "retrying": "재시도 중…",
+        "retryNow": "지금 다시 시도하세요"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "연결하지 못했습니다.",
       "testFailed": "연결 테스트 실패",
       "updateFailed": "설정을 업데이트하지 못했습니다."
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "통합",
-      "subtitle": "외부 서비스를 연결하여 워크플로우를 강화하세요"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API 키",
-      "none": "시스템"
-    },
-    "comingSoon": "출시 예정",
-    "connect": "연결하다",
-    "googleCalendar": {
-      "name": "구글캘린더",
-      "description": "memrynote 이벤트 및 가져온 Google 캘린더에 대한 양방향 동기화.",
-      "statuses": {
-        "connected": "연결됨",
-        "notConnected": "연결되지 않음",
-        "reconnectRequired": "다시 연결 필요"
-      },
-      "accountReconnect": "Google을 다시 연결하세요",
-      "importedCalendars": "가져온 캘린더",
-      "selected": "{count} 선택됨",
-      "syncNow": "지금 동기화",
-      "disconnect": "연결 끊기",
-      "reconnect": "Google을 다시 연결하세요",
-      "syncFailed": "문제가 발생했습니다.",
-      "connectFailed": "Google 캘린더를 연결하지 못했습니다.",
-      "refreshFailed": "Google 캘린더를 새로고침하지 못했습니다.",
-      "disconnectFailed": "Google 캘린더 연결을 해제하지 못했습니다.",
-      "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다.",
-      "pushToGoogle": {
-        "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
-        "error": "동기화 방향을 업데이트하지 못했습니다",
-        "label": "Google Calendar에 memrynote 일정 표시"
-      },
-      "agentAccess": {
-        "description": "기본값은 꺼짐입니다. 켜면 AI 에이전트가 Google 일정을 읽을 수 있고, 끄면 일정에 대해 물어봐도 아무것도 받지 못합니다. 어느 쪽이든 memrynote에서는 계속 볼 수 있습니다.",
-        "error": "AI 접근을 업데이트하지 못했습니다",
-        "label": "AI가 Google Calendar 일정을 읽도록 허용"
-      }
-    },
-    "sourcePicker": {
-      "empty": "아직 이 기기에서는 가져온 Google 캘린더를 사용할 수 없습니다.",
-      "statuses": {
-        "synced": "동기화됨",
-        "error": "오류",
-        "pending": "보류 중",
-        "idle": "유휴"
-      },
-      "retrying": "재시도 중…",
-      "retryNow": "지금 다시 시도하세요"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "구글캘린더",
-        "description": "memrynote 이벤트, 작업, 미리 알림 및 가져온 캘린더에 대한 양방향 동기화"
-      },
-      "appleCalendar": {
-        "name": "애플 캘린더",
-        "description": "시스템 API를 통한 로컬 캘린더 통합"
-      },
-      "notion": {
-        "name": "개념",
-        "description": "Vault로 일회성 페이지 가져오기"
-      },
-      "readwise": {
-        "name": "읽기 방식",
-        "description": "하이라이트를 볼트에 동기화하세요"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "양방향 작업 동기화"
-      }
     }
   },
   "vault": {

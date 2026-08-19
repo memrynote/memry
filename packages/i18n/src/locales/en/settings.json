@@ -26,7 +26,6 @@
         "shortcuts": "Shortcuts",
         "commandLine": "Command Line",
         "ai": "AI Assistant",
-        "integrations": "Integrations",
         "vault": "Vault",
         "tags": "Tags",
         "properties": "Properties",
@@ -528,6 +527,49 @@
       "openJournal": "Open Journal",
       "openCalendar": "Open Calendar",
       "useGlobal": "Use global setting"
+    },
+    "google": {
+      "name": "Google Calendar",
+      "description": "Two-way sync for memrynote events and imported Google calendars.",
+      "statuses": {
+        "connected": "Connected",
+        "notConnected": "Not Connected",
+        "reconnectRequired": "Reconnect Required"
+      },
+      "accountReconnect": "Reconnect Google",
+      "addAccount": "Add account",
+      "importedCalendars": "Imported Calendars",
+      "selected": "{count} selected",
+      "syncNow": "Sync Now",
+      "disconnect": "Disconnect",
+      "reconnect": "Reconnect Google",
+      "syncFailed": "Something went wrong",
+      "connectFailed": "Failed to connect Google Calendar",
+      "refreshFailed": "Failed to refresh Google Calendar",
+      "disconnectFailed": "Failed to disconnect Google Calendar",
+      "retryFailed": "Failed to retry calendar sync",
+      "pushToGoogle": {
+        "label": "Show memrynote events in Google Calendar",
+        "description": "Turn off for one-way sync — you'll still see your Google events in memrynote, but memrynote events won't appear in Google.",
+        "error": "Failed to update sync direction"
+      },
+      "agentAccess": {
+        "label": "Let AI read Google Calendar events",
+        "description": "Off by default. Turn on and the AI agent can read your Google events; turn off and it gets nothing back when asked about them. You keep seeing them in memrynote either way.",
+        "error": "Failed to update AI access"
+      },
+      "connect": "Connect",
+      "sourcePicker": {
+        "empty": "No imported Google calendars are available on this device yet.",
+        "statuses": {
+          "synced": "Synced",
+          "error": "Error",
+          "pending": "Pending",
+          "idle": "Idle"
+        },
+        "retrying": "Retrying…",
+        "retryNow": "Retry now"
+      }
     }
   },
   "account": {
@@ -1088,83 +1130,6 @@
       },
       "todoist": {
         "importing": "Importing Todoist tasks…"
-      }
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrations",
-      "subtitle": "Connect external services to enrich your workflow"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "API Key",
-      "none": "System"
-    },
-    "comingSoon": "Coming Soon",
-    "connect": "Connect",
-    "googleCalendar": {
-      "name": "Google Calendar",
-      "description": "Two-way sync for memrynote events and imported Google calendars.",
-      "statuses": {
-        "connected": "Connected",
-        "notConnected": "Not Connected",
-        "reconnectRequired": "Reconnect Required"
-      },
-      "accountReconnect": "Reconnect Google",
-      "addAccount": "Add account",
-      "importedCalendars": "Imported Calendars",
-      "selected": "{count} selected",
-      "syncNow": "Sync Now",
-      "disconnect": "Disconnect",
-      "reconnect": "Reconnect Google",
-      "syncFailed": "Something went wrong",
-      "connectFailed": "Failed to connect Google Calendar",
-      "refreshFailed": "Failed to refresh Google Calendar",
-      "disconnectFailed": "Failed to disconnect Google Calendar",
-      "retryFailed": "Failed to retry calendar sync",
-      "pushToGoogle": {
-        "label": "Show memrynote events in Google Calendar",
-        "description": "Turn off for one-way sync — you'll still see your Google events in memrynote, but memrynote events won't appear in Google.",
-        "error": "Failed to update sync direction"
-      },
-      "agentAccess": {
-        "label": "Let AI read Google Calendar events",
-        "description": "Off by default. Turn on and the AI agent can read your Google events; turn off and it gets nothing back when asked about them. You keep seeing them in memrynote either way.",
-        "error": "Failed to update AI access"
-      }
-    },
-    "sourcePicker": {
-      "empty": "No imported Google calendars are available on this device yet.",
-      "statuses": {
-        "synced": "Synced",
-        "error": "Error",
-        "pending": "Pending",
-        "idle": "Idle"
-      },
-      "retrying": "Retrying…",
-      "retryNow": "Retry now"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Calendar",
-        "description": "Two-way sync for memrynote events, tasks, reminders, and imported calendars"
-      },
-      "appleCalendar": {
-        "name": "Apple Calendar",
-        "description": "Local calendar integration via system APIs"
-      },
-      "notion": {
-        "name": "Notion",
-        "description": "One-time page import into your vault"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "Sync highlights into your vault"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Two-way task sync"
       }
     }
   },

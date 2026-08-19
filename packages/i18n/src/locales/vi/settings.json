@@ -24,7 +24,6 @@
         "appearance": "Giao diện",
         "shortcuts": "Phím tắt",
         "ai": "Trợ lý AI",
-        "integrations": "Tích hợp",
         "vault": "Kho lưu trữ",
         "tags": "Thẻ",
         "properties": "Thuộc tính",
@@ -461,6 +460,48 @@
         "monday": "Thứ Hai",
         "sunday": "Chủ Nhật"
       }
+    },
+    "google": {
+      "name": "Google Calendar",
+      "description": "Đồng bộ hai chiều cho các sự kiện memrynote và các lịch Google được nhập.",
+      "statuses": {
+        "connected": "Đã kết nối",
+        "notConnected": "Chưa kết nối",
+        "reconnectRequired": "Cần kết nối lại"
+      },
+      "accountReconnect": "Kết nối lại Google",
+      "importedCalendars": "Các lịch đã nhập",
+      "selected": "Đã chọn {count}",
+      "syncNow": "Đồng bộ ngay",
+      "disconnect": "Ngắt kết nối",
+      "reconnect": "Kết nối lại Google",
+      "syncFailed": "Đã xảy ra sự cố",
+      "connectFailed": "Không thể kết nối Google Calendar",
+      "refreshFailed": "Không thể làm mới Google Calendar",
+      "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
+      "retryFailed": "Không thể thử lại đồng bộ lịch",
+      "pushToGoogle": {
+        "description": "Tắt để đồng bộ một chiều — bạn vẫn thấy sự kiện Google trong memrynote, nhưng sự kiện memrynote sẽ không xuất hiện trong Google.",
+        "error": "Không cập nhật được hướng đồng bộ",
+        "label": "Hiện sự kiện memrynote trong Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Mặc định là tắt. Bật thì trợ lý AI có thể đọc sự kiện Google của bạn; tắt thì nó không nhận được gì khi được hỏi về chúng. Dù thế nào, bạn vẫn thấy chúng trong memrynote.",
+        "error": "Không cập nhật được quyền truy cập của AI",
+        "label": "Cho AI đọc sự kiện Google Calendar"
+      },
+      "connect": "Kết nối",
+      "sourcePicker": {
+        "empty": "Chưa có lịch Google nào được nhập có sẵn trên thiết bị này.",
+        "statuses": {
+          "synced": "  \nĐã đồng bộ  ",
+          "error": "Lỗi",
+          "pending": "Đang chờ",
+          "idle": "Nhàn rỗi"
+        },
+        "retrying": "Đang thử lại…",
+        "retryNow": "Thử lại ngay"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Kết nối thất bại",
       "testFailed": "Kiểm tra kết nối thất bại",
       "updateFailed": "Cập nhật cài đặt thất bại"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Tích hợp",
-      "subtitle": "Kết nối các dịch vụ bên ngoài để nâng cao quy trình làm việc của bạn"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Khóa API",
-      "none": "Hệ thống"
-    },
-    "comingSoon": "Sắp ra mắt",
-    "connect": "Kết nối",
-    "googleCalendar": {
-      "name": "Google Calendar",
-      "description": "Đồng bộ hai chiều cho các sự kiện memrynote và các lịch Google được nhập.",
-      "statuses": {
-        "connected": "Đã kết nối",
-        "notConnected": "Chưa kết nối",
-        "reconnectRequired": "Cần kết nối lại"
-      },
-      "accountReconnect": "Kết nối lại Google",
-      "importedCalendars": "Các lịch đã nhập",
-      "selected": "Đã chọn {count}",
-      "syncNow": "Đồng bộ ngay",
-      "disconnect": "Ngắt kết nối",
-      "reconnect": "Kết nối lại Google",
-      "syncFailed": "Đã xảy ra sự cố",
-      "connectFailed": "Không thể kết nối Google Calendar",
-      "refreshFailed": "Không thể làm mới Google Calendar",
-      "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
-      "retryFailed": "Không thể thử lại đồng bộ lịch",
-      "pushToGoogle": {
-        "description": "Tắt để đồng bộ một chiều — bạn vẫn thấy sự kiện Google trong memrynote, nhưng sự kiện memrynote sẽ không xuất hiện trong Google.",
-        "error": "Không cập nhật được hướng đồng bộ",
-        "label": "Hiện sự kiện memrynote trong Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Mặc định là tắt. Bật thì trợ lý AI có thể đọc sự kiện Google của bạn; tắt thì nó không nhận được gì khi được hỏi về chúng. Dù thế nào, bạn vẫn thấy chúng trong memrynote.",
-        "error": "Không cập nhật được quyền truy cập của AI",
-        "label": "Cho AI đọc sự kiện Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "Chưa có lịch Google nào được nhập có sẵn trên thiết bị này.",
-      "statuses": {
-        "synced": "  \nĐã đồng bộ  ",
-        "error": "Lỗi",
-        "pending": "Đang chờ",
-        "idle": "Nhàn rỗi"
-      },
-      "retrying": "Đang thử lại…",
-      "retryNow": "Thử lại ngay"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google Calendar",
-        "description": "Đồng bộ hai chiều cho các sự kiện, nhiệm vụ, nhắc nhở và lịch đã nhập của memrynote"
-      },
-      "appleCalendar": {
-        "name": "Apple Calendar",
-        "description": "Tích hợp lịch cục bộ qua API hệ thống"
-      },
-      "notion": {
-        "name": "Notion",
-        "description": "Nhập trang một lần vào kho của bạn"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "Đồng bộ các điểm nổi bật vào kho của bạn"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "Đồng bộ nhiệm vụ hai chiều"
-      }
     }
   },
   "vault": {

@@ -24,7 +24,6 @@
         "appearance": "รูปลักษณ์",
         "shortcuts": "ทางลัด",
         "ai": "ผู้ช่วย AI",
-        "integrations": "การรวมระบบ",
         "vault": "คลัง",
         "tags": "แท็ก",
         "properties": "คุณสมบัติ",
@@ -461,6 +460,48 @@
         "monday": "จันทร์",
         "sunday": "อาทิตย์"
       }
+    },
+    "google": {
+      "name": "Google ปฏิทิน",
+      "description": "ซิงก์สองทางสำหรับกิจกรรม memrynote และปฏิทินของ Google ที่นำเข้า",
+      "statuses": {
+        "connected": "เชื่อมต่อแล้ว",
+        "notConnected": "ยังไม่ได้เชื่อมต่อ",
+        "reconnectRequired": "ต้องเชื่อมต่อใหม่"
+      },
+      "accountReconnect": "เชื่อมต่อ Google",
+      "importedCalendars": "ปฏิทินที่นำเข้า",
+      "selected": "เลือก {count}",
+      "syncNow": "ซิงค์ตอนนี้",
+      "disconnect": "ตัดการเชื่อมต่อ",
+      "reconnect": "เชื่อมต่อ Google",
+      "syncFailed": "มีบางอย่างผิดพลาด",
+      "connectFailed": "เชื่อมต่อ Google Calendar ล้มเหลว",
+      "refreshFailed": "รีเฟรช Google Calendar ล้มเหลว",
+      "disconnectFailed": "ตัดการเชื่อมต่อ Google Calendar ล้มเหลว",
+      "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว",
+      "pushToGoogle": {
+        "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
+        "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
+        "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
+      },
+      "agentAccess": {
+        "description": "ปิดอยู่ตามค่าเริ่มต้น เปิดแล้วเอเจนต์ AI จะอ่านกิจกรรม Google ของคุณได้ ปิดแล้วจะไม่ได้ข้อมูลใดกลับไปเมื่อถามถึงกิจกรรมเหล่านั้น คุณจะยังเห็นกิจกรรมเหล่านั้นใน memrynote ไม่ว่าจะเลือกแบบใด",
+        "error": "อัปเดตการเข้าถึงของ AI ไม่สำเร็จ",
+        "label": "ให้ AI อ่านกิจกรรมใน Google Calendar"
+      },
+      "connect": "เชื่อมต่อ",
+      "sourcePicker": {
+        "empty": "ยังไม่มีปฏิทิน Google ที่นำเข้าพร้อมใช้งานบนอุปกรณ์นี้",
+        "statuses": {
+          "synced": "ซิงค์แล้ว",
+          "error": "ข้อผิดพลาด",
+          "pending": "รอดำเนินการ",
+          "idle": "ว่าง"
+        },
+        "retrying": "กำลังลองใหม่…",
+        "retryNow": "ลองใหม่ตอนนี้"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "ไม่สามารถเชื่อมต่อได้",
       "testFailed": "การทดสอบการเชื่อมต่อล้มเหลว",
       "updateFailed": "ไม่สามารถอัปเดตการตั้งค่าได้"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "การรวมระบบ",
-      "subtitle": "เชื่อมต่อบริการภายนอกเพื่อเพิ่มประสิทธิภาพการทำงานของคุณ"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "คีย์ API",
-      "none": "ระบบ"
-    },
-    "comingSoon": "เร็วๆ นี้",
-    "connect": "เชื่อมต่อ",
-    "googleCalendar": {
-      "name": "Google ปฏิทิน",
-      "description": "ซิงก์สองทางสำหรับกิจกรรม memrynote และปฏิทินของ Google ที่นำเข้า",
-      "statuses": {
-        "connected": "เชื่อมต่อแล้ว",
-        "notConnected": "ยังไม่ได้เชื่อมต่อ",
-        "reconnectRequired": "ต้องเชื่อมต่อใหม่"
-      },
-      "accountReconnect": "เชื่อมต่อ Google",
-      "importedCalendars": "ปฏิทินที่นำเข้า",
-      "selected": "เลือก {count}",
-      "syncNow": "ซิงค์ตอนนี้",
-      "disconnect": "ตัดการเชื่อมต่อ",
-      "reconnect": "เชื่อมต่อ Google",
-      "syncFailed": "มีบางอย่างผิดพลาด",
-      "connectFailed": "เชื่อมต่อ Google Calendar ล้มเหลว",
-      "refreshFailed": "รีเฟรช Google Calendar ล้มเหลว",
-      "disconnectFailed": "ตัดการเชื่อมต่อ Google Calendar ล้มเหลว",
-      "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว",
-      "pushToGoogle": {
-        "description": "ปิดเพื่อซิงค์ทางเดียว — คุณจะยังเห็นกิจกรรม Google ใน memrynote แต่กิจกรรม memrynote จะไม่ปรากฏใน Google",
-        "error": "อัปเดตทิศทางการซิงค์ไม่สำเร็จ",
-        "label": "แสดงกิจกรรม memrynote ใน Google Calendar"
-      },
-      "agentAccess": {
-        "description": "ปิดอยู่ตามค่าเริ่มต้น เปิดแล้วเอเจนต์ AI จะอ่านกิจกรรม Google ของคุณได้ ปิดแล้วจะไม่ได้ข้อมูลใดกลับไปเมื่อถามถึงกิจกรรมเหล่านั้น คุณจะยังเห็นกิจกรรมเหล่านั้นใน memrynote ไม่ว่าจะเลือกแบบใด",
-        "error": "อัปเดตการเข้าถึงของ AI ไม่สำเร็จ",
-        "label": "ให้ AI อ่านกิจกรรมใน Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "ยังไม่มีปฏิทิน Google ที่นำเข้าพร้อมใช้งานบนอุปกรณ์นี้",
-      "statuses": {
-        "synced": "ซิงค์แล้ว",
-        "error": "ข้อผิดพลาด",
-        "pending": "รอดำเนินการ",
-        "idle": "ว่าง"
-      },
-      "retrying": "กำลังลองใหม่…",
-      "retryNow": "ลองใหม่ตอนนี้"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Google ปฏิทิน",
-        "description": "ซิงค์สองทางสำหรับกิจกรรม งาน เตือนความจำ และปฏิทินที่นำเข้า memrynote"
-      },
-      "appleCalendar": {
-        "name": "Apple Calendar",
-        "description": "การรวมปฏิทินภายในเครื่องผ่าน API ของระบบ"
-      },
-      "notion": {
-        "name": "Notion",
-        "description": "นำเข้าหน้าเพียงครั้งเดียวเข้าสู่คลังของคุณ"
-      },
-      "readwise": {
-        "name": "Readwise",
-        "description": "ซิงค์ไฮไลต์เข้าสู่คลังของคุณ"
-      },
-      "todoist": {
-        "name": "Todoist",
-        "description": "การซิงค์งานสองทาง"
-      }
     }
   },
   "vault": {

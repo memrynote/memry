@@ -24,7 +24,6 @@
         "appearance": "Vzhled",
         "shortcuts": "Zkratky",
         "ai": "Asistent AI",
-        "integrations": "Integrace",
         "vault": "Trezor",
         "tags": "Tagy",
         "properties": "Vlastnosti",
@@ -461,6 +460,48 @@
         "monday": "Pondělí",
         "sunday": "Neděle"
       }
+    },
+    "google": {
+      "name": "Kalendář Google",
+      "description": "Obousměrná synchronizace pro události memrynote a importované kalendáře Google.",
+      "statuses": {
+        "connected": "Připojeno",
+        "notConnected": "Nepřipojeno",
+        "reconnectRequired": "Je vyžadováno opětovné připojení"
+      },
+      "accountReconnect": "Znovu připojte Google",
+      "importedCalendars": "Importované kalendáře",
+      "selected": "Vybráno {count}",
+      "syncNow": "Synchronizovat nyní",
+      "disconnect": "Odpojit",
+      "reconnect": "Znovu připojte Google",
+      "syncFailed": "Něco se pokazilo",
+      "connectFailed": "Připojení Kalendáře Google se nezdařilo",
+      "refreshFailed": "Obnovení Kalendáře Google se nezdařilo",
+      "disconnectFailed": "Kalendář Google se nepodařilo odpojit",
+      "retryFailed": "Nepodařilo se opakovat synchronizaci kalendáře",
+      "pushToGoogle": {
+        "description": "Vypněte pro jednosměrnou synchronizaci — své události Google budete v memrynote stále vidět, ale události memrynote se v Google nezobrazí.",
+        "error": "Nepodařilo se aktualizovat směr synchronizace",
+        "label": "Zobrazit události memrynote v Google Calendar"
+      },
+      "agentAccess": {
+        "description": "Ve výchozím nastavení vypnuto. Po zapnutí může agent AI číst vaše události Google; po vypnutí se o nich na dotaz nic nedozví. Vy je v memrynote uvidíte tak jako tak.",
+        "error": "Nepodařilo se aktualizovat přístup AI",
+        "label": "Umožnit AI číst události v Google Calendar"
+      },
+      "connect": "Připojte se",
+      "sourcePicker": {
+        "empty": "V tomto zařízení zatím nejsou k dispozici žádné importované kalendáře Google.",
+        "statuses": {
+          "synced": "Synchronizováno",
+          "error": "Chyba",
+          "pending": "Čeká na vyřízení",
+          "idle": "Nečinný"
+        },
+        "retrying": "Opakování…",
+        "retryNow": "Zkuste to znovu"
+      }
     }
   },
   "account": {
@@ -858,82 +899,6 @@
       "connectFailed": "Připojení se nezdařilo",
       "testFailed": "Test připojení se nezdařil",
       "updateFailed": "Aktualizace nastavení se nezdařila"
-    }
-  },
-  "integrations": {
-    "header": {
-      "title": "Integrace",
-      "subtitle": "Připojte externí služby, abyste obohatili svůj pracovní postup"
-    },
-    "auth": {
-      "oauth2": "OAuth 2.0",
-      "apiKey": "Klíč API",
-      "none": "Systém"
-    },
-    "comingSoon": "Již brzy",
-    "connect": "Připojte se",
-    "googleCalendar": {
-      "name": "Kalendář Google",
-      "description": "Obousměrná synchronizace pro události memrynote a importované kalendáře Google.",
-      "statuses": {
-        "connected": "Připojeno",
-        "notConnected": "Nepřipojeno",
-        "reconnectRequired": "Je vyžadováno opětovné připojení"
-      },
-      "accountReconnect": "Znovu připojte Google",
-      "importedCalendars": "Importované kalendáře",
-      "selected": "Vybráno {count}",
-      "syncNow": "Synchronizovat nyní",
-      "disconnect": "Odpojit",
-      "reconnect": "Znovu připojte Google",
-      "syncFailed": "Něco se pokazilo",
-      "connectFailed": "Připojení Kalendáře Google se nezdařilo",
-      "refreshFailed": "Obnovení Kalendáře Google se nezdařilo",
-      "disconnectFailed": "Kalendář Google se nepodařilo odpojit",
-      "retryFailed": "Nepodařilo se opakovat synchronizaci kalendáře",
-      "pushToGoogle": {
-        "description": "Vypněte pro jednosměrnou synchronizaci — své události Google budete v memrynote stále vidět, ale události memrynote se v Google nezobrazí.",
-        "error": "Nepodařilo se aktualizovat směr synchronizace",
-        "label": "Zobrazit události memrynote v Google Calendar"
-      },
-      "agentAccess": {
-        "description": "Ve výchozím nastavení vypnuto. Po zapnutí může agent AI číst vaše události Google; po vypnutí se o nich na dotaz nic nedozví. Vy je v memrynote uvidíte tak jako tak.",
-        "error": "Nepodařilo se aktualizovat přístup AI",
-        "label": "Umožnit AI číst události v Google Calendar"
-      }
-    },
-    "sourcePicker": {
-      "empty": "V tomto zařízení zatím nejsou k dispozici žádné importované kalendáře Google.",
-      "statuses": {
-        "synced": "Synchronizováno",
-        "error": "Chyba",
-        "pending": "Čeká na vyřízení",
-        "idle": "Nečinný"
-      },
-      "retrying": "Opakování…",
-      "retryNow": "Zkuste to znovu"
-    },
-    "registry": {
-      "googleCalendar": {
-        "name": "Kalendář Google",
-        "description": "Obousměrná synchronizace pro události, úkoly, připomenutí a importované kalendáře memrynote"
-      },
-      "appleCalendar": {
-        "name": "Kalendář Apple",
-        "description": "Integrace místního kalendáře prostřednictvím systémových rozhraní API"
-      },
-      "notion": {
-        "name": "Pojem",
-        "description": "Jednorázový import stránky do vašeho trezoru"
-      },
-      "readwise": {
-        "name": "Čtěte",
-        "description": "Synchronizujte zvýraznění do svého trezoru"
-      },
-      "todoist": {
-        "name": "Todoista",
-        "description": "Obousměrná synchronizace úkolů"
-      }
     }
   },
   "vault": {
