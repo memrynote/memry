@@ -32,39 +32,11 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }))
 
-// Radix's picker does not open in jsdom; this stand-in keeps the picker's own
-// state machine (note textarea, preset selection, onSelect call) real.
-vi.mock('@/components/ui/picker', () => {
-  const pickerMocks: { onValueChange: ((value: string) => void) | null } = { onValueChange: null }
-
-  const PickerRoot = ({
-    children,
-    onValueChange
-  }: {
-    children: React.ReactNode
-    onValueChange?: (value: string) => void
-  }): React.ReactElement => {
-    pickerMocks.onValueChange = onValueChange ?? null
-    return <div>{children}</div>
-  }
-
-  return {
-    Picker: Object.assign(PickerRoot, {
-      Trigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      Footer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      Section: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      Separator: () => <hr />,
-      Item: ({ value }: { value: string }) => (
-        <button
-          type="button"
-          data-testid={`preset-${value}`}
-          onClick={() => pickerMocks.onValueChange?.(value)}
-        />
-      )
-    })
-  }
+// Radix's picker does not open in jsdom; the shared stand-in keeps the picker's
+// own state machine (note textarea, preset selection, onSelect call) real.
+vi.mock('@/components/ui/picker', async () => {
+  const { createPickerStub } = await import('@tests/utils/picker-stub')
+  return createPickerStub()
 })
 
 describe('NoteReminderButton', () => {

@@ -7,11 +7,6 @@ import { ReminderPicker } from './reminder-picker'
 
 vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 
-const pickerMocks = vi.hoisted(() => ({
-  onValueChange: null as null | ((value: string) => void),
-  onOpenChange: null as null | ((open: boolean) => void)
-}))
-
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
@@ -40,67 +35,17 @@ vi.mock('@/components/ui/button', () => ({
   )
 }))
 
-vi.mock('@/components/ui/picker', () => {
-  const PickerRoot = ({
-    children,
-    onValueChange,
-    onOpenChange
-  }: {
-    children: React.ReactNode
-    onValueChange?: (value: string) => void
-    onOpenChange?: (open: boolean) => void
-  }) => {
-    pickerMocks.onValueChange = onValueChange ?? null
-    pickerMocks.onOpenChange = onOpenChange ?? null
-    return <div>{children}</div>
-  }
-
-  return {
-    Picker: Object.assign(PickerRoot, {
-      Trigger: ({ children }: { children: React.ReactNode }) => (
-        <div onClick={() => pickerMocks.onOpenChange?.(true)}>{children}</div>
-      ),
-      Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-      Footer: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-        <div data-slot="picker-footer" className={className}>
-          {children}
-        </div>
-      ),
-      Section: ({ label, children }: { label: string; children: React.ReactNode }) => (
-        <section aria-label={label}>
-          <h3>{label}</h3>
-          {children}
-        </section>
-      ),
-      Separator: () => <hr />,
-      Item: ({
-        label,
-        value,
-        icon,
-        trailing
-      }: {
-        label: string
-        value: string
-        icon?: React.ReactNode
-        trailing?: React.ReactNode
-      }) => (
-        <button type="button" onClick={() => pickerMocks.onValueChange?.(value)}>
-          {icon}
-          <span>{label}</span>
-          {trailing}
-        </button>
-      )
-    })
-  }
+// Radix's picker does not open in jsdom; the shared stand-in is the one place
+// this primitive is faked, so no test grows a private copy of it.
+vi.mock('@/components/ui/picker', async () => {
+  const { createPickerStub } = await import('@tests/utils/picker-stub')
+  return createPickerStub()
 })
 
 describe('ReminderPicker', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 10, 10, 0, 0, 0))
-    pickerMocks.onValueChange = null
-    pickerMocks.onOpenChange = null
     vi.mocked(trackTelemetry).mockClear()
   })
 
