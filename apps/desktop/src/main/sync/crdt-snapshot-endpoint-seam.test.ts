@@ -128,6 +128,7 @@ const runtimeMocks = vi.hoisted(() => {
     db: null as any,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
     currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
+    syncStateRows: [] as Array<{ value: string }>,
     getDatabase: vi.fn(),
     getIndexDatabase: vi.fn(),
     retrieveToken: vi.fn(),
@@ -461,14 +462,26 @@ vi.mock('./key-verification', () => ({
 
 function createDb() {
   const updateRun = vi.fn()
+  // `sync_state` rows, read through SyncStateManager.getStateValue (`.all()`)
+  // rather than the device lookup (`.get()`). The endpoint choice reads one of
+  // them — `crdtUnmergedDebt`, the record that a previous session ended holding
+  // notes it had not merged — so this is on the path, not scenery.
+  const stateInsertRun = vi.fn()
   return {
     updateRun,
+    stateInsertRun,
     db: {
       select: vi.fn(() => ({
         from: vi.fn(() => ({
           where: vi.fn(() => ({
-            get: vi.fn(() => runtimeMocks.currentDevice)
+            get: vi.fn(() => runtimeMocks.currentDevice),
+            all: vi.fn(() => runtimeMocks.syncStateRows)
           }))
+        }))
+      })),
+      insert: vi.fn(() => ({
+        values: vi.fn(() => ({
+          onConflictDoUpdate: vi.fn(() => ({ run: stateInsertRun }))
         }))
       })),
       update: vi.fn(() => ({
@@ -512,6 +525,7 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     runtimeMocks.workerStartError = null
     runtimeMocks.indexRows = [{ id: 'note-1', title: 'Note 1', date: null }]
     runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
+    runtimeMocks.syncStateRows = []
     runtimeMocks.db = createDb()
     runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
@@ -620,6 +634,53 @@ describe('CRDT snapshot push endpoint choice, coordinator to wire', () => {
     expect(runtimeMocks.pushCrdtFullUpdate).not.toHaveBeenCalled()
     expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
       'note-merged',
+      new Uint8Array([10, 11]),
+      'access-token'
+    )
+
+    await stop()
+  })
+
+  it('routes every note away from the prune when the last session ended holding debt', async () => {
+    // #given the previous session quit with a note it had not merged. The set
+    // naming that note is per session and `clearCaches()` emptied it, and this
+    // launch is inside the sweep interval, so `shouldSweepAllCrdtNotes` queues
+    // nothing that would re-raise it. All that survives is the `sync_state`
+    // record that debt existed.
+    runtimeMocks.syncStateRows = [{ value: '1' }]
+    const { snapshotPush, stop } = await bootRuntime()
+
+    // #when the user edits a note this session has never pulled, merged or even
+    // heard of, and the 30s quiet period pushes its full state
+    await snapshotPush('note-from-last-session', new Uint8Array([1, 2, 3]))
+
+    // #then it still must not reach /sync/crdt/snapshot. That note may be the
+    // one the last session failed to merge — this session cannot tell — and with
+    // no snapshot stored the prune's watermark is `currentSeq`, so it would
+    // delete every peer row the note has.
+    expect(runtimeMocks.pushCrdtSnapshot).not.toHaveBeenCalled()
+    expect(runtimeMocks.pushCrdtFullUpdate).toHaveBeenCalledWith(
+      'note-from-last-session',
+      new Uint8Array([10, 11]),
+      'access-token'
+    )
+
+    await stop()
+  })
+
+  it('snapshots normally when the last session ended with nothing outstanding', async () => {
+    // #given no carried-over debt — the ordinary case, and the one that keeps
+    // the blanket from quietly costing every install its compaction point
+    runtimeMocks.syncStateRows = []
+    const { snapshotPush, stop } = await bootRuntime()
+
+    // #when
+    await snapshotPush('note-untouched', new Uint8Array([1, 2, 3]))
+
+    // #then
+    expect(runtimeMocks.pushCrdtFullUpdate).not.toHaveBeenCalled()
+    expect(runtimeMocks.pushCrdtSnapshot).toHaveBeenCalledWith(
+      'note-untouched',
       new Uint8Array([10, 11]),
       'access-token'
     )

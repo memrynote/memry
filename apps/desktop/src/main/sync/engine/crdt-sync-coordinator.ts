@@ -63,6 +63,26 @@ export class CrdtSyncCoordinator {
    */
   private unmergedRemoteNotes = new Set<string>()
 
+  /**
+   * Told when the set above goes from empty to non-empty and back.
+   *
+   * The set cannot be its own durable record: it is per session and
+   * `clearCaches()` empties it at teardown, so a note left unmerged at quit came
+   * back unflagged on the next launch — and unflagged is the answer that lets a
+   * snapshot push prune the peer rows this device never read. Nor does the next
+   * launch necessarily re-raise it: the vault-wide sweep is throttled against a
+   * *persisted* stamp, so a restart inside that interval queues nothing.
+   *
+   * Only the fact that debt exists travels; which notes it was does not.
+   * `FullSyncRunner` persists this and answers every note conservatively until
+   * a sweep has flagged them individually again, which is both cheaper than a
+   * durable id set and strictly safer than one — an id set could still be
+   * missing whatever the crash did not get to write.
+   */
+  onUnmergedDebtChange?: (hasDebt: boolean) => void
+  /** Last value handed to `onUnmergedDebtChange`, so only transitions are sent. */
+  private reportedUnmergedDebt = false
+
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
     this.resolveDeviceKey = resolveDeviceKey
@@ -89,6 +109,19 @@ export class CrdtSyncCoordinator {
    */
   markRemoteStateUnmerged(noteId: string): void {
     this.unmergedRemoteNotes.add(noteId)
+    this.reportUnmergedDebt()
+  }
+
+  /** Does this device hold debt for any note at all? */
+  get hasUnmergedNotes(): boolean {
+    return this.unmergedRemoteNotes.size > 0
+  }
+
+  private reportUnmergedDebt(): void {
+    const hasDebt = this.unmergedRemoteNotes.size > 0
+    if (hasDebt === this.reportedUnmergedDebt) return
+    this.reportedUnmergedDebt = hasDebt
+    this.onUnmergedDebtChange?.(hasDebt)
   }
 
   /**
@@ -137,6 +170,10 @@ export class CrdtSyncCoordinator {
     this.pendingPulls.clear()
     this.lastAppliedSequence.clear()
     this.applyFailureReported.clear()
+    // Deliberately silent: `reportUnmergedDebt` is not called here. This is a
+    // teardown, not a note that finished merging, and reporting "no debt" for it
+    // would erase the durable record of debt that outlives the session — which
+    // is the whole thing that record exists to carry.
     this.unmergedRemoteNotes.clear()
   }
 
@@ -167,7 +204,8 @@ export class CrdtSyncCoordinator {
    * the pass's own clean result alone would call such a note safe to snapshot.
    */
   private clearUnmergedIfClean(noteId: string, sawUnmerged: boolean): void {
-    if (!sawUnmerged && !this.pendingPulls.has(noteId)) this.unmergedRemoteNotes.delete(noteId)
+    if (sawUnmerged || this.pendingPulls.has(noteId)) return
+    if (this.unmergedRemoteNotes.delete(noteId)) this.reportUnmergedDebt()
   }
 
   private rememberAppliedSequence(noteId: string, sequenceNum: number): number {
