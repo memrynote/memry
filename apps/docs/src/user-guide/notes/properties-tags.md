@@ -187,6 +187,12 @@ your tags in the body the way an Obsidian vault often does.
 Adding or removing an inline tag while editing still updates the note's tags, as it always
 has. Only _opening_ a note is now a read.
 
+Body tags hold up across devices too. A note's tags sync as its `tags:` frontmatter, so a tag
+that lives only in the body isn't part of what travels — each device reads it back out of the
+note's own text instead, and a note edited elsewhere keeps its inline tags here rather than
+dropping out of the sidebar and tag search until the vault is re-indexed. Nothing is written
+into your frontmatter to make that work.
+
 ::: tip
 Notes that already had a `tags:` block added by an earlier version keep it. An injected block
 is indistinguishable from one you wrote yourself, so nothing tries to unpick it — delete the
