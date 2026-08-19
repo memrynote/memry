@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReviewFormattingToolbar } from './review-formatting-toolbar'
+import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 
 const toolbarMocks = vi.hoisted(() => ({
   editor: {
@@ -31,8 +32,16 @@ const toolbarMocks = vi.hoisted(() => ({
 const listLabels: Record<string, string> = {
   'editor.list.bulleted': 'Bulleted list',
   'editor.list.numbered': 'Numbered list',
-  'editor.list.checklist': 'Check list'
+  'editor.list.checklist': 'Check list',
+  'editor.toolbar.linkToNote': 'Link to note'
 }
+
+// The link itself is covered against a real ProseMirror state in
+// `wiki-link-edit-plugin.test.ts`; what this file owns is the wiring — whether
+// the button is offered, and whether it acts while the selection still exists.
+vi.mock('./wiki-link-edit-plugin', () => ({
+  openWikiLinkForSelection: vi.fn(() => true)
+}))
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
@@ -44,6 +53,7 @@ vi.mock('@memry/i18n/renderer', () => ({
 }))
 
 vi.mock('@/lib/icons', () => ({
+  Link2: () => <span data-testid="link-to-note-icon" />,
   MessageCircle: () => <span data-testid="comment-icon" />,
   List: () => <span data-testid="bulleted-icon" />,
   ListOrdered: () => <span data-testid="numbered-icon" />,
@@ -116,6 +126,43 @@ describe('ReviewFormattingToolbar', () => {
     ]
     toolbarMocks.editor.updateBlock.mockClear()
     ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    delete selection.$from
+    delete selection.$to
+    vi.mocked(openWikiLinkForSelection).mockClear()
+  })
+
+  it('offers Link to note only once a single-block selection exists', () => {
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    // Resolved positions absent: nothing to read a single block off yet.
+    expect(screen.getByLabelText('Link to note')).toBeDisabled()
+
+    const parent = { name: 'paragraph' }
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    selection.$from = { parent }
+    selection.$to = { parent: { name: 'other' } }
+    rerender(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    // Two blocks: a selection crossing a block boundary has no single place to
+    // put the link.
+    expect(screen.getByLabelText('Link to note')).toBeDisabled()
+
+    selection.$to = { parent }
+    rerender(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    expect(screen.getByLabelText('Link to note')).toBeEnabled()
+  })
+
+  // Same reason the Comment button captures pointer events: by the time `click`
+  // fires the toolbar button has taken focus and ProseMirror's selection is gone.
+  it('links the selection on pointer-down, not on click', () => {
+    const parent = { name: 'paragraph' }
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    selection.$from = { parent }
+    selection.$to = { parent }
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.pointerDown(screen.getByLabelText('Link to note'))
+
+    expect(openWikiLinkForSelection).toHaveBeenCalledTimes(1)
   })
 
   it('adds Comment to the selected text toolbar', () => {

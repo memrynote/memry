@@ -55,15 +55,17 @@ describe('useWikiLinkSuggestions', () => {
       exact = await result.current.getWikiLinkItems('Daily Note | today')
     })
     expect(mocks.listNotes).toHaveBeenCalledWith({ limit: 500, sortBy: 'modified' })
+    // Both halves are settled — the target names a note exactly and a label was
+    // typed after the `|` — so the menu is the one row that commits the label
+    // rather than a note list with nothing left to choose from.
     expect(exact).toEqual([
       {
-        id: 'note-1',
-        title: 'Daily Note',
+        id: 'alias:Daily Note',
+        title: 'today',
         target: 'Daily Note',
         alias: 'today',
         exists: true,
-        type: 'note',
-        lastEdited: '2026-05-09T00:00:00.000Z'
+        type: 'alias'
       }
     ])
 
@@ -213,6 +215,54 @@ describe('useWikiLinkSuggestions', () => {
           headingLevel: 3
         }
       ])
+    })
+
+    // #1563 D2. The chip renders `alias || target`, and the alias is the only
+    // channel a display name survives a markdown round trip in — so the label is
+    // decided here, when the link is written, and never derived at render time
+    // (where `[[Sprint #4]]`, a real title, is indistinguishable from a split).
+    it('labels a picked heading with the heading text instead of `Note#Heading`', async () => {
+      mocks.getByPath.mockResolvedValue({ content: body })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note#Sonraki')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [
+          {
+            type: 'wikiLink',
+            props: { target: 'Daily Note#Sonraki adımlar', alias: 'Sonraki adımlar' }
+          }
+        ],
+        { updateSelection: true }
+      )
+    })
+
+    it('does not label a note whose own title carries a `#`', async () => {
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [{ type: 'wikiLink', props: { target: 'Daily Note', alias: '' } }],
+        { updateSelection: true }
+      )
     })
 
     it('filters headings, keeps the alias, and caches the body for 5 seconds', async () => {

@@ -2737,6 +2737,19 @@ del.bn-inline-content {
   opacity: 0.4;
 }
 
+/* A chip the caret is parked beside shows its markdown instead — the same thing
+   the vault file holds, so what you edit and what you wrote line up. The chip is
+   hidden and the source text is a decoration widget: putting the caret next to a
+   link must stay a cursor movement, not a document edit that syncs to every
+   device and lands on the undo stack. */
+.wiki-link-hidden {
+  display: none;
+}
+
+.wiki-link-source {
+  font-weight: 500;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,

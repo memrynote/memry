@@ -22,11 +22,20 @@
  * headings are mostly spaces.
  *
  * Two things this deliberately does not do:
- * - Click is navigation, and stays navigation. Edit mode is keyboard-only.
+ * - Click ON a link is navigation, and stays navigation.
  * - The `[[` and `]]` are REAL characters here, so "ghost brackets" means a
  *   decoration that dims them, not invented ones. Deleting them is allowed:
  *   a user who removes the brackets is turning the link back into prose, which
  *   is a legitimate thing to want.
+ *
+ * SHOWING the markdown and EDITING it are separate, and the split is the whole
+ * design. A caret parked beside a chip — either side, arrow key or mouse —
+ * merely PAINTS the markdown (`wikiLinksBesideCursor`, decorations only). The
+ * document is not touched, because a cursor movement must not become an edit:
+ * that would push a Y.Doc update to every device and land on the Yjs undo
+ * stack, so the next Cmd+Z would undo the caret instead of the paragraph the
+ * user just deleted. Backspace/ArrowLeft is still the gesture that turns the
+ * painted markdown into real, editable text.
  *
  * If the editor loses focus while a run is still raw, the run stays raw — and
  * that is safe, because `[[Target]]` is exactly what the chip serializes to.
@@ -38,7 +47,7 @@ import type { EditorState, Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Mark, Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
-import { parseWikiLinkText, wikiLinkToText } from './wiki-link'
+import { wikiLinkToText } from './wiki-link'
 
 export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey('wikiLinkEdit')
 
@@ -46,6 +55,33 @@ export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey('wikiLinkEdit')
 const LEAF_PLACEHOLDER = '￼'
 
 const RAW_WIKI_LINK = /\[\[[^[\]]*\]\]/g
+
+const RAW_WIKI_LINK_FULL = /^\[\[([^[\]]*)\]\]$/
+
+/** Characters that would break the `[[target|alias]]` grammar from the inside. */
+const ALIAS_UNSAFE = /[[\]|\n\r]+/g
+
+/**
+ * `[[…]]` as the EDIT path reads it, which differs from the on-disk reading in
+ * two deliberate ways.
+ *
+ * The first `|` wins and any further pipe segment is dropped. The caret parks at
+ * the end of the TARGET, so typing a label into a link that already carries one
+ * writes `[[A#B|New|B]]`; the stale tail has to go somewhere and dropping it is
+ * plainly what was meant. Only this path normalizes — `parseWikiLinkText` still
+ * reads a vault file exactly as it always has, so an existing `[[A|B|C]]` is
+ * never rewritten.
+ *
+ * An EMPTY target parses rather than failing: `[[|Selected text]]` is the state
+ * `openWikiLinkForSelection` creates and has to be able to read back.
+ */
+function parseEditedWikiLinkText(text: string): { target: string; alias: string } | null {
+  const match = text.trim().match(RAW_WIKI_LINK_FULL)
+  if (!match) return null
+
+  const [rawTarget, rawAlias] = (match[1] ?? '').split('|', 2)
+  return { target: rawTarget?.trim() ?? '', alias: rawAlias?.trim() ?? '' }
+}
 
 /**
  * The `[[…]]` run the offset sits INSIDE, or null.
@@ -117,6 +153,62 @@ function propsFromMarks(marks: readonly Mark[]): Record<string, string | boolean
   }
 
   return props
+}
+
+/**
+ * Every wiki-link chip the caret is sitting immediately beside — on either side,
+ * however the caret got there.
+ *
+ * This is what shows a link's markdown while you are next to it. It reads the
+ * SELECTION only and never touches the document: the raw form is painted by a
+ * decoration, so putting the caret next to a link stays a cursor movement. The
+ * alternative — swapping the node for text the way `unpromote` does — would make
+ * a click near a link a real edit: a Y.Doc update to every device, and an entry
+ * on the Yjs undo stack, so the next Cmd+Z would undo the caret rather than the
+ * paragraph the user just deleted.
+ *
+ * Both sides can hit at once (`[[A]][[B]]` with the caret between them), so this
+ * returns a list rather than the first match.
+ */
+function wikiLinksBesideCursor(state: EditorState): Array<{ node: ProseMirrorNode; pos: number }> {
+  const selection = state?.selection
+  if (!selection?.empty) return []
+
+  const $from = selection.$from
+  const found: Array<{ node: ProseMirrorNode; pos: number }> = []
+
+  const before = $from.nodeBefore
+  if (before?.type.name === 'wikiLink')
+    found.push({ node: before, pos: $from.pos - before.nodeSize })
+
+  const after = $from.nodeAfter
+  if (after?.type.name === 'wikiLink') found.push({ node: after, pos: $from.pos })
+
+  return found
+}
+
+/** The chip's markdown, split so the brackets can be dimmed on their own. */
+function sourceTextOf(node: ProseMirrorNode): string {
+  const target = typeof node.attrs.target === 'string' ? node.attrs.target : ''
+  const alias = typeof node.attrs.alias === 'string' ? node.attrs.alias : ''
+  return wikiLinkToText(target, alias)
+}
+
+function renderSourceWidget(text: string): HTMLElement {
+  const dom = document.createElement('span')
+  dom.className = 'wiki-link-source'
+  dom.setAttribute('data-wiki-link-source', '')
+
+  const open = document.createElement('span')
+  open.className = 'wiki-link-bracket'
+  open.textContent = '[['
+
+  const close = document.createElement('span')
+  close.className = 'wiki-link-bracket'
+  close.textContent = ']]'
+
+  dom.append(open, document.createTextNode(text.slice(2, -2)), close)
+  return dom
 }
 
 function wikiLinkBeforeCursor(state: EditorState): { node: ProseMirrorNode; pos: number } | null {
@@ -229,6 +321,72 @@ export function replaceActiveRunWithWikiLink(
   return true
 }
 
+type TiptapHost = { _tiptapEditor?: { state?: EditorState; view?: EditorView } }
+
+/**
+ * The `{ target, alias }` of the raw run the caret is in, or null.
+ *
+ * The alias is the half the suggestion query cannot see: the caret sits before
+ * the `|`, so a label already on the link — or the text `openWikiLinkForSelection`
+ * parked there — never reaches `getItems`. `pickAlias` reads it from here.
+ */
+export function activeRunWikiLink(
+  editor: TiptapHost | undefined
+): { target: string; alias: string } | null {
+  const state = editor?._tiptapEditor?.state
+  if (!state) return null
+
+  const run = activeRun(state)
+  if (!run) return null
+
+  return parseEditedWikiLinkText(state.doc.textBetween(run.from, run.to))
+}
+
+/**
+ * Turns the selected text into a link whose target has not been chosen yet:
+ * `[[|Selected text]]`, caret right after the `[[`, suggestion menu bound to it.
+ *
+ * This is "link this selection to a note or heading" (#1563 E2), and it goes
+ * through the same raw-run state a chip being edited does rather than opening a
+ * second insertion path. The selection becomes the ALIAS, so picking a target
+ * leaves the sentence reading exactly as it did — `pickAlias` carries it over.
+ *
+ * The step order is the same load-bearing one as the chip-edit path: the caret
+ * must be immediately after the `[[` when the menu opens, because that is where
+ * the menu anchors its query window. The `|alias` sits AFTER the caret, so it is
+ * invisible to the query and untouched by typing.
+ */
+export function openWikiLinkForSelection(
+  editor: TiptapHost | undefined,
+  options: WikiLinkEditPluginOptions = {}
+): boolean {
+  const view = editor?._tiptapEditor?.view
+  const state = view?.state
+  if (!view || !state) return false
+
+  const { from, to, $from, $to } = state.selection
+  if (from === to) return false
+  if (!$from?.parent?.isTextblock || $from.parent.type.spec.code) return false
+  // One block only: a selection crossing a block boundary has no single place to
+  // put the link, and its text is not one run to use as a label.
+  if ($from.parent !== $to?.parent) return false
+
+  const alias = state.doc.textBetween(from, to, ' ').replace(ALIAS_UNSAFE, '').trim()
+  if (!alias) return false
+
+  const tr = state.tr.replaceWith(
+    from,
+    to,
+    state.schema.text(`[[|${alias}]]`, $from.marksAcross($to) ?? [])
+  )
+  tr.setSelection(TextSelection.create(tr.doc, from + 2))
+  tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+  view.dispatch(tr)
+
+  options.openMenu?.()
+  return true
+}
+
 export interface WikiLinkEditPluginOptions {
   /**
    * Opens the `[[` suggestion menu at the caret WITHOUT inserting a trigger.
@@ -249,13 +407,36 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
 
     props: {
       decorations(state) {
-        const run = activeRun(state)
-        if (!run) return null
+        const decorations: Decoration[] = []
 
-        return DecorationSet.create(state.doc, [
-          Decoration.inline(run.from, run.from + 2, { class: 'wiki-link-bracket' }),
-          Decoration.inline(run.to - 2, run.to, { class: 'wiki-link-bracket' })
-        ])
+        const run = activeRun(state)
+        if (run) {
+          decorations.push(
+            Decoration.inline(run.from, run.from + 2, { class: 'wiki-link-bracket' }),
+            Decoration.inline(run.to - 2, run.to, { class: 'wiki-link-bracket' })
+          )
+        }
+
+        // A chip the caret is beside reads as its markdown for as long as the
+        // caret stays there. The chip is hidden rather than replaced, and the
+        // markdown is a widget, so nothing here reaches the document.
+        for (const beside of wikiLinksBesideCursor(state)) {
+          const text = sourceTextOf(beside.node)
+          if (!text) continue
+
+          decorations.push(
+            Decoration.node(beside.pos, beside.pos + beside.node.nodeSize, {
+              class: 'wiki-link-hidden'
+            }),
+            Decoration.widget(beside.pos, () => renderSourceWidget(text), {
+              side: -1,
+              key: `wiki-link-source:${text}`,
+              raw: text
+            })
+          )
+        }
+
+        return decorations.length > 0 ? DecorationSet.create(state.doc, decorations) : null
       },
 
       handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
@@ -321,11 +502,27 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
       const current = activeRun(newState)
       if (current && current.from === from) return null
 
-      const parsed = parseWikiLinkText(newState.doc.textBetween(from, to))
+      const parsed = parseEditedWikiLinkText(newState.doc.textBetween(from, to))
       if (!parsed) return null
 
       const type = newState.schema.nodes.wikiLink
       if (!type) return null
+
+      // A run with no target is "link this selection", abandoned before a target
+      // was picked (or a target backspaced away). Unwrap it back to the plain
+      // text it was made from rather than leaving `[[|Selected text]]` behind —
+      // that would be written to the vault verbatim.
+      if (!parsed.target) {
+        const cancel = parsed.alias
+          ? newState.tr.replaceWith(
+              from,
+              to,
+              newState.schema.text(parsed.alias, newState.doc.resolve(from + 2).marks())
+            )
+          : newState.tr.delete(from, to)
+        cancel.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+        return cancel
+      }
 
       const marks = propsFromMarks(newState.doc.resolve(from + 2).marks())
       const tr = newState.tr.replaceWith(

@@ -134,6 +134,7 @@
       "checklist": "Check list"
     },
     "toolbar": {
+      "linkToNote": "Link to note",
       "reminderSet": "Reminder set",
       "setReminder": "Set reminder",
       "removeBookmark": "Remove bookmark",
@@ -215,7 +216,9 @@
       "embedAria": "Embed {title}",
       "wikiLinkAria": "Wiki link {title}",
       "noHeadings": "{title} has no headings",
-      "noMatchingHeadings": "No headings in {title} match"
+      "noMatchingHeadings": "No headings in {title} match",
+      "displayAs": "Display as",
+      "aliasHint": "Type | to name the link"
     },
     "mention": {
       "aria": "Date and note suggestions",

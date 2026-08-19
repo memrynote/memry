@@ -11,7 +11,9 @@ vi.mock('@memry/i18n/renderer', () => ({
         'menus.wiki.embedAria': `Embed ${values?.title ?? ''}`.trim(),
         'menus.wiki.wikiLinkAria': `Wiki link ${values?.title ?? ''}`.trim(),
         'menus.wiki.noHeadings': `${values?.title ?? ''} has no headings`.trim(),
-        'menus.wiki.noMatchingHeadings': `No headings in ${values?.title ?? ''} match`.trim()
+        'menus.wiki.noMatchingHeadings': `No headings in ${values?.title ?? ''} match`.trim(),
+        'menus.wiki.displayAs': 'Display as',
+        'menus.wiki.aliasHint': 'Type | to name the link'
       }
       return messages[key] ?? key
     }
@@ -106,5 +108,50 @@ describe('WikiLinkMenu', () => {
       />
     )
     expect(screen.getByText('No headings in Toplantı match')).toBeInTheDocument()
+  })
+
+  it('commits the display name once both halves are settled', () => {
+    const onItemClick = vi.fn()
+    const item: WikiLinkSuggestionItem = {
+      id: 'alias:Continent#North America',
+      title: 'North of America',
+      target: 'Continent#North America',
+      alias: 'North of America',
+      exists: true,
+      type: 'alias'
+    }
+
+    render(
+      <WikiLinkMenu
+        items={[item]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    expect(screen.getByText('Display as')).toBeInTheDocument()
+    expect(screen.getByText('North of America → Continent#North America')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option'))
+    expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ alias: 'North of America' }))
+  })
+
+  // The `|` grammar has always worked; nothing ever said so, which is why every
+  // heading link read `Note#Heading` (#1563 D2).
+  it('teaches the alias grammar in a footer rather than per row', () => {
+    render(
+      <WikiLinkMenu
+        items={[
+          { id: 'n1', title: 'Toplantı', target: 'Toplantı', exists: true, type: 'note' },
+          { id: 'n2', title: 'Roadmap', target: 'Roadmap', exists: true, type: 'note' }
+        ]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getAllByText('Type | to name the link')).toHaveLength(1)
   })
 })
