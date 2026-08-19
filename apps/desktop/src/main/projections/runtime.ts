@@ -38,6 +38,31 @@ export interface ProjectionRuntime {
  */
 export const DEFAULT_STOP_DRAIN_TIMEOUT_MS = 5_000
 
+/**
+ * What a reconcile pass records for a projector whose own pass threw.
+ *
+ * The loop used to have no guard, so the first projector to throw abandoned
+ * every projector behind it. On an install whose search index was corrupt that
+ * meant embeddings, inbox counts and note↔project links silently stopped
+ * self-repairing too — on every launch, forever (#1585).
+ *
+ * The failure is recorded rather than swallowed: `openVault` reads it to tell a
+ * corrupt FTS index apart from any other reconcile failure and repair it.
+ */
+export interface ProjectorReconcileFailure {
+  readonly reconcileFailed: true
+  readonly projector: string
+  readonly error: unknown
+}
+
+export function isReconcileFailure(value: unknown): value is ProjectorReconcileFailure {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as Partial<ProjectorReconcileFailure>).reconcileFailed === true
+  )
+}
+
 function selectProjectors(
   projectors: ProjectionProjector[],
   names?: string[]
@@ -119,7 +144,21 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
         break
       }
 
-      results[projector.name] = await projector.reconcile(controller.signal)
+      try {
+        results[projector.name] = await projector.reconcile(controller.signal)
+      } catch (error) {
+        // Isolated on purpose: the projectors are independent repairs, and one
+        // of them failing is no reason to skip the rest of the pass.
+        results[projector.name] = {
+          reconcileFailed: true,
+          projector: projector.name,
+          error
+        } satisfies ProjectorReconcileFailure
+        logger?.error?.('Projection reconcile failed', {
+          projector: projector.name,
+          error
+        })
+      }
     }
 
     return results

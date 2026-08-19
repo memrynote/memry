@@ -225,7 +225,8 @@ export type NoteMovedEvent = NotesRpc.NoteMovedEvent
 export type NoteExternalChangeEvent = NotesRpc.NoteExternalChangeEvent
 
 export interface IndexRecoveredEvent {
-  reason: 'corrupt' | 'missing' | 'healthy'
+  /** Mirrors main's `IndexHealth`. 'missing' is the ordinary first-open case. */
+  reason: 'corrupt' | 'missing' | 'healthy' | 'migration_failed' | 'fts_corrupt'
   filesIndexed: number
   duration: number
 }

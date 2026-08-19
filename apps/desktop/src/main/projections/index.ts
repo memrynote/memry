@@ -81,4 +81,9 @@ export async function stopProjectionRuntime(options?: ProjectionStopOptions): Pr
 }
 
 export type { ProjectionEvent, ProjectionLogger, ProjectionProjector } from './types'
-export type { ProjectionRuntime, ProjectionStopOptions } from './runtime'
+export type {
+  ProjectionRuntime,
+  ProjectionStopOptions,
+  ProjectorReconcileFailure
+} from './runtime'
+export { isReconcileFailure } from './runtime'

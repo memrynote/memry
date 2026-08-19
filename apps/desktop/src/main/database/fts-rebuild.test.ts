@@ -49,20 +49,25 @@ describe('fts rebuild recovery', () => {
     expect(rebuildProjections).toHaveBeenCalledWith(['search'])
   })
 
+  const corruptError = (table: string): Error =>
+    Object.assign(new Error(`fts5: corruption found in ${table}`), {
+      code: 'SQLITE_CORRUPT_VTAB'
+    })
+
   it('detectCorruption reports every corrupt FTS table', () => {
     const failingIndexDb = {
-      all: vi.fn(() => {
-        throw new Error('fts_notes corrupt')
+      run: vi.fn(() => {
+        throw corruptError('fts_notes')
       })
     }
     const failingDataDb = {
-      all: vi
+      run: vi
         .fn()
         .mockImplementationOnce(() => {
-          throw new Error('fts_tasks corrupt')
+          throw corruptError('fts_tasks')
         })
         .mockImplementationOnce(() => {
-          throw new Error('fts_inbox corrupt')
+          throw corruptError('fts_inbox')
         })
     }
 
@@ -71,5 +76,17 @@ describe('fts rebuild recovery', () => {
       'fts_tasks',
       'fts_inbox'
     ])
+  })
+
+  it('detectCorruption ignores a failure that is not corruption', () => {
+    // A locked database is transient. Reporting it would cost the user a full
+    // rebuild of an index that is perfectly fine.
+    const busy = () => {
+      throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' })
+    }
+
+    expect(detectCorruption({ run: vi.fn(busy) } as never, { run: vi.fn(busy) } as never)).toEqual(
+      []
+    )
   })
 })

@@ -46,6 +46,8 @@ import {
   type IndexHealth
 } from '../database'
 import { ensureDefaultTaskProject } from '../database/defaults'
+import { detectCorruption } from '../database/fts-rebuild'
+import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
@@ -56,7 +58,13 @@ import { trackMainEvent } from '../telemetry/track'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
+import {
+  isReconcileFailure,
+  rebuildProjections,
+  reconcileProjections,
+  startProjectionRuntime,
+  stopProjectionRuntime
+} from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { createSearchProjector } from '../projections/projectors/search-projector'
 import { createEmbeddingProjector } from '../projections/projectors/embedding-projector'
@@ -275,6 +283,81 @@ export function emitIndexRecovered(event: IndexRecoveredEvent): void {
 }
 
 /**
+ * Rebuild the full-text indexes when — and only when — fts5 says they are corrupt.
+ *
+ * Derived state only. `fts_notes` lives in the index DB; `fts_tasks` and
+ * `fts_inbox` live in data.db but are projections of the `tasks` / `inbox_items`
+ * rows beside them. Every one of the three is dropped, re-created and
+ * repopulated from `note_cache` plus the markdown on disk, so a repair costs a
+ * re-index and cannot lose anything the user wrote. No vault file, no
+ * user-authored row and no schema is touched.
+ *
+ * The verdict is re-taken here with fts5's own integrity check rather than
+ * trusting the caller's suspicion: a rebuild is expensive, and a lock or a
+ * one-off read failure must not buy the user one (#1585).
+ */
+async function repairCorruptFtsIndexes(vaultPath: string): Promise<void> {
+  // The callers are backgrounded, so this can land after a vault switch or
+  // during shutdown — both of which close the databases underneath it.
+  if (isShuttingDown || currentStatus.path !== vaultPath) {
+    return
+  }
+
+  try {
+    const corruptTables = detectCorruption(getIndexDatabase(), getDatabase())
+    if (corruptTables.length === 0) {
+      logger.info('FTS integrity check found nothing to repair')
+      return
+    }
+
+    logger.warn('Rebuilding corrupt FTS indexes', { tables: corruptTables })
+
+    const startedAt = Date.now()
+    const results = await rebuildProjections(['search'])
+    const rebuilt = results.search as { notes: number } | undefined
+
+    emitIndexRecovered({
+      reason: 'fts_corrupt',
+      filesIndexed: rebuilt?.notes ?? 0,
+      duration: Date.now() - startedAt
+    })
+  } catch (error) {
+    logger.error('FTS index repair failed:', error)
+    trackMainError('vault', 'fts_index_repair', error)
+  }
+}
+
+/**
+ * Report every projector that failed its reconcile pass, and repair the one
+ * failure the app can fix by itself.
+ *
+ * `runReconcilePass` now isolates projectors instead of abandoning the pass at
+ * the first throw, so failures arrive as records instead of a rejection. They
+ * still have to reach telemetry under the same action name — that is the signal
+ * this whole class of problem was found through.
+ */
+async function reportAndRepairReconcileFailures(
+  vaultPath: string,
+  results: Record<string, unknown>
+): Promise<void> {
+  let sawCorruption = false
+
+  for (const outcome of Object.values(results)) {
+    if (!isReconcileFailure(outcome)) {
+      continue
+    }
+
+    logger.error(`Projection reconcile failed: ${outcome.projector}`, outcome.error)
+    trackMainError('vault', 'projection_reconcile', outcome.error)
+    sawCorruption = sawCorruption || isSqliteCorruptError(outcome.error)
+  }
+
+  if (sawCorruption) {
+    await repairCorruptFtsIndexes(vaultPath)
+  }
+}
+
+/**
  * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
@@ -342,6 +425,12 @@ async function openVault(vaultPath: string): Promise<void> {
     logger.warn(`Index health check: ${indexHealth}`)
   }
 
+  // 'fts_corrupt' says the index DB file itself is sound and only the fts5
+  // search index inside it is unreadable. Deleting the whole file for that
+  // would also throw away every note embedding, which is minutes of CPU the
+  // user does not owe — it opens normally and is repaired in place below.
+  const needsFullIndexRebuild = indexHealth !== 'healthy' && indexHealth !== 'fts_corrupt'
+
   // Initialize property definitions service BEFORE indexing
   // so getPropertyType() finds correct types during note sync
   const propDefService = PropertyDefinitionsService.init(vaultPath)
@@ -363,7 +452,7 @@ async function openVault(vaultPath: string): Promise<void> {
   updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
 
   try {
-    if (indexHealth !== 'healthy') {
+    if (needsFullIndexRebuild) {
       // Index is corrupt or missing - rebuild from source files
       logger.warn(`Index ${indexHealth}, triggering rebuild...`)
       const rebuildResult = await rebuildIndex(vaultPath)
@@ -387,6 +476,12 @@ async function openVault(vaultPath: string): Promise<void> {
         // Run indexing to pick up any new/missing notes
         // This will skip files already in cache, so it's fast for subsequent opens
         await indexVault(vaultPath)
+
+        // Repair before the renderer can run its first search. After
+        // indexVault, so the rebuild reads a populated note_cache.
+        if (indexHealth === 'fts_corrupt') {
+          await repairCorruptFtsIndexes(vaultPath)
+        }
       } catch (migrationError) {
         // Migration failed (e.g., table already exists) - rebuild index from scratch
         logger.error('Migration failed, rebuilding index:', migrationError)
@@ -441,10 +536,12 @@ async function openVault(vaultPath: string): Promise<void> {
     error: null
   })
 
-  void reconcileProjections().catch((error) => {
-    logger.error('Background projection reconcile failed:', error)
-    trackMainError('vault', 'projection_reconcile', error)
-  })
+  void reconcileProjections()
+    .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
+    .catch((error) => {
+      logger.error('Background projection reconcile failed:', error)
+      trackMainError('vault', 'projection_reconcile', error)
+    })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
   // does not depend on sync, and if startSyncRuntime throws or stalls the agent

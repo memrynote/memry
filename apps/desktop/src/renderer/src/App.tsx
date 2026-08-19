@@ -51,6 +51,7 @@ import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
+import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { useMenuCommands } from '@/hooks/use-menu-commands'
@@ -220,6 +221,7 @@ const AppContent = (): React.JSX.Element => {
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
+  useIndexRecoveryNotice() // Says so when Memry repaired its own search index
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])

@@ -4,23 +4,23 @@ import { sql } from 'drizzle-orm'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { getDatabase, getIndexDatabase } from '../../database'
 import {
-  clearFtsTable,
   dedupeFtsNotes,
   deleteFtsNote,
   insertFtsNote,
-  insertFtsNoteUnchecked
+  insertFtsNoteUnchecked,
+  resetFtsTable
 } from '../../database/fts'
 import {
-  clearFtsTasksTable,
   dedupeFtsTasks,
   deleteFtsTask,
-  insertFtsTask
+  insertFtsTask,
+  resetFtsTasksTable
 } from '../../database/fts-tasks'
 import {
-  clearFtsInboxTable,
   dedupeFtsInbox,
   deleteFtsInboxItem,
-  insertFtsInboxItem
+  insertFtsInboxItem,
+  resetFtsInboxTable
 } from '../../database/fts-inbox'
 import { getSetting, setSetting } from '../../database/queries/settings'
 import { parseNote } from '../../vault/frontmatter'
@@ -94,7 +94,12 @@ function upsertInboxItem(itemId: string): void {
 
 async function rebuildNotes(getVaultPath: () => string | null): Promise<number> {
   const indexDb = getIndexDatabase()
-  clearFtsTable(indexDb)
+  // Drop-and-recreate, not `DELETE FROM fts_notes`. Rebuild is the escape hatch
+  // for an index that is already broken, and emptying a corrupt fts5 table
+  // means reading the structures that are broken: the delete threw
+  // SQLITE_CORRUPT and the user's "Rebuild search index" button failed at its
+  // very first statement, leaving them stuck (#1585).
+  resetFtsTable(indexDb)
 
   const vaultPath = getVaultPath()
   if (!vaultPath) {
@@ -130,7 +135,7 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
     try {
       const raw = await fs.readFile(absolutePath, 'utf-8')
       const parsed = parseNote(raw, row.path)
-      // clearFtsTable above emptied the table, so every id here is absent.
+      // resetFtsTable above left the table empty, so every id here is absent.
       insertFtsNoteUnchecked(
         indexDb,
         row.id,
@@ -157,7 +162,8 @@ async function rebuildNotes(getVaultPath: () => string | null): Promise<number> 
 
 function rebuildTasks(): number {
   const dataDb = getDatabase()
-  clearFtsTasksTable(dataDb)
+  // Drop-and-recreate for the same reason as rebuildNotes above.
+  resetFtsTasksTable(dataDb)
 
   const rows = dataDb.all<{ id: string }>(sql`SELECT id FROM tasks`)
   for (let i = 0; i < rows.length; i++) {
@@ -176,7 +182,8 @@ function rebuildTasks(): number {
 
 function rebuildInbox(): number {
   const dataDb = getDatabase()
-  clearFtsInboxTable(dataDb)
+  // Drop-and-recreate for the same reason as rebuildNotes above.
+  resetFtsInboxTable(dataDb)
 
   const rows = dataDb.all<{ id: string }>(sql`SELECT id FROM inbox_items`)
   for (let i = 0; i < rows.length; i++) {
