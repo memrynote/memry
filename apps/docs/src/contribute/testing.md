@@ -60,6 +60,24 @@ pnpm --filter @memry/desktop test:main -- scripts/seed-data
 pnpm --filter @memry/desktop seed:vault
 ```
 
+### Benchmark Vault
+
+The demo seed stays small so it reads well in screenshots, which leaves nothing to measure
+indexing, search, the graph, or the notes list against. `pnpm seed1k` fills a separate vault with
+1000 fully-written notes — frontmatter, headings, bullet lists, a table, checkboxes, code blocks,
+and wiki-links, roughly 2 KB of markdown each — spread evenly across ten folders.
+
+```bash
+pnpm seed1k                                  # ~/MemryBenchVault, 1000 notes, seed 42
+pnpm seed1k -- --count=5000                  # a larger corpus
+pnpm seed1k -- --vault=/tmp/bench --seed=7   # a second vault to compare against
+```
+
+Content comes from a seeded PRNG (`scripts/seed-data/bulk-notes.ts`), so the same `--seed` and
+`--count` produce a byte-identical vault and two benchmark runs compare like for like. The command
+always wipes its target first, and writes `note_metadata` rows alongside the files so note ids stay
+stable when the indexer adopts them by path.
+
 ### Key Rules
 
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
