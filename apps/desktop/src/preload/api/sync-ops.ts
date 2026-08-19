@@ -64,7 +64,8 @@ export const syncCrdt = {
   syncStep1: (input: { noteId: string; stateVector: Uint8Array }) =>
     invoke(SYNC_CHANNELS.SYNC_STEP_1, input),
   syncStep2: (input: { noteId: string; diff: Uint8Array }) =>
-    invoke(SYNC_CHANNELS.SYNC_STEP_2, input)
+    invoke(SYNC_CHANNELS.SYNC_STEP_2, input),
+  getHealth: () => invoke(SYNC_CHANNELS.GET_HEALTH)
 }
 
 type CrdtStateChangedPayload = { noteId: string; update: Uint8Array; origin: string }

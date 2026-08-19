@@ -27,7 +27,9 @@ import {
   getStoredLocale,
   setStoredLocale,
   getWindowBounds,
-  setWindowBounds
+  setWindowBounds,
+  getCrdtInMemorySessions,
+  recordCrdtPersistenceOutcome
 } from './store'
 
 describe('store', () => {
@@ -201,5 +203,33 @@ describe('store', () => {
     expect(findVault('/vaults/personal')?.isDefault).toBe(false)
     expect(findVault('/vaults/work')?.isDefault).toBe(true)
     expect(setDefaultVaultPath('/vaults/missing')).toBeNull()
+  })
+
+  // A whole Windows population ran CRDT state in memory for six releases with a
+  // log line as the only signal (issue #1583). This streak is what the
+  // user-facing notice is thresholded on, so it has to survive quitting.
+  describe('CRDT persistence streak', () => {
+    beforeEach(() => {
+      recordCrdtPersistenceOutcome(true)
+    })
+
+    it('reads as healthy on an install that has never degraded', () => {
+      expect(getCrdtInMemorySessions()).toBe(0)
+    })
+
+    it('counts consecutive degraded launches', () => {
+      expect(recordCrdtPersistenceOutcome(false)).toBe(1)
+      expect(recordCrdtPersistenceOutcome(false)).toBe(2)
+      expect(recordCrdtPersistenceOutcome(false)).toBe(3)
+      expect(getCrdtInMemorySessions()).toBe(3)
+    })
+
+    it('forgets the streak the moment the store opens again', () => {
+      recordCrdtPersistenceOutcome(false)
+      recordCrdtPersistenceOutcome(false)
+
+      expect(recordCrdtPersistenceOutcome(true)).toBe(0)
+      expect(getCrdtInMemorySessions()).toBe(0)
+    })
   })
 })

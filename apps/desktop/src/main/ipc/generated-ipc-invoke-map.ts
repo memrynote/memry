@@ -94,6 +94,7 @@ export interface MainIpcInvokeHandlers {
   "context-menu:show": (...args: [{ id: string; label: string; accelerator?: string | undefined; disabled?: boolean | undefined; type?: "normal" | "separator" | undefined; }[]]) => Awaited<Promise<string | null>>
   "crdt:apply-update": (...args: [unknown]) => Awaited<Promise<void>>
   "crdt:close-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; }>>
+  "crdt:get-health": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crdt").CrdtHealth>>
   "crdt:open-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
   "crdt:sync-step-1": (...args: [{ noteId: string; stateVector: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crdt").CrdtSyncStep1Result | null>>
   "crdt:sync-step-2": (...args: [{ noteId: string; diff: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<void>>

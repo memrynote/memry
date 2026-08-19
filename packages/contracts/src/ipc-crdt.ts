@@ -5,7 +5,8 @@ export const CRDT_CHANNELS = {
   CLOSE_DOC: 'crdt:close-doc',
   APPLY_UPDATE: 'crdt:apply-update',
   SYNC_STEP_1: 'crdt:sync-step-1',
-  SYNC_STEP_2: 'crdt:sync-step-2'
+  SYNC_STEP_2: 'crdt:sync-step-2',
+  GET_HEALTH: 'crdt:get-health'
 } as const
 
 export const CRDT_EVENTS = {
@@ -33,6 +34,25 @@ export const CRDT_EVENTS = {
    */
   PROVIDER_READY: 'crdt:provider-ready'
 } as const
+
+/**
+ * Whether this install has a durable CRDT store, and for how long it has not.
+ *
+ * Pulled by the renderer rather than pushed: the verdict lands while the window
+ * is still loading (the store is opened from `openVault`, which runs moments
+ * after the window is created), so a broadcast would routinely arrive before
+ * anything is listening. The count is persisted across launches, so the answer
+ * is correct whenever it is asked.
+ */
+export interface CrdtHealth {
+  /** False when the store could not be opened and CRDT state lives only in memory. */
+  persistent: boolean
+  /**
+   * Consecutive launches — this one included, once its verdict has landed —
+   * that ran without a durable store. Zero whenever the store last opened.
+   */
+  inMemorySessions: number
+}
 
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
 

@@ -23,7 +23,11 @@
 import { writeSync } from 'fs'
 import { createRequire } from 'module'
 import * as Y from 'yjs'
-import { PREFLIGHT_MARK_BINDING_LOADED, PREFLIGHT_MARK_STARTED } from './crdt-preflight-protocol'
+import {
+  PREFLIGHT_MARK_BINDING_LOADED,
+  PREFLIGHT_MARK_STARTED,
+  PREFLIGHT_MARK_STORE_OPS
+} from './crdt-preflight-protocol'
 
 const PROBE_DOC = '__memry_preflight__'
 
@@ -62,16 +66,25 @@ async function main(): Promise<void> {
   // This is the user's real store: round-trip a throwaway probe doc, clear it,
   // and close cleanly (releasing the LevelDB LOCK for main). Never delete the
   // directory — quarantine decisions belong to the provider in main.
+  //
+  // Each operation announces itself BEFORE it runs: a native access violation
+  // unwinds nothing, so the only way to name the failing operation is to have
+  // already said which one is starting.
+  mark(PREFLIGHT_MARK_STORE_OPS.open)
   const persistence = new LeveldbPersistence(probeDir)
   const doc = new Y.Doc()
   doc.getMap('probe').set('ok', true)
+  mark(PREFLIGHT_MARK_STORE_OPS.write)
   await persistence.storeUpdate(PROBE_DOC, Y.encodeStateAsUpdate(doc))
   doc.destroy()
 
+  mark(PREFLIGHT_MARK_STORE_OPS.read)
   const loaded = await persistence.getYDoc(PROBE_DOC)
   loaded.destroy()
 
+  mark(PREFLIGHT_MARK_STORE_OPS.clear)
   await persistence.clearDocument(PROBE_DOC)
+  mark(PREFLIGHT_MARK_STORE_OPS.close)
   await persistence.destroy()
 }
 

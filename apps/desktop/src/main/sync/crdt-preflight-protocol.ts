@@ -17,6 +17,30 @@ export const PREFLIGHT_MARK_STARTED = '@@memry-preflight:started@@'
 export const PREFLIGHT_MARK_BINDING_LOADED = '@@memry-preflight:binding-loaded@@'
 
 /**
+ * Written immediately BEFORE each store operation — so the LAST one on stderr
+ * names the operation that was in flight when the child died, not one that
+ * completed. (The two markers above report a step that finished; these cannot,
+ * because the thing they exist to attribute is an abort with no unwinding.)
+ *
+ * Windows installs access-violate here with both markers above already out and
+ * nothing to narrow it further: `store` covers opening the store, writing,
+ * reading back, clearing and closing, and the fix for each is different. These
+ * are the diagnostic that tells them apart.
+ */
+export const PREFLIGHT_MARK_STORE_OPS = {
+  open: '@@memry-preflight:store-open@@',
+  write: '@@memry-preflight:store-write@@',
+  read: '@@memry-preflight:store-read@@',
+  clear: '@@memry-preflight:store-clear@@',
+  close: '@@memry-preflight:store-close@@'
+} as const
+
+/** The store operations the child performs, in the order it performs them. */
+export const PREFLIGHT_STORE_OP_ORDER = ['open', 'write', 'read', 'clear', 'close'] as const
+
+export type CrdtPreflightStoreOp = (typeof PREFLIGHT_STORE_OP_ORDER)[number]
+
+/**
  * How far the child got before it died — the parent reads this off the markers
  * and it decides whether the store is a suspect at all:
  *
@@ -28,5 +52,9 @@ export const PREFLIGHT_MARK_BINDING_LOADED = '@@memry-preflight:binding-loaded@@
  * - `store` — the binding loaded and the probe died using it. Either the
  *   on-disk state or the binding-in-use is bad; only this stage is worth
  *   quarantining for.
+ * - `binding-in-use` — a `store` failure that reproduced against a fresh, EMPTY
+ *   directory, so the data cannot be the cause. Never derived from the markers
+ *   (the child cannot know what a second child found); the provider reclassifies
+ *   `store` into it after the control probe. See crdt-persistence.ts.
  */
-export type CrdtPreflightStage = 'bootstrap' | 'binding' | 'store'
+export type CrdtPreflightStage = 'bootstrap' | 'binding' | 'store' | 'binding-in-use'

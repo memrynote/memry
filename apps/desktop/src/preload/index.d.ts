@@ -64,7 +64,7 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type { CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
+import type { CrdtHealth, CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
@@ -1778,6 +1778,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
       stateVector: Uint8Array
     }) => Promise<CrdtSyncStep1Result | null>
     syncStep2: (input: { noteId: string; diff: Uint8Array }) => Promise<void>
+    /** Whether CRDT state is durable on this install, and for how long it has not been. */
+    getHealth: () => Promise<CrdtHealth>
   }
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
   showContextMenu: (items: ContextMenuItem[]) => Promise<string | null>
