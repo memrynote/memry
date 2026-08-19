@@ -710,6 +710,30 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   stack frames as `errorStack`. The field names are chosen against the redaction allowlist above:
   `phase` and `errorCode` ship verbatim, `url` is path-redacted (query string stripped), the rest
   are text-redacted and capped.
+- **Updater severity classification**: the local `main.log` line and the user-facing error state are
+  unchanged — every updater failure is still logged at `error` and still flips the UI to the error
+  state. What is classified is the **telemetry** severity
+  (`apps/desktop/src/main/updater-error-severity.ts`). A failure during a _check_
+  (`check` / `startup-check` / `scheduled-check` / `auto-check-enable`) whose message **or cause
+  chain** carries only allowlisted Chromium transport codes — `net::ERR_NAME_NOT_RESOLVED`,
+  `ERR_INTERNET_DISCONNECTED`, `ERR_NETWORK_CHANGED`, `ERR_TIMED_OUT`, `ERR_CONNECTION_TIMED_OUT`,
+  `ERR_CONNECTION_RESET`, `ERR_CONNECTION_CLOSED`, `ERR_CONNECTION_REFUSED`,
+  `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
+  as an `app_log_recorded` `warn` instead of an `app_error_seen` exception. Being offline is a
+  normal state for an offline-first app, and those events were 33.2 % of every exception in the
+  product. The cause chain matters because electron-updater's `GitHubProvider` wraps a transport
+  failure in a parse-shaped `ERR_UPDATER_INVALID_RELEASE_FEED`; a feed that is genuinely malformed
+  has no network cause and stays an exception. The set is an **allowlist, never a `net::ERR_`
+  prefix test**: `net::ERR_CERT_*` / `net::ERR_SSL_*` are security signals, and anything
+  unrecognised fails closed to `error`. Everything else is untouched — HTTP 4xx/5xx (including the
+  `HTTP_ERROR_618` `jwt:expired` on GitHub's pre-signed asset URLs), signature failures,
+  install-phase errnos, `ENOENT … app-update.yml`, and **any** failure in the `download` /
+  `downloaded` / `install` phases, where a network drop can leave a half-applied update.
+  Reclassified events are never dropped: same error code, same redacted message and stack, and each
+  one carries `retryCount` — the consecutive-failed-check streak — so a cross-install signal can
+  separate one laptop on a train from many installs failing in a row. An install that has not
+  completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
+  exception (latched until the next successful check), so a genuinely stuck updater is still loud.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`

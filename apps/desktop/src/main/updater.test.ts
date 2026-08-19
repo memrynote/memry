@@ -118,7 +118,8 @@ vi.mock('./lib/app-version-display', () => ({
 // The real modules pull the telemetry runtime, whose electron import ('net')
 // the mock above does not provide.
 vi.mock('./telemetry/diagnostics', () => ({
-  trackMainError: vi.fn()
+  trackMainError: vi.fn(),
+  trackMainWarning: vi.fn()
 }))
 vi.mock('./telemetry/track', () => ({
   trackMainEvent: vi.fn()
@@ -128,6 +129,7 @@ vi.mock('./telemetry/update-install-marker', () => ({
 }))
 
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
+import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 
 async function loadUpdater() {
   vi.resetModules()
@@ -604,6 +606,83 @@ describe('updater', () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+  })
+
+  // Issue #1587: ordinary connectivity drops were 33.2% of every app_error_seen
+  // event in the product. They are reclassified, never dropped — and the local
+  // log line, the user-facing state and every non-transient failure are unmoved.
+  describe('telemetry severity classification (#1587)', () => {
+    it('reports an offline background check as a warning, not an exception', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('checking-for-update')
+      const offline = new Error('net::ERR_INTERNET_DISCONNECTED')
+      mocks.autoUpdater.emit('error', offline)
+
+      expect(trackMainWarning).toHaveBeenCalledWith('updater', 'check', offline, { retryCount: 1 })
+      expect(trackMainError).not.toHaveBeenCalled()
+      // The user still sees the failure, and main.log still records it at error.
+      expect(updater.getUpdateState()).toMatchObject({
+        status: 'error',
+        error: 'net::ERR_INTERNET_DISCONNECTED'
+      })
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'updater error',
+        offline,
+        expect.objectContaining({ phase: 'check' })
+      )
+    })
+
+    it('keeps a jwt-expired release-asset download in error tracking', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      mocks.autoUpdater.emit('checking-for-update')
+      const expired = Object.assign(
+        new Error(
+          'Cannot download "https://release-assets.githubusercontent.com/x", status 618: jwt:expired'
+        ),
+        { name: 'HttpError', code: 'HTTP_ERROR_618', statusCode: 618 }
+      )
+      mocks.autoUpdater.emit('error', expired)
+
+      expect(trackMainError).toHaveBeenCalledWith('updater', 'check', expired)
+      expect(trackMainWarning).not.toHaveBeenCalled()
+    })
+
+    it('keeps a network drop during a download in error tracking', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      void updater.downloadUpdate()
+      const dropped = new Error('net::ERR_NETWORK_CHANGED')
+      mocks.autoUpdater.emit('error', dropped)
+
+      expect(trackMainError).toHaveBeenCalledWith('updater', 'download', dropped)
+      expect(trackMainWarning).not.toHaveBeenCalled()
+    })
+
+    it('counts a streak of failed checks so a stuck updater stays measurable', async () => {
+      const updater = await loadUpdater()
+      updater.initializeUpdater()
+
+      for (const attempt of [1, 2, 3]) {
+        mocks.autoUpdater.emit('checking-for-update')
+        mocks.autoUpdater.emit('error', new Error('net::ERR_NAME_NOT_RESOLVED'))
+        expect(trackMainWarning).toHaveBeenLastCalledWith('updater', 'check', expect.any(Error), {
+          retryCount: attempt
+        })
+      }
+
+      // A check that reaches the feed clears the streak.
+      mocks.autoUpdater.emit('update-not-available')
+      mocks.autoUpdater.emit('checking-for-update')
+      mocks.autoUpdater.emit('error', new Error('net::ERR_NAME_NOT_RESOLVED'))
+      expect(trackMainWarning).toHaveBeenLastCalledWith('updater', 'check', expect.any(Error), {
+        retryCount: 1
+      })
     })
   })
 
