@@ -24,11 +24,27 @@ interface SessionMarker {
   startedAt: string
   lastAliveAt: string
   appVersion?: string
-  // Set when a shutdown was ATTEMPTED but failed (5s timeout / cleanup chain
-  // rejected) before the forced exit — distinguishes "shutdown hung" from a
-  // hard crash on the next launch's report.
+  // Set when a shutdown was ATTEMPTED but failed (budget exhausted / cleanup
+  // chain rejected) before the forced exit — distinguishes "shutdown hung" from
+  // a hard crash on the next launch's report.
   shutdownFailure?: ShutdownFailureReason
+  // The shutdown step that was still running when the budget ran out. Without
+  // it every timeout landed as one undifferentiated SHUTDOWN_TIMEOUT and there
+  // was no way to tell "the chain as a whole was too slow" from "this one step
+  // hangs on this user's machine" (#1586). Optional: markers written by older
+  // builds simply do not carry it.
+  shutdownStep?: string
 }
+
+// Guards what may become part of an errorCode. Step names are ours and bounded,
+// but the marker is a file on disk: anything that survived a hand edit or a torn
+// write must degrade to the plain code rather than ship as a dimension value.
+const SHUTDOWN_STEP_TOKEN = /^[a-z][a-z0-9-]{0,39}$/
+
+const shutdownTimeoutCode = (step: string | undefined): string =>
+  step && SHUTDOWN_STEP_TOKEN.test(step)
+    ? `SHUTDOWN_TIMEOUT_${step.replace(/-/g, '_').toUpperCase()}`
+    : 'SHUTDOWN_TIMEOUT'
 
 let aliveTimer: ReturnType<typeof setInterval> | null = null
 // Only the process that WROTE a marker may remove one: a short-lived second
@@ -72,9 +88,13 @@ export const detectUncleanShutdown = (): void => {
   // observed-uptime metric.
   const marker = parseMarker(raw)
   const durationMs = marker ? priorSessionDurationMs(marker) : undefined
+  // The overrunning step rides in the errorCode, not in a dimension: telemetry
+  // ships at most ONE dimension per event, and that slot already carries
+  // prior_app_version. The SHUTDOWN_TIMEOUT prefix is preserved so existing
+  // dashboards keep matching.
   const errorCode =
     marker?.shutdownFailure === 'timeout'
-      ? 'SHUTDOWN_TIMEOUT'
+      ? shutdownTimeoutCode(marker.shutdownStep)
       : marker?.shutdownFailure === 'cleanup_error'
         ? 'SHUTDOWN_CLEANUP_FAILED'
         : 'UNCLEAN_SHUTDOWN'
@@ -130,14 +150,18 @@ export const installCrashMarker = (sessionId: string, appVersion?: string): void
  * exit, so the next launch's app_crashed says "shutdown hung/failed" instead
  * of a generic unclean exit. The process is about to app.exit(); the shipped
  * log line for this failure never flushes, but the marker survives.
+ *
+ * `step` names the shutdown step that was still running, which is what turns
+ * "shutdown was slow somewhere" into an answer.
  */
-export const markShutdownFailure = (reason: ShutdownFailureReason): void => {
+export const markShutdownFailure = (reason: ShutdownFailureReason, step?: string): void => {
   if (!installedThisSession) return
   try {
     const raw = fs.readFileSync(markerPath(), 'utf-8')
     const marker = parseMarker(raw)
     if (!marker) return
     marker.shutdownFailure = reason
+    if (step) marker.shutdownStep = step
     marker.lastAliveAt = new Date().toISOString()
     fs.writeFileSync(markerPath(), JSON.stringify(marker), 'utf-8')
   } catch {
