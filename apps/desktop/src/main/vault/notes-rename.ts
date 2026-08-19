@@ -1,7 +1,12 @@
 /**
- * Note rename and move operations — pure filesystem rename plus cache resync;
- * file bytes are never touched. Pulled from notes.ts during the Phase 3.1
- * split (.claude/plans/tech-debt-remediation.md).
+ * Note rename and move operations — a filesystem rename plus cache resync.
+ *
+ * A rename leaves the bytes alone: the title lives in the DBs, not in the file.
+ * A move to a different folder cannot, because the note's body carries refs that
+ * are relative to the folder the note was in — see `rewrite-note-refs.ts`.
+ *
+ * Pulled from notes.ts during the Phase 3.1 split
+ * (.claude/plans/tech-debt-remediation.md).
  *
  * @module vault/notes-rename
  */
@@ -10,7 +15,16 @@ import path from 'path'
 import fs from 'fs/promises'
 import { parseNote } from './frontmatter'
 import { syncNoteToCache, syncFileToCache } from './note-sync'
-import { ensureDirectory, sanitizeFilename, generateUniquePath, safeRead } from './file-ops'
+import {
+  ensureDirectory,
+  sanitizeFilename,
+  generateUniquePath,
+  safeRead,
+  atomicWrite
+} from './file-ops'
+import { rewriteNoteRefsForMove } from './rewrite-note-refs'
+import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
+import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
@@ -131,7 +145,9 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
 
   const now = new Date().toISOString()
 
-  // Pure filesystem rename — file bytes untouched; dates live in the DBs
+  // Filesystem rename first; the body, if it needs re-pointing, is rewritten in
+  // place below rather than during the move, so a failed write cannot strand the
+  // file between two folders.
   await fs.rename(oldPath, newPath)
 
   if (isBinary) {
@@ -150,7 +166,19 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       modifiedAt: now
     })
   } else {
-    const fileContent = (await safeRead(newPath)) ?? ''
+    const original = (await safeRead(newPath)) ?? ''
+    // Null means every ref still resolves from the new folder, which is the
+    // common case (same depth, or a note with no relative refs at all): nothing
+    // is written, so the file keeps its mtime and its sync state.
+    const rewritten = rewriteNoteRefsForMove(original, existing.path, newRelativePath)
+    if (rewritten !== null) {
+      // The watcher's external-edit feed must not race the CRDT push below; the
+      // sync note handler marks its own writes the same way before touching a
+      // file it is about to reconcile itself.
+      markWritebackIgnored(newPath)
+      await atomicWrite(newPath, rewritten)
+    }
+    const fileContent = rewritten ?? original
     const parsed = parseNote(fileContent, newRelativePath)
     syncNoteToCache(
       db,
@@ -168,6 +196,17 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       },
       { isNew: false }
     )
+
+    if (rewritten !== null) {
+      // Mandatory, not bookkeeping. Main owns the Y.Doc and it is keyed by note
+      // id, so a move never invalidates it; the doc still holds the pre-move
+      // body and the next write-back would serialize that straight back over the
+      // file we just corrected — and persist it, so closing the note would not
+      // undo the loss. The cache row already points at the new path, so the
+      // embed resolution inside this call reads the note from where it now
+      // lives. Same order `applyTemplateToNote` uses: file first, then the doc.
+      await replaceNoteBodyInCrdt(id, parsed.content)
+    }
   }
 
   const note: Note = {

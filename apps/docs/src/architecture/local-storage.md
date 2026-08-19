@@ -253,7 +253,12 @@ The relative ref resolves back to a `memry-file://` URL at render time only, so 
 - The `file` block is a custom spec that renders its own URL, so the same resolver reaches it through `note-file-url-context.tsx`. The resolved URL is never written back to the block's props — that would put the machine path back into the markdown.
 - Only the note page passes the note's path as a prop; the journal, canvas cards and a project's home note look it up by note id, from the same index row the write side reads.
 
-One consequence to know about: because the ref is relative to the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder depth leaves its existing embeds pointing at the wrong place. Nothing rewrites refs on move yet.
+Because the ref is relative to the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder would leave its existing embeds pointing at the wrong place. `moveNote` therefore re-points them: every relative ref in the body is resolved against the _old_ note folder and re-expressed relative to the new one (`src/main/vault/rewrite-note-refs.ts`), covering both the `![alt](ref)` image embed and the `<!-- file:{"url":…} -->` marker, whose other members are left byte-identical. Refs with a URL scheme, root-anchored refs, refs that climb above the vault root, and wiki-links (which resolve by title, not by path) are left exactly as written.
+
+Two properties that matter more than the arithmetic:
+
+- **A move that changes nothing writes nothing.** A rename inside one folder, or a move that leaves every ref resolving, skips the file write entirely — no `mtime` churn, no snapshot, no sync traffic. A percent-encoded ref keeps its original escapes rather than being re-encoded.
+- **The open editor is corrected too.** Main owns the note's Y.Doc and keys it by note id, so a move never invalidates it; the doc would still hold the pre-move body and the next CRDT write-back would put it straight back over the corrected file. `moveNote` pushes the rewritten body into the live doc with `replaceNoteBodyInCrdt` right after the write, the same order `applyTemplateToNote` uses.
 
 ### Text colors in markdown
 

@@ -40,6 +40,18 @@ vi.mock('../inbox/suggestions', () => ({
   updateNoteEmbedding: vi.fn(() => Promise.resolve())
 }))
 
+// The move path has to hand the rewritten body to the note's Y.Doc, and there is
+// no doc open in these tests, so the call is only observable as a call. It is
+// load-bearing rather than bookkeeping: the doc is keyed by note id and survives
+// the move holding the pre-move body, so without this the next write-back
+// serializes the stale refs straight back over the file the move just corrected
+// — and persists them.
+const crdtMocks = vi.hoisted(() => ({ replaceNoteBodyInCrdt: vi.fn(async () => false) }))
+vi.mock('../sync/crdt-feed', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../sync/crdt-feed')>()),
+  replaceNoteBodyInCrdt: crdtMocks.replaceNoteBodyInCrdt
+}))
+
 // ============================================================================
 // Test Suite
 // ============================================================================
@@ -898,6 +910,63 @@ describe('notes operations', () => {
           oldPath: created.path
         })
       )
+    })
+
+    it('re-points the refs the body carries so embeds survive the move', async () => {
+      const created = await notes.createNote({
+        title: 'Embed Move Test',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      // `newFolder` is vault-relative: notes/Embed-Move-Test.md →
+      // notes/archive/2026/Embed-Move-Test.md, two folders deeper.
+      const moved = await notes.moveNote(created.id, 'notes/archive/2026')
+
+      const onDisk = fs.readFileSync(path.join(tempVault.path, moved.path), 'utf8')
+      expect(onDisk).toContain('![shot](../../../attachments/n1/shot.png)')
+    })
+
+    it('writes nothing when the move leaves every ref resolving', async () => {
+      const created = await notes.createNote({
+        title: 'Same Depth Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      const before = fs.readFileSync(path.join(tempVault.path, created.path), 'utf8')
+
+      // notes/Same-Depth-Move.md → sibling/Same-Depth-Move.md: same depth, so
+      // `../attachments/...` is still correct and the file must not be rewritten.
+      const moved = await notes.moveNote(created.id, 'sibling')
+
+      expect(fs.readFileSync(path.join(tempVault.path, moved.path), 'utf8')).toBe(before)
+    })
+
+    it('hands the rewritten body to the note Y.Doc, not just to the file', async () => {
+      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      const created = await notes.createNote({
+        title: 'Crdt Push On Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      await notes.moveNote(created.id, 'notes/archive/2026')
+
+      expect(crdtMocks.replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
+      const [noteId, body] = crdtMocks.replaceNoteBodyInCrdt.mock.calls[0]
+      expect(noteId).toBe(created.id)
+      // The corrected ref, not the one that was on disk before the move.
+      expect(body).toContain('../../../attachments/n1/shot.png')
+    })
+
+    it('leaves the Y.Doc alone when the move rewrote nothing', async () => {
+      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      const created = await notes.createNote({
+        title: 'No Crdt Push On Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      await notes.moveNote(created.id, 'sibling')
+
+      expect(crdtMocks.replaceNoteBodyInCrdt).not.toHaveBeenCalled()
     })
 
     it('preserves binary content on move (no frontmatter injection)', async () => {
