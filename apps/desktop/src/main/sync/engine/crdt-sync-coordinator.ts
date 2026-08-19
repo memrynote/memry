@@ -5,7 +5,8 @@ import {
   getFromServer,
   postToServer,
   fetchCrdtSnapshot,
-  type CrdtBatchPullResponse
+  type CrdtBatchPullResponse,
+  type CrdtSnapshotMeta
 } from '../http-client'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import { trackMainError } from '../../telemetry/diagnostics'
@@ -19,6 +20,34 @@ export class CrdtSyncCoordinator {
   private ctx: SyncContext
   private pendingPulls = new Set<string>()
   private lastAppliedSequence = new Map<string, number>()
+  /**
+   * The `revision` of the server snapshot this session actually merged into the
+   * note's doc — half of the watermark the sweep's conditional skip compares
+   * against, `lastAppliedSequence` being the other half.
+   *
+   * Session-scoped and in memory on purpose. A persisted watermark can outlive
+   * the document it describes (an evicted, quarantined, rebuilt or re-pathed
+   * store), and a watermark that claims a baseline the doc never kept makes the
+   * sweep skip that baseline forever against a note whose body is stale. In
+   * memory the store and the watermark share one lifetime by construction.
+   * Persisting it is a separate change with its own invalidation to carry.
+   *
+   * Written only where a snapshot was genuinely decrypted and applied, never
+   * where one was merely advertised: `getSnapshot` returns null when the D1 row
+   * exists but its R2 blob is gone, and recording a watermark for a blob that
+   * never arrived is exactly how a note keeps a stale body forever.
+   */
+  private mergedSnapshotRevision = new Map<string, string>()
+  /**
+   * Set once a batch response comes back without `snapshotMeta`, which is how
+   * an older server answers.
+   *
+   * Without it, every chunk against such a server would pay for a probe that
+   * can never let anything be skipped — staging, self-hosted deployments and a
+   * rolled-back server all live here. With it, the second chunk onwards issues
+   * exactly the requests this code issued before this feature existed.
+   */
+  private snapshotMetaUnsupported = false
   private resolveDeviceKey: ResolveDeviceKey
   /** Once per key per session — CRDT apply failures recur every pass and would storm otherwise. */
   private applyFailureReported = new Set<string>()
@@ -169,6 +198,9 @@ export class CrdtSyncCoordinator {
   clearCaches(): void {
     this.pendingPulls.clear()
     this.lastAppliedSequence.clear()
+    // Cleared with the sequence half, never separately: the two are one
+    // watermark, and half a watermark is a skip decision made on a guess.
+    this.mergedSnapshotRevision.clear()
     this.applyFailureReported.clear()
     // Deliberately silent: `reportUnmergedDebt` is not called here. This is a
     // teardown, not a note that finished merging, and reporting "no debt" for it
@@ -243,6 +275,19 @@ export class CrdtSyncCoordinator {
     const decrypted = decryptCrdtUpdate(snapshotResult.snapshot, vaultKey, noteId, signerPubKey)
     this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
     const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
+    // Recorded here and nowhere else, after the bytes are in the doc: every
+    // early return above left the baseline out, and a watermark for a baseline
+    // that was never applied is a skip of the download that would have fixed it.
+    //
+    // An absent token — an older server on this endpoint — DELETES any token
+    // held for the note rather than leaving one standing. The blob just merged
+    // is not the one the old token names, so keeping it would compare a future
+    // batch response against a baseline this doc no longer has.
+    if (snapshotResult.revision) {
+      this.mergedSnapshotRevision.set(noteId, snapshotResult.revision)
+    } else {
+      this.mergedSnapshotRevision.delete(noteId)
+    }
     log.debug('Applied CRDT snapshot baseline', {
       noteId,
       mode,
@@ -471,6 +516,118 @@ export class CrdtSyncCoordinator {
     }
   }
 
+  /**
+   * One `POST /sync/crdt/updates/batch` that asks the server what moved, before
+   * a single doc is opened or a single snapshot downloaded.
+   *
+   * `null` means "decide nothing from a probe" and every note in the chunk then
+   * takes the unconditional path this method fronts — an old server, or a chunk
+   * where a probe could not possibly save anything.
+   *
+   * Deliberately NOT available to `applyCrdtIncrementals`: see the comment on
+   * `snapshotBaselineSkip`.
+   */
+  private async probeBatchChunk(
+    noteIds: string[],
+    token: string,
+    signal: AbortSignal
+  ): Promise<CrdtBatchPullResponse | null> {
+    if (this.snapshotMetaUnsupported) return null
+    // Nothing merged this session means nothing can match, so every note would
+    // fall through to a fetch anyway and the probe would be a request spent to
+    // learn nothing. This is the first sweep after launch: it costs exactly
+    // what it cost before this feature existed.
+    if (!noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))) return null
+
+    const result = await withRetry(
+      () =>
+        postToServer<CrdtBatchPullResponse>(
+          '/sync/crdt/updates/batch',
+          {
+            notes: noteIds.map((noteId) => ({
+              noteId,
+              since: this.lastAppliedSequence.get(noteId) ?? 0
+            })),
+            // This asks "did anything change", not "give me what changed": a
+            // note whose answer is yes goes to the apply phase, which fetches
+            // its updates from the right `since` — after a baseline, when it
+            // needs one. Asking for 100 here would haul payloads that phase
+            // re-fetches. `hasMore` is still exact at this limit, because the
+            // server reads limit + 1 rows to compute it.
+            limit: 1
+          },
+          token
+        ),
+      { maxRetries: 3, baseDelayMs: 2000, signal, retryOn429: false }
+    ).then((r) => r.value)
+
+    // An absent key, not an empty map: this response is read through a cast
+    // with no runtime validation, so this is the only signal that the server
+    // predates the token. Latched, so the rest of the session stops paying for
+    // a probe whose answer can never be "skip".
+    if (!result.snapshotMeta) {
+      this.snapshotMetaUnsupported = true
+      log.debug('Server returned no snapshotMeta; CRDT snapshot baselines stay unconditional')
+      return null
+    }
+
+    return result
+  }
+
+  /**
+   * The `since` to resume from without downloading this note's snapshot, or
+   * `null` to download it.
+   *
+   * **This is only ever consulted from `applyCrdtBatchChunk`, and that is a
+   * data-loss guard rather than an accident of layering.**
+   * `applyCrdtIncrementals` returns whether the server's state was fully merged,
+   * and the pending-note replay acts on a `true` by pushing a *snapshot* — which
+   * asserts "I contain everything you hold" and makes the server delete every
+   * device's incrementals at or below the watermark. A `true` reached by a
+   * shortcut therefore destroys a peer's edits. The single-note path is low
+   * volume in every one of its callers, so it gives up nothing by staying
+   * unconditional, and staying unconditional is what makes the guarantee
+   * structural instead of careful.
+   *
+   * Every unknown answers `null`. A missed skip costs one GET; a wrong skip
+   * costs a note body.
+   */
+  private snapshotBaselineSkip(
+    noteId: string,
+    snapshotMeta: Record<string, CrdtSnapshotMeta> | undefined
+  ): number | null {
+    // No probe, or a server that does not publish the token. Fetch, exactly as
+    // this code did before the token existed.
+    if (!snapshotMeta) return null
+
+    // A note this session has merged nothing for — never opened, absent from
+    // the local store, or a store rebuilt under it — has no watermark to
+    // compare, so it cannot be shown to already hold the baseline.
+    const appliedSequence = this.lastAppliedSequence.get(noteId)
+    if (appliedSequence === undefined) return null
+
+    const meta = snapshotMeta[noteId]
+    // Map present, note absent: the server holds no snapshot for this note at
+    // all. Nothing to download, and nothing has been pruned, so resuming from
+    // the watermark asks a range the server still has.
+    if (!meta) return appliedSequence
+
+    // (1) The server's snapshot blob is the one already merged into this doc.
+    // `sequence_num` cannot stand in for this: `storeSnapshot` pins it across a
+    // rewrite, so it would report "unchanged" for every replaced blob.
+    if (meta.revision !== this.mergedSnapshotRevision.get(noteId)) return null
+
+    // (2) And the doc has taken in everything at or below the server's prune
+    // watermark. `pruneUpdatesBeforeSnapshot` deletes every update at or below
+    // `sequence_num`, so a `since` under it is answered with silence rather
+    // than an error — the note would go quietly stale. This is a separate
+    // question from (1) and must be asked separately: a matching revision says
+    // which blob the server holds, never how much of it this doc absorbed.
+    if (appliedSequence < meta.sequenceNum) return null
+
+    return appliedSequence
+  }
+
   private async applyCrdtBatchChunk(
     noteIds: string[],
     token: string,
@@ -494,9 +651,63 @@ export class CrdtSyncCoordinator {
     // broadcast and the pending-note replay call it directly — so a note's own
     // earlier debt would otherwise block its clear forever.
     try {
-      const sinceMap = new Map<string, number>()
+      // PHASE 1 — probe. One request for the whole chunk, no docs opened.
+      //
+      // Every note in the chunk is still visited: this decides what a note
+      // costs, never whether it is looked at. The sweep is the only channel a
+      // body-only remote edit reaches a device by — note bodies never travel in
+      // the record change feed — so a note dropped here would go stale with no
+      // second chance.
+      const probe = await this.probeBatchChunk(noteIds, token, signal)
+
+      // Notes whose baseline the probe proved redundant, mapped to the `since`
+      // to resume from in place of the one a baseline would have produced.
+      const skipBaseline = new Map<string, number>()
+      // Notes still needing the open + baseline + apply path below.
+      const activeNoteIds: string[] = []
+      let settledByProbe = 0
 
       for (const noteId of noteIds) {
+        const skipSince = this.snapshotBaselineSkip(noteId, probe?.snapshotMeta)
+        const probed = probe?.notes[noteId]
+        // A note the server left out of its own probe response told us nothing
+        // about its updates, so it takes the full path regardless.
+        if (skipSince !== null && probed) {
+          if (probed.updates.length === 0 && !probed.hasMore) {
+            // Finished here: the baseline is already in the doc and there is
+            // nothing above it. No doc opened, no snapshot GET, no decrypt.
+            // Clearing the flag is the truth this pass established — the
+            // server's state for this note IS in the local doc.
+            //
+            // Not seed-checked at the end, and it does not need to be: a note
+            // only reaches this branch with a watermark, which only exists
+            // because real CRDT state was applied to its doc, so its state
+            // vector is not the empty one the seed fallback exists for.
+            this.clearUnmergedIfClean(noteId, false)
+            settledByProbe++
+            continue
+          }
+          skipBaseline.set(noteId, skipSince)
+        }
+        activeNoteIds.push(noteId)
+      }
+
+      if (probe) {
+        log.debug('CRDT batch chunk probed', {
+          notes: noteIds.length,
+          settledByProbe,
+          baselinesSkipped: skipBaseline.size,
+          baselinesFetched: activeNoteIds.length - skipBaseline.size
+        })
+      }
+
+      if (activeNoteIds.length === 0) return
+
+      // PHASE 2 — apply. Unchanged from the unconditional path, over the notes
+      // that actually have work.
+      const sinceMap = new Map<string, number>()
+
+      for (const noteId of activeNoteIds) {
         const wasOpen = crdtProvider.getDoc(noteId) != null
         try {
           await crdtProvider.open(noteId, undefined, { skipSeed: true })
@@ -510,6 +721,16 @@ export class CrdtSyncCoordinator {
           // never retried, so the unmerged flag it is carrying never clears and
           // it spends the rest of the session off the snapshot endpoint.
           this.owePendingPull(noteId)
+          continue
+        }
+
+        const skipSince = skipBaseline.get(noteId)
+        if (skipSince !== undefined) {
+          // The GET this whole change exists to avoid. The doc already holds
+          // this exact snapshot blob and everything the server pruned behind
+          // it, so resuming from the watermark is the same `since` a download
+          // would have produced.
+          sinceMap.set(noteId, skipSince)
           continue
         }
 

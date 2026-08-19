@@ -214,6 +214,29 @@ export interface CrdtSnapshotResponse {
   snapshot: string | null
   sequenceNum: number
   signerDeviceId: string | null
+  /**
+   * Opaque token identifying which snapshot blob this is, so a later batch pull
+   * can say "still that one" and the client can skip re-downloading it.
+   *
+   * Optional because a server that predates the token omits the key entirely,
+   * and these responses are read through an unvalidated cast — an absent key is
+   * `undefined` at runtime, which must read as "unknown", never as a match.
+   */
+  revision?: string | null
+}
+
+/**
+ * What the batch pull says about the server's snapshot for one note, so a
+ * client can decide whether to download it without downloading it.
+ *
+ * `sequenceNum` is the server's prune watermark for the note:
+ * `pruneUpdatesBeforeSnapshot` deletes every update at or below it, so asking
+ * for a range starting under it is answered with silence, not an error.
+ */
+export interface CrdtSnapshotMeta {
+  sequenceNum: number
+  revision: string
+  signerDeviceId: string
 }
 
 export interface CrdtBatchPullResponse {
@@ -229,6 +252,16 @@ export interface CrdtBatchPullResponse {
       hasMore: boolean
     }
   >
+  /**
+   * Present on every response from a server that supports it, which is what
+   * lets a client tell "this server is old" (key absent) from "this server has
+   * no snapshot for that note" (key present, note absent from the map).
+   *
+   * Optional, and deliberately so: `postToServer` is a TypeScript cast with no
+   * runtime schema validation, so against an old server this is `undefined` at
+   * runtime however the type reads. Every consumer must default to fetching.
+   */
+  snapshotMeta?: Record<string, CrdtSnapshotMeta>
 }
 
 export async function pushCrdtSnapshot(
@@ -275,7 +308,12 @@ export async function pushCrdtFullUpdate(
 export async function fetchCrdtSnapshot(
   noteId: string,
   token: string
-): Promise<{ snapshot: Uint8Array; sequenceNum: number; signerDeviceId: string } | null> {
+): Promise<{
+  snapshot: Uint8Array
+  sequenceNum: number
+  signerDeviceId: string
+  revision: string | null
+} | null> {
   const { value: result } = await withRetry(
     () =>
       getFromServer<CrdtSnapshotResponse>(
@@ -292,5 +330,13 @@ export async function fetchCrdtSnapshot(
 
   const bytes = new Uint8Array(Buffer.from(result.snapshot, 'base64'))
 
-  return { snapshot: bytes, sequenceNum: result.sequenceNum, signerDeviceId: result.signerDeviceId }
+  return {
+    snapshot: bytes,
+    sequenceNum: result.sequenceNum,
+    signerDeviceId: result.signerDeviceId,
+    // `null` for a server that does not send one. Normalising the absent key to
+    // `null` here keeps "no token" a single value at the one place that decides
+    // whether to remember it.
+    revision: result.revision ?? null
+  }
 }

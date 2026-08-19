@@ -329,7 +329,9 @@ describe('CrdtSyncCoordinator', () => {
           }
         }
       })
-      .mockResolvedValueOnce({
+      // No `snapshotMeta` on any response: this models a server that predates
+      // the revision token, so every baseline below stays unconditional.
+      .mockResolvedValue({
         notes: {
           'note-1': {
             updates: [],
@@ -370,8 +372,21 @@ describe('CrdtSyncCoordinator', () => {
       },
       'token-1'
     )
+    // The second pass opens with a probe, and the sequence it carries is the
+    // same highest-applied one — this is where the carry-over is now visible.
     expect(postToServerMock).toHaveBeenNthCalledWith(
       2,
+      '/sync/crdt/updates/batch',
+      {
+        notes: [{ noteId: 'note-1', since: 6 }],
+        limit: 1
+      },
+      'token-1'
+    )
+    // The probe came back without `snapshotMeta`, so the baseline is fetched
+    // exactly as before and the apply pull resumes from the same sequence.
+    expect(postToServerMock).toHaveBeenNthCalledWith(
+      3,
       '/sync/crdt/updates/batch',
       {
         notes: [{ noteId: 'note-1', since: 6 }],
