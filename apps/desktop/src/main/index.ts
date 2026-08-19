@@ -53,7 +53,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
-import { getEmbeddingWorkerPhase, stopEmbeddingModel } from './lib/embeddings'
+import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -103,11 +103,19 @@ import {
   warnPinningUnconfiguredOnce
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
+import { flushPendingWritebacks } from './sync/crdt-writeback'
 import { stopSyncRuntime } from './sync/runtime'
 import { beginAppShutdown, isAppShuttingDown } from './app-shutdown'
+import {
+  completeWithin,
+  runShutdownSequence,
+  SHUTDOWN_HARD_BACKSTOP_MS,
+  SHUTDOWN_LAST_CHANCE_MS,
+  type ShutdownStep
+} from './shutdown-sequence'
 import { getValidAccessToken } from './sync/token-manager'
 import { getNoteCacheById } from '@main/database/queries/notes'
-import { getIndexDatabase } from './database/client'
+import { closeAllDatabases, getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
 import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
@@ -224,11 +232,14 @@ function registerMainDiagnostics(): void {
     //
     // This is also the ONLY report a native worker crash produces: the worker's
     // own 'exit' event never fires for one, so the owning module never learns it
-    // died. Resolving the lifecycle phase here is what lets that surviving report
-    // say whether the user lost an embedding or the worker died tearing down.
+    // died. Resolving the worker's context here is what lets that surviving
+    // report say whether the user lost an embedding or the worker died tearing
+    // down — and, now, on which pid, after how long, and with what on stderr.
+    const embeddingCrash = getEmbeddingWorkerCrashContext(details.name, details.reason)
     trackChildProcessGone({
       ...details,
-      phase: getEmbeddingWorkerPhase(details.name) ?? undefined
+      phase: embeddingCrash?.phase,
+      context: embeddingCrash ?? undefined
     })
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
@@ -609,8 +620,7 @@ const DEFAULT_MAIN_WINDOW_SIZE = { width: 1550, height: 900 } as const
 const VAULT_PICKER_WINDOW_SIZE = { width: 760, height: 560 } as const
 
 function getInitialMainWindowSize():
-  | typeof DEFAULT_MAIN_WINDOW_SIZE
-  | typeof VAULT_PICKER_WINDOW_SIZE {
+  typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE {
   if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return VAULT_PICKER_WINDOW_SIZE
   return getCurrentVaultPath() ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
 }
@@ -1983,7 +1993,12 @@ function removePendingFlush(requestId: string): void {
   flushDoneListenerAttached = false
 }
 
-function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
+// How long one window gets to answer the save handshake. On the quit path this
+// is clamped further by the shared shutdown deadline, so the handshake can never
+// spend budget the rest of the chain still needs.
+const FLUSH_WINDOW_TIMEOUT_MS = 2000
+
+function flushWindow(win: BrowserWindow, timeoutMs = FLUSH_WINDOW_TIMEOUT_MS): Promise<void> {
   return new Promise<void>((resolve) => {
     if (win.isDestroyed() || !win.webContents) {
       shutdownLog.info('flushWindow: window already destroyed', win.id)
@@ -2014,11 +2029,11 @@ function flushWindow(win: BrowserWindow, timeoutMs = 2000): Promise<void> {
   })
 }
 
-async function flushAllWindows(): Promise<void> {
+async function flushAllWindows(timeoutMs = FLUSH_WINDOW_TIMEOUT_MS): Promise<void> {
   const windows = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed())
   if (windows.length === 0) return
   shutdownLog.info(`flushing ${windows.length} window(s)...`)
-  await Promise.allSettled(windows.map((w) => flushWindow(w)))
+  await Promise.allSettled(windows.map((w) => flushWindow(w, timeoutMs)))
   shutdownLog.info('flush complete')
 }
 
@@ -2053,6 +2068,35 @@ async function createCloseSnapshots(): Promise<void> {
   }
 }
 
+/**
+ * Last chance to make the user's data durable once the graceful chain has run
+ * out of budget.
+ *
+ * The forced exit below is what used to lose edits (#1586): the debounced CRDT
+ * write-back timers were still armed — up to 5s of typing that had never
+ * reached the markdown file — and the SQLite WAL had never been checkpointed,
+ * because both only happened at the very END of the chain. Neither depends on
+ * whichever step is wedged, and both are cheap, so they run even now that the
+ * budget is gone. A hung teardown degrades to a slow quit, not to lost work.
+ */
+async function flushDurabilityBeforeForcedExit(): Promise<void> {
+  const flushed = await completeWithin(
+    flushPendingWritebacks().catch((error) => {
+      shutdownLog.error('last-chance write-back flush failed', error)
+    }),
+    SHUTDOWN_LAST_CHANCE_MS
+  )
+  if (!flushed) shutdownLog.error('last-chance write-back flush did not finish in time')
+
+  // `synchronous = NORMAL` defers durability to the checkpoint that close()
+  // performs, so an exit without it leaves an un-checkpointed WAL behind.
+  try {
+    closeAllDatabases()
+  } catch (error) {
+    shutdownLog.error('last-chance database close failed', error)
+  }
+}
+
 // Graceful shutdown: close vault and databases before quitting
 app.on('before-quit', (event) => {
   if (headlessCliArgs) return
@@ -2075,90 +2119,155 @@ app.on('before-quit', (event) => {
 
   shutdownLog.info('starting graceful shutdown...')
 
-  // Set timeout to force exit if shutdown takes too long
-  const shutdownTimeout = setTimeout(() => {
-    // If the user asked to install an update, still hand off to Squirrel/NSIS
-    // rather than app.exit() — a hard exit skips the install (and bypasses
-    // autoInstallOnAppQuit), so the update never applies and the app re-prompts.
-    // The forced exit below never flushes the log queue; the crash marker is
-    // what carries this failure to the next launch (SHUTDOWN_TIMEOUT).
-    markShutdownFailure('timeout')
+  // If the user asked to install an update, hand off to Squirrel/NSIS rather
+  // than app.exit() — a hard exit skips the install (and bypasses
+  // autoInstallOnAppQuit), so the update never applies and the app re-prompts.
+  const forceExit = (): void => {
     if (isQuitAndInstallRequested()) {
-      shutdownLog.error('cleanup timed out; installing downloaded update anyway')
+      shutdownLog.error('cleanup did not finish; installing downloaded update anyway')
       performQuitAndInstall()
     } else {
-      shutdownLog.error('timeout - forcing exit')
+      shutdownLog.error('forcing exit')
       app.exit(1)
     }
-  }, 5000) // 5 second timeout
+  }
 
-  // Flush pending saves from all renderer windows before closing vault
-  flushAllWindows()
-    .then(() => createCloseSnapshots())
-    .then(() => {
-      shutdownLog.info('stopping snooze scheduler...')
-      stopSnoozeScheduler()
+  // Hard backstop. Every path below is individually bounded, but a quit that
+  // never ends is a visibly broken quit, so one timer outside the sequence
+  // guarantees the process always exits.
+  const hardBackstop = setTimeout(() => {
+    shutdownLog.error('hard backstop reached')
+    forceExit()
+  }, SHUTDOWN_HARD_BACKSTOP_MS)
 
-      shutdownLog.info('stopping reminder scheduler...')
-      stopReminderScheduler()
+  // Ordered by durability, not by convenience. The two steps that make the
+  // user's most recent edits durable run FIRST, so a wedged teardown step can no
+  // longer eat the budget ahead of them (#1586).
+  const steps: ShutdownStep[] = [
+    {
+      // Renderer edits still sitting in an editor -> main's Y.Docs.
+      name: 'flush-windows',
+      run: (deadline) => flushAllWindows(deadline.cap(FLUSH_WINDOW_TIMEOUT_MS))
+    },
+    {
+      // Main's Y.Docs -> the markdown files. The write-back is debounced by
+      // 500ms, stretched to 5s under back-pressure, and this used to happen only
+      // inside CrdtProvider.destroy() at the very end of the chain — which is
+      // exactly why a timed-out quit dropped the last seconds of typing.
+      name: 'flush-writebacks',
+      run: () => flushPendingWritebacks()
+    },
+    { name: 'close-snapshots', run: () => createCloseSnapshots() },
+    {
+      name: 'stop-schedulers',
+      run: () => {
+        shutdownLog.info('stopping snooze scheduler...')
+        stopSnoozeScheduler()
 
-      shutdownLog.info('stopping inbox review scheduler...')
-      stopInboxReviewScheduler()
+        shutdownLog.info('stopping reminder scheduler...')
+        stopReminderScheduler()
 
-      shutdownLog.info('stopping Google Calendar sync runner...')
-      stopGoogleCalendarSyncRunner()
-    })
-    .then(() => {
-      shutdownLog.info('stopping capture server...')
-      return stopCaptureServer()
-    })
-    .then(() => {
-      shutdownLog.info('stopping AI inline chat server...')
-      return stopChatServer()
-    })
-    .then(() => {
-      shutdownLog.info('stopping voice transcription utility...')
-      return stopVoiceModel()
-    })
-    .then(() => {
-      shutdownLog.info('stopping image processing utility...')
-      return stopImageProcessing()
-    })
-    .then(() => {
-      // Terminate the embeddings utilityProcess explicitly. On Windows it runs
-      // as the app binary (Memrynote.exe); if left to its 30s idle self-exit it
-      // can outlive the NSIS CHECK_APP_RUNNING window and block the update
-      // install ("MemryNote cannot be closed", #805).
-      shutdownLog.info('stopping embeddings utility...')
-      return stopEmbeddingModel()
-    })
-    .then(async () => {
-      shutdownLog.info('stopping active heartbeat...')
-      stopActiveHeartbeat()
-      shutdownLog.info('flushing log-ship transport...')
-      await getLogShip()?.dispose()
-      shutdownLog.info('flushing telemetry runtime...')
-      return disposeTelemetryRuntime()
-    })
-    .then(() => {
-      // When installing an update, skip the final CRDT snapshot push: it's an
-      // unbounded network round-trip that can stall shutdown for tens of seconds
-      // (and the installer is about to swap the binary anyway). The next launch
-      // syncs. A normal quit still pushes so nothing is left unsynced.
-      if (isQuitAndInstallRequested()) {
-        shutdownLog.info('stopping sync runtime (skip final push for update)...')
-        return stopSyncRuntime({ skipFinalSync: true })
+        shutdownLog.info('stopping inbox review scheduler...')
+        stopInboxReviewScheduler()
+
+        shutdownLog.info('stopping Google Calendar sync runner...')
+        stopGoogleCalendarSyncRunner()
       }
-      shutdownLog.info('stopping sync runtime...')
-      return stopSyncRuntime()
-    })
-    .then(() => {
-      shutdownLog.info('closing vault and stopping watcher...')
-      return closeVault()
-    })
-    .then(() => {
-      shutdownLog.info('cleanup complete')
-      clearTimeout(shutdownTimeout)
+    },
+    {
+      name: 'stop-capture-server',
+      run: () => {
+        shutdownLog.info('stopping capture server...')
+        return stopCaptureServer()
+      }
+    },
+    {
+      name: 'stop-chat-server',
+      run: () => {
+        shutdownLog.info('stopping AI inline chat server...')
+        return stopChatServer()
+      }
+    },
+    {
+      // Concurrent, not sequential: three independent utility processes with a
+      // 3,000ms stop timeout each cost 9,000ms in a row and 3,000ms together —
+      // on their own more than the whole shutdown budget used to be.
+      // Terminating embeddings explicitly still matters on Windows, where it
+      // runs as the app binary (Memrynote.exe) and its 30s idle self-exit can
+      // outlive the NSIS CHECK_APP_RUNNING window and block the install (#805).
+      name: 'stop-utility-processes',
+      run: async () => {
+        const utilities: Array<[string, () => Promise<void>]> = [
+          ['voice transcription', stopVoiceModel],
+          ['image processing', stopImageProcessing],
+          ['embeddings', stopEmbeddingModel]
+        ]
+        shutdownLog.info('stopping utility processes...')
+        const results = await Promise.allSettled(utilities.map(([, stop]) => stop()))
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            shutdownLog.error(`failed to stop ${utilities[index][0]} utility`, result.reason)
+          }
+        })
+      }
+    },
+    {
+      name: 'flush-telemetry',
+      run: async () => {
+        shutdownLog.info('stopping active heartbeat...')
+        stopActiveHeartbeat()
+        shutdownLog.info('flushing log-ship transport...')
+        await getLogShip()?.dispose()
+        shutdownLog.info('flushing telemetry runtime...')
+        return disposeTelemetryRuntime()
+      }
+    },
+    {
+      name: 'stop-sync-runtime',
+      run: () => {
+        // When installing an update, skip the final CRDT snapshot push: it's an
+        // unbounded network round-trip that can stall shutdown for tens of
+        // seconds (and the installer is about to swap the binary anyway). The
+        // next launch syncs. A normal quit still pushes so nothing is left
+        // unsynced.
+        if (isQuitAndInstallRequested()) {
+          shutdownLog.info('stopping sync runtime (skip final push for update)...')
+          return stopSyncRuntime({ skipFinalSync: true })
+        }
+        shutdownLog.info('stopping sync runtime...')
+        return stopSyncRuntime()
+      }
+    },
+    {
+      name: 'close-vault',
+      run: () => {
+        shutdownLog.info('closing vault and stopping watcher...')
+        return closeVault()
+      }
+    }
+  ]
+
+  runShutdownSequence(steps)
+    .then(async (outcome) => {
+      if (outcome.status === 'timeout') {
+        // Stamped before anything else: whatever happens next, the next launch
+        // has to be able to name the step that overran, so a recurring timeout
+        // is diagnosable instead of landing as a bare SHUTDOWN_TIMEOUT. The
+        // forced exit never flushes the log queue; the marker survives it.
+        markShutdownFailure('timeout', outcome.overrunStep ?? undefined)
+        shutdownLog.error('cleanup ran out of budget', {
+          step: outcome.overrunStep,
+          stepMs: outcome.overrunStepMs,
+          elapsedMs: outcome.elapsedMs
+        })
+        await flushDurabilityBeforeForcedExit()
+        clearTimeout(hardBackstop)
+        forceExit()
+        return
+      }
+
+      shutdownLog.info('cleanup complete', { elapsedMs: outcome.elapsedMs })
+      clearTimeout(hardBackstop)
       // Cleanup finished: this shutdown is clean, so the next launch must not
       // report app_crashed. The timeout/failed-cleanup paths deliberately keep
       // the marker — a hung or failed shutdown IS an unclean exit worth seeing.
@@ -2178,20 +2287,18 @@ app.on('before-quit', (event) => {
         app.quit()
       }
     })
-    .catch((error) => {
+    .catch(async (error) => {
       shutdownLog.error('error during cleanup:', error)
-      clearTimeout(shutdownTimeout)
       // Same as the timeout path: the exit below outruns any log flush, so the
       // marker reports this shutdown failure on the next launch.
       markShutdownFailure('cleanup_error')
+      // A rejected step is exactly the case where the durability tail never
+      // ran, so the same last-chance flush applies before the hard exit.
+      await flushDurabilityBeforeForcedExit()
+      clearTimeout(hardBackstop)
       // Same as the timeout path: a pending install must survive a failed
       // cleanup, otherwise the hard exit drops the update and the loop returns.
-      if (isQuitAndInstallRequested()) {
-        shutdownLog.error('cleanup failed; installing downloaded update anyway')
-        performQuitAndInstall()
-      } else {
-        app.exit(1)
-      }
+      forceExit()
     })
 })
 

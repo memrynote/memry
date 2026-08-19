@@ -69,6 +69,8 @@ const mocks = vi.hoisted(() => {
     dataDb: {} as object | null,
     vaultUuid: '11111111-2222-3333-4444-555555555555',
     legacyStoreClaim: undefined as string | undefined,
+    /** Persisted streak the degraded-persistence notice is thresholded on. */
+    recordPersistenceOutcome: vi.fn((..._args: unknown[]) => 0),
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
@@ -168,7 +170,9 @@ vi.mock('../store', () => ({
   getLegacyCrdtStorePartitionPending: () => undefined,
   clearLegacyCrdtStorePartitionPending: vi.fn(),
   getPendingCrdtStoreRename: () => undefined,
-  clearPendingCrdtStoreRename: vi.fn()
+  clearPendingCrdtStoreRename: vi.fn(),
+  getCrdtInMemorySessions: () => 0,
+  recordCrdtPersistenceOutcome: (...args: unknown[]) => mocks.recordPersistenceOutcome(...args)
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
@@ -2076,7 +2080,9 @@ describe('CrdtProvider persistence resilience', () => {
   // The preflight child probes the REAL crdt-store dir, so it also dies on a
   // store whose on-disk state (torn LDB/MANIFEST from a past crash or full
   // disk) aborts the binding — not just on a binding that is broken outright.
-  // The two are told apart empirically: quarantine the store, re-probe fresh.
+  // The two are told apart empirically, by a control the store cannot be
+  // blamed for: probe a directory that is guaranteed empty, BEFORE anything is
+  // moved.
   describe('store quarantine', () => {
     const userDataDir = mocks.userDataDir
     const storeDir = vaultStoreDir()
@@ -2093,7 +2099,7 @@ describe('CrdtProvider persistence resilience', () => {
       fs.rmSync(userDataDir, { recursive: true, force: true })
     })
 
-    it('quarantines a corrupt store and continues on a fresh one when the re-probe passes', async () => {
+    it('quarantines a corrupt store and continues on a fresh one when the control passes', async () => {
       fs.mkdirSync(storeDir, { recursive: true })
       fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'torn')
       mocks.preflightQueue.push(
@@ -2105,15 +2111,20 @@ describe('CrdtProvider persistence resilience', () => {
       await expect(provider.init()).resolves.toBeUndefined()
 
       // Corrupt store moved aside (preserved, not deleted), fresh store adopted.
-      expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
+      expect(mocks.preflightCalls).toEqual([storeDir, `${storeDir}.probe`])
       expect(fs.existsSync(storeDir)).toBe(false)
       const quarantined = quarantinedDirs()
       expect(quarantined).toHaveLength(1)
       expect(fs.existsSync(`${storeRoot}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
       expect(mocks.persistenceInstances).toHaveLength(1)
+      // The control directory does not outlive the probe.
+      expect(fs.existsSync(`${storeDir}.probe`)).toBe(false)
     })
 
-    it('restores the quarantined store when the re-probe also fails (broken binding)', async () => {
+    // Issue #1583: on 19/19 win32 installs the binding access-violated against
+    // an empty directory as readily as against the user's data, and the store
+    // was moved aside, rm'd and moved back for it — every launch, forever.
+    it('never moves the store when the empty control directory fails too', async () => {
       fs.mkdirSync(storeDir, { recursive: true })
       fs.writeFileSync(`${storeDir}/MANIFEST-000001`, 'healthy-but-binding-broken')
       mocks.preflightQueue.push(
@@ -2124,11 +2135,12 @@ describe('CrdtProvider persistence resilience', () => {
       const provider = new CrdtProvider()
       await expect(provider.init()).resolves.toBeUndefined()
 
-      // Binding is the problem, not the data: put the store back so a future
-      // launch with a working binding finds the user's CRDT history intact.
-      expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
+      // The binding is the problem, not the data — so the user's CRDT history
+      // is never touched at all, rather than moved aside and moved back.
+      expect(mocks.preflightCalls).toEqual([storeDir, `${storeDir}.probe`])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
       expect(quarantinedDirs()).toHaveLength(0)
+      expect(fs.existsSync(`${storeDir}.probe`)).toBe(false)
       expect(mocks.persistenceInstances).toHaveLength(0)
       expect(provider.isInitialized()).toBe(true)
     })

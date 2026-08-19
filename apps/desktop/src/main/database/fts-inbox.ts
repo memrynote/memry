@@ -80,6 +80,17 @@ export function clearFtsInboxTable(db: DataDb): void {
   db.run(sql`DELETE FROM fts_inbox`)
 }
 
+/**
+ * Drops the virtual table and re-creates it empty — the repair for a corrupt
+ * fts5 index, which `DELETE FROM fts_inbox` cannot perform. See `resetFtsTable`
+ * in fts.ts for why. Derived from the `inbox_items` rows in the same database,
+ * so a reset costs a re-index and nothing else.
+ */
+export function resetFtsInboxTable(db: DataDb): void {
+  db.run(sql`DROP TABLE IF EXISTS fts_inbox`)
+  createFtsInboxTable(db)
+}
+
 export function getFtsInboxCount(db: DataDb): number {
   const result = db.get<{ count: number }>(sql`SELECT COUNT(*) as count FROM fts_inbox`)
   return result?.count ?? 0

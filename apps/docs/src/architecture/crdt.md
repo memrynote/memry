@@ -210,22 +210,39 @@ The child reports how far it got by writing **stage markers** to stderr
 store from a machine that cannot start a child at all:
 
 - `bootstrap` — the child never reached JS. Observed on Windows, where the
-  utility process dies in Chromium/crashpad init with exit `0xFFFF7003`. The
-  same probe is then retried as a plain node child
-  (`ELECTRON_RUN_AS_NODE`), which starts no Chromium and no crash handler.
+  utility process dies in Chromium/crashpad init with exit `0xFFFF7003`.
 - `binding` — the child ran but the native binding failed to load. The store
   was never opened.
-- `store` — the binding loaded and the probe died using it.
+- `store` — the binding loaded and the probe died using it. The child also
+  announces each store operation *before* running it (`open`, `write`, `read`,
+  `clear`, `close`), so a native abort — which unwinds nothing — still names
+  the operation that was in flight.
+- `binding-in-use` — a `store` failure that reproduced against an empty
+  directory. Not a marker the child can write; the provider assigns it (below).
 
-Only a `store` verdict implicates the store. When it fails and a store
-exists, the store is **quarantined** (renamed to
-`<vault uuid>.broken-<timestamp>`, next to the store it came from) and the preflight retried once against a
-fresh directory: a pass means the data was at fault, so the app continues
-with a fresh store; a second failure means the binding itself is broken, so
-the original store is restored for a future launch and the provider goes
-in-memory. Restoring first clears the partial fresh store the failed re-probe
-left behind (renaming onto an existing directory is `EPERM` on Windows), and
-falls back to retries and then copy+delete if the directory is still locked.
+A `bootstrap` **or** `store` failure is retried once as a plain node child
+(`ELECTRON_RUN_AS_NODE`), which starts no Chromium and no crash handler. A
+verdict reported with `transport: node` therefore means the Chromium-free
+fallback failed too — the binding is broken on that machine rather than the
+utility process being unable to start.
+
+Only a `store` verdict implicates the store, and it has to prove it. Before
+anything is moved, the same probe is run against an **empty control directory**
+(`<store>.probe`, cleared before and after use) that the user's data cannot be
+responsible for:
+
+- **Control passes** — the data was at fault. The store is **quarantined**
+  (renamed to `<vault uuid>.broken-<timestamp>`, next to the store it came
+  from) and the app continues on a fresh store, reseeded from vault markdown.
+  Moving falls back to retries and then copy+delete if the directory is locked.
+- **Control fails** — the binding is at fault and the data is innocent. The
+  store is **not touched at all**, and the failure is restaged as
+  `binding-in-use` so telemetry stops reporting a data problem that does not
+  exist.
+
+If the control directory cannot be cleared, no control is run and the store is
+left alone: no evidence means no reason to move a user's CRDT history.
+
 Only after the child survives is the y-leveldb store probed
 in-process (a write/read/clear round-trip with a timeout) before it is
 trusted. A broken `classic-level` native binding doesn't
@@ -236,6 +253,31 @@ disk, and the editor keeps working; only CRDT history persistence across
 restarts is lost for that session. A mid-session load failure for a single doc
 falls back to seeding from the vault file instead of blocking the note from
 opening.
+
+### Telling the user
+
+In-memory mode is silent by design for one launch — a store that quarantined
+itself is usually healthy on the next one. It is not silent forever. Each
+launch records its outcome once (the first store it opens; a vault switch does
+not count again) as a consecutive-degraded-launch streak in
+`memry-config.json` under `crdtStore.inMemorySessions`, reset to `0` the moment
+a store opens. After **three consecutive launches with no durable store**, the
+app shows one calm notice: notes are safe — vault markdown is the source of
+truth and still loads and saves — but this device's edit history and merge
+state are running in memory and start fresh each launch.
+
+The renderer **pulls** this over `crdt:get-health`
+(`window.api.syncCrdt.getHealth()`) rather than being pushed it: the store's
+verdict lands while the window is still loading, so a broadcast would routinely
+arrive before anything was listening. The streak is persisted, so the answer is
+correct whenever it is asked.
+
+There is deliberately no bounded retry of a failed store open within a session.
+The failure it guards against is a native abort in the binding, which in the
+field is deterministic per machine rather than transient, and every retry costs
+a multi-second child process on the launch path. The one transient-shaped cause
+— a utility process that cannot boot — already gets its retry on the
+Chromium-free transport inside a single open.
 
 ## Why the Main Process Owns Y.Docs
 
@@ -423,7 +465,15 @@ document to its vault `.md` file and re-indexes it for search.
   at roughly a tenth of wall clock instead of saturating a core while the user types.
 - **Nothing is deferred indefinitely** — the trailing pass always runs, and
   `flushPendingWritebacks()` forces any pending pass through before the CRDT provider is
-  destroyed, which covers app quit and vault switch.
+  destroyed, which covers vault switch.
+- **A quit flushes write-backs first, not last** — the provider is destroyed at the _end_
+  of the shutdown chain, so relying on `destroy()` alone meant a slow teardown step could
+  spend the whole shutdown budget and the forced exit would kill the process with the
+  debounce timers still armed, losing up to 5 s of typing. `before-quit` therefore runs
+  the window flush and `flushPendingWritebacks()` as its first two steps, and runs the
+  write-back flush again — followed by `closeAllDatabases()` — on the timeout and
+  cleanup-error paths before it force-exits. See
+  [Shutdown Budget](/architecture/observability#shutdown-budget).
 - **The doc is resolved when the pass runs, not when it is scheduled** — a note closed and
   reopened inside the debounce window gets a fresh Y.Doc, so the pass looks the note id up
   in the provider's map at fire time rather than serializing the doc it captured. Otherwise

@@ -43,7 +43,7 @@ import {
 import { lookupCardTitle } from './canvas-link-target-title'
 import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
-import { externalizeSceneAssets } from './canvas-externalize'
+import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
 import { createVaultLibraryAdapter } from './canvas-library-adapter'
@@ -241,6 +241,13 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     } satisfies ExcalidrawInitialDataState
   }, [initialScene])
 
+  // An image whose upload failed is not re-attempted on the very next save
+  // (see canvas-externalize); a change in sync state — auth restored, network
+  // back, sync resumed — is what makes it worth trying again. Subscribed
+  // directly rather than through useSync so a sync tick does not re-render
+  // this editor.
+  useEffect(() => window.api.onSyncStatusChanged(() => retryCanvasAssetUploads()), [])
+
   // §5.6: a save whose scene is too large to sync is kept locally but never
   // pushed; surface it so the divergence is never silent.
   useEffect(() => {
@@ -334,8 +341,14 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as CardElement[]
         let sceneToSave = scene
         try {
-          sceneToSave = await externalizeSceneAssets(scene, canvasId, (input) =>
-            canvasService.uploadAsset(input)
+          sceneToSave = await externalizeSceneAssets(
+            scene,
+            canvasId,
+            (input) => canvasService.uploadAsset(input),
+            // One cheap question per save, ahead of any image bytes: a
+            // signed-out or sync-less device keeps its images inline instead
+            // of failing an upload per image per save (#1581).
+            { canUpload: async () => (await canvasService.canUploadAsset()).canUpload }
           )
         } catch (err) {
           log.error('Failed to externalize canvas assets; saving scene as-is', err)

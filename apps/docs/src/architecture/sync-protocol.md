@@ -588,6 +588,16 @@ them, and every client version already applies the snapshot as its baseline befo
 incrementals. If that fallback fails the push rejects, leaving the batch buffered for the next flush
 and — on quit — recorded for replay. No path discards an update.
 
+The two caps do not compose cleanly at the top end. A payload the route would reject with the
+precise `Snapshot exceeds 5MB limit` never reaches the route once its encoded body passes 8 MiB: the
+body-limit middleware answers 413 first, and with it the route's `snapshot_rejected` event — the one
+carrying `totalBytes` — was lost. The middleware therefore emits that event itself for
+`/sync/crdt/snapshot` and `/sync/crdt/updates`, with `reason: 'body_limit_exceeded'` and the
+observed **encoded** body size (base64 plus the JSON envelope, roughly 4/3 of the decoded payload).
+An oversized CRDT payload is diagnosable whichever check catches it. On the client a bare 413 with
+no storage code maps to `note_too_large`, which names the note in its toast — it is not, and must
+not read as, a storage-quota problem.
+
 ### CRDT write notifications
 
 Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts

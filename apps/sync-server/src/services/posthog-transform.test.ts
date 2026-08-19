@@ -191,6 +191,61 @@ describe('productEvent', () => {
     const result = productEvent(batchFixture(), eventFixture(), ctx)
     expect(result.properties).not.toHaveProperty('error_code')
     expect(result.properties).not.toHaveProperty('object_type')
+    expect(result.properties).not.toHaveProperty('http_status')
+    expect(result.properties).not.toHaveProperty('server_code')
+    expect(result.properties).not.toHaveProperty('retryable')
+  })
+
+  // #1584: a 400 VALIDATION_ERROR and a 503 with no server code both shipped as
+  // the single label `server_error`, so no chart and no alert threshold could
+  // separate "our contract is broken" from "the edge is having a bad day".
+  it('flattens the failure detail so a 4xx and a 5xx are different rows', () => {
+    const clientFailure = productEvent(
+      batchFixture(),
+      eventFixture({
+        name: 'sync_error',
+        surface: 'sync',
+        action: 'push_failed',
+        errorCode: 'server_error',
+        failure: { httpStatus: 400, serverCode: 'VALIDATION_ERROR', retryable: false }
+      }),
+      ctx
+    )
+    const serverFailure = productEvent(
+      batchFixture(),
+      eventFixture({
+        name: 'sync_error',
+        surface: 'sync',
+        action: 'pull_failed',
+        errorCode: 'server_error',
+        failure: { httpStatus: 503, retryable: true }
+      }),
+      ctx
+    )
+
+    expect(clientFailure.properties.http_status).toBe(400)
+    expect(clientFailure.properties.server_code).toBe('VALIDATION_ERROR')
+    expect(clientFailure.properties.retryable).toBe(false)
+
+    expect(serverFailure.properties.http_status).toBe(503)
+    expect(serverFailure.properties).not.toHaveProperty('server_code')
+    expect(serverFailure.properties.retryable).toBe(true)
+
+    // The old label is deliberately unchanged, so dashboards built on it keep working.
+    expect(clientFailure.properties.error_code).toBe('server_error')
+    expect(serverFailure.properties.error_code).toBe('server_error')
+  })
+
+  it('does not let a client dimension override the failure detail', () => {
+    const result = productEvent(
+      batchFixture(),
+      eventFixture({
+        dimensions: { http_status: '200' },
+        failure: { httpStatus: 500, retryable: true }
+      }),
+      ctx
+    )
+    expect(result.properties.http_status).toBe(500)
   })
 
   it('does not let a client-supplied "environment" dimension override ctx.environment', () => {

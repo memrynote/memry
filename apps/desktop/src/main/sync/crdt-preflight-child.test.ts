@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
-import { PREFLIGHT_MARK_BINDING_LOADED, PREFLIGHT_MARK_STARTED } from './crdt-preflight-protocol'
+import {
+  PREFLIGHT_MARK_BINDING_LOADED,
+  PREFLIGHT_MARK_STARTED,
+  PREFLIGHT_MARK_STORE_OPS
+} from './crdt-preflight-protocol'
 
 const mockWriteSync = vi.hoisted(() => vi.fn())
 const mockRmSync = vi.hoisted(() => vi.fn())
@@ -170,7 +174,10 @@ describe('crdt-preflight-child', () => {
     it('writes "started" to fd 2 before the native binding is touched', async () => {
       await runChild()
 
-      expect(marks()).toEqual([`${PREFLIGHT_MARK_STARTED}\n`, `${PREFLIGHT_MARK_BINDING_LOADED}\n`])
+      expect(marks().slice(0, 2)).toEqual([
+        `${PREFLIGHT_MARK_STARTED}\n`,
+        `${PREFLIGHT_MARK_BINDING_LOADED}\n`
+      ])
       // The ordering is the whole point of the staging protocol: a child that
       // dies before `started` never ran, which is no verdict on the store.
       expect(mockWriteSync.mock.invocationCallOrder[0]).toBeLessThan(
@@ -183,8 +190,34 @@ describe('crdt-preflight-child', () => {
       // exactly when the parent needs the marker.
       await runChild()
 
-      expect(mockWriteSync).toHaveBeenCalledTimes(2)
+      expect(mockWriteSync.mock.calls.length).toBeGreaterThan(0)
       for (const [fd] of mockWriteSync.mock.calls) expect(fd).toBe(2)
+    })
+
+    // Production could only ever say "somewhere in the store": issue #1583 has
+    // both stage markers out and five candidate operations behind them.
+    it('announces every store operation, in order, before running it', async () => {
+      await runChild()
+
+      expect(marks()).toEqual([
+        `${PREFLIGHT_MARK_STARTED}\n`,
+        `${PREFLIGHT_MARK_BINDING_LOADED}\n`,
+        `${PREFLIGHT_MARK_STORE_OPS.open}\n`,
+        `${PREFLIGHT_MARK_STORE_OPS.write}\n`,
+        `${PREFLIGHT_MARK_STORE_OPS.read}\n`,
+        `${PREFLIGHT_MARK_STORE_OPS.clear}\n`,
+        `${PREFLIGHT_MARK_STORE_OPS.close}\n`
+      ])
+    })
+
+    it('stops at the operation that failed, so the last marker names the suspect', async () => {
+      persistence.getYDoc.mockRejectedValue(new Error('IO error: torn LDB'))
+
+      await runChild()
+
+      // Read announced, clear never was: an abort unwinds nothing, so the only
+      // attribution that survives is the one written before the call.
+      expect(marks().at(-1)).toBe(`${PREFLIGHT_MARK_STORE_OPS.read}\n`)
     })
   })
 
@@ -212,7 +245,10 @@ describe('crdt-preflight-child', () => {
       expect(code).toBe(1)
       // Both markers out => the parent stages this 'store', the only stage
       // worth quarantining for.
-      expect(marks()).toEqual([`${PREFLIGHT_MARK_STARTED}\n`, `${PREFLIGHT_MARK_BINDING_LOADED}\n`])
+      expect(marks().slice(0, 2)).toEqual([
+        `${PREFLIGHT_MARK_STARTED}\n`,
+        `${PREFLIGHT_MARK_BINDING_LOADED}\n`
+      ])
       expect(errorSpy).toHaveBeenCalled()
     })
 

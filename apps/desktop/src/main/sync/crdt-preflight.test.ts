@@ -1,6 +1,10 @@
 import { EventEmitter } from 'events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PREFLIGHT_MARK_BINDING_LOADED, PREFLIGHT_MARK_STARTED } from './crdt-preflight-protocol'
+import {
+  PREFLIGHT_MARK_BINDING_LOADED,
+  PREFLIGHT_MARK_STARTED,
+  PREFLIGHT_MARK_STORE_OPS
+} from './crdt-preflight-protocol'
 
 const mockFork = vi.hoisted(() => vi.fn())
 const mockSpawn = vi.hoisted(() => vi.fn())
@@ -69,11 +73,27 @@ describe('runCrdtPreflight', () => {
     expect(mockSpawn).not.toHaveBeenCalled()
   })
 
+  /**
+   * Drive the Chromium-free retry the parent now runs for store failures too.
+   * The retry's verdict is the one that is returned, so it has to reproduce the
+   * markers of the failure under test.
+   */
+  async function failNodeRetry(
+    options: { code?: number; storeOps?: Array<keyof typeof PREFLIGHT_MARK_STORE_OPS> } = {}
+  ): Promise<void> {
+    await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalled())
+    nodeChild.say(PREFLIGHT_MARK_STARTED)
+    nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
+    for (const op of options.storeOps ?? []) nodeChild.say(PREFLIGHT_MARK_STORE_OPS[op])
+    nodeChild.emit('exit', options.code ?? 134)
+  }
+
   it('fails when the child dies with a non-zero code (native abort)', async () => {
     const pending = runCrdtPreflight(STORE_DIR)
     child.say(PREFLIGHT_MARK_STARTED)
     child.say(PREFLIGHT_MARK_BINDING_LOADED)
     child.emit('exit', 134)
+    await failNodeRetry()
 
     const result = await pending
     expect(result.ok).toBe(false)
@@ -87,10 +107,11 @@ describe('runCrdtPreflight', () => {
     child.say(PREFLIGHT_MARK_BINDING_LOADED)
 
     await vi.advanceTimersByTimeAsync(11_000)
+    expect(mockSpawn).toHaveBeenCalled()
+    nodeChild.emit('exit', 134)
 
     const result = await pending
     expect(result.ok).toBe(false)
-    expect(result.reason).toContain('timed out')
     expect(child.kill).toHaveBeenCalled()
   })
 
@@ -112,6 +133,7 @@ describe('runCrdtPreflight', () => {
     child.say(PREFLIGHT_MARK_STARTED)
     child.say(PREFLIGHT_MARK_BINDING_LOADED)
     child.emit('exit', 134)
+    await failNodeRetry()
     await first
 
     const second = runCrdtPreflight(STORE_DIR)
@@ -130,8 +152,38 @@ describe('runCrdtPreflight', () => {
       child.say(PREFLIGHT_MARK_STARTED)
       child.say(PREFLIGHT_MARK_BINDING_LOADED)
       child.emit('exit', 134)
+      await failNodeRetry()
 
       await expect(pending).resolves.toMatchObject({ ok: false, stage: 'store' })
+    })
+
+    // Production (issue #1583) could only ever say "somewhere in the store" —
+    // opening, writing, reading back, clearing and closing all landed on the
+    // same token, and each has a different cause.
+    it('names the store operation that was in flight when the child died', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.say(PREFLIGHT_MARK_STORE_OPS.open)
+      child.say(PREFLIGHT_MARK_STORE_OPS.write)
+      child.emit('exit', -1073741819)
+      await failNodeRetry({ storeOps: ['open', 'write'] })
+
+      // The LAST marker, not the first: each is written before its operation
+      // runs, so the newest one names the operation that never came back.
+      const result = await pending
+      expect(result.stage).toBe('store')
+      expect(result.storeOp).toBe('write')
+    })
+
+    it('leaves the store operation unset when the child died before announcing one', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.emit('exit', -1073741819)
+      await failNodeRetry()
+
+      expect((await pending).storeOp).toBeUndefined()
     })
 
     it('reports stage "binding" when the child started but never loaded the binding', async () => {
@@ -200,6 +252,58 @@ describe('runCrdtPreflight', () => {
       nodeChild.emit('exit', 134)
 
       await expect(pending).resolves.toMatchObject({ ok: false, stage: 'store' })
+    })
+  })
+
+  // On 2026.817.1 the utility child reached the store and access-violated there
+  // on 19/19 win32 installs, and the fallback was gated on 'bootstrap' — so for
+  // 7 of 8 installs it was dead code. Whether a Chromium-free child clears the
+  // access violation is unknown and must be measured; that it now RUNS is the
+  // part this pins.
+  describe('plain-node fallback when the utility child dies inside the store', () => {
+    it('retries a store-stage failure and takes the fallback verdict when it passes', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.say(PREFLIGHT_MARK_STORE_OPS.open)
+      child.emit('exit', -1073741819)
+
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
+      expect((mockSpawn.mock.calls[0] as [string, string[]])[1][1]).toBe(STORE_DIR)
+      nodeChild.emit('exit', 0)
+
+      await expect(pending).resolves.toEqual({ ok: true, transport: 'node' })
+    })
+
+    it('reports the fallback transport when it access-violates too', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.say(PREFLIGHT_MARK_BINDING_LOADED)
+      child.emit('exit', -1073741819)
+
+      await vi.waitFor(() => expect(mockSpawn).toHaveBeenCalledTimes(1))
+      nodeChild.say(PREFLIGHT_MARK_STARTED)
+      nodeChild.say(PREFLIGHT_MARK_BINDING_LOADED)
+      nodeChild.say(PREFLIGHT_MARK_STORE_OPS.open)
+      nodeChild.emit('exit', -1073741819)
+
+      // 'node' is the field that says the binding is broken on this machine
+      // rather than the utility process being unable to start.
+      await expect(pending).resolves.toMatchObject({
+        ok: false,
+        stage: 'store',
+        storeOp: 'open',
+        transport: 'node'
+      })
+    })
+
+    it('does not retry a binding-stage failure, which never opened the store', async () => {
+      const pending = runCrdtPreflight(STORE_DIR)
+      child.say(PREFLIGHT_MARK_STARTED)
+      child.emit('exit', 1)
+
+      await expect(pending).resolves.toMatchObject({ ok: false, stage: 'binding' })
+      expect(mockSpawn).not.toHaveBeenCalled()
     })
   })
 })

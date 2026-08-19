@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// This suite mocks every handler module rather than the Electron runtime, but
+// registerAllHandlers itself now touches ipcMain to label handlers with their
+// channel.
+vi.mock('electron', () => ({
+  ipcMain: { handle: vi.fn() }
+}))
+
 const hoisted = vi.hoisted(() => ({
   registerVaultHandlers: vi.fn(),
   unregisterVaultHandlers: vi.fn(),

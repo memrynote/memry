@@ -164,8 +164,13 @@ export async function uploadCanvasAsset(
 
   // New asset: write it to the content-addressed store, then upload the bytes
   // through the shared attachment pipeline to capture its chunk manifest.
-  ctx.markWritebackIgnored(diskPath)
-  await atomicWriteBinary(diskPath, bytes)
+  // The path is content-addressed and the write is atomic, so a file already
+  // sitting there is these exact bytes from an earlier attempt whose upload
+  // failed — rewriting it would be pure disk churn on every retry (#1581).
+  if (!(await fileExists(diskPath))) {
+    ctx.markWritebackIgnored(diskPath)
+    await atomicWriteBinary(diskPath, bytes)
+  }
 
   const { attachmentId, manifest } = await ctx.uploadAttachment(canvasId, diskPath)
   const chunkHashes = manifest.chunks.map((c) => c.encryptedHash)

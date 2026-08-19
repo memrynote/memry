@@ -7,6 +7,7 @@ import * as sqliteVec from 'sqlite-vec'
 import { EMBEDDING_DIMENSION } from '../lib/embeddings-constants'
 import { createLogger } from '../lib/logger'
 import { registerDataDbFunctions } from './sqlite-functions'
+import { isSqliteCorruptError } from './sqlite-errors'
 import type { DataDb, IndexDb, RawIndexDb } from './types'
 
 export type { DataDb, IndexDb, RawIndexDb } from './types'
@@ -167,12 +168,41 @@ export function closeAllDatabases(): void {
 /**
  * Index health status
  */
-export type IndexHealth = 'healthy' | 'corrupt' | 'missing' | 'migration_failed'
+export type IndexHealth = 'healthy' | 'corrupt' | 'missing' | 'migration_failed' | 'fts_corrupt'
+
+/**
+ * Reads the fts5 index structures of `fts_notes` without writing anything.
+ *
+ * `PRAGMA integrity_check` never looks inside an fts5 virtual table, and fts5's
+ * own `INSERT INTO fts_notes(fts_notes) VALUES('integrity-check')` is a write —
+ * it fails with SQLITE_READONLY on the readonly connection this health check
+ * opens. A MATCH is the cheapest statement that actually reads the segment
+ * blobs, which is where the corruption lives (#1585).
+ *
+ * A missing `fts_notes` is not corruption: `initializeFts` creates it right
+ * after open, which is how an index DB written before FTS existed upgrades.
+ */
+function isFtsNotesCorrupt(sqlite: Database.Database, existingTables: string[]): boolean {
+  if (!existingTables.includes('fts_notes')) {
+    return false
+  }
+
+  try {
+    sqlite.prepare('SELECT rowid FROM fts_notes WHERE fts_notes MATCH ? LIMIT 1').get('memry')
+    return false
+  } catch (error) {
+    // Only corruption counts. A lock or a transient read failure must not cost
+    // the user a rebuild of their whole search index.
+    return isSqliteCorruptError(error)
+  }
+}
 
 /**
  * Check the health of the index database.
  * Returns 'healthy' if the database exists and has all required tables,
  * 'corrupt' if the database exists but is missing tables or unreadable,
+ * 'fts_corrupt' if the tables are all there but the fts5 search index inside
+ * `fts_notes` is unreadable (repairable in place — the rest of the file is fine),
  * 'missing' if the database file doesn't exist.
  *
  * @param indexDbPath - Absolute path to index.db
@@ -198,10 +228,20 @@ export function checkIndexHealth(indexDbPath: string): IndexHealth {
       const existingTables = tables.map((t) => t.name)
 
       const hasAllTables = requiredTables.every((t) => existingTables.includes(t))
+      if (!hasAllTables) {
+        sqlite.close()
+        return 'corrupt'
+      }
+
+      // sqlite_master only proves `fts_notes` was declared. Its index lives in
+      // shadow tables nothing above opens, so an install whose fts5 content was
+      // internally corrupt used to read as 'healthy' — the auto-rebuild never
+      // fired and note search returned zero results forever (#1585).
+      const ftsCorrupt = isFtsNotesCorrupt(sqlite, existingTables)
 
       sqlite.close()
 
-      return hasAllTables ? 'healthy' : 'corrupt'
+      return ftsCorrupt ? 'fts_corrupt' : 'healthy'
     } catch {
       sqlite.close()
       return 'corrupt'

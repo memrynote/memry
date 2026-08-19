@@ -20,6 +20,7 @@ import { withRetry } from '../retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
 import { postToServer, getFromServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
+import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '../sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
@@ -399,7 +400,7 @@ export class PullCoordinator {
       surface: 'sync',
       action: 'pull_failed',
       result: 'failed',
-      errorCode: errorInfo.category,
+      ...syncErrorTelemetry(errorInfo),
       metrics: { durationMs: Date.now() - startedAt },
       source: 'pull',
       dimensions: { transport: 'record' }

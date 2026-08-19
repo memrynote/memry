@@ -53,6 +53,8 @@ const mocks = vi.hoisted(() => ({
   startProjectionRuntime: vi.fn(),
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
+  rebuildProjections: vi.fn(),
+  detectCorruption: vi.fn(),
   trackMainError: vi.fn(),
   initEmbeddingModel: vi.fn(),
   isModelLoaded: vi.fn(),
@@ -63,7 +65,8 @@ const mocks = vi.hoisted(() => ({
   registerLazyAgentHandlers: vi.fn(),
   unregisterLazyAgentHandlers: vi.fn(),
   startAgent: vi.fn(),
-  agentShutdown: vi.fn()
+  agentShutdown: vi.fn(),
+  trackMainLog: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -178,13 +181,23 @@ vi.mock('../sync/crdt-provider', () => ({
 
 vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
-  trackMainLog: vi.fn()
+  trackMainLog: (...args: unknown[]) => mocks.trackMainLog(...args)
 }))
 
-vi.mock('../projections', () => ({
-  reconcileProjections: (...args: unknown[]) => mocks.reconcileProjections(...args),
-  startProjectionRuntime: (...args: unknown[]) => mocks.startProjectionRuntime(...args),
-  stopProjectionRuntime: (...args: unknown[]) => mocks.stopProjectionRuntime(...args)
+vi.mock('../projections', async () => {
+  const actual = await vi.importActual<typeof import('../projections')>('../projections')
+  return {
+    // The real predicate: a mocked one would let a broken failure marker pass.
+    isReconcileFailure: actual.isReconcileFailure,
+    rebuildProjections: (...args: unknown[]) => mocks.rebuildProjections(...args),
+    reconcileProjections: (...args: unknown[]) => mocks.reconcileProjections(...args),
+    startProjectionRuntime: (...args: unknown[]) => mocks.startProjectionRuntime(...args),
+    stopProjectionRuntime: (...args: unknown[]) => mocks.stopProjectionRuntime(...args)
+  }
+})
+
+vi.mock('../database/fts-rebuild', () => ({
+  detectCorruption: (...args: unknown[]) => mocks.detectCorruption(...args)
 }))
 
 vi.mock('../projections/projectors/note-derived-state-projector', () => ({
@@ -249,6 +262,7 @@ import {
   autoOpenLastVault,
   closeVault,
   emitIndexProgress,
+  emitIndexRecovered,
   emitVaultError,
   getAllVaults,
   getConfig,
@@ -292,7 +306,9 @@ describe('vault lifecycle', () => {
     mocks.stopSyncRuntime.mockResolvedValue(undefined)
     mocks.initCrdtPersistence.mockResolvedValue(undefined)
     mocks.stopProjectionRuntime.mockResolvedValue(undefined)
-    mocks.reconcileProjections.mockResolvedValue(undefined)
+    mocks.reconcileProjections.mockResolvedValue({})
+    mocks.rebuildProjections.mockResolvedValue({ search: { notes: 5, tasks: 0, inbox: 0 } })
+    mocks.detectCorruption.mockReturnValue([])
     mocks.applyProjectFrontmatterBackfill.mockResolvedValue(undefined)
     mocks.initEmbeddingModel.mockResolvedValue(undefined)
     mocks.isModelLoaded.mockReturnValue(false)
@@ -425,6 +441,60 @@ describe('vault lifecycle', () => {
       channel: 'vault:index-recovered',
       payload: { reason: 'missing', filesIndexed: 3, duration: 42 }
     })
+  })
+
+  it('repairs a corrupt search index in place instead of deleting the index database', async () => {
+    mocks.checkIndexHealth.mockReturnValue('fts_corrupt')
+    mocks.detectCorruption.mockReturnValue(['fts_notes'])
+
+    await selectVault({ path: '/vault/fts' })
+
+    // #then the index DB file survives: only the fts5 tables are rebuilt, so
+    // every note embedding in it is kept
+    expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+    expect(mocks.runIndexMigrations).toHaveBeenCalledWith('/vault/fts/index.db')
+    expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search'])
+
+    // #then the user is told the repair happened
+    expect(mocks.sent).toContainEqual({
+      channel: 'vault:index-recovered',
+      payload: { reason: 'fts_corrupt', filesIndexed: 5, duration: expect.any(Number) }
+    })
+  })
+
+  it('leaves the index alone when fts5 says the suspicion was wrong', async () => {
+    mocks.checkIndexHealth.mockReturnValue('fts_corrupt')
+    mocks.detectCorruption.mockReturnValue([])
+
+    await selectVault({ path: '/vault/fts-ok' })
+
+    // A transient read failure must not cost the user a rebuild.
+    expect(mocks.rebuildProjections).not.toHaveBeenCalled()
+    expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+  })
+
+  it('repairs the search index when a reconcile pass reports corruption', async () => {
+    mocks.reconcileProjections.mockResolvedValue({
+      search: {
+        reconcileFailed: true,
+        projector: 'search',
+        error: Object.assign(new Error('fts5: corruption found'), {
+          code: 'SQLITE_CORRUPT_VTAB'
+        })
+      }
+    })
+    mocks.detectCorruption.mockReturnValue(['fts_notes'])
+
+    await selectVault({ path: '/vault/reconcile-corrupt' })
+    // The reconcile is deliberately backgrounded; let its continuation land.
+    await vi.waitFor(() => expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search']))
+
+    // The failure still reaches telemetry under its original action name.
+    expect(mocks.trackMainError).toHaveBeenCalledWith(
+      'vault',
+      'projection_reconcile',
+      expect.any(Error)
+    )
   })
 
   it('restarts the watcher when exclude patterns change and supports manual reindex', async () => {
@@ -792,4 +862,37 @@ describe('vault lifecycle', () => {
     expect(mocks.sent).toContainEqual({ channel: 'vault:index-progress', payload: 55 })
     expect(mocks.sent).toContainEqual({ channel: 'vault:error', payload: 'boom' })
   })
+})
+
+describe('index recovery severity', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('#given a missing index #then the rebuild is reported at info, not warn', () => {
+    // #given the index DB was simply absent — the expected first open of a vault
+    emitIndexRecovered({ reason: 'missing', filesIndexed: 12, duration: 340 })
+
+    // #then it stays queryable, but out of the error dashboard
+    expect(mocks.trackMainLog).toHaveBeenCalledWith('info', {
+      scope: 'vault',
+      action: 'index_recovered',
+      errorCode: 'missing',
+      metrics: { durationMs: 340, itemCount: 12 }
+    })
+  })
+
+  it.each(['corrupt', 'migration_failed'] as const)(
+    '#given a %s index #then the rebuild is still a warning',
+    (reason) => {
+      // #given genuine data-corruption recovery
+      emitIndexRecovered({ reason, filesIndexed: 5, duration: 90 })
+
+      // #then the level someone triages is unchanged
+      expect(mocks.trackMainLog).toHaveBeenCalledWith(
+        'warn',
+        expect.objectContaining({ action: 'index_recovered', errorCode: reason })
+      )
+    }
+  )
 })

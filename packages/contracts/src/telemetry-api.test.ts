@@ -7,11 +7,13 @@ import {
   TelemetryErrorDetailSchema,
   TelemetryEventNameSchema,
   TelemetryEventSchema,
+  TelemetryFailureDetailSchema,
   TelemetrySurfaceSchema,
   buildErrorDetail,
   normalizeRejectionReason,
   normalizeWindowError,
   sanitizeTelemetryDimensions,
+  sanitizeTelemetryFailure,
   toErrorCode
 } from './telemetry-api'
 
@@ -1027,5 +1029,78 @@ describe('sanitizeTelemetryDimensions', () => {
     for (const key of TELEMETRY_DIMENSION_KEYS) {
       expect(TelemetryDimensionsSchema.safeParse({ [key]: 'ok' }).success).toBe(true)
     }
+  })
+})
+
+// #1584: `sync_error` carried one opaque `server_error` label with no status and
+// no server code, so a permanent 400 and a transient edge 5xx were the same row.
+describe('TelemetryFailureDetailSchema', () => {
+  it('accepts a bounded status, server code and retryable verdict', () => {
+    expect(
+      TelemetryFailureDetailSchema.safeParse({
+        httpStatus: 400,
+        serverCode: 'VALIDATION_ERROR',
+        retryable: false
+      }).success
+    ).toBe(true)
+  })
+
+  it('rejects anything that could turn the server code into free text', () => {
+    for (const serverCode of [
+      'Invalid push request',
+      'validation_error',
+      '/Users/kaan/vault/note.md',
+      'kaan@example.com',
+      'A'.repeat(65)
+    ]) {
+      expect(TelemetryFailureDetailSchema.safeParse({ serverCode }).success).toBe(false)
+    }
+  })
+
+  it('rejects a status outside the HTTP range', () => {
+    for (const httpStatus of [0, 99, 600, 4.5]) {
+      expect(TelemetryFailureDetailSchema.safeParse({ httpStatus }).success).toBe(false)
+    }
+  })
+
+  // BACKWARD COMPATIBILITY, both directions. An older desktop omits the field —
+  // it is optional, so the batch stays valid. A newer desktop sends it to a
+  // sync-server on older contracts — z.object STRIPS unknown keys rather than
+  // rejecting, so the whole batch is not 400'd and the other events survive.
+  it('leaves an event without a failure detail valid', () => {
+    expect(TelemetryEventSchema.safeParse(baseEvent).success).toBe(true)
+  })
+
+  it('does not reject an event carrying a key the schema does not know', () => {
+    const parsed = TelemetryEventSchema.safeParse({ ...baseEvent, someFutureField: { a: 1 } })
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && 'someFutureField' in parsed.data).toBe(false)
+  })
+})
+
+describe('sanitizeTelemetryFailure', () => {
+  it('passes a valid detail through untouched', () => {
+    const failure = { httpStatus: 503, retryable: true }
+    expect(sanitizeTelemetryFailure(failure)).toBe(failure)
+  })
+
+  it('passes undefined through so the caller can omit the field', () => {
+    expect(sanitizeTelemetryFailure(undefined)).toBeUndefined()
+  })
+
+  // The sync-server rejects an ENTIRE batch when one event fails validation, so
+  // a malformed field must cost that field, never the 99 events queued with it.
+  it('drops only the offending field', () => {
+    expect(
+      sanitizeTelemetryFailure({
+        httpStatus: 400,
+        serverCode: 'Invalid push request' as string,
+        retryable: false
+      })
+    ).toEqual({ httpStatus: 400, retryable: false })
+  })
+
+  it('returns undefined when nothing survives', () => {
+    expect(sanitizeTelemetryFailure({ httpStatus: 42, serverCode: 'nope' })).toBeUndefined()
   })
 })

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { syncReleaseDownloadCounts, type ReleaseDownloadsEnv } from './release-downloads'
+import {
+  GitHubReleasesRefusedError,
+  syncReleaseDownloadCounts,
+  type ReleaseDownloadsEnv
+} from './release-downloads'
 
 interface GithubAsset {
   id: number
@@ -288,13 +292,48 @@ describe('syncReleaseDownloadCounts', () => {
     expect(headers.authorization).toBeUndefined()
   })
 
-  it('throws when the GitHub API rejects the request so the cron reports it', async () => {
+  it("reports GitHub's rate limit as a handled 403, naming the missing token", async () => {
     const { db } = createDb([])
     const githubFetch = vi.fn().mockResolvedValue(new Response('rate limited', { status: 403 }))
 
-    await expect(syncReleaseDownloadCounts(createEnv(db, githubFetch))).rejects.toThrow(
-      'GitHub releases request failed with status 403'
+    // #when the shared-IP budget is spent and no token is configured
+    const error = await syncReleaseDownloadCounts(createEnv(db, githubFetch)).catch(
+      (err: unknown) => err
     )
+
+    // #then the cron reports expected upstream backpressure, not a 500
+    expect(error).toBeInstanceOf(GitHubReleasesRefusedError)
+    const refused = error as GitHubReleasesRefusedError
+    expect(refused.statusCode).toBe(403)
+    expect(refused.code).toBe('GITHUB_RELEASES_REFUSED')
+    expect(refused.message).toContain('GITHUB_TOKEN is not set')
+  })
+
+  it("reports GitHub's secondary limit the same way when a token IS configured", async () => {
+    const { db } = createDb([])
+    const githubFetch = vi.fn().mockResolvedValue(new Response('slow down', { status: 429 }))
+
+    const error = await syncReleaseDownloadCounts(
+      createEnv(db, githubFetch, { GITHUB_TOKEN: 'ghp_test' })
+    ).catch((err: unknown) => err)
+
+    expect(error).toBeInstanceOf(GitHubReleasesRefusedError)
+    expect((error as GitHubReleasesRefusedError).statusCode).toBe(429)
+    // The remedy already applied, so triage must not be pointed at the token again.
+    expect((error as GitHubReleasesRefusedError).message).toContain('authenticated')
+    expect((error as GitHubReleasesRefusedError).message).not.toContain('GITHUB_TOKEN is not set')
+  })
+
+  it('keeps an unexpected GitHub failure a plain 500-level error', async () => {
+    const { db } = createDb([])
+    const githubFetch = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }))
+
+    const error = await syncReleaseDownloadCounts(createEnv(db, githubFetch)).catch(
+      (err: unknown) => err
+    )
+
+    expect(error).not.toBeInstanceOf(GitHubReleasesRefusedError)
+    expect((error as Error).message).toBe('GitHub releases request failed with status 500')
   })
 
   it('does nothing when the API returns no usable assets', async () => {

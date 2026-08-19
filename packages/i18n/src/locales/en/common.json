@@ -93,7 +93,9 @@
     "filesImported": "{count, plural, one {Imported # file} other {Imported # files}}",
     "filesImportFailed": "{count, plural, one {Failed to import # file} other {Failed to import # files}}",
     "moreRemindersDue": "{count, plural, one {# more reminder due} other {# more reminders due}}",
-    "moreRemindersDueHint": "Check the reminders panel for details"
+    "moreRemindersDueHint": "Check the reminders panel for details",
+    "searchIndexRepaired": "Search index repaired",
+    "searchIndexRepairedHint": "Part of the search index was damaged, so Memry rebuilt it. Your notes were not touched."
   },
   "dateRelative": {
     "today": "Today",

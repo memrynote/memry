@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/auth-context'
 import { registerWebDevice } from '@/lib/account/auth-client'
+import { authErrorMessage } from '@/lib/account/auth-error'
 import { SYNC_SERVER_URL, WEB_OAUTH_REDIRECT_PATH } from '@/lib/account/config'
 import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -102,7 +103,7 @@ export function LoginPage() {
       trackLandingEvent('landing_account_signin', 'auth:otp')
       navigate(safeNextPath(next))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Invalid code')
+      setError(authErrorMessage(e, 'Invalid code'))
     } finally {
       setBusy(false)
     }

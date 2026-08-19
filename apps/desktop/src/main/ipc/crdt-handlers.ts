@@ -7,9 +7,11 @@ import {
   CrdtOpenDocSchema,
   CrdtSyncStep1Schema,
   CrdtSyncStep2Schema,
+  type CrdtHealth,
   type CrdtSyncStep1Result
 } from '@memry/contracts/ipc-crdt'
 import { getCrdtProvider } from '../sync/crdt-provider'
+import { getCrdtInMemorySessions } from '../store'
 import { createLogger } from '../lib/logger'
 import { trackNoteBodyEditThrottled } from '../telemetry/diagnostics'
 import { createValidatedHandler } from './validate'
@@ -154,4 +156,20 @@ export function registerCrdtIpcHandlers(): void {
       getCrdtProvider().applyIpcSyncStep2(input.noteId, input.diff)
     })
   )
+
+  // Pulled, not pushed: the verdict lands while the window is still loading, so
+  // a broadcast would routinely have no listener. Joins an init already in
+  // flight — never starts one, for the same reason open-doc does not: this
+  // caller must not be what decides which vault the store belongs to.
+  ipcMain.handle(CRDT_CHANNELS.GET_HEALTH, async (): Promise<CrdtHealth> => {
+    const provider = getCrdtProvider()
+    if (!provider.isInitialized()) await provider.awaitPendingInit()
+    const inMemorySessions = getCrdtInMemorySessions()
+    return {
+      // Before this launch's verdict exists, the persisted streak is the best
+      // available answer: it is exactly what the previous launches decided.
+      persistent: provider.isInitialized() ? provider.hasPersistence() : inMemorySessions === 0,
+      inMemorySessions
+    }
+  })
 }

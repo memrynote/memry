@@ -35,11 +35,7 @@ export type LandingEventName =
   | 'landing_account_signout'
 
 export type LandingCampaignKey =
-  | 'utm_source'
-  | 'utm_medium'
-  | 'utm_campaign'
-  | 'utm_content'
-  | 'utm_term'
+  'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'
 
 export type LandingCampaignData = Partial<Record<LandingCampaignKey, string>>
 
@@ -105,6 +101,50 @@ export function createLandingPageViewData(pathname: string, search = ''): Landin
   }
 }
 
+// Microsoft Office / Outlook SafeLinks pre-fetches links out of email and
+// injects its own scanner into the page. When the scanner loses the object
+// handle it is holding, it rejects a non-Error COM value, which posthog-js
+// reports as an `$exception` with no type and no usable stack:
+//
+//   Non-Error promise rejection captured with value:
+//   Object Not Found Matching Id:1, MethodName:update, ParamCount:4
+//
+// It is not our code: `MethodName` / `ParamCount` are a COM bridge's idioms and
+// appear nowhere in this repo, the `Id:N` counter is the scanner's own object
+// handle, and it arrives in same-day bursts from a handful of readers a few
+// times a quarter. Dropped here so it never reaches the error list.
+//
+// Deliberately narrow — matching only this exact COM signature. A broad "drop
+// every non-Error rejection" rule would hide real bugs.
+const SAFELINKS_SCANNER_REJECTION = /Object Not Found Matching Id:\d+, MethodName:update/
+
+// Only the exception fields, never the whole property bag: it can be large and
+// carries no other place this string could legitimately appear.
+const EXCEPTION_MESSAGE_KEYS = ['$exception_values', '$exception_list', '$exception_message']
+
+function asSearchableText(value: unknown): string {
+  if (typeof value === 'string') return value
+  try {
+    return JSON.stringify(value) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function isSafeLinksScannerException(
+  event: { event?: string; properties?: Record<string, unknown> } | null | undefined
+): boolean {
+  if (!event || event.event !== '$exception') return false
+  const properties = event.properties
+  if (!properties) return false
+
+  return EXCEPTION_MESSAGE_KEYS.some((key) => {
+    const value = properties[key]
+    if (value === undefined || value === null) return false
+    return SAFELINKS_SCANNER_REJECTION.test(asSearchableText(value))
+  })
+}
+
 // Product analytics + session replay via posthog-js, direct to PostHog's
 // reverse-proxy subdomain. Session replay cannot be server-proxied, so this
 // replaces the old sendBeacon/fetch pipe into sync-server. `init` no-ops when
@@ -123,6 +163,9 @@ function init(): boolean {
     person_profiles: 'identified_only',
     disable_external_dependency_loading: true,
     capture_pageview: false,
+    // Returning null drops the event before it is queued. Everything else is
+    // passed through untouched.
+    before_send: (event) => (isSafeLinksScannerException(event) ? null : event),
     session_recording: {
       maskAllInputs: true,
       // maskAllInputs only covers <input>/<textarea> values; account, login
@@ -159,4 +202,12 @@ export function trackLandingEvent(name: LandingEventName, target: string): void 
     name,
     createLandingEventData(target, window.location.pathname, window.location.search)
   )
+}
+
+// Autocapture only sees exceptions that reach the top. Anything we catch and
+// turn into a friendly message has to be reported by hand, or the failure goes
+// dark in Error Tracking.
+export function trackLandingException(error: unknown, context: string): void {
+  if (!init()) return
+  posthog.captureException(error, { context })
 }

@@ -23,6 +23,7 @@ import {
   type CanvasDeletedEvent,
   type CanvasTooLargeEvent,
   type CanvasUploadAssetResponse,
+  type CanvasCanUploadAssetResponse,
   type CanvasGetAssetResponse,
   type CanvasListAssetsResponse,
   type CanvasUpdateResponse
@@ -49,7 +50,10 @@ import {
   reconcileCanvasAssets,
   uploadCanvasAsset
 } from '../canvas/assets/asset-service'
-import { buildAssetServiceContext } from '../canvas/assets/asset-service-context'
+import {
+  buildAssetServiceContext,
+  canUploadCanvasAssets
+} from '../canvas/assets/asset-service-context'
 import { trackMainEvent } from '../telemetry/track'
 import { createLogger } from '../lib/logger'
 
@@ -276,6 +280,16 @@ export function registerCanvasHandlers(): void {
     )
   )
 
+  // canvas:can-upload-asset - Pre-upload gate for scene externalization
+  ipcMain.handle(
+    CanvasChannels.invoke.CAN_UPLOAD_ASSET,
+    createHandler(async (): Promise<CanvasCanUploadAssetResponse> => {
+      const ctx = buildAssetServiceContext()
+      if (!ctx) return { canUpload: false }
+      return { canUpload: await canUploadCanvasAssets() }
+    })
+  )
+
   // canvas:get-asset - Resolve a scene image's memry-file:// ref
   ipcMain.handle(
     CanvasChannels.invoke.GET_ASSET,
@@ -363,6 +377,7 @@ export function unregisterCanvasHandlers(): void {
   ipcMain.removeHandler(CanvasChannels.invoke.REVEAL_IN_FINDER)
   ipcMain.removeHandler(CanvasChannels.invoke.OPEN_EXTERNAL)
   ipcMain.removeHandler(CanvasChannels.invoke.UPLOAD_ASSET)
+  ipcMain.removeHandler(CanvasChannels.invoke.CAN_UPLOAD_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.GET_ASSET)
   ipcMain.removeHandler(CanvasChannels.invoke.LIST_ASSETS)
   ipcMain.removeHandler(CanvasChannels.invoke.LIBRARY_LIST)

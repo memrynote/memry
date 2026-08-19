@@ -41,6 +41,12 @@ steady states at `debug`:
 - Vector-clock bumps the `increment*ClockOffline` helpers make while the sync runtime is down
   (`main/sync/offline-clock.ts`) — the normal offline-edit path, one call per edited row (per
   changed field for tasks and projects).
+- An index rebuild triggered by a **missing** index DB (`emitIndexRecovered` in
+  `main/vault/index.ts`) — `checkIndexHealth` reports `missing` when `index.db` is not on disk,
+  which is the expected first open of a vault: fresh install, newly linked device, or a deleted
+  file. The index is a derived cache, so rebuilding it costs nothing but time. It is emitted at
+  `info`, with the same `index_recovered` action and `errorCode` as before. `corrupt` and
+  `migration_failed` stay at `warn` — those are genuine data-corruption recovery.
 
 A log payload is built before the transport decides whether to keep it, so a hot path pays for
 its arguments at every level. Keep these lines to identifiers: log the row id and the changed
@@ -159,6 +165,42 @@ validates `/telemetry/batch` with that schema and rejects a whole batch on one b
 narrowing it would make a newly deployed server 400 batches sent by already-shipped desktop
 builds. The allowlist is enforced on the client, where the data still is.
 
+#### Failure detail on a failed request
+
+An event that reports a failed HTTP request may also carry a `failure` object
+(`TelemetryFailureDetailSchema`) with three bounded fields:
+
+| Field        | Shape                                        | PostHog property |
+| ------------ | -------------------------------------------- | ---------------- |
+| `httpStatus` | integer 100–599                              | `http_status`    |
+| `serverCode` | the server's `SCREAMING_SNAKE` `error.code`  | `server_code`    |
+| `retryable`  | boolean — was the failure classified retryable | `retryable`     |
+
+This exists because `sync_error` used to ship one opaque `server_error` label covering 400, 403,
+404, 409 and every 5xx alike (#1584): a permanent client-side contract bug and a transient edge 5xx
+were the same row, so no chart separated them and no alert threshold could be set. The label is
+unchanged — `error_code` still reads `server_error` — and these fields sit beside it, so
+`error_code='server_error' AND http_status >= 500` now answers "is the backend down?" and
+`retryable=false` answers "how many of these will never succeed?".
+
+An absent `server_code` on a 5xx is itself the signal: the response never reached the Worker's
+error handler, so it came from the edge and the backend has no record of it.
+
+It is a field of its own rather than a dimension for two reasons. An event may carry at most **one**
+dimension and `sync_error` already spends it on `transport`; and unlike a dimension value, every
+field here is bounded by construction (a 3-digit range, an anchored enum-ish token, a boolean), so
+it can never become a free-text channel. `sanitizeTelemetryFailure` runs at the same
+`createTelemetryClient.track()` chokepoint as the dimension allowlist and drops any field that
+would fail validation — one bad field must never cost the whole batch.
+
+The schema addition is optional and additive in both directions: an older desktop simply omits it,
+and a sync-server on older contracts strips the unknown key rather than rejecting the batch, so
+neither deploy order can 400 events from an already-shipped build.
+
+On the desktop the fields are assembled in one place —
+`apps/desktop/src/main/sync/sync-error-telemetry.ts` — from what `classifyError` already computed,
+so a new `sync_error` call site cannot forward the category and forget the rest.
+
 Because `warn`/`error` log records ship too (Path A, see [What Ships](#what-ships) and
 [Error & Diagnostic Logs in PostHog](#error-diagnostic-logs-in-posthog)), the same rule applies to
 log lines and thrown error messages in content-handling code: the inbox scraper
@@ -227,7 +269,7 @@ offline quit never stalls the exit.
 | Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                                                                                                                |
 | Settings        | `setting_changed` — surface only, never the value                                                                                                                                                                                |
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only)                                                                                                                                                          |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request))                                                                                           |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
@@ -254,17 +296,54 @@ dimension.
 
 `errorCode` separates the failure modes:
 
-| `errorCode`               | Meaning                                                                      |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| `UNCLEAN_SHUTDOWN`        | no shutdown was attempted — hard crash, OOM kill, force quit                 |
-| `SHUTDOWN_TIMEOUT`        | shutdown ran but the 5s cleanup timeout fired before the forced `app.exit()` |
-| `SHUTDOWN_CLEANUP_FAILED` | the cleanup chain rejected                                                   |
+| `errorCode`               | Meaning                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `UNCLEAN_SHUTDOWN`        | no shutdown was attempted — hard crash, OOM kill, force quit         |
+| `SHUTDOWN_TIMEOUT_<STEP>` | shutdown ran but its budget expired while `<STEP>` was still running |
+| `SHUTDOWN_TIMEOUT`        | same, but the marker carries no step (written by an older build)     |
+| `SHUTDOWN_CLEANUP_FAILED` | the cleanup chain rejected                                           |
 
-The last two are stamped by `markShutdownFailure()` immediately before the forced exit: the log
+The last three are stamped by `markShutdownFailure()` immediately before the forced exit: the log
 line for that failure never flushes, but the marker survives to the next launch. Only the process
 that wrote a marker may remove one — a second instance that loses the single-instance lock shares
 `userData` and must not erase the primary's marker on its way out. Marker write failures are
 logged and swallowed; a read-only disk must never break startup.
+
+The overrunning step rides in the `errorCode` rather than in a dimension, because an event ships
+at most one dimension and that slot already carries `prior_app_version`. The `SHUTDOWN_TIMEOUT`
+prefix is preserved so a query written against the old code still matches. Only a bounded
+kebab-case token is accepted from the marker; anything else degrades to the plain code.
+
+### Shutdown Budget
+
+`before-quit` runs its cleanup as an ordered list of named steps under **one shared deadline**
+(`apps/desktop/src/main/shutdown-sequence.ts`):
+
+| Constant                    | Value     | Role                                                         |
+| --------------------------- | --------- | ------------------------------------------------------------ |
+| `SHUTDOWN_BUDGET_MS`        | 8,000 ms  | the whole graceful chain                                     |
+| `SHUTDOWN_LAST_CHANCE_MS`   | 1,500 ms  | durability flush granted after the budget is gone            |
+| `SHUTDOWN_HARD_BACKSTOP_MS` | 10,000 ms | timer outside the sequence; the process always exits by then |
+
+The budget is derived from the bounded waits the chain contains, not guessed: 2,000 ms for the
+renderer flush handshake (windows in parallel) plus 3,000 ms for the voice, image-processing and
+embeddings utility stops — which run **concurrently**, so 3,000 ms together rather than 9,000 ms
+in a row — leaves 3,000 ms of headroom for the unbounded steps. Every step is also handed a
+`cap()` that clamps its own bounded wait to what is left of the shared deadline, so no set of
+waits can collectively overrun it.
+
+Two rules keep a slow quit from becoming a lossy one:
+
+- **Order by durability.** The window flush and `flushPendingWritebacks()` run first, so a wedged
+  teardown step behind them degrades a quit to slow rather than to lost edits.
+- **Never force-exit with pending writes.** When the budget expires, the step that overran is
+  stamped into the marker, then `flushPendingWritebacks()` and `closeAllDatabases()` run inside
+  the last-chance window before `app.exit(1)`. `closeAllDatabases()` matters because both SQLite
+  files run `synchronous = NORMAL`, which defers durability to the checkpoint that `close()`
+  performs. The cleanup-error path does the same.
+
+A quit where nothing is wedged still completes in milliseconds; these ceilings are only reached
+when a teardown step is genuinely stuck.
 
 ### Durable Queues
 
@@ -529,6 +608,14 @@ traffic does not go through `/telemetry/batch`. The old `POST /telemetry/web` en
   `VITE_VERCEL_ENV` when present, otherwise a production/development split on Vite's build
   `MODE` — so landing traffic is filterable apart from desktop/server events in the same PostHog
   project.
+- **Scanner noise**: a `before_send` filter drops one `$exception` fingerprint —
+  `Object Not Found Matching Id:N, MethodName:update, ParamCount:4`. That is Microsoft Office /
+  Outlook **SafeLinks** pre-fetching a link out of an email, injecting its own scanner into the
+  page, and then losing its own object handle; `MethodName` / `ParamCount` are a COM bridge's
+  idioms and appear nowhere in this repo. It arrives in same-day bursts from a handful of readers a
+  few times a quarter and has no type and no usable stack, so it is pure noise in the error list.
+  The match is deliberately narrow — only that exact COM signature. A broad "drop every non-Error
+  rejection" rule would hide real bugs.
 
 ## Error Reporting
 
@@ -589,6 +676,17 @@ files); any home-directory prefix (`/Users/<name>`, `C:\Users\<name>`) is rewrit
 emails, UUIDs, JWTs, and bearer tokens are scrubbed from anything that ships.
 
 ### IPC Error Throttling
+
+The `action` an IPC error reports is the **channel it was registered on** (`notes:create`), not the
+handler's function name. Handlers are registered as
+`ipcMain.handle(Channel, createValidatedHandler(Schema, async (input) => …))`, and an arrow passed
+straight in as an argument has an empty `name` — so every inline handler in the app used to collapse
+into one literal action, `validated_handler`, and a schema rejection could not be attributed to a
+channel from the wire data alone (the captured stack names only the bundled wrapper, and Zod strips
+its own frames). `installIpcChannelLabels` (`main/ipc/lib/ipc-channel-labels.ts`) records the pairing
+once at the `ipcMain.handle` boundary — the only place that knows both halves — and
+`registerAllHandlers` calls it before the first registration. A handler registered without it keeps
+the old generic label.
 
 Every IPC envelope error becomes a telemetry event, so a handler stuck in a failure loop could
 flood the queue. `trackIpcError` (`main/ipc/validate.ts`) therefore emits at most one event per
@@ -653,7 +751,10 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   redaction as a backstop) and **redacted stack frames**, `log_action` — the operational
   breadcrumb that keeps log-type error events (which carry no stack of their own) identifiable —
   and `exit_code`, the platform exit status for process-lifecycle events (empty string when
-  absent, since exit code `0` is itself meaningful).
+  absent, since exit code `0` is itself meaningful). A failed request additionally contributes
+  `http_status`, `server_code` and `retryable` (see
+  [Failure detail on a failed request](#failure-detail-on-a-failed-request)) — also empty string
+  when absent, because `retryable: false` is a real answer and must not read as "not reported".
 - **Redacted diagnostic logs (`kind=log`, Path A, always-on)**: a main-process electron-log
   transport (`apps/desktop/src/main/telemetry/log-ship.ts`, installed once from `main/index.ts` —
   never from `logger.ts`, which must stay electron-free for worker bundling) intercepts every
@@ -710,6 +811,30 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   stack frames as `errorStack`. The field names are chosen against the redaction allowlist above:
   `phase` and `errorCode` ship verbatim, `url` is path-redacted (query string stripped), the rest
   are text-redacted and capped.
+- **Updater severity classification**: the local `main.log` line and the user-facing error state are
+  unchanged — every updater failure is still logged at `error` and still flips the UI to the error
+  state. What is classified is the **telemetry** severity
+  (`apps/desktop/src/main/updater-error-severity.ts`). A failure during a _check_
+  (`check` / `startup-check` / `scheduled-check` / `auto-check-enable`) whose message **or cause
+  chain** carries only allowlisted Chromium transport codes — `net::ERR_NAME_NOT_RESOLVED`,
+  `ERR_INTERNET_DISCONNECTED`, `ERR_NETWORK_CHANGED`, `ERR_TIMED_OUT`, `ERR_CONNECTION_TIMED_OUT`,
+  `ERR_CONNECTION_RESET`, `ERR_CONNECTION_CLOSED`, `ERR_CONNECTION_REFUSED`,
+  `ERR_NETWORK_IO_SUSPENDED`, `ERR_HTTP2_PROTOCOL_ERROR`, `ERR_HTTP2_SERVER_REFUSED_STREAM` — ships
+  as an `app_log_recorded` `warn` instead of an `app_error_seen` exception. Being offline is a
+  normal state for an offline-first app, and those events were 33.2 % of every exception in the
+  product. The cause chain matters because electron-updater's `GitHubProvider` wraps a transport
+  failure in a parse-shaped `ERR_UPDATER_INVALID_RELEASE_FEED`; a feed that is genuinely malformed
+  has no network cause and stays an exception. The set is an **allowlist, never a `net::ERR_`
+  prefix test**: `net::ERR_CERT_*` / `net::ERR_SSL_*` are security signals, and anything
+  unrecognised fails closed to `error`. Everything else is untouched — HTTP 4xx/5xx (including the
+  `HTTP_ERROR_618` `jwt:expired` on GitHub's pre-signed asset URLs), signature failures,
+  install-phase errnos, `ENOENT … app-update.yml`, and **any** failure in the `download` /
+  `downloaded` / `install` phases, where a network drop can leave a half-applied update.
+  Reclassified events are never dropped: same error code, same redacted message and stack, and each
+  one carries `retryCount` — the consecutive-failed-check streak — so a cross-install signal can
+  separate one laptop on a train from many installs failing in a row. An install that has not
+  completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
+  exception (latched until the next successful check), so a genuinely stuck updater is still loud.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`
@@ -731,21 +856,59 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separates a harmless teardown crash (`idle_shutdown` — the embedding was already delivered) from
   real user impact (`in_flight` — the user silently lost semantic-search indexing for that note).
 
-  The phase is resolved by `getEmbeddingWorkerPhase(details.name)` at the `child-process-gone` call
-  site, **not** inside the worker's own `exit` handler. Electron's `UtilityProcess` `exit` event
-  does not fire for a native crash — a SIGABRT out of the model runtime is neither a graceful exit
-  nor the V8 `FatalError` the instance `error` event covers — so the bridge never learns its worker
-  died. Production proved it: across 107 consecutive `Utility:crashed:Embeddings` events the
-  bridge's own `worker_exit_<phase>` breadcrumb emitted **zero**, and so did `embed_failed`, while
-  `child-process-gone` fired for all 107. Resolving the phase at the report that does arrive is
-  what makes those events answerable. The `worker_exit_<phase>` breadcrumb is kept for the paths
-  where `exit` does fire (a non-crash abnormal exit, a force-kill), and carries a different error
-  code (`EmbeddingWorkerExit`) so the two are never confused.
+  The phase is resolved by `getEmbeddingWorkerCrashContext(details.name, details.reason)` at the
+  `child-process-gone` call site, **not** inside the worker's own `exit` handler. Electron's
+  `UtilityProcess` `exit` event does not fire for a native crash — a SIGABRT out of the model
+  runtime is neither a graceful exit nor the V8 `FatalError` the instance `error` event covers — so
+  the bridge never learns its worker died. Production proved it: across 107 consecutive
+  `Utility:crashed:Embeddings` events the bridge's own `worker_exit_<phase>` breadcrumb emitted
+  **zero**, and so did `embed_failed`, while `child-process-gone` fired for all 107. Resolving the
+  phase at the report that does arrive is what makes those events answerable. The
+  `worker_exit_<phase>` breadcrumb is kept for the paths where `exit` does fire (a non-crash
+  abnormal exit, a force-kill), and carries a different error code (`EmbeddingWorkerExit`) so the
+  two are never confused.
+
+  **The report never arrives while the bridge still owns the worker.** Resolving the phase from the
+  live handle alone therefore answered `null` in 100% of production crashes (issue #1582): 76 events
+  on `2026.817.1`, none of them phase-suffixed. Every path that nulls the process handle either
+  latches a teardown phase (`stop()` / `reset()`) or runs inside an `exit` handler that emits
+  `EmbeddingWorkerExit` — and production has neither on that release. What remains is
+  `failProcess()`, which forgets a worker that is **still running** (10s start timeout, fatal
+  error). So the bridge keeps a **last-worker record** — pid, phase, how it was released, fork
+  timestamp, model-cache state, stderr tail — bounded by a 60s TTL so an unrelated later crash
+  cannot inherit it. `failProcess()` now also kills the worker it gives up on: the orphan was
+  unreachable (every request goes through the process handle) yet kept a whole onnxruntime alive to
+  abort later.
 
   Anything reading the phase from outside the exit handler must also survive the force-kill race:
-  `reset()` latches `idle_shutdown` before killing, then nulls the process handle, so the latch is
-  cleared when there is no process to kill — the latch now outlives the exit handler that used to
-  clear it, and a stale one would make the next worker's crash read as a teardown it never had.
+  `reset()` latches `idle_shutdown` before killing, then nulls the process handle, so both the latch
+  and the last-worker record are cleared when there is no process to kill — the latch now outlives
+  the exit handler that used to clear it, and a stale one would make the next worker's crash read as
+  a teardown it never had.
+
+  The crash report also carries what the main process knew about that worker. Telemetry events
+  accept **at most one dimension** (`TelemetryDimensionsSchema`) and `log_action` holds the phase,
+  so the rest ships inside fields that already exist — no new event name, no new dimension key, no
+  contract change, and therefore no sync-server deploy:
+
+  | Fact                                                    | Where it ships          | Query it as                  |
+  | ------------------------------------------------------- | ----------------------- | ---------------------------- |
+  | lifecycle phase                                         | `dimensions.log_action` | `log_action` (logs + events) |
+  | platform exit status                                    | `metrics.value`         | `exit_code` (logs) / `value` |
+  | worker uptime at death                                  | `metrics.durationMs`    | `duration_ms` (events)       |
+  | crashes this session                                    | `metrics.retryCount`    | `retry_count` (events)       |
+  | cached model size                                       | `metrics.byteCount`     | `byte_count` (events)        |
+  | pid, reason, release, cache state, first-load vs reload | `error.message` suffix  | `message` (logs)             |
+  | worker stderr tail                                      | `error.stack`           | `stack` (logs)               |
+
+  The message suffix is a bounded `[reason=… pid=… uptime=…ms release=… cache=… cache_bytes=…
+load=… crashes=…]` block appended only when a context was resolved, so every other
+  `child-process-gone` family's message is byte-identical to before. The stderr tail is the closest
+  thing to a stack trace this family can produce — the process that died is not the one reporting,
+  so `stack` is otherwise always empty. It is captured into a bounded per-worker ring buffer,
+  redacted on the device with the same salted `redactText` setup as Path A log shipping, capped at
+  2000 bytes, and every line is prefixed so it can never be mis-parsed back into a fabricated
+  PostHog Error Tracking frame.
 
   Embedding generation failures emit `embed_failed`, throttled to one event per 5-minute window
   because a broken worker would otherwise fail once per note edit.
@@ -765,6 +928,10 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   never the issue messages, which can echo input values. An
   [expected condition](#error-reporting) is skipped **before** the throttle map, so a suppressed
   error can't claim the key and mask a real failure from the same handler.
+  This throttle is **main-side only**: `trackRendererError` sends one `app_error_seen` per call,
+  so a renderer loop calling one failing handler produces many renderer-sourced events against at
+  most one main-sourced event per minute. Renderer and main counts for the same underlying failure
+  are therefore not comparable — a large gap is the throttle, not a dropped main-side event.
 - **Vault watcher**: chokidar `onError` can burst per file (a permission-denied subtree), so
   watcher faults are sampled to one `app_error_seen` per minute (`main/vault/watcher.ts`). Every
   error still reaches the local log.
@@ -843,11 +1010,31 @@ POSTHOG_KEY=...                          # wrangler secret (PostHog project toke
 POSTHOG_HOST=https://us.i.posthog.com    # wrangler var (staging and production)
 ```
 
-`GITHUB_TOKEN` is optional and only used by the daily
-[release download-count](#release-download-counts) cron. Without it the pull is unauthenticated
-and shares the 60-requests-per-hour-per-IP limit with every other Worker on the same egress
-address; a public-repo read token lifts that. A failed pull throws and is reported as a
-`release_download_counts` cron failure rather than silently skewing the numbers.
+`GITHUB_TOKEN` is only used by the daily [release download-count](#release-download-counts) cron,
+and in practice it is **required in staging and production**. Without it the pull is
+unauthenticated and shares the 60-requests-per-hour-per-IP budget with every other Worker on the
+same Cloudflare egress address, which other tenants routinely exhaust before our one daily request
+arrives — GitHub then answers 403 and no `release_asset_downloaded` event is emitted that day. A
+fine-grained PAT with public-repo read access is enough (this reads a public repo's Releases API and
+needs no write scope), and authenticated calls get 5,000/hour:
+
+```bash
+wrangler secret put GITHUB_TOKEN --env staging
+wrangler secret put GITHUB_TOKEN --env production
+```
+
+No workflow uploads it; it is set by hand, like every other Worker secret. It is deliberately not in
+the `requiredSecrets` fail-fast list — a missing token must not take the whole Worker down for a
+once-a-day measurement.
+
+A failed pull throws and is reported as a `release_download_counts` cron failure rather than silently
+skewing the numbers, and the two failure shapes are separable. GitHub's own 403/429 raises
+`GitHubReleasesRefusedError`, which carries `code: 'GITHUB_RELEASES_REFUSED'` and the upstream status,
+so it reports as a handled 4xx logged at `warn` — expected upstream backpressure, with the message
+recording whether a token was in play. Anything else stays an unhandled 500. Nothing is corrupted
+either way: the throw happens before the D1 read/write, so the stored baseline is untouched and the
+next successful run emits the accumulated delta. The distortion is in the daily series (a zero, then
+a spike), not the running total.
 
 ### Diagnostic Log Endpoints
 

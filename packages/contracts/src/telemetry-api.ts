@@ -236,6 +236,70 @@ export const TelemetryErrorDetailSchema = z.object({
   componentStack: z.string().max(2000).optional()
 })
 
+// The sync-server's structured error codes are SCREAMING_SNAKE tokens
+// (VALIDATION_ERROR, AUTH_INVALID_TOKEN, STORAGE_QUOTA_EXCEEDED). Anchored and
+// length-capped so this can never become a free-text channel.
+const SERVER_ERROR_CODE = /^[A-Z][A-Z0-9_]{0,63}$/
+
+/**
+ * The queryable facts about a failed request, split out of the single opaque
+ * `errorCode` label.
+ *
+ * `sync_error` + `server_error` used to cover 400, 403, 404, 409 AND every 5xx
+ * with no status and no server code anywhere in the event (#1584), so a
+ * permanent client-side contract bug and a transient edge 5xx were the same row
+ * in every chart and no alert threshold could tell them apart.
+ *
+ * Every field is bounded by construction — a status code is a 3-digit range, a
+ * server code is an anchored enum-ish token, `retryable` is a boolean — so this
+ * carries no free text and needs none of the gating TELEMETRY_DIMENSION_KEYS
+ * exists for. It is a field of its own rather than a dimension because
+ * `TelemetryDimensionsSchema` admits at most ONE dimension per event and
+ * `sync_error` already spends it on `transport`.
+ *
+ * ADDITIVE ON PURPOSE: a sync-server running older contracts strips this key
+ * (z.object strips unknown keys, it does not reject), so a desktop build that
+ * sends it never costs the other events in its batch. An older desktop that
+ * omits it stays valid for the same reason — the field is optional.
+ */
+export const TelemetryFailureDetailSchema = z.object({
+  httpStatus: z.number().int().min(100).max(599).optional(),
+  serverCode: z.string().regex(SERVER_ERROR_CODE).optional(),
+  retryable: z.boolean().optional()
+})
+
+/**
+ * Reduce a caller-supplied failure detail to what is allowed to ship: each field
+ * survives only if it still satisfies `TelemetryFailureDetailSchema`.
+ *
+ * Drops rather than rejects, for exactly the reason `sanitizeTelemetryDimensions`
+ * does: the sync-server rejects the ENTIRE batch when one event fails
+ * validation, so a malformed status or code must cost that one field, never the
+ * other 99 events queued behind it. Returns the input untouched when there is
+ * nothing to drop.
+ */
+export const sanitizeTelemetryFailure = (
+  failure: z.infer<typeof TelemetryFailureDetailSchema> | undefined
+): z.infer<typeof TelemetryFailureDetailSchema> | undefined => {
+  if (!failure) return failure
+  if (TelemetryFailureDetailSchema.safeParse(failure).success) return failure
+  const safe: z.infer<typeof TelemetryFailureDetailSchema> = {}
+  const { httpStatus, serverCode, retryable } = failure
+  if (
+    typeof httpStatus === 'number' &&
+    Number.isInteger(httpStatus) &&
+    httpStatus >= 100 &&
+    httpStatus <= 599
+  ) {
+    safe.httpStatus = httpStatus
+  }
+  if (typeof serverCode === 'string' && SERVER_ERROR_CODE.test(serverCode)) {
+    safe.serverCode = serverCode
+  }
+  if (typeof retryable === 'boolean') safe.retryable = retryable
+  return Object.keys(safe).length > 0 ? safe : undefined
+}
+
 export const TelemetryEventSchema = z.object({
   id: z.string().uuid(),
   name: TelemetryEventNameSchema,
@@ -248,7 +312,8 @@ export const TelemetryEventSchema = z.object({
   errorCode: SafeDimensionValueSchema.optional(),
   dimensions: TelemetryDimensionsSchema.optional(),
   metrics: TelemetryMetricsSchema.optional(),
-  error: TelemetryErrorDetailSchema.optional()
+  error: TelemetryErrorDetailSchema.optional(),
+  failure: TelemetryFailureDetailSchema.optional()
 })
 
 export const TelemetryBatchSchema = z.object({
@@ -276,6 +341,7 @@ export type TelemetrySyncState = z.infer<typeof TelemetrySyncStateSchema>
 export type TelemetryPlatform = z.infer<typeof TelemetryPlatformSchema>
 export type TelemetryMetrics = z.infer<typeof TelemetryMetricsSchema>
 export type TelemetryErrorDetail = z.infer<typeof TelemetryErrorDetailSchema>
+export type TelemetryFailureDetail = z.infer<typeof TelemetryFailureDetailSchema>
 export type TelemetryEvent = z.infer<typeof TelemetryEventSchema>
 export type TelemetryBatch = z.infer<typeof TelemetryBatchSchema>
 

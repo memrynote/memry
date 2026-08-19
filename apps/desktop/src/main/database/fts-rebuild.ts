@@ -4,6 +4,7 @@ import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { rebuildProjections } from '../projections'
+import { isSqliteCorruptError } from './sqlite-errors'
 
 const logger = createLogger('FtsRebuild')
 
@@ -11,15 +12,39 @@ function broadcast(channel: string, data: unknown): void {
   broadcastToAllWindows(channel, data)
 }
 
+/**
+ * fts5's own verification pass over a table's index.
+ *
+ * Stronger than the MATCH probe `checkIndexHealth` runs: a single query only
+ * reads the segments that query happens to touch, whereas 'integrity-check'
+ * walks the whole index. It is written as an INSERT but stores nothing, so it
+ * needs a writable connection — which is why the open-time gate uses MATCH and
+ * this one only runs after the databases are open.
+ *
+ * Narrowed to SQLITE_CORRUPT (and its extended forms). This used to swallow
+ * every exception, which would have turned a lock or a closed connection into a
+ * full index rebuild (#1585).
+ */
 function isTableCorrupt(db: DataDb | IndexDb, tableName: string): boolean {
   try {
-    db.all(sql.raw(`SELECT * FROM ${tableName} WHERE ${tableName} MATCH 'test' LIMIT 1`))
+    db.run(sql.raw(`INSERT INTO ${tableName}(${tableName}) VALUES('integrity-check')`))
     return false
-  } catch {
+  } catch (error) {
+    if (!isSqliteCorruptError(error)) {
+      logger.warn(`FTS integrity check for ${tableName} could not run`, error)
+      return false
+    }
     return true
   }
 }
 
+/**
+ * Names every FTS table whose index is corrupt, and tells the renderer.
+ *
+ * Runs only once something else already suspects corruption (the vault-open
+ * health verdict, or a reconcile pass that threw SQLITE_CORRUPT) — a full fts5
+ * verification of three tables is too expensive to put on every launch.
+ */
 export function detectCorruption(indexDb: IndexDb, dataDb: DataDb): string[] {
   const corrupt: string[] = []
 

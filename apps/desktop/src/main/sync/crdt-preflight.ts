@@ -6,10 +6,30 @@ import { createLogger } from '../lib/logger'
 import {
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
-  type CrdtPreflightStage
+  PREFLIGHT_MARK_STORE_OPS,
+  PREFLIGHT_STORE_OP_ORDER,
+  type CrdtPreflightStage,
+  type CrdtPreflightStoreOp
 } from './crdt-preflight-protocol'
 
 const log = createLogger('CrdtPreflight')
+
+/**
+ * What this machine is, in the two fields that separate the candidate causes of
+ * a native abort in the binding: an OS build (Windows ships LevelDB-hostile
+ * behaviour per build — `os.release()` is `10.0.<build>` there, and
+ * `os.version()` names the edition) and the CPU target the prebuilt binary was
+ * chosen for. Attached to every failure line so the fleet query can group by
+ * them instead of guessing.
+ */
+function machineFields(): Record<string, string> {
+  return {
+    platform: process.platform,
+    osRelease: os.release(),
+    osVersion: os.version(),
+    arch: process.arch
+  }
+}
 
 const PREFLIGHT_TIMEOUT_MS = 10_000
 // The interesting part of a native abort is the first crash banner; keep
@@ -23,6 +43,12 @@ export interface CrdtPreflightResult {
   reason?: string
   /** How far the child got before failing. Only meaningful when `ok` is false. */
   stage?: CrdtPreflightStage
+  /**
+   * Which store operation was in flight when a `store`-stage child died.
+   * Undefined at every other stage, and for a child that died between loading
+   * the binding and announcing its first operation.
+   */
+  storeOp?: CrdtPreflightStoreOp
   /**
    * Which child transport produced this verdict. Reported as telemetry: a
    * `node` verdict means the Chromium-free fallback ALSO failed, which is the
@@ -52,10 +78,10 @@ interface ProbeChild {
  * Two transports, because the utilityProcess itself can be the thing that
  * fails: on a set of Windows installs it dies during Chromium/crashpad init
  * (exit `0xFFFF7003`) before any of our JS runs, which used to read as "the
- * store is bad" and left those machines in-memory forever. When the child
- * never reaches its `started` marker, the same probe is retried as a plain
- * node child (`ELECTRON_RUN_AS_NODE`), which boots no Chromium and no crash
- * handler — same process isolation, none of the Chromium startup surface.
+ * store is bad" and left those machines in-memory forever. Whenever the child
+ * dies before starting OR while using the store, the same probe is retried as a
+ * plain node child (`ELECTRON_RUN_AS_NODE`), which boots no Chromium and no
+ * crash handler — same process isolation, none of the Chromium startup surface.
  *
  * No verdict cache: the provider latches init (persistenceReady) so a verdict
  * is only ever requested again after it quarantined the store — and that retry
@@ -76,11 +102,25 @@ async function probeWithFallback(storeDir: string): Promise<CrdtPreflightResult>
   const startedAt = Date.now()
   let result = await execPreflight(storeDir, 'utility')
 
-  if (!result.ok && result.stage === 'bootstrap') {
-    log.warn('CRDT preflight child never started — retrying without Chromium', {
+  // Both stages the fallback can plausibly answer, not just `bootstrap`.
+  //
+  // `bootstrap` is the case it was built for: the utility child dies in
+  // Chromium/crashpad init, so booting the same probe without Chromium is a
+  // straight retry of a question that was never asked.
+  //
+  // `store` is the dominant Windows failure today (19/19 installs, issue #1583)
+  // and the gate locked it out entirely: those children reach the store and
+  // access-violate inside it, so they stage `store` and never reached here. It
+  // is genuinely unknown whether a Chromium-free child clears that — the one
+  // install that reached the fallback also failed there — so this is a
+  // measurable attempt, not a claimed fix. It costs one extra child process on
+  // a launch that was already headed for in-memory mode.
+  if (!result.ok && (result.stage === 'bootstrap' || result.stage === 'store')) {
+    log.warn('CRDT preflight child failed — retrying without Chromium', {
       reason: result.reason,
-      platform: process.platform,
-      osRelease: os.release()
+      stage: result.stage,
+      storeOp: result.storeOp,
+      ...machineFields()
     })
     result = await execPreflight(storeDir, 'node')
   }
@@ -92,8 +132,8 @@ async function probeWithFallback(storeDir: string): Promise<CrdtPreflightResult>
       storeDir,
       reason: result.reason,
       stage: result.stage,
-      platform: process.platform,
-      osRelease: os.release(),
+      storeOp: result.storeOp,
+      ...machineFields(),
       elapsedMs: Date.now() - startedAt
     })
   }
@@ -116,6 +156,24 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       return 'bootstrap'
     }
 
+    // The child announces each store operation before running it, so the LAST
+    // one it announced is the one that was in flight when it died.
+    const storeOpFromMarkers = (): CrdtPreflightStoreOp | undefined => {
+      for (let i = PREFLIGHT_STORE_OP_ORDER.length - 1; i >= 0; i--) {
+        const op = PREFLIGHT_STORE_OP_ORDER[i]
+        if (stderr.includes(PREFLIGHT_MARK_STORE_OPS[op])) return op
+      }
+      return undefined
+    }
+
+    /** A failure verdict, staged and attributed from whatever stderr carried. */
+    const failure = (reason: string): CrdtPreflightResult => ({
+      ok: false,
+      stage: stageFromMarkers(),
+      storeOp: storeOpFromMarkers(),
+      reason
+    })
+
     const settle = (result: CrdtPreflightResult): void => {
       if (settled) return
       settled = true
@@ -126,6 +184,8 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
           storeDir,
           reason: result.reason,
           stage: result.stage,
+          storeOp: result.storeOp,
+          ...machineFields(),
           stderr: stderr.slice(0, STDERR_CAPTURE_CHARS)
         })
       }
@@ -151,11 +211,7 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       } catch {
         // already gone
       }
-      settle({
-        ok: false,
-        stage: stageFromMarkers(),
-        reason: `timed out after ${PREFLIGHT_TIMEOUT_MS}ms`
-      })
+      settle(failure(`timed out after ${PREFLIGHT_TIMEOUT_MS}ms`))
     }, PREFLIGHT_TIMEOUT_MS)
 
     child.stderr?.on('data', (chunk: Buffer) => {
@@ -163,7 +219,7 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
     })
 
     child.on('error', (err: Error) => {
-      settle({ ok: false, stage: stageFromMarkers(), reason: err.message })
+      settle(failure(err.message))
     })
 
     child.once('exit', (code: number | null) => {
@@ -174,11 +230,7 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       // Log the code in hex too: Windows reports these as huge unsigned
       // values (0xFFFF7003 = 4294930435) that are meaningless in decimal.
       const hex = typeof code === 'number' ? ` (0x${(code >>> 0).toString(16).toUpperCase()})` : ''
-      settle({
-        ok: false,
-        stage: stageFromMarkers(),
-        reason: `child exited with code ${code}${hex}`
-      })
+      settle(failure(`child exited with code ${code}${hex}`))
     })
   })
 

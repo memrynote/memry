@@ -37,6 +37,8 @@ export interface TrackMainEventOptions {
   }
   dimensions?: Record<string, string>
   error?: TelemetryEvent['error']
+  /** Bounded HTTP status / server code / retryable for a failed request (#1584). */
+  failure?: TelemetryEvent['failure']
 }
 
 /**
@@ -57,7 +59,8 @@ export const trackMainEvent = (name: TelemetryEventName, options: TrackMainEvent
       errorCode: options.errorCode,
       metrics: options.metrics,
       dimensions: options.dimensions,
-      error: options.error
+      error: options.error,
+      failure: options.failure
     }
     const runtime = getTelemetryRuntime()
     if (!runtime) {

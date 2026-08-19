@@ -65,6 +65,7 @@ import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
 import { planCrdtUpdatePush } from './crdt-payload'
 import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
+import { markSyncEligible, markSyncIneligible } from './sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
@@ -303,24 +304,34 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
     let pendingRuntime: SyncRuntimeState | null = null
 
     try {
-      const hasRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
-      if (!hasRefreshToken) {
+      // The three branches below are policy, not failure: the services stay
+      // null for the whole session on purpose, so a local mutation raised on
+      // such an install is not a lost edit and must not report itself as one.
+      // `markSyncIneligible` returns the same `null` these branches returned
+      // before; it is what tells `local-mutations` which of the two states it
+      // is looking at (#1579).
+      if (!(await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN))) {
         log.debug('Sync runtime skipped: no user session')
-        return null
+        return markSyncIneligible()
       }
 
       if (store.get('sync').recoveryPhraseConfirmed === false) {
         log.debug('Sync runtime skipped: recovery phrase confirmation pending')
-        return null
+        return markSyncIneligible()
       }
 
       const { resolveEntitlementForSyncStart } = await import('../billing/paddle-billing')
-      const entitlement = await resolveEntitlementForSyncStart()
-      if (!entitlement.isPaid) {
+      if (!(await resolveEntitlementForSyncStart()).isPaid) {
         log.info('Sync runtime skipped: not on a paid plan')
         emitLocalOnly()
-        return null
+        return markSyncIneligible()
       }
+
+      // Past every policy gate: this install syncs. Everything below is a
+      // failure the tripwire is meant to catch, and every window where the
+      // runtime is merely between starts is one where a delete must still be
+      // recorded for replay.
+      markSyncEligible()
 
       const db = getDatabase()
       let startupVaultKey: Uint8Array | null = null

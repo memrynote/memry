@@ -79,3 +79,11 @@ For each result row:
 Search runs against the **index DB** for keyword match. Embedding-based ranking happens on the **device**, not the server. Even with semantic search enabled, queries don't leave your machine.
 
 For large vaults, the keyword index is FTS5-backed and stays sub-100ms even with 10k+ documents.
+
+## If the Search Index Is Damaged
+
+The search index is a cache. It is rebuilt from your notes, so it can be thrown away and re-derived at any time — your notes, tasks and vault files are never at risk.
+
+A disk fault or an unclean shutdown can still leave it unreadable. Memry checks the index when it opens a vault, and again whenever a background repair pass touches it. If the index turns out to be damaged, Memry drops it, rebuilds it from your notes, and tells you it did so with a short "Search index repaired" notice. There is nothing to do — search works again once the rebuild finishes.
+
+Reopening the vault is enough to trigger the check by hand.

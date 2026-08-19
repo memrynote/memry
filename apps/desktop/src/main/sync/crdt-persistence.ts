@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { LeveldbPersistence } from 'y-leveldb'
 import { existsSync, rmSync } from 'fs'
+import os from 'os'
 import { createLogger } from '../lib/logger'
 import { runCrdtPreflight, type CrdtPreflightResult } from './crdt-preflight'
 import { moveStoreDir } from './crdt-store-move'
@@ -89,46 +90,8 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
     // quarantining on that verdict only churned the store dir every launch —
     // with the restore then failing EPERM under AV. See crdt-preflight.ts.
     if (!preflight.ok && preflight.stage === 'store' && existsSync(storagePath)) {
-      // The abort may be the store's data (torn LDB/MANIFEST from a past
-      // crash or full disk), not the binding. Quarantine the store and give
-      // the binding one clean shot at a fresh directory: pass → the data was
-      // the problem, keep the quarantine and start fresh (vault markdown is
-      // the source of truth; only CRDT history moves aside). Fail → the
-      // binding is the problem, so restore the store for a future launch
-      // with a working binding and fall through to in-memory mode.
-      const quarantinePath = `${storagePath}.broken-${Date.now()}`
-      const quarantined = await moveStoreDir(storagePath, quarantinePath)
-      if (!quarantined) {
-        log.warn('Could not quarantine the CRDT store — leaving it in place', { storagePath })
-      } else {
-        preflight = await runCrdtPreflight(storagePath)
-        lastPreflight = preflight
-        if (preflight.ok) {
-          log.warn(
-            'CRDT store quarantined after failed preflight — continuing with a fresh store',
-            {
-              storagePath,
-              quarantinePath
-            }
-          )
-        } else {
-          // The failed re-probe can leave a partial fresh store behind, and
-          // on Windows renaming onto an existing directory fails EPERM —
-          // exactly what production logs show. That directory holds nothing
-          // (the probe never completed), so clear it before restoring.
-          try {
-            rmSync(storagePath, { recursive: true, force: true })
-          } catch (err) {
-            log.warn('Could not clear the fresh CRDT store before restoring', {
-              storagePath,
-              error: err
-            })
-          }
-          if (!(await moveStoreDir(quarantinePath, storagePath))) {
-            log.warn('Failed to restore quarantined CRDT store', { quarantinePath, storagePath })
-          }
-        }
-      }
+      preflight = await settleStoreStageFailure(storagePath, preflight)
+      lastPreflight = preflight
     }
     if (!preflight.ok) {
       throw new Error(`CRDT store preflight failed: ${preflight.reason ?? 'unknown'}`)
@@ -149,6 +112,87 @@ export async function openCrdtPersistence(storagePath: string): Promise<CrdtPers
     )
     reportPersistenceUnavailable(lastPreflight)
     return null
+  }
+}
+
+/**
+ * Decide what a `store`-stage preflight failure actually means, and act on it.
+ *
+ * The child died using the store, which has exactly two causes: the store's own
+ * data (torn LDB/MANIFEST from a past crash, a full disk) or the binding. They
+ * are told apart by a control: probe a directory that is guaranteed EMPTY and
+ * therefore cannot be at fault.
+ *
+ * - control passes → the data is the cause. Quarantine the store; LevelDB
+ *   recreates the directory, vault markdown reseeds the notes, and only CRDT
+ *   history moves aside. This is the darwin/linux case, and it self-heals.
+ * - control fails → the binding is the cause and the data is innocent. Restage
+ *   as `binding-in-use` and leave the store completely alone.
+ *
+ * The control runs BEFORE anything is moved, which is the whole point. The
+ * previous order quarantined first and re-probed the (now empty) real path, so
+ * every Windows install in issue #1583 paid a rename → failed re-probe →
+ * `rmSync` → rename-back cycle on its CRDT store on EVERY launch, forever, and
+ * not one of them ever came out of it with a working store: zero win32 rows for
+ * "quarantined ... continuing with a fresh store" across the whole window.
+ */
+async function settleStoreStageFailure(
+  storagePath: string,
+  preflight: CrdtPreflightResult
+): Promise<CrdtPreflightResult> {
+  // A fixed name, not a timestamped one: on the machines this runs for, every
+  // launch would otherwise strand another directory next to the store. One
+  // directory, cleared before use and after.
+  const controlPath = `${storagePath}.probe`
+  if (!clearPath(controlPath, 'CRDT preflight control directory')) {
+    // Inconclusive: no clean control means no evidence, and evidence is the
+    // only thing that may move a user's store.
+    log.warn('Could not clear the CRDT preflight control directory — leaving the store alone', {
+      controlPath
+    })
+    return preflight
+  }
+
+  const control = await runCrdtPreflight(controlPath)
+  clearPath(controlPath, 'CRDT preflight control directory')
+
+  if (!control.ok) {
+    log.warn('CRDT preflight fails on an empty directory too — the store data is not at fault', {
+      storagePath,
+      reason: control.reason,
+      stage: control.stage,
+      storeOp: control.storeOp,
+      transport: control.transport,
+      platform: process.platform,
+      osRelease: os.release(),
+      osVersion: os.version(),
+      arch: process.arch
+    })
+    // Restage so telemetry stops reporting a data problem that does not exist.
+    // Never derived from stderr — only a second child's verdict can say this.
+    return { ...control, stage: 'binding-in-use' }
+  }
+
+  const quarantinePath = `${storagePath}.broken-${Date.now()}`
+  if (!(await moveStoreDir(storagePath, quarantinePath))) {
+    log.warn('Could not quarantine the CRDT store — leaving it in place', { storagePath })
+    return preflight
+  }
+  log.warn('CRDT store quarantined after failed preflight — continuing with a fresh store', {
+    storagePath,
+    quarantinePath
+  })
+  return control
+}
+
+/** Remove a path if it exists. False means it is still there. */
+function clearPath(target: string, label: string): boolean {
+  try {
+    rmSync(target, { recursive: true, force: true })
+    return true
+  } catch (err) {
+    log.warn(`Could not remove ${label}`, { target, error: err })
+    return !existsSync(target)
   }
 }
 

@@ -41,6 +41,36 @@ const sweepTrackedErrorKeys = (now: number): void => {
  */
 export const ipcErrorThrottleKeyCount = (): number => lastTrackedByCode.size
 
+// Handlers are registered as `ipcMain.handle(Channel, createValidatedHandler(
+// Schema, async (input) => ...))`. An arrow passed straight in as an argument
+// has `name === ''`, so EVERY inline handler used to report the same literal
+// action (`validated_handler`) and a ZodError could not be pinned to a channel
+// — the captured stack only names the bundled wrapper. The channel is known at
+// the `ipcMain.handle` registration site and nowhere else, so
+// `installIpcChannelLabels` (ipc/lib/ipc-channel-labels.ts) records it here,
+// keyed by the wrapper function it was registered with. Weakly held: a listener
+// that is removed must not be kept alive by its own label.
+const channelByListener = new WeakMap<object, string>()
+
+/**
+ * Associate an IPC channel with the wrapper registered on it, so a failure
+ * inside that wrapper reports the channel instead of an anonymous label.
+ * Called from the `ipcMain.handle` boundary; a no-op for anything else.
+ */
+export const setIpcHandlerChannel = (listener: unknown, channel: unknown): void => {
+  if (typeof listener !== 'function') return
+  if (typeof channel !== 'string' || channel.length === 0) return
+  channelByListener.set(listener, channel)
+}
+
+// Channel first, then the inner handler's own name (named handlers already
+// report usefully), then the generic label the wrapper had before.
+const handlerAction = (
+  listener: object,
+  handler: { readonly name: string },
+  fallback: string
+): string => channelByListener.get(listener) ?? (handler.name || fallback)
+
 const trackIpcError = (action: string, error: unknown): void => {
   try {
     // An expected condition (Ollama not running, an abandoned OAuth flow) is
@@ -91,7 +121,10 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
   schema: TSchema,
   handler: (input: z.infer<TSchema>, event: IpcMainInvokeEvent) => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>) => Promise<TResult> {
-  return async (event: IpcMainInvokeEvent, rawInput: z.input<TSchema>): Promise<TResult> => {
+  const listener = async (
+    event: IpcMainInvokeEvent,
+    rawInput: z.input<TSchema>
+  ): Promise<TResult> => {
     try {
       const validated = schema.parse(rawInput)
       return await handler(validated, event)
@@ -104,16 +137,17 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
         // A validation failure is a renderer↔main contract drift, not user
         // error — worth counting. Only the ZodError name/stack ship, never the
         // issue messages, which can echo input values.
-        trackIpcError(handler.name || 'validated_handler', error)
+        trackIpcError(handlerAction(listener, handler, 'validated_handler'), error)
         throw new Error(`Validation failed: ${messages}`)
       }
       ipcLog.error('handler error:', error)
       // Handlers on this wrapper (canvas, calendar reads) never pass withDb/
       // withErrorHandler, so this rethrow used to be their ONLY trace.
-      trackIpcError(handler.name || 'validated_handler', error)
+      trackIpcError(handlerAction(listener, handler, 'validated_handler'), error)
       throw error instanceof Error ? new Error(error.message) : new Error('Something went wrong')
     }
   }
+  return listener
 }
 
 /**
@@ -135,15 +169,16 @@ export function createValidatedHandler<TSchema extends z.ZodSchema, TResult>(
 export function createHandler<TResult>(
   handler: () => TResult | Promise<TResult>
 ): (event: IpcMainInvokeEvent) => Promise<TResult> {
-  return async (_event: IpcMainInvokeEvent): Promise<TResult> => {
+  const listener = async (_event: IpcMainInvokeEvent): Promise<TResult> => {
     try {
       return await handler()
     } catch (error) {
       ipcLog.error('handler error:', error)
-      trackIpcError(handler.name || 'handler', error)
+      trackIpcError(handlerAction(listener, handler, 'handler'), error)
       throw error
     }
   }
+  return listener
 }
 
 /**

@@ -70,6 +70,7 @@ export interface MainIpcInvokeHandlers {
   "calendar:set-default-google-calendar": (...args: [{ calendarId: string | null; markOnboardingComplete?: boolean | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").SetDefaultGoogleCalendarResponse>>
   "calendar:update-event": (...args: [{ id: string; title?: string | undefined; description?: string | null | undefined; location?: string | null | undefined; startAt?: string | undefined; endAt?: string | null | undefined; timezone?: string | undefined; isAllDay?: boolean | undefined; recurrenceRule?: Record<string, unknown> | null | undefined; recurrenceExceptions?: string[] | null | undefined; targetCalendarId?: string | null | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarEventMutationResponse>>
   "calendar:update-source-selection": (...args: [{ id: string; isSelected: boolean; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/calendar-api").CalendarSourceMutationResponse>>
+  "canvas:can-upload-asset": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").CanvasCanUploadAssetResponse>>
   "canvas:create": (...args: [{ title?: string | null | undefined; scene?: string | undefined; folder?: string | null | undefined; icon?: string | null | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/canvas-api").Canvas>>
   "canvas:delete": (...args: [string]) => Awaited<Promise<{ success: boolean; }>>
   "canvas:duplicate": (...args: [string]) => Awaited<Promise<{ id: string; title: string | null; folder: string | null; icon: string | null; unreadable?: boolean | undefined; createdAt: number; updatedAt: number; } | null>>
@@ -94,6 +95,7 @@ export interface MainIpcInvokeHandlers {
   "context-menu:show": (...args: [{ id: string; label: string; accelerator?: string | undefined; disabled?: boolean | undefined; type?: "normal" | "separator" | undefined; }[]]) => Awaited<Promise<string | null>>
   "crdt:apply-update": (...args: [unknown]) => Awaited<Promise<void>>
   "crdt:close-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; }>>
+  "crdt:get-health": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crdt").CrdtHealth>>
   "crdt:open-doc": (...args: [unknown]) => Awaited<Promise<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>>
   "crdt:sync-step-1": (...args: [{ noteId: string; stateVector: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-crdt").CrdtSyncStep1Result | null>>
   "crdt:sync-step-2": (...args: [{ noteId: string; diff: Uint8Array<ArrayBuffer>; }]) => Awaited<Promise<void>>

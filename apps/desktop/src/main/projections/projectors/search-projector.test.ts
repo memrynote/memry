@@ -193,6 +193,45 @@ describe('search projector', () => {
     ).toBe(1)
   })
 
+  it('rebuild recovers an index whose fts5 content is corrupt', async () => {
+    seedMarkdownNote('note-1', 'notes/searchable.md', 'Projection rebuild content', ['alpha'])
+    seedTask('task-1')
+    seedInboxItem('inbox-1')
+
+    // #given a genuinely corrupt fts5 index: the segment blobs are garbled, the
+    // way a torn write leaves them. fts5 guards its shadow tables, hence
+    // unsafeMode.
+    for (let i = 0; i < 300; i++) {
+      indexDb.db.run(sql`
+        INSERT INTO fts_notes (id, title, content, tags)
+        VALUES (${`filler-${i}`}, ${'Filler'}, ${`alpha beta gamma ${i}`}, ${'alpha'})
+      `)
+    }
+    indexDb.sqlite.unsafeMode(true)
+    indexDb.sqlite.prepare('UPDATE fts_notes_data SET block = randomblob(64) WHERE id > 10').run()
+    indexDb.sqlite.unsafeMode(false)
+
+    // #given search is dead: every query the renderer sends now throws, and the
+    // statement rebuild used to start with (DELETE FROM fts_notes) throws too
+    expect(() =>
+      indexDb.db.all(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'alpha'`)
+    ).toThrow()
+    expect(() => indexDb.db.run(sql`DELETE FROM fts_notes`)).toThrow()
+
+    const projector = createSearchProjector(() => vaultDir)
+
+    // #when the user presses "Rebuild search index"
+    await expect(projector.rebuild()).resolves.toEqual(
+      expect.objectContaining({ notes: 1, tasks: 1, inbox: 1 })
+    )
+
+    // #then the index is sound and search answers again
+    expect(getFtsCount(indexDb.db as never)).toBe(1)
+    expect(indexDb.db.all(sql`SELECT id FROM fts_notes WHERE fts_notes MATCH 'rebuild'`)).toEqual([
+      { id: 'note-1' }
+    ])
+  })
+
   it('reconcile replaces stale FTS rows with rebuilt state', async () => {
     seedMarkdownNote('note-1', 'notes/searchable.md', 'Fresh rebuilt content', ['alpha'])
     seedTask('task-1')

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { Container } from '@/components/layout/Container'
 import { useAuth } from '@/contexts/auth-context'
 import { registerWebDevice } from '@/lib/account/auth-client'
+import { authErrorMessage } from '@/lib/account/auth-error'
 import { SYNC_SERVER_URL } from '@/lib/account/config'
 import { OAUTH_NEXT_STORAGE_KEY, safeNextPath } from '@/lib/account/next-path'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -34,7 +35,7 @@ export function AuthCallbackPage() {
         sessionStorage.removeItem(OAUTH_NEXT_STORAGE_KEY)
         navigate(safeNextPath(stored), { replace: true })
       } catch (e) {
-        setCallbackError(e instanceof Error ? e.message : 'Sign-in failed')
+        setCallbackError(authErrorMessage(e, 'Sign-in failed'))
       }
     })()
   }, [missingParams, code, state, api, storage, navigate, refreshSignedIn])

@@ -62,6 +62,10 @@
     "exceedsPlanLimit": "File is larger than your plan allows: {size} exceeds {limit}",
     "emptyFile": "Cannot upload empty file"
   },
+  "crdt": {
+    "persistenceDegradedTitle": "Edit history isn't being kept on this device",
+    "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens."
+  },
   "encryption": {
     "failed": "Failed to encrypt data. Your keys may need to be regenerated.",
     "decryptionFailed": "Failed to decrypt data. Your encryption keys may be out of date.",

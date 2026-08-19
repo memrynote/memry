@@ -204,8 +204,35 @@ describe('desktopErrorRecord', () => {
       component_stack: 'at NoteEditor',
       install_hash: 'hash123',
       log_action: '',
-      exit_code: ''
+      exit_code: '',
+      http_status: '',
+      server_code: '',
+      retryable: ''
     })
+  })
+
+  // #1584: `sync_error` shipped `error_code: 'server_error'` with `"message":""`
+  // and nothing else — 296 production rows in one 48-hour window that could only
+  // be split by hand-joining sync-server logs.
+  it('carries the status, the server code and the retryable verdict for a sync failure', () => {
+    const syncEvent: TelemetryEvent = {
+      ...event,
+      name: 'sync_error',
+      surface: 'sync',
+      action: 'push_failed',
+      source: 'push',
+      errorCode: 'server_error',
+      failure: { httpStatus: 400, serverCode: 'VALIDATION_ERROR', retryable: false },
+      error: { message: 'VALIDATION_ERROR: Invalid push request' }
+    }
+    const result = desktopErrorRecord(batch, syncEvent, 'hash123')
+
+    expect(result.line.http_status).toBe(400)
+    expect(result.line.server_code).toBe('VALIDATION_ERROR')
+    // `false` is a real answer — "this push will never succeed" — so it must not
+    // be flattened into the "not reported" empty string.
+    expect(result.line.retryable).toBe(false)
+    expect(result.line.message).toBe('VALIDATION_ERROR: Invalid push request')
   })
 
   it('redacts event.error.message on the line when present, and the raw value does not survive', () => {

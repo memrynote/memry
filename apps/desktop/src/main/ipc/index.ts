@@ -40,6 +40,7 @@ import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mc
 import { registerImportHandlers, unregisterImportHandlers } from './import-handlers'
 import { registerHomePageHandlers, unregisterHomePageHandlers } from './home-page-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
+import { installIpcChannelLabels } from './lib/ipc-channel-labels'
 import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
 
@@ -72,6 +73,11 @@ export function registerAllHandlers(deps?: IpcDeps): void {
     ipcLog.warn('handlers already registered, skipping')
     return
   }
+
+  // Must run before the first registration: it labels each handler with the
+  // channel it is registered on, which is what lets an IPC failure name a
+  // channel instead of the generic `validated_handler`.
+  installIpcChannelLabels()
 
   // Register vault handlers
   registerVaultHandlers()

@@ -112,6 +112,13 @@ export const desktopErrorRecord = (
     stack: event.error?.stack ?? '',
     component_stack: event.error?.componentStack ?? '',
     install_hash: distinctId,
+    // The queryable half of a failed request (#1584). Empty string when absent,
+    // same convention as exit_code — and for `retryable` that matters, because
+    // `false` is a real answer ("this will never succeed") that must not read
+    // as "not reported".
+    http_status: event.failure?.httpStatus ?? '',
+    server_code: event.failure?.serverCode ?? '',
+    retryable: event.failure?.retryable ?? '',
     // Log-type error events (app_log_recorded) have no stack; log_action is
     // what makes them identifiable in Grafana (e.g. child_process_gone).
     log_action: event.dimensions?.log_action ?? '',

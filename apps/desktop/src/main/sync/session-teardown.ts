@@ -6,6 +6,7 @@ import { syncState } from '@memry/db-schema/schema/sync-state'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 import { eq } from 'drizzle-orm'
 import { stopSyncRuntime } from './runtime'
+import { markSyncIneligible } from './sync-eligibility'
 import { resetTokenManagerState } from './token-manager'
 import { getValidAccessToken } from './token-manager'
 import { clearPendingSession, clearPendingLinkCompletion } from './linking-service'
@@ -48,6 +49,10 @@ async function performTeardown(reason: TeardownReason): Promise<TeardownResult> 
 
   const skipSync = reason === 'logout' || reason === 'integrity'
   await stopSyncRuntime({ skipFinalSync: skipSync })
+  // This install stops syncing here. `stopSyncRuntime` deliberately does not
+  // clear the flag — quit and vault switch stop the runtime on an install that
+  // still syncs — so sign-out is where it is cleared (#1579).
+  markSyncIneligible()
   resetTokenManagerState()
   stopGoogleCalendarSyncRunner()
 
