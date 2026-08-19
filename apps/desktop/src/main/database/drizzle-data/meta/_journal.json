@@ -358,6 +358,13 @@
       "when": 1785585346000,
       "tag": "0050_home_page_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "6",
+      "when": 1785585347000,
+      "tag": "0051_sync_pending_deletes",
+      "breakpoints": true
     }
   ]
 }

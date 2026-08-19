@@ -1,8 +1,17 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
+import type { DataDb } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
+import { shouldEmitThrottled } from '../telemetry/throttle'
+import { isSyncEligible } from './sync-eligibility'
+import {
+  buildContentDeletePayload,
+  clearPendingDelete,
+  listPendingDeletes,
+  recordPendingDelete
+} from './pending-deletes'
 import {
   incrementBookmarkClockOffline,
   incrementTemplateClockOffline,
@@ -44,25 +53,168 @@ const log = createLogger('LocalSync')
 type LocalSyncType = Exclude<SyncItemType, 'attachment'>
 
 /**
+ * One tripwire per type per half hour.
+ *
+ * The signal is per-mutation, and two of its emitters fire on a timer: the
+ * Google Calendar poll runs every 5 minutes and calls this once per polled row,
+ * and a source stuck in a sync-error loop adds one more per failed sync. On the
+ * installs in #1579 that produced ~30k events in ten days and buried every
+ * other desktop error signal. A drop is a *state* — the runtime is not up — so
+ * the first report inside a window says everything the thousandth would.
+ */
+const DROP_TRIPWIRE_THROTTLE_MS = 30 * 60 * 1000
+
+function trackMutationDrop(throttleKey: string, type: LocalSyncType, message: string): void {
+  if (!shouldEmitThrottled(`${throttleKey}:${type}`, DROP_TRIPWIRE_THROTTLE_MS)) return
+  log.warn(message, { type })
+  trackMainLog('warn', {
+    scope: 'LocalSync',
+    action: 'local_mutation_dropped',
+    errorCode: type
+  })
+}
+
+/**
  * Telemetry tripwire for the #969/#970 bug class: a mutation raised while the
  * sync runtime is down (or before services initialize) on a type with no
  * offline fallback is a silent no-op — the edit never syncs. Returns the
  * service unchanged so `?.` call sites keep their exact behavior; a null
  * service is counted per type before the no-op happens.
+ *
+ * Silent when the install does not sync at all (free plan, signed out, no
+ * confirmed recovery phrase). That is not a dropped edit — the services are
+ * null for the whole session by policy, there is no peer to tell, and the
+ * "tripwire" only fires forever without ever describing a bug (#1579).
  */
 function svcOrTrackDrop<T>(
   type: LocalSyncType,
   service: T | null | undefined
 ): T | null | undefined {
-  if (!service) {
-    log.warn('Local mutation dropped — sync service not running', { type })
-    trackMainLog('warn', {
-      scope: 'LocalSync',
-      action: 'local_mutation_dropped',
-      errorCode: type
-    })
+  if (!service && isSyncEligible()) {
+    trackMutationDrop(
+      'local_mutation_dropped',
+      type,
+      'Local mutation dropped — sync service not running'
+    )
   }
   return service
+}
+
+interface DeleteEnqueuer {
+  enqueueDelete(itemId: string, snapshotPayload?: string): void
+}
+
+/**
+ * Delete is the one mutation with no recovery path anywhere: create and update
+ * fall back to an offline clock bump that `recoverDirtyItems` re-pushes, but a
+ * delete raised while the runtime was down left no queue row, no tombstone and
+ * no dirty marker — so on a paid multi-device install the deleted item simply
+ * came back from the other device (#1579).
+ *
+ * When the service is down the delete is written to `sync_pending_deletes`
+ * instead, and `flushPendingLocalDeletes` replays it at the next runtime start.
+ */
+function enqueueDeleteOrDefer(
+  type: LocalSyncType,
+  service: DeleteEnqueuer | null | undefined,
+  itemId: string,
+  snapshotPayload?: string
+): void {
+  if (service) {
+    service.enqueueDelete(itemId, snapshotPayload)
+    return
+  }
+
+  deferDelete(type, itemId, snapshotPayload)
+}
+
+function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: string): void {
+  // Expected absence: this install has no sync runtime by policy, so there is
+  // no peer that still holds the item and nothing would ever drain the row.
+  if (!isSyncEligible()) return
+
+  try {
+    const db = getDatabase()
+    // Notes and journals derive their tombstone from a row that is deleted
+    // moments after this call, so it has to be captured now; every other type
+    // was handed its snapshot by the caller.
+    const payload =
+      snapshotPayload ??
+      (type === 'note' || type === 'journal' ? buildContentDeletePayload(db, itemId) : null)
+
+    if (!payload) {
+      // Nothing durable to keep. Either the item never reached the server (no
+      // clock, local-only, no device) — in which case there is nothing to
+      // tombstone — or the caller passed no snapshot for a type that rebuilds
+      // its payload from a row this code cannot read. The second is a real
+      // remaining hole, so it stays reported.
+      trackMutationDrop(
+        'local_delete_undeferrable',
+        type,
+        'Delete dropped — sync service not running and no payload to defer'
+      )
+      return
+    }
+
+    recordPendingDelete(db, type, itemId, payload)
+  } catch (err) {
+    log.warn('Failed to record a delete raised while the sync runtime was down', {
+      type,
+      itemId,
+      error: err
+    })
+  }
+}
+
+/**
+ * Replay the deletes recorded while the sync runtime was down. Runs from
+ * `recoverDirtyItems` at every runtime start — the same "re-push what this
+ * device still owes the server" pass, for the one operation that had none.
+ *
+ * Record types go back through the ordinary registry call so each type keeps
+ * its own clock rule and its own guards (inbox refuses to push a delete for a
+ * local-only snapshot). Notes and journals cannot: their services build the
+ * body from a row that is gone, so the body captured at delete time is handed
+ * straight to the service's queue.
+ *
+ * Never loses a row it cannot deliver: a record type whose service is still
+ * missing re-records itself through `deferDelete`, and a content type is left
+ * untouched until its service exists.
+ */
+export function flushPendingLocalDeletes(db: DataDb): number {
+  const pending = listPendingDeletes(db)
+  if (pending.length === 0) return 0
+
+  let flushed = 0
+  for (const item of pending) {
+    try {
+      if (item.type === 'note' || item.type === 'journal') {
+        const service = item.type === 'note' ? getNoteSyncService() : getJournalSyncService()
+        if (!service) continue
+        clearPendingDelete(db, item.type, item.itemId)
+        service.enqueueRecoveredDelete(item.itemId, item.payload)
+      } else {
+        // Cleared first: the replay re-records it when the service is somehow
+        // still down, and clearing afterwards would delete what was just
+        // written back.
+        clearPendingDelete(db, item.type, item.itemId)
+        enqueueLocalSyncDelete(item.type as LocalSyncType, item.itemId, item.payload)
+      }
+
+      flushed++
+    } catch (err) {
+      log.warn('Failed to replay a delete raised while the sync runtime was down', {
+        type: item.type,
+        itemId: item.itemId,
+        error: err
+      })
+    }
+  }
+
+  if (flushed > 0) {
+    log.info('Replayed deletes raised while the sync runtime was down', { count: flushed })
+  }
+  return flushed
 }
 
 const localSyncRegistry = createSyncAdapterRegistry([
@@ -90,7 +242,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('task', getTaskSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('task', getTaskSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -118,7 +270,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('project', getProjectSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('project', getProjectSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -146,7 +298,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('inbox', getInboxSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('inbox', getInboxSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -200,7 +352,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('filter', getFilterSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('filter', getFilterSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -228,7 +380,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('template', getTemplateSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('template', getTemplateSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -256,10 +408,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('home_page', getHomePageSyncService())?.enqueueDelete(
-          itemId,
-          snapshotPayload
-        )
+        enqueueDeleteOrDefer('home_page', getHomePageSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -287,7 +436,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('bookmark', getBookmarkSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('bookmark', getBookmarkSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -315,7 +464,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('reminder', getReminderSyncService())?.enqueueDelete(itemId, snapshotPayload)
+        enqueueDeleteOrDefer('reminder', getReminderSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -342,6 +491,10 @@ const localSyncRegistry = createSyncAdapterRegistry([
         incrementCanvasClockOffline(getDatabase(), itemId)
       },
       enqueueDelete(itemId: string): void {
+        // No deferral: unlike notes and journals, a canvas tombstone is built by
+        // CanvasSyncService from the `canvases` row AND writes the bumped clock
+        // back to it, so capturing it here would mean duplicating that service's
+        // rule. Still the tripwire, still reported (#1579).
         svcOrTrackDrop('canvas', getCanvasSyncService())?.enqueueDelete(itemId)
       }
     }
@@ -370,10 +523,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
-        svcOrTrackDrop('canvas_folder', getCanvasFolderSyncService())?.enqueueDelete(
-          itemId,
-          snapshotPayload
-        )
+        enqueueDeleteOrDefer('canvas_folder', getCanvasFolderSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -409,7 +559,13 @@ const localSyncRegistry = createSyncAdapterRegistry([
         getNoteSyncService()?.enqueueRecoveredUpdate(itemId)
       },
       enqueueDelete(itemId: string): void {
-        svcOrTrackDrop('note', getNoteSyncService())?.enqueueDelete(itemId)
+        const service = getNoteSyncService()
+        if (service) {
+          service.enqueueDelete(itemId)
+          return
+        }
+
+        deferDelete('note', itemId)
       }
     }
   },
@@ -440,7 +596,16 @@ const localSyncRegistry = createSyncAdapterRegistry([
       },
       enqueueDelete(itemId: string, date?: string): void {
         if (!date) return
-        svcOrTrackDrop('journal', getJournalSyncService())?.enqueueDelete(itemId, date)
+
+        const service = getJournalSyncService()
+        if (service) {
+          service.enqueueDelete(itemId, date)
+          return
+        }
+
+        // The date is not put on the wire (see JournalSyncService), so the
+        // deferred tombstone carries the same body a note's does.
+        deferDelete('journal', itemId)
       }
     }
   },
@@ -455,7 +620,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('tag_definition', getTagDefinitionSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('tag_definition', getTagDefinitionSyncService())?.enqueueDelete(
+        enqueueDeleteOrDefer(
+          'tag_definition',
+          getTagDefinitionSyncService(),
           itemId,
           snapshotPayload
         )
@@ -473,10 +640,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('tag_category', getTagCategorySyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('tag_category', getTagCategorySyncService())?.enqueueDelete(
-          itemId,
-          snapshotPayload
-        )
+        enqueueDeleteOrDefer('tag_category', getTagCategorySyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -491,6 +655,8 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('settings', getSettingsSyncManager())?.enqueueUpdate()
       },
       enqueueDelete(): void {
+        // No deferral: settings is a singleton with no item id and no snapshot,
+        // so there is nothing to capture for a later replay (#1579).
         svcOrTrackDrop('settings', getSettingsSyncManager())?.enqueueDelete()
       }
     }
@@ -506,10 +672,7 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('folder_config', getFolderConfigSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('folder_config', getFolderConfigSyncService())?.enqueueDelete(
-          itemId,
-          snapshotPayload
-        )
+        enqueueDeleteOrDefer('folder_config', getFolderConfigSyncService(), itemId, snapshotPayload)
       }
     }
   },
@@ -527,7 +690,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
         )
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('calendar_event', getCalendarEventSyncService())?.enqueueDelete(
+        enqueueDeleteOrDefer(
+          'calendar_event',
+          getCalendarEventSyncService(),
           itemId,
           snapshotPayload
         )
@@ -545,7 +710,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('calendar_source', getCalendarSourceSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('calendar_source', getCalendarSourceSyncService())?.enqueueDelete(
+        enqueueDeleteOrDefer(
+          'calendar_source',
+          getCalendarSourceSyncService(),
           itemId,
           snapshotPayload
         )
@@ -563,7 +730,9 @@ const localSyncRegistry = createSyncAdapterRegistry([
         svcOrTrackDrop('calendar_binding', getCalendarBindingSyncService())?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop('calendar_binding', getCalendarBindingSyncService())?.enqueueDelete(
+        enqueueDeleteOrDefer(
+          'calendar_binding',
+          getCalendarBindingSyncService(),
           itemId,
           snapshotPayload
         )
@@ -587,10 +756,12 @@ const localSyncRegistry = createSyncAdapterRegistry([
         )?.enqueueUpdate(itemId)
       },
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
-        svcOrTrackDrop(
+        enqueueDeleteOrDefer(
           'calendar_external_event',
-          getCalendarExternalEventSyncService()
-        )?.enqueueDelete(itemId, snapshotPayload)
+          getCalendarExternalEventSyncService(),
+          itemId,
+          snapshotPayload
+        )
       }
     }
   }
@@ -604,12 +775,17 @@ function callLocalMutation(
 ): void {
   const adapter = localSyncRegistry.getLocal(type)
   if (!adapter) {
-    log.warn('Missing local sync adapter', { type, method, itemId })
-    trackMainLog('warn', {
-      scope: 'LocalSync',
-      action: 'local_mutation_dropped',
-      errorCode: type
-    })
+    // Its own throttle key: this one is a wiring bug (a type with no adapter),
+    // not a runtime-state drop, so it must not be silenced by — or silence —
+    // the tripwire above.
+    if (shouldEmitThrottled(`local_mutation_adapter_missing:${type}`, DROP_TRIPWIRE_THROTTLE_MS)) {
+      log.warn('Missing local sync adapter', { type, method, itemId })
+      trackMainLog('warn', {
+        scope: 'LocalSync',
+        action: 'local_mutation_dropped',
+        errorCode: type
+      })
+    }
     return
   }
 
