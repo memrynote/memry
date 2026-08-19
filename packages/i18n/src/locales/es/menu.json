@@ -2,6 +2,7 @@
   "app": {
     "quit": "Salir de MemryNote",
     "preferences": "Ajustes…",
+    "checkForUpdates": "Buscar actualizaciones…",
     "exit": "Salir",
     "hide": "Ocultar MemryNote",
     "hideOthers": "Ocultar otros",
@@ -58,6 +59,9 @@
     "heading1": "Encabezado 1",
     "heading2": "Encabezado 2",
     "heading3": "Encabezado 3",
+    "heading4": "Encabezado 4",
+    "heading5": "Encabezado 5",
+    "heading6": "Encabezado 6",
     "highlight": "Resaltado",
     "italic": "Cursiva",
     "label": "Formato",

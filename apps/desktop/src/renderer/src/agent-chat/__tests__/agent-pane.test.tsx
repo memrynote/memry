@@ -15,6 +15,9 @@ vi.mock('../agent-context', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  // The transcript keeps its scroll position in tab state; these tests render
+  // it outside a tab, where that degrades to no persistence at all.
+  useTabActionsOptional: () => null,
   useActiveTab: () => null
 }))
 

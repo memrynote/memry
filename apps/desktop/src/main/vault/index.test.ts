@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => ({
   migrateTemplateFilesToDb: vi.fn(() => 0),
   startSyncRuntime: vi.fn(),
   stopSyncRuntime: vi.fn(),
+  initCrdtPersistence: vi.fn(),
   startProjectionRuntime: vi.fn(),
   stopProjectionRuntime: vi.fn(),
   reconcileProjections: vi.fn(),
@@ -171,6 +172,10 @@ vi.mock('../sync/runtime', () => ({
   stopSyncRuntime: (...args: unknown[]) => mocks.stopSyncRuntime(...args)
 }))
 
+vi.mock('../sync/crdt-provider', () => ({
+  getCrdtProvider: () => ({ initPersistence: mocks.initCrdtPersistence })
+}))
+
 vi.mock('../telemetry/diagnostics', () => ({
   trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
   trackMainLog: vi.fn()
@@ -285,6 +290,7 @@ describe('vault lifecycle', () => {
     mocks.reloadPropertyDefinitions.mockResolvedValue(undefined)
     mocks.startSyncRuntime.mockResolvedValue(undefined)
     mocks.stopSyncRuntime.mockResolvedValue(undefined)
+    mocks.initCrdtPersistence.mockResolvedValue(undefined)
     mocks.stopProjectionRuntime.mockResolvedValue(undefined)
     mocks.reconcileProjections.mockResolvedValue(undefined)
     mocks.applyProjectFrontmatterBackfill.mockResolvedValue(undefined)
@@ -338,6 +344,19 @@ describe('vault lifecycle', () => {
     expect(mocks.currentVaultPath).toBe('/vault/work')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/work' }))
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
+  })
+
+  // The CRDT store is scoped to this vault's uuid, which lives in the data DB.
+  // main cannot open it at bootstrap — there is no vault then — so if this call
+  // is not made here, nothing else makes it and every note in the vault loses
+  // its history for the whole session.
+  it('opens the vault CRDT store once the vault database is up', async () => {
+    await selectVault({ path: '/vault/work' })
+
+    expect(mocks.initCrdtPersistence).toHaveBeenCalled()
+    expect(mocks.initCrdtPersistence.mock.invocationCallOrder[0]).toBeGreaterThan(
+      mocks.initDatabase.mock.invocationCallOrder[0]
+    )
   })
 
   // The project-link backfill has to read data.db before the projectors can

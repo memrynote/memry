@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
+import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 
 const contentAreaMocks = vi.hoisted(() => ({
   editor: null as any,
@@ -24,6 +25,10 @@ const contentAreaMocks = vi.hoisted(() => ({
     uploadAttachment: vi.fn()
   },
   fetchLinkPreview: vi.fn(),
+  toastError: vi.fn(),
+  defaultFileItemClick: vi.fn(),
+  openSuggestionMenu: vi.fn(),
+  registerPlugin: vi.fn(),
   createLinkMentionContent: vi.fn(
     (url: string, domain: string, title?: string, favicon?: string) => ({
       type: 'linkMention',
@@ -90,9 +95,24 @@ vi.mock('@blocknote/react', () => ({
     return <div data-testid={`grid-suggestion-${props.triggerCharacter}`} />
   },
   getDefaultReactSlashMenuItems: vi.fn(() => [
-    { title: 'Paragraph', aliases: ['text'] },
-    { title: 'Heading', aliases: ['title'] }
-  ])
+    { key: 'paragraph', title: 'Paragraph', aliases: ['text'] },
+    { key: 'heading', title: 'Heading', aliases: ['title'] },
+    { key: 'image', title: 'Image', aliases: ['image', 'img', 'picture'], group: 'Media' },
+    {
+      key: 'file',
+      title: 'File',
+      subtext: 'Embedded file',
+      aliases: ['file', 'upload'],
+      group: 'Media',
+      onItemClick: contentAreaMocks.defaultFileItemClick
+    }
+  ]),
+  FilePanelController: () => <div data-testid="file-panel-controller" />,
+  UploadTab: () => <div data-testid="upload-tab" />
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: contentAreaMocks.toastError, success: vi.fn() }
 }))
 
 vi.mock('@blocknote/shadcn', () => ({
@@ -273,6 +293,7 @@ vi.mock('./ai-menu', () => ({
 vi.mock('./editor-schema', () => ({ editorSchema: {} }))
 
 import { ContentArea } from './ContentArea'
+import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -326,11 +347,14 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    getExtension: vi.fn(() => ({ openSuggestionMenu: contentAreaMocks.openSuggestionMenu })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
     prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
     _tiptapEditor: {
       state: { selection: { empty: true, $from: { parentOffset: 0 } } },
-      destroy: vi.fn()
+      destroy: vi.fn(),
+      registerPlugin: contentAreaMocks.registerPlugin,
+      unregisterPlugin: vi.fn()
     }
   }
 }
@@ -496,6 +520,53 @@ describe('ContentArea', () => {
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
+  // The signed-out clobber: with no session the editor was never bound to a
+  // Y.Doc, so keystrokes reached markdown alone and the sign-in that rebuilt the
+  // doc from the server wrote it back over them. The local doc is the editor's
+  // store; the session only decides whether anything is synced.
+  it.each([
+    ['never signed in', 'unknown'],
+    ['signed out', 'error'],
+    ['sync paused', 'paused']
+  ])('binds the local Y.Doc with no sync session (%s)', (_case, status) => {
+    contentAreaMocks.useSyncState = { status }
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment('blocks')
+    contentAreaMocks.yjsState = {
+      fragment,
+      doc,
+      provider: { doc, isSynced: false },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(<ContentArea noteId="note-1" />)
+
+    expect(vi.mocked(useYjsCollaboration)).toHaveBeenCalledWith(
+      expect.objectContaining({ noteId: 'note-1', enabled: true })
+    )
+    expect(contentAreaMocks.blockNoteOptions.collaboration.fragment).toBe(fragment)
+  })
+
+  it('waits for the local Y.Doc binding with no sync session instead of opening a markdown editor', () => {
+    // `useCreateBlockNote` builds its collaboration extension exactly once, so a
+    // fragment that arrives after the editor exists can never attach. Rendering
+    // a non-collaborative editor here would be a decision, not a placeholder.
+    contentAreaMocks.useSyncState = { status: 'unknown' }
+    contentAreaMocks.yjsState = {
+      fragment: undefined,
+      doc: null,
+      provider: null,
+      isReady: false,
+      isRemoteUpdateRef: { current: false }
+    }
+
+    const { container } = render(<ContentArea noteId="note-1" />)
+
+    expect(container.querySelector('.animate-pulse')).toBeTruthy()
+    expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+  })
+
   it('renders editor chrome, retry UI, suggestions, wiki preview, and context-menu conversion', async () => {
     contentAreaMocks.aiContext = { port: 4315, error: 'AI offline', retry: null }
     contentAreaMocks.wikiHover = {
@@ -561,6 +632,7 @@ describe('ContentArea', () => {
       <ContentArea
         noteId="note-1"
         review={{
+          plainMarkdown: '',
           marks: [
             {
               id: 'add-1',
@@ -690,6 +762,8 @@ describe('ContentArea', () => {
       contentAreaMocks.blockNoteOptions.uploadFile(new File(['b'], 'b.txt'))
     ).rejects.toThrow('blocked')
 
+    expect(contentAreaMocks.toastError).toHaveBeenCalledWith('blocked')
+
     await expect(
       contentAreaMocks.blockNoteOptions.uploadFile(new File(['c'], 'c.txt'))
     ).resolves.toBe('attachments/file.png')
@@ -697,6 +771,104 @@ describe('ContentArea', () => {
       'note-upload',
       expect.any(File)
     )
+  })
+
+  it('returns full file-block props for a file block and a bare url for an image block', async () => {
+    render(<ContentArea noteId="note-upload" />)
+    await waitFor(() => expect(contentAreaMocks.blockNoteOptions).toBeTruthy())
+
+    createBlock('pdf-block', { type: 'file', props: {} })
+    createBlock('image-block', { type: 'image', props: {} })
+
+    contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: 'attachments/manual.pdf',
+      name: 'manual.pdf',
+      size: 4096,
+      mimeType: 'application/pdf',
+      type: 'file'
+    })
+    // Without size + mimeType the block renders the download card instead of
+    // the inline PDF viewer — the whole point of this shape.
+    await expect(
+      contentAreaMocks.blockNoteOptions.uploadFile(
+        new File(['p'], 'manual.pdf', { type: 'application/pdf' }),
+        'pdf-block'
+      )
+    ).resolves.toEqual({
+      props: {
+        url: 'attachments/manual.pdf',
+        name: 'manual.pdf',
+        size: 4096,
+        mimeType: 'application/pdf'
+      }
+    })
+
+    // Image blocks have no size/mimeType props; unknown props break them.
+    contentAreaMocks.notesService.uploadAttachment.mockResolvedValueOnce({
+      success: true,
+      path: 'attachments/shot.png',
+      name: 'shot.png',
+      size: 128,
+      mimeType: 'image/png',
+      type: 'image'
+    })
+    await expect(
+      contentAreaMocks.blockNoteOptions.uploadFile(
+        new File(['i'], 'shot.png', { type: 'image/png' }),
+        'image-block'
+      )
+    ).resolves.toBe('attachments/shot.png')
+  })
+
+  it('offers a PDF slash item that runs the default file item', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const items = await slashController.getItems('pdf')
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ key: 'pdf', group: 'Media' })
+
+    items[0].onItemClick()
+    expect(contentAreaMocks.defaultFileItemClick).toHaveBeenCalledTimes(1)
+
+    // `/photo` is a new alias on BlockNote's image item.
+    await expect(slashController.getItems('photo')).resolves.toEqual([
+      expect.objectContaining({ key: 'image' })
+    ])
+  })
+
+  it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const call = contentAreaMocks.registerPlugin.mock.calls.find(
+      ([plugin]) => plugin?.spec?.key === WIKI_LINK_EDIT_PLUGIN_KEY
+    )
+    expect(call).toBeDefined()
+
+    // Prepended, or the default Backspace keymap deletes the chip before the
+    // plugin ever sees the key.
+    const [plugin, handlePlugins] = call!
+    expect(handlePlugins(plugin, ['existing'])).toEqual([plugin, 'existing'])
+  })
+
+  it('offers a "link to note" slash item that hands over to the [[ menu', async () => {
+    render(<ContentArea noteId="note-1" />)
+
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const items = await slashController.getItems('wikilink')
+    expect(items).toHaveLength(1)
+
+    items[0].onItemClick()
+    // Through the suggestion plugin's own opener, so `[[` reaches the doc with
+    // the plugin state that makes the wiki-link menu open.
+    expect(contentAreaMocks.openSuggestionMenu).toHaveBeenCalledWith('[[', {
+      deleteTriggerCharacter: true
+    })
   })
 
   it('debounces standalone checkbox conversion and clears pending conversion on unmount', async () => {

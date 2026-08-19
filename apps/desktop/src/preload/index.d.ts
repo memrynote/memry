@@ -1583,6 +1583,7 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
+  getLargeNotes: () => Promise<import('@memry/contracts/ipc-sync-ops').LargeNotesResult>
 }
 
 // Crypto API
@@ -1793,6 +1794,10 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onTemplateCreated: (callback: (event: TemplateCreatedEvent) => void) => () => void
   onTemplateUpdated: (callback: (event: TemplateUpdatedEvent) => void) => () => void
   onTemplateDeleted: (callback: (event: TemplateDeletedEvent) => void) => () => void
+  // Home boards event subscriptions (local writes and remote applies both emit)
+  onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
+  onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
+  onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
@@ -1861,6 +1866,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
     noteId: string,
     callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
   ) => () => void
+  onCrdtProviderReset: (callback: () => void) => () => void
+  onCrdtProviderReady: (callback: () => void) => () => void
   onFlushRequested: (callback: (requestId?: string) => void) => () => void
   notifyFlushDone: (requestId?: string) => void
 }

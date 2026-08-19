@@ -1,5 +1,5 @@
-import { defaultProps } from '@blocknote/core'
 import { createReactBlockSpec } from '@blocknote/react'
+import { calloutConfig, CALLOUT_LINE_REGEX } from '@memry/editor-schema/blocks'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -140,29 +140,17 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
   )
 }
 
-export const createCalloutBlock = createReactBlockSpec(
-  {
-    type: 'callout' as const,
-    propSchema: {
-      textAlignment: defaultProps.textAlignment,
-      textColor: defaultProps.textColor,
-      type: {
-        default: 'info' as const,
-        values: ['info', 'warning', 'error', 'success'] as const
-      }
-    },
-    content: 'inline'
-  },
-  {
-    render: (props) => (
-      <CalloutBlockRenderer
-        block={props.block as CalloutBlock}
-        editor={props.editor}
-        contentRef={props.contentRef}
-      />
-    )
-  }
-)
+// Type/props/content come from the shared config so this block and the main
+// process's headless twin cannot disagree; only the React presentation is here.
+export const createCalloutBlock = createReactBlockSpec(calloutConfig, {
+  render: (props) => (
+    <CalloutBlockRenderer
+      block={props.block as CalloutBlock}
+      editor={props.editor}
+      contentRef={props.contentRef}
+    />
+  )
+})
 
 export function getCalloutSlashMenuItem(
   editor: unknown,
@@ -188,15 +176,12 @@ export function getCalloutSlashMenuItem(
 // Callout Block Serialization (> [!type]\n> content)
 // ============================================================================
 
-// Matches a callout block: starts with > [!type], followed by consecutive > lines
-const CALLOUT_LINE_REGEX = /^> \[!(\w+)\](.*)/
-
-export function serializeCalloutBlock(type: string, contentMarkdown: string): string {
-  const lines = contentMarkdown.split('\n').filter((l) => l.length > 0)
-  if (lines.length === 0) return `> [!${type}]`
-  const quoted = lines.map((line) => `> ${line}`).join('\n')
-  return `> [!${type}]\n${quoted}`
-}
+// The `> [!type]` form lives in @memry/editor-schema/blocks so the main process
+// writes the same bytes. The splitter below stays here: it is the editor's
+// lenient reader (an unknown type falls back to `info`, a title on the marker
+// line moves into the body), which is fine for a paste but would rewrite every
+// `> [!note]` in an Obsidian vault if the CRDT parser used it.
+export { serializeCalloutBlock } from '@memry/editor-schema/blocks'
 
 export type CalloutSegment = { kind: 'callout'; type: CalloutTypeValue; content: string }
 export type MarkdownSegment = { kind: 'markdown'; text: string }

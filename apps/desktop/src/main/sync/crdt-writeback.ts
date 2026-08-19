@@ -3,9 +3,10 @@ import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
-import { yDocToMarkdown } from './blocknote-converter'
+import { findUnrepresentableNodes, yDocToMarkdown } from './blocknote-converter'
 import { emitNoteUpdated } from './note-events'
 import { readCriticMarkupMarksFromYDoc, serializeCriticMarkup } from '@memry/shared'
+import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { utcNow } from '@memry/shared/utc'
 import {
   atomicWrite,
@@ -398,6 +399,32 @@ function resolveFromCanonicalMetadata(
 }
 
 async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
+  // Fail closed. If the doc holds a node type this build has no schema spec
+  // for, every serialization of it is missing that node — writing the result
+  // would make the loss the file's permanent content, and the next index pass
+  // would push it to every other device. Keeping the file costs the user a
+  // stale body until a build that knows the type runs; writing costs them the
+  // content. Checked before serializing, since the answer decides nothing else.
+  const unrepresentable = findUnrepresentableNodes(doc)
+  if (unrepresentable.length > 0) {
+    updateDebugState(noteId, {
+      pending: false,
+      lastError: `unrepresentable: ${unrepresentable.join(',')}`
+    })
+    log.error('Doc holds node types this build cannot serialize, keeping the file', {
+      noteId,
+      nodes: unrepresentable
+    })
+    if (shouldEmitThrottled(`writeback_unrepresentable:${noteId}`)) {
+      trackMainLog('error', {
+        scope: 'CrdtWriteback',
+        action: 'writeback_unrepresentable_node',
+        errorCode: unrepresentable.join(',')
+      })
+    }
+    return
+  }
+
   const plainMarkdown = await yDocToMarkdown(doc)
   const markdown =
     plainMarkdown === null
@@ -419,6 +446,22 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     return
   }
 
+  // The receiving half of the large-file class. A peer running an older build,
+  // or one whose oversized snapshot push was refused at the encrypt cap, still
+  // sends the body as incremental CRDT updates — those are individually under
+  // the merge cap and pass freely, so the ingest-side guard never sees them.
+  // The body lands on disk either way; what degrades is how it is handed on.
+  const bodyClass = classifyMarkdownContent(markdown)
+  const isLargeFileBody = bodyClass.sizeClass === 'large-file'
+  if (isLargeFileBody) {
+    log.warn('Inbound body is large-file class; degrading the note', {
+      noteId,
+      reason: bodyClass.reason,
+      fileBytes: bodyClass.fileBytes,
+      largestBlockBytes: bodyClass.largestBlockBytes
+    })
+  }
+
   const indexDb = getIndexDatabase()
   const cached = getNoteCacheById(indexDb, noteId) ?? resolveFromCanonicalMetadata(noteId)
 
@@ -426,9 +469,9 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
     await writebackJournal(noteId, doc, markdown, cached, indexDb)
   } else {
     if (cached) {
-      await writebackExisting(noteId, cached, doc, markdown, indexDb)
+      await writebackExisting(noteId, cached, doc, markdown, indexDb, isLargeFileBody)
     } else {
-      await writebackNewNote(noteId, doc, markdown, indexDb)
+      await writebackNewNote(noteId, doc, markdown, indexDb, isLargeFileBody)
     }
     try {
       await syncNoteDateReminders(
@@ -447,7 +490,8 @@ async function writebackExisting(
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
   doc: Y.Doc,
   markdown: string,
-  indexDb: ReturnType<typeof getIndexDatabase>
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  isLargeFileBody: boolean
 ): Promise<void> {
   const relativePath = cached.path
   const absolutePath = toAbsolutePath(relativePath)
@@ -509,10 +553,17 @@ async function writebackExisting(
 
   // The body genuinely changed here, so `content` has to ride along: it is what
   // makes an open editor pick up a remote edit instead of showing stale text
-  // until the tab is reopened.
+  // until the tab is reopened. Except when the body is large-file class, where
+  // that is exactly the harm: `note.tsx` feeds `changes.content` into the
+  // editor, so shipping it runs the parse this whole class exists to avoid —
+  // and every window pays a structured clone of the whole body to get it.
+  // The class rides along instead, so the renderer degrades to the read-only
+  // view it would have shown had the file been opened fresh.
   emitNoteUpdated(emitToRenderer, {
     id: noteId,
-    changes: { content: markdown },
+    changes: isLargeFileBody
+      ? { sizeClass: 'large-file', contentOmitted: true }
+      : { content: markdown },
     source: 'sync'
   })
   log.debug('Write-back complete', { noteId })
@@ -522,7 +573,8 @@ async function writebackNewNote(
   noteId: string,
   doc: Y.Doc,
   markdown: string,
-  indexDb: ReturnType<typeof getIndexDatabase>
+  indexDb: ReturnType<typeof getIndexDatabase>,
+  isLargeFileBody: boolean
 ): Promise<void> {
   const meta = doc.getMap('meta')
   const title = (meta.get('title') as string) || 'Untitled'
@@ -556,8 +608,13 @@ async function writebackNewNote(
   )
   void flushProjectionEvents()
 
+  // The row appears either way — the file is on disk and hiding it would strand
+  // the user's data — but a large-file-class row is flagged as such, so the
+  // renderer opens the read-only view instead of seeding an editor from it.
   emitToRenderer(NotesChannels.events.CREATED, {
-    note: { id: noteId, path: relativePath, title },
+    note: isLargeFileBody
+      ? { id: noteId, path: relativePath, title, sizeClass: 'large-file', contentOmitted: true }
+      : { id: noteId, path: relativePath, title },
     source: 'sync'
   })
 

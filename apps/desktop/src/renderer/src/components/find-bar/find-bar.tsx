@@ -13,6 +13,12 @@ interface FindBarProps {
   onNext: () => void
   onPrev: () => void
   onClose: () => void
+  /**
+   * Replaces the `current/total` count. For a surface where that count is not
+   * the whole truth — a search still crossing a 2 GB file, or a hit list capped
+   * for navigation — and rendering it as if it were would be a lie.
+   */
+  countLabel?: string
   className?: string
 }
 
@@ -26,6 +32,7 @@ export const FindBar = memo(function FindBar({
   onNext,
   onPrev,
   onClose,
+  countLabel,
   className
 }: FindBarProps) {
   const { t: tPhaseF } = useT('common')
@@ -78,7 +85,7 @@ export const FindBar = memo(function FindBar({
 
         {query && matchCount >= 0 && (
           <span className="text-[11px] text-muted-foreground/60 tabular-nums select-none whitespace-nowrap">
-            {matchCount > 0 ? `${currentIndex + 1}/${matchCount}` : '0'}
+            {countLabel ?? (matchCount > 0 ? `${currentIndex + 1}/${matchCount}` : '0')}
           </span>
         )}
 

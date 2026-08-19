@@ -6,7 +6,15 @@ import { getI18n } from 'react-i18next'
  * Loads real note data via useNotes() hook and saves changes via updateNote().
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo, type RefObject } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  type RefObject
+} from 'react'
 import { cn } from '@/lib/utils'
 import { motion, useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -14,7 +22,16 @@ import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
-import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
+import { LargeFileViewer } from '@/components/note/large-file-viewer'
+import {
+  NoteLayout,
+  HeadingItem,
+  ContentArea,
+  HeadingInfo,
+  InlineTagsOrigin,
+  Block
+} from '@/components/note'
+import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -33,6 +50,9 @@ import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
+import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
+import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
@@ -148,7 +168,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(noteId ?? null)
   const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
   const { tags: allAvailableTags } = useNoteTagsQuery()
-  const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab } = useTabs()
+  const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
   const queryClient = useQueryClient()
@@ -178,6 +198,14 @@ export function NotePage({ noteId }: NotePageProps) {
   const initialAnchorId = useMemo(() => {
     const viewState = activeTab?.viewState as { anchorId?: string } | undefined
     return viewState?.anchorId
+  }, [activeTab?.viewState])
+
+  // The heading half of the `[[Note#Heading]]` that opened this tab. Carried
+  // as text because that is all the link stores — never a block id, which is
+  // minted per document and means nothing to the note that wrote the link.
+  const initialHeadingText = useMemo(() => {
+    const viewState = activeTab?.viewState as { headingText?: string } | undefined
+    return viewState?.headingText
   }, [activeTab?.viewState])
 
   // Convert query error to string
@@ -351,11 +379,9 @@ export function NotePage({ noteId }: NotePageProps) {
         )
       )
         return
-      if (
-        target.closest('[contenteditable="true"]')?.contains(target) &&
-        target.closest('.bn-block-content')
-      )
-        return
+      // "Outside every block" — deliberately NOT the same test as the marquee
+      // start rule's "is there text here". See marquee-hit-test.ts.
+      if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
       focusAtEndRef.current?.()
     }
@@ -364,15 +390,24 @@ export function NotePage({ noteId }: NotePageProps) {
   }, [marqueeZoneEl])
 
   const isActiveNote = activeTab?.entityId === noteId
+  // A large file has no editor DOM to walk, and what is mounted is a few dozen
+  // virtualized rows out of millions — searching them would answer confidently
+  // about the wrong thing. The viewer owns find on that surface instead.
+  const isLargeFile = note?.sizeClass === 'large-file'
   const findInPage = useFindInPage(
     editorContainerRef as RefObject<HTMLElement | null>,
-    isActiveNote
+    isActiveNote && !isLargeFile
   )
+  const openLargeFileFindRef = useRef<(() => void) | null>(null)
+  const openFind = useCallback((): void => {
+    if (isLargeFile) openLargeFileFindRef.current?.()
+    else findInPage.open()
+  }, [isLargeFile, findInPage])
 
   // Native menu bar: Edit > Find and File > Export to PDF target the active note.
   useEffect(() => {
     if (!isActiveNote) return
-    const onFind = (): void => findInPage.open()
+    const onFind = (): void => openFind()
     const onExport = (): void => setIsExportDialogOpen(true)
     window.addEventListener('memry:menu-find', onFind)
     window.addEventListener('memry:menu-export', onExport)
@@ -380,7 +415,7 @@ export function NotePage({ noteId }: NotePageProps) {
       window.removeEventListener('memry:menu-find', onFind)
       window.removeEventListener('memry:menu-export', onExport)
     }
-  }, [isActiveNote, findInPage])
+  }, [isActiveNote, openFind])
 
   // Content tracking for change detection
   if (storedNoteIdForContent !== noteId) {
@@ -618,12 +653,78 @@ export function NotePage({ noteId }: NotePageProps) {
   // Handlers
   // ============================================================================
 
-  const handleHeadingClick = useCallback((headingId: string) => {
-    const element = document.querySelector(`[data-id="${headingId}"]`)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [])
+  const handleHeadingClick = useCallback(
+    (headingId: string) => {
+      // Scoped to this pane. `document.querySelector` returns whichever pane is
+      // first in the DOM, so in split view the outline scrolled the pane the
+      // user was not looking at. Smooth is right here — the jump happens inside
+      // content already on screen — unless the user asked for less motion.
+      scrollToHeadingBlock(editorContainerRef.current, headingId, {
+        smooth: !prefersReducedMotion
+      })
+    },
+    [prefersReducedMotion]
+  )
+
+  /**
+   * Scrolls to a heading by TEXT, which is all `[[Note#Heading]]` carries — a
+   * block id is minted per document and means nothing to the note that wrote
+   * the link. Matching is trimmed and case-folded, and the first heading that
+   * matches wins: the link records no level and no ordinal, so there is nothing
+   * to tell two identically-worded headings apart with.
+   */
+  const scrollToHeadingText = useCallback(
+    (headingText: string, smooth: boolean): boolean => {
+      const wanted = normalizeHeading(headingText)
+      const match = headings.find((heading) => normalizeHeading(heading.text) === wanted)
+      if (!match) return false
+      return scrollToHeadingBlock(editorContainerRef.current, match.id, { smooth })
+    },
+    [headings]
+  )
+
+  const clearHeadingAnchor = useCallback(() => {
+    if (!activeTab?.id) return
+    // `undefined` deletes a `viewState` key — the only way to drop one now that
+    // writes are merged (see `mergeViewState`). Leaving it set would re-fire the
+    // jump every time the user came back to this tab.
+    saveTabState(activeTab.id, { viewState: { headingText: undefined } })
+  }, [activeTab?.id, saveTabState])
+
+  // The block id the anchor names, or null until the editor has emitted headings.
+  const headingAnchorId = useMemo(() => {
+    if (!initialHeadingText) return null
+    const wanted = normalizeHeading(initialHeadingText)
+    return headings.find((heading) => normalizeHeading(heading.text) === wanted)?.id ?? null
+  }, [initialHeadingText, headings])
+
+  // Read through a ref so headings arriving late are picked up without
+  // restarting the wait below — restarting it would also restart its deadline.
+  const headingAnchorIdRef = useRef(headingAnchorId)
+  useLayoutEffect(() => {
+    headingAnchorIdRef.current = headingAnchorId
+  }, [headingAnchorId])
+
+  // Consume the heading anchor. This waits rather than looking once: the block's
+  // `[data-id]` node is not in the document at the moment `headings` lands,
+  // because ContentArea holds its render behind a placeholder until the CRDT
+  // binding settles. A single lookup loses that race, and a note nobody edits
+  // emits no second set of headings to retry on.
+  useEffect(() => {
+    if (!initialHeadingText) return undefined
+    // Never smooth: the note has only just appeared, so there is no starting
+    // position for an animation to be relative to.
+    return scrollToHeadingWhenReady({
+      getContainer: () => editorContainerRef.current,
+      getHeadingId: () => headingAnchorIdRef.current,
+      smooth: false,
+      // Same deadline scroll restore uses, so the two can never disagree about
+      // when content has settled — and so a heading that never arrives stops
+      // suppressing restore instead of pinning the anchor to the tab forever.
+      timeoutMs: RESTORE_MAX_MS,
+      onSettled: clearHeadingAnchor
+    })
+  }, [initialHeadingText, clearHeadingAnchor])
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
     setHeadings(
@@ -790,8 +891,17 @@ export function NotePage({ noteId }: NotePageProps) {
   const pendingTagsRef = useRef<string[] | null>(null)
 
   const handleInlineTagsChange = useCallback(
-    async (currentInlineTags: string[]) => {
+    async (currentInlineTags: string[], origin: InlineTagsOrigin) => {
       if (!noteId || !note || isDeleted) return
+
+      // Opening a note must not modify it (#1454). A load report is the tag set
+      // the body already carried, so it only seeds the baseline later edits are
+      // diffed against: a tag that lives only in the body stays there — the
+      // index still indexes it — until the user actually adds or removes one.
+      if (origin === 'load') {
+        inlineTagsRef.current = new Set(currentInlineTags)
+        return
+      }
 
       const prev = inlineTagsRef.current
       const current = new Set(currentInlineTags)
@@ -967,6 +1077,14 @@ export function NotePage({ noteId }: NotePageProps) {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
 
+      // `[[#Heading]]` addresses the note it is written in: no tab, no lookup,
+      // just a jump inside content already on screen.
+      const sameNote = splitWikiTarget(target)
+      if (sameNote.heading && !sameNote.note) {
+        scrollToHeadingText(sameNote.heading, !prefersReducedMotion)
+        return
+      }
+
       try {
         // Use format-aware resolution to handle notes and files
         const resolution = await resolveWikiLink(target)
@@ -988,7 +1106,9 @@ export function NotePage({ noteId }: NotePageProps) {
             break
 
           case 'note':
-            // Open note in editor
+            // Open note in editor, carrying the heading the link named. The
+            // target page consumes it once its own editor has produced headings
+            // — text is all we have, and block ids only exist over there.
             openTab({
               type: 'note',
               title: resolution.title,
@@ -998,13 +1118,17 @@ export function NotePage({ noteId }: NotePageProps) {
               isPinned: false,
               isModified: false,
               isPreview: false,
-              isDeleted: false
+              isDeleted: false,
+              ...(resolution.heading && { viewState: { headingText: resolution.heading } })
             })
             break
 
           case 'create': {
-            // Create new note with this title
-            const result = await createNote.mutateAsync({ title: target })
+            // Create new note under the resolution's title, NOT the raw target:
+            // for `[[Note#Heading]]` that is `Note`. Minting `Note#Heading.md`
+            // is the bug this fixes — a heading separator has no business in a
+            // filename, and the file was written to the vault and synced.
+            const result = await createNote.mutateAsync({ title: resolution.title })
             if (!result.success || !result.note) {
               toast.error(t('page.toast.createLinkedFailed'))
               return
@@ -1033,7 +1157,7 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openTab, createNote, t]
+    [openTab, createNote, t, scrollToHeadingText, prefersReducedMotion]
   )
 
   const handleBacklinkClick = useCallback(
@@ -1115,8 +1239,9 @@ export function NotePage({ noteId }: NotePageProps) {
   const actionIcons = (
     <div className="flex items-center gap-0.5">
       <ReminderPicker
-        onSelect={(date, _title, reminderNote) => void handleSetReminder(date, reminderNote)}
+        onSelect={(date, reminderNote) => void handleSetReminder(date, reminderNote)}
         presetType="standard"
+        telemetrySurface="notes"
         showNote
         disabled={isDeleted}
         trigger={
@@ -1165,7 +1290,7 @@ export function NotePage({ noteId }: NotePageProps) {
           }
           setMoreMenuOpen(false)
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
-          if (action === 'find') findInPage.open()
+          if (action === 'find') openFind()
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
           if (action === 'apply-template') setIsApplyTemplateOpen(true)
@@ -1294,6 +1419,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
   return (
     <NoteLayout
+      suppressScrollRestore={Boolean(initialHeadingText)}
       headings={headings}
       onHeadingClick={handleHeadingClick}
       actions={actionIcons}
@@ -1394,59 +1520,80 @@ export function NotePage({ noteId }: NotePageProps) {
         <div
           ref={editorContainerRef}
           role="presentation"
-          className="editor-click-area flex-1 pb-[30vh] relative"
+          className={cn(
+            'editor-click-area flex-1 relative',
+            // The tall bottom padding is an editor affordance — room to click
+            // below the last block. There is no editor here, so it would just
+            // be dead space under the viewer.
+            note.sizeClass !== 'large-file' && 'pb-[30vh]'
+          )}
         >
-          <EditorErrorBoundary
-            noteId={noteId}
-            onRecover={refetchNote}
-            onError={(error) => log.error('Editor error:', error)}
-          >
-            {/* `externalUpdateCount` is deliberately NOT part of the key: an
+          {note.sizeClass === 'large-file' ? (
+            <LargeFileViewer
+              key={noteId}
+              noteId={noteId}
+              active={isActiveNote}
+              openFindRef={openLargeFileFindRef}
+              reason={note.largeFile?.reason}
+              measuredBytes={
+                note.largeFile?.reason === 'block-bytes'
+                  ? note.largeFile.largestBlockBytes
+                  : note.largeFile?.fileBytes
+              }
+            />
+          ) : (
+            <EditorErrorBoundary
+              noteId={noteId}
+              onRecover={refetchNote}
+              onError={(error) => log.error('Editor error:', error)}
+            >
+              {/* `externalUpdateCount` is deliberately NOT part of the key: an
                 update that did not originate here is handed to the live editor
                 via `externalContentRevision` instead of destroying and
                 rebuilding the editor for every remote change. `noteId` stays —
                 a different note in this tab is a genuinely different document. */}
-            <ContentArea
-              key={noteId}
-              noteId={noteId}
-              notePath={note.path}
-              initialContent={review.editorInitialContent}
-              contentType="markdown"
-              externalContentRevision={externalUpdateCount}
-              placeholder={t('editor.content.placeholder')}
-              stickyToolbar={editorSettings.toolbarMode === 'sticky'}
-              spellCheck={editorSettings.spellCheck}
-              onContentChange={handleContentChange}
-              onMarkdownChange={handleMarkdownChange}
-              onHeadingsChange={handleHeadingsChange}
-              onLinkClick={handleLinkClick}
-              onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
-              initialHighlight={initialHighlight}
-              initialAnchorId={initialAnchorId}
-              noteTags={note.tags}
-              tagColorMap={tagColorMap}
-              tagIconMap={tagIconMap}
-              onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
-              focusAtEndRef={focusAtEndRef}
-              marqueeZoneEl={marqueeZoneEl}
-              review={{
-                plainMarkdown: review.plainMarkdown,
-                marks: review.marks,
-                hoveredMarkId: review.hoveredMarkId,
-                onEditorReady: review.handleEditorReady,
-                onAddComment: review.openCommentComposer,
-                getMarkdownSourceOffsetForEditorOffset:
-                  review.getMarkdownSourceOffsetForEditorOffset,
-                getEditorOffsetForMarkdownSourceOffset:
-                  review.getEditorOffsetForMarkdownSourceOffset,
-                onPersistCurrentMarkdown: review.persistCurrentMarkdown,
-                onPlainMarkdownChange: review.handlePlainMarkdownChange,
-                onHoveredMarkChange: review.setHoveredMarkId,
-                onMarkPositionsChange: review.setMarkPositions,
-                onReplaceMarksFromYjs: review.replaceMarksFromYjs
-              }}
-            />
-          </EditorErrorBoundary>
+              <ContentArea
+                key={noteId}
+                noteId={noteId}
+                notePath={note.path}
+                initialContent={review.editorInitialContent}
+                contentType="markdown"
+                externalContentRevision={externalUpdateCount}
+                placeholder={t('editor.content.placeholder')}
+                stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                spellCheck={editorSettings.spellCheck}
+                onContentChange={handleContentChange}
+                onMarkdownChange={handleMarkdownChange}
+                onHeadingsChange={handleHeadingsChange}
+                onLinkClick={handleLinkClick}
+                onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
+                initialHighlight={initialHighlight}
+                initialAnchorId={initialAnchorId}
+                noteTags={note.tags}
+                tagColorMap={tagColorMap}
+                tagIconMap={tagIconMap}
+                onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
+                focusAtEndRef={focusAtEndRef}
+                marqueeZoneEl={marqueeZoneEl}
+                review={{
+                  plainMarkdown: review.plainMarkdown,
+                  marks: review.marks,
+                  hoveredMarkId: review.hoveredMarkId,
+                  onEditorReady: review.handleEditorReady,
+                  onAddComment: review.openCommentComposer,
+                  getMarkdownSourceOffsetForEditorOffset:
+                    review.getMarkdownSourceOffsetForEditorOffset,
+                  getEditorOffsetForMarkdownSourceOffset:
+                    review.getEditorOffsetForMarkdownSourceOffset,
+                  onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                  onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                  onHoveredMarkChange: review.setHoveredMarkId,
+                  onMarkPositionsChange: review.setMarkPositions,
+                  onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                }}
+              />
+            </EditorErrorBoundary>
+          )}
           <ReviewBadgeLayer
             review={review}
             targetId={noteId}

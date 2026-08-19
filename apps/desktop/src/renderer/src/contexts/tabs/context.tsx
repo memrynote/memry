@@ -22,7 +22,9 @@ import type {
   TabSettings,
   OpenTabOptions,
   SidebarItem,
-  SplitDirection
+  SplitDirection,
+  TabScrollState,
+  TabScrollPanes
 } from './types'
 import { tabReducer } from './reducer'
 import { createInitialState, createTabFromSidebarItem, generateId } from './helpers'
@@ -60,6 +62,16 @@ interface TabActionsContextType {
    * Close a tab
    */
   closeTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Close every tab showing `entityId`, in every group, because the entity it
+   * showed has been deleted.
+   *
+   * Deliberately NOT routed through the close guards: they exist to offer
+   * "save before closing", and the row this tab would save to is already
+   * tombstoned. Prompting would hand the user a Save button that cannot work.
+   */
+  closeTabsByEntityId: (entityId: string) => void
 
   /**
    * Register a veto for this tab's close while it holds unsaved work.
@@ -177,9 +189,24 @@ interface TabActionsContextType {
    */
   saveTabState: (
     tabId: string,
-    state: { scrollPosition?: number; viewState?: Record<string, unknown> },
+    state: {
+      scrollPosition?: number
+      scrollState?: TabScrollState
+      scrollPanes?: TabScrollPanes
+      viewState?: Record<string, unknown>
+    },
     groupId?: string
   ) => void
+
+  /**
+   * Read a tab out of the current state WITHOUT subscribing to it.
+   *
+   * Backed by a ref, so the returned function is stable and the caller never
+   * re-renders on unrelated tab changes. Callers that need to re-render when the
+   * tab changes should use `useTabs`/`useTabGroup` instead — this exists for
+   * hooks that only need a one-shot read (restore-on-mount, state seeding).
+   */
+  getTab: (tabId: string, groupId?: string) => Tab | null
 
   /**
    * Split the view.
@@ -406,6 +433,10 @@ export const TabProvider = ({
     [requestTabClose]
   )
 
+  const closeTabsByEntityId = useCallback((entityId: string) => {
+    dispatch({ type: 'CLOSE_TABS_BY_ENTITY', payload: { entityId } })
+  }, [])
+
   const closeOtherTabs = useCallback(
     (tabId: string, groupId?: string) => {
       const actualGroupId = groupId ?? activeGroupIdRef.current
@@ -578,15 +609,26 @@ export const TabProvider = ({
     })
   }, [])
 
+  /**
+   * Retitles EVERY tab showing `entityId`, in every group.
+   *
+   * Every tab, not the first one found: an entity can be open in more than one
+   * pane, and retitling one of them leaves the other reading a name the entity
+   * no longer has — the same bug this function exists to prevent, one pane over.
+   *
+   * A tab that already carries the title is skipped, because the loudest caller
+   * hears an event on every SAVE and not only on a rename: dispatching per
+   * autosave would re-render the tab tree and re-arm the debounced write of tab
+   * state to disk, for a title that did not change.
+   */
   const updateTabTitleByEntityId = useCallback((entityId: string, title: string) => {
     for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
-      const tab = group.tabs.find((t) => t.entityId === entityId)
-      if (tab) {
+      for (const tab of group.tabs) {
+        if (tab.entityId !== entityId || tab.title === title) continue
         dispatch({
           type: 'UPDATE_TAB_TITLE',
           payload: { tabId: tab.id, groupId, title }
         })
-        return
       }
     }
   }, [])
@@ -620,10 +662,20 @@ export const TabProvider = ({
     []
   )
 
+  const getTab = useCallback((tabId: string, groupId?: string): Tab | null => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    return stateRef.current.tabGroups[actualGroupId]?.tabs.find((t) => t.id === tabId) ?? null
+  }, [])
+
   const saveTabState = useCallback(
     (
       tabId: string,
-      tabState: { scrollPosition?: number; viewState?: Record<string, unknown> },
+      tabState: {
+        scrollPosition?: number
+        scrollState?: TabScrollState
+        scrollPanes?: TabScrollPanes
+        viewState?: Record<string, unknown>
+      },
       groupId?: string
     ) => {
       const actualGroupId = groupId ?? activeGroupIdRef.current
@@ -738,6 +790,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      closeTabsByEntityId,
       registerCloseGuard,
       closeOtherTabs,
       closeTabsToRight,
@@ -761,6 +814,7 @@ export const TabProvider = ({
       reorderTabs,
       moveTabToGroup,
       saveTabState,
+      getTab,
       splitView,
       closeSplit,
       moveTabToNewSplit,
@@ -772,6 +826,7 @@ export const TabProvider = ({
       openTab,
       openFromSidebar,
       closeTab,
+      closeTabsByEntityId,
       registerCloseGuard,
       closeOtherTabs,
       closeTabsToRight,
@@ -795,6 +850,7 @@ export const TabProvider = ({
       reorderTabs,
       moveTabToGroup,
       saveTabState,
+      getTab,
       splitView,
       closeSplit,
       moveTabToNewSplit,
@@ -969,4 +1025,14 @@ export const useTabActions = (): TabActionsContextType => {
     throw new Error('useTabActions must be used within a TabProvider')
   }
   return context
+}
+
+/**
+ * Tab actions when there is a TabProvider, `null` when there is not.
+ *
+ * For shared components that render both inside a tab and standalone (dialogs,
+ * previews, tests): they must degrade rather than throw.
+ */
+export const useTabActionsOptional = (): TabActionsContextType | null => {
+  return useContext(TabActionsContext)
 }

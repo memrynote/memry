@@ -12,6 +12,7 @@ import { canvases } from '@memry/db-schema/schema/canvas'
 import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
+import { homePages } from '@memry/db-schema/schema/home-pages'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
@@ -259,6 +260,19 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: t.id, type: 'template' })
   }
 
+  // `home_pages` is a hard-delete table, so there are no tombstoned rows here to
+  // resurrect. A row that survives locally did so because `applyDelete` found
+  // the local clock newer or concurrent — a concurrent local edit beating a
+  // remote delete — and re-pushing it from here is the intended repair.
+  const syncedHomePages = db
+    .select({ id: homePages.id })
+    .from(homePages)
+    .where(isNotNull(homePages.clock))
+    .all()
+  for (const h of syncedHomePages) {
+    addLocalRef({ id: h.id, type: 'home_page' })
+  }
+
   const syncedBookmarks = db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -371,6 +385,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'template': {
       const row = db.select().from(templates).where(eq(templates.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'home_page': {
+      const row = db.select().from(homePages).where(eq(homePages.id, ref.id)).get()
       return row ? JSON.stringify(row) : null
     }
     case 'bookmark': {

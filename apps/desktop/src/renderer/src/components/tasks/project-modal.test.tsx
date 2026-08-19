@@ -36,7 +36,9 @@ vi.mock('@/components/ui/alert-dialog', () => ({
   AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <h3>{children}</h3>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  // A div, not a p: the real AlertDialogDescription takes `asChild`, and the
+  // delete-confirm passes a <div> body through it.
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogCancel: ({
     children,
@@ -203,6 +205,8 @@ describe('ProjectModal', () => {
     await screen.findByRole('button', { name: 'pick Star' })
     expect(screen.getByText('Edit Project')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'deleteProject' }))
+    // The footer button only opens the confirm step; the second one commits.
+    fireEvent.click(screen.getAllByRole('button', { name: 'deleteProject' })[1])
     expect(onDelete).toHaveBeenCalledWith('project-1')
 
     fireEvent.click(screen.getByRole('button', { name: 'invalid statuses' }))
@@ -225,6 +229,57 @@ describe('ProjectModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'discard' }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('confirms before deleting and cancelling keeps the project', async () => {
+    const onClose = vi.fn()
+    const onDelete = vi.fn()
+
+    render(
+      <ProjectModal
+        isOpen
+        onClose={onClose}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        project={makeProject()}
+      />
+    )
+
+    // Flush the lazy-loaded icon picker's Suspense boundary before sync assertions.
+    await screen.findByRole('button', { name: 'pick Star' })
+    fireEvent.click(screen.getByRole('button', { name: 'deleteProject' }))
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+
+    // The confirm dialog's own cancel is the second one on screen.
+    fireEvent.click(screen.getAllByRole('button', { name: 'cancel' })[1])
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('closes the modal after deleting a project', async () => {
+    const onClose = vi.fn()
+    const onDelete = vi.fn()
+
+    render(
+      <ProjectModal
+        isOpen
+        onClose={onClose}
+        onSave={vi.fn()}
+        onDelete={onDelete}
+        project={makeProject()}
+      />
+    )
+
+    // Flush the lazy-loaded icon picker's Suspense boundary before sync assertions.
+    await screen.findByRole('button', { name: 'pick Star' })
+    fireEvent.click(screen.getByRole('button', { name: 'deleteProject' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'deleteProject' })[1])
+
+    expect(onDelete).toHaveBeenCalledWith('project-1')
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('hides delete for default projects and closes clean forms immediately', async () => {

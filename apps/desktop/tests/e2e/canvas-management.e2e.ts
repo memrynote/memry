@@ -243,4 +243,70 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await folderRow.click()
     await expect(duplicateRow).toBeVisible()
   })
+
+  /**
+   * Deleting a canvas from the sidebar has to take its open tab with it —
+   * reported against v2026-08-17, where the row vanished and the tab stayed,
+   * holding a live editor over a canvas that no longer existed.
+   *
+   * Only an E2E can see this. The renderer suite can assert that the reducer
+   * closes tabs and that the hook forwards the event, but nothing below this
+   * level proves the delete actually reaches the tab strip through real IPC —
+   * and the two halves were wired to different identifiers for months without
+   * a single test noticing.
+   */
+  test('deleting a canvas closes its tab, and a folder delete closes them all', async ({
+    page
+  }) => {
+    await openVault(page)
+    await expandCanvasSection(page)
+
+    // ---------------------------------------------------------------- set up
+    const header = sectionHeader(page)
+    await header.hover()
+    await page.getByRole('button', { name: 'New canvas folder', exact: true }).click()
+    await commitInlineName(page, 'folder:Untitled Folder', 'Folder name', 'Boards')
+
+    // Two canvases in the folder, each opened in its own tab by the create.
+    // Counted rather than named: a canvas rename does not rewrite its tab
+    // title, so both of these tabs read the same thing and only the COUNT can
+    // tell them apart.
+    const tabs = page.locator('[role="tab"]')
+    const tabsBefore = await tabs.count()
+
+    await rowAction(page, 'folder:Boards', 'New canvas here')
+    await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 30_000 })
+    await expect.poll(async () => (await listCanvases(page)).length).toBe(1)
+    const alpha = (await listCanvases(page))[0]
+
+    await rowAction(page, 'folder:Boards', 'New canvas here')
+    await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 30_000 })
+    await expect.poll(async () => (await listCanvases(page)).length).toBe(2)
+    const beta = (await listCanvases(page)).find((c) => c.id !== alpha.id)
+
+    await expect(tabs).toHaveCount(tabsBefore + 2)
+
+    // ------------------------------------------------------- one canvas gone
+    await rowAction(page, `canvas:${alpha.id}`, 'Delete')
+    const confirm = page.getByRole('alertdialog')
+    await expect(confirm.getByText(/Delete this canvas\?/)).toBeVisible()
+    await confirm.getByRole('button', { name: 'Delete', exact: true }).click()
+
+    // Exactly one tab went: the close is keyed on the canvas that was deleted,
+    // not on "a canvas was deleted".
+    await expect(tabs).toHaveCount(tabsBefore + 1)
+    await expect(row(page, `canvas:${alpha.id}`)).toHaveCount(0)
+    await expect(row(page, `canvas:${beta.id}`)).toBeVisible()
+
+    // ---------------------------------------------------- the folder cascade
+    // The folder event carries a path, so the canvases it takes with it are
+    // announced one by one — without that, this tab would survive its canvas.
+    await rowAction(page, 'folder:Boards', 'Delete')
+    const folderConfirm = page.getByRole('alertdialog')
+    await expect(folderConfirm.getByText(/Delete this canvas folder\?/)).toBeVisible()
+    await folderConfirm.getByRole('button', { name: 'Delete', exact: true }).click()
+
+    await expect(tabs).toHaveCount(tabsBefore)
+    await expect.poll(async () => (await listCanvases(page)).length).toBe(0)
+  })
 })

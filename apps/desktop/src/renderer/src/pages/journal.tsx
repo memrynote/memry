@@ -29,6 +29,7 @@ import {
   type JournalViewState
 } from '@/components/journal'
 import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
+import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import { BacklinksSection, type Backlink, backlinkId } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
@@ -47,6 +48,19 @@ import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useTabIdentity } from '@/contexts/tabs/tab-identity'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  DEFAULT_JOURNAL_DRILL,
+  JOURNAL_DATE_KEY,
+  JOURNAL_VIEW_STATE_KEYS,
+  journalScrollKey,
+  parseJournalDrill,
+  resolveJournalDate,
+  toJournalViewState,
+  type JournalDrill
+} from './journal-view-state'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import {
   createJournalDateLabels,
@@ -115,23 +129,36 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { t, i18n: _i18n } = useT('journal')
   const { t: commonT } = useT('common')
   const activeTab = useActiveTab()
-  const { openTab } = useTabs()
+  const { openTab, state: tabState } = useTabs()
+  const identity = useTabIdentity()
   const today = useToday()
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
-  const tabDate = activeTab?.viewState?.date as string | undefined
+  // The date is read off THIS tab, not off the globally active one: a journal
+  // sitting in the inactive pane of a split view would otherwise read another
+  // tab's `date` key, or none at all. Reactive, because `openTab` writes the
+  // date into the tab and the page has to follow it.
+  const tabDate = useMemo(() => {
+    if (!identity) return undefined
+    const tab = tabState.tabGroups[identity.groupId]?.tabs.find((t) => t.id === identity.tabId)
+    const raw = tab?.viewState?.[JOURNAL_DATE_KEY]
+    return typeof raw === 'string' ? raw : undefined
+  }, [identity, tabState.tabGroups])
 
   // Get initial date from tab viewState or default to today
-  const initialDate = tabDate || today
+  const initialDate = resolveJournalDate(tabDate, today)
   const [selectedDateState, setSelectedDateState] = useState(initialDate)
-  const [viewState, setViewState] = useState<JournalViewState>({ type: 'day', date: initialDate })
-  const selectedDate = tabDate || selectedDateState
-  const currentViewState = useMemo<JournalViewState>(() => {
-    if (tabDate && viewState.type === 'day' && viewState.date !== tabDate) {
-      return { type: 'day', date: tabDate }
-    }
-
-    return viewState
-  }, [tabDate, viewState])
+  // The drill level lives in the tab: month and year view used to be local
+  // state, so drilling up and switching tabs put the user back on a day.
+  const [drill, setDrill] = useTabViewState<JournalDrill>({
+    key: JOURNAL_VIEW_STATE_KEYS.drill,
+    defaultValue: DEFAULT_JOURNAL_DRILL,
+    parse: parseJournalDrill
+  })
+  const selectedDate = resolveJournalDate(tabDate, selectedDateState)
+  const currentViewState = useMemo<JournalViewState>(
+    () => toJournalViewState(drill, selectedDate),
+    [drill, selectedDate]
+  )
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
@@ -343,6 +370,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     journalScrollRef.current = el
     setJournalScrollEl(el)
   }, [])
+  const getJournalScrollEl = useCallback(() => journalScrollRef.current, [])
+  // Day view throws the editor away and rebuilds it from a key on every date
+  // change and on every load transition, so an offset applied while the entry
+  // is still pending lands on an empty editor and gets clamped to 0. Waiting
+  // for `loaded` is enough — the hook re-runs when `enabled` flips. Month and
+  // year view have no editor and never wait.
+  useTabScrollRestore({
+    getScrollElement: getJournalScrollEl,
+    enabled: currentViewState.type !== 'day' || editorLoadState === 'loaded',
+    key: journalScrollKey(currentViewState)
+  })
   const prefersReducedMotion = useReducedMotion()
   // Scroll-edge effect for the floating chrome (state only flips at the 0 boundary)
   const [isChromeScrolled, setIsChromeScrolled] = useState(false)
@@ -373,11 +411,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         )
       )
         return
-      if (
-        target.closest('[contenteditable="true"]')?.contains(target) &&
-        target.closest('.bn-block-content')
-      )
-        return
+      // "Outside every block" — deliberately NOT the same test as the marquee
+      // start rule's "is there text here". See marquee-hit-test.ts.
+      if (!isOutsideAllBlocks(target)) return
       event.preventDefault()
       focusAtEndRef.current?.()
     }
@@ -472,18 +508,24 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const properties = useMemo(() => rawProperties.filter((p) => p.name !== 'date'), [rawProperties])
 
   // Navigation
-  const navigateToMonth = useCallback((year: number, month: number) => {
-    setViewState({ type: 'month', year, month })
-  }, [])
+  const navigateToMonth = useCallback(
+    (year: number, month: number) => {
+      setDrill({ type: 'month', year, month })
+    },
+    [setDrill]
+  )
 
-  const navigateToYear = useCallback((year: number) => {
-    setViewState({ type: 'year', year })
-  }, [])
+  const navigateToYear = useCallback(
+    (year: number) => {
+      setDrill({ type: 'year', year })
+    },
+    [setDrill]
+  )
 
   const navigateToDay = useCallback(
     (date: string) => {
       setSelectedDateState(date)
-      setViewState({ type: 'day', date })
+      setDrill({ type: 'day' })
       openTab({
         type: 'journal',
         title: t('title'),
@@ -496,7 +538,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         viewState: { date }
       })
     },
-    [openTab, t]
+    [openTab, setDrill, t]
   )
 
   const navigateBack = useCallback(() => {
@@ -524,30 +566,30 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       const newMonth = currentViewState.month === 0 ? 11 : currentViewState.month - 1
       const newYear =
         currentViewState.month === 0 ? currentViewState.year - 1 : currentViewState.year
-      setViewState({ type: 'month', year: newYear, month: newMonth })
+      setDrill({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNextMonth = useCallback(() => {
     if (currentViewState.type === 'month') {
       const newMonth = currentViewState.month === 11 ? 0 : currentViewState.month + 1
       const newYear =
         currentViewState.month === 11 ? currentViewState.year + 1 : currentViewState.year
-      setViewState({ type: 'month', year: newYear, month: newMonth })
+      setDrill({ type: 'month', year: newYear, month: newMonth })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handlePreviousYear = useCallback(() => {
     if (currentViewState.type === 'year') {
-      setViewState({ type: 'year', year: currentViewState.year - 1 })
+      setDrill({ type: 'year', year: currentViewState.year - 1 })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNextYear = useCallback(() => {
     if (currentViewState.type === 'year') {
-      setViewState({ type: 'year', year: currentViewState.year + 1 })
+      setDrill({ type: 'year', year: currentViewState.year + 1 })
     }
-  }, [currentViewState])
+  }, [currentViewState, setDrill])
 
   const handleNavigationPrevious = useCallback(() => {
     switch (currentViewState.type) {
@@ -626,6 +668,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             })
             break
           case 'note':
+            // The heading rides along; the note page does the positioning. A
+            // `[[#Heading]]` written IN a journal entry stays unhandled — the
+            // journal is a separate Tiptap editor with no heading anchor of its
+            // own, and that waits on the BlockNote migration (#1547).
             openTab({
               type: 'note',
               title: resolution.title,
@@ -635,7 +681,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isPinned: false,
               isModified: false,
               isPreview: false,
-              isDeleted: false
+              isDeleted: false,
+              ...(resolution.heading && { viewState: { headingText: resolution.heading } })
             })
             break
           case 'create':

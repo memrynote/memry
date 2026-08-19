@@ -2,6 +2,7 @@
   "app": {
     "quit": "終了",
     "preferences": "設定…",
+    "checkForUpdates": "アップデートを確認…",
     "exit": "終了",
     "hide": "MemryNote を隠す",
     "hideOthers": "ほかを隠す",
@@ -58,6 +59,9 @@
     "heading1": "見出し 1",
     "heading2": "見出し 2",
     "heading3": "見出し 3",
+    "heading4": "見出し 4",
+    "heading5": "見出し 5",
+    "heading6": "見出し 6",
     "highlight": "ハイライト",
     "italic": "斜体",
     "label": "書式",

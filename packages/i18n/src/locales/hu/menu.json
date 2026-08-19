@@ -2,6 +2,7 @@
   "app": {
     "quit": "Kilépés a MemryNote-ból",
     "preferences": "Beállítások…",
+    "checkForUpdates": "Frissítések keresése…",
     "exit": "Kilépés",
     "hide": "MemryNote elrejtése",
     "hideOthers": "Egyebek elrejtése",
@@ -58,6 +59,9 @@
     "heading1": "1. címsor",
     "heading2": "2. címsor",
     "heading3": "3. címsor",
+    "heading4": "4. címsor",
+    "heading5": "5. címsor",
+    "heading6": "6. címsor",
     "highlight": "Kiemelés",
     "italic": "Dőlt",
     "label": "Formátum",

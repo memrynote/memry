@@ -32,8 +32,7 @@ const mocks = vi.hoisted(() => ({
   handlePropertyNameChange: vi.fn(),
   handlePropertyOrderChange: vi.fn(),
   propertyOnBlocked: null as
-    | ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void)
-    | null,
+    ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void) | null,
   setPropertiesCollapsed: vi.fn(),
   togglePropertiesCollapsed: vi.fn(),
   toggleBookmark: vi.fn(),
@@ -50,9 +49,9 @@ const mocks = vi.hoisted(() => ({
   onRenamed: vi.fn(),
   deletedHandler: null as ((event: { id: string }) => void) | null,
   updatedHandler: null as
-    | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
-    | null,
+    ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void) | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  findInPageEnabled: undefined as boolean | undefined,
   findInPage: {
     isOpen: true,
     query: 'ship',
@@ -247,7 +246,13 @@ vi.mock('@/hooks/use-editor-settings', () => ({
 }))
 
 vi.mock('@/hooks/use-find-in-page', () => ({
-  useFindInPage: () => mocks.findInPage
+  useFindInPage: (_container: unknown, enabled?: boolean) => {
+    // Captured because whether this hook is switched on is the whole question
+    // on a large-file surface: it walks the mounted DOM, and the mounted DOM
+    // there is a few dozen virtualized rows out of millions.
+    mocks.findInPageEnabled = enabled
+    return mocks.findInPage
+  }
 }))
 
 vi.mock('@/hooks/use-graph-data', () => ({
@@ -313,7 +318,7 @@ vi.mock('@/components/note', () => ({
     ) => void
     onLinkClick: (href: string) => void
     onInternalLinkClick: (target: string) => void
-    onInlineTagsChange: (tags: string[]) => void
+    onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
   }) => {
     const [content] = useState(initialContent)
@@ -359,10 +364,17 @@ vi.mock('@/components/note', () => ({
         <button type="button" onClick={() => onInternalLinkClick('Missing.png')}>
           Internal missing file
         </button>
-        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'])}>
+        {/* What opening the note reports: the tags the body already carried. */}
+        <button type="button" onClick={() => onInlineTagsChange(['work'], 'load')}>
+          Load inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['Work'], 'load')}>
+          Load cased inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'], 'edit')}>
           Sync inline tags
         </button>
-        <button type="button" onClick={() => onInlineTagsChange([])}>
+        <button type="button" onClick={() => onInlineTagsChange([], 'edit')}>
           Clear inline tags
         </button>
       </div>
@@ -800,6 +812,58 @@ describe('NotePage', () => {
     await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
   })
 
+  it('does not write the note when opening it reports its inline tags', async () => {
+    // #given a note opened with `#work` in its body (#1454)
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+
+    // #when the editor reports the tag set it loaded with
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // #then nothing is persisted — opening a note may not modify it
+    const tagWrites = mocks.updateNote.mock.calls.filter(
+      ([input]) => (input as { tags?: string[] }).tags !== undefined
+    )
+    expect(tagWrites).toEqual([])
+  })
+
+  it('does not rewrite the note when a loaded tag differs only in case', async () => {
+    // #given the index keeps the frontmatter spelling ('work') while the body
+    // says '#Work'. Before the origin was threaded through, `tagsToAdd` saw
+    // 'Work' as new and merely OPENING the note wrote tags: ['work', 'Work'].
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load cased inline tags' })
+
+    // #when the editor reports what it loaded
+    fireEvent.click(screen.getByRole('button', { name: 'Load cased inline tags' }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // #then nothing is written — a load is not an edit
+    expect(mocks.updateNote).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tags: expect.anything() })
+    )
+  })
+
+  it('still removes a tag when the user deletes the last inline tag after opening', async () => {
+    // #given a note opened with `#work` in its body, so the baseline is set by
+    // the load report rather than by a write
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Load inline tags' })
+    fireEvent.click(screen.getByRole('button', { name: 'Load inline tags' }))
+
+    // #when the user deletes it
+    fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+
+    // #then the tag comes off the note. Without the load baseline the page
+    // would have no record of `work` ever being inline and would drop this.
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
+  })
+
   it('flushes pending markdown saves through the registry and unmount cleanup', async () => {
     vi.useFakeTimers()
     const first = renderWithProviders(<NotePage noteId="note-1" />)
@@ -1214,6 +1278,96 @@ describe('NotePage', () => {
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('delete crashed'))
       expect(mocks.closeTab).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================================================
+  // Large-file class: an explanation, never an empty editor
+  // ==========================================================================
+
+  describe('large-file class', () => {
+    it('opens the read-only viewer instead of mounting an empty editor', async () => {
+      // #given a note the main process classified as large-file: no body was
+      // delivered, so mounting the editor would show a blank document
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then — the read-only viewer is what the user sees, quoting the file
+      // size against the byte ceiling...
+      const viewer = await screen.findByTestId('large-file-viewer')
+      expect(viewer).toHaveTextContent('page.largeFile.reason.fileBytes')
+      expect(viewer).toHaveTextContent('17.8 MB')
+      // ...and the editor never mounted, so there is no empty document to mistake
+      // for data loss
+      expect(mocks.contentAreaMounts).toBe(0)
+      expect(screen.queryByTestId('editor-content')).not.toBeInTheDocument()
+    })
+
+    it('names the block bound when that is what the file broke', async () => {
+      // #given the log-dump shape: under the byte ceiling, one giant block
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'block-bytes', fileBytes: 900_000, largestBlockBytes: 890_000 }
+      }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then — the reason has to name the block bound, or "too large" reads as
+      // a lie for a file well under the byte ceiling. The test i18n renders keys
+      // rather than English, so the key and its interpolation are the assertion.
+      const viewer = await screen.findByTestId('large-file-viewer')
+      expect(viewer).toHaveTextContent('page.largeFile.reason.blockBytes')
+      expect(viewer).not.toHaveTextContent('page.largeFile.reason.fileBytes')
+      // the size quoted is the offending block, not the whole file
+      expect(viewer).toHaveTextContent('869.1 KB')
+      // and the badge rides along, so a read-only file never looks editable
+      expect(viewer).toHaveTextContent('page.largeFile.badge')
+    })
+
+    it('sends Find to the file viewer instead of walking the mounted rows', async () => {
+      // #given a large-file note
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('large-file-viewer')
+
+      // #when the user asks to find
+      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.find' }))
+
+      // #then — the DOM-walking find bar never answers here. It would report a
+      // count of the handful of rows on screen as if it were the file's.
+      expect(mocks.findInPageEnabled).toBe(false)
+      expect(mocks.findInPage.open).not.toHaveBeenCalled()
+    })
+
+    it('still mounts the editor for an ordinary note', async () => {
+      // #given the default note, which carries no sizeClass at all — the shape
+      // every existing vault produces
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      // #then
+      expect(await screen.findByTestId('editor-content')).toBeInTheDocument()
+      expect(screen.queryByTestId('large-file-viewer')).not.toBeInTheDocument()
+      expect(mocks.contentAreaMounts).toBe(1)
+      // ...and find still walks the editor, which is where the text is
+      expect(mocks.findInPageEnabled).toBe(true)
     })
   })
 })

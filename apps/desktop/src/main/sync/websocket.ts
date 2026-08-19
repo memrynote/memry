@@ -108,6 +108,24 @@ export class WebSocketManager extends EventEmitter {
     const token = await this.deps.getAccessToken()
     if (!token) {
       this.emit('error', new Error('No access token available'))
+      // The only exit from connect() that used to leave nothing armed. The
+      // offline branch above schedules a retry, and a socket that gets created
+      // hands that job to its own 'close' handler — but a token read that came
+      // back empty simply returned, and the reconnect timer that called us has
+      // already cleared itself. That latched real-time sync off for the rest of
+      // the session, and it latches exactly when it hurts most: /auth/refresh
+      // lives on the server this device cannot reach, so an outage that outlasts
+      // the access token kills the socket permanently. With no socket there is
+      // no `crdt_updated` and no handleWsConnected catch-up, which between them
+      // are the only two routes a body-only remote edit has — note bodies never
+      // travel in the record change feed.
+      //
+      // Costs nothing on the wire while it waits: the retry shares the same
+      // backoff as every other one, so a token that never returns polls at the
+      // 30s ceiling, and each poll is a keychain read. Only a token that is
+      // actually near expiry reaches /auth/refresh, and token-manager's own
+      // rejection latch and single-flight promise rate-limit that, not us.
+      this.scheduleReconnect()
       return
     }
 

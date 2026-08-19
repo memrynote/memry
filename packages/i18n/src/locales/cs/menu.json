@@ -2,6 +2,7 @@
   "app": {
     "quit": "Ukončit",
     "preferences": "Nastavení…",
+    "checkForUpdates": "Zkontrolovat aktualizace…",
     "exit": "Konec",
     "hide": "Skrýt MemryNote",
     "hideOthers": "Skrýt ostatní",
@@ -58,6 +59,9 @@
     "heading1": "Nadpis 1",
     "heading2": "Nadpis 2",
     "heading3": "Nadpis 3",
+    "heading4": "Nadpis 4",
+    "heading5": "Nadpis 5",
+    "heading6": "Nadpis 6",
     "highlight": "Zvýraznění",
     "italic": "Kurzíva",
     "label": "Formát",

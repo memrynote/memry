@@ -30,6 +30,7 @@ import {
   type Row
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import {
   DndContext,
   closestCenter,
@@ -181,6 +182,12 @@ interface GroupedTableProps {
   summaries?: Record<string, SummaryConfig>
   /** Row IDs that are currently exiting (for T121 animation) */
   exitingRowIds?: Set<string>
+  /**
+   * Names this scroller inside the owning tab, turning scroll restore on. Left
+   * unset by callers that are not a tab's main content (the Home folder widget),
+   * where there is no per-tab offset to restore.
+   */
+  scrollKey?: string
   /** Additional CSS classes */
   className?: string
 }
@@ -328,6 +335,7 @@ export function GroupedTable({
   showSummaries = false,
   summaries = EMPTY_SUMMARIES,
   exitingRowIds = new Set<string>(),
+  scrollKey,
   className
 }: GroupedTableProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
@@ -805,6 +813,17 @@ export function GroupedTable({
         ? (element) => element?.getBoundingClientRect().height
         : undefined,
     overscan: 10
+  })
+
+  // Virtualized: restoring by writing `scrollTop` would land on the wrong row
+  // while the total height is still an estimate, so the offset goes through the
+  // virtualizer and is re-applied until the rows stop measuring.
+  const getScrollElement = useCallback(() => tableContainerRef.current, [])
+  useTabScrollRestore({
+    getScrollElement,
+    virtualizer: rowVirtualizer,
+    key: scrollKey,
+    enabled: scrollKey !== undefined
   })
 
   const virtualRows = rowVirtualizer.getVirtualItems()

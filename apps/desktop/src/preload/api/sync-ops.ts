@@ -12,7 +12,8 @@ export const syncOps = {
   updateSyncedSetting: (fieldPath: string, value: unknown) =>
     invoke(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, { fieldPath, value }),
   getSyncedSettings: () => invoke(SYNC_CHANNELS.GET_SYNCED_SETTINGS),
-  getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)
+  getStorageBreakdown: () => invoke(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN),
+  getLargeNotes: () => invoke(SYNC_CHANNELS.GET_LARGE_NOTES)
 }
 
 type CryptoItemType = 'note' | 'task' | 'project' | 'settings'
@@ -93,6 +94,22 @@ const dispatchCrdtStateChanged = (data: CrdtStateChangedPayload): void => {
     }
   }
 }
+
+/**
+ * Main dropped the provider that owned every open doc. Unlike the update
+ * channel this is not note-scoped: every provider in the window is stranded at
+ * once, so each one subscribes for itself and rebinds its own note.
+ */
+export const onCrdtProviderReset = (callback: () => void): (() => void) =>
+  subscribe<void>(SYNC_EVENTS.PROVIDER_RESET, callback)
+
+/**
+ * A provider in main finished initializing and will serve crdt:open-doc again.
+ * Also note-less, and for the same reason: one provider serves every open doc,
+ * so each stranded provider hears it and re-opens its own note.
+ */
+export const onCrdtProviderReady = (callback: () => void): (() => void) =>
+  subscribe<void>(SYNC_EVENTS.PROVIDER_READY, callback)
 
 export const onCrdtStateChanged = (
   noteId: string,

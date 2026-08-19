@@ -20,6 +20,7 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
+import { classifyMarkdownStat, classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { hasPendingWriteback } from '../sync/crdt-writeback'
 import {
   atomicWrite,
@@ -43,7 +44,11 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
-import { NotesChannels } from '@memry/contracts/notes-api'
+import {
+  NotesChannels,
+  type NoteSizeClass,
+  type NoteLargeFileInfo
+} from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
@@ -57,6 +62,7 @@ import {
   toAbsolutePath,
   toRelativePath
 } from './notes-io'
+import { CANVAS_DIR } from '../canvas/scene-file'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
 import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
@@ -96,6 +102,10 @@ export interface Note {
   wordCount: number
   properties: Record<string, unknown>
   emoji?: string | null
+  /** See the same fields on the contracts `Note`, which this shape feeds. */
+  sizeClass?: NoteSizeClass
+  largeFile?: NoteLargeFileInfo | null
+  contentOmitted?: boolean
 }
 
 export interface NoteListItem {
@@ -105,8 +115,12 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string
+  /**
+   * Null until the file's body has been read. Vault ingest lists a new file
+   * from `stat` alone, so a freshly added row is not measured yet.
+   */
+  wordCount: number | null
+  snippet?: string | null
   emoji?: string | null
   localOnly?: boolean
   properties?: Record<string, unknown>
@@ -335,6 +349,32 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
 // Read
 // ============================================================================
 
+/**
+ * What a large-file-class note reports: identity plus cached metadata, and no
+ * body. The editor never mounts for these, so there is nothing to hand it — and
+ * for the over-ceiling case the bytes were never read in the first place.
+ */
+function largeFileNote(
+  db: ReturnType<typeof getIndexDatabase>,
+  id: string,
+  cached: NonNullable<ReturnType<typeof getNoteCacheById>>
+): Note {
+  return {
+    id,
+    path: cached.path,
+    title: cached.title,
+    content: '',
+    frontmatter: {},
+    created: new Date(cached.createdAt),
+    modified: new Date(cached.modifiedAt),
+    tags: getNoteTags(db, id),
+    aliases: [],
+    wordCount: cached.wordCount ?? 0,
+    properties: getNotePropertiesAsRecord(db, id),
+    emoji: cached.emoji ?? null
+  }
+}
+
 export async function getNoteById(id: string): Promise<Note | null> {
   const db = getIndexDatabase()
 
@@ -344,6 +384,31 @@ export async function getNoteById(id: string): Promise<Note | null> {
   }
 
   const absolutePath = toAbsolutePath(cached.path)
+
+  // Classify before reading. A file over the byte ceiling must never become a
+  // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a
+  // main-process allocation and GC pause on its own. `stat` settles those
+  // without touching the bytes.
+  const stats = await fs.stat(absolutePath).catch(() => null)
+  const bySize = stats ? classifyMarkdownStat(stats.size) : null
+  if (bySize) {
+    logger.info('Note is large-file class by size; body not read', {
+      id,
+      path: cached.path,
+      fileBytes: bySize.fileBytes
+    })
+    return {
+      ...largeFileNote(db, id, cached),
+      sizeClass: bySize.sizeClass,
+      largeFile: {
+        reason: bySize.reason,
+        fileBytes: bySize.fileBytes,
+        largestBlockBytes: bySize.largestBlockBytes
+      },
+      contentOmitted: true
+    }
+  }
+
   const fileContent = await safeRead(absolutePath)
 
   // `null` = file truly missing (ENOENT). An empty string is a VALID empty
@@ -362,6 +427,29 @@ export async function getNoteById(id: string): Promise<Note | null> {
       errorCode: 'NOTE_FILE_MISSING'
     })
     return null
+  }
+
+  // Under the byte ceiling the file is cheap to read, so the block bound is
+  // measured exactly. This is the case a byte ceiling alone gets wrong: a
+  // sub-ceiling log dump is one enormous block and parses quadratically.
+  const byContent = classifyMarkdownContent(fileContent)
+  if (byContent.sizeClass === 'large-file') {
+    logger.info('Note is large-file class by block size; not opening as a note', {
+      id,
+      path: cached.path,
+      fileBytes: byContent.fileBytes,
+      largestBlockBytes: byContent.largestBlockBytes
+    })
+    return {
+      ...largeFileNote(db, id, cached),
+      sizeClass: byContent.sizeClass,
+      largeFile: {
+        reason: byContent.reason,
+        fileBytes: byContent.fileBytes,
+        largestBlockBytes: byContent.largestBlockBytes
+      },
+      contentOmitted: true
+    }
   }
 
   const parsed = parseNote(fileContent, cached.path)
@@ -720,10 +808,11 @@ export async function deleteNote(id: string): Promise<void> {
 export async function getFolders(): Promise<FolderInfo[]> {
   const notesDir = getVaultRoot()
   const config = getConfig()
-  // Hide structural/excluded top-level folders (journal, attachments, node_modules,
-  // etc.) from the collection tree; journals live in the Journal view.
+  // Hide structural/excluded top-level folders (journal, attachments, canvases,
+  // node_modules, etc.) from the collection tree; journals live in the Journal
+  // view and canvases have their own sidebar section with their own tree.
   const hiddenRoots = new Set(
-    [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
+    [config.journalFolder, config.attachmentsFolder, CANVAS_DIR, ...config.excludePatterns]
       .filter(Boolean)
       .map((p) => p.replace(/\/+$/, '').split('/')[0])
   )
@@ -826,9 +915,14 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
     throw new Error('No vault is open')
   }
 
-  const notesPath = path.join(status.path, 'notes', targetFolder)
+  // `targetFolder` is vault-relative, the same contract `createNote` and the
+  // folder APIs have used since #1204. Joining a literal `notes/` here
+  // re-prefixed a path that already carried its own folders, so the import
+  // landed in a folder that did not exist, and the misplaced file's own
+  // vault-relative path fed the next drop — one extra `notes/` per drop.
+  const targetDir = targetFolder ? path.join(status.path, targetFolder) : getDefaultNoteDir()
 
-  await ensureDirectory(notesPath)
+  await ensureDirectory(targetDir)
 
   const errors: string[] = []
   const importedFiles: ImportedFileInfo[] = []
@@ -842,7 +936,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
       const filename = path.basename(sourcePath)
 
       let destFilename = filename
-      let destPath = path.join(notesPath, destFilename)
+      let destPath = path.join(targetDir, destFilename)
       let counter = 1
 
       while (true) {
@@ -851,7 +945,7 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
           const ext = path.extname(filename)
           const base = path.basename(filename, ext)
           destFilename = `${base} (${counter})${ext}`
-          destPath = path.join(notesPath, destFilename)
+          destPath = path.join(targetDir, destFilename)
           counter++
         } catch {
           break

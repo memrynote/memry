@@ -2,6 +2,7 @@
   "app": {
     "quit": "Завершить",
     "preferences": "Настройки…",
+    "checkForUpdates": "Проверить обновления…",
     "exit": "Выход",
     "hide": "Скрыть MemryNote",
     "hideOthers": "Скрыть остальные",
@@ -58,6 +59,9 @@
     "heading1": "Заголовок 1",
     "heading2": "Заголовок 2",
     "heading3": "Заголовок 3",
+    "heading4": "Заголовок 4",
+    "heading5": "Заголовок 5",
+    "heading6": "Заголовок 6",
     "highlight": "Выделение",
     "italic": "Курсив",
     "label": "Формат",

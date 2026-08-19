@@ -24,13 +24,16 @@ function makeOrphan(overrides: Partial<OrphanRef> = {}): OrphanRef {
   }
 }
 
-function makeCtx(): SyncContext {
+function makeCtx(signingKeys: { deviceId: string } | null = { deviceId: 'device-B' }): SyncContext {
   return {
     applier: { apply: vi.fn() },
     requestPush: vi.fn(),
     deps: {
       db: {},
-      queue: { enqueue: vi.fn() }
+      queue: { enqueue: vi.fn() },
+      // A tombstone has to be stamped with THIS device's clock to outrank the
+      // server's copy, so the repair needs the signing keys.
+      getSigningKeys: vi.fn(async () => signingKeys)
     }
   } as unknown as SyncContext
 }
@@ -122,10 +125,56 @@ describe('repairOrphans (#837)', () => {
       type: 'task',
       itemId: 'task-1',
       operation: 'delete',
-      payload: '{"title":"Orphan"}',
+      payload: '{"title":"Orphan","clock":{"device-B":1}}',
       priority: 0
     })
     expect(ctx.requestPush).toHaveBeenCalled()
+  })
+
+  it('stamps the tombstone with a clock that outranks the server copy', async () => {
+    // #given an orphan whose content still carries the clock it was pulled with
+    const ctx = makeCtx()
+    fetchLocal.mockReturnValue(undefined)
+    const pulled = { title: 'Orphan', clock: { 'device-A': 4, 'device-B': 2 } }
+
+    await repairOrphans({
+      orphans: [makeOrphan({ item: { ...makeOrphan().item, content: JSON.stringify(pulled) } })],
+      ctx,
+      corruptTracker: makeTracker([]),
+      accessJwt: 'jwt',
+      vaultKey: VAULT_KEY,
+      applyItem: vi.fn()
+    })
+
+    // #then the server rejects any push whose clock has no entry greater than the
+    // one it already holds, and this payload IS the server's own clock — sent back
+    // unchanged the delete comes home SYNC_REPLAY_DETECTED every cycle, the next
+    // pull re-serves the orphan, and this repair runs forever.
+    const [enqueued] = (ctx.deps.queue.enqueue as ReturnType<typeof vi.fn>).mock.calls[0]
+    const clock = JSON.parse(enqueued.payload).clock as Record<string, number>
+    expect(clock['device-B']).toBeGreaterThan(pulled.clock['device-B'])
+    expect(clock['device-A']).toBe(4)
+  })
+
+  it('leaves the orphan for the next pull when there is no device id', async () => {
+    // #given signing keys are unavailable (locked keychain, teardown)
+    const ctx = makeCtx(null)
+    fetchLocal.mockReturnValue(undefined)
+
+    const result = await repairOrphans({
+      orphans: [makeOrphan()],
+      ctx,
+      corruptTracker: makeTracker([]),
+      accessJwt: 'jwt',
+      vaultKey: VAULT_KEY,
+      applyItem: vi.fn()
+    })
+
+    // #then an unstamped tombstone would just be a replay again, so spending a
+    // push proving that is worse than waiting for the next pull.
+    expect(result).toEqual({ repaired: 0, tombstoned: 0 })
+    expect(ctx.deps.queue.enqueue).not.toHaveBeenCalled()
+    expect(ctx.requestPush).not.toHaveBeenCalled()
   })
 
   it('refetches each distinct parent once for many orphans', async () => {

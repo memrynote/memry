@@ -10,6 +10,7 @@ import {
   SettingsGroup,
   SettingRow
 } from '@/components/settings/settings-primitives'
+import { LargeNotesWarning } from '@/components/settings/large-notes-warning'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,6 +148,9 @@ export function VaultSettings() {
           </div>
         )}
       </SettingsGroup>
+
+      {/* Renders nothing unless a note is at or over the per-note sync ceiling. */}
+      <LargeNotesWarning />
 
       <SettingsGroup label={t('vault.groups.accountVaults')}>
         {accountVaults.length === 0 ? (

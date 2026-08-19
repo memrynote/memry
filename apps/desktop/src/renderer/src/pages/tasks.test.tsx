@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   uncompleteTask: vi.fn(),
   deleteTaskWithUndo: vi.fn(),
   saveTabState: vi.fn(),
+  dispatch: vi.fn(),
   openTab: vi.fn(),
   notesGet: vi.fn(),
   notesGetFile: vi.fn(),
@@ -152,8 +153,31 @@ vi.mock('@/contexts/tabs', () => ({
   useActiveTab: () => ({
     id: 'tasks-tab',
     viewState: mocks.activeTabViewState
+  }),
+  // The page's view state is now read and written through the tab it is
+  // rendered in, rather than through whichever tab is globally active.
+  useTabActionsOptional: () => ({
+    dispatch: mocks.dispatch,
+    getTab: () => ({ id: 'tasks-tab', viewState: mocks.activeTabViewState })
   })
 }))
+
+vi.mock('@/contexts/tabs/tab-identity', () => ({
+  useTabIdentity: () => ({ tabId: 'tasks-tab', groupId: 'group-1' })
+}))
+
+/** Asserts a `SAVE_TAB_STATE` carrying at least these view-state entries. */
+function expectSavedViewState(expected: Record<string, unknown>): void {
+  expect(mocks.dispatch).toHaveBeenCalledWith(
+    expect.objectContaining({
+      type: 'SAVE_TAB_STATE',
+      payload: expect.objectContaining({
+        tabId: 'tasks-tab',
+        viewState: expect.objectContaining(expected)
+      })
+    })
+  )
+}
 
 vi.mock('@/services/notes-service', () => ({
   notesService: { get: mocks.notesGet, getFile: mocks.notesGetFile }
@@ -789,10 +813,7 @@ describe('TasksPage', () => {
     expect(mocks.updateTaskWithUndo).toHaveBeenCalledWith('task-1', { title: 'Changed' })
 
     await user.click(screen.getByRole('button', { name: 'Open task' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({ viewState: expect.objectContaining({ openTaskId: 'task-1' }) })
-    )
+    expectSavedViewState({ openTaskId: 'task-1' })
 
     await user.click(screen.getByRole('button', { name: 'Open linked note' }))
     expect(mocks.openTab).toHaveBeenCalledWith(
@@ -876,18 +897,10 @@ describe('TasksPage', () => {
     renderPage()
 
     await user.click(screen.getByRole('radio', { name: 'page.viewMode.kanban' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({ viewState: expect.objectContaining({ activeView: 'kanban' }) })
-    )
+    expectSavedViewState({ activeView: 'kanban' })
 
     await user.click(screen.getByRole('button', { name: 'Pick project' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({
-        viewState: expect.objectContaining({ selectedProjectId: 'project-1' })
-      })
-    )
+    expectSavedViewState({ selectedProjectId: 'project-1' })
 
     await user.click(screen.getAllByRole('button', { name: 'Apply starred filter' })[0])
     expect(mocks.updateFilters).toHaveBeenCalledWith({ priority: ['high'] })
@@ -896,12 +909,7 @@ describe('TasksPage', () => {
     expect(mocks.clearFilters).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Today tab' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({
-        viewState: expect.objectContaining({ activeInternalTab: 'today' })
-      })
-    )
+    expectSavedViewState({ activeInternalTab: 'today' })
 
     await user.click(screen.getByRole('button', { name: 'Unstar filter' }))
     expect(mocks.toggleStarFilter).toHaveBeenCalledWith('saved-1')
@@ -981,14 +989,49 @@ describe('TasksPage', () => {
       expect.objectContaining({ type: 'note', title: 'Linked Note', entityId: 'note-1' })
     )
 
-    await user.click(screen.getByRole('button', { name: 'Close drawer' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({ viewState: expect.objectContaining({ openTaskId: null }) })
-    )
-
+    // Deleting from the drawer closes it, and closing now really closes: the
+    // open task id lives in this tab's state rather than in whichever tab
+    // happens to be globally active, so the drawer no longer survives it.
     await user.click(screen.getByRole('button', { name: 'Delete drawer task' }))
     expect(mocks.deleteTaskWithUndo).toHaveBeenCalledWith('task-1')
+    expectSavedViewState({ openTaskId: null })
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
+  })
+
+  it('never opens the drawer onto a task the restored id no longer resolves to', () => {
+    // A session can name a task deleted on another device. The real drawer keeps
+    // its close button inside a `task && …` branch, so opening on a dead id
+    // paints a full-width blank panel with no way to dismiss it.
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeTab: 'all',
+      activeView: 'list',
+      selectedProjectId: null,
+      openTaskId: 'task-deleted-elsewhere'
+    }
+
+    renderPage()
+
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
+    // …and the dead id is dropped from tab state, so it cannot come back.
+    expectSavedViewState({ openTaskId: null })
+  })
+
+  it('keeps the drawer shut on a restored id while nothing has loaded to check it against', () => {
+    // The existence guard deliberately holds its fire here — an empty list mid
+    // fetch is not proof the task is gone — so the drawer's own open condition
+    // is the only thing standing between the user and a blank, closeless panel.
+    mocks.activeTabViewState = {
+      activeInternalTab: 'all',
+      activeTab: 'all',
+      activeView: 'list',
+      selectedProjectId: null,
+      openTaskId: 'task-1'
+    }
+
+    renderPage({ tasks: [], projects: [] })
+
+    expect(screen.queryByRole('button', { name: 'Close drawer' })).not.toBeInTheDocument()
   })
 
   it('opens related audio items in the file viewer', async () => {
@@ -1119,10 +1162,7 @@ describe('TasksPage', () => {
     await user.click(screen.getByRole('button', { name: 'Edit project' }))
     await user.click(screen.getByRole('button', { name: 'Delete project' }))
     expect(mocks.deleteProject).toHaveBeenCalledWith('project-1')
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({ viewState: expect.objectContaining({ selectedProjectId: null }) })
-    )
+    expectSavedViewState({ selectedProjectId: null })
 
     mocks.deleteProject.mockRejectedValueOnce(new Error('delete failed'))
     await user.click(screen.getByRole('button', { name: 'Edit project' }))
@@ -1154,10 +1194,7 @@ describe('TasksPage', () => {
     renderPage()
 
     await user.click(screen.getByRole('radio', { name: 'page.viewMode.list' }))
-    expect(mocks.saveTabState).toHaveBeenCalledWith(
-      'tasks-tab',
-      expect.objectContaining({ viewState: expect.objectContaining({ activeView: 'list' }) })
-    )
+    expectSavedViewState({ activeView: 'list' })
 
     await user.click(screen.getByRole('button', { name: 'Edit project' }))
     await user.click(screen.getByRole('button', { name: 'Save project' }))

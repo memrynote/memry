@@ -1,6 +1,11 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { extractValidPaths, useFileDrop } from './use-file-drop'
+import {
+  extractValidPaths,
+  resolveDropFolder,
+  useFileDrop,
+  FILE_DROP_FOLDER_ATTR
+} from './use-file-drop'
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
@@ -139,10 +144,11 @@ describe('extractValidPaths', () => {
   })
 })
 
-function dragEvent(files: File[], types = ['Files']) {
+function dragEvent(files: File[], types = ['Files'], target?: EventTarget) {
   return {
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
+    target,
     dataTransfer: {
       types,
       dropEffect: 'none',
@@ -150,6 +156,56 @@ function dragEvent(files: File[], types = ['Files']) {
     }
   } as unknown as React.DragEvent
 }
+
+/** Sidebar shape: a root zone holding a folder row that holds a label span. */
+function sidebarDom(folder: string) {
+  const root = document.createElement('div')
+  root.setAttribute(FILE_DROP_FOLDER_ATTR, '')
+
+  const row = document.createElement('div')
+  row.setAttribute(FILE_DROP_FOLDER_ATTR, folder)
+
+  const label = document.createElement('span')
+  row.appendChild(label)
+  root.appendChild(row)
+
+  return { root, row, label }
+}
+
+describe('resolveDropFolder', () => {
+  it('reads the folder off the innermost zone under the pointer', () => {
+    // #given — the pointer lands on a label, not on the row that owns the folder
+    const { label } = sidebarDom('projects')
+
+    // #when / #then
+    expect(resolveDropFolder(label)).toBe('projects')
+  })
+
+  it('prefers a nested folder row over the root zone wrapping it', () => {
+    // #given
+    const { label } = sidebarDom('life/travel')
+
+    // #then — a deeper zone wins, so nesting stays aimable
+    expect(resolveDropFolder(label)).toBe('life/travel')
+  })
+
+  it('falls back to the vault root outside any declared zone', () => {
+    // #given
+    const orphan = document.createElement('div')
+
+    // #then
+    expect(resolveDropFolder(orphan)).toBe('')
+    expect(resolveDropFolder(null)).toBe('')
+  })
+
+  it('reads the root zone itself as the vault root, not as a missing zone', () => {
+    // #given — dropped on sidebar empty space
+    const { root } = sidebarDom('projects')
+
+    // #then
+    expect(resolveDropFolder(root)).toBe('')
+  })
+})
 
 describe('useFileDrop', () => {
   it('tracks external file drags, clears the drag state, and drops supported paths', async () => {
@@ -178,7 +234,67 @@ describe('useFileDrop', () => {
     await act(async () => {
       result.current.dropHandlers.onDrop(drop)
     })
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/note.md'])
+    expect(onDrop).toHaveBeenCalledWith(['/tmp/note.md'], '')
+  })
+
+  it('imports into the folder under the pointer, not into the vault root', async () => {
+    // #given — the pointer is over a label inside the `projects` row
+    const onDrop = vi.fn()
+    ;(
+      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
+    ).getFileDropPaths = vi.fn(() => ['/tmp/sample.pdf'])
+    const { label } = sidebarDom('projects')
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    // #when
+    await act(async () => {
+      result.current.dropHandlers.onDrop(
+        dragEvent([new File(['pdf'], 'sample.pdf')], ['Files'], label)
+      )
+    })
+
+    // #then — vault-relative, exactly the shape `importFiles` takes
+    expect(onDrop).toHaveBeenCalledWith(['/tmp/sample.pdf'], 'projects')
+  })
+
+  it('reports the hovered folder while dragging and forgets it when the drag stops', () => {
+    // #given
+    vi.useFakeTimers()
+    const { label } = sidebarDom('life/travel')
+    const { result } = renderHook(() => useFileDrop({ onDrop: vi.fn() }))
+
+    // #when
+    act(() => {
+      result.current.dropHandlers.onDragOver(dragEvent([], ['Files'], label))
+    })
+
+    // #then — drives the row highlight
+    expect(result.current.dropFolder).toBe('life/travel')
+
+    act(() => {
+      vi.advanceTimersByTime(150)
+    })
+    expect(result.current.dropFolder).toBeNull()
+  })
+
+  it('drops into the vault root when nothing under the pointer claims a folder', async () => {
+    // #given — sidebar empty space, below every row
+    const onDrop = vi.fn()
+    ;(
+      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
+    ).getFileDropPaths = vi.fn(() => ['/tmp/loose.pdf'])
+    const { root } = sidebarDom('projects')
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    // #when
+    await act(async () => {
+      result.current.dropHandlers.onDrop(
+        dragEvent([new File(['pdf'], 'loose.pdf')], ['Files'], root)
+      )
+    })
+
+    // #then — selection is irrelevant; empty space means root
+    expect(onDrop).toHaveBeenCalledWith(['/tmp/loose.pdf'], '')
   })
 
   it('ignores non-file drops and falls back to file.path when preload path lookup fails', async () => {
@@ -201,7 +317,7 @@ describe('useFileDrop', () => {
     await act(async () => {
       result.current.dropHandlers.onDrop(dragEvent([file]))
     })
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/report.pdf'])
+    expect(onDrop).toHaveBeenCalledWith(['/tmp/report.pdf'], '')
 
     await act(async () => {
       result.current.dropHandlers.onDrop(dragEvent([new File(['bin'], 'app.exe')]))

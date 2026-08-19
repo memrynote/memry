@@ -8,9 +8,10 @@
  * a folder routinely exceeds ~500 notes.
  */
 
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { FolderViewEmptyState } from './folder-view-empty-state'
 import { TagChip } from '@/components/note/tags-row/TagChip'
@@ -30,6 +31,12 @@ export interface FolderGalleryViewProps {
   onTagClick?: (tag: string) => void
   onCreateNote?: () => void
   onClearAll?: () => void
+  /**
+   * Names this scroller inside the owning tab, turning scroll restore on. Left
+   * unset by callers that are not a tab's main content (the Home folder widget),
+   * where there is no per-tab offset to restore.
+   */
+  scrollKey?: string
   className?: string
 }
 
@@ -41,6 +48,7 @@ export function FolderGalleryView({
   onTagClick,
   onCreateNote,
   onClearAll,
+  scrollKey,
   className
 }: FolderGalleryViewProps): React.JSX.Element {
   const q = searchQuery?.trim().toLowerCase() ?? ''
@@ -50,6 +58,17 @@ export function FolderGalleryView({
       (n) => n.title.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))
     )
   }, [notes, q])
+
+  // Called before the empty-state early return, as hooks must be. The empty
+  // state renders no scroller at all, so restore stays off until cards exist —
+  // and flipping `enabled` back on is what re-runs it when they arrive.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({
+    getScrollElement,
+    key: scrollKey,
+    enabled: scrollKey !== undefined && visible.length > 0
+  })
 
   if (visible.length === 0) {
     return (
@@ -64,6 +83,7 @@ export function FolderGalleryView({
 
   return (
     <div
+      ref={scrollRef}
       className={cn('flex h-full flex-wrap content-start gap-4 overflow-auto p-[18px]', className)}
     >
       {visible.map((note) => (

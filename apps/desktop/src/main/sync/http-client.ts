@@ -3,6 +3,7 @@ import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from './sync-server-url'
 import { withRetry } from './retry'
+import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from './crdt-payload'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
@@ -241,6 +242,34 @@ export async function pushCrdtSnapshot(
     { noteId, snapshot: b64 },
     token
   )
+}
+
+/**
+ * Push a full document state to the INCREMENTAL endpoint.
+ *
+ * The same bytes `pushCrdtSnapshot` would send, with a different consequence.
+ * `/sync/crdt/snapshot` overwrites the note's one snapshot blob and then runs
+ * `pruneUpdatesBeforeSnapshot`, which deletes every `crdt_updates` row at or
+ * below the stored watermark. `/sync/crdt/updates` appends and prunes nothing.
+ *
+ * That difference is the whole point: a device that merged *around* server
+ * state it could not verify must not assert "I contain everything up to here",
+ * because the payload it skipped is by definition absent from the snapshot
+ * replacing it. See the endpoint choice in `runtime.ts`.
+ *
+ * The ceiling is the incremental path's rather than the snapshot's — the server
+ * stores each update as a D1 blob, not an R2 object.
+ */
+export async function pushCrdtFullUpdate(
+  noteId: string,
+  encryptedState: Uint8Array,
+  token: string
+): Promise<unknown> {
+  const b64 = Buffer.from(encryptedState).toString('base64')
+  if (b64.length > MAX_CRDT_UPDATE_PAYLOAD_CHARS) {
+    throw new Error(`CRDT state too large for the non-pruning push path: ${b64.length}`)
+  }
+  return postToServer('/sync/crdt/updates', { noteId, updates: [b64] }, token)
 }
 
 export async function fetchCrdtSnapshot(

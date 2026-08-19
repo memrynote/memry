@@ -80,6 +80,39 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
   return parentFolder ? parentFolder.children.map((f) => f.path) : []
 }
 
+/**
+ * Move a folder's expanded-state entries onto its new node id.
+ *
+ * Expansion is keyed by path, so a rename otherwise reads as "this folder was
+ * never open" and snaps it — plus every folder open inside it — shut. Both the
+ * plain and the virtualized tree persist this set, so the old ids would also
+ * linger in storage forever.
+ *
+ * Returns the original set when nothing matched, so callers can skip a
+ * pointless state update and its persistence write.
+ */
+export function remapExpandedFolderIds(
+  expandedIds: Set<string>,
+  oldNodeId: string,
+  newNodeId: string
+): Set<string> {
+  if (oldNodeId === newNodeId) return expandedIds
+
+  let changed = false
+  const next = new Set<string>()
+
+  for (const id of expandedIds) {
+    if (id === oldNodeId || id.startsWith(`${oldNodeId}/`)) {
+      next.add(newNodeId + id.slice(oldNodeId.length))
+      changed = true
+    } else {
+      next.add(id)
+    }
+  }
+
+  return changed ? next : expandedIds
+}
+
 // ============================================================================
 // Tree Building
 // ============================================================================

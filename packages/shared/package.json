@@ -14,7 +14,10 @@
     "./date-mention": "./src/date-mention.ts",
     "./block-nesting": "./src/block-nesting.ts",
     "./youtube": "./src/youtube.ts",
-    "./task-block": "./src/task-block.ts"
+    "./task-block": "./src/task-block.ts",
+    "./markdown-class": "./src/markdown-class.ts",
+    "./wiki-target": "./src/wiki-target.ts",
+    "./markdown-headings": "./src/markdown-headings.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

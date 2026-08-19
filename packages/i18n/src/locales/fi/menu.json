@@ -2,6 +2,7 @@
   "app": {
     "quit": "Lopeta",
     "preferences": "Asetukset…",
+    "checkForUpdates": "Tarkista päivitykset…",
     "exit": "Lopeta",
     "hide": "Kätke MemryNote",
     "hideOthers": "Kätke muut",
@@ -58,6 +59,9 @@
     "heading1": "Otsikko 1",
     "heading2": "Otsikko 2",
     "heading3": "Otsikko 3",
+    "heading4": "Otsikko 4",
+    "heading5": "Otsikko 5",
+    "heading6": "Otsikko 6",
     "highlight": "Korostus",
     "italic": "Kursivointi",
     "label": "Muotoile",

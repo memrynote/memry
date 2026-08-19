@@ -21,6 +21,21 @@ Open the reminder picker from the note toolbar. Pick a date and time:
 - A relative button (in 1 hour, tomorrow morning, next week)
 - A custom date and time picker
 
+A relative button sets the reminder as soon as you pick it. **Pick date & time** opens a panel that
+needs confirming instead: choose the day, the time and an optional note, then press **Set reminder**.
+That button and the summary of what you are about to set stay pinned to the bottom of the panel, so
+they stay in reach even when the picker opens somewhere with little room and the rest of the panel
+has to scroll.
+
+The first panel holds the relative buttons, the optional note, and — once a note has reminders — the
+list of the ones already set, each with its own edit and delete button. All of it scrolls together
+when the panel is taller than the room the picker has, so the reminders at the end of the list stay
+editable however low in the window you opened it from.
+
+The optional note is available on both paths: type it before you press a relative button and it is
+saved with that reminder too. It is kept everywhere the picker appears — notes, journal entries,
+tasks and inbox items.
+
 Selecting text in the editor does not open a separate reminder action; reminders are set at the note level.
 
 When the reminder fires, memrynote shows an in-app toast with:

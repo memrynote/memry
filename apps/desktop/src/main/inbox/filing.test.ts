@@ -77,13 +77,22 @@ vi.mock('fs', () => ({
 const mockReadFile = vi.fn()
 const mockSaveAttachment = vi.fn()
 const mockEmitNoteAttachmentSaved = vi.fn()
+const mockSyncNoteCreate = vi.fn()
 
 vi.mock('../vault/attachments', () => ({
   saveAttachment: (...args: unknown[]) => mockSaveAttachment(...args)
 }))
 
+// `../notes/domain` runs for real here: it is the wrapper that turns a vault
+// write into a synced note, so mocking it would hide the very call these tests
+// exist to pin down. Only its sync side effects are stubbed.
 vi.mock('../notes/runtime-effects', () => ({
-  emitNoteAttachmentSaved: (...args: unknown[]) => mockEmitNoteAttachmentSaved(...args)
+  emitNoteAttachmentSaved: (...args: unknown[]) => mockEmitNoteAttachmentSaved(...args),
+  syncNoteCreate: (...args: unknown[]) => mockSyncNoteCreate(...args),
+  syncNoteUpdate: vi.fn(),
+  syncNoteDelete: vi.fn(),
+  setNoteLocalOnlyState: vi.fn(),
+  cleanupProjectLinksForDeletedNote: vi.fn()
 }))
 
 const mockCreateNote = vi.fn()
@@ -225,12 +234,14 @@ describe('Inbox Filing Operations', () => {
     mockReadFile.mockReset().mockResolvedValue(Buffer.from('png-bytes'))
     mockSaveAttachment.mockReset()
     mockEmitNoteAttachmentSaved.mockReset()
+    mockSyncNoteCreate.mockReset()
     vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
 
     mockCreateNote.mockResolvedValue({
       id: 'note-123',
       path: 'notes/test-note.md',
-      title: 'Test Note'
+      title: 'Test Note',
+      frontmatter: { tags: ['inbox'] }
     })
   })
 
@@ -1501,7 +1512,12 @@ describe('Inbox Filing Operations', () => {
       updateInboxItem(itemId, {
         attachmentPath: 'attachments/inbox/image-embed-4/screenshot.png'
       })
-      mockCreateNote.mockResolvedValue({ id: 'fresh-note', path: 'Trip.md', title: 'Trip' })
+      mockCreateNote.mockResolvedValue({
+        id: 'fresh-note',
+        path: 'Trip.md',
+        title: 'Trip',
+        frontmatter: {}
+      })
       mockGetNoteById.mockResolvedValue({ id: 'fresh-note', content: '', path: 'Trip.md' })
       mockSaveAttachment.mockResolvedValue({
         success: true,
@@ -1571,7 +1587,8 @@ describe('Inbox Filing Operations', () => {
       mockCreateNote.mockResolvedValue({
         id: 'fresh-note',
         path: 'projects/Trip.md',
-        title: 'Trip'
+        title: 'Trip',
+        frontmatter: {}
       })
       mockGetNoteById.mockResolvedValue({
         id: 'fresh-note',
@@ -1736,9 +1753,9 @@ describe('Inbox Filing Operations', () => {
         { id: 'item-3', title: 'Item 3' }
       ])
       mockCreateNote
-        .mockResolvedValueOnce({ id: 'note-1', path: 'p1.md', title: 'N1' })
-        .mockResolvedValueOnce({ id: 'note-2', path: 'p2.md', title: 'N2' })
-        .mockResolvedValueOnce({ id: 'note-3', path: 'p3.md', title: 'N3' })
+        .mockResolvedValueOnce({ id: 'note-1', path: 'p1.md', title: 'N1', frontmatter: {} })
+        .mockResolvedValueOnce({ id: 'note-2', path: 'p2.md', title: 'N2', frontmatter: {} })
+        .mockResolvedValueOnce({ id: 'note-3', path: 'p3.md', title: 'N3', frontmatter: {} })
 
       const result = await bulkFileToFolder(['item-1', 'item-2', 'item-3'], 'archive')
 
@@ -1752,7 +1769,12 @@ describe('Inbox Filing Operations', () => {
         { id: 'item-1', title: 'Item 1' },
         { id: 'item-2', title: 'Item 2' }
       ])
-      mockCreateNote.mockResolvedValue({ id: 'note-1', path: 'p1.md', title: 'N1' })
+      mockCreateNote.mockResolvedValue({
+        id: 'note-1',
+        path: 'p1.md',
+        title: 'N1',
+        frontmatter: {}
+      })
 
       await bulkFileToFolder(['item-1', 'item-2'], 'folder', ['bulk-tag'])
 
@@ -1767,7 +1789,12 @@ describe('Inbox Filing Operations', () => {
         { id: 'item-1', title: 'Item 1' },
         { id: 'item-2', title: 'Item 2', filedAt: new Date().toISOString() }
       ])
-      mockCreateNote.mockResolvedValue({ id: 'note-1', path: 'p1.md', title: 'N1' })
+      mockCreateNote.mockResolvedValue({
+        id: 'note-1',
+        path: 'p1.md',
+        title: 'N1',
+        frontmatter: {}
+      })
 
       const result = await bulkFileToFolder(['item-1', 'item-2', 'nonexistent'], 'folder')
 
@@ -1784,7 +1811,12 @@ describe('Inbox Filing Operations', () => {
         { id: 'item-2', title: 'Item 2', filedAt: new Date().toISOString() },
         { id: 'item-3', title: 'Item 3' }
       ])
-      mockCreateNote.mockResolvedValue({ id: 'note-1', path: 'p1.md', title: 'N1' })
+      mockCreateNote.mockResolvedValue({
+        id: 'note-1',
+        path: 'p1.md',
+        title: 'N1',
+        frontmatter: {}
+      })
 
       const result = await bulkFileToFolder(['item-1', 'item-2', 'item-3'], 'folder')
 
@@ -1897,6 +1929,134 @@ describe('Inbox Filing Operations', () => {
       expect(mockTrackMainError).toHaveBeenCalledWith(
         'inbox',
         'filing_sync_enqueue',
+        expect.any(Error)
+      )
+    })
+  })
+
+  // ==========================================================================
+  // The note filing produces has to reach the other devices too. The inbox row
+  // pushes the moment it is filed, so a note created without its own push is
+  // the worst possible split: the peer hides the item from the Inbox and never
+  // draws the note the item became. Nothing else rescues it inside the session
+  // — `seedUnclockedNotes` only runs from a full sync (app start / reconnect),
+  // and the vault watcher enqueues creates for binaries, not markdown.
+  // ==========================================================================
+  describe('filing pushes the note it creates', () => {
+    it('fileToFolder (text) enqueues a note create', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('note-123', 'Test Note', ['inbox'])
+    })
+
+    it('convertToNote enqueues a note create', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToNote(itemId)
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('note-123', 'Test Note', ['inbox'])
+    })
+
+    it('convertToReminder enqueues a note create', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await convertToReminder(itemId, { remindAt: '2099-01-02T09:00:00.000Z' })
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('note-123', 'Test Note', ['inbox'])
+    })
+
+    it('linkToNotes enqueues a note create for the note it mints', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target-note',
+        content: '# Target',
+        path: 'notes/target.md'
+      })
+
+      await linkToNotes(itemId, [{ kind: 'note', noteId: 'target-note' }])
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('note-123', 'Test Note', ['inbox'])
+    })
+
+    it('linkToNotes enqueues a note create for a staged new-note target', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'item-1', type: 'note', title: 'Test Item' })
+
+      await linkToNotes(itemId, [{ kind: 'new', title: 'Staged Note' }])
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('note-123', 'Test Note', ['inbox'])
+    })
+  })
+
+  // ==========================================================================
+  // A filed binary needs BOTH halves. `syncNoteCreate` alone would seed a row
+  // whose `attachmentId` is null forever — the peer would draw a file it can
+  // never download. The vault watcher does both for a binary that lands in the
+  // vault on its own, but `handleFileAdd` bails on a path the index cache
+  // already holds, and `indexFiledBinary` fills that cache first every time.
+  // ==========================================================================
+  describe('filing pushes the binary it files', () => {
+    it('fileToFolder (binary) enqueues the note and queues the blob upload', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-1', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-1/shot.png' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('file-note-id', 'Shot', [])
+      expect(mockEmitNoteAttachmentSaved).toHaveBeenCalledWith(
+        'file-note-id',
+        '/mock-vault/projects/Shot.png'
+      )
+    })
+
+    it('linkToNotes (binary) enqueues the note and queues the blob upload', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-2', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-2/shot.png' })
+      mockGetNoteById.mockResolvedValue({
+        id: 'target-note',
+        content: '# Target',
+        path: 'notes/target.md'
+      })
+
+      await linkToNotes(itemId, [{ kind: 'note', noteId: 'target-note' }])
+
+      expect(mockSyncNoteCreate).toHaveBeenCalledWith('file-note-id', 'Shot', [])
+      expect(mockEmitNoteAttachmentSaved).toHaveBeenCalledWith(
+        'file-note-id',
+        expect.stringContaining('Shot.png')
+      )
+    })
+
+    it('does not enqueue anything when the binary could not be indexed', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-3', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-3/shot.png' })
+      // indexFiledBinary swallows the failure and returns null (#800): filing
+      // still succeeds, but there is no note id to push.
+      mockIndexBinaryFile.mockRejectedValue(new Error('index db down'))
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result.success).toBe(true)
+      expect(mockSyncNoteCreate).not.toHaveBeenCalled()
+      expect(mockEmitNoteAttachmentSaved).not.toHaveBeenCalled()
+    })
+
+    it('keeps the filing when the binary sync enqueue throws', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-4', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-4/shot.png' })
+      mockSyncNoteCreate.mockImplementation(() => {
+        throw new Error('sync service down')
+      })
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result.success).toBe(true)
+      const row = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
+      expect(row?.filedAt).toBeTruthy()
+      expect(mockTrackMainError).toHaveBeenCalledWith(
+        'inbox',
+        'filed_binary_sync_enqueue',
         expect.any(Error)
       )
     })

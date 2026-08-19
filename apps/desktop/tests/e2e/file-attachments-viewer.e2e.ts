@@ -60,7 +60,9 @@ test.describe('File attachments and viewer E2E', () => {
 
       const noteAttachmentsDir = path.join(testVaultPath, 'attachments', result.noteId)
       expect(fs.readdirSync(noteAttachmentsDir)).toContain(result.attachmentFilename)
-      expect(fs.existsSync(path.join(testVaultPath, 'notes', importFileName))).toBe(true)
+      // An empty target folder means the vault's `defaultNoteFolder` (#1486),
+      // which is the vault root in a fresh vault — not a literal `notes/`.
+      expect(fs.existsSync(path.join(testVaultPath, importFileName))).toBe(true)
 
       await expect
         .poll(

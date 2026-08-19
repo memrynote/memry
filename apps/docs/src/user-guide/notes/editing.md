@@ -31,7 +31,7 @@ right-click menu — including when that folder is closed.
 Available from the slash menu (`/`) or the block-handle drag-out:
 
 - Paragraph
-- Heading 1, 2, 3
+- Heading 1 through 6
 - Bullet list, numbered list, check list
 - Quote, callout
 - Code block (language picker)
@@ -52,6 +52,7 @@ Common markdown shortcuts work inline:
 | ------------ | ------------- |
 | `# `         | Heading 1     |
 | `## `        | Heading 2     |
+| `###### `    | Heading 6     |
 | `- `         | Bullet list   |
 | `1. `        | Numbered list |
 | `[ ] `       | Check list    |
@@ -93,7 +94,9 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Reveal in navigation** — highlight the note in the sidebar
 - **Open in default app** — open the `.md` file in your system's default editor
 
-**Local only** keeps the note on this device (never synced).
+**Local only** keeps the note on this device (never synced). Both halves stay put — the note's
+details and its text — and editing is unaffected. Turning it back off uploads the note again,
+including everything you wrote while it was local only.
 
 **Delete note** moves the note to the trash after a confirmation, then closes its tab. This does the same thing as deleting from the note list — you no longer need to close the note first.
 
@@ -103,6 +106,26 @@ Hover the gutter on the left to reveal the block handle. Drag a block to:
 
 - Reorder within the note
 - Move out into a different note (drop on a sidebar item or another open tab)
+
+## Selecting Text and Blocks
+
+Dragging that **starts inside a line** always selects text, however far it travels and in whatever direction. Dragging straight down across several paragraphs selects the text between the two points, exactly as dragging diagonally does.
+
+To select whole blocks instead, start the drag **outside the text column**:
+
+- the gray margin to the left or right of the column
+- the bullet or number in front of a list item
+- the strip to the left of an indented block
+- a block with no editable text of its own — a task, a file or a video
+- the empty area below the last block
+
+A selection box follows the pointer and every block it touches is highlighted, the same way selecting files works in a file manager. The box only appears once you have moved a few pixels, so a plain click in the margin still just puts the cursor at the end of the note.
+
+A bookmark card is the one exception: its whole surface is a link, so clicking it opens the link and a drag has to begin in the margin beside it instead.
+
+With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
+
+One consequence worth knowing: the empty space to the right of a short line still counts as that line's text, so the right-hand margin outside the column is the place to begin a right-side block selection.
 
 ## Saving
 
@@ -128,6 +151,8 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 
 Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
+The floating toolbar also carries **inline code** (`` `code` ``) next to bold, italic, underline and strikethrough, and ends with a full-width **Comment** button that opens a comment on the selection.
+
 ### Turning existing lines into a list
 
 Select the lines — a whole pasted block of them if you like — and press **Bulleted list**, **Numbered list**, or **Check list** on the toolbar. Every selected line is converted, not just the one holding the cursor, and pressing the same button again turns them back into paragraphs. Blocks that cannot become list items, such as tasks and files, are left as they are.
@@ -147,6 +172,17 @@ Markdown has no syntax for underline, text color or highlight, so those are writ
 Color and underline are kept on separate nested spans, so an older version of MemryNote opening the same vault still reads the color.
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
+
+### Text colours
+
+The nine text colours are tuned so each one is legible and tellable apart from the others in every theme. Each clears the WCAG AA contrast floor for small text against the page, carries enough colour to be nameable rather than reading as grey, and stays clear of the default body text. Grey is the deliberate exception: it stays neutral, and reads as a muted colour rather than a hue.
+
+Two consequences worth knowing:
+
+- Yellow is a gold rather than a lemon. A yellow light enough to look like lemon cannot meet the contrast floor against a white page.
+- Brown, orange and yellow share a warm range, so they are separated by how dark they are. Brown is the darkest of the three.
+
+Colours are stored by name, not as a fixed shade, so notes you coloured in an earlier version pick up the current tuning when you open them. Highlight (background) colours are unchanged — a filled background does not need the same treatment to stay readable.
 
 ## Link Previews
 
@@ -179,3 +215,112 @@ The comment text itself is stored in your note file as plain text, with the form
 ## What Notes Are Made Of
 
 Under the hood, every note is a Yjs CRDT (`Y.Doc`). Markdown is a derived export, not the canonical form — this is what lets edits from two devices merge cleanly. See [CRDT & Notes Sync](/architecture/crdt) for details.
+
+## Very Large Files
+
+A markdown file can be too big to edit. memrynote decides this when the file arrives in the vault,
+and it uses two limits, not one:
+
+| Limit                                                | Value  |
+| ---------------------------------------------------- | ------ |
+| File size                                            | 1 MB   |
+| Largest run of lines with no blank line between them | 128 KB |
+
+A file has to clear **both** to open as an editable note. 1 MB is around 150,000 words — several
+novels — so ordinary notes, however long, are nowhere near it.
+
+The second limit is the one that catches log dumps, exported transcripts and pasted data. What
+makes markdown slow to open is how dense one unbroken run of lines is, not how many bytes the file
+has: 128 KB of paragraphs opens in about 50 ms, while 128 KB of table rows or minified JSON takes a
+full second. A file with no blank lines in it is one block, however long it is.
+
+A file that misses either limit still appears in the sidebar. Opening it shows the file in a
+read-only viewer instead of the editor, under a bar naming its size, the limit it passed, and
+**read-only · not synced**:
+
+- It does not open in the editor, so it cannot be edited in memrynote.
+- It is not synced to your other devices.
+- **The file on disk is not touched.** Nothing is truncated, rewritten or deleted, and you can
+  still open it in any other editor.
+
+The limits apply to notes arriving over sync too. A device still running an older version can send
+you a note that is over them; memrynote keeps every byte of it and writes the file to your vault,
+but opens it read-only rather than in the editor, exactly as if you had dropped it in yourself.
+
+### Reading a large file
+
+The viewer scrolls the file without loading it. On first open it makes one pass over the file to
+find where each line starts, showing a progress bar while it does; after that, scrolling anywhere in
+the file is instant, and only the lines on screen are read. Switching tabs and coming back does not
+repeat the pass.
+
+The file is set the way a note is — same type, same width, no line numbers and no gutter.
+
+Three things to expect:
+
+- **No editing.** There is no cursor and no way to type. Use Reveal in Finder or your own editor to
+  change the file.
+- **Long lines wrap.** A line wider than the pane continues on the next line, as a note's text does.
+  There is nothing to scroll sideways to, and nothing sitting past the edge.
+- **Very long lines open shortened.** A line over about 2,000 characters — one minified JSON record,
+  for example — is drawn up to that point, followed by **Show the rest of this line**. A single line
+  that long wraps into a couple of hundred rows, and a screenful of those is what makes the app slow
+  to answer while you scroll it. Nothing is lost: the control shows the whole line, and the file on
+  disk is untouched either way.
+- **Very long single lines are cut.** A line longer than 64 KB — a whole file on one line — is read
+  only up to that point. Show the rest of the line and the end of it is marked `long line cut here`.
+  The rest is still on disk, untouched.
+
+Because lines wrap, a row is as tall as the pane's width makes it, and that is only known for the
+part of the file you have looked at. In a file of very long lines the scrollbar is an estimate: it
+settles as you read, so it can shift while you scroll through a stretch for the first time. Which
+line you are on is never affected — only how far along the bar says you are.
+
+The viewer opens files up to **2 GB**. Above that, the file still appears in the sidebar, and
+opening it explains that it is past the limit and offers to open it in your default app or show it
+in your file manager.
+
+### Finding text in a large file
+
+Search does not index these files, so the global search box will not find anything inside one. The
+viewer has its own find instead, on the same shortcut as everywhere else — `Cmd/Ctrl+F` — or from
+**Find** in the note menu.
+
+Type and it searches the whole file, not the part on screen. `Enter` moves to the next match,
+`Shift+Enter` to the previous one, and `Esc` closes the bar. Matches are highlighted on the lines
+you can see, and moving between them scrolls the file to each one.
+
+Three things worth knowing:
+
+- **The count grows while it searches.** A pass over 2 GB takes a few seconds, so the bar shows
+  `12 so far…` until it has crossed the whole file, then settles on the final count.
+- **Only the first 2,000 matches are navigable.** A query matching a million lines still reports the
+  real count, shown as `1/2000 of 1000000`; `Enter` walks the first 2,000. Narrow the query to reach
+  the rest.
+- **Case is ignored for A–Z only.** `error` finds `ERROR`, but `é` does not find `É`.
+
+Notes you already have keep working exactly as before — nothing is re-scanned or re-indexed, and
+existing notes under these limits are unaffected.
+
+## When a New File Appears in the Sidebar
+
+Dropping a file into your vault folder from Finder or Explorer shows it in the sidebar
+straight away, whatever its size. To draw that row memrynote reads only the filename and the
+file's timestamps — not the file itself. A quarter-gigabyte paste costs the same as a one-line
+note.
+
+Everything that needs the file's contents happens a moment later, in the background, smallest
+file first:
+
+- word count
+- the preview snippet under the note title
+- search
+
+So a brand-new row can briefly show no word count and no snippet. That is the measurement not
+having arrived yet, not an empty note — it fills itself in within a second or two for ordinary
+notes, and a little later for very large ones. Nothing is lost if you quit before it finishes;
+the file is measured again next time it changes.
+
+Very large files are measured in pieces rather than loaded all at once, so even a file too big
+to fit in memory gets a word count and becomes searchable. For those, search covers the
+beginning of the file rather than all of it.

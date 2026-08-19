@@ -158,6 +158,59 @@ export const CRDT_FULL_SWEEP_MIN_INTERVAL_MS = 15 * 60 * 1000
 // edits inside a minute. Unlike the fallback interval this one is only ever
 // paid once per burst, so it does not need to be conservative.
 export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
+// How many notes one paced CRDT catch-up chunk pulls, and how long the next
+// chunk waits. Together these are the only thing keeping a whole-vault sweep
+// under the server's rate limits, so they are set from those limits backwards.
+//
+// There are TWO independent budgets, and a sweep has to fit inside both:
+//
+//   GET  /sync/crdt/snapshot/:noteId  }  one `crdt_pull` bucket,
+//   GET  /sync/crdt/updates           }  600 requests / 60 s
+//   POST /sync/crdt/updates/batch        `crdt_batch_pull`, 30 requests / 60 s
+//
+// Both are keyed by deviceId, NOT by account (sync.ts:476-501), so a second
+// device sweeping at the same time spends its own budget instead of eating into
+// this one. One chunk of N notes through applyCrdtBatch costs N snapshot GETs —
+// the batch endpoint batches the incrementals, NOT the snapshot baselines,
+// which are still fetched one note at a time — plus at least one batch POST.
+//
+//   25 notes per chunk, 60_000 / 15_000 = 4 chunks per minute
+//   GET  budget: 25 x 4 = 100/min against 600 — 16.7% of the bucket
+//   POST budget:  1 x 4 =   4/min against  30 — 13.3% of the bucket
+//
+// The GET bucket is still the tighter of the two, but only just, and only when
+// the cadence is scaled: 600 GETs buy 24 chunks a minute at 25 notes each,
+// against the batch bucket's 30. Neither is close to binding at the current
+// pacing. These constants were derived when this comment read 300 and doubled
+// the cost for a second device, i.e. against an effective 150 — which is where
+// the old "~30% spare" came from. The real figure is a sixth of one bucket and
+// an eighth of the other. Re-tuning the pacing is its own change with its own
+// arithmetic; this note only records where the ceilings actually are.
+//
+// Only the RATE matters, not the total: a 1,000-note vault is 40 chunks and 40
+// batch POSTs, which would blow the 30/60s batch bucket if fired at once but is
+// 4/min spread across the ten minutes the paced sweep takes. That is the whole
+// point of pacing — cost per minute is CONSTANT in vault size, only the duration
+// grows, so no vault can reproduce the 242-requests-in-4-seconds storm that had
+// 92 of 121 notes coming back "Too many requests" and silently keeping stale
+// bodies. Slow is the correct trade: this is a catch-up, not a race, and the
+// notes the user actually has open skip the queue entirely.
+//
+// The POST figure is a floor, not an exact count: applyCrdtBatchChunk loops
+// while any note reports `hasMore`, so a chunk costs one POST per round. The
+// batch budget only binds if chunks average more than seven rounds — i.e. over
+// 700 queued updates spread across one chunk's notes, which is a first-sync
+// backlog, not steady state. It is also no longer destructive if it happens: a
+// rate-limited batch re-queues its whole chunk for the next cycle instead of
+// dropping it.
+//
+// Not all of the GET headroom is spare: the un-paced priority batch and the
+// single-note pull path fetch snapshot baselines too, and those are `crdt_pull`
+// GETs on this same bucket. The record-change pull, record pushes and
+// attachment fetches are not — they meter under `sync_changes`, `sync_pull`,
+// `sync_push` and `crdt_push`, which are separate keys with separate budgets.
+export const CRDT_SWEEP_CHUNK_NOTES = 25
+export const CRDT_SWEEP_CHUNK_INTERVAL_MS = 15 * 1000
 export const PUSH_DEBOUNCE_MS = 2000
 
 export const yieldToEventLoop = (): Promise<void> => new Promise((r) => setImmediate(r))

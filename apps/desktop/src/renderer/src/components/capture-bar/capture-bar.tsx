@@ -204,12 +204,14 @@ export const CaptureBar = ({
     setValue('')
   }
 
-  // Auto-grow up to the ceiling, then scroll.
+  // Auto-grow up to the ceiling, then scroll. An empty field measures its
+  // wrapped placeholder, so in a narrow window the bar would balloon to the
+  // placeholder's height before anything is typed — stay at one row until then.
   useEffect(() => {
     const field = fieldRef.current
     if (!field) return
     field.style.height = 'auto'
-    field.style.height = `${Math.min(field.scrollHeight, MAX_FIELD_HEIGHT)}px`
+    field.style.height = value ? `${Math.min(field.scrollHeight, MAX_FIELD_HEIGHT)}px` : 'auto'
   }, [value])
 
   const clearRecorderDismissTimer = useCallback(() => {

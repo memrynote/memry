@@ -1,27 +1,12 @@
 import { createReactBlockSpec } from '@blocknote/react'
+import { bookmarkConfig } from '@memry/editor-schema/blocks'
 import { BookmarkBlockRender } from './bookmark-block-render'
 
-export const createBookmarkBlock = createReactBlockSpec(
-  {
-    type: 'bookmark' as const,
-    propSchema: {
-      url: { default: '' },
-      domain: { default: '' },
-      title: { default: '' },
-      description: { default: '' },
-      image: { default: '' },
-      favicon: { default: '' },
-      siteName: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: BookmarkBlockRender
-  }
-)
+// Type/props/content and the `![bookmark](url)` on-disk form come from the
+// shared package so the main process registers the same node and writes the
+// same bytes.
+export const createBookmarkBlock = createReactBlockSpec(bookmarkConfig, {
+  render: BookmarkBlockRender
+})
 
-export const BOOKMARK_BLOCK_REGEX = /!\[bookmark\]\(([^)]+)\)/g
-
-export function serializeBookmark(url: string): string {
-  return `![bookmark](${url})`
-}
+export { serializeBookmark } from '@memry/editor-schema/blocks'

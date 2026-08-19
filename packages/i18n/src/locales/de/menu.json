@@ -2,6 +2,7 @@
   "app": {
     "quit": "MemryNote beenden",
     "preferences": "Einstellungen…",
+    "checkForUpdates": "Nach Updates suchen…",
     "exit": "Beenden",
     "hide": "MemryNote ausblenden",
     "hideOthers": "Andere ausblenden",
@@ -58,6 +59,9 @@
     "heading1": "Überschrift 1",
     "heading2": "Überschrift 2",
     "heading3": "Überschrift 3",
+    "heading4": "Überschrift 4",
+    "heading5": "Überschrift 5",
+    "heading6": "Überschrift 6",
     "highlight": "Hervorheben",
     "italic": "Kursiv",
     "label": "Format",

@@ -57,6 +57,15 @@ describe('notesRpc domain shape', () => {
     expect(notesRpc.methods.uploadAttachment.implementation).toContain('arrayBuffer')
   })
 
+  it('uploadAttachment sends the ArrayBuffer instead of expanding it into a number[]', () => {
+    const implementation = notesRpc.methods.uploadAttachment.implementation ?? ''
+    expect(implementation).toContain('data: await file.arrayBuffer()')
+    // A number[] of one element per byte costs seconds and gigabytes of RSS on
+    // a large attachment; the main-side schema takes the ArrayBuffer directly.
+    expect(implementation).not.toContain('Array.from')
+    expect(implementation).not.toContain('Uint8Array')
+  })
+
   it('wires event channels to NotesChannels.events where applicable', () => {
     expect(notesRpc.events.onNoteCreated.channel).toBe(NotesChannels.events.CREATED)
     expect(notesRpc.events.onNoteDeleted.channel).toBe(NotesChannels.events.DELETED)

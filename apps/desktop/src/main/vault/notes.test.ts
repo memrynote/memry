@@ -1309,6 +1309,17 @@ describe('notes operations', () => {
         expect(folderPaths).toContain('folder1/nested')
       })
 
+      it('hides the canvases folder — canvases have their own sidebar section', async () => {
+        // #given — the canvas store creates `<vault>/canvases` the first time a
+        // canvas is saved, plus a subfolder for a foldered canvas.
+        await notes.createFolder('canvases/work')
+
+        const folderPaths = (await notes.getFolders()).map((f) => f.path)
+
+        expect(folderPaths).not.toContain('canvases')
+        expect(folderPaths).not.toContain('canvases/work')
+      })
+
       it('includes folder icons from database config rows', async () => {
         const { folderConfigs } = await import('@memry/db-schema/schema/folder-configs')
         await notes.createFolder('configured')
@@ -1498,7 +1509,7 @@ describe('notes operations', () => {
 
       const result = await notes.importFiles({
         sourcePaths: [sourcePath, missingPath],
-        targetFolder: 'imports'
+        targetFolder: 'notes/imports'
       })
 
       expect(result.success).toBe(false)
@@ -1510,6 +1521,56 @@ describe('notes operations', () => {
         fileType: 'image'
       })
       expect(result.errors[0]).toContain('missing.png')
+    })
+
+    it('lands a file in the vault-relative folder it was given, inventing no segment', async () => {
+      // #given — a real top-level folder, the shape `getFolders()` hands the sidebar
+      const projectsDir = path.join(tempVault.path, 'projects')
+      fs.mkdirSync(projectsDir, { recursive: true })
+
+      const sourcePath = path.join(tempVault.path, 'sample.pdf')
+      fs.writeFileSync(sourcePath, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+
+      // #when
+      const result = await notes.importFiles({
+        sourcePaths: [sourcePath],
+        targetFolder: 'projects'
+      })
+
+      // #then — no `notes/` prefix invented on top of a path that is already whole
+      expect(result.imported).toBe(1)
+      expect(result.importedFiles[0].destPath).toBe(path.join(projectsDir, 'sample.pdf'))
+      expect(fs.existsSync(path.join(tempVault.path, 'notes', 'projects'))).toBe(false)
+    })
+
+    it('does not nest one level deeper when the target folder came from a prior import', async () => {
+      // #given — the folder a dropped file already lives in, vault-relative
+      const nestedDir = path.join(tempVault.path, 'notes', 'projects')
+      fs.mkdirSync(nestedDir, { recursive: true })
+
+      const sourcePath = path.join(tempVault.path, 'second.pdf')
+      fs.writeFileSync(sourcePath, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+
+      // #when — the sidebar hands back that same vault-relative folder
+      const result = await notes.importFiles({
+        sourcePaths: [sourcePath],
+        targetFolder: 'notes/projects'
+      })
+
+      // #then — it stays put instead of growing another `notes/`
+      expect(result.importedFiles[0].destPath).toBe(path.join(nestedDir, 'second.pdf'))
+      expect(fs.existsSync(path.join(tempVault.path, 'notes', 'notes'))).toBe(false)
+    })
+
+    it('falls back to the default note folder when no target folder is given', async () => {
+      const sourcePath = path.join(tempVault.path, 'loose.pdf')
+      fs.writeFileSync(sourcePath, Buffer.from([0x25, 0x50, 0x44, 0x46]))
+
+      const result = await notes.importFiles({ sourcePaths: [sourcePath] })
+
+      // Fixture config sets `defaultNoteFolder: 'notes'`; an empty vault-relative
+      // target means "wherever a folderless new note would go", not "vault/notes".
+      expect(result.importedFiles[0].destPath).toBe(path.join(tempVault.path, 'notes', 'loose.pdf'))
     })
 
     it('rejects imports when no vault is open', async () => {

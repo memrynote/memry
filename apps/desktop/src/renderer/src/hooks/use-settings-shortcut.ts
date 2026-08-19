@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
@@ -12,17 +13,19 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shor
  * ```
  */
 export function useSettingsShortcut(onOpen: () => void): void {
+  const binding = useShortcutBinding('nav.settings')
+
   const shortcuts = useMemo<KeyboardShortcut[]>(
     () => [
       {
-        key: ',',
-        modifiers: { meta: true },
+        key: binding.key,
+        modifiers: binding.modifiers,
         action: onOpen,
         description: 'Open Settings',
         allowInInput: true
       }
     ],
-    [onOpen]
+    [binding, onOpen]
   )
 
   useKeyboardShortcuts(shortcuts)

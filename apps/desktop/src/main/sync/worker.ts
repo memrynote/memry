@@ -2,6 +2,7 @@ import { parentPort } from 'worker_threads'
 import sodium from 'libsodium-wrappers-sumo'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
+import { ItemTooLargeError } from './note-size'
 import { secureCleanup } from '../crypto/primitives'
 import { createLogger } from '../lib/logger'
 import type {
@@ -84,7 +85,12 @@ function handleUnknownMessage(msg: never): void {
 
 function handleEncryptBatch(msg: Extract<MainToWorkerMessage, { type: 'encrypt-batch' }>): void {
   const results: EncryptedPushResult[] = []
-  const errors: Array<{ queueId: string; itemId: string; error: string }> = []
+  const errors: Array<{
+    queueId: string
+    itemId: string
+    error: string
+    code?: 'item_too_large'
+  }> = []
 
   try {
     for (const item of msg.items) {
@@ -111,7 +117,8 @@ function handleEncryptBatch(msg: Extract<MainToWorkerMessage, { type: 'encrypt-b
         errors.push({
           queueId: item.queueId,
           itemId: item.itemId,
-          error: err instanceof Error ? err.message : String(err)
+          error: err instanceof Error ? err.message : String(err),
+          ...(err instanceof ItemTooLargeError ? { code: 'item_too_large' as const } : {})
         })
       }
     }

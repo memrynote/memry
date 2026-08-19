@@ -4,6 +4,9 @@ import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 
 const mocks = vi.hoisted(() => ({
   yDocToMarkdown: vi.fn(),
+  findUnrepresentableNodes: vi.fn(),
+  trackMainError: vi.fn(),
+  trackMainLog: vi.fn(),
   getNoteCacheById: vi.fn(),
   getNoteCacheByPath: vi.fn(),
   getNoteMetadataById: vi.fn(),
@@ -61,7 +64,13 @@ vi.mock('./crdt-provider', () => ({
 }))
 
 vi.mock('./blocknote-converter', () => ({
-  yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args)
+  yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args),
+  findUnrepresentableNodes: (...args: unknown[]) => mocks.findUnrepresentableNodes(...args)
+}))
+
+vi.mock('../telemetry/diagnostics', () => ({
+  trackMainError: (...args: unknown[]) => mocks.trackMainError(...args),
+  trackMainLog: (...args: unknown[]) => mocks.trackMainLog(...args)
 }))
 
 vi.mock('@memry/shared/utc', () => ({
@@ -141,6 +150,7 @@ import {
   scheduleWriteback,
   wasRecentNetworkUpdate
 } from './crdt-writeback'
+import { resetTelemetryThrottle } from '../telemetry/throttle'
 
 function makeDoc(title = 'Synced title', tags: string[] = []): Y.Doc {
   const doc = new Y.Doc()
@@ -156,8 +166,12 @@ describe('crdt writeback', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
     vi.clearAllMocks()
+    // Module-level and keyed per note; the fixed fake clock means a second test
+    // reusing a note id would otherwise land inside the first one's window.
+    resetTelemetryThrottle()
     mocks.sent = []
     mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
+    mocks.findUnrepresentableNodes.mockReturnValue([])
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Existing.md',
@@ -256,6 +270,65 @@ describe('crdt writeback', () => {
       performedCount: 1,
       lastMarkdown: 'updated markdown'
     })
+  })
+
+  it('keeps the file and reports when the doc holds a node the schema cannot represent', async () => {
+    // #given the live doc carries an inline node this build has no spec for
+    mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the vault file is left exactly as the user last saw it — a lossy
+    // serialization written here would be the permanent copy
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.yDocToMarkdown).not.toHaveBeenCalled()
+    expect(mocks.maybeCreateSignificantSnapshot).not.toHaveBeenCalled()
+    expect(mocks.syncNoteToCache).not.toHaveBeenCalled()
+    expect(mocks.trackMainLog).toHaveBeenCalledWith(
+      'error',
+      expect.objectContaining({
+        scope: 'CrdtWriteback',
+        action: 'writeback_unrepresentable_node',
+        errorCode: 'wikiLink'
+      })
+    )
+  })
+
+  it('resumes writing back once the doc is representable again', async () => {
+    // #given a pass that was refused
+    mocks.findUnrepresentableNodes.mockReturnValue(['wikiLink'])
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+
+    // #when the next edit leaves nothing unrepresentable
+    mocks.findUnrepresentableNodes.mockReturnValue([])
+    scheduleWriteback('note-1', makeDoc('Later title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the refusal did not latch — the note writes normally
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+  })
+
+  it('reports and keeps the stale file when conversion returns null', async () => {
+    // #given the serializer failed outright
+    mocks.yDocToMarkdown.mockResolvedValue(null)
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.trackMainLog).toHaveBeenCalledWith(
+      'error',
+      expect.objectContaining({ scope: 'CrdtWriteback', action: 'conversion_null' })
+    )
   })
 
   it('keeps no debug state (and no note markdown) outside test mode', async () => {
@@ -708,6 +781,85 @@ describe('crdt writeback', () => {
 
       expect(vaultFile).toBe('paragraph one\n\nparagraph two from another device')
       expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    })
+  })
+
+  // ==========================================================================
+  // An inbound body that grew past the note-class bounds
+  // ==========================================================================
+
+  /**
+   * One blank-line-free block far over `NOTE_MAX_BLOCK_BYTES` and well under
+   * `NOTE_MAX_BYTES` — the shape a log dump has, and the shape that reaches a
+   * receiver even when the sender's snapshot push is refused at the encrypt
+   * cap, because each incremental CRDT update is individually under the
+   * 256 KB merge cap.
+   */
+  const oversizedBody = Array.from(
+    { length: 8_000 },
+    (_, i) => `2026-08-15T09:14:${String(i % 60).padStart(2, '0')} worker payload ${i}`
+  ).join('\n')
+
+  it('degrades an inbound body over the note-class bounds to large-file class', async () => {
+    // #given the body the incremental updates added up to
+    mocks.yDocToMarkdown.mockResolvedValue(oversizedBody)
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Server log'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the file still lands on disk — it is the user's data, and the
+    // read-only viewer reads it from there
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('worker payload 0')
+    )
+
+    // ...but the renderer is told the note degraded rather than handed the
+    // body. `note.tsx` feeds `changes.content` straight into the editor, so
+    // shipping it would run the BlockNote parse that froze the sender.
+    const updated = mocks.sent.find((s) => s.channel === NotesChannels.events.UPDATED)
+    expect(updated?.payload).toEqual({
+      id: 'note-1',
+      changes: { sizeClass: 'large-file', contentOmitted: true },
+      source: 'sync'
+    })
+  })
+
+  it('still hands the renderer the body of a note-class inbound edit', async () => {
+    // #then the guard must cost note-class notes nothing — this is the shape
+    // every synced note has today
+    scheduleWriteback('note-1', makeDoc('Yjs title'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.sent).toContainEqual({
+      channel: NotesChannels.events.UPDATED,
+      payload: { id: 'note-1', changes: { content: 'updated markdown' }, source: 'sync' }
+    })
+  })
+
+  it('degrades an inbound body that creates a new note, without seeding it', async () => {
+    // #given a note this device has never seen, arriving over sync from a peer
+    // running a build with no large-file class
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+    mocks.yDocToMarkdown.mockResolvedValue(oversizedBody)
+
+    // #when
+    scheduleWriteback('note-2', makeDoc('Server log'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then the file is created, so nothing the peer sent is lost...
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/New.md',
+      expect.stringContaining('worker payload 0')
+    )
+
+    // ...and the row appears, but flagged large-file class so the renderer
+    // opens the read-only viewer instead of seeding an editor from it
+    const created = mocks.sent.find((s) => s.channel === NotesChannels.events.CREATED)
+    expect(created?.payload).toMatchObject({
+      note: { id: 'note-2', sizeClass: 'large-file', contentOmitted: true },
+      source: 'sync'
     })
   })
 })

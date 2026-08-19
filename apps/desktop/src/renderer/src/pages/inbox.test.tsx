@@ -55,7 +55,10 @@ vi.mock('@/hooks/use-inbox-reminders-panel', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
-  useActiveTab: () => mocks.activeTab
+  useActiveTab: () => mocks.activeTab,
+  // The page's own view state lives in the tab; outside a tab provider the hook
+  // degrades to plain local state, which is what these tests exercise.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/components/sr-announcer', () => ({

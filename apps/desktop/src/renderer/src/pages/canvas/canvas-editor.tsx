@@ -6,7 +6,7 @@
  * public/excalidraw-asset-path.js) because the CSP blocks Excalidraw's CDN.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Excalidraw,
   serializeAsJSON,
@@ -24,10 +24,24 @@ import { useTheme } from 'next-themes'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
+import { useTabActions } from '@/contexts/tabs'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import { parseMemryHref, tabFromMemryHref } from '@/lib/memry-links'
+import { notesService } from '@/services/notes-service'
 import { canvasService, onCanvasTooLarge } from '@/services/canvas-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { CanvasLinkDialog } from './canvas-link-dialog'
+import {
+  elementLinkTarget,
+  truncateLabel,
+  HYPERLINK_ANCHOR_SELECTOR,
+  linkBubbleLabel,
+  type LabelElement
+} from './canvas-link-label'
+import { lookupCardTitle } from './canvas-link-target-title'
+import { resolveCanvasLink } from './canvas-link-open'
 import { computeSceneSignature, createScenePersister } from './canvas-persistence'
 import { externalizeSceneAssets } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
@@ -40,10 +54,47 @@ import {
   type LiveCanvasHandle
 } from './canvas-live-registry'
 import type { SceneEditElement } from './canvas-scene-edit'
+import {
+  CANVAS_VIEWPORT_KEY,
+  parseCanvasViewport,
+  sameViewport,
+  viewportFromAppState,
+  type CanvasViewport,
+  type ViewportAppState
+} from './canvas-viewport'
 
 const log = createLogger('SpatialCanvas')
 
 const SCENE_SAVE_DEBOUNCE_MS = 800
+/**
+ * How often the camera is committed to tab state while the user pans or zooms.
+ * Excalidraw's onChange fires per frame, and every commit mints a new
+ * tab-system state object and re-renders every `useTabGroup` consumer.
+ */
+const VIEWPORT_SAVE_THROTTLE_MS = 500
+
+/**
+ * The appState slice that positions the camera.
+ *
+ * Cast because `zoom` is typed as a branded `NormalizedZoomValue` that the
+ * library does not export a constructor for. The number is Excalidraw's own,
+ * round-tripped through tab state, and `parseCanvasViewport` has already held it
+ * to the library's range.
+ */
+const viewportAppState = (
+  viewport: CanvasViewport
+): NonNullable<ExcalidrawInitialDataState['appState']> =>
+  ({
+    scrollX: viewport.scrollX,
+    scrollY: viewport.scrollY,
+    zoom: { value: viewport.zoom }
+  }) as NonNullable<ExcalidrawInitialDataState['appState']>
+
+/** A scene element as this file reads it: cards carry `customData`. */
+interface LinkableElement {
+  id: string
+  customData?: { entityType?: string } | null
+}
 
 interface CanvasEditorProps {
   canvasId: string
@@ -54,9 +105,16 @@ interface CanvasEditorProps {
 export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): React.JSX.Element => {
   const { t } = useT('common')
   const { resolvedTheme } = useTheme()
+  const { openTab } = useTabActions()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null)
+  const [linkPickerOpen, setLinkPickerOpen] = useState(false)
+  const [linkTargetId, setLinkTargetId] = useState<string | null>(null)
+  /** Latched while Excalidraw's own link editor is being intercepted. */
+  const linkEditorHandledRef = useRef(false)
+  /** Card titles already resolved for the link bubble, so relabels are stable. */
+  const cardTitles = useRef(new Map<string, string>())
 
   // Parse the stored scene up front only to decide whether it is loadable —
   // and deliberately throw the parsed graph away. Retaining it (as a useMemo
@@ -79,9 +137,92 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     }
   }, [initialScene])
 
+  // Where this TAB was last looking. Stored per tab rather than in the scene:
+  // the scene's exported appState carries no viewport at all (see
+  // `canvas-viewport.ts`), and two split panes on one canvas are two cameras.
+  const [storedViewport, setStoredViewport] = useTabEntityViewState<CanvasViewport | null>({
+    key: CANVAS_VIEWPORT_KEY,
+    defaultValue: null,
+    parse: parseCanvasViewport
+  })
+  /**
+   * Mount-time snapshot of that camera. `initialData` is read once, from
+   * componentDidMount, so reading the live value inside `loadInitialData` would
+   * only churn the callback's identity on every write we make ourselves.
+   */
+  const restoredViewportRef = useRef(storedViewport)
+  /** Live camera, mirrored out of onChange. The only thing teardown may persist. */
+  const viewportRef = useRef(storedViewport)
+  /** Last camera actually written, so a commit that changes nothing is skipped. */
+  const committedViewportRef = useRef(storedViewport)
+  const viewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setStoredViewportRef = useRef(setStoredViewport)
+
+  useLayoutEffect(() => {
+    setStoredViewportRef.current = setStoredViewport
+  }, [setStoredViewport])
+
+  const commitViewport = useCallback((): void => {
+    viewportTimerRef.current = null
+    const next = viewportRef.current
+    if (next === null || sameViewport(next, committedViewportRef.current)) {
+      return
+    }
+    committedViewportRef.current = next
+    setStoredViewportRef.current(next)
+  }, [])
+
+  /**
+   * Mirrors the camera out of onChange, throttled.
+   *
+   * Ignored while `isLoading`: Excalidraw fires onChange during init carrying
+   * its default appState (origin, 100%), and recording that would overwrite the
+   * stored camera with the origin before initialData has even been applied —
+   * the same init-window hazard the serialize guard below exists for.
+   */
+  const recordViewport = useCallback(
+    (appState: ViewportAppState & { isLoading?: boolean }): void => {
+      if (appState.isLoading) {
+        return
+      }
+      const next = viewportFromAppState(appState)
+      if (!next) {
+        return
+      }
+      viewportRef.current = next
+      if (viewportTimerRef.current === null) {
+        viewportTimerRef.current = setTimeout(commitViewport, VIEWPORT_SAVE_THROTTLE_MS)
+      }
+    },
+    [commitViewport]
+  )
+
+  // Final write at teardown, from the REF — never from the API. On a tab switch
+  // React destroys the Excalidraw child before this parent's cleanup runs, so by
+  // then `getAppState()` describes a torn-down editor; that is the same reason
+  // the serialize path checks `wrapperRef.isConnected`.
+  useEffect(() => {
+    return () => {
+      if (viewportTimerRef.current !== null) {
+        clearTimeout(viewportTimerRef.current)
+        viewportTimerRef.current = null
+      }
+      commitViewport()
+    }
+  }, [commitViewport])
+
   const loadInitialData = useCallback((): ExcalidrawInitialDataState | null => {
+    const viewport = restoredViewportRef.current
     if (!initialScene) {
-      return null
+      // Never drawn on — but the user may still have panned or zoomed here, and
+      // an empty canvas is the easiest place of all to get lost in.
+      return viewport
+        ? ({
+            elements: [],
+            appState: viewportAppState(viewport),
+            scrollToContent: false
+          } satisfies ExcalidrawInitialDataState)
+        : null
     }
     // serializeAsJSON output: { elements, appState, files } plus metadata
     // keys initialData ignores. Its exported appState is already cleaned
@@ -92,9 +233,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     const parsed = JSON.parse(initialScene) as ExcalidrawInitialDataState
     return {
       elements: parsed.elements ?? [],
-      appState: parsed.appState ?? {},
+      appState: { ...(parsed.appState ?? {}), ...(viewport ? viewportAppState(viewport) : {}) },
       files: parsed.files,
-      scrollToContent: true
+      // `scrollToContent` runs AFTER the appState restore and would undo it, so
+      // it stays the fallback for a tab that has no camera of its own yet.
+      scrollToContent: viewport === null
     } satisfies ExcalidrawInitialDataState
   }, [initialScene])
 
@@ -227,6 +370,82 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     }
   }, [canvasId, initialScene, corrupt])
 
+  /**
+   * Excalidraw's link bubble prints `element.link` verbatim, so a link to a note
+   * reads as `memry://note/s5b2qadr6tg4`. There is no prop to change what it
+   * renders, so the text is swapped in place once the bubble appears, using the
+   * title the href carries. If Excalidraw ever renames that class the swap stops
+   * happening and the URL shows again — the pre-existing behaviour, not a break.
+   */
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper || corrupt || typeof MutationObserver === 'undefined') return
+
+    const setText = (anchor: HTMLAnchorElement, label: string): void => {
+      if (anchor.isConnected && anchor.textContent !== label) {
+        anchor.textContent = label
+      }
+    }
+
+    const relabel = (): void => {
+      for (const anchor of wrapper.querySelectorAll<HTMLAnchorElement>(HYPERLINK_ANCHOR_SELECTOR)) {
+        // `href` is resolved by the DOM (and a custom scheme survives it); the
+        // attribute is what Excalidraw actually wrote.
+        const href = anchor.getAttribute('href')
+        const label = linkBubbleLabel(href)
+        if (label) {
+          setText(anchor, label)
+          continue
+        }
+
+        // An element link ("link to object") reads as the app's own URL with
+        // ?element=<id>. Excalidraw elements have no name, so the target is
+        // read out of the live scene instead: a card is named by the item it
+        // shows, a shape by the text on it.
+        const action = resolveCanvasLink(href, window.location.href)
+        if (action.kind !== 'element') {
+          continue
+        }
+        const elements = (apiRef.current?.getSceneElements() ?? []) as unknown as LabelElement[]
+        const target = elementLinkTarget(action.elementId, elements)
+
+        if (target.kind === 'text') {
+          setText(anchor, truncateLabel(target.text))
+          continue
+        }
+        if (target.kind === 'shape') {
+          setText(anchor, t('canvas.link.shapeTarget'))
+          continue
+        }
+        if (target.kind === 'missing') {
+          setText(anchor, t('canvas.link.missingTarget'))
+          continue
+        }
+        // A card costs one read. Writing a placeholder first and the title
+        // second would feed this observer its own mutation forever (placeholder
+        // → title → relabel → placeholder → …), so nothing is written until the
+        // title is known, and it is remembered so every later relabel writes
+        // the SAME text and the loop terminates.
+        const cardKey = `${target.entityType}:${target.entityId}`
+        const known = cardTitles.current.get(cardKey)
+        if (known) {
+          setText(anchor, known)
+          continue
+        }
+        void lookupCardTitle(target.entityType, target.entityId).then((title) => {
+          if (!title) return
+          cardTitles.current.set(cardKey, truncateLabel(title))
+          setText(anchor, truncateLabel(title))
+        })
+      }
+    }
+
+    relabel()
+    const observer = new MutationObserver(relabel)
+    observer.observe(wrapper, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [corrupt, t])
+
   // Agent MCP writes to THIS canvas must reach this live instance rather than a
   // headless read-modify-write, or our next autosave overwrites them (#916 §2e).
   // Main is told which window owns the canvas so it can route the write here.
@@ -279,6 +498,180 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
 
   useHandleLibrary({ excalidrawAPI: api, adapter: libraryAdapter })
 
+  /**
+   * Opens the vault item a `memry://` link points at.
+   *
+   * Kinds that get a tab of their own (a note, a filed binary) are read first:
+   * the item may have been deleted since the link was drawn, and a note tab
+   * whose entity is gone opens blank with no way back to what went wrong. The
+   * singleton views (Tasks, Inbox, Calendar) open regardless of whether their
+   * focus target still exists, so they are not worth the round trip.
+   */
+  const openMemryTarget = useCallback(
+    async (href: string): Promise<void> => {
+      const parsed = parseMemryHref(href)
+      if (!parsed) return
+
+      let title: string | undefined
+      if (parsed.kind === 'note' || parsed.kind === 'file') {
+        const item =
+          parsed.kind === 'file'
+            ? await notesService.getFile(parsed.id).catch(() => null)
+            : await notesService.get(parsed.id).catch(() => null)
+        if (!item) {
+          toast.error(t('canvas.link.itemMissing'))
+          return
+        }
+        title = item.title
+      }
+
+      const tab = tabFromMemryHref(href, { title, now: Date.now() })
+      if (!tab) {
+        toast.error(t('canvas.link.itemMissing'))
+        return
+      }
+      openTab(tab)
+    },
+    [openTab, t]
+  )
+
+  /**
+   * Every link click on this canvas is ours. Excalidraw's fallback ends in
+   * `window.open(undefined, target)` + `newWindow.location = url`, which under
+   * Electron either does nothing at all (the real URL never reaches the
+   * main-process allowlist, so `newWindow` is null) or — for its own element
+   * links, when `isLocalLink` matches — assigns `window.location` and reloads
+   * the entire app. Preventing the event's default is what disables both.
+   */
+  const handleLinkOpen = useCallback<
+    NonNullable<React.ComponentProps<typeof Excalidraw>['onLinkOpen']>
+  >(
+    (element, event) => {
+      event.preventDefault()
+      const action = resolveCanvasLink(element.link, window.location.href)
+
+      switch (action.kind) {
+        case 'memry':
+          void openMemryTarget(action.href)
+          return
+        case 'element': {
+          const api = apiRef.current
+          if (!api) return
+          const target = api.getSceneElements().find((el) => el.id === action.elementId)
+          if (!target) {
+            toast.error(t('canvas.link.elementMissing'))
+            return
+          }
+          api.scrollToContent(target, { fitToContent: true, animate: true })
+          api.updateScene({
+            appState: { selectedElementIds: { [action.elementId]: true } },
+            captureUpdate: CaptureUpdateAction.EVENTUALLY
+          })
+          return
+        }
+        case 'external':
+          // `_blank` is what reaches setWindowOpenHandler, whose allowlist is
+          // the single gate on which schemes may leave the app.
+          window.open(action.url, '_blank', 'noopener,noreferrer')
+          return
+        case 'ignore':
+          return
+      }
+    },
+    [openMemryTarget, t]
+  )
+
+  /**
+   * Opens the "Link to item" picker for the current selection.
+   *
+   * Exactly one shape must be selected: a link lives on a single element, and
+   * silently picking one out of several would attach it somewhere the user did
+   * not look. Memry cards are excluded — a card already opens its own entity,
+   * so a second, possibly different, link on it is a contradiction.
+   */
+  const openLinkPicker = useCallback((): void => {
+    const api = apiRef.current
+    if (!api) return
+
+    const selectedIds = Object.entries(api.getAppState().selectedElementIds)
+      .filter(([, selected]) => selected)
+      .map(([id]) => id)
+
+    if (selectedIds.length !== 1) {
+      toast.error(t('canvas.link.selectOneShape'))
+      return
+    }
+
+    const element = api.getSceneElements().find((el) => el.id === selectedIds[0]) as
+      LinkableElement | undefined
+    if (!element) {
+      toast.error(t('canvas.link.selectOneShape'))
+      return
+    }
+    if (element.customData?.entityType) {
+      toast.error(t('canvas.link.cardsCannotLink'))
+      return
+    }
+
+    setLinkTargetId(element.id)
+    setLinkPickerOpen(true)
+  }, [t])
+
+  /** Writes the chosen item's href onto the shape the picker was opened for. */
+  const applyLink = useCallback(
+    (href: string): void => {
+      const api = apiRef.current
+      const targetId = linkTargetId
+      if (!api || !targetId) return
+
+      const elements = api.getSceneElements()
+      if (!elements.some((el) => el.id === targetId)) {
+        // Deleted while the picker was open.
+        toast.error(t('canvas.link.elementMissing'))
+        return
+      }
+
+      api.updateScene({
+        elements: elements.map((el) => (el.id === targetId ? { ...el, link: href } : el)) as never,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      // updateScene does not run the editor's onChange, so the persister has to
+      // be told or the link would sit unsaved until the next unrelated edit.
+      persisterRef.current?.notifyChange()
+      toast.success(t('canvas.link.linked'))
+    },
+    [linkTargetId, t]
+  )
+
+  /**
+   * Excalidraw's own "Create link" action — the chain button under Actions, and
+   * Cmd/Ctrl+K — only knows how to take a typed address. It works by setting
+   * `appState.showHyperlinkPopup` to "editor", which reaches us through
+   * onChange, so the button can be answered with our item picker instead of
+   * its URL box without touching Excalidraw's DOM.
+   *
+   * Its "info" popup is left alone: that is where an existing link's edit and
+   * remove buttons live, and removing a link stays Excalidraw's job.
+   */
+  const interceptLinkEditor = useCallback(
+    (appState: { showHyperlinkPopup: false | 'info' | 'editor' }): void => {
+      if (appState.showHyperlinkPopup !== 'editor') {
+        linkEditorHandledRef.current = false
+        return
+      }
+      // onChange fires repeatedly while the popup is open; act once per opening.
+      if (linkEditorHandledRef.current) return
+      linkEditorHandledRef.current = true
+
+      apiRef.current?.updateScene({
+        appState: { showHyperlinkPopup: false },
+        captureUpdate: CaptureUpdateAction.NEVER
+      })
+      openLinkPicker()
+    },
+    [openLinkPicker]
+  )
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -306,6 +699,20 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       event.stopPropagation()
       void persisterRef.current?.flush()
       toast.success(t('canvas.savedToVault'))
+      return
+    }
+    // Cmd/Ctrl+Shift+K opens the item picker for the selected shape. Caught in
+    // the capture phase for the same reason Cmd+S is: Excalidraw listens on
+    // document and would otherwise act on the key first.
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      event.key.toLowerCase() === 'k' &&
+      !event.altKey
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      openLinkPicker()
     }
   }
 
@@ -332,7 +739,12 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
             saveToActiveFile: false
           }
         }}
-        onChange={() => persisterRef.current?.notifyChange()}
+        onChange={(_elements, appState) => {
+          persisterRef.current?.notifyChange()
+          recordViewport(appState)
+          interceptLinkEditor(appState)
+        }}
+        onLinkOpen={handleLinkOpen}
         // Three Memry themes exist (light/dark/white); anything not dark maps
         // to Excalidraw's light theme.
         theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
@@ -345,6 +757,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           onSceneMutated={() => persisterRef.current?.notifyChange()}
         />
       ) : null}
+      <CanvasLinkDialog
+        open={linkPickerOpen}
+        onOpenChange={setLinkPickerOpen}
+        onPick={(href) => applyLink(href)}
+      />
     </div>
   )
 }

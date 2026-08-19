@@ -59,7 +59,7 @@ vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 const mocks = vi.hoisted(() => {
   const lockCtxCache = new Map<
     string | null,
-    { collaborationActive: boolean; visibleNoteTabIds: Set<string> }
+    { hasLiveFragment: () => boolean; visibleNoteTabIds: Set<string> }
   >()
   return {
     openTab: vi.fn(),
@@ -73,10 +73,10 @@ const mocks = vi.hoisted(() => {
     // yield-to-tab effect (deps on this reference) re-run on every render
     // regardless of whether the lock actually changed, confounding tests that
     // want to isolate the activation gate from that effect.
-    getLockCtx(): { collaborationActive: boolean; visibleNoteTabIds: Set<string> } {
+    getLockCtx(): { hasLiveFragment: () => boolean; visibleNoteTabIds: Set<string> } {
       const key = this.lockReason
       if (!lockCtxCache.has(key)) {
-        lockCtxCache.set(key, { collaborationActive: key === null, visibleNoteTabIds: new Set() })
+        lockCtxCache.set(key, { hasLiveFragment: () => key === null, visibleNoteTabIds: new Set() })
       }
       return lockCtxCache.get(key)!
     }

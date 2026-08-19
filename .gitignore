@@ -71,5 +71,6 @@ opencode.jsonc
 
 
 agents/
+!docs/agents/
 .env*.local
 .superpowers/

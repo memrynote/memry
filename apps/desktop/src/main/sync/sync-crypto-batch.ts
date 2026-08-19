@@ -2,6 +2,7 @@ import sodium from 'libsodium-wrappers-sumo'
 import { createLogger } from '../lib/logger'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
+import { ItemTooLargeError } from './note-size'
 import type { SyncQueueManager } from './queue'
 import type { SyncWorkerBridge } from './worker-bridge'
 import type {
@@ -31,6 +32,12 @@ export interface EncryptBatchDeps {
     deviceId: string,
     vaultKey: Uint8Array
   ) => string
+  /**
+   * Called for an item the encrypt cap rejected. `markFailed` still runs — this
+   * is the extra hop that lets the caller tell the user which note stopped
+   * syncing, instead of the rejection living only on the queue row (#1465).
+   */
+  onItemTooLarge?: (item: { itemId: string; type: string; payload: string }) => void
 }
 
 type QueueRow = {
@@ -77,9 +84,18 @@ export async function encryptPushBatch(
         signerDeviceId
       )
 
+      const byQueueId = new Map(rawItems.map((item) => [item.queueId, item]))
       for (const err of errors) {
         log.error('Push: worker encrypt failed', { itemId: err.itemId, error: err.error })
         deps.queue.markFailed(err.queueId, `Encrypt failed: ${err.error}`)
+        const source = byQueueId.get(err.queueId)
+        if (err.code === 'item_too_large' && source) {
+          deps.onItemTooLarge?.({
+            itemId: source.itemId,
+            type: source.type,
+            payload: source.payload
+          })
+        }
       }
 
       return results.map((r) => ({ queueId: r.queueId, pushItem: r.pushItem }))
@@ -98,21 +114,37 @@ export async function encryptPushBatch(
     }
   }
 
-  return rawItems.map((item) => {
-    const result = encryptItemForPush({
-      id: item.itemId,
-      type: item.type,
-      operation: item.operation,
-      content: new TextEncoder().encode(item.payload),
-      vaultKey,
-      ['signingSecretKey']: signingKeyBytes,
-      signerDeviceId,
-      clock: item.clock,
-      stateVector: item.stateVector,
-      deletedAt: item.deletedAt
-    })
-    return { queueId: item.queueId, pushItem: result.pushItem }
-  })
+  const encrypted: Array<{ queueId: string; pushItem: PushItem }> = []
+  for (const item of rawItems) {
+    try {
+      const result = encryptItemForPush({
+        id: item.itemId,
+        type: item.type,
+        operation: item.operation,
+        content: new TextEncoder().encode(item.payload),
+        vaultKey,
+        ['signingSecretKey']: signingKeyBytes,
+        signerDeviceId,
+        clock: item.clock,
+        stateVector: item.stateVector,
+        deletedAt: item.deletedAt
+      })
+      encrypted.push({ queueId: item.queueId, pushItem: result.pushItem })
+    } catch (err) {
+      // Only the size cap is handled here. It is per-item and permanent, so
+      // letting it abort the whole batch would keep every other queued edit
+      // from pushing. Any other failure still propagates, exactly as before.
+      if (!(err instanceof ItemTooLargeError)) throw err
+      log.error('Push: item over the sync size cap', {
+        itemId: item.itemId,
+        type: item.type,
+        error: err.message
+      })
+      deps.queue.markFailed(item.queueId, `Encrypt failed: ${err.message}`)
+      deps.onItemTooLarge?.({ itemId: item.itemId, type: item.type, payload: item.payload })
+    }
+  }
+  return encrypted
 }
 
 export interface DecryptBatchDeps {

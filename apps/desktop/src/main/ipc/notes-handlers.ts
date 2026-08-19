@@ -18,8 +18,17 @@ import {
   NoteReorderSchema,
   NoteGetPositionsSchema,
   SetLocalOnlySchema,
-  ApplyTemplateSchema
+  ApplyTemplateSchema,
+  LargeFileReadLinesSchema,
+  LargeFileSearchSchema
 } from '@memry/contracts/notes-api'
+import {
+  openLargeFileSession,
+  readLargeFileLines,
+  searchLargeFileSession,
+  closeLargeFileSession,
+  closeAllLargeFileSessions
+} from '../vault/large-file-session'
 import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
 import {
@@ -1083,6 +1092,33 @@ export function registerNotesHandlers(): void {
       return { count: countLocalOnlyNoteMetadata(getDatabase()) }
     })
   )
+
+  // notes:large-file-open — Prepare a large-file-class file for the read-only
+  // viewer. Returns as soon as the handle is open; the line-offset scan runs
+  // behind it and reports on NotesChannels.events.LARGE_FILE_INDEX.
+  ipcMain.handle(
+    NotesChannels.invoke.LARGE_FILE_OPEN,
+    createStringHandler((noteId) => openLargeFileSession(noteId))
+  )
+
+  // notes:large-file-read-lines — One window of lines from an open session
+  ipcMain.handle(
+    NotesChannels.invoke.LARGE_FILE_READ_LINES,
+    createValidatedHandler(LargeFileReadLinesSchema, (input) => readLargeFileLines(input))
+  )
+
+  // notes:large-file-close — Release the session and its file handle
+  ipcMain.handle(
+    NotesChannels.invoke.LARGE_FILE_CLOSE,
+    createStringHandler((sessionId) => closeLargeFileSession(sessionId))
+  )
+
+  // notes:large-file-search — Find a literal query inside an open session.
+  // Large files never enter FTS, so this is the only search that can see them.
+  ipcMain.handle(
+    NotesChannels.invoke.LARGE_FILE_SEARCH,
+    createValidatedHandler(LargeFileSearchSchema, (input) => searchLargeFileSession(input))
+  )
 }
 
 /**
@@ -1093,4 +1129,7 @@ export function unregisterNotesHandlers(): void {
   Object.values(NotesChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
+  // Handlers go away when the vault closes, and an open large-file session
+  // pins an OS file handle to a file in the vault that is being left.
+  void closeAllLargeFileSessions()
 }

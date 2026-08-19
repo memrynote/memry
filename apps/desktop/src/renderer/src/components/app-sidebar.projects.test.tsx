@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { forwardRef, useEffect, useImperativeHandle, type ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AppSidebar } from './app-sidebar'
 
@@ -53,18 +53,31 @@ vi.mock('@/components/sidebar-section', () => ({
   SidebarSection: ({
     label,
     actions,
+    actionsAlwaysVisible,
     children
   }: {
     label: string
     actions?: ReactNode
+    actionsAlwaysVisible?: boolean
     children: ReactNode
   }) => (
-    <section>
+    // `actionsAlwaysVisible` surfaces as an attribute because the real reveal is
+    // a Tailwind class the sidebar never sees; whether it is on screen is the
+    // section's own test (sidebar-section.focus-reveal.test.tsx). What belongs
+    // here is only that the sidebar asks for it in the empty case.
+    <section aria-label={label} data-actions-pinned={actionsAlwaysVisible ? 'true' : 'false'}>
       <h2>{label}</h2>
       {actions}
       {children}
     </section>
   )
+}))
+
+vi.mock('@/components/tasks/project-modal', () => ({
+  ProjectModal: ({ isOpen, project }: { isOpen: boolean; project?: { id: string } | null }) =>
+    isOpen ? (
+      <div data-testid="project-modal">{project ? `edit:${project.id}` : 'create'}</div>
+    ) : null
 }))
 
 vi.mock('@/components/notes-tree', () => ({
@@ -151,7 +164,8 @@ vi.mock('@/hooks/use-inbox', () => ({
 }))
 
 vi.mock('@/hooks/use-file-drop', () => ({
-  useFileDrop: () => ({ isDraggingFiles: false, dropHandlers: {} })
+  FILE_DROP_FOLDER_ATTR: 'data-file-drop-folder',
+  useFileDrop: () => ({ isDraggingFiles: false, dropFolder: null, dropHandlers: {} })
 }))
 
 vi.mock('@/components/ui/picker', () => ({
@@ -189,7 +203,46 @@ vi.mock('@/components/sidebar/sortable-project-list', () => ({
   )
 }))
 
+const DEFAULT_PROJECTS = [{ id: 'p1', name: 'Launch', color: '#f00', isArchived: false }]
+
 describe('AppSidebar projects section', () => {
+  beforeEach(() => {
+    mocks.projects = DEFAULT_PROJECTS.map((project) => ({ ...project }))
+    mocks.openSidebarItem.mockClear()
+  })
+
+  // The section header "+" is the only project entry point that does not go
+  // through the Tasks page: the empty-state CTA disappears after the first
+  // project, and nothing else in the sidebar creates one.
+  it('opens the project modal in create mode from the section header', () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    expect(screen.queryByTestId('project-modal')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByLabelText('newProject'))
+
+    expect(screen.getByTestId('project-modal')).toHaveTextContent('create')
+  })
+
+  it('pins the header actions open while there are no projects', () => {
+    mocks.projects = []
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    expect(screen.getByRole('region', { name: 'projects' })).toHaveAttribute(
+      'data-actions-pinned',
+      'true'
+    )
+  })
+
+  it('lets the header actions fall back to hover once a project exists', () => {
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+
+    expect(screen.getByRole('region', { name: 'projects' })).toHaveAttribute(
+      'data-actions-pinned',
+      'false'
+    )
+  })
+
   it('renders active projects and opens Project Home on click', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
 

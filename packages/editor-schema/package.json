@@ -1,0 +1,26 @@
+{
+  "name": "@memry/editor-schema",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./inline": "./src/inline/index.ts",
+    "./blocks": "./src/blocks/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@blocknote/code-block": "^0.47.1",
+    "@blocknote/core": "^0.47.1",
+    "@memry/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*"
+  }
+}

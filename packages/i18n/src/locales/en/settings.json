@@ -1141,7 +1141,8 @@
     "groups": {
       "storageUsage": "Storage Usage",
       "location": "Location",
-      "accountVaults": "Vaults in your account"
+      "accountVaults": "Vaults in your account",
+      "largeNotes": "Notes near the sync limit"
     },
     "loadingStorage": "Loading storage info...",
     "signInStorage": "Sign in to view storage usage",
@@ -1173,6 +1174,11 @@
       },
       "warningTitle": "Storage almost full",
       "warningDescription": "Free up space or upgrade your plan to avoid sync issues."
+    },
+    "largeNotes": {
+      "description": "Notes larger than {limit} stop syncing. Split these into smaller notes to keep them in sync.",
+      "over": "Not syncing",
+      "approaching": "Approaching the limit"
     }
   },
   "tags": {
@@ -1302,6 +1308,7 @@
     "pressShortcut": "Press shortcut…",
     "cancelTitle": "Cancel",
     "rebindTitle": "Click to rebind",
+    "editorManagedTitle": "Handled by the note editor — cannot be reassigned",
     "resetTitle": "Reset to default",
     "clearTitle": "Clear shortcut",
     "clickToSet": "Click to set",

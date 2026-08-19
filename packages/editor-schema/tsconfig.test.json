@@ -1,0 +1,13 @@
+{
+  // `tsconfig.json` excludes every test file so the package's program stays
+  // source-only. This project is the one that compiles them: the parity gate
+  // leans on the type system (a `Record<MemryBlockType, …>` fixture map is a
+  // COMPILE error when a spec is added without a fixture, before the runtime
+  // assertion ever runs), so the tests being typechecked is part of the gate.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/**/*", "vitest.config.ts"],
+  "exclude": []
+}

@@ -5,7 +5,15 @@
  * @module components/viewers/audio-player
  */
 
-import { useState, useCallback, useRef, useEffect, memo, type RefObject } from 'react'
+import {
+  useState,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useEffect,
+  memo,
+  type RefObject
+} from 'react'
 import {
   Play,
   Pause,
@@ -22,6 +30,14 @@ import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  FILE_AUDIO_SCROLL_KEY,
+  FILE_VIEW_STATE_KEYS,
+  parsePlaybackPosition,
+  shouldResumePlayback
+} from '@/pages/file-view-state'
 
 // ============================================================================
 // Types
@@ -122,6 +138,23 @@ export function AudioPlayer({
   const { t: tPhaseF } = useT('notes')
   const { t: tInbox } = useT('inbox')
   const audioRef = useRef<HTMLAudioElement>(null)
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+  const getContentScrollEl = useCallback(() => contentScrollRef.current, [])
+  useTabScrollRestore({ getScrollElement: getContentScrollEl, key: FILE_AUDIO_SCROLL_KEY })
+
+  // The position comes back; playback deliberately does NOT resume. Restoring a
+  // session must never start making noise.
+  const [storedPosition, setStoredPosition] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.audioPosition,
+    defaultValue: 0,
+    parse: parsePlaybackPosition
+  })
+  const storedPositionRef = useRef(storedPosition)
+  const livePositionRef = useRef(storedPosition)
+  const setStoredPositionRef = useRef(setStoredPosition)
+  useLayoutEffect(() => {
+    setStoredPositionRef.current = setStoredPosition
+  })
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [duration, setDuration] = useState(0)
@@ -138,18 +171,42 @@ export function AudioPlayer({
     const audio = audioRef.current
     if (!audio) return
 
-    const handleLoadedMetadata = () => setDuration(audio.duration)
+    const commitPosition = (): void => {
+      const next = livePositionRef.current
+      if (next === storedPositionRef.current) return
+      storedPositionRef.current = next
+      setStoredPositionRef.current(next)
+    }
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration)
+      // Seeking is only possible once the duration is known, and only worth
+      // doing when there is something left to play.
+      if (shouldResumePlayback(storedPositionRef.current, audio.duration)) {
+        audio.currentTime = storedPositionRef.current
+      }
+    }
+    const handleTimeUpdate = () => {
+      livePositionRef.current = audio.currentTime
+    }
     const handleEnded = () => setIsPlaying(false)
     const handleError = () => setError(true)
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    // Committed when the transport stops rather than on every `timeupdate`:
+    // the stream is ~4 Hz and each commit is a tab-state dispatch.
+    audio.addEventListener('pause', commitPosition)
     audio.addEventListener('ended', handleEnded)
     audio.addEventListener('error', handleError)
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('pause', commitPosition)
       audio.removeEventListener('ended', handleEnded)
       audio.removeEventListener('error', handleError)
+      commitPosition()
     }
   }, [])
 
@@ -233,7 +290,7 @@ export function AudioPlayer({
       </audio>
 
       {/* Main content - player first, transcript directly below */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-8">
+      <div ref={contentScrollRef} className="flex-1 min-h-0 overflow-y-auto p-8">
         <div className="mx-auto flex min-h-full w-full max-w-lg flex-col gap-6">
           <div className="space-y-8">
             {/* File name */}

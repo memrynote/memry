@@ -2,6 +2,7 @@
   "app": {
     "quit": "Avsluta",
     "preferences": "Inställningar…",
+    "checkForUpdates": "Sök efter uppdateringar…",
     "exit": "Avsluta",
     "hide": "Göm MemryNote",
     "hideOthers": "Göm övriga",
@@ -58,6 +59,9 @@
     "heading1": "Rubrik 1",
     "heading2": "Rubrik 2",
     "heading3": "Rubrik 3",
+    "heading4": "Rubrik 4",
+    "heading5": "Rubrik 5",
+    "heading6": "Rubrik 6",
     "highlight": "Överstrykning",
     "italic": "Kursiv",
     "label": "Format",

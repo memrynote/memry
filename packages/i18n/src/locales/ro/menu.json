@@ -2,6 +2,7 @@
   "app": {
     "quit": "Ieșire din MemryNote",
     "preferences": "Setări…",
+    "checkForUpdates": "Caută actualizări…",
     "exit": "Ieșire",
     "hide": "Ascunde MemryNote",
     "hideOthers": "Ascunde celelalte",
@@ -58,6 +59,9 @@
     "heading1": "Titlu 1",
     "heading2": "Titlu 2",
     "heading3": "Titlu 3",
+    "heading4": "Titlu 4",
+    "heading5": "Titlu 5",
+    "heading6": "Titlu 6",
     "highlight": "Evidențiere",
     "italic": "Cursiv",
     "label": "Format",

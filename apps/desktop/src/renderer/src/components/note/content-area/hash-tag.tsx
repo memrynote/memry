@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { createInlineContentSpec, type Block } from '@blocknote/core'
+import { type Block } from '@blocknote/core'
+import { createHashTagSpec } from '@memry/editor-schema/inline'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { isIconValue, parseIconName } from '@/components/note/note-title/emoji-icon-utils'
 import { loadAllIcons } from '@/lib/hugeicon-renderer'
@@ -60,65 +61,39 @@ function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): 
   }
 }
 
-export const HashTag = createInlineContentSpec(
-  {
-    type: 'hashTag' as const,
-    propSchema: {
-      tag: { default: '' },
-      color: { default: '' },
-      icon: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: (inlineContent) => {
-      const tag = inlineContent.props.tag || ''
-      const colorName = inlineContent.props.color || ''
-      const icon = inlineContent.props.icon || ''
-      const colors = getTagColors(colorName, tag)
+// Presentation only. The config, `parse` and `toExternalHTML` — everything that
+// decides what reaches the vault file — live in @memry/editor-schema, so the
+// main process registers the identical node instead of deleting it.
+export const HashTag = createHashTagSpec((inlineContent) => {
+  const tag = inlineContent.props.tag || ''
+  const colorName = inlineContent.props.color || ''
+  const icon = inlineContent.props.icon || ''
+  const colors = getTagColors(colorName, tag)
 
-      const dom = document.createElement('span')
-      dom.className = 'inline-hash-tag'
-      dom.setAttribute('data-hash-tag', tag)
-      dom.setAttribute('data-hash-tag-color', colorName)
-      if (icon) dom.setAttribute('data-hash-tag-icon', icon)
-      dom.setAttribute('contenteditable', 'false')
-      dom.textContent = `#${tag}`
-      if (icon) prependTagIcon(dom, icon, colors.text)
+  const dom = document.createElement('span')
+  dom.className = 'inline-hash-tag'
+  dom.setAttribute('data-hash-tag', tag)
+  dom.setAttribute('data-hash-tag-color', colorName)
+  if (icon) dom.setAttribute('data-hash-tag-icon', icon)
+  dom.setAttribute('contenteditable', 'false')
+  dom.textContent = `#${tag}`
+  if (icon) prependTagIcon(dom, icon, colors.text)
 
-      dom.style.backgroundColor = withAlpha(colors.text, 0.12)
-      dom.style.setProperty('--hash-tag-color', colors.text)
-      dom.style.padding = '1px 8px'
-      dom.style.borderRadius = '10px'
-      dom.style.fontSize = '0.9em'
-      dom.style.fontWeight = '500'
-      dom.style.cursor = 'pointer'
-      dom.style.whiteSpace = 'nowrap'
-      dom.style.display = 'inline'
-      dom.style.margin = '0 1px'
-      dom.style.userSelect = 'none'
-      dom.style.transition = 'opacity 150ms ease'
+  dom.style.backgroundColor = withAlpha(colors.text, 0.12)
+  dom.style.setProperty('--hash-tag-color', colors.text)
+  dom.style.padding = '1px 8px'
+  dom.style.borderRadius = '10px'
+  dom.style.fontSize = '0.9em'
+  dom.style.fontWeight = '500'
+  dom.style.cursor = 'pointer'
+  dom.style.whiteSpace = 'nowrap'
+  dom.style.display = 'inline'
+  dom.style.margin = '0 1px'
+  dom.style.userSelect = 'none'
+  dom.style.transition = 'opacity 150ms ease'
 
-      return { dom }
-    },
-    parse: (element) => {
-      if (element.hasAttribute('data-hash-tag')) {
-        const tag = element.getAttribute('data-hash-tag')?.trim() || ''
-        if (tag) {
-          const color = element.getAttribute('data-hash-tag-color')?.trim() || ''
-          const icon = element.getAttribute('data-hash-tag-icon')?.trim() || ''
-          return { tag, color, icon }
-        }
-      }
-      return undefined
-    },
-    toExternalHTML: (inlineContent) => {
-      const dom = document.createElement('span')
-      dom.textContent = `#${inlineContent.props.tag || ''}`
-      return { dom }
-    }
-  }
-)
+  return { dom }
+})
 
 // =============================================================================
 // HASH TAG TEXT SPLITTING (for normalization on load)

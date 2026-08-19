@@ -13,7 +13,15 @@ import { existsSync } from 'fs'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getDatabase, requireDatabase, getIndexDatabase } from '../database'
-import { createNote, getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+import { getNoteById, updateNote, createFolder, getFolders } from '../vault/notes'
+// Filing creates notes the user expects on every device, so it goes through the
+// notes domain command rather than the raw vault write. `createNoteCommand` is
+// what enqueues the note's own sync push and seeds its CRDT doc; without it the
+// filed inbox row syncs (markItemAsFiled below) while the note it became stays
+// on this device — the peer hides the item and never draws the note. Nothing
+// rescues it in-session either: `seedUnclockedNotes` runs only from a full sync,
+// and the vault watcher enqueues creates for binaries, not markdown.
+import { createNoteCommand } from '../notes/domain'
 import { setNoteTags } from '../database/queries/notes'
 import { indexBinaryFile } from '../vault/indexer'
 import { getFileType } from '@memry/shared/file-types'
@@ -31,7 +39,7 @@ import {
 import type { FilingAction } from '@memry/contracts/inbox-api'
 import type { FilingTarget, ImageFilingMode } from '@memry/domain-inbox'
 import { saveAttachment } from '../vault/attachments'
-import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
+import { emitNoteAttachmentSaved, syncNoteCreate } from '../notes/runtime-effects'
 import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
 import type { NoteListItem } from '@memry/contracts/notes-api'
 import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-repository'
@@ -247,6 +255,43 @@ async function indexFiledBinary(
 function announceFiledBinary(note: NoteListItem | null): void {
   if (!note) return
   broadcastToAllWindows(NotesChannels.events.CREATED, { note, source: 'internal' })
+}
+
+/**
+ * Push a filed binary to the other devices: the note row, and the bytes it
+ * points at.
+ *
+ * The vault watcher does both halves for a binary that appears in the vault on
+ * its own (`handleNonMarkdownFileAdd`), but `handleFileAdd` returns early on a
+ * path the index cache already holds — and `indexFiledBinary` fills that cache
+ * the moment the file lands, so filing always wins that race. Nobody else picks
+ * it up.
+ *
+ * Both calls matter and for different reasons. Without `syncNoteCreate` there
+ * is no sync item, so the peer has no row until this device's next full sync
+ * seeds the clock-less one. Without the saved-attachment event no upload is
+ * ever queued, and a binary's push payload carries `attachmentId` — which stays
+ * null forever — so that seeded row would point the peer at a blob it can never
+ * download. A row for a file that cannot arrive is worse than no row.
+ *
+ * Tags stay behind either way: the binary push payload has no tags field. That
+ * is a protocol gap, not something this call can close.
+ *
+ * Best-effort like the other filing enqueues: the file has already moved, so a
+ * sync outage must not fail a filing that succeeded — but it has to stay
+ * countable.
+ */
+function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void {
+  if (!note) return
+  try {
+    // `[]` for tags mirrors the watcher: a binary has no frontmatter to seed a
+    // CRDT tag array from.
+    syncNoteCreate(note.id, note.title, [])
+    emitNoteAttachmentSaved(note.id, absolutePath)
+  } catch (error) {
+    log.warn('Filed binary sync enqueue failed; the file is filed locally', error)
+    trackMainError('inbox', 'filed_binary_sync_enqueue', error)
+  }
 }
 
 /**
@@ -632,8 +677,11 @@ async function fileBinaryToFolder(
     // Calculate relative path from vault root for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Index the filed file and announce it, so the tree picks it up live.
-    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
+    // Index the filed file, announce it so the tree picks it up live, and push
+    // it — the watcher that would normally do the pushing never sees this file.
+    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    announceFiledBinary(filedBinary)
+    syncFiledBinary(filedBinary, finalPath)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -704,7 +752,7 @@ export async function fileToFolder(
     const content = generateNoteContent(item)
 
     // Create note
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content,
       folder: folderPath || undefined,
@@ -763,7 +811,7 @@ export async function convertToNote(itemId: string): Promise<FileResponse> {
     const content = generateNoteContent(item)
 
     // Create note in root folder
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content,
       tags: mergedTags,
@@ -1008,7 +1056,7 @@ export async function convertToReminder(
     const existingTags = getItemTags(db, itemId)
     const mergedTags = [...new Set([...existingTags, 'inbox'])]
     const title = generateNoteTitle(item)
-    const note = await createNote({
+    const note = await createNoteCommand({
       title,
       content: generateNoteContent(item),
       tags: mergedTags,
@@ -1068,7 +1116,7 @@ async function resolveFilingTargets(
       continue
     }
 
-    const created = await createNote({
+    const created = await createNoteCommand({
       title: target.title,
       content: '',
       folder: folderPath || undefined
@@ -1302,8 +1350,11 @@ async function linkBinaryToNotes(
     // Calculate relative path for storage
     const relativePath = normalizeRelativePath(path.relative(vaultPath, finalPath))
 
-    // Index the filed file and announce it, so the tree picks it up live.
-    announceFiledBinary(await indexFiledBinary(relativePath, finalPath, mergedTags))
+    // Index the filed file, announce it so the tree picks it up live, and push
+    // it — the watcher that would normally do the pushing never sees this file.
+    const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
+    announceFiledBinary(filedBinary)
+    syncFiledBinary(filedBinary, finalPath)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')
@@ -1407,7 +1458,7 @@ export async function linkToNotes(
     const inboxNoteContent = generateNoteContent(item)
 
     // Create the inbox note in the specified folder (we need this so the wikilink has a target)
-    await createNote({
+    await createNoteCommand({
       title: inboxNoteTitle,
       content: inboxNoteContent,
       folder: folderPath || undefined,

@@ -2,6 +2,7 @@
   "app": {
     "quit": "Encerrar",
     "preferences": "Definições…",
+    "checkForUpdates": "Procurar atualizações…",
     "exit": "Sair",
     "hide": "Ocultar MemryNote",
     "hideOthers": "Ocultar outros",
@@ -58,6 +59,9 @@
     "heading1": "Título 1",
     "heading2": "Título 2",
     "heading3": "Título 3",
+    "heading4": "Título 4",
+    "heading5": "Título 5",
+    "heading6": "Título 6",
     "highlight": "Destaque",
     "italic": "Itálico",
     "label": "Formatar",

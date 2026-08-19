@@ -391,10 +391,37 @@ export class SyncEngine extends EventEmitter {
     this.pushCoordinator.requestPush()
   }
 
-  async fullSync(): Promise<void> {
+  /**
+   * Pull and merge one note's server-side CRDT state into the local doc, and
+   * say whether that actually completed.
+   *
+   * Exists for the pending-note replay, which must not push a snapshot for a
+   * note it has not merged first: the server prunes every `crdt_updates` row at
+   * or below a stored snapshot's sequence number, so a snapshot pushed over an
+   * unmerged peer edit deletes that edit for every device. Deliberately NOT
+   * routed through `scheduleSync`: the replay is fire-and-forget at the end of
+   * startup and must not queue behind — or in front of — a sync cycle. The
+   * paced vault sweep calls the coordinator directly for the same reason.
+   */
+  async mergeRemoteCrdtForNote(noteId: string): Promise<boolean> {
+    return this.crdtSync.pullCrdtForNote(noteId)
+  }
+
+  /**
+   * `true` when this device knows it has not merged the server's state for this
+   * note — an unverifiable signer, a failed or aborted pass, or a pull that is
+   * queued and has not run — so a snapshot push would delete or overwrite that
+   * state. The CRDT snapshot push fn asks this before choosing an endpoint; see
+   * `CrdtSyncCoordinator.hasUnmergedRemoteState`.
+   */
+  hasUnmergedRemoteCrdtState(noteId: string): boolean {
+    return this.crdtSync.hasUnmergedRemoteState(noteId)
+  }
+
+  async fullSync(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
     const start = Date.now()
     try {
-      await this.fullSyncRunner.run()
+      await this.fullSyncRunner.run(options)
       trackMainEvent('sync_run_completed', {
         surface: 'sync',
         action: 'full_completed',
@@ -734,7 +761,18 @@ export class SyncEngine extends EventEmitter {
         if (this.ctx.fullSyncActive) {
           this.crdtSync.addPendingPull(noteId)
         } else {
-          this.scheduleSync(() => this.crdtSync.pullCrdtForNote(noteId))
+          // Marked before the pull is even scheduled. The broadcast is the
+          // server telling us a peer's state for this note is not in our doc,
+          // and `scheduleSync` may not run the callback for a while — that
+          // whole span is time in which the 30s snapshot scheduler would
+          // otherwise push a snapshot and prune the very update we were just
+          // told about. A clean pull clears it.
+          this.crdtSync.markRemoteStateUnmerged(noteId)
+          // The merged/failed answer is the replay's concern; a broadcast-driven
+          // pull that fails is already owed a retry by the coordinator.
+          this.scheduleSync(async () => {
+            await this.crdtSync.pullCrdtForNote(noteId)
+          })
         }
         break
       }

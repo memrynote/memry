@@ -55,6 +55,7 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
+import { getCrdtProvider } from '../sync/crdt-provider'
 import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import { createSearchProjector } from '../projections/projectors/search-projector'
@@ -294,6 +295,15 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // Initialize data database
   initDatabase(dataDbPath)
+
+  // The CRDT store is scoped to this vault's uuid, which lives in the data DB
+  // just opened — main's bootstrap call runs before any vault exists and
+  // deliberately defers, so this is the call that actually opens the store.
+  // Not awaited: it pays for a preflight child process, and the vault must not
+  // wait on it. Editors that raced it rebind on the PROVIDER_READY broadcast.
+  void getCrdtProvider()
+    .initPersistence()
+    .catch((error) => logger.warn('CRDT persistence init failed (non-fatal):', error))
 
   // Create FTS5 virtual tables for tasks and inbox in data.db
   const dataDb = getDatabase()

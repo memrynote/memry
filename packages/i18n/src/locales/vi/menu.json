@@ -2,6 +2,7 @@
   "app": {
     "quit": "Thoát",
     "preferences": "Cài đặt…",
+    "checkForUpdates": "Kiểm tra bản cập nhật…",
     "exit": "Thoát",
     "hide": "Ẩn MemryNote",
     "hideOthers": "Ẩn ứng dụng khác",
@@ -58,6 +59,9 @@
     "heading1": "Tiêu đề 1",
     "heading2": "Tiêu đề 2",
     "heading3": "Tiêu đề 3",
+    "heading4": "Tiêu đề 4",
+    "heading5": "Tiêu đề 5",
+    "heading6": "Tiêu đề 6",
     "highlight": "Tô sáng",
     "italic": "Nghiêng",
     "label": "Định dạng",

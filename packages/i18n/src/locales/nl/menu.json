@@ -2,6 +2,7 @@
   "app": {
     "quit": "Stoppen",
     "preferences": "Instellingen…",
+    "checkForUpdates": "Zoeken naar updates…",
     "exit": "Afsluiten",
     "hide": "Verberg MemryNote",
     "hideOthers": "Verberg andere",
@@ -58,6 +59,9 @@
     "heading1": "Kop 1",
     "heading2": "Kop 2",
     "heading3": "Kop 3",
+    "heading4": "Kop 4",
+    "heading5": "Kop 5",
+    "heading6": "Kop 6",
     "highlight": "Markeren",
     "italic": "Cursief",
     "label": "Opmaak",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
+import { registerEditorPlugin } from '../register-editor-plugin'
 import { defaultTagColorName } from '@/components/note/tags-row/tag-colors'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 
@@ -42,15 +43,8 @@ export function useTagSuggestions({
 
   // Register hashTag inline plugin on editor's tiptap instance
   useEffect(() => {
-    const tiptap = editor._tiptapEditor
-    if (!tiptap) return
-
     const plugin = createHashTagInlinePlugin(getTagColor)
-    tiptap.registerPlugin(plugin)
-
-    return () => {
-      tiptap.unregisterPlugin(plugin.spec.key!)
-    }
+    return registerEditorPlugin(editor, plugin)
   }, [editor, getTagColor])
 
   // Re-color + re-icon existing hashTag nodes when the tag color/icon maps

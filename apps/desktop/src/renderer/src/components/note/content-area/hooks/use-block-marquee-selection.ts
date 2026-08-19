@@ -2,12 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createLogger } from '@/lib/logger'
+import { hasSelectableTextAt, shouldStartMarquee } from '../marquee-hit-test'
 import { classifyBlocks, indentTaskBlock, outdentTaskBlock } from './task-block-marquee-indent'
 
 const log = createLogger('Hook:Marquee')
 
-const VERTICAL_PROMOTE_PX = 15
-const HORIZONTAL_LIMIT_PX = 8
+/**
+ * How far the pointer must travel before a press becomes a drag. Direction-
+ * agnostic on purpose: whether this gesture may be a marquee at all was already
+ * settled at mousedown by `hasSelectableTextAt`, so all this threshold does is
+ * keep a plain click from flashing a selection box.
+ */
+const DRAG_THRESHOLD_PX = 5
 const ACTIVE_ATTR = 'data-marquee-active'
 
 export interface MarqueeRect {
@@ -46,20 +52,6 @@ interface UseBlockMarqueeSelectionReturn {
 interface OriginPoint {
   clientX: number
   clientY: number
-}
-
-function shouldStartMarquee(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.closest('[data-marquee-ignore]')) return false
-  if (target.closest('button, a, input, textarea, select, [role="button"]')) return false
-  if (
-    target.closest(
-      '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu'
-    )
-  ) {
-    return false
-  }
-  return true
 }
 
 function rectsIntersect(
@@ -371,12 +363,6 @@ export function useBlockMarqueeSelection({
       if (event.button !== 0) return
       if (!shouldStartMarquee(event.target)) return
 
-      // Whether this gesture started inside editable text. Affects the promotion
-      // gate: text-selection-preservation only matters when there is text to
-      // select. Drags that start in the gutter promote on any vertical motion.
-      const startedInsideEditableText =
-        event.target instanceof Element && event.target.closest('[contenteditable="true"]') !== null
-
       const blockContainer = blockContainerRef.current
       if (!blockContainer) return
 
@@ -389,6 +375,13 @@ export function useBlockMarqueeSelection({
         setHighlightRects([])
         hasSelectionRef.current = false
       }
+
+      // The marquee start rule (#1444), and its position here is load-bearing.
+      // A press on text is a text selection, so we decline — but only AFTER the
+      // clearing above, so pressing into text still dismisses a stale block
+      // highlight instead of leaving it competing with the caret; and BEFORE the
+      // document listeners below, so declining registers nothing at all.
+      if (hasSelectableTextAt(event.target)) return
 
       const origin: OriginPoint = { clientX: event.clientX, clientY: event.clientY }
       let lastMove: OriginPoint = { clientX: event.clientX, clientY: event.clientY }
@@ -469,13 +462,20 @@ export function useBlockMarqueeSelection({
         lastMove = { clientX: moveEvent.clientX, clientY: moveEvent.clientY }
 
         if (!isMarquee) {
-          const dx = Math.abs(moveEvent.clientX - origin.clientX)
-          const dy = Math.abs(moveEvent.clientY - origin.clientY)
-          // Drags that start inside editable text must be clearly vertical so we
-          // don't steal "drag right to highlight a word" gestures. Drags that start
-          // in the gutter (no text to select) promote on any vertical motion.
-          if (dy < VERTICAL_PROMOTE_PX) return
-          if (startedInsideEditableText && dx > HORIZONTAL_LIMIT_PX && dx > dy) return
+          // Straight-line distance from the press, and nothing else. This gesture
+          // already earned the right to be a marquee at mousedown by starting
+          // outside selectable text, so the only question left is click or drag.
+          //
+          // Direction used to be decided here instead — a minimum vertical
+          // travel plus an exemption for mostly-horizontal drags that began in
+          // editable text — and that is precisely what made the outcome depend
+          // on the drag angle: from one press inside a paragraph, straight down
+          // selected blocks and down-and-right selected text, with nothing on
+          // screen to tell the user which they were about to get. Re-introducing
+          // any direction test here brings that back (#1441).
+          const dx = moveEvent.clientX - origin.clientX
+          const dy = moveEvent.clientY - origin.clientY
+          if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
           promote()
         }
 

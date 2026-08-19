@@ -143,6 +143,85 @@ describe('yjs-doc-registry', () => {
     expect(registry.refCount('n1')).toBe(1)
   })
 
+  it('peek returns the live entry without registering a consumer', () => {
+    // The property that unblocked #1504: reading a slot must not change who owns
+    // it. `acquire` here would make `a` a non-owner and keep the entry alive
+    // past its last real consumer.
+    const { registry, destroy } = makeRegistry()
+    const a = Symbol('a')
+    const entry = registry.acquire('note-1', a)
+    expect(registry.peek('note-1')).toBe(entry)
+    expect(registry.refCount('note-1')).toBe(1)
+    expect(registry.isSideEffectOwner('note-1', a)).toBe(true)
+    registry.release('note-1', a)
+    expect(destroy).toHaveBeenCalledTimes(1)
+    expect(registry.peek('note-1')).toBeNull()
+  })
+
+  it('peek is null for a note this window never acquired', () => {
+    const { registry, created } = makeRegistry()
+    expect(registry.peek('never-opened')).toBeNull()
+    expect(created()).toBe(0)
+  })
+
+  it('observes slot creation, entry-reported change, and slot destruction', () => {
+    let notify: (() => void) | undefined
+    const registry = createYjsDocRegistry((_noteId: string, notifyChanged: () => void) => {
+      notify = notifyChanged
+      return { destroy: vi.fn() }
+    })
+    const seen = vi.fn()
+    const unobserve = registry.observe(seen)
+    const a = Symbol('a')
+
+    registry.acquire('n1', a)
+    expect(seen).toHaveBeenCalledTimes(1)
+    // A second consumer changes refCount, not what peek answers — no notify.
+    registry.acquire('n1', Symbol('b'))
+    expect(seen).toHaveBeenCalledTimes(1)
+    // The entry settling its connect() is a change.
+    notify?.()
+    expect(seen).toHaveBeenCalledTimes(2)
+
+    registry.release('n1', a)
+    expect(seen).toHaveBeenCalledTimes(2)
+    unobserve()
+    registry.release('n1', Symbol('unknown'))
+    expect(seen).toHaveBeenCalledTimes(2)
+  })
+
+  it('version advances on every notification so useSyncExternalStore re-reads', () => {
+    let notify: (() => void) | undefined
+    const registry = createYjsDocRegistry((_noteId: string, notifyChanged: () => void) => {
+      notify = notifyChanged
+      return { destroy: vi.fn() }
+    })
+    const a = Symbol('a')
+    const start = registry.version()
+    registry.acquire('n1', a)
+    const afterCreate = registry.version()
+    expect(afterCreate).toBeGreaterThan(start)
+    // Stable between notifications — getSnapshot must not tear.
+    expect(registry.version()).toBe(afterCreate)
+    notify?.()
+    const afterPublish = registry.version()
+    expect(afterPublish).toBeGreaterThan(afterCreate)
+    registry.release('n1', a)
+    expect(registry.version()).toBeGreaterThan(afterPublish)
+  })
+
+  it('the slot exists by the time an observer is told it was created', () => {
+    // Ordering guard: notifying before slots.set would hand every observer a
+    // peek of null for a slot that does exist.
+    const registry = createYjsDocRegistry(() => ({ destroy: vi.fn() }))
+    let peekedAtNotify: unknown = 'not-called'
+    registry.observe(() => {
+      peekedAtNotify = registry.peek('n1')
+    })
+    const entry = registry.acquire('n1', Symbol('a'))
+    expect(peekedAtNotify).toBe(entry)
+  })
+
   it('refCount===1 stays byte-identical to the pre-registry path', () => {
     const destroy = vi.fn()
     const createEntry = vi.fn(() => ({ destroy }))

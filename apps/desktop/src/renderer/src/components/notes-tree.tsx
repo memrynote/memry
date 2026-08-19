@@ -37,12 +37,15 @@ import {
   type TreeActionsHandle
 } from '@/components/note-tree-internal'
 import {
+  extractFolderFromPath,
   getDisplayName,
   getFileExtensionLabel,
   getFileIcon,
   collectAllFolderIds,
   type FolderNode
 } from '@/components/notes-tree-utils'
+import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { cn } from '@/lib/utils'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
@@ -83,10 +86,16 @@ export interface NotesTreeActions {
 interface NotesTreeProps {
   onTargetFolderChange?: (folder: string) => void
   scrollContainerRef?: React.RefObject<HTMLElement>
+  /**
+   * Vault-relative folder an in-flight external file drag is aimed at, or null
+   * when no file is being dragged. Highlight only — the drop reads its own
+   * destination off `FILE_DROP_FOLDER_ATTR` in the DOM.
+   */
+  fileDropFolder?: string | null
 }
 
 export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
-  { onTargetFolderChange, scrollContainerRef }: NotesTreeProps = {},
+  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps = {},
   ref
 ) {
   const { t } = useT('notes')
@@ -129,6 +138,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     }
   }, [])
 
+  // Expansion is keyed by folder path, so a folder that moves would otherwise
+  // come back collapsed — along with everything open inside it.
+  const renameFolderPath = useCallback((oldPath: string, newPath: string) => {
+    const oldNodeId = `folder-${oldPath}`
+    const newNodeId = `folder-${newPath}`
+    treeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+    virtualTreeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+  }, [])
+
   const actions = useNoteTreeActions({
     noteMap: data.noteMap,
     tree: data.tree,
@@ -144,7 +162,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     selectedIds,
     setSelectedIds,
     computeTargetFolder: data.computeTargetFolder,
-    expandFolderPath
+    expandFolderPath,
+    renameFolderPath
   })
 
   const notifyTargetFolderChange = useCallback(
@@ -302,6 +321,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         canvasNoteId={note.id}
       >
         <TreeNodeTrigger
+          // A file dropped on a note belongs in the folder that note lives in.
+          {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(note.path) }}
           contextMenuContent={
             <>
               {!isPartOfSelection && (
@@ -423,7 +444,11 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         hasChildren={hasChildren}
       >
         <TreeNodeTrigger
-          className=""
+          {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
+          className={cn(
+            fileDropFolder === folder.path &&
+              'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'
+          )}
           contextMenuContent={
             <>
               <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
@@ -571,6 +596,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onMove={(...args) => void actions.handleMove(...args)}
           onBulkDelete={actions.handleBulkDelete}
           onRenameNote={actions.handleRenameClick}
+          renamingNoteId={actions.renamingNoteId}
+          renameValue={actions.renameValue}
+          onRenameValueChange={actions.handleRenameInputChange}
+          onRenameSubmit={(...args) => void actions.handleRenameSubmit(...args)}
+          onRenameCancel={actions.handleRenameCancel}
+          isRenaming={actions.isRenaming}
           onApplyTemplateToNote={setApplyTemplateNote}
           onDeleteNote={actions.handleDeleteClick}
           onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
@@ -579,6 +610,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           onCreateNote={(...args) => void actions.handleCreateNoteInFolder(...args)}
           onCreateFolder={(...args) => void actions.handleCreateSubfolder(...args)}
           onRenameFolder={actions.handleRenameFolderClick}
+          renamingFolderPath={actions.renamingFolderPath}
+          folderRenameValue={actions.folderRenameValue}
+          onFolderRenameValueChange={actions.setFolderRenameValue}
+          onFolderRenameSubmit={(...args) => void actions.handleFolderRenameSubmit(...args)}
+          onFolderRenameCancel={actions.handleFolderRenameCancel}
+          isFolderRenaming={actions.isFolderRenaming}
           onSetFolderTemplate={actions.handleSetFolderTemplate}
           onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
           folderTemplateNames={data.folderTemplateNames}
@@ -590,6 +627,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           isDragDisabled={
             !!actions.renamingNoteId || !!actions.renamingFolderPath || actions.isMoving
           }
+          fileDropFolder={fileDropFolder}
           scrollContainerRef={scrollContainerRef}
         />
       ) : (

@@ -53,6 +53,9 @@ const FIXTURE_OVERRIDES: Partial<Record<SyncItemType, Record<string, unknown>>> 
   tag_definition: { name: 'registry-probe', color: '#00ff00' },
   tag_category: { name: 'Registry Probe', sortOrder: 0 },
   folder_config: { icon: null },
+  // The `{}` fixture hits home-page-handler's ghost guard, which returns
+  // 'skipped' — the emit probe would short-circuit green while proving nothing.
+  home_page: { name: 'Registry probe' },
   // tasks.project_id is NOT NULL and FK-bound (#837), so the parent is seeded
   // in beforeEach and referenced here.
   task: { projectId: PROJECT_ID },

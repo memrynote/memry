@@ -32,6 +32,7 @@ import {
   type FilterFn
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import {
   DndContext,
   closestCenter,
@@ -168,6 +169,12 @@ interface FolderTableViewProps {
   summaries?: Record<string, SummaryConfig>
   /** Row IDs that are currently exiting (for T121 animation) */
   exitingRowIds?: Set<string>
+  /**
+   * Names this scroller inside the owning tab, turning scroll restore on. Left
+   * unset by callers that are not a tab's main content (the Home folder widget),
+   * where there is no per-tab offset to restore.
+   */
+  scrollKey?: string
   /** Additional CSS classes */
   className?: string
 }
@@ -299,6 +306,7 @@ export function FolderTableView({
   showSummaries = false,
   summaries = EMPTY_SUMMARIES,
   exitingRowIds = new Set<string>(),
+  scrollKey,
   className
 }: FolderTableViewProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
@@ -778,6 +786,17 @@ export function FolderTableView({
   })
 
   /** Get virtual items to render */
+  // Virtualized: restoring by writing `scrollTop` would land on the wrong row
+  // while the total height is still an estimate, so the offset goes through the
+  // virtualizer and is re-applied until the rows stop measuring.
+  const getScrollElement = useCallback(() => tableContainerRef.current, [])
+  useTabScrollRestore({
+    getScrollElement,
+    virtualizer: rowVirtualizer,
+    key: scrollKey,
+    enabled: scrollKey !== undefined
+  })
+
   const virtualRows = rowVirtualizer.getVirtualItems()
 
   /** Total height of all rows (for scroll container sizing) */

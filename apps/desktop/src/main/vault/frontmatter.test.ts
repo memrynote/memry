@@ -163,6 +163,23 @@ describe('frontmatter utilities', () => {
     expect(links).toEqual(['Same Note', 'Other'])
   })
 
+  // A15: the whole `Note#Heading` string used to go in as a title, resolved to
+  // nothing, and the note it named never listed the link as a backlink.
+  it('extractWikiLinks indexes a heading link under its note', () => {
+    const links = extractWikiLinks('See [[Meeting#Decisions]]')
+    expect(links).toEqual(['Meeting'])
+  })
+
+  it('extractWikiLinks collapses heading links onto the note they share', () => {
+    const links = extractWikiLinks('[[Meeting#Decisions]] and [[Meeting#Actions]] and [[Meeting]]')
+    expect(links).toEqual(['Meeting'])
+  })
+
+  it('extractWikiLinks ignores a same-note heading link', () => {
+    const links = extractWikiLinks('Jump to [[#Decisions]] and see [[Other]]')
+    expect(links).toEqual(['Other'])
+  })
+
   it('extractTags trims and preserves case', () => {
     const frontmatter: NoteFrontmatter = {
       id: 'abc123def456',

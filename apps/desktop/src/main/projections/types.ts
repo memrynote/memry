@@ -7,15 +7,24 @@ export interface MarkdownNoteProjection {
   title: string
   fileType: 'markdown'
   localOnly: boolean
-  contentHash: string
-  wordCount: number
-  characterCount: number
-  snippet: string
+  contentHash: string | null
+  wordCount: number | null
+  characterCount: number | null
+  snippet: string | null
   date: string | null
   emoji: string | null
   createdAt: string
   modifiedAt: string
-  parsedContent: string
+  /**
+   * Null when the body has not been read. Tier 0 of vault ingest builds a row
+   * from `stat`, path and title alone, so a 250 MB paste costs one `stat`
+   * rather than a multi-hundred-megabyte allocation; the idle backfill then
+   * republishes the same note with its body. Consumers that derive state from
+   * the body must skip a null rather than treat it as an empty note.
+   */
+  parsedContent: string | null
+  /** Only set by tier 0, where it is the one thing `stat` knows about the body. */
+  fileSize?: number | null
   tags: string[]
   properties: Record<string, unknown>
   wikiLinks: string[]

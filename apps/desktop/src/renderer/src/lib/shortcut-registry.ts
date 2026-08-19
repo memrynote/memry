@@ -7,13 +7,40 @@
 
 import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 
+/**
+ * Every id in the registry has a runtime owner that reads its effective binding
+ * through `useShortcutBinding` (see `lib/shortcut-bindings.ts`). Keep the two
+ * in step: an entry with no owner is a settings row that silently does nothing.
+ */
+export type ShortcutId =
+  | 'nav.newNote'
+  | 'nav.search'
+  | 'nav.settings'
+  | 'tabs.closeTab'
+  | 'tabs.nextTab'
+  | 'tabs.prevTab'
+  | 'tabs.reopenTab'
+  | 'tabs.navBack'
+  | 'tabs.navForward'
+  | 'editor.bold'
+  | 'editor.italic'
+  | 'editor.underline'
+  | 'view.toggleSidebar'
+  | 'view.shortcuts'
+
 export interface ShortcutEntry {
-  id: string
+  id: ShortcutId
   i18nKey: string
   label: string
   description: string
   category: string
   defaultBinding: ShortcutBinding
+  /**
+   * Editor formatting keys are owned by the note editor (BlockNote/ProseMirror)
+   * and cannot be remapped from settings. They stay listed for reference and
+   * render read-only rather than offering a rebind that would never apply.
+   */
+  rebindable?: boolean
 }
 
 export interface ShortcutConflict {
@@ -43,44 +70,12 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     defaultBinding: { key: 'n', modifiers: { meta: true } }
   },
   {
-    id: 'nav.newTask',
-    i18nKey: 'nav.newTask',
-    label: 'New Task',
-    description: 'Create a new task',
-    category: 'Navigation',
-    defaultBinding: { key: 't', modifiers: { meta: true, shift: true } }
-  },
-  {
-    id: 'nav.goToInbox',
-    i18nKey: 'nav.inbox',
-    label: 'Go to Inbox',
-    description: 'Navigate to the inbox',
-    category: 'Navigation',
-    defaultBinding: { key: 'i', modifiers: { meta: true, shift: true } }
-  },
-  {
-    id: 'nav.goToNotes',
-    i18nKey: 'nav.notes',
-    label: 'Go to Notes',
-    description: 'Navigate to notes',
-    category: 'Navigation',
-    defaultBinding: { key: 'e', modifiers: { meta: true, shift: true } }
-  },
-  {
-    id: 'nav.goToTasks',
-    i18nKey: 'nav.tasks',
-    label: 'Go to Tasks',
-    description: 'Navigate to tasks',
-    category: 'Navigation',
-    defaultBinding: { key: 'k', modifiers: { meta: true, shift: true } }
-  },
-  {
     id: 'nav.search',
     i18nKey: 'nav.search',
     label: 'Search',
     description: 'Open global search',
     category: 'Navigation',
-    defaultBinding: { key: 'f', modifiers: { meta: true } }
+    defaultBinding: { key: 'k', modifiers: { meta: true } }
   },
   {
     id: 'nav.settings',
@@ -141,22 +136,15 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     defaultBinding: { key: ']', modifiers: { meta: true } }
   },
 
-  // Editor
-  {
-    id: 'editor.save',
-    i18nKey: 'editor.save',
-    label: 'Save',
-    description: 'Save the current note',
-    category: 'Editor',
-    defaultBinding: { key: 's', modifiers: { meta: true } }
-  },
+  // Editor — owned by the note editor, listed for reference only
   {
     id: 'editor.bold',
     i18nKey: 'editor.bold',
     label: 'Bold',
     description: 'Toggle bold formatting',
     category: 'Editor',
-    defaultBinding: { key: 'b', modifiers: { meta: true } }
+    defaultBinding: { key: 'b', modifiers: { meta: true } },
+    rebindable: false
   },
   {
     id: 'editor.italic',
@@ -164,7 +152,8 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     label: 'Italic',
     description: 'Toggle italic formatting',
     category: 'Editor',
-    defaultBinding: { key: 'i', modifiers: { meta: true } }
+    defaultBinding: { key: 'i', modifiers: { meta: true } },
+    rebindable: false
   },
   {
     id: 'editor.underline',
@@ -172,7 +161,8 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     label: 'Underline',
     description: 'Toggle underline formatting',
     category: 'Editor',
-    defaultBinding: { key: 'u', modifiers: { meta: true } }
+    defaultBinding: { key: 'u', modifiers: { meta: true } },
+    rebindable: false
   },
 
   // View
@@ -257,7 +247,18 @@ export function bindingsEqual(a: ShortcutBinding, b: ShortcutBinding): boolean {
 }
 
 /**
- * Find conflicts: other shortcuts that use the same binding
+ * Look up an entry's default binding by id
+ */
+export function getDefaultBinding(id: ShortcutId): ShortcutBinding | undefined {
+  return SHORTCUT_REGISTRY.find((entry) => entry.id === id)?.defaultBinding
+}
+
+/**
+ * Find conflicts: other rebindable shortcuts that use the same binding.
+ *
+ * Editor formatting keys are excluded: they only apply while the caret is in
+ * rich text, so sharing a chord with an app-level shortcut (⌘B is both Bold and
+ * Toggle Sidebar) is resolved by focus at keypress time, not a real collision.
  */
 export function findConflicts(
   id: string,
@@ -266,6 +267,7 @@ export function findConflicts(
 ): ShortcutConflict[] {
   return SHORTCUT_REGISTRY.filter((entry) => {
     if (entry.id === id) return false
+    if (entry.rebindable === false) return false
     const effective = resolveBinding(entry, overrides)
     return bindingsEqual(effective, binding)
   }).map((entry) => ({ conflictingId: entry.id, conflictingLabel: entry.label }))

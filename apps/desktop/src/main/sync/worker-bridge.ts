@@ -338,7 +338,7 @@ export class SyncWorkerBridge {
     signerDeviceId: string
   ): Promise<{
     results: EncryptedPushResult[]
-    errors: Array<{ queueId: string; itemId: string; error: string }>
+    errors: Array<{ queueId: string; itemId: string; error: string; code?: 'item_too_large' }>
   }> {
     const requestId = this.nextRequestId()
     try {

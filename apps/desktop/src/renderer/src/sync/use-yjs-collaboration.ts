@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type RefObject } from 'react'
+import { useState, useEffect, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { YjsIpcProvider } from './yjs-ipc-provider'
@@ -42,15 +42,13 @@ interface EntrySnapshot {
   doc: Y.Doc | null
   provider: YjsIpcProvider | null
   isReady: boolean
-  fallback: boolean
 }
 
 const CONNECTING_SNAPSHOT: EntrySnapshot = {
   fragment: null,
   doc: null,
   provider: null,
-  isReady: false,
-  fallback: false
+  isReady: false
 }
 
 interface DocEntry extends DocEntryHandle {
@@ -67,7 +65,7 @@ interface DocEntry extends DocEntryHandle {
  * hook. Only a second consumer of the SAME note in the SAME window (R17) shares
  * the entry instead of building a diverging second Y.Doc.
  */
-const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
+const docRegistry = createYjsDocRegistry<DocEntry>((noteId, notifyChanged) => {
   const doc = new Y.Doc({ guid: noteId })
   const isRemoteUpdateRef: RefObject<boolean> = { current: false }
 
@@ -88,6 +86,9 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
   const publish = (next: EntrySnapshot): void => {
     snapshot = next
     for (const listener of listeners) listener()
+    // Read-only observers (useLiveFragmentQuery) hold no consumer slot, so they
+    // are not in `listeners`; the registry fans out to them instead.
+    notifyChanged()
   }
 
   provider
@@ -95,7 +96,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
     .then(() => {
       if (destroyed) return
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-      publish({ fragment, doc, provider, isReady: true, fallback: false })
+      publish({ fragment, doc, provider, isReady: true })
       log.debug('Collaboration ready', { noteId })
     })
     .catch((err) => {
@@ -104,7 +105,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((noteId) => {
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false
-      publish({ fragment: null, doc: null, provider: null, isReady: true, fallback: true })
+      publish({ fragment: null, doc: null, provider: null, isReady: true })
     })
 
   return {
@@ -187,11 +188,23 @@ export function useYjsCollaboration(
     }
   }, [noteId, enabled, consumerId])
 
+  // `isReady` is the entry's own "connect() has settled" flag, published once —
+  // and connect() only resolves after performSyncHandshake has merged whatever
+  // main holds, so it is exactly the moment a fragment is safe to hand out. A
+  // late second consumer reads the same published snapshot, so it is right for
+  // them too.
+  //
+  // This used to read `provider.isSynced` live instead. That answers a
+  // different question: it also goes false when crdt:provider-reset marks the
+  // binding stale — which is sign-out, with the editor mounted and the user
+  // typing. Collapsing to DISABLED_STATE there pulled `yjsFragment` out from
+  // under a live BlockNote editor, and `useCreateBlockNote` builds its
+  // collaboration extension exactly once, so the fragment could never be
+  // re-attached. Staleness belongs to the rebind (yjs-ipc-provider.ts), which
+  // keeps this same Y.Doc and carries its unsent edits over on the next
+  // handshake; it must not unbind the editor.
   const state =
-    !noteId ||
-    !enabled ||
-    activeState.noteId !== noteId ||
-    (!activeState.fallback && !activeState.provider?.isSynced)
+    !noteId || !enabled || activeState.noteId !== noteId || !activeState.isReady
       ? DISABLED_STATE
       : {
           fragment: activeState.fragment,
@@ -214,4 +227,63 @@ export function useYjsCollaboration(
  */
 export function useYjsSideEffectOwner(noteId: string): boolean {
   return useYjsCollaboration({ noteId }).isSideEffectOwner
+}
+
+/**
+ * Does this window hold a LIVE Yjs fragment for `noteId` right now?
+ *
+ * Three states, and the middle one is why this exists:
+ *  - ready + fragment → the doc bound. Every editor on this note in this window
+ *    gets this same fragment, so the whole-markdown debounce save is suppressed
+ *    (`!yjsFragment` in content-area/hooks/use-editor-sync.ts) and a second
+ *    editor cannot clobber the first. SAFE.
+ *  - ready + no fragment → `connect()` REJECTED. The entry destroyed its
+ *    provider and doc and published null for the life of the slot with no
+ *    rebind, so every editor that binds this note is a whole-markdown saver
+ *    again. NOT safe — and this state is reachable with a live, `idle` session
+ *    (a rejecting `validateNoteForCrdt`, a throwing handshake), which is why
+ *    the session predicate this replaced could not see it.
+ *  - not ready → `connect()` has not settled, so which of the two above it will
+ *    be is unknown. Reported NOT live: it may resolve to the null-fragment
+ *    case, and a caller that treated "pending" as safe would under-fire exactly
+ *    there. It does not flap a lock on and off, because ContentArea holds its
+ *    render behind the same `isReady` — the pending window is the tab's own
+ *    loading skeleton, and it ends in one transition, not an oscillation.
+ *
+ * No slot at all is likewise NOT live: nothing in this window has the note
+ * bound, so there is nothing to prove the next editor will not fail open.
+ *
+ * `peek` registers no consumer, so asking this does not make the note's sole
+ * editor report non-owner — the hazard that blocked #1504 in #1495.
+ */
+function hasLiveFragment(noteId: string): boolean {
+  const entry = docRegistry.peek(noteId)
+  if (!entry) return false
+  const { isReady, fragment } = entry.getSnapshot()
+  return isReady && fragment !== null
+}
+
+// Module-level so `useSyncExternalStore` gets one stable subscribe/getSnapshot
+// pair for the life of the window (a fresh subscribe each render would tear the
+// subscription down and rebuild it every time).
+const observeRegistry = (listener: () => void): (() => void) => docRegistry.observe(listener)
+const readRegistryVersion = (): number => docRegistry.version()
+
+/**
+ * Read-only fragment-liveness query, re-rendering the caller whenever an answer
+ * could have changed (slot created/destroyed, `connect()` settled). The returned
+ * function's identity changes with that version and only with it, so consumers
+ * can memoize on it — canvas-card-overlay renders one card per visible element
+ * and must not rebuild that list every render.
+ */
+export function useLiveFragmentQuery(): (noteId: string) => boolean {
+  const version = useSyncExternalStore(observeRegistry, readRegistryVersion, readRegistryVersion)
+  return useMemo(() => {
+    // `version` is referenced (no-op) purely as this memo's cache key — the
+    // answer itself is read through `peek` at call time, so this must be a FRESH
+    // closure per version, not the stable module function. Mirrors
+    // `void claimFailedTick` in pages/canvas/canvas-card-overlay.tsx.
+    void version
+    return (noteId: string) => hasLiveFragment(noteId)
+  }, [version])
 }

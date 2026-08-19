@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createFileBlock,
   createFileBlockContent,
+  FILE_BLOCK_ACCEPT,
   parseFileBlockMarker,
   serializeFileBlock
 } from './file-block'
@@ -30,6 +31,7 @@ vi.mock('@/contexts/sync-context', () => ({
 vi.mock('@blocknote/react', () => ({
   createReactBlockSpec: vi.fn((schema, implementation) => ({
     schema,
+    meta: implementation.meta,
     render: implementation.render
   }))
 }))
@@ -77,6 +79,28 @@ describe('file block helpers', () => {
     expect(parseFileBlockMarker('not a marker')).toBeNull()
     expect(parseFileBlockMarker('<!-- file:{bad json} -->')).toBeNull()
     expect(createFileBlockContent(props)).toEqual({ type: 'file', props })
+  })
+
+  it('declares the vault-allowed extensions so the file picker cannot offer a rejected type', () => {
+    // Mirrors ALLOWED_IMAGE_EXTENSIONS + ALLOWED_FILE_EXTENSIONS in
+    // apps/desktop/src/main/vault/attachments.ts.
+    expect(FILE_BLOCK_ACCEPT).toEqual([
+      '.png',
+      '.jpg',
+      '.jpeg',
+      '.gif',
+      '.webp',
+      '.svg',
+      '.pdf',
+      '.doc',
+      '.docx',
+      '.xls',
+      '.xlsx',
+      '.txt',
+      '.md'
+    ])
+    // BlockNote's upload tab reads the accept list off the spec's meta.
+    expect((createFileBlock as any).meta).toEqual({ fileBlockAccept: FILE_BLOCK_ACCEPT })
   })
 
   it('persists an explicit width and omits the default (byte-stable for legacy markers)', () => {
@@ -191,6 +215,9 @@ describe('file block helpers', () => {
       'phaseF.componentsNoteContentAreaFileBlock.resizePdf'
     )
     expect(resizeHandle).toHaveAttribute('aria-valuenow')
+    // Faint at rest, not hidden: a hover-only handle is one most readers never
+    // discover, which is how the embed came to be reported as unresizable.
+    expect(resizeHandle.className).not.toContain('opacity-0')
     // Alignment controls render for a loaded PDF.
     expect(
       screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.alignCenter')

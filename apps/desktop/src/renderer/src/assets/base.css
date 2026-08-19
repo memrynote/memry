@@ -69,6 +69,63 @@
 :root .bn-container {
   --bn-colors-editor-text: var(--foreground);
   --bn-colors-editor-background: var(--background);
+
+  /* Text-colour palette, re-cut from BlockNote's Notion-legacy stock.
+     Reported: green read as plain grey while blue looked vivid. Measuring the
+     whole palette found three defects, and green had only the second:
+
+       1. AA. gray 2.58, red 3.90, orange 3.00, yellow 1.93 against the paper
+          background — all below the 4.5 WCAG AA floor for text.
+       2. Chroma. green sat at OKLCH hue 186 (teal, not green) with chroma
+          0.028, and brown at 0.045, against ~0.11 for blue. Below roughly 0.05
+          the eye cannot name a hue and the swatch reads as grey. This is why
+          green failed while measuring a comfortable 6.34 contrast: WCAG is
+          luminance-only and blind to it.
+       3. Separation from body text. brown sat 0.105 away in OKLab.
+
+     Re-cut so every swatch clears 4.5 on both light backgrounds, carries at
+     least 0.08 chroma (gray excepted — it is the one deliberate neutral), and
+     stays at least 0.15 from the body text. brown < orange < yellow in
+     lightness is held deliberately: they share the warm hue arc and lightness
+     order is the only thing that keeps brown from reading as dull orange.
+     AA is why yellow lands as gold rather than lemon — a light enough yellow
+     cannot clear 4.5 on white at all.
+
+     Backgrounds stay stock: a fill needs no chroma to be identified, and the
+     reporter confirmed the green background reads fine.
+
+     Presentation only. Colours persist by NAME (`textColor: "green"`, and
+     `<!-- colors:{...} -->` in vault markdown), never as hex, so existing notes
+     re-render under the new palette with no migration. */
+  --bn-colors-highlights-gray-text: #696969;
+  --bn-colors-highlights-brown-text: #824a32;
+  --bn-colors-highlights-red-text: #ba3f38;
+  --bn-colors-highlights-orange-text: #9d5b00;
+  --bn-colors-highlights-yellow-text: #7e7100;
+  --bn-colors-highlights-green-text: #007a44;
+  --bn-colors-highlights-blue-text: #0070a5;
+  --bn-colors-highlights-purple-text: #8550b8;
+  --bn-colors-highlights-pink-text: #b33e74;
+}
+
+/* The dark palette lives on `.bn-container[data-color-scheme=dark]` (0,2,0) in
+   @blocknote/shadcn, so this needs the extra attribute to win on specificity
+   rather than on stylesheet order.
+
+   Same three defects on the dark side: brown 3.69, purple 3.73 and pink 4.09
+   missed AA; green again had no chroma (0.037); and gray #bebdb8 sat 0.009 from
+   the #bcbab6 body text, close enough that "gray" was not a distinguishable
+   colour at all. */
+:root .bn-container[data-color-scheme='dark'] {
+  --bn-colors-highlights-gray-text: #838383;
+  --bn-colors-highlights-brown-text: #aa6f55;
+  --bn-colors-highlights-red-text: #da5c52;
+  --bn-colors-highlights-orange-text: #c07104;
+  --bn-colors-highlights-yellow-text: #998800;
+  --bn-colors-highlights-green-text: #199758;
+  --bn-colors-highlights-blue-text: #008ccd;
+  --bn-colors-highlights-purple-text: #a06cd5;
+  --bn-colors-highlights-pink-text: #d25a8f;
 }
 
 :root .bn-editor,
@@ -204,6 +261,18 @@
   --level: 1.25em !important;
 }
 
+[data-content-type='heading'][data-level='4'] {
+  --level: 1.125em !important;
+}
+
+[data-content-type='heading'][data-level='5'] {
+  --level: 1em !important;
+}
+
+[data-content-type='heading'][data-level='6'] {
+  --level: 0.875em !important;
+}
+
 [data-prev-level='1'] {
   --prev-level: 1.875em !important;
 }
@@ -214,6 +283,18 @@
 
 [data-prev-level='3'] {
   --prev-level: 1.25em !important;
+}
+
+[data-prev-level='4'] {
+  --prev-level: 1.125em !important;
+}
+
+[data-prev-level='5'] {
+  --prev-level: 1em !important;
+}
+
+[data-prev-level='6'] {
+  --prev-level: 0.875em !important;
 }
 
 /* ===== HEADING TYPOGRAPHY ===== */
@@ -230,6 +311,18 @@
 
 :root .bn-block-content[data-content-type='heading'][data-level='3'] {
   margin-top: 14px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='4'] {
+  margin-top: 12px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='5'] {
+  margin-top: 10px;
+}
+
+:root .bn-block-content[data-content-type='heading'][data-level='6'] {
+  margin-top: 8px;
 }
 
 :root
@@ -386,34 +479,57 @@
   position: sticky !important;
   /* Stick below the floating note chrome (var set by NoteLayout, 0 elsewhere) */
   top: var(--note-chrome-height, 0px) !important;
-  z-index: 20;
+  /* position + z-index makes this element a stacking context, so its
+     un-portaled Select/Tooltip/Popover popper content (see the ::before
+     comment below) paints within THIS context's z-order, not the viewport's.
+     A tooltip popping up from a button near the top row can rise above the
+     toolbar's own top edge into the note-chrome (.note-chrome, z-30) — it
+     has to outrank that z-index or the chrome paints over it. */
+  z-index: 40;
   width: 100%;
+  /* @blocknote/shadcn's base .bn-toolbar sets overflow-x: auto + max-width:
+     100vw for the floating popup case; the sticky bar wraps instead of
+     scrolling, so items that don't fit flow to a second row. */
+  max-width: none !important;
+  overflow: visible !important;
+  flex-wrap: wrap !important;
   margin: 0 0 8px 0 !important;
   padding: 4px 0 8px 0 !important;
-  background: color-mix(in srgb, var(--background) 72%, transparent) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  /* Background lives on ::before (below) rather than here: a background/
+     backdrop-filter on this element would make it the CSS containing block
+     for its own descendants' position: fixed content. BlockNote's shadcn
+     Select/Tooltip/Popover render un-portaled, so their popper content would
+     then be positioned and clipped relative to this bar instead of the
+     viewport — trapped inside it, unreachable and mostly invisible. */
   border: none !important;
   border-radius: 0 !important;
-  /* Soft scroll-edge instead of a hard divider: softened hairline + short falloff */
-  box-shadow:
-    0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
-    0 1px 10px -4px rgb(0 0 0 / 0.08) !important;
+  box-shadow: none !important;
   transform: none !important;
   opacity: 1 !important;
   pointer-events: auto !important;
 }
 
-@media (prefers-reduced-transparency: reduce) {
-  .sticky-toolbar-enabled .bn-formatting-toolbar {
-    background: var(--background) !important;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+.sticky-toolbar-enabled .bn-formatting-toolbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Same solid color as the note body — the bar reads as part of the note,
+     not a separate floating panel, so no seam/divider against the content
+     scrolling under it. */
+  background: var(--background);
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar > div {
   gap: 2px;
+}
+
+/* Without flex-shrink: 0, the forced min-width below replaces the browser's
+   default content-based min-width protection, so items (esp. the block type
+   select's "Paragraph" trigger) shrink narrower than their text and overflow
+   onto neighboring buttons instead of wrapping to the next row. */
+.sticky-toolbar-enabled .bn-formatting-toolbar > * {
+  flex-shrink: 0;
 }
 
 .sticky-toolbar-enabled .bn-formatting-toolbar button {
@@ -480,18 +596,31 @@
 
 .review-formatting-toolbar-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   padding-top: 6px;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
 
+/* The button sits inside a pointer-capture span, so the span is the grid item
+   and has to stretch before `width: 100%` on the button means anything. This
+   is compact-popup only — in the sticky toolbar the same span must stay an
+   inline flex item, or `width: 100%` claims the whole row width and forces
+   the icon-only button onto its own line. */
+.review-formatting-toolbar-compact .review-formatting-toolbar-action {
+  display: block;
+  width: 100%;
+}
+
 .review-formatting-toolbar-actions .bn-button {
+  display: flex !important;
   width: 100% !important;
   min-width: 0 !important;
-  gap: 4px;
-  padding: 0 6px !important;
-  font-size: 11px !important;
+  height: 28px !important;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px !important;
+  font-size: 12px !important;
   line-height: 1;
   white-space: nowrap;
 }
@@ -2599,6 +2728,13 @@ del.bn-inline-content {
 
 .dark .wiki-link {
   color: rgb(251, 191, 36) !important;
+}
+
+/* A wiki link opened for editing: the `[[` and `]]` are real characters the
+   user can delete, so they are dimmed rather than hidden — the text still reads
+   as a link without the brackets shouting. */
+.wiki-link-bracket {
+  opacity: 0.4;
 }
 
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */

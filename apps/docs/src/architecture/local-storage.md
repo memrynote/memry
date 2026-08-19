@@ -311,6 +311,36 @@ work is rejected with a "busy" error rather than growing the queue, which caller
 missing thumbnail or basic file metadata. Every request is settled exactly once, including when the
 worker crashes or is stopped.
 
+## CRDT Store Preflight
+
+The Yjs store (`leveldb/`) is opened through `classic-level`, a native binding that can abort the
+whole process instead of throwing — no JS error, nothing to catch. So it is exercised in a disposable
+child process first (`crdt-preflight.ts`), against the real store directory, and only loaded in main
+if that child survives. A store whose on-disk state aborts the binding (a torn LDB or MANIFEST from a
+past crash) is quarantined to `leveldb.broken-<timestamp>` and re-probed once on a fresh directory: if
+that passes, the data was the problem and the fresh store is kept; if it fails too, the binding is the
+problem and the original is moved back.
+
+When neither works, the CRDT layer runs **in memory**. Notes still load from vault markdown and still
+write back to disk — markdown remains the source of truth — but merge history is not persisted across
+launches. The log line is:
+
+```
+CRDT persistence unavailable — continuing in-memory (notes still load from vault files)
+```
+
+The child is forked twice on failure. The first attempt is an Electron `utilityProcess`; on some
+Windows installs that dies during Chromium/crashpad startup before any of our code runs, which says
+nothing about the store, so it is retried as a plain node child (`ELECTRON_RUN_AS_NODE`) that boots no
+Chromium at all. Which transport produced the verdict matters when reading telemetry: a failure
+reported with `transport: node` means the Chromium-free fallback failed too, so the binding is broken
+on that machine rather than the utility process merely failing to start.
+
+Because the preflight child is _expected_ to die in the recovered case, its `child-process-gone` report
+(`Utility:crashed:CrdtPreflight`) does not indicate breakage. The event that does is
+`app_error_seen` with `errorCode: CRDT_PERSISTENCE_UNAVAILABLE:<stage>`, emitted only when the store
+genuinely could not be opened.
+
 ## better-sqlite3 ABI Quirk
 
 The native module must match the JS runtime. If you see `ERR_DLOPEN_FAILED`, rebuild for the right target:

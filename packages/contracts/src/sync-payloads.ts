@@ -90,6 +90,31 @@ export const TemplateSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+/**
+ * Home board sync payload. Field names are Drizzle property names because the
+ * push payload is `JSON.stringify(row)`.
+ *
+ * `widgets` travels as an OPAQUE JSON string, exactly as stored — the same call
+ * `canvas.scene` makes. A typed `z.array(WidgetInstanceSchema)` here would both
+ * zod-strip unknown widget keys written by a newer build and reject the legacy
+ * `{size:'S'|'M'|'L'}` blobs still on disk; `apply-item.ts` turns either into a
+ * silent `'skipped'` that still advances the cursor, so the board would land on
+ * zero peers forever with no user-visible error. Shape is validated at the
+ * apply site instead.
+ *
+ * `icon` is `.nullable().optional()`: `null` is an explicit clear, absent means
+ * the sender does not know the field and the local value is kept.
+ */
+export const HomePageSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  icon: z.string().nullable().optional(),
+  position: z.number().optional(),
+  widgets: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional()
+})
+
 export const BookmarkSyncPayloadSchema = z.object({
   itemType: z.string().optional(),
   itemId: z.string().optional(),
@@ -512,6 +537,7 @@ export type InboxSyncPayload = z.infer<typeof InboxSyncPayloadSchema>
 export type FilterSyncPayload = z.infer<typeof FilterSyncPayloadSchema>
 export type TaskActivitySyncPayload = z.infer<typeof TaskActivitySyncPayloadSchema>
 export type TemplateSyncPayload = z.infer<typeof TemplateSyncPayloadSchema>
+export type HomePageSyncPayload = z.infer<typeof HomePageSyncPayloadSchema>
 export type BookmarkSyncPayload = z.infer<typeof BookmarkSyncPayloadSchema>
 export type ReminderSyncPayload = z.infer<typeof ReminderSyncPayloadSchema>
 export type CanvasSyncPayload = z.infer<typeof CanvasSyncPayloadSchema>

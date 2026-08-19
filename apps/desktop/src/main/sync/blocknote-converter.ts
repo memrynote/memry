@@ -1,15 +1,16 @@
 import { ServerBlockNoteEditor } from '@blocknote/server-util'
+import { type Block, type PartialBlock } from '@blocknote/core'
+import { createMemrySchema } from '@memry/editor-schema'
 import {
-  type Block,
-  type PartialBlock,
-  BlockNoteSchema,
-  defaultBlockSpecs,
-  createBlockSpec,
-  createCodeBlockSpec
-} from '@blocknote/core'
-import { codeBlockOptions } from '@blocknote/code-block'
+  BOOKMARK_LINE_REGEX,
+  EMBED_LINE_REGEX,
+  FILE_BLOCK_LINE_REGEX,
+  parseFileBlockMarker
+} from '@memry/editor-schema/blocks'
+import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
+import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { randomUUID } from 'node:crypto'
-import type * as Y from 'yjs'
+import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
 import {
@@ -49,37 +50,14 @@ import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
 const log = createLogger('BlockNoteConverter')
 
-// Headless `taskBlock` node so the CRDT fragment stores the SAME custom block
-// the renderer paints. Seeding a raw `checkListItem` would flash a plain
-// checkbox on open and — via the renderer's checkbox→task converter — mint a
-// duplicate task. Only the node schema (type + props + content) is used for
-// (de)serialization here; the server never renders, so `render` throws if it is
-// ever reached. propSchema must stay identical to the renderer's taskBlock
-// (task-block/index.tsx) or yXmlFragmentToBlocks would mis-parse the props.
-const createServerTaskBlock = createBlockSpec(
-  {
-    type: 'taskBlock' as const,
-    propSchema: {
-      taskId: { default: '' },
-      title: { default: '' },
-      checked: { default: false },
-      parentTaskId: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: () => {
-      throw new Error('taskBlock server spec is serialization-only and must not be rendered')
-    }
-  }
-)
-
-const serverSchema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs,
-    codeBlock: createCodeBlockSpec(codeBlockOptions),
-    taskBlock: createServerTaskBlock()
-  }
+// The same factory the renderer builds its schema from, so this process cannot
+// lack a node type the renderer can author. That symmetry is the whole fix:
+// y-prosemirror answers an unknown node name by DELETING the element from the
+// shared Y.Doc, so a spec registered on one side only replicates as data loss.
+// Main supplies serialization-only implementations — nothing here ever renders.
+const serverSchema = createMemrySchema({
+  blocks: createServerBlockSpecs(),
+  inline: createServerInlineSpecs()
 })
 
 let serverEditor: ServerBlockNoteEditor | null = null
@@ -101,14 +79,77 @@ export async function yDocToMarkdown(
   fragmentName = CRDT_FRAGMENT_NAME
 ): Promise<string | null> {
   try {
+    // y-prosemirror's `createNodeFromYElement` DELETES any element it cannot
+    // build (dist/y-prosemirror.cjs:878-885) — a repair heuristic that, run on
+    // the live doc, turns a serialization gap into replicated data loss. Read
+    // from a detached copy so this path can only ever read.
+    const snapshot = new Y.Doc()
+    Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))
     const editor = getEditor()
-    const fragment = doc.getXmlFragment(fragmentName)
-    const blocks = editor.yXmlFragmentToBlocks(fragment)
+    const blocks = editor.yXmlFragmentToBlocks(snapshot.getXmlFragment(fragmentName))
     if (blocks.length === 0) return ''
     return await blocksToMarkdownPreserving(editor, blocks as Block[])
   } catch (err) {
     log.error('Yjs-to-markdown conversion failed', err)
     return null
+  }
+}
+
+/**
+ * Node names in the CRDT fragment that this build's schema cannot CONSTRUCT.
+ *
+ * Constructibility is the question y-prosemirror's repair heuristic asks first:
+ * it answers a node name its schema cannot build by DELETING the element
+ * (`createNodeFromYElement`, dist/y-prosemirror.cjs:878-885), so a doc holding
+ * one can only ever serialize to markdown that is missing it. Callers use this
+ * to refuse the write rather than persist the loss.
+ *
+ * It does NOT answer "will this node survive serialization", and reading it as
+ * though it does is what #1455 is about. A node this build can construct can
+ * still be dropped on the way to markdown, in more than one way.
+ *
+ * It is also narrower than y-prosemirror's own test: this asks whether the NAME
+ * is registered, while `schema.node(name, attrs, children)` additionally throws
+ * on invalid content and on a required attribute with no default. Measured: a
+ * childless `tableRow` is a registered name, so nothing is reported here, and
+ * `yDocToMarkdown` returns `''` for the whole document.
+ *
+ * One case worth naming, because it is the one this guard reads as safe: a spec
+ * registered under a key that is not its `config.type`. ProseMirror builds the node (its name comes from
+ * `config.type`, so nothing is reported here and the write is allowed) while
+ * BlockNote's own schema — keyed by the registration key — cannot resolve it
+ * and drops it. Measured: `See [[Wiki Link]] for details.` → `See for
+ * details.`, guard silent. That invariant is not gated here; it is asserted at
+ * construction, in `@memry/editor-schema`'s `assertSpecKeysMatchNodeTypes`, so
+ * a mis-keyed spec fails the schema build instead of reaching this function.
+ *
+ * The oracle is the ProseMirror schema itself, not a hand-written list: node
+ * names are not block type names, and a list would miss the ones that never
+ * appear in `blockSchema` (a table expands into `tableRow` / `tableCell` /
+ * `tableHeader` / `tableParagraph`) — flagging those would strand every note
+ * with a table. Reads only; never mutates `doc`.
+ */
+export function findUnrepresentableNodes(doc: Y.Doc, fragmentName = CRDT_FRAGMENT_NAME): string[] {
+  try {
+    const known = getEditor().editor.pmSchema.nodes
+    const unknown = new Set<string>()
+    const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
+      for (const child of node.toArray()) {
+        const el = child as Y.XmlElement
+        // Y.XmlText carries no nodeName — its runs are marks, and the schema
+        // holds every mark both processes use.
+        if (typeof el.nodeName !== 'string') continue
+        if (!(el.nodeName in known)) unknown.add(el.nodeName)
+        visit(el)
+      }
+    }
+    visit(doc.getXmlFragment(fragmentName))
+    return [...unknown]
+  } catch (err) {
+    // A schema this broken also fails `yDocToMarkdown`, whose null return keeps
+    // the file anyway. Reporting "nothing unknown" here can't cause a write.
+    log.error('Unrepresentable-node scan failed', err)
+    return []
   }
 }
 
@@ -375,20 +416,144 @@ async function parseContentWithColorMarkers(
     buffer = []
   }
 
+  const fence = createFenceTracker()
+
   for (const line of text.split('\n')) {
-    if (BLOCK_COLORS_LINE_REGEX.test(line.trim())) {
-      const colors = parseBlockColorsMarker(line.trim())
+    const trimmed = line.trim()
+    // A marker inside a code fence is the author's text, not a marker.
+    const insideFence = fence.consume(line)
+
+    // Deliberately NOT fence-guarded: this branch predates custom-block parsing
+    // and guarding it would drop a colour marker that follows a fence this
+    // tracker read differently, which is data loss on a path #1432 never
+    // touched. The renderer's twin (markdown-utils.ts) is unguarded too.
+    if (BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
+      const colors = parseBlockColorsMarker(trimmed)
       if (colors) {
         await flushBuffer()
         pendingColors = colors
         continue
       }
     }
+
+    const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
+    if (marker) {
+      await flushBuffer()
+      pendingColors = null
+      blocks.push(marker)
+      continue
+    }
+
     buffer.push(line)
   }
   await flushBuffer()
 
   return blocks
+}
+
+/**
+ * CommonMark fence tracking, not a parity toggle.
+ *
+ * A boolean flipped by /^(?:```|~~~)/ is wrong in the way that matters here: it
+ * tracks neither the fence character nor its length, so a ```` ```` ```` block
+ * quoting an inner ``` — the shape of any note that documents this very marker
+ * format — reads as closed halfway through. The example marker inside it then
+ * parses as a real block and write-back rewrites the file around it.
+ *
+ * A fence opens with 3+ of ` or ~ (up to 3 leading spaces) and closes only on
+ * the SAME character, at least as long, with nothing after it.
+ */
+function createFenceTracker(): { consume: (line: string) => boolean } {
+  let open: { char: string; length: number } | null = null
+
+  return {
+    /** True when `line` is inside a fence — the opening/closing lines included. */
+    consume: (line) => {
+      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
+      if (!match) return open !== null
+
+      const char = match[1][0]
+      const length = match[1].length
+      if (open === null) {
+        // An info string may not contain a backtick (CommonMark 4.5).
+        if (char === '`' && match[2].includes('`')) return false
+        open = { char, length }
+        return true
+      }
+      if (char === open.char && length >= open.length && match[2].trim() === '') {
+        open = null
+      }
+      return true
+    }
+  }
+}
+
+/**
+ * The three custom blocks whose on-disk form is a single marker line.
+ *
+ * Without this, the main process — which is what seeds a note's shared Y.Doc
+ * from the vault file — parses each marker as something else and the block is
+ * gone before the editor ever sees it: `<!-- file:{…} -->` is dropped outright
+ * (an HTML comment BlockNote has no block for), and both `![…](url)` markers
+ * become plain image blocks pointing at a page rather than an image.
+ *
+ * The renderer's own parser does exactly this (`splitByEmbedMarkers` in
+ * markdown-utils.ts); it only ever runs on the non-collaborative path, so this
+ * is the same rule applied where the collaborative path actually parses.
+ *
+ * Callouts deliberately have no case here. Their marker line carries a type and
+ * an optional title that this schema cannot hold — `> [!note]` and `> [!tip]`
+ * are not among the four values `calloutConfig` allows, and a title after the
+ * marker moves onto its own line on the way back out. Parsing them would
+ * rewrite `> [!note]` as `> [!info]` in every Obsidian vault; left alone they
+ * stay quote blocks and their bytes stay untouched.
+ */
+function parseCustomBlockMarkerLine(line: string): Block | null {
+  // Matched exactly the way the renderer matches (markdown-utils.ts): `file` on
+  // the trimmed line, the two image markers on the raw one. Trimming those two
+  // as well would claim a marker indented under a list item, dropping the
+  // nesting the parent preserved — and would make the same file parse to a
+  // different document depending on which process read it.
+  const trimmed = line.trim()
+  if (FILE_BLOCK_LINE_REGEX.test(trimmed)) {
+    const props = parseFileBlockMarker(trimmed)
+    if (props) return { type: 'file', props } as unknown as Block
+  }
+
+  const embed = line.match(EMBED_LINE_REGEX)
+  if (embed) {
+    const videoId = extractYouTubeVideoId(embed[1])
+    // A non-YouTube `![embed](…)` has no video to play; it stays an image.
+    if (videoId) {
+      return { type: 'youtubeEmbed', props: { videoId, videoUrl: embed[1] } } as unknown as Block
+    }
+  }
+
+  const bookmark = line.match(BOOKMARK_LINE_REGEX)
+  if (bookmark) {
+    const url = bookmark[1]
+    // `![bookmark](assets/photo.png)` is someone's image with an unlucky alt
+    // text, not a bookmark card. The embed branch has `extractYouTubeVideoId`
+    // for the same reason; this is its counterpart.
+    const parsed = parseHttpUrl(url)
+    if (parsed) {
+      return {
+        type: 'bookmark',
+        props: { url, domain: parsed.hostname.replace(/^www\./, '') }
+      } as unknown as Block
+    }
+  }
+
+  return null
+}
+
+function parseHttpUrl(url: string): URL | null {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 async function blocksToMarkdownPreserving(

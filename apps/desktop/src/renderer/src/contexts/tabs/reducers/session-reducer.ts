@@ -1,5 +1,6 @@
 import type { TabAction, TabSystemState } from '../types'
 import { createInitialState } from '../helpers'
+import { mergeScrollPanes } from '../scroll-panes'
 import { mergeSettingsPatch } from '@/lib/settings-patch'
 
 type SessionAction = Extract<
@@ -7,10 +8,34 @@ type SessionAction = Extract<
   { type: 'UPDATE_SETTINGS' | 'RESTORE_SESSION' | 'RESET_TO_DEFAULT' | 'SAVE_TAB_STATE' }
 >
 
+/**
+ * Shallow-merge a `viewState` patch over the tab's existing `viewState`.
+ *
+ * `SAVE_TAB_STATE` used to replace `viewState` wholesale, so two independent
+ * writers on the same tab (say a filter control and a scroll-restore hook)
+ * clobbered each other depending on which dispatched last. A key whose incoming
+ * value is `undefined` is a deletion, which is the only way a caller can drop a
+ * key now that writes are merged.
+ */
+function mergeViewState(
+  current: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...current }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) {
+      delete next[key]
+    } else {
+      next[key] = value
+    }
+  }
+  return next
+}
+
 export function sessionReducer(state: TabSystemState, action: SessionAction): TabSystemState {
   switch (action.type) {
     case 'SAVE_TAB_STATE': {
-      const { tabId, groupId, scrollPosition, viewState } = action.payload
+      const { tabId, groupId, scrollPosition, scrollState, scrollPanes, viewState } = action.payload
       const group = state.tabGroups[groupId]
       if (!group) return state
 
@@ -25,7 +50,15 @@ export function sessionReducer(state: TabSystemState, action: SessionAction): Ta
                 ? {
                     ...t,
                     ...(scrollPosition !== undefined && { scrollPosition }),
-                    ...(viewState !== undefined && { viewState })
+                    ...(scrollState !== undefined && { scrollState }),
+                    // A patch, not a replacement: panes are independent writers
+                    // on the same tab, exactly like `viewState`'s keys.
+                    ...(scrollPanes !== undefined && {
+                      scrollPanes: mergeScrollPanes(t.scrollPanes, scrollPanes)
+                    }),
+                    ...(viewState !== undefined && {
+                      viewState: mergeViewState(t.viewState, viewState)
+                    })
                   }
                 : t
             )

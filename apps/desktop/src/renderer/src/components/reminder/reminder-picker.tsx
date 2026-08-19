@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { trackTelemetry } from '@/lib/telemetry'
+import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
 import { useT } from '@memry/i18n/renderer'
 import {
   type ReminderPreset,
@@ -26,7 +28,13 @@ export interface ManagedReminder {
 }
 
 export interface ReminderPickerProps {
-  onSelect: (date: Date, title?: string, note?: string) => void
+  /**
+   * Called with the chosen time and the optional note typed into the picker.
+   * There is deliberately no third `title` argument: the picker never collected
+   * one, so a middle parameter that was always `undefined` only ever bound a
+   * consumer's note variable to nothing.
+   */
+  onSelect: (date: Date, note?: string) => void
   presetType?: 'standard' | 'journal'
   trigger?: React.ReactNode
   size?: 'sm' | 'md' | 'lg'
@@ -41,6 +49,16 @@ export interface ReminderPickerProps {
   onEdit?: (id: string, date: Date, note?: string) => void
   /** Delete an existing reminder by id. Required for the delete affordance. */
   onDelete?: (id: string) => void
+  /**
+   * Surface this picker was opened from. Supplying it turns on `reminder_created`
+   * / `reminder_deleted` telemetry; leaving it out keeps the picker silent.
+   *
+   * The picker is the one place that knows whether a reminder time came from a
+   * relative preset or from the custom date & time pane, so it is also where the
+   * event is emitted — see components/reminder/reminder-picker.tsx in
+   * apps/docs/src/architecture/observability.md.
+   */
+  telemetrySurface?: TelemetrySurface
 }
 
 type PickerMode = 'presets' | 'custom' | 'edit'
@@ -65,7 +83,8 @@ export function ReminderPicker({
   className,
   reminders,
   onEdit,
-  onDelete
+  onDelete,
+  telemetrySurface
 }: ReminderPickerProps): React.ReactElement {
   const { t: tPhaseF } = useT('inbox')
   const {
@@ -89,9 +108,25 @@ export function ReminderPicker({
     return date
   }
 
+  /**
+   * Nothing derived from the reminder itself ships: not its note, not its title,
+   * not the target's id or name, not the time it is set for. `presetId` is one of
+   * the fixed ids in reminder-presets.ts, so the dimension stays a bounded enum.
+   */
+  const trackReminderCreated = (origin: 'preset' | 'custom', presetId?: string): void => {
+    if (!telemetrySurface) return
+    void trackTelemetry('reminder_created', {
+      surface: telemetrySurface,
+      action: 'created',
+      source: origin,
+      dimensions: presetId ? { value: presetId } : undefined
+    })
+  }
+
   const handlePresetSelect = (preset: ReminderPreset): void => {
     const date = preset.getDate()
-    onSelect(date, undefined, note || undefined)
+    onSelect(date, note || undefined)
+    trackReminderCreated('preset', preset.id)
     setOpen(false)
     resetState()
   }
@@ -100,7 +135,8 @@ export function ReminderPicker({
     const date = buildSelectedDate()
     if (!date) return
 
-    onSelect(date, undefined, note || undefined)
+    onSelect(date, note || undefined)
+    trackReminderCreated('custom')
     setOpen(false)
     resetState()
   }
@@ -173,7 +209,17 @@ export function ReminderPicker({
 
       <Picker.Content className="w-80" align="start">
         {mode === 'presets' ? (
-          <>
+          // The presets, the optional note and the managed-reminder list share a
+          // single scrolling body. `Picker.Content` caps its height and clips its
+          // overflow, and only an item that can shrink absorbs that cap: with
+          // `Picker.List` the sole shrinkable sibling it collapsed to nothing and
+          // the two trailing blocks were clipped anyway, taking the per-reminder
+          // edit and delete buttons with them. `Picker.List` keeps its own
+          // overflow rule but never uses it here — as a block child of this
+          // scroller it lays out at its content height. `overflow-x-hidden` stops
+          // the separators' `-mx-1` full-bleed from turning the vertical
+          // scroll container into a horizontal one as well.
+          <div className="min-h-0 overflow-y-auto overflow-x-hidden">
             <Picker.List>
               <Picker.Section label={tPhaseF('phaseF.componentsReminderReminderPicker.remindMe')}>
                 {presets.map((preset) => (
@@ -255,7 +301,15 @@ export function ReminderPicker({
                           aria-label={tPhaseF(
                             'phaseF.componentsReminderReminderPicker.deleteReminder'
                           )}
-                          onClick={() => onDelete(reminder.id)}
+                          onClick={() => {
+                            onDelete(reminder.id)
+                            if (telemetrySurface) {
+                              void trackTelemetry('reminder_deleted', {
+                                surface: telemetrySurface,
+                                action: 'deleted'
+                              })
+                            }
+                          }}
                           className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
                         >
                           <Trash2 className="size-3.5" />
@@ -266,72 +320,70 @@ export function ReminderPicker({
                 </div>
               </>
             )}
-          </>
+          </div>
         ) : (
-          <div className="p-2">
-            <button
-              type="button"
-              onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
-              className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ChevronRight className="h-3 w-3 rotate-180" />
+          // The confirm button lives in a pinned footer so the height cap on
+          // `Picker.Content` can only ever eat into the scrolling body above it.
+          <>
+            <div className="min-h-0 overflow-y-auto p-2">
+              <button
+                type="button"
+                onClick={() => (mode === 'edit' ? resetState() : setMode('presets'))}
+                className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className="h-3 w-3 rotate-180" />
 
-              {mode === 'edit'
-                ? tPhaseF('phaseF.componentsReminderReminderPicker.editReminder')
-                : tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
-            </button>
+                {mode === 'edit'
+                  ? tPhaseF('phaseF.componentsReminderReminderPicker.editReminder')
+                  : tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
+              </button>
 
-            <DatePickerCalendar
-              selected={selectedDate}
-              onSelect={(d) => setSelectedDate(d)}
-              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-              className="rounded-md border p-2"
-            />
+              <DatePickerCalendar
+                selected={selectedDate}
+                onSelect={(d) => setSelectedDate(d)}
+                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                className="rounded-md border p-2"
+              />
 
-            <div className="mt-3 space-y-3 px-1">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
-                  <Clock className="h-4 w-4" />
+              <div className="mt-3 space-y-3 px-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
+                    <Clock className="h-4 w-4" />
 
-                  {tPhaseF('phaseF.componentsReminderReminderPicker.time')}
-                </Label>
-                <Input
-                  id="reminder-time"
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="h-8 w-28"
-                />
-              </div>
-
-              {shouldShowNote && (
-                <div>
-                  <Label htmlFor="reminder-note" className="text-sm">
-                    {tPhaseF('phaseF.componentsReminderReminderPicker.noteOptional')}
+                    {tPhaseF('phaseF.componentsReminderReminderPicker.time')}
                   </Label>
-                  <Textarea
-                    id="reminder-note"
-                    placeholder={tPhaseF(
-                      'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
-                    )}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="mt-1.5 h-16 resize-none text-sm"
+                  <Input
+                    id="reminder-time"
+                    type="time"
+                    value={selectedTime}
+                    onChange={(e) => setSelectedTime(e.target.value)}
+                    className="h-8 w-28"
                   />
                 </div>
-              )}
 
+                {shouldShowNote && (
+                  <div>
+                    <Label htmlFor="reminder-note" className="text-sm">
+                      {tPhaseF('phaseF.componentsReminderReminderPicker.noteOptional')}
+                    </Label>
+                    <Textarea
+                      id="reminder-note"
+                      placeholder={tPhaseF(
+                        'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
+                      )}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      className="mt-1.5 h-16 resize-none text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Picker.Footer className="space-y-2 p-2">
               {selectedDate && (
                 <div className="text-xs text-muted-foreground">
-                  {formatReminderDate(
-                    (() => {
-                      const [hours, minutes] = selectedTime.split(':').map(Number)
-                      const date = new Date(selectedDate)
-                      date.setHours(hours, minutes, 0, 0)
-                      return date
-                    })(),
-                    clockFormat
-                  )}
+                  {formatReminderDate(buildSelectedDate() ?? selectedDate, clockFormat)}
                 </div>
               )}
 
@@ -344,11 +396,11 @@ export function ReminderPicker({
                 {mode === 'edit'
                   ? tPhaseF('phaseF.componentsReminderReminderPicker.save')
                   : isLoading
-                    ? 'Setting...'
-                    : 'Set Reminder'}
+                    ? tPhaseF('phaseF.componentsReminderReminderPicker.setting')
+                    : tPhaseF('phaseF.componentsReminderReminderPicker.setReminder')}
               </Button>
-            </div>
-          </div>
+            </Picker.Footer>
+          </>
         )}
       </Picker.Content>
     </Picker>

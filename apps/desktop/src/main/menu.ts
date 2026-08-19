@@ -85,6 +85,11 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         }
       : { role: 'about', label: t('help.about') }
 
+  // Lives in the app menu on macOS and in Help elsewhere, next to About in both —
+  // the platform-native home for it. The renderer runs the check so the result
+  // reuses the in-app toast/prompt surfaces instead of a native dialog.
+  const checkForUpdatesItem = cmd('app.checkForUpdates', t('app.checkForUpdates'))
+
   const template: MenuItemConstructorOptions[] = [
     ...(isMac
       ? [
@@ -92,6 +97,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
             label: 'MemryNote',
             submenu: [
               { role: 'about' as const, label: t('help.about') },
+              checkForUpdatesItem,
               { type: 'separator' as const },
               cmd('app.preferences', t('app.preferences')),
               { type: 'separator' as const },
@@ -207,6 +213,9 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         cmd('format.heading1', t('format.heading1')),
         cmd('format.heading2', t('format.heading2')),
         cmd('format.heading3', t('format.heading3')),
+        cmd('format.heading4', t('format.heading4')),
+        cmd('format.heading5', t('format.heading5')),
+        cmd('format.heading6', t('format.heading6')),
         cmd('format.body', t('format.body')),
         { type: 'separator' },
         cmd('format.bold', t('format.bold')),
@@ -260,7 +269,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
       role: 'help',
       label: t('help.label'),
       submenu: [
-        ...(isMac ? [] : [aboutItem, { type: 'separator' as const }]),
+        ...(isMac ? [] : [aboutItem, checkForUpdatesItem, { type: 'separator' as const }]),
         // F1 registers as a real accelerator (default registerAccelerator: true):
         // the action lives here in the main process, so unlike the renderer-owned
         // cmd() items there is no editor keydown to swallow. Opening the docs is

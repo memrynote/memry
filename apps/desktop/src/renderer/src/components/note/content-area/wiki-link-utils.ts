@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Block } from '@blocknote/core'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
 import type { HeadingInfo } from './types'
-import { createWikiLinkInlineContent } from './wiki-link'
+import { createWikiLinkInlineContent, hasWikiLinkMarks } from './wiki-link'
 
 // =============================================================================
 // HEADING EXTRACTION
@@ -14,7 +15,7 @@ export function extractHeadings(blocks: Block[]): HeadingInfo[] {
 
   function processBlock(block: Block): void {
     if (block.type === 'heading') {
-      const level = (block.props?.level as 1 | 2 | 3) || 1
+      const level = (block.props?.level as 1 | 2 | 3 | 4 | 5 | 6) || 1
       const text = Array.isArray(block.content)
         ? block.content
             .map((item) => {
@@ -59,6 +60,32 @@ export function splitWikiLinkQuery(query: string): { search: string; alias: stri
   }
 }
 
+export interface WikiLinkQueryParts {
+  /** The whole target as typed, `#` and all — what the note list searches on. */
+  search: string
+  /** The note half of `note#heading`; equal to `search` when no `#` was typed. */
+  note: string
+  /** The heading half: `null` when no `#` was typed, `''` immediately after one. */
+  heading: string | null
+  alias: string
+}
+
+/**
+ * `Note#Heading|alias` → its three parts.
+ *
+ * `#` binds tighter than `|` because that is the order the grammar reads in,
+ * and `search` is kept alongside the split so the caller can fall back to it.
+ * That fallback is not optional: `#` is legal in a note title, so `Sprint #4`
+ * splits into note `Sprint` + heading `4`, and only an EXACT match on the note
+ * half may switch the menu into heading mode — everything else keeps searching
+ * titles for the raw string, exactly as before.
+ */
+export function parseWikiLinkQuery(query: string): WikiLinkQueryParts {
+  const { search, alias } = splitWikiLinkQuery(query)
+  const { note, heading } = splitWikiTarget(search)
+  return { search, note, heading, alias }
+}
+
 function createStyledText(
   text: string,
   styles: Record<string, boolean | string>
@@ -76,6 +103,20 @@ export function splitTextWithWikiLinks(
   let lastIndex = 0
   let match: RegExpExecArray | null
 
+  // #1439, the narrowing. A marked run promotes ONLY when the link is the whole
+  // of it. `**[[A]]**` becomes a node carrying `bold`, which serializes back to
+  // `**[[A]]**`; `~~Cancelled: [[A]]~~` does not promote at all and stays
+  // literal text inside the strike run.
+  //
+  // Splitting a marked run is what makes the bytes unrepresentable: the node
+  // emits its own `<s>`/`<strong>` wrapper, and BlockNote merges adjacent
+  // identical marks across text runs but not across an element boundary. The
+  // result is `~~Cancelled: ~~~~[[A]]~~`, which GFM cannot parse (a closing `~~`
+  // may not follow whitespace) and which grows by four characters on every pass.
+  // The cost of declining is one missing link chip inside a marked sentence;
+  // the file, which is the thing the user owns, is left exactly as written.
+  const wholeRunOnly = hasWikiLinkMarks(styles)
+
   while ((match = pattern.exec(text)) !== null) {
     const [full, rawTarget, rawAlias] = match
     const target = rawTarget?.trim()
@@ -85,6 +126,12 @@ export function splitTextWithWikiLinks(
       continue
     }
 
+    // `full.length === text.length` alone implies the match starts at 0, so
+    // that is the whole test: does this link cover the entire styled run?
+    if (wholeRunOnly && full.length !== text.length) {
+      return { segments: [createStyledText(text, styles ?? {})], didChange: false }
+    }
+
     if (match.index > lastIndex) {
       const before = text.slice(lastIndex, match.index)
       if (before) {
@@ -92,7 +139,11 @@ export function splitTextWithWikiLinks(
       }
     }
 
-    segments.push(createWikiLinkInlineContent(target, alias))
+    // The run's marks go WITH the link. A custom inline node has no `styles`
+    // field in BlockNote's data model, so before #1439 they stopped here: the
+    // surrounding text segments kept them, the link silently did not, and
+    // `**[[A]]**` became `[[A]]` on disk the first time the note was opened.
+    segments.push(createWikiLinkInlineContent(target, alias, styles))
     didChange = true
     lastIndex = match.index + full.length
   }
@@ -203,7 +254,25 @@ export function normalizeTableContent(tableContent: any): { content: any; didCha
   return { content: { ...tableContent, rows }, didChange: true }
 }
 
-export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
+export interface NormalizeWikiLinksOptions {
+  /**
+   * The block holding the caret, left alone.
+   *
+   * Promotion is what makes a wiki link a chip, and normally that is exactly
+   * right. It is wrong for the one block the user is editing IN: un-promoting a
+   * chip (`wiki-link-edit-plugin.ts`) leaves real `[[…]]` text under the caret,
+   * which this would promote straight back on the next keystroke — through a
+   * whole-document `replaceBlocks`, under a caret, mid-word. Skipping the whole
+   * block is coarser than skipping the run, and enough: leaving the block
+   * promotes it, and so does the plugin the moment the caret leaves the run.
+   */
+  skipBlockId?: string
+}
+
+export function normalizeWikiLinks(
+  blocks: Block[],
+  options?: NormalizeWikiLinksOptions
+): { blocks: Block[]; didChange: boolean } {
   const blockStr = JSON.stringify(blocks)
   if (!blockStr.includes('[[')) {
     return { blocks, didChange: false }
@@ -219,7 +288,9 @@ export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChang
     let blockChanged = false
     let nextBlock: Block = block
 
-    if (block.content) {
+    // Children are still walked: a sibling block nested under the caret's block
+    // is a different block, and its links promote as usual.
+    if (block.content && block.id !== options?.skipBlockId) {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
         const normalized = normalizeInlineContent(block.content as any)
         if (normalized.didChange) {
@@ -236,7 +307,7 @@ export function normalizeWikiLinks(blocks: Block[]): { blocks: Block[]; didChang
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeWikiLinks(block.children as Block[])
+      const normalizedChildren = normalizeWikiLinks(block.children as Block[], options)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

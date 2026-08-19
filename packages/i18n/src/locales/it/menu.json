@@ -2,6 +2,7 @@
   "app": {
     "quit": "Esci",
     "preferences": "Impostazioni…",
+    "checkForUpdates": "Cerca aggiornamenti…",
     "exit": "Esci",
     "hide": "Nascondi MemryNote",
     "hideOthers": "Nascondi altre",
@@ -58,6 +59,9 @@
     "heading1": "Titolo 1",
     "heading2": "Titolo 2",
     "heading3": "Titolo 3",
+    "heading4": "Titolo 4",
+    "heading5": "Titolo 5",
+    "heading6": "Titolo 6",
     "highlight": "Evidenzia",
     "italic": "Corsivo",
     "label": "Formato",

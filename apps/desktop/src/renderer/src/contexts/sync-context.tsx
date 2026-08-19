@@ -364,7 +364,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
           toast.error(t('sync.fileTooLarge'), { duration: 10000 })
         }
         if (event.errorCategory === 'note_too_large') {
-          toast.error(t('sync.noteTooLarge'), { duration: 10000 })
+          // An older main process sends no title; the unnamed message is the
+          // fallback, not the default.
+          toast.error(
+            event.errorNoteTitle
+              ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
+              : t('sync.noteTooLarge'),
+            { duration: 10000 }
+          )
         }
       })
     )

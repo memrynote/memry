@@ -12,7 +12,7 @@
  * `react-pdf/dist/Document.js` -> `loadDocument`), and `Page` holds a canvas
  * for as long as it stays mounted.
  */
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -20,10 +20,18 @@ import { PdfViewer } from './pdf-viewer'
 
 const NUM_PAGES = 400
 const RAIL_VIEWPORT_HEIGHT = 600
+/** Width of the pane the page renders into, minus its `p-4` gutter. */
+const PAGE_VIEW_WIDTH = 1224
+const PAGE_VIEW_PADDING = 32
+/** US Letter portrait at scale 1, in PDF points. */
+const LETTER_WIDTH = 612
+const LETTER_HEIGHT = 792
 
 const pdfMocks = vi.hoisted(() => ({
   loadedDocuments: [] as { file: string; destroyed: boolean }[],
-  liveCanvases: new Set<{ page: number; kind: 'main' | 'thumbnail' }>()
+  liveCanvases: new Set<{ page: number; kind: 'main' | 'thumbnail' }>(),
+  pageWidth: 612,
+  pageHeight: 792
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -50,7 +58,12 @@ vi.mock('react-pdf', async () => {
       children?: React.ReactNode
       className?: string
       loading?: React.ReactNode
-      onLoadSuccess?: (result: { numPages: number }) => void
+      onLoadSuccess?: (result: {
+        numPages: number
+        getPage: (page: number) => Promise<{
+          getViewport: (params: { scale: number }) => { width: number; height: number }
+        }>
+      }) => void
     }) => {
       const [ready, setReady] = useState(false)
 
@@ -58,7 +71,16 @@ vi.mock('react-pdf', async () => {
         const proxy = { file, destroyed: false }
         pdfMocks.loadedDocuments.push(proxy)
         setReady(true)
-        onLoadSuccess?.({ numPages: NUM_PAGES })
+        onLoadSuccess?.({
+          numPages: NUM_PAGES,
+          getPage: () =>
+            Promise.resolve({
+              getViewport: ({ scale }: { scale: number }) => ({
+                width: pdfMocks.pageWidth * scale,
+                height: pdfMocks.pageHeight * scale
+              })
+            })
+        })
         return () => {
           proxy.destroyed = true
         }
@@ -70,7 +92,15 @@ vi.mock('react-pdf', async () => {
         </div>
       )
     },
-    Page: ({ pageNumber, width }: { pageNumber: number; width?: number }) => {
+    Page: ({
+      pageNumber,
+      width,
+      scale
+    }: {
+      pageNumber: number
+      width?: number
+      scale?: number
+    }) => {
       useEffect(() => {
         const canvas = {
           page: pageNumber,
@@ -86,6 +116,7 @@ vi.mock('react-pdf', async () => {
         <div
           data-testid={width ? 'pdf-thumbnail-canvas' : 'pdf-main-canvas'}
           data-page={pageNumber}
+          data-scale={scale}
         >
           page {pageNumber}
         </div>
@@ -118,14 +149,32 @@ const scrollRailTo = (offset: number): void => {
 const rowHeight = (): number =>
   Number.parseFloat(screen.getByTestId('pdf-thumbnail-sizer').style.height) / NUM_PAGES
 
+/** What the viewer should settle on for a page that is `across` points wide. */
+const fitScaleFor = (across: number): number => (PAGE_VIEW_WIDTH - PAGE_VIEW_PADDING) / across
+
+const mainCanvasScale = (): number =>
+  Number(screen.getByTestId('pdf-main-canvas').getAttribute('data-scale'))
+
 describe('PdfViewer document loading and thumbnail windowing', () => {
   let scrollToSpy: ReturnType<typeof vi.fn>
   let originalScrollTo: unknown
   let originalOffsetHeight: PropertyDescriptor | undefined
+  let originalClientWidth: PropertyDescriptor | undefined
 
   beforeEach(() => {
     pdfMocks.loadedDocuments.length = 0
     pdfMocks.liveCanvases.clear()
+    pdfMocks.pageWidth = LETTER_WIDTH
+    pdfMocks.pageHeight = LETTER_HEIGHT
+
+    originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+    // jsdom lays nothing out, so the pane the page fits into has no width.
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.dataset.testid === 'pdf-page-view' ? PAGE_VIEW_WIDTH : 0
+      }
+    })
 
     originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
     // @tanstack/react-virtual sizes its viewport from `offsetHeight`, which
@@ -147,6 +196,11 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
       Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight)
     } else {
       delete (HTMLElement.prototype as unknown as Record<string, unknown>).offsetHeight
+    }
+    if (originalClientWidth) {
+      Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth)
+    } else {
+      delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth
     }
     ;(Element.prototype as unknown as { scrollTo?: unknown }).scrollTo = originalScrollTo
   })
@@ -215,6 +269,51 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     // Applying the rail scroll the viewer asked for brings page 2 back.
     scrollRailTo(requestedTop)
     expect(renderedPages()).toContain(2)
+  })
+
+  it('opens fitted to the pane instead of at a fixed 100%', async () => {
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+    expect(mainCanvasScale()).toBeGreaterThan(1)
+  })
+
+  it('fits a landscape page across its own width, not a Letter assumption', async () => {
+    pdfMocks.pageWidth = LETTER_HEIGHT
+    pdfMocks.pageHeight = LETTER_WIDTH
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_HEIGHT), 3))
+  })
+
+  it('stops auto-fitting once the user has chosen a zoom', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomOut'))
+    const chosen = mainCanvasScale()
+    expect(chosen).toBeCloseTo(fitScaleFor(LETTER_WIDTH) - 0.25, 3)
+
+    // Rotating re-derives the fit; the zoom the user picked must survive it.
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.rotate'))
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(chosen, 3))
+  })
+
+  it('refits on demand after a manual zoom', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomIn'))
+    expect(mainCanvasScale()).not.toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.fitToWidth'))
+    expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
   })
 
   it('releases the document proxy and every page canvas on unmount', async () => {

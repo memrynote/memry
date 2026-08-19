@@ -12,11 +12,103 @@ Type `[[` and start typing the title. An autocomplete dropdown appears with matc
 - **No match**: pressing <kbd>Enter</kbd> creates a new note with that title and links it.
 - **Audio file found**: pick **Link** for a normal reference or **Embed** for an inline audio block.
 
+The slash menu's **Link to note** item types the `[[` for you and opens the same dropdown.
+
 The link displays the target's current title, but the underlying reference uses a stable ID — renaming the target doesn't break the link.
 
 ## Following a Link
 
 Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
+
+## Linking to a Heading
+
+A link can name a heading inside its target, the way an Obsidian vault writes it:
+
+- `[[Meeting#Decisions]]` — opens **Meeting** and scrolls to its "Decisions" heading
+- `[[#Decisions]]` — stays in the note you're reading and scrolls to that heading
+- `[[Meeting#Q3#Decisions]]` — a nested heading path; the last part names the heading
+- `[[Meeting#Decisions|the outcome]]` — an alias works exactly as it does elsewhere
+
+You don't have to remember the heading. Once the part before the `#` is a note's title
+**exactly**, typing `#` swaps the dropdown for that note's headings, indented as an outline;
+keep typing to filter them, and pick one to write the whole `[[Note#Heading]]` link. Delete
+the `#` and the note list comes back. If the note has no headings, the dropdown says so —
+memrynote will not add a heading to someone else's note.
+
+Because an exact title is what switches modes, `[[Sprint #` still lists notes: `Sprint` is
+not a note here, so nothing about `[[Sprint #4]]` changes. Block references (`#^`) are never
+offered.
+
+### Adding a heading to a link you already inserted
+
+A finished link is a single chip, so there is nothing to type a `#` into. Press
+<kbd>Backspace</kbd> (or <kbd>←</kbd>) right after one and it opens back up as its plain text
+— `[[Meeting]]`, or `[[Meeting|the outcome]]` — with the cursor at the end of the title and
+the `[[` `]]` dimmed. Type `#` and the heading dropdown appears, exactly as when writing the
+link from scratch. Move the cursor out of the brackets, or click elsewhere, and it becomes a
+chip again.
+
+::: warning Backspace next to a link now opens it instead of deleting it
+This applies to **every** wiki link, not only ones with a heading. To delete a link, press
+<kbd>Backspace</kbd> a second time once it is plain text, or select it and delete. Removing
+the `[[` or `]]` yourself is also allowed — that turns the link back into ordinary prose,
+which is sometimes what you want.
+:::
+
+Heading matching ignores case and surrounding spaces, and the first heading with that text
+wins — the link records the heading's text, not its level or its position. If the heading
+has since been renamed or deleted, the note still opens, at the top.
+
+A note whose title genuinely contains `#` still works: `[[Sprint #4]]` opens the note called
+"Sprint #4" if there is one, and is only read as a heading link when there isn't.
+
+Backlinks and the graph treat `[[Meeting#Decisions]]` as a link to **Meeting** — the heading
+narrows where you land, not what the link points at.
+
+::: warning Block references are not supported
+`[[Meeting#^block-id]]` opens **Meeting** at the top rather than jumping to the block.
+memrynote does not assign persistent block ids, so there is nothing to scroll to.
+:::
+
+::: tip Journal entries
+Clicking a heading link written in a journal entry opens the target note and scrolls to the
+heading as usual. `[[#Heading]]` inside a journal entry does not scroll — the journal uses a
+different editor, and that is tracked with its migration.
+:::
+
+## Formatting a Link
+
+Write the formatting around the link **in markdown** and it is kept, on screen and in the
+vault file:
+
+- `**[[Roadmap]]**` stays bold
+- `*[[Roadmap|the plan]]*` keeps both the alias and the italics
+- strikethrough, inline code, underline and text or highlight colour work the same way
+
+Colour and underline have no markdown syntax, so they are written the way memrynote writes
+every coloured run — as a `<span style="…">` around the link, which Obsidian renders too.
+
+::: warning Formatting applied to an existing link chip is not saved
+Selecting a link chip in the editor and pressing <kbd>⌘</kbd>+<kbd>B</kbd> styles it on
+screen, but the change reaches neither the synced document nor the file — the same is true
+of a link inserted through the `[[` autocomplete inside already-bold text. Formatting is
+carried only when the markdown is written or pasted with the link already inside it, as
+above. Tracked as a known gap.
+:::
+
+::: warning A link inside a formatted sentence stays plain text
+When the formatting covers more than the link — `~~Cancelled: [[Meeting]]~~`, or
+`**See [[Roadmap]] for details**` — the link is left as plain `[[…]]` text rather than
+turned into a clickable chip. Splitting the formatted run around the link produces markdown
+whose delimiters GFM reads as literal characters, so the file is left exactly as written
+instead. Put the formatting on the link alone to get the chip.
+:::
+
+::: warning
+Inline code combined with bold, italic or strikethrough on the same link is displayed and
+written correctly, but reading the file back keeps only the code formatting. This is a
+limitation of the markdown parser and applies to ordinary text the same way.
+:::
 
 ## Image Embeds
 
@@ -100,6 +192,6 @@ If you need to repair broken links, use the inline link menu: it lets you re-tar
 
 ## Power Tip
 
-Wiki link autocomplete also matches on tags and audio files. Typing `[[#topic]]` searches notes that
-carry that tag. (Tags themselves are tracked separately — see
-[Properties & Tags](/user-guide/notes/properties-tags).)
+Wiki link autocomplete matches note titles, including audio and other attached files. It
+does not search tags — `[[#topic]]` is a heading link, not a tag search. Tags are tracked
+separately; see [Properties & Tags](/user-guide/notes/properties-tags).

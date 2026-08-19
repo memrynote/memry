@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { cn } from '@/lib/utils'
 import { useActiveHeading } from '@/hooks/use-active-heading'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
 import { OutlineInfoPanel, type OutlineInfoPanelProps } from '../shared/outline-info-panel'
 
@@ -32,6 +33,12 @@ interface NoteLayoutProps {
   contentWidth?: string
   marqueeZoneRef?: (el: HTMLDivElement | null) => void
   onRailHiddenChange?: (hidden: boolean) => void
+  /**
+   * Set while the page has a heading to jump to (`[[Note#Heading]]`). Scroll
+   * restore keeps saving, but does not re-apply the saved offset on this mount:
+   * the user named a destination, which is the fresher intent.
+   */
+  suppressScrollRestore?: boolean
 }
 
 const EMPTY_HEADINGS: HeadingItem[] = []
@@ -49,7 +56,8 @@ export function NoteLayout({
   sideRail,
   contentWidth,
   marqueeZoneRef,
-  onRailHiddenChange
+  onRailHiddenChange,
+  suppressScrollRestore = false
 }: NoteLayoutProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null)
@@ -57,6 +65,10 @@ export function NoteLayout({
     scrollRef.current = el
     setScrollEl(el)
   }, [])
+  // This div — not the tab wrapper — is what the note and template-editor pages
+  // actually scroll, so tab scroll restore has to attach here.
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({ getScrollElement, restore: !suppressScrollRestore })
   const { activeHeadingId, setActiveHeading } = useActiveHeading({
     headings,
     offset: 120,

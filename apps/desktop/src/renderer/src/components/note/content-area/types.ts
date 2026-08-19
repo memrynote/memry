@@ -18,11 +18,24 @@ export interface HeadingInfo {
   id: string
   /** Heading text content */
   text: string
-  /** Heading level: 1 (H1), 2 (H2), or 3 (H3) */
-  level: 1 | 2 | 3
+  /** Heading level: 1-6 (H1-H6) */
+  level: 1 | 2 | 3 | 4 | 5 | 6
   /** Vertical position in pixels (for outline visualization) */
   position: number
 }
+
+// =============================================================================
+// INLINE TAG TYPES
+// =============================================================================
+
+/**
+ * Where an inline-tag report came from.
+ *
+ * `'load'` — the tag set the editor opened with. It is the baseline later
+ * reports are diffed against; persisting it would rewrite the file on open.
+ * `'edit'` — the user changed the body, so the note's tags follow.
+ */
+export type InlineTagsOrigin = 'load' | 'edit'
 
 // =============================================================================
 // SELECTION TYPES
@@ -138,8 +151,15 @@ export interface ContentAreaProps {
   tagColorMap?: Map<string, string>
   /** Map of tag name to icon (raw emoji or "icon:Name") for inline hash tag display */
   tagIconMap?: Map<string, string>
-  /** Callback when inline #tags change in editor content */
-  onInlineTagsChange?: (tags: string[]) => void
+  /**
+   * Callback when inline #tags change in editor content.
+   *
+   * `origin` says where the report came from: `'load'` is the tag set the note
+   * was OPENED with — a baseline to diff later edits against, never something
+   * to persist — and `'edit'` is a real change the user made. Opening a note
+   * must not modify it (#1454), so only `'edit'` may write.
+   */
+  onInlineTagsChange?: (tags: string[], origin: InlineTagsOrigin) => void
   /** Ref that receives a focusAtEnd function to focus the editor at the end of the document */
   focusAtEndRef?: React.RefObject<(() => void) | null>
   /**

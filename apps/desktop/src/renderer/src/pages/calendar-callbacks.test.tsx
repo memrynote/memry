@@ -367,7 +367,9 @@ vi.mock('@/contexts/day-panel-context', () => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useActiveTab: () => null,
-  useTabActions: () => ({ openTab: mocks.openTab })
+  useTabActions: () => ({ openTab: mocks.openTab }),
+  // Rendered outside a tab: view, anchor and filters fall back to plain state.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/services/calendar-service', () => ({

@@ -363,6 +363,30 @@ describe('WebSocketManager', () => {
       )
       expect(getInstances().length).toBe(0)
     })
+
+    // The empty token read is transient — /auth/refresh lives on the server this
+    // device may currently be unable to reach — so this exit has to re-arm like
+    // every other one. Without it the socket is off for the rest of the session,
+    // and with it go `crdt_updated` and the handleWsConnected catch-up, the only
+    // two routes a body-only remote edit has.
+    it('#then retries once a token is available again', async () => {
+      const getAccessToken = vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue('recovered-token')
+      const deps = createMockDeps({ getAccessToken })
+      const manager = new WebSocketManager(deps)
+      manager.on('error', vi.fn())
+
+      await manager.connect()
+      expect(getInstances().length).toBe(0)
+
+      // First backoff step is 1s + up to 500ms of jitter.
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      expect(getInstances().length).toBe(1)
+      expect(lastWs().options?.headers?.Authorization).toBe('Bearer recovered-token')
+    })
   })
 
   describe('#given connected #when disconnect called', () => {

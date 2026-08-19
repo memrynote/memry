@@ -32,19 +32,29 @@ const RECONCILE_STAT_CONCURRENCY = 8
 function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdown' }>): void {
   const db = getIndexDatabase()
   const existing = getNoteCacheById(db, note.noteId)
+  // Tier 0 of ingest publishes identity only. Its null measurements mean
+  // "not read yet", so they must not be written over a row that already
+  // carries real ones, and no body-derived state can be rebuilt from them.
+  const bodyUnread = note.parsedContent === null
 
   if (existing) {
-    updateNoteCache(db, note.noteId, {
-      path: note.path,
-      title: note.title,
-      emoji: note.emoji,
-      localOnly: note.localOnly,
-      contentHash: note.contentHash,
-      wordCount: note.wordCount,
-      characterCount: note.characterCount,
-      snippet: note.snippet,
-      modifiedAt: note.modifiedAt
-    })
+    updateNoteCache(
+      db,
+      note.noteId,
+      bodyUnread
+        ? { path: note.path, title: note.title, modifiedAt: note.modifiedAt }
+        : {
+            path: note.path,
+            title: note.title,
+            emoji: note.emoji,
+            localOnly: note.localOnly,
+            contentHash: note.contentHash,
+            wordCount: note.wordCount,
+            characterCount: note.characterCount,
+            snippet: note.snippet,
+            modifiedAt: note.modifiedAt
+          }
+    )
   } else {
     insertNoteCache(db, {
       id: note.noteId,
@@ -53,6 +63,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       emoji: note.emoji,
       localOnly: note.localOnly,
       fileType: 'markdown',
+      fileSize: note.fileSize ?? null,
       contentHash: note.contentHash,
       wordCount: note.wordCount,
       characterCount: note.characterCount,
@@ -62,6 +73,8 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       modifiedAt: note.modifiedAt
     })
   }
+
+  if (bodyUnread) return
 
   setNoteTags(db, note.noteId, note.tags)
   setNoteProperties(db, note.noteId, note.properties, (name, value) =>

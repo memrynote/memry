@@ -6,12 +6,23 @@
 import { useMemo } from 'react'
 import { useTabs } from '@/contexts/tabs'
 import { isLastHomeTab } from '@/contexts/tabs/helpers'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shortcuts-base'
 
 /**
  * Hook providing all tab-related keyboard shortcuts
+ *
+ * Chords listed in Settings → Shortcuts are read from the binding store so a
+ * rebind applies here; the rest (⌘T, ⌘⇧W, ⌘⇧P, ⌘⇧D, ⌘\) are fixed.
  */
 export const useTabKeyboardShortcuts = (): void => {
+  const closeTabBinding = useShortcutBinding('tabs.closeTab')
+  const reopenTabBinding = useShortcutBinding('tabs.reopenTab')
+  const nextTabBinding = useShortcutBinding('tabs.nextTab')
+  const prevTabBinding = useShortcutBinding('tabs.prevTab')
+  const navBackBinding = useShortcutBinding('tabs.navBack')
+  const navForwardBinding = useShortcutBinding('tabs.navForward')
+
   const {
     state,
     dispatch,
@@ -46,8 +57,8 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Close tab (⌘W) — closes the window only once Home is all that is left
       {
-        key: 'w',
-        modifiers: { meta: true },
+        key: closeTabBinding.key,
+        modifiers: closeTabBinding.modifiers,
         action: () => {
           if (!activeTab) return
 
@@ -78,8 +89,8 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Reopen closed tab (⌘⇧T) — like Chrome
       {
-        key: 't',
-        modifiers: { meta: true, shift: true },
+        key: reopenTabBinding.key,
+        modifiers: reopenTabBinding.modifiers,
         action: () => {
           reopenClosedTab()
         },
@@ -92,8 +103,8 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Next tab (Ctrl+Tab)
       {
-        key: 'Tab',
-        modifiers: { ctrl: true },
+        key: nextTabBinding.key,
+        modifiers: nextTabBinding.modifiers,
         action: () => {
           dispatch({
             type: 'GO_TO_NEXT_TAB',
@@ -105,8 +116,8 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Previous tab (Ctrl+Shift+Tab)
       {
-        key: 'Tab',
-        modifiers: { ctrl: true, shift: true },
+        key: prevTabBinding.key,
+        modifiers: prevTabBinding.modifiers,
         action: () => {
           dispatch({
             type: 'GO_TO_PREVIOUS_TAB',
@@ -118,16 +129,16 @@ export const useTabKeyboardShortcuts = (): void => {
 
       // Navigate back in tab history (⌘[)
       {
-        key: '[',
-        modifiers: { meta: true },
+        key: navBackBinding.key,
+        modifiers: navBackBinding.modifiers,
         action: () => navBack(state.activeGroupId),
         description: 'Navigate back'
       },
 
       // Navigate forward in tab history (⌘])
       {
-        key: ']',
-        modifiers: { meta: true },
+        key: navForwardBinding.key,
+        modifiers: navForwardBinding.modifiers,
         action: () => navForward(state.activeGroupId),
         description: 'Navigate forward'
       },
@@ -220,6 +231,12 @@ export const useTabKeyboardShortcuts = (): void => {
       }
     ]
   }, [
+    closeTabBinding,
+    reopenTabBinding,
+    nextTabBinding,
+    prevTabBinding,
+    navBackBinding,
+    navForwardBinding,
     state.tabGroups,
     state.activeGroupId,
     dispatch,

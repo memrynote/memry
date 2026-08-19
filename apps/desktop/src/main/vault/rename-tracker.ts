@@ -37,6 +37,11 @@ interface PendingDelete {
   id: string
   /** Content hash of the deleted file (from the cache row) */
   contentHash: string
+  /**
+   * Size + mtime of the deleted file, for a row whose body has not been read
+   * yet and therefore has no cached content hash. Null when a hash exists.
+   */
+  statKey: string | null
   /** Old file path (relative to vault) */
   path: string
   /** Timestamp when delete was detected */
@@ -58,6 +63,14 @@ interface PendingDelete {
  * the oldest pending delete matches first.
  */
 const pendingDeletes = new Map<string, PendingDelete[]>()
+
+/**
+ * The same pending deletes, keyed by `statKey`, for rows the tier-1 backfill
+ * has not reached yet. Those carry no content hash, and the new file cannot be
+ * hashed for free either — but a rename changes neither size nor mtime, and
+ * both are already on the cache row and in the `add` event's `stat`.
+ */
+const pendingDeletesByStat = new Map<string, PendingDelete[]>()
 
 let onRenameSyncCallback: ((id: string) => void) | null = null
 
@@ -87,12 +100,39 @@ function emitNoteRenamed(event: NoteRenamedEvent): void {
 // Public API
 // ============================================================================
 
-function removePending(entry: PendingDelete): void {
-  const bucket = pendingDeletes.get(entry.contentHash)
+function removeFromIndex(
+  index: Map<string, PendingDelete[]>,
+  key: string,
+  entry: PendingDelete
+): void {
+  const bucket = index.get(key)
   if (!bucket) return
-  const index = bucket.indexOf(entry)
-  if (index !== -1) bucket.splice(index, 1)
-  if (bucket.length === 0) pendingDeletes.delete(entry.contentHash)
+  const position = bucket.indexOf(entry)
+  if (position !== -1) bucket.splice(position, 1)
+  if (bucket.length === 0) index.delete(key)
+}
+
+function removePending(entry: PendingDelete): void {
+  removeFromIndex(pendingDeletes, entry.contentHash, entry)
+  if (entry.statKey !== null) removeFromIndex(pendingDeletesByStat, entry.statKey, entry)
+}
+
+function addToIndex(index: Map<string, PendingDelete[]>, key: string, entry: PendingDelete): void {
+  const bucket = index.get(key)
+  if (bucket) {
+    bucket.push(entry)
+  } else {
+    index.set(key, [entry])
+  }
+}
+
+function takeMatch(index: Map<string, PendingDelete[]>, key: string): PendingDelete | null {
+  const bucket = index.get(key)
+  if (!bucket || bucket.length === 0) return null
+  // FIFO: oldest pending delete wins.
+  const pending = bucket[0]
+  removePending(pending)
+  return pending
 }
 
 /**
@@ -103,12 +143,15 @@ function removePending(entry: PendingDelete): void {
  * @param contentHash - Content hash from the cache row
  * @param relativePath - Relative path of the deleted file
  * @param onRealDelete - Callback to execute if this is a real delete
+ * @param statKey - Size + mtime of the deleted file, for a row that has no
+ *   cached content hash yet. Ignored when a hash is available.
  */
 export function trackPendingDelete(
   id: string,
   contentHash: string,
   relativePath: string,
-  onRealDelete: () => Promise<void>
+  onRealDelete: () => Promise<void>,
+  statKey?: string | null
 ): void {
   // Clear any existing pending for this id (shouldn't happen, but be safe)
   clearPendingDelete(id)
@@ -118,6 +161,7 @@ export function trackPendingDelete(
   const entry: PendingDelete = {
     id,
     contentHash,
+    statKey: statKey ?? null,
     path: relativePath,
     timestamp: Date.now(),
     timeout: setTimeout(() => {
@@ -129,12 +173,8 @@ export function trackPendingDelete(
     onRealDelete
   }
 
-  const bucket = pendingDeletes.get(contentHash)
-  if (bucket) {
-    bucket.push(entry)
-  } else {
-    pendingDeletes.set(contentHash, [entry])
-  }
+  addToIndex(pendingDeletes, contentHash, entry)
+  if (entry.statKey !== null) addToIndex(pendingDeletesByStat, entry.statKey, entry)
 }
 
 /**
@@ -143,24 +183,26 @@ export function trackPendingDelete(
  * match is found, the pending delete is cleared and the caller is responsible
  * for replaying the rename through projection-safe write paths.
  *
- * @param contentHash - Content hash of the newly added file
+ * @param contentHash - Content hash of the newly added file, or null when it
+ *   was not worth computing (no delete was in flight, so no rename is possible)
  * @param newPath - Relative path of the new file
+ * @param statKey - Size + mtime of the new file, which matches a pending delete
+ *   whose body was never read and therefore has no hash to compare
  * @returns The matched note id and old path if this was a rename, null if new
  */
 export function checkForRename(
-  contentHash: string,
-  newPath: string
+  contentHash: string | null,
+  newPath: string,
+  statKey?: string | null
 ): { id: string; oldPath: string } | null {
-  const bucket = pendingDeletes.get(contentHash)
+  const pending =
+    (contentHash !== null ? takeMatch(pendingDeletes, contentHash) : null) ??
+    (statKey ? takeMatch(pendingDeletesByStat, statKey) : null)
 
-  if (!bucket || bucket.length === 0) {
+  if (!pending) {
     // No pending delete with this content - it's a new file
     return null
   }
-
-  // Found a match! This is a rename. FIFO: oldest pending delete wins.
-  const pending = bucket.shift() as PendingDelete
-  if (bucket.length === 0) pendingDeletes.delete(contentHash)
 
   logger.info(`Rename detected: ${pending.path} -> ${newPath}`)
   clearTimeout(pending.timeout)
@@ -196,6 +238,22 @@ export function clearAllPendingDeletes(): void {
     }
   }
   pendingDeletes.clear()
+  pendingDeletesByStat.clear()
+}
+
+/**
+ * Rename key for a file whose body has not been read. A rename changes neither
+ * size nor mtime, so the pair identifies the same bytes at a new path without
+ * opening the file.
+ */
+export function buildStatRenameKey(
+  fileSize: number | null,
+  modifiedAt: string | null
+): string | null {
+  if (fileSize === null || modifiedAt === null) return null
+  const modifiedMs = new Date(modifiedAt).getTime()
+  if (Number.isNaN(modifiedMs)) return null
+  return `${fileSize}:${modifiedMs}`
 }
 
 /**

@@ -2,6 +2,7 @@
   "app": {
     "quit": "Çık",
     "preferences": "Ayarlar…",
+    "checkForUpdates": "Güncellemeleri Denetle…",
     "exit": "Çıkış",
     "hide": "MemryNote'u Gizle",
     "hideOthers": "Diğerlerini Gizle",
@@ -58,6 +59,9 @@
     "heading1": "Başlık 1",
     "heading2": "Başlık 2",
     "heading3": "Başlık 3",
+    "heading4": "Başlık 4",
+    "heading5": "Başlık 5",
+    "heading6": "Başlık 6",
     "highlight": "Vurgu",
     "italic": "İtalik",
     "label": "Biçim",

@@ -11,6 +11,8 @@ const eventChannels = {
   "onNoteRenamed": "notes:renamed",
   "onNoteMoved": "notes:moved",
   "onNoteExternalChange": "notes:external-change",
+  "onLargeFileIndex": "notes:large-file-index",
+  "onLargeFileSearchProgress": "notes:large-file-search-progress",
   "onTagsChanged": "notes:tags-changed",
   "onFolderConfigUpdated": "notes:folder-config-updated",
   "onTaskCreated": "tasks:created",
@@ -67,6 +69,10 @@ export function createGeneratedRpcApi({
       "get": ((id) => invoke("notes:get", id)) as GeneratedRpcApi["notes"]["get"],
       "getByPath": ((path) => invoke("notes:get-by-path", path)) as GeneratedRpcApi["notes"]["getByPath"],
       "getFile": ((id) => invoke("notes:get-file", id)) as GeneratedRpcApi["notes"]["getFile"],
+      "largeFileOpen": ((noteId) => invoke("notes:large-file-open", noteId)) as GeneratedRpcApi["notes"]["largeFileOpen"],
+      "largeFileReadLines": ((input) => invoke("notes:large-file-read-lines", input)) as GeneratedRpcApi["notes"]["largeFileReadLines"],
+      "largeFileClose": ((sessionId) => invoke("notes:large-file-close", sessionId)) as GeneratedRpcApi["notes"]["largeFileClose"],
+      "largeFileSearch": ((input) => invoke("notes:large-file-search", input)) as GeneratedRpcApi["notes"]["largeFileSearch"],
       "resolveByTitle": ((title) => invoke("notes:resolve-by-title", title)) as GeneratedRpcApi["notes"]["resolveByTitle"],
       "previewByTitle": ((title) => invoke("notes:preview-by-title", title)) as GeneratedRpcApi["notes"]["previewByTitle"],
       "update": ((input) => invoke("notes:update", input)) as GeneratedRpcApi["notes"]["update"],
@@ -100,7 +106,7 @@ export function createGeneratedRpcApi({
         invoke("notes:upload-attachment", {
           noteId,
           filename: file.name,
-          data: Array.from(new Uint8Array(await file.arrayBuffer()))
+          data: await file.arrayBuffer()
         })) as GeneratedRpcApi["notes"]["uploadAttachment"],
       "listAttachments": ((noteId) => invoke("notes:list-attachments", noteId)) as GeneratedRpcApi["notes"]["listAttachments"],
       "deleteAttachment": ((noteId, filename) => invoke("notes:delete-attachment", { noteId, filename })) as GeneratedRpcApi["notes"]["deleteAttachment"],

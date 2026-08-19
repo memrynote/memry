@@ -34,10 +34,14 @@ describe('notes domain adapter', () => {
   })
 
   it('dispatches sync and CRDT side effects after creating a note', async () => {
+    // `tags` is what the index holds — the frontmatter tag PLUS the body's
+    // `#inline`. Only the declared one may reach the CRDT tag array, which
+    // write-back serializes back into the file's `tags:` block (#1454).
     const note = {
       id: 'note-1',
       title: 'Test Note',
-      tags: ['focus']
+      tags: ['focus', 'inline'],
+      frontmatter: { tags: ['focus'] }
     }
     vi.mocked(noteVault.createNote).mockResolvedValue(
       note as Awaited<ReturnType<typeof noteVault.createNote>>
@@ -45,13 +49,13 @@ describe('notes domain adapter', () => {
 
     const result = await createNoteCommand({
       title: 'Test Note',
-      content: 'Hello world'
+      content: 'Hello world #inline'
     })
 
     expect(result).toBe(note)
     expect(noteVault.createNote).toHaveBeenCalledWith({
       title: 'Test Note',
-      content: 'Hello world'
+      content: 'Hello world #inline'
     })
     expect(runtimeEffects.syncNoteCreate).toHaveBeenCalledWith('note-1', 'Test Note', ['focus'])
   })

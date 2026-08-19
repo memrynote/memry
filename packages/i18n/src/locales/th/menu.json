@@ -2,6 +2,7 @@
   "app": {
     "quit": "ออก",
     "preferences": "การตั้งค่า…",
+    "checkForUpdates": "ตรวจสอบการอัปเดต…",
     "exit": "ออก",
     "hide": "ซ่อน MemryNote",
     "hideOthers": "ซ่อนรายการอื่น",
@@ -58,6 +59,9 @@
     "heading1": "หัวข้อ 1",
     "heading2": "หัวข้อ 2",
     "heading3": "หัวข้อ 3",
+    "heading4": "หัวข้อ 4",
+    "heading5": "หัวข้อ 5",
+    "heading6": "หัวข้อ 6",
     "highlight": "ไฮไลต์",
     "italic": "ตัวเอียง",
     "label": "จัดรูปแบบ",

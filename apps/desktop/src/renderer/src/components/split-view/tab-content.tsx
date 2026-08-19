@@ -9,9 +9,9 @@
  * 3. useMemo with tab.id key ensures content is cached per tab instance
  */
 
-import React, { useRef, useEffect, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabActions } from '@/contexts/tabs'
+import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import { useTasksOptional } from '@/contexts/tasks'
 import { cn } from '@/lib/utils'
 import { InboxPage } from '@/pages/inbox'
@@ -76,40 +76,12 @@ interface TabContentProps {
 }
 
 /**
- * Renders the appropriate view for a tab type
- * PERFORMANCE: Uses useTabActions instead of useTabs to avoid re-renders on state changes
+ * Renders the appropriate view for a tab type, and publishes the tab's identity
+ * so the page inside can scope its own state (scroll offset, view state) to it.
  */
 export const TabContent = ({ tab, groupId, className }: TabContentProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('common')
-  const scrollRef = useRef<HTMLDivElement>(null)
-  // PERFORMANCE: useTabActions returns stable references - doesn't cause re-renders
-  const { dispatch } = useTabActions()
   const tasksContext = useTasksOptional()
-
-  // Save scroll position on unmount or tab change
-  useEffect(() => {
-    const scrollElement = scrollRef.current
-
-    return () => {
-      if (scrollElement) {
-        dispatch({
-          type: 'SAVE_TAB_STATE',
-          payload: {
-            tabId: tab.id,
-            groupId,
-            scrollPosition: scrollElement.scrollTop
-          }
-        })
-      }
-    }
-  }, [tab.id, groupId, dispatch])
-
-  // Restore scroll position on mount
-  useEffect(() => {
-    if (scrollRef.current && tab.scrollPosition) {
-      scrollRef.current.scrollTop = tab.scrollPosition
-    }
-  }, [tab.id, tab.scrollPosition])
 
   // FolderViewPage's `useFolderView` keys its live-refresh subscriptions off
   // scope identity — memoized here (independent of the broader `content`
@@ -265,12 +237,16 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
   ])
 
   return (
+    // Layout only: pages own their scrolling (see `useTabScrollRestore`). The
+    // overflow rules stay because a page that is not `h-full`/`overflow-hidden`
+    // would otherwise spill out of the pane.
     <div
-      ref={scrollRef}
       className={cn('h-full overflow-y-auto overflow-x-hidden', className)}
       data-tab-content={tab.id}
     >
-      <React.Suspense fallback={null}>{content}</React.Suspense>
+      <TabIdentityProvider tabId={tab.id} groupId={groupId} entityId={tab.entityId}>
+        <React.Suspense fallback={null}>{content}</React.Suspense>
+      </TabIdentityProvider>
     </div>
   )
 }

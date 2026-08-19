@@ -7,7 +7,7 @@ import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
-import { createRateLimiter } from '../middleware/rate-limit'
+import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
@@ -467,22 +467,37 @@ const NoteIdSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/)
   .max(128)
 
+// The CRDT budgets are per device, not per account. Body sync is device-local
+// work: each device pulls the note bodies it does not have yet, and a second
+// device on the same account is normal use rather than contention. Under the
+// default per-user bucket the two devices split one budget, so signing in on
+// device B made device A's ordinary syncing start failing with 429s. Requests
+// without a deviceId keep the userId/IP fallback, so nothing gets less strict.
 const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
   maxRequests: 300,
-  windowSeconds: 60
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
+// Sized for one device pulling an entire vault's bodies after a fresh sign-in.
+// That sweep costs two GETs per note (snapshot + updates), so a 121-note vault
+// spends ~242 requests in a few seconds; 600/min leaves room for a vault twice
+// that size plus the normal editing traffic running alongside it. The client
+// paces and batches its sweep, so treat this ceiling as the safety margin for
+// when that pacing is wrong or missing, not as the thing shaping the traffic.
 const crdtPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_pull',
-  maxRequests: 300,
-  windowSeconds: 60
+  maxRequests: 600,
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const crdtBatchPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_batch_pull',
   maxRequests: 30,
-  windowSeconds: 60
+  windowSeconds: 60,
+  identifier: deviceIdentifier
 })
 
 const CrdtBatchPullSchema = z.object({
@@ -716,6 +731,39 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   }
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
+
+  // A snapshot is a body write like any other and has to wake the peers the way
+  // an incremental does. It is not a duplicate of the update path: a device that
+  // edited while signed out never enqueued those edits as updates — they exist
+  // only as document state — so a snapshot is the only shape they can leave in.
+  // Silently stored, that backlog stayed invisible on every other device, because
+  // note bodies never travel in the record feed and the next vault sweep is up to
+  // 15 minutes away. Typing one more character used to be the only cure: the
+  // incremental broadcast, and the pull it triggered picked up the snapshot too.
+  //
+  // Ordering is deliberate — after the store and after the prune, never between
+  // them, so a peer is never told to pull while the pre-snapshot updates are
+  // still being removed. Delivery is best-effort for the same reason as the
+  // update path: the write already succeeded, so a failed broadcast is captured
+  // in the background rather than returned as an error the client would retry.
+  const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+  const stub = c.env.USER_SYNC_STATE.get(doId)
+  waitUntilCaptured(
+    c,
+    stub.fetch(
+      new Request(new URL('/broadcast', c.req.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          excludeDeviceId: deviceId,
+          vaultId,
+          type: 'crdt_updated',
+          noteId: parsed.noteId
+        })
+      })
+    ),
+    { source: 'UserSyncState', action: 'crdt_snapshot_broadcast_failed' }
+  )
 
   logCrdtTraffic({
     endpoint,

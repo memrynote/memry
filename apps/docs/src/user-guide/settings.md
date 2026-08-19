@@ -73,6 +73,8 @@ When memrynote finds an update it opens an in-app **update prompt** showing the 
 - **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
 - **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
 
+You can also run the same check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, an available or ready-to-install version, or the error — and an available update still opens the update prompt unless automatic downloads are on. In a development build the toast says updates are packaged-release only.
+
 ### Language & Region
 
 - **Language** — UI locale dropdown, 32 languages
@@ -266,7 +268,9 @@ If your chosen hotkey is already claimed by another app, memrynote keeps its bui
 
 ### Shortcut List
 
-Searchable, grouped by category (Navigation, Tabs, Editor, View). Click any row to capture a new binding. Custom bindings show a badge.
+Searchable, grouped by category (Navigation, Tabs, Editor, View). Click any row to capture a new binding; it takes effect immediately, without a restart. Custom bindings show a badge.
+
+Editor rows (Bold, Italic, Underline) are read-only — those keys are handled by the note editor itself.
 
 ### Reset All
 

@@ -26,6 +26,24 @@ Progress lines, preview warnings and import errors are shown in your selected la
 | Todoist       | Project CSV `.csv`              | Tasks                 | See [Import from Todoist](./tasks/import-todoist.md)   |
 | TickTick      | Backup CSV `.csv`               | Tasks                 | See [Import from TickTick](./tasks/import-ticktick.md) |
 
+## Dropping Files onto the Sidebar
+
+For a handful of files, skip **Settings → Import** entirely: drag them from Finder or Explorer straight onto the sidebar. They are **copied** into your vault, so the originals can be moved or deleted afterwards without breaking anything.
+
+**Where they land is where you drop them:**
+
+| Drop target        | Destination                                               |
+| ------------------ | --------------------------------------------------------- |
+| A folder row       | That folder                                               |
+| A note or file row | The folder that note lives in                             |
+| Empty space        | Your vault root (or your **default note folder**, if set) |
+
+Whatever is currently selected in the sidebar makes no difference — only the drop position counts. While you drag, the target folder is outlined and named at the bottom of the sidebar, so you can confirm the destination before letting go.
+
+A name collision never overwrites: a second `report.pdf` becomes `report (1).pdf`.
+
+Unsupported file types are skipped rather than failing the whole drop; the supported extensions are listed in the sidebar while you drag. To attach a file **inside** a note instead of adding it to the vault, drop it onto the editor — see [Attachments](./notes/attachments.md).
+
 ## Importing from Notion
 
 memrynote imports a Notion **HTML** export (not the Markdown or CSV export).
@@ -327,4 +345,4 @@ Pages land as one note each under `OneNote/<notebook>/<section group…>/<sectio
 - **Skip previously imported pages** (default on) — imported page ids are remembered per vault (`.memry/import/onenote.json`), so re-running an import only picks up new pages. Turn it off to re-import everything.
 - **Import incompatible attachments** (default off) — also saves file types Memry can't embed natively (presentations, media, archives, and image formats the editor can't render such as EMF/TIFF clipboard art). They render as file blocks and open externally. Executables are never imported, even with this on.
 
-**Limitations:** attachments are capped at 10 MB each (Memry's vault attachment limit); larger files are skipped and counted. Microsoft throttles the OneNote API — large imports may pause for up to a minute at a time and continue automatically.
+**Limitations:** attachments are capped at 100 MB each (Memry's vault attachment limit); larger files are skipped and counted. Microsoft throttles the OneNote API — large imports may pause for up to a minute at a time and continue automatically.

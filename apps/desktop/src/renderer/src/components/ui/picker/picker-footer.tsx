@@ -7,7 +7,7 @@ interface PickerFooterProps {
 
 export function PickerFooter({ className, children }: PickerFooterProps): React.JSX.Element {
   return (
-    <div data-slot="picker-footer" className={cn('border-t border-border', className)}>
+    <div data-slot="picker-footer" className={cn('shrink-0 border-t border-border', className)}>
       {children}
     </div>
   )

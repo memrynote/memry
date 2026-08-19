@@ -1,7 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { taskKeys, useTaskWorkspaceData, useTaskWorkspaceMutations } from './use-task-queries'
 import { tasksService } from '@/services/tasks-service'
 
@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     error: vi.fn()
   },
   listeners: {} as Record<string, () => void>,
+  syncStatusListener: null as ((event: { status: string }) => void) | null,
   unsubscribe: vi.fn()
 }))
 
@@ -81,9 +82,21 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 }
 
 describe('useTaskWorkspaceData', () => {
+  // focusManager is module-global. Leaving it explicitly focused would follow
+  // this file out and change refetch behaviour for whatever runs next.
+  afterEach(() => {
+    focusManager.setFocused(undefined)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.listeners = {}
+    mocks.syncStatusListener = null
+    focusManager.setFocused(undefined)
+    window.api.onSyncStatusChanged = vi.fn((callback) => {
+      mocks.syncStatusListener = callback as (event: { status: string }) => void
+      return mocks.unsubscribe
+    }) as typeof window.api.onSyncStatusChanged
     window.api.onItemSynced = vi.fn((callback) => {
       mocks.listeners.itemSyncedTask = () => callback({ type: 'task', id: 'task-1' } as never)
       mocks.listeners.itemSyncedProject = () =>
@@ -183,6 +196,69 @@ describe('useTaskWorkspaceData', () => {
 
     unmount()
     expect(mocks.unsubscribe).toHaveBeenCalled()
+  })
+
+  // A pull on the other machine emits one ITEM_SYNCED per item. If that event
+  // is dropped, nothing else refreshes this list: the app-wide default is
+  // refetchOnWindowFocus: false and there is no interval, so the user has to
+  // restart the app to see the other machine's tasks. Settling out of `syncing`
+  // is the reconcile point that does not depend on the window losing focus.
+  it('reconciles the workspace when a sync settles', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {
+      wrapper: createWrapper(queryClient)
+    })
+
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    // Entering `syncing` is not a completion — reconciling here would refetch
+    // against rows the pull has not written yet.
+    act(() => mocks.syncStatusListener?.({ status: 'syncing' }))
+    expect(invalidate).not.toHaveBeenCalled()
+
+    act(() => mocks.syncStatusListener?.({ status: 'idle' }))
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
+  })
+
+  it('does not reconcile on status events that never entered a sync', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {
+      wrapper: createWrapper(queryClient)
+    })
+
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    // Status churn without a sync (offline flapping, pause/resume) must not
+    // refetch a 1000-row list on every event.
+    act(() => mocks.syncStatusListener?.({ status: 'offline' }))
+    act(() => mocks.syncStatusListener?.({ status: 'idle' }))
+    act(() => mocks.syncStatusListener?.({ status: 'error' }))
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
+  // The client here mirrors main.tsx's app-wide `refetchOnWindowFocus: false`.
+  // Without the per-query override this list never refetches on focus, which is
+  // how a second machine stayed stale until the app was restarted.
+  it('refetches on window focus despite the app-wide refetchOnWindowFocus: false', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } }
+    })
+    const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {
+      wrapper: createWrapper(queryClient)
+    })
+
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
+    const callsAfterLoad = vi.mocked(tasksService.list).mock.calls.length
+
+    act(() => focusManager.setFocused(false))
+    act(() => focusManager.setFocused(true))
+
+    await waitFor(() =>
+      expect(vi.mocked(tasksService.list).mock.calls.length).toBeGreaterThan(callsAfterLoad)
+    )
   })
 
   it('does not load or subscribe when disabled', () => {

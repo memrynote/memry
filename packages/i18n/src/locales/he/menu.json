@@ -2,6 +2,7 @@
   "app": {
     "quit": "צא",
     "preferences": "הגדרות…",
+    "checkForUpdates": "חיפוש עדכונים…",
     "exit": "יציאה",
     "hide": "הסתר את MemryNote",
     "hideOthers": "הסתר אחרים",
@@ -58,6 +59,9 @@
     "heading1": "כותרת 1",
     "heading2": "כותרת 2",
     "heading3": "כותרת 3",
+    "heading4": "כותרת 4",
+    "heading5": "כותרת 5",
+    "heading6": "כותרת 6",
     "highlight": "הדגשה",
     "italic": "נטוי",
     "label": "עיצוב",

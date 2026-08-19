@@ -23,6 +23,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
+import { remapExpandedFolderIds } from '@/components/notes-tree-utils'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useT } from '@memry/i18n/renderer'
 
@@ -77,6 +78,7 @@ type TreeContextType = {
   expandAll: () => void
   expandNodes: (nodeIds: string[]) => void
   collapseAll: () => void
+  renameNode: (oldNodeId: string, newNodeId: string) => void
   setDragState: (state: Partial<DragState>) => void
   handleDrop: () => void
   setNodeIcon: (nodeId: string, iconName: string | null) => void
@@ -376,6 +378,12 @@ export const TreeProvider = ({
     setExpandedIds(new Set())
   }, [])
 
+  // A renamed node keeps whatever it had open: itself and anything expanded
+  // beneath it, since expansion is keyed by the path that just changed.
+  const renameNode = useCallback((oldNodeId: string, newNodeId: string) => {
+    setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
+  }, [])
+
   const toggleExpanded = useCallback((nodeId: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev)
@@ -460,6 +468,7 @@ export const TreeProvider = ({
     expandAll,
     expandNodes,
     collapseAll,
+    renameNode,
     setDragState,
     handleDrop,
     setNodeIcon,
@@ -739,6 +748,10 @@ export const TreeNodeTrigger = ({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
+      // A file coming from outside the app is not a reorder. Leaving it alone
+      // keeps the before/after/inside indicator off and lets the sidebar's file
+      // drop zone claim the event on the way up.
+      if (e.dataTransfer.types.includes('Files')) return
       if (!draggable || dragState.draggedId === nodeId) return
 
       e.preventDefault()
@@ -778,6 +791,11 @@ export const TreeNodeTrigger = ({
 
   const handleDropEvent = useCallback(
     (e: React.DragEvent) => {
+      // This runs in the capture phase, so stopping propagation here cancels the
+      // bubble phase outright. For an external file that silently swallowed the
+      // drop before the sidebar's importer ever saw it — let those through.
+      if (e.dataTransfer.types.includes('Files')) return
+
       e.preventDefault()
       e.stopPropagation()
       handleDrop()

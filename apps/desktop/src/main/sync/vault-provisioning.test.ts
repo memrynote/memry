@@ -4,8 +4,9 @@ import path from 'path'
 import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockUpsertVault, mockCreateVaultInfo } = vi.hoisted(() => ({
+const { mockUpsertVault, mockCreateVaultInfo, mockRecordCrdtStoreRename } = vi.hoisted(() => ({
   mockUpsertVault: vi.fn(),
+  mockRecordCrdtStoreRename: vi.fn(),
   mockCreateVaultInfo: vi.fn((vaultPath: string) => ({
     path: vaultPath,
     name: path.basename(vaultPath),
@@ -17,7 +18,8 @@ const { mockUpsertVault, mockCreateVaultInfo } = vi.hoisted(() => ({
 }))
 
 vi.mock('../store', () => ({
-  upsertVault: mockUpsertVault
+  upsertVault: mockUpsertVault,
+  recordCrdtStoreRename: mockRecordCrdtStoreRename
 }))
 
 vi.mock('../vault', () => ({
@@ -59,5 +61,8 @@ describe('vault-provisioning', () => {
 
     // The vault was registered in the store.
     expect(mockUpsertVault).toHaveBeenCalledWith(expect.objectContaining({ path: dir }))
+    // And nothing is owed to the CRDT store: a vault provisioned here has no
+    // history under a previous uuid for the next open to go looking for.
+    expect(mockRecordCrdtStoreRename).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@
   "app": {
     "quit": "종료",
     "preferences": "설정…",
+    "checkForUpdates": "업데이트 확인…",
     "exit": "끝내기",
     "hide": "MemryNote 가리기",
     "hideOthers": "기타 가리기",
@@ -58,6 +59,9 @@
     "heading1": "제목 1",
     "heading2": "제목 2",
     "heading3": "제목 3",
+    "heading4": "제목 4",
+    "heading5": "제목 5",
+    "heading6": "제목 6",
     "highlight": "하이라이트",
     "italic": "기울임",
     "label": "서식",

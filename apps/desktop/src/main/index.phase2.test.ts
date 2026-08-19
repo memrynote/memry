@@ -801,7 +801,12 @@ describe('main index phase2 exports', () => {
     expect(webRequestOnHeadersReceivedMock).toHaveBeenCalledWith(expect.any(Function))
     expect(setPermissionRequestHandlerMock).toHaveBeenCalledWith(expect.any(Function))
     expect(setPermissionCheckHandlerMock).toHaveBeenCalledWith(expect.any(Function))
-    expect(initPersistenceMock).toHaveBeenCalled()
+    // The CRDT store is scoped to the open vault's uuid, and at ready time no
+    // vault is open — autoOpenLastVault runs later in this same function, and
+    // openVault makes the call. Opening it here could only ever be a no-op, and
+    // a bootstrap that "settled" the init before a vault existed would leave
+    // the provider in-memory for the rest of the session.
+    expect(initPersistenceMock).not.toHaveBeenCalled()
     expect(applyGlobalCaptureShortcutMock).toHaveBeenCalled()
     expect(BrowserWindowMock).toHaveBeenCalledWith(
       expect.objectContaining({

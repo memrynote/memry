@@ -8,6 +8,8 @@ import type { SyncContext } from './sync-context'
 import {
   CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
   CRDT_RECONNECT_SWEEP_FLOOR_MS,
+  CRDT_SWEEP_CHUNK_INTERVAL_MS,
+  CRDT_SWEEP_CHUNK_NOTES,
   SYNC_STATE_KEYS
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -65,6 +67,31 @@ export class FullSyncRunner {
    */
   private crdtSweepOwed = false
   private owedSweepTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Notes drained from the pending-pull set that are waiting their turn in a
+   * paced catch-up chunk.
+   *
+   * A Set, so a note re-queued by a failed chunk cannot accumulate duplicates
+   * across cycles — the queue stays bounded by the vault, not by how many times
+   * the server has said no. Insertion order is preserved, so it still drains
+   * FIFO. In-memory by design: this queue is a plan for the current engine's
+   * catch-up, and the persisted sweep stamp is what carries the work across a
+   * restart.
+   */
+  private pacedCrdtPullQueue = new Set<string>()
+  private pacedCrdtPullTimer: ReturnType<typeof setTimeout> | null = null
+  private pacedCrdtChunkInFlight = false
+  /**
+   * Cancels the sweep's in-flight pulls when the engine goes away.
+   *
+   * Dropping the queue and the timer stops the NEXT chunk, but a paced sweep
+   * spans minutes, so there is almost always a chunk already in flight — and
+   * that one would run to completion against a provider and a vault this engine
+   * no longer owns, opening docs on a discarded provider and spending request
+   * budget for a session that is over. Rebuilt on demand, because an aborted
+   * controller stays aborted and a later engine must not inherit it.
+   */
+  private pacedCrdtPullAbort: AbortController | null = null
 
   constructor(
     ctx: SyncContext,
@@ -194,12 +221,30 @@ export class FullSyncRunner {
     this.flushPendingCrdtPulls()
   }
 
-  /** Clears the deferred sweep timer. Call on engine teardown. */
+  /** Clears the deferred sweep and paced-pull timers. Call on engine teardown. */
   dispose(): void {
     if (this.owedSweepTimer) {
       clearTimeout(this.owedSweepTimer)
       this.owedSweepTimer = null
     }
+    if (this.pacedCrdtPullTimer) {
+      clearTimeout(this.pacedCrdtPullTimer)
+      this.pacedCrdtPullTimer = null
+    }
+    // Drop the plan with the engine that made it. Leaving ids here would let a
+    // chunk still in flight re-arm the pace timer from its `finally` and keep a
+    // dead engine pulling against a vault it no longer owns.
+    this.pacedCrdtPullQueue.clear()
+    this.pacedCrdtPullAbort?.abort()
+    this.pacedCrdtPullAbort = null
+  }
+
+  /** Signal for sweep-issued pulls, live until `dispose()` cancels them. */
+  private sweepPullSignal(): AbortSignal {
+    if (!this.pacedCrdtPullAbort || this.pacedCrdtPullAbort.signal.aborted) {
+      this.pacedCrdtPullAbort = new AbortController()
+    }
+    return this.pacedCrdtPullAbort.signal
   }
 
   private sweepAllCrdtNotes(): void {
@@ -214,13 +259,22 @@ export class FullSyncRunner {
     this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
   }
 
-  async run(): Promise<void> {
+  /**
+   * `forceCrdtSweep` is for a sync the user asked for by name. The throttle on
+   * the vault-wide sweep exists to stop an automatic reconnect loop buying one
+   * O(vault) pass per flap; it was never meant to make "Sync now" incomplete.
+   * Without it that button can skip the only discovery path for body-only
+   * remote edits — bodies never travel in the record change feed — and leave a
+   * note reading stale for up to CRDT_FULL_SWEEP_MIN_INTERVAL_MS with the app
+   * reporting a clean sync.
+   */
+  async run(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
     log.debug('fullSync started')
     this.ctx.fullSyncActive = true
     // A manifest re-pull means the server holds items this device has never
     // seen (fresh install, restored vault, rebuilt index): local CRDT state
     // cannot be trusted, so the sweep runs regardless of the throttle.
-    let forceCrdtSweep = false
+    let forceCrdtSweep = options.forceCrdtSweep === true
     try {
       await this.actions.pull()
       log.debug('fullSync: pull complete')
@@ -336,17 +390,124 @@ export class FullSyncRunner {
   }
 
   /**
-   * Always runs, gate or no gate: these are notes the server named in a
+   * Always runs, gate or no gate: the set holds notes the server named in a
    * `crdt_updated` broadcast, which is a positive signal about that specific
-   * note rather than the blanket safety net.
+   * note rather than the blanket safety net, alongside whatever the sweep just
+   * queued and whatever a failed chunk owes.
+   *
+   * Everything leaves through the batch path rather than one
+   * `pullCrdtForNote` per note. The single-note path costs two GETs per note, so
+   * a 121-note sweep fired 242 requests in about four seconds against the
+   * server's `crdt_pull` bucket — then 300 per 60s and shared across the
+   * account's devices — and 92 of those 121 notes came back "Too many requests"
+   * and, before the re-queue above, kept a stale body until the next sweep.
+   * #1466 has since raised that bucket to 600 per 60s and keyed it per device,
+   * so that exact burst would fit today; the pacing stays because a vault twice
+   * the size still would not.
+   *
+   * Batching alone does not fix that; it only halves it, because the batch
+   * endpoint batches the incrementals and not the per-note snapshot baselines.
+   * The pacing below is what keeps a sweep inside both of the server's buckets.
+   * See CRDT_SWEEP_CHUNK_NOTES for the arithmetic on each.
    */
   private flushPendingCrdtPulls(): void {
-    if (this.crdtSync.pendingPullCount === 0) return
-    log.debug('fullSync: flushing pending CRDT pulls', {
-      count: this.crdtSync.pendingPullCount
-    })
-    for (const noteId of this.crdtSync.drainPendingPulls()) {
-      this.actions.scheduleSync(() => this.crdtSync.pullCrdtForNote(noteId))
+    if (this.crdtSync.pendingPullCount > 0) {
+      log.debug('fullSync: flushing pending CRDT pulls', {
+        count: this.crdtSync.pendingPullCount
+      })
+
+      // A note with a live editor is the one the user is looking at, and a stale
+      // body there is the whole bug. It must not queue behind a catch-up that
+      // takes minutes on a large vault, so it skips the pace entirely. The cost
+      // is bounded by the number of open editors — a handful — which is what the
+      // headroom described on CRDT_SWEEP_CHUNK_NOTES is for.
+      // SyncEngine.handleWsConnected reads the same set for the same reason.
+      const activeNoteIds = new Set(
+        this.ctx.deps.crdtProvider?.getOpenNoteIds({ active: true }) ?? []
+      )
+
+      const priority: string[] = []
+      for (const noteId of this.crdtSync.drainPendingPulls()) {
+        if (activeNoteIds.has(noteId)) priority.push(noteId)
+        else this.pacedCrdtPullQueue.add(noteId)
+      }
+
+      if (priority.length > 0) {
+        this.actions.scheduleSync(() =>
+          this.crdtSync.pullCrdtForNotes(priority, this.sweepPullSignal())
+        )
+      }
     }
+
+    this.pumpPacedCrdtPulls()
+  }
+
+  /**
+   * Start or continue the paced drain of the CRDT catch-up queue.
+   *
+   * At most one chunk is in flight and at most one timer is armed at any moment.
+   * Both matter: a second fullSync landing mid-drain that started its own pass,
+   * or a flapping socket arming a timer per reconnect, would multiply the
+   * request rate by however many drains were running and put the arithmetic on
+   * CRDT_SWEEP_CHUNK_NOTES straight back over the server's limit — which is the
+   * storm this pacing exists to remove, not a new one to introduce.
+   */
+  private pumpPacedCrdtPulls(): void {
+    if (this.pacedCrdtPullTimer || this.pacedCrdtChunkInFlight) return
+    if (this.pacedCrdtPullQueue.size === 0) return
+
+    const crdtProvider = this.ctx.deps.crdtProvider
+    // The same wall `payOwedSweep` refuses to run into: `scheduleSync` silently
+    // drops its callback while a fullSync is active, and pulls issued offline
+    // are guaranteed to fail. Keep the queue intact and look again next tick
+    // rather than spending a chunk on a request that cannot land.
+    if (this.ctx.fullSyncActive || !this.ctx.deps.network.online || !crdtProvider) {
+      this.armPacedCrdtPullTimer()
+      return
+    }
+
+    // Never hand `applyCrdtBatch` more notes than the provider can hold open at
+    // once: it would split the chunk internally and spend an extra batch POST
+    // doing so, which is exactly the request the pacing arithmetic budgets for.
+    const chunkSize = Math.max(
+      1,
+      Math.min(CRDT_SWEEP_CHUNK_NOTES, crdtProvider.inactiveDocCapacity)
+    )
+    const chunk: string[] = []
+    for (const noteId of this.pacedCrdtPullQueue) {
+      if (chunk.length >= chunkSize) break
+      chunk.push(noteId)
+    }
+    for (const noteId of chunk) this.pacedCrdtPullQueue.delete(noteId)
+
+    log.debug('fullSync: paced CRDT pull chunk', {
+      chunk: chunk.length,
+      remaining: this.pacedCrdtPullQueue.size
+    })
+
+    this.pacedCrdtChunkInFlight = true
+    this.actions.scheduleSync(async () => {
+      try {
+        await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal())
+      } finally {
+        // Re-arm from the chunk's completion, not from when it was issued, so a
+        // slow chunk stretches the interval instead of overlapping the next one.
+        // Notes this chunk failed are back in the pending set by now, not in the
+        // queue: they are owed to the next cycle, deliberately, because retrying
+        // them here would just re-run into whatever refused them.
+        this.pacedCrdtChunkInFlight = false
+        this.armPacedCrdtPullTimer()
+      }
+    })
+  }
+
+  private armPacedCrdtPullTimer(): void {
+    if (this.pacedCrdtPullTimer || this.pacedCrdtPullQueue.size === 0) return
+
+    this.pacedCrdtPullTimer = setTimeout(() => {
+      this.pacedCrdtPullTimer = null
+      this.pumpPacedCrdtPulls()
+    }, CRDT_SWEEP_CHUNK_INTERVAL_MS)
+    this.pacedCrdtPullTimer.unref?.()
   }
 }

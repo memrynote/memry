@@ -359,6 +359,94 @@ describe('tabCrudReducer', () => {
     expect(noLayout.settings).toEqual(state.settings)
   })
 
+  it('closes every tab showing a deleted entity, in every group, pinned included', () => {
+    // The same canvas open in both panes, pinned in one of them — the shape the
+    // sidebar delete has to clear completely.
+    const state = baseState({
+      tabGroups: {
+        g1: group('g1', [
+          tab('c-left', 'canvas', { entityId: 'canvas-1', isPinned: true }),
+          tab('note-a', 'note', { entityId: 'note-a' })
+        ]),
+        g2: group('g2', [
+          tab('c-right', 'canvas', { entityId: 'canvas-1' }),
+          tab('c-other', 'canvas', { entityId: 'canvas-2' })
+        ])
+      }
+    })
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TABS_BY_ENTITY',
+      payload: { entityId: 'canvas-1' }
+    })
+
+    expect(closed.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['note-a'])
+    expect(closed.tabGroups.g1.activeTabId).toBe('note-a')
+    expect(closed.tabGroups.g2.tabs.map((t) => t.id)).toEqual(['c-other'])
+  })
+
+  it('leaves no reopen entry behind when a deleted entity takes its tabs', () => {
+    const state = baseState({
+      tabGroups: {
+        g1: group('g1', [
+          tab('c1', 'canvas', { entityId: 'canvas-1' }),
+          tab('tasks', 'tasks', { path: '/tasks' })
+        ]),
+        g2: group('g2', [tab('calendar', 'calendar', { path: '/calendar' })])
+      }
+    })
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TABS_BY_ENTITY',
+      payload: { entityId: 'canvas-1' }
+    })
+
+    // ⌘⇧T must not resurrect a tab pointing at a canvas that is in the OS trash.
+    expect(closed.recentlyClosed).toEqual([])
+    expect(closed.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['tasks'])
+  })
+
+  it('collapses the split when the deleted entity held the last tab in a group', () => {
+    const state = baseState({
+      tabGroups: {
+        g1: group('g1', [tab('note-a', 'note', { entityId: 'note-a' })]),
+        g2: group('g2', [tab('c1', 'canvas', { entityId: 'canvas-1' })])
+      }
+    })
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TABS_BY_ENTITY',
+      payload: { entityId: 'canvas-1' }
+    })
+
+    expect(closed.tabGroups.g2).toBeUndefined()
+    expect(closed.layout).toEqual({ type: 'leaf', tabGroupId: 'g1' })
+  })
+
+  it('re-seeds Home when the deleted entity emptied the only group', () => {
+    const state = baseState({
+      tabGroups: { g1: group('g1', [tab('c1', 'canvas', { entityId: 'canvas-1' })]) },
+      layout: { type: 'leaf', tabGroupId: 'g1' },
+      activeGroupId: 'g1'
+    })
+
+    const closed = tabCrudReducer(state, {
+      type: 'CLOSE_TABS_BY_ENTITY',
+      payload: { entityId: 'canvas-1' }
+    })
+
+    expect(closed.tabGroups.g1.tabs).toHaveLength(1)
+    expect(closed.tabGroups.g1.tabs[0].type).toBe('home')
+  })
+
+  it('returns the same state when no tab shows the deleted entity', () => {
+    const state = baseState()
+
+    expect(
+      tabCrudReducer(state, { type: 'CLOSE_TABS_BY_ENTITY', payload: { entityId: 'gone' } })
+    ).toBe(state)
+  })
+
   it('captures a closed tab onto the recentlyClosed stack with its origin and position', () => {
     const state = baseState()
 

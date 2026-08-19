@@ -10,20 +10,22 @@ import { hintModeActiveRef } from '@/contexts/hint-mode'
 // TYPES
 // =============================================================================
 
+export interface ShortcutModifiers {
+  /** Meta on Mac, Ctrl on Windows/Linux */
+  meta?: boolean
+  /** Always Ctrl (e.g., Ctrl+Tab) */
+  ctrl?: boolean
+  /** Shift key */
+  shift?: boolean
+  /** Alt/Option key */
+  alt?: boolean
+}
+
 export interface KeyboardShortcut {
   /** Key to match (e.g., 'w', 'Tab', 'ArrowRight') */
   key: string
   /** Modifier keys */
-  modifiers?: {
-    /** Meta on Mac, Ctrl on Windows/Linux */
-    meta?: boolean
-    /** Always Ctrl (e.g., Ctrl+Tab) */
-    ctrl?: boolean
-    /** Shift key */
-    shift?: boolean
-    /** Alt/Option key */
-    alt?: boolean
-  }
+  modifiers?: ShortcutModifiers
   /** Action to execute */
   action: () => void
   /** Human-readable description */
@@ -57,6 +59,52 @@ export const getModifierSymbol = (modifier: 'meta' | 'ctrl' | 'shift' | 'alt'): 
     case 'alt':
       return isMac ? '⌥' : 'Alt'
   }
+}
+
+// =============================================================================
+// MATCHING
+// =============================================================================
+
+/**
+ * Does this keydown match the given chord?
+ *
+ * Shared with the raw-listener shortcut owners (new note, search, shortcuts
+ * help) so every surface resolves a rebindable binding the same way.
+ */
+export const matchesShortcut = (
+  e: KeyboardEvent,
+  key: string,
+  modifiers: ShortcutModifiers = {}
+): boolean => {
+  // Key match (case insensitive for letters)
+  if (!key) return false
+  if (e.key.toLowerCase() !== key.toLowerCase()) return false
+
+  // Meta modifier (Cmd on Mac, Ctrl on Windows)
+  const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
+  if (modifiers.meta && !metaOrCtrl) return false
+  if (!modifiers.meta && metaOrCtrl && !modifiers.ctrl) return false
+
+  // Ctrl modifier (always Ctrl, e.g., Ctrl+Tab)
+  if (modifiers.ctrl && !e.ctrlKey) return false
+
+  // Shift modifier
+  if (modifiers.shift !== undefined) {
+    if (modifiers.shift && !e.shiftKey) return false
+    if (!modifiers.shift && e.shiftKey) return false
+  } else if (e.shiftKey) {
+    return false
+  }
+
+  // Alt modifier
+  if (modifiers.alt !== undefined) {
+    if (modifiers.alt && !e.altKey) return false
+    if (!modifiers.alt && e.altKey) return false
+  } else if (e.altKey) {
+    return false
+  }
+
+  return true
 }
 
 // =============================================================================
@@ -112,34 +160,8 @@ export const useKeyboardShortcuts = (
         // Check condition
         if (when && !when()) continue
 
-        // Check key match (case insensitive for letters)
-        if (e.key.toLowerCase() !== key.toLowerCase()) continue
-
-        // Check modifiers
-        const metaOrCtrl = isMac ? e.metaKey : e.ctrlKey
-
-        // Meta modifier (Cmd on Mac, Ctrl on Windows)
-        if (modifiers.meta && !metaOrCtrl) continue
-        if (!modifiers.meta && metaOrCtrl && !modifiers.ctrl) continue
-
-        // Ctrl modifier (always Ctrl, e.g., Ctrl+Tab)
-        if (modifiers.ctrl && !e.ctrlKey) continue
-
-        // Shift modifier
-        if (modifiers.shift !== undefined) {
-          if (modifiers.shift && !e.shiftKey) continue
-          if (!modifiers.shift && e.shiftKey) continue
-        } else if (e.shiftKey) {
-          continue
-        }
-
-        // Alt modifier
-        if (modifiers.alt !== undefined) {
-          if (modifiers.alt && !e.altKey) continue
-          if (!modifiers.alt && e.altKey) continue
-        } else if (e.altKey) {
-          continue
-        }
+        // Check key and modifiers
+        if (!matchesShortcut(e, key, modifiers)) continue
 
         // All checks passed - execute action
         e.preventDefault()

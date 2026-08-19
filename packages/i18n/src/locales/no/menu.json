@@ -2,6 +2,7 @@
   "app": {
     "quit": "Avslutt",
     "preferences": "Innstillinger…",
+    "checkForUpdates": "Se etter oppdateringer…",
     "exit": "Avslutt",
     "hide": "Skjul MemryNote",
     "hideOthers": "Skjul andre",
@@ -58,6 +59,9 @@
     "heading1": "Overskrift 1",
     "heading2": "Overskrift 2",
     "heading3": "Overskrift 3",
+    "heading4": "Overskrift 4",
+    "heading5": "Overskrift 5",
+    "heading6": "Overskrift 6",
     "highlight": "Uthev",
     "italic": "Kursiv",
     "label": "Format",

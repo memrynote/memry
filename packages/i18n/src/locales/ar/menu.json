@@ -2,6 +2,7 @@
   "app": {
     "quit": "إنهاء",
     "preferences": "الإعدادات…",
+    "checkForUpdates": "التحقق من وجود تحديثات…",
     "exit": "خروج",
     "hide": "إخفاء MemryNote",
     "hideOthers": "إخفاء الأخرى",
@@ -58,6 +59,9 @@
     "heading1": "عنوان 1",
     "heading2": "عنوان 2",
     "heading3": "عنوان 3",
+    "heading4": "عنوان 4",
+    "heading5": "عنوان 5",
+    "heading6": "عنوان 6",
     "highlight": "تمييز",
     "italic": "مائل",
     "label": "تنسيق",

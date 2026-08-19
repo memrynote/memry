@@ -7,8 +7,8 @@ palette, or the editor's slash menu.
 
 ## Menus
 
-- **App menu** (macOS only, named “memrynote”) — About, Settings, Hide/Show,
-  and Quit.
+- **App menu** (macOS only, named “memrynote”) — About, Check for Updates,
+  Settings, Hide/Show, and Quit.
 - **File** — New Note, Open Quickly (the command palette), Export to PDF, Close
   Tab, and Close Window. On Windows and Linux this menu also contains Quit.
 - **Edit** — Undo / Redo, Cut / Copy / Paste (including Paste and Match Style),
@@ -16,17 +16,27 @@ palette, or the editor's slash menu.
   Dictation, and Emoji & Symbols.
 - **Insert** — add a Code Block, Table, Bullet / Numbered / Task List, or an
   attachment to the note you're editing.
-- **Format** — Heading 1–3 or Body for the current block, plus Bold, Italics,
+- **Format** — Heading 1–6 or Body for the current block, plus Bold, Italics,
   Code, Highlight, and Strikethrough for the selected text.
 - **View** — Reload, Developer Tools, zoom, full screen, Toggle Sidebar, Toggle
   Day Panel, and a Theme submenu (Light, Dark, Paper, System).
 - **Window** — standard window controls (minimize, zoom, front).
-- **Help** — About, Documentation (<kbd>F1</kbd>), and Keyboard Shortcuts.
+- **Help** — on Windows and Linux, About and Check for Updates; on every
+  platform, Documentation (<kbd>F1</kbd>) and Keyboard Shortcuts.
 
 ## About
 
 The **About** entry opens the operating system's native about panel on macOS
 and Linux, and a simple dialog showing the version on Windows.
+
+## Check for Updates
+
+**Check for Updates…** sits next to About — in the app menu on macOS, in Help on
+Windows and Linux. It runs the same check as the button in
+[Settings → General → Updates](/user-guide/settings), and always reports the
+result as a toast, so the click is never silent even when automatic downloads
+are on. When a new version is found the usual update prompt opens with the
+release notes.
 
 ## Insert and Format act on the focused note
 

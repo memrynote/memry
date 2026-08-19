@@ -6,15 +6,190 @@ Notes and journal entries use Yjs CRDTs so concurrent edits across devices merge
 
 The Y.Doc is canonical. Markdown is a derived, lossy export — useful for `.md` interop but not authoritative.
 
+Which makes the corollary a rule rather than a preference: **the editor writes to the
+Y.Doc whenever a vault is open — signed in or not, online or not, with an account or
+with none.** An edit that does not enter the Y.Doc does not exist. It can be written to
+the markdown file and to the database and still be gone, because the next thing to
+rebuild the Y.Doc — a sign-in pulling this note's snapshot from the server — writes that
+doc back over the file. Nothing fails to merge in that sequence; there is simply nothing
+to merge.
+
+That is not hypothetical. Until this rule was made explicit, the note editor was gated on
+`isCollaborationActive(syncStatus)` — a predicate about whether a _remote sync session_
+exists. With no session the editor was never bound to a Y.Doc at all, so a signed-out
+edit reached markdown alone and was destroyed by the next sign-in, from the file on disk.
+
+The two questions are now two predicates, in
+`renderer/src/sync/collaboration-status.ts`:
+
+| Predicate                       | Question                        | Read by                                      |
+| ------------------------------- | ------------------------------- | -------------------------------------------- |
+| `isLocalCrdtDocLive(noteId)`    | Should the local Y.Doc be live? | `ContentArea` (the editor gate)              |
+| `isCollaborationActive(status)` | Is a remote session available?  | the canvas note-card lock, on its _negation_ |
+
+Session state may decide whether anything is **synced**. It may never decide whether the
+editor writes to the canonical store.
+
+One consequence is worth stating plainly: because
+[`useCreateBlockNote`](https://www.blocknotejs.org) builds its collaboration extension
+exactly once per editor instance, the fragment has to be present when the editor is
+created or it can never attach. So the note view waits on the binding rather than opening
+a non-collaborative editor and upgrading it later — and `crdt:open-doc` waits for a store
+init already in flight (`CrdtProvider.awaitPendingInit()`) instead of rejecting, since
+vault open starts that init without awaiting it and a rejection would be permanent for
+that editor. It waits for an init; it never starts one, because during a vault switch the
+uuid it would resolve is still the outgoing vault's.
+
 ## Where Y.Docs Live
 
-The **main process** owns Y.Doc instances, persists them to disk via y-leveldb (`<vault>/leveldb/`), and exposes them to the renderer through an IPC provider.
+The **main process** owns Y.Doc instances, persists them to disk via y-leveldb, and exposes them to the renderer through an IPC provider.
 
 ```
 renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──▶  disk
                                        │
                                        └──network sync──▶  /sync/crdt/updates
 ```
+
+## One Store Per Vault
+
+The store lives in `userData`, not inside the vault folder, and is scoped to the
+vault that owns the notes in it:
+
+```
+<userData>/crdt-stores/<vault uuid>/
+```
+
+The uuid is the vault's own identity — the `vault_metadata` singleton in its
+`data.db`, the same value `X-Memry-Vault-Id` carries to the sync server. It is
+stable across restarts, travels with the vault folder, and a linked device
+adopts the initiator's value so both ends of a shared vault agree on it. The
+directory name is the canonical uuid; anything that is not one is hashed rather
+than placed in a path.
+
+Scoping is not cosmetic. Store entries are keyed by **note id alone**, and note
+ids are not unique across vaults: journal notes use deterministic date-based ids
+(`j2026-08-13`), so two vaults' journals for the same day were genuinely one key
+in the one store every install used to share.
+
+Because the identity lives in the vault's database, the store can only be opened
+once a vault is open. `CrdtProvider.initPersistence()` called before that
+**defers** — it opens nothing and, importantly, does not mark itself settled, so
+the vault-open path's call runs it for real. Vault open is what brings the store
+up; a vault switch destroys the provider and the next vault's open brings up its
+own.
+
+### Inheriting the pre-scoping store
+
+Installs upgrading from a build that used the single `<userData>/crdt-store`
+directory hand it to the **first vault that opens after the upgrade, and to no
+other**. The claim is recorded in `memry-config.json`
+(`crdtStore.legacyStoreClaimedBy`) and the directory is then moved into that
+vault's path. Every other vault starts from an empty store and re-seeds from its
+own markdown, which is the ordinary path for a note with no stored history.
+
+The legacy store is deliberately **not** a read fallback for every vault: its
+contents belong to whichever vault last wrote a given note id, so sharing it out
+would recreate exactly the cross-vault bleed scoping exists to remove. For the
+overwhelming majority — single-vault installs — the one claimant is their vault,
+and nothing about the upgrade is visible.
+
+#### Documents two vaults could both have written
+
+One claimant is not enough on its own. On an install that has opened more than
+one vault, the claimant also inherits entries for ids it does not own. Random
+note ids are inert — nothing ever asks for them. Deterministic ids are not: the
+legacy store's `j2026-08-13` is _every_ vault's journal for that day merged into
+one document, and a document that already has content is never seeded from
+markdown, so the claimant would open its journal and silently get another
+vault's text.
+
+So on a multi-vault install the claim also records that those documents still
+have to be set aside (`crdtStore.legacyStorePartitionPendingFor`), and the pass
+runs before the provider opens the store. Each ambiguous document is copied to a
+reserved `__memry_unattributable__/` name — which no note id can collide with —
+and then cleared from its own, so the journal re-seeds from that vault's own
+markdown while the ambiguous history stays on disk rather than being deleted.
+
+Only an install that has known more than one vault pays for this. A single-vault
+install has nothing ambiguous to set aside and inherits its journal history
+whole.
+
+#### Crash safety
+
+The claim, and the partition it owes, are one file write made **before** the
+move:
+
+- crash after the claim, before the move → the directory is still there and
+  still claimed, so the same vault finishes the move on its next launch and no
+  other vault may take it;
+- crash after the move, before or during the partition → the pending record
+  still names that vault, and it — not the legacy directory, which by then is
+  gone — is what drives the pass, so the next launch partitions the store the
+  vault now owns;
+- crash after both → the record is gone and the claim is settled, so there is
+  nothing to apply twice.
+
+Setting a document aside is idempotent (re-archiving replays the identical Yjs
+update, which is a no-op, and clearing an already-cleared document does
+nothing), so an interrupted pass is simply repeated. The record is cleared only
+after a complete pass.
+
+The move is a plain directory rename (falling back to copy+delete on a locked
+Windows directory). Nothing about it bypasses the checks below: the inherited
+store still goes through the full preflight, quarantine and probe — the
+partition pass opens it through `openCrdtPersistence` for exactly that reason,
+at the cost of one extra preflight child on the single launch that migrates.
+
+### When the vault's uuid changes
+
+A vault's uuid is stable for as long as it stays open, with one exception:
+**device linking**. A device joining an existing vault adopts the account's uuid
+(`adoptVaultLocally`), rewriting the `vault_metadata` singleton in place — and
+the store directory is named after the value that function replaces.
+
+Nothing breaks in the session where it happens; the directory is already open
+and stays open. The next open is the problem: it resolves the adopted uuid,
+finds no directory, and every note re-seeds from markdown as an independent
+insertion instead of merging with the history the device already had.
+
+So the adoption records where the store is (`crdtStore.pendingRenames`, adopted
+uuid → the name the directory still has), and `prepareVaultCrdtStore()` moves it
+before the store is opened. Doing it there rather than inside the linking flow
+is deliberate: at that point the previous provider has always been destroyed
+(`closeVault` awaits `destroy()`, which closes LevelDB, before
+`resetCrdtProvider()`), so the directory is never moved out from under an open
+LevelDB lock.
+
+The record is written **before** the uuid it describes, for the same reason the
+legacy claim is written before its move:
+
+- crash after the record, before the rewrite → the vault still has its old uuid,
+  so nothing fires and the store opens where it always was. The entry names a
+  uuid no vault holds and is inert; retrying the link records it again,
+  identically;
+- crash after the rewrite, before or during the move → the record still names
+  the old directory, so the next open finishes the move;
+- crash after both → the record is cleared and there is nothing to redo.
+
+Two edges are handled by leaving things alone rather than guessing. If the
+adopted uuid **already** has a store — two local vaults claiming one uuid, or a
+copy+delete whose delete failed — neither directory is touched and the record
+stays pending, because the destination is somebody's history too. And a uuid
+that changes twice before the store is next opened collapses onto the directory
+that was actually written, rather than pointing at a middle name no directory
+ever had.
+
+The rename settles **before** the legacy inherit above. Both want to move a
+directory into this vault's name and only one can: the pre-adoption store is
+history this vault provably wrote, while the legacy store is history it can only
+claim.
+
+A device that linked under a build without this has an orphaned directory under
+`<userData>/crdt-stores/<old uuid>`. Nothing recovers it automatically — the old
+uuid was never recorded, and guessing from the directory listing is how the
+wrong vault's history gets attached. No note content is at risk (markdown is the
+source of truth); what is lost is the merge history, so those notes behave like
+notes the account has never seen.
 
 ## Persistence Resilience
 
@@ -44,7 +219,7 @@ store from a machine that cannot start a child at all:
 
 Only a `store` verdict implicates the store. When it fails and a store
 exists, the store is **quarantined** (renamed to
-`crdt-store.broken-<timestamp>`) and the preflight retried once against a
+`<vault uuid>.broken-<timestamp>`, next to the store it came from) and the preflight retried once against a
 fresh directory: a pass means the data was at fault, so the app continues
 with a fresh store; a second failure means the binding itself is broken, so
 the original store is restored for a future launch and the provider goes
@@ -81,6 +256,28 @@ can land in the gap between opening a note and being wired to it. Unsubscribing 
 provider for a note drops its entry, and the channel listener is released once nothing is
 listening — note close, window reload, and vault switch all take that path.
 
+## Undo Belongs to the Doc, Not the Plugin
+
+With a Yjs fragment bound, undo is no longer ProseMirror's `history` plugin — it is a
+`Y.UndoManager` scoped to the note's fragment, created once by y-prosemirror's yUndo
+plugin and shared by every surface on that doc.
+
+That manager does not survive a plugin registration on its own. ProseMirror rebuilds
+**every plugin view** whenever `state.plugins` changes identity, which
+`registerPlugin` / `unregisterPlugin` both do, and the yUndo view destroys the manager on
+teardown. `reconfigure` keeps plugin _state_, so the replacement view hands back the same
+destroyed manager: detached from the doc's `afterTransaction` and dropped from its own
+`trackedOrigins`. Nothing is captured after that, and undo is a silent no-op for the rest
+of the session.
+
+So a plugin registered after mount goes through
+`content-area/register-editor-plugin.ts`, which re-arms both on the way in and on the way
+out. The editor registers three that way today — CriticMarkup decorations, the `@`-date
+ghost, and the hash-tag inline plugin — and any new one must take the same path.
+
+This only became reachable once every note got a local Y.Doc: before that, a signed-out
+editor fell back to ProseMirror's `history`, whose state survives a view rebuild.
+
 ## Open Doc Lifecycle
 
 Main keeps a Y.Doc open while an editor window is attached to it. Sync pulls may also
@@ -91,6 +288,30 @@ Inactive docs are capped with least-recently-used eviction. The eviction path on
 targets docs with zero attached windows, so active editor docs are never evicted. The
 provider metrics expose the open doc count, encoded size, and per-doc `windowCount`
 so memory growth can be observed without inspecting private provider state.
+
+That cap bounds how many notes one sync pass may hold at a time. The batch CRDT pull
+opens every note it is about to fetch before it sends the request and keeps them open
+until their updates are applied, so it splits its work into chunks of
+`CrdtProvider.inactiveDocCapacity`. An unsplit pass larger than the cap evicts the notes
+it opened first, and their updates are then dropped as "unopened doc" — a whole-vault
+pass, which is what a sign-in or a reconnect sweep produces, is several times the cap.
+Chunking also keeps each request under the server's 100-note limit on
+`/sync/crdt/updates/batch`.
+
+The vault-wide sweep hands its work to that same batch path rather than pulling one note
+at a time, and sizes its own chunks at `min(CRDT_SWEEP_CHUNK_NOTES, inactiveDocCapacity)`
+so a paced chunk is one batch request rather than several. Batching alone is not a fix for
+request volume, though: the batch endpoint batches the **incrementals**, not the snapshot
+baselines, which are still fetched one note at a time inside the pass. A 121-note sweep
+goes from 242 requests to roughly 125 — half, not a handful. What keeps it under the
+server's limits is the pacing described in [Reconnect Recovery](#reconnect-recovery).
+
+For the same reason, "this doc has no state" and "this doc is not open" are treated as
+different answers when the pass decides whether to seed a note from local markdown. A
+doc the provider closed mid-pass reports no state vector at all; seeding on that would
+write this device's markdown over a body the pass never managed to apply, losing the
+other device's edit rather than merely showing it late. Those notes are left for the
+next pass.
 
 Because "attached window" is what makes a doc safe from eviction, every IPC entry point
 that can open a doc attributes it to the sender window — `crdt:open-doc` and the
@@ -105,6 +326,50 @@ pins a doc for the rest of the session: the renderer's `crdt:close-doc` on unmou
 `closed` hook per window for ⌘W and renderer crashes, a broadcast-time backstop for any
 window that turns out to be gone, and provider teardown on vault close or switch. Once
 released, the doc is evictable and compactable again.
+
+### Rebinding After a Provider Reset
+
+Sign-out — and any other provider reset — drops the instance that owned every open doc,
+while renderer editors stay mounted. Their providers are then bound to docs nothing
+serves: main goes on applying remote updates, to the _new_ instance's docs, and
+broadcasts them to a window set the editor is no longer in. Nothing about that is visible
+to the user, so the note silently shows stale content until it is closed and reopened or
+the app restarts.
+
+Recovering from that takes two signals, because "the binding died" and "a binding is
+possible again" are not the same moment.
+
+`crdt:provider-reset` is the first. It goes to every window — one reset strands every open
+doc at once — and a provider that hears it marks its binding **stale**: it stops reporting
+itself as synced, and it sends nothing. It explicitly does not re-open. The reset is
+broadcast from inside teardown, with the old instance destroyed and no replacement
+initialized, so `crdt:open-doc` is rejected with `CRDT provider not initialized` at exactly
+that instant. A provider that answered the reset by re-opening therefore failed every
+single time, logged the failure and dropped it, and stayed unbound for the rest of the
+session — the same stale note the reset exists to prevent.
+
+`crdt:provider-ready` is the second, and it is what drives the re-open. Main broadcasts it
+from the one assignment that makes `crdt:open-doc` stop rejecting: the flag
+`CrdtProvider.isInitialized()` reads, set when `initPersistence()` has finished opening
+(or deliberately given up on) the local store. That happens once per usable provider — at
+app bootstrap, and again whenever the sync runtime brings one up on vault open or
+sign-in. A provider whose binding is stale re-opens its note and redoes the sync handshake
+there. Re-opening is the part that matters: that is what re-attributes the window to the
+fresh doc and puts the editor back in the broadcast set.
+
+Marking the binding stale never touches the editor. The note stays mounted and fully
+editable — signed out, offline, and with no account at all — because those edits exist
+only in that window's Y.Doc. The doc is merged rather than replaced on rebind, and
+`crdt:sync-step-1` / `-2` are what carry them across to whatever main now holds.
+
+A rebind that fails leaves the binding stale, so the next ready signal re-drives it. That
+is the retry: there is no timer and no polling loop, which matters because a reset with no
+provider ever following it — the signed-out steady state — has to settle to nothing
+pending rather than to a retry that runs forever.
+
+The reset also logs how many docs had an editor attached when it happened. That is the
+number the rebind has to bring back to zero, and it is the only signal that this class of
+failure occurred — a stale editor is otherwise indistinguishable from a quiet note.
 
 Local compaction runs under that same condition as closing and eviction — a doc with no
 windows attached — and it is asynchronous for the same reason, so the two can be in flight
@@ -172,6 +437,24 @@ document to its vault `.md` file and re-indexes it for search.
   `CrdtProvider.destroy()` clears the maps outright, so no vault's note ids or file paths
   survive into the next one.
 
+- **The export path cannot write** — a pass serializes from a detached copy of the Y.Doc,
+  never the live one. The BlockNote/Yjs converter answers a node type its schema cannot
+  build by _deleting_ that element; run against the live doc that turns a serialization
+  gap into a real CRDT delete which replicates to every device. Reading from a copy keeps
+  any such repair inside a throwaway document.
+- **Write-back fails closed** — before serializing, the pass scans the fragment for node
+  types this build's schema cannot construct. If it finds any, the `.md` file is left
+  exactly as it is and the pass reports `writeback_unrepresentable_node` rather than
+  writing a version with that content missing. The note resumes normal write-back as soon
+  as the document no longer holds such a node; the refusal does not latch.
+- **Constructible is not the same as serializable** — the scan above answers "can this
+  build construct this node name", which is exactly the question the converter's delete
+  depends on. It is not "will this node survive serialization". A node whose spec is
+  registered under a key that is not its `config.type` builds fine and serializes to
+  nothing, and the scan cannot see it. That invariant is enforced where it can be, at
+  schema construction in `@memry/editor-schema`: a mis-keyed spec fails the schema build
+  in both processes instead of quietly dropping content on the next write-back.
+
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
 results and the file on disk catch up when the pass runs.
@@ -184,6 +467,64 @@ Notes flow through **both** sync paths:
 - **Incremental** — small Yjs binary updates via `/sync/crdt/updates`. Used for live collaboration during a session.
 
 Snapshots are pushed **pre-batch** so other devices receive correct state before the sync notification reaches them.
+
+## Local-Only Notes Keep Their Body
+
+A note marked **Local only** never sends its body to the server. The record feed has always
+honoured this — `seedUnclockedNotes` excludes `localOnly IS NOT 1`, `incrementNoteClockOffline`
+returns early, `buildNotePushPayload` returns `null` — and the CRDT body path now does too.
+
+The flag is cached on the open doc, read once from the `note_cache` row in `doOpen`.
+`onDocUpdate` runs on every keystroke and cannot afford a database round-trip; opening a doc
+already pays an async store read plus, usually, a file stat, read and markdown parse, so one
+more primary-key lookup there is not measurable. `setNoteLocalOnlyState` corrects the cached
+flag in place after it writes both databases, so toggling takes effect on the next keystroke
+rather than the next time the note is closed and reopened.
+
+Five paths send a body, and each refuses independently:
+
+| Path                              | Guard                         |
+| --------------------------------- | ----------------------------- |
+| `onDocUpdate` → `CrdtUpdateQueue` | cached flag on the doc        |
+| `close()` snapshot                | cached flag on the doc        |
+| `pushAllSnapshots()` at shutdown  | cached flag on the doc        |
+| `compactDoc()` snapshot           | cached flag on the doc        |
+| `pushSnapshotForNote()`           | re-reads the `note_cache` row |
+
+`pushSnapshotForNote` re-reads the row because it is the one push path reached for a note with
+no open doc — the pending-note replay and the push coordinator's `create` both land there.
+
+`pendingSnapshotBytes` keeps counting for a local-only note. It means "written locally, not yet
+on the server", which stays true, and suppressing it would make three of the guards above look
+redundant when they are the only thing holding the body back.
+
+Nothing local changes. The Y.Doc, the local CRDT store, the window broadcast and the markdown
+write-back all sit upstream of the single branch that sends bytes, so a local-only note edits
+exactly like any other — signed out, offline, or with no account.
+
+### Clearing the flag owes the server the whole document
+
+Turning **Local only** off is the case that would otherwise lose data. Nothing else pushes an
+existing note's body: the push coordinator's CRDT snapshot is gated on `operation === 'create'`
+and clearing the flag raises an `update`, an update payload carries `content: null`, and the
+vault sweep only pulls. The note would resume syncing its metadata with its body frozen wherever
+the server last saw it.
+
+So `setNoteLocalOnlyState` records the note in the durable pending-CRDT store when the flag
+clears. `drainPendingCrdtNotes` then pushes full document state — pulling and merging the
+server's state first, and keeping the id until that push actually lands. Setting the flag clears
+that record instead, the CRDT twin of the `removePendingNoteSyncItems` call beside it; nothing is
+lost, because the updates stay in the local store and a later clear re-records the note, whose
+replay pushes full state anyway.
+
+Either direction also drops the doc's snapshot debt, so the next `close()` cannot fire a _blind_
+snapshot ahead of the merge-first replay. A snapshot asserts completeness and the server prunes
+every incremental below it, and a note that has just stopped being local-only is the population
+most likely to have diverged from a peer.
+
+Two asymmetries remain, deliberately: a local-only note is still **pulled** from the server by
+the vault sweep, and updates already buffered in `CrdtUpdateQueue` when the flag is set can still
+flush within that queue's 1 s window.
 
 ## Reconnect Recovery
 
@@ -207,12 +548,89 @@ could have been missed, so the sweep is skipped; a new generation means the sock
 dropped and came back, so it runs. A manifest re-pull forces it, being offline skips it,
 and when the socket cannot answer at all a 15-minute interval decides.
 
+**A sync the user asked for by name forces it.** "Sync now" is the escape hatch for a note
+that looks stale, and it is the one caller that cannot flap, so it sweeps whatever the gate
+would otherwise have said. Without that, a live socket that provably missed no broadcast
+still answered the button with "nothing to fetch" — and if the broadcast had in fact been
+lost (the device was offline at the HTTP layer while its socket stayed nominally up), the
+body stayed stale for the whole 15-minute interval with the app reporting a clean sync.
+The throttle still applies to every automatic caller: reconnects, auth refresh, and
+rate-limit release.
+
 A reconnect sweep is also floored at one per 60 seconds so a flapping connection cannot
 buy one pass per flap; inside the floor it is deferred on a single re-used timer rather
 than dropped. That floor counts from the last sweep that actually closed a reconnect gap,
 not from any sweep — measuring it against the startup or interval sweep made the first
 reconnect after app start wait out the whole floor, which left the device showing a stale
 body for that window.
+
+### When the server goes away but the network does not
+
+An unreachable **server** is not an offline **device**. `NetworkMonitor` reads OS-level
+connectivity, so a server that stops answering fires no `status-changed` event: the CRDT
+update queue is never paused, no full sync is scheduled when the server returns, and the
+durable pending-note replay — which runs on a network transition and once per sync-runtime
+start, neither of which happens here — never fires
+either. Everything that heals a body edit across that kind of outage therefore rides on
+the two routes above, the `crdt_updated` broadcast and the reconnect catch-up, and both
+of them need the WebSocket back.
+
+Two things have to hold for that to work, and both are load-bearing:
+
+- **The socket must keep trying.** Every exit from `connect()` re-arms the retry,
+  including the one where the access token read comes back empty. That case is not
+  hypothetical during an outage: `/auth/refresh` lives on the same unreachable server, so
+  roughly fourteen minutes in, the access token passes its pre-expiry margin and cannot be
+  renewed. An exit that did not re-arm left the device with no socket for the rest of the
+  session, and with it no broadcast and no reconnect catch-up.
+- **The outbound backlog must survive.** The push function rejects rather than returns
+  when credentials are momentarily unavailable, so the queue re-buffers the batch instead
+  of losing it — see [Memory bounds while paused](#memory-bounds-while-paused).
+
+### Pacing the sweep
+
+Deciding _whether_ to sweep is not enough, because a sweep that runs fires against every
+note in the vault at once. Down the one-note-at-a-time path that was two GETs per note:
+121 notes meant 242 requests in about four seconds, and the server refused most of them.
+
+The sweep is therefore drained in chunks — `CRDT_SWEEP_CHUNK_NOTES` notes every
+`CRDT_SWEEP_CHUNK_INTERVAL_MS` — against **two independent server budgets**, both keyed by
+device rather than by account:
+
+| Endpoint                                                    | Bucket            | Limit      | Cost per chunk    |
+| ----------------------------------------------------------- | ----------------- | ---------- | ----------------- |
+| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 600 / 60 s | one GET per note  |
+| `POST /sync/crdt/updates/batch`                             | `crdt_batch_pull` | 30 / 60 s  | at least one POST |
+
+At 25 notes every 15 seconds that is 100 snapshot GETs and 4 batch POSTs per minute —
+16.7 % of the pull bucket and 13.3 % of the batch bucket. Because both buckets are per
+device, a second device sweeping at the same time spends its own rather than eating into
+this one. The pull bucket is still the tighter of the two if the cadence is raised — 600
+GETs buy 24 chunks a minute at 25 notes each, against the batch bucket's 30 — but the
+sweep sits a sixth of the way into it, not against the edge. Only the _rate_ matters, not
+the total: a 1,000-note vault is 40 batch POSTs, which would blow the 30-per-minute bucket
+fired at once but is 4 per minute spread over the ten minutes the paced sweep takes. Cost
+per minute is constant in vault size; only the duration grows.
+
+The batch POST figure is a floor rather than an exact count, because a chunk loops while
+any of its notes still reports `hasMore`. That only binds on a first-sync backlog, and it
+is no longer destructive when it happens — see below.
+
+**Notes with a live editor skip the queue.** They are pulled in their own batch ahead of
+the paced drain, because the note the user is looking at is the one whose stale body is
+the bug, and a large vault's catch-up takes minutes. Their cost is bounded by the number
+of open editors.
+
+One drain runs at a time and one timer is armed at a time. A second sweep landing
+mid-drain re-queues into the running one instead of starting its own, which would double
+the request rate; engine teardown cancels the timer and drops the queue.
+
+Teardown also aborts the chunk already in flight. Cancelling the timer only stops the
+_next_ one, and a paced sweep spans minutes, so at teardown there is almost always one
+running — it would otherwise pull into a provider and a vault the engine no longer owns,
+and spend request budget for a session that is over. The abort signal is rebuilt per
+drain rather than reused, because an aborted controller stays aborted and the next
+engine's pulls must not start cancelled.
 
 ## Snapshot Failure Handling
 
@@ -242,6 +660,18 @@ retry `429`s inline — honouring `Retry-After` per note would stall the whole p
 sync cadence is the retry instead. A single note that fails its snapshot baseline is
 skipped and retried on the next pass rather than abandoning the remaining notes.
 
+"Retried on the next pass" is a property of the code, not an assumption: a pull that does
+not complete puts its notes back into the pending-pull set, which the next cycle drains.
+That covers a rate-limited chunk (all of its notes), a rate-limited snapshot baseline (only
+that note), a failed single-note pull, and a batch that could not obtain credentials. The
+rule is deliberately not 429-specific — a transient 5xx, an unreachable server and a rate
+limit all leave the same stale body, so "failed, retry next cycle" needs no taxonomy.
+
+Without that, a rate-limited note was logged and dropped, and its body stayed stale until
+the _next_ vault-wide sweep — a 60-second reconnect floor or a 15-minute interval away.
+Opening the note did not help, because that reads the main process's Y.Doc rather than the
+server.
+
 Whether a note still owes the server a snapshot is tracked per open doc as a byte count of
 the local updates applied since the last successful push; closing a note and the push-all
 pass both skip a note whose count is zero. A push therefore subtracts only the bytes its
@@ -250,6 +680,301 @@ before the push is awaited, and typing can reach the doc during that await — c
 the widest window, since it encodes its snapshot up front and buffers only remote updates,
 not local ones. Discarding the whole count marked that edit as pushed, and the note was
 then skipped until some later edit re-armed it.
+
+## Sign-Out Keeps the Store
+
+Signing out does **not** delete the CRDT store. It used to, and that was the
+containment for the cross-vault key collision described in
+[One Store Per Vault](#one-store-per-vault) — a problem the store path now makes
+structurally impossible, so the wipe has nothing left to defend.
+
+What the wipe cost was the merge history. Vault markdown survived it, but
+markdown is a lossy export with no causal information in it: with no local
+history left, a note edited while signed out could not _merge_ with the server's
+version on sign-in. It could only be taken wholesale, or re-seeded from markdown
+as an independent insertion, which duplicates the body. Sign out, edit a note,
+sign back in, and the edit was silently gone.
+
+Sign-out teardown therefore reopens the store rather than deleting it. It has to
+reopen it explicitly, because stopping the sync runtime destroys the provider on
+the way through, and **editing is never gated on a session** — the note stays
+fully editable signed out, offline, and with no account at all. Editors bound to
+the destroyed provider rebind on `crdt:provider-ready`, exactly as they do after
+any other reset (see
+[Rebinding After a Provider Reset](#rebinding-after-a-provider-reset)).
+
+That is a property of teardown, not of sign-out. `teardownSession` takes a
+reason, and every reason that leaves the app running reopens the store:
+
+| Reason      | Reopens the store | Why                                                                                                                                                                                                              |
+| ----------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `logout`    | yes               | The user signed out and kept working. Editing is never gated on a session.                                                                                                                                       |
+| `integrity` | yes               | An involuntary sign-out, triggered when the device signing key reads back absent. The user did not ask for it and is not told the editor went read-only, so leaving the provider dead here is worse, not better. |
+| `shutdown`  | no                | The app is quitting: no editor is left to serve, and the vault uuid the store is scoped to is read from a data DB that `closeVault()` is about to close.                                                         |
+
+The store path resolves through `getOrCreateVaultUuid` against the open data DB,
+which is why `shutdown` is the exception rather than a harmless no-op — a reopen
+racing the close would leave a freshly opened LevelDB store behind on the way
+out. Nothing routes an app quit through `teardownSession` today; `before-quit`
+calls `stopSyncRuntime()` directly and then `closeVault()`.
+
+The editor keeps the same Y.Doc across that whole cycle. A reset marks the
+binding stale, which is a statement about main, not about the doc: unbinding the
+fragment would tear the editor's collaboration extension off a document it can
+never re-attach to and re-arm the renderer's own markdown save against a body
+main is about to merge. Signed-out keystrokes land in that doc, `crdt:apply-update`
+carries them to main, and main persists them to this vault's store and writes the
+markdown back — no server involved at any step.
+
+Nothing about that reaches the push queue, and it does not need to be paused to
+stay quiet: teardown drops it. `CrdtProvider.destroy()` clears the queue
+reference and `resetCrdtProvider()` then replaces the instance outright, so
+`onDocUpdate` has nothing to enqueue into while there is no session. The 1s flush
+loop is stopped with the runtime that owned it, so a signed-out session never
+retries a push and never reads the keychain for a token that is not there.
+
+### Recording what the server is owed
+
+Having nothing to enqueue into is not the same as owing nothing. A signed-out
+edit is durable locally and **unknown to sync**: the queue never saw it, so the
+queue's own shutdown recorder — which reports the updates it accepted but could
+not flush — cannot report it either. Left there, the edit reached no other
+device, ever; not on sign-in, not on reconnect, not on restart.
+
+So `onDocUpdate` records the note id instead. Any non-network update that
+arrives with no update queue goes to the same durable pending-note store
+(`crdt-pending-notes.json`) the paused queue writes to, through the same
+`recordPendingCrdtNotes`. Only the id: the update itself is already in this
+vault's local CRDT store, and full doc state is what the replay pushes anyway.
+
+The write is deduped per note for the lifetime of the queue-less stretch, so a
+signed-out editing session costs one small synchronous JSON write **per note
+touched**, not one per keystroke. It is eager rather than debounced because the
+id has to survive a crash or a kill, and after the first update for a note there
+is nothing left to pay. `CrdtProvider.init()` clears the dedupe set, so the next
+queue-less stretch starts fresh.
+
+That write is **crash-atomic**, because a recorder whose whole purpose is to
+survive a crash cannot be the thing the crash truncates. The full list is staged
+in a fresh temp file in the same directory — `rename` is only atomic within a
+filesystem — flushed, then renamed over the live path, so the previous list
+stands until a complete replacement is in place and there is no moment where the
+store holds half a JSON array. The flush is one `fsync` per note touched, not per
+keystroke, which is what the per-note dedupe buys. Clearing the last id still
+unlinks the file: unlink is already atomic, and "no file" has always meant
+"nothing pending".
+
+A store that does not parse is **preserved, salvaged, and reported** rather than
+treated as an empty backlog. Failing open would be right for a cache; this file
+is the only record that a signed-out edit is owed to the server, so reading it as
+"nothing pending" discards that debt in silence. The damaged bytes are moved to
+`crdt-pending-notes.corrupt.json` — one fixed name, so a device with a failing
+disk cannot accumulate copies in userData forever — every complete `"id"` token
+still in them is recovered, and the recovered list is written back to the live
+store so the drain's second read (`clearPendingCrdtNotes`) does not find it gone.
+An id the damage landed inside is a prefix, not an id, and is lost; a recovered
+string that is not really a note id costs nothing, because the drain checks
+`isSyncable` before it pushes. The on-disk format is unchanged — a plain JSON
+array of note ids at the same path — so stores written by older builds read
+exactly as before.
+
+`startSyncRuntime` drains that store once, after `crdtProvider.init()` has
+installed the snapshot push function and after `engine.start()` has awaited the
+first full sync. Signing in runs `startSyncRuntime`, which is what makes a
+signed-out backlog reach the server **with no further user input**; leaving the
+replay to `NetworkMonitor` alone was not enough, because signing in is not a
+network transition. `drainPendingCrdtNotes` clears an id only once its state has
+actually reached the server, so the startup replay and a network-transition
+replay firing together cannot double-push, and a still-offline start leaves the
+entry queued for the next attempt.
+
+Those two triggers can arrive within the same second — coming back from offline
+does both — so the replay serialises itself: two runs must never overlap,
+because each one re-reads the durable store at the top and rewrites it at the
+end. A trigger that lands mid-drain is **deferred, not dropped**. Dropping it
+was safe in the sense that nothing was lost, but the running drain had already
+read the store, so an id recorded in between waited on some unrelated later
+event to be replayed — and pulling before pushing made each drain slow enough
+for that to matter.
+
+Deferral **coalesces**: at most one run waits behind the running one. Every run
+is "replay whatever the store holds when you start", and that is re-read per
+run, so a third trigger asks for nothing the second has not already asked for,
+and a deferred run naturally picks up ids recorded while its predecessor was
+working. The queued run uses the **newest** trigger's dependencies: those close
+over one runtime's `SyncEngine` and `CrdtProvider`, and neither survives
+`stopSyncRuntime`, so a session torn down and replaced mid-drain hands the
+deferred run to the live session rather than replaying the dead one's closure. A
+teardown with nothing replacing it leaves the queued run holding the dead
+session's dependencies — which is safe for the reason the next subsection
+describes, not because the queue knows a session ended.
+
+Notes that no longer exist, or never sync via CRDT (binaries), are dropped at
+drain time rather than retried forever, and a doc with no content is not pushed
+at all — a snapshot is a full note body and an R2 write, so the replay only pays
+for notes that need it.
+
+### A drain stops when the runtime that started it does
+
+Nothing awaits the replay. `startSyncRuntime` fires it and returns, the network
+monitor fires it from an event handler, and `stopSyncRuntime` does not wait for
+it — so a drain can still be walking the backlog while the session that owns its
+`SyncEngine` and `CrdtProvider` is torn down underneath it.
+
+The push half of each note already failed closed: `CrdtProvider.destroy()` nulls
+the snapshot push function, and `pushSnapshotForNote` returns `false` without
+one. The **merge runs first**, and it had no equivalent guard. It reaches
+`crdtProvider.open(noteId)` on the destroyed provider, whose persistence is now
+`null`, so the provider builds a fresh doc, seeds it from markdown and applies
+the server's merged updates to something nothing will ever save — and can drive
+a markdown write-back into a vault the session no longer owns.
+
+So the runtime owns a liveness signal. One `AbortController` per session covers
+both pieces of work started and not awaited — the initial CRDT seed and the
+pending-note replay — and it is created before the network listener that can
+trigger a replay exists. `stopSyncRuntime` trips it **before** it destroys the
+provider, and the start-failure path trips it too, because that path destroys the
+provider as well. The drain checks it at the top of each note and again
+immediately before the merge, since `isSyncable` runs the caller's code in
+between and the merge is the destructive half.
+
+The signal travels **with the drain's dependencies**, not in the drain module's
+own state, and that is what makes the deferral queue correct without teaching it
+about sessions. A queued run holding a dead session's dependencies reads that
+session's tripped signal and clears nothing; a queued run whose dependencies were
+replaced by a new session reads the new session's live signal and runs in full.
+Liveness kept as module state would latch on the first teardown and silently
+strand every backlog for the rest of the process.
+
+An aborted drain still clears only the ids whose state actually reached the
+server. Everything it did not get to stays in `crdt-pending-notes.json` for the
+next session, which is what makes stopping early a delay rather than a loss.
+
+One note's failure also no longer abandons the rest of the pass. `isSyncable` is
+`CrdtProvider.validateNoteForCrdt`, which reads the index database, and
+`closeVault` closes it — so it throws for every remaining id. It is inside the
+per-note `try` now, the same shape the CRDT batch pull uses: a note that throws
+is not cleared and is retried next pass, and the notes behind it are still
+attempted.
+
+### Merge before push, and fail closed
+
+A snapshot push is not an addition, it is an **assertion**: `storeSnapshot` is
+followed by `pruneUpdatesBeforeSnapshot`, which runs
+
+```sql
+DELETE FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ? AND sequence_num <= ?
+```
+
+bound to the new snapshot's sequence number. The server takes the pushing device
+at its word that the snapshot contains everything up to that point. Push a
+snapshot for a note whose peer edits this device has not merged, and those edits
+are deleted from the server _and_ absent from the snapshot — destroyed for every
+device.
+
+The pending list is exactly the notes this device edited while it could not
+push, which is also the population most likely to have diverged from a peer, so
+the merge is mandatory. `drainPendingCrdtNotes` therefore pulls and merges each
+note's server state (`SyncEngine.mergeRemoteCrdtForNote` →
+`CrdtSyncCoordinator.pullCrdtForNote` → `applyRemoteUpdate`) **immediately
+before that note's own push**.
+
+Per note, not "once the sweep finishes": the vault sweep is paced at 25 notes /
+15 s, so waiting on it would stall the replay for minutes and still not
+guarantee a given note had been reached. Being placed after `engine.start()` is
+necessary — the first full sync is awaited there — but not sufficient, because
+that sync only _queues_ the paced body sweep.
+
+A pull that does not complete leaves the note pending and **unpushed**.
+`pullCrdtForNote` returns `false` for every incomplete outcome: missing token or
+vault key, an abort, a rate-limited or failed baseline or incrementals fetch.
+Being late is recoverable — the next runtime start or network transition retries
+— while deleting another device's edits is not.
+
+Cost: one extra snapshot GET plus at least one incrementals GET per replayed
+note, both on the `crdt_pull` bucket (600 / 60 s per device). The pending list is
+tens of notes in practice, so ~40–50 GETs, alongside the paced sweep's 100/min —
+comfortably inside the budget, and no pacing is added.
+
+### Unmerged server state routes the push away from the snapshot endpoint
+
+Failing closed covers the one caller that reads a merge's return value — the
+pending-note replay. Nothing else does. The 30 s snapshot scheduler, `close()`,
+`pushAllSnapshots`, `compactDoc` and the push coordinator never see it, so a
+snapshot push can still assert a completeness this device does not have.
+
+The condition that makes a push destructive is **known-unmerged server state**,
+not any one cause of it. `CrdtSyncCoordinator` keeps a per-note set,
+`unmergedRemoteNotes`, read through `hasUnmergedRemoteState` and surfaced as
+`SyncEngine.hasUnmergedRemoteCrdtState`. A note is in it when:
+
+- a merge pass skipped a payload whose signer `resolveDeviceKey` could not
+  resolve;
+- a merge pass failed — a rate-limited or failed snapshot baseline, failed or
+  dead-lettered incrementals, an aborted pass, a missing token or vault key, a
+  doc that would not open;
+- the server named the note in a `crdt_updated` broadcast, or a vault-wide
+  sweep queued it, and its pull has not run yet.
+
+Every one of those is destructive at the same moment, and the moment is
+**before a note's first snapshot**. `storeSnapshot` computes
+`sequenceNum = existingSnapshot?.sequence_num ?? currentSeq`, so the watermark
+freezes at the first snapshot: the first prune deletes every row the note has,
+and every later one deletes nothing new. Until its first snapshot lands, every
+note is in that window.
+
+Failing closed is not available for any of them. `GET /auth/devices` returns
+only non-revoked devices, so once a peer is revoked its key never comes back and
+a note held until the signer resolves is held forever; a device that is offline
+or rate-limited may not merge for a long time either. Holding the note back
+strands this device's own edits to protect a peer's — a certain loss traded for
+a possible one. The client also cannot tell transient from permanent:
+`getDeviceSigningKey` already refetches the device list on a cache miss, so a
+surviving `null` carries no signal.
+
+Nor is a skipped payload dead bytes. The signer key is only ever a signature
+check; the payload itself is sealed with a file key wrapped by the vault key, so
+what a prune deletes is still-decryptable user content.
+
+The endpoint resolves it. `pruneUpdatesBeforeSnapshot` has exactly one caller,
+`POST /sync/crdt/snapshot`. `POST /sync/crdt/updates` appends, prunes nothing,
+and wakes peers the same way. So the snapshot push fn sends a flagged note's
+full doc state through `pushCrdtFullUpdate` — the same encrypted bytes, on the
+update endpoint — instead of `pushCrdtSnapshot`. Every push path inherits this,
+because they all funnel through that one function.
+
+The flag is deliberately **not** `pendingPulls`. That set is emptied by
+`drainPendingPulls()` at the top of a cycle and refilled only on failure, so a
+note is in it for neither the minutes it waits in the paced sweep queue (25
+notes / 15 s) nor the seconds it is actually being pulled — which is exactly the
+window the bug loses data in. `unmergedRemoteNotes` is instead raised whenever a
+note enters `pendingPulls` and cleared only by a pass that walked the note end
+to end. A pass settles its own debt up front, so an entry still standing at the
+end was raised _while_ the pass ran — a broadcast, a concurrent failure — and
+its payload is by definition not in the doc that pass walked, so the flag
+survives.
+
+Cost. Routing does not change the request count: both endpoints share the
+`crdt_push` bucket (300 / 60 s per device), one request either way. It changes
+what the server stores — a flagged push writes one full-state `crdt_updates` row
+instead of upserting one R2 blob, at most one per note per 30 s quiet period,
+and only for notes edited while flagged. For a note with no snapshot yet, every
+such row is reclaimed by the first unflagged snapshot push, which prunes at
+`currentSeq`. Pull cost rises by at most one 100-row page.
+
+One narrow failure mode: `pushCrdtFullUpdate` throws above
+`MAX_CRDT_UPDATE_PAYLOAD_CHARS`, because the update endpoint stores each payload
+in a D1 row rather than an R2 object. A flagged note over that ceiling stays
+pending and retried rather than snapshotted — a stall, not a loss, its content
+already durable in the local CRDT store — and it ends as soon as the note merges
+and the snapshot route reopens.
+
+The set is in-memory and per session; `clearCaches()` empties it on vault switch
+and teardown. A note whose pull failed in one session carries no flag in the
+next, and a restart does not necessarily re-flag it: `shouldSweepAllCrdtNotes`
+reads the _persisted_ `LAST_CRDT_SWEEP_AT`, so a restart inside the sweep
+interval with no reconnect gap sweeps nothing. Closing that would need the flag
+on disk, which is a new format and a migration.
 
 ## Sign-Out / Sign-In Ordering
 
@@ -279,6 +1004,12 @@ While the queue is paused (offline, expired token, storage quota) nothing drains
 
 A release is never a drop. The note ids go to the durable pending-note store (`crdt-pending-notes.json`) **before** their payloads are freed, and `drainPendingCrdtNotes` pushes each note's full doc state — which supersedes the buffered updates — on the next reconnect or app start. If no durable store is wired up, or recording fails, the queue keeps the memory instead of releasing it.
 
+The same store carries edits the queue never saw at all, because there was no queue: see [Recording What the Server Is Owed](#recording-what-the-server-is-owed). For those, full doc state is not merely a superset — it is the only shape available, since a queue-less edit produced no incrementals to replay.
+
+### A failed push keeps its batch
+
+`flushNote` takes a note's updates out of its buffer before it calls the push function, so only a **rejected** push puts them back. The push function therefore has to reject, not return, whenever it cannot send — including when the access token, vault key or device signing key is momentarily unavailable. That is never the signed-out steady state (the sync runtime does not wire the queue up at all without a session, a paid plan and a verified vault key), so a missing credential there is one that went away mid-session and will come back. The only exception is a non-retryable 4xx that is neither 429 nor 401, which the queue discards on purpose.
+
 ## BlockNote Compatibility
 
 BlockNote uses Yjs natively. The renderer's BlockNote editor binds to the renderer-side Y.Doc proxy provided by the IPC provider; edits flow through main and back to disk.
@@ -286,10 +1017,57 @@ BlockNote uses Yjs natively. The renderer's BlockNote editor binds to the render
 Markdown cannot represent arbitrary nested BlockNote paragraphs. Note markdown export and CRDT writeback preserve those unsupported child blocks with hidden nesting markers, then restore them when a note reloads. Inbox note reload also reads BlockNote's saved `data-nesting-level` HTML metadata so captured note indentation round-trips through the editor.
 Marker parsing trims imported markdown with a linear scan so malformed or very large note bodies cannot trigger regex backtracking during reload.
 
+### The schema is a cross-process contract
+
+The custom node types memrynote adds to BlockNote — wiki links, hash tags, link and date
+mentions, and the custom blocks — live in the `@memry/editor-schema` workspace package so
+both processes can build from one definition. This matters more than a shared-code tidy-up:
+the main process converts the shared Y.Doc through y-prosemirror, which deletes any element
+whose node name its schema does not know. A spec registered on only one side is data loss,
+not a missing style — the same class of cross-process contract that [IPC](/architecture/ipc)
+gates with `ipc:check`.
+
+The package owns each node's config, `parse` and `toExternalHTML` — the half that decides
+what reaches the vault file — and each process supplies its own presentation. The renderer
+gives the editor chip; the main process gives an implementation that emits the node's plain
+markdown form.
+
+**Main's implementations are not decoration.** BlockNote serializes inline content inside a
+**table** through the spec's `render`, not through `toExternalHTML`, so for that one block
+type main's rendering is what lands on disk. A `render` that throws makes the whole note's
+conversion fail — it stops writing back rather than losing a cell — and a `render` carrying
+the editor's rich markup rewrites the cell: a link mention's `((mention:…))` token becomes a
+plain markdown link and its domain, title, favicon and site name are gone. Every server-side
+`render` therefore emits exactly what `toExternalHTML` emits. No spec is shared whole.
+
+Whatever still cannot be represented is caught by the fail-closed guard in
+[Markdown Write-Back](#markdown-write-back).
+
+The custom **blocks** — `callout`, `youtubeEmbed`, `bookmark`, `file` and `taskBlock` — work
+the same way. `file` is worth calling out: the renderer overrides BlockNote's default `file`
+spec, so before the config was shared the main process built the _default_ one and wrote
+`[name.pdf](url)` where the vault file held `<!-- file:{…} -->`, dropping size, MIME type and
+any width/height/alignment.
+
+Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
+(`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is
+present — so the `<!-- file:… -->`, `![embed](…)` and `![bookmark](…)` marker lines are
+recognised there, using the same rules the renderer uses on its own save path. Markers
+inside a code fence are the author's text and stay text; the fence tracker follows
+CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
+
+Callouts are deliberately **not** parsed back. Their marker carries a type and an optional
+title that the block config cannot hold, and the renderer's parser coerces any unrecognised
+type to `info`. Parsing them on this path would rewrite `> [!note]` as `> [!info]` in every
+Obsidian-authored vault, so a callout read from a file stays a quote block and its bytes stay
+untouched. A callout created in the editor round-trips through the live document normally.
+
 ## Files Worth Knowing
 
 ```
 apps/desktop/src/main/sync/
+├─ crdt-store-path.ts       # per-vault store path + legacy-store migration
+├─ crdt-legacy-partition.ts # sets aside inherited docs no vault can claim
 ├─ crdt-update-queue.ts
 └─ engine.ts                # ordering: pull → seed → per-batch push
 

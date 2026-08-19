@@ -81,7 +81,9 @@ export const TelemetryEventNameSchema = z.enum([
   'note_exported',
   'import_completed',
   'deep_link_opened',
-  'home_board_customized'
+  'home_board_customized',
+  'reminder_created',
+  'reminder_deleted'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([

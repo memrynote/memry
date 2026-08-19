@@ -39,11 +39,13 @@ import {
   postToServer,
   getFromServer,
   deleteFromServer,
+  pushCrdtFullUpdate,
   SyncServerError,
   NetworkError,
   RateLimitError,
   parseRetryAfterHeader
 } from './http-client'
+import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from './crdt-payload'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
 
 /** A real data.db handle carrying the vault_metadata singleton. */
@@ -316,6 +318,45 @@ describe('http-client', () => {
         // its own message rather than the generic unreachable one.
         message: 'errors:sync.requestTimedOut'
       })
+    })
+  })
+
+  describe('pushCrdtFullUpdate', () => {
+    it('sends the doc state to the non-pruning endpoint', async () => {
+      // #given a full document state that must reach the server WITHOUT the
+      // server deleting anything: only /sync/crdt/snapshot runs
+      // pruneUpdatesBeforeSnapshot (apps/sync-server/src/routes/sync.ts).
+      mockFetch.mockResolvedValue(createJsonResponse({ ok: true }))
+
+      // #when
+      await pushCrdtFullUpdate('note-1', new Uint8Array([1, 2, 3]), 'token-1')
+
+      // #then the URL is the load-bearing assertion here. Sending these same
+      // bytes one path over deletes every crdt_updates row at or below the
+      // stored watermark, including one this device could not verify and
+      // therefore could not have included.
+      const [url, init] = mockFetch.mock.calls[0] as [string, { body: string }]
+      expect(url).toContain('/sync/crdt/updates')
+      expect(url).not.toContain('/sync/crdt/snapshot')
+      expect(JSON.parse(init.body)).toEqual({
+        noteId: 'note-1',
+        updates: [Buffer.from([1, 2, 3]).toString('base64')]
+      })
+    })
+
+    it('refuses a state too large for a D1 row instead of silently falling back', async () => {
+      // #given the incremental route stores each update as a D1 blob, so it has
+      // a ceiling the snapshot's R2 object does not
+      mockFetch.mockResolvedValue(createJsonResponse({ ok: true }))
+      const tooBig = new Uint8Array(MAX_CRDT_UPDATE_PAYLOAD_CHARS)
+
+      // #when / #then throwing stalls this one note — its content is already
+      // durable in the local CRDT store — where a snapshot fallback would
+      // destroy the peer payload the caller is protecting.
+      await expect(pushCrdtFullUpdate('note-1', tooBig, 'token-1')).rejects.toThrow(
+        'CRDT state too large'
+      )
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 

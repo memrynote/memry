@@ -43,12 +43,15 @@ import {
   useHintActivation,
   isInputFocused
 } from '@/hooks'
+import { matchesShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
 import { CommandPalette } from '@/components/search/command-palette'
 import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-modal-context'
 import { SettingsModal } from '@/components/settings-modal'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
+import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
 import { useMenuCommands } from '@/hooks/use-menu-commands'
 import { tasksService, queueTaskReorder } from '@/services/tasks-service'
@@ -80,6 +83,7 @@ import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
 import { AgentFeatureProvider } from '@/agent-chat/agent-feature-provider'
 import { AgentTabTitleSync } from '@/agent-chat/agent-tab-title-sync'
+import { CanvasTabTitleSync } from '@/components/tabs/canvas-tab-title-sync'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -217,9 +221,11 @@ const AppContent = (): React.JSX.Element => {
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
+  useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
   const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
   const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
+  const shortcutsHelpBinding = useShortcutBinding('view.shortcuts')
   useSearchShortcut(toggleSearch)
   useHintActivation()
   useMenuCommands({
@@ -242,9 +248,13 @@ const AppContent = (): React.JSX.Element => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const isQuestionShortcut =
         event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey
-      const isSlashShortcut = (event.metaKey || event.ctrlKey) && event.key === '/'
+      const isBoundShortcut = matchesShortcut(
+        event,
+        shortcutsHelpBinding.key,
+        shortcutsHelpBinding.modifiers
+      )
 
-      if (!isQuestionShortcut && !isSlashShortcut) return
+      if (!isQuestionShortcut && !isBoundShortcut) return
       if (isQuestionShortcut && isInputFocused()) return
 
       event.preventDefault()
@@ -254,7 +264,7 @@ const AppContent = (): React.JSX.Element => {
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [toggleShortcutsDialog])
+  }, [shortcutsHelpBinding, toggleShortcutsDialog])
 
   useEffect(() => {
     const openTestNote = (
@@ -329,6 +339,7 @@ const AppContent = (): React.JSX.Element => {
   return (
     <TabDragProvider>
       <AgentTabTitleSync />
+      <CanvasTabTitleSync />
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
       </div>

@@ -26,6 +26,24 @@ export interface NoteFrontmatter {
   [key: string]: unknown
 }
 
+/**
+ * Whether a vault file may be opened as an editable, CRDT-seeded note.
+ *
+ * Mirrors `MarkdownSizeClass` / `LargeFileReason` in `@memry/shared`, which owns
+ * the classifier. Contracts does not depend on shared, so the unions are
+ * restated here and their agreement is gated by a parity test in the desktop
+ * app, which depends on both.
+ */
+export type NoteSizeClass = 'note' | 'large-file'
+export type NoteLargeFileReason = 'file-bytes' | 'block-bytes'
+
+export interface NoteLargeFileInfo {
+  reason: NoteLargeFileReason
+  fileBytes: number
+  /** Null when the file was classified on `stat` alone and never read. */
+  largestBlockBytes: number | null
+}
+
 export interface Note {
   id: string
   path: string // Relative to vault root
@@ -38,6 +56,19 @@ export interface Note {
   aliases: string[]
   wordCount: number
   emoji?: string | null // Emoji icon for visual identification
+  /**
+   * Absent on notes written by older app versions, which is read as `'note'`.
+   * `'large-file'` means the file is too big, or holds too large a single block,
+   * to run through the BlockNote parser — it opens read-only instead.
+   */
+  sizeClass?: NoteSizeClass
+  /** The measurements behind `'large-file'`; absent for note class. */
+  largeFile?: NoteLargeFileInfo | null
+  /**
+   * True when `content` is empty because the body was deliberately not
+   * delivered, not because the file is empty. Always set for `'large-file'`.
+   */
+  contentOmitted?: boolean
 }
 
 /**
@@ -50,6 +81,11 @@ export interface Note {
  * per note across IPC on every list invalidation. Every field a caller can
  * rely on unconditionally stays required, so `'tree'` rows are still ordinary
  * `NoteListItem`s and no existing consumer needs a guard.
+ *
+ * `wordCount` and `snippet` are separately nullable, for a different reason:
+ * vault ingest lists a new file from `stat` alone and reads it later, so a
+ * freshly added row carries no measurements yet. Null means "not measured",
+ * never "empty".
  */
 export interface NoteListItem {
   id: string
@@ -58,8 +94,9 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string // First 200 chars of content — omitted when fields: 'tree'
+  /** Null until the file's body has been read. */
+  wordCount: number | null
+  snippet?: string | null // First 200 chars of content — omitted when fields: 'tree'
   emoji?: string | null // Emoji icon for visual identification
   localOnly?: boolean
 }
@@ -158,6 +195,32 @@ export const ApplyTemplateSchema = z.object({
   mode: z.enum(['full', 'body'])
 })
 
+/**
+ * One window of lines from an open large-file session.
+ *
+ * `count` is capped because the response is an IPC payload: the viewer only
+ * ever renders a screenful plus overscan, and an uncapped window would put the
+ * file back into one message.
+ */
+export const LargeFileReadLinesSchema = z.object({
+  sessionId: z.string(),
+  startLine: z.number().int().min(0),
+  count: z.number().int().min(1).max(2000)
+})
+
+/**
+ * One in-file search over an open large-file session.
+ *
+ * The query is literal, never a pattern: a regex over a 2 GB file is an
+ * unbounded amount of backtracking driven by whatever the renderer sent. The
+ * length cap is for the same reason — the search carries one query-length
+ * overlap between windows, so the query is part of the memory bound.
+ */
+export const LargeFileSearchSchema = z.object({
+  sessionId: z.string(),
+  query: z.string().min(1).max(200)
+})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -183,6 +246,89 @@ export interface NoteListResponse {
 export interface NoteLinksResponse {
   outgoing: NoteLink[]
   incoming: Backlink[]
+}
+
+// ============================================================================
+// Large-file viewer
+// ============================================================================
+
+/**
+ * The answer to clicking a large-file-class row.
+ *
+ * `'too-large'` carries the ceiling as well as the size so the renderer never
+ * restates a limit the main process owns, and so a row that cannot open still
+ * explains itself rather than reporting a bare failure.
+ */
+export type LargeFileOpenResult =
+  | { status: 'indexing'; sessionId: string; fileBytes: number }
+  | { status: 'ready'; sessionId: string; fileBytes: number; lineCount: number }
+  | { status: 'too-large'; fileBytes: number; maxBytes: number }
+  | { status: 'missing' }
+
+export interface LargeFileLinesResult {
+  startLine: number
+  lines: string[]
+  /** Absolute line numbers that were cut at the per-line byte cap. */
+  truncated: number[]
+  lineCount: number
+}
+
+/** Progress of the one streaming scan that builds a file's line-offset index. */
+export type LargeFileIndexEvent =
+  | { sessionId: string; status: 'scanning'; bytesScanned: number; fileBytes: number }
+  | { sessionId: string; status: 'ready'; fileBytes: number; lineCount: number }
+  | { sessionId: string; status: 'error'; message: string }
+  /**
+   * The session went away while someone was still holding it — the file
+   * changed on disk, or the main process needed the handle back.
+   *
+   * Distinct from `error` on purpose: nothing failed and reopening resolves
+   * it, so the viewer reopens rather than showing a dead end. A consumer that
+   * is already showing pages would find out anyway, from a read that returns
+   * null; one still waiting on the scan never reads a page and would otherwise
+   * wait forever.
+   */
+  | { sessionId: string; status: 'closed' }
+
+/**
+ * One match: which line, and which occurrence on that line.
+ *
+ * Deliberately not a byte offset. Byte offsets would have to be translated back
+ * into character positions against text the renderer already holds, and the
+ * translation is exactly where a multi-byte character goes wrong.
+ */
+export interface LargeFileSearchHit {
+  line: number
+  ordinal: number
+}
+
+/**
+ * The end of one in-file search.
+ *
+ * `hits` is capped for navigation while `total` counts every match in the file,
+ * so a query that matches millions of times still reports honestly instead of
+ * carrying millions of positions across IPC. `cancelled` is a query the user
+ * typed past — the caller should keep showing the newer one.
+ */
+export type LargeFileSearchResult =
+  | {
+      status: 'complete'
+      query: string
+      hits: LargeFileSearchHit[]
+      total: number
+      /** True when `hits` was cut short and `total` is the larger truth. */
+      limited: boolean
+    }
+  | { status: 'cancelled'; query: string }
+
+/** A count that is still growing. Never render this as a final answer. */
+export interface LargeFileSearchProgressEvent {
+  sessionId: string
+  query: string
+  bytesSearched: number
+  fileBytes: number
+  /** Matches found so far, not the total. */
+  total: number
 }
 
 // ============================================================================
@@ -236,6 +382,20 @@ export interface NotesHandlers {
   [NotesChannels.invoke.APPLY_TEMPLATE]: (
     input: z.infer<typeof ApplyTemplateSchema>
   ) => Promise<NoteUpdateResponse>
+
+  [NotesChannels.invoke.LARGE_FILE_OPEN]: (noteId: string) => Promise<LargeFileOpenResult>
+
+  /** `null` when the session is gone — after a main restart, or an eviction. */
+  [NotesChannels.invoke.LARGE_FILE_READ_LINES]: (
+    input: z.infer<typeof LargeFileReadLinesSchema>
+  ) => Promise<LargeFileLinesResult | null>
+
+  [NotesChannels.invoke.LARGE_FILE_CLOSE]: (sessionId: string) => Promise<void>
+
+  /** `null` when the session is gone. Partial counts arrive as events. */
+  [NotesChannels.invoke.LARGE_FILE_SEARCH]: (
+    input: z.infer<typeof LargeFileSearchSchema>
+  ) => Promise<LargeFileSearchResult | null>
 }
 
 // ============================================================================

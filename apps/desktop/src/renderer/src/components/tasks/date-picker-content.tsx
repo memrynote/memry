@@ -101,54 +101,59 @@ export function DatePickerContent({
   const showTimeSection = !!onTimeChange && !!selected
 
   return (
-    <div className={cn('flex flex-col', className)}>
-      <div className="flex flex-col border-b border-border p-1">
-        {presets.map((preset) => {
-          const isActive = selected ? isSameDay(selected, preset.date) : false
-          return (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => onSelect(preset.date)}
-              className={cn(
-                'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
-                isActive ? 'bg-accent' : 'hover:bg-accent'
-              )}
-            >
-              <span
+    // `min-h-0` so this panel is allowed to shrink when its host caps the
+    // height; the presets and the calendar scroll and the time row below them
+    // is pinned, so the cap can never eat the way to set a time.
+    <div className={cn('flex flex-col min-h-0', className)}>
+      <div className="flex flex-col min-h-0 overflow-y-auto">
+        <div className="flex flex-col border-b border-border p-1 shrink-0">
+          {presets.map((preset) => {
+            const isActive = selected ? isSameDay(selected, preset.date) : false
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => onSelect(preset.date)}
                 className={cn(
-                  'text-[12px] leading-4',
-                  isActive ? 'text-foreground' : 'text-text-secondary'
+                  'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+                  isActive ? 'bg-accent' : 'hover:bg-accent'
                 )}
               >
-                {preset.label}
-              </span>
-              <span className="text-[11px] ms-auto text-text-tertiary leading-3.5">
-                {preset.dateLabel}
+                <span
+                  className={cn(
+                    'text-[12px] leading-4',
+                    isActive ? 'text-foreground' : 'text-text-secondary'
+                  )}
+                >
+                  {preset.label}
+                </span>
+                <span className="text-[11px] ms-auto text-text-tertiary leading-3.5">
+                  {preset.dateLabel}
+                </span>
+              </button>
+            )
+          })}
+          {showRemoveDate && (
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
+            >
+              <span className="text-[12px] text-destructive leading-4">
+                {tPhaseF('phaseF.componentsTasksDatePickerContent.removeDate')}
               </span>
             </button>
-          )
-        })}
-        {showRemoveDate && (
-          <button
-            type="button"
-            onClick={() => onSelect(null)}
-            className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
-          >
-            <span className="text-[12px] text-destructive leading-4">
-              {tPhaseF('phaseF.componentsTasksDatePickerContent.removeDate')}
-            </span>
-          </button>
-        )}
+          )}
+        </div>
+        <DatePickerCalendar
+          selected={selected ?? undefined}
+          onSelect={handleCalendarSelect}
+          weekStartsOn={weekStartsOn}
+          className="px-3 shrink-0"
+        />
       </div>
-      <DatePickerCalendar
-        selected={selected ?? undefined}
-        onSelect={handleCalendarSelect}
-        weekStartsOn={weekStartsOn}
-        className="px-3"
-      />
       {showTimeSection && (
-        <div className="flex items-center border-t border-border p-1">
+        <div className="flex items-center border-t border-border p-1 shrink-0">
           {time || editing ? (
             <>
               <div className="flex items-center flex-1 rounded-[5px] py-1 px-2 gap-2">

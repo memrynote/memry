@@ -41,7 +41,10 @@ vi.mock('@/hooks/use-calendar-range', async (importOriginal) => ({
 
 vi.mock('@/contexts/tabs', () => ({
   useActiveTab: mockUseActiveTab,
-  useTabActions: () => ({ openTab: mockOpenTab })
+  useTabActions: () => ({ openTab: mockOpenTab }),
+  // The page keeps its view, anchor and filters in tab state now; these tests
+  // render it outside a tab, where that state degrades to plain component state.
+  useTabActionsOptional: () => null
 }))
 
 vi.mock('@/services/calendar-service', () => {

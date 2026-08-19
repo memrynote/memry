@@ -258,6 +258,17 @@ Deletion is gated on that second condition alone; a child whose re-apply fails f
 is left untouched and retried on the next cycle. A dangling `status_id` is not an orphan at all — the
 FK is `ON DELETE SET NULL`, so the reference is simply cleared rather than failing the apply.
 
+That tombstone is stamped with this device's clock before it is queued. The payload it is built from
+is the one just pulled, so its clock is the **server's own** clock for that row, and the server
+rejects any push whose clock has no entry greater than the one it already holds. Sent back unchanged
+the delete is answered `SYNC_REPLAY_DETECTED`, the queue row is cleared as already applied, the next
+pull serves the same orphan again, and the repair runs again — the loop it exists to end, running
+forever. A normal delete never hits this: it is built from a local row by the domain layer, which
+stamps the clock on the way out, and the push path sends `delete` payloads verbatim by design. An
+orphan has no local row, which is what makes it an orphan, so nothing else can stamp it. Without
+signing keys the stamp is impossible, and the orphan is left for the next pull rather than spending a
+push that would only be refused again.
+
 ## Sync Type Negotiation
 
 Clients declare the record sync item types they understand via an `X-Memry-Sync-Types` header
@@ -509,17 +520,33 @@ list.
 
 ## Endpoints
 
-| Path                      | Direction | Purpose                                                                        |
-| ------------------------- | --------- | ------------------------------------------------------------------------------ |
-| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs)                                   |
-| `POST /sync/pull`         | down      | Fetch updates since cursor                                                     |
-| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates                                                 |
-| `GET /sync/vaults`        | down      | List the account's registered vaults                                           |
-| `POST /sync/vaults`       | up        | Register or update a vault's encrypted name                                    |
-| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out                                                |
-| `GET /auth/key-verifier`  | down      | Account key verifier for an established session (vault-key mismatch detection) |
-| `POST /devices/*`         | mixed     | Linking, listing, revoking                                                     |
-| `POST /keys/*`            | mixed     | Key sealing during link, rotation                                              |
+| Path                              | Direction | Purpose                                                                          |
+| --------------------------------- | --------- | -------------------------------------------------------------------------------- |
+| `POST /sync/push`                 | up        | Upload new sync items (metadata + blob refs)                                     |
+| `POST /sync/pull`                 | down      | Fetch updates since cursor                                                       |
+| `POST /sync/crdt/updates`         | up        | Incremental Yjs binary updates                                                   |
+| `GET /sync/crdt/updates`          | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)        |
+| `POST /sync/crdt/updates/batch`   | down      | Incremental updates for up to 100 notes in one request; never snapshot baselines |
+| `POST /sync/crdt/snapshot`        | up        | Full Yjs document baseline; prunes the note's stored updates at or below it      |
+| `GET /sync/crdt/snapshot/:noteId` | down      | The note's snapshot baseline, applied before its incrementals                    |
+| `GET /sync/vaults`                | down      | List the account's registered vaults                                             |
+| `POST /sync/vaults`               | up        | Register or update a vault's encrypted name                                      |
+| `POST /auth/*`                    | mixed     | OTP, sign-in, refresh, sign-out                                                  |
+| `GET /auth/key-verifier`          | down      | Account key verifier for an established session (vault-key mismatch detection)   |
+| `POST /devices/*`                 | mixed     | Linking, listing, revoking                                                       |
+| `POST /keys/*`                    | mixed     | Key sealing during link, rotation                                                |
+
+The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
+moves metadata only. A device reads a body by applying the baseline from
+`GET /sync/crdt/snapshot/:noteId` and then replaying incrementals from `GET /sync/crdt/updates`.
+`POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
+request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
+per note and dominate a first-sync sweep's request count.
+
+Pushing a snapshot is an assertion, not just a write: once the snapshot is stored,
+`pruneUpdatesBeforeSnapshot` deletes every `crdt_updates` row for that note at or below the
+snapshot's sequence number. A snapshot that does not already contain those updates does not merely
+fail to add them — it removes them from the server.
 
 ### CRDT update sizing
 
@@ -538,6 +565,44 @@ subject to the row limit. The local Y.Doc already contains those operations, so 
 them, and every client version already applies the snapshot as its baseline before pulling
 incrementals. If that fallback fails the push rejects, leaving the batch buffered for the next flush
 and — on quit — recorded for replay. No path discards an update.
+
+### CRDT write notifications
+
+Both CRDT write paths notify peers the same way. Once the write is durable, the server broadcasts
+`crdt_updated` carrying the note id to every socket on that vault except the pushing device, and
+each peer pulls that one note. Nothing else carries a body — the record feed moves metadata only —
+so a body write that does not broadcast stays invisible until the receiving device's next vault
+sweep, which is up to 15 minutes away.
+
+The symmetry matters most for `POST /sync/crdt/snapshot`, which is not only the oversized-update
+fallback. Edits made while signed out do enter the local Y.Doc, but with no session they are never
+enqueued as incremental updates, so on the next sign-in that whole accumulated state can only leave
+the device as a snapshot. Before the snapshot path broadcast, such a push was stored and announced
+to nobody: the peer's socket stayed connected and silent, its 60-second tick pulled only the record
+feed, and the backlog appeared solely once someone typed one more character — that produced an
+incremental, which did broadcast, and the pull it triggered picked up the snapshot's content too.
+
+The snapshot broadcast is issued after the snapshot is stored and after `pruneUpdatesBeforeSnapshot`
+has run, never between them, so no peer is told to pull while the superseded updates are still being
+removed. Delivery is best-effort on both paths: the write has already succeeded, so a failed
+broadcast is captured in the background rather than returned to the client, which would otherwise
+retry a write that already landed.
+
+### CRDT rate limits
+
+The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
+**deviceId**, not by account. Body sync is device-local work: each device pulls the note bodies it
+does not already hold, so a second device on the same account is normal use rather than contention.
+Under the default per-user key the two devices split one budget, and a legitimate first sync on
+device B made device A's ordinary syncing start failing with 429s. A request that arrives without a
+deviceId keeps the existing userId → IP fallback, so nothing becomes less strict.
+
+`crdt_pull` allows 600 requests per 60 seconds, which is sized for one device pulling an entire
+vault's bodies after a fresh sign-in. That sweep costs two GETs per note — snapshot plus
+incrementals — so a 121-note vault spends roughly 242 requests within a few seconds, and the ceiling
+leaves room for a vault twice that size plus the editing traffic running alongside it. The client
+paces and batches the sweep itself; this limit is the safety margin for when that pacing is wrong or
+missing, not the mechanism that shapes the traffic.
 
 ### Server base URL
 

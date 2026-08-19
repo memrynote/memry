@@ -6,9 +6,14 @@ import {
   SuggestionMenuController,
   GridSuggestionMenuController,
   useCreateBlockNote,
+  useComponentsContext,
   getDefaultReactSlashMenuItems,
+  FilePanelController,
+  UploadTab,
+  type FilePanelProps,
   type SuggestionMenuProps
 } from '@blocknote/react'
+import { SuggestionMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
@@ -28,8 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
-import { useSync } from '@/contexts/sync-context'
-import { isCollaborationActive } from '@/sync/collaboration-status'
+import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
@@ -60,6 +64,7 @@ import {
   ReviewFormattingToolbarController
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
+import { registerEditorPlugin } from './register-editor-plugin'
 
 import {
   useBlockNoteSetup,
@@ -83,10 +88,13 @@ import {
   isDateMentionActive,
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
+import { createWikiLinkEditPlugin } from './wiki-link-edit-plugin'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
 import { MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
 import { useMentionSuggestions } from './hooks/use-mention-suggestions'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
@@ -118,6 +126,36 @@ function findBookmarkBlock(blocks: any[], url: string): any {
     }
   }
   return null
+}
+
+/**
+ * BlockNote's file panel with its "Embed" tab removed.
+ *
+ * Embed writes a remote URL onto the block: the content then lives outside the
+ * vault and renders as a broken box offline, which is the opposite of what an
+ * offline-first note app promises. Upload is the only way in.
+ *
+ * This assembles the stock panel rather than reimplementing it — `UploadTab`
+ * and the panel Root both come from BlockNote. Root is used directly instead of
+ * `<FilePanel tabs={...} />` only so the `loading` flag `UploadTab` sets stays
+ * wired to the panel's spinner; `FilePanel` keeps that state private.
+ */
+function UploadOnlyFilePanel({ blockId }: FilePanelProps): React.ReactElement {
+  const Components = useComponentsContext()!
+  const { t } = useT('notes')
+  const [loading, setLoading] = useState(false)
+  const tabName = t('editor.filePanel.uploadTab')
+
+  return (
+    <Components.FilePanel.Root
+      className="bn-panel"
+      defaultOpenTab={tabName}
+      openTab={tabName}
+      setOpenTab={() => {}}
+      tabs={[{ name: tabName, tabPanel: <UploadTab blockId={blockId} setLoading={setLoading} /> }]}
+      loading={loading}
+    />
+  )
 }
 
 // =============================================================================
@@ -200,14 +238,53 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     noteIdRef.current = noteId
   }, [noteId])
 
-  // Upload function — defined before editor creation so BlockNote can use it
-  const uploadFile = useCallback(async (file: File): Promise<string> => {
-    const currentNoteId = noteIdRef.current
-    if (!currentNoteId) throw new Error('Cannot upload: no note selected')
-    const result = await notesService.uploadAttachment(currentNoteId, file)
-    if (!result.success || !result.path) throw new Error(result.error || 'Upload failed')
-    return result.path
-  }, [])
+  // `uploadFile` is handed to BlockNote once, at editor creation, so anything it
+  // needs has to come through a ref or it goes stale (same reason as noteIdRef).
+  const editorRef = useRef<any>(null)
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
+  // Upload function — defined before editor creation so BlockNote can use it.
+  //
+  // BlockNote passes whatever this resolves to straight to `updateBlock`, and
+  // only wraps it when it is a plain string — as `{ props: { name, url } }`.
+  // For Memry's `file` block that wrapper is lossy: `size` stays 0 and
+  // `mimeType` stays '', so a PDF added through the `/file` panel rendered the
+  // download card while the same PDF dropped from Finder rendered the inline
+  // viewer. Returning the full props for `file` blocks makes both paths agree.
+  // Image/video/audio keep the string: they have no size/mimeType props and
+  // unknown props break them.
+  const uploadFile = useCallback(
+    async (file: File, blockId?: string): Promise<string | Record<string, unknown>> => {
+      const currentNoteId = noteIdRef.current
+      if (!currentNoteId) throw new Error('Cannot upload: no note selected')
+      try {
+        const result = await notesService.uploadAttachment(currentNoteId, file)
+        if (!result.success || !result.path) throw new Error(result.error || 'Upload failed')
+
+        const block = blockId ? editorRef.current?.getBlock?.(blockId) : undefined
+        if (block?.type === 'file') {
+          return {
+            props: {
+              url: result.path,
+              name: result.name || file.name,
+              size: result.size ?? file.size,
+              mimeType: result.mimeType || file.type
+            }
+          }
+        }
+        return result.path
+      } catch (error) {
+        // BlockNote's upload tab only shows a generic "upload failed" line, so
+        // the real reason (too large, type not allowed) never reached the user.
+        toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        throw error
+      }
+    },
+    []
+  )
 
   // Vaults written by other apps reference media with a plain relative path
   // (`../Images/Media/photo.png`). Without this, BlockNote hands that string to
@@ -251,6 +328,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
       : {})
   })
+
+  // Closes the loop for `uploadFile`, which is built before the editor exists
+  // but needs `getBlock` to know whether it is filling a `file` block.
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
 
   // Hook #1: Editor setup (AI extension, spellcheck, links, highlight scroll)
   const { aiReady } = useBlockNoteSetup({
@@ -338,18 +421,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   useEffect(() => {
     if (!isReviewEnabled) return
-    const tiptap = (editor as any)._tiptapEditor
-    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
 
     const plugin = createCriticMarkupDecorationPlugin(
       () => reviewMarksRef.current,
       (sourceOffset) => reviewMarkdownToEditorOffsetRef.current?.(sourceOffset) ?? null
     )
-    tiptap.registerPlugin(plugin)
-
-    return () => {
-      tiptap.unregisterPlugin(plugin.spec.key!)
-    }
+    return registerEditorPlugin(editor, plugin)
   }, [editor, isReviewEnabled])
 
   // Hook #3: Wiki link suggestions
@@ -627,14 +704,26 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.
   useEffect(() => {
-    const tiptap = (editor as any)._tiptapEditor
-    if (!tiptap?.registerPlugin || !tiptap?.unregisterPlugin) return
     const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
-    tiptap.registerPlugin(plugin, (p: any, plugins: any[]) => [p, ...plugins])
-    return () => {
-      tiptap.unregisterPlugin(plugin.spec.key!)
-    }
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor, insertDatePillAtRange])
+
+  // Backspace/ArrowLeft next to a wiki-link chip opens it as raw `[[…]]` text so
+  // a heading can be typed into it. Prepended for the same reason as above: the
+  // default Backspace keymap would delete the chip before we saw the key.
+  useEffect(() => {
+    const plugin = createWikiLinkEditPlugin({
+      // `deleteTriggerCharacter: false` because the `[[` is already in the
+      // document — the slash item above passes `true` precisely because there it
+      // is not. Without this the heading picker is unreachable from the path
+      // users actually take: pick a note from the dropdown, then try to add `#`.
+      openMenu: () =>
+        editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+          deleteTriggerCharacter: false
+        })
+    })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
   // as a date, plus recent notes (insert as wiki links). The bound menu is
@@ -1225,6 +1314,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           formattingToolbar={false}
           slashMenu={false}
           emojiPicker={false}
+          filePanel={false}
         >
           {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
@@ -1235,10 +1325,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ReviewFormattingToolbarController onAddComment={review?.onAddComment} />
           )}
           {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+          <FilePanelController filePanel={UploadOnlyFilePanel} />
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={async (query) => {
-              const defaults = getDefaultReactSlashMenuItems(editor)
+              // `img` and `picture` already ship as image aliases; `photo` did
+              // not, and is what people actually type.
+              const defaults = getDefaultReactSlashMenuItems(editor).map((item) =>
+                (item as { key?: string }).key === 'image'
+                  ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
+                  : item
+              )
+              // `/pdf` is the same item as `/file` — same insert, same panel —
+              // relabelled, because "attach a PDF" is what most people are
+              // actually after and `/pdf` matched nothing before.
+              const fileItem = defaults.find((item) => (item as { key?: string }).key === 'file')
+              const pdfItems = fileItem
+                ? [
+                    {
+                      ...fileItem,
+                      key: 'pdf',
+                      title: t('editor.slashMenu.pdf.title'),
+                      subtext: t('editor.slashMenu.pdf.subtext'),
+                      aliases: ['pdf', 'document', 'attachment']
+                    }
+                  ]
+                : []
               const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
               const calloutItem = getCalloutSlashMenuItem(editor, {
                 title: t('editor.callout.title'),
@@ -1271,11 +1383,29 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     }
                   ]
                 : []
+              // `/link` types `[[` for you and hands over to the wiki-link
+              // menu that trigger already owns — one search UI, one place `#`
+              // heading support lives, and the row teaches the shortcut. The
+              // trigger characters have to enter the doc through the suggestion
+              // plugin's own opener; inserting the text some other way leaves
+              // the plugin with no state and no menu.
+              const linkToNoteItem = {
+                title: t('editor.slashMenu.linkToNote.title'),
+                onItemClick: () =>
+                  editor
+                    .getExtension(SuggestionMenu)
+                    ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
+                aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
+                group: 'Basic blocks',
+                subtext: t('editor.slashMenu.linkToNote.subtext')
+              }
               const all = orderSlashMenuItemsByGroup([
                 ...defaults,
+                ...pdfItems,
                 calloutItem,
                 ...(taskItem ? [taskItem] : []),
                 ...dateItems,
+                linkToNoteItem,
                 ...aiItems
               ])
               if (!query) return all
@@ -1388,17 +1518,28 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 // =============================================================================
 
 export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
-  const { state } = useSync()
-  const syncActive = isCollaborationActive(state.status)
+  // The local Y.Doc, not the sync session. This used to read
+  // `isCollaborationActive(syncState.status)`, which meant no session → no
+  // Y.Doc → keystrokes reached markdown and the DB but never became CRDT
+  // operations; the sign-in that rebuilt the doc from the server then wrote it
+  // back over the file. The canvas note-card lock reads the fragment this hook
+  // produces (pages/canvas/canvas-note-lock.ts), not the session — see
+  // sync/collaboration-status.ts for why nothing may re-derive this from it.
+  const localDocLive = isLocalCrdtDocLive(props.noteId)
   const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
     noteId: props.noteId,
-    enabled: syncActive
+    enabled: localDocLive
   })
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
 
-  if (syncActive && props.noteId && !isReady) {
+  // Hold the render until the binding has settled. `useCreateBlockNote` builds
+  // its collaboration extension once and never rebuilds it, so the fragment has
+  // to be there at editor-creation time or it can never attach — which is why
+  // this is a wait rather than a fail-open. It is bounded: connect() settles
+  // either way, and crdt:open-doc waits on the store instead of rejecting.
+  if (localDocLive && !isReady) {
     return (
       <div className={cn('content-area h-full flex flex-col', props.className)}>
         <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />

@@ -8,6 +8,11 @@ import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@memry/
 // have low entropy variance (attacker can't adaptively probe content) and all crypto
 // operations use constant-time primitives (no timing side-channel)
 import { compressPayload } from './compress'
+import {
+  ItemTooLargeError,
+  SYNC_ITEM_ENCRYPT_OVERHEAD,
+  SYNC_ITEM_MAX_ENCRYPT_BYTES
+} from './note-size'
 
 export interface EncryptItemInput {
   id: string
@@ -28,12 +33,12 @@ export interface EncryptItemResult {
 }
 
 export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
-  const MAX_SYNC_SIZE = 5 * 1024 * 1024
-  const BASE64_CRYPTO_OVERHEAD = 1.37
-  const estimatedSize = input.content.byteLength * BASE64_CRYPTO_OVERHEAD
-  if (estimatedSize > MAX_SYNC_SIZE) {
-    const estimatedMB = (estimatedSize / (1024 * 1024)).toFixed(1)
-    throw new Error(`Item too large for sync (estimated ${estimatedMB}MB, max 5MB)`)
+  const estimatedSize = input.content.byteLength * SYNC_ITEM_ENCRYPT_OVERHEAD
+  if (estimatedSize > SYNC_ITEM_MAX_ENCRYPT_BYTES) {
+    // Typed, so the batch layers can tell this apart from a crypto failure and
+    // tell the user which note stopped syncing instead of only writing the
+    // reason onto a queue row (#1465).
+    throw new ItemTooLargeError(input.id, estimatedSize, SYNC_ITEM_MAX_ENCRYPT_BYTES)
   }
 
   const fileKey = generateFileKey()

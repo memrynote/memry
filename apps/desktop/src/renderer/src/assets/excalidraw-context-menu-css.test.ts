@@ -20,7 +20,15 @@ const OVERRIDE_SELECTOR = '.excalidraw .context-menu'
  * either half (the cap or the scroll).
  */
 function stripComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '')
+  return (
+    css
+      // Statement at-rules go first, and before comments: `@source
+      // "…/streamdown/dist/*.js";` contains a literal `/*`, so stripping
+      // comments straight away reads it as a comment opener and swallows every
+      // line up to the next `*/` — about sixty of them.
+      .replace(/^[ \t]*@[a-z-]+[^;{}\n]*;[ \t]*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+  )
 }
 
 /** Body of the last rule whose selector list contains `selector`, or null. */

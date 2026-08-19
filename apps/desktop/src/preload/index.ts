@@ -22,13 +22,21 @@ import { inboxEvents } from './api/inbox'
 import { folderViewApi, folderViewEvents } from './api/folder-view'
 import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
-import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './api/sync-ops'
+import {
+  syncOps,
+  cryptoApi,
+  syncAttachments,
+  syncCrdt,
+  onCrdtStateChanged,
+  onCrdtProviderReset,
+  onCrdtProviderReady
+} from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
-import { homePagesApi } from './api/home-pages'
+import { homePagesApi, homePagesEvents } from './api/home-pages'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -89,6 +97,7 @@ export const api = {
 
   ...vaultEvents,
   ...contentEvents,
+  ...homePagesEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,
@@ -113,6 +122,8 @@ export const api = {
   homePages: homePagesApi,
 
   onCrdtStateChanged,
+  onCrdtProviderReset,
+  onCrdtProviderReady,
   ...syncEvents,
   ...updaterEvents,
   ...importEvents,

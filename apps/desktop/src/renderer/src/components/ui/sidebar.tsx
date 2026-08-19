@@ -18,6 +18,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
+import { isRichTextFocused } from '@/hooks/use-keyboard-shortcuts'
+import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { useT } from '@memry/i18n/renderer'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
@@ -117,17 +119,24 @@ function SidebarProvider({
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
+  const toggleBinding = useShortcutBinding('view.toggleSidebar')
+
   const sidebarShortcuts = React.useMemo<KeyboardShortcut[]>(() => {
+    const { meta, ctrl, alt } = toggleBinding.modifiers
     return [
       {
-        key: 'b',
-        modifiers: { meta: true },
+        key: toggleBinding.key,
+        modifiers: toggleBinding.modifiers,
         action: toggleSidebar,
         description: 'Toggle sidebar',
-        allowInInput: true
+        // Fine in a plain field (⌘B does nothing there), but a chord without a
+        // modifier would swallow the keystroke as the user types.
+        allowInInput: Boolean(meta || ctrl || alt),
+        // In the note editor ⌘B is Bold and nothing else.
+        when: () => !isRichTextFocused()
       }
     ]
-  }, [toggleSidebar])
+  }, [toggleBinding, toggleSidebar])
   useKeyboardShortcuts(sidebarShortcuts)
 
   const state = open ? 'expanded' : 'collapsed'

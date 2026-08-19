@@ -589,15 +589,28 @@ export type DataEventChannel = (typeof DataChannels.events)[keyof typeof DataCha
 // ============================================================================
 
 export const HomePagesChannels = {
-  LIST: 'home-pages:list',
-  GET: 'home-pages:get',
-  CREATE: 'home-pages:create',
-  UPDATE: 'home-pages:update',
-  DELETE: 'home-pages:delete',
-  REORDER: 'home-pages:reorder'
+  invoke: {
+    LIST: 'home-pages:list',
+    GET: 'home-pages:get',
+    CREATE: 'home-pages:create',
+    UPDATE: 'home-pages:update',
+    DELETE: 'home-pages:delete',
+    REORDER: 'home-pages:reorder'
+  },
+  events: {
+    /** A board arrived from a peer, or was created locally */
+    CREATED: 'home-pages:created',
+    /** A board's name/icon/position/widgets changed */
+    UPDATED: 'home-pages:updated',
+    /** A board was deleted */
+    DELETED: 'home-pages:deleted'
+  }
 } as const
 
-export type HomePagesInvokeChannel = (typeof HomePagesChannels)[keyof typeof HomePagesChannels]
+export type HomePagesInvokeChannel =
+  (typeof HomePagesChannels.invoke)[keyof typeof HomePagesChannels.invoke]
+export type HomePagesEventChannel =
+  (typeof HomePagesChannels.events)[keyof typeof HomePagesChannels.events]
 
 // ============================================================================
 // Bookmarks Channels

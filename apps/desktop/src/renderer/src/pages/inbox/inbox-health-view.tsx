@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import {
   ArrowRight,
@@ -17,6 +17,8 @@ import type { AppIcon } from '@/lib/icons'
 import type { InboxCapturePattern, InboxFilingHistoryEntry } from '@memry/rpc/inbox'
 import { useInboxStats, useInboxFilingHistory, useInboxPatterns } from '@/hooks/use-inbox'
 import { cn } from '@/lib/utils'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { INBOX_SCROLL_KEYS } from './inbox-view-state'
 
 export interface InboxHealthViewProps {
   className?: string
@@ -383,6 +385,16 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
   const { data: historyData } = useInboxFilingHistory()
   const { data: patterns } = useInboxPatterns()
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  // While loading, the spinner replaces the whole pane and there is no scroller
+  // to restore into; enabling on arrival re-runs the restore.
+  useTabScrollRestore({
+    getScrollElement,
+    key: INBOX_SCROLL_KEYS.insights,
+    enabled: !isLoading && !!stats
+  })
+
   if (isLoading || !stats) {
     return (
       <div className={cn('flex h-64 items-center justify-center', className)}>
@@ -399,6 +411,7 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
 
   return (
     <div
+      ref={scrollRef}
       data-inbox-scroll
       className={cn('flex flex-col grow overflow-y-auto pt-[38px]', className)}
     >

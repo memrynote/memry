@@ -2,6 +2,7 @@
   "app": {
     "quit": "I-quit",
     "preferences": "Mga Setting…",
+    "checkForUpdates": "Maghanap ng Mga Update…",
     "exit": "Lumabas",
     "hide": "Itago ang MemryNote",
     "hideOthers": "Itago ang Iba",
@@ -58,6 +59,9 @@
     "heading1": "Pamagat 1",
     "heading2": "Pamagat 2",
     "heading3": "Pamagat 3",
+    "heading4": "Pamagat 4",
+    "heading5": "Pamagat 5",
+    "heading6": "Pamagat 6",
     "highlight": "I-highlight",
     "italic": "Italiko",
     "label": "Format",

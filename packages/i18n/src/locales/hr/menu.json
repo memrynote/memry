@@ -2,6 +2,7 @@
   "app": {
     "quit": "Izađi",
     "preferences": "Postavke…",
+    "checkForUpdates": "Provjeri ima li ažuriranja…",
     "exit": "Izlaz",
     "hide": "Sakrij MemryNote",
     "hideOthers": "Sakrij ostale",
@@ -58,6 +59,9 @@
     "heading1": "Naslov 1",
     "heading2": "Naslov 2",
     "heading3": "Naslov 3",
+    "heading4": "Naslov 4",
+    "heading5": "Naslov 5",
+    "heading6": "Naslov 6",
     "highlight": "Istakni",
     "italic": "Kurziv",
     "label": "Oblikovanje",

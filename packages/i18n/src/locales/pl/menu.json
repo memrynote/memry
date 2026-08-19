@@ -2,6 +2,7 @@
   "app": {
     "quit": "Zakończ",
     "preferences": "Ustawienia…",
+    "checkForUpdates": "Sprawdź aktualizacje…",
     "exit": "Wyjdź",
     "hide": "Ukryj MemryNote",
     "hideOthers": "Ukryj pozostałe",
@@ -58,6 +59,9 @@
     "heading1": "Nagłówek 1",
     "heading2": "Nagłówek 2",
     "heading3": "Nagłówek 3",
+    "heading4": "Nagłówek 4",
+    "heading5": "Nagłówek 5",
+    "heading6": "Nagłówek 6",
     "highlight": "Wyróżnienie",
     "italic": "Kursywa",
     "label": "Format",

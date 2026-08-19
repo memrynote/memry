@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
@@ -18,6 +18,8 @@ import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
 import type { AnchorRect } from './types'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { CALENDAR_SCROLL_KEYS } from '@/pages/calendar-view-state'
 
 const CLICK_DELAY_MS = 250
 
@@ -51,6 +53,9 @@ export function CalendarYearView({
   const weekStartsOn = useWeekStartsOn()
   const [popoverDay, setPopoverDay] = useState<string | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const scrollRef = useRef<HTMLElement>(null)
+  const getScrollEl = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({ getScrollElement: getScrollEl, key: CALENDAR_SCROLL_KEYS.year })
 
   function formatPopoverTime(item: CalendarProjectionItem): string {
     if (item.isAllDay) return t('time.all-day-lower')
@@ -129,6 +134,7 @@ export function CalendarYearView({
     >
       {/* pt clears the floating chrome so months scroll beneath its material */}
       <section
+        ref={scrollRef}
         data-calendar-scroll
         className="h-full overflow-y-auto px-3 pb-3 pt-14 @lg:px-6 @lg:pb-4 @3xl:px-8 @3xl:pb-6"
         data-testid="calendar-view"

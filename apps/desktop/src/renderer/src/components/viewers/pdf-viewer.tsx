@@ -6,10 +6,11 @@ import { getI18n } from 'react-i18next'
  * @module components/viewers/pdf-viewer
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Document, Page, pdfjs } from 'react-pdf'
+import type { PDFDocumentProxy as PdfDocumentProxy } from 'pdfjs-dist'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 import {
@@ -25,6 +26,17 @@ import {
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { mayAutoPositionFor } from '@/hooks/use-tab-auto-position'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  FILE_VIEW_STATE_KEYS,
+  parseNullableScale,
+  parsePdfPage,
+  parseRotation,
+  parseViewerBoolean,
+  pdfPageScrollKey
+} from '@/pages/file-view-state'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
@@ -47,6 +59,15 @@ const PDF_LOADING = (
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 )
+
+/** Zoom bounds shared by the buttons and by fit-to-width. */
+const MIN_SCALE = 0.5
+const MAX_SCALE = 3
+const ZOOM_STEP = 0.25
+/** The `p-4` gutter around the page — width fit-to-width must not render under. */
+const PAGE_VIEW_PADDING = 32
+
+const clampScale = (value: number): number => Math.min(Math.max(value, MIN_SCALE), MAX_SCALE)
 
 // ============================================================================
 // Thumbnail Rail
@@ -159,16 +180,53 @@ function PdfThumbnailRail({
 
 export function PdfViewer({ src, className }: PdfViewerProps) {
   const { t: tPhaseF } = useT('notes')
-  const containerRef = useRef<HTMLDivElement>(null)
+  const pageScrollRef = useRef<HTMLDivElement>(null)
   const [numPages, setNumPages] = useState<number>(0)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [scale, setScale] = useState(1.0)
-  const [rotation, setRotation] = useState(0)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  // The main pane shows one page at a time, so the page number IS the reading
+  // position — the scroll offset only refines it within that page.
+  const [currentPage, setCurrentPage] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.pdfPage,
+    defaultValue: 1,
+    parse: parsePdfPage
+  })
+  // `null` is "the user has never zoomed this document", which is what lets
+  // fit-to-width run. See `hooks/use-tab-auto-position.ts`.
+  const [storedScale, setStoredScale] = useTabEntityViewState<number | null>({
+    key: FILE_VIEW_STATE_KEYS.pdfScale,
+    defaultValue: null,
+    parse: parseNullableScale
+  })
+  const [scale, setScale] = useState(storedScale ?? 1)
+  const storedScaleRef = useRef(storedScale)
+  const scaleRef = useRef(scale)
+  useLayoutEffect(() => {
+    storedScaleRef.current = storedScale
+    scaleRef.current = scale
+  })
+  /** Size of the current page at scale 1, straight from pdf.js. */
+  const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null)
+  const pdfRef = useRef<PdfDocumentProxy | null>(null)
+  const [rotation, setRotation] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.pdfRotation,
+    defaultValue: 0,
+    parse: parseRotation
+  })
+  const [sidebarOpen, setSidebarOpen] = useTabEntityViewState<boolean>({
+    key: FILE_VIEW_STATE_KEYS.pdfSidebarOpen,
+    defaultValue: true,
+    parse: parseViewerBoolean
+  })
   const [error, setError] = useState<string | null>(null)
 
-  const handleLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
-    setNumPages(numPages)
+  const getPageScrollEl = useCallback(() => pageScrollRef.current, [])
+  useTabScrollRestore({
+    getScrollElement: getPageScrollEl,
+    key: pdfPageScrollKey(currentPage)
+  })
+
+  const handleLoadSuccess = useCallback((pdf: PdfDocumentProxy) => {
+    setNumPages(pdf.numPages)
+    pdfRef.current = pdf
   }, [])
 
   const handleLoadError = useCallback((err: Error) => {
@@ -186,29 +244,92 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
         setCurrentPage(page)
       }
     },
-    [numPages]
+    [numPages, setCurrentPage]
   )
 
+  // Measure the page pdf.js actually holds rather than assuming Letter: a page
+  // that is A4, landscape or a mix of sizes fits to the wrong width otherwise.
+  useEffect(() => {
+    const pdf = pdfRef.current
+    if (!pdf || typeof pdf.getPage !== 'function') return
+    let cancelled = false
+    void pdf
+      .getPage(currentPage)
+      .then((page) => {
+        if (cancelled) return
+        const viewport = page.getViewport({ scale: 1 })
+        setPageSize({ width: viewport.width, height: viewport.height })
+      })
+      .catch(() => {
+        // A page that cannot be measured just keeps the current zoom.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [currentPage, numPages])
+
+  /**
+   * Every zoom write goes through here. Fitting to the pane is auto-positioning
+   * rather than a choice, so it does NOT persist: storing it would freeze one
+   * pane's width into the tab and stop the document fitting the next time it is
+   * opened somewhere narrower.
+   */
+  const applyScale = useCallback(
+    (raw: number, options?: { persist?: boolean }) => {
+      const next = clampScale(raw)
+      scaleRef.current = next
+      setScale(next)
+      if (options?.persist !== false) setStoredScale(next)
+    },
+    [setStoredScale]
+  )
+
+  /** The scale at which the current page fills the pane, or `null` if unmeasurable. */
+  const computeFitScale = useCallback((): number | null => {
+    const el = pageScrollRef.current
+    if (!el || !pageSize) return null
+    const available = el.clientWidth - PAGE_VIEW_PADDING
+    if (available <= 0) return null
+    // A quarter turn swaps the axis the page is measured across.
+    const acrossPane = rotation % 180 === 0 ? pageSize.width : pageSize.height
+    if (acrossPane <= 0) return null
+    return clampScale(available / acrossPane)
+  }, [pageSize, rotation])
+
+  // Fit on open, and keep fitting while the tab has no zoom of its own — the
+  // pane changes width when the window resizes or the thumbnail rail toggles.
+  useEffect(() => {
+    const el = pageScrollRef.current
+    if (!el) return
+    const fit = () => {
+      if (!mayAutoPositionFor(storedScaleRef.current)) return
+      const fitted = computeFitScale()
+      if (fitted !== null) applyScale(fitted, { persist: false })
+    }
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [computeFitScale, applyScale])
+
   const zoomIn = useCallback(() => {
-    setScale((s) => Math.min(s + 0.25, 3))
-  }, [])
+    applyScale(scaleRef.current + ZOOM_STEP)
+  }, [applyScale])
 
   const zoomOut = useCallback(() => {
-    setScale((s) => Math.max(s - 0.25, 0.5))
-  }, [])
+    applyScale(scaleRef.current - ZOOM_STEP)
+  }, [applyScale])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
-  }, [])
+  }, [setRotation])
 
   const fitToWidth = useCallback(() => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth - (sidebarOpen ? 160 : 0) - 48
-      // Assuming standard PDF width of 612 points (8.5 inches)
-      const newScale = containerWidth / 612
-      setScale(Math.min(Math.max(newScale, 0.5), 3))
-    }
-  }, [sidebarOpen])
+    const fitted = computeFitScale()
+    // Pressing the button IS a choice, so unlike the automatic fit it persists.
+    if (fitted !== null) applyScale(fitted)
+  }, [computeFitScale, applyScale])
 
   if (error) {
     return (
@@ -226,10 +347,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}
-    >
+    <div className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}>
       {/* Toolbar - fixed at top */}
       <div className="flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
         <div className="flex items-center gap-1 sm:gap-2">
@@ -345,7 +463,11 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           )}
 
           {/* PDF content - with both horizontal and vertical scrolling */}
-          <div className="flex-1 overflow-auto min-h-0">
+          <div
+            ref={pageScrollRef}
+            data-testid="pdf-page-view"
+            className="flex-1 overflow-auto min-h-0"
+          >
             <div className="inline-flex justify-center min-w-full p-4">
               <Page
                 pageNumber={currentPage}

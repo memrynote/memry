@@ -88,19 +88,24 @@ responsive.
 ### When a note card stays read-only
 
 If a note card shows **Open in tab to edit**, in-place editing is unavailable
-for it right now. That happens when the same note is already open in another
-visible pane, or is already being edited on another canvas card.
+for it right now. Two things cause that:
 
-Editing the same note in two places at once, on a device without an active,
-authenticated sync session, would let the two editors overwrite each other's
-text. Rather than risk losing what you typed, the card stays a read-only
-preview and points you at the surface that owns the edit. Click **Open in tab
-to edit** to jump there.
+- The note is **already being edited on another canvas card**. A note is owned
+  by one card at a time.
+- The note is **open in another visible pane** and Memry cannot confirm that
+  both surfaces are backed by the same live document — because that document is
+  still opening, or failed to open on this device.
 
-On a device with an active sync session, both surfaces share a single live
-document, so this does not apply and you can edit in either place. This
-read-only fallback applies to note cards only — task and event cards always
-edit in place.
+Editing one note in two places at once is only safe when both are backed by the
+same live document, and normally they are: every note has a live document on
+your device whether or not you are signed in, so a note tab and a canvas card
+share it and both stay editable. Signing in is not what unlocks this. The
+read-only fallback appears only in the narrow case where that document is not
+live here, and rather than risk two editors overwriting each other's text the
+card stays a read-only preview and points you at the surface that owns the edit.
+Click **Open in tab to edit** to jump there.
+
+This applies to note cards only — task and event cards always edit in place.
 
 ## Opening an item in a tab
 
@@ -109,6 +114,69 @@ task in the Tasks page with its detail drawer, and an event focused in the
 Calendar.
 
 Double-click edits in place; ↗ opens a tab. The two never trigger each other.
+
+## Links on a shape
+
+A shape you draw is not a card, but it can still carry a link. Select it, choose
+**Create link** from the shape's toolbar, and paste an address.
+
+Clicking the link icon that appears on the shape now does what the address asks:
+
+- A web address opens in your default browser. Memry does not open web pages in
+  its own window.
+- **Link to object** — Excalidraw's own "link to a shape on this canvas" — moves
+  the canvas to that shape and selects it. It no longer reloads the canvas.
+- A link to a vault item opens that item in a tab, the same way the ↗ button on
+  a card does.
+
+If a link points at something that has since been deleted, Memry says so instead
+of opening an empty tab. A link it cannot make sense of is left alone.
+
+## Linking a shape to something in your vault
+
+A shape can point at something you already have, not just at the web. Select a
+single shape and click the **link** button under **Actions** in the properties
+panel — or press **Cmd/Ctrl+K**, or **Cmd/Ctrl+Shift+K**.
+
+A search box opens. Type, and matches appear grouped by what they are — notes,
+files, tasks, events, inbox items, journal days, projects and folders — each with
+its own icon, including the custom icon you gave a note or folder. Pick one and
+the shape carries a link to it; its link icon then opens that item in a tab.
+
+Two things it will not do:
+
+- Link when several shapes are selected, or none. A link belongs to one shape,
+  and Memry will not choose for you.
+- Link a card. A card already opens its own item, so a second link on it would
+  contradict the card itself.
+
+Typing a web address works here too: an address gets its own row at the top of
+the list, so the same box handles both. A bare host like `example.com` is read as
+`https://example.com`.
+
+An event with no date is not offered: there would be no day for the Calendar to
+open to.
+
+Select a linked shape and a small bubble appears above it. For a link to
+something in your vault it shows the item's **name**, the way a wiki link in a
+note shows a title rather than a path. For a web link it shows the address,
+which is the useful thing there.
+
+A **Link to object** — a shape pointing at another shape on the same canvas —
+used to show the app's own internal address. It now names its target:
+
+- A card is named by the item it shows.
+- A shape with text on it is named by that text.
+- A shape with nothing on it says only that it is a shape on this canvas.
+  Excalidraw shapes have no name, and inventing one would be worse than saying
+  so.
+- A target that has been deleted says it is no longer on this canvas.
+
+That name is remembered when the link is made. Rename the item afterwards and
+the bubble keeps the old name until the link is set again — the link still opens
+the right item either way, because it points at the item, not at its name.
+
+To remove a link, use the **remove** button in that same bubble.
 
 ## Connecting cards
 

@@ -9,14 +9,28 @@
 
 import path from 'path'
 import fs from 'fs/promises'
+import type { Stats } from 'fs'
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './index'
-import { parseNote, generateContentHash, extractProperties } from './frontmatter'
+import {
+  parseNote,
+  generateContentHash,
+  extractProperties,
+  extractTitleFromPath
+} from './frontmatter'
 import { safeRead } from './file-ops'
+import { scanMarkdownFile } from './file-scan'
+import { enqueueIngestBackfill, clearIngestBackfill } from './ingest-backfill'
 import { generateNoteId } from '../lib/id'
-import { syncNoteToCache, syncFileToCache, deleteNoteFromCache } from './note-sync'
+import {
+  syncNoteToCache,
+  syncNoteStatToCache,
+  syncFileToCache,
+  deleteNoteFromCache,
+  findCanonicalNoteByPath
+} from './note-sync'
 import {
   getNoteCacheByPath,
   getNoteCacheById,
@@ -30,6 +44,8 @@ import {
   trackPendingDelete,
   checkForRename,
   clearAllPendingDeletes,
+  hasPendingDeletes,
+  buildStatRenameKey,
   processRename
 } from './rename-tracker'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
@@ -41,11 +57,7 @@ import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
-import {
-  enqueueJournalCreate,
-  enqueueJournalDelete,
-  initializeJournalCrdt
-} from '../journal/runtime-effects'
+import { enqueueJournalDelete } from '../journal/runtime-effects'
 import { syncNoteCreate, syncNoteDelete, syncNoteUpdate } from '../notes/runtime-effects'
 import { normalizeRelativePath } from '../lib/paths'
 
@@ -62,8 +74,9 @@ interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string
+  /** Null until the tier-1 backfill has measured the body. */
+  wordCount: number | null
+  snippet?: string | null
   localOnly?: boolean
 }
 
@@ -130,6 +143,12 @@ function isJournalPath(relativePath: string): boolean {
  */
 function extractJournalDate(relativePath: string): string {
   return extractDateFromPath(relativePath) ?? ''
+}
+
+/** Cache timestamps come back as an ISO string or a Date, depending on driver. */
+function toIsoOrNull(value: string | Date | null | undefined): string | null {
+  if (!value) return null
+  return value instanceof Date ? value.toISOString() : value
 }
 
 // Full fragment replace on external edits: lossy but acceptable since
@@ -265,6 +284,8 @@ export class VaultWatcher {
   async stop(): Promise<void> {
     // Clear any pending rename detections
     clearAllPendingDeletes()
+    // Drop queued backfills: they belong to the vault being closed.
+    clearIngestBackfill()
 
     if (this.watcher) {
       await this.watcher.close()
@@ -311,148 +332,175 @@ export class VaultWatcher {
         return
       }
 
+      // The index cache is derived: it is rebuilt, and the projector that fills
+      // it runs behind the canonical write, so "no cache row" does not mean
+      // "the vault has never seen this path". The canonical row is the one with
+      // a unique path, and if it is already there this add has to adopt its id.
+      const claimed = findCanonicalNoteByPath(relativePath)
+
       if (fileType === 'markdown') {
-        await this.handleMarkdownFileAdd(absolutePath, relativePath, db)
+        await this.handleMarkdownFileAdd(absolutePath, relativePath, db, claimed)
       } else {
-        await this.handleNonMarkdownFileAdd(absolutePath, relativePath, fileType, db)
+        await this.handleNonMarkdownFileAdd(
+          absolutePath,
+          relativePath,
+          fileType,
+          db,
+          claimed?.id ?? null
+        )
       }
-    } catch (error) {
-      this.onError?.(error instanceof Error ? error : new Error(String(error)))
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      // A thrown add costs the user a sidebar row and says nothing on screen,
+      // so it has to be countable rather than left to a promise nobody awaits.
+      logger.error('Failed to add file', { path: absolutePath, error })
+      trackMainError('vault', 'file_add', error)
+      this.onError?.(error)
     }
   }
 
   /**
-   * Handle markdown file creation with full frontmatter parsing.
+   * Tier 0 of ingest: list the file from `stat`, the path and the filename.
+   *
+   * The file is not read. Everything a sidebar row needs is here, and reading
+   * the body to get the rest cost a multi-hundred-megabyte allocation and a
+   * main-process GC pause for a large paste. The idle backfill fills in word
+   * count, snippet, tags and search, and decides whether the file may have a
+   * CRDT doc — a decision that needs its largest block, which needs the body.
    */
   private async handleMarkdownFileAdd(
     absolutePath: string,
     relativePath: string,
-    db: ReturnType<typeof getIndexDatabase>
+    db: ReturnType<typeof getIndexDatabase>,
+    claimed: { id: string; createdAt: string } | null
   ): Promise<void> {
-    // Read and parse the file
-    const content = await safeRead(absolutePath)
-    if (!content) {
-      return
-    }
-
     const stats = await fs.stat(absolutePath).catch(() => null)
-    const parsed = parseNote(content, relativePath, stats ?? undefined)
-
-    // Check if this is a rename (content hash matches a pending delete);
-    // the internal id comes from the matched sidecar entry
-    const renameMatch = checkForRename(generateContentHash(content), relativePath)
-    if (renameMatch !== null) {
-      await this.applyMarkdownRename(db, content, parsed, relativePath, renameMatch)
+    if (!stats) {
       return
     }
 
-    // Genuinely new external file: fresh internal id, fs-stat dates.
-    // No watcher path writes files.
-    const noteId = parsed.id
+    const renameMatch = await this.matchPendingRename(absolutePath, relativePath, stats)
+    if (renameMatch !== null) {
+      await this.applyMarkdownRename(db, relativePath, stats, renameMatch)
+      return
+    }
 
-    // Sync to cache using NoteSyncService (handles tags, properties, FTS, links)
-    const syncResult = syncNoteToCache(
+    // Genuinely new external file: fresh internal id, fs-stat dates. A path the
+    // vault already has a canonical row for keeps that row's id and created
+    // date, and updates rather than inserts — a stat-only full save would erase
+    // bookkeeping a `stat` cannot reconstruct.
+    // No watcher path writes files.
+    const noteId = claimed?.id ?? generateNoteId()
+    const title = extractTitleFromPath(relativePath)
+    const createdAt = claimed?.createdAt ?? stats.birthtime.toISOString()
+    const modifiedAt = stats.mtime.toISOString()
+
+    syncNoteStatToCache(
       db,
       {
         id: noteId,
         path: relativePath,
-        fileContent: content,
-        frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content,
-        title: parsed.title,
-        createdAt: parsed.created,
-        modifiedAt: parsed.modified
+        title,
+        createdAt,
+        modifiedAt,
+        fileSize: stats.size
       },
-      { isNew: true }
+      { isNew: claimed === null }
     )
     void flushProjectionEvents()
-
-    const tags = syncResult.tags
-    const properties = extractProperties(parsed.frontmatter)
-
-    if (tags.length > 0) {
-      ensureTagDefinitions(getDatabase(), tags)
-    }
 
     const noteListItem: NoteListItem = {
       id: noteId,
       path: relativePath,
-      title: parsed.title,
-      created: new Date(parsed.created),
-      modified: new Date(parsed.modified),
-      tags,
-      wordCount: syncResult.wordCount,
-      snippet: syncResult.snippet,
+      title,
+      created: new Date(createdAt),
+      modified: new Date(modifiedAt),
+      tags: [],
+      // Null, not zero: the body has not been read, so the count is unknown
+      // rather than empty. The backfill's UPDATED event replaces it.
+      wordCount: null,
       localOnly: false
     }
 
-    // Enqueue sync push so other devices learn about the new file
-    if (isJournalPath(relativePath)) {
-      const journalDate = extractJournalDate(relativePath)
-      enqueueJournalCreate(noteId, journalDate)
-      void initializeJournalCrdt(noteId, journalDate, tags)
-    } else {
-      syncNoteCreate(noteId, parsed.title, tags)
-    }
+    // No sync item and no Y.Doc here. Both are gated on the file's size class,
+    // and the class is not known yet: it needs the largest block, which needs
+    // the body, which this path deliberately never reads. The backfill measures
+    // the file and makes both calls once the answer is in — so a large file is
+    // never even transiently given a sync item to withdraw.
 
     // Emit event to renderer
     emitEvent(NotesChannels.events.CREATED, {
       note: noteListItem,
-      properties, // T012: Include properties in event
+      properties: {},
       source: 'external'
     })
 
-    // Also emit journal event if this is a journal entry
-    if (isJournalPath(relativePath)) {
-      const journalDate = extractJournalDate(relativePath)
-      emitEvent(JournalChannels.events.ENTRY_CREATED, {
-        date: journalDate,
-        entry: {
-          date: journalDate,
-          content: parsed.content,
-          tags,
-          wordCount: syncResult.wordCount,
-          characterCount: syncResult.characterCount,
-          modified: new Date(parsed.modified),
-          created: new Date(parsed.created)
-        },
-        source: 'external'
-      })
-    }
+    enqueueIngestBackfill({ noteId, absolutePath, relativePath, fileBytes: stats.size })
+  }
+
+  /**
+   * Rename detection is the one thing on the add path that still needs the
+   * file's content hash — chokidar reports a rename as `unlink` then `add`, and
+   * the hash is what ties the two together.
+   *
+   * It is only computed while a delete is actually in flight, so an ordinary
+   * paste pays nothing for it, and it is computed by streaming, so even a file
+   * past V8's string ceiling is hashable. A pending delete whose own row was
+   * never backfilled has no cached hash to compare against; that one matches on
+   * size and mtime instead, which a rename leaves untouched.
+   */
+  private async matchPendingRename(
+    absolutePath: string,
+    relativePath: string,
+    stats: Stats
+  ): Promise<{ id: string; oldPath: string } | null> {
+    if (!hasPendingDeletes()) return null
+
+    const scan = await scanMarkdownFile(absolutePath, 0)
+    const statKey = buildStatRenameKey(stats.size, stats.mtime.toISOString())
+
+    return checkForRename(scan?.contentHash ?? null, relativePath, statKey)
   }
 
   private async applyMarkdownRename(
     db: ReturnType<typeof getIndexDatabase>,
-    fileContent: string,
-    parsed: ReturnType<typeof parseNote>,
     relativePath: string,
+    stats: Stats,
     renameMatch: { id: string; oldPath: string }
   ): Promise<void> {
     const { id, oldPath } = renameMatch
     const cached = getNoteCacheById(db, id)
 
-    const syncResult = syncNoteToCache(
+    // A rename changes the path and the title and nothing else, so the row's
+    // body-derived state stays valid and is left alone — a stat-only update
+    // never writes nulls over it. The backfill re-measures at the new path,
+    // which is what the journal date and the search row are keyed off.
+    syncNoteStatToCache(
       db,
       {
         id,
         path: relativePath,
-        fileContent,
-        frontmatter: parsed.frontmatter,
-        parsedContent: parsed.content,
-        title: parsed.title,
-        createdAt: cached?.createdAt ?? parsed.created,
-        modifiedAt: parsed.modified,
+        title: extractTitleFromPath(relativePath),
+        createdAt: cached?.createdAt ?? stats.birthtime.toISOString(),
+        modifiedAt: stats.mtime.toISOString(),
+        fileSize: stats.size,
         localOnly: cached?.localOnly ?? false,
         emoji: cached?.emoji ?? null
       },
       { isNew: false }
     )
-
-    if (syncResult.tags.length > 0) {
-      ensureTagDefinitions(getDatabase(), syncResult.tags)
-    }
+    await flushProjectionEvents()
 
     processRename(id, oldPath, relativePath)
+
+    if (this.vaultPath) {
+      enqueueIngestBackfill({
+        noteId: id,
+        absolutePath: path.join(this.vaultPath, relativePath),
+        relativePath,
+        fileBytes: stats.size
+      })
+    }
   }
 
   /**
@@ -463,13 +511,14 @@ export class VaultWatcher {
     absolutePath: string,
     relativePath: string,
     fileType: 'pdf' | 'image' | 'audio' | 'video',
-    db: ReturnType<typeof getIndexDatabase>
+    db: ReturnType<typeof getIndexDatabase>,
+    claimedId: string | null
   ): Promise<void> {
     // Get file stats for metadata
     const stats = await fs.stat(absolutePath)
 
-    // Generate a new ID for this file
-    const id = generateNoteId()
+    // Generate a new ID for this file, unless the path already has one
+    const id = claimedId ?? generateNoteId()
 
     // Get MIME type
     const ext = getExtension(absolutePath)
@@ -711,36 +760,49 @@ export class VaultWatcher {
       const journalDate = isJournal ? extractJournalDate(relativePath) : null
 
       // Track as pending delete - wait for potential rename (matching 'add'
-      // event with the same content hash). A missing hash never matches, so
-      // it degrades to a real delete after the window.
-      trackPendingDelete(cached.id, cached.contentHash ?? '', relativePath, async () => {
-        // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
-        if (isJournal && journalDate) {
-          enqueueJournalDelete(cached.id, journalDate)
-        } else {
-          syncNoteDelete(cached.id)
-        }
+      // event with the same content hash). A row the tier-1 backfill has not
+      // reached yet has no hash, so it carries size + mtime instead; without
+      // that, renaming a just-pasted file would read as a delete plus a new
+      // note. A row with neither never matches and degrades to a real delete
+      // after the window.
+      const statKey = cached.contentHash
+        ? null
+        : buildStatRenameKey(cached.fileSize ?? null, toIsoOrNull(cached.modifiedAt))
 
-        deleteNoteFromCache(db, cached.id)
-        void flushProjectionEvents()
+      trackPendingDelete(
+        cached.id,
+        cached.contentHash ?? '',
+        relativePath,
+        async () => {
+          // Enqueue sync delete BEFORE cache removal (enqueue reads cache for vector clock)
+          if (isJournal && journalDate) {
+            enqueueJournalDelete(cached.id, journalDate)
+          } else {
+            syncNoteDelete(cached.id)
+          }
 
-        // Emit delete event
-        emitEvent(NotesChannels.events.DELETED, {
-          id: cached.id,
-          path: relativePath,
-          source: 'external'
-        })
+          deleteNoteFromCache(db, cached.id)
+          void flushProjectionEvents()
 
-        // Also emit journal event if this is a journal entry
-        if (isJournal && journalDate) {
-          emitEvent(JournalChannels.events.ENTRY_DELETED, {
-            date: journalDate,
+          // Emit delete event
+          emitEvent(NotesChannels.events.DELETED, {
+            id: cached.id,
+            path: relativePath,
             source: 'external'
           })
-        }
 
-        await Promise.resolve()
-      })
+          // Also emit journal event if this is a journal entry
+          if (isJournal && journalDate) {
+            emitEvent(JournalChannels.events.ENTRY_DELETED, {
+              date: journalDate,
+              source: 'external'
+            })
+          }
+
+          await Promise.resolve()
+        },
+        statKey
+      )
     } catch (error) {
       this.onError?.(error instanceof Error ? error : new Error(String(error)))
     }

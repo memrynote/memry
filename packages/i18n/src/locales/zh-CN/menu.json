@@ -2,6 +2,7 @@
   "app": {
     "quit": "退出",
     "preferences": "设置…",
+    "checkForUpdates": "检查更新…",
     "exit": "退出",
     "hide": "隐藏 MemryNote",
     "hideOthers": "隐藏其他",
@@ -58,6 +59,9 @@
     "heading1": "标题 1",
     "heading2": "标题 2",
     "heading3": "标题 3",
+    "heading4": "标题 4",
+    "heading5": "标题 5",
+    "heading6": "标题 6",
     "highlight": "高亮",
     "italic": "斜体",
     "label": "格式",

@@ -310,6 +310,9 @@ describe('VirtualizedNotesTree', () => {
     const dataTransfer = {
       effectAllowed: '',
       dropEffect: '',
+      // A real DataTransfer always exposes `types`; the tree reads it to tell an
+      // internal reorder from a file dragged in from the OS.
+      types: [] as string[],
       setData: vi.fn(),
       getData: vi.fn()
     }
@@ -419,6 +422,9 @@ describe('VirtualizedNotesTree', () => {
     const dataTransfer = {
       effectAllowed: '',
       dropEffect: '',
+      // A real DataTransfer always exposes `types`; the tree reads it to tell an
+      // internal reorder from a file dragged in from the OS.
+      types: [] as string[],
       setData: vi.fn(),
       getData: vi.fn()
     }
@@ -489,6 +495,9 @@ describe('VirtualizedNotesTree', () => {
     const dataTransfer = {
       effectAllowed: '',
       dropEffect: '',
+      // A real DataTransfer always exposes `types`; the tree reads it to tell an
+      // internal reorder from a file dragged in from the OS.
+      types: [] as string[],
       setData: vi.fn(),
       getData: vi.fn()
     }

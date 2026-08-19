@@ -1,9 +1,9 @@
 import * as Y from 'yjs'
-import path from 'path'
-import { rmSync } from 'fs'
-import { app, BrowserWindow } from 'electron'
+import fsp from 'fs/promises'
+import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
+import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
@@ -15,12 +15,15 @@ import {
   resetWritebackState
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import { recordPendingCrdtNotes } from './crdt-pending-notes'
+import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from './crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
+import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
 
 const log = createLogger('CrdtProvider')
@@ -68,6 +71,25 @@ interface ActiveDoc {
   lastEncodedSize: number
   lastSizeCheckAt: number
   lastTouchedAt: number
+  /**
+   * "This note never leaves the device", cached off the index row at doOpen.
+   *
+   * Cached rather than read per update because the only reader that matters is
+   * `onDocUpdate`, which runs on every keystroke: a `getIndexDatabase()` lookup
+   * there would put a synchronous SQLite round-trip on the typing path. Opening
+   * a doc already pays an async store read plus (usually) a file stat, read and
+   * markdown parse, so one more primary-key SELECT there is noise.
+   *
+   * Kept in step by `setNoteLocalOnly`, which the note runtime calls from the
+   * same function that writes the flag to both databases. A doc that is closed
+   * when the toggle happens needs nothing: its next doOpen re-reads the row.
+   *
+   * Every path that would send this doc's bytes to the server reads it: the
+   * update-queue branch of `onDocUpdate`, and the three snapshot pushes in
+   * `close`, `pushAllSnapshots` and `compactDoc`. `pushSnapshotForNote` is
+   * reached for notes with no open doc at all and re-reads the row instead.
+   */
+  localOnly: boolean
   closing?: boolean
 }
 
@@ -79,6 +101,12 @@ export class CrdtProvider {
   private persistenceInitPromise: Promise<void> | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
+  /**
+   * Notes already written to the durable pending store during the current
+   * queue-less stretch — see `recordUnqueuedUpdate`. Purely a write-dedupe: the
+   * ids themselves live on disk.
+   */
+  private recordedUnqueuedNotes = new Set<string>()
   private readonly inactiveDocLimit: number
   private readonly now: () => number
   private compactingDocs = new Set<string>()
@@ -92,14 +120,38 @@ export class CrdtProvider {
     this.now = options.now ?? Date.now
   }
 
+  /**
+   * How many editor-less docs stay cached before the LRU starts closing them.
+   *
+   * A caller that holds several docs open across an await — sync's batch CRDT
+   * pull is the one that does — must not open more than this in one pass, or
+   * the docs it opened first are closed underneath it. See applyCrdtBatch.
+   */
+  get inactiveDocCapacity(): number {
+    return this.inactiveDocLimit
+  }
+
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
     await this.initPersistence()
 
     this.updateQueue = queue ?? null
     this.snapshotPushFn = snapshotPush ?? null
+    // Start the next queue-less stretch from a clean slate. Whatever was
+    // recorded during the previous one is on disk and is the drain's problem
+    // now; keeping the ids here would suppress the re-record if this provider
+    // ever went queue-less again with the store already cleared.
+    this.recordedUnqueuedNotes.clear()
     log.debug('CrdtProvider sync callbacks updated')
   }
 
+  /**
+   * Open this vault's CRDT store, if a vault is open.
+   *
+   * Safe — and expected — to call more than once: main calls it at bootstrap,
+   * before any vault exists, and the vault open path calls it again once the
+   * store can actually be scoped. A settled init is never redone; a *deferred*
+   * one (no vault) is not settled and must be retried.
+   */
   async initPersistence(): Promise<void> {
     // Never retry a settled init: a failed probe means the native binding is
     // broken for this process — re-probing would just re-pay the timeout.
@@ -116,15 +168,60 @@ export class CrdtProvider {
   }
 
   private async doInitPersistence(): Promise<void> {
-    const storagePath = path.join(app.getPath('userData'), 'crdt-store')
+    // Scoped to the open vault, not to the install. One store for every vault
+    // was keyed by note id alone, and journal notes use deterministic
+    // date-based ids (`j2026-08-13`), so two vaults' journals for the same day
+    // shared a key — the collision sign-out used to "contain" by deleting the
+    // whole store, and with it every note's merge history.
+    const target = await prepareVaultCrdtStore()
+    if (!target) {
+      // No vault is open: main initializes the provider before
+      // autoOpenLastVault(), and the vault picker has no vault at all. Leaving
+      // persistenceReady false is the point — this is a deferral, not a settled
+      // init, so openVault's call runs it again for real.
+      log.info('CRDT store init deferred until a vault is open')
+      return
+    }
+
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
-    this.persistence = await openCrdtPersistence(storagePath)
+    this.persistence = await openCrdtPersistence(target.storagePath)
     this.persistenceReady = true
+
+    // The readiness signal a stranded editor waits on, announced from the exact
+    // assignment that makes crdt:open-doc stop rejecting — the IPC handler gates
+    // on isInitialized(), which is this flag. Announcing anywhere earlier would
+    // be optimistic: the store's preflight/probe is what the await above pays
+    // for, and a window that re-opened before it settled would be rejected all
+    // over again. Whatever else main attaches to a fresh provider (init()'s
+    // update queue and snapshot push) lands in the same microtask as this
+    // resolve, so a renderer's IPC round-trip can never beat it.
+    broadcastToAllWindows(CRDT_EVENTS.PROVIDER_READY)
+    log.info('CRDT provider ready, asked stranded editors to rebind')
   }
 
   isInitialized(): boolean {
     return this.persistenceReady
+  }
+
+  /**
+   * Wait for a store init that is ALREADY in flight, and do nothing when there
+   * is none.
+   *
+   * The difference from `initPersistence()` matters: this never starts one. An
+   * editor is no longer gated on a sync session, so `crdt:open-doc` can arrive
+   * before the vault-open path's (deliberately un-awaited) init has settled,
+   * and it needs to wait rather than reject — but it must not be the caller
+   * that decides *which* vault the store belongs to. `closeVault` resets the
+   * provider before it closes the databases, so a self-starting init in that
+   * window would resolve the outgoing vault's uuid and the incoming vault would
+   * then inherit a settled store pointing at its predecessor's history.
+   *
+   * A failed init resolves here rather than rejecting: the caller's next
+   * question is `isInitialized()`, which is the honest answer either way.
+   */
+  async awaitPendingInit(): Promise<void> {
+    await this.persistenceInitPromise?.catch(() => {})
   }
 
   async open(noteId: string, windowId?: number, options?: { skipSeed?: boolean }): Promise<Y.Doc> {
@@ -212,7 +309,8 @@ export class CrdtProvider {
       pendingSnapshotBytes: 0,
       lastEncodedSize: 0,
       lastSizeCheckAt: 0,
-      lastTouchedAt: this.now()
+      lastTouchedAt: this.now(),
+      localOnly: this.resolveLocalOnly(noteId)
     }
     this.docs.set(noteId, entry)
 
@@ -223,6 +321,52 @@ export class CrdtProvider {
     await this.evictInactiveDocsIfNeeded()
 
     return doc
+  }
+
+  /**
+   * Read the note's "never leaves this device" flag off the index row.
+   *
+   * Falls back to "not local-only" when the row cannot be read at all — an
+   * index database that is closed or missing, which `doOpen` can hit on the
+   * `skipSeed` path that otherwise never touches it. That is the behaviour this
+   * provider has always had, so an unreadable row costs sync nothing; the
+   * authoritative check for the payload that actually carries a body — the
+   * snapshot — re-reads the row live in `pushSnapshotForNote`.
+   */
+  private resolveLocalOnly(noteId: string): boolean {
+    try {
+      return getNoteCacheById(getIndexDatabase(), noteId)?.localOnly === true
+    } catch (err) {
+      log.warn('Could not read the local-only flag for a note; treating it as syncable', {
+        noteId,
+        error: err
+      })
+      return false
+    }
+  }
+
+  /**
+   * Point the open doc's cached flag at the value both databases now hold.
+   *
+   * Called by `setNoteLocalOnlyState` — the single place the toggle is written
+   * — immediately after the two writes, so a doc opened concurrently and this
+   * doc agree. A note with no open doc needs nothing: `doOpen` re-reads.
+   *
+   * Either direction also hands the doc's snapshot debt to the pending-note
+   * replay, by clearing it here. Clearing it going ON is obvious. Going OFF
+   * matters more: `setNoteLocalOnlyState` records the note for
+   * `drainPendingCrdtNotes`, which pulls and merges the server's state before
+   * it pushes, and a note that has just stopped being local-only is precisely
+   * the population most likely to have diverged from a peer. Leaving the debt
+   * would let the next `close()` fire a *blind* snapshot first — and a snapshot
+   * asserts completeness, so the server prunes the peer edits it does not
+   * contain. The replay is the carrier for this body; close() must not race it.
+   */
+  setNoteLocalOnly(noteId: string, localOnly: boolean): void {
+    const entry = this.docs.get(noteId)
+    if (!entry) return
+    entry.localOnly = localOnly
+    entry.pendingSnapshotBytes = 0
   }
 
   async close(noteId: string, windowId?: number): Promise<void> {
@@ -238,7 +382,7 @@ export class CrdtProvider {
 
     this.flushNetworkBroadcast(noteId)
 
-    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+    if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
       const state = Y.encodeStateAsUpdate(entry.doc)
       await this.snapshotPushFn(noteId, state).catch((err) => {
         log.warn('Failed to push snapshot on close', { noteId, error: err })
@@ -374,7 +518,32 @@ export class CrdtProvider {
     return Y.encodeStateAsUpdate(entry.doc, remoteStateVector)
   }
 
+  /**
+   * Open docs an editor window is currently attached to — measured live, or as
+   * of `destroy()` once the map has been emptied.
+   *
+   * Every one of these is an editor whose renderer-side provider is bound to a
+   * doc this instance owns. When the instance is dropped, that binding is dead
+   * and the editor cannot know: main goes on applying remote updates, to the
+   * new instance's docs, and broadcasts them to a window set the editor is no
+   * longer in. So this is the number a provider reset has to bring back — see
+   * `resetCrdtProvider`.
+   */
+  get strandedEditorDocCount(): number {
+    if (this.docs.size === 0) return this.attachedDocsAtDestroy
+    let count = 0
+    for (const entry of this.docs.values()) {
+      if (entry.windowIds.size > 0) count++
+    }
+    return count
+  }
+
+  private attachedDocsAtDestroy = 0
+
   async destroy(): Promise<void> {
+    // Read before the map is cleared below: after that the count is gone, and
+    // the reset that follows destroy() is where it has to be reported.
+    this.attachedDocsAtDestroy = this.strandedEditorDocCount
     await flushPendingWritebacks()
     this.networkBatcher.flushAll()
 
@@ -438,17 +607,6 @@ export class CrdtProvider {
     }
   }
 
-  async wipeStorage(): Promise<void> {
-    await this.destroy()
-    const storagePath = path.join(app.getPath('userData'), 'crdt-store')
-    try {
-      rmSync(storagePath, { recursive: true, force: true })
-      log.info('CRDT storage wiped', { storagePath })
-    } catch (err) {
-      log.warn('Failed to wipe CRDT storage', { storagePath, error: err })
-    }
-  }
-
   async pushAllSnapshots(): Promise<number> {
     if (!this.snapshotPushFn) {
       log.debug('No snapshotPushFn configured, skipping server push')
@@ -457,6 +615,7 @@ export class CrdtProvider {
 
     let pushed = 0
     for (const [noteId, entry] of this.docs) {
+      if (entry.localOnly) continue
       if (entry.pendingSnapshotBytes <= 0) continue
       try {
         const state = Y.encodeStateAsUpdate(entry.doc)
@@ -482,6 +641,19 @@ export class CrdtProvider {
         noteId,
         fileType: cached.fileType
       })
+      return false
+    }
+
+    // The row is already in hand, so the authoritative read costs nothing here
+    // — and this is the one push path that is reached for a note with no open
+    // doc (the pending-note replay, and the push coordinator's create), so it
+    // cannot lean on the per-doc cached flag.
+    //
+    // `false` is honest to both callers: the replay reads it as "not settled"
+    // and keeps the id, which is what a note that may be un-toggled later wants
+    // — a `true` here would be the provider claiming a push it refused to make.
+    if (cached?.localOnly) {
+      log.debug('Skipping CRDT snapshot push for a local-only note', { noteId })
       return false
     }
 
@@ -539,8 +711,41 @@ export class CrdtProvider {
     if (!cached) return
     if (cached.fileType && isBinaryFileType(cached.fileType)) return
 
-    const raw = await safeRead(toAbsolutePath(cached.path))
+    const absolutePath = toAbsolutePath(cached.path)
+
+    // Classify from `stat` before reading. The byte ceiling settles a large
+    // file on its own, and the vault-wide sweep reaches every note on every
+    // pass — reading 17 MB into the main process each time only to refuse it
+    // is the read this guard exists to avoid. Same order as `getNoteById`.
+    const stats = await fsp.stat(absolutePath).catch(() => null)
+    const bySize = stats ? classifyMarkdownStat(stats.size) : null
+    if (bySize) {
+      log.warn('Refusing to seed a large-file-class note into CRDT', {
+        noteId,
+        reason: bySize.reason,
+        fileBytes: bySize.fileBytes
+      })
+      return
+    }
+
+    const raw = await safeRead(absolutePath)
     if (!raw) return
+
+    // Before gray-matter, before BlockNote. The parse is what freezes the main
+    // process — cost tracks single-block size, not file size — so a large-file
+    // class note never gets a Y.Doc body. Under the byte ceiling the file is
+    // cheap to read, and the block bound still has to be measured: a
+    // sub-ceiling log dump is one enormous block and parses quadratically.
+    const classification = classifyMarkdownContent(raw)
+    if (classification.sizeClass === 'large-file') {
+      log.warn('Refusing to seed a large-file-class note into CRDT', {
+        noteId,
+        reason: classification.reason,
+        fileBytes: classification.fileBytes,
+        largestBlockBytes: classification.largestBlockBytes
+      })
+      return
+    }
 
     const parsed = parseNote(raw, cached.path)
     if (!parsed.content?.trim()) return
@@ -650,6 +855,11 @@ export class CrdtProvider {
     if (!entry) return
 
     this.touchDoc(entry)
+    // Both counters stay honest for a local-only note. accumulatedBytes drives
+    // local compaction, which a local-only doc needs like any other; and
+    // pendingSnapshotBytes means "written locally, not yet on the server", which
+    // is exactly true here. Suppressing the debt would make the guards below
+    // read as redundant when they are the only thing holding the body back.
     entry.accumulatedBytes += update.byteLength
     if (origin !== ORIGIN_NETWORK) {
       entry.pendingSnapshotBytes += update.byteLength
@@ -666,8 +876,19 @@ export class CrdtProvider {
     this.persistUpdate(noteId, update)
     this.maybeCompact(noteId)
 
-    if (origin !== ORIGIN_NETWORK && this.updateQueue) {
-      this.updateQueue.enqueue(noteId, update)
+    // Everything above this line is local — the doc, the local CRDT store, the
+    // window broadcast, the markdown write-back scheduled below — and stays
+    // exactly the same for a local-only note. This is the only branch that
+    // sends bytes off the machine, and it is the one the record feed already
+    // refuses for the same notes (`seedUnclockedNotes`, `offline-clock`).
+    // Recording the note for later replay is skipped for the same reason the
+    // push is: the pending store exists to get a body to the server.
+    if (origin !== ORIGIN_NETWORK && !entry.localOnly) {
+      if (this.updateQueue) {
+        this.updateQueue.enqueue(noteId, update)
+      } else {
+        this.recordUnqueuedUpdate(noteId)
+      }
     }
 
     if (origin === ORIGIN_NETWORK) {
@@ -677,6 +898,37 @@ export class CrdtProvider {
     if (origin === ORIGIN_NETWORK || isIpcOrigin(origin)) {
       scheduleWriteback(noteId, entry.doc)
     }
+  }
+
+  /**
+   * Remember a local edit that had no update queue to hand it to.
+   *
+   * `init(queue, ...)` runs from `startSyncRuntime` and nowhere else, and
+   * `destroy()` nulls the queue again, so with no session — signed out, not on
+   * a paid plan, before the vault opens — there is no queue at all. The update
+   * still reaches the doc and the local CRDT store, but until now it was
+   * recorded as owed *nowhere*: the queue's own shutdown path
+   * (`persistUnflushed`) only ever covers updates the queue accepted and could
+   * not flush, never updates it never saw. That is the whole of "edit while
+   * signed out, sign back in, the other device never sees it" — the edit was
+   * safe locally and invisible forever. `drainPendingCrdtNotes` on the next
+   * runtime start pushes the note's full doc state, which is the only shape
+   * this backlog has: there are no incrementals to replay.
+   *
+   * Deduped per note for the lifetime of the queue-less stretch, so the cost is
+   * one small synchronous JSON write per *note touched*, not per update — the
+   * same recorder the shutdown path uses, called at a rate it was built for.
+   * Eager rather than debounced on purpose: the id has to be on disk before a
+   * crash or a kill, and the dedupe means the second update for a note never
+   * pays for the write again. The mark goes up before the write for the same
+   * reason — a store that cannot be written (full disk) must not turn every
+   * later keystroke into another failing disk write.
+   */
+  private recordUnqueuedUpdate(noteId: string): void {
+    if (this.recordedUnqueuedNotes.has(noteId)) return
+    this.recordedUnqueuedNotes.add(noteId)
+    recordPendingCrdtNotes([noteId])
+    log.debug('Recorded a local CRDT edit made with no update queue', { noteId })
   }
 
   private broadcastToWindows(
@@ -832,7 +1084,7 @@ export class CrdtProvider {
     this.compactionBuffers.set(noteId, [])
 
     try {
-      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0) {
+      if (this.snapshotPushFn && entry.pendingSnapshotBytes > 0 && !entry.localOnly) {
         // Credit only the bytes this payload actually covers. result.compacted
         // was encoded before the await, and applyIpcUpdate writes straight to
         // entry.doc with no compaction guard (only remote updates are
@@ -984,5 +1236,23 @@ export function getCrdtProvider(): CrdtProvider {
 }
 
 export function resetCrdtProvider(): void {
+  const previous = instance
   instance = null
+  if (!previous) return
+
+  // Renderer providers hold a note open against the instance just dropped, and
+  // nothing else tells them it is gone: the next remote update is applied to a
+  // doc in the fresh instance and broadcast to a window set that no longer
+  // contains the editor, so the note silently goes stale until it is closed and
+  // reopened. Tell every window its binding is dead.
+  //
+  // Dead, not retryable-now. This runs mid-teardown — sign-out calls it with the
+  // old provider destroyed and no replacement initialized — so a window that
+  // answered by re-opening got 'CRDT provider not initialized' every single
+  // time. The re-open is driven by PROVIDER_READY instead, emitted when a
+  // provider can actually serve it.
+  broadcastToAllWindows(CRDT_EVENTS.PROVIDER_RESET)
+  log.info('CRDT provider reset, marked window editors stale', {
+    strandedEditorDocs: previous.strandedEditorDocCount
+  })
 }

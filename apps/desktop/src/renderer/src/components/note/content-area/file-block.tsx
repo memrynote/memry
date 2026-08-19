@@ -9,6 +9,7 @@ import { getI18n } from 'react-i18next'
 import { useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createReactBlockSpec } from '@blocknote/react'
+import { fileBlockConfig } from '@memry/editor-schema/blocks'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -31,7 +32,7 @@ import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
 import type { FileBlockProps } from './file-block-markers'
 
-export { FILE_BLOCK_REGEX, parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
+export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
 export type { FileBlockProps } from './file-block-markers'
 
 // Configure PDF.js worker
@@ -416,8 +417,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
           )}
         </div>
 
-        {/* Corner resize brackets — sit just outside the bottom corners,
-            revealed on hover or when the embed is selected. */}
+        {/* Corner resize brackets — sit just outside the bottom corners. Faint
+            at rest rather than hidden: a control that only exists on hover is a
+            control most readers never find out about. */}
         {!loading && !error && (
           <>
             <div
@@ -433,7 +435,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
-              className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute -bottom-1 -end-1 z-10 h-3.5 w-3.5 cursor-nwse-resize touch-none border-b-2 border-e-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             />
             <div
               role="button"
@@ -444,7 +446,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
               onPointerMove={handleResizePointerMove}
               onPointerUp={handleResizePointerUp}
               onKeyDown={handleResizeKeyDown}
-              className="absolute -bottom-1 -start-1 z-10 h-3.5 w-3.5 cursor-nesw-resize touch-none border-b-2 border-s-2 border-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute -bottom-1 -start-1 z-10 h-3.5 w-3.5 cursor-nesw-resize touch-none border-b-2 border-s-2 border-foreground/60 opacity-40 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             />
           </>
         )}
@@ -684,24 +686,43 @@ function FileBlockRender({
   )
 }
 
-export const createFileBlock = createReactBlockSpec(
-  {
-    type: 'file',
-    propSchema: {
-      url: { default: '' },
-      name: { default: '' },
-      size: { default: 0 },
-      mimeType: { default: '' },
-      width: { default: 0 },
-      height: { default: 0 },
-      align: { default: 'left' as const, values: ['left', 'center', 'right'] as const }
-    },
-    content: 'none'
-  },
-  {
-    render: FileBlockRender
-  }
-)
+/**
+ * What the file panel's picker offers, and what the paste/drop handler treats
+ * as file-block material.
+ *
+ * Mirrors `ALLOWED_IMAGE_EXTENSIONS` + `ALLOWED_FILE_EXTENSIONS` in
+ * `apps/desktop/src/main/vault/attachments.ts`, which is the source of truth —
+ * the renderer cannot import from main, so the list is restated here. Without
+ * it BlockNote's picker accepts every file type and lets the user choose
+ * something the main process then rejects.
+ *
+ * Extensions, not mime globs, on purpose: `image/*` here would compete with the
+ * built-in `image` block for pasted images.
+ */
+export const FILE_BLOCK_ACCEPT = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.svg',
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.txt',
+  '.md'
+]
+
+// Type/props/content come from the shared config so this block and the main
+// process's headless twin cannot disagree. `file` is the one that shadows a
+// BlockNote DEFAULT block: before the config was shared, main built the default
+// spec and silently dropped size/mimeType/width/height/align on the way to disk.
+export const createFileBlock = createReactBlockSpec(fileBlockConfig, {
+  meta: { fileBlockAccept: FILE_BLOCK_ACCEPT },
+  render: FileBlockRender
+})
 
 // ============================================================================
 // File Block Serialization Helpers

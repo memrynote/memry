@@ -37,6 +37,36 @@
       "cancel": "Cancel",
       "confirm": "Delete",
       "deleting": "Deleting..."
+    },
+    "largeFile": {
+      "title": "This file is too large to open as a note",
+      "badge": "Read-only · not synced",
+      "reason": {
+        "fileBytes": "It is {size}. Notes stay editable up to {limit}.",
+        "blockBytes": "It has a {size} run with no blank line in it. Notes stay editable up to {limit} per block."
+      },
+      "explanation": "Editing it would mean parsing the whole thing at once, which would freeze the app. The file is untouched on disk.",
+      "openExternally": "Open in default app",
+      "revealInFolder": "Show in folder",
+      "viewer": {
+        "preparing": "Preparing {size} for reading…",
+        "preparingHint": "Indexing the lines so it can be scrolled without loading it all at once.",
+        "lines": "{count} lines",
+        "empty": "This file is empty.",
+        "failed": "This file could not be prepared for reading.",
+        "missing": "This file is no longer on disk.",
+        "lineTruncated": "long line cut here",
+        "showRestOfLine": "Show the rest of this line"
+      },
+      "tooLarge": {
+        "title": "This file is too large to open",
+        "reason": "It is {size}. Memry can display files up to {limit}.",
+        "explanation": "The file is untouched on disk. Open it in an app built for files this size."
+      },
+      "find": {
+        "searching": "{count} so far…",
+        "limited": "{index}/{shown} of {total}"
+      }
     }
   },
   "tree": {
@@ -145,6 +175,22 @@
       "warning": "Warning",
       "error": "Error",
       "success": "Success"
+    },
+    "slashMenu": {
+      "pdf": {
+        "title": "PDF",
+        "subtext": "Attach a PDF and read it inline"
+      },
+      "linkToNote": {
+        "title": "Link to note",
+        "subtext": "Search notes — or type [[ anywhere"
+      }
+    },
+    "filePanel": {
+      "uploadTab": "Upload"
+    },
+    "upload": {
+      "failed": "Could not attach that file"
     }
   },
   "dateMention": {
@@ -165,7 +211,9 @@
       "embed": "Embed",
       "wikiLink": "Wiki link",
       "embedAria": "Embed {title}",
-      "wikiLinkAria": "Wiki link {title}"
+      "wikiLinkAria": "Wiki link {title}",
+      "noHeadings": "{title} has no headings",
+      "noMatchingHeadings": "No headings in {title} match"
     },
     "mention": {
       "aria": "Date and note suggestions",

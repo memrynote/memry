@@ -18,6 +18,7 @@ type PreflightVerdict = {
 // locked store dir) without disturbing the real fs everything else here uses.
 const fsHooks = vi.hoisted(() => ({
   renameSync: null as null | ((from: string, to: string) => void),
+  cpSync: null as null | ((from: string, to: string) => void),
   realRenameSync: (from: string, to: string): void => {
     throw new Error(`fs mock not installed (${from} -> ${to})`)
   }
@@ -28,8 +29,21 @@ vi.mock('fs', async (importActual) => {
   fsHooks.realRenameSync = actual.renameSync
   const renameSync = (from: string, to: string): void =>
     (fsHooks.renameSync ?? actual.renameSync)(from, to)
-  return { ...actual, default: { ...actual, renameSync }, renameSync }
+  const cpSync = (from: string, to: string, options?: Parameters<typeof actual.cpSync>[2]): void =>
+    fsHooks.cpSync ? fsHooks.cpSync(from, to) : actual.cpSync(from, to, options)
+  return { ...actual, default: { ...actual, renameSync, cpSync }, renameSync, cpSync }
 })
+
+/** Makes every way of moving a directory fail, the way a full disk or AV does. */
+const failEveryMove = (): void => {
+  const fail = (): never => {
+    const err = new Error('EPERM: operation not permitted') as NodeJS.ErrnoException
+    err.code = 'EPERM'
+    throw err
+  }
+  fsHooks.renameSync = fail
+  fsHooks.cpSync = fail
+}
 
 const mocks = vi.hoisted(() => {
   // Simulates a broken classic-level native binding (napi_create_reference
@@ -50,6 +64,11 @@ const mocks = vi.hoisted(() => {
     // Per-run temp dir, assigned once the real fs is importable (below). A
     // fixed name in a world-writable dir is a symlink-swap target.
     userDataDir: '',
+    // The open vault's identity — what the CRDT store is scoped to. null for
+    // `dataDb` means no vault is open, which must defer the store init.
+    dataDb: {} as object | null,
+    vaultUuid: '11111111-2222-3333-4444-555555555555',
+    legacyStoreClaim: undefined as string | undefined,
     // Verdict of the disposable utilityProcess preflight (see crdt-preflight.ts).
     // preflightQueue serves per-call verdicts (quarantine retry = second call);
     // when empty, preflightResult is the standing answer.
@@ -62,10 +81,16 @@ const mocks = vi.hoisted(() => {
       { isDestroyed: ReturnType<typeof vi.fn>; webContents: { send: ReturnType<typeof vi.fn> } }
     >(),
     getNoteCacheById: vi.fn(),
+    updateNoteCache: vi.fn(),
+    updateNoteMetadata: vi.fn(),
+    enqueueLocalSyncUpdate: vi.fn(),
+    removePendingNoteSyncItems: vi.fn(),
+    /** Overridden by the one test that needs a path a real `stat` can reach. */
+    toAbsolutePath: vi.fn((path: string) => `/vault/${path}`),
     safeRead: vi.fn(),
     parseNote: vi.fn(),
     markdownToYFragment: vi.fn(),
-    repairEmptyBlockIds: vi.fn(() => 0),
+    repairEmptyBlockIds: vi.fn((..._args: unknown[]) => 0),
     compactYDoc: vi.fn(),
     scheduleWriteback: vi.fn(),
     flushPendingWritebacks: vi.fn(),
@@ -125,15 +150,59 @@ vi.mock('y-leveldb', () => ({
 }))
 
 vi.mock('../database/client', () => ({
-  getIndexDatabase: () => ({ kind: 'index-db' })
+  getIndexDatabase: () => ({ kind: 'index-db' }),
+  getDatabase: () => mocks.dataDb,
+  isDatabaseInitialized: () => mocks.dataDb !== null
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: () => mocks.vaultUuid
+}))
+
+vi.mock('../store', () => ({
+  getLegacyCrdtStoreClaim: () => mocks.legacyStoreClaim,
+  recordLegacyCrdtStoreClaim: (vaultUuid: string) => {
+    mocks.legacyStoreClaim = vaultUuid
+  },
+  getVaults: () => [],
+  getLegacyCrdtStorePartitionPending: () => undefined,
+  clearLegacyCrdtStorePartitionPending: vi.fn(),
+  getPendingCrdtStoreRename: () => undefined,
+  clearPendingCrdtStoreRename: vi.fn()
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args),
+  updateNoteCache: (...args: unknown[]) => mocks.updateNoteCache(...args)
 }))
 
+// Everything below stands up `setNoteLocalOnlyState` — the real toggle — so the
+// local-only suite can drive the whole chain rather than two mocks of each
+// other. Only the two databases and the record feed are faked; the provider and
+// the durable pending store on the other side of the seam are real. None of
+// these modules is reachable from crdt-provider.ts, so they are inert for every
+// other test in this file.
+vi.mock('../database', () => ({
+  getDatabase: () => mocks.dataDb,
+  getIndexDatabase: () => ({ kind: 'index-db' })
+}))
+vi.mock('@memry/storage-data', () => ({
+  updateNoteMetadata: (...args: unknown[]) => mocks.updateNoteMetadata(...args)
+}))
+vi.mock('./local-mutations', () => ({
+  enqueueLocalSyncCreate: vi.fn(),
+  enqueueLocalSyncDelete: vi.fn(),
+  enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
+  removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
+}))
+vi.mock('./attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
+vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
+vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
+vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
+vi.mock('../telemetry/diagnostics', () => ({ trackMainError: vi.fn() }))
+
 vi.mock('../vault/notes', () => ({
-  toAbsolutePath: (path: string) => `/vault/${path}`
+  toAbsolutePath: (path: string) => mocks.toAbsolutePath(path)
 }))
 
 vi.mock('../vault/file-ops', () => ({
@@ -188,9 +257,22 @@ vi.mock('./microtask-batch-broadcaster', () => ({
 }))
 
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { NOTE_MAX_BYTES } from '@memry/shared/markdown-class'
 import { CrdtProvider, getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import type { SnapshotPushFn } from './crdt-provider'
+// Deliberately NOT mocked: the point of the signed-out suite below is that the
+// recorder and the replay meet on the same durable store, so both halves run
+// for real against the temp userData dir.
+import { drainPendingCrdtNotes, readPendingCrdtNotes } from './crdt-pending-notes'
+// The real toggle, so the local-only suite crosses the seam for real.
+import { setNoteLocalOnlyState } from '../notes/runtime-effects'
 
 mocks.userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-'))
+
+const VAULT_UUID = mocks.vaultUuid
+/** Where the store lands now that it is scoped to the open vault. */
+const vaultStoreDir = (uuid: string = VAULT_UUID): string =>
+  `${mocks.userDataDir}/crdt-stores/${uuid}`
 
 const createWindow = (id: number, destroyed = false) => {
   const win = {
@@ -214,7 +296,7 @@ const makeRemoteUpdate = (text: string): Uint8Array => {
 describe('CrdtProvider', () => {
   let provider: CrdtProvider
   let queue: { enqueue: ReturnType<typeof vi.fn> }
-  let pushSnapshot: ReturnType<typeof vi.fn>
+  let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -225,12 +307,16 @@ describe('CrdtProvider', () => {
     mocks.preflightResult = { ok: true }
     mocks.preflightQueue.length = 0
     mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
       title: 'Note',
       fileType: 'markdown'
     })
+    mocks.toAbsolutePath.mockImplementation((path: string) => `/vault/${path}`)
     mocks.safeRead.mockResolvedValue('# Note\n\nBody')
     mocks.parseNote.mockReturnValue({ content: 'Body' })
     mocks.markdownToYFragment.mockImplementation(
@@ -241,7 +327,7 @@ describe('CrdtProvider', () => {
     )
     mocks.compactYDoc.mockReturnValue(null)
     queue = { enqueue: vi.fn() }
-    pushSnapshot = vi.fn().mockResolvedValue(undefined)
+    pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
     provider = new CrdtProvider()
     await provider.init(queue as any, pushSnapshot)
   })
@@ -290,6 +376,27 @@ describe('CrdtProvider', () => {
     })
     expect(queue.enqueue).toHaveBeenCalled()
     expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
+    expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+  })
+
+  it('persists and writes back an edit made with no session, and pushes nothing', async () => {
+    // Why the signed-out queue needs no pause: teardown drops it. The editor is
+    // no longer gated on a session, so this is now the steady state — every
+    // keystroke made signed out reaches the local store and the vault markdown,
+    // and nothing reaches the 1s flush loop, so nothing retries a push or reads
+    // the keychain for a token that is not there. Sign-out goes further still
+    // (resetCrdtProvider builds a fresh instance), which makes this the weaker
+    // of the two guarantees and therefore the one worth pinning.
+    createWindow(1)
+    await provider.destroy()
+    await provider.initPersistence()
+    await provider.open('note-1', 1, { skipSeed: true })
+    queue.enqueue.mockClear()
+
+    provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed while signed out'), 1)
+
+    expect(queue.enqueue).not.toHaveBeenCalled()
+    expect(mocks.persistenceInstances.at(-1)!.storeUpdate).toHaveBeenCalled()
     expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
   })
 
@@ -1034,7 +1141,80 @@ describe('CrdtProvider', () => {
     ).resolves.toBe(0)
   })
 
-  it('covers provider singleton, idempotent init, and wipe storage lifecycle', async () => {
+  it('tells every window to rebind its editors when the provider is reset', async () => {
+    // #given two windows and a note an editor holds open in the live singleton
+    createWindow(1)
+    createWindow(2)
+    const singleton = getCrdtProvider()
+    await singleton.init(queue as any, pushSnapshot)
+    await singleton.open('note-open', 1, { skipSeed: true })
+    expect(singleton.strandedEditorDocCount).toBe(1)
+    mocks.sent = []
+
+    // #when the provider is dropped, as sign-out does
+    resetCrdtProvider()
+
+    // #then every window has to hear it, not just the one holding the note: each
+    // renderer provider is bound to a doc this instance owned, and without the
+    // event it keeps that dead binding, so main applies remote updates to the
+    // fresh instance and broadcasts them to a window set the editor is not in.
+    const rebinds = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_RESET)
+    expect(rebinds.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+
+    // #and the reset must NOT read as "you may re-open now". At this instant the
+    // old provider is destroyed and no replacement is initialized, so every
+    // OPEN_DOC is rejected — a window that treated the reset as its cue to
+    // re-open failed on every attempt and stayed unbound for good.
+    expect(mocks.sent.some((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)).toBe(false)
+    expect(getCrdtProvider().isInitialized()).toBe(false)
+  })
+
+  it('announces readiness only once persistence is up and open-doc will succeed', async () => {
+    // #given the windows holding stranded editors after a reset
+    createWindow(1)
+    createWindow(2)
+    resetCrdtProvider()
+    mocks.sent = []
+
+    // #when a provider is brought up — bootstrap, or the sync runtime's init()
+    // after a vault open / sign-in
+    const replacement = getCrdtProvider()
+    const initializedWhenAnnounced: boolean[] = []
+    for (const [windowId, win] of mocks.windows) {
+      win.webContents.send.mockImplementation((channel: string, payload: unknown) => {
+        if (channel === CRDT_EVENTS.PROVIDER_READY) {
+          initializedWhenAnnounced.push(replacement.isInitialized())
+        }
+        mocks.sent.push({ windowId, channel, payload })
+      })
+    }
+    await replacement.initPersistence()
+
+    // #then every window hears it, not just the one holding a note — one
+    // provider serves every open doc, so one announcement releases them all.
+    const readies = mocks.sent.filter((sent) => sent.channel === CRDT_EVENTS.PROVIDER_READY)
+    expect(readies.map((sent) => sent.windowId).sort()).toEqual([1, 2])
+
+    // #and it is announced from the exact assignment OPEN_DOC gates on:
+    // announcing any earlier sends the stranded editors straight back into the
+    // 'CRDT provider not initialized' rejection this whole signal exists to end.
+    expect(initializedWhenAnnounced).toEqual([true, true])
+  })
+
+  it('still reports the editors it stranded after destroy has emptied the doc map', async () => {
+    // #given sign-out wipes storage (which destroys) before it resets the singleton
+    createWindow(1)
+    const singleton = getCrdtProvider()
+    await singleton.init(queue as any, pushSnapshot)
+    await singleton.open('note-open', 1, { skipSeed: true })
+    await singleton.destroy()
+
+    // #then the count must survive that, or the one number saying how many editors
+    // a reset broke is always zero by the time it is read
+    expect(singleton.strandedEditorDocCount).toBe(1)
+  })
+
+  it('covers provider singleton, idempotent init, and destroy lifecycle', async () => {
     const singleton = getCrdtProvider()
     expect(getCrdtProvider()).toBe(singleton)
     resetCrdtProvider()
@@ -1051,7 +1231,7 @@ describe('CrdtProvider', () => {
     await expect(noSnapshotProvider.pushAllSnapshots()).resolves.toBe(0)
     await noSnapshotProvider.destroy()
 
-    await provider.wipeStorage()
+    await provider.destroy()
     expect(mocks.persistenceInstances[0].destroy).toHaveBeenCalled()
     expect(provider.isInitialized()).toBe(false)
   })
@@ -1136,6 +1316,98 @@ describe('CrdtProvider', () => {
     expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
   })
 
+  it('refuses to seed a log dump that is under the byte ceiling but one giant block', async () => {
+    // #given 600 KB of log lines with no blank line anywhere — the reported
+    // freeze. A byte ceiling alone would accept this file.
+    const dump = Array.from({ length: 20_000 }, (_, i) => `2026-08-15 line ${i} payload`).join('\n')
+    await provider.open('log-dump', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'log-dump',
+      path: 'notes/dump.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(dump)
+    mocks.markdownToYFragment.mockClear()
+    mocks.persistenceInstances[0].storeUpdate.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('log-dump')
+
+    // #then — the BlockNote parse is the freeze, so it must never be reached,
+    // and nothing is persisted for the note.
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+    expect(mocks.persistenceInstances[0].storeUpdate).not.toHaveBeenCalled()
+    expect(provider.getDoc('log-dump')?.getXmlFragment('prosemirror').length).toBe(0)
+  })
+
+  it('refuses a file over the byte ceiling without reading it', async () => {
+    // #given a real file past NOTE_MAX_BYTES on disk. The vault-wide sweep
+    // reaches every note on every pass, and the reported case was 17 MB read
+    // in full each time only to be refused.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-crdt-seed-'))
+    const file = path.join(dir, 'dump.md')
+    fs.writeFileSync(file, 'x'.repeat(NOTE_MAX_BYTES + 1))
+    mocks.toAbsolutePath.mockReturnValue(file)
+
+    await provider.open('big-on-disk', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'big-on-disk',
+      path: 'notes/dump.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockClear()
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('big-on-disk')
+
+    // #then — `stat` settles it, so the bytes are never pulled into the main
+    // process at all
+    expect(mocks.safeRead).not.toHaveBeenCalled()
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('refuses to seed a file over the byte ceiling', async () => {
+    // #given a file past NOTE_MAX_BYTES, shaped as ordinary paragraphs
+    const huge = Array.from({ length: 3000 }, () => 'x'.repeat(1000)).join('\n\n')
+    await provider.open('huge-note', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'huge-note',
+      path: 'notes/huge.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(huge)
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('huge-note')
+
+    // #then
+    expect(mocks.markdownToYFragment).not.toHaveBeenCalled()
+  })
+
+  it('still seeds a well-formed 800 KB note, which parses fine', async () => {
+    // #given the measured good case: big, but many blank-line-separated blocks
+    const body = Array.from({ length: 200 }, () => 'x'.repeat(4000)).join('\n\n')
+    await provider.open('big-but-fine', undefined, { skipSeed: true })
+    mocks.getNoteCacheById.mockReturnValueOnce({
+      id: 'big-but-fine',
+      path: 'notes/big.md',
+      fileType: 'markdown'
+    })
+    mocks.safeRead.mockResolvedValueOnce(body)
+    mocks.parseNote.mockReturnValueOnce({ content: body })
+    mocks.markdownToYFragment.mockClear()
+
+    // #when
+    await provider.seedFromMarkdownPublic('big-but-fine')
+
+    // #then — the guard must not cost the app notes it can genuinely handle
+    expect(mocks.markdownToYFragment).toHaveBeenCalledWith(body, expect.anything(), 'notes/big.md')
+  })
+
   it('ignores closing docs and unavailable windows while applying updates', async () => {
     createWindow(21, true)
     await provider.open('closing-note', 21, { skipSeed: true })
@@ -1146,6 +1418,589 @@ describe('CrdtProvider', () => {
     ;(provider as any).docs.get('closing-note').closing = false
     provider.applyIpcUpdate('closing-note', makeRemoteUpdate('local'), 99)
     expect(mocks.sent).toEqual([])
+  })
+
+  // An edit made with no session reaches the doc and the local store — that has
+  // been true since the provider stopped being gated on a session. What it did
+  // NOT reach was anything that remembers the server is owed it: `init(queue)`
+  // runs only from startSyncRuntime, so signed out there is no update queue,
+  // and the queue's own shutdown recorder can only report updates it accepted.
+  // The edit was safe locally and invisible to every other device forever.
+  describe('signed-out CRDT backlog', () => {
+    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+
+    beforeEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    afterEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    it('pushes an edit made with no session once the session comes back, with no further input', async () => {
+      // #given the provider as it exists after sign-out: persistence re-opened
+      // (session-teardown does that), no update queue, no snapshot push fn
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+
+      // #when the user types
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      // #then nothing in the live sync path saw it — there is nothing to see it
+      expect(queue.enqueue).not.toHaveBeenCalled()
+      // #and the debt is durable, which is the only thing that can outlive this
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // #when the user signs back in. startSyncRuntime calls init() on THIS
+      // instance — sign-out already reset the singleton, sign-in does not — and
+      // then fires the replay. No editing, no clicking, no restart.
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+      const replayed = await drainPendingCrdtNotes({
+        mergeRemote: async () => true,
+        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      // #then the note's full state reaches the server. Full state is the only
+      // shape available: a queue-less edit produced no incrementals to replay.
+      expect(replayed).toEqual({ cleared: 1, retained: 0 })
+      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
+      expect(pushAfterSignIn.mock.calls[0]![0]).toBe('note-1')
+
+      const received = new Y.Doc()
+      Y.applyUpdate(received, pushAfterSignIn.mock.calls[0]![1])
+      expect(received.getMap('meta').get('title')).toBe('typed while signed out')
+
+      // #and the debt is settled, so the next replay does not pay for it again
+      expect(readPendingCrdtNotes()).toEqual([])
+
+      await signedOut.destroy()
+    })
+
+    // The server prunes every crdt_updates row at or below a stored snapshot's
+    // sequence number, so a snapshot is an assertion that it contains
+    // everything up to that point. Push one for a note whose peer edits this
+    // device has not merged and those edits are deleted server-side AND absent
+    // from the snapshot — destroyed for every device. The pending list is
+    // precisely the notes this device edited while it could not push, so it is
+    // also the population most likely to have diverged from a peer.
+    it('keeps both sides of a note edited on two devices across a sign-out', async () => {
+      // #given the same note edited on the peer while this device was signed out
+      const peer = new Y.Doc()
+      peer.getMap('meta').set('fromPeer', 'edited on device A')
+      const peerUpdate = Y.encodeStateAsUpdate(peer)
+
+      // #and this device's own signed-out edit, recorded with no queue
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('fromThisDevice', 'edited while signed out')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // #when the user signs in and the replay runs. mergeRemote stands in for
+      // engine.mergeRemoteCrdtForNote, whose only effect on the doc is the
+      // applyRemoteUpdate this performs.
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+
+      const order: string[] = []
+      await drainPendingCrdtNotes({
+        mergeRemote: async (noteId) => {
+          order.push('merge')
+          await signedOut.open(noteId, undefined, { skipSeed: true })
+          signedOut.applyRemoteUpdate(noteId, peerUpdate)
+          return true
+        },
+        pushSnapshot: async (noteId) => {
+          order.push('push')
+          return signedOut.pushSnapshotForNote(noteId)
+        },
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      // #then the pull happened first — after the push it would be worthless,
+      // the destructive prune has already run server-side by then.
+      expect(order).toEqual(['merge', 'push'])
+
+      // #and the snapshot the server is told to keep carries BOTH edits, so the
+      // prune that follows it deletes nothing that is not already inside it.
+      expect(pushAfterSignIn).toHaveBeenCalledTimes(1)
+      const stored = new Y.Doc()
+      Y.applyUpdate(stored, pushAfterSignIn.mock.calls[0]![1])
+      expect(stored.getMap('meta').get('fromThisDevice')).toBe('edited while signed out')
+      expect(stored.getMap('meta').get('fromPeer')).toBe('edited on device A')
+
+      await signedOut.destroy()
+    })
+
+    it('does not push a note whose pre-push pull failed, and keeps it pending', async () => {
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      const pushAfterSignIn = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+      await signedOut.init(queue as any, pushAfterSignIn)
+
+      const replayed = await drainPendingCrdtNotes({
+        // What an offline start, an expired token, or a 429 on the baseline GET
+        // looks like from here.
+        mergeRemote: async () => false,
+        pushSnapshot: (noteId) => signedOut.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => signedOut.validateNoteForCrdt(noteId).ok
+      })
+
+      expect(pushAfterSignIn).not.toHaveBeenCalled()
+      expect(replayed).toEqual({ cleared: 0, retained: 1 })
+      // Still owed, so the next start or reconnect tries again rather than
+      // dropping this device's signed-out edit.
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      await signedOut.destroy()
+    })
+
+    it('records nothing when there is an update queue to take the edit', async () => {
+      // The queue owns the update from here: it flushes it as an incremental,
+      // and its own stop()/budget paths record it if that flush never lands.
+      // Recording here too would mean a redundant full-snapshot push per note.
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed in')
+
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+      expect(readPendingCrdtNotes()).toEqual([])
+    })
+
+    it('writes once per note touched, not once per update', async () => {
+      // This fires on roughly every keystroke, and recordPendingCrdtNotes is a
+      // synchronous read-modify-write of a file in userData. Per update that is
+      // a disk write per keystroke; per note it is negligible.
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'first')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      // Blank the store behind the provider's back: any further write for this
+      // note would put the id back, so the file staying empty is proof that no
+      // second write happened.
+      fs.writeFileSync(pendingStoreFile(), '[]', 'utf8')
+      for (const title of ['second', 'third', 'fourth', 'fifth']) {
+        doc.getMap('meta').set('title', title)
+      }
+      expect(readPendingCrdtNotes()).toEqual([])
+
+      // A different note is still a different debt.
+      const other = await signedOut.open('note-2', 1, { skipSeed: true })
+      other.getMap('meta').set('title', 'other note')
+      expect(readPendingCrdtNotes()).toEqual(['note-2'])
+
+      await signedOut.destroy()
+    })
+  })
+
+  // The record feed has always honoured this — `seedUnclockedNotes` excludes
+  // `localOnly IS NOT 1`, and so does the offline clock — but the CRDT body
+  // path did not, so a note the user marked local-only went on pushing its
+  // *body* while its metadata stayed put. E2E-encrypted, so never a
+  // confidentiality breach, but "local-only" reads as a promise, and the UI hid
+  // the gap because the metadata genuinely did not sync.
+  describe('a local-only note', () => {
+    const pendingStoreFile = (): string => path.join(mocks.userDataDir, 'crdt-pending-notes.json')
+
+    const noteRow = (localOnly: boolean): Record<string, unknown> => ({
+      id: 'note-1',
+      path: 'notes/Note.md',
+      title: 'Note',
+      fileType: 'markdown',
+      localOnly
+    })
+
+    beforeEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    afterEach(() => {
+      fs.rmSync(pendingStoreFile(), { force: true })
+    })
+
+    it('never hands an edit to the update queue', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed in a local-only note')
+
+      expect(queue.enqueue).not.toHaveBeenCalled()
+    })
+
+    it('records no CRDT backlog when there is no update queue to take the edit', async () => {
+      // The queue-less recorder exists to get a body to the server later. A
+      // local-only note owes the server nothing, so there is nothing to record.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      const signedOut = new CrdtProvider()
+      await signedOut.init()
+      const doc = await signedOut.open('note-1', undefined, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed while signed out')
+
+      expect(readPendingCrdtNotes()).toEqual([])
+      await signedOut.destroy()
+    })
+
+    it('refuses a snapshot push, from any caller', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+
+      // The one push path reached for a note with no open doc — the pending
+      // replay and the push coordinator's create both land here.
+      expect(await provider.pushSnapshotForNote('note-1')).toBe(false)
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('pushes no snapshot when its last editor closes, nor at shutdown', async () => {
+      // The debt is deliberately real — pendingSnapshotBytes counts what was
+      // written and not pushed, for every note — so these two doors have to
+      // refuse on the flag itself and nothing else can be doing the work.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed in a local-only note')
+      expect(provider.getDocSizeMetrics()[0]!.pendingSnapshotBytes).toBeGreaterThan(0)
+
+      // Shutdown flush first: close() would otherwise consume the debt.
+      expect(await provider.pushAllSnapshots()).toBe(0)
+      await provider.close('note-1', 1)
+
+      expect(pushSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('pushes no snapshot when the compaction pass reaches it', async () => {
+      // Third door, and the one that fires without any user action: the doc is
+      // editor-less by definition here, so nothing on screen hints at a push.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      const compactedDoc = new Y.Doc()
+      compactedDoc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [new Y.XmlText('compact')])
+      mocks.compactYDoc.mockReturnValue({
+        compacted: Y.encodeStateAsUpdate(compactedDoc),
+        savedBytes: 120
+      })
+
+      await provider.open('note-1', undefined, { skipSeed: true })
+      provider.updateMeta('note-1', { title: 'Needs compaction' })
+      await provider.compactDoc('note-1')
+
+      // Compaction itself still happens — it is a local win — and only the push
+      // is refused.
+      expect(pushSnapshot).not.toHaveBeenCalled()
+      expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
+    })
+
+    it('still reaches the local doc, the local store, every window and the vault file', async () => {
+      // The whole point: editing is untouched. Nothing here may depend on a
+      // session, a plan or a network — only what leaves the machine changes.
+      mocks.getNoteCacheById.mockReturnValue(noteRow(true))
+      createWindow(1)
+      createWindow(2)
+      await provider.open('note-1', 1, { skipSeed: true })
+      await provider.open('note-1', 2, { skipSeed: true })
+
+      provider.applyIpcUpdate('note-1', makeRemoteUpdate('typed in a local-only note'), 1)
+
+      expect(provider.getDoc('note-1')!.getMap('meta').get('title')).toBe(
+        'typed in a local-only note'
+      )
+      expect(mocks.persistenceInstances[0].storeUpdate).toHaveBeenCalled()
+      expect(mocks.sent).toHaveLength(1)
+      expect(mocks.sent[0]).toMatchObject({
+        windowId: 2,
+        channel: CRDT_EVENTS.STATE_CHANGED,
+        payload: { noteId: 'note-1', origin: 'ipc' }
+      })
+      expect(mocks.scheduleWriteback).toHaveBeenCalledWith('note-1', expect.any(Y.Doc))
+    })
+
+    it('costs an ordinary note nothing', async () => {
+      mocks.getNoteCacheById.mockReturnValue(noteRow(false))
+      createWindow(1)
+      const doc = await provider.open('note-1', 1, { skipSeed: true })
+
+      doc.getMap('meta').set('title', 'typed in a syncing note')
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+
+      await provider.close('note-1', 1)
+      expect(pushSnapshot).toHaveBeenCalledWith('note-1', expect.any(Uint8Array))
+    })
+
+    // Crosses the seam for real: the toggle is the shipped function, the flag
+    // is resolved by the shipped doOpen, the edit is a real Yjs transaction and
+    // the assertion is on what the update queue actually received. Both halves
+    // mocked against each other is exactly what nearly shipped a broken #1489.
+    it('starts pushing again the moment the real toggle clears it, with no reopen', async () => {
+      // #given the singleton the toggle reaches, not this suite's instance
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+
+      // #and an index cache the toggle genuinely writes through
+      const row = noteRow(true)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      createWindow(1)
+      const doc = await singleton.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'written while local-only')
+      expect(queue.enqueue).not.toHaveBeenCalled()
+
+      // #when the user turns local-only off
+      setNoteLocalOnlyState('note-1', false)
+
+      // #then the very next keystroke goes up, without closing and reopening
+      doc.getMap('meta').set('title', 'written after un-toggling')
+      expect(queue.enqueue).toHaveBeenCalledTimes(1)
+      expect(queue.enqueue.mock.calls[0]![0]).toBe('note-1')
+
+      // #and the body written while it was local-only is not stranded. Nothing
+      // else would push it: the push coordinator's snapshot is gated on
+      // `operation === 'create'` and this raised an `update`, an update payload
+      // carries `content: null`, and the vault sweep only pulls — so an
+      // incremental carrying the last keystroke alone would leave every peer
+      // with a body frozen where the server last saw it.
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      const replayed = await drainPendingCrdtNotes({
+        mergeRemote: async () => true,
+        pushSnapshot: (noteId) => singleton.pushSnapshotForNote(noteId),
+        isSyncable: (noteId) => singleton.validateNoteForCrdt(noteId).ok
+      })
+
+      expect(replayed).toEqual({ cleared: 1, retained: 0 })
+      const received = new Y.Doc()
+      Y.applyUpdate(received, pushSnapshot.mock.calls.at(-1)![1])
+      expect(received.getMap('meta').get('title')).toBe('written after un-toggling')
+
+      await singleton.destroy()
+    })
+
+    it('hands its body to the merge-first replay when the toggle clears, not to a blind close()', async () => {
+      const singleton = getCrdtProvider()
+      await singleton.init(queue as never, pushSnapshot)
+      const row = noteRow(true)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      createWindow(1)
+      const doc = await singleton.open('note-1', 1, { skipSeed: true })
+      doc.getMap('meta').set('title', 'written while local-only')
+
+      setNoteLocalOnlyState('note-1', false)
+      await singleton.close('note-1', 1)
+
+      // close() pushes blind — it never pulls first — and a snapshot asserts
+      // completeness, so the server prunes every incremental below it. A note
+      // that has just stopped being local-only is the population most likely to
+      // have diverged from a peer, so its body goes up through
+      // drainPendingCrdtNotes, which merges before it pushes.
+      expect(pushSnapshot).not.toHaveBeenCalled()
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+      await singleton.destroy()
+    })
+
+    it('drops a CRDT backlog the server is no longer owed when the real toggle sets it', async () => {
+      // The CRDT twin of `removePendingNoteSyncItems`. Nothing is lost: the
+      // updates stay in the local store, and clearing the flag re-records the
+      // note, whose replay pushes full doc state and supersedes them.
+      const singleton = getCrdtProvider()
+      await singleton.init()
+
+      const row = noteRow(false)
+      mocks.getNoteCacheById.mockImplementation(() => row)
+      mocks.updateNoteCache.mockImplementation((...args: unknown[]) =>
+        Object.assign(row, args[2] as object)
+      )
+
+      const doc = await singleton.open('note-1', undefined, { skipSeed: true })
+      doc.getMap('meta').set('title', 'typed while signed out')
+      expect(readPendingCrdtNotes()).toEqual(['note-1'])
+
+      setNoteLocalOnlyState('note-1', true)
+
+      expect(readPendingCrdtNotes()).toEqual([])
+      expect(mocks.removePendingNoteSyncItems).toHaveBeenCalledWith('note-1')
+      await singleton.destroy()
+    })
+  })
+})
+
+// One store for the whole install, keyed by note id, meant two vaults could
+// write the same key — journal notes use deterministic date-based ids such as
+// `j2026-08-13`. Sign-out "contained" that by deleting the store outright,
+// taking every note's merge history with it. The store is per vault now.
+describe('CrdtProvider store scoping', () => {
+  const OTHER_VAULT_UUID = '99999999-8888-7777-6666-555555555555'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
+    fs.rmSync(mocks.userDataDir, { recursive: true, force: true })
+  })
+
+  afterEach(() => {
+    fsHooks.renameSync = null
+    fsHooks.cpSync = null
+    fs.rmSync(mocks.userDataDir, { recursive: true, force: true })
+    resetCrdtProvider()
+  })
+
+  it('gives two vaults two different store directories', async () => {
+    await new CrdtProvider().initPersistence()
+
+    // A vault switch destroys and replaces the provider, so the next one
+    // resolves the path from scratch against the newly opened vault.
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    expect(mocks.preflightCalls).toEqual([vaultStoreDir(), vaultStoreDir(OTHER_VAULT_UUID)])
+  })
+
+  it('gives one vault the same store directory on every launch', async () => {
+    await new CrdtProvider().initPersistence()
+    await new CrdtProvider().initPersistence()
+
+    // A path that drifted between restarts would orphan the history as
+    // thoroughly as deleting it.
+    expect(mocks.preflightCalls[0]).toBe(mocks.preflightCalls[1])
+    expect(mocks.preflightCalls[0]).toBe(vaultStoreDir())
+  })
+
+  it('defers the init until a vault is open, without settling as ready', async () => {
+    // #given no vault: app bootstrap, or the vault picker
+    mocks.dataDb = null
+    const provider = new CrdtProvider()
+
+    await provider.initPersistence()
+
+    // #then nothing is probed or opened — there is no identity to scope to
+    expect(mocks.preflightCalls).toEqual([])
+    expect(mocks.persistenceInstances).toHaveLength(0)
+    // #and the init has NOT settled. A deferral that marked itself ready would
+    // pin the provider to in-memory mode for the rest of the session, dropping
+    // every note's history on the floor.
+    expect(provider.isInitialized()).toBe(false)
+
+    // #when the vault opens and the vault-open path calls it again
+    mocks.dataDb = {}
+    await provider.initPersistence()
+
+    expect(mocks.preflightCalls).toEqual([vaultStoreDir()])
+    expect(provider.isInitialized()).toBe(true)
+  })
+
+  it('hands the legacy global store to the first vault that opens, and to no other', async () => {
+    // #given the pre-upgrade store, with real history in it
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+
+    // #when the first vault opens after the upgrade
+    await new CrdtProvider().initPersistence()
+
+    // #then it inherits the store wholesale — a single-vault user, which is
+    // nearly everyone, keeps every note's history and sees no change at all
+    expect(fs.existsSync(legacyDir)).toBe(false)
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe('history')
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+
+    // #and when a second vault opens
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    // #then it does NOT see that history. The legacy store is keyed by note id
+    // with no vault dimension, so handing it to a second vault would replay the
+    // first vault's journal entries into it.
+    expect(fs.existsSync(`${vaultStoreDir(OTHER_VAULT_UUID)}/MANIFEST-000001`)).toBe(false)
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+  })
+
+  it('records the claim before it moves anything, so a failed move cannot be reassigned', async () => {
+    // #given the legacy store and a move that cannot succeed — a full disk, AV
+    // holding the directory, or the process dying mid-migration all land here
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+    failEveryMove()
+
+    await new CrdtProvider().initPersistence()
+
+    // #then the claim is already on record even though nothing moved. Recording
+    // it after the move instead would leave the store unowned in exactly this
+    // window, free for the next vault to take.
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+
+    // #and a second vault opening into that window still cannot have it
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+    expect(fs.existsSync(vaultStoreDir(OTHER_VAULT_UUID))).toBe(false)
+    expect(mocks.legacyStoreClaim).toBe(VAULT_UUID)
+  })
+
+  it('lets the claimant finish a migration that crashed between the claim and the move', async () => {
+    // #given a claim recorded but the directory never moved — the app died in
+    // the window between the two writes
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'history')
+    mocks.legacyStoreClaim = VAULT_UUID
+
+    // #when a DIFFERENT vault opens first on the next launch
+    mocks.vaultUuid = OTHER_VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    // #then it must not take the store: the claim is what makes the migration
+    // exactly-once, and the crash window is the one place a second claimant
+    // could otherwise slip in
+    expect(fs.existsSync(`${legacyDir}/MANIFEST-000001`)).toBe(true)
+    expect(fs.existsSync(vaultStoreDir(OTHER_VAULT_UUID))).toBe(false)
+
+    // #and when the claimant opens, it resumes and completes the move
+    mocks.vaultUuid = VAULT_UUID
+    await new CrdtProvider().initPersistence()
+
+    expect(fs.existsSync(legacyDir)).toBe(false)
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe('history')
+  })
+
+  it('does not re-apply the legacy store to a claimant that already moved it', async () => {
+    // #given the migration completed: claim recorded, store moved, and the
+    // claimant has been writing to it since
+    const legacyDir = `${mocks.userDataDir}/crdt-store`
+    fs.mkdirSync(vaultStoreDir(), { recursive: true })
+    fs.writeFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'moved-then-written-to')
+    mocks.legacyStoreClaim = VAULT_UUID
+    // A legacy directory that survived because the move fell back to copy and
+    // the delete failed.
+    fs.mkdirSync(legacyDir, { recursive: true })
+    fs.writeFileSync(`${legacyDir}/MANIFEST-000001`, 'stale-duplicate')
+
+    await new CrdtProvider().initPersistence()
+
+    // #then the live store is untouched. Merging the leftover back in would
+    // replay a second copy of every update the claimant already has.
+    expect(fs.readFileSync(`${vaultStoreDir()}/MANIFEST-000001`, 'utf8')).toBe(
+      'moved-then-written-to'
+    )
   })
 })
 
@@ -1163,6 +2018,9 @@ describe('CrdtProvider persistence resilience', () => {
     mocks.preflightResult = { ok: true }
     mocks.preflightQueue.length = 0
     mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.legacyStoreClaim = undefined
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Note.md',
@@ -1221,7 +2079,11 @@ describe('CrdtProvider persistence resilience', () => {
   // The two are told apart empirically: quarantine the store, re-probe fresh.
   describe('store quarantine', () => {
     const userDataDir = mocks.userDataDir
-    const storeDir = `${userDataDir}/crdt-store`
+    const storeDir = vaultStoreDir()
+    const storeRoot = `${userDataDir}/crdt-stores`
+    /** Quarantine dirs sit next to the store they were moved aside from. */
+    const quarantinedDirs = (): string[] =>
+      fs.readdirSync(storeRoot).filter((f) => f.startsWith(`${VAULT_UUID}.broken-`))
 
     beforeEach(() => {
       fs.rmSync(userDataDir, { recursive: true, force: true })
@@ -1245,11 +2107,9 @@ describe('CrdtProvider persistence resilience', () => {
       // Corrupt store moved aside (preserved, not deleted), fresh store adopted.
       expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
       expect(fs.existsSync(storeDir)).toBe(false)
-      const quarantined = fs
-        .readdirSync(userDataDir)
-        .filter((f) => f.startsWith('crdt-store.broken-'))
+      const quarantined = quarantinedDirs()
       expect(quarantined).toHaveLength(1)
-      expect(fs.existsSync(`${userDataDir}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
+      expect(fs.existsSync(`${storeRoot}/${quarantined[0]}/MANIFEST-000001`)).toBe(true)
       expect(mocks.persistenceInstances).toHaveLength(1)
     })
 
@@ -1268,9 +2128,7 @@ describe('CrdtProvider persistence resilience', () => {
       // launch with a working binding finds the user's CRDT history intact.
       expect(mocks.preflightCalls).toEqual([storeDir, storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
       expect(mocks.persistenceInstances).toHaveLength(0)
       expect(provider.isInitialized()).toBe(true)
     })
@@ -1294,9 +2152,7 @@ describe('CrdtProvider persistence resilience', () => {
 
       expect(mocks.preflightCalls).toEqual([storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
       expect(mocks.persistenceInstances).toHaveLength(0)
       expect(provider.isInitialized()).toBe(true)
     })
@@ -1315,9 +2171,7 @@ describe('CrdtProvider persistence resilience', () => {
 
       expect(mocks.preflightCalls).toEqual([storeDir])
       expect(fs.existsSync(`${storeDir}/MANIFEST-000001`)).toBe(true)
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     // The failed re-probe leaves a partial fresh store behind; renaming the
@@ -1343,9 +2197,7 @@ describe('CrdtProvider persistence resilience', () => {
       expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
         'healthy-but-binding-broken'
       )
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     it('restores by copy when the rename keeps failing', async () => {
@@ -1381,9 +2233,7 @@ describe('CrdtProvider persistence resilience', () => {
       expect(fs.readFileSync(`${storeDir}/MANIFEST-000001`, 'utf8')).toBe(
         'healthy-but-binding-broken'
       )
-      expect(
-        fs.readdirSync(userDataDir).filter((f) => f.startsWith('crdt-store.broken-'))
-      ).toHaveLength(0)
+      expect(quarantinedDirs()).toHaveLength(0)
     })
 
     it('does not re-probe when no store exists to quarantine', async () => {

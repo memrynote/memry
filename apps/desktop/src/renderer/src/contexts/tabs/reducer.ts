@@ -12,6 +12,7 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
   switch (action.type) {
     case 'OPEN_TAB':
     case 'CLOSE_TAB':
+    case 'CLOSE_TABS_BY_ENTITY':
     case 'CLOSE_OTHER_TABS':
     case 'CLOSE_TABS_TO_RIGHT':
     case 'CLOSE_ALL_TABS':

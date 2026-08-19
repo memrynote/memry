@@ -4,6 +4,15 @@ import type {
   SelectOption,
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
+import type {
+  NoteSizeClass,
+  NoteLargeFileInfo,
+  LargeFileOpenResult,
+  LargeFileLinesResult,
+  LargeFileIndexEvent,
+  LargeFileSearchResult,
+  LargeFileSearchProgressEvent
+} from '../../contracts/src/notes-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -31,6 +40,15 @@ export interface Note {
   wordCount: number
   properties: Record<string, unknown>
   emoji?: string | null
+  /**
+   * Absent on notes from older app versions, which is read as `'note'`.
+   * `'large-file'` opens read-only instead of in the editor.
+   */
+  sizeClass?: NoteSizeClass
+  /** The measurements behind `'large-file'`; absent for note class. */
+  largeFile?: NoteLargeFileInfo | null
+  /** True when `content` is empty because the body was deliberately not sent. */
+  contentOmitted?: boolean
 }
 
 export interface NoteListItem {
@@ -40,8 +58,12 @@ export interface NoteListItem {
   created: Date
   modified: Date
   tags: string[]
-  wordCount: number
-  snippet?: string
+  /**
+   * Null until the file's body has been read. Vault ingest lists a new file
+   * from `stat` alone, so a freshly added row is not measured yet.
+   */
+  wordCount: number | null
+  snippet?: string | null
   emoji?: string | null
   localOnly?: boolean
   fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
@@ -369,6 +391,41 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.GET_FILE,
       params: ['id']
     }),
+    /**
+     * Open a large-file-class file read-only. Resolves as soon as the handle is
+     * open; the line-offset scan reports on `onLargeFileIndex`.
+     */
+    largeFileOpen: defineMethod<(noteId: string) => Promise<LargeFileOpenResult>>({
+      channel: NotesChannels.invoke.LARGE_FILE_OPEN,
+      params: ['noteId']
+    }),
+    /** `null` once the session is gone, so the caller reopens rather than errors. */
+    largeFileReadLines: defineMethod<
+      (input: {
+        sessionId: string
+        startLine: number
+        count: number
+      }) => Promise<LargeFileLinesResult | null>
+    >({
+      channel: NotesChannels.invoke.LARGE_FILE_READ_LINES,
+      params: ['input']
+    }),
+    largeFileClose: defineMethod<(sessionId: string) => Promise<void>>({
+      channel: NotesChannels.invoke.LARGE_FILE_CLOSE,
+      params: ['sessionId']
+    }),
+    /**
+     * Find a literal query inside an open large file. Resolves when the pass
+     * finishes; the count as it grows arrives on `onLargeFileSearchProgress`.
+     * A newer query for the same session supersedes an older one, which then
+     * resolves `cancelled`.
+     */
+    largeFileSearch: defineMethod<
+      (input: { sessionId: string; query: string }) => Promise<LargeFileSearchResult | null>
+    >({
+      channel: NotesChannels.invoke.LARGE_FILE_SEARCH,
+      params: ['input']
+    }),
     resolveByTitle: defineMethod<(title: string) => Promise<WikiLinkResolution | null>>({
       channel: NotesChannels.invoke.RESOLVE_BY_TITLE,
       params: ['title']
@@ -522,11 +579,15 @@ export const notesRpc = defineDomain({
     >({
       channel: NotesChannels.invoke.UPLOAD_ATTACHMENT,
       params: ['noteId', 'file'],
+      // The ArrayBuffer goes over IPC as-is. Expanding it into a number[] first
+      // costs seconds and gigabytes of RSS on a large attachment (a 100 MB file
+      // becomes a 100-million-element array to build, clone, and validate); the
+      // main-side schema and handler accept both shapes.
       implementation: `async (noteId, file) =>
         invoke(${JSON.stringify(NotesChannels.invoke.UPLOAD_ATTACHMENT)}, {
           noteId,
           filename: file.name,
-          data: Array.from(new Uint8Array(await file.arrayBuffer()))
+          data: await file.arrayBuffer()
         })`
     }),
     listAttachments: defineMethod<(noteId: string) => Promise<AttachmentInfo[]>>({
@@ -628,6 +689,10 @@ export const notesRpc = defineDomain({
     onNoteMoved: defineEvent<NoteMovedEvent>(NotesChannels.events.MOVED),
     onNoteExternalChange: defineEvent<NoteExternalChangeEvent>(
       NotesChannels.events.EXTERNAL_CHANGE
+    ),
+    onLargeFileIndex: defineEvent<LargeFileIndexEvent>(NotesChannels.events.LARGE_FILE_INDEX),
+    onLargeFileSearchProgress: defineEvent<LargeFileSearchProgressEvent>(
+      NotesChannels.events.LARGE_FILE_SEARCH_PROGRESS
     ),
     onTagsChanged: defineEvent<void>('notes:tags-changed'),
     onFolderConfigUpdated: defineEvent<{ path: string }>(NotesChannels.events.FOLDER_CONFIG_UPDATED)

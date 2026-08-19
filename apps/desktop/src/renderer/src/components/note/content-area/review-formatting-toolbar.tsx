@@ -62,7 +62,7 @@ export function ReviewFormattingToolbar({
       <FormattingToolbar {...toolbarProps}>
         {getFormattingToolbarItems(toolbarProps.blockTypeSelectItems)}
         <ListTypeButtons />
-        <ReviewToolbarButton onSelect={onAddComment} />
+        <ReviewToolbarButton onSelect={onAddComment} iconOnly />
       </FormattingToolbar>
     )
   }
@@ -85,6 +85,10 @@ export function ReviewFormattingToolbar({
           <BasicTextStyleButton basicTextStyle="italic" />
           <BasicTextStyleButton basicTextStyle="underline" />
           <BasicTextStyleButton basicTextStyle="strike" />
+          {/* Inline code (the backtick style) is in the schema and in the
+              markdown round-trip, but no toolbar surfaced it — the only way in
+              was typing backticks. */}
+          <BasicTextStyleButton basicTextStyle="code" />
           {/* Turning selected lines into a list is the reason most people open
               this popup (#1206), so the toggles sit next to the text styles
               rather than behind the "Paragraph" dropdown above. */}
@@ -105,7 +109,13 @@ export function ReviewFormattingToolbar({
   )
 }
 
-function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelection) => void }) {
+function ReviewToolbarButton({
+  onSelect,
+  iconOnly = false
+}: {
+  onSelect?: (selection: ReviewSelection) => void
+  iconOnly?: boolean
+}) {
   const { t } = useT('notes')
   const Components = useComponentsContext()
   const editor = useBlockNoteEditor()
@@ -238,6 +248,7 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
 
   return (
     <span
+      className="review-formatting-toolbar-action"
       onPointerDownCapture={handlePreClickSelection}
       onMouseDownCapture={handlePreClickSelection}
       onPointerDown={handlePreClickSelection}
@@ -257,7 +268,14 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
           }
           runAction()
         }}
-      />
+      >
+        {/* The compact popup is a single full-width button, so the icon alone
+            reads as an unlabelled glyph in the corner — spell it out there.
+            The sticky toolbar sits inline with the other icon-only buttons;
+            spelling it out there is what pushed it onto its own row. Either
+            way `label` stays for the aria-label/tooltip. */}
+        {!iconOnly && label}
+      </Components.FormattingToolbar.Button>
     </span>
   )
 }

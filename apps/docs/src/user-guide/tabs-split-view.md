@@ -14,7 +14,9 @@ Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
 
 Tabs share the width of the bar evenly. Widen the window and they grow, up to a comfortable maximum; open more tabs, or narrow the window, and they compress — first the close button tucks away, then the title, leaving just the icon. Once tabs reach that icon-only minimum the bar scrolls sideways instead of shrinking further: scroll over it with a trackpad or mouse wheel, or use the chevrons that appear at either end. The active tab is always scrolled into view, so opening a new tab never leaves it hidden off the end. That scroll animates once per tab you activate — the chevrons appearing part-way through it no longer restart the animation, and a tab already fully in view is left where it is. If your system is set to reduce motion (macOS **Reduce motion**, Windows **Animation effects** off, or the equivalent on Linux), the bar jumps straight to the active tab instead of sliding, and the chevrons and wheel scrolling stop animating too — the tab is still brought into view either way. Changing the setting takes effect on the next scroll; no restart needed. The **+** button stays pinned at the end of the bar while it scrolls.
 
-There is no limit on how many tabs you can have open, and memrynote never closes one for you: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
+There is no limit on how many tabs you can have open: use the tab context menu (**Close others**, **Close to the right**) when the bar gets long.
+
+The one thing that closes a tab without being asked is deleting what it shows. Delete a canvas — from the sidebar, or on another device — and its tab closes everywhere it was open, in both panes of a split view. Deleted notes keep their tab and show the title struck through instead, because the text is still there to read.
 
 ### Tab Context Menu
 
@@ -36,6 +38,8 @@ Pin a tab to keep it at the front of the bar. Pinned tabs:
 - Don't close on middle-click
 - Survive bulk-close commands
 - Restore first on app launch
+
+A pin keeps a tab from being closed by accident; it does not keep the item alive. Delete the canvas a pinned tab shows and the tab goes with it.
 
 Useful for: today's journal, your "now" note, the shared project.
 
@@ -126,8 +130,54 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 - Pinned state
 - Split layout and ratios
 - Active tab per pane
+- Scroll position, and what each tab was looking at
 
 The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
+
+### Scroll Position
+
+Note tabs — including the template editor and release-notes tabs — remember where you were reading. Switch to another tab and back, or restart with **Restore Session** on, and the note returns to the same place.
+
+If the tab navigates to a different note, the saved position is discarded rather than applied to the new content. Scrolling yourself while a position is being restored cancels the restore, so the app never fights you for control of the page.
+
+Pages that hold several scrolling areas — the Inbox's sub-views, a project's Overview, Notes, Files and Events tabs, a folder's list, table and gallery layouts, Calendar's Day, Week and Year grids — keep a position for each one. Going Overview → Notes → Overview returns to where you left Overview, not to the top, and the Notes position is still waiting for you as well. A tab remembers a handful of these areas at a time; if you visit more than that, the ones you have not been back to longest are forgotten first.
+
+### When a Page Would Rather Put You Somewhere Else
+
+Some pages place themselves when they open: Calendar's Day and Week grids scroll to the current hour, an image is fitted to the pane it opens in, an agent conversation shows the newest message.
+
+One rule decides who wins, everywhere: **your position wins.** A page only places itself when the tab has nothing stored for it — that is, the first time you open it. Once you have scrolled, zoomed, or paged somewhere yourself, that is where the tab comes back to, and the page stops moving on its own.
+
+That also means Week view stops jumping. It used to snap back to the current hour any time you scrolled the weeks past today; now, once the tab has a position of its own, it stays where you put it.
+
+Agent conversations are the one deliberate exception, because "where you were" in a growing transcript is not a fixed place:
+
+- If you are at the bottom, you stay at the bottom — new messages and streamed text keep scrolling into view.
+- If you scroll up, the transcript stops following the stream and leaves you alone, even while a reply is still being written.
+- Whichever of the two you were doing is what you come back to.
+
+### What Each Tab Remembers
+
+| Tab           | Remembers                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| Note          | Reading position                                                                                  |
+| Journal       | The day you were on, whether you had drilled up to a month or a year, and where each day was left |
+| Calendar      | Day / Week / Month / Year, the date you were centred on, and your filters                         |
+| Inbox         | Sub-view, filters, and the item you had open                                                      |
+| Tasks         | View, sub-tab, project scope, and the task you had open                                           |
+| Project       | Sub-tab and rail                                                                                  |
+| Folder        | The named view you were on, and its search                                                        |
+| Tags          | The search box                                                                                    |
+| PDF           | Page, zoom, rotation, and whether the thumbnail rail was open                                     |
+| Image         | Zoom, rotation, and pan                                                                           |
+| Audio / video | Playback position — restored **paused**, never resumed for you                                    |
+| Agent chat    | Whether you were following the stream, or reading further up                                      |
+
+Calendar's view used to be one setting shared by the whole app; it now belongs to the tab, starting from whatever view you last used. Its filters used to reset every time you left the page.
+
+Anything that already has a home of its own is left there rather than copied into the tab: a folder's columns and filters live in the folder, task filters and sort live in Settings, and a project's contents live in the project.
+
+If a tab moves to a different note, file, or conversation, the position saved for the previous one is discarded rather than applied to the new content — including a preview tab that gets reused for the next file you click.
 
 ### If the layout can't be saved
 
@@ -150,6 +200,8 @@ A small dot appears on a tab title when there are unsaved changes (rare — memr
 ## Canvases in Tabs
 
 Canvases open as tabs too, so you can keep a board in one pane and a note in the other. Note that a note open in a visible pane is edited there, not on the canvas card — see [Cards & Links](./canvas/cards-and-links.md).
+
+Renaming a canvas retitles its tab as soon as the new name is saved. It does not matter where the rename came from — the sidebar, an agent, or another device syncing the change — or whether the tab is the one you are looking at: a canvas sitting in a background tab is retitled too, so you never have to close and reopen a tab to see its real name.
 
 ## Links in Split Panes
 

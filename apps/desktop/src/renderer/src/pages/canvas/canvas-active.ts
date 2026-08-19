@@ -38,9 +38,7 @@ export function shouldDeactivateForTool(activeToolType: string): boolean {
 }
 
 export type ActiveAction =
-  | { type: 'activate'; id: string }
-  | { type: 'deactivate' }
-  | { type: 'cardGone'; id: string }
+  { type: 'activate'; id: string } | { type: 'deactivate' } | { type: 'cardGone'; id: string }
 
 export function nextActive(prev: string | null, action: ActiveAction): string | null {
   switch (action.type) {
