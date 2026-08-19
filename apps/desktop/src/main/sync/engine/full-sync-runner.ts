@@ -75,7 +75,10 @@ export class FullSyncRunner {
    * A Set, so a note re-queued by a failed chunk cannot accumulate duplicates
    * across cycles — the queue stays bounded by the vault, not by how many times
    * the server has said no. Insertion order is preserved, so it still drains
-   * FIFO. In-memory by design: this queue is a plan for the current engine's
+   * FIFO — which makes insertion order the catch-up's priority: open-but-
+   * inactive docs are spliced in at the front by `flushPendingCrdtPulls`, and
+   * `getAllCrdtNoteIds` supplies the rest of the vault in `modifiedAt DESC`.
+   * In-memory by design: this queue is a plan for the current engine's
    * catch-up, and the persisted sweep stamp is what carries the work across a
    * restart.
    */
@@ -496,12 +499,33 @@ export class FullSyncRunner {
       const activeNoteIds = new Set(
         this.ctx.deps.crdtProvider?.getOpenNoteIds({ active: true }) ?? []
       )
+      // Tier 2: docs the provider still holds without a window attached. The
+      // 32-doc LRU IS a recently-opened list, already in memory and free to
+      // read, and those are the notes the user is one click from — so they lead
+      // the paced queue instead of taking whatever position the vault-wide
+      // ordering gave them.
+      const openNoteIds = new Set(this.ctx.deps.crdtProvider?.getOpenNoteIds() ?? [])
 
       const priority: string[] = []
+      const openInactive: string[] = []
+      const rest: string[] = []
       for (const noteId of this.crdtSync.drainPendingPulls()) {
         if (activeNoteIds.has(noteId)) priority.push(noteId)
-        else this.pacedCrdtPullQueue.add(noteId)
+        else if (openNoteIds.has(noteId)) openInactive.push(noteId)
+        else rest.push(noteId)
       }
+
+      // Rebuilt rather than appended to, because a sweep that lands mid-drain
+      // would otherwise put the open docs behind however many thousand notes
+      // the previous pass has left waiting. Re-inserting the old ids after them
+      // keeps the queue deduped and keeps the tail in its established order.
+      // This is a reordering and nothing else: every drained id still enters the
+      // queue, because priority must never become filtering — a note skipped
+      // here is a body-only remote edit this device never learns about.
+      if (openInactive.length > 0) {
+        this.pacedCrdtPullQueue = new Set([...openInactive, ...this.pacedCrdtPullQueue])
+      }
+      for (const noteId of rest) this.pacedCrdtPullQueue.add(noteId)
 
       if (priority.length > 0) {
         this.actions.scheduleSync(async () => {
