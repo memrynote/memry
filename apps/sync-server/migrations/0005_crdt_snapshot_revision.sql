@@ -1,0 +1,31 @@
+-- A change token for the snapshot blob, so a client can learn whether the
+-- SERVER's snapshot moved without downloading it. The vault sweep currently
+-- spends one unconditional `GET /sync/crdt/snapshot/:noteId` per note per pass
+-- on a baseline it almost always already holds; this column is what makes that
+-- GET conditional.
+--
+-- Nothing we already store can play this role:
+--
+--   * `sequence_num` is PINNED on rewrite -- `storeSnapshot` keeps
+--     `existingSnapshot?.sequence_num` so later incrementals stay pullable, so
+--     the second and every later snapshot for a note keeps the same number
+--     while replacing the blob. Using it would pin every device to the first
+--     snapshot a note ever had.
+--   * `created_at` has 1-second resolution, and (created_at, size_bytes,
+--     signer_device_id) can collide for two pushes of the same note, in the
+--     same second, from the same device, at the same ciphertext length. The
+--     consequence of a collision is a permanently stale note body.
+--
+-- Random per write rather than a counter, so a row deleted and recreated (vault
+-- deletion, account recreation) cannot collide with a token a client still holds.
+--
+-- Additive with a default and deliberately NOT backfilled. '' is the signal that
+-- a row predates this column; `getSnapshot` and the batch metadata read coalesce
+-- it to `legacy:<id>:<created_at>:<size_bytes>`, which is deterministic per row
+-- and changes on any rewrite -- and any rewrite also assigns a real random
+-- revision, so a row is legacy at most until its next snapshot push. That avoids
+-- a single UPDATE over what could be millions of rows inside a D1 migration.
+--
+-- A Worker deployed before this migration (or rolled back after it) never reads
+-- or writes the column, so old server code is unaffected.
+ALTER TABLE crdt_snapshots ADD COLUMN revision TEXT NOT NULL DEFAULT '';

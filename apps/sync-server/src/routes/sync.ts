@@ -661,7 +661,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
   const batchResult = await getBatchUpdates(c.env.DB, userId, vaultId, parsed.notes, parsed.limit)
 
   const response: Record<string, { updates: unknown[]; hasMore: boolean }> = {}
-  for (const [noteId, result] of Object.entries(batchResult)) {
+  for (const [noteId, result] of Object.entries(batchResult.notes)) {
     response[noteId] = {
       updates: result.updates.map((update) => ({
         sequenceNum: update.sequence_num,
@@ -677,8 +677,11 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
     endpoint,
     event: 'batch_fetched',
     noteCount: parsed.notes.length,
-    updateCount: Object.values(batchResult).reduce((sum, result) => sum + result.updates.length, 0),
-    totalBytes: Object.values(batchResult).reduce(
+    updateCount: Object.values(batchResult.notes).reduce(
+      (sum, result) => sum + result.updates.length,
+      0
+    ),
+    totalBytes: Object.values(batchResult.notes).reduce(
       (sum, result) =>
         sum +
         result.updates.reduce((noteSum, update) => noteSum + update.update_data.byteLength, 0),
@@ -687,7 +690,12 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
     latencyMs: Date.now() - startedAt
   })
 
-  return c.json({ notes: response })
+  // `snapshotMeta` is additive and present on every response from a server that
+  // supports it, so a client can tell "the server is old" (key absent) from "the
+  // server has no snapshot for this note" (key present, note absent). Old
+  // clients read this response through an unvalidated TypeScript cast, so the
+  // extra key is ignored.
+  return c.json({ notes: response, snapshotMeta: batchResult.snapshotMeta })
 }
 
 const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response> => {
@@ -799,7 +807,7 @@ const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response>
       sequenceNum: 0,
       latencyMs: Date.now() - startedAt
     })
-    return c.json({ snapshot: null, sequenceNum: 0, signerDeviceId: null })
+    return c.json({ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null })
   }
 
   logCrdtTraffic({
@@ -811,10 +819,13 @@ const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response>
     latencyMs: Date.now() - startedAt
   })
 
+  // The revision the client just merged, so the next batch pull can tell it this
+  // baseline is still current and skip the download.
   return c.json({
     snapshot: safeBase64Encode(result.snapshotData),
     sequenceNum: result.sequenceNum,
-    signerDeviceId: result.signerDeviceId
+    signerDeviceId: result.signerDeviceId,
+    revision: result.revision
   })
 }
 

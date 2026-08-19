@@ -199,6 +199,7 @@ describe('D1 schema', () => {
     expect(cursorColumns.map((column) => column.name)).toContain('vault_id')
     expect(crdtUpdateColumns.map((column) => column.name)).toContain('vault_id')
     expect(crdtSnapshotColumns.map((column) => column.name)).toContain('vault_id')
+    expect(crdtSnapshotColumns.map((column) => column.name)).toContain('revision')
     expect(uploadSessionColumns.map((column) => column.name)).toContain('vault_id')
     expect(blobChunkColumns.map((column) => column.name)).toContain('vault_id')
   })
@@ -273,6 +274,38 @@ describe('D1 schema', () => {
 
       // #and the refund still pays back only the PLAINTEXT that was actually reserved
       expect(row.encrypted_size ?? row.total_size).toBe(5_000)
+    })
+  })
+
+  // The revision token is what lets a client skip a snapshot download it does not
+  // need. Existing rows must survive the migration with '' — the server coalesces
+  // that at read time — rather than being rewritten by a backfill UPDATE over what
+  // could be millions of rows inside a D1 migration.
+  describe('0005_crdt_snapshot_revision', () => {
+    it('leaves rows written before the column existed with an empty revision', () => {
+      // #given a database at 0004 with a snapshot the old server wrote
+      const db = new Database(':memory:')
+      for (const file of migrationFiles().filter((name) => name < '0005')) {
+        db.exec(loadMigrationSql(file))
+      }
+      db.prepare(
+        `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+         VALUES ('user-1', 'a@b.com', 'otp', 1, 1)`
+      ).run()
+      db.prepare(
+        `INSERT INTO crdt_snapshots
+           (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
+         VALUES ('snap-1', 'user-1', 'vault-1', 'note-1', 'user-1/k', 7, 42, 'device-a', 1700000000)`
+      ).run()
+
+      // #when 0005 is applied
+      db.exec(loadMigrationSql('0005_crdt_snapshot_revision.sql'))
+
+      // #then the row is untouched apart from the defaulted column, so the read-time
+      // coalesce is what gives it a token
+      expect(
+        db.prepare('SELECT id, created_at, size_bytes, revision FROM crdt_snapshots').get()
+      ).toEqual({ id: 'snap-1', created_at: 1700000000, size_bytes: 42, revision: '' })
     })
   })
 })
