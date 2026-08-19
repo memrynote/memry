@@ -97,7 +97,8 @@
     "ipc:check": "pnpm rpc:check && node scripts/generate-ipc-invoke-map.js --check",
     "generate:icons": "node scripts/generate-icons.mjs",
     "seed:vault": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-vault.ts",
-    "seed:rich": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-rich-vault.ts"
+    "seed:rich": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-rich-vault.ts",
+    "seed:bench": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-bench-vault.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
