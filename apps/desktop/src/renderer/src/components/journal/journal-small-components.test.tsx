@@ -33,26 +33,16 @@ vi.mock('@/hooks/use-journal-reminders', () => ({
   })
 }))
 
-vi.mock('@/components/reminder/reminder-presets', () => ({
-  formatReminderDate: (date: Date) => date.toISOString()
-}))
+vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 
-vi.mock('@/components/reminder', () => ({
-  ReminderPicker: ({
-    trigger,
-    onSelect
-  }: {
-    trigger: ReactNode
-    onSelect: (date: Date, note?: string) => void
-  }) => (
-    <div>
-      {trigger}
-      <button type="button" onClick={() => onSelect(new Date('2026-05-10T10:00:00Z'), 'reflect')}>
-        pick reminder
-      </button>
-    </div>
-  )
-}))
+// The real `ReminderPicker` renders here on purpose: a hand-written stub would
+// re-declare `onSelect` from this file's reading of it, which is exactly how the
+// note-dropping bug in #1527 stayed green. Only the Radix primitive underneath
+// is stood in, because it does not open in jsdom.
+vi.mock('@/components/ui/picker', async () => {
+  const { createPickerStub } = await import('@tests/utils/picker-stub')
+  return createPickerStub()
+})
 
 vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -174,7 +164,13 @@ describe('journal small components', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getAllByText(/reminder.tooltipMore/).length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByText('pick reminder'))
-    expect(mocks.setReminder).toHaveBeenCalledWith(new Date('2026-05-10T10:00:00Z'), 'reflect')
+    // The note goes in through the picker's own textarea, so it only reaches
+    // `setReminder` if this button reads the argument the picker actually sends.
+    fireEvent.change(
+      screen.getByPlaceholderText('phaseF.componentsReminderReminderPicker.addANoteOptional'),
+      { target: { value: 'reflect' } }
+    )
+    fireEvent.click(screen.getByTestId('preset-in-one-week'))
+    expect(mocks.setReminder).toHaveBeenCalledWith(expect.any(Date), 'reflect')
   })
 })
