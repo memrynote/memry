@@ -40,6 +40,18 @@ vi.mock('../inbox/suggestions', () => ({
   updateNoteEmbedding: vi.fn(() => Promise.resolve())
 }))
 
+// The move path has to hand the rewritten body to the note's Y.Doc, and there is
+// no doc open in these tests, so the call is only observable as a call. It is
+// load-bearing rather than bookkeeping: the doc is keyed by note id and survives
+// the move holding the pre-move body, so without this the next write-back
+// serializes the stale refs straight back over the file the move just corrected
+// — and persists them.
+const crdtMocks = vi.hoisted(() => ({ replaceNoteBodyInCrdt: vi.fn(async () => false) }))
+vi.mock('../sync/crdt-feed', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../sync/crdt-feed')>()),
+  replaceNoteBodyInCrdt: crdtMocks.replaceNoteBodyInCrdt
+}))
+
 // ============================================================================
 // Test Suite
 // ============================================================================
@@ -927,6 +939,34 @@ describe('notes operations', () => {
       const moved = await notes.moveNote(created.id, 'sibling')
 
       expect(fs.readFileSync(path.join(tempVault.path, moved.path), 'utf8')).toBe(before)
+    })
+
+    it('hands the rewritten body to the note Y.Doc, not just to the file', async () => {
+      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      const created = await notes.createNote({
+        title: 'Crdt Push On Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      await notes.moveNote(created.id, 'notes/archive/2026')
+
+      expect(crdtMocks.replaceNoteBodyInCrdt).toHaveBeenCalledTimes(1)
+      const [noteId, body] = crdtMocks.replaceNoteBodyInCrdt.mock.calls[0]
+      expect(noteId).toBe(created.id)
+      // The corrected ref, not the one that was on disk before the move.
+      expect(body).toContain('../../../attachments/n1/shot.png')
+    })
+
+    it('leaves the Y.Doc alone when the move rewrote nothing', async () => {
+      crdtMocks.replaceNoteBodyInCrdt.mockClear()
+      const created = await notes.createNote({
+        title: 'No Crdt Push On Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      await notes.moveNote(created.id, 'sibling')
+
+      expect(crdtMocks.replaceNoteBodyInCrdt).not.toHaveBeenCalled()
     })
 
     it('preserves binary content on move (no frontmatter injection)', async () => {
