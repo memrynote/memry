@@ -136,6 +136,22 @@ export const productEvent = (
     if (typeof value === 'number') properties[to] = value
   }
 
+  // Flat properties, not a nested object: PostHog breaks down and thresholds on
+  // top-level properties, and the whole point of #1584 is that
+  // `error_code='server_error'` alone could not answer "was this a permanent
+  // 400 or a transient 503" or "how many of these will never succeed". Written
+  // after the dimensions loop like every other server-derived property, so a
+  // client cannot spoof them.
+  if (event.failure) {
+    if (typeof event.failure.httpStatus === 'number') {
+      properties.http_status = event.failure.httpStatus
+    }
+    if (event.failure.serverCode) properties.server_code = event.failure.serverCode
+    if (typeof event.failure.retryable === 'boolean') {
+      properties.retryable = event.failure.retryable
+    }
+  }
+
   return {
     event: EVENT_NAME_OVERRIDES[event.name] ?? event.name,
     distinct_id: resolveDistinctId(ctx),

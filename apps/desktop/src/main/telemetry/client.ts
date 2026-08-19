@@ -6,7 +6,10 @@ import type {
   TelemetryPlatform,
   TelemetrySyncState
 } from '@memry/contracts/telemetry-api'
-import { sanitizeTelemetryDimensions } from '@memry/contracts/telemetry-api'
+import {
+  sanitizeTelemetryDimensions,
+  sanitizeTelemetryFailure
+} from '@memry/contracts/telemetry-api'
 
 import { createLogger } from '../lib/logger'
 import { createQueueStore } from './queue-store'
@@ -126,7 +129,13 @@ export const createTelemetryClient = (deps: TelemetryClientDeps): TelemetryClien
   const track = (event: TelemetryEvent): void => {
     if (!enabled) return
     const dimensions = sanitizeTelemetryDimensions(event.dimensions)
-    const safe = dimensions === event.dimensions ? event : { ...event, dimensions }
+    // Same chokepoint, same reason: a failure detail that would fail schema
+    // validation must lose its own field, never the whole batch it rides in.
+    const failure = sanitizeTelemetryFailure(event.failure)
+    const safe =
+      dimensions === event.dimensions && failure === event.failure
+        ? event
+        : { ...event, dimensions, failure }
     queue.push(safe)
     trimQueue()
     persistAppend(safe)

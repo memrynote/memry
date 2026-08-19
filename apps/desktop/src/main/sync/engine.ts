@@ -14,6 +14,7 @@ import type { WebSocketMessage } from './websocket'
 import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
 import { classifyError } from './sync-errors'
+import { syncErrorTelemetryFor } from './sync-error-telemetry'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { ItemApplier } from './apply-item'
 import { FullSyncRunner } from './engine/full-sync-runner'
@@ -88,15 +89,6 @@ export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
 // a bounded worst case. Any drop between ticks bumps the generation and
 // restores the every-tick pull, and the reconnect itself already pulls.
 export const PERIODIC_PULL_MAX_QUIET_MS = 5 * 60 * 1000
-
-const classifySyncErrorCode = (error: unknown): string => {
-  try {
-    const info = classifyError(error)
-    return info?.category ?? 'unknown'
-  } catch {
-    return 'unknown'
-  }
-}
 
 export class SyncEngine extends EventEmitter {
   private static activeInstance: SyncEngine | null = null
@@ -349,7 +341,7 @@ export class SyncEngine extends EventEmitter {
         surface: 'sync',
         action: 'push_failed',
         result: 'failed',
-        errorCode: classifySyncErrorCode(error),
+        ...syncErrorTelemetryFor(error),
         metrics: { durationMs: Date.now() - start },
         source: 'push',
         dimensions: { transport: 'record' }
@@ -378,7 +370,7 @@ export class SyncEngine extends EventEmitter {
         surface: 'sync',
         action: 'pull_failed',
         result: 'failed',
-        errorCode: classifySyncErrorCode(error),
+        ...syncErrorTelemetryFor(error),
         metrics: { durationMs: Date.now() - start },
         source: 'pull',
         dimensions: { transport: 'record' }
@@ -438,7 +430,7 @@ export class SyncEngine extends EventEmitter {
         surface: 'sync',
         action: 'full_failed',
         result: 'failed',
-        errorCode: classifySyncErrorCode(error),
+        ...syncErrorTelemetryFor(error),
         metrics: { durationMs: Date.now() - start },
         source: 'full',
         dimensions: { transport: 'record' }
