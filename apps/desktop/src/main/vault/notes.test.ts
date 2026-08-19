@@ -900,6 +900,35 @@ describe('notes operations', () => {
       )
     })
 
+    it('re-points the refs the body carries so embeds survive the move', async () => {
+      const created = await notes.createNote({
+        title: 'Embed Move Test',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      // `newFolder` is vault-relative: notes/Embed-Move-Test.md →
+      // notes/archive/2026/Embed-Move-Test.md, two folders deeper.
+      const moved = await notes.moveNote(created.id, 'notes/archive/2026')
+
+      const onDisk = fs.readFileSync(path.join(tempVault.path, moved.path), 'utf8')
+      expect(onDisk).toContain('![shot](../../../attachments/n1/shot.png)')
+    })
+
+    it('writes nothing when the move leaves every ref resolving', async () => {
+      const created = await notes.createNote({
+        title: 'Same Depth Move',
+        content: '![shot](../attachments/n1/shot.png)'
+      })
+
+      const before = fs.readFileSync(path.join(tempVault.path, created.path), 'utf8')
+
+      // notes/Same-Depth-Move.md → sibling/Same-Depth-Move.md: same depth, so
+      // `../attachments/...` is still correct and the file must not be rewritten.
+      const moved = await notes.moveNote(created.id, 'sibling')
+
+      expect(fs.readFileSync(path.join(tempVault.path, moved.path), 'utf8')).toBe(before)
+    })
+
     it('preserves binary content on move (no frontmatter injection)', async () => {
       // #given — a binary file in the vault
       const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
