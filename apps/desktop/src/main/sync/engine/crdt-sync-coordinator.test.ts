@@ -85,6 +85,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           getDoc,
           open,
           closeIfInactive,
@@ -129,6 +130,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           getDoc: vi.fn().mockReturnValue(openDoc),
           open,
           closeIfInactive,
@@ -166,7 +168,7 @@ describe('CrdtSyncCoordinator', () => {
           .fn()
           .mockResolvedValueOnce(null)
           .mockResolvedValueOnce(new Uint8Array([9])),
-        crdtProvider: {}
+        crdtProvider: { isNoteLocalOnly: vi.fn(() => false) }
       }
     } as unknown as SyncContext
     const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
@@ -214,6 +216,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
@@ -266,6 +269,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc,
           open: vi.fn().mockResolvedValue({}),
@@ -338,6 +342,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
@@ -386,6 +391,7 @@ describe('CrdtSyncCoordinator', () => {
         getAccessToken: vi.fn(async () => 'token-1'),
         getVaultKey: vi.fn(async () => new Uint8Array([9])),
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open,
@@ -400,6 +406,72 @@ describe('CrdtSyncCoordinator', () => {
 
     return { ctx, open }
   }
+
+  describe('#given a note the user marked local-only', () => {
+    it('#then a single-note pull never reaches the server, and owes itself nothing', async () => {
+      const { ctx } = createBatchContext()
+      const provider = ctx.deps.crdtProvider as unknown as {
+        isNoteLocalOnly: ReturnType<typeof vi.fn>
+        open: ReturnType<typeof vi.fn>
+      }
+      provider.isNoteLocalOnly.mockImplementation((noteId: string) => noteId === 'note-local')
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      // #when
+      await expect(coordinator.pullCrdtForNote('note-local')).resolves.toBe(false)
+
+      // #then #1511 closed the push half; the pull half is the same setting
+      // pointing the other way. Nothing is fetched and no doc is even opened.
+      expect(fetchCrdtSnapshotMock).not.toHaveBeenCalled()
+      expect(getFromServerMock).not.toHaveBeenCalled()
+      expect(provider.open).not.toHaveBeenCalled()
+
+      // #and it is not owed a retry: a debt nothing can ever settle would put
+      // the note back in every sweep for the life of the session.
+      expect(coordinator.pendingPullCount).toBe(0)
+    })
+
+    it('#then a batch pull drops it and still pulls the notes that can sync', async () => {
+      const { ctx } = createBatchContext()
+      const provider = ctx.deps.crdtProvider as unknown as {
+        isNoteLocalOnly: ReturnType<typeof vi.fn>
+      }
+      provider.isNoteLocalOnly.mockImplementation((noteId: string) => noteId === 'note-local')
+      postToServerMock.mockResolvedValue({
+        notes: { 'note-1': { updates: [], hasMore: false } }
+      })
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      // #when the paced vault sweep hands over a chunk holding both
+      await coordinator.applyCrdtBatch(['note-local', 'note-1'], 'token-1', new Uint8Array([4]))
+
+      // #then only the syncable note costs a snapshot baseline GET — the whole
+      // point being that a local-only note stops spending `crdt_pull` budget.
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalledTimes(1)
+      expect(fetchCrdtSnapshotMock).toHaveBeenCalledWith('note-1', 'token-1')
+      expect(postToServerMock).toHaveBeenCalledWith(
+        '/sync/crdt/updates/batch',
+        { notes: [{ noteId: 'note-1', since: 0 }], limit: 100 },
+        'token-1'
+      )
+    })
+
+    it('#then a batch of nothing but local-only notes sends no request at all', async () => {
+      const { ctx } = createBatchContext()
+      const provider = ctx.deps.crdtProvider as unknown as {
+        isNoteLocalOnly: ReturnType<typeof vi.fn>
+      }
+      provider.isNoteLocalOnly.mockReturnValue(true)
+      const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+      // #when
+      await coordinator.applyCrdtBatch(['note-a', 'note-b'], 'token-1', new Uint8Array([4]))
+
+      // #then
+      expect(fetchCrdtSnapshotMock).not.toHaveBeenCalled()
+      expect(postToServerMock).not.toHaveBeenCalled()
+    })
+  })
 
   // A rate limit is what the desktop actually hits: the vault-wide sweep used to
   // fire two GETs per note, so 121 notes meant 242 requests in about four
@@ -603,6 +675,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open: vi.fn().mockResolvedValue({}),
@@ -659,6 +732,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 2,
           getDoc: vi.fn().mockReturnValue(undefined),
           open: vi.fn().mockResolvedValue({}),
@@ -929,6 +1003,7 @@ describe('CrdtSyncCoordinator', () => {
     const ctx = {
       deps: {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           inactiveDocCapacity: 32,
           getDoc: vi.fn().mockReturnValue(undefined),
           open: vi.fn().mockResolvedValue({}),
@@ -969,6 +1044,7 @@ describe('CrdtSyncCoordinator.clearCaches', () => {
   it('drops the per-note applied-sequence cursors so a new vault starts from the server baseline', async () => {
     const applyRemoteUpdate = vi.fn()
     const crdtProvider = {
+      isNoteLocalOnly: vi.fn(() => false),
       applyRemoteUpdate,
       open: vi.fn().mockResolvedValue({}),
       closeIfInactive: vi.fn().mockResolvedValue(true),

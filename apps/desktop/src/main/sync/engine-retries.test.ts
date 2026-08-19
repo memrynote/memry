@@ -215,6 +215,7 @@ describe('SyncEngine', () => {
 
       const deps = createMockDeps(getDb(), {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           getOpenNoteIds: vi.fn(({ active = false } = {}) => (active ? [] : ['note-1', 'note-2']))
         } as unknown as SyncEngineDeps['crdtProvider']
       })
@@ -278,6 +279,7 @@ describe('SyncEngine', () => {
 
       const deps = createMockDeps(getDb(), {
         crdtProvider: {
+          isNoteLocalOnly: vi.fn(() => false),
           getOpenNoteIds: vi.fn(({ active = false } = {}) => (active ? ['editor-1'] : OPEN_IDS))
         } as unknown as SyncEngineDeps['crdtProvider']
       })

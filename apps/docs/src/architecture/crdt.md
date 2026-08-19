@@ -551,6 +551,8 @@ Five paths send a body, and each refuses independently:
 
 `pushSnapshotForNote` re-reads the row because it is the one push path reached for a note with
 no open doc — the pending-note replay and the push coordinator's `create` both land there.
+`CrdtSyncCoordinator` re-reads it as well, through the same `isNoteLocalOnly`, for the pull side
+described below.
 
 `pendingSnapshotBytes` keeps counting for a local-only note. It means "written locally, not yet
 on the server", which stays true, and suppressing it would make three of the guards above look
@@ -580,9 +582,34 @@ snapshot ahead of the merge-first replay. A snapshot asserts completeness and th
 every incremental below it, and a note that has just stopped being local-only is the population
 most likely to have diverged from a peer.
 
-Two asymmetries remain, deliberately: a local-only note is still **pulled** from the server by
-the vault sweep, and updates already buffered in `CrdtUpdateQueue` when the flag is set can still
-flush within that queue's 1 s window.
+### The pull half, and the flush window
+
+The setting reads as "this note and the server have nothing to do with each other", so the pull
+side refuses too. `CrdtSyncCoordinator.applyCrdtIncrementals` returns before it opens the doc,
+and `applyCrdtBatch` filters the list before it chunks it — so the paced vault sweep, the
+`crdt_updated` broadcast and the pending-note drain all skip a local-only note, and none of them
+spends `crdt_pull` budget on a note that can never push. Filtering before the chunking matters:
+each paced chunk stays filled with notes that can actually sync.
+
+A skipped note is deliberately **not** owed a retry. `owePendingPull` there would be a debt
+nothing can ever settle, and the note would be re-queued in every sweep for the life of the
+session. Its `unmergedRemoteNotes` flag is left standing instead — free while the note cannot
+push, and the conservative answer for its first push if the flag is ever cleared.
+
+Setting the flag also empties the update queue's buffer for that note. `onDocUpdate` reads the
+flag at _enqueue_ time but `CrdtUpdateQueue` flushes on a ~1 s loop, so everything typed in the
+second before the toggle is already past the guard. `CrdtUpdateQueue.dropNote` discards it —
+nothing is lost, because those updates are also in the local CRDT store — and
+`CrdtProvider.setNoteLocalOnly` calls it ahead of its `docs` lookup, so a note whose doc the LRU
+has already evicted is covered too. A push already in flight cannot be recalled, but a retryable
+failure no longer re-buffers its batch, which would otherwise have pushed it seconds after the
+note stopped syncing.
+
+Finally, the pending-note replay asks `CrdtProvider.isNoteSyncable` — `validateNoteForCrdt`
+plus the local-only check — rather than `validateNoteForCrdt` alone, so an id that reached the
+durable store through that race is cleared instead of retained forever. The two halves stay
+separate because `validateNoteForCrdt` also gates the renderer's editor handshake, where a
+local-only note must still open and edit like any other.
 
 ## Reconnect Recovery
 

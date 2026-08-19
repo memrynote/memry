@@ -178,6 +178,8 @@ const runtimeMocks = vi.hoisted(() => {
     unverifiedCrdtNotes: new Set<string>(),
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
+      isNoteLocalOnly: vi.fn(() => false),
+      isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
       seedExistingDocs: vi.fn(),
       pushSnapshotForNote: vi.fn(),

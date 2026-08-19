@@ -332,6 +332,60 @@ describe('CrdtUpdateQueue', () => {
     queue.stop()
   })
 
+  it('drops a note buffered when the mid-flush window closes, and never pushes it', async () => {
+    const queue = new CrdtUpdateQueue()
+    const push = vi.fn(async () => undefined)
+
+    queue.start(push)
+    queue.pause()
+    queue.enqueue('going-local', new Uint8Array([1, 2, 3]))
+    queue.enqueue('still-syncing', new Uint8Array([4]))
+
+    queue.dropNote('going-local')
+
+    expect(queue.getPendingCount()).toBe(1)
+    expect(queue.getPendingBytes()).toBe(1)
+
+    queue.resume()
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledTimes(1)
+    expect(push).toHaveBeenCalledWith('still-syncing', [new Uint8Array([4])])
+  })
+
+  it('does not re-buffer a dropped note whose push was already in flight', async () => {
+    let rejectPush!: (err: unknown) => void
+    const push = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectPush = reject
+        })
+    )
+    const queue = new CrdtUpdateQueue()
+
+    queue.start(push)
+    queue.enqueue('note-a', new Uint8Array([1]))
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(1)
+
+    // The toggle lands while the batch is on the wire. It cannot be recalled,
+    // but a retryable failure must not put it back for the next flush.
+    queue.dropNote('note-a')
+    rejectPush(new SyncServerError('rate limited', 429))
+    await flushPromises()
+
+    expect(queue.getPendingCount()).toBe(0)
+    expect(queue.getPendingBytes()).toBe(0)
+
+    // A later edit on a note that goes back to syncing still flushes normally.
+    queue.enqueue('note-a', new Uint8Array([2]))
+    vi.advanceTimersByTime(1000)
+    await flushPromises()
+    expect(push).toHaveBeenCalledTimes(2)
+    expect(push).toHaveBeenLastCalledWith('note-a', [new Uint8Array([2])])
+  })
+
   it('does not persist anything when the shutdown flush drains the buffers', async () => {
     const persistUnflushed = vi.fn()
     const queue = new CrdtUpdateQueue({ persistUnflushed })

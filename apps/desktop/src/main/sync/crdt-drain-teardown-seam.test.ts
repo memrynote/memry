@@ -158,6 +158,8 @@ const runtimeMocks = vi.hoisted(() => {
       open: vi.fn(async () => ({})),
       pushSnapshotForNote: vi.fn(async () => true),
       validateNoteForCrdt: vi.fn(() => ({ ok: true })),
+      isNoteSyncable: vi.fn((_noteId: string) => true),
+      isNoteLocalOnly: vi.fn((_noteId: string) => false),
       pushAllSnapshots: vi.fn(),
       destroy: vi.fn(),
       inactiveDocCapacity: 32,
@@ -463,6 +465,8 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     runtimeMocks.crdtProvider.open.mockResolvedValue({})
     runtimeMocks.crdtProvider.pushSnapshotForNote.mockResolvedValue(true)
     runtimeMocks.crdtProvider.validateNoteForCrdt.mockReturnValue({ ok: true })
+    runtimeMocks.crdtProvider.isNoteLocalOnly.mockReturnValue(false)
+    runtimeMocks.crdtProvider.isNoteSyncable.mockReturnValue(true)
     runtimeMocks.crdtProvider.pushAllSnapshots.mockResolvedValue(0)
     runtimeMocks.crdtProvider.destroy.mockResolvedValue(undefined)
     runtimeMocks.crdtProvider.getDoc.mockReturnValue(undefined)
@@ -508,6 +512,36 @@ describe('pending CRDT drain liveness, stopSyncRuntime to the durable store', ()
     })
     return { reached, release: letGo }
   }
+
+  it('clears a local-only id from the durable store instead of retaining it every session', async () => {
+    // An id can reach the store and then have its note marked local-only — the
+    // toggle races the queue's ~1s flush, and the queue's shutdown path records
+    // whatever it still holds. `pushSnapshotForNote` correctly refuses a
+    // local-only note, so before this the drain could never clear the id: it was
+    // retained, warned about once per session, and never settled.
+    const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
+    recordPendingCrdtNotes(['note-local', 'note-a'])
+    runtimeMocks.crdtProvider.isNoteLocalOnly.mockImplementation(
+      (noteId: string) => noteId === 'note-local'
+    )
+    runtimeMocks.crdtProvider.isNoteSyncable.mockImplementation(
+      (noteId: string) => noteId !== 'note-local'
+    )
+
+    const runtime = await import('./runtime')
+
+    // #when the startup replay runs
+    await runtime.startSyncRuntime()
+    await vi.waitFor(() => expect(readPendingCrdtNotes()).toEqual([]))
+
+    // #then the local-only note is neither merged nor pushed — it is simply not
+    // this store's business any more — while the note that can sync is.
+    expect(openedNotes()).toEqual(['note-a'])
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalledWith('note-local')
+    expect(runtimeMocks.crdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-a')
+
+    await runtime.stopSyncRuntime()
+  })
 
   it('stops merging the rest of the backlog the moment its runtime is torn down', async () => {
     const { readPendingCrdtNotes, recordPendingCrdtNotes } = await import('./crdt-pending-notes')
