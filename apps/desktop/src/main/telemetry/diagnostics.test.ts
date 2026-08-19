@@ -146,6 +146,49 @@ describe('telemetry diagnostics', () => {
       )
     })
 
+    // The crash payload used to ship error_code, message, log_action and exit_code
+    // and nothing else useful, so 76 events on one release were indistinguishable
+    // from each other. Events carry at most ONE dimension, and log_action holds
+    // the phase, so the rest rides in the message and the numeric metrics — both
+    // additive, no contract change, no sync-server deploy.
+    it('carries the dead worker context the crash report used to throw away', () => {
+      trackChildProcessGone({
+        type: 'Utility',
+        reason: 'crashed',
+        name: 'Embeddings',
+        exitCode: 6,
+        phase: 'in_flight',
+        context: {
+          pid: 4821,
+          uptimeMs: 12_345.6,
+          release: 'start_timeout',
+          modelCache: 'partial',
+          modelCacheBytes: 90_112,
+          load: 'reload',
+          crashCount: 3,
+          stderrTail: 'worker stderr tail:\n| libc++abi: terminating'
+        }
+      })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'app_log_recorded',
+        expect.objectContaining({
+          errorCode: 'Utility:crashed:Embeddings',
+          dimensions: { log_action: 'child_process_gone_in_flight' },
+          error: {
+            message:
+              'Embeddings utility process crashed (exit 6, in_flight) ' +
+              '[reason=crashed pid=4821 uptime=12346ms release=start_timeout ' +
+              'cache=partial cache_bytes=90112 load=reload crashes=3]',
+            // A dead child leaves no JS stack in this process, so its own stderr
+            // is the closest thing to one this family can ever carry.
+            stack: 'worker stderr tail:\n| libc++abi: terminating'
+          },
+          metrics: { value: 6, durationMs: 12_346, retryCount: 3, byteCount: 90_112 }
+        })
+      )
+    })
+
     it('reports exactly as before when no phase is available', () => {
       trackChildProcessGone({
         type: 'Utility',

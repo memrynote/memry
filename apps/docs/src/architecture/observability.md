@@ -731,21 +731,59 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separates a harmless teardown crash (`idle_shutdown` — the embedding was already delivered) from
   real user impact (`in_flight` — the user silently lost semantic-search indexing for that note).
 
-  The phase is resolved by `getEmbeddingWorkerPhase(details.name)` at the `child-process-gone` call
-  site, **not** inside the worker's own `exit` handler. Electron's `UtilityProcess` `exit` event
-  does not fire for a native crash — a SIGABRT out of the model runtime is neither a graceful exit
-  nor the V8 `FatalError` the instance `error` event covers — so the bridge never learns its worker
-  died. Production proved it: across 107 consecutive `Utility:crashed:Embeddings` events the
-  bridge's own `worker_exit_<phase>` breadcrumb emitted **zero**, and so did `embed_failed`, while
-  `child-process-gone` fired for all 107. Resolving the phase at the report that does arrive is
-  what makes those events answerable. The `worker_exit_<phase>` breadcrumb is kept for the paths
-  where `exit` does fire (a non-crash abnormal exit, a force-kill), and carries a different error
-  code (`EmbeddingWorkerExit`) so the two are never confused.
+  The phase is resolved by `getEmbeddingWorkerCrashContext(details.name, details.reason)` at the
+  `child-process-gone` call site, **not** inside the worker's own `exit` handler. Electron's
+  `UtilityProcess` `exit` event does not fire for a native crash — a SIGABRT out of the model
+  runtime is neither a graceful exit nor the V8 `FatalError` the instance `error` event covers — so
+  the bridge never learns its worker died. Production proved it: across 107 consecutive
+  `Utility:crashed:Embeddings` events the bridge's own `worker_exit_<phase>` breadcrumb emitted
+  **zero**, and so did `embed_failed`, while `child-process-gone` fired for all 107. Resolving the
+  phase at the report that does arrive is what makes those events answerable. The
+  `worker_exit_<phase>` breadcrumb is kept for the paths where `exit` does fire (a non-crash
+  abnormal exit, a force-kill), and carries a different error code (`EmbeddingWorkerExit`) so the
+  two are never confused.
+
+  **The report never arrives while the bridge still owns the worker.** Resolving the phase from the
+  live handle alone therefore answered `null` in 100% of production crashes (issue #1582): 76 events
+  on `2026.817.1`, none of them phase-suffixed. Every path that nulls the process handle either
+  latches a teardown phase (`stop()` / `reset()`) or runs inside an `exit` handler that emits
+  `EmbeddingWorkerExit` — and production has neither on that release. What remains is
+  `failProcess()`, which forgets a worker that is **still running** (10s start timeout, fatal
+  error). So the bridge keeps a **last-worker record** — pid, phase, how it was released, fork
+  timestamp, model-cache state, stderr tail — bounded by a 60s TTL so an unrelated later crash
+  cannot inherit it. `failProcess()` now also kills the worker it gives up on: the orphan was
+  unreachable (every request goes through the process handle) yet kept a whole onnxruntime alive to
+  abort later.
 
   Anything reading the phase from outside the exit handler must also survive the force-kill race:
-  `reset()` latches `idle_shutdown` before killing, then nulls the process handle, so the latch is
-  cleared when there is no process to kill — the latch now outlives the exit handler that used to
-  clear it, and a stale one would make the next worker's crash read as a teardown it never had.
+  `reset()` latches `idle_shutdown` before killing, then nulls the process handle, so both the latch
+  and the last-worker record are cleared when there is no process to kill — the latch now outlives
+  the exit handler that used to clear it, and a stale one would make the next worker's crash read as
+  a teardown it never had.
+
+  The crash report also carries what the main process knew about that worker. Telemetry events
+  accept **at most one dimension** (`TelemetryDimensionsSchema`) and `log_action` holds the phase,
+  so the rest ships inside fields that already exist — no new event name, no new dimension key, no
+  contract change, and therefore no sync-server deploy:
+
+  | Fact                                                    | Where it ships          | Query it as                  |
+  | ------------------------------------------------------- | ----------------------- | ---------------------------- |
+  | lifecycle phase                                         | `dimensions.log_action` | `log_action` (logs + events) |
+  | platform exit status                                    | `metrics.value`         | `exit_code` (logs) / `value` |
+  | worker uptime at death                                  | `metrics.durationMs`    | `duration_ms` (events)       |
+  | crashes this session                                    | `metrics.retryCount`    | `retry_count` (events)       |
+  | cached model size                                       | `metrics.byteCount`     | `byte_count` (events)        |
+  | pid, reason, release, cache state, first-load vs reload | `error.message` suffix  | `message` (logs)             |
+  | worker stderr tail                                      | `error.stack`           | `stack` (logs)               |
+
+  The message suffix is a bounded `[reason=… pid=… uptime=…ms release=… cache=… cache_bytes=…
+load=… crashes=…]` block appended only when a context was resolved, so every other
+  `child-process-gone` family's message is byte-identical to before. The stderr tail is the closest
+  thing to a stack trace this family can produce — the process that died is not the one reporting,
+  so `stack` is otherwise always empty. It is captured into a bounded per-worker ring buffer,
+  redacted on the device with the same salted `redactText` setup as Path A log shipping, capped at
+  2000 bytes, and every line is prefixed so it can never be mis-parsed back into a fabricated
+  PostHog Error Tracking frame.
 
   Embedding generation failures emit `embed_failed`, throttled to one event per 5-minute window
   because a broken worker would otherwise fail once per note edit.

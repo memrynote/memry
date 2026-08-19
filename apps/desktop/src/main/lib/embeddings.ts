@@ -9,19 +9,26 @@
  */
 
 import { app, utilityProcess } from 'electron'
+import fs from 'fs'
 import path from 'path'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { redactText } from '@memry/contracts/redact'
 import type {
   EmbeddingMainToWorkerMessage,
   EmbeddingProgressMessage,
   EmbeddingProgressPhase,
   EmbeddingWorkerToMainMessage
 } from './embedding-model-protocol'
-import { EMBEDDING_DIMENSION } from './embeddings-constants'
+import {
+  EMBEDDING_DIMENSION,
+  embeddingModelCacheDir,
+  embeddingModelWeightsPath
+} from './embeddings-constants'
 import { createLogger } from './logger'
 import { broadcastToAllWindows } from './window-broadcast'
-import { trackMainLog } from '../telemetry/diagnostics'
+import { isChildProcessFault, trackMainLog } from '../telemetry/diagnostics'
 import { getLogShip } from '../telemetry/log-ship'
+import { getMainRedactOptions } from '../telemetry/redact-options'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 
 const logger = createLogger('Embeddings')
@@ -33,6 +40,40 @@ const logger = createLogger('Embeddings')
  * semantic-search indexing for that note.
  */
 export type WorkerExitPhase = 'starting' | 'in_flight' | 'idle_shutdown' | 'idle'
+
+/**
+ * How the bridge stopped tracking a worker. `live` means it still owns it;
+ * everything else is a worker it has already let go of, which is the state
+ * every production crash report has arrived in.
+ */
+export type WorkerRelease =
+  'live' | 'teardown' | 'start_timeout' | 'fatal_error' | 'exit' | 'graceful_stop'
+
+/** Whether the model was already on disk when this worker was forked. */
+export type ModelCacheState = 'present' | 'partial' | 'absent' | 'unknown'
+
+/**
+ * Everything the main process knows about the worker a `child-process-gone`
+ * report belongs to. Every field is a number, a bounded enum, or output the
+ * caller redacts — no user content.
+ */
+export interface EmbeddingWorkerCrashContext {
+  phase: WorkerExitPhase
+  /** OS pid, so two reports can be tied to one fork (or told apart). */
+  pid?: number
+  /** ms between the fork and this report. Separates "died loading" from "died after running fine". */
+  uptimeMs: number
+  release: WorkerRelease
+  modelCache: ModelCacheState
+  /** Size of the cached weights file, when there is one. */
+  modelCacheBytes?: number
+  /** `reload` when a model load had already failed this session before this fork. */
+  load: 'first' | 'reload'
+  /** Embedding-worker crash reports seen this session, including this one. */
+  crashCount: number
+  /** Redacted tail of the worker's own stderr — the abort message, if it wrote one. */
+  stderrTail?: string
+}
 
 export interface ModelInfo {
   name: string
@@ -84,6 +125,23 @@ const IDLE_SHUTDOWN_MS = 30_000
 const LOAD_RETRY_BASE_DELAY_MS = 60_000
 const MAX_CONSECUTIVE_LOAD_FAILURES = 5
 
+/**
+ * How long a released worker stays attributable. `child-process-gone` is
+ * dispatched by the browser process as soon as it reaps the child, so a report
+ * that has not arrived within a minute of the bridge letting go is not about
+ * that worker. Long enough to cover the 10s start timeout plus scheduling slack,
+ * short enough that a later, unrelated crash cannot inherit a stale record.
+ */
+const LAST_WORKER_TTL_MS = 60_000
+
+/**
+ * Bytes of worker stderr kept for the crash report. A native abort out of
+ * onnxruntime/libc writes its message to fd 2 and then dies, so the TAIL is the
+ * part worth keeping. Hard-capped: this is unbounded native output and it has to
+ * fit inside TelemetryErrorDetailSchema.stack (4000).
+ */
+const STDERR_TAIL_LIMIT = 2000
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -92,6 +150,20 @@ type PendingRequest = {
   resolve: (value: EmbeddingWorkerToMainMessage) => void
   reject: (error: Error) => void
   timer: ReturnType<typeof setTimeout>
+}
+
+/** Facts about one forked worker, captured at fork time. */
+type WorkerGeneration = {
+  pid?: number
+  forkedAt: number
+  ready: boolean
+  modelCache: ModelCacheState
+  modelCacheBytes?: number
+  load: 'first' | 'reload'
+  /** Bounded tail of everything this worker wrote to stderr. */
+  stderrTail: string
+  /** Phase at the moment the bridge released it; null while it is still live. */
+  releasePhase: WorkerExitPhase | null
 }
 
 /**
@@ -114,6 +186,52 @@ export function isInformationalWorkerStderr(output: string): boolean {
     .filter(Boolean)
   if (lines.length === 0) return false
   return lines.every((line) => INFORMATIONAL_WORKER_STDERR.some((pattern) => pattern.test(line)))
+}
+
+/**
+ * Whether the ~23MB model was already on disk when a worker was forked, and how
+ * big it was. A torn/partially-written cache file aborts deterministically on
+ * every load, which is the shape a per-install repeat crash would have; nothing
+ * in the crash payload could distinguish it before.
+ *
+ * Never throws and never awaits: it runs on the fork path, so a stat failure has
+ * to degrade to `unknown` rather than take the worker down with it.
+ */
+export function probeModelCache(userDataPath: string): {
+  state: ModelCacheState
+  bytes?: number
+} {
+  try {
+    const stat = fs.statSync(embeddingModelWeightsPath(userDataPath), { throwIfNoEntry: false })
+    if (stat?.isFile()) return { state: 'present', bytes: stat.size }
+    // Weights missing but the model dir exists: an interrupted or partially
+    // written download, which is a different bug from "never downloaded".
+    const dir = fs.statSync(embeddingModelCacheDir(userDataPath), { throwIfNoEntry: false })
+    return { state: dir?.isDirectory() ? 'partial' : 'absent' }
+  } catch {
+    return { state: 'unknown' }
+  }
+}
+
+/**
+ * Prepare captured worker stderr for the crash event: redact it, cap it, and
+ * make sure no line can be mistaken for a JS stack frame.
+ *
+ * The frame guard matters. The tail ships in `error.stack`, and the sync-server
+ * parses that field back into PostHog Error Tracking frames by matching
+ * `/^\s*at\s/` per line (posthog-transform.ts). A native abort message that
+ * happened to start with "at " would become a fabricated frame pointing at
+ * nothing, so every line is prefixed out of that shape.
+ */
+export function formatWorkerStderrTail(tail: string): string | undefined {
+  const redacted = redactText(tail, getMainRedactOptions()).trim()
+  if (!redacted) return undefined
+  const lines = redacted
+    .split('\n')
+    .map((line) => `| ${line.trim()}`)
+    .filter((line) => line !== '| ')
+  if (lines.length === 0) return undefined
+  return `worker stderr tail:\n${lines.join('\n')}`.slice(0, STDERR_TAIL_LIMIT)
 }
 
 /**
@@ -156,6 +274,19 @@ class EmbeddingModelBridge {
   // without this latch a wedged teardown is misreported as `idle` ("died doing
   // nothing") instead of `idle_shutdown` ("died tearing down").
   private pendingExitPhase: WorkerExitPhase | null = null
+  // Per-generation facts about the CURRENT worker, all captured at fork time so a
+  // crash report can be read without guessing. Reset on every fork.
+  private worker: WorkerGeneration | null = null
+  // The worker the bridge most recently let go of. Production's crash reports all
+  // arrive in this state — `process` and `pendingExitPhase` both already null —
+  // so without this record every report resolves to no phase at all. TTL'd, so a
+  // late unrelated crash cannot inherit it.
+  private lastWorker: (WorkerGeneration & { release: WorkerRelease; releasedAt: number }) | null =
+    null
+  // Crash reports attributed to an embedding worker this session. A burst on one
+  // install and a slow drip across many are different bugs; today they are only
+  // separable with post-hoc SQL.
+  private crashCount = 0
 
   get isLoaded(): boolean {
     return this.loaded
@@ -327,6 +458,10 @@ class EmbeddingModelBridge {
       })
     })
 
+    // Whether it exited on its own or had to be force-killed, the bridge is done
+    // with this worker here. Record it so a crash report landing after the handle
+    // is gone is still attributed — a no-op when an exit handler already did.
+    this.releaseWorker('teardown', 'idle_shutdown')
     this.process = null
     this.readyPromise = null
     this.shuttingDown = false
@@ -341,6 +476,12 @@ class EmbeddingModelBridge {
     // outlives the exit handler (which never runs for a native crash), so a stale
     // one would make the NEXT worker's crash read as a teardown it never had.
     this.pendingExitPhase = this.process ? 'idle_shutdown' : null
+    // Same rule as the latch above, for the same reason: a live worker is
+    // recorded so a crash report can still find it, while a reset with nothing
+    // to kill wipes the record — a stale one would make an unrelated later crash
+    // read as a teardown it never had.
+    if (this.process) this.releaseWorker('teardown', 'idle_shutdown')
+    else this.lastWorker = null
     this.process?.kill()
     this.process = null
     this.readyPromise = null
@@ -400,12 +541,14 @@ class EmbeddingModelBridge {
     }
 
     const workerPath = path.join(__dirname, 'embedding-worker.js')
+    const userDataPath = app.getPath('userData')
+    const modelCache = probeModelCache(userDataPath)
     const child = utilityProcess.fork(workerPath, [], {
       serviceName: WORKER_SERVICE_NAME,
       stdio: 'pipe',
       env: {
         ...process.env,
-        MEMRY_USER_DATA_PATH: app.getPath('userData')
+        MEMRY_USER_DATA_PATH: userDataPath
       },
       allowLoadingUnsignedLibraries: process.platform === 'darwin'
     })
@@ -413,6 +556,19 @@ class EmbeddingModelBridge {
     this.process = child
     // A fresh worker must never inherit a force-kill phase latched for a prior one.
     this.pendingExitPhase = null
+    const generation: WorkerGeneration = {
+      pid: child.pid,
+      forkedAt: Date.now(),
+      ready: false,
+      modelCache: modelCache.state,
+      modelCacheBytes: modelCache.bytes,
+      // Read BEFORE this attempt can fail, so it describes the state the fork was
+      // made in: `reload` means a load had already failed before this worker.
+      load: this.consecutiveFailures > 0 ? 'reload' : 'first',
+      stderrTail: '',
+      releasePhase: null
+    }
+    this.worker = generation
     child.stdout?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
       if (output) {
@@ -422,6 +578,10 @@ class EmbeddingModelBridge {
     child.stderr?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
       if (!output) return
+      // Kept for THIS generation even when the line is benign: a native abort is
+      // usually preceded by the runtime's own progress notes, and the tail is the
+      // only "what happened" a crash report can ever carry. Bounded from the end.
+      generation.stderrTail = `${generation.stderrTail}${output}\n`.slice(-STDERR_TAIL_LIMIT)
       if (isInformationalWorkerStderr(output)) {
         logger.debug(`Embedding utility stderr: ${output}`)
         return
@@ -436,7 +596,7 @@ class EmbeddingModelBridge {
           workerPath,
           pid: child.pid
         })
-        this.failProcess(error)
+        this.failProcess(error, 'start_timeout')
         reject(error)
       }, START_TIMEOUT_MS)
 
@@ -456,6 +616,7 @@ class EmbeddingModelBridge {
         if (message.type !== 'ready') return
 
         cleanup()
+        generation.ready = true
         this.setupProcessHandlers(child)
         logger.info('Embedding utility ready')
         resolve()
@@ -465,7 +626,7 @@ class EmbeddingModelBridge {
         cleanup()
         const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
         logger.error('Embedding utility fatal error', { type, location, report })
-        this.failProcess(error)
+        this.failProcess(error, 'fatal_error')
         reject(error)
       }
 
@@ -476,11 +637,12 @@ class EmbeddingModelBridge {
         // A clean exit during shutdown is lifecycle, not a fault (mirrors the
         // ready-state guard below). Without this, quitting the app mid-bootstrap
         // emits a spurious error-level worker_exit_starting with exit code 0.
+        const phase = forcedPhase ?? 'starting'
         if (!(forcedPhase === null && this.shuttingDown && code === 0)) {
-          this.trackWorkerExit(forcedPhase ?? 'starting', code)
+          this.trackWorkerExit(phase, code)
         }
         const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
-        this.failProcess(error)
+        this.failProcess(error, 'exit', phase)
         reject(error)
       }
 
@@ -533,7 +695,7 @@ class EmbeddingModelBridge {
     child.on('error', (type: string, location: string, report: string) => {
       const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
       logger.error('Embedding utility fatal error', { type, location, report })
-      this.failProcess(error)
+      this.failProcess(error, 'fatal_error')
     })
 
     child.on('exit', (code: number) => {
@@ -546,40 +708,29 @@ class EmbeddingModelBridge {
       // already be cleared by the time its async 'exit' lands.
       if (forcedPhase === null && this.shuttingDown && code === 0) {
         this.process = null
+        // Still recorded: a runtime that aborts while unwinding after exit(0)
+        // produces a crash report AFTER this clean exit, and the teardown-abort
+        // hypothesis is only testable if that report can still find the worker.
+        this.releaseWorker('graceful_stop')
         this.readyPromise = null
         return
       }
 
       // Phase must be read before failProcess(), which rejects and clears the
       // pending requests this classification depends on.
-      this.trackWorkerExit(forcedPhase ?? this.currentPhase(), code)
+      const phase = forcedPhase ?? this.currentPhase()
+      this.trackWorkerExit(phase, code)
       const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
-      this.failProcess(error)
+      this.failProcess(error, 'exit', phase)
     })
   }
 
   private currentPhase(): WorkerExitPhase {
     if (this.shuttingDown) return 'idle_shutdown'
     if (this.pendingRequests.size > 0) return 'in_flight'
+    // A worker that never sent 'ready' died bootstrapping, not sitting idle.
+    if (this.worker && !this.worker.ready) return 'starting'
     return 'idle'
-  }
-
-  /**
-   * The phase to attribute a death to when it is reported by
-   * `app.on('child-process-gone')` rather than by the worker's own 'exit' event.
-   *
-   * Production says that is the only report we get: across 107 consecutive
-   * `Utility:crashed:Embeddings` events, `trackWorkerExit` below emitted nothing
-   * and neither did `embed_failed` — a native SIGABRT out of the model runtime is
-   * neither a graceful exit nor a V8 fatal error, so no instance event fires and
-   * this bridge never learns its worker died. Reading the phase from outside the
-   * handler is what makes that surviving report answer the only question that
-   * matters: did the user lose an embedding, or did the worker just die tearing
-   * down after already delivering one?
-   */
-  liveWorkerPhase(): WorkerExitPhase | null {
-    if (this.pendingExitPhase) return this.pendingExitPhase
-    return this.process ? this.currentPhase() : null
   }
 
   /**
@@ -639,16 +790,98 @@ class EmbeddingModelBridge {
     return `embedding_${this.requestCounter}_${Date.now()}`
   }
 
-  private failProcess(error: Error): void {
+  /**
+   * Stop tracking the worker after a fault.
+   *
+   * This is the path every production crash report arrives behind. It nulls
+   * `process` without latching `pendingExitPhase`, so before the last-worker
+   * record existed the phase resolver had nothing left to read — which is why
+   * 100% of `Utility:crashed:Embeddings` events shipped with no phase.
+   *
+   * It also used to abandon a still-LIVE child (`start_timeout` / `fatal_error`
+   * reach here with the process running): the orphan was unreachable — every
+   * request goes through `this.process` — yet kept a whole onnxruntime alive to
+   * abort later, and its late `ready` message would re-attach handlers and flip
+   * `loaded` on for a worker the bridge no longer owned. It is killed now.
+   */
+  private failProcess(error: Error, release: WorkerRelease, phase?: WorkerExitPhase): void {
     this.clearIdleShutdown()
-    if (this.process) {
+    const orphan = this.process
+    // Read before rejectAll(), which clears the pending requests the phase
+    // classification depends on.
+    this.releaseWorker(release, phase)
+    if (orphan) {
       this.process = null
+      orphan.kill()
     }
     this.readyPromise = null
     this.loaded = false
     this.loading = false
     this.error = error.message
     this.rejectAll(error)
+  }
+
+  /**
+   * Remember the worker the bridge is letting go of, so a `child-process-gone`
+   * report that lands afterwards can still be attributed to it.
+   */
+  private releaseWorker(release: WorkerRelease, phase?: WorkerExitPhase): void {
+    const generation = this.worker
+    if (!generation) return
+    generation.releasePhase = phase ?? this.currentPhase()
+    this.lastWorker = { ...generation, release, releasedAt: Date.now() }
+    this.worker = null
+  }
+
+  /**
+   * The worker a `child-process-gone` report belongs to, with everything the
+   * main process knows about it.
+   *
+   * Reads, in order: the live worker, a force-kill latch (`stop()`/`reset()`
+   * kill and null the handle in the same tick), then the last worker the bridge
+   * released — the state every production report has actually arrived in.
+   */
+  crashContext(): EmbeddingWorkerCrashContext | null {
+    const now = Date.now()
+    if (this.worker) {
+      const live = this.worker
+      return {
+        phase: this.pendingExitPhase ?? this.currentPhase(),
+        release: this.pendingExitPhase ? 'teardown' : 'live',
+        uptimeMs: Math.max(0, now - live.forkedAt),
+        ...this.describeGeneration(live)
+      }
+    }
+
+    const last = this.lastWorker
+    if (!last || now - last.releasedAt > LAST_WORKER_TTL_MS) return null
+    return {
+      phase: last.releasePhase ?? 'idle',
+      release: last.release,
+      uptimeMs: Math.max(0, now - last.forkedAt),
+      ...this.describeGeneration(last)
+    }
+  }
+
+  private describeGeneration(generation: WorkerGeneration): Omit<
+    EmbeddingWorkerCrashContext,
+    'phase' | 'release' | 'uptimeMs' | 'crashCount'
+  > & {
+    crashCount: number
+  } {
+    return {
+      pid: generation.pid,
+      modelCache: generation.modelCache,
+      modelCacheBytes: generation.modelCacheBytes,
+      load: generation.load,
+      crashCount: this.crashCount,
+      stderrTail: formatWorkerStderrTail(generation.stderrTail)
+    }
+  }
+
+  /** Count a crash report before it is described, so the event includes itself. */
+  countCrashReport(): void {
+    this.crashCount += 1
   }
 
   private rejectAll(error: Error): void {
@@ -763,14 +996,40 @@ export function resetEmbeddingModelFailure(): void {
 }
 
 /**
- * Lifecycle phase to attribute a `child-process-gone` report to.
+ * What the main process knows about the worker a `child-process-gone` report is
+ * about: its lifecycle phase, pid, uptime, the model-cache state it was forked
+ * with, how the bridge last saw it, and the tail of its stderr.
  *
- * Returns null when the report is not about our embedding worker, or when no
- * worker was live — so an unrelated crash never inherits a phase.
+ * This is the ONLY report a native worker crash produces. The worker's own
+ * 'exit' event does not fire for one — a SIGABRT out of the model runtime is
+ * neither a graceful exit nor a V8 fatal error — so the bridge never learns its
+ * worker died, and production proved it: across 107 consecutive
+ * `Utility:crashed:Embeddings` events, `worker_exit_<phase>` emitted zero and so
+ * did `embed_failed`.
+ *
+ * It also never arrives while the bridge still owns the worker. Every path that
+ * nulls `process` either latches a teardown phase (`stop()`/`reset()`) or runs
+ * inside an 'exit' handler that emits `EmbeddingWorkerExit` — and production has
+ * neither a phase-suffixed event nor an `EmbeddingWorkerExit` on the affected
+ * release. What is left is `failProcess()`, which forgets a worker that is still
+ * running (start timeout / fatal error) and leaves nothing behind to read. So
+ * the answer has to survive the bridge moving on: hence the last-worker record,
+ * bounded by LAST_WORKER_TTL_MS so an unrelated later crash cannot inherit it.
+ *
+ * Returns null when the report is not about our embedding worker, when the
+ * reason is lifecycle rather than a fault, or when no worker is attributable.
  *
  * @param workerName - `details.name` from `app.on('child-process-gone')`
+ * @param reason - `details.reason` from the same report
  */
-export function getEmbeddingWorkerPhase(workerName: string | undefined): WorkerExitPhase | null {
+export function getEmbeddingWorkerCrashContext(
+  workerName: string | undefined,
+  reason: string
+): EmbeddingWorkerCrashContext | null {
   if (workerName !== WORKER_SERVICE_NAME) return null
-  return bridge.liveWorkerPhase()
+  // A clean idle-shutdown (or an OS memory-pressure eviction) is lifecycle, not a
+  // crash: counting it would make the session crash counter meaningless.
+  if (!isChildProcessFault(reason)) return null
+  bridge.countCrashReport()
+  return bridge.crashContext()
 }

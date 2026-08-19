@@ -1,8 +1,10 @@
-import path from 'path'
-
 import { createLogger } from './logger'
 import { installWorkerLogForwarding } from './log-forward'
-import { EMBEDDING_DIMENSION } from './embeddings-constants'
+import {
+  EMBEDDING_DIMENSION,
+  EMBEDDING_MODEL_REPO,
+  transformersCacheDir
+} from './embeddings-constants'
 import type {
   EmbeddingMainToWorkerMessage,
   EmbeddingProgressPhase,
@@ -11,7 +13,6 @@ import type {
 
 const logger = createLogger('Embeddings:Worker')
 
-const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2'
 const MAX_CONTENT_LENGTH = 2000
 
 interface ModelProgress {
@@ -43,7 +44,7 @@ function getUserDataPath(): string {
 }
 
 function getTransformersCacheDir(): string {
-  return path.join(getUserDataPath(), 'models', 'transformers')
+  return transformersCacheDir(getUserDataPath())
 }
 
 function emitProgress(phase: EmbeddingProgressPhase, progress: number, status: string): void {
@@ -70,7 +71,7 @@ async function loadEmbeddingPipeline() {
     const { pipeline, env } = await import('@huggingface/transformers')
     env.cacheDir = getTransformersCacheDir()
 
-    extractor = await pipeline('feature-extraction', MODEL_NAME, {
+    extractor = await pipeline('feature-extraction', EMBEDDING_MODEL_REPO, {
       dtype: 'fp32',
       progress_callback: (progress: ModelProgress) => {
         if (progress.status === 'progress') {
