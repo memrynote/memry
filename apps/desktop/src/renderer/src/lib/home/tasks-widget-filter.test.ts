@@ -75,4 +75,32 @@ describe('selectTasksForWidget', () => {
     // default filters keep all active tasks
     expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
   })
+
+  // The date views are all due-date windows, so undated tasks are invisible in
+  // every one of them. A saved "No due date" filter is the only way the widget
+  // can surface them.
+  it('surfaces undated tasks through a saved no-due-date filter', () => {
+    const undated = { ...task('undated', 0), dueDate: null }
+    const saved: SavedFilter = {
+      id: 'sf-none',
+      name: 'No due date',
+      filters: {
+        ...defaultFilters,
+        dueDate: { type: 'none', customStart: null, customEnd: null }
+      },
+      starred: false,
+      createdAt: new Date()
+    }
+
+    const result = selectTasksForWidget([...tasks, undated], projects, [saved], {
+      savedFilterId: 'sf-none'
+    })
+    expect(result.map((t) => t.id)).toEqual(['undated'])
+
+    // …and no date view can: this is the gap the saved filter closes.
+    for (const dateRange of ['today', 'tomorrow', 'week']) {
+      const viewResult = selectTasksForWidget([...tasks, undated], projects, [saved], { dateRange })
+      expect(viewResult.map((t) => t.id)).not.toContain('undated')
+    }
+  })
 })

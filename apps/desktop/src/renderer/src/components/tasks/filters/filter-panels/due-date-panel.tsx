@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react'
 
 import { DatePickerContent } from '@/components/tasks/date-picker-content'
 import type { DueDateFilter, DueDateFilterType } from '@/data/tasks-data'
+import { cn } from '@/lib/utils'
 import { BackButton } from './priority-panel'
 import { useT } from '@memry/i18n/renderer'
 
@@ -58,6 +59,18 @@ export function DueDatePanel({
     return null
   }, [dueDate, today])
 
+  // The one due-date filter a calendar cannot express: tasks with no date at
+  // all. Undated work is invisible in every date window, so without this row it
+  // can only be found by clearing the filter entirely.
+  const isNoDueDate = dueDate.type === 'none'
+  const toggleNoDueDate = useCallback(() => {
+    if (isNoDueDate) {
+      onClearDueDate()
+    } else {
+      onSelectDueDate('none')
+    }
+  }, [isNoDueDate, onClearDueDate, onSelectDueDate])
+
   const handleSelect = useCallback(
     (date: Date | null) => {
       if (!date) {
@@ -113,6 +126,26 @@ export function DueDatePanel({
         <span className="text-[13px] text-foreground font-medium leading-4">
           {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsDueDatePanel.dueDate')}
         </span>
+      </div>
+      <div className="flex flex-col border-b border-border p-1 shrink-0">
+        <button
+          type="button"
+          aria-pressed={isNoDueDate}
+          onClick={toggleNoDueDate}
+          className={cn(
+            'flex items-center rounded-[5px] py-1.5 px-2 gap-2 transition-colors',
+            isNoDueDate ? 'bg-accent' : 'hover:bg-accent'
+          )}
+        >
+          <span
+            className={cn(
+              'text-[12px] leading-4',
+              isNoDueDate ? 'text-foreground' : 'text-text-secondary'
+            )}
+          >
+            {tPhaseF('filters.dueDate.none')}
+          </span>
+        </button>
       </div>
       <DatePickerContent selected={selectedDate} onSelect={handleSelect} />
     </>

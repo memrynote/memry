@@ -45,6 +45,8 @@ Widgets are the cards on a board. Available types:
 
 The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
 
+The Tasks widget has a filter pill in its header: pick **Today**, **Tomorrow**, or **Week**, or pick any [saved filter](/user-guide/tasks/filters-sorting). The pill's label and the count next to it both follow whatever you chose. A saved filter is the only way to put tasks with **no due date** on the dashboard — the three date views are all due-date windows, so undated work never appears in them.
+
 ### Add a widget
 
 Open the **widget gallery** (the add-widget control on the board) and click a type. The new card drops in at the bottom of the board and the grid compacts it upward. Adding the same type twice is allowed — each is an independent instance with its own configuration.

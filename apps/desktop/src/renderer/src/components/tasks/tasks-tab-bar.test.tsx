@@ -5,7 +5,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import type { ReactNode } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
 
-import { TasksTabBar, type TasksInternalTab } from './tasks-tab-bar'
+import { TasksTabBar, type TasksTabCounts } from './tasks-tab-bar'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
 // ProjectPicker's create footer is gated on a tasks context being present.
@@ -20,7 +20,15 @@ beforeAll(async () => {
   i18nEn = await createRendererI18n({ locale: 'en' })
 })
 
-const defaultCounts = { today: 3, all: 15 }
+const defaultCounts: TasksTabCounts = { today: 3, tomorrow: 2, next7: 8, all: 15 }
+
+const openWindowPicker = (): void => {
+  fireEvent.click(screen.getByRole('combobox', { name: 'Task views' }))
+}
+
+const openProjectPicker = (): void => {
+  fireEvent.click(screen.getByRole('combobox', { name: 'Select project' }))
+}
 
 const makeSavedFilter = (overrides: Partial<SavedFilter> = {}): SavedFilter => ({
   id: 'sf-1',
@@ -36,6 +44,7 @@ const makeSavedFilter = (overrides: Partial<SavedFilter> = {}): SavedFilter => (
     repeatType: 'all',
     hasTime: 'all'
   },
+  starred: true,
   createdAt: new Date('2026-01-01'),
   ...overrides
 })
@@ -83,36 +92,36 @@ const renderTabBar = (overrides: Partial<Parameters<typeof TasksTabBar>[0]> = {}
 }
 
 describe('TasksTabBar', () => {
-  it('renders two default tabs (Today, All)', () => {
+  it('offers all four due-date scopes in one dropdown', () => {
     renderTabBar()
-    expect(screen.getByRole('tab', { name: /today/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /done/i })).not.toBeInTheDocument()
+    openWindowPicker()
+
+    expect(screen.getByRole('option', { name: /^all/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /today/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /tomorrow/i })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /next 7 days/i })).toBeInTheDocument()
   })
 
-  it('calls onTabChange when a tab is clicked', () => {
+  it('shows the active scope and its count on the trigger', () => {
+    renderTabBar({ activeTab: 'tomorrow' })
+    const trigger = screen.getByRole('combobox', { name: 'Task views' })
+
+    expect(trigger).toHaveTextContent('Tomorrow')
+    expect(trigger).toHaveTextContent('2')
+  })
+
+  it('calls onTabChange when another scope is picked', () => {
     const { onTabChange } = renderTabBar()
-    fireEvent.click(screen.getByRole('tab', { name: /today/i }))
-    expect(onTabChange).toHaveBeenCalledWith('today')
+    openWindowPicker()
+    fireEvent.click(screen.getByRole('option', { name: /next 7 days/i }))
+    expect(onTabChange).toHaveBeenCalledWith('next7')
   })
 
-  it('supports roving tab keyboard navigation', () => {
+  it('does not re-fire onTabChange for the scope already active', () => {
     const { onTabChange } = renderTabBar({ activeTab: 'today' })
-    const today = screen.getByRole('tab', { name: /today/i })
-    const all = screen.getByRole('tab', { name: /all/i })
-
-    fireEvent.keyDown(today, { key: 'ArrowRight' })
-    expect(onTabChange).toHaveBeenCalledWith('all')
-    expect(all).toHaveFocus()
-
-    fireEvent.keyDown(all, { key: 'ArrowLeft' })
-    expect(onTabChange).toHaveBeenCalledWith('today')
-    expect(today).toHaveFocus()
-
-    fireEvent.keyDown(today, { key: 'End' })
-    expect(onTabChange).toHaveBeenCalledWith('all')
-    fireEvent.keyDown(all, { key: 'Home' })
-    expect(onTabChange).toHaveBeenCalledWith('today')
+    openWindowPicker()
+    fireEvent.click(screen.getByRole('option', { name: /today/i }))
+    expect(onTabChange).not.toHaveBeenCalled()
   })
 
   it('renders the project scope picker: filters archived, searches, selects, edits, and offers create', () => {
@@ -129,7 +138,7 @@ describe('TasksTabBar', () => {
       onProjectEdit
     })
 
-    fireEvent.click(screen.getByRole('combobox'))
+    openProjectPicker()
 
     expect(screen.getByRole('option', { name: /all projects/i })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /work/i })).toBeInTheDocument()
@@ -145,7 +154,7 @@ describe('TasksTabBar', () => {
     fireEvent.click(screen.getByRole('option', { name: /work/i }))
     expect(onProjectChange).toHaveBeenCalledWith('project-2')
 
-    fireEvent.click(screen.getByRole('combobox'))
+    openProjectPicker()
     fireEvent.click(screen.getByLabelText('Edit Work'))
     expect(onProjectEdit).toHaveBeenCalledWith(work)
   })
@@ -153,13 +162,13 @@ describe('TasksTabBar', () => {
   it('selects "All projects" to clear the project scope', () => {
     const onProjectChange = vi.fn()
     renderTabBar({
-      counts: { today: 0, all: 0 },
+      counts: { today: 0, tomorrow: 0, next7: 0, all: 0 },
       projects: [makeProject()],
       selectedProjectId: 'project-1',
       onProjectChange
     })
 
-    fireEvent.click(screen.getByRole('combobox'))
+    openProjectPicker()
     fireEvent.click(screen.getByRole('option', { name: /all projects/i }))
 
     expect(onProjectChange).toHaveBeenCalledWith(null)
@@ -212,7 +221,7 @@ describe('TasksTabBar', () => {
       expect(pill.className).not.toMatch(/saved-filter-active/)
     })
 
-    it('deactivates built-in tab styling when a saved filter is active', () => {
+    it('marks no scope as selected while a saved filter is active', () => {
       const filter = makeSavedFilter({ id: 'sf-1', name: 'High Priority' })
       renderTabBar({
         activeTab: 'today',
@@ -220,11 +229,14 @@ describe('TasksTabBar', () => {
         activeSavedFilterId: 'sf-1'
       })
 
-      const todayTab = screen.getByRole('tab', { name: /today/i })
-      expect(todayTab.className).not.toMatch(/bg-foreground/)
+      openWindowPicker()
+      expect(screen.getByRole('option', { name: /today/i })).toHaveAttribute(
+        'aria-selected',
+        'false'
+      )
     })
 
-    it('keeps built-in tab styling when no saved filter is active', () => {
+    it('marks the active scope as selected when no saved filter is active', () => {
       const filter = makeSavedFilter({ id: 'sf-1', name: 'High Priority' })
       renderTabBar({
         activeTab: 'today',
@@ -232,10 +244,11 @@ describe('TasksTabBar', () => {
         activeSavedFilterId: null
       })
 
-      const todayTab = screen.getByRole('tab', { name: /today/i })
-      // Active tab styling: inverted text on the sliding pill background
-      expect(todayTab.className).toMatch(/text-background/)
-      expect(todayTab).toHaveAttribute('aria-selected', 'true')
+      openWindowPicker()
+      expect(screen.getByRole('option', { name: /today/i })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
     })
 
     it('renders a delete button on each saved filter pill', () => {

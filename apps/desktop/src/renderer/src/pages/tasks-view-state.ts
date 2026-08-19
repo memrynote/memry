@@ -19,7 +19,7 @@ import type { ViewMode } from '@/data/tasks-data'
 export const TASKS_VIEW_STATE_KEYS = {
   /** List or kanban. */
   activeView: 'activeView',
-  /** Today or all. */
+  /** All, or one of the due-date windows (today, tomorrow, next7). */
   activeInternalTab: 'activeInternalTab',
   /** Pre-rename spelling of `activeInternalTab`, still written for old builds. */
   activeInternalTabLegacy: 'activeTab',
@@ -46,7 +46,9 @@ export const tasksScrollKey = (storageKey: string): string => `tasks:${storageKe
 export const PROJECT_TASKS_SCROLL_KEY = 'tasks-project'
 
 const VIEW_MODES: ViewMode[] = ['list', 'kanban']
-const INTERNAL_TABS: TasksInternalTab[] = ['today', 'all']
+// Older builds only knew 'today' and 'all'; they parse the newer window values
+// as "nothing stored" and fall back to the default view, which is intended.
+const INTERNAL_TABS: TasksInternalTab[] = ['today', 'tomorrow', 'next7', 'all']
 
 /** Groups collapsed by default. `done` starts closed; the rest start open. */
 export const DEFAULT_COLLAPSED_GROUPS: string[] = ['done']

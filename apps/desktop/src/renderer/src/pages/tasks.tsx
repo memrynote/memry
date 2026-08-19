@@ -4,7 +4,11 @@ import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
-import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab-bar'
+import {
+  TasksTabBar,
+  type TasksInternalTab,
+  type TasksTabCounts
+} from '@/components/tasks/tasks-tab-bar'
 
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
@@ -25,11 +29,13 @@ import {
   getDefaultTodoStatus,
   startOfDay,
   getCompletedTasks,
+  getCompletedTasksInDueWindow,
   getCompletedTodayTasks,
-  getTodayTasks,
+  getTasksInDueWindow,
   countActiveFilters,
   scopeTasksByProject,
-  applyFiltersAndSort
+  applyFiltersAndSort,
+  type TaskDueWindow
 } from '@/lib/task-utils'
 import {
   type Project,
@@ -187,7 +193,10 @@ export const TasksPage = ({
   })
   // Left absent until the user picks one, so the preference — which loads
   // asynchronously — stays live instead of being frozen at first render.
-  const activeInternalTab = storedInternalTab ?? taskPrefs.defaultView
+  // The preference is read back through the same parser as the tab state: a
+  // value this build does not know (written by a newer one, or by a hand-edited
+  // settings row) would otherwise match no render branch and paint nothing.
+  const activeInternalTab = storedInternalTab ?? parseInternalTab(taskPrefs.defaultView) ?? 'all'
 
   const defaultProjectId = useMemo(
     () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
@@ -200,11 +209,13 @@ export const TasksPage = ({
   })
   const requestedProjectId = storedProjectId === undefined ? defaultProjectId : storedProjectId
 
+  // Kanban groups by status, which only reads straight on the unwindowed list;
+  // the due-date windows stay list-only.
   const availableViews = useMemo((): ViewMode[] => {
-    if (activeInternalTab === 'today') {
-      return ['list']
+    if (activeInternalTab === 'all') {
+      return ['list', 'kanban']
     }
-    return ['list', 'kanban']
+    return ['list']
   }, [activeInternalTab])
 
   const [requestedActiveView, setActiveView] = useTabViewState<ViewMode>({
@@ -400,22 +411,21 @@ export const TasksPage = ({
     return applyFiltersAndSort(scoped, { ...filters, completion: 'all' }, sort, projects)
   }, [activeView, filteredTasks, tasks, selectedProjectId, filters, sort, projects])
 
-  // Check if we should show the filter empty state
-  const showFilterEmptyState = filtersActive && filteredCount === 0 && totalCount > 0
+  // Derived: the tasks of the selected due-date window (flat, overdue first).
+  // Null on the "all" tab, which has no window.
+  const windowFilteredTasks = useMemo(() => {
+    if (activeInternalTab === 'all') return null
+    return getTasksInDueWindow(filteredTasks, projects, activeInternalTab)
+  }, [activeInternalTab, filteredTasks, projects])
 
-  // Derived: today tab tasks (overdue + today, flat)
-  const todayFilteredTasks = useMemo(() => {
-    const { overdue, today } = getTodayTasks(filteredTasks, projects)
-    return [...overdue, ...today]
-  }, [filteredTasks, projects])
+  // Counted off what is actually on screen, so a window empties for the same
+  // reason the "all" list does. A filter and a window can contradict each other
+  // outright — "No due date" inside Today can never match — and without this the
+  // page just goes blank with nothing saying the filters did it.
+  const visibleCount = windowFilteredTasks?.length ?? filteredCount
+  const showFilterEmptyState = filtersActive && visibleCount === 0 && totalCount > 0
 
-  const selectionScopeTasks = useMemo(() => {
-    if (activeInternalTab === 'today') {
-      return todayFilteredTasks
-    }
-
-    return filteredTasks
-  }, [activeInternalTab, filteredTasks, todayFilteredTasks])
+  const selectionScopeTasks = windowFilteredTasks ?? filteredTasks
 
   const visibleTaskIds = useMemo(() => selectionScopeTasks.map((t) => t.id), [selectionScopeTasks])
 
@@ -476,30 +486,33 @@ export const TasksPage = ({
     }
   })
 
-  // Derived: tab counts for TasksTabBar (scoped by dropdown project)
-  const tabCounts = useMemo(() => {
+  // Derived: tab counts for TasksTabBar (scoped by dropdown project).
+  // Parents only — subtasks ride along in the lists but are not counted.
+  const tabCounts = useMemo((): TasksTabCounts => {
     const scopedTasks = scopeTasksByProject(tasks, selectedProjectId)
-    const allActive = getFilteredTasks(scopedTasks, 'all', 'view', projects)
-    const todayResult = getTodayTasks(scopedTasks, projects)
-    const todayCount =
-      todayResult.overdue.filter((t) => t.parentId === null).length +
-      todayResult.today.filter((t) => t.parentId === null).length
+    const countWindow = (window: TaskDueWindow): number =>
+      getTasksInDueWindow(scopedTasks, projects, window).filter((t) => t.parentId === null).length
 
     return {
-      today: todayCount,
-      all: allActive.length
+      all: getFilteredTasks(scopedTasks, 'all', 'view', projects).length,
+      today: countWindow('today'),
+      tomorrow: countWindow('tomorrow'),
+      next7: countWindow('next7')
     }
   }, [tasks, projects, selectedProjectId])
 
-  const allTabDoneTasks = useMemo(
-    () => scopeTasksByProject(getCompletedTasks(tasks), selectedProjectId),
-    [tasks, selectedProjectId]
-  )
-
-  const todayTabDoneTasks = useMemo(
-    () => scopeTasksByProject(getCompletedTodayTasks(tasks), selectedProjectId),
-    [tasks, selectedProjectId]
-  )
+  // Done section per scope. "Today" keeps its completed-today rule — that is the
+  // day's progress, and it is what the celebration counts. The other windows
+  // show what is already done *in* the window, by due date.
+  const doneTasks = useMemo(() => {
+    const completed =
+      activeInternalTab === 'all'
+        ? getCompletedTasks(tasks)
+        : activeInternalTab === 'today'
+          ? getCompletedTodayTasks(tasks)
+          : getCompletedTasksInDueWindow(tasks, activeInternalTab)
+    return scopeTasksByProject(completed, selectedProjectId)
+  }, [activeInternalTab, tasks, selectedProjectId])
 
   // Visibility constants
   const showFilterBar = true
@@ -1190,34 +1203,44 @@ export const TasksPage = ({
             transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
             className="flex flex-1 min-h-0 flex-col overflow-hidden"
           >
-            {/* Content Body - Today Tab (flat listing of overdue + today tasks) */}
-            {activeInternalTab === 'today' && (
+            {/* Content Body - due-date window (flat listing, overdue first) */}
+            {windowFilteredTasks !== null && (
               <div className="flex flex-1 flex-col overflow-hidden">
-                <TaskList
-                  tasks={todayFilteredTasks}
-                  projects={projects}
-                  selectedId="today"
-                  selectedType="view"
-                  onToggleComplete={handleToggleComplete}
-                  onUpdateTask={handleUpdateTask}
-                  onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
-                  onQuickAdd={handleQuickAdd}
-                  onFocusQuickAdd={focusQuickAdd}
-                  onTaskClick={handleTaskClick}
-                  onNoteClick={(...args) => void handleNoteClick(...args)}
-                  selectedTaskId={detailTaskId}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedIds={selection.selectedIds}
-                  onToggleSelect={toggleTask}
-                  onShiftSelect={selectRange}
-                  onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
-                  onAddSubtask={subtaskManagement.handleAddSubtask}
-                  sortField={sort.field}
-                  sortDirection={sort.direction}
-                  showProjectBadge={!selectedProjectId}
-                  doneTasks={todayTabDoneTasks}
-                  getOrderedTasks={getOrderedTasks}
-                />
+                {showFilterEmptyState ? (
+                  <FilterEmptyState
+                    filters={filters}
+                    projects={projects}
+                    onClearFilters={clearFiltersAndClearSaved}
+                  />
+                ) : (
+                  <TaskList
+                    tasks={windowFilteredTasks}
+                    projects={projects}
+                    // Doubles as the scroll-position key, so each window scrolls
+                    // independently.
+                    selectedId={activeInternalTab}
+                    selectedType="view"
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
+                    onQuickAdd={handleQuickAdd}
+                    onFocusQuickAdd={focusQuickAdd}
+                    onTaskClick={handleTaskClick}
+                    onNoteClick={(...args) => void handleNoteClick(...args)}
+                    selectedTaskId={detailTaskId}
+                    isSelectionMode={selection.isSelectionMode}
+                    selectedIds={selection.selectedIds}
+                    onToggleSelect={toggleTask}
+                    onShiftSelect={selectRange}
+                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                    onAddSubtask={subtaskManagement.handleAddSubtask}
+                    sortField={sort.field}
+                    sortDirection={sort.direction}
+                    showProjectBadge={!selectedProjectId}
+                    doneTasks={doneTasks}
+                    getOrderedTasks={getOrderedTasks}
+                  />
+                )}
               </div>
             )}
 
@@ -1253,7 +1276,7 @@ export const TasksPage = ({
                     sortField={sort.field}
                     sortDirection={sort.direction}
                     showProjectBadge={!selectedProjectId}
-                    doneTasks={allTabDoneTasks}
+                    doneTasks={doneTasks}
                     getOrderedTasks={getOrderedTasks}
                   />
                 )}

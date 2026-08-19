@@ -431,10 +431,12 @@
     },
     "defaultView": {
       "label": "Default View",
-      "description": "Which tab the Tasks page opens on",
+      "description": "Which scope the Tasks page opens on",
       "options": {
         "all": "All",
-        "today": "Today"
+        "today": "Today",
+        "tomorrow": "Tomorrow",
+        "next7": "Next 7 days"
       },
       "error": "Failed to update default view"
     },

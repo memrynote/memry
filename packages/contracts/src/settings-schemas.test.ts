@@ -230,6 +230,21 @@ describe('TaskSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('accepts every scope the tasks toolbar offers, old spellings included', () => {
+    for (const defaultView of ['all', 'today', 'tomorrow', 'next7']) {
+      const result = TaskSettingsSchema.safeParse({ ...TASK_SETTINGS_DEFAULTS, defaultView })
+      expect(result.success, defaultView).toBe(true)
+    }
+  })
+
+  it('rejects a defaultView that is not a known scope', () => {
+    const result = TaskSettingsSchema.safeParse({
+      ...TASK_SETTINGS_DEFAULTS,
+      defaultView: 'next30'
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejects invalid defaultSortOrder', () => {
     const result = TaskSettingsSchema.safeParse({
       ...TASK_SETTINGS_DEFAULTS,

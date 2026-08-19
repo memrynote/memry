@@ -362,6 +362,83 @@ export const getTodayTasks = (tasks: Task[], projects: Project[]): TodayViewTask
   }
 }
 
+/**
+ * The due-date windows the Tasks page can be scoped to. `all` is deliberately
+ * not one of these: it is "no window at all", not a range.
+ */
+export type TaskDueWindow = 'today' | 'tomorrow' | 'next7'
+
+/** Inclusive day offsets from today, as [first day, last day]. */
+const DUE_WINDOW_DAYS: Record<TaskDueWindow, [number, number]> = {
+  today: [0, 0],
+  tomorrow: [1, 1],
+  next7: [0, 6]
+}
+
+/**
+ * Flat, ordered task list for one due-date window, overdue work first.
+ *
+ * `today` and `next7` lead with overdue tasks — that work is still owed inside
+ * the window, and `today` has always shown it. `tomorrow` is a preview of a
+ * single day, so it stays strictly that day and carries no overdue backlog.
+ */
+export const getTasksInDueWindow = (
+  tasks: Task[],
+  projects: Project[],
+  window: TaskDueWindow
+): Task[] => {
+  const todayStart = startOfDay(new Date())
+  const [firstDay, lastDay] = DUE_WINDOW_DAYS[window]
+  const windowStart = addDays(todayStart, firstDay)
+  const windowEnd = endOfDay(addDays(todayStart, lastDay))
+  const includeOverdue = window !== 'tomorrow'
+
+  const overdue: Task[] = []
+  const inWindow: Task[] = []
+
+  tasks.forEach((task) => {
+    if (isTaskCompleted(task, projects)) return
+    if (task.parentId !== null) return
+    if (!task.dueDate) return
+
+    const dueDate = startOfDay(task.dueDate)
+
+    if (isBefore(dueDate, todayStart)) {
+      if (includeOverdue) overdue.push(task)
+    } else if (isWithinInterval(task.dueDate, { start: windowStart, end: windowEnd })) {
+      inWindow.push(task)
+    }
+  })
+
+  return [
+    ...includeSubtasksForMatchingParents(overdue, tasks),
+    ...includeSubtasksForMatchingParents(inWindow, tasks)
+  ]
+}
+
+/**
+ * Done tasks to show under a due-date window.
+ *
+ * Scoped by due date, not by completion date — "what in this window is already
+ * finished". `today` is the exception and keeps its own completed-today rule
+ * (see `getCompletedTodayTasks`), which is what the day's progress celebrates.
+ */
+export const getCompletedTasksInDueWindow = (tasks: Task[], window: TaskDueWindow): Task[] => {
+  const todayStart = startOfDay(new Date())
+  const [firstDay, lastDay] = DUE_WINDOW_DAYS[window]
+  const windowStart = addDays(todayStart, firstDay)
+  const windowEnd = endOfDay(addDays(todayStart, lastDay))
+
+  return tasks.filter(
+    (task) =>
+      task.completedAt !== null &&
+      task.archivedAt === null &&
+      task.parentId === null &&
+      task.dueDate !== null &&
+      isWithinInterval(task.dueDate, { start: windowStart, end: windowEnd })
+  )
+}
+
 export interface TodayWithWeekTasks {
   overdue: Task[]
   today: Task[]

@@ -73,8 +73,10 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
 export const TaskSettingsSchema = z.object({
   defaultProjectId: z.string().nullable(),
   defaultSortOrder: z.enum(['manual', 'dueDate', 'priority', 'createdAt']),
-  // Which tab the Tasks page opens on when a tab has no saved view state.
-  defaultView: z.enum(['today', 'all']),
+  // Which scope the Tasks page opens on when a tab has no saved view state.
+  // `tomorrow` and `next7` are additive: older values stay valid, and the
+  // renderer coerces anything it does not recognise back to `all`.
+  defaultView: z.enum(['today', 'tomorrow', 'next7', 'all']),
   staleInboxDays: z.number().int().min(1).max(90)
 })
 

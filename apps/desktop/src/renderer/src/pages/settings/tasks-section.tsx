@@ -25,6 +25,14 @@ const SORT_OPTIONS = [
   { value: 'createdAt', labelKey: 'tasks.sortOrder.options.createdAt' }
 ] as const
 
+// Same order as the scope dropdown in the tasks toolbar.
+const DEFAULT_VIEW_OPTIONS = [
+  { value: 'all', labelKey: 'tasks.defaultView.options.all' },
+  { value: 'today', labelKey: 'tasks.defaultView.options.today' },
+  { value: 'tomorrow', labelKey: 'tasks.defaultView.options.tomorrow' },
+  { value: 'next7', labelKey: 'tasks.defaultView.options.next7' }
+] as const
+
 export function TasksSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useTaskPreferences()
@@ -52,7 +60,7 @@ export function TasksSettings() {
 
   const handleDefaultViewChange = useCallback(
     async (value: string) => {
-      const defaultView = value as 'today' | 'all'
+      const defaultView = value as (typeof DEFAULT_VIEW_OPTIONS)[number]['value']
       const success = await updateSettings({ defaultView })
       if (!success) toast.error(t('tasks.defaultView.error'))
     },
@@ -143,8 +151,11 @@ export function TasksSettings() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('tasks.defaultView.options.all')}</SelectItem>
-              <SelectItem value="today">{t('tasks.defaultView.options.today')}</SelectItem>
+              {DEFAULT_VIEW_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </SettingRow>

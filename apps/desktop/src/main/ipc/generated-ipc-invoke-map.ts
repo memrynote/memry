@@ -290,7 +290,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getNoteEditorSettings": (...args: []) => Awaited<import("./settings-handlers").NoteEditorSettings>
   "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; }>
   "settings:getTabSettings": (...args: []) => Awaited<import("./settings-handlers").TabSettings>
-  "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today"; staleInboxDays: number; }>
+  "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today" | "tomorrow" | "next7"; staleInboxDays: number; }>
   "settings:getTerminalCommandStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandStatus>>
   "settings:getVoiceModelStatus": (...args: []) => Awaited<import("../inbox/voice-model").VoiceModelStatus>
   "settings:getVoiceRecordingReadiness": (...args: []) => Awaited<Promise<import("../inbox/voice-transcription-settings").VoiceRecordingReadiness>>
@@ -318,7 +318,7 @@ export interface MainIpcInvokeHandlers {
   "settings:setNoteEditorSettings": (...args: [Partial<import("./settings-handlers").NoteEditorSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTabSettings": (...args: [Partial<import("./settings-handlers").TabSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
-  "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today" | "tomorrow" | "next7"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTerminalCommandDefaultVault": (...args: [string]) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; memoNameMode: "timestamp" | "none" | "transcript"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>

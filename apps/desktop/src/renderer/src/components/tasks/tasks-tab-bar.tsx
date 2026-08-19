@@ -1,24 +1,20 @@
-import { useCallback, useId, useRef } from 'react'
-import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { Settings, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { Picker } from '@/components/ui/picker'
 import { ProjectPicker } from '@/components/tasks/project-picker'
+import type { TaskDueWindow } from '@/lib/task-utils'
 import type { Project, SavedFilter } from '@/data/tasks-data'
 
-export type TasksInternalTab = 'today' | 'all'
+/** The scope the task list is showing: every open task, or one due-date window. */
+export type TasksInternalTab = 'all' | TaskDueWindow
 
-interface TabConfig {
-  id: TasksInternalTab
-}
+export type TasksTabCounts = Record<TasksInternalTab, number>
 
 interface TasksTabBarProps {
   activeTab: TasksInternalTab
   onTabChange: (tab: TasksInternalTab) => void
-  counts: {
-    today: number
-    all: number
-  }
+  counts: TasksTabCounts
   projects?: Project[]
   selectedProjectId?: string | null
   onProjectChange?: (projectId: string | null) => void
@@ -30,7 +26,7 @@ interface TasksTabBarProps {
   className?: string
 }
 
-const TABS: TabConfig[] = [{ id: 'today' }, { id: 'all' }]
+const TABS: TasksInternalTab[] = ['all', 'today', 'tomorrow', 'next7']
 
 export const TasksTabBar = ({
   activeTab,
@@ -47,61 +43,14 @@ export const TasksTabBar = ({
   className
 }: TasksTabBarProps): React.JSX.Element => {
   const { t } = useT('tasks')
-  const prefersReducedMotion = useReducedMotion()
-  const tabPillGroupId = useId()
-  const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement> | null>(null)
-  if (tabRefs.current === null) {
-    tabRefs.current = new Map()
-  }
-
-  const focusTab = useCallback((tabId: TasksInternalTab) => {
-    tabRefs.current?.get(tabId)?.focus()
-  }, [])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, currentIndex: number) => {
-      let nextIndex: number | null = null
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault()
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : TABS.length - 1
-          break
-        case 'ArrowRight':
-          e.preventDefault()
-          nextIndex = currentIndex < TABS.length - 1 ? currentIndex + 1 : 0
-          break
-        case 'Home':
-          e.preventDefault()
-          nextIndex = 0
-          break
-        case 'End':
-          e.preventDefault()
-          nextIndex = TABS.length - 1
-          break
-      }
-      if (nextIndex !== null) {
-        const nextTab = TABS[nextIndex]
-        focusTab(nextTab.id)
-        onTabChange(nextTab.id)
-      }
-    },
-    [focusTab, onTabChange]
-  )
-
-  const setTabRef = useCallback(
-    (tabId: TasksInternalTab) => (el: HTMLButtonElement | null) => {
-      if (el) {
-        tabRefs.current?.set(tabId, el)
-      } else {
-        tabRefs.current?.delete(tabId)
-      }
-    },
-    []
-  )
 
   const activeProjects = projects.filter((p) => !p.isArchived)
-  const getTabLabel = (tabId: TasksInternalTab): string =>
-    tabId === 'today' ? t('page.tabs.today') : t('page.tabs.all')
+  const getTabLabel = (tab: TasksInternalTab): string => t(`page.tabs.${tab}`)
+
+  const handleTabChange = (value: string): void => {
+    const next = TABS.find((tab) => tab === value)
+    if (next && next !== activeTab) onTabChange(next)
+  }
 
   return (
     <div
@@ -110,64 +59,51 @@ export const TasksTabBar = ({
         className
       )}
     >
-      {/* Segmented Tab Control */}
-      <LayoutGroup id={tabPillGroupId}>
-        <div
-          className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
-          role="tablist"
+      {/* Due-window scope dropdown */}
+      <Picker value={activeSavedFilterId ? null : activeTab} onValueChange={handleTabChange}>
+        <Picker.Trigger
+          variant="button"
+          chevron
           aria-label={t('page.tabs.label')}
+          className="h-auto rounded-[5px] px-2.5 py-1 text-[12px] leading-4 font-medium shadow-none"
         >
-          {TABS.map((tab, index) => {
-            const isActive = activeTab === tab.id && !activeSavedFilterId
-            const count = counts[tab.id]
+          <span className="flex items-baseline gap-1">
+            <span>{getTabLabel(activeTab)}</span>
+            <span
+              className={cn(
+                'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums',
+                'text-muted-foreground/60',
+                counts[activeTab] === 0 && 'invisible'
+              )}
+            >
+              {counts[activeTab]}
+            </span>
+          </span>
+        </Picker.Trigger>
+        <Picker.Content width={180} align="start">
+          <Picker.List>
+            {TABS.map((tab) => (
+              <Picker.Item
+                key={tab}
+                value={tab}
+                label={getTabLabel(tab)}
+                indicator="check"
+                trailing={
+                  counts[tab] > 0 ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {counts[tab]}
+                    </span>
+                  ) : undefined
+                }
+              />
+            ))}
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
 
-            return (
-              <button
-                key={tab.id}
-                ref={setTabRef(tab.id)}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`tabpanel-${tab.id}`}
-                tabIndex={isActive ? 0 : -1}
-                onClick={() => onTabChange(tab.id)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                className={cn(
-                  'relative flex items-center py-1 px-2.5 gap-1 transition-colors duration-150',
-                  'focus-visible:outline-none active:scale-[0.97]',
-                  isActive
-                    ? 'text-background font-medium'
-                    : 'text-muted-foreground hover:text-foreground/90 hover:bg-surface-active/50'
-                )}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="tasks-tab-pill"
-                    aria-hidden="true"
-                    transition={
-                      prefersReducedMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', bounce: 0, duration: 0.35 }
-                    }
-                    className="absolute inset-0 bg-foreground"
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-1">
-                  <span className="text-[12px] leading-4">{getTabLabel(tab.id)}</span>
-                  <span
-                    className={cn(
-                      'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
-                      count === 0 && 'invisible',
-                      isActive ? 'text-background/45' : 'text-muted-foreground/60'
-                    )}
-                  >
-                    {count}
-                  </span>
-                </span>
-              </button>
-            )
-          })}
-          {/* Saved Filter Pills — inside segmented control */}
+      {/* Saved Filter Pills */}
+      {savedFilters.length > 0 && (
+        <div className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border">
           {savedFilters.map((sf) => {
             const isActive = activeSavedFilterId === sf.id
             return (
@@ -175,7 +111,8 @@ export const TasksTabBar = ({
                 key={sf.id}
                 data-testid="saved-filter-pill"
                 className={cn(
-                  'group/pill flex items-center whitespace-nowrap border-s border-border transition-colors',
+                  'group/pill flex items-center whitespace-nowrap transition-colors',
+                  'not-first:border-s not-first:border-border',
                   isActive
                     ? 'saved-filter-active bg-task-star/15 text-task-star font-medium'
                     : 'text-muted-foreground/60 hover:text-foreground/90 hover:bg-surface-active/50'
@@ -204,7 +141,7 @@ export const TasksTabBar = ({
             )
           })}
         </div>
-      </LayoutGroup>
+      )}
 
       {/* Project scope dropdown — shared ProjectPicker (search + All projects + create) */}
       {onProjectChange && (
