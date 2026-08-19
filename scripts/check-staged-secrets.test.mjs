@@ -101,9 +101,7 @@ describe('check-staged-secrets keyword word boundaries', () => {
 
   it('still flags env-style credential assignments', () => {
     assert.deepEqual(envRules('API_TOKEN=a1b2c3d4e5f67890abcdef'), ['high-risk-secret-assignment'])
-    assert.deepEqual(envRules('export DB_PASSWORD=hunter2hunter2'), [
-      'high-risk-secret-assignment'
-    ])
+    assert.deepEqual(envRules('export DB_PASSWORD=hunter2hunter2'), ['high-risk-secret-assignment'])
   })
 })
 
@@ -120,5 +118,17 @@ describe('check-staged-secrets fallback chains', () => {
     assert.deepEqual(rules("  refreshToken: tokens.refreshToken ?? 'hunter2secretvalue'"), [
       'high-risk-secret-assignment'
     ])
+  })
+})
+
+describe('check-staged-secrets TypeScript non-null assertions', () => {
+  it('ignores a secret-named key assigned an env reference with a non-null assertion', () => {
+    assert.deepEqual(rules('  refreshToken: process.env.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN!,'), [])
+  })
+
+  it('still flags a bare secret-looking word that merely ends in an exclamation mark', () => {
+    // The `!` is only tolerated closing a member path. Stripping it from any
+    // value would let a lone word read as an identifier and slip through.
+    assert.deepEqual(rules('  refreshToken: hunter2secretvalue!'), ['high-risk-secret-assignment'])
   })
 })

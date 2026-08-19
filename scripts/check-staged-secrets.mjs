@@ -123,7 +123,11 @@ function isSourceCodeReferenceValue(filePath, value) {
   return (
     isTypeScriptTypeValue(normalized) ||
     /^[A-Za-z_$][\w$]*$/.test(normalized) ||
-    /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)+$/.test(normalized) ||
+    // Member path, optionally closed by a TypeScript non-null assertion
+    // (`process.env.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN!`). The trailing `!` is
+    // only tolerated here, not on a bare identifier, so a lone `hunter2!`
+    // stays flagged rather than reading as a code reference.
+    /^[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)+!?$/.test(normalized) ||
     isChainedCodeCallValue(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\[[^\]]+\])+$/.test(normalized) ||
     /^[A-Za-z_$][\w$]*\([^;]*\)$/.test(normalized) ||
