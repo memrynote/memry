@@ -236,6 +236,25 @@ Attachments and vault media reach the renderer through the custom `memry-file://
 - `window.open` on a memry-file URL never opens a window or reaches `shell.openExternal`: the main process resolves the path with the same rules and, if it passes the directory check, opens the file in the OS default app via `shell.openPath`.
 - In-window navigation is guarded the same way: a `will-frame-navigate` listener on every window's webContents (`src/main/index.ts`, policy in `src/main/lib/frame-navigation.ts`) pins the main frame to the local app document (the packaged `file://` page, or the dev-server origin in dev) plus `memry-file:`. External `http(s)`/`mailto` links cancel the navigation and open in the OS browser; `javascript:`, `data:`, `file:` and unknown schemes are denied outright. Subframes stay permissive for `http(s)` — the CSP `frame-src` directive is the origin gate for embeds like youtube-nocookie — while local and script schemes remain blocked there too.
 
+### What a note stores for an attachment
+
+A note never stores the absolute `memry-file://` URL — that carries one machine's vault path, so the same note on a second device resolves it to nothing. What lands in the markdown is a path relative to the note itself:
+
+- `![caption](../attachments/<noteId>/abc123-photo.png)` for an image
+- `<!-- file:{"url":"../attachments/<noteId>/abc123-plan.pdf", …} -->` for the file block
+
+`saveAttachment` (`src/main/vault/attachments.ts`) builds that ref for every caller — the editor's paste/drop, sidebar drops, and every importer — by looking the note's own path up in the index. A note the index cannot place (an importer writing assets before the note exists) falls back to the absolute URL and logs it; that is the shape attachments had before, so nothing is left worse off. Attachment bytes are unaffected either way: sync moves them by the note's `attachments/<noteId>/` folder, not by parsing URLs.
+
+Reading tolerates both shapes and nothing is rewritten on disk, so notes written by older versions keep their absolute URLs and keep rendering on the device that wrote them.
+
+The relative ref resolves back to a `memry-file://` URL at render time only, so the vault stays readable by Obsidian:
+
+- Built-in image/video/audio blocks go through BlockNote's `resolveFileUrl` (`createNoteFileUrlResolver` → `resolveNoteRelativeUrl`).
+- The `file` block is a custom spec that renders its own URL, so the same resolver reaches it through `note-file-url-context.tsx`. The resolved URL is never written back to the block's props — that would put the machine path back into the markdown.
+- Only the note page passes the note's path as a prop; the journal, canvas cards and a project's home note look it up by note id, from the same index row the write side reads.
+
+One consequence to know about: because the ref is relative to the note's folder and attachments stay under `attachments/<noteId>/`, moving a note to a different folder depth leaves its existing embeds pointing at the wrong place. Nothing rewrites refs on move yet.
+
 ### Text colors in markdown
 
 Editor colors persist in two Obsidian-compatible forms:
