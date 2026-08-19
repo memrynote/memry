@@ -56,16 +56,21 @@ feature surface.
 
 When you want the same item open twice — two places in a long note, a reference you keep alongside your work — ask for a new tab explicitly from the sidebar:
 
+**Open in New Tab** is in the context menu of every sidebar row that opens a tab: notes, folders, canvases, projects, tags, bookmarks, and the whole-app views at the top of the sidebar. It focuses the new tab.
+
+The modifier gestures apply to those top-of-sidebar views:
+
 | Gesture                                      | Result                              |
 | -------------------------------------------- | ----------------------------------- |
 | <kbd>⌘</kbd> (macOS) / <kbd>Ctrl</kbd> click | Opens another tab and focuses it    |
 | <kbd>⌘</kbd>+<kbd>⇧</kbd> click              | Opens another tab in the background |
 | Middle-click                                 | Opens another tab in the background |
-| Right-click → **Open in New Tab**            | Opens another tab and focuses it    |
+
+In the notes tree, <kbd>⌘</kbd>/<kbd>Ctrl</kbd> click selects several rows at once instead — use the context menu there.
 
 Each copy is an independent tab: close, pin, or move one and the other stays put. Edits made in either appear in both.
 
-Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. These gestures focus the tab that already exists; the background gestures leave your focus where it is.
+Whole-app views — Home, Inbox, Calendar, Tasks, Journal, Graph, and Tags — stay single-instance, since a second copy would show exactly the same thing. Their rows leave **Open in New Tab** out of the menu rather than offer a command that would only refocus the tab you already have, and the modifier gestures focus that tab instead of duplicating it.
 
 ## Mouse Navigation
 
@@ -79,13 +84,21 @@ Drag a tab to the left, right, top, or bottom edge of the window to open a secon
 
 ### Open to the Side
 
-Right-click any sidebar item and choose **Open to the Side** to split the current pane and open
-that item in the new pane in one step. The new pane takes focus, so you can start reading or
-editing straight away.
+Right-click any sidebar item and choose **Open to the Side** to put that item in the pane beside
+this one, in one step. If there is no pane beside this one yet, the workspace splits to make it.
+The item's pane takes focus, so you can start reading or editing straight away.
 
-The item always lands in the pane that gesture created — even when the item is already open in
-another pane (you get a second, independent copy), and even if something else takes focus while
-the split is being drawn. Use it to put a note beside a canvas, or a project beside your journal.
+Where there is already a second pane, that pane is reused rather than split again — so working
+through a few items in turn leaves you with two panes, not five.
+
+The item lands in the pane the gesture targeted, and nothing else comes with it: the new pane
+holds what you asked for, not a copy of what you were reading. That holds even when the item is
+already open in the other pane (you get a second, independent copy) and even if something else
+takes focus while the split is being drawn. Use it to put a note beside a canvas, or a project
+beside your journal.
+
+Whole-app views can be opened to the side too. Home in one pane and Tasks in the other is a
+layout, not a duplicate, so the single-instance rule does not apply here.
 
 ### Drop Zones
 
