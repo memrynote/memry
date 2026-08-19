@@ -35,11 +35,7 @@ export type LandingEventName =
   | 'landing_account_signout'
 
 export type LandingCampaignKey =
-  | 'utm_source'
-  | 'utm_medium'
-  | 'utm_campaign'
-  | 'utm_content'
-  | 'utm_term'
+  'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'
 
 export type LandingCampaignData = Partial<Record<LandingCampaignKey, string>>
 
@@ -159,4 +155,12 @@ export function trackLandingEvent(name: LandingEventName, target: string): void 
     name,
     createLandingEventData(target, window.location.pathname, window.location.search)
   )
+}
+
+// Autocapture only sees exceptions that reach the top. Anything we catch and
+// turn into a friendly message has to be reported by hand, or the failure goes
+// dark in Error Tracking.
+export function trackLandingException(error: unknown, context: string): void {
+  if (!init()) return
+  posthog.captureException(error, { context })
 }
