@@ -9,7 +9,8 @@ const contentAreaMocks = vi.hoisted(() => ({
   blockNoteOptions: null as any,
   blocks: new Map<string, any>(),
   suggestionControllers: [] as any[],
-  pasteSelect: null as null | ((option: 'url' | 'mention' | 'embed', url: string) => void),
+  pasteSelect: null as
+    null | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
   handleChange: vi.fn(),
   retryAI: vi.fn(),
   openSidebarItem: vi.fn(),
@@ -306,6 +307,28 @@ function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   }
   contentAreaMocks.blocks.set(id, block)
   return block
+}
+
+function textCell(text: string): any[] {
+  return [{ type: 'text', text, styles: {} }]
+}
+
+// A table block's content is `{ type: 'tableContent', rows }`, not the inline
+// array every other block carries.
+function createTableBlock(id: string, rows: any[][]): any {
+  return createBlock(id, {
+    type: 'table',
+    content: { type: 'tableContent', rows: rows.map((cells) => ({ cells })) }
+  })
+}
+
+// `editor.document` is a getter over a fixed block list; swap in a document the
+// test owns so the link-preview walk has something to find.
+function setDocument(blocks: any[]): void {
+  Object.defineProperty(contentAreaMocks.editor, 'document', {
+    value: blocks,
+    configurable: true
+  })
 }
 
 function resetEditor(): void {
@@ -742,6 +765,111 @@ describe('ContentArea', () => {
     contentAreaMocks.editor.getTextCursorPosition.mockReturnValueOnce({ block: plainBlock })
     contentAreaMocks.pasteSelect?.('url', 'https://example.com')
     expect(contentAreaMocks.editor.insertBlocks).toHaveBeenCalledTimes(1)
+  })
+
+  it('turns a URL pasted into a table cell into a mention without touching the rest of the table', async () => {
+    const tableBlock = createTableBlock('table-mention', [
+      [textCell('Docs')],
+      [textCell('see https://youtu.be/video-1 for more')]
+    ])
+    setDocument([tableBlock])
+
+    render(<ContentArea noteId="note-1" />)
+
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: tableBlock })
+    contentAreaMocks.pasteSelect?.('mention', 'https://youtu.be/video-1')
+
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'table-mention' }),
+      {
+        content: {
+          type: 'tableContent',
+          rows: [
+            { cells: [textCell('Docs')] },
+            { cells: [[expect.objectContaining({ type: 'linkMention' })]] }
+          ]
+        }
+      }
+    )
+
+    // The preview fetch re-finds the mention by walking the document, which
+    // also has to see into the table, and enriches it in place.
+    await waitFor(() =>
+      expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
+        'https://youtu.be/video-1',
+        'youtu.be',
+        'Video',
+        'icon.png',
+        'YouTube'
+      )
+    )
+    expect(tableBlock.content.rows[1].cells[0][0]).toMatchObject({
+      type: 'linkMention',
+      props: { title: 'Video' }
+    })
+    expect(tableBlock.content.rows[0].cells[0]).toEqual(textCell('Docs'))
+  })
+
+  it('drops the URL from its table cell and puts the embed or bookmark after the table', async () => {
+    const tableBlock = createTableBlock('table-embed', [
+      [
+        { type: 'tableCell', props: { colspan: 1 }, content: [] },
+        {
+          type: 'tableCell',
+          props: { colspan: 1 },
+          content: [{ type: 'text', text: 'https://youtu.be/video-1', styles: {} }]
+        }
+      ]
+    ])
+    setDocument([tableBlock])
+
+    render(<ContentArea noteId="note-1" />)
+
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: tableBlock })
+    contentAreaMocks.pasteSelect?.('embed', 'https://youtu.be/video-1')
+
+    expect(tableBlock.content.rows[0].cells[1]).toEqual({
+      type: 'tableCell',
+      props: { colspan: 1 },
+      content: []
+    })
+    expect(contentAreaMocks.editor.insertBlocks).toHaveBeenCalledWith(
+      [
+        {
+          type: 'youtubeEmbed',
+          props: { videoId: 'video-1', videoUrl: 'https://youtu.be/video-1' }
+        }
+      ],
+      expect.objectContaining({ id: 'table-embed' }),
+      'after'
+    )
+
+    const bookmarkTable = createTableBlock('table-bookmark', [
+      [textCell('https://example.com/post')]
+    ])
+    setDocument([bookmarkTable])
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: bookmarkTable })
+    contentAreaMocks.pasteSelect?.('bookmark', 'https://example.com/post')
+
+    expect(bookmarkTable.content.rows[0].cells[0]).toEqual([])
+    expect(contentAreaMocks.editor.insertBlocks).toHaveBeenLastCalledWith(
+      [{ type: 'bookmark', props: { url: 'https://example.com/post', domain: 'example.com' } }],
+      expect.objectContaining({ id: 'table-bookmark' }),
+      'after'
+    )
+  })
+
+  it('leaves a table alone when the pasted URL is in none of its cells', () => {
+    const tableBlock = createTableBlock('table-miss', [[textCell('nothing here')]])
+    setDocument([tableBlock])
+
+    render(<ContentArea noteId="note-1" />)
+
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: tableBlock })
+    contentAreaMocks.pasteSelect?.('mention', 'https://example.com/post')
+
+    expect(contentAreaMocks.editor.updateBlock).not.toHaveBeenCalled()
+    expect(tableBlock.content.rows[0].cells[0]).toEqual(textCell('nothing here'))
   })
 
   it('exposes upload handling success and failure through the BlockNote config', async () => {
