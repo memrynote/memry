@@ -1,14 +1,11 @@
 {
   "title": "期刊",
   "section": {
-    "journal": "期刊",
     "aiConnections": "AI 連接",
     "todaysNotes": "今日筆記",
     "todaysSchedule": "今日行程",
     "todaysTasks": "今日任務",
     "tasks": "任務",
-    "calendarEvents": "行事曆活動",
-    "overdueTasks": "逾期任務",
     "technicalDetails": "技術細節"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "日誌設定",
     "fullMode": "完整模式",
     "compactMode": "精簡模式",
-    "focusMode": "專注模式",
-    "exitFocusMode": "退出專注模式",
-    "enterFocusMode": "進入專注模式",
     "createNote": "建立筆記",
     "createNewNote": "建立新筆記",
     "showLess": "顯示較少",
@@ -34,8 +28,6 @@
     "reloadJournal": "重新載入日誌",
     "goToToday": "前往今天",
     "copyUnsavedContent": "將尚未儲存的內容複製到剪貼簿",
-    "openNoteFullPage": "在完整頁面中開啟筆記",
-    "closeNoteDrawer": "關閉筆記抽屜",
     "addBookmark": "新增書籤",
     "removeBookmark": "移除書籤"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "你正在計畫什麼...",
       "today": "你今天想到了什麼...",
-      "past": "反思今天...",
-      "default": "開始書寫..."
-    },
-    "toolbar": {
-      "ariaLabel": "文字格式",
-      "bold": "粗體",
-      "italic": "斜體",
-      "underline": "底線",
-      "strikethrough": "刪除線",
-      "link": "連結",
-      "image": "圖片",
-      "moreOptions": "更多選項",
-      "heading1": "標題 1",
-      "heading2": "標題 2",
-      "heading3": "標題 3",
-      "bulletList": "項目符號列表",
-      "numberedList": "編號清單",
-      "checklist": "檢查清單",
-      "quote": "引用",
-      "divider": "分隔線",
-      "codeBlock": "程式碼區塊"
-    },
-    "prompt": {
-      "enterUrl": "輸入網址："
+      "past": "反思今天..."
     },
     "upload": {
-      "noEntry": "無法上傳圖片：未選擇日記條目",
       "failed": "圖片上傳失敗"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "與 {label} 的連結，{scorePercent}% 匹配"
   },
   "count": {
-    "items": "項目",
     "note": "筆記",
     "day": "天",
     "days": "天數",
     "event": "活動",
     "events": "活動（複數）",
-    "meeting": "會議",
-    "meetings": "會議（複數）",
     "task": "任務",
-    "tasks": "任務（複數）",
     "todo": "待辦",
-    "people": "{count} 人",
     "moreConnections": "+ {count} 更多連接",
     "moreConnections_plural": "+ {count} 更多連接",
     "moreNotes": "+ {count} 更多筆記",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "筆記 - {date}",
     "openAria": "打開 {title}，建立於 {time}"
-  },
-  "tag": {
-    "suggestionsAria": "標籤建議",
-    "empty": {
-      "title": "尚無標籤",
-      "description": "輸入以建立新標籤"
-    },
-    "groupTitle": "標籤",
-    "create": "建立 #{query}",
-    "ariaLabel": "標籤：{tag}，點擊以篩選"
-  },
-  "wiki": {
-    "suggestionsAria": "頁面建議",
-    "empty": {
-      "title": "未找到頁面"
-    },
-    "groupRecent": "最近使用",
-    "groupAllPages": "所有頁面",
-    "createNewPage": "建立新頁面",
-    "ariaLabel": "連結至 {title}"
   },
   "error": {
     "title": "日記錯誤",

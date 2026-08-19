@@ -1,14 +1,11 @@
 {
   "title": "Päiväkirja",
   "section": {
-    "journal": "Päiväkirja",
     "aiConnections": "AI-yhteydet",
     "todaysNotes": "Päivän muistiinpanot",
     "todaysSchedule": "Tämän päivän aikataulu",
     "todaysTasks": "Tämän päivän tehtävät",
     "tasks": "Tehtävät",
-    "calendarEvents": "Kalenteri Tapahtumat",
-    "overdueTasks": "Myöhästyneet tehtävät",
     "technicalDetails": "Tekniset tiedot"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Päiväkirjan asetukset",
     "fullMode": "Täysi tila",
     "compactMode": "Kompakti tila",
-    "focusMode": "Tarkennustila",
-    "exitFocusMode": "Poistu tarkennustilasta",
-    "enterFocusMode": "Siirry tarkennustilaan",
     "createNote": "Luo muistiinpano",
     "createNewNote": "Luo uusi muistiinpano",
     "showLess": "Näytä vähemmän",
@@ -34,8 +28,6 @@
     "reloadJournal": "Lataa päiväkirja uudelleen",
     "goToToday": "Siirry kohtaan Tänään",
     "copyUnsavedContent": "Kopioi tallentamaton sisältö leikepöydälle",
-    "openNoteFullPage": "Avaa muistiinpano koko sivulta",
-    "closeNoteDrawer": "Sulje muistiinpanolaatikko",
     "addBookmark": "Lisää kirjanmerkki",
     "removeBookmark": "Poista kirjanmerkki"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Mitä suunnittelet...",
       "today": "Mitä sinulla on tänään mielessä...",
-      "past": "Mieti tätä päivää...",
-      "default": "Aloita kirjoittaminen..."
-    },
-    "toolbar": {
-      "ariaLabel": "Tekstin muotoilu",
-      "bold": "Lihavoitu",
-      "italic": "Kursiivi",
-      "underline": "Alleviivaus",
-      "strikethrough": "Yliviivattu",
-      "link": "Linkki",
-      "image": "Kuva",
-      "moreOptions": "Lisää vaihtoehtoja",
-      "heading1": "Otsikko 1",
-      "heading2": "Otsikko 2",
-      "heading3": "Otsikko 3",
-      "bulletList": "Luettelomerkit",
-      "numberedList": "Numeroitu luettelo",
-      "checklist": "Tarkistuslista",
-      "quote": "Lainaus",
-      "divider": "Jakaja",
-      "codeBlock": "Koodilohko"
-    },
-    "prompt": {
-      "enterUrl": "Anna URL-osoite:"
+      "past": "Mieti tätä päivää..."
     },
     "upload": {
-      "noEntry": "Kuvaa ei voi ladata: päiväkirjamerkintää ei ole valittu",
       "failed": "Kuvan lataaminen epäonnistui"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Yhteys {label}, {scorePercent} % vastaa"
   },
   "count": {
-    "items": "kohteita",
     "note": "huomautus",
     "day": "päivä",
     "days": "päivää",
     "event": "tapahtuma",
     "events": "tapahtumia",
-    "meeting": "kokous",
-    "meetings": "kokouksia",
     "task": "tehtävä",
-    "tasks": "tehtäviä",
     "todo": "tehdä",
-    "people": "{count} ihmisiä",
     "moreConnections": "+ {count} lisää yhteyttä",
     "moreConnections_plural": "+ {count} lisää yhteyksiä",
     "moreNotes": "+ {count} lisää huomautusta",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Huomautus - {date}",
     "openAria": "Avaa {title}, luotu osoitteessa {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tunnisteehdotukset",
-    "empty": {
-      "title": "Ei tunnisteita vielä",
-      "description": "Luo uusi tunniste kirjoittamalla"
-    },
-    "groupTitle": "Tunnisteet",
-    "create": "Luo #{query}",
-    "ariaLabel": "Tag: {tag}, napsauta suodattaaksesi"
-  },
-  "wiki": {
-    "suggestionsAria": "Sivuehdotukset",
-    "empty": {
-      "title": "Sivuja ei löytynyt"
-    },
-    "groupRecent": "Viimeaikaiset",
-    "groupAllPages": "Kaikki sivut",
-    "createNewPage": "Luo uusi sivu",
-    "ariaLabel": "Linkki {title}:ään"
   },
   "error": {
     "title": "Päiväkirjan virhe",

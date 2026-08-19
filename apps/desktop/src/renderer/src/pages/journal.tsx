@@ -62,6 +62,8 @@ import {
   type JournalDrill
 } from './journal-view-state'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
+import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import {
   createJournalDateLabels,
   formatDateToISO,
@@ -647,10 +649,35 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     []
   )
 
+  /**
+   * Scrolls to a heading by TEXT, which is all `[[#Heading]]` carries — a block
+   * id is minted per document and means nothing to the link that named it.
+   * Matching is trimmed and case-folded, and the first heading that matches
+   * wins: the link records no level and no ordinal. Same rule as the note page.
+   */
+  const scrollToHeadingText = useCallback(
+    (headingText: string, smooth: boolean): boolean => {
+      const wanted = normalizeHeading(headingText)
+      const match = headings.find((heading) => normalizeHeading(heading.text) === wanted)
+      if (!match) return false
+      return scrollToHeadingBlock(editorContainerRef.current, match.id, { smooth })
+    },
+    [headings]
+  )
+
   const handleInternalLinkClick = useCallback(
     async (linkedNoteIdOrTitle: string) => {
       const target = linkedNoteIdOrTitle?.trim()
       if (!target) return
+
+      // `[[#Heading]]` addresses the entry it is written in: no tab, no lookup,
+      // just a jump inside content already on screen.
+      const sameEntry = splitWikiTarget(target)
+      if (sameEntry.heading && !sameEntry.note) {
+        scrollToHeadingText(sameEntry.heading, !prefersReducedMotion)
+        return
+      }
+
       try {
         const resolution = await resolveWikiLink(target)
         switch (resolution.type) {
@@ -668,10 +695,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             })
             break
           case 'note':
-            // The heading rides along; the note page does the positioning. A
-            // `[[#Heading]]` written IN a journal entry stays unhandled — the
-            // journal is a separate Tiptap editor with no heading anchor of its
-            // own, and that waits on the BlockNote migration (#1547).
+            // The heading rides along; the note page does the positioning.
             openTab({
               type: 'note',
               title: resolution.title,
@@ -697,13 +721,20 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         toast.error(t('toast.openLinkedItemFailed'))
       }
     },
-    [openTab, t]
+    [openTab, t, scrollToHeadingText, prefersReducedMotion]
   )
 
-  const handleHeadingClick = useCallback((headingId: string) => {
-    const element = document.querySelector(`[data-id="${headingId}"]`)
-    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [])
+  const handleHeadingClick = useCallback(
+    (headingId: string) => {
+      // Scoped to this pane. `document.querySelector` returns whichever pane is
+      // first in the DOM, so in split view the outline scrolled the pane the
+      // user was not looking at.
+      scrollToHeadingBlock(editorContainerRef.current, headingId, {
+        smooth: !prefersReducedMotion
+      })
+    },
+    [prefersReducedMotion]
+  )
 
   const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
     setHeadings(

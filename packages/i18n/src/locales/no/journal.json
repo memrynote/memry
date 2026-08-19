@@ -1,14 +1,11 @@
 {
   "title": "Journal",
   "section": {
-    "journal": "Journal",
     "aiConnections": "AI-tilkoblinger",
     "todaysNotes": "Dagens notater",
     "todaysSchedule": "Dagens timeplan",
     "todaysTasks": "Dagens oppgaver",
     "tasks": "Oppgaver",
-    "calendarEvents": "Kalenderhendelser",
-    "overdueTasks": "Forfalte oppgaver",
     "technicalDetails": "Tekniske detaljer"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journalinnstillinger",
     "fullMode": "Full modus",
     "compactMode": "Kompakt modus",
-    "focusMode": "Fokusmodus",
-    "exitFocusMode": "Avslutt fokusmodus",
-    "enterFocusMode": "Gå inn i fokusmodus",
     "createNote": "Opprett notat",
     "createNewNote": "Opprett et nytt notat",
     "showLess": "Vis mindre",
@@ -34,8 +28,6 @@
     "reloadJournal": "Last journal på nytt",
     "goToToday": "Gå til i dag",
     "copyUnsavedContent": "Kopier ulagret innhold til utklippstavlen",
-    "openNoteFullPage": "Åpne notatet på helsiden",
-    "closeNoteDrawer": "Lukk notatskuffen",
     "addBookmark": "Legg til bokmerke",
     "removeBookmark": "Fjern bokmerket"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Hva planlegger du...",
       "today": "Hva tenker du på i dag...",
-      "past": "Reflekter over denne dagen...",
-      "default": "Begynn å skrive..."
-    },
-    "toolbar": {
-      "ariaLabel": "Tekstformatering",
-      "bold": "Fet",
-      "italic": "Kursiv",
-      "underline": "Understrek",
-      "strikethrough": "Gjennomstreking",
-      "link": "Lenke",
-      "image": "Bilde",
-      "moreOptions": "Flere alternativer",
-      "heading1": "Overskrift 1",
-      "heading2": "Overskrift 2",
-      "heading3": "Overskrift 3",
-      "bulletList": "Punktliste",
-      "numberedList": "Nummerert liste",
-      "checklist": "Sjekkliste",
-      "quote": "Sitat",
-      "divider": "Avdeler",
-      "codeBlock": "Kodeblokk"
-    },
-    "prompt": {
-      "enterUrl": "Skriv inn URL:"
+      "past": "Reflekter over denne dagen..."
     },
     "upload": {
-      "noEntry": "Kan ikke laste opp bilde: ingen journalpost valgt",
       "failed": "Kunne ikke laste opp bildet"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Tilkobling til {label}, {scorePercent} % samsvar"
   },
   "count": {
-    "items": "gjenstander",
     "note": "merk",
     "day": "dag",
     "days": "dager",
     "event": "begivenhet",
     "events": "hendelser",
-    "meeting": "møte",
-    "meetings": "møter",
     "task": "oppgave",
-    "tasks": "oppgaver",
     "todo": "å gjøre",
-    "people": "{count} mennesker",
     "moreConnections": "+ {count} mer tilkobling",
     "moreConnections_plural": "+ {count} flere tilkoblinger",
     "moreNotes": "+ {count} mer merknad",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Merk - {date}",
     "openAria": "Åpne {title}, opprettet på {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag-forslag",
-    "empty": {
-      "title": "Ingen tagger ennå",
-      "description": "Skriv for å lage en ny tag"
-    },
-    "groupTitle": "Tagger",
-    "create": "Opprett #{query}",
-    "ariaLabel": "Tag: {tag}, klikk for å filtrere"
-  },
-  "wiki": {
-    "suggestionsAria": "Sideforslag",
-    "empty": {
-      "title": "Ingen sider funnet"
-    },
-    "groupRecent": "Nylig",
-    "groupAllPages": "Alle sider",
-    "createNewPage": "Opprett ny side",
-    "ariaLabel": "Link til {title}"
   },
   "error": {
     "title": "Journalfeil",

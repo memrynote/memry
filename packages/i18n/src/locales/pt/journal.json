@@ -1,14 +1,11 @@
 {
   "title": "Diário",
   "section": {
-    "journal": "Diário",
     "aiConnections": "Conexões de IA",
     "todaysNotes": "Notas de hoje",
     "todaysSchedule": "Programação de hoje",
     "todaysTasks": "Tarefas de hoje",
     "tasks": "Tarefas",
-    "calendarEvents": "Eventos do calendário",
-    "overdueTasks": "Tarefas atrasadas",
     "technicalDetails": "Detalhes técnicos"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Configurações do diário",
     "fullMode": "Modo Completo",
     "compactMode": "Modo Compacto",
-    "focusMode": "Modo de foco",
-    "exitFocusMode": "Sair do modo de foco",
-    "enterFocusMode": "Entre no modo de foco",
     "createNote": "Criar nota",
     "createNewNote": "Criar nova nota",
     "showLess": "Mostrar menos",
@@ -34,8 +28,6 @@
     "reloadJournal": "Recarregar Diário",
     "goToToday": "Ir para hoje",
     "copyUnsavedContent": "Copie o conteúdo não salvo para a área de transferência",
-    "openNoteFullPage": "Abrir nota em página inteira",
-    "closeNoteDrawer": "Fechar gaveta de notas",
     "addBookmark": "Adicionar favorito",
     "removeBookmark": "Remover favorito"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "O que você está planejando...",
       "today": "O que está em sua mente hoje...",
-      "past": "Reflita sobre este dia...",
-      "default": "Comece a escrever..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formatação de texto",
-      "bold": "Ousado",
-      "italic": "Itálico",
-      "underline": "Sublinhado",
-      "strikethrough": "Tachado",
-      "link": "Ligação",
-      "image": "Imagem",
-      "moreOptions": "Mais opções",
-      "heading1": "Título 1",
-      "heading2": "Título 2",
-      "heading3": "Título 3",
-      "bulletList": "Lista com marcadores",
-      "numberedList": "Lista Numerada",
-      "checklist": "Lista de verificação",
-      "quote": "Citação",
-      "divider": "Divisor",
-      "codeBlock": "Bloco de código"
-    },
-    "prompt": {
-      "enterUrl": "Insira o URL:"
+      "past": "Reflita sobre este dia..."
     },
     "upload": {
-      "noEntry": "Não é possível fazer upload da imagem: nenhum lançamento de diário selecionado",
       "failed": "Falha ao carregar a imagem"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Conexão com {label}, correspondência de {scorePercent}%"
   },
   "count": {
-    "items": "itens",
     "note": "nota",
     "day": "dia",
     "days": "dias",
     "event": "evento",
     "events": "eventos",
-    "meeting": "reunião",
-    "meetings": "reuniões",
     "task": "tarefa",
-    "tasks": "tarefas",
     "todo": "fazer",
-    "people": "{count} pessoas",
     "moreConnections": "+ {count} mais conexão",
     "moreConnections_plural": "+ {count} mais conexões",
     "moreNotes": "+ {count} mais nota",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Nota - {date}",
     "openAria": "Abra {title}, criado em {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Sugestões de tags",
-    "empty": {
-      "title": "Ainda não há tags",
-      "description": "Digite para criar uma nova tag"
-    },
-    "groupTitle": "Etiquetas",
-    "create": "Criar #{query}",
-    "ariaLabel": "Tag: {tag}, clique para filtrar"
-  },
-  "wiki": {
-    "suggestionsAria": "Sugestões de páginas",
-    "empty": {
-      "title": "Nenhuma página encontrada"
-    },
-    "groupRecent": "Recente",
-    "groupAllPages": "Todas as páginas",
-    "createNewPage": "Criar nova página",
-    "ariaLabel": "Link para {title}"
   },
   "error": {
     "title": "Erro de diário",

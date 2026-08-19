@@ -1,14 +1,11 @@
 {
   "title": "日记",
   "section": {
-    "journal": "日记",
     "aiConnections": "AI 连接",
     "todaysNotes": "今天的笔记",
     "todaysSchedule": "今天的日程",
     "todaysTasks": "今天的任务",
     "tasks": "任务",
-    "calendarEvents": "日历事件",
-    "overdueTasks": "逾期任务",
     "technicalDetails": "技术细节"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "日志设置",
     "fullMode": "完整模式",
     "compactMode": "紧凑模式",
-    "focusMode": "专注模式",
-    "exitFocusMode": "退出专注模式",
-    "enterFocusMode": "进入专注模式",
     "createNote": "创建笔记",
     "createNewNote": "创建新笔记",
     "showLess": "显示较少",
@@ -34,8 +28,6 @@
     "reloadJournal": "重新加载日记",
     "goToToday": "转到今天",
     "copyUnsavedContent": "将未保存内容复制到剪贴板",
-    "openNoteFullPage": "在全屏页面中打开笔记",
-    "closeNoteDrawer": "关闭笔记抽屉",
     "addBookmark": "添加书签",
     "removeBookmark": "移除书签"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "你计划做什么…",
       "today": "你今天在想什么…",
-      "past": "回顾这一天…",
-      "default": "开始写作…"
-    },
-    "toolbar": {
-      "ariaLabel": "文本格式",
-      "bold": "加粗",
-      "italic": "斜体",
-      "underline": "下划线",
-      "strikethrough": "删除线",
-      "link": "链接",
-      "image": "图片",
-      "moreOptions": "更多选项",
-      "heading1": "标题 1",
-      "heading2": "标题 2",
-      "heading3": "标题 3",
-      "bulletList": "项目符号列表",
-      "numberedList": "编号列表",
-      "checklist": "检查清单",
-      "quote": "引用",
-      "divider": "分隔线",
-      "codeBlock": "代码块"
-    },
-    "prompt": {
-      "enterUrl": "输入网址："
+      "past": "回顾这一天…"
     },
     "upload": {
-      "noEntry": "无法上传图片：未选择日记条目",
       "failed": "上传图片失败"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "与 {label} 的关联，匹配度为 {scorePercent}%"
   },
   "count": {
-    "items": "条目",
     "note": "笔记",
     "day": "天",
     "days": "天数",
     "event": "事件",
     "events": "事件",
-    "meeting": "会议",
-    "meetings": "会议",
     "task": "任务",
-    "tasks": "任务",
     "todo": "待办",
-    "people": "{count} 人",
     "moreConnections": "+ {count} 更多连接",
     "moreConnections_plural": "+ {count} 更多连接",
     "moreNotes": "+ {count} 更多笔记",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "笔记 - {date}",
     "openAria": "打开 {title}，创建于 {time}"
-  },
-  "tag": {
-    "suggestionsAria": "标签建议",
-    "empty": {
-      "title": "尚无标签",
-      "description": "输入以创建新标签"
-    },
-    "groupTitle": "标签",
-    "create": "创建 #{query}",
-    "ariaLabel": "标签：{tag}，点击以筛选"
-  },
-  "wiki": {
-    "suggestionsAria": "页面建议",
-    "empty": {
-      "title": "未找到页面"
-    },
-    "groupRecent": "最近",
-    "groupAllPages": "所有页面",
-    "createNewPage": "创建新页面",
-    "ariaLabel": "链接到 {title}"
   },
   "error": {
     "title": "日记错误",

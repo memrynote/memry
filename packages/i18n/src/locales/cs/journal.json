@@ -1,14 +1,11 @@
 {
   "title": "Deník",
   "section": {
-    "journal": "Deník",
     "aiConnections": "Připojení AI",
     "todaysNotes": "Dnešní poznámky",
     "todaysSchedule": "Dnešní rozvrh",
     "todaysTasks": "Dnešní úkoly",
     "tasks": "Úkoly",
-    "calendarEvents": "Kalendář událostí",
-    "overdueTasks": "Zpožděné úkoly",
     "technicalDetails": "Technické detaily"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Nastavení deníku",
     "fullMode": "Plný režim",
     "compactMode": "Kompaktní režim",
-    "focusMode": "Režim ostření",
-    "exitFocusMode": "Ukončete režim ostření",
-    "enterFocusMode": "Vstupte do režimu ostření",
     "createNote": "Vytvořit poznámku",
     "createNewNote": "Vytvořit novou poznámku",
     "showLess": "Ukažte méně",
@@ -34,8 +28,6 @@
     "reloadJournal": "Znovu načíst deník",
     "goToToday": "Přejít na Dnes",
     "copyUnsavedContent": "Zkopírujte neuložený obsah do schránky",
-    "openNoteFullPage": "Otevřít poznámku na celou stránku",
-    "closeNoteDrawer": "Zavřete zásuvku na poznámky",
     "addBookmark": "Přidat záložku",
     "removeBookmark": "Odebrat záložku"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Co plánuješ...",
       "today": "Co máš dnes na mysli...",
-      "past": "Zamyslete se nad tímto dnem...",
-      "default": "Začněte psát..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formátování textu",
-      "bold": "Tučné",
-      "italic": "kurzíva",
-      "underline": "Podtrhněte",
-      "strikethrough": "Přeškrtnutí",
-      "link": "Odkaz",
-      "image": "Obrázek",
-      "moreOptions": "Více možností",
-      "heading1": "Nadpis 1",
-      "heading2": "Nadpis 2",
-      "heading3": "Nadpis 3",
-      "bulletList": "Seznam odrážek",
-      "numberedList": "Číslovaný seznam",
-      "checklist": "Kontrolní seznam",
-      "quote": "Citace",
-      "divider": "Dělič",
-      "codeBlock": "Blok kódu"
-    },
-    "prompt": {
-      "enterUrl": "Zadejte adresu URL:"
+      "past": "Zamyslete se nad tímto dnem..."
     },
     "upload": {
-      "noEntry": "Nelze nahrát obrázek: není vybrán žádný záznam deníku",
       "failed": "Nahrání obrázku se nezdařilo"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Připojení k {label}, {scorePercent} % se shoduje"
   },
   "count": {
-    "items": "položky",
     "note": "poznámka",
     "day": "den",
     "days": "dní",
     "event": "událost",
     "events": "události",
-    "meeting": "setkání",
-    "meetings": "setkání",
     "task": "úkol",
-    "tasks": "úkoly",
     "todo": "dělat",
-    "people": "{count} lidí",
     "moreConnections": "+ {count} další připojení",
     "moreConnections_plural": "+ {count} další připojení",
     "moreNotes": "+ {count} další poznámka",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Poznámka - {date}",
     "openAria": "Otevřete {title}, vytvořený na {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Návrhy značek",
-    "empty": {
-      "title": "Zatím žádné značky",
-      "description": "Zadejte pro vytvoření nové značky"
-    },
-    "groupTitle": "Tagy",
-    "create": "Vytvořte #{query}",
-    "ariaLabel": "Tag: {tag}, kliknutím filtrujte"
-  },
-  "wiki": {
-    "suggestionsAria": "Návrhy stránek",
-    "empty": {
-      "title": "Nebyly nalezeny žádné stránky"
-    },
-    "groupRecent": "Nedávné",
-    "groupAllPages": "Všechny stránky",
-    "createNewPage": "Vytvořit novou stránku",
-    "ariaLabel": "Odkaz na {title}"
   },
   "error": {
     "title": "Chyba deníku",

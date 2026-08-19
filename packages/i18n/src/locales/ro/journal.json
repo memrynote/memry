@@ -1,14 +1,11 @@
 {
   "title": "Jurnal",
   "section": {
-    "journal": "Jurnal",
     "aiConnections": "Conexiuni AI",
     "todaysNotes": "Notele de azi",
     "todaysSchedule": "Programul de azi",
     "todaysTasks": "Sarcinile de azi",
     "tasks": "Sarcini",
-    "calendarEvents": "Evenimente din calendar",
-    "overdueTasks": "Sarcini restante",
     "technicalDetails": "Detalii tehnice"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Setări jurnal",
     "fullMode": "Modul complet",
     "compactMode": "Modul compact",
-    "focusMode": "Modul de focalizare",
-    "exitFocusMode": "Ieșiți din modul de focalizare",
-    "enterFocusMode": "Intrați în modul Focus",
     "createNote": "Creați o notă",
     "createNewNote": "Creați o notă nouă",
     "showLess": "Arată mai puțin",
@@ -34,8 +28,6 @@
     "reloadJournal": "Reîncărcați jurnalul",
     "goToToday": "Du-te la Azi",
     "copyUnsavedContent": "Copiați conținutul nesalvat în clipboard",
-    "openNoteFullPage": "Deschideți nota pe toată pagina",
-    "closeNoteDrawer": "Închideți sertarul de note",
     "addBookmark": "Adăugați marcaj",
     "removeBookmark": "Eliminați marcajul"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "ce planuiesti...",
       "today": "Ce ai în minte astăzi...",
-      "past": "Reflectați la această zi...",
-      "default": "Începeți să scrieți..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formatarea textului",
-      "bold": "Îndrăzneț",
-      "italic": "cursiv",
-      "underline": "Subliniați",
-      "strikethrough": "Striat",
-      "link": "Legătură",
-      "image": "Imagine",
-      "moreOptions": "Mai multe opțiuni",
-      "heading1": "Titlul 1",
-      "heading2": "Titlul 2",
-      "heading3": "Titlul 3",
-      "bulletList": "Lista cu marcatori",
-      "numberedList": "Lista numerotata",
-      "checklist": "Lista de verificare",
-      "quote": "citat",
-      "divider": "Divizor",
-      "codeBlock": "Bloc de cod"
-    },
-    "prompt": {
-      "enterUrl": "Introduceți adresa URL:"
+      "past": "Reflectați la această zi..."
     },
     "upload": {
-      "noEntry": "Nu se poate încărca imaginea: nu a fost selectată nicio intrare de jurnal",
       "failed": "Nu s-a putut încărca imaginea"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Conexiune la {label}, {scorePercent}% potrivire"
   },
   "count": {
-    "items": "articole",
     "note": "notă",
     "day": "zi",
     "days": "zile",
     "event": "eveniment",
     "events": "evenimente",
-    "meeting": "întâlnire",
-    "meetings": "întâlniri",
     "task": "sarcina",
-    "tasks": "sarcini",
     "todo": "a face",
-    "people": "{count} persoane",
     "moreConnections": "+ {count} mai multă conexiune",
     "moreConnections_plural": "+ {count} mai multe conexiuni",
     "moreNotes": "+ {count} notă suplimentară",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Notă - {date}",
     "openAria": "Deschideți {title}, creat la {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Sugestii de etichete",
-    "empty": {
-      "title": "Nicio etichetă încă",
-      "description": "Tastați pentru a crea o nouă etichetă"
-    },
-    "groupTitle": "Etichete",
-    "create": "Creați #{query}",
-    "ariaLabel": "Etichetă: {tag}, faceți clic pentru a filtra"
-  },
-  "wiki": {
-    "suggestionsAria": "Sugestii de pagini",
-    "empty": {
-      "title": "Nu au fost găsite pagini"
-    },
-    "groupRecent": "Recent",
-    "groupAllPages": "Toate paginile",
-    "createNewPage": "Creați o pagină nouă",
-    "ariaLabel": "Link către {title}"
   },
   "error": {
     "title": "Eroare de jurnal",

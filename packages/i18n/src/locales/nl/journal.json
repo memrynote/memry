@@ -1,14 +1,11 @@
 {
   "title": "Journaal",
   "section": {
-    "journal": "Journaal",
     "aiConnections": "AI-verbindingen",
     "todaysNotes": "Notities van vandaag",
     "todaysSchedule": "Het schema van vandaag",
     "todaysTasks": "De taken van vandaag",
     "tasks": "Taken",
-    "calendarEvents": "Agenda-evenementen",
-    "overdueTasks": "Achterstallige taken",
     "technicalDetails": "Technische details"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journaalinstellingen",
     "fullMode": "Volledige modus",
     "compactMode": "Compacte modus",
-    "focusMode": "Focusmodus",
-    "exitFocusMode": "Verlaat de focusmodus",
-    "enterFocusMode": "Ga naar de focusmodus",
     "createNote": "Notitie maken",
     "createNewNote": "Nieuwe notitie maken",
     "showLess": "Laat minder zien",
@@ -34,8 +28,6 @@
     "reloadJournal": "Journaal opnieuw laden",
     "goToToday": "Ga naar Vandaag",
     "copyUnsavedContent": "Kopieer niet-opgeslagen inhoud naar het klembord",
-    "openNoteFullPage": "Open de notitie op de volledige pagina",
-    "closeNoteDrawer": "Sluit de notitielade",
     "addBookmark": "Bladwijzer toevoegen",
     "removeBookmark": "Bladwijzer verwijderen"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Wat ben je van plan...",
       "today": "Waar denk je vandaag aan...",
-      "past": "Denk eens na over deze dag...",
-      "default": "Begin met schrijven..."
-    },
-    "toolbar": {
-      "ariaLabel": "Tekstopmaak",
-      "bold": "Vet",
-      "italic": "Cursief",
-      "underline": "Onderstreep",
-      "strikethrough": "Doorhalen",
-      "link": "Koppeling",
-      "image": "Afbeelding",
-      "moreOptions": "Meer opties",
-      "heading1": "Kop 1",
-      "heading2": "Rubriek 2",
-      "heading3": "Rubriek 3",
-      "bulletList": "Lijst met opsommingstekens",
-      "numberedList": "Genummerde lijst",
-      "checklist": "Controlelijst",
-      "quote": "Citaat",
-      "divider": "Verdeler",
-      "codeBlock": "Codeblok"
-    },
-    "prompt": {
-      "enterUrl": "Voer URL in:"
+      "past": "Denk eens na over deze dag..."
     },
     "upload": {
-      "noEntry": "Kan afbeelding niet uploaden: geen journaalboeking geselecteerd",
       "failed": "Kan afbeelding niet uploaden"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Verbinding met {label}, {scorePercent}% overeenkomst"
   },
   "count": {
-    "items": "artikelen",
     "note": "opmerking",
     "day": "dag",
     "days": "dagen",
     "event": "evenement",
     "events": "evenementen",
-    "meeting": "vergadering",
-    "meetings": "vergaderingen",
     "task": "taak",
-    "tasks": "taken",
     "todo": "te doen",
-    "people": "{count} mensen",
     "moreConnections": "+ {count} meer verbinding",
     "moreConnections_plural": "+ {count} meer verbindingen",
     "moreNotes": "+ {count} meer opmerking",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Opmerking - {date}",
     "openAria": "Open {title}, gemaakt op {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag suggesties",
-    "empty": {
-      "title": "Nog geen tags",
-      "description": "Typ om een nieuwe tag te maken"
-    },
-    "groupTitle": "Labels",
-    "create": "Maak #{query}",
-    "ariaLabel": "Label: {tag}, klik om te filteren"
-  },
-  "wiki": {
-    "suggestionsAria": "Pagina suggesties",
-    "empty": {
-      "title": "Geen pagina's gevonden"
-    },
-    "groupRecent": "Recent",
-    "groupAllPages": "Alle pagina's",
-    "createNewPage": "Nieuwe pagina maken",
-    "ariaLabel": "Link naar {title}"
   },
   "error": {
     "title": "Journaalfout",

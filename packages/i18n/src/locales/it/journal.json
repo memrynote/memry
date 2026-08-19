@@ -1,14 +1,11 @@
 {
   "title": "Diario",
   "section": {
-    "journal": "Diario",
     "aiConnections": "Connessioni AI",
     "todaysNotes": "Gli appunti di oggi",
     "todaysSchedule": "Il programma di oggi",
     "todaysTasks": "I compiti di oggi",
     "tasks": "Compiti",
-    "calendarEvents": "Eventi del calendario",
-    "overdueTasks": "Compiti scaduti",
     "technicalDetails": "Dettagli tecnici"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Impostazioni del diario",
     "fullMode": "Modalità completa",
     "compactMode": "Modalità compatta",
-    "focusMode": "Modalità di messa a fuoco",
-    "exitFocusMode": "Uscire dalla modalità di messa a fuoco",
-    "enterFocusMode": "Accedi alla modalità di messa a fuoco",
     "createNote": "Crea nota",
     "createNewNote": "Crea nuova nota",
     "showLess": "Mostra meno",
@@ -34,8 +28,6 @@
     "reloadJournal": "Ricarica il diario",
     "goToToday": "Vai a Oggi",
     "copyUnsavedContent": "Copia i contenuti non salvati negli appunti",
-    "openNoteFullPage": "Apri la nota a tutta pagina",
-    "closeNoteDrawer": "Chiudi il cassetto delle banconote",
     "addBookmark": "Aggiungi segnalibro",
     "removeBookmark": "Rimuovi segnalibro"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Cosa stai progettando...",
       "today": "Cos'hai in mente oggi...",
-      "past": "Rifletti su questo giorno...",
-      "default": "Inizia a scrivere..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formattazione del testo",
-      "bold": "Grassetto",
-      "italic": "Corsivo",
-      "underline": "Sottolineare",
-      "strikethrough": "Barrato",
-      "link": "Collegamento",
-      "image": "Immagine",
-      "moreOptions": "Più opzioni",
-      "heading1": "Rubrica 1",
-      "heading2": "Rubrica 2",
-      "heading3": "Rubrica 3",
-      "bulletList": "Elenco puntato",
-      "numberedList": "Elenco numerato",
-      "checklist": "Lista di controllo",
-      "quote": "Citazione",
-      "divider": "Divisore",
-      "codeBlock": "Blocco codice"
-    },
-    "prompt": {
-      "enterUrl": "Inserisci l'URL:"
+      "past": "Rifletti su questo giorno..."
     },
     "upload": {
-      "noEntry": "Impossibile caricare l'immagine: nessuna voce di diario selezionata",
       "failed": "Impossibile caricare l'immagine"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Connessione a {label}, corrispondenza {scorePercent}%."
   },
   "count": {
-    "items": "elementi",
     "note": "nota",
     "day": "giorno",
     "days": "giorni",
     "event": "evento",
     "events": "eventi",
-    "meeting": "incontro",
-    "meetings": "riunioni",
     "task": "compito",
-    "tasks": "compiti",
     "todo": "fare",
-    "people": "{count} persone",
     "moreConnections": "+ {count} più connessione",
     "moreConnections_plural": "+ {count} più connessioni",
     "moreNotes": "+ {count} altra nota",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Nota: {date}",
     "openAria": "Apri {title}, creato in {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Suggerimenti per i tag",
-    "empty": {
-      "title": "Nessun tag ancora",
-      "description": "Digita per creare un nuovo tag"
-    },
-    "groupTitle": "Tag",
-    "create": "Crea #{query}",
-    "ariaLabel": "Etichetta: {tag}, fai clic per filtrare"
-  },
-  "wiki": {
-    "suggestionsAria": "Suggerimenti per le pagine",
-    "empty": {
-      "title": "Nessuna pagina trovata"
-    },
-    "groupRecent": "Recente",
-    "groupAllPages": "Tutte le pagine",
-    "createNewPage": "Crea nuova pagina",
-    "ariaLabel": "Collegamento a {title}"
   },
   "error": {
     "title": "Errore del diario",

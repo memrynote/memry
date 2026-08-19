@@ -1,14 +1,11 @@
 {
   "title": "יומן",
   "section": {
-    "journal": "יומן",
     "aiConnections": "חיבורי AI",
     "todaysNotes": "הערות היום",
     "todaysSchedule": "לוח הזמנים של היום",
     "todaysTasks": "המשימות של היום",
     "tasks": "משימות",
-    "calendarEvents": "אירועי לוח שנה",
-    "overdueTasks": "משימות באיחור",
     "technicalDetails": "פרטים טכניים"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "הגדרות יומן",
     "fullMode": "מצב מלא",
     "compactMode": "מצב קומפקטי",
-    "focusMode": "מצב פוקוס",
-    "exitFocusMode": "צא ממצב פוקוס",
-    "enterFocusMode": "היכנס למצב פוקוס",
     "createNote": "צור הערה",
     "createNewNote": "צור הערה חדשה",
     "showLess": "הצג פחות",
@@ -34,8 +28,6 @@
     "reloadJournal": "טען מחדש יומן",
     "goToToday": "עבור אל היום",
     "copyUnsavedContent": "העתק תוכן שלא נשמר ללוח",
-    "openNoteFullPage": "פתח את ההערה בעמוד המלא",
-    "closeNoteDrawer": "סגור את מגירת הפתקים",
     "addBookmark": "הוסף סימניה",
     "removeBookmark": "הסר את הסימניה"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "מה אתה מתכנן...",
       "today": "מה עובר עליך היום...",
-      "past": "תחשוב על היום הזה...",
-      "default": "תתחיל לכתוב..."
-    },
-    "toolbar": {
-      "ariaLabel": "עיצוב טקסט",
-      "bold": "נועז",
-      "italic": "נטוי",
-      "underline": "קו תחתון",
-      "strikethrough": "חוצה",
-      "link": "קישור",
-      "image": "תמונה",
-      "moreOptions": "אפשרויות נוספות",
-      "heading1": "כותרת 1",
-      "heading2": "כותרת 2",
-      "heading3": "כותרת 3",
-      "bulletList": "רשימת תבליטים",
-      "numberedList": "רשימה ממוספרת",
-      "checklist": "רשימת תיוג",
-      "quote": "ציטוט",
-      "divider": "מחלק",
-      "codeBlock": "בלוק קוד"
-    },
-    "prompt": {
-      "enterUrl": "הזן כתובת אתר:"
+      "past": "תחשוב על היום הזה..."
     },
     "upload": {
-      "noEntry": "לא ניתן להעלות תמונה: לא נבחרה רישום יומן",
       "failed": "העלאת התמונה נכשלה"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "חיבור ל-{label}, התאמה של {scorePercent}"
   },
   "count": {
-    "items": "פריטים",
     "note": "הערה",
     "day": "יום",
     "days": "ימים",
     "event": "אירוע",
     "events": "אירועים",
-    "meeting": "פגישה",
-    "meetings": "פגישות",
     "task": "משימה",
-    "tasks": "משימות",
     "todo": "לעשות",
-    "people": "אנשי {count}",
     "moreConnections": "+ חיבור {count} נוסף",
     "moreConnections_plural": "+ {count} חיבורים נוספים",
     "moreNotes": "+ הערה נוספת של {count}",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "הערה - {date}",
     "openAria": "פתח את {title}, נוצר ב-{time}"
-  },
-  "tag": {
-    "suggestionsAria": "הצעות לתייג",
-    "empty": {
-      "title": "עדיין אין תגים",
-      "description": "הקלד כדי ליצור תג חדש"
-    },
-    "groupTitle": "תגים",
-    "create": "צור #{query}",
-    "ariaLabel": "תג: {tag}, לחץ כדי לסנן"
-  },
-  "wiki": {
-    "suggestionsAria": "הצעות לדפים",
-    "empty": {
-      "title": "לא נמצאו דפים"
-    },
-    "groupRecent": "לאחרונה",
-    "groupAllPages": "כל הדפים",
-    "createNewPage": "צור עמוד חדש",
-    "ariaLabel": "קישור ל-{title}"
   },
   "error": {
     "title": "שגיאת יומן",

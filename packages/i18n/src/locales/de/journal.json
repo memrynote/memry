@@ -1,14 +1,11 @@
 {
   "title": "Tagebuch",
   "section": {
-    "journal": "Tagebuch",
     "aiConnections": "KI-Verbindungen",
     "todaysNotes": "Heutige Notizen",
     "todaysSchedule": "Der heutige Zeitplan",
     "todaysTasks": "Heutige Aufgaben",
     "tasks": "Aufgaben",
-    "calendarEvents": "Kalenderereignisse",
-    "overdueTasks": "Überfällige Aufgaben",
     "technicalDetails": "Technische Details"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journaleinstellungen",
     "fullMode": "Vollmodus",
     "compactMode": "Kompaktmodus",
-    "focusMode": "Fokusmodus",
-    "exitFocusMode": "Verlassen Sie den Fokusmodus",
-    "enterFocusMode": "Rufen Sie den Fokusmodus auf",
     "createNote": "Notiz erstellen",
     "createNewNote": "Neue Notiz erstellen",
     "showLess": "Weniger anzeigen",
@@ -34,8 +28,6 @@
     "reloadJournal": "Journal neu laden",
     "goToToday": "Gehen Sie zu Heute",
     "copyUnsavedContent": "Kopieren Sie nicht gespeicherte Inhalte in die Zwischenablage",
-    "openNoteFullPage": "Notiz ganzseitig öffnen",
-    "closeNoteDrawer": "Notizschublade schließen",
     "addBookmark": "Lesezeichen hinzufügen",
     "removeBookmark": "Lesezeichen entfernen"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Was planen Sie...",
       "today": "Was beschäftigt Sie heute?",
-      "past": "Denken Sie über diesen Tag nach...",
-      "default": "Fangen Sie an zu schreiben..."
-    },
-    "toolbar": {
-      "ariaLabel": "Textformatierung",
-      "bold": "Fett",
-      "italic": "Kursiv",
-      "underline": "Unterstreichen",
-      "strikethrough": "Durchgestrichen",
-      "link": "Link",
-      "image": "Bild",
-      "moreOptions": "Weitere Optionen",
-      "heading1": "Überschrift 1",
-      "heading2": "Überschrift 2",
-      "heading3": "Überschrift 3",
-      "bulletList": "Aufzählungsliste",
-      "numberedList": "Nummerierte Liste",
-      "checklist": "Checkliste",
-      "quote": "Zitat",
-      "divider": "Teiler",
-      "codeBlock": "Codeblock"
-    },
-    "prompt": {
-      "enterUrl": "URL eingeben:"
+      "past": "Denken Sie über diesen Tag nach..."
     },
     "upload": {
-      "noEntry": "Bild kann nicht hochgeladen werden: Kein Journaleintrag ausgewählt",
       "failed": "Bild konnte nicht hochgeladen werden"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Verbindung zu {label}, {scorePercent} % Übereinstimmung"
   },
   "count": {
-    "items": "Artikel",
     "note": "Hinweis",
     "day": "Tag",
     "days": "Tage",
     "event": "Ereignis",
     "events": "Ereignisse",
-    "meeting": "Treffen",
-    "meetings": "Treffen",
     "task": "Aufgabe",
-    "tasks": "Aufgaben",
     "todo": "zu tun",
-    "people": "{count} Personen",
     "moreConnections": "+ {count} mehr Verbindung",
     "moreConnections_plural": "+ {count} mehr Verbindungen",
     "moreNotes": "+ {count} weitere Notiz",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Hinweis – {date}",
     "openAria": "Öffnen Sie {title}, erstellt bei {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag-Vorschläge",
-    "empty": {
-      "title": "Noch keine Tags",
-      "description": "Geben Sie ein, um ein neues Tag zu erstellen"
-    },
-    "groupTitle": "Schlagworte",
-    "create": "Erstellen Sie #{query}",
-    "ariaLabel": "Tag: {tag}, klicken Sie zum Filtern"
-  },
-  "wiki": {
-    "suggestionsAria": "Seitenvorschläge",
-    "empty": {
-      "title": "Keine Seiten gefunden"
-    },
-    "groupRecent": "Neu",
-    "groupAllPages": "Alle Seiten",
-    "createNewPage": "Neue Seite erstellen",
-    "ariaLabel": "Link zu {title}"
   },
   "error": {
     "title": "Journalfehler",

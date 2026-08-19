@@ -1,14 +1,11 @@
 {
   "title": "Journal",
   "section": {
-    "journal": "Journal",
     "aiConnections": "Mga Koneksyon sa AI",
     "todaysNotes": "Mga Tala Ngayon",
     "todaysSchedule": "Iskedyul Ngayon",
     "todaysTasks": "Mga Gawain Ngayon",
     "tasks": "Mga gawain",
-    "calendarEvents": "Mga Kaganapan sa Kalendaryo",
-    "overdueTasks": "Mga Overdue na Gawain",
     "technicalDetails": "Mga teknikal na detalye"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Mga Setting ng Journal",
     "fullMode": "Buong Mode",
     "compactMode": "Compact na Mode",
-    "focusMode": "Focus na Mode",
-    "exitFocusMode": "Lumabas sa Focus Mode",
-    "enterFocusMode": "Ipasok ang Focus Mode",
     "createNote": "Lumikha ng Tala",
     "createNewNote": "Gumawa ng bagong tala",
     "showLess": "Magpakita ng mas kaunti",
@@ -34,8 +28,6 @@
     "reloadJournal": "I-reload ang Journal",
     "goToToday": "Pumunta sa Ngayon",
     "copyUnsavedContent": "Kopyahin ang hindi na-save na nilalaman sa clipboard",
-    "openNoteFullPage": "Buksan ang tala sa buong pahina",
-    "closeNoteDrawer": "Isara ang note drawer",
     "addBookmark": "Magdagdag ng bookmark",
     "removeBookmark": "Alisin ang bookmark"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Anong balak mo...",
       "today": "Ano ang nasa isip mo ngayon...",
-      "past": "Magmuni-muni sa araw na ito...",
-      "default": "Magsimulang magsulat..."
-    },
-    "toolbar": {
-      "ariaLabel": "Pag-format ng teksto",
-      "bold": "Matapang",
-      "italic": "Italiko",
-      "underline": "Salungguhitan",
-      "strikethrough": "Guhit-pantawid",
-      "link": "Link",
-      "image": "Imahe",
-      "moreOptions": "Higit pang mga pagpipilian",
-      "heading1": "Pamagat 1",
-      "heading2": "Pamagat 2",
-      "heading3": "Pamagat 3",
-      "bulletList": "Listahan ng Bullet",
-      "numberedList": "Listahan ng Numero",
-      "checklist": "Listahan ng Tsek",
-      "quote": "Sipi",
-      "divider": "Panghati",
-      "codeBlock": "Bloke ng Code"
-    },
-    "prompt": {
-      "enterUrl": "Ilagay ang URL:"
+      "past": "Magmuni-muni sa araw na ito..."
     },
     "upload": {
-      "noEntry": "Hindi makapag-upload ng larawan: walang piniling entry sa journal",
       "failed": "Nabigong mag-upload ng larawan"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Koneksyon sa {label}, {scorePercent}% na tugma"
   },
   "count": {
-    "items": "mga bagay",
     "note": "tala",
     "day": "araw",
     "days": "araw",
     "event": "kaganapan",
     "events": "mga pangyayari",
-    "meeting": "pagpupulong",
-    "meetings": "mga pagpupulong",
     "task": "gawain",
-    "tasks": "mga gawain",
     "todo": "gawin",
-    "people": "{count} tao",
     "moreConnections": "+ {count} pang koneksyon",
     "moreConnections_plural": "+ {count} pang mga koneksyon",
     "moreNotes": "+ {count} pang tala",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Tandaan - {date}",
     "openAria": "Buksan ang {title}, ginawa sa {time}"
-  },
-  "tag": {
-    "suggestionsAria": "I-tag ang mga mungkahi",
-    "empty": {
-      "title": "Wala pang tag",
-      "description": "Mag-type para gumawa ng bagong tag"
-    },
-    "groupTitle": "Mga tag",
-    "create": "Lumikha ng #{query}",
-    "ariaLabel": "Tag: {tag}, i-click upang i-filter"
-  },
-  "wiki": {
-    "suggestionsAria": "Mga mungkahi sa pahina",
-    "empty": {
-      "title": "Walang nakitang pahina"
-    },
-    "groupRecent": "Kamakailan",
-    "groupAllPages": "Lahat ng Pahina",
-    "createNewPage": "Gumawa ng bagong page",
-    "ariaLabel": "Link sa {title}"
   },
   "error": {
     "title": "Error sa Journal",

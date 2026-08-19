@@ -1,14 +1,11 @@
 {
   "title": "Jurnal",
   "section": {
-    "journal": "Jurnal",
     "aiConnections": "Koneksi AI",
     "todaysNotes": "Catatan Hari Ini",
     "todaysSchedule": "Jadwal Hari Ini",
     "todaysTasks": "Tugas Hari Ini",
     "tasks": "Tugas",
-    "calendarEvents": "Acara Kalender",
-    "overdueTasks": "Tugas yang Terlambat",
     "technicalDetails": "Detail teknis"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Pengaturan Jurnal",
     "fullMode": "Modus Penuh",
     "compactMode": "Mode Kompak",
-    "focusMode": "Modus Fokus",
-    "exitFocusMode": "Keluar dari Mode Fokus",
-    "enterFocusMode": "Masuk ke Mode Fokus",
     "createNote": "Buat Catatan",
     "createNewNote": "Buat catatan baru",
     "showLess": "Tampilkan lebih sedikit",
@@ -34,8 +28,6 @@
     "reloadJournal": "Muat Ulang Jurnal",
     "goToToday": "Buka Hari Ini",
     "copyUnsavedContent": "Salin konten yang belum disimpan ke papan klip",
-    "openNoteFullPage": "Buka catatan dalam halaman penuh",
-    "closeNoteDrawer": "Tutup laci catatan",
     "addBookmark": "Tambahkan penanda",
     "removeBookmark": "Hapus penanda"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Apa yang kamu rencanakan...",
       "today": "Apa yang ada di pikiranmu hari ini...",
-      "past": "Renungkanlah hari ini...",
-      "default": "Mulailah menulis..."
-    },
-    "toolbar": {
-      "ariaLabel": "Pemformatan teks",
-      "bold": "Berani",
-      "italic": "miring",
-      "underline": "Garis bawahi",
-      "strikethrough": "Dicoret",
-      "link": "Tautan",
-      "image": "Gambar",
-      "moreOptions": "Opsi lainnya",
-      "heading1": "Judul 1",
-      "heading2": "Judul 2",
-      "heading3": "Pos 3",
-      "bulletList": "Daftar Peluru",
-      "numberedList": "Daftar Bernomor",
-      "checklist": "Daftar periksa",
-      "quote": "Kutipan",
-      "divider": "Pembagi",
-      "codeBlock": "Blok Kode"
-    },
-    "prompt": {
-      "enterUrl": "Masukkan URL:"
+      "past": "Renungkanlah hari ini..."
     },
     "upload": {
-      "noEntry": "Tidak dapat mengunggah gambar: tidak ada entri jurnal yang dipilih",
       "failed": "Gagal mengunggah gambar"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Koneksi ke {label}, {scorePercent}% cocok"
   },
   "count": {
-    "items": "item",
     "note": "catatan",
     "day": "hari",
     "days": "hari",
     "event": "acara",
     "events": "acara",
-    "meeting": "pertemuan",
-    "meetings": "pertemuan",
     "task": "tugas",
-    "tasks": "tugas",
     "todo": "untuk melakukan",
-    "people": "{count} orang",
     "moreConnections": "+ Koneksi {count} lebih banyak",
     "moreConnections_plural": "+ Koneksi {count} lebih banyak",
     "moreNotes": "+ {count} lebih banyak catatan",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Catatan - {date}",
     "openAria": "Buka {title}, dibuat di {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tandai saran",
-    "empty": {
-      "title": "Belum ada tag",
-      "description": "Ketik untuk membuat tag baru"
-    },
-    "groupTitle": "Tag",
-    "create": "Buat #{query}",
-    "ariaLabel": "Tag: {tag}, klik untuk memfilter"
-  },
-  "wiki": {
-    "suggestionsAria": "Saran halaman",
-    "empty": {
-      "title": "Tidak ada halaman yang ditemukan"
-    },
-    "groupRecent": "Baru-baru ini",
-    "groupAllPages": "Semua Halaman",
-    "createNewPage": "Buat halaman baru",
-    "ariaLabel": "Tautan ke {title}"
   },
   "error": {
     "title": "Kesalahan Jurnal",
