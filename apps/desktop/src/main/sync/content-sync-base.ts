@@ -70,6 +70,24 @@ export abstract class ContentSyncService<
     this.getController().enqueueRecoveredUpdate(itemId, ...extra)
   }
 
+  /**
+   * Queue a delete whose tombstone was built when the row still existed.
+   *
+   * `enqueueDelete` above cannot be replayed later: the controller loads the
+   * row to read its clock, and a delete raised while the sync runtime was down
+   * is only replayed after the row is gone. So the body is captured at the
+   * time of the delete (`buildContentDeletePayload`) and handed back here — the
+   * queue lives on this service, not on the caller (#1579).
+   */
+  enqueueRecoveredDelete(itemId: string, payload: string): void {
+    this.queue.enqueue({
+      type: this.itemType,
+      itemId,
+      operation: 'delete',
+      payload
+    })
+  }
+
   private getController(): RecordSyncController<NoteMetadata, TArgs, TArgs> {
     if (this.controller) return this.controller
 

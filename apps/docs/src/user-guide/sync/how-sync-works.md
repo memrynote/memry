@@ -67,6 +67,12 @@ sync runs — on the next launch, or as soon as the network comes back — it pu
 current state. A long offline editing session also stays cheap in memory: queued edits for a note
 are merged together rather than kept one per keystroke.
 
+Deletions are kept the same way. If you delete a note, task, or project in one of the short windows
+where sync is between runs — while the app is quitting, while you switch vaults, or while it is
+signing back in — memrynote records the deletion on disk and pushes it at the next sync run, so the
+item does not come back from another device. Nothing is recorded on an install that does not sync at
+all (signed out, or on the free plan): there is no other device holding a copy.
+
 ## What Gets Synced
 
 | Item                                                           | Sync? |

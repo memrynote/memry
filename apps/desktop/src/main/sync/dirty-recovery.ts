@@ -11,6 +11,7 @@ import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
 import { getProjectSyncService } from './project-sync'
 import { getTaskSyncService } from './task-sync'
+import { flushPendingLocalDeletes } from './local-mutations'
 import { createLogger } from '../lib/logger'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
@@ -23,6 +24,8 @@ export interface RecoveryResult {
   notes: number
   journals: number
   inbox: number
+  /** Deletes raised while the sync runtime was down, replayed from tombstones. */
+  deletes: number
 }
 
 /**
@@ -100,6 +103,10 @@ export function recoverDirtyItems(
   const noteCount = recoverDirtyNotes(db, adapters)
   const journalCount = recoverDirtyJournals(db, adapters)
   const inboxCount = recoverDirtyInbox(db, adapters)
+  // The delete half of the same sweep. Create and update leave a dirty row the
+  // queries above find; a delete leaves no row at all, so it is captured as a
+  // tombstone when it is raised and replayed here instead (#1579).
+  const deleteCount = flushPendingLocalDeletes(db)
 
   if (taskCount > 0 || projectCount > 0 || noteCount > 0 || journalCount > 0 || inboxCount > 0) {
     log.info('Recovered dirty items for sync', {
@@ -116,7 +123,8 @@ export function recoverDirtyItems(
     projects: projectCount,
     notes: noteCount,
     journals: journalCount,
-    inbox: inboxCount
+    inbox: inboxCount,
+    deletes: deleteCount
   }
 }
 
