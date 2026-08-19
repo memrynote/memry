@@ -16,6 +16,38 @@ type DiagnosticLevel = 'debug' | 'info' | 'warn' | 'error'
 const resultForLevel = (level: DiagnosticLevel): TelemetryResult =>
   level === 'error' || level === 'warn' ? 'failed' : 'success'
 
+/**
+ * What the module that owned the dead worker knows about it. Everything here is
+ * a number, a bounded enum, or text the OWNER has already redacted — this module
+ * only formats it.
+ *
+ * Additive by construction: every field is optional and rides inside the
+ * existing `message` / `metrics` fields of `app_log_recorded`. No new event
+ * name, no new dimension key, no contract change — so it needs no sync-server
+ * deploy and cannot break an existing dashboard query.
+ */
+export interface ChildProcessGoneContext {
+  /** OS pid of the dead worker, so reports can be tied to one fork. */
+  pid?: number
+  /** ms between the fork and this report. */
+  uptimeMs?: number
+  /** How the owning module last saw the worker (live, teardown, start_timeout, …). */
+  release?: string
+  /** Whether the worker's model was cached on disk when it was forked. */
+  modelCache?: string
+  modelCacheBytes?: number
+  /** Whether the fork was a first load or a re-load after a prior failure. */
+  load?: string
+  /** Crash reports for this worker family this session, including this one. */
+  crashCount?: number
+  /**
+   * Redacted tail of the dead worker's stderr. For a native abort this is the
+   * closest thing to a stack trace this family can ever produce: the process
+   * that died is not the one reporting, so `stack` is otherwise always empty.
+   */
+  stderrTail?: string
+}
+
 export interface ChildProcessGoneDetails {
   type: string
   reason: string
@@ -33,6 +65,8 @@ export interface ChildProcessGoneDetails {
   // rather than looked up here: the worker modules already import this one, so
   // reaching back into them would close an import cycle.
   phase?: string
+  // Resolved by the same caller, for the same reason.
+  context?: ChildProcessGoneContext
 }
 
 // Utility workers (embeddings, image-processing, voice-model) idle-shutdown
@@ -40,10 +74,39 @@ export interface ChildProcessGoneDetails {
 // (OS memory-pressure kill) — is lifecycle, not a fault, so it must not become an
 // error event. Real faults get a composite code that stays inside the safe-token
 // rules (no '@', '://', '/', '\', ≤64 chars).
+export const isChildProcessFault = (reason: string): boolean =>
+  reason !== 'clean-exit' && reason !== 'memory-eviction'
+
 export const childProcessGoneErrorCode = (details: ChildProcessGoneDetails): string | null => {
-  if (details.reason === 'clean-exit' || details.reason === 'memory-eviction') return null
+  if (!isChildProcessFault(details.reason)) return null
   const worker = details.name ?? details.serviceName ?? ''
   return toSafeToken(`${details.type}:${details.reason}:${worker}`, 'ChildProcessGone')
+}
+
+// Telemetry events carry at most ONE dimension (TelemetryDimensionsSchema), and
+// `log_action` already holds the phase — so the rest of the crash context rides
+// in the message as `key=value` pairs. Bounded enums and numbers only; the
+// owning module supplies them and no user content can reach here.
+const contextSummary = (
+  reason: string,
+  context: ChildProcessGoneContext | undefined
+): string | null => {
+  // No context resolved (GPU, an unowned utility fork) → the message stays byte
+  // identical to what it has always been. This is purely additive.
+  if (!context) return null
+  const parts = [
+    // Baked into the error code as `type:reason:worker`, repeated here so it can
+    // be read without string-splitting the fingerprint.
+    `reason=${reason}`,
+    context.pid !== undefined ? `pid=${context.pid}` : null,
+    context.uptimeMs !== undefined ? `uptime=${Math.round(context.uptimeMs)}ms` : null,
+    context.release ? `release=${context.release}` : null,
+    context.modelCache ? `cache=${context.modelCache}` : null,
+    context.modelCacheBytes !== undefined ? `cache_bytes=${context.modelCacheBytes}` : null,
+    context.load ? `load=${context.load}` : null,
+    context.crashCount !== undefined ? `crashes=${context.crashCount}` : null
+  ].filter((part): part is string => part !== null)
+  return `[${parts.join(' ')}]`
 }
 
 // Reports a `child-process-gone` fault as an error log event, or nothing at all
@@ -66,14 +129,38 @@ export const trackChildProcessGone = (details: ChildProcessGoneDetails): void =>
     details.phase ?? null
   ].filter((part): part is string => part !== null)
   const exit = detail.length > 0 ? ` (${detail.join(', ')})` : ''
+  const summary = contextSummary(details.reason, details.context)
+  // Bounded by TelemetryErrorDetailSchema.message (512). Every part is an
+  // Electron constant, our own worker label, or a number, so it cannot overflow
+  // in practice — the cap is there so a future field can never 400 a whole batch.
+  const message = `${worker} utility process ${details.reason}${exit}${
+    summary ? ` ${summary}` : ''
+  }`.slice(0, 512)
+  // The crash context's numbers ride as metrics so they are queryable without
+  // parsing the message. All four keys already exist in TelemetryMetricsSchema.
+  const metrics: NonNullable<Parameters<typeof trackMainLog>[1]['metrics']> = {}
+  if (typeof details.exitCode === 'number') metrics.value = details.exitCode
+  if (typeof details.context?.uptimeMs === 'number') {
+    metrics.durationMs = Math.max(0, Math.round(details.context.uptimeMs))
+  }
+  if (typeof details.context?.crashCount === 'number') {
+    metrics.retryCount = Math.max(0, details.context.crashCount)
+  }
+  if (typeof details.context?.modelCacheBytes === 'number') {
+    metrics.byteCount = Math.max(0, details.context.modelCacheBytes)
+  }
+  const error: TelemetryErrorDetail = { message }
+  // The dead worker's own stderr. Capped again here (schema max 4000) because
+  // this is native-runtime output and the owner's cap is the only other guard.
+  if (details.context?.stderrTail) error.stack = details.context.stderrTail.slice(0, 4000)
   // errorCode stays stable (no exit code baked in) so the issue grouping counts
   // crashes per worker; the exit status rides along as a metric instead.
   trackMainLog('error', {
     scope: 'Electron',
     action: details.phase ? `child_process_gone_${details.phase}` : 'child_process_gone',
     errorCode,
-    error: { message: `${worker} utility process ${details.reason}${exit}` },
-    metrics: typeof details.exitCode === 'number' ? { value: details.exitCode } : undefined
+    error,
+    metrics: Object.keys(metrics).length > 0 ? metrics : undefined
   })
 }
 
@@ -114,6 +201,7 @@ export const trackMainLog = (
     metrics?: {
       durationMs?: number
       itemCount?: number
+      byteCount?: number
       queueCount?: number
       retryCount?: number
       value?: number

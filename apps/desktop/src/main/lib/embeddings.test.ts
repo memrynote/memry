@@ -11,7 +11,11 @@ const mockFork = vi.hoisted(() => vi.fn())
 const trackMainLogMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../telemetry/diagnostics', () => ({
-  trackMainLog: trackMainLogMock
+  trackMainLog: trackMainLogMock,
+  // Mirrors the real predicate: a clean idle-shutdown / OS memory eviction is
+  // lifecycle, not a crash, and must not reach the crash-context resolver.
+  isChildProcessFault: (reason: string): boolean =>
+    reason !== 'clean-exit' && reason !== 'memory-eviction'
 }))
 
 class MockUtilityProcess extends EventEmitter {
@@ -28,8 +32,11 @@ class MockUtilityProcess extends EventEmitter {
     }
     return true
   })
-  stdout = null
-  stderr = null
+  stdout = new EventEmitter()
+  // Real, not null: the abort message a native crash writes here is the only
+  // "what happened" the crash report can ever carry, so the tail capture has to
+  // be exercisable.
+  stderr = new EventEmitter()
   pid = 1234
 
   simulateMessage(message: unknown): void {
@@ -68,8 +75,9 @@ vi.mock('@huggingface/transformers', () => {
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 import {
   EMBEDDING_DIMENSION,
+  formatWorkerStderrTail,
   generateEmbedding,
-  getEmbeddingWorkerPhase,
+  getEmbeddingWorkerCrashContext,
   getModelInfo,
   initEmbeddingModel,
   isInformationalWorkerStderr,
@@ -540,7 +548,7 @@ describe('embeddings', () => {
   // too — the bridge never observes the death at all. `app.on('child-process-
   // gone')` is the path that does fire (107/107), so the phase has to be
   // readable from outside the exit handler for that report to carry it.
-  describe('getEmbeddingWorkerPhase', () => {
+  describe('getEmbeddingWorkerCrashContext', () => {
     // Wrapped in an object, never returned bare: an async function flattens a
     // returned promise, so `await startWorker()` would block on the embedding
     // itself instead of on the worker being up.
@@ -554,23 +562,37 @@ describe('embeddings', () => {
       return { pending }
     }
 
+    /** Drive a worker that never answers, up to and past the 10s start timeout. */
+    const timeOutStartingWorker = async (): Promise<MockUtilityProcess> => {
+      const load = initEmbeddingModel()
+      void load.catch(() => {})
+      const worker = mockUtilityProcessInstance
+      await vi.advanceTimersByTimeAsync(10_000)
+      await expect(load).resolves.toBe(false)
+      return worker
+    }
+
     it('returns null when no worker has been forked', () => {
-      expect(getEmbeddingWorkerPhase('Embeddings')).toBeNull()
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toBeNull()
     })
 
     it('ignores a crash reported for a different utility worker', async () => {
       await startWorker()
 
       // #then CrdtPreflight's crash must not inherit the embedding worker's phase
-      expect(getEmbeddingWorkerPhase('CrdtPreflight')).toBeNull()
-      expect(getEmbeddingWorkerPhase(undefined)).toBeNull()
+      expect(getEmbeddingWorkerCrashContext('CrdtPreflight', 'crashed')).toBeNull()
+      expect(getEmbeddingWorkerCrashContext(undefined, 'crashed')).toBeNull()
     })
 
     it('reports in_flight while a request is outstanding', async () => {
       await startWorker()
 
       // #then a crash here costs the user this note's semantic-search indexing
-      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('in_flight')
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toMatchObject({
+        phase: 'in_flight',
+        release: 'live',
+        pid: 1234
+      })
     })
 
     it('reports idle once the embedding has been delivered', async () => {
@@ -585,7 +607,7 @@ describe('embeddings', () => {
       })
       await expect(pending).resolves.toBeInstanceOf(Float32Array)
 
-      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('idle')
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')?.phase).toBe('idle')
     })
 
     it('keeps the latched teardown phase after a force-kill clears the handle', async () => {
@@ -596,18 +618,156 @@ describe('embeddings', () => {
       unloadModel()
 
       // #then the crash still reads as a teardown death, not a spontaneous one
-      expect(getEmbeddingWorkerPhase('Embeddings')).toBe('idle_shutdown')
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toMatchObject({
+        phase: 'idle_shutdown',
+        release: 'teardown'
+      })
     })
 
-    it('does not leak a teardown latch into the next worker generation', async () => {
+    // THE bug this whole file exists for. In production `child-process-gone` has
+    // never once arrived while the bridge still owned the worker: 76 events on
+    // 2026.817.1, all with no phase, plus zero `EmbeddingWorkerExit` events (which
+    // rules out both 'exit' handlers) and zero phase-suffixed events (which rules
+    // out stop()/reset()'s never-cleared idle_shutdown latch). What is left is
+    // failProcess() — it forgets a worker that is STILL RUNNING, so the report
+    // lands with `process` and `pendingExitPhase` both already null.
+    it('attributes a crash that lands after the start timeout forgot the worker', async () => {
+      vi.useFakeTimers()
+      await timeOutStartingWorker()
+
+      // #given the bridge has fully let go — the next load would fork afresh
+      expect(mockFork).toHaveBeenCalledOnce()
+
+      // #when the OS crash report finally lands, as production's always does
+      const context = getEmbeddingWorkerCrashContext('Embeddings', 'crashed')
+
+      // #then it names the worker it belongs to instead of resolving to nothing
+      expect(context).toMatchObject({
+        phase: 'starting',
+        release: 'start_timeout',
+        pid: 1234,
+        load: 'first',
+        modelCache: 'absent'
+      })
+    })
+
+    it('does not leak a teardown record into the next worker generation', async () => {
+      vi.useFakeTimers()
       await startWorker()
       unloadModel()
 
       // #given a second reset with no live worker to kill
       unloadModel()
 
-      // #then a later unrelated crash must not inherit the stale latch
-      expect(getEmbeddingWorkerPhase('Embeddings')).toBeNull()
+      // #then a later unrelated crash must not inherit the stale record
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toBeNull()
+    })
+
+    it('reports how long the dead worker had been alive', async () => {
+      vi.useFakeTimers()
+      const load = initEmbeddingModel()
+      void load.catch(() => {})
+
+      // #given a worker that never became ready, abandoned at the 10s timeout,
+      // whose crash report lands 2s later
+      await vi.advanceTimersByTimeAsync(10_000)
+      await expect(load).resolves.toBe(false)
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      // #then "died during startup" is separable from "ran fine for minutes"
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')?.uptimeMs).toBe(12_000)
+    })
+
+    it('stops attributing once the record goes stale', async () => {
+      vi.useFakeTimers()
+      await timeOutStartingWorker()
+
+      // #when more than a minute passes before any report arrives
+      await vi.advanceTimersByTimeAsync(61_000)
+
+      // #then a later, unrelated crash cannot inherit the stale record
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toBeNull()
+    })
+
+    it('prefers the live worker over the released record', async () => {
+      vi.useFakeTimers()
+      await timeOutStartingWorker()
+
+      // #given a fresh worker forked after the abandoned one
+      resetEmbeddingModelFailure()
+      await startWorker()
+
+      // #then the report describes the generation that is actually running
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')).toMatchObject({
+        phase: 'in_flight',
+        release: 'live'
+      })
+    })
+
+    it('counts crash reports across the session but never a clean exit', async () => {
+      vi.useFakeTimers()
+      await timeOutStartingWorker()
+
+      // #given a lifecycle report, not a fault (the counter is a module-lifetime
+      // session counter, so the assertion is relative, not absolute)
+      const baseline = getEmbeddingWorkerCrashContext('Embeddings', 'crashed')?.crashCount ?? 0
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'clean-exit')).toBeNull()
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'memory-eviction')).toBeNull()
+
+      // #then only real crashes advance the counter, so a burst on one install is
+      // distinguishable from a slow drip without post-hoc SQL
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')?.crashCount).toBe(baseline + 1)
+    })
+
+    it('carries the dead worker stderr tail', async () => {
+      vi.useFakeTimers()
+      const load = initEmbeddingModel()
+      void load.catch(() => {})
+      mockUtilityProcessInstance.stderr.emit(
+        'data',
+        'libc++abi: terminating due to uncaught exception\n'
+      )
+      await vi.advanceTimersByTimeAsync(10_000)
+      await expect(load).resolves.toBe(false)
+
+      // #then the abort message survives the worker it came from
+      expect(getEmbeddingWorkerCrashContext('Embeddings', 'crashed')?.stderrTail).toBe(
+        'worker stderr tail:\n| libc++abi: terminating due to uncaught exception'
+      )
+    })
+
+    // failProcess() used to null the handle and walk away. The orphan was
+    // unreachable (every request goes through `this.process`) yet kept a whole
+    // onnxruntime alive to abort later — producing exactly the un-attributable
+    // report this issue is about — and its late `ready` would re-attach handlers
+    // and flip `loaded` on for a worker the bridge no longer owned.
+    it('kills the worker it gives up on instead of leaving it running', async () => {
+      vi.useFakeTimers()
+      const worker = await timeOutStartingWorker()
+
+      expect(worker.kill).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('worker stderr tail', () => {
+    it('redacts the home path out of native runtime output', () => {
+      expect(formatWorkerStderrTail('dlopen failed: /Users/kaan/Library/onnx.dylib')).toBe(
+        'worker stderr tail:\n| dlopen failed: ~/Library/onnx.dylib'
+      )
+    })
+
+    // The tail ships in `error.stack`, which the sync-server parses back into
+    // PostHog Error Tracking frames by matching /^\s*at\s/ per line. An abort
+    // message starting with "at " would otherwise become a fabricated frame.
+    it('keeps a line that looks like a stack frame from parsing as one', () => {
+      const tail = formatWorkerStderrTail('at Ort::Throw (onnxruntime.cc:120)')
+
+      expect(tail).toBe('worker stderr tail:\n| at Ort::Throw (onnxruntime.cc:120)')
+      expect(tail?.split('\n').some((line) => /^\s*at\s/.test(line))).toBe(false)
+    })
+
+    it('returns nothing for empty output', () => {
+      expect(formatWorkerStderrTail('   \n  ')).toBeUndefined()
     })
   })
 

@@ -53,7 +53,7 @@ import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { stopImageProcessing } from './image-processing/bridge'
-import { getEmbeddingWorkerPhase, stopEmbeddingModel } from './lib/embeddings'
+import { getEmbeddingWorkerCrashContext, stopEmbeddingModel } from './lib/embeddings'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { startInboxReviewScheduler, stopInboxReviewScheduler } from './inbox/review-scheduler'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
@@ -224,11 +224,14 @@ function registerMainDiagnostics(): void {
     //
     // This is also the ONLY report a native worker crash produces: the worker's
     // own 'exit' event never fires for one, so the owning module never learns it
-    // died. Resolving the lifecycle phase here is what lets that surviving report
-    // say whether the user lost an embedding or the worker died tearing down.
+    // died. Resolving the worker's context here is what lets that surviving
+    // report say whether the user lost an embedding or the worker died tearing
+    // down — and, now, on which pid, after how long, and with what on stderr.
+    const embeddingCrash = getEmbeddingWorkerCrashContext(details.name, details.reason)
     trackChildProcessGone({
       ...details,
-      phase: getEmbeddingWorkerPhase(details.name) ?? undefined
+      phase: embeddingCrash?.phase,
+      context: embeddingCrash ?? undefined
     })
     // A dead GPU process means this launch may already be painting nothing.
     // Record it so the next launch disables hardware acceleration (see
@@ -609,8 +612,7 @@ const DEFAULT_MAIN_WINDOW_SIZE = { width: 1550, height: 900 } as const
 const VAULT_PICKER_WINDOW_SIZE = { width: 760, height: 560 } as const
 
 function getInitialMainWindowSize():
-  | typeof DEFAULT_MAIN_WINDOW_SIZE
-  | typeof VAULT_PICKER_WINDOW_SIZE {
+  typeof DEFAULT_MAIN_WINDOW_SIZE | typeof VAULT_PICKER_WINDOW_SIZE {
   if (process.env.MEMRY_FORCE_VAULT_PICKER === '1') return VAULT_PICKER_WINDOW_SIZE
   return getCurrentVaultPath() ? DEFAULT_MAIN_WINDOW_SIZE : VAULT_PICKER_WINDOW_SIZE
 }
