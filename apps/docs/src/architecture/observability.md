@@ -765,6 +765,10 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   never the issue messages, which can echo input values. An
   [expected condition](#error-reporting) is skipped **before** the throttle map, so a suppressed
   error can't claim the key and mask a real failure from the same handler.
+  This throttle is **main-side only**: `trackRendererError` sends one `app_error_seen` per call,
+  so a renderer loop calling one failing handler produces many renderer-sourced events against at
+  most one main-sourced event per minute. Renderer and main counts for the same underlying failure
+  are therefore not comparable — a large gap is the throttle, not a dropped main-side event.
 - **Vault watcher**: chokidar `onError` can burst per file (a permission-denied subtree), so
   watcher faults are sampled to one `app_error_seen` per minute (`main/vault/watcher.ts`). Every
   error still reaches the local log.
