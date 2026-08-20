@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { UpdaterErrorPhase } from './updater'
 import {
   classifyUpdaterError,
+  isExpiredSignedAssetError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
   recordUpdaterCheckSuccess,
@@ -249,5 +250,62 @@ describe('stuck-updater escalation', () => {
       expect(recordUpdaterCheckFailure(start + 2 * DAY + index).stuck).toBe(false)
     }
     expect(recordUpdaterCheckFailure(start + 2 * DAY + 20).stuck).toBe(true)
+  })
+})
+
+// The verbatim production shape: builder-util-runtime's createHttpError() builds
+// `<status> <statusMessage>` plus the request line and GitHub's HTML body.
+const signedAssetError = (statusCode: number, host: string, body: string): Error =>
+  Object.assign(
+    new Error(
+      `${statusCode} \n"method: GET url: https://${host}/1132/releases/assets/x?sha256=y&jwt=z\n\n` +
+        `          Data:\n          \n<html><head><title>${body}</title></head></html>`
+    ),
+    { name: 'HttpError', code: `HTTP_ERROR_${statusCode}`, statusCode }
+  )
+
+describe('isExpiredSignedAssetError', () => {
+  it('recognises the 618 jwt:expired that loses an update check', () => {
+    expect(
+      isExpiredSignedAssetError(
+        signedAssetError(618, 'release-assets.githubusercontent.com', '618 jwt:expired')
+      )
+    ).toBe(true)
+  })
+
+  it('recognises an expired signature reported as 403 on the signed-asset host', () => {
+    expect(
+      isExpiredSignedAssetError(
+        signedAssetError(403, 'release-assets.githubusercontent.com', '403 Forbidden')
+      )
+    ).toBe(true)
+  })
+
+  it('leaves a 403 from anywhere else alone, so a real refusal is not retried', () => {
+    expect(
+      isExpiredSignedAssetError(signedAssetError(403, 'api.github.com', '403 Forbidden'))
+    ).toBe(false)
+  })
+
+  it('leaves every other updater failure alone', () => {
+    expect(isExpiredSignedAssetError(new Error('net::ERR_INTERNET_DISCONNECTED'))).toBe(false)
+    expect(isExpiredSignedAssetError(signedAssetError(404, 'github.com', '404 Not Found'))).toBe(
+      false
+    )
+    expect(
+      isExpiredSignedAssetError(
+        signedAssetError(500, 'release-assets.githubusercontent.com', '500')
+      )
+    ).toBe(false)
+    expect(isExpiredSignedAssetError(undefined)).toBe(false)
+    expect(isExpiredSignedAssetError('618')).toBe(false)
+  })
+
+  // #1595 classified a 618 as a defect worth an exception. That is still true of
+  // the failure that survives the retry — only the recovered attempts are quiet.
+  it('does not change how a surviving 618 is classified', () => {
+    const expired = signedAssetError(618, 'release-assets.githubusercontent.com', '618 jwt:expired')
+    expect(classifyUpdaterError(expired, 'check')).toBe('error')
+    expect(classifyUpdaterError(new Error('net::ERR_TIMED_OUT'), 'check')).toBe('warn')
   })
 })

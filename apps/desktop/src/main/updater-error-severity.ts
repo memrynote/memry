@@ -98,6 +98,39 @@ export const classifyUpdaterError = (
   return tokens.every((token) => TRANSIENT_NETWORK_ERRORS.has(token)) ? 'warn' : 'error'
 }
 
+/** GitHub's signed release-asset host. Every observed 618 came from here. */
+const SIGNED_ASSET_HOST = 'release-assets.githubusercontent.com'
+
+/**
+ * A failure that is worth asking again for, because the thing that failed was a
+ * token rather than the network.
+ *
+ * GitHub serves a release asset by redirecting to a short-lived signed
+ * `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
+ * that token's expiry, GitHub answers with the non-standard status 618
+ * (`jwt:expired`). That is 36 of 36 production `HTTP_ERROR_618` events — every
+ * one in the check phase, on the channel file (`latest-mac.yml`) that
+ * electron-updater's GitHubProvider fetches to learn the latest version.
+ *
+ * electron-updater never retries it. `HttpExecutor.doApiRequest` has no retry at
+ * all on that path, and builder-util-runtime's `retryOnServerError` helper —
+ * which nothing on this path calls — matches `>= 500 && <= 599`, so it would not
+ * catch a 618 even if it were wired in. One expired token therefore loses the
+ * whole update check.
+ *
+ * The token is minted fresh on each redirect, so asking again is the fix.
+ */
+export const isExpiredSignedAssetError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false
+  const { statusCode } = error as { statusCode?: unknown }
+  if (statusCode === 618) return true
+  // A 403 is only read as an expired signature when the failing URL is the
+  // signed-asset host: an unrelated 403 (API rate limit, private repo, proxy)
+  // is a real refusal and must not be retried into a loop.
+  if (statusCode !== 403) return false
+  return errorText(error).includes(SIGNED_ASSET_HOST)
+}
+
 /**
  * A demoted failure must not make a genuinely stuck updater invisible. One
  * offline laptop is noise; an install that has not completed a single update

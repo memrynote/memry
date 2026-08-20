@@ -636,6 +636,10 @@ describe('updater', () => {
     })
 
     it('keeps a jwt-expired release-asset download in error tracking', async () => {
+      // Auto-check off so no check is in flight: an expired signed asset URL
+      // raised *during* a check is retried first (#1622, covered below). This
+      // asserts the unrecoverable case — a 618 is never demoted to a warning.
+      mocks.storeState.prefs = { autoCheck: false }
       const updater = await loadUpdater()
       updater.initializeUpdater()
 
@@ -650,6 +654,128 @@ describe('updater', () => {
 
       expect(trackMainError).toHaveBeenCalledWith('updater', 'check', expired)
       expect(trackMainWarning).not.toHaveBeenCalled()
+    })
+
+    // Issue #1622: GitHub redirects a release asset to a short-lived signed URL
+    // and answers 618 `jwt:expired` when the follow-up GET lands too late.
+    // electron-updater never retries it, so one aged-out token lost the whole
+    // check — 36 production exceptions across four releases, all phase `check`.
+    describe('expired signed release-asset urls (#1622)', () => {
+      const expiredAsset = (): Error =>
+        Object.assign(
+          new Error(
+            '618 \n"method: GET url: https://release-assets.githubusercontent.com/1132/x?jwt=y\n' +
+              '\n          Data:\n          \n<html><title>618 jwt:expired</title></html>'
+          ),
+          { name: 'HttpError', code: 'HTTP_ERROR_618', statusCode: 618 }
+        )
+
+      /** electron-updater emits `error` before checkForUpdates() rejects. */
+      const failWith = (error: Error) =>
+        mocks.autoUpdater.checkForUpdates.mockImplementationOnce(() => {
+          mocks.autoUpdater.emit('checking-for-update')
+          mocks.autoUpdater.emit('error', error)
+          return Promise.reject(error)
+        })
+
+      // Auto-check off: initializeUpdater() would otherwise start its own check
+      // and these tests would be asserting against that one instead.
+      const loadWithoutStartupCheck = async () => {
+        mocks.autoUpdater.checkForUpdates.mockReset()
+        mocks.autoUpdater.checkForUpdates.mockResolvedValue(undefined)
+        mocks.storeState.prefs = { autoCheck: false }
+        const updater = await loadUpdater()
+        updater.initializeUpdater()
+        return updater
+      }
+
+      it('recovers the check on a retry instead of failing the update', async () => {
+        vi.useFakeTimers()
+        try {
+          const updater = await loadWithoutStartupCheck()
+
+          failWith(expiredAsset())
+          mocks.autoUpdater.checkForUpdates.mockImplementationOnce(() => {
+            mocks.autoUpdater.emit('checking-for-update')
+            mocks.autoUpdater.emit('update-not-available')
+            return Promise.resolve(undefined)
+          })
+
+          const check = updater.checkForUpdates()
+          await vi.advanceTimersByTimeAsync(5_000)
+
+          await expect(check).resolves.toMatchObject({ status: 'up-to-date' })
+          expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(2)
+          // The recovered attempt is a warning, never an exception, and the user
+          // never sees the update surface flip to an error it recovered from.
+          expect(trackMainError).not.toHaveBeenCalled()
+          expect(trackMainWarning).not.toHaveBeenCalled()
+          expect(mocks.logger.warn).toHaveBeenCalledWith(
+            'update check hit an expired release-asset url, retrying',
+            expect.any(Error),
+            expect.objectContaining({ phase: 'check', errorCode: 'HTTP_ERROR_618' })
+          )
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it('still reports an exception when every retry expires too', async () => {
+        vi.useFakeTimers()
+        try {
+          const updater = await loadWithoutStartupCheck()
+
+          const last = expiredAsset()
+          failWith(expiredAsset())
+          failWith(expiredAsset())
+          failWith(last)
+
+          const check = updater.checkForUpdates()
+          const settled = check.catch((error: unknown) => error)
+          await vi.advanceTimersByTimeAsync(10_000)
+
+          await expect(settled).resolves.toBe(last)
+          expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(3)
+          // #1595's classification is untouched: a 618 that survives is a defect.
+          expect(trackMainError).toHaveBeenCalledTimes(1)
+          expect(trackMainError).toHaveBeenCalledWith('updater', 'check', last)
+          expect(updater.getUpdateState()).toMatchObject({ status: 'error' })
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it('never retries an ordinary check failure', async () => {
+        vi.useFakeTimers()
+        try {
+          const updater = await loadWithoutStartupCheck()
+
+          const offline = new Error('net::ERR_INTERNET_DISCONNECTED')
+          failWith(offline)
+
+          const settled = updater.checkForUpdates().catch((error: unknown) => error)
+          await vi.advanceTimersByTimeAsync(10_000)
+
+          await expect(settled).resolves.toBe(offline)
+          expect(mocks.autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1)
+          expect(trackMainWarning).toHaveBeenCalledWith('updater', 'check', offline, {
+            retryCount: 1
+          })
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it('does not swallow a 618 raised outside an in-flight check', async () => {
+        const updater = await loadWithoutStartupCheck()
+
+        void updater.downloadUpdate()
+        const expired = expiredAsset()
+        mocks.autoUpdater.emit('error', expired)
+
+        expect(trackMainError).toHaveBeenCalledWith('updater', 'download', expired)
+        expect(updater.getUpdateState()).toMatchObject({ status: 'error' })
+      })
     })
 
     it('keeps a network drop during a download in error tracking', async () => {
