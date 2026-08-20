@@ -100,7 +100,8 @@
       "deleteSelectedNotes": "Delete {count} Notes",
       "deleteSelectedItems": "Delete {count} items",
       "bookmark": "Bookmark",
-      "removeFromBookmarks": "Remove from Bookmarks"
+      "removeFromBookmarks": "Remove from Bookmarks",
+      "journalSettings": "Journal Settings…"
     },
     "deleteDialog": {
       "noteTitle": "Delete Note",

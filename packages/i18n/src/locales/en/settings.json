@@ -355,7 +355,8 @@
       "defaultTemplate": "Default Template",
       "location": "Location & Format",
       "sidebarVisibility": "Sidebar Visibility",
-      "footer": "Footer"
+      "footer": "Footer",
+      "weekdayTemplates": "Per-Day Templates"
     },
     "template": {
       "label": "Template",
@@ -398,7 +399,20 @@
       "label": "Preview",
       "description": "Today's journal file path"
     },
-    "updateError": "Failed to update setting"
+    "updateError": "Failed to update setting",
+    "weekday": {
+      "toggle": "Use a different template per day",
+      "toggleDescription": "Pick a template for each day of the week",
+      "inherit": "Use default",
+      "inheritWith": "Default · {name}",
+      "inheritNone": "Default · none",
+      "missing": "Deleted template",
+      "clear": "Clear",
+      "updated": "Template updated for {day}",
+      "cleared": "Template cleared for {day}",
+      "error": "Failed to update template for {day}",
+      "summary": "{count} of 7 set"
+    }
   },
   "tasks": {
     "header": {

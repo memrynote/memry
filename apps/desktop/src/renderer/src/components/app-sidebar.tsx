@@ -792,6 +792,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           isModifierHeld={isModifierHeld}
           inboxCount={inboxCount}
           todayTasksCount={todayTasksCount}
+          onOpenJournalSettings={() => openSettings('journal')}
         />
         <SidebarDrillDownContainer>{mainContent}</SidebarDrillDownContainer>
       </SidebarContent>

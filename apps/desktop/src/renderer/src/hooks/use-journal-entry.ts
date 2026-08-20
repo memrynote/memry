@@ -14,6 +14,7 @@ import {
 } from '@/services/journal-service'
 import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
+import { resolveJournalTemplateId } from '@/lib/journal-template-resolution'
 import {
   journalKeys,
   ENTRY_STALE_TIME,
@@ -111,6 +112,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const isDirtyRef = useRef(isDirty)
   const isSavingRef = useRef(false)
   const templateSeedKeyRef = useRef<string | null>(null)
+  // Separate from the success latch above: the latch must only be set once an
+  // entry actually exists, but the effect can re-run while the async seed is
+  // still in flight and must not start a second one.
+  const templateSeedInFlightRef = useRef<string | null>(null)
   const performSaveRef = useRef<() => Promise<void>>(async () => {})
   const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
 
@@ -210,14 +215,19 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     void (async () => {
       try {
         const settings = await window.api.settings.getJournalSettings()
-        const templateId = settings.defaultTemplate
+        const templateId = resolveJournalTemplateId(settings, date)
         if (!templateId) return
 
         const seedKey = `${date}:${templateId}`
         if (templateSeedKeyRef.current === seedKey) return
-        templateSeedKeyRef.current = seedKey
+        if (templateSeedInFlightRef.current === seedKey) return
+        templateSeedInFlightRef.current = seedKey
         setIsSeedingFromTemplate(true)
 
+        // A template synced from another device can land after the settings
+        // that point at it, so a miss here is transient. Leaving the success
+        // latch unset lets the next effect run retry instead of stranding the
+        // day blank for the rest of the session.
         const template = await getTemplate(templateId)
         if (!template) return
         if (cancelled || currentDateRef.current !== date) return
@@ -232,13 +242,15 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
         if (cancelled) return
 
+        templateSeedKeyRef.current = seedKey
         queryClient.setQueryData(journalKeys.entry(createdEntry.date), createdEntry)
         const year = parseInt(createdEntry.date.slice(0, 4), 10)
         void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
       } catch (err) {
         trackRendererError('journal_template_seed_failed', err)
-        log.error('Failed to seed journal entry from default template:', err)
+        log.error('Failed to seed journal entry from template:', err)
       } finally {
+        templateSeedInFlightRef.current = null
         if (!cancelled) {
           setIsSeedingFromTemplate(false)
         }

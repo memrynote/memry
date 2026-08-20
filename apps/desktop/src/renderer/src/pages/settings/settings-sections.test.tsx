@@ -209,7 +209,13 @@ vi.mock('@/hooks/use-general-settings', () => ({
 }))
 
 vi.mock('@/hooks/use-calendar-preferences', () => ({
-  useCalendarPreferences: () => mocks.calendarPreferences
+  useCalendarPreferences: () => mocks.calendarPreferences,
+  // Journal settings reads this for the per-day template row order. A partial
+  // mock of this module would fail the whole Journal section, not just the rows.
+  useWeekStartsOn: () =>
+    (mocks.calendarPreferences.settings as { weekStartDay?: string }).weekStartDay === 'sunday'
+      ? 0
+      : 1
 }))
 
 // The Google connection card lives in Calendar settings but owns its own React

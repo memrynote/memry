@@ -59,6 +59,21 @@ export const SyncedSettingsSchema = z.object({
       reviewReminderEnabled: z.boolean().optional(),
       reviewReminderTime: z.string().optional()
     })
+    .optional(),
+  journal: z
+    .object({
+      defaultTemplate: z.string().nullable().optional(),
+      // Keyed by JS getDay() ("0" = Sunday … "6" = Saturday), stored as strings
+      // because JSON object keys are strings and each day carries its own field
+      // clock (`journal.weekdayTemplates.<day>`) so two devices editing
+      // different days concurrently both keep their edit.
+      //
+      // The key stays an unconstrained string on purpose: a single malformed
+      // key from a future or corrupted writer must not fail the whole settings
+      // payload and stall every other synced setting. Readers ignore anything
+      // outside "0".."6".
+      weekdayTemplates: z.record(z.string(), z.string().nullable()).optional()
+    })
     .optional()
 })
 

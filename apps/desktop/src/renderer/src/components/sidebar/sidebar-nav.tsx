@@ -5,7 +5,15 @@ import {
   SidebarMenuButton,
   SidebarMenuBadge
 } from '@/components/ui/sidebar'
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
+import { Settings } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import type { AppPage } from '@/App'
@@ -28,6 +36,11 @@ interface SidebarNavProps {
   isModifierHeld: boolean
   inboxCount: number
   todayTasksCount: number
+  /**
+   * Opens Settings on the Journal section. Passed in rather than read from the
+   * settings-modal context here so this component stays free of providers.
+   */
+  onOpenJournalSettings: () => void
 }
 
 /** The ordinal shortcut number, sized to match the section icon so the row doesn't shift. */
@@ -46,8 +59,11 @@ export function SidebarNav({
   onNavMiddleClick,
   isModifierHeld,
   inboxCount,
-  todayTasksCount
+  todayTasksCount,
+  onOpenJournalSettings
 }: SidebarNavProps) {
+  const { t } = useT('notes')
+
   return (
     <SidebarGroup data-tour="sidebar-nav" className="shrink-0 py-1.5 pb-0">
       <SidebarMenu>
@@ -82,6 +98,20 @@ export function SidebarNav({
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
+                  {/* Journal is the only section with a per-section settings
+                      page worth reaching from the row itself. The label is not
+                      narrowed to "template settings": the section also holds
+                      the journal folder, filename format and sidebar
+                      visibility. */}
+                  {item.page === 'journal' && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={onOpenJournalSettings}>
+                        <Settings className="me-2 h-4 w-4" />
+                        {t('tree.actions.journalSettings')}
+                      </ContextMenuItem>
+                    </>
+                  )}
                 </ContextMenuContent>
               </ContextMenu>
               {badgeCount > 0 && (

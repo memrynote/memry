@@ -58,7 +58,19 @@ import {
   hasVoiceTranscriptionOpenAIApiKey,
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
-import { syncSettingsUpdates } from '../settings/runtime-effects'
+import {
+  syncSettingsUpdates,
+  syncSettingsMapEntryUpdates,
+  syncSettingsFieldUpdate
+} from '../settings/runtime-effects'
+import {
+  JOURNAL_DEFAULT_TEMPLATE_KEY,
+  JOURNAL_WEEKDAY_TEMPLATES_KEY,
+  isWeekdayKey,
+  parseWeekdayTemplateMap,
+  sanitizeWeekdayTemplateMap,
+  type WeekdayTemplateMap
+} from '../settings/journal-template-keys'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { sendTestReviewNotification } from '../inbox/review-notification'
 import { trackMainEvent } from '../telemetry/track'
@@ -94,7 +106,8 @@ const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
 ]
 
 const SETTINGS_KEYS = {
-  JOURNAL_DEFAULT_TEMPLATE: 'journal.defaultTemplate',
+  JOURNAL_DEFAULT_TEMPLATE: JOURNAL_DEFAULT_TEMPLATE_KEY,
+  JOURNAL_WEEKDAY_TEMPLATES: JOURNAL_WEEKDAY_TEMPLATES_KEY,
   JOURNAL_SHOW_SCHEDULE: 'journal.showSchedule',
   JOURNAL_SHOW_TASKS: 'journal.showTasks',
   JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
@@ -113,6 +126,11 @@ const SETTINGS_KEYS = {
 
 export interface JournalSettings {
   defaultTemplate: string | null
+  /**
+   * Per-weekday template overrides keyed by JS `getDay()` ("0" = Sunday).
+   * A day with no entry — or a `null` entry — falls back to `defaultTemplate`.
+   */
+  weekdayTemplates: WeekdayTemplateMap
   showSchedule: boolean
   showTasks: boolean
   showAIConnections: boolean
@@ -360,6 +378,114 @@ function writeGroupSettings<T extends Record<string, unknown>>(
 /**
  * Register all settings-related IPC handlers.
  */
+/**
+ * Read journal settings from the open vault, falling back to defaults when no
+ * vault is open. Exported alongside the IPC registration so tests exercise the
+ * real settings table instead of reaching through a handler closure.
+ */
+export function getJournalSettings(): JournalSettings {
+  const db = getDbOrNull()
+  if (!db) {
+    return {
+      defaultTemplate: null,
+      weekdayTemplates: {},
+      showSchedule: true,
+      showTasks: true,
+      showAIConnections: true,
+      showStatsFooter: false
+    }
+  }
+
+  const defaultTemplate = getSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
+  const weekdayTemplates = parseWeekdayTemplateMap(
+    getSetting(db, SETTINGS_KEYS.JOURNAL_WEEKDAY_TEMPLATES)
+  )
+  const showScheduleStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE)
+  const showTasksStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS)
+  const showAIConnectionsStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS)
+  const showStatsFooterStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER)
+
+  return {
+    defaultTemplate,
+    weekdayTemplates,
+    showSchedule: showScheduleStr !== 'false', // Default true
+    showTasks: showTasksStr !== 'false', // Default true
+    showAIConnections: showAIConnectionsStr !== 'false', // Default true
+    showStatsFooter: showStatsFooterStr === 'true' // Default false
+  }
+}
+
+/** Persist a partial journal settings update, then sync and broadcast it. */
+export function writeJournalSettings(settings: Partial<JournalSettings>): {
+  success: boolean
+  error?: string
+} {
+  const db = getDbOrNull()
+  if (!db) {
+    return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+  }
+
+  if (settings.defaultTemplate !== undefined) {
+    if (settings.defaultTemplate === null) {
+      // Clear the setting
+      deleteSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
+    } else {
+      setSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE, settings.defaultTemplate)
+    }
+    syncSettingsFieldUpdate(SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE, settings.defaultTemplate)
+  }
+
+  // The renderer sends only the day it changed. Merging here rather than
+  // there keeps two windows from clobbering each other with a stale
+  // read-modify-write, and keeps the write symmetric with the per-day field
+  // clocks below.
+  let mergedWeekdayTemplates: WeekdayTemplateMap | undefined
+  if (settings.weekdayTemplates !== undefined) {
+    const patch = sanitizeWeekdayTemplateMap(settings.weekdayTemplates)
+    const current = parseWeekdayTemplateMap(getSetting(db, SETTINGS_KEYS.JOURNAL_WEEKDAY_TEMPLATES))
+    mergedWeekdayTemplates = { ...current, ...patch }
+    setSetting(db, SETTINGS_KEYS.JOURNAL_WEEKDAY_TEMPLATES, JSON.stringify(mergedWeekdayTemplates))
+    // One clock per day, not one for the map: see syncSettingsMapEntryUpdates.
+    syncSettingsMapEntryUpdates('journal', 'weekdayTemplates', patch, isWeekdayKey)
+  }
+
+  // Handle sidebar visibility settings
+  if (settings.showSchedule !== undefined) {
+    setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE, settings.showSchedule ? 'true' : 'false')
+  }
+  if (settings.showTasks !== undefined) {
+    setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS, settings.showTasks ? 'true' : 'false')
+  }
+  if (settings.showAIConnections !== undefined) {
+    setSetting(
+      db,
+      SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS,
+      settings.showAIConnections ? 'true' : 'false'
+    )
+  }
+  if (settings.showStatsFooter !== undefined) {
+    setSetting(
+      db,
+      SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER,
+      settings.showStatsFooter ? 'true' : 'false'
+    )
+  }
+
+  // Emit settings changed event. The weekday map goes out whole: the
+  // renderer merges settings patches shallowly, so a one-day patch would
+  // replace every subscriber's map with just that day.
+  broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+    key: 'journal',
+    value: mergedWeekdayTemplates
+      ? { ...settings, weekdayTemplates: mergedWeekdayTemplates }
+      : settings
+  })
+
+  trackGroupSettingChanges('journal', settings)
+
+  return { success: true }
+}
+
 export function registerSettingsHandlers(): void {
   ipcMain.on(SettingsChannels.sync.GET_STARTUP_THEME, (event) => {
     event.returnValue = getStartupTheme()
@@ -400,87 +526,12 @@ export function registerSettingsHandlers(): void {
   )
 
   // Get journal settings
-  ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => {
-    const db = getDbOrNull()
-    if (!db) {
-      return {
-        defaultTemplate: null,
-        showSchedule: true,
-        showTasks: true,
-        showAIConnections: true,
-        showStatsFooter: false
-      }
-    }
-
-    const defaultTemplate = getSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
-    const showScheduleStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE)
-    const showTasksStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS)
-    const showAIConnectionsStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS)
-    const showStatsFooterStr = getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER)
-
-    return {
-      defaultTemplate,
-      showSchedule: showScheduleStr !== 'false', // Default true
-      showTasks: showTasksStr !== 'false', // Default true
-      showAIConnections: showAIConnectionsStr !== 'false', // Default true
-      showStatsFooter: showStatsFooterStr === 'true' // Default false
-    }
-  })
+  ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => getJournalSettings())
 
   // Set journal settings
   ipcMain.handle(
     SettingsChannels.invoke.SET_JOURNAL_SETTINGS,
-    (_event, settings: Partial<JournalSettings>) => {
-      const db = getDbOrNull()
-      if (!db) {
-        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
-      }
-
-      if (settings.defaultTemplate !== undefined) {
-        if (settings.defaultTemplate === null) {
-          // Clear the setting
-          deleteSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE)
-        } else {
-          setSetting(db, SETTINGS_KEYS.JOURNAL_DEFAULT_TEMPLATE, settings.defaultTemplate)
-        }
-      }
-
-      // Handle sidebar visibility settings
-      if (settings.showSchedule !== undefined) {
-        setSetting(
-          db,
-          SETTINGS_KEYS.JOURNAL_SHOW_SCHEDULE,
-          settings.showSchedule ? 'true' : 'false'
-        )
-      }
-      if (settings.showTasks !== undefined) {
-        setSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_TASKS, settings.showTasks ? 'true' : 'false')
-      }
-      if (settings.showAIConnections !== undefined) {
-        setSetting(
-          db,
-          SETTINGS_KEYS.JOURNAL_SHOW_AI_CONNECTIONS,
-          settings.showAIConnections ? 'true' : 'false'
-        )
-      }
-      if (settings.showStatsFooter !== undefined) {
-        setSetting(
-          db,
-          SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER,
-          settings.showStatsFooter ? 'true' : 'false'
-        )
-      }
-
-      // Emit settings changed event
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
-        key: 'journal',
-        value: settings
-      })
-
-      trackGroupSettingChanges('journal', settings)
-
-      return { success: true }
-    }
+    (_event, settings: Partial<JournalSettings>) => writeJournalSettings(settings)
   )
 
   // Get AI settings (simplified - just enabled flag)

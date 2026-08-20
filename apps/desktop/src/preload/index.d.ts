@@ -988,6 +988,11 @@ export interface ContextMenuItem {
 // Settings types
 export interface JournalSettings {
   defaultTemplate: string | null
+  /**
+   * Per-weekday template overrides keyed by JS `getDay()` ("0" = Sunday).
+   * A day with no entry — or a `null` entry — falls back to `defaultTemplate`.
+   */
+  weekdayTemplates: Record<string, string | null>
   /** Whether to show the Schedule section in the journal sidebar */
   showSchedule: boolean
   /** Whether to show the Tasks section in the journal sidebar */

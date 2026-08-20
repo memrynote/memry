@@ -334,6 +334,9 @@ describe('settings-handlers', () => {
     const journalSettings = await invokeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
     expect(journalSettings).toEqual({
       defaultTemplate: 'template-1',
+      // getSetting is stubbed to return 'template-1' for every key, so the
+      // weekday row parses as malformed JSON and degrades to an empty map.
+      weekdayTemplates: {},
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
@@ -370,6 +373,7 @@ describe('settings-handlers', () => {
     const noVaultSettings = await invokeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
     expect(noVaultSettings).toEqual({
       defaultTemplate: null,
+      weekdayTemplates: {},
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
