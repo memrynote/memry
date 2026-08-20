@@ -318,6 +318,45 @@ export const useSessionRestore = (
 }
 
 // =============================================================================
+// STARTUP WIRING
+// =============================================================================
+
+interface UseTabSessionPersistenceOptions extends UseTabPersistenceOptions {
+  /** Auto-restore on mount (default: true) */
+  autoRestore?: boolean
+}
+
+/**
+ * Restore the stored session, then keep saving it.
+ *
+ * Mounting the two halves next to each other is not the same as ordering them.
+ * `useTabPersistence` starts its debounce from whatever the provider built at
+ * mount — one Home tab — while `useSessionRestore` cannot read storage until
+ * the feature-flag IPC answers, because the flags decide which tab types are
+ * still restorable. On a cold start with a busy main process that round trip
+ * routinely outlasts the debounce, so the auto-save wrote the default state
+ * over the real session and the restore then read back the single Home tab it
+ * had just destroyed. Holding auto-save until the restore settles is what makes
+ * that order deterministic instead of a race the user loses more often as their
+ * vault grows.
+ */
+export const useTabSessionPersistence = (
+  options: UseTabSessionPersistenceOptions = {}
+): UseSessionRestoreResult => {
+  const { storage, debounceMs, enabled = true, autoRestore } = options
+
+  const restore = useSessionRestore({ storage, autoRestore })
+
+  useTabPersistence({
+    storage,
+    debounceMs,
+    enabled: enabled && !restore.isRestoring
+  })
+
+  return restore
+}
+
+// =============================================================================
 // MANUAL SAVE/LOAD
 // =============================================================================
 
