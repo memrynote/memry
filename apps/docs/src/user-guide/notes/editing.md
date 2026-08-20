@@ -200,6 +200,15 @@ Pasting a URL offers four ways to keep it: plain **URL**, an inline **Mention** 
 
 This works inside a table cell too. **Mention** replaces the pasted URL in that one cell and leaves the rest of the table alone. **Embed** and **Bookmark** are blocks in their own right and a cell holds text only, so they take the URL out of the cell and place the card after the whole table.
 
+## Pasting into a Table Cell
+
+Pasted text is normally read as Markdown, so a pasted `# Heading` becomes a heading and a pasted `| a | b |` becomes a table. Inside a table cell that reading is switched off: a cell holds text, and text is what you get. Paste a row of pipes into a cell and you get a row of pipes, not a second table spliced over the one you are editing.
+
+Two things follow from a cell holding text only:
+
+- Pasted line breaks stay inside the one cell. A Markdown table row is a single line, so they are saved as spaces — the words all survive, the line breaks do not.
+- Copying **cells** rather than text still pastes as cells. A cell or a range of cells copied from a table in memrynote keeps its shape and fills the grid from wherever the cursor is, the way a spreadsheet does.
+
 ## Link Previews
 
 Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.
