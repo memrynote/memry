@@ -132,6 +132,16 @@ export default defineConfig({
     }
   },
   renderer: {
+    build: {
+      // Renderer stack traces reached PostHog as a bundle hash and a line
+      // number, so a production TypeError cost a release-artifact download to
+      // locate (see #1589). 'hidden' emits the .map files but appends no
+      // `//# sourceMappingURL` comment, so the shipped JS is byte-identical to
+      // a sourcemap-less build. The maps are uploaded to PostHog by
+      // scripts/upload-sourcemaps.mjs and kept out of the package by
+      // `!out/**/*.map` in config/electron-builder.yml — they are never shipped.
+      sourcemap: 'hidden'
+    },
     define: {
       // react-grid-layout reads a bare `process.env` at runtime. The contextIsolated renderer has
       // no Node `process`, so without this it throws "process is not defined" inside RGL's drag/

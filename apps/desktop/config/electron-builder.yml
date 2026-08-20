@@ -21,6 +21,12 @@ files:
   - '!app-config'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!**/*.tsbuildinfo'
+  # The renderer build emits hidden sourcemaps (electron.vite.config.ts) purely
+  # so scripts/upload-sourcemaps.mjs can hand them to PostHog. They must never
+  # reach app.asar: they are larger than the bundles themselves and ship our
+  # source. The shipped JS carries no sourceMappingURL, so dropping them here
+  # leaves nothing dangling.
+  - '!out/**/*.map'
   - '!node_modules/**/*.map'
   - '!node_modules/**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
 asarUnpack:

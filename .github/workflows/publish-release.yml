@@ -222,6 +222,11 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Unset until the PostHog personal API key is added as a repository
+          # secret; upload-sourcemaps.mjs then no-ops and the release is
+          # unchanged.
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: ${{ secrets.POSTHOG_CLI_PROJECT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -244,6 +249,7 @@ jobs:
           done
 
           pnpm --filter @memry/desktop build:release
+          node apps/desktop/scripts/upload-sourcemaps.mjs
           node apps/desktop/scripts/build-packaged-app.js \
             --config config/electron-builder.staged-local-mac.yml \
             --mac \
@@ -409,10 +415,14 @@ jobs:
       - name: Build Windows artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: ${{ secrets.POSTHOG_CLI_PROJECT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         shell: pwsh
         run: |
           pnpm --filter @memry/desktop build:release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node apps/desktop/scripts/upload-sourcemaps.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -558,10 +568,13 @@ jobs:
       - name: Build Linux artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: ${{ secrets.POSTHOG_CLI_PROJECT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
           pnpm --filter @memry/desktop build:release
+          node apps/desktop/scripts/upload-sourcemaps.mjs
           node apps/desktop/scripts/build-packaged-app.js --linux --x64 --publish never
 
       - name: Stage Linux assets
