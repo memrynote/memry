@@ -84,7 +84,7 @@ import {
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
-import { handleEditorPaste } from './table-cell-paste'
+import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
@@ -549,8 +549,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     fetchNotePath
   })
 
-  // Hook #6b: Image pasted/dropped into a table cell → inline image (#1640)
-  useTableCellImage({ editor, editable, containerRef, noteIdRef })
+  // Hook #6b: `/image`, paste and drop inside a table cell → inline image (#1640)
+  const { pickImageForCell } = useTableCellImage({ editor, editable, containerRef, noteIdRef })
 
   // Hook #7: Paste link menu (URL / Mention / Embed)
   const handlePasteLinkSelect = useCallback(
@@ -1449,14 +1449,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
-                // `img` and `picture` already ship as image aliases; `photo` did
-                // not, and is what people actually type.
+                // An image BLOCK cannot live in a table cell: BlockNote puts it
+                // after the whole table and takes the caret with it, leaving the
+                // cell empty (#1640). Same row, same label — inside a cell it
+                // picks a file and inserts the inline node instead.
+                const inCell = isSelectionInTableCell(editor)
                 const defaults = withTableHeaderRow(
-                  getDefaultReactSlashMenuItems(editor).map((item) =>
-                    (item as { key?: string }).key === 'image'
-                      ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
-                      : item
-                  ),
+                  getDefaultReactSlashMenuItems(editor).map((item) => {
+                    if ((item as { key?: string }).key !== 'image') return item
+                    // `img` and `picture` already ship as image aliases; `photo`
+                    // did not, and is what people actually type.
+                    const withPhoto = { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
+                    return inCell ? { ...withPhoto, onItemClick: pickImageForCell } : withPhoto
+                  }),
                   // `updateBlock` is typed against the whole schema union, so a
                   // helper that only ever writes table content cannot state its
                   // parameter in terms the editor's own signature accepts.

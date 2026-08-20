@@ -16,7 +16,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { test, expect } from './fixtures'
-import type { Page } from '@playwright/test'
+import type { FileChooser, Page } from '@playwright/test'
 import { waitForAppReady, waitForVaultReady, SELECTORS } from './utils/electron-helpers'
 import { openNoteByTitle } from './utils/note-sync-helpers'
 
@@ -130,6 +130,66 @@ test.describe('Table cell images', () => {
       /\|\s*v1\s*\|\s*!\[progress\.png]\(\.\.\/attachments\/progress\.png\)\s*\|/
     )
     expect(body.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+  })
+
+  test('choosing Image from the slash menu puts the picture in the cell', async ({
+    page,
+    testVaultPath
+  }) => {
+    // #given the gesture people actually reach for. Before this, `/image` in a
+    // cell inserted an image BLOCK *after the whole table* and moved the caret
+    // out of the cell with it — the cell stayed empty and there was no way to
+    // get a picture into it at all.
+    const title = `Cell Slash ${Date.now()}`
+    const absPath = seedVaultFile(
+      testVaultPath,
+      title,
+      ['| Iteration | Shot |', '| --- | --- |', '| v1 |  |', ''].join('\n')
+    )
+    await openInEditor(page, title)
+
+    // Registered up front, not next to the keypress: turning on Playwright's
+    // file-chooser interception is a CDP round-trip, and `waitForEvent` issued
+    // one line before the click loses the race and never sees the chooser.
+    const chooserPromise = new Promise<FileChooser>((resolve) => page.once('filechooser', resolve))
+
+    // #when the caret is in the second cell and Image is chosen from the menu
+    const cell = page.locator(`${SELECTORS.noteEditor} tbody td`).nth(1)
+    await cell.click()
+    await page.keyboard.type('/image')
+    await expect(page.getByText('Image', { exact: true }).first()).toBeVisible({ timeout: 10_000 })
+    await page.keyboard.press('Enter')
+
+    const chooser = await chooserPromise
+    await chooser.setFiles({
+      name: 'picked.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(PNG_BASE64, 'base64')
+    })
+
+    // #then the picture is IN the cell…
+    const cellImage = page.locator(`${SELECTORS.noteEditor} td img.inline-image`).first()
+    await expect(cellImage).toBeVisible({ timeout: 20_000 })
+
+    // …and no image block was added beside the table, which is the old bug
+    const blockTypes = await page.evaluate(() =>
+      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+    )
+    expect(blockTypes).not.toContain('image')
+
+    // #and the row on disk carries it as inline markdown
+    await expect
+      .poll(
+        () => {
+          try {
+            return stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
+          } catch {
+            return ''
+          }
+        },
+        { timeout: 25_000 }
+      )
+      .toMatch(/\|\s*v1\s*\|\s*!\[[^\]]*]\([^)]+\)\s*\|/)
   })
 
   test('pasting an image with the caret in a cell writes it into that cell', async ({

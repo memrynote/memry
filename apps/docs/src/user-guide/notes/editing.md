@@ -233,7 +233,7 @@ Two things follow from a cell holding a single line of inline content:
 
 ## Images in a Table Cell
 
-A table cell can hold a picture as well as text. Put the cursor in the cell and paste an image, or drag an image file onto the cell — it lands inside that cell rather than after the table, and text can sit on either side of it.
+A table cell can hold a picture as well as text. With the cursor in the cell, type `/image` and pick a file, paste an image, or drag an image file onto the cell — it lands inside that cell rather than after the table, and text can sit on either side of it.
 
 The image is written into your note as ordinary markdown, `![name](path)`, so the row stays a normal table row that Obsidian and any other markdown editor can read. A table you wrote by hand with images already in it now opens with those images showing, instead of an empty cell.
 

@@ -212,6 +212,119 @@ describe('pasting an image with the caret in a cell', () => {
   })
 })
 
+describe('picking an image for the cell (the slash menu row)', () => {
+  function fileInputIn(container: HTMLElement): HTMLInputElement {
+    return container.querySelector('input[type="file"]') as HTMLInputElement
+  }
+
+  /** jsdom has no file dialog, so the chosen files are put on the input by hand. */
+  function choose(input: HTMLInputElement, files: File[]): void {
+    Object.defineProperty(input, 'files', { value: files, configurable: true })
+    input.dispatchEvent(new Event('change'))
+  }
+
+  function mountPicker(container: HTMLDivElement, editor: any) {
+    ;(editor.prosemirrorView as any).state.tr = { setSelection: (sel: unknown) => sel }
+    ;(editor.prosemirrorView as any).state.doc = { content: { size: 40 } }
+    ;(editor.prosemirrorView as any).state.selection = {
+      ...editor.prosemirrorView.state.selection,
+      from: 7
+    }
+    ;(editor.prosemirrorView as any).focus = vi.fn()
+    return mount(editor, container)
+  }
+
+  it('opens a file picker instead of inserting an image block', () => {
+    // #given the row BlockNote would answer with a block placed AFTER the whole
+    // table, caret and all
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const editor = makeEditor(selectionIn('table', 'tableRow', 'tableCell'))
+    const { result } = mountPicker(container, editor)
+    const input = fileInputIn(container)
+    const click = vi.spyOn(input, 'click')
+
+    // #when
+    result.current.pickImageForCell()
+
+    // #then
+    expect(click).toHaveBeenCalled()
+    expect(input.accept).toBe('image/*')
+  })
+
+  it('uploads the chosen file and inserts it as inline content', async () => {
+    // #given
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const editor = makeEditor(selectionIn('table', 'tableRow', 'tableCell'))
+    const { result } = mountPicker(container, editor)
+    const input = fileInputIn(container)
+    vi.spyOn(input, 'click').mockImplementation(() => {})
+
+    // #when
+    result.current.pickImageForCell()
+    choose(input, [PNG()])
+
+    // #then
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        { type: 'inlineImage', props: { src: '../attachments/n1/shot.png', alt: 'shot.png' } }
+      ])
+    )
+  })
+
+  it('puts the image back where the caret was when the row was chosen', async () => {
+    // #given the picker is modal and asynchronous — by the time a file comes
+    // back the editor has been blurred, and inserting at "wherever the selection
+    // is now" is exactly the bug this row replaces
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const editor = makeEditor(selectionIn('table', 'tableRow', 'tableCell'))
+    const { result } = mountPicker(container, editor)
+    const input = fileInputIn(container)
+    vi.spyOn(input, 'click').mockImplementation(() => {})
+
+    // #when the caret moves away between the click and the file arriving
+    result.current.pickImageForCell()
+    ;(editor.prosemirrorView as any).state.selection.from = 31
+    choose(input, [PNG()])
+
+    // #then the position captured at click time is what is restored
+    await waitFor(() =>
+      expect(editor.prosemirrorView.dispatch).toHaveBeenCalledWith({ selectedPos: 7 })
+    )
+  })
+
+  it('ignores a chosen file that is not an image', async () => {
+    // #given
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const editor = makeEditor(selectionIn('table', 'tableRow', 'tableCell'))
+    const { result } = mountPicker(container, editor)
+    const input = fileInputIn(container)
+    vi.spyOn(input, 'click').mockImplementation(() => {})
+
+    // #when
+    result.current.pickImageForCell()
+    choose(input, [new File(['x'], 'a.pdf', { type: 'application/pdf' })])
+
+    // #then
+    await waitFor(() => expect(mocks.uploadAttachment).not.toHaveBeenCalled())
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it('does nothing before the editor has a view', () => {
+    // #given the editor is created before its view exists, and the menu is built
+    // from the same render
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const { result } = mount({ insertInlineContent: vi.fn() }, container)
+
+    // #when / #then no throw reaches the menu row
+    expect(() => result.current.pickImageForCell()).not.toThrow()
+  })
+})
+
 describe('dropping an image onto a cell', () => {
   function dropOn(target: HTMLElement, files: File[]): DragEvent {
     const event = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent

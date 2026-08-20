@@ -2590,6 +2590,7 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
   })
 })
 
+/**
  * Images inside table cells (#1640).
  *
  * The gate that matters is this one, not a spec unit test: a `tableCell` holds
