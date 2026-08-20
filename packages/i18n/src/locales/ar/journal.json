@@ -1,14 +1,11 @@
 {
   "title": "مجلة",
   "section": {
-    "journal": "مجلة",
     "aiConnections": "اتصالات الذكاء الاصطناعي",
     "todaysNotes": "ملاحظات اليوم",
     "todaysSchedule": "جدول اليوم",
     "todaysTasks": "مهام اليوم",
     "tasks": "المهام",
-    "calendarEvents": "أحداث التقويم",
-    "overdueTasks": "المهام المتأخرة",
     "technicalDetails": "التفاصيل الفنية"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "إعدادات المجلة",
     "fullMode": "الوضع الكامل",
     "compactMode": "الوضع المضغوط",
-    "focusMode": "وضع التركيز",
-    "exitFocusMode": "الخروج من وضع التركيز",
-    "enterFocusMode": "أدخل وضع التركيز",
     "createNote": "إنشاء ملاحظة",
     "createNewNote": "إنشاء ملاحظة جديدة",
     "showLess": "عرض أقل",
@@ -34,8 +28,6 @@
     "reloadJournal": "إعادة تحميل المجلة",
     "goToToday": "اذهب إلى اليوم",
     "copyUnsavedContent": "انسخ المحتوى غير المحفوظ إلى الحافظة",
-    "openNoteFullPage": "افتح الملاحظة في صفحة كاملة",
-    "closeNoteDrawer": "أغلق درج الملاحظات",
     "addBookmark": "إضافة إشارة مرجعية",
     "removeBookmark": "إزالة الإشارة المرجعية"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "ماذا تخطط...",
       "today": "ماذا يدور في ذهنك اليوم...",
-      "past": "تأمل في هذا اليوم..",
-      "default": "ابدأ بالكتابة..."
-    },
-    "toolbar": {
-      "ariaLabel": "تنسيق النص",
-      "bold": "جريئة",
-      "italic": "مائل",
-      "underline": "تسطير",
-      "strikethrough": "يتوسطه خط",
-      "link": "رابط",
-      "image": "صورة",
-      "moreOptions": "المزيد من الخيارات",
-      "heading1": "العنوان 1",
-      "heading2": "العنوان 2",
-      "heading3": "العنوان 3",
-      "bulletList": "قائمة رصاصة",
-      "numberedList": "قائمة مرقمة",
-      "checklist": "قائمة التحقق",
-      "quote": "اقتباس",
-      "divider": "مقسم",
-      "codeBlock": "كتلة الكود"
-    },
-    "prompt": {
-      "enterUrl": "أدخل عنوان URL:"
+      "past": "تأمل في هذا اليوم.."
     },
     "upload": {
-      "noEntry": "لا يمكن تحميل الصورة: لم يتم تحديد إدخال دفتر اليومية",
       "failed": "فشل تحميل الصورة"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "الاتصال بـ {label}، تطابق {scorePercent}%"
   },
   "count": {
-    "items": "العناصر",
     "note": "ملاحظة",
     "day": "يوم",
     "days": "أيام",
     "event": "حدث",
     "events": "الأحداث",
-    "meeting": "اجتماع",
-    "meetings": "الاجتماعات",
     "task": "مهمة",
-    "tasks": "المهام",
     "todo": "للقيام به",
-    "people": "{count} الناس",
     "moreConnections": "+ {count} المزيد من الاتصال",
     "moreConnections_plural": "+ {count} المزيد من الاتصالات",
     "moreNotes": "+ {count} المزيد من الملاحظة",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "ملاحظة-{date}",
     "openAria": "افتح {title}، الذي تم إنشاؤه في {time}"
-  },
-  "tag": {
-    "suggestionsAria": "اقتراحات العلامات",
-    "empty": {
-      "title": "لا توجد علامات حتى الآن",
-      "description": "اكتب لإنشاء علامة جديدة"
-    },
-    "groupTitle": "العلامات",
-    "create": "إنشاء #{query}",
-    "ariaLabel": "العلامة: {tag}، انقر للتصفية"
-  },
-  "wiki": {
-    "suggestionsAria": "اقتراحات الصفحة",
-    "empty": {
-      "title": "لم يتم العثور على صفحات"
-    },
-    "groupRecent": "الأخيرة",
-    "groupAllPages": "جميع الصفحات",
-    "createNewPage": "إنشاء صفحة جديدة",
-    "ariaLabel": "رابط إلى {title}"
   },
   "error": {
     "title": "خطأ في المجلة",

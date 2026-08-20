@@ -1,8 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AIConnectionsPanel, type AIConnection } from '@/components/journal/ai-connections-panel'
-import { CollapsibleSection, JournalSection } from '@/components/journal/collapsible-section'
-import { DayCard } from '@/components/journal/day-card'
 import { JournalNavigationRow } from '@/components/journal/journal-navigation-row'
 import { TodaysNotesSection } from '@/components/journal/todays-notes'
 
@@ -22,25 +20,6 @@ vi.mock('@memry/i18n/renderer', () => ({
 
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '12h' } })
-}))
-
-vi.mock('@/components/journal/journal-editor', () => ({
-  JournalEditor: ({
-    content,
-    placeholder,
-    onContentChange,
-    onFocusToggle
-  }: {
-    content: string
-    placeholder: string
-    onContentChange?: (content: string) => void
-    onFocusToggle?: () => void
-  }) => (
-    <div>
-      <button onClick={() => onContentChange?.(`${content}-changed`)}>{placeholder}</button>
-      <button onClick={onFocusToggle}>focus</button>
-    </div>
-  )
 }))
 
 vi.mock('@/components/journal/journal-reminder-button', () => ({
@@ -80,34 +59,6 @@ const note = (id: string, title: string, created: string) =>
   }) as never
 
 describe('journal component coverage', () => {
-  it('toggles collapsible content and forwards journal editor events', () => {
-    const onContentChange = vi.fn()
-    const onFocusToggle = vi.fn()
-
-    render(
-      <>
-        <CollapsibleSection icon={<span>icon</span>} title="Events" count={2}>
-          body
-        </CollapsibleSection>
-        <JournalSection
-          content="draft"
-          onContentChange={onContentChange}
-          onFocusToggle={onFocusToggle}
-        />
-      </>
-    )
-
-    const header = screen.getByRole('button', { name: /Events/ })
-    expect(header).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(header)
-    expect(header).toHaveAttribute('aria-expanded', 'true')
-
-    fireEvent.click(screen.getByRole('button', { name: 'editor.placeholder.default' }))
-    fireEvent.click(screen.getByRole('button', { name: 'focus' }))
-    expect(onContentChange).toHaveBeenCalledWith('draft-changed')
-    expect(onFocusToggle).toHaveBeenCalled()
-  })
-
   it('covers AI connections loading, empty, error, list, expand, and callbacks', () => {
     const onRefresh = vi.fn()
     const onConnectionClick = vi.fn()
@@ -236,56 +187,5 @@ describe('journal component coverage', () => {
     )
     expect(screen.getByRole('button', { name: 'nav.nextYear' })).toBeInTheDocument()
     expect(within(screen.getByRole('navigation')).queryByText('date.relative.today')).toBeNull()
-  })
-
-  it('renders day cards with event/task sections, focus mode, and future placeholders', () => {
-    const onToggleFocusMode = vi.fn()
-    const { rerender } = render(
-      <DayCard
-        date="2026-05-10"
-        isActive
-        isToday
-        isFuture={false}
-        opacity={0.9}
-        onToggleFocusMode={onToggleFocusMode}
-        calendarEvents={[
-          { id: 'event-1', time: '09:00', title: 'Standup', attendeeCount: 3 },
-          { id: 'event-2', time: '11:00', title: 'Focus' }
-        ]}
-        overdueTasks={[
-          { id: 'task-1', title: 'Pay invoice', dueDate: 'Yesterday', completed: false }
-        ]}
-      />
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: /section.calendarEvents/ }))
-    expect(screen.getByText('Standup')).toBeInTheDocument()
-    expect(screen.getByText('(count.people:3)')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /section.overdueTasks/ }))
-    expect(screen.getByText('Pay invoice')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'action.enterFocusMode' }))
-    expect(onToggleFocusMode).toHaveBeenCalled()
-
-    rerender(
-      <DayCard
-        date="2026-05-11"
-        isActive={false}
-        isToday={false}
-        isFuture
-        opacity={0.4}
-        viewMode="focus"
-        onToggleFocusMode={onToggleFocusMode}
-        calendarEvents={[{ id: 'event-3', time: '12:00', title: 'Hidden in focus' }]}
-        overdueTasks={[
-          { id: 'task-2', title: 'Hidden task', dueDate: 'Tomorrow', completed: false }
-        ]}
-      />
-    )
-    expect(screen.queryByText('Hidden in focus')).not.toBeInTheDocument()
-    expect(screen.queryByText('Hidden task')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'editor.placeholder.future' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'action.exitFocusMode' }))
-    expect(onToggleFocusMode).toHaveBeenCalledTimes(2)
   })
 })

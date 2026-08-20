@@ -1,14 +1,11 @@
 {
   "title": "Dagbok",
   "section": {
-    "journal": "Dagbok",
     "aiConnections": "AI-anslutningar",
     "todaysNotes": "Dagens anteckningar",
     "todaysSchedule": "Dagens schema",
     "todaysTasks": "Dagens uppgifter",
     "tasks": "Uppgifter",
-    "calendarEvents": "Kalenderhändelser",
-    "overdueTasks": "Förfallna uppgifter",
     "technicalDetails": "Tekniska detaljer"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journalinställningar",
     "fullMode": "Fullt läge",
     "compactMode": "Kompakt läge",
-    "focusMode": "Fokusläge",
-    "exitFocusMode": "Avsluta fokuseringsläge",
-    "enterFocusMode": "Gå in i fokuseringsläge",
     "createNote": "Skapa anteckning",
     "createNewNote": "Skapa ny anteckning",
     "showLess": "Visa mindre",
@@ -34,8 +28,6 @@
     "reloadJournal": "Ladda om dagbok",
     "goToToday": "Gå till idag",
     "copyUnsavedContent": "Kopiera osparat innehåll till urklipp",
-    "openNoteFullPage": "Öppna anteckning i full sida",
-    "closeNoteDrawer": "Stäng anteckningsfack",
     "addBookmark": "Lägg till bokmärke",
     "removeBookmark": "Ta bort bokmärke"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Vad planerar du...",
       "today": "Vad tänker du på idag...",
-      "past": "Reflektera över denna dag...",
-      "default": "Börja skriva..."
-    },
-    "toolbar": {
-      "ariaLabel": "Textformatering",
-      "bold": "Fetstil",
-      "italic": "Kursiv",
-      "underline": "Understruken",
-      "strikethrough": "Genomstruken",
-      "link": "Länk",
-      "image": "Bild",
-      "moreOptions": "Fler alternativ",
-      "heading1": "Rubrik 1",
-      "heading2": "Rubrik 2",
-      "heading3": "Rubrik 3",
-      "bulletList": "Punktlista",
-      "numberedList": "Numrerad lista",
-      "checklist": "Checklista",
-      "quote": "Citat",
-      "divider": "Avskiljare",
-      "codeBlock": "Kodblock"
-    },
-    "prompt": {
-      "enterUrl": "Ange URL:"
+      "past": "Reflektera över denna dag..."
     },
     "upload": {
-      "noEntry": "Kan inte ladda upp bild: ingen dagboksanteckning vald",
       "failed": "Misslyckades med att ladda upp bild"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Koppling till {label}, {scorePercent}% match"
   },
   "count": {
-    "items": "artiklar",
     "note": "anteckning",
     "day": "dag",
     "days": "dagar",
     "event": "evenemang",
     "events": "evenemang",
-    "meeting": "möte",
-    "meetings": "möten",
     "task": "uppgift",
-    "tasks": "uppgifter",
     "todo": "göra",
-    "people": "{count} personer",
     "moreConnections": "+ {count} fler anslutning",
     "moreConnections_plural": "+ {count} fler anslutningar",
     "moreNotes": "+ {count} fler anteckning",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Anteckning - {date}",
     "openAria": "Öppna {title}, skapad den {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Etikettförslag",
-    "empty": {
-      "title": "Inga taggar än",
-      "description": "Skriv för att skapa en ny tagg"
-    },
-    "groupTitle": "Taggar",
-    "create": "Skapa #{query}",
-    "ariaLabel": "Tagg: {tag}, klicka för att filtrera"
-  },
-  "wiki": {
-    "suggestionsAria": "Föreslagna sidor",
-    "empty": {
-      "title": "Inga sidor hittades"
-    },
-    "groupRecent": "Senaste",
-    "groupAllPages": "Alla sidor",
-    "createNewPage": "Skapa ny sida",
-    "ariaLabel": "Länk till {title}"
   },
   "error": {
     "title": "Journalfel",

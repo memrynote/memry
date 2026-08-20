@@ -1,14 +1,11 @@
 {
   "title": "Journal",
   "section": {
-    "journal": "Journal",
     "aiConnections": "AI-forbindelser",
     "todaysNotes": "Dagens noter",
     "todaysSchedule": "Dagens skema",
     "todaysTasks": "Dagens opgaver",
     "tasks": "Opgaver",
-    "calendarEvents": "Kalenderbegivenheder",
-    "overdueTasks": "Forfaldne opgaver",
     "technicalDetails": "Tekniske detaljer"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journalindstillinger",
     "fullMode": "Fuld tilstand",
     "compactMode": "Kompakt tilstand",
-    "focusMode": "Fokustilstand",
-    "exitFocusMode": "Afslut fokustilstand",
-    "enterFocusMode": "Gå ind i fokustilstand",
     "createNote": "Opret note",
     "createNewNote": "Opret ny note",
     "showLess": "Vis mindre",
@@ -34,8 +28,6 @@
     "reloadJournal": "Genindlæs journal",
     "goToToday": "Gå til i dag",
     "copyUnsavedContent": "Kopier ikke-gemt indhold til udklipsholder",
-    "openNoteFullPage": "Åbn note på hele siden",
-    "closeNoteDrawer": "Luk seddelskuffen",
     "addBookmark": "Tilføj bogmærke",
     "removeBookmark": "Fjern bogmærke"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Hvad planlægger du...",
       "today": "Hvad tænker du på i dag...",
-      "past": "Tænk på denne dag...",
-      "default": "Begynd at skrive..."
-    },
-    "toolbar": {
-      "ariaLabel": "Tekstformatering",
-      "bold": "Fed",
-      "italic": "Kursiv",
-      "underline": "Understreg",
-      "strikethrough": "Gennemstregning",
-      "link": "Link",
-      "image": "Billede",
-      "moreOptions": "Flere muligheder",
-      "heading1": "Overskrift 1",
-      "heading2": "Overskrift 2",
-      "heading3": "Overskrift 3",
-      "bulletList": "Punktliste",
-      "numberedList": "Nummereret liste",
-      "checklist": "Tjekliste",
-      "quote": "Citat",
-      "divider": "Afdeler",
-      "codeBlock": "Kodeblok"
-    },
-    "prompt": {
-      "enterUrl": "Indtast URL:"
+      "past": "Tænk på denne dag..."
     },
     "upload": {
-      "noEntry": "Kan ikke uploade billede: ingen journalpost valgt",
       "failed": "Kunne ikke uploade billede"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Forbindelse til {label}, {scorePercent}% matcher"
   },
   "count": {
-    "items": "genstande",
     "note": "bemærk",
     "day": "dag",
     "days": "dage",
     "event": "begivenhed",
     "events": "begivenheder",
-    "meeting": "møde",
-    "meetings": "møder",
     "task": "opgave",
-    "tasks": "opgaver",
     "todo": "at gøre",
-    "people": "{count} mennesker",
     "moreConnections": "+ {count} mere forbindelse",
     "moreConnections_plural": "+ {count} flere forbindelser",
     "moreNotes": "+ {count} mere bemærkning",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Bemærk - {date}",
     "openAria": "Åbn {title}, oprettet på {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag forslag",
-    "empty": {
-      "title": "Ingen tags endnu",
-      "description": "Skriv for at oprette et nyt tag"
-    },
-    "groupTitle": "Tags",
-    "create": "Opret #{query}",
-    "ariaLabel": "Tag: {tag}, klik for at filtrere"
-  },
-  "wiki": {
-    "suggestionsAria": "Sideforslag",
-    "empty": {
-      "title": "Ingen sider fundet"
-    },
-    "groupRecent": "Seneste",
-    "groupAllPages": "Alle sider",
-    "createNewPage": "Opret ny side",
-    "ariaLabel": "Link til {title}"
   },
   "error": {
     "title": "Journalfejl",

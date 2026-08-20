@@ -7,7 +7,6 @@ import { AddSubtaskInput } from './tasks/add-subtask-input'
 import { VaultOnboarding } from './vault-onboarding'
 import { UnsavedChangesDialog } from './tabs/unsaved-changes-dialog'
 import { DocumentInfoTab } from './shared/document-info-tab'
-import { NoteDrawer } from './journal/note-drawer'
 import { BulkTagPopover } from './bulk/bulk-tag-popover'
 import { LayoutPicker } from './split-view/layout-picker'
 import { DeleteProjectDialog } from './tasks/delete-project-dialog'
@@ -337,45 +336,6 @@ describe('missing small component surfaces', () => {
       />
     )
     expect(screen.getByText('0 min')).toBeInTheDocument()
-  })
-
-  it('handles note drawer actions, backdrop close, Escape, and fallback preview content', async () => {
-    vi.useFakeTimers()
-    const onClose = vi.fn()
-    const onOpenFullPage = vi.fn()
-    const note = {
-      id: 'note-1',
-      title: 'Launch Note',
-      content: '<p>Body</p>',
-      preview: 'Preview'
-    }
-
-    const { rerender } = render(
-      <NoteDrawer note={note as never} isOpen onClose={onClose} onOpenFullPage={onOpenFullPage} />
-    )
-
-    expect(screen.getByText('Launch Note')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('action.openNoteFullPage'))
-    expect(onOpenFullPage).toHaveBeenCalledWith('note-1')
-
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByLabelText('action.closeNoteDrawer'))
-    expect(onClose).toHaveBeenCalledTimes(2)
-
-    rerender(
-      <NoteDrawer
-        note={{ ...note, content: '', preview: 'Preview' } as never}
-        isOpen
-        onClose={onClose}
-      />
-    )
-    expect(screen.getByText('Preview')).toBeInTheDocument()
-
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
   })
 
   it('applies bulk tags after the popover delay', async () => {

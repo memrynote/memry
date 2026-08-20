@@ -1,14 +1,11 @@
 {
   "title": "Журнал",
   "section": {
-    "journal": "Журнал",
     "aiConnections": "AI-соединения",
     "todaysNotes": "Сегодняшние заметки",
     "todaysSchedule": "Расписание на сегодня",
     "todaysTasks": "Сегодняшние задачи",
     "tasks": "Задачи",
-    "calendarEvents": "Календарные события",
-    "overdueTasks": "Просроченные задачи",
     "technicalDetails": "Технические детали"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Настройки журнала",
     "fullMode": "Полный режим",
     "compactMode": "Компактный режим",
-    "focusMode": "Режим фокусировки",
-    "exitFocusMode": "Выйти из режима фокусировки",
-    "enterFocusMode": "Войдите в режим фокусировки",
     "createNote": "Создать заметку",
     "createNewNote": "Создать новую заметку",
     "showLess": "Показать меньше",
@@ -34,8 +28,6 @@
     "reloadJournal": "Перезагрузить журнал",
     "goToToday": "Перейти к сегодняшнему дню",
     "copyUnsavedContent": "Скопировать несохраненный контент в буфер обмена",
-    "openNoteFullPage": "Открыть заметку на всю страницу",
-    "closeNoteDrawer": "Закрыть ящик для заметок",
     "addBookmark": "Добавить закладку",
     "removeBookmark": "Удалить закладку"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Что ты планируешь...",
       "today": "Что у тебя на уме сегодня...",
-      "past": "Вспомните этот день...",
-      "default": "Начни писать..."
-    },
-    "toolbar": {
-      "ariaLabel": "Форматирование текста",
-      "bold": "Жирный",
-      "italic": "Курсив",
-      "underline": "Подчеркнуть",
-      "strikethrough": "Зачеркивание",
-      "link": "Ссылка",
-      "image": "Изображение",
-      "moreOptions": "Больше возможностей",
-      "heading1": "Заголовок 1",
-      "heading2": "Заголовок 2",
-      "heading3": "Заголовок 3",
-      "bulletList": "Маркированный список",
-      "numberedList": "Нумерованный список",
-      "checklist": "Контрольный список",
-      "quote": "Цитата",
-      "divider": "Разделитель",
-      "codeBlock": "Кодовый блок"
-    },
-    "prompt": {
-      "enterUrl": "Введите URL:"
+      "past": "Вспомните этот день..."
     },
     "upload": {
-      "noEntry": "Невозможно загрузить изображение: запись журнала не выбрана",
       "failed": "Не удалось загрузить изображение"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Подключение к {label}, совпадение {scorePercent}%."
   },
   "count": {
-    "items": "предметы",
     "note": "Примечание",
     "day": "день",
     "days": "дни",
     "event": "событие",
     "events": "события",
-    "meeting": "встреча",
-    "meetings": "встречи",
     "task": "задача",
-    "tasks": "задачи",
     "todo": "делать",
-    "people": "{count} человек",
     "moreConnections": "+ {count} больше соединений",
     "moreConnections_plural": "+ {count} больше подключений",
     "moreNotes": "+ {count} еще примечание",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Примечание — {date}",
     "openAria": "Откройте {title}, созданный в {time}."
-  },
-  "tag": {
-    "suggestionsAria": "Предложения по тегам",
-    "empty": {
-      "title": "Тегов пока нет",
-      "description": "Введите, чтобы создать новый тег"
-    },
-    "groupTitle": "Теги",
-    "create": "Создать #{query}",
-    "ariaLabel": "Тег: {tag}, нажмите, чтобы отфильтровать"
-  },
-  "wiki": {
-    "suggestionsAria": "Предложения страниц",
-    "empty": {
-      "title": "Страницы не найдены"
-    },
-    "groupRecent": "Недавние",
-    "groupAllPages": "Все страницы",
-    "createNewPage": "Создать новую страницу",
-    "ariaLabel": "Ссылка на {title}"
   },
   "error": {
     "title": "Ошибка журнала",

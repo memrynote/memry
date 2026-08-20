@@ -1,14 +1,11 @@
 {
   "title": "časopis",
   "section": {
-    "journal": "časopis",
     "aiConnections": "Veze AI",
     "todaysNotes": "Današnje bilješke",
     "todaysSchedule": "Današnji raspored",
     "todaysTasks": "Današnji zadaci",
     "tasks": "Zadaci",
-    "calendarEvents": "Kalendar događanja",
-    "overdueTasks": "Zakašnjeli zadaci",
     "technicalDetails": "Tehnički detalji"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Postavke dnevnika",
     "fullMode": "Puni način rada",
     "compactMode": "Kompaktni način rada",
-    "focusMode": "Način fokusiranja",
-    "exitFocusMode": "Izađite iz načina fokusiranja",
-    "enterFocusMode": "Uđite u način fokusiranja",
     "createNote": "Stvori bilješku",
     "createNewNote": "Stvori novu bilješku",
     "showLess": "Prikaži manje",
@@ -34,8 +28,6 @@
     "reloadJournal": "Ponovno učitaj dnevnik",
     "goToToday": "Idi na Danas",
     "copyUnsavedContent": "Kopiraj nespremljeni sadržaj u međuspremnik",
-    "openNoteFullPage": "Otvori bilješku na cijeloj stranici",
-    "closeNoteDrawer": "Zatvori ladicu za bilješke",
     "addBookmark": "Dodaj knjižnu oznaku",
     "removeBookmark": "Ukloni oznaku"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Što planiraš...",
       "today": "Što vam je danas na umu...",
-      "past": "Osvrnite se na ovaj dan...",
-      "default": "Počni pisati..."
-    },
-    "toolbar": {
-      "ariaLabel": "Oblikovanje teksta",
-      "bold": "Podebljano",
-      "italic": "kurziv",
-      "underline": "Podcrtano",
-      "strikethrough": "Precrtano",
-      "link": "Poveznica",
-      "image": "Slika",
-      "moreOptions": "Više mogućnosti",
-      "heading1": "Naslov 1",
-      "heading2": "Naslov 2",
-      "heading3": "Naslov 3",
-      "bulletList": "Označeni popis",
-      "numberedList": "Numerirani popis",
-      "checklist": "Kontrolni popis",
-      "quote": "Citat",
-      "divider": "Razdjelnik",
-      "codeBlock": "Blok koda"
-    },
-    "prompt": {
-      "enterUrl": "Unesite URL:"
+      "past": "Osvrnite se na ovaj dan..."
     },
     "upload": {
-      "noEntry": "Ne mogu učitati sliku: nije odabran nijedan unos u dnevnik",
       "failed": "Prijenos slike nije uspio"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Povezivanje s {label}, {scorePercent}% odgovara"
   },
   "count": {
-    "items": "stavke",
     "note": "bilješka",
     "day": "dan",
     "days": "dana",
     "event": "događaj",
     "events": "događanja",
-    "meeting": "sastanak",
-    "meetings": "sastanci",
     "task": "zadatak",
-    "tasks": "zadaci",
     "todo": "učiniti",
-    "people": "{count} ljudi",
     "moreConnections": "+ {count} više veze",
     "moreConnections_plural": "+ {count} više veza",
     "moreNotes": "+ {count} dodatna napomena",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Napomena - {date}",
     "openAria": "Otvorite {title}, kreiran na {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Prijedlozi oznaka",
-    "empty": {
-      "title": "Još nema oznaka",
-      "description": "Upišite za izradu nove oznake"
-    },
-    "groupTitle": "oznake",
-    "create": "Stvorite #{query}",
-    "ariaLabel": "Oznaka: {tag}, kliknite za filtriranje"
-  },
-  "wiki": {
-    "suggestionsAria": "Prijedlozi stranica",
-    "empty": {
-      "title": "Nema pronađenih stranica"
-    },
-    "groupRecent": "Nedavno",
-    "groupAllPages": "Sve stranice",
-    "createNewPage": "Napravi novu stranicu",
-    "ariaLabel": "Veza na {title}"
   },
   "error": {
     "title": "Pogreška dnevnika",

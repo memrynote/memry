@@ -1,14 +1,11 @@
 {
   "title": "Jurnal",
   "section": {
-    "journal": "Jurnal",
     "aiConnections": "Sambungan AI",
     "todaysNotes": "Nota Hari Ini",
     "todaysSchedule": "Jadual Hari Ini",
     "todaysTasks": "Tugasan Hari Ini",
     "tasks": "Tugasan",
-    "calendarEvents": "Acara Kalendar",
-    "overdueTasks": "Tugas Tertunggak",
     "technicalDetails": "Butiran teknikal"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Tetapan Jurnal",
     "fullMode": "Mod Penuh",
     "compactMode": "Mod Padat",
-    "focusMode": "Mod Fokus",
-    "exitFocusMode": "Keluar dari Mod Fokus",
-    "enterFocusMode": "Masukkan Mod Fokus",
     "createNote": "Cipta Nota",
     "createNewNote": "Buat nota baharu",
     "showLess": "Tunjukkan lebih sedikit",
@@ -34,8 +28,6 @@
     "reloadJournal": "Muat Semula Jurnal",
     "goToToday": "Pergi ke Hari Ini",
     "copyUnsavedContent": "Salin kandungan yang belum disimpan ke papan keratan",
-    "openNoteFullPage": "Buka nota dalam halaman penuh",
-    "closeNoteDrawer": "Tutup laci nota",
     "addBookmark": "Tambah penanda halaman",
     "removeBookmark": "Alih keluar penanda halaman"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Apa yang anda rancang...",
       "today": "Apa yang ada dalam fikiran anda hari ini...",
-      "past": "Renungkan hari ini...",
-      "default": "Mula menulis..."
-    },
-    "toolbar": {
-      "ariaLabel": "Pemformatan teks",
-      "bold": "berani",
-      "italic": "Condong",
-      "underline": "Garis bawah",
-      "strikethrough": "Coret",
-      "link": "Pautan",
-      "image": "Imej",
-      "moreOptions": "Lebih banyak pilihan",
-      "heading1": "Tajuk 1",
-      "heading2": "Tajuk 2",
-      "heading3": "Tajuk 3",
-      "bulletList": "Senarai Bullet",
-      "numberedList": "Senarai Bernombor",
-      "checklist": "Senarai semak",
-      "quote": "petikan",
-      "divider": "Pembahagi",
-      "codeBlock": "Blok Kod"
-    },
-    "prompt": {
-      "enterUrl": "Masukkan URL:"
+      "past": "Renungkan hari ini..."
     },
     "upload": {
-      "noEntry": "Tidak boleh memuat naik imej: tiada catatan jurnal dipilih",
       "failed": "Gagal memuat naik imej"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Sambungan ke {label}, {scorePercent}% sepadan"
   },
   "count": {
-    "items": "barang",
     "note": "nota",
     "day": "hari",
     "days": "hari",
     "event": "peristiwa",
     "events": "peristiwa",
-    "meeting": "mesyuarat",
-    "meetings": "mesyuarat",
     "task": "tugasan",
-    "tasks": "tugasan",
     "todo": "untuk dilakukan",
-    "people": "{count} orang",
     "moreConnections": "+ {count} lagi sambungan",
     "moreConnections_plural": "+ {count} lagi sambungan",
     "moreNotes": "+ {count} lagi nota",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Nota - {date}",
     "openAria": "Buka {title}, dibuat di {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag cadangan",
-    "empty": {
-      "title": "Tiada tag lagi",
-      "description": "Taip untuk membuat teg baharu"
-    },
-    "groupTitle": "Tag",
-    "create": "Cipta #{query}",
-    "ariaLabel": "Teg: {tag}, klik untuk menapis"
-  },
-  "wiki": {
-    "suggestionsAria": "Cadangan halaman",
-    "empty": {
-      "title": "Tiada halaman ditemui"
-    },
-    "groupRecent": "Baru-baru ini",
-    "groupAllPages": "Semua Halaman",
-    "createNewPage": "Buat halaman baharu",
-    "ariaLabel": "Pautan ke {title}"
   },
   "error": {
     "title": "Ralat Jurnal",

@@ -1,14 +1,11 @@
 {
   "title": "วารสาร",
   "section": {
-    "journal": "วารสาร",
     "aiConnections": "การเชื่อมต่อ AI",
     "todaysNotes": "โน้ตวันนี้",
     "todaysSchedule": "ตารางวันนี้",
     "todaysTasks": "งานวันนี้",
     "tasks": "งาน",
-    "calendarEvents": "กิจกรรมในปฏิทิน",
-    "overdueTasks": "งานที่เกินกำหนด",
     "technicalDetails": "รายละเอียดทางเทคนิค"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "การตั้งค่าวารสาร",
     "fullMode": "โหมดเต็ม",
     "compactMode": "โหมดกะทัดรัด",
-    "focusMode": "โหมดโฟกัส",
-    "exitFocusMode": "ออกจากโหมดโฟกัส",
-    "enterFocusMode": "เข้าสู่โหมดโฟกัส",
     "createNote": "สร้างบันทึก",
     "createNewNote": "สร้างบันทึกใหม่",
     "showLess": "แสดงน้อยลง",
@@ -34,8 +28,6 @@
     "reloadJournal": "โหลดสมุดบันทึกใหม่",
     "goToToday": "ไปที่วันนี้",
     "copyUnsavedContent": "คัดลอกเนื้อหาที่ยังไม่ได้บันทึกไปยังคลิปบอร์ด",
-    "openNoteFullPage": "เปิดบันทึกในหน้าเต็ม",
-    "closeNoteDrawer": "ปิดแถบบันทึก",
     "addBookmark": "เพิ่มบุ๊กมาร์ก",
     "removeBookmark": "ลบบุ๊กมาร์ก"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "คุณกำลังวางแผนอะไร...",
       "today": "คุณคิดอะไรอยู่วันนี้...",
-      "past": "ใคร่ครวญวันวันนี้...",
-      "default": "เริ่มเขียน..."
-    },
-    "toolbar": {
-      "ariaLabel": "การจัดรูปแบบข้อความ",
-      "bold": "ตัวหนา",
-      "italic": "ตัวเอียง",
-      "underline": "ขีดเส้นใต้",
-      "strikethrough": "ขีดฆ่า",
-      "link": "ลิงก์",
-      "image": "รูปภาพ",
-      "moreOptions": "ตัวเลือกเพิ่มเติม",
-      "heading1": "หัวข้อ 1",
-      "heading2": "หัวข้อ 2",
-      "heading3": "หัวข้อ 3",
-      "bulletList": "รายการสัญลักษณ์แสดงหัวข้อ",
-      "numberedList": "รายการที่มีหมายเลข",
-      "checklist": "รายการตรวจสอบ",
-      "quote": "คำคม",
-      "divider": "ตัวแบ่ง",
-      "codeBlock": "บล็อกโค้ด"
-    },
-    "prompt": {
-      "enterUrl": "ใส่ URL:"
+      "past": "ใคร่ครวญวันวันนี้..."
     },
     "upload": {
-      "noEntry": "ไม่สามารถอัปโหลดรูปภาพ: ไม่มีบันทึกประจำวันที่ถูกเลือก",
       "failed": "การอัปโหลดรูปภาพล้มเหลว"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "การเชื่อมต่อกับ {label}, {scorePercent}% ตรงกัน"
   },
   "count": {
-    "items": "รายการ",
     "note": "บันทึก",
     "day": "วัน",
     "days": "วัน",
     "event": "เหตุการณ์",
     "events": "เหตุการณ์",
-    "meeting": "การประชุม",
-    "meetings": "การประชุม",
     "task": "งาน",
-    "tasks": "งาน",
     "todo": "ต้องทำ",
-    "people": "ผู้คน {count}",
     "moreConnections": "+ การเชื่อมต่อเพิ่มเติม {count}",
     "moreConnections_plural": "+ การเชื่อมต่อเพิ่มเติม {count}",
     "moreNotes": "+ บันทึกเพิ่มเติม {count}",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "บันทึก - {date}",
     "openAria": "เปิด {title}, สร้างเมื่อ {time}"
-  },
-  "tag": {
-    "suggestionsAria": "คำแนะนำแท็ก",
-    "empty": {
-      "title": "ยังไม่มีแท็ก",
-      "description": "พิมพ์เพื่อสร้างแท็กใหม่"
-    },
-    "groupTitle": "แท็ก",
-    "create": "สร้าง #{query}",
-    "ariaLabel": "แท็ก: {tag}, คลิกเพื่อกรอง"
-  },
-  "wiki": {
-    "suggestionsAria": "คำแนะนำหน้า",
-    "empty": {
-      "title": "ไม่พบหน้าใด ๆ"
-    },
-    "groupRecent": "ล่าสุด",
-    "groupAllPages": "หน้าทั้งหมด",
-    "createNewPage": "สร้างหน้าใหม่",
-    "ariaLabel": "ลิงก์ไปยัง {title}"
   },
   "error": {
     "title": "ข้อผิดพลาดของบันทึกประจำวัน",

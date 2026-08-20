@@ -1,14 +1,11 @@
 {
   "title": "Nhật ký",
   "section": {
-    "journal": "Nhật ký",
     "aiConnections": "Kết nối AI",
     "todaysNotes": "Ghi chú hôm nay",
     "todaysSchedule": "Lịch trình hôm nay",
     "todaysTasks": "Nhiệm vụ hôm nay",
     "tasks": "Nhiệm vụ",
-    "calendarEvents": "Sự kiện Lịch",
-    "overdueTasks": "Nhiệm vụ quá hạn",
     "technicalDetails": "Chi tiết kỹ thuật"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Cài đặt Nhật ký",
     "fullMode": "Chế độ đầy đủ",
     "compactMode": "Chế độ gọn",
-    "focusMode": "Chế độ tập trung",
-    "exitFocusMode": "Thoát Chế Độ Tập Trung",
-    "enterFocusMode": "Vào Chế Độ Tập Trung",
     "createNote": "Tạo ghi chú",
     "createNewNote": "Tạo ghi chú mới",
     "showLess": "Hiển thị ít hơn",
@@ -34,8 +28,6 @@
     "reloadJournal": "Tải lại Nhật ký",
     "goToToday": "Đi đến Hôm nay",
     "copyUnsavedContent": "Sao chép nội dung chưa lưu vào clipboard",
-    "openNoteFullPage": "Mở ghi chú ở trang đầy đủ",
-    "closeNoteDrawer": "Đóng ngăn ghi chú",
     "addBookmark": "Thêm đánh dấu trang",
     "removeBookmark": "Xóa đánh dấu trang"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Bạn đang lên kế hoạch gì...",
       "today": "Hôm nay bạn đang nghĩ gì...",
-      "past": "Suy ngẫm về ngày hôm nay...",
-      "default": "Bắt đầu viết..."
-    },
-    "toolbar": {
-      "ariaLabel": "Định dạng văn bản",
-      "bold": "Đậm",
-      "italic": "Nghiêng",
-      "underline": "Gạch chân",
-      "strikethrough": "Gạch ngang",
-      "link": "Liên kết",
-      "image": "Hình ảnh",
-      "moreOptions": "  \nThêm tùy chọn  ",
-      "heading1": "Tiêu đề 1",
-      "heading2": "Tiêu đề 2",
-      "heading3": "Tiêu đề 3",
-      "bulletList": "Danh sách dấu đầu dòng",
-      "numberedList": "Danh sách đánh số",
-      "checklist": "Danh sách kiểm tra",
-      "quote": "Trích dẫn",
-      "divider": "Vạch phân cách",
-      "codeBlock": "Khối mã"
-    },
-    "prompt": {
-      "enterUrl": "Nhập URL:"
+      "past": "Suy ngẫm về ngày hôm nay..."
     },
     "upload": {
-      "noEntry": "Không thể tải hình ảnh lên: không có ghi chú nhật ký nào được chọn",
       "failed": "Tải hình ảnh thất bại"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Kết nối với {label}, {scorePercent}% khớp"
   },
   "count": {
-    "items": "mục",
     "note": "ghi chú",
     "day": "ngày",
     "days": "ngày",
     "event": "sự kiện",
     "events": "các sự kiện",
-    "meeting": "cuộc họp",
-    "meetings": "các cuộc họp",
     "task": "nhiệm vụ",
-    "tasks": "các nhiệm vụ",
     "todo": "cần làm",
-    "people": "Người {count}",
     "moreConnections": "+ {count} kết nối thêm",
     "moreConnections_plural": "+ {count} kết nối thêm",
     "moreNotes": "+ {count} ghi chú thêm",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Ghi chú - {date}",
     "openAria": "Mở {title}, được tạo vào {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Gợi ý thẻ",
-    "empty": {
-      "title": "Chưa có thẻ nào",
-      "description": "Gõ để tạo thẻ mới"
-    },
-    "groupTitle": "Thẻ",
-    "create": "Tạo #{query}",
-    "ariaLabel": "Thẻ: {tag}, nhấp để lọc"
-  },
-  "wiki": {
-    "suggestionsAria": "Gợi ý trang",
-    "empty": {
-      "title": "Không tìm thấy trang nào"
-    },
-    "groupRecent": "Gần đây",
-    "groupAllPages": "Tất cả các trang",
-    "createNewPage": "Tạo trang mới",
-    "ariaLabel": "Liên kết đến {title}"
   },
   "error": {
     "title": "Lỗi nhật ký",

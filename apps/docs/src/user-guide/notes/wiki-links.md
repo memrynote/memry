@@ -108,9 +108,10 @@ memrynote does not assign persistent block ids, so there is nothing to scroll to
 :::
 
 ::: tip Journal entries
-Clicking a heading link written in a journal entry opens the target note and scrolls to the
-heading as usual. `[[#Heading]]` inside a journal entry does not scroll — the journal uses a
-different editor, and that is tracked with its migration.
+Journal entries use the same editor as notes, so heading links behave identically there:
+`[[Meeting#Decisions]]` opens **Meeting** at that heading, `[[#Decisions]]` scrolls to a
+heading inside the entry you are reading, and typing `#` after a note's exact title offers
+that note's headings.
 :::
 
 ## Formatting a Link

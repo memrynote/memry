@@ -1,14 +1,11 @@
 {
   "title": "Dziennik",
   "section": {
-    "journal": "Dziennik",
     "aiConnections": "Połączenia AI",
     "todaysNotes": "Dzisiejsze notatki",
     "todaysSchedule": "Dzisiejszy harmonogram",
     "todaysTasks": "Dzisiejsze Zadania",
     "tasks": "Zadania",
-    "calendarEvents": "Wydarzenia w kalendarzu",
-    "overdueTasks": "Zaległe zadania",
     "technicalDetails": "Szczegóły techniczne"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Ustawienia dziennika",
     "fullMode": "Tryb pełny",
     "compactMode": "Tryb kompaktowy",
-    "focusMode": "Tryb ostrości",
-    "exitFocusMode": "Wyjdź z trybu ostrości",
-    "enterFocusMode": "Wejdź w tryb skupienia",
     "createNote": "Utwórz notatkę",
     "createNewNote": "Utwórz nową notatkę",
     "showLess": "Pokaż mniej",
@@ -34,8 +28,6 @@
     "reloadJournal": "Załaduj ponownie dziennik",
     "goToToday": "Przejdź do Dzisiaj",
     "copyUnsavedContent": "Skopiuj niezapisaną zawartość do schowka",
-    "openNoteFullPage": "Otwórz notatkę na całej stronie",
-    "closeNoteDrawer": "Zamknij szufladę na notatki",
     "addBookmark": "Dodaj zakładkę",
     "removeBookmark": "Usuń zakładkę"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Co planujesz...",
       "today": "Co masz dzisiaj na myśli...",
-      "past": "Zastanów się nad tym dniem...",
-      "default": "Zacznij pisać..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formatowanie tekstu",
-      "bold": "Odważne",
-      "italic": "Kursywa",
-      "underline": "Podkreśl",
-      "strikethrough": "Przekreślenie",
-      "link": "Link",
-      "image": "Obraz",
-      "moreOptions": "Więcej opcji",
-      "heading1": "Nagłówek 1",
-      "heading2": "Nagłówek 2",
-      "heading3": "Nagłówek 3",
-      "bulletList": "Lista punktorów",
-      "numberedList": "Lista numerowana",
-      "checklist": "Lista kontrolna",
-      "quote": "Cytat",
-      "divider": "Dzielnik",
-      "codeBlock": "Blok kodu"
-    },
-    "prompt": {
-      "enterUrl": "Wpisz adres URL:"
+      "past": "Zastanów się nad tym dniem..."
     },
     "upload": {
-      "noEntry": "Nie można przesłać obrazu: nie wybrano wpisu do dziennika",
       "failed": "Nie udało się przesłać obrazu"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Połączenie z {label}, {scorePercent}% pasuje"
   },
   "count": {
-    "items": "przedmioty",
     "note": "uwaga",
     "day": "dzień",
     "days": "dni",
     "event": "wydarzenie",
     "events": "wydarzenia",
-    "meeting": "spotkanie",
-    "meetings": "spotkania",
     "task": "zadanie",
-    "tasks": "zadania",
     "todo": "zrobić",
-    "people": "{count} osób",
     "moreConnections": "+ {count} więcej połączenia",
     "moreConnections_plural": "+ {count} więcej połączeń",
     "moreNotes": "+ {count} dodatkowa uwaga",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Uwaga - {date}",
     "openAria": "Otwórz {title}, utworzony w {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Sugestie tagów",
-    "empty": {
-      "title": "Nie ma jeszcze tagów",
-      "description": "Wpisz, aby utworzyć nowy tag"
-    },
-    "groupTitle": "Tagi",
-    "create": "Utwórz plik #{query}",
-    "ariaLabel": "Etykieta: {tag}, kliknij, aby filtrować"
-  },
-  "wiki": {
-    "suggestionsAria": "Sugestie stron",
-    "empty": {
-      "title": "Nie znaleziono żadnych stron"
-    },
-    "groupRecent": "Najnowsze",
-    "groupAllPages": "Wszystkie strony",
-    "createNewPage": "Utwórz nową stronę",
-    "ariaLabel": "Link do {title}"
   },
   "error": {
     "title": "Błąd dziennika",

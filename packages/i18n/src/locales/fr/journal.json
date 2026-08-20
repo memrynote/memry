@@ -1,14 +1,11 @@
 {
   "title": "Revue",
   "section": {
-    "journal": "Revue",
     "aiConnections": "Connexions IA",
     "todaysNotes": "Notes du jour",
     "todaysSchedule": "Programme du jour",
     "todaysTasks": "Les tâches du jour",
     "tasks": "Tâches",
-    "calendarEvents": "Événements du calendrier",
-    "overdueTasks": "Tâches en retard",
     "technicalDetails": "Détails techniques"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Paramètres du journal",
     "fullMode": "Mode complet",
     "compactMode": "Mode compact",
-    "focusMode": "Mode de mise au point",
-    "exitFocusMode": "Quitter le mode de mise au point",
-    "enterFocusMode": "Passer en mode mise au point",
     "createNote": "Créer une note",
     "createNewNote": "Créer une nouvelle note",
     "showLess": "Afficher moins",
@@ -34,8 +28,6 @@
     "reloadJournal": "Recharger le journal",
     "goToToday": "Aller à aujourd'hui",
     "copyUnsavedContent": "Copier le contenu non enregistré dans le presse-papiers",
-    "openNoteFullPage": "Ouvrir la note en pleine page",
-    "closeNoteDrawer": "Fermer le tiroir à notes",
     "addBookmark": "Ajouter un signet",
     "removeBookmark": "Supprimer le favori"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Qu'est-ce que tu prévois...",
       "today": "Qu'est-ce qui vous préoccupe aujourd'hui...",
-      "past": "Pensez à cette journée...",
-      "default": "Commencez à écrire..."
-    },
-    "toolbar": {
-      "ariaLabel": "Formatage du texte",
-      "bold": "Audacieux",
-      "italic": "Italique",
-      "underline": "Souligner",
-      "strikethrough": "Barré",
-      "link": "Lien",
-      "image": "Images",
-      "moreOptions": "Plus d'options",
-      "heading1": "Titre 1",
-      "heading2": "Titre 2",
-      "heading3": "Titre 3",
-      "bulletList": "Liste à puces",
-      "numberedList": "Liste numérotée",
-      "checklist": "Liste de contrôle",
-      "quote": "Citation",
-      "divider": "Diviseur",
-      "codeBlock": "Bloc de code"
-    },
-    "prompt": {
-      "enterUrl": "Entrez l'URL :"
+      "past": "Pensez à cette journée..."
     },
     "upload": {
-      "noEntry": "Impossible de télécharger l'image : aucune entrée de journal sélectionnée",
       "failed": "Échec du téléchargement de l'image"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Connexion à {label}, correspondance {scorePercent}%"
   },
   "count": {
-    "items": "articles",
     "note": "remarque",
     "day": "jour",
     "days": "jours",
     "event": "événement",
     "events": "événements",
-    "meeting": "réunion",
-    "meetings": "réunions",
     "task": "tâche",
-    "tasks": "tâches",
     "todo": "faire",
-    "people": "{count} personnes",
     "moreConnections": "+ {count} plus de connexion",
     "moreConnections_plural": "+ {count} plus de connexions",
     "moreNotes": "+ {count} plus de remarque",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Remarque-{date}",
     "openAria": "Ouvrez {title}, créé sur {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Suggestions de balises",
-    "empty": {
-      "title": "Pas encore de balises",
-      "description": "Tapez pour créer une nouvelle balise"
-    },
-    "groupTitle": "Balises",
-    "create": "Créer #{query}",
-    "ariaLabel": "Étiquette : {tag}, cliquez pour filtrer"
-  },
-  "wiki": {
-    "suggestionsAria": "Suggestions de pages",
-    "empty": {
-      "title": "Aucune page trouvée"
-    },
-    "groupRecent": "Récent",
-    "groupAllPages": "Toutes les pages",
-    "createNewPage": "Créer une nouvelle page",
-    "ariaLabel": "Lien vers {title}"
   },
   "error": {
     "title": "Erreur de journal",

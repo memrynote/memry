@@ -1,14 +1,11 @@
 {
   "title": "Günlük",
   "section": {
-    "journal": "Günlük",
     "aiConnections": "AI Bağlantıları",
     "todaysNotes": "Bugünün Notları",
     "todaysSchedule": "Bugünün Programı",
     "todaysTasks": "Bugünün Görevleri",
     "tasks": "Görevler",
-    "calendarEvents": "Takvim Etkinlikleri",
-    "overdueTasks": "Gecikmiş Görevler",
     "technicalDetails": "Teknik ayrıntılar"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Günlük Ayarları",
     "fullMode": "Tam Mod",
     "compactMode": "Kompakt Mod",
-    "focusMode": "Odak Modu",
-    "exitFocusMode": "Odak Modundan Çık",
-    "enterFocusMode": "Odak Moduna Gir",
     "createNote": "Not Oluştur",
     "createNewNote": "Yeni not oluştur",
     "showLess": "Daha az göster",
@@ -34,8 +28,6 @@
     "reloadJournal": "Günlüğü Yeniden Yükle",
     "goToToday": "Bugüne Git",
     "copyUnsavedContent": "Kaydedilmemiş içeriği panoya kopyala",
-    "openNoteFullPage": "Notu tam sayfada aç",
-    "closeNoteDrawer": "Not çekmecesini kapat",
     "addBookmark": "Yer işareti ekle",
     "removeBookmark": "Yer işaretini kaldır"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Ne planlıyorsun?",
       "today": "Bugün aklınızdan ne geçiyor?",
-      "past": "Bu günü düşünün...",
-      "default": "Yazmaya başla..."
-    },
-    "toolbar": {
-      "ariaLabel": "Metin biçimlendirmesi",
-      "bold": "Kalın",
-      "italic": "italik",
-      "underline": "Altı çizili",
-      "strikethrough": "Üstü çizili",
-      "link": "Bağlantı",
-      "image": "Resim",
-      "moreOptions": "Daha fazla seçenek",
-      "heading1": "Başlık 1",
-      "heading2": "Başlık 2",
-      "heading3": "Başlık 3",
-      "bulletList": "Madde İşareti Listesi",
-      "numberedList": "Numaralı Liste",
-      "checklist": "Kontrol listesi",
-      "quote": "Alıntı",
-      "divider": "Bölücü",
-      "codeBlock": "Kod Bloğu"
-    },
-    "prompt": {
-      "enterUrl": "URL girin:"
+      "past": "Bu günü düşünün..."
     },
     "upload": {
-      "noEntry": "Resim yüklenemiyor: günlük girişi seçilmedi",
       "failed": "Resim yüklenemedi"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Bağlantı {label}, {scorePercent}% eşleşme"
   },
   "count": {
-    "items": "öğeler",
     "note": "not",
     "day": "gün",
     "days": "günler",
     "event": "etkinlik",
     "events": "etkinlikler",
-    "meeting": "toplantı",
-    "meetings": "toplantılar",
     "task": "görev",
-    "tasks": "görevler",
     "todo": "yapılacak",
-    "people": "{count} kişi",
     "moreConnections": "+ {count} daha fazla bağlantı",
     "moreConnections_plural": "+ {count} daha fazla bağlantı",
     "moreNotes": "+ {count} daha fazla not",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Not - {date}",
     "openAria": "{title} notunu aç, oluşturulma zamanı: {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Etiket önerileri",
-    "empty": {
-      "title": "Henüz etiket yok",
-      "description": "Yeni bir etiket oluşturmak için yazın"
-    },
-    "groupTitle": "Etiketler",
-    "create": "Oluştur #{query}",
-    "ariaLabel": "Etiket: {tag}, filtrelemek için tıklayın"
-  },
-  "wiki": {
-    "suggestionsAria": "Sayfa önerileri",
-    "empty": {
-      "title": "Hiçbir sayfa bulunamadı"
-    },
-    "groupRecent": "Son",
-    "groupAllPages": "Tüm Sayfalar",
-    "createNewPage": "Yeni sayfa oluştur",
-    "ariaLabel": "{title} sayfasına bağlantı"
   },
   "error": {
     "title": "Günlük Hatası",

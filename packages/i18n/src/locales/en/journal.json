@@ -1,14 +1,11 @@
 {
   "title": "Journal",
   "section": {
-    "journal": "Journal",
     "aiConnections": "AI Connections",
     "todaysNotes": "Today's Notes",
     "todaysSchedule": "Today's Schedule",
     "todaysTasks": "Today's Tasks",
     "tasks": "Tasks",
-    "calendarEvents": "Calendar Events",
-    "overdueTasks": "Overdue Tasks",
     "technicalDetails": "Technical details"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Journal Settings",
     "fullMode": "Full Mode",
     "compactMode": "Compact Mode",
-    "focusMode": "Focus Mode",
-    "exitFocusMode": "Exit Focus Mode",
-    "enterFocusMode": "Enter Focus Mode",
     "createNote": "Create Note",
     "createNewNote": "Create new note",
     "showLess": "Show less",
@@ -34,8 +28,6 @@
     "reloadJournal": "Reload Journal",
     "goToToday": "Go to Today",
     "copyUnsavedContent": "Copy unsaved content to clipboard",
-    "openNoteFullPage": "Open note in full page",
-    "closeNoteDrawer": "Close note drawer",
     "addBookmark": "Add bookmark",
     "removeBookmark": "Remove bookmark"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "What are you planning...",
       "today": "What's on your mind today...",
-      "past": "Reflect on this day...",
-      "default": "Start writing..."
-    },
-    "toolbar": {
-      "ariaLabel": "Text formatting",
-      "bold": "Bold",
-      "italic": "Italic",
-      "underline": "Underline",
-      "strikethrough": "Strikethrough",
-      "link": "Link",
-      "image": "Image",
-      "moreOptions": "More options",
-      "heading1": "Heading 1",
-      "heading2": "Heading 2",
-      "heading3": "Heading 3",
-      "bulletList": "Bullet List",
-      "numberedList": "Numbered List",
-      "checklist": "Checklist",
-      "quote": "Quote",
-      "divider": "Divider",
-      "codeBlock": "Code Block"
-    },
-    "prompt": {
-      "enterUrl": "Enter URL:"
+      "past": "Reflect on this day..."
     },
     "upload": {
-      "noEntry": "Cannot upload image: no journal entry selected",
       "failed": "Failed to upload image"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Connection to {label}, {scorePercent}% match"
   },
   "count": {
-    "items": "items",
     "note": "note",
     "day": "day",
     "days": "days",
     "event": "event",
     "events": "events",
-    "meeting": "meeting",
-    "meetings": "meetings",
     "task": "task",
-    "tasks": "tasks",
     "todo": "to do",
-    "people": "{count} people",
     "moreConnections": "+ {count} more connection",
     "moreConnections_plural": "+ {count} more connections",
     "moreNotes": "+ {count} more note",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Note - {date}",
     "openAria": "Open {title}, created at {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Tag suggestions",
-    "empty": {
-      "title": "No tags yet",
-      "description": "Type to create a new tag"
-    },
-    "groupTitle": "Tags",
-    "create": "Create #{query}",
-    "ariaLabel": "Tag: {tag}, click to filter"
-  },
-  "wiki": {
-    "suggestionsAria": "Page suggestions",
-    "empty": {
-      "title": "No pages found"
-    },
-    "groupRecent": "Recent",
-    "groupAllPages": "All Pages",
-    "createNewPage": "Create new page",
-    "ariaLabel": "Link to {title}"
   },
   "error": {
     "title": "Journal Error",

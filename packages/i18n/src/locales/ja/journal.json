@@ -1,14 +1,11 @@
 {
   "title": "日記",
   "section": {
-    "journal": "日記",
     "aiConnections": "AIとのつながり",
     "todaysNotes": "今日のメモ",
     "todaysSchedule": "今日のスケジュール",
     "todaysTasks": "今日のタスク",
     "tasks": "タスク",
-    "calendarEvents": "カレンダーイベント",
-    "overdueTasks": "期限を過ぎたタスク",
     "technicalDetails": "技術的な詳細"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "ジャーナル設定",
     "fullMode": "フルモード",
     "compactMode": "コンパクトモード",
-    "focusMode": "フォーカスモード",
-    "exitFocusMode": "フォーカスモードを終了する",
-    "enterFocusMode": "フォーカスモードに入る",
     "createNote": "メモの作成",
     "createNewNote": "新しいメモを作成する",
     "showLess": "表示を少なくする",
@@ -34,8 +28,6 @@
     "reloadJournal": "ジャーナルをリロード",
     "goToToday": "今日に行く",
     "copyUnsavedContent": "保存されていないコンテンツをクリップボードにコピーする",
-    "openNoteFullPage": "ノートを全ページで開く",
-    "closeNoteDrawer": "メモ引き出しを閉じます",
     "addBookmark": "ブックマークを追加する",
     "removeBookmark": "ブックマークを削除する"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "何を計画しているのですか...",
       "today": "今日は何を考えていますか...",
-      "past": "この日を振り返って…",
-      "default": "書き始めてください..."
-    },
-    "toolbar": {
-      "ariaLabel": "テキストの書式設定",
-      "bold": "太字",
-      "italic": "イタリック体",
-      "underline": "下線",
-      "strikethrough": "取り消し線",
-      "link": "リンク",
-      "image": "画像",
-      "moreOptions": "その他のオプション",
-      "heading1": "見出し1",
-      "heading2": "見出し2",
-      "heading3": "見出し 3",
-      "bulletList": "箇条書きリスト",
-      "numberedList": "番号付きリスト",
-      "checklist": "チェックリスト",
-      "quote": "引用",
-      "divider": "ディバイダー",
-      "codeBlock": "コードブロック"
-    },
-    "prompt": {
-      "enterUrl": "URLを入力してください:"
+      "past": "この日を振り返って…"
     },
     "upload": {
-      "noEntry": "画像をアップロードできません: 日記エントリが選択されていません",
       "failed": "画像のアップロードに失敗しました"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "{label} への接続、{scorePercent}% 一致"
   },
   "count": {
-    "items": "アイテム",
     "note": "メモ",
     "day": "日",
     "days": "日",
     "event": "イベント",
     "events": "イベント",
-    "meeting": "会議",
-    "meetings": "会議",
     "task": "タスク",
-    "tasks": "タスク",
     "todo": "すること",
-    "people": "{count} 人",
     "moreConnections": "+ {count} より多くの接続",
     "moreConnections_plural": "+ {count} 個の接続数が増加",
     "moreNotes": "+ {count} さらにメモ",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "注 - {date}",
     "openAria": "{time} で作成された {title} を開きます"
-  },
-  "tag": {
-    "suggestionsAria": "タグの提案",
-    "empty": {
-      "title": "まだタグがありません",
-      "description": "入力して新しいタグを作成します"
-    },
-    "groupTitle": "タグ",
-    "create": "#{query} を作成する",
-    "ariaLabel": "タグ: {tag}、クリックしてフィルタリングします"
-  },
-  "wiki": {
-    "suggestionsAria": "ページの提案",
-    "empty": {
-      "title": "ページが見つかりませんでした"
-    },
-    "groupRecent": "最近の",
-    "groupAllPages": "すべてのページ",
-    "createNewPage": "新しいページを作成する",
-    "ariaLabel": "{title} へのリンク"
   },
   "error": {
     "title": "ジャーナルエラー",

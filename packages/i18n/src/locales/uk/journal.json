@@ -1,14 +1,11 @@
 {
   "title": "Щоденник",
   "section": {
-    "journal": "Щоденник",
     "aiConnections": "Підключення ШІ",
     "todaysNotes": "Сьогоднішні замітки",
     "todaysSchedule": "Сьогоднішній розклад",
     "todaysTasks": "Сьогоднішні завдання",
     "tasks": "Завдання",
-    "calendarEvents": "Події календаря",
-    "overdueTasks": "Прості завдання",
     "technicalDetails": "Технічні деталі"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Налаштування журналу",
     "fullMode": "Повний режим",
     "compactMode": "Компактний режим",
-    "focusMode": "Режим фокусу",
-    "exitFocusMode": "Вийти з режиму фокусу",
-    "enterFocusMode": "Увійти в режим фокусу",
     "createNote": "Створити нотатку",
     "createNewNote": "Створити нову нотатку",
     "showLess": "Показати менше",
@@ -34,8 +28,6 @@
     "reloadJournal": "Перезавантажити журнал",
     "goToToday": "Перейти до сьогодні",
     "copyUnsavedContent": "Скопіювати незбережений вміст у буфер обміну",
-    "openNoteFullPage": "Відкрити нотатку на повній сторінці",
-    "closeNoteDrawer": "Закрити панель нотаток",
     "addBookmark": "Додати закладку",
     "removeBookmark": "Видалити закладку"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "Що ви плануєте...",
       "today": "Про що сьогодні думаєте...",
-      "past": "Озирнутись на цей день...",
-      "default": "Почати писати..."
-    },
-    "toolbar": {
-      "ariaLabel": "Форматування тексту",
-      "bold": "Жирний",
-      "italic": "Курсив",
-      "underline": "Підкреслений",
-      "strikethrough": "Закреслений",
-      "link": "Посилання",
-      "image": "Зображення",
-      "moreOptions": "Більше опцій",
-      "heading1": "Заголовок 1",
-      "heading2": "Заголовок 2",
-      "heading3": "Заголовок 3",
-      "bulletList": "Маркірований список",
-      "numberedList": "Нумерований список",
-      "checklist": "Контрольний список",
-      "quote": "Цитата",
-      "divider": "Роздільник",
-      "codeBlock": "Блок коду"
-    },
-    "prompt": {
-      "enterUrl": "Введіть URL:"
+      "past": "Озирнутись на цей день..."
     },
     "upload": {
-      "noEntry": "Неможливо завантажити зображення: запис журналу не вибраний",
       "failed": "Не вдалося завантажити зображення"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Зв'язок з {label}, збіг {scorePercent}%"
   },
   "count": {
-    "items": "елементи",
     "note": "нотатка",
     "day": "день",
     "days": "дні",
     "event": "подія",
     "events": "події",
-    "meeting": "зустріч",
-    "meetings": "зустрічі",
     "task": "завдання",
-    "tasks": "завдання",
     "todo": "до виконання",
-    "people": "люди {count}",
     "moreConnections": "+ більше зв'язків {count}",
     "moreConnections_plural": "+ більше зв'язків {count}",
     "moreNotes": "+ більше нотатки {count}",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Нотатка - {date}",
     "openAria": "Відкрити {title}, створено о {time}"
-  },
-  "tag": {
-    "suggestionsAria": "Пропозиції тегів",
-    "empty": {
-      "title": "Поки що немає тегів",
-      "description": "Введіть, щоб створити новий тег"
-    },
-    "groupTitle": "Теги",
-    "create": "Створити #{query}",
-    "ariaLabel": "Тег: {tag}, натисніть, щоб відфільтрувати"
-  },
-  "wiki": {
-    "suggestionsAria": "Пропозиції сторінок",
-    "empty": {
-      "title": "Сторінки не знайдено"
-    },
-    "groupRecent": "Недавні",
-    "groupAllPages": "Всі сторінки",
-    "createNewPage": "Створити нову сторінку",
-    "ariaLabel": "Посилання на {title}"
   },
   "error": {
     "title": "Помилка журналу",

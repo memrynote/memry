@@ -300,11 +300,16 @@ vi.mock('@/components/note', () => ({
         <button onClick={() => onMarkdownChange('updated')}>edit markdown</button>
         <button onClick={() => onLinkClick('https://memry.test')}>external link</button>
         <button onClick={() => onInternalLinkClick('Linked Note')}>internal link</button>
+        <button onClick={() => onInternalLinkClick('#Intro')}>same-entry heading link</button>
         <button
           onClick={() => onHeadingsChange([{ id: 'h1', level: 1, text: 'Intro', position: 0 }])}
         >
           headings
         </button>
+        {/* The heading block, as BlockNote renders it: inside the editor, not
+            loose in the document. Both jump paths look it up through the page's
+            own container ref, so a node outside it must NOT be found. */}
+        <div data-id="h1">Intro</div>
       </div>
     )
   }
@@ -387,8 +392,12 @@ vi.mock('@/components/note/version-history', () => ({
 }))
 
 describe('JournalPage', () => {
+  /** Every element `scrollIntoView` was called on, in order. */
+  let scrolledInto: Element[] = []
+
   beforeEach(() => {
     vi.clearAllMocks()
+    scrolledInto = []
     mocks.activeTab = { type: 'journal', viewState: { date: '2026-01-15' } }
     mocks.saveError = null
     mocks.entryError = null
@@ -400,8 +409,15 @@ describe('JournalPage', () => {
       getItem: vi.fn(() => 'false'),
       setItem: vi.fn()
     })
-    document.body.innerHTML = '<div data-id="h1"></div>'
-    Element.prototype.scrollIntoView = vi.fn()
+    // Same block id as the in-pane heading, deliberately outside the editor
+    // container and earlier in the document — this is what the other pane of a
+    // split view looks like. An unscoped `document.querySelector` finds THIS
+    // one, so the tests below check which element was scrolled, not just that
+    // something was.
+    document.body.innerHTML = '<div data-id="h1" data-outside-pane></div>'
+    Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+      scrolledInto.push(this)
+    })
   })
 
   it('hands an external update to the live editor instead of remounting it', () => {
@@ -463,8 +479,38 @@ describe('JournalPage', () => {
     )
 
     fireEvent.click(screen.getByText('headings'))
-    fireEvent.click(screen.getByText('Intro'))
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Intro' }))
+    // The outline scrolls THIS pane's block, not the node with the same id
+    // sitting earlier in the document.
+    expect(scrolledInto).toHaveLength(1)
+    expect(scrolledInto[0]?.hasAttribute('data-outside-pane')).toBe(false)
+  })
+
+  it('jumps to a heading inside the entry for [[#Heading]] instead of opening a tab', () => {
+    render(<JournalPage />)
+
+    // The editor has to have emitted its headings first — the link carries the
+    // heading's TEXT, and only `onHeadingsChange` maps that to a block id.
+    fireEvent.click(screen.getByText('headings'))
+    fireEvent.click(screen.getByText('same-entry heading link'))
+
+    expect(scrolledInto).toHaveLength(1)
+    expect(scrolledInto[0]?.hasAttribute('data-outside-pane')).toBe(false)
+    // No lookup, no tab: `[[#Heading]]` addresses the entry it is written in.
+    expect(mocks.resolveWikiLink).not.toHaveBeenCalled()
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('leaves a [[#Heading]] naming no heading in the entry inert', () => {
+    render(<JournalPage />)
+
+    // Headings never emitted, so the page has no block id for "Intro". The
+    // target still must not fall through to a note lookup — `#Intro` names no
+    // note, and resolving it would open (or offer to create) one.
+    fireEvent.click(screen.getByText('same-entry heading link'))
+    expect(scrolledInto).toHaveLength(0)
+    expect(mocks.resolveWikiLink).not.toHaveBeenCalled()
+    expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
   it('assigns distinct backlink ids to a wikilink entry and a property entry sharing a sourceId', () => {

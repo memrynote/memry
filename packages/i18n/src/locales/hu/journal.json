@@ -1,14 +1,11 @@
 {
   "title": "Napló",
   "section": {
-    "journal": "Napló",
     "aiConnections": "AI kapcsolatok",
     "todaysNotes": "Mai jegyzetek",
     "todaysSchedule": "A mai menetrend",
     "todaysTasks": "A mai nap feladatai",
     "tasks": "Feladatok",
-    "calendarEvents": "Események naptárban",
-    "overdueTasks": "Lejárt feladatok",
     "technicalDetails": "Műszaki részletek"
   },
   "action": {
@@ -18,9 +15,6 @@
     "journalSettings": "Naplóbeállítások",
     "fullMode": "Teljes mód",
     "compactMode": "Kompakt mód",
-    "focusMode": "Fókusz mód",
-    "exitFocusMode": "Lépjen ki a fókusz módból",
-    "enterFocusMode": "Lépjen be a Fókusz módba",
     "createNote": "Jegyzet létrehozása",
     "createNewNote": "Új jegyzet létrehozása",
     "showLess": "Mutass kevesebbet",
@@ -34,8 +28,6 @@
     "reloadJournal": "Napló újratöltése",
     "goToToday": "Ugrás a mai napra",
     "copyUnsavedContent": "A nem mentett tartalom másolása a vágólapra",
-    "openNoteFullPage": "Jegyzet megnyitása teljes oldalon",
-    "closeNoteDrawer": "Zárja be a jegyzetfiókot",
     "addBookmark": "Könyvjelző hozzáadása",
     "removeBookmark": "Könyvjelző eltávolítása"
   },
@@ -43,33 +35,9 @@
     "placeholder": {
       "future": "mit tervezel...",
       "today": "Mi jár ma a fejedben...",
-      "past": "Gondolj erre a napra...",
-      "default": "Kezdj el írni..."
-    },
-    "toolbar": {
-      "ariaLabel": "Szöveg formázása",
-      "bold": "Félkövér",
-      "italic": "Dőlt",
-      "underline": "Aláhúzás",
-      "strikethrough": "Áthúzott",
-      "link": "Hivatkozás",
-      "image": "Kép",
-      "moreOptions": "További lehetőségek",
-      "heading1": "1. címsor",
-      "heading2": "2. címsor",
-      "heading3": "3. címsor",
-      "bulletList": "Felsorolás",
-      "numberedList": "Számozott lista",
-      "checklist": "Ellenőrzőlista",
-      "quote": "Idézet",
-      "divider": "Elválasztó",
-      "codeBlock": "Kódblokk"
-    },
-    "prompt": {
-      "enterUrl": "Írja be az URL-t:"
+      "past": "Gondolj erre a napra..."
     },
     "upload": {
-      "noEntry": "Nem sikerült feltölteni a képet: nincs kiválasztva naplóbejegyzés",
       "failed": "Nem sikerült feltölteni a képet"
     }
   },
@@ -180,18 +148,13 @@
     "connectionAria": "Csatlakozás {label}-hez, {scorePercent}%-os egyezés"
   },
   "count": {
-    "items": "tételeket",
     "note": "megjegyzés",
     "day": "napon",
     "days": "napokon",
     "event": "esemény",
     "events": "eseményeket",
-    "meeting": "találkozó",
-    "meetings": "találkozók",
     "task": "feladatot",
-    "tasks": "feladatokat",
     "todo": "tenni",
-    "people": "{count} ember",
     "moreConnections": "+ {count} több kapcsolat",
     "moreConnections_plural": "+ {count} több csatlakozás",
     "moreNotes": "+ {count} további megjegyzés",
@@ -255,26 +218,6 @@
   "note": {
     "generatedTitle": "Megjegyzés - {date}",
     "openAria": "Nyissa meg az {title} fájlt, amelyet az {time} címen hoztak létre"
-  },
-  "tag": {
-    "suggestionsAria": "Címkejavaslatok",
-    "empty": {
-      "title": "Még nincsenek címkék",
-      "description": "Új címke létrehozásához írja be"
-    },
-    "groupTitle": "Címkék",
-    "create": "Hozzon létre #{query}",
-    "ariaLabel": "Címke: {tag}, kattintson a szűréshez"
-  },
-  "wiki": {
-    "suggestionsAria": "Oldalajánlatok",
-    "empty": {
-      "title": "Nem található oldal"
-    },
-    "groupRecent": "Legutóbbi",
-    "groupAllPages": "Minden oldal",
-    "createNewPage": "Új oldal létrehozása",
-    "ariaLabel": "Link az {title}-hez"
   },
   "error": {
     "title": "Naplóhiba",

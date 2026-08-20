@@ -1,5 +1,5 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { createRef, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FilterRow } from './folder-view/filter-row'
 import { VaultSwitcher } from './vault-switcher'
@@ -7,11 +7,6 @@ import { TemplateSelector } from './note/template-selector'
 import { OutlineEdge } from './note/outline-edge'
 import { TaskCreationPopover } from './note/content-area/task-block/task-creation-popover'
 import { useTaskBlockData } from './note/content-area/task-block/use-task-block-data'
-import { TagAutocomplete, type TagAutocompleteRef } from './journal/extensions/tag/tag-autocomplete'
-import {
-  WikiLinkAutocomplete,
-  type WikiLinkAutocompleteRef
-} from './journal/extensions/wiki-link/wiki-link-autocomplete'
 import { TaskGroup, StatusTaskGroup } from './tasks/task-group'
 import { TodayTaskRow } from './tasks/today-task-row'
 import { SubtaskRow } from './tasks/subtask-row'
@@ -935,7 +930,7 @@ describe('cold major renderer components', () => {
     expect(callbacks.click).toHaveBeenCalledWith('child')
   })
 
-  it('handles outline hover, autocomplete commands, and task creation flow', async () => {
+  it('handles outline hover and task creation flow', async () => {
     const onHeadingClick = vi.fn()
     const { rerender } = render(<OutlineEdge headings={[]} onHeadingClick={onHeadingClick} />)
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
@@ -954,46 +949,6 @@ describe('cold major renderer components', () => {
     fireEvent.mouseEnter(screen.getByText('', { selector: '.vertical-connector' }).parentElement!)
     fireEvent.click(screen.getByText('Heading two'))
     expect(onHeadingClick).toHaveBeenCalledWith('h2')
-
-    const tagCommand = vi.fn()
-    const tagRef = createRef<TagAutocompleteRef>()
-    rerender(
-      <TagAutocomplete
-        ref={tagRef}
-        items={[{ name: 'work', count: 2 }]}
-        command={tagCommand}
-        query="new"
-      />
-    )
-    fireEvent.click(screen.getByText('work'))
-    expect(tagCommand).toHaveBeenCalledWith({ tag: 'work' })
-    act(() => {
-      expect(tagRef.current?.onKeyDown({ event: { key: 'ArrowDown' } as never })).toBe(true)
-      expect(tagRef.current?.onKeyDown({ event: { key: ' ' } as never })).toBe(true)
-    })
-
-    const wikiCommand = vi.fn()
-    const wikiRef = createRef<WikiLinkAutocompleteRef>()
-    rerender(
-      <WikiLinkAutocomplete
-        ref={wikiRef}
-        items={[
-          { id: 'p1', title: 'Page one', exists: true, lastEdited: new Date().toISOString() },
-          { id: 'p2', title: 'Page two', exists: true, lastEdited: new Date().toISOString() },
-          { id: 'p3', title: 'Page three', exists: true, lastEdited: new Date().toISOString() },
-          { id: 'p4', title: 'Page four', exists: false, lastEdited: new Date().toISOString() }
-        ]}
-        command={wikiCommand}
-      />
-    )
-    const pageFourOption = screen.getByRole('option', { name: 'Page four' })
-    expect(pageFourOption.querySelector('svg')).toBeNull()
-
-    fireEvent.click(screen.getByText('Page four'))
-    expect(wikiCommand).toHaveBeenCalledWith({ href: 'p4', title: 'Page four', exists: false })
-    act(() => {
-      expect(wikiRef.current?.onKeyDown({ event: { key: 'ArrowUp' } as never })).toBe(true)
-    })
 
     const onCreated = vi.fn()
     const onCancel = vi.fn()
