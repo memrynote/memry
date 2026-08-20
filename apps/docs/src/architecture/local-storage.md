@@ -275,6 +275,31 @@ Editor colors persist in two Obsidian-compatible forms:
 
 The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
 
+### Toggle blocks in markdown
+
+BlockNote's HTML export writes a `toggleListItem` as a plain `<li>`, so a toggle used to reach the vault file as an ordinary bullet — the fold gone and every block nested under it flattened out beside it. Toggles therefore have an on-disk form of their own (`packages/editor-schema/src/blocks/markdown.ts`):
+
+```markdown
+<details data-memry-toggle>
+<summary>Research notes</summary>
+
+Hidden detail
+
+![](../attachments/<noteId>/abc123-diagram.png)
+
+</details>
+```
+
+The summary line holds the toggle's own inline markdown; everything nested under it lives inside the region, serialized by the same top-level walk — so nested toggles, images and blank-line gaps inside a toggle behave exactly as they do on a page. A toggle carrying a non-default block colour gets the `<!-- colors:{…} -->` marker line immediately above the `<details>`.
+
+`<details>`/`<summary>` is valid HTML inside GFM, so GitHub and Obsidian render the note as a real collapsible section rather than as markup.
+
+The `data-memry-toggle` attribute is what makes the block Memry's. A bare `<details>` block written by hand in Obsidian is left exactly as the author wrote it: claiming it would run its body through BlockNote's markdown parser, and anything that parser cannot represent comes back different — write-back byte-compares, so that difference would rewrite a file Memry never wrote. A toggle quoted inside a code fence is left as code for the same reason.
+
+Toggle regions are split off before the blank-line and marker-line scanners run, because those read one line at a time and would shred a toggle body apart at its own paragraph gaps. As with colors, both serializers carry it: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
+
+A toggle nested under a _list item_ still reaches markdown through the block-nesting markers and flattens to a bullet, as it always has.
+
 ## Concurrency
 
 better-sqlite3 is synchronous and single-process. The main process is the only writer. The renderer never touches SQLite directly — all reads and writes go through IPC.

@@ -34,6 +34,7 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Heading 1 through 6
 - Bullet list, numbered list, check list
 - Quote, callout
+- Toggle list (collapsible section — nest text, images, even other toggles inside it)
 - Code block (language picker)
 - Divider
 - Image, file
