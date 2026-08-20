@@ -7,11 +7,15 @@
  * fire when the caret really is in a cell, and must not touch the event at all
  * otherwise — everywhere else BlockNote's own image-BLOCK path is the correct
  * behaviour and has to keep running untouched.
+ *
+ * The "is the caret in a cell" predicate itself is not re-tested here: it is
+ * `table-cell-paste.ts`'s, shared with the plain-text paste guard, and covered
+ * against a real mounted editor in `table-cell-paste.integration.test.ts`.
  */
 
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { isSelectionInTableCell, useTableCellImage } from './use-table-cell-image'
+import { useTableCellImage } from './use-table-cell-image'
 
 const mocks = vi.hoisted(() => ({
   uploadAttachment: vi.fn(),
@@ -50,7 +54,11 @@ vi.mock('@tiptap/pm/state', () => ({
 
 const PNG = (): File => new File(['x'], 'shot.png', { type: 'image/png' })
 
-/** A resolved position whose ancestor chain is the given node names, outermost first. */
+/**
+ * A resolved position whose ancestor chain is the given node names, outermost
+ * first — the shape `isSelectionInTableCell` walks. It reads the selection
+ * through `editor.transact`, so that is what the fake editor supplies.
+ */
 function selectionIn(...names: string[]) {
   return {
     selection: {
@@ -62,9 +70,10 @@ function selectionIn(...names: string[]) {
   }
 }
 
-function makeEditor(state: unknown) {
+function makeEditor(state: any) {
   return {
     insertInlineContent: vi.fn(),
+    transact: (fn: (tr: unknown) => unknown) => fn(state),
     prosemirrorView: {
       state,
       dispatch: vi.fn(),
@@ -106,25 +115,6 @@ function paste(container: HTMLElement, files: File[]): ClipboardEvent {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.uploadAttachment.mockResolvedValue({ success: true, path: '../attachments/n1/shot.png' })
-})
-
-describe('isSelectionInTableCell', () => {
-  it('sees a caret inside a body cell', () => {
-    expect(isSelectionInTableCell(selectionIn('table', 'tableRow', 'tableCell', 'text'))).toBe(true)
-  })
-
-  it('sees a caret inside a header cell', () => {
-    expect(isSelectionInTableCell(selectionIn('table', 'tableRow', 'tableHeader'))).toBe(true)
-  })
-
-  it('does not see a caret in an ordinary paragraph', () => {
-    expect(isSelectionInTableCell(selectionIn('blockContainer', 'paragraph'))).toBe(false)
-  })
-
-  it('is safe with no selection at all', () => {
-    expect(isSelectionInTableCell(undefined)).toBe(false)
-    expect(isSelectionInTableCell({})).toBe(false)
-  })
 })
 
 describe('pasting an image with the caret in a cell', () => {

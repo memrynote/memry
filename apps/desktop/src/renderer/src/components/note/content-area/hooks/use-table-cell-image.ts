@@ -25,28 +25,13 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { isImageFile } from './use-editor-file-upload'
+// One definition of "is the caret in a cell", shared with the plain-text paste
+// guard (#1641). Two copies of this predicate in one directory is exactly the
+// pair that drifts — a header cell is its own node type, and only one copy
+// would remember.
+import { isSelectionInTableCell } from '../table-cell-paste'
 
 const log = createLogger('Hook:TableCellImage')
-
-/** The ProseMirror node names a table cell can have in a BlockNote table. */
-const CELL_NODE_TYPES = new Set(['tableCell', 'tableHeader'])
-
-/**
- * True when the given ProseMirror selection sits inside a table cell.
- *
- * Walked over the resolved position's ancestors rather than read off the DOM:
- * the caret can be in a cell whose `<td>` is not the event target (a paste
- * fired from the document, a click on padding), and the document is the thing
- * being edited.
- */
-export function isSelectionInTableCell(state: any): boolean {
-  const $from = state?.selection?.$from
-  if (!$from) return false
-  for (let depth = $from.depth; depth > 0; depth--) {
-    if (CELL_NODE_TYPES.has($from.node(depth).type.name)) return true
-  }
-  return false
-}
 
 interface TableCellImageParams {
   editor: any
@@ -102,8 +87,7 @@ export function useTableCellImage({
     const onPaste = (e: ClipboardEvent): void => {
       const files = imageFilesFrom(e.clipboardData)
       if (files.length === 0) return
-      const view = editor?.prosemirrorView
-      if (!view || !isSelectionInTableCell(view.state)) return
+      if (!isSelectionInTableCell(editor)) return
 
       e.preventDefault()
       e.stopPropagation()
@@ -131,7 +115,9 @@ export function useTableCellImage({
 
       const selection = TextSelection.create(view.state.doc, at.pos)
       view.dispatch(view.state.tr.setSelection(selection))
-      if (!isSelectionInTableCell(view.state)) return
+      // Asked AFTER the dispatch: the pointer landed on a `<td>`, but the
+      // position it resolves to is what the image is actually inserted at.
+      if (!isSelectionInTableCell(editor)) return
       void insertImages(files)
     }
 
