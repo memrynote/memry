@@ -21,6 +21,7 @@ import {
   type WeekdayTemplateMap
 } from '../../settings/journal-template-keys'
 import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
+import { SIDEBAR_SECTION_ORDER_SETTINGS_KEY } from '../../settings/sidebar-section-order-store'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -127,6 +128,23 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       })
     } catch (err) {
       log.warn('Failed to propagate merged sidebar sort modes:', err)
+    }
+  }
+
+  // Same local-DB-only story as the sort modes above. Replaced rather than
+  // merged: the order is one list under one field clock, so the merge already
+  // picked a winner — splicing the two here would invent a third order.
+  if (merged.sidebar?.sectionOrder) {
+    try {
+      const db = getDatabase()
+      const next = merged.sidebar.sectionOrder.filter((id) => typeof id === 'string')
+      setSetting(db, SIDEBAR_SECTION_ORDER_SETTINGS_KEY, JSON.stringify(next))
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: SIDEBAR_SECTION_ORDER_SETTINGS_KEY,
+        value: next
+      })
+    } catch (err) {
+      log.warn('Failed to propagate merged sidebar section order:', err)
     }
   }
 

@@ -83,7 +83,12 @@ export const SyncedSettingsSchema = z.object({
   // devices changing two different sections both keep their change.
   sidebar: z
     .object({
-      sortModes: SidebarSortModesSchema.optional()
+      sortModes: SidebarSortModesSchema.optional(),
+      // One list, one clock: reordering is a whole-list operation, so the last
+      // device to drag wins rather than two partial orders interleaving. Ids
+      // stay unconstrained strings — a section a newer build added must ride
+      // along instead of failing the whole settings payload.
+      sectionOrder: z.array(z.string()).optional()
     })
     .optional()
 })

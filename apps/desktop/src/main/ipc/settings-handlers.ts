@@ -77,6 +77,11 @@ import {
   writeSidebarSortMode
 } from '../settings/sidebar-sort-store'
 import {
+  SIDEBAR_SECTION_ORDER_SETTINGS_KEY,
+  readSidebarSectionOrder,
+  writeSidebarSectionOrder
+} from '../settings/sidebar-section-order-store'
+import {
   SIDEBAR_SORT_DEFAULTS,
   SidebarSortModeSchema,
   SidebarSortSurfaceSchema,
@@ -580,6 +585,41 @@ export function registerSettingsHandlers(): void {
       }
     }
   )
+
+  ipcMain.handle(SettingsChannels.invoke.GET_SIDEBAR_SECTION_ORDER, () => {
+    const db = getDbOrNull()
+    // No vault open yet: an empty order means "never reordered", which is what
+    // the sidebar already renders, so this is the honest answer and not an error.
+    if (!db) return []
+    return readSidebarSectionOrder(db)
+  })
+
+  ipcMain.handle(SettingsChannels.invoke.SET_SIDEBAR_SECTION_ORDER, (_event, order: string[]) => {
+    const db = getDbOrNull()
+    if (!db) {
+      return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+    }
+
+    if (!Array.isArray(order) || order.some((id) => typeof id !== 'string')) {
+      return { success: false, error: 'Invalid sidebar section order' }
+    }
+
+    try {
+      const next = writeSidebarSectionOrder(db, order)
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: SIDEBAR_SECTION_ORDER_SETTINGS_KEY,
+        value: next
+      })
+      trackMainEvent('setting_changed', {
+        surface: 'settings',
+        action: 'changed',
+        dimensions: { setting: 'sidebarSectionOrder' }
+      })
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   // Set journal settings
   ipcMain.handle(

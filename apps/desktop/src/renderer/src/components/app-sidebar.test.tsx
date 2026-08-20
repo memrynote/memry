@@ -3,6 +3,8 @@ import { forwardRef, useEffect, useImperativeHandle, type ReactNode } from 'reac
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
 
+import { DndContext } from '@dnd-kit/core'
+
 import { AppSidebar } from './app-sidebar'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 
@@ -331,6 +333,12 @@ vi.mock('@/components/ui/picker', async () => {
   return { Picker }
 })
 
+// AppSidebar's sections are sortable, and dnd-kit's monitor requires an enclosing
+// DndContext — the app mounts one in App.tsx (DragProvider) around everything.
+const DndWrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
+  <DndContext>{children}</DndContext>
+)
+
 describe('AppSidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -343,7 +351,7 @@ describe('AppSidebar', () => {
   })
 
   it('shows the canvas count and creates a canvas in the folder the tree reports', async () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     // The collapsed canvases header can only show `(n)` if the count reaches it.
     await waitFor(() => expect(screen.getByText('sectionLabel total 3')).toBeInTheDocument())
@@ -363,7 +371,7 @@ describe('AppSidebar', () => {
   it('offers a root-level New folder beside New canvas, the way NOTES does', async () => {
     // A folder row's own menu can only create a CHILD folder, so without a
     // section-level control a user with no folders can never make their first.
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     fireEvent.click(screen.getByRole('button', { name: 'newCanvasFolder' }))
 
@@ -371,7 +379,7 @@ describe('AppSidebar', () => {
   })
 
   it('opens app sections, creates notes in selected folders, and forwards tree actions', async () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{ today: 5 }} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{ today: 5 }} />, { wrapper: DndWrapper })
 
     expect(screen.getByText('Inbox count 2')).toBeInTheDocument()
     expect(screen.getByText('Today count 5')).toBeInTheDocument()
@@ -417,7 +425,7 @@ describe('AppSidebar', () => {
   })
 
   it('opens the new-item menu from the chevron and routes to journal', async () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     fireEvent.click(screen.getByRole('button', { name: 'newItemMenu' }))
     fireEvent.click(await screen.findByText('journal'))
@@ -430,7 +438,7 @@ describe('AppSidebar', () => {
   })
 
   it('opens tags, bookmarks, account settings, and the settings panel via the gear', () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
     fireEvent.click(screen.getByRole('button', { name: 'Tag work' }))
     expect(mocks.openSidebarItem).toHaveBeenCalledWith({
@@ -458,7 +466,9 @@ describe('AppSidebar', () => {
 
   it('uses SyncStatus for authenticated accounts and hides sync action while checking', () => {
     mocks.authState.status = 'authenticated'
-    const { rerender } = render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    const { rerender } = render(<AppSidebar currentPage="inbox" viewCounts={{}} />, {
+      wrapper: DndWrapper
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync status' }))
     expect(mocks.openSettings).toHaveBeenCalledWith('account')
@@ -473,7 +483,7 @@ describe('AppSidebar', () => {
   // lint gate could not see (issue #1340). Assert the key *and* the count so a
   // regression back to English prose fails here, not just in review.
   it('reports dropped-file import results through translation keys with counts', async () => {
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
     mocks.importFiles.mockResolvedValueOnce({
       imported: 2,
       failed: 1,
@@ -493,7 +503,7 @@ describe('AppSidebar', () => {
   it('imports into the folder the drop landed on, ignoring the selected folder', async () => {
     // #given — the tree mock reports `Projects` as the selected folder, which is
     // what used to decide the destination on its own
-    render(<AppSidebar currentPage="inbox" viewCounts={{}} />)
+    render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
     mocks.importFiles.mockResolvedValueOnce({ imported: 1, failed: 0, errors: [] })
 
     // #when — the file is dropped over a different folder row

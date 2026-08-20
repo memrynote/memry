@@ -162,6 +162,13 @@ export const settingsRpc = defineDomain({
       params: ['surface', 'mode'],
       invokeArgs: ['{ surface, mode }']
     }),
+    getSidebarSectionOrder: defineMethod<() => Promise<string[]>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_SECTION_ORDER
+    }),
+    setSidebarSectionOrder: defineMethod<(order: string[]) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_SECTION_ORDER,
+      params: ['order']
+    }),
     getAISettings: defineMethod<() => Promise<AISettings>>({
       channel: SettingsChannels.invoke.GET_AI_SETTINGS
     }),

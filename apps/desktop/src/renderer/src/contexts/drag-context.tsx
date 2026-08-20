@@ -34,14 +34,7 @@ import { useTrackedTimeout } from '@/hooks/use-tracked-timeout'
 
 export type DragSourceType = 'list' | 'kanban' | 'calendar'
 export type DropTargetType =
-  | 'task'
-  | 'section'
-  | 'column'
-  | 'date'
-  | 'project'
-  | 'trash'
-  | 'archive'
-  | null
+  'task' | 'section' | 'column' | 'date' | 'project' | 'trash' | 'archive' | null
 
 export interface DragState {
   isDragging: boolean
@@ -187,6 +180,29 @@ const createCollisionDetection = (): CollisionDetection => {
       if (splitZoneCollision) {
         return [splitZoneCollision]
       }
+    }
+
+    // A sidebar section is being reordered. Its only meaningful drop targets are
+    // the other sections, and answering anything else breaks the drag twice
+    // over: the project branch below claims any drag whose pointer is inside a
+    // project row, and dnd-kit nulls a sortable's transform the moment `over` is
+    // not one of that sortable's own items (useSortable's `displaceItem` needs a
+    // valid overIndex) — so the section being dragged snapped back to where it
+    // started, mid-drag, and a drop there reordered nothing.
+    //
+    // Pointer-first, not closestCenter: a section is as tall as its content, and
+    // the middle of Collections-with-its-tree-open is nowhere near the handle the
+    // user is aiming with. The pointer is the intent.
+    if (activeType === 'sidebar-section') {
+      const sections = args.droppableContainers.filter(
+        (container) => container.data.current?.type === 'sidebar-section'
+      )
+      const pointerSection = pointerWithin({ ...args, droppableContainers: sections })
+      if (pointerSection.length > 0) return pointerSection
+
+      // Keyboard sorting has no pointer, and a pointer in the empty space under
+      // the last section still has to resolve to one.
+      return closestCenter({ ...args, droppableContainers: sections })
     }
 
     const sidebarCollision = pointerCollisions.find((collision) => {
