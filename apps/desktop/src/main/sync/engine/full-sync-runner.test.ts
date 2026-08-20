@@ -1307,14 +1307,16 @@ describe('FullSyncRunner', () => {
     // nothing may ever be dropped to make room for a higher tier.
     it('#then open-but-inactive docs lead the paced queue', async () => {
       // The 32-doc LRU is a recently-opened list, already in memory. Those notes
-      // are one click away and today they get no priority at all — note-50 would
-      // wait out two chunks purely because of where it sits in the vault.
-      const h = sweepingHarness(60, fakeCrdtProvider({ openNoteIds: ['note-50', 'note-55'] }))
+      // are one click away and today they get no priority at all — note-150 would
+      // wait out a whole chunk purely because of where it sits in the vault.
+      // The vault must outrun one chunk and the open notes must sit past the
+      // first one, or the tier buys nothing here and the test passes for free.
+      const h = sweepingHarness(250, fakeCrdtProvider({ openNoteIds: ['note-150', 'note-200'] }))
 
       await h.runner.run()
 
       const firstChunk = h.crdtSync.pullCrdtForNotes.mock.calls[0][0]
-      expect(firstChunk.slice(0, 2)).toEqual(['note-50', 'note-55'])
+      expect(firstChunk.slice(0, 2)).toEqual(['note-150', 'note-200'])
       expect(firstChunk).toHaveLength(CRDT_SWEEP_CHUNK_NOTES)
     })
 
