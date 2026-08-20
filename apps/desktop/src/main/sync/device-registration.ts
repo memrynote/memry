@@ -30,7 +30,7 @@ import {
   persistAccountKeyVerifier
 } from './key-verification'
 import { getSyncEngine, startSyncRuntime } from './runtime'
-import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { startGoogleCalendarSyncRunner } from '../calendar/providers/google/sync-service'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,

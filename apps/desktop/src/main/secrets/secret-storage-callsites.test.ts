@@ -59,7 +59,10 @@ vi.mock('../store', () => ({
 
 import { resetSecretStorageForTests, SECRET_STORE_FILENAME } from './secret-storage'
 import { confirmMasterKeyMigrated, deleteKey, retrieveKey, storeKey } from '../crypto/keychain'
-import { getGoogleCalendarTokens, storeGoogleCalendarTokens } from '../calendar/google/keychain'
+import {
+  getGoogleCalendarTokens,
+  storeGoogleCalendarTokens
+} from '../calendar/providers/google/keychain'
 import {
   getVoiceTranscriptionOpenAIApiKey,
   setVoiceTranscriptionOpenAIApiKey
@@ -266,7 +269,7 @@ describe('secret-storage call sites — account string preservation and migratio
   // Google Calendar tokens
   // --------------------------------------------------------------------------
 
-  describe('calendar/google/keychain', () => {
+  describe('calendar/providers/google/keychain', () => {
     it('preserves the per-account per-kind per-device account strings', async () => {
       process.env.MEMRY_DEVICE = 'A'
 

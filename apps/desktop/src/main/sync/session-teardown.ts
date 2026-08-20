@@ -15,8 +15,8 @@ import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { createLogger } from '../lib/logger'
-import { disconnectGoogleCalendar, listGoogleAccountIds } from '../calendar/google/oauth'
-import { stopGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { disconnectGoogleCalendar, listGoogleAccountIds } from '../calendar/providers/google/oauth'
+import { stopGoogleCalendarSyncRunner } from '../calendar/providers/google/sync-service'
 
 const log = createLogger('SessionTeardown')
 

@@ -1,4 +1,4 @@
-import { deleteSecret, getSecret, setSecret } from '../../secrets/secret-storage'
+import { deleteSecret, getSecret, setSecret } from '../../../secrets/secret-storage'
 
 const SERVICE = 'com.memry.calendar.google'
 

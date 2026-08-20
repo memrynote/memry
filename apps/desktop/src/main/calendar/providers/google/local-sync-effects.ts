@@ -1,9 +1,9 @@
 import { toErrorCode } from '@memry/contracts/telemetry-api'
-import { requireDatabase } from '../../database'
-import { createLogger } from '../../lib/logger'
-import { trackMainError } from '../../telemetry/diagnostics'
-import { shouldEmitThrottled } from '../../telemetry/throttle'
-import type { CalendarSyncTarget } from '../types'
+import { requireDatabase } from '../../../database'
+import { createLogger } from '../../../lib/logger'
+import { trackMainError } from '../../../telemetry/diagnostics'
+import { shouldEmitThrottled } from '../../../telemetry/throttle'
+import type { CalendarSyncTarget } from '../../types'
 import { syncLocalSourceToGoogleCalendar } from './sync-service'
 
 const log = createLogger('Calendar:GoogleLocalEffects')

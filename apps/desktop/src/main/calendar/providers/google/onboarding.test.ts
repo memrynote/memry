@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTestDataDb, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'
 import { settings } from '@memry/db-schema/schema/settings'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from './onboarding'
-import type { GoogleCalendarDescriptor, GoogleCalendarClient } from '../types'
-import type { DataDb } from '../../database'
+import type { GoogleCalendarDescriptor, GoogleCalendarClient } from '../../types'
+import type { DataDb } from '../../../database'
 
 function makeClient(
   calendars: GoogleCalendarDescriptor[]

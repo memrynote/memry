@@ -1,5 +1,5 @@
-import { createLogger } from '../../lib/logger'
-import type { GoogleCalendarClient } from '../types'
+import { createLogger } from '../../../lib/logger'
+import type { GoogleCalendarClient } from '../../types'
 
 const log = createLogger('Calendar:GoogleChannelManager')
 

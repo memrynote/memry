@@ -81,7 +81,7 @@ import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
-} from './calendar/google/sync-service'
+} from './calendar/providers/google/sync-service'
 import {
   log,
   createLogger,

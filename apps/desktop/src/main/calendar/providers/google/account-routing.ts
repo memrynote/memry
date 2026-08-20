@@ -2,8 +2,8 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
-import type { DataDb } from '../../database/types'
-import type { CalendarSyncTarget } from '../types'
+import type { DataDb } from '../../../database/types'
+import type { CalendarSyncTarget } from '../../types'
 import { resolveDefaultGoogleAccountId } from './oauth'
 
 function findAccountIdForCalendarRemoteId(db: DataDb, remoteCalendarId: string): string | null {

@@ -106,12 +106,12 @@ vi.mock('../store', () => ({
   }
 }))
 
-vi.mock('../calendar/google/oauth', () => ({
+vi.mock('../calendar/providers/google/oauth', () => ({
   disconnectGoogleCalendar: (...args: unknown[]) => mocks.disconnectGoogleCalendar(...args),
   listGoogleAccountIds: (...args: unknown[]) => mocks.listGoogleAccountIds(...args)
 }))
 
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/providers/google/sync-service', () => ({
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mocks.stopGoogleCalendarSyncRunner(...args)
 }))
 

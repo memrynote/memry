@@ -15,12 +15,12 @@ vi.mock('./oauth', () => ({
   resolveDefaultGoogleAccountId: vi.fn(() => 'work@example.com')
 }))
 
-vi.mock('../../sync/auth-state', () => ({
+vi.mock('../../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
 import { discoverGoogleCalendarSources } from './sync-service'
-import { upsertCalendarSource } from '../repositories/calendar-sources-repository'
+import { upsertCalendarSource } from '../../repositories/calendar-sources-repository'
 
 const REMOTE_CALENDARS = [
   {

@@ -13,7 +13,7 @@ import type {
   CalendarSyncSourceType,
   GoogleCalendarRemoteEvent,
   GoogleCalendarUpsertEventInput
-} from '../types'
+} from '../../types'
 
 export interface CalendarEventChanges {
   title: string

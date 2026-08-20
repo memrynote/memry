@@ -1,4 +1,4 @@
-import { getMainI18n } from '../../lib/main-i18n'
+import { getMainI18n } from '../../../lib/main-i18n'
 
 export function userMessageForTokenEndpointError(args: {
   status: number

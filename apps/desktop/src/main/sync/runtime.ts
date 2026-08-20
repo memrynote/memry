@@ -16,7 +16,7 @@ import {
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { resolveSyncServerUrl } from './sync-server-url'
-import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
+import { syncGoogleCalendarSource } from '../calendar/providers/google/sync-service'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { trackMainEvent } from '../telemetry/track'
 import { SyncQueueManager } from './queue'

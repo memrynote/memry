@@ -30,7 +30,7 @@ vi.mock('../calendar/change-events', () => ({
   emitCalendarProjectionChanged
 }))
 
-vi.mock('../calendar/google/local-sync-effects', () => ({
+vi.mock('../calendar/providers/google/local-sync-effects', () => ({
   scheduleGoogleCalendarSourceSync
 }))
 

@@ -20,17 +20,17 @@ const { loggerMock, runtimeMocks } = vi.hoisted(() => ({
   }
 }))
 
-vi.mock('../../lib/logger', () => ({
+vi.mock('../../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
-vi.mock('../../sync/http-client', () => ({
+vi.mock('../../../sync/http-client', () => ({
   deleteFromServer: runtimeMocks.deleteFromServer,
   patchToServer: runtimeMocks.patchToServer,
   postToServer: runtimeMocks.postToServer
 }))
 
-vi.mock('../../sync/token-manager', () => ({
+vi.mock('../../../sync/token-manager', () => ({
   getValidAccessToken: runtimeMocks.getValidAccessToken
 }))
 
@@ -42,7 +42,7 @@ vi.mock('./oauth', () => ({
   resolveDefaultGoogleAccountId: runtimeMocks.resolveDefaultGoogleAccountId
 }))
 
-vi.mock('../../database', () => ({
+vi.mock('../../../database', () => ({
   requireDatabase: runtimeMocks.requireDatabase
 }))
 
@@ -50,7 +50,7 @@ vi.mock('./google-channel-manager', () => ({
   createGoogleChannelManager: runtimeMocks.createGoogleChannelManager
 }))
 
-vi.mock('../repositories/calendar-sources-repository', () => ({
+vi.mock('../../repositories/calendar-sources-repository', () => ({
   getCalendarSourceById: runtimeMocks.getCalendarSourceById
 }))
 

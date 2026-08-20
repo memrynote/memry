@@ -64,15 +64,15 @@ const { loggerMock } = vi.hoisted(() => ({
   loggerMock: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }))
 
-vi.mock('../../lib/logger', () => ({
+vi.mock('../../../lib/logger', () => ({
   createLogger: () => loggerMock
 }))
 
-vi.mock('../repositories/calendar-sources-repository', () => ({
+vi.mock('../../repositories/calendar-sources-repository', () => ({
   listCalendarSources: vi.fn(() => [])
 }))
 
-vi.mock('../../lib/main-i18n', () => ({
+vi.mock('../../../lib/main-i18n', () => ({
   getMainI18n: () => ({
     t: (key: string) => key,
     getFixedT: () => (key: string) => key
@@ -85,7 +85,7 @@ import {
   hasGoogleCalendarLocalAuth
 } from './oauth'
 import { getGoogleCalendarTokens, hasGoogleCalendarTokens } from './keychain'
-import { SECRET_STORE_FILENAME, resetSecretStorageForTests } from '../../secrets/secret-storage'
+import { SECRET_STORE_FILENAME, resetSecretStorageForTests } from '../../../secrets/secret-storage'
 
 const SERVICE = 'com.memry.calendar.google'
 const ACCOUNT_ID = 'user@example.com'

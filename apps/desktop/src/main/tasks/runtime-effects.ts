@@ -1,6 +1,6 @@
 import { publishProjectionEvent } from '../projections'
 import { emitCalendarProjectionChanged } from '../calendar/change-events'
-import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
+import { scheduleGoogleCalendarSourceSync } from '../calendar/providers/google/local-sync-effects'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,

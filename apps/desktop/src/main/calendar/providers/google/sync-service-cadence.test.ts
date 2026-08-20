@@ -20,11 +20,11 @@ vi.mock('./oauth', () => ({
   resolveDefaultGoogleAccountId: vi.fn(() => null)
 }))
 
-vi.mock('../../sync/auth-state', () => ({
+vi.mock('../../../sync/auth-state', () => ({
   isMemryUserSignedIn: vi.fn(async () => true)
 }))
 
-vi.mock('../../database', () => ({
+vi.mock('../../../database', () => ({
   requireDatabase: vi.fn(() => mockDbHolder.db),
   getDatabase: vi.fn(() => mockDbHolder.db),
   isDatabaseInitialized: vi.fn(() => true)

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createLogger } from '../../lib/logger'
+import { createLogger } from '../../../lib/logger'
 import {
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
@@ -11,7 +11,7 @@ import type {
   GoogleCalendarDescriptor,
   GoogleCalendarRemoteEvent,
   GoogleCalendarUpsertEventInput
-} from '../types'
+} from '../../types'
 
 const log = createLogger('Calendar:GoogleClient')
 const GOOGLE_API_BASE = 'https://www.googleapis.com/calendar/v3'
@@ -465,7 +465,7 @@ export function createGoogleCalendarClient(
   if (!accountId || !accountId.trim()) {
     throw new Error('createGoogleCalendarClient requires a non-empty accountId')
   }
-  return {
+  const client: Omit<GoogleCalendarClient, 'watch' | 'unwatch'> = {
     async listCalendars(): Promise<GoogleCalendarDescriptor[]> {
       const response = await withAuthorizedResponse(accountId, {
         path: '/users/me/calendarList'
@@ -658,5 +658,15 @@ export function createGoogleCalendarClient(
         await throwCalendarApiFailure(response, 'stop Google calendar channel')
       }
     }
+  }
+
+  // `watch`/`unwatch` are the neutral adapter names; `watchCalendar`/
+  // `stopChannel` are the Google-named pair the push-channel manager and the
+  // sync-server relay still speak. Same implementation, two entry points,
+  // until the relay is generalized (#1404).
+  return {
+    ...client,
+    watch: client.watchCalendar,
+    unwatch: client.stopChannel
   }
 }

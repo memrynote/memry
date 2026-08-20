@@ -27,13 +27,13 @@ import {
   secureCleanup
 } from '../crypto'
 import { getDatabase } from '../database/client'
-import type { GoogleProviderAuthTransfer } from '../calendar/google/provider-auth-transfer'
+import type { GoogleProviderAuthTransfer } from '../calendar/providers/google/provider-auth-transfer'
 import {
   collectGoogleProviderAuthTransfer,
   decryptGoogleProviderAuthTransfer,
   encryptGoogleProviderAuthTransfer,
   persistImportedGoogleProviderAuth
-} from '../calendar/google/provider-auth-transfer'
+} from '../calendar/providers/google/provider-auth-transfer'
 import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, RateLimitError, SyncServerError } from './http-client'

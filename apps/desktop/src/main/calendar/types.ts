@@ -1,9 +1,11 @@
 import type {
-  CalendarAttendee,
-  CalendarConferenceData,
-  CalendarReminders,
-  CalendarVisibility
-} from '@memry/db-schema/schema/calendar-events'
+  CalendarProviderAdapter,
+  RemoteCalendarDescriptor,
+  RemoteCalendarEvent,
+  UpsertRemoteEventInput,
+  WatchCalendarInput,
+  WatchCalendarResult
+} from './provider/adapter'
 
 export type CalendarSyncSourceType = 'event' | 'task' | 'reminder' | 'inbox_snooze'
 
@@ -12,80 +14,31 @@ export interface CalendarSyncTarget {
   sourceId: string
 }
 
-export interface GoogleCalendarDescriptor {
-  id: string
-  title: string
-  timezone: string | null
-  color: string | null
-  isPrimary: boolean
-}
+// The remote-event shapes are provider-neutral now (`provider/adapter.ts`).
+// These aliases keep the Google-era names alive for the existing Google call
+// sites; new code should import the neutral names directly.
+export type GoogleCalendarDescriptor = RemoteCalendarDescriptor
+export type GoogleCalendarRemoteEvent = RemoteCalendarEvent
+export type GoogleCalendarUpsertEventInput = UpsertRemoteEventInput
 
-export interface GoogleCalendarRemoteEvent {
-  id: string
-  calendarId: string
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  isAllDay: boolean
-  timezone: string
-  status: 'confirmed' | 'tentative' | 'cancelled'
-  etag: string | null
-  updatedAt: string | null
-  attendees: CalendarAttendee[] | null
-  reminders: CalendarReminders | null
-  visibility: CalendarVisibility | null
-  colorId: string | null
-  conferenceData: CalendarConferenceData | null
-  recurringEventId: string | null
-  originalStartTime: string | null
-  raw: Record<string, unknown>
-}
-
-export interface GoogleCalendarUpsertEventInput {
-  sourceType: CalendarSyncSourceType
-  sourceId: string
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string | null
-  isAllDay: boolean
-  timezone: string
-  recurrence: string[] | null
-  attendees?: CalendarAttendee[] | null
-  reminders?: CalendarReminders | null
-  visibility?: CalendarVisibility | null
-  colorId?: string | null
-  conferenceData?: CalendarConferenceData | null
-  recurringEventId?: string | null
-  originalStartTime?: string | null
-}
-
-export interface GoogleCalendarClient {
-  listCalendars(): Promise<GoogleCalendarDescriptor[]>
-  createCalendar(input: { title: string; timezone: string }): Promise<GoogleCalendarDescriptor>
-  listEvents(input: {
-    calendarId: string
-    syncCursor?: string | null
-    timeMin?: string | null
-    timeMax?: string | null
-  }): Promise<{ events: GoogleCalendarRemoteEvent[]; nextSyncCursor: string | null }>
-  getEvent(input: { calendarId: string; eventId: string }): Promise<GoogleCalendarRemoteEvent>
+/**
+ * Google's adapter. Everything optional on `CalendarProviderAdapter` is
+ * required here — Google writes, creates calendars and pushes — plus the two
+ * Google-named push-channel methods the channel manager still calls. Those
+ * stay until the sync-server relay is generalized (#1404); `watch`/`unwatch`
+ * are the neutral names the engine sees.
+ */
+export interface GoogleCalendarClient extends CalendarProviderAdapter {
+  createCalendar(input: { title: string; timezone: string }): Promise<RemoteCalendarDescriptor>
   upsertEvent(input: {
     calendarId: string
     eventId: string | null
-    event: GoogleCalendarUpsertEventInput
+    event: UpsertRemoteEventInput
     ifMatch?: string | null
-  }): Promise<GoogleCalendarRemoteEvent>
+  }): Promise<RemoteCalendarEvent>
   deleteEvent(input: { calendarId: string; eventId: string }): Promise<void>
-  watchCalendar(input: {
-    calendarId: string
-    channelId: string
-    token: string
-    webhookUrl: string
-    ttlSeconds: number
-  }): Promise<{ resourceId: string; expiration: number }>
+  watch(input: WatchCalendarInput): Promise<WatchCalendarResult>
+  unwatch(input: { channelId: string; resourceId: string }): Promise<void>
+  watchCalendar(input: WatchCalendarInput): Promise<WatchCalendarResult>
   stopChannel(input: { channelId: string; resourceId: string }): Promise<void>
 }

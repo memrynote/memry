@@ -5,12 +5,15 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import type { FieldClocks } from '@memry/contracts/sync-api'
-import { createLogger } from '../../lib/logger'
-import type { DataDb } from '../../database/types'
-import { enqueueLocalSyncUpdate } from '../../sync/local-mutations'
-import { initAllFieldClocks } from '../../sync/field-merge'
-import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
-import { emitCalendarChanged } from '../change-events'
+import { createLogger } from '../../../lib/logger'
+import type { DataDb } from '../../../database/types'
+import { enqueueLocalSyncUpdate } from '../../../sync/local-mutations'
+import { initAllFieldClocks } from '../../../sync/field-merge'
+import {
+  CALENDAR_EVENT_SYNCABLE_FIELDS,
+  mergeCalendarEventFields
+} from '../../field-merge-calendar'
+import { emitCalendarChanged } from '../../change-events'
 import {
   mapCalendarEventToGoogleInput,
   mapGoogleEventToCalendarEventChanges,
@@ -23,7 +26,7 @@ import type {
   GoogleCalendarClient,
   GoogleCalendarRemoteEvent,
   GoogleCalendarUpsertEventInput
-} from '../types'
+} from '../../types'
 
 const log = createLogger('Calendar:GooglePushConflict')
 export const MAX_PUSH_CONFLICT_RETRIES = 3

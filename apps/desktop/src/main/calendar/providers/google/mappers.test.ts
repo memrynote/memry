@@ -4,7 +4,7 @@ import {
   mapGoogleEventToCalendarEventChanges,
   mapGoogleEventToExternalEventRecord
 } from './mappers'
-import type { GoogleCalendarRemoteEvent } from '../types'
+import type { GoogleCalendarRemoteEvent } from '../../types'
 import type { CalendarEvent } from '@memry/db-schema/schema/calendar-events'
 
 const LOCAL_EVENT_BASE: CalendarEvent = {

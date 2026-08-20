@@ -76,7 +76,7 @@ vi.mock('../sync/local-mutations', () => ({
   enqueueLocalSyncDelete: vi.fn()
 }))
 
-vi.mock('../calendar/google/oauth', () => ({
+vi.mock('../calendar/providers/google/oauth', () => ({
   connectGoogleCalendar: (...args: unknown[]) => mockConnectGoogleCalendar(...args),
   disconnectGoogleCalendar: (...args: unknown[]) => mockDisconnectGoogleCalendar(...args),
   hasGoogleCalendarLocalAuth: (...args: unknown[]) => mockHasGoogleCalendarLocalAuth(...args),
@@ -85,7 +85,7 @@ vi.mock('../calendar/google/oauth', () => ({
   resolveDefaultGoogleAccountId: (...args: unknown[]) => mockResolveDefaultGoogleAccountId(...args)
 }))
 
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/providers/google/sync-service', () => ({
   discoverGoogleCalendarSources: (...args: unknown[]) => mockDiscoverGoogleCalendarSources(...args),
   syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
   syncGoogleCalendarSource: (...args: unknown[]) => mockSyncGoogleCalendarSource(...args),
@@ -95,16 +95,16 @@ vi.mock('../calendar/google/sync-service', () => ({
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))
 
-vi.mock('../calendar/google/onboarding', () => ({
+vi.mock('../calendar/providers/google/onboarding', () => ({
   listGoogleCalendars: (...args: unknown[]) => mockListGoogleCalendars(...args),
   setDefaultGoogleCalendar: (...args: unknown[]) => mockSetDefaultGoogleCalendar(...args)
 }))
 
-vi.mock('../calendar/google/client', () => ({
+vi.mock('../calendar/providers/google/client', () => ({
   createGoogleCalendarClient: (...args: unknown[]) => mockCreateGoogleCalendarClient(...args)
 }))
 
-vi.mock('../calendar/google/push-runtime', () => ({
+vi.mock('../calendar/providers/google/push-runtime', () => ({
   getGooglePushRuntime: vi.fn(() => ({
     handleSelectionToggle: (...args: unknown[]) => mockPushSelectionToggle(...args)
   }))

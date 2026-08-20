@@ -10,7 +10,7 @@ import type { DataDb } from '../database'
  *
  * This module exists so there is exactly one copy: the same three-line query
  * had been pasted into `sync/runtime.ts`, `sync/offline-clock.ts` and
- * `calendar/google/sync-service.ts`. It deliberately sits outside
+ * `calendar/providers/google/sync-service.ts`. It deliberately sits outside
  * `blockedFeatureSyncImports` (see scripts/check-architecture-boundaries.js) so
  * feature modules can import it without reaching into a sync service.
  */

@@ -7,7 +7,7 @@ const { getFixedTSpy } = vi.hoisted(() => ({
   getFixedTSpy: vi.fn((_lng: unknown, _ns: unknown) => (key: string) => key)
 }))
 
-vi.mock('../../lib/main-i18n', () => ({
+vi.mock('../../../lib/main-i18n', () => ({
   getMainI18n: () => ({
     t: (key: string) => key,
     getFixedT: getFixedTSpy

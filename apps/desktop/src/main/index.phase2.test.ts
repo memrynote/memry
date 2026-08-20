@@ -258,7 +258,7 @@ vi.mock('./telemetry/log-ship', () => ({
   getLogShip: vi.fn(() => ({ dispose: vi.fn(async () => undefined) }))
 }))
 
-vi.mock('./calendar/google/sync-service', () => ({
+vi.mock('./calendar/providers/google/sync-service', () => ({
   startGoogleCalendarSyncRunner: startGoogleCalendarSyncRunnerMock,
   stopGoogleCalendarSyncRunner: stopGoogleCalendarSyncRunnerMock,
   triggerGoogleCalendarSyncNow: triggerGoogleCalendarSyncNowMock

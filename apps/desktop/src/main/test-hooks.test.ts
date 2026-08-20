@@ -109,7 +109,7 @@ vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: getNoteMetadataByIdMock
 }))
 
-vi.mock('./calendar/google/keychain', () => ({
+vi.mock('./calendar/providers/google/keychain', () => ({
   storeGoogleCalendarRefreshToken: storeGoogleCalendarRefreshTokenMock
 }))
 
@@ -117,19 +117,19 @@ vi.mock('./calendar/repositories/calendar-sources-repository', () => ({
   upsertCalendarSource: upsertCalendarSourceMock
 }))
 
-vi.mock('./calendar/google/calendar-google-settings', () => ({
+vi.mock('./calendar/providers/google/calendar-google-settings', () => ({
   writeCalendarGoogleSettings: writeCalendarGoogleSettingsMock
 }))
 
-vi.mock('./calendar/google/push-runtime', () => ({
+vi.mock('./calendar/providers/google/push-runtime', () => ({
   getGooglePushRuntime: getGooglePushRuntimeMock
 }))
 
-vi.mock('./calendar/google/google-sync-runner', () => ({
+vi.mock('./calendar/providers/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: startGoogleCalendarSyncRunnerMock
 }))
 
-vi.mock('./calendar/google/sync-service', () => ({
+vi.mock('./calendar/providers/google/sync-service', () => ({
   syncGoogleCalendarSource: syncGoogleCalendarSourceMock,
   pushSourceToGoogleCalendar: pushSourceToGoogleCalendarMock
 }))

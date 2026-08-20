@@ -114,7 +114,7 @@ vi.mock('./key-verification', () => ({
   persistAccountKeyVerifier: (...args: unknown[]) => mocks.persistAccountKeyVerifier(...args)
 }))
 
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/providers/google/sync-service', () => ({
   startGoogleCalendarSyncRunner: (...args: unknown[]) =>
     mocks.startGoogleCalendarSyncRunner(...args)
 }))

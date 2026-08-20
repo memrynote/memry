@@ -3,7 +3,7 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../sync/local-mutations'
-import { scheduleGoogleCalendarSourceSync } from './google/local-sync-effects'
+import { scheduleGoogleCalendarSourceSync } from './providers/google/local-sync-effects'
 
 export function syncCalendarEventCreate(eventId: string): void {
   enqueueLocalSyncCreate('calendar_event', eventId)

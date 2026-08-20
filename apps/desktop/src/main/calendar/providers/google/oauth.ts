@@ -2,10 +2,10 @@ import http from 'node:http'
 import { createHash, randomBytes } from 'node:crypto'
 import { shell } from 'electron'
 import { z } from 'zod'
-import { createLogger } from '../../lib/logger'
-import { markExpectedCondition } from '../../telemetry/expected-conditions'
-import type { DataDb } from '../../database/types'
-import { listCalendarSources } from '../repositories/calendar-sources-repository'
+import { createLogger } from '../../../lib/logger'
+import { markExpectedCondition } from '../../../telemetry/expected-conditions'
+import type { DataDb } from '../../../database/types'
+import { listCalendarSources } from '../../repositories/calendar-sources-repository'
 import {
   clearGoogleCalendarTokens,
   getGoogleCalendarTokens,
