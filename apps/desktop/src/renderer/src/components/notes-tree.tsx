@@ -65,6 +65,7 @@ import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-m
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import { shouldVirtualize } from '@/lib/virtualized-tree-utils'
 import {
   VirtualizedNotesTree,
@@ -109,6 +110,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const treeActionsRef = useRef<TreeActionsHandle | null>(null)
   const virtualTreeActionsRef = useRef<VirtualizedTreeActions | null>(null)
   const isTreeFocusedRef = useRef(false)
+
+  // Middle-click opens rows in a background tab — read on mousedown because a
+  // middle click never produces `click`. Always a genuinely new tab.
+  const { openInNewTab } = useOpenTarget()
+  const middleClickOpen = useCallback(
+    (tab: Parameters<typeof openInNewTab>[0]) => (e: React.MouseEvent) => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      openInNewTab(tab, { background: true })
+    },
+    [openInNewTab]
+  )
 
   const renameCallbackRef = useCallback((el: HTMLInputElement | null) => {
     if (el) {
@@ -325,6 +338,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         <TreeNodeTrigger
           // A file dropped on a note belongs in the folder that note lives in.
           {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(note.path) }}
+          onMouseDown={middleClickOpen(noteTabData(note))}
           contextMenuContent={
             <>
               {!isPartOfSelection && (
@@ -449,6 +463,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       >
         <TreeNodeTrigger
           {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
+          onMouseDown={middleClickOpen(folderTabData(folder.path, folder.icon))}
           className={cn(
             fileDropFolder === folder.path &&
               'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'

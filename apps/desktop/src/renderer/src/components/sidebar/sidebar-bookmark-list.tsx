@@ -37,6 +37,7 @@ import { SortableBookmarkItem } from '@/components/sidebar/sortable-bookmark-ite
 import { BOOKMARK_SORT_DRAG_TYPE } from '@/components/sidebar/sidebar-drag-types'
 import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
@@ -148,6 +149,16 @@ export function SidebarBookmarkList({
     onBookmarkClick?.(bookmark)
   }
 
+  // Middle-click opens the bookmarked item in a background tab — the same tab
+  // the row's "Open in New Tab" menu command builds. Read on mousedown because
+  // a middle click never produces `click`.
+  const { openInNewTab } = useOpenTarget()
+  const handleBookmarkMiddleClick = (item: SidebarItem) => (e: React.MouseEvent) => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    openInNewTab(createTabFromSidebarItem(item), { background: true })
+  }
+
   const handleRemoveBookmark = (bookmark: BookmarkWithItem) => async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -213,6 +224,7 @@ export function SidebarBookmarkList({
                   <SidebarMenuButton
                     tooltip={title}
                     onClick={handleBookmarkClick(bookmark)}
+                    onMouseDown={handleBookmarkMiddleClick(sidebarItem)}
                     isActive={isActiveItem(sidebarItem)}
                     className="group pe-8"
                   >

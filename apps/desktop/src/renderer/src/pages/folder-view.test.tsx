@@ -63,6 +63,8 @@ vi.mock('@/contexts/tabs', () => ({
     closeTab: mocks.closeTab,
     getActiveTab: mocks.getActiveTab
   }),
+  // useOpenPage (open-preference plumbing) reads openTab from here.
+  useTabActions: () => ({ openTab: mocks.openTab }),
   useActiveTab: () => mocks.activeTab,
   // The page's view name and search now live in the tab; outside a tab provider
   // the hook degrades to plain local state, which is what these tests exercise.

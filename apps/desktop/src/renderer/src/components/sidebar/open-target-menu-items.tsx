@@ -12,7 +12,7 @@
 
 import { ArrowUpRight, Columns2 } from '@/lib/icons'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { useOpenTarget, canOpenInNewTab } from '@/hooks/use-open-target'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import type { OpenTargetTab } from '@/hooks/use-open-target'
 import { useT } from '@memry/i18n/renderer'
 
@@ -42,15 +42,13 @@ export function OpenTargetMenuItems({
 
   return (
     <>
-      {/* Singletons (Home, Inbox, Calendar, …) cannot exist twice, so the row is
-          absent rather than present-and-inert. "Open to the Side" still works:
-          a second pane showing the same singleton is a layout, not a duplicate. */}
-      {canOpenInNewTab(tab.type) && (
-        <Item onClick={() => openInNewTab(tab)}>
-          <ArrowUpRight className="me-2 h-4 w-4" />
-          {t('tree.actions.openInNewTab')}
-        </Item>
-      )}
+      {/* Singletons (Home, Inbox, Calendar, …) used to hide this row; since
+          #1644 an explicit "Open in New Tab" mints a genuine second copy for
+          them too — the command is never inert, so it is never hidden. */}
+      <Item onClick={() => openInNewTab(tab)}>
+        <ArrowUpRight className="me-2 h-4 w-4" />
+        {t('tree.actions.openInNewTab')}
+      </Item>
       <Item onClick={() => openToTheSide(tab)}>
         <Columns2 className="me-2 h-4 w-4" />
         {t('tree.actions.openToTheSide')}

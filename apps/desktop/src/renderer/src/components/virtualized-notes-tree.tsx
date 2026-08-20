@@ -33,7 +33,6 @@ import {
 import { cn } from '@/lib/utils'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
-import { useTabActions } from '@/contexts/tabs'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import {
   flattenTree,
@@ -62,7 +61,7 @@ import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
-import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { useT } from '@memry/i18n/renderer'
 
@@ -341,6 +340,7 @@ function FolderRow({
 }: FolderRowProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const { openInNewTab } = useOpenTarget()
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
@@ -356,6 +356,17 @@ function FolderRow({
       onSelect(item.id, e)
     },
     [isBeingRenamed, item.id, onSelect, onToggleExpand]
+  )
+
+  // Middle-click opens the folder view in a background tab — same gesture the
+  // note rows get, read on mousedown because middle never produces `click`.
+  const handleMiddleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 1 || isBeingRenamed) return
+      e.preventDefault()
+      openInNewTab(folderTabData(item.folder.path, item.folder.icon), { background: true })
+    },
+    [isBeingRenamed, item.folder.path, item.folder.icon, openInNewTab]
   )
 
   const _handleExpandClick = useCallback(
@@ -421,6 +432,7 @@ function FolderRow({
           )}
           style={{ paddingLeft: `${item.level * 16 + 8}px` }}
           onClick={handleClick}
+          onMouseDown={handleMiddleClick}
           onKeyDown={handleKeyDown}
           onDragStart={handleDragStart}
           onDragEnd={onDragEnd}
@@ -662,6 +674,7 @@ function NoteRow({
 }: NoteRowProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const { openInNewTab } = useOpenTarget()
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
@@ -675,6 +688,17 @@ function NoteRow({
       onSelect(item.id, e)
     },
     [isBeingRenamed, item.id, onSelect]
+  )
+
+  // Read on mousedown: a middle click never produces a `click` event. Opens in
+  // the background, browser-style, and always as a genuinely new tab.
+  const handleMiddleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 1 || isBeingRenamed) return
+      e.preventDefault()
+      openInNewTab(noteTabData(item.note), { background: true })
+    },
+    [isBeingRenamed, item.note, openInNewTab]
   )
 
   const handleDoubleClick = useCallback(() => {
@@ -726,6 +750,7 @@ function NoteRow({
           )}
           style={{ paddingLeft: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
           onClick={handleClick}
+          onMouseDown={handleMiddleClick}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
           onDragStart={handleDragStart}
@@ -907,11 +932,9 @@ export function VirtualizedNotesTree({
   scrollContainerRef
 }: VirtualizedNotesTreeProps) {
   const { t } = useT('notes')
-  const { openTab } = useTabActions()
   // Same preference the non-virtualized tree honours through useNoteTreeActions'
   // openPage — this tree opens tabs itself, so it has to read it too (#1644).
-  const { settings: generalSettings } = useGeneralSettings()
-  const reuseActiveTab = !generalSettings.openPagesInNewTab
+  const { openPage } = useOpenPage()
   const parentRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
   const usesExternalScroll = !!scrollContainerRef
@@ -1127,28 +1150,28 @@ export function VirtualizedNotesTree({
         if (!isFolder(itemId)) {
           const note = noteMap.get(itemId)
           if (note) {
-            openTab(noteTabData(note), { reuseActiveTab })
+            openPage(noteTabData(note))
           }
         }
       }
     },
-    [selectedIds, onSelectionChange, flatItems, noteMap, openTab, anchorId, reuseActiveTab]
+    [selectedIds, onSelectionChange, flatItems, noteMap, openPage, anchorId]
   )
 
   // Handle note double-click
   const handleNoteDoubleClick = useCallback(
     (note: NoteListItem) => {
-      openTab(noteTabData(note), { reuseActiveTab })
+      openPage(noteTabData(note))
     },
-    [openTab, reuseActiveTab]
+    [openPage]
   )
 
   // Handle opening folder view from hover icon
   const handleOpenFolderView = useCallback(
     (folderPath: string, icon?: string | null) => {
-      openTab(folderTabData(folderPath, icon), { reuseActiveTab })
+      openPage(folderTabData(folderPath, icon))
     },
-    [openTab, reuseActiveTab]
+    [openPage]
   )
 
   // Drag event handlers

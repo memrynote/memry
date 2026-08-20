@@ -19,6 +19,7 @@ import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
 import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
 import { useIsItemActive } from './use-is-item-active'
 import { useOpenTarget } from './use-open-target'
+import { useGeneralSettings } from './use-general-settings'
 import { useFeatureFlags } from './use-feature-flags'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { featureForTabType } from '@memry/contracts/feature-flags'
@@ -151,6 +152,13 @@ export const useSidebarNavigation = () => {
   const { flags } = useFeatureFlags()
   const { open: openSettings } = useSettingsModal()
 
+  // "Clicking a page opens a new tab" (#1644). Read through a ref so the
+  // preference never destabilises openSidebarItem — the callback stability is
+  // what this hook exists for (see the PERFORMANCE notes above).
+  const { settings: generalSettings } = useGeneralSettings()
+  const reuseActiveTabRef = useRef(!generalSettings.openPagesInNewTab)
+  reuseActiveTabRef.current = !generalSettings.openPagesInNewTab
+
   // Use refs for state to avoid recreating callbacks
   const stateRef = useRef(state)
   useEffect(() => {
@@ -171,12 +179,11 @@ export const useSidebarNavigation = () => {
       const { inNewTab, inBackground, toTheSide } = options
       const currentState = stateRef.current
 
-      // "Open in New Tab" / Cmd-click / middle-click earn a genuinely new tab —
-      // but only for items that can meaningfully exist twice. SINGLETON_TAB_TYPES
-      // (Home, Inbox, Calendar, Tasks, Journal, Graph, Tags) are declared
-      // single-instance and stay that way; a second identical Inbox is not what
-      // the gesture is for, so those keep focusing the tab that already exists.
-      const forceNewTab = inNewTab === true && !SINGLETON_TAB_TYPES.includes(item.type)
+      // "Open in New Tab" / Cmd-click / middle-click earn a genuinely new tab.
+      // Since #1644 that includes the singletons (Home, Inbox, Calendar, …):
+      // an explicit gesture mints a real second copy rather than being quietly
+      // downgraded to "focus the one that exists".
+      const forceNewTab = inNewTab === true
 
       // Check for existing tab
       const existingTab = findExistingTabForItem(currentState, item)
@@ -211,7 +218,13 @@ export const useSidebarNavigation = () => {
         // and tag rows get identical behaviour without repeating them.
         openToTheSide(tabData, { background: inBackground })
       } else {
-        openTab(tabData, { background: inBackground, forceNew: forceNewTab })
+        // reuseActiveTab is a no-op beside forceNew/background — the reducer
+        // only honours it for a plain, focused open (#1644).
+        openTab(tabData, {
+          background: inBackground,
+          forceNew: forceNewTab,
+          reuseActiveTab: reuseActiveTabRef.current
+        })
       }
     },
     [openTab, setActiveTab, openToTheSide, flags, openSettings]

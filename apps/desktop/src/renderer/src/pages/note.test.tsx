@@ -216,6 +216,8 @@ vi.mock('@/contexts/tabs', () => ({
     setTabDeleted: mocks.setTabDeleted,
     updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
   }),
+  // useOpenPage (wiki/backlink navigation preference) reads openTab from here.
+  useTabActions: () => ({ openTab: mocks.openTab }),
   useActiveTab: () => ({
     id: '/notes/note-1',
     entityId: 'note-1',

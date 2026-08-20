@@ -186,4 +186,66 @@ test.describe('Clicking a page reuses the current tab (#1644)', () => {
     expect(await tabs(page).count()).toBe(before + 1)
     await expect(page.locator(`${SELECTORS.tab}:has-text("${titles[0]}")`)).toHaveCount(1)
   })
+
+  test('off: sidebar section click reuses; middle-click still opens a background tab', async ({
+    page
+  }) => {
+    const titles = ['Nav Reuse Anchor']
+    const ids = await seedNotes(page, titles)
+
+    await setOpenPagesInNewTab(page, false)
+
+    await clickNoteRow(page, ids[0], titles[0])
+    const count = await tabs(page).count()
+
+    // A singleton section (Tasks) with no tab open yet: the plain click obeys
+    // the preference and takes over the current tab.
+    const tasksNav = page.locator('[data-tour="nav-tasks"]')
+    await tasksNav.click()
+    await expect(page.locator(SELECTORS.activeTab)).toContainText('Tasks', { timeout: 10_000 })
+    expect(await tabs(page).count()).toBe(count)
+
+    // Middle-click is an explicit gesture: a genuinely new background copy,
+    // preference notwithstanding.
+    await tasksNav.click({ button: 'middle' })
+    await expect.poll(async () => tabs(page).count(), { timeout: 10_000 }).toBe(count + 1)
+    // Focus stayed on the tab we were on.
+    await expect(page.locator(SELECTORS.activeTab)).toContainText('Tasks')
+  })
+
+  test('singletons duplicate through "Open in New Tab" in the nav context menu', async ({
+    page
+  }) => {
+    await setOpenPagesInNewTab(page, true)
+
+    const inboxNav = page.locator('[data-tour="nav-inbox"]')
+    await inboxNav.click()
+    const inboxTabs = page.locator(`${SELECTORS.tab}:has-text("Inbox")`)
+    await expect(inboxTabs).toHaveCount(1)
+
+    // Plain re-click keeps focusing the existing copy.
+    await inboxNav.click()
+    await expect(inboxTabs).toHaveCount(1)
+
+    // The context-menu command mints a real second copy (#1644 un-gated it).
+    await inboxNav.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Open in New Tab' }).click()
+    await expect(inboxTabs).toHaveCount(2)
+  })
+
+  test('off: middle-click on a note row opens a background tab', async ({ page }) => {
+    const titles = ['Middle Anchor', 'Middle Target']
+    const ids = await seedNotes(page, titles)
+
+    await setOpenPagesInNewTab(page, false)
+
+    await clickNoteRow(page, ids[0], titles[0])
+    const count = await tabs(page).count()
+
+    await treeRow(page, ids[1]).click({ button: 'middle' })
+    await expect.poll(async () => tabs(page).count(), { timeout: 10_000 }).toBe(count + 1)
+    // The anchor keeps focus; the target arrived in the background.
+    await expect(page.locator(SELECTORS.activeTab)).toContainText(titles[0])
+    await expect(page.locator(`${SELECTORS.tab}:has-text("${titles[1]}")`)).toHaveCount(1)
+  })
 })

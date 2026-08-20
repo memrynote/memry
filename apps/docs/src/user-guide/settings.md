@@ -101,7 +101,7 @@ locale has finished loading.
 
 ### Tab Behavior
 
-- **Open Pages in a New Tab** — on by default. Turn it off and clicking a page in the sidebar reuses the current tab instead of adding one, so browsing (or creating) a run of pages leaves a single tab behind. A pinned tab is never replaced — the page opens beside it — and **Open in New Tab** / **Open to the Side** from a row's context menu always open a new tab whatever this is set to. The setting syncs across your devices.
+- **Open Pages in a New Tab** — on by default. Turn it off and opening a page reuses the current tab instead of adding one, so browsing (or creating) a run of pages leaves a single tab behind. It covers every sidebar row — notes, folders, projects, canvases, tags, bookmarks, and the top-level sections — plus new-note/new-canvas creation and following wiki links or backlinks inside a note. A pinned tab is never replaced — the page opens beside it — and explicit gestures always open a new tab whatever this is set to: **Open in New Tab** / **Open to the Side** from a row's context menu, middle-click (opens in the background), and ⌘/Ctrl-click on a section. Since the same release, **Open in New Tab** also works on the singleton sections (Home, Inbox, Journal, Calendar, Tasks, Graph): it opens a genuine second copy. The setting syncs across your devices.
 - **Restore Session** — reopen the previous session's tabs on launch
 - **Tab Close Button** — always visible, hover only, or active tab only
 

@@ -107,7 +107,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Sayfalar\u0131 Yeni Sekmede A\u00e7",
-        "description": "Kenar \u00e7ubu\u011funda bir sayfaya t\u0131klamak onu yeni bir sekmede a\u00e7ar. Kapal\u0131yken mevcut sekme yeniden kullan\u0131l\u0131r \u2014 sabitlenmi\u015f sekmeler asla de\u011fi\u015ftirilmez. \"Yeni Sekmede A\u00e7\" ve \"Yan Tarafta A\u00e7\" her zaman yeni sekme a\u00e7ar."
+        "description": "Bir sayfaya t\u0131klamak ya da yeni sayfa olu\u015fturmak \u2014 notlar, klas\u00f6rler, projeler, canvas\u0027lar, etiketler, yer imleri \u2014 onu yeni bir sekmede a\u00e7ar. Kapal\u0131yken mevcut sekme yeniden kullan\u0131l\u0131r; not i\u00e7indeki ba\u011flant\u0131lar\u0131 takip etmek de dahil. Sabitlenmi\u015f sekmeler asla de\u011fi\u015ftirilmez. \"Yeni Sekmede A\u00e7\", \"Yan Tarafta A\u00e7\" ve orta t\u0131k her zaman yeni sekme a\u00e7ar."
       },
       "restoreSession": {
         "label": "Başlangıçta Oturumu Geri Yükle",

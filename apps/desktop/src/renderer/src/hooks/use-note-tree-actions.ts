@@ -14,6 +14,7 @@ import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useOpenPage } from '@/hooks/use-open-target'
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import {
   getDisplayName,
@@ -53,19 +54,10 @@ export interface NoteTreeActionsDeps {
 
 export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const { settings: generalSettings } = useGeneralSettings()
-  const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
-
-  // Every plain sidebar open goes through here so the "clicking a page opens a
-  // new tab" preference has one place to live. The explicit gestures — Open in
-  // New Tab, Open to the Side, Cmd-click — go through useOpenTarget and stay
-  // untouched: stated intent always wins over the preference.
-  const openPagesInNewTab = generalSettings.openPagesInNewTab
-  const openPage = useCallback(
-    (tab: Parameters<typeof openTab>[0]) => {
-      openTab(tab, { reuseActiveTab: !openPagesInNewTab })
-    },
-    [openTab, openPagesInNewTab]
-  )
+  const { closeTab, updateTabTitleByEntityId } = useTabActions()
+  // Plain opens and note creation go through openPage so the "clicking a page
+  // opens a new tab" preference applies; explicit gestures keep useOpenTarget.
+  const { openPage } = useOpenPage()
   const queryClient = useQueryClient()
   const originalRenameTitle = useRef<string>('')
 

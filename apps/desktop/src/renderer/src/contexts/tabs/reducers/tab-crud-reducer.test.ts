@@ -120,8 +120,11 @@ describe('tabCrudReducer', () => {
         }
       })
     )
-    expect(replaced.tabGroups.g1.activeTabId).toBe('generated-1')
-    expect(replaced.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'generated-1', 'tasks'])
+    // The replaced tab keeps its id — in-place content change, not close+open,
+    // so the strip plays no exit/enter and history entries stay valid.
+    expect(replaced.tabGroups.g1.activeTabId).toBe('note-a')
+    expect(replaced.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'note-a', 'tasks'])
+    expect(replaced.tabGroups.g1.tabs[1].entityId).toBe('replacement')
 
     const sameGroupSingleton = tabCrudReducer(
       state,
@@ -226,11 +229,11 @@ describe('tabCrudReducer', () => {
     )
     expect(inserted.tabGroups.g1.tabs.map((t) => t.id)).toEqual([
       'pin',
-      'generated-2',
+      'generated-1',
       'note-a',
       'tasks'
     ])
-    expect(inserted.tabGroups.g1.activeTabId).toBe('generated-2')
+    expect(inserted.tabGroups.g1.activeTabId).toBe('generated-1')
   })
 
   it('normalizes preview opens into permanent tabs without replacing legacy preview tabs', () => {
@@ -581,9 +584,10 @@ describe('tabCrudReducer', () => {
         openAction({ reuseActiveTab: true, tab: newNote })
       )
 
-      // 'note-a' was the active tab; it is gone, replaced in place.
-      expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'generated-1', 'tasks'])
-      expect(next.tabGroups.g1.activeTabId).toBe('generated-1')
+      // 'note-a' was the active tab; its content is replaced in place and the
+      // id survives, so the strip plays no exit/enter for a reuse.
+      expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'note-a', 'tasks'])
+      expect(next.tabGroups.g1.activeTabId).toBe('note-a')
       expect(next.tabGroups.g1.tabs[1].entityId).toBe('fresh')
     })
 

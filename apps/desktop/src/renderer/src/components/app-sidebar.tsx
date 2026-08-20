@@ -54,11 +54,11 @@ import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useOpenPage } from '@/hooks/use-open-target'
 import type { OpenSidebarItemOptions } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useModifierHeld } from '@/hooks/use-modifier-held'
-import { useTabActions } from '@/contexts/tabs'
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { notesService } from '@/services/notes-service'
@@ -182,13 +182,15 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   // Tab navigation hook
   const { openSidebarItem, isActiveItem } = useSidebarNavigation()
+  // Plain opens/creations honour the "clicking a page opens a new tab"
+  // preference (#1644); openSidebarItem carries it internally for its rows.
+  const { openPage } = useOpenPage()
   const { isEnabled } = useFeatureFlags()
 
   // First-launch interactive tour (runs once per install)
   useFirstRunTour()
 
   // Tab actions for opening new notes (stable reference, won't cause re-renders)
-  const { openTab } = useTabActions()
 
   const { settings: generalSettings } = useGeneralSettings()
   const { order: sectionOrder, setOrder: setSectionOrder } = useSidebarSectionOrder()
@@ -205,7 +207,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       })
 
       if (result.success && result.note) {
-        openTab({
+        openPage({
           type: 'note',
           title: result.note.title || 'Untitled Note',
           icon: 'file-text',
@@ -229,7 +231,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         )
       )
     }
-  }, [openTab, generalSettings.createInSelectedFolder])
+  }, [openPage, generalSettings.createInSelectedFolder])
 
   // Open a top-level section as a tab. Shared by sidebar clicks and the
   // ⌘/Ctrl+number shortcuts so both land the user in exactly the same state.
@@ -276,9 +278,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const handleNavClick = (page: AppPage) => (e: React.MouseEvent) => {
     e.preventDefault()
     // ⌘/Ctrl-click asks for a second tab, +Shift asks for it without focus.
-    // Nav pages are singletons, so openSidebarItem declines to duplicate them and
-    // focuses the one that exists — the modifiers still matter for the pages that
-    // are not singletons, and the gesture stays consistent across the sidebar.
+    // Since #1644 that holds for the singleton nav pages too: an explicit
+    // gesture mints a real second Home/Inbox/… instead of being downgraded to
+    // "focus the one that exists".
     const inNewTab = e.metaKey || e.ctrlKey
     navigateToPage(page, { inNewTab, inBackground: e.shiftKey && inNewTab })
   }
@@ -324,7 +326,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     (bookmark: BookmarkWithItem) => {
       // Folders open as a folder-view tab; tags open the tag tab.
       if (bookmark.itemType === BookmarkItemTypes.FOLDER) {
-        openTab({
+        openPage({
           type: 'folder',
           title: bookmark.itemTitle || 'Folder',
           icon: 'folder',
@@ -367,13 +369,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       }
       openSidebarItem(item)
     },
-    [openSidebarItem, openTab]
+    [openSidebarItem, openPage]
   )
 
   // Open a canvas in a tab (entityId dedupe keeps it to one tab per canvas)
   const handleCanvasOpen = useCallback(
     (canvas: Pick<CanvasSummary, 'id' | 'title'>) => {
-      openTab({
+      openPage({
         type: 'canvas',
         title: canvas.title || tPhaseF('canvas.untitled'),
         icon: 'pen-tool',
@@ -385,7 +387,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         isDeleted: false
       })
     },
-    [openTab, tPhaseF]
+    [openPage, tPhaseF]
   )
 
   // The canvas tree reports where the user is looking; the section header's `+`
