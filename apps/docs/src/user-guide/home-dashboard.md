@@ -36,12 +36,17 @@ Widgets are the cards on a board. Available types:
 | Widget          | Shows                                             |
 | --------------- | ------------------------------------------------- |
 | Recently Edited | Notes ordered by last-modified, most recent first |
+| Recently Opened | Notes ordered by when you last opened them        |
 | Bookmarks       | Your bookmarked notes                             |
 | Tasks           | Tasks, with an inline filter and count            |
 | Inbox           | Unfiled inbox items, with a triage row            |
 | Folder          | The contents of a chosen folder                   |
 | Calendar        | An at-a-glance calendar of upcoming entries       |
 | Journal         | Today's journal entry and your current streak     |
+
+**Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
+
+Unlike everything else on a board, the Recently Opened **list** is per-device: it shows what you opened on this machine. The widget's position and size still sync like any other widget — only the history behind it stays local, so your reading trail is not shipped between devices. Adding the widget on an existing vault starts it off with the notes you had opened from search; from there it fills in as you read. It keeps your 50 most recent notes, one entry per note, and a note only counts once it has been in front of you for a couple of seconds — flipping past a tab does not put it in the list.
 
 The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
 
@@ -67,7 +72,7 @@ A widget's content density (how many rows it shows) is **derived from its height
 
 ## Robustness
 
-If a board references a widget type the app no longer recognizes (for example after rolling back a version), that card renders a small **Unknown widget** placeholder instead of crashing the board. The rest of your widgets keep working.
+If a board references a widget type the app no longer recognizes (for example after rolling back a version), that card renders a small **Unknown widget** placeholder instead of crashing the board. The rest of your widgets keep working. That placeholder has no **Remove** control on purpose: boards sync as a whole, so letting an older version delete a widget it does not understand would silently take it off the board on the device that added it.
 
 ## See Also
 
