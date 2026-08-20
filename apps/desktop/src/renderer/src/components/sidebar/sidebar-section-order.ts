@@ -70,3 +70,28 @@ export function reorderSidebarSections(
   next.splice(to, 0, ...next.splice(from, 1))
   return next
 }
+
+/**
+ * Which edge of a section the insertion line belongs on, or `null` when this
+ * section is not the drop target.
+ *
+ * The sections do not slide out of each other's way while a drag is in flight:
+ * a section is as tall as its content, so displacing the others by the dragged
+ * section's own height throws the whole sidebar around and the user loses track
+ * of what they are holding. A line at the boundary says the same thing without
+ * moving anything.
+ *
+ * A section dragged from above lands *after* the section it is over (everything
+ * between slides up), one dragged from below lands *before* it.
+ */
+export function sectionDropEdge(input: {
+  isOver: boolean
+  isDragging: boolean
+  activeIndex: number
+  index: number
+}): 'before' | 'after' | null {
+  const { isOver, isDragging, activeIndex, index } = input
+  if (!isOver || isDragging) return null
+  if (activeIndex < 0 || activeIndex === index) return null
+  return activeIndex < index ? 'after' : 'before'
+}

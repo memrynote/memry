@@ -21,6 +21,7 @@ import {
 
 const SECTION = '[data-testid="sidebar-section-sortable"]'
 const HANDLE = '[data-testid="sidebar-section-drag"]'
+const GHOST = '[data-testid="sidebar-section-ghost"]'
 
 const DEFAULT_ORDER = ['collections', 'projects', 'bookmarks', 'canvases', 'tags']
 
@@ -91,6 +92,68 @@ async function dragSectionOnto(page: Page, fromId: string, toId: string): Promis
   await page.mouse.up()
 }
 
+/** How far the given element is currently translated, in px. */
+async function translateY(page: Page, selector: string): Promise<number> {
+  return page.$eval(selector, (node) => {
+    const transform = getComputedStyle(node).transform
+    if (!transform || transform === 'none') return 0
+    const matrix = new DOMMatrixReadOnly(transform)
+    return Math.round(matrix.m42)
+  })
+}
+
+/** Seed `count` projects and open the Projects section over them. */
+async function seedProjects(page: Page, count: number): Promise<void> {
+  await page.evaluate(async (total) => {
+    const api = (window as unknown as { api: Record<string, any> }).api
+    for (const name of Array.from({ length: total }, (_, i) => `Project ${i + 1}`)) {
+      const result = await api.tasks.createProject({
+        name,
+        description: 'Sidebar section order E2E',
+        color: '#6366f1',
+        icon: 'FolderKanban',
+        statuses: [
+          { name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
+          { name: 'Done', color: '#10b981', type: 'done', order: 1 }
+        ]
+      })
+      if (!result.success) throw new Error(result.error ?? 'project create failed')
+    }
+  }, count)
+
+  await page.reload()
+  await ready(page)
+  await page.getByRole('button', { name: /^Projects section/ }).click()
+  await expect(page.getByText(`Project ${count}`)).toBeVisible()
+}
+
+/** Seed notes and open Collections, so the section is taller than the others. */
+async function expandTallCollections(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const api = (window as unknown as { api: Record<string, any> }).api
+    for (let i = 1; i <= 12; i++) {
+      const result = await api.notes.create({ title: `Tall note ${i}`, content: '' })
+      if (!result.success) throw new Error('note create failed')
+    }
+  })
+
+  await page.reload()
+  await ready(page)
+  await page.getByRole('button', { name: /^Collections section/ }).click()
+
+  // The point of the seed is height, so height is what to wait for — the tree
+  // decides for itself which rows it shows.
+  await expect
+    .poll(
+      async () => {
+        const box = await page.locator(`${SECTION}[data-section-id="collections"]`).boundingBox()
+        return box ? Math.round(box.height) : 0
+      },
+      { timeout: 20_000, intervals: [200] }
+    )
+    .toBeGreaterThan(200)
+}
+
 test.describe('Sidebar section order', () => {
   test.beforeEach(async ({ page }) => {
     await ready(page)
@@ -151,30 +214,103 @@ test.describe('Sidebar section order', () => {
     // Projects section open, a section dragged past those rows must still
     // resolve to a section — closest-center over every droppable on screen
     // happily answers "project" instead, and the drop then does nothing.
-    await page.evaluate(async () => {
-      const api = (window as unknown as { api: Record<string, any> }).api
-      for (const name of Array.from({ length: 12 }, (_, i) => `Project ${i + 1}`)) {
-        const result = await api.tasks.createProject({
-          name,
-          description: 'Sidebar section order E2E',
-          color: '#6366f1',
-          icon: 'FolderKanban',
-          statuses: [
-            { name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
-            { name: 'Done', color: '#10b981', type: 'done', order: 1 }
-          ]
-        })
-        if (!result.success) throw new Error(result.error ?? 'project create failed')
-      }
-    })
-
-    await page.reload()
-    await ready(page)
-
-    await page.getByRole('button', { name: /^Projects section/ }).click()
-    await expect(page.getByText('Project 12')).toBeVisible()
+    await seedProjects(page, 12)
 
     await dragSectionOnto(page, 'tags', 'collections')
+
+    await expect
+      .poll(async () => (await sectionOrder(page)).join(','), { timeout: 20_000 })
+      .toBe(['tags', 'collections', 'projects', 'bookmarks', 'canvases'].join(','))
+  })
+
+  test('a section dragged to the bottom lands there, however tall it is', async ({ page }) => {
+    // The reported failure: Collections is the tallest section once its tree is
+    // open, and dragging it down "gets lost" among the others and springs back.
+    // Center-based collision compares the dragged section's own middle — which,
+    // on a tall section, never reaches the bottom of the list however far the
+    // pointer travels. The pointer is what the user is aiming with.
+    await expandTallCollections(page)
+
+    const handle = page.locator(`${SECTION}[data-section-id="collections"] ${HANDLE}`)
+    const last = page.locator(`${SECTION}[data-section-id="tags"]`)
+    await settleBox(handle)
+
+    const from = await handle.boundingBox()
+    const to = await last.boundingBox()
+    if (!from || !to) throw new Error('no box')
+
+    const startX = from.x + from.width / 2
+    const startY = from.y + from.height / 2
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX, startY + 12, { steps: 5 })
+    await page.mouse.move(startX, to.y + to.height - 2, { steps: 15 })
+    await page.mouse.up()
+
+    await expect
+      .poll(async () => (await sectionOrder(page)).join(','), { timeout: 20_000 })
+      .toBe(['projects', 'bookmarks', 'canvases', 'tags', 'collections'].join(','))
+  })
+
+  test('the dragged label keeps following the pointer over a project row', async ({ page }) => {
+    // dnd-kit nulls a sortable's transform the moment `over` is not one of the
+    // sortable's own items (useSortable: `displaceItem` needs a valid overIndex).
+    // The shared collision detection answers "project" for any drag whose
+    // pointer is inside a project row, so mid-drag the section used to snap back
+    // to where it started and sit there while the user was still dragging it.
+    await seedProjects(page, 6)
+
+    const handle = page.locator(`${SECTION}[data-section-id="tags"] ${HANDLE}`)
+    await settleBox(handle)
+    const from = await handle.boundingBox()
+    const row = await page.getByText('Project 3').boundingBox()
+    if (!from || !row) throw new Error('no box')
+
+    const startX = from.x + from.width / 2
+    const startY = from.y + from.height / 2
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX, startY - 12, { steps: 5 })
+    await page.mouse.move(row.x + row.width / 2, row.y + row.height / 2, { steps: 10 })
+
+    const translated = await translateY(page, `${SECTION}[data-section-id="tags"] ${GHOST}`)
+    await page.mouse.up()
+
+    // It is being held far above where it started, so the label must be drawn
+    // there — the section itself never moves.
+    expect(translated).toBeLessThan(-20)
+  })
+
+  test('the target section shows a drop line and nothing else moves', async ({ page }) => {
+    // The other complaint: sections sliding by the dragged section's own height
+    // threw the sidebar around, so the user lost track of what they were
+    // holding. Only the dragged section moves now; a line marks where it lands.
+    const handle = page.locator(`${SECTION}[data-section-id="tags"] ${HANDLE}`)
+    await settleBox(handle)
+    const from = await handle.boundingBox()
+    const target = await page.locator(`${SECTION}[data-section-id="collections"]`).boundingBox()
+    if (!from || !target) throw new Error('no box')
+
+    const startX = from.x + from.width / 2
+    const startY = from.y + from.height / 2
+
+    await page.mouse.move(startX, startY)
+    await page.mouse.down()
+    await page.mouse.move(startX, startY - 12, { steps: 5 })
+    await page.mouse.move(startX, target.y + target.height / 2, { steps: 10 })
+
+    // Coming from below, so it lands above Collections.
+    await expect(page.locator(`${SECTION}[data-section-id="collections"]`)).toHaveAttribute(
+      'data-drop-edge',
+      'before'
+    )
+    expect(await translateY(page, `${SECTION}[data-section-id="collections"]`)).toBe(0)
+    expect(await translateY(page, `${SECTION}[data-section-id="projects"]`)).toBe(0)
+    expect(await translateY(page, `${SECTION}[data-section-id="bookmarks"]`)).toBe(0)
+
+    await page.mouse.up()
 
     await expect
       .poll(async () => (await sectionOrder(page)).join(','), { timeout: 20_000 })

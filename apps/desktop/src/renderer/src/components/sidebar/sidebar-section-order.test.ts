@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveSidebarSectionOrder, reorderSidebarSections } from './sidebar-section-order'
+import {
+  resolveSidebarSectionOrder,
+  reorderSidebarSections,
+  sectionDropEdge
+} from './sidebar-section-order'
 
 const DEFAULTS = ['collections', 'projects', 'bookmarks', 'canvases', 'tags']
 
@@ -93,5 +97,39 @@ describe('reorderSidebarSections', () => {
     // The sidebar shares one DndContext with tasks, projects and the folder
     // tree, so `over` is routinely something else entirely.
     expect(reorderSidebarSections(DEFAULTS, 'tags', 'project-42')).toBeNull()
+  })
+})
+
+describe('sectionDropEdge', () => {
+  it('puts the line under the section a drag from above would land on', () => {
+    expect(sectionDropEdge({ isOver: true, isDragging: false, activeIndex: 0, index: 3 })).toBe(
+      'after'
+    )
+  })
+
+  it('puts the line over the section a drag from below would land on', () => {
+    expect(sectionDropEdge({ isOver: true, isDragging: false, activeIndex: 4, index: 1 })).toBe(
+      'before'
+    )
+  })
+
+  it('draws nothing on sections the drag is not over', () => {
+    expect(
+      sectionDropEdge({ isOver: false, isDragging: false, activeIndex: 0, index: 2 })
+    ).toBeNull()
+  })
+
+  it('draws nothing on the section being dragged', () => {
+    // It is over itself the whole time it is picked up.
+    expect(sectionDropEdge({ isOver: true, isDragging: true, activeIndex: 2, index: 2 })).toBeNull()
+    expect(
+      sectionDropEdge({ isOver: true, isDragging: false, activeIndex: 2, index: 2 })
+    ).toBeNull()
+  })
+
+  it('draws nothing when nothing is being dragged', () => {
+    expect(
+      sectionDropEdge({ isOver: true, isDragging: false, activeIndex: -1, index: 2 })
+    ).toBeNull()
   })
 })

@@ -64,8 +64,9 @@ Collections on one device and Tags on another keeps both changes.
 ### Reordering the sections themselves
 
 The sections come in a fixed order, but you can change it. Hover a section
-header and a grip appears at its left edge: drag it to move that whole section
-above or below another. The header's own click still expands and collapses the
+header and a grip appears at its left edge. Drag it and the section's name comes
+with the pointer while the section itself stays put and dims; a line marks the
+place it will land. The header's own click still expands and collapses the
 section, and keyboard users can pick the grip up with <kbd>Space</kbd> and move
 it with the arrow keys.
 
