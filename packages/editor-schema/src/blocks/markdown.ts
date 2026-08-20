@@ -211,7 +211,17 @@ export function serializeToggleBlock(
 ): string {
   // `<summary>` closes on its own line, so a soft break inside the toggle's own
   // content would split the tag and stop the block from parsing back at all.
-  const summary = summaryMarkdown.replace(/\s*\n\s*/g, ' ').trim()
+  //
+  // Split/trim/join rather than `/\s*\n\s*/g`: that pattern is quadratic in a
+  // run of whitespace that never reaches a newline (`\s*` matches greedily at
+  // every start position, then backtracks to fail), and a toggle summary is note
+  // content — i.e. attacker-reachable through sync. Same reasoning as the
+  // anchored marker match in `parseFileBlockMarker`.
+  const summary = summaryMarkdown
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ')
   const body = bodyMarkdown.trim()
 
   const lines = [TOGGLE_OPEN_LINE, `<summary>${summary}</summary>`]

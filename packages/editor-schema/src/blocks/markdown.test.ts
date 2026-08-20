@@ -27,6 +27,24 @@ describe('serializeToggleBlock', () => {
     expect(serializeToggleBlock('One\nTwo', '')).toContain('<summary>One Two</summary>')
   })
 
+  it('collapses a blank line between summary lines to one space', () => {
+    expect(serializeToggleBlock('One\n\nTwo', '')).toContain('<summary>One Two</summary>')
+  })
+
+  it('does not scan quadratically over a summary that is one long whitespace run', () => {
+    // #given note bodies arrive over sync, so a toggle summary is reachable
+    // input. `/\s*\n\s*/g` took seconds on this; split/trim/join is linear.
+    const summary = ' '.repeat(200_000)
+
+    // #when
+    const started = performance.now()
+    const block = serializeToggleBlock(summary, '')
+
+    // #then folded away, and in constant-ish time rather than seconds
+    expect(block).toContain('<summary></summary>')
+    expect(performance.now() - started).toBeLessThan(50)
+  })
+
   it('puts a colour marker on the line before the block', () => {
     expect(serializeToggleBlock('Title', '', '<!-- colors:{"textColor":"red"} -->')).toBe(
       [
