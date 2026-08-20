@@ -160,7 +160,7 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
   },
   inlineImage: {
     type: 'inlineImage',
-    props: { src: '../attachments/n1/photo.png', alt: 'photo.png' }
+    props: { src: '../attachments/n1/photo.png', alt: 'photo.png', width: 240 }
   }
 }
 

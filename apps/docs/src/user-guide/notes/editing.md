@@ -237,7 +237,11 @@ A table cell can hold a picture as well as text. With the cursor in the cell, ty
 
 The image is written into your note as ordinary markdown, `![name](path)`, so the row stays a normal table row that Obsidian and any other markdown editor can read. A table you wrote by hand with images already in it now opens with those images showing, instead of an empty cell.
 
-Cell images are capped at the height of a few lines so one large screenshot cannot stretch a row out of shape. Outside a table, an image on its own line is still a full image block with a caption and a resize handle — that has not changed.
+A cell image with no size of its own is capped at the height of a few lines, so one large screenshot cannot stretch a row out of shape. To give one a size of its own, hover it and drag the handle on its trailing edge — the picture keeps its proportions and the row grows with it.
+
+That width is saved into the note as `![name|300](path)`, the same `|` convention Obsidian uses, so the size survives a sync and other markdown editors still read the row as an ordinary table row. Obsidian's two-number form (`name|300x200`) is left exactly as written rather than rewritten to a single width.
+
+Outside a table, an image on its own line is still a full image block with a caption and its own resize handle — that has not changed.
 
 ## Link Previews
 

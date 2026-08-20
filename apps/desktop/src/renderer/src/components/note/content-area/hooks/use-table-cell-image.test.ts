@@ -132,7 +132,10 @@ describe('pasting an image with the caret in a cell', () => {
     expect(event.defaultPrevented).toBe(true)
     await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
     expect(editor.insertInlineContent).toHaveBeenCalledWith([
-      { type: 'inlineImage', props: { src: '../attachments/n1/shot.png', alt: 'shot.png' } }
+      {
+        type: 'inlineImage',
+        props: { src: '../attachments/n1/shot.png', alt: 'shot.png', width: 0 }
+      }
     ])
   })
 
@@ -268,7 +271,10 @@ describe('picking an image for the cell (the slash menu row)', () => {
     // #then
     await waitFor(() =>
       expect(editor.insertInlineContent).toHaveBeenCalledWith([
-        { type: 'inlineImage', props: { src: '../attachments/n1/shot.png', alt: 'shot.png' } }
+        {
+          type: 'inlineImage',
+          props: { src: '../attachments/n1/shot.png', alt: 'shot.png', width: 0 }
+        }
       ])
     )
   })

@@ -1073,8 +1073,14 @@ const INLINE_CASES = [
   },
   {
     nodeName: 'inlineImage',
-    attrs: { src: '../attachments/n1/photo.png', alt: 'photo.png' },
-    text: '![photo.png](../attachments/n1/photo.png)'
+    // Seeded as a STRING, which is what a synced Y.Doc actually delivers: a
+    // width read as NaN here surfaces as a missing suffix on disk, silently.
+    attrs: { src: '../attachments/n1/photo.png', alt: 'photo.png', width: '300' },
+    // The only case whose on-disk bytes DIFFER by context, and the difference is
+    // remark's: `|` is the table cell delimiter, so it is escaped in a cell and
+    // left bare in a paragraph. Both are asserted, against the same node.
+    text: '![photo.png|300](../attachments/n1/photo.png)',
+    tableText: '![photo.png\\|300](../attachments/n1/photo.png)'
   }
 ] as const
 
@@ -2102,21 +2108,22 @@ describe('custom inline content inside a table', () => {
     expect(markdown).toContain(expected)
   })
 
-  it.each(INLINE_CASES)(
-    '$nodeName keeps its on-disk form in a table cell',
-    async ({ nodeName, attrs, text }) => {
-      // #given the same table-driven list the top-level round-trip uses, so a
-      // new inline spec is covered here too or the coverage gate above is red.
-      // A cell is the one place BlockNote reaches `render`, which is how a rich
-      // or throwing server implementation reaches the vault file.
-      const markdown = await tableMarkdown([{ type: nodeName, props: { ...attrs } }])
+  it.each(INLINE_CASES)('$nodeName keeps its on-disk form in a table cell', async (inlineCase) => {
+    const { nodeName, attrs, text } = inlineCase
+    // `inlineImage` is the one whose bytes differ in a cell — remark escapes
+    // the `|` its width rides behind, because there it is the delimiter.
+    const expected = 'tableText' in inlineCase ? inlineCase.tableText : text
+    // #given the same table-driven list the top-level round-trip uses, so a
+    // new inline spec is covered here too or the coverage gate above is red.
+    // A cell is the one place BlockNote reaches `render`, which is how a rich
+    // or throwing server implementation reaches the vault file.
+    const markdown = await tableMarkdown([{ type: nodeName, props: { ...attrs } }])
 
-      // #then the conversion succeeds at all (a throwing render returns null)…
-      expect(markdown).not.toBeNull()
-      // …and the cell holds the textual form, not the editor's rich markup
-      expect(markdown).toContain(text)
-    }
-  )
+    // #then the conversion succeeds at all (a throwing render returns null)…
+    expect(markdown).not.toBeNull()
+    // …and the cell holds the textual form, not the editor's rich markup
+    expect(markdown).toContain(expected)
+  })
 
   it('a date mention keeps its token in a table cell', async () => {
     // #given
@@ -2659,6 +2666,65 @@ describe('blocknote-converter table cell images', () => {
 
     // #then
     expect(result).toContain(`before ![photo.png](${IMG}) after`)
+  })
+
+  it('keeps a dragged width through markdown → Yjs → markdown', async () => {
+    // #given the width rides in the alt as `name|300`, and remark escapes the
+    // pipe on the way out — a BARE `|` there is the cell delimiter and splits
+    // the row in half, which is why the escaped form is the one on disk
+    const markdown = `| a |\n| --- |\n| ![photo.png\\|300](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the escaped form survives — a BARE `|` would have split the row
+    expect(result).toContain(`![photo.png\\|300](${IMG})`)
+    expect(result?.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+
+    // #and it is stable: remark re-pads column widths once, then nothing moves.
+    // Write-back byte-compares, so drift here rewrites every note with a sized
+    // cell image on every open.
+    expect(await roundTrip(result!)).toBe(result)
+  })
+
+  it('parses the width off the alt into the node’s own prop', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`| a |\n| --- |\n| ![photo.png\\|300](${IMG}) |\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then the name and the width are separate again — the alt a screen reader
+    // gets must not be a layout instruction
+    expect(JSON.stringify(blocks)).toContain('"alt":"photo.png","width":300')
+  })
+
+  it('leaves an unsized cell image unsized', async () => {
+    // #given every cell image written before the grip existed
+    const markdown = `| a |\n| --- |\n| ![photo.png](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then no `|0` suffix is invented, and the bytes settle
+    expect(result).toContain(`![photo.png](${IMG})`)
+    expect(result).not.toContain('|0]')
+    expect(await roundTrip(result!)).toBe(result)
+  })
+
+  it('leaves Obsidian’s `300x200` size alone rather than rewriting it', async () => {
+    // #given a vault written in Obsidian. Claiming this as a width would
+    // re-serialize it as `|300` — a silent edit to somebody else's file
+    const markdown = `| a |\n| --- |\n| ![photo.png\\|300x200](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then it stays exactly what it was — not narrowed to `|300`
+    expect(result).toContain(`![photo.png\\|300x200](${IMG})`)
+    expect(await roundTrip(result!)).toBe(result)
   })
 
   it('leaves a standalone image as an image block', async () => {

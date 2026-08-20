@@ -192,6 +192,64 @@ test.describe('Table cell images', () => {
       .toMatch(/\|\s*v1\s*\|\s*!\[[^\]]*]\([^)]+\)\s*\|/)
   })
 
+  test('dragging the grip resizes the picture and the width reaches the file', async ({
+    page,
+    testVaultPath
+  }) => {
+    // #given a cell image with no size of its own. Every one of these is capped
+    // at eight lines by the stylesheet, which is what keeps a screenshot from
+    // blowing the row out — and what makes a per-image width worth having.
+    const title = `Cell Resize ${Date.now()}`
+    const ref = '../attachments/wide.png'
+    fs.mkdirSync(path.join(testVaultPath, 'attachments'), { recursive: true })
+    fs.writeFileSync(
+      path.join(testVaultPath, 'attachments', 'wide.png'),
+      Buffer.from(PNG_BASE64, 'base64')
+    )
+    const absPath = seedVaultFile(
+      testVaultPath,
+      title,
+      ['| Iteration | Shot |', '| --- | --- |', `| v1 | ![wide.png](${ref}) |`, ''].join('\n')
+    )
+    await openInEditor(page, title)
+
+    const image = page.locator(`${SELECTORS.noteEditor} td img.inline-image`).first()
+    await expect(image).toBeVisible({ timeout: 15_000 })
+
+    // #when the grip on its inline-end edge is dragged out by 120px
+    const wrap = page.locator(`${SELECTORS.noteEditor} td .inline-image-wrap`).first()
+    await wrap.hover()
+    const grip = wrap.locator('.inline-image-grip')
+    const box = await grip.boundingBox()
+    if (!box) throw new Error('resize grip has no box')
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 8 })
+    await page.mouse.up()
+
+    // #then the picture really grew…
+    await expect.poll(async () => (await image.boundingBox())?.width ?? 0).toBeGreaterThan(100)
+
+    // #and the width reaches the vault file as Obsidian's `|<width>` suffix,
+    // escaped — a bare `|` there is the cell delimiter and would split the row
+    await expect
+      .poll(
+        () => {
+          try {
+            return stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
+          } catch {
+            return ''
+          }
+        },
+        { timeout: 25_000 }
+      )
+      .toMatch(/!\[wide\.png\\\|\d+]\(\.\.\/attachments\/wide\.png\)/)
+
+    const body = stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
+    // The row is still one row: the escape is what protects it.
+    expect(body.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+  })
+
   test('pasting an image with the caret in a cell writes it into that cell', async ({
     page,
     testVaultPath

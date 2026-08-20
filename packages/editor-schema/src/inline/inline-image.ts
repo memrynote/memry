@@ -35,7 +35,9 @@ export const inlineImageConfig = {
   type: 'inlineImage' as const,
   propSchema: {
     src: { default: '' },
-    alt: { default: '' }
+    alt: { default: '' },
+    /** Display width in px. `0` means "whatever the picture is", capped by CSS. */
+    width: { default: 0, type: 'number' as const }
   },
   content: 'none' as const
 }
@@ -43,10 +45,53 @@ export const inlineImageConfig = {
 export interface InlineImageProps {
   src: string
   alt: string
+  width?: number | string
 }
 
-export function createInlineImageContent(src: string, alt = '') {
-  return { type: 'inlineImage' as const, props: { src, alt } }
+export function createInlineImageContent(src: string, alt = '', width = 0) {
+  return { type: 'inlineImage' as const, props: { src, alt, width: toWidth(width) } }
+}
+
+/**
+ * A width prop as a number, whatever it arrived as.
+ *
+ * Attributes seeded straight into the shared Y.Doc are STRINGS — that is how a
+ * synced note delivers them — so a prop read back as `"300"` has to mean 300
+ * here and not `NaN` twelve calls later, in a `style.width` nobody can trace.
+ */
+export function toWidth(value: unknown): number {
+  const width = Math.round(Number(value))
+  return Number.isFinite(width) && width > 0 ? width : 0
+}
+
+/**
+ * Display width rides in the alt text as `name|300` — Obsidian's own `|`
+ * convention, and the only carrier that survives a GFM table cell.
+ *
+ * Measured against the real converter, because the obvious answers do not work:
+ * a markdown image has no width, `![alt](src "300")` loses the title on the way
+ * through BlockNote, and a BARE `| ![a|300](x) |` splits the row in half — `|`
+ * is the cell delimiter. The escape is remark's job, not ours: put `a|300` in
+ * the alt attribute and `![a\|300](x.png)` is what lands on disk, byte-stable
+ * across re-saves.
+ *
+ * Only a pure-numeric tail is claimed. Obsidian also writes `|300x200`, and
+ * parsing that to a width would re-serialize it as `|300` — rewriting somebody
+ * else's vault file to say something slightly different. Left alone, it stays
+ * alt text and round-trips untouched.
+ */
+const ALT_WIDTH_SUFFIX = /^(.*)\|(\d+)$/
+
+export function parseInlineImageAlt(raw: string): { alt: string; width: number } {
+  const match = ALT_WIDTH_SUFFIX.exec(raw)
+  if (!match) return { alt: raw, width: 0 }
+  const width = toWidth(match[2])
+  return width > 0 ? { alt: match[1], width } : { alt: raw, width: 0 }
+}
+
+export function serializeInlineImageAlt(alt: string, width: unknown): string {
+  const px = toWidth(width)
+  return px > 0 ? `${alt}|${px}` : alt
 }
 
 type InlineImageRender = CustomInlineContentImplementation<
@@ -72,12 +117,20 @@ export const inlineImageSerialization = {
     // THAT back to disk is how a vault stops being portable between machines.
     const src = element.getAttribute('src')?.trim() || ''
     if (!src) return undefined
-    return { src, alt: element.getAttribute('alt') || '' }
+
+    const { alt, width } = parseInlineImageAlt(element.getAttribute('alt') || '')
+    // A real `width` attribute outranks the alt convention: that is what an HTML
+    // paste from the web carries, and it is a measurement rather than a guess.
+    const attribute = toWidth(element.getAttribute('width'))
+    return { src, alt, width: attribute > 0 ? attribute : width }
   },
   toExternalHTML: (inlineContent: { props: InlineImageProps }) => {
     const dom = document.createElement('img')
     dom.setAttribute('src', inlineContent.props.src || '')
-    dom.setAttribute('alt', inlineContent.props.alt || '')
+    dom.setAttribute(
+      'alt',
+      serializeInlineImageAlt(inlineContent.props.alt || '', inlineContent.props.width)
+    )
     return { dom }
   }
 }
