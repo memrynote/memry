@@ -870,9 +870,7 @@
       "apiKey": "API kulcs",
       "none": "Rendszer"
     },
-    "comingSoon": "Hamarosan",
-    "connect": "Csatlakozás",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Naptár",
       "description": "Kétirányú szinkronizálás az memrynote eseményekhez és az importált Google naptárokhoz.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Nem sikerült frissíteni a Google Naptárat",
       "disconnectFailed": "Nem sikerült leválasztani a Google Naptárt",
       "retryFailed": "Nem sikerült újrapróbálni a naptár szinkronizálását",
-      "pushToGoogle": {
-        "description": "Kapcsold ki az egyirányú szinkronizáláshoz — a Google-eseményeidet továbbra is látod a memrynote-ban, de a memrynote eseményei nem jelennek meg a Google-ban.",
-        "error": "Nem sikerült frissíteni a szinkronizálás irányát",
-        "label": "memrynote események megjelenítése a Google Calendarban"
-      },
       "agentAccess": {
         "description": "Alapértelmezés szerint ki van kapcsolva. Bekapcsolva az AI-ügynök elolvashatja a Google-eseményeidet; kikapcsolva semmit nem kap vissza, ha rájuk kérdezel. A memrynote-ban így is, úgy is látod őket.",
         "error": "Nem sikerült frissíteni az AI-hozzáférést",
         "label": "Az AI olvashatja a Google Calendar eseményeket"
+      },
+      "pushEvents": {
+        "description": "Kapcsold ki az egyirányú szinkronizáláshoz — a Google-eseményeidet továbbra is látod a memrynote-ban, de a memrynote eseményei nem jelennek meg a Google-ban.",
+        "error": "Nem sikerült frissíteni a szinkronizálás irányát",
+        "label": "memrynote események megjelenítése a Google Calendarban"
       }
     },
+    "comingSoon": "Hamarosan",
+    "connect": "Csatlakozás",
     "sourcePicker": {
       "empty": "Ezen az eszközön még nem érhetők el importált Google-naptárak.",
       "statuses": {

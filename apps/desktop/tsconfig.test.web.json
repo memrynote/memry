@@ -69,7 +69,6 @@
     "src/renderer/src/components/note/tags-row/CustomColorSwatch.test.tsx",
     "src/renderer/src/components/notes-tree.test.tsx",
     "src/renderer/src/components/search/search-components.test.tsx",
-    "src/renderer/src/components/settings/google-calendar-integration-row.test.tsx",
     "src/renderer/src/components/sidebar/sidebar-update-button.test.tsx",
     "src/renderer/src/components/snooze/snooze-picker.test.tsx",
     "src/renderer/src/components/split-view/__tests__/split-layout-renderer-day-panel.test.tsx",

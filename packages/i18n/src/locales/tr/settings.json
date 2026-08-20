@@ -870,9 +870,7 @@
       "apiKey": "API Anahtarı",
       "none": "Sistem"
     },
-    "comingSoon": "Yakında",
-    "connect": "Bağlan",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Calendar",
       "description": "memrynote etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Google Calendar yenilenemedi",
       "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
       "retryFailed": "Takvim senkronizasyonu yeniden denenemedi",
-      "pushToGoogle": {
-        "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
-        "error": "Eşitleme yönü güncellenemedi",
-        "label": "memrynote etkinliklerini Google Calendar'da göster"
-      },
       "agentAccess": {
         "description": "Varsayılan olarak kapalı. Açarsanız yapay zeka asistanı Google etkinliklerinizi okuyabilir; kapatırsanız onlara dair hiçbir yanıt alamaz. Her iki durumda da etkinlikleri memrynote'ta görmeye devam edersiniz.",
         "error": "Yapay zeka erişimi güncellenemedi",
         "label": "Yapay zeka Google Calendar etkinliklerini okuyabilsin"
+      },
+      "pushEvents": {
+        "description": "Tek yönlü eşitleme için kapatın — Google etkinliklerinizi yine memrynote'ta görürsünüz, ancak memrynote etkinlikleri Google'da görünmez.",
+        "error": "Eşitleme yönü güncellenemedi",
+        "label": "memrynote etkinliklerini Google Calendar'da göster"
       }
     },
+    "comingSoon": "Yakında",
+    "connect": "Bağlan",
     "sourcePicker": {
       "empty": "Bu cihazda henüz içe aktarılan Google takvimi yok.",
       "statuses": {

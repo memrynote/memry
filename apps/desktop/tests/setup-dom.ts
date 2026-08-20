@@ -256,6 +256,14 @@ const createMockApi = () => ({
       promoteConfirmDismissed: false
     }),
     setCalendarGoogleSettings: vi.fn().mockResolvedValue({ success: true }),
+    getCalendarProviderSettings: vi.fn().mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false,
+      pushEventsToProvider: true,
+      agentReadEventsConsent: null
+    }),
+    setCalendarProviderSettings: vi.fn().mockResolvedValue({ success: true }),
     getCalendarSettings: vi.fn().mockResolvedValue({
       dayCellClickBehavior: 'journal',
       calendarPageClickOverride: 'calendar'

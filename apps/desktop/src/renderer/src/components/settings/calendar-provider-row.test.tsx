@@ -8,6 +8,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import { createRendererI18n } from '@memry/i18n/renderer'
 
 const {
+  mockListCalendarProviders,
   mockGetGoogleCalendarStatus,
   mockConnectGoogleCalendarProvider,
   mockDisconnectGoogleCalendarProvider,
@@ -16,6 +17,7 @@ const {
   mockUpdateSourceSelection,
   mockRetryGoogleCalendarSourceSync
 } = vi.hoisted(() => ({
+  mockListCalendarProviders: vi.fn(),
   mockGetGoogleCalendarStatus: vi.fn(),
   mockConnectGoogleCalendarProvider: vi.fn(),
   mockDisconnectGoogleCalendarProvider: vi.fn(),
@@ -26,18 +28,21 @@ const {
 }))
 
 vi.mock('@/services/calendar-service', () => ({
-  getGoogleCalendarStatus: mockGetGoogleCalendarStatus,
-  connectGoogleCalendarProvider: mockConnectGoogleCalendarProvider,
-  disconnectGoogleCalendarProvider: mockDisconnectGoogleCalendarProvider,
-  refreshGoogleCalendarProvider: mockRefreshGoogleCalendarProvider,
-  retryGoogleCalendarSourceSync: mockRetryGoogleCalendarSourceSync,
+  GOOGLE_CALENDAR_PROVIDER_ID: 'google',
+  listCalendarProviders: mockListCalendarProviders,
+  getCalendarProviderStatus: mockGetGoogleCalendarStatus,
+  connectCalendarProvider: mockConnectGoogleCalendarProvider,
+  disconnectCalendarProvider: (_provider: string, accountId?: string) =>
+    mockDisconnectGoogleCalendarProvider(accountId),
+  refreshCalendarProvider: mockRefreshGoogleCalendarProvider,
+  retryCalendarSourceSync: mockRetryGoogleCalendarSourceSync,
   updateGoogleCalendarSourceSelection: mockUpdateSourceSelection,
   onCalendarChanged: vi.fn(() => () => {}),
   calendarService: {
     listSources: mockListSources,
     updateSourceSelection: mockUpdateSourceSelection
   },
-  listGoogleCalendars: vi.fn(async () => ({
+  listProviderCalendars: vi.fn(async () => ({
     calendars: [],
     primary: null,
     currentDefaultId: null
@@ -46,8 +51,27 @@ vi.mock('@/services/calendar-service', () => ({
   promoteExternalCalendarEvent: vi.fn(async () => ({ success: true, eventId: null }))
 }))
 
+const GOOGLE_CAPABILITIES = {
+  supportsWrite: true,
+  supportsCreateCalendar: true,
+  supportsPush: true,
+  supportsMultiAccount: true,
+  incrementalMode: 'sync-token',
+  authFlow: 'oauth2'
+} as const
+
+const READ_ONLY_CAPABILITIES = {
+  supportsWrite: false,
+  supportsCreateCalendar: false,
+  supportsPush: false,
+  supportsMultiAccount: false,
+  incrementalMode: 'conditional-get',
+  authFlow: 'url'
+} as const
+
 const DISCONNECTED_STATUS: CalendarProviderStatus = {
   provider: 'google',
+  capabilities: GOOGLE_CAPABILITIES,
   connected: false,
   hasLocalAuth: false,
   account: null,
@@ -62,6 +86,7 @@ const DISCONNECTED_STATUS: CalendarProviderStatus = {
 
 const CONNECTED_STATUS: CalendarProviderStatus = {
   provider: 'google',
+  capabilities: GOOGLE_CAPABILITIES,
   connected: true,
   hasLocalAuth: true,
   account: { id: 'google-account-1', title: 'h4yfans@gmail.com' },
@@ -132,6 +157,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -153,6 +179,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -174,6 +201,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -195,6 +223,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     syncCursor: null,
     syncStatus: 'ok',
     lastSyncedAt: '2026-04-12T08:00:00.000Z',
+    lastError: null,
     metadata: null,
     archivedAt: null,
     syncedAt: '2026-04-12T08:00:00.000Z',
@@ -213,12 +242,16 @@ function renderIntegrationList() {
   )
 }
 
-describe('Google Calendar integration row', () => {
+describe('calendar provider row', () => {
   beforeAll(async () => {
     i18nEn = await createRendererI18n({ locale: 'en' })
   })
 
   beforeEach(() => {
+    mockListCalendarProviders.mockReset()
+    mockListCalendarProviders.mockResolvedValue({
+      providers: [{ id: 'google', capabilities: GOOGLE_CAPABILITIES }]
+    })
     mockGetGoogleCalendarStatus.mockReset()
     mockConnectGoogleCalendarProvider.mockReset()
     mockDisconnectGoogleCalendarProvider.mockReset()
@@ -431,11 +464,11 @@ describe('Google Calendar integration row', () => {
   it('#given consent was granted #then the AI access switch reads as on', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
       promoteConfirmDismissed: false,
-      pushEventsToGoogle: true,
+      pushEventsToProvider: true,
       agentReadEventsConsent: true
     })
 
@@ -449,11 +482,11 @@ describe('Google Calendar integration row', () => {
   it('#given consent is unanswered #then the AI access switch reads as off', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
       promoteConfirmDismissed: false,
-      pushEventsToGoogle: true,
+      pushEventsToProvider: true,
       agentReadEventsConsent: null
     })
 
@@ -468,11 +501,11 @@ describe('Google Calendar integration row', () => {
     const user = userEvent.setup()
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
       promoteConfirmDismissed: false,
-      pushEventsToGoogle: true,
+      pushEventsToProvider: true,
       agentReadEventsConsent: null
     })
 
@@ -483,7 +516,7 @@ describe('Google Calendar integration row', () => {
     )
     await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
 
-    expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+    expect(window.api.settings.setCalendarProviderSettings).toHaveBeenCalledWith('google', {
       agentReadEventsConsent: true
     })
   })
@@ -492,11 +525,11 @@ describe('Google Calendar integration row', () => {
     const user = userEvent.setup()
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: true,
       promoteConfirmDismissed: false,
-      pushEventsToGoogle: true,
+      pushEventsToProvider: true,
       agentReadEventsConsent: true
     })
 
@@ -507,7 +540,7 @@ describe('Google Calendar integration row', () => {
     )
     await user.click(screen.getByRole('switch', { name: AGENT_ACCESS_LABEL }))
 
-    expect(window.api.settings.setCalendarGoogleSettings).toHaveBeenCalledWith({
+    expect(window.api.settings.setCalendarProviderSettings).toHaveBeenCalledWith('google', {
       agentReadEventsConsent: false
     })
   })
@@ -515,10 +548,12 @@ describe('Google Calendar integration row', () => {
   it('#given an existing Google connection + onboardingCompleted=false #when the row mounts #then the onboarding dialog opens automatically (M2 review fix)', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: null,
       onboardingCompleted: false,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToProvider: true,
+      agentReadEventsConsent: null
     })
 
     renderIntegrationList()
@@ -568,10 +603,12 @@ describe('Google Calendar integration row', () => {
   it('renders one chip per connected Google account with status + email (M6 T3)', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(TWO_ACCOUNT_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToProvider: true,
+      agentReadEventsConsent: null
     })
 
     renderIntegrationList()
@@ -595,10 +632,12 @@ describe('Google Calendar integration row', () => {
       success: true,
       status: CONNECTED_STATUS
     })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToProvider: true,
+      agentReadEventsConsent: null
     })
 
     renderIntegrationList()
@@ -607,19 +646,21 @@ describe('Google Calendar integration row', () => {
 
     const accountChip = screen.getByTestId('calendar-account-chip-h4yfans@gmail.com')
     expect(accountChip).toHaveAttribute('data-account-status', 'reconnect_required')
-    expect(accountChip).toHaveTextContent('Reconnect Google')
+    expect(accountChip).toHaveTextContent('Reconnect')
 
-    await user.click(screen.getByRole('button', { name: 'Reconnect Google' }))
+    await user.click(screen.getByRole('button', { name: 'Reconnect' }))
     expect(mockConnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
   })
 
   it('#given an existing Google connection + onboardingCompleted=true #when the row mounts #then the onboarding dialog stays closed', async () => {
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
     mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
-    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+    vi.mocked(window.api.settings.getCalendarProviderSettings).mockResolvedValue({
       defaultTargetCalendarId: 'primary@example.com',
       onboardingCompleted: true,
-      promoteConfirmDismissed: false
+      promoteConfirmDismissed: false,
+      pushEventsToProvider: true,
+      agentReadEventsConsent: null
     })
 
     renderIntegrationList()
@@ -629,5 +670,149 @@ describe('Google Calendar integration row', () => {
     expect(
       screen.queryByRole('heading', { name: /Which calendar should new memrynote events go to/i })
     ).not.toBeInTheDocument()
+  })
+  describe('capability-driven affordances (#1395)', () => {
+    const READ_ONLY_STATUS: CalendarProviderStatus = {
+      ...CONNECTED_STATUS,
+      provider: 'ics',
+      capabilities: READ_ONLY_CAPABILITIES,
+      accounts: []
+    }
+
+    function renderReadOnlyProvider(): void {
+      mockListCalendarProviders.mockResolvedValue({
+        providers: [{ id: 'ics', capabilities: READ_ONLY_CAPABILITIES }]
+      })
+      mockGetGoogleCalendarStatus.mockResolvedValue(READ_ONLY_STATUS)
+      mockListSources.mockResolvedValue({ sources: [] })
+      renderIntegrationList()
+    }
+
+    it('hides the push-events toggle for a read-only provider', async () => {
+      renderReadOnlyProvider()
+
+      // The agent-access gate is not a write, so it stays — and waiting on it
+      // proves the connected section rendered before asserting an absence.
+      expect(await screen.findByLabelText(/Let AI read/i)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Show memrynote events in/i)).not.toBeInTheDocument()
+    })
+
+    it('still offers the push-events toggle for a write-capable provider', async () => {
+      mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+
+      renderIntegrationList()
+
+      expect(await screen.findByLabelText(/Show memrynote events in/i)).toBeInTheDocument()
+    })
+
+    it('offers no "Add account" button for a single-connection provider', async () => {
+      renderReadOnlyProvider()
+
+      // …and it still has a way out.
+      expect(await screen.findByTestId('calendar-disconnect-all')).toBeInTheDocument()
+      expect(screen.queryByTestId('calendar-add-account')).not.toBeInTheDocument()
+    })
+
+    it('advertises the poll interval instead of real-time sync when there is no push', async () => {
+      renderReadOnlyProvider()
+
+      const cadence = await screen.findByTestId('calendar-provider-cadence')
+      expect(cadence).toHaveTextContent(/every 5 minutes/i)
+      expect(cadence).toHaveTextContent(/Read-only/i)
+    })
+
+    it('claims real-time sync for a push-capable provider', async () => {
+      mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+
+      renderIntegrationList()
+
+      const cadence = await screen.findByTestId('calendar-provider-cadence')
+      expect(cadence).toHaveTextContent(/as they happen/i)
+      expect(cadence).not.toHaveTextContent(/Read-only/i)
+    })
+
+    it('renders one row per provider main reports', async () => {
+      mockListCalendarProviders.mockResolvedValue({
+        providers: [
+          { id: 'google', capabilities: GOOGLE_CAPABILITIES },
+          { id: 'ics', capabilities: READ_ONLY_CAPABILITIES }
+        ]
+      })
+      mockGetGoogleCalendarStatus.mockResolvedValue(DISCONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: [] })
+
+      renderIntegrationList()
+
+      expect(await screen.findByTestId('calendar-provider-row-google')).toBeInTheDocument()
+      expect(await screen.findByTestId('calendar-provider-row-ics')).toBeInTheDocument()
+    })
+
+    it('renders a provider id this build does not recognise rather than a blank row', async () => {
+      mockListCalendarProviders.mockResolvedValue({
+        providers: [{ id: 'something-new', capabilities: READ_ONLY_CAPABILITIES }]
+      })
+      mockGetGoogleCalendarStatus.mockResolvedValue(DISCONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: [] })
+
+      renderIntegrationList()
+
+      const row = await screen.findByTestId('calendar-provider-row-something-new')
+      expect(row).toHaveTextContent(/does not recognise yet/i)
+    })
+  })
+  describe('failed mutations surface their error (#1395)', () => {
+    it.each([
+      ['connect', () => mockConnectGoogleCalendarProvider, 'Connect'],
+      ['refresh', () => mockRefreshGoogleCalendarProvider, 'Sync Now'],
+      ['disconnect', () => mockDisconnectGoogleCalendarProvider, 'Disconnect']
+    ])('shows the main-process error when %s fails', async (_name, getMock, buttonName) => {
+      const user = userEvent.setup()
+      mockGetGoogleCalendarStatus.mockResolvedValue(
+        buttonName === 'Connect' ? DISCONNECTED_STATUS : CONNECTED_STATUS
+      )
+      mockListSources.mockResolvedValue({ sources: [] })
+      getMock().mockResolvedValue({ success: false, error: 'provider said no' })
+
+      renderIntegrationList()
+
+      await user.click(await screen.findByRole('button', { name: buttonName }))
+
+      expect(await screen.findByText('provider said no')).toBeInTheDocument()
+    })
+
+    it('falls back to a translated message when the error field is empty', async () => {
+      const user = userEvent.setup()
+      mockGetGoogleCalendarStatus.mockResolvedValue(DISCONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: [] })
+      mockConnectGoogleCalendarProvider.mockResolvedValue({ success: false })
+
+      renderIntegrationList()
+
+      await user.click(await screen.findByRole('button', { name: 'Connect' }))
+
+      expect(await screen.findByText(/Failed to connect Google Calendar/i)).toBeInTheDocument()
+    })
+
+    it('surfaces a failed source retry without wiping the row', async () => {
+      const user = userEvent.setup()
+      mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
+      mockListSources.mockResolvedValue({ sources: CONNECTED_SOURCES })
+      mockRetryGoogleCalendarSourceSync.mockResolvedValue({
+        success: false,
+        source: null,
+        error: 'retry failed'
+      })
+
+      renderIntegrationList()
+      await screen.findByText('Connected')
+
+      // The row is still rendered and usable after the failure.
+      expect(screen.getByTestId('calendar-provider-row-google')).toBeInTheDocument()
+      expect(mockRetryGoogleCalendarSourceSync).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Sync Now' }))
+      expect(mockRefreshGoogleCalendarProvider).toHaveBeenCalled()
+    })
   })
 })

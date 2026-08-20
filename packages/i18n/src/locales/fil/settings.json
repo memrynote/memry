@@ -870,9 +870,7 @@
       "apiKey": "API Key",
       "none": "Sistema"
     },
-    "comingSoon": "Malapit na",
-    "connect": "Kumonekta",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Calendar",
       "description": "Two-way na pag-sync para sa memrynote na mga kaganapan at na-import na mga kalendaryo ng Google.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Nabigong i-refresh ang Google Calendar",
       "disconnectFailed": "Nabigong idiskonekta ang Google Calendar",
       "retryFailed": "Nabigong subukang muli ang pag-sync ng kalendaryo",
-      "pushToGoogle": {
-        "description": "I-off para sa one-way na sync — makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote, ngunit hindi lalabas sa Google ang mga kaganapan ng memrynote.",
-        "error": "Nabigong i-update ang direksyon ng sync",
-        "label": "Ipakita ang mga kaganapan ng memrynote sa Google Calendar"
-      },
       "agentAccess": {
         "description": "Naka-off bilang default. Kapag na-on, mababasa ng ahente ng AI ang iyong mga kaganapan sa Google; kapag naka-off, wala itong maibabalik kapag tinanong tungkol sa mga ito. Makikita mo pa rin ang mga ito sa memrynote alinman ang piliin mo.",
         "error": "Nabigong i-update ang access ng AI",
         "label": "Payagan ang AI na basahin ang mga kaganapan sa Google Calendar"
+      },
+      "pushEvents": {
+        "description": "I-off para sa one-way na sync — makikita mo pa rin ang iyong mga kaganapan sa Google sa memrynote, ngunit hindi lalabas sa Google ang mga kaganapan ng memrynote.",
+        "error": "Nabigong i-update ang direksyon ng sync",
+        "label": "Ipakita ang mga kaganapan ng memrynote sa Google Calendar"
       }
     },
+    "comingSoon": "Malapit na",
+    "connect": "Kumonekta",
     "sourcePicker": {
       "empty": "Wala pang na-import na mga kalendaryo ng Google sa device na ito.",
       "statuses": {

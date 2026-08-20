@@ -870,9 +870,7 @@
       "apiKey": "API 키",
       "none": "시스템"
     },
-    "comingSoon": "출시 예정",
-    "connect": "연결하다",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "구글캘린더",
       "description": "memrynote 이벤트 및 가져온 Google 캘린더에 대한 양방향 동기화.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Google 캘린더를 새로고침하지 못했습니다.",
       "disconnectFailed": "Google 캘린더 연결을 해제하지 못했습니다.",
       "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다.",
-      "pushToGoogle": {
-        "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
-        "error": "동기화 방향을 업데이트하지 못했습니다",
-        "label": "Google Calendar에 memrynote 일정 표시"
-      },
       "agentAccess": {
         "description": "기본값은 꺼짐입니다. 켜면 AI 에이전트가 Google 일정을 읽을 수 있고, 끄면 일정에 대해 물어봐도 아무것도 받지 못합니다. 어느 쪽이든 memrynote에서는 계속 볼 수 있습니다.",
         "error": "AI 접근을 업데이트하지 못했습니다",
         "label": "AI가 Google Calendar 일정을 읽도록 허용"
+      },
+      "pushEvents": {
+        "description": "단방향 동기화를 원하면 끄세요 — memrynote에서 Google 일정은 계속 보이지만 memrynote 일정은 Google에 표시되지 않습니다.",
+        "error": "동기화 방향을 업데이트하지 못했습니다",
+        "label": "Google Calendar에 memrynote 일정 표시"
       }
     },
+    "comingSoon": "출시 예정",
+    "connect": "연결하다",
     "sourcePicker": {
       "empty": "아직 이 기기에서는 가져온 Google 캘린더를 사용할 수 없습니다.",
       "statuses": {

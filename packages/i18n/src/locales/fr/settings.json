@@ -870,9 +870,7 @@
       "apiKey": "Clé API",
       "none": "Système"
     },
-    "comingSoon": "Bientôt disponible",
-    "connect": "Se connecter",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Agenda",
       "description": "Synchronisation bidirectionnelle pour les événements memrynote et les calendriers Google importés.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Échec de l'actualisation de Google Agenda",
       "disconnectFailed": "Échec de la déconnexion de Google Agenda",
       "retryFailed": "Échec de la nouvelle tentative de synchronisation du calendrier",
-      "pushToGoogle": {
-        "description": "Désactivez pour une synchronisation unidirectionnelle — vous verrez toujours vos événements Google dans memrynote, mais les événements memrynote n'apparaîtront pas dans Google.",
-        "error": "Échec de la mise à jour du sens de synchronisation",
-        "label": "Afficher les événements memrynote dans Google Calendar"
-      },
       "agentAccess": {
         "description": "Désactivé par défaut. Activez-le et l'agent IA pourra lire vos événements Google ; désactivez-le et il ne renverra rien si vous l'interrogez à leur sujet. Vous continuez à les voir dans memrynote dans les deux cas.",
         "error": "Échec de la mise à jour de l'accès de l'IA",
         "label": "Autoriser l'IA à lire les événements Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Désactivez pour une synchronisation unidirectionnelle — vous verrez toujours vos événements Google dans memrynote, mais les événements memrynote n'apparaîtront pas dans Google.",
+        "error": "Échec de la mise à jour du sens de synchronisation",
+        "label": "Afficher les événements memrynote dans Google Calendar"
       }
     },
+    "comingSoon": "Bientôt disponible",
+    "connect": "Se connecter",
     "sourcePicker": {
       "empty": "Aucun agenda Google importé n'est encore disponible sur cet appareil.",
       "statuses": {

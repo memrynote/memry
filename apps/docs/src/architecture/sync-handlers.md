@@ -324,3 +324,47 @@ const result = mergeFields({
 ```
 
 When a record predates Phase 8 and lacks `fieldClocks`, `initAllFieldClocks(docClock, fields)` initializes them on first merge.
+
+## Unknown Calendar Providers Are Not Corruption
+
+`calendar_sources`, `calendar_bindings` and `calendar_external_events` all carry
+a free-form `provider` string. The multi-provider calendar work (#1390) means a
+device on a newer build can create rows with `provider` set to `ics`, `caldav`
+or `microsoft` and sync them to a device that only knows `google`.
+
+The item handlers were already defensive in one direction — a payload that
+omits `provider` falls back to `'google'`, for rows written before the column
+carried meaning. The other direction had never been verified, and it is the
+one that can lose user data: if an old client decided an unrecognised row was
+corrupt and cleaned it up, the delete would sync back and remotely destroy the
+connection the user had just made on the new device.
+
+**Finding: it does not.** Verified in
+`main/sync/calendar-cross-version-compat.test.ts`:
+
+- The handlers are provider-blind. `applyUpsert` writes `provider` verbatim and
+  never rewrites a value it does not recognise; `?? 'google'` only fires when
+  the key is genuinely absent.
+- Nothing archives, deletes, or "repairs" a source because its provider is
+  unknown. The only two deletes on `calendar_sources` are an explicit
+  user-initiated disconnect — scoped by `provider` — and applying a remote
+  tombstone. There is no orphan sweep or credential-reconcile pass over these
+  tables.
+- `buildPushPayload` round-trips `provider` unchanged, so an old client
+  re-pushing a row it cannot use does not re-home the calendar.
+- Delete-clock resolution is provider-independent: a stale tombstone is skipped
+  and a causally-newer one is applied, identically for `google` and for a
+  provider the build has never heard of.
+- The missing-parent guard on `calendar_external_events` keys on the parent row
+  existing, not on the provider being one this build can sync, so external
+  events under an unknown-provider source apply normally.
+
+**Consequence: no sync type negotiation gate is needed** for these rows. The
+PR #754 pattern would have been the fallback if the old client had misbehaved;
+it does not, so new-provider rows fan out to every device unconditionally and
+an old device simply carries them read-only.
+
+What an old client _cannot_ do is sync such a source: no provider is registered
+for that id, so nothing polls it, `hasLocalAuth` reads false, and the settings
+row reports it as connected-without-credentials. That is inert, not
+destructive, and it resolves itself the moment that device updates.

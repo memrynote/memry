@@ -870,9 +870,7 @@
       "apiKey": "API-avain",
       "none": "Järjestelmä"
     },
-    "comingSoon": "Tulossa pian",
-    "connect": "Yhdistä",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google-kalenteri",
       "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille ja tuotuille Google-kalentereille.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Google-kalenterin päivittäminen epäonnistui",
       "disconnectFailed": "Google-kalenterin yhteyden katkaiseminen epäonnistui",
       "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen",
-      "pushToGoogle": {
-        "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
-        "error": "Synkronointisuunnan päivitys epäonnistui",
-        "label": "Näytä memrynote-tapahtumat Google Calendarissa"
-      },
       "agentAccess": {
         "description": "Pois käytöstä oletuksena. Kun otat tämän käyttöön, tekoälyagentti voi lukea Google-tapahtumasi; kun poistat sen käytöstä, se ei saa niistä mitään tietoa, vaikka niistä kysyttäisiin. Näet ne memrynotessa joka tapauksessa.",
         "error": "Tekoälyn pääsyn päivittäminen epäonnistui",
         "label": "Salli tekoälyn lukea Google Calendar -tapahtumia"
+      },
+      "pushEvents": {
+        "description": "Poista käytöstä yksisuuntaista synkronointia varten — näet edelleen Google-tapahtumasi memrynotessa, mutta memrynote-tapahtumat eivät näy Googlessa.",
+        "error": "Synkronointisuunnan päivitys epäonnistui",
+        "label": "Näytä memrynote-tapahtumat Google Calendarissa"
       }
     },
+    "comingSoon": "Tulossa pian",
+    "connect": "Yhdistä",
     "sourcePicker": {
       "empty": "Tuotuja Google-kalentereita ei ole vielä saatavilla tällä laitteella.",
       "statuses": {

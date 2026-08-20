@@ -870,9 +870,7 @@
       "apiKey": "API-nøkkel",
       "none": "System"
     },
-    "comingSoon": "Kommer snart",
-    "connect": "Koble til",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google Kalender",
       "description": "Toveis synkronisering for memrynote-hendelser og importerte Google-kalendere.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "Kunne ikke oppdatere Google Kalender",
       "disconnectFailed": "Kunne ikke koble fra Google Kalender",
       "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt",
-      "pushToGoogle": {
-        "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
-        "error": "Kunne ikke oppdatere synkroniseringsretning",
-        "label": "Vis memrynote-hendelser i Google Calendar"
-      },
       "agentAccess": {
         "description": "Av som standard. Slå på, så kan AI-agenten lese Google-hendelsene dine; slå av, og den får ingenting tilbake når den blir spurt om dem. Du ser dem i memrynote uansett.",
         "error": "Kunne ikke oppdatere AI-tilgangen",
         "label": "La AI lese Google Calendar-hendelser"
+      },
+      "pushEvents": {
+        "description": "Slå av for enveis synkronisering — du ser fortsatt Google-hendelsene dine i memrynote, men memrynote-hendelser vises ikke i Google.",
+        "error": "Kunne ikke oppdatere synkroniseringsretning",
+        "label": "Vis memrynote-hendelser i Google Calendar"
       }
     },
+    "comingSoon": "Kommer snart",
+    "connect": "Koble til",
     "sourcePicker": {
       "empty": "Ingen importerte Google-kalendere er tilgjengelige på denne enheten ennå.",
       "statuses": {

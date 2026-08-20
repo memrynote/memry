@@ -870,9 +870,7 @@
       "apiKey": "API 密鑰",
       "none": "系統"
     },
-    "comingSoon": "即將推出",
-    "connect": "連接",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Google 日曆",
       "description": "對 memrynote 事件和匯入的 Google 日曆進行雙向同步。",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "刷新 Google 行事曆失敗",
       "disconnectFailed": "斷開 Google 行事曆失敗",
       "retryFailed": "重試行事曆同步失敗",
-      "pushToGoogle": {
-        "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
-        "error": "更新同步方向失敗",
-        "label": "在 Google Calendar 中顯示 memrynote 活動"
-      },
       "agentAccess": {
         "description": "預設為關閉。開啟後，AI 代理可以讀取您的 Google 活動；關閉時，即使詢問也不會取得任何內容。不論開啟或關閉，您都仍會在 memrynote 中看到這些活動。",
         "error": "更新 AI 存取權失敗",
         "label": "讓 AI 讀取 Google Calendar 活動"
+      },
+      "pushEvents": {
+        "description": "關閉以進行單向同步——您仍會在 memrynote 中看到您的 Google 活動，但 memrynote 活動不會出現在 Google 中。",
+        "error": "更新同步方向失敗",
+        "label": "在 Google Calendar 中顯示 memrynote 活動"
       }
     },
+    "comingSoon": "即將推出",
+    "connect": "連接",
     "sourcePicker": {
       "empty": "此裝置尚無匯入的 Google 行事曆可用。",
       "statuses": {

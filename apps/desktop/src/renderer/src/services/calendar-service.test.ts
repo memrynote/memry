@@ -29,10 +29,10 @@ describe('calendar-service', () => {
         disconnectProvider: vi.fn().mockResolvedValue({ success: true }),
         refreshProvider: vi.fn().mockResolvedValue({ success: true }),
         updateSourceSelection: vi.fn().mockResolvedValue({ success: true }),
-        listGoogleCalendars: vi.fn().mockResolvedValue({ calendars: [] }),
+        listProviderCalendars: vi.fn().mockResolvedValue({ calendars: [] }),
         setDefaultGoogleCalendar: vi.fn().mockResolvedValue({ success: true }),
         promoteExternalEvent: vi.fn().mockResolvedValue({ success: true, eventId: 'event-1' }),
-        retryGoogleCalendarSourceSync: vi.fn().mockResolvedValue({ success: true })
+        retryCalendarSourceSync: vi.fn().mockResolvedValue({ success: true })
       },
       onCalendarChanged: vi.fn(() => vi.fn())
     }
@@ -77,13 +77,13 @@ describe('calendar-service', () => {
       sourceId: 'source-1',
       selected: true
     })
-    expect(api.calendar.listGoogleCalendars).toHaveBeenCalledWith({})
+    expect(api.calendar.listProviderCalendars).toHaveBeenCalledWith({ provider: 'google' })
     expect(api.calendar.setDefaultGoogleCalendar).toHaveBeenCalledWith({ calendarId: 'primary' })
     expect(api.calendar.promoteExternalEvent).toHaveBeenCalledWith({
       externalId: 'external-1',
       sourceId: 'source-1'
     })
-    expect(api.calendar.retryGoogleCalendarSourceSync).toHaveBeenCalledWith({
+    expect(api.calendar.retryCalendarSourceSync).toHaveBeenCalledWith({
       sourceId: 'source-1'
     })
   })

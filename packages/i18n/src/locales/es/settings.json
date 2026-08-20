@@ -870,9 +870,7 @@
       "apiKey": "Clave API",
       "none": "Sistema"
     },
-    "comingSoon": "Próximamente",
-    "connect": "Conectar",
-    "googleCalendar": {
+    "calendarProvider": {
       "name": "Calendario de Google",
       "description": "Sincronización bidireccional para eventos memrynote y calendarios de Google importados.",
       "statuses": {
@@ -891,17 +889,19 @@
       "refreshFailed": "No se pudo actualizar Google Calendar",
       "disconnectFailed": "No se pudo desconectar Google Calendar",
       "retryFailed": "No se pudo volver a intentar sincronizar el calendario",
-      "pushToGoogle": {
-        "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
-        "error": "No se pudo actualizar la dirección de la sincronización",
-        "label": "Mostrar los eventos de memrynote en Google Calendar"
-      },
       "agentAccess": {
         "description": "Desactivado de forma predeterminada. Actívalo y el agente de IA podrá leer tus eventos de Google; desactívalo y no obtendrá nada cuando se le pregunte por ellos. De cualquier forma, seguirás viéndolos en memrynote.",
         "error": "No se pudo actualizar el acceso de la IA",
         "label": "Permitir que la IA lea los eventos de Google Calendar"
+      },
+      "pushEvents": {
+        "description": "Desactívalo para una sincronización unidireccional: seguirás viendo tus eventos de Google en memrynote, pero los eventos de memrynote no aparecerán en Google.",
+        "error": "No se pudo actualizar la dirección de la sincronización",
+        "label": "Mostrar los eventos de memrynote en Google Calendar"
       }
     },
+    "comingSoon": "Próximamente",
+    "connect": "Conectar",
     "sourcePicker": {
       "empty": "Aún no hay calendarios de Google importados disponibles en este dispositivo.",
       "statuses": {

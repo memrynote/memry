@@ -1,5 +1,5 @@
 import type { AppIcon } from '@/lib/icons'
-import { Calendar, CalendarDays, FileInput, BookMarked, ListTodo } from '@/lib/icons'
+import { CalendarDays, FileInput, BookMarked, ListTodo } from '@/lib/icons'
 
 export type AuthFlowType = 'oauth2' | 'api_key' | 'none'
 
@@ -13,16 +13,10 @@ export interface IntegrationDefinition {
   comingSoon: boolean
 }
 
+// Calendar providers are NOT listed here — `calendar:list-providers` reports
+// them, because main is the only place that knows which ones this build ships
+// and what each one can do. This list is for everything else.
 const INTEGRATIONS = [
-  {
-    id: 'google-calendar',
-    i18nKey: 'googleCalendar',
-    name: 'Google Calendar',
-    description: 'Two-way sync for memrynote events, tasks, reminders, and imported calendars',
-    icon: Calendar,
-    authFlow: 'oauth2',
-    comingSoon: false
-  },
   {
     id: 'apple-calendar',
     i18nKey: 'appleCalendar',
