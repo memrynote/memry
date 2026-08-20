@@ -158,3 +158,49 @@ describe('buildTreeFromNotes backward compatibility', () => {
     expect(titles(byName.rootNotes)).toEqual(['Gamma', 'Beta', 'alpha'])
   })
 })
+
+describe('new items in a hand-ordered vault (#1646)', () => {
+  const HAND_ORDERED = { 'Beta.md': 0, 'Gamma.md': 1, 'alpha.md': 2, Zeta: 0, apple: 1, Mango: 2 }
+
+  // The half of the bug that lives in the renderer: a missing row reads as
+  // MAX_SAFE_INTEGER, so anything without one sorts under everything the user
+  // ever dragged. Main answers it by writing a row at creation — this test is
+  // the tripwire for the day someone removes that write.
+  it('sorts an item with no stored position under every positioned sibling', () => {
+    const fresh = note('Untitled.md', '2026-03-01', '2026-03-01')
+    const tree = buildTreeFromNotes(
+      [...NOTES, fresh],
+      [...FOLDERS, { path: 'Untitled Folder' }],
+      HAND_ORDERED
+    )
+
+    expect(titles(tree.rootNotes).at(-1)).toBe('Untitled')
+    expect(names(tree.folders).at(-1)).toBe('Untitled Folder')
+  })
+
+  // What main now writes: `min - 1`, which is negative as soon as a hand-ordered
+  // folder starts at 0. Nothing in the tree may clamp that to zero.
+  it('leads the list once main gives the new item the slot above the top one', () => {
+    const fresh = note('Untitled.md', '2026-03-01', '2026-03-01')
+    const positions = { ...HAND_ORDERED, 'Untitled.md': -1, 'Untitled Folder': -1 }
+    const tree = buildTreeFromNotes(
+      [...NOTES, fresh],
+      [...FOLDERS, { path: 'Untitled Folder' }],
+      positions
+    )
+
+    expect(titles(tree.rootNotes)).toEqual(['Untitled', 'Beta', 'Gamma', 'alpha'])
+    expect(names(tree.folders)).toEqual(['Untitled Folder', 'Zeta', 'apple', 'Mango'])
+  })
+
+  // The rename that opens with every new note renames the row's key too, which
+  // is why main carries the position across the path change. Same slot, new
+  // path: the row must still be the one the tree reads.
+  it('holds the slot when the new note is renamed', () => {
+    const renamed = note('Q3 plan.md', '2026-03-01', '2026-03-01')
+    const positions = { ...HAND_ORDERED, 'Q3 plan.md': -1 }
+    const tree = buildTreeFromNotes([...NOTES, renamed], FOLDERS, positions)
+
+    expect(titles(tree.rootNotes)).toEqual(['Q3 plan', 'Beta', 'Gamma', 'alpha'])
+  })
+})

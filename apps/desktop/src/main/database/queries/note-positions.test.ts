@@ -18,7 +18,11 @@ import {
   deleteNotePosition,
   moveNoteToFolder,
   insertNoteAtPosition,
-  getAllNotePositions
+  getAllNotePositions,
+  placeNewItemAtTop,
+  carryPositionToPath,
+  carryFolderPositions,
+  dropFolderPositions
 } from './note-positions'
 
 describe('note-positions queries', () => {
@@ -424,6 +428,196 @@ describe('note-positions queries', () => {
 
       // Assert
       expect(result).toEqual([])
+    })
+  })
+  // =========================================================================
+  // placeNewItemAtTop — #1646
+  // =========================================================================
+  describe('placeNewItemAtTop', () => {
+    it('puts a new note above every note the user has dragged', () => {
+      // #given a folder the user arranged by hand
+      reorderNotesInFolder(testDb.db, 'work', ['work/a.md', 'work/b.md', 'work/c.md'])
+
+      // #when a note is created in it
+      placeNewItemAtTop(testDb.db, 'work/Untitled.md', 'work')
+
+      // #then it leads the folder instead of sorting below all three as a
+      // row-less MAX_SAFE_INTEGER item would
+      expect(getNotesInFolder(testDb.db, 'work').map((n) => n.path)).toEqual([
+        'work/Untitled.md',
+        'work/a.md',
+        'work/b.md',
+        'work/c.md'
+      ])
+    })
+
+    it('writes nothing in a folder nobody has ordered', () => {
+      // #given a folder still running on the tree's implicit order
+      // #when a note is created in it
+      placeNewItemAtTop(testDb.db, 'work/Untitled.md', 'work')
+
+      // #then no row is written: a row would freeze newest-first ordering for
+      // good, and the new note already leads that order
+      expect(getAllNotePositions(testDb.db)).toEqual([])
+    })
+
+    it('clears the row a deleted item left at the same path', () => {
+      // #given a stale row under a path nothing holds any more, in a folder
+      // with no other manual order
+      setNotePosition(testDb.db, 'work/Untitled.md', 'work', 7)
+
+      // #when a new note takes that path
+      placeNewItemAtTop(testDb.db, 'work/Untitled.md', 'work')
+
+      // #then it does not inherit the stranger's slot
+      expect(getNotePosition(testDb.db, 'work/Untitled.md')).toBeUndefined()
+    })
+
+    it('stacks repeated creations newest-first', () => {
+      reorderNotesInFolder(testDb.db, 'work', ['work/a.md'])
+
+      placeNewItemAtTop(testDb.db, 'work/first.md', 'work')
+      placeNewItemAtTop(testDb.db, 'work/second.md', 'work')
+
+      expect(getNotesInFolder(testDb.db, 'work').map((n) => n.path)).toEqual([
+        'work/second.md',
+        'work/first.md',
+        'work/a.md'
+      ])
+    })
+
+    it('reads only the target folder', () => {
+      reorderNotesInFolder(testDb.db, 'other', ['other/a.md', 'other/b.md'])
+
+      placeNewItemAtTop(testDb.db, 'work/Untitled.md', 'work')
+
+      expect(getNotePosition(testDb.db, 'work/Untitled.md')).toBeUndefined()
+    })
+
+    it('orders new items at the vault root', () => {
+      reorderNotesInFolder(testDb.db, '', ['a.md', 'b.md'])
+
+      placeNewItemAtTop(testDb.db, 'Untitled.md', '')
+
+      expect(getNotesInFolder(testDb.db, '')[0].path).toBe('Untitled.md')
+    })
+  })
+
+  // =========================================================================
+  // carryPositionToPath — #1646
+  // =========================================================================
+  describe('carryPositionToPath', () => {
+    it('keeps the slot when a note is renamed', () => {
+      // #given a new note sitting at the top of a hand-ordered folder
+      reorderNotesInFolder(testDb.db, 'work', ['work/a.md', 'work/b.md'])
+      placeNewItemAtTop(testDb.db, 'work/Untitled.md', 'work')
+
+      // #when the rename input that opened with it is committed
+      carryPositionToPath(testDb.db, 'work/Untitled.md', 'work/Q3 plan.md')
+
+      // #then the row moves with it and the list does not resort
+      expect(getNotesInFolder(testDb.db, 'work').map((n) => n.path)).toEqual([
+        'work/Q3 plan.md',
+        'work/a.md',
+        'work/b.md'
+      ])
+      expect(getNotePosition(testDb.db, 'work/Untitled.md')).toBeUndefined()
+    })
+
+    it('does not invent a position for a note that never had one', () => {
+      carryPositionToPath(testDb.db, 'work/a.md', 'work/b.md')
+
+      expect(getAllNotePositions(testDb.db)).toEqual([])
+    })
+
+    it('is a no-op when the path does not change', () => {
+      setNotePosition(testDb.db, 'work/a.md', 'work', 3)
+
+      carryPositionToPath(testDb.db, 'work/a.md', 'work/a.md')
+
+      expect(getNotePosition(testDb.db, 'work/a.md')?.position).toBe(3)
+    })
+  })
+
+  // =========================================================================
+  // carryFolderPositions — #1646
+  // =========================================================================
+  describe('carryFolderPositions', () => {
+    it('carries the folder and everything under it', () => {
+      // #given an ordered folder holding an ordered note and subfolder
+      setNotePosition(testDb.db, 'Work', '', 0)
+      setNotePosition(testDb.db, 'Work/a.md', 'Work', 0)
+      setNotePosition(testDb.db, 'Work/Sub', 'Work', 1)
+      setNotePosition(testDb.db, 'Work/Sub/deep.md', 'Work/Sub', 0)
+
+      // #when the folder is renamed
+      carryFolderPositions(testDb.db, 'Work', 'Projects')
+
+      // #then every row follows, path and parent alike
+      expect(getNotePosition(testDb.db, 'Projects')).toMatchObject({ folderPath: '', position: 0 })
+      expect(getNotePosition(testDb.db, 'Projects/a.md')).toMatchObject({
+        folderPath: 'Projects',
+        position: 0
+      })
+      expect(getNotePosition(testDb.db, 'Projects/Sub/deep.md')).toMatchObject({
+        folderPath: 'Projects/Sub',
+        position: 0
+      })
+      expect(getNotePosition(testDb.db, 'Work')).toBeUndefined()
+      expect(getNotePosition(testDb.db, 'Work/a.md')).toBeUndefined()
+    })
+
+    it('re-derives the parent when the folder moves to another parent', () => {
+      setNotePosition(testDb.db, 'Work', '', 2)
+
+      carryFolderPositions(testDb.db, 'Work', 'Archive/Work')
+
+      expect(getNotePosition(testDb.db, 'Archive/Work')).toMatchObject({
+        folderPath: 'Archive',
+        position: 2
+      })
+    })
+
+    it('leaves a sibling whose name starts with the same letters alone', () => {
+      // #given `Workspace` next to `Work` — a plain prefix test would sweep it
+      setNotePosition(testDb.db, 'Workspace/a.md', 'Workspace', 0)
+      setNotePosition(testDb.db, 'Work/a.md', 'Work', 0)
+
+      carryFolderPositions(testDb.db, 'Work', 'Projects')
+
+      expect(getNotePosition(testDb.db, 'Workspace/a.md')).toMatchObject({
+        folderPath: 'Workspace'
+      })
+    })
+
+    it('does nothing for a folder with no ordered contents', () => {
+      carryFolderPositions(testDb.db, 'Work', 'Projects')
+
+      expect(getAllNotePositions(testDb.db)).toEqual([])
+    })
+  })
+
+  // =========================================================================
+  // dropFolderPositions — #1646
+  // =========================================================================
+  describe('dropFolderPositions', () => {
+    it('drops the folder row and everything beneath it', () => {
+      setNotePosition(testDb.db, 'Work', '', 0)
+      setNotePosition(testDb.db, 'Work/a.md', 'Work', 0)
+      setNotePosition(testDb.db, 'Work/Sub/deep.md', 'Work/Sub', 0)
+      setNotePosition(testDb.db, 'Other/a.md', 'Other', 0)
+
+      dropFolderPositions(testDb.db, 'Work')
+
+      expect(getAllNotePositions(testDb.db).map((r) => r.path)).toEqual(['Other/a.md'])
+    })
+
+    it('leaves a sibling whose name starts with the same letters alone', () => {
+      setNotePosition(testDb.db, 'Workspace/a.md', 'Workspace', 0)
+
+      dropFolderPositions(testDb.db, 'Work')
+
+      expect(getNotePosition(testDb.db, 'Workspace/a.md')).toBeDefined()
     })
   })
 })

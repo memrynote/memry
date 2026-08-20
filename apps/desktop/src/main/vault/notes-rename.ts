@@ -26,6 +26,11 @@ import { rewriteNoteRefsForMove } from './rewrite-note-refs'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { getNoteCacheById } from '@main/database/queries/notes'
+import {
+  carryPositionToPath,
+  deleteNotePosition,
+  placeNewItemAtTop
+} from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { NotesChannels } from '@memry/contracts/notes-api'
@@ -98,6 +103,11 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       { isNew: false }
     )
   }
+
+  // Position rows are keyed by path, so the rename that follows every "new
+  // note" would otherwise drop the row this note was just given and send it
+  // back to the bottom of a hand-ordered folder (#1646).
+  carryPositionToPath(getDatabase(), existing.path, newRelativePath)
 
   const note: Note = {
     ...existing,
@@ -208,6 +218,17 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       await replaceNoteBodyInCrdt(id, parsed.content)
     }
   }
+
+  // The old row can never be reached again — it is keyed by a path nothing
+  // holds now — and leaving it would hand its slot to the next note created
+  // there. The note takes the top of its new folder, same as a fresh one.
+  const dataDb = getDatabase()
+  deleteNotePosition(dataDb, existing.path)
+  placeNewItemAtTop(
+    dataDb,
+    newRelativePath,
+    path.posix.dirname(newRelativePath).replace(/^\.$/, '')
+  )
 
   const note: Note = {
     ...existing,

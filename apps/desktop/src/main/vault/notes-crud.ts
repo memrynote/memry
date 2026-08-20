@@ -41,6 +41,12 @@ import {
 } from '@main/database/queries/notes'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import {
+  deleteNotePosition,
+  dropFolderPositions,
+  carryFolderPositions,
+  placeNewItemAtTop
+} from '@main/database/queries/note-positions'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
@@ -311,6 +317,10 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
   )
 
   ensureTagDefinitions(dataDb, mergedTags)
+
+  // Sidebar order. Derived from the path the note actually landed at, not from
+  // `input.folder`, because an unplaced note lands under `defaultNoteFolder`.
+  placeNewItemAtTop(dataDb, relativePath, path.posix.dirname(relativePath).replace(/^\.$/, ''))
 
   const note: Note = {
     id: noteId,
@@ -787,6 +797,7 @@ export async function deleteNote(id: string): Promise<void> {
   await deleteFile(absolutePath)
 
   deleteNoteFromCache(db, id)
+  deleteNotePosition(getDatabase(), cached.path)
 
   emitNoteEvent(NotesChannels.events.DELETED, {
     id,
@@ -844,6 +855,8 @@ export async function createFolder(folderPath: string): Promise<void> {
   const notesDir = getVaultRoot()
   const absolutePath = path.join(notesDir, folderPath)
   await ensureDirectory(absolutePath)
+
+  placeNewItemAtTop(getDatabase(), folderPath, path.posix.dirname(folderPath).replace(/^\.$/, ''))
 }
 
 export async function renameFolder(oldPath: string, newPath: string): Promise<void> {
@@ -853,6 +866,8 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<vo
 
   const { rename } = await import('fs/promises')
   await rename(oldAbsPath, newAbsPath)
+
+  carryFolderPositions(getDatabase(), oldPath, newPath)
 }
 
 export async function deleteFolder(folderPath: string): Promise<void> {
@@ -861,6 +876,8 @@ export async function deleteFolder(folderPath: string): Promise<void> {
 
   const { rm } = await import('fs/promises')
   await rm(absPath, { recursive: true, force: true })
+
+  dropFolderPositions(getDatabase(), folderPath)
 }
 
 // ============================================================================
