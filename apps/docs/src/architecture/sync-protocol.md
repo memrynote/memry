@@ -590,6 +590,41 @@ replaces it with a real one. Both read paths return the same token for the same 
 Both fields are additive: an older client reads these responses through an unvalidated cast and
 ignores the extra keys.
 
+### The vault sweep's conditional baseline
+
+The vault-wide sweep uses `snapshotMeta` to stop re-downloading baselines a device already holds. It
+runs each chunk in two phases:
+
+- **Probe.** One `POST /sync/crdt/updates/batch` for the chunk with `limit: 1`, asking only whether
+  anything moved. No document is opened, no snapshot is fetched, nothing is decrypted. A note whose
+  baseline is unchanged and whose update list comes back empty is finished here.
+- **Apply.** Only the notes with work take the existing open-document, baseline, apply path, and a
+  note whose baseline the probe proved redundant skips the `GET /sync/crdt/snapshot/:noteId` and
+  resumes its incrementals from the sequence it already applied.
+
+A baseline is skipped only when **both** of these hold:
+
+1. the note's `revision` in `snapshotMeta` equals the revision this session actually merged, and
+2. the sequence this session applied is at or above the note's `sequenceNum` in `snapshotMeta`.
+
+The second condition is not implied by the first. `sequenceNum` is the server's prune watermark, and
+`pruneUpdatesBeforeSnapshot` has already deleted every update at or below it — a pull starting under
+that line is answered with silence rather than an error, so the note would go quietly stale.
+
+Everything else falls through to a fetch: an absent `snapshotMeta` key (an older server), a note the
+server left out of the response, and any note this session holds no merged revision for. A missed
+skip costs one request; a wrong skip costs a note body.
+
+The bookkeeping is per session and in memory, so a rebuilt or re-pathed CRDT store loses it in the
+same operation and the next sweep re-downloads. Nothing is written to disk and no format changes.
+
+Two properties this does **not** change. The sweep stays exhaustive — every note in a chunk is still
+named in the probe, because the sweep is the only channel by which a body-only remote edit reaches a
+device that missed the broadcast; this changes what a note costs, never whether it is visited. And
+the single-note pull path (`GET /sync/crdt/snapshot/:noteId` then `GET /sync/crdt/updates`) stays
+unconditional: it reports whether the server's state was fully merged, and the pending-note replay
+turns that report into a snapshot push, which prunes peers' updates.
+
 Pushing a snapshot is an assertion, not just a write: once the snapshot is stored,
 `pruneUpdatesBeforeSnapshot` deletes every `crdt_updates` row for that note at or below the
 snapshot's sequence number. A snapshot that does not already contain those updates does not merely
