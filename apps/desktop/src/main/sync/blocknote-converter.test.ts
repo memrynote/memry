@@ -1882,6 +1882,81 @@ describe('custom blocks and table cells', () => {
   )
 })
 
+describe('table header rows', () => {
+  // A header row turns the first row's cells into `tableHeader` nodes. Main
+  // owns the schema y-prosemirror reads the shared doc through, and an unknown
+  // node name there is not an error — it is a DELETE that replicates. So the
+  // header row has to be proven to survive the CRDT, not assumed to.
+  function tableBlock(headerRows: number): unknown {
+    const cell = (text: string) => ({
+      type: 'tableCell',
+      content: [{ type: 'text', text, styles: {} }],
+      props: {
+        colspan: 1,
+        rowspan: 1,
+        backgroundColor: 'default',
+        textColor: 'default',
+        textAlignment: 'left'
+      }
+    })
+    return {
+      id: 'tbl',
+      type: 'table',
+      props: {},
+      children: [],
+      content: {
+        type: 'tableContent',
+        columnWidths: [null, null],
+        headerRows,
+        rows: [{ cells: [cell('Name'), cell('Qty')] }, { cells: [cell('Pear'), cell('3')] }]
+      }
+    }
+  }
+
+  function fragmentWithTable(headerRows: number): Y.Doc {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [tableBlock(headerRows)] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    return doc
+  }
+
+  it('keeps the header row through the CRDT and writes it as the GFM header', async () => {
+    // #given a table whose first row is a header
+    const doc = fragmentWithTable(1)
+
+    // #when
+    const markdown = await yDocToMarkdown(doc)
+
+    // #then the header row is the row above the separator, and no phantom row
+    // is bolted on above it
+    expect(markdown).toBe('| Name | Qty |\n| ---- | --- |\n| Pear | 3   |')
+  })
+
+  it('does not treat `tableHeader` as an unrepresentable node', () => {
+    // #given / #when
+    const unknown = findUnrepresentableNodes(fragmentWithTable(1))
+
+    // #then main's schema resolves it, so y-prosemirror will not delete it
+    expect(unknown).toEqual([])
+  })
+
+  it('round-trips a headered table back to the same blocks', async () => {
+    // #given
+    const markdown = await yDocToMarkdown(fragmentWithTable(1))
+
+    // #when
+    const blocks = await markdownToBlocks(markdown!)
+
+    // #then
+    const table = blocks!.find((b) => b.type === 'table')
+    const content = table!.content as unknown as { headerRows?: number; rows: unknown[] }
+    expect(content.headerRows).toBe(1)
+    expect(content.rows).toHaveLength(2)
+  })
+})
+
 /**
  * The same schema `blocknote-converter` builds, in an editor of its own, purely
  * so a test can look at the ProseMirror schema and call the specs directly.

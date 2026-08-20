@@ -45,7 +45,11 @@ import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
 import { getCalloutSlashMenuItem } from './callout-block'
-import { orderSlashMenuItemsByGroup } from './slash-menu-utils'
+import {
+  orderSlashMenuItemsByGroup,
+  withTableHeaderRow,
+  type TableInsertEditor
+} from './slash-menu-utils'
 import { getTaskSlashMenuItem } from './task-block'
 import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
@@ -386,6 +390,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const editor = useCreateBlockNote({
     schema: editorSchema,
     setIdAttribute: true,
+    // Off by default in BlockNote 0.47, which leaves the table handle menu with
+    // no way to make a header row at all — while markdown storage hands every
+    // table one on the way back in.
+    tables: { headers: true },
     uploadFile,
     resolveFileUrl,
     placeholders: {
@@ -1433,10 +1441,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               getItems={async (query) => {
                 // `img` and `picture` already ship as image aliases; `photo` did
                 // not, and is what people actually type.
-                const defaults = getDefaultReactSlashMenuItems(editor).map((item) =>
-                  (item as { key?: string }).key === 'image'
-                    ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
-                    : item
+                const defaults = withTableHeaderRow(
+                  getDefaultReactSlashMenuItems(editor).map((item) =>
+                    (item as { key?: string }).key === 'image'
+                      ? { ...item, aliases: [...(item.aliases ?? []), 'photo'] }
+                      : item
+                  ),
+                  // `updateBlock` is typed against the whole schema union, so a
+                  // helper that only ever writes table content cannot state its
+                  // parameter in terms the editor's own signature accepts.
+                  editor as unknown as TableInsertEditor
                 )
                 // `/pdf` is the same item as `/file` — same insert, same panel —
                 // relabelled, because "attach a PDF" is what most people are
