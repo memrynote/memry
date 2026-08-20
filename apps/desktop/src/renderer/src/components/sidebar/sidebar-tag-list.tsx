@@ -30,6 +30,10 @@ import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useT } from '@memry/i18n/renderer'
+import { SIDEBAR_SORT_DEFAULTS, type SidebarSortMode } from '@memry/contracts/sidebar-sort'
+import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
+import { SidebarSortPicker } from '@/components/sidebar/sidebar-sort-picker'
+import { useSidebarSortLabels } from '@/components/sidebar/use-sidebar-sort-labels'
 
 type TagSortOption = 'manual' | 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
 
@@ -55,6 +59,20 @@ const SORT_ICONS: Record<TagSortOption, React.ReactNode> = {
   'count-asc': <ArrowUpDown className="h-3.5 w-3.5" />,
   'alpha-asc': <ArrowDownAZ className="h-3.5 w-3.5" />,
   'alpha-desc': <ArrowUpAZ className="h-3.5 w-3.5" />
+}
+
+/**
+ * The per-device localStorage preference this section used before sort modes
+ * became a synced, cross-surface setting. Read once to carry a user's existing
+ * choice forward; the key is deliberately NOT deleted, so downgrading to an
+ * older build still finds it.
+ */
+const LEGACY_MODE_BY_OPTION: Record<TagSortOption, SidebarSortMode> = {
+  manual: 'manual',
+  'count-desc': 'count-desc',
+  'count-asc': 'count-asc',
+  'alpha-asc': 'name-asc',
+  'alpha-desc': 'name-desc'
 }
 
 function loadSortPreference(): TagSortOption {
@@ -98,24 +116,25 @@ interface TagGroup {
 }
 
 function compareTreeNodes(
-  sortBy: TagSortOption,
+  sortBy: SidebarSortMode,
   order: Map<string, number>
 ): (a: TagTreeNode, b: TagTreeNode) => number {
   return (a, b) => {
     switch (sortBy) {
-      case 'manual': {
-        const orderA = order.get(a.fullPath) ?? Number.MAX_SAFE_INTEGER
-        const orderB = order.get(b.fullPath) ?? Number.MAX_SAFE_INTEGER
-        return orderA - orderB
-      }
       case 'count-desc':
         return b.totalCount - a.totalCount
       case 'count-asc':
         return a.totalCount - b.totalCount
-      case 'alpha-asc':
+      case 'name-asc':
         return a.name.localeCompare(b.name)
-      case 'alpha-desc':
+      case 'name-desc':
         return b.name.localeCompare(a.name)
+      // 'manual', and any mode this surface does not offer.
+      default: {
+        const orderA = order.get(a.fullPath) ?? Number.MAX_SAFE_INTEGER
+        const orderB = order.get(b.fullPath) ?? Number.MAX_SAFE_INTEGER
+        return orderA - orderB
+      }
     }
   }
 }
@@ -139,7 +158,7 @@ function sortTreeNodes(
 function buildGroupNodes(
   groupTags: HubTag[],
   searchQuery: string,
-  sortBy: TagSortOption
+  sortBy: SidebarSortMode
 ): TagTreeNode[] {
   const filtered = groupTags
     .filter((t) => t.count > 0)
@@ -326,18 +345,24 @@ export function SidebarTagList({
   const [showAllByGroup, setShowAllByGroup] = React.useState<Record<string, boolean>>({})
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
-  const [sortBy, setSortBy] = React.useState<TagSortOption>(loadSortPreference)
+  const { mode: sortBy, setMode: setSortMode, isLoaded: isSortLoaded } = useSidebarSortMode('tags')
+  const sortLabels = useSidebarSortLabels()
+
+  // One-time carry-over of the old per-device preference. Only when the synced
+  // value is still the default: a mode already chosen on another device must
+  // win over whatever this device happened to have in localStorage.
+  React.useEffect(() => {
+    if (!isSortLoaded) return
+    if (sortBy !== SIDEBAR_SORT_DEFAULTS.tags) return
+    const legacy = LEGACY_MODE_BY_OPTION[loadSortPreference()]
+    if (legacy === SIDEBAR_SORT_DEFAULTS.tags) return
+    void setSortMode(legacy)
+  }, [isSortLoaded, sortBy, setSortMode])
   const [expanded, setExpanded] = React.useState<Set<string>>(loadExpandedState)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleSortChange = (value: string): void => {
-    const next = value as TagSortOption
-    setSortBy(next)
-    try {
-      localStorage.setItem(SORT_STORAGE_KEY, next)
-    } catch {
-      /* ignore */
-    }
+    void setSortMode(value as SidebarSortMode)
   }
 
   const toggleSearch = React.useCallback((): void => {
@@ -393,28 +418,15 @@ export function SidebarTagList({
             {searchOpen ? <X className="h-3 w-3" /> : <Search className="h-3 w-3" />}
           </Button>
 
-          <Picker value={sortBy} onValueChange={handleSortChange}>
-            <Picker.Trigger
-              variant="icon"
-              className="h-5 w-5"
-              aria-label={`Sort tags: ${currentSortLabel}`}
-            >
-              <ArrowUpDown className="h-3 w-3" />
-            </Picker.Trigger>
-            <Picker.Content align="end" width={180}>
-              <Picker.List>
-                {SORT_OPTIONS.map((opt) => (
-                  <Picker.Item
-                    key={opt.value}
-                    value={opt.value}
-                    label={opt.label}
-                    icon={SORT_ICONS[opt.value]}
-                    indicator="check"
-                  />
-                ))}
-              </Picker.List>
-            </Picker.Content>
-          </Picker>
+          <SidebarSortPicker
+            surface="tags"
+            mode={sortBy}
+            onModeChange={(next) => handleSortChange(next)}
+            labels={sortLabels.labels}
+            // `common`, not the `notes` namespace tPhaseF is bound to — the
+            // section labels live alongside the sort strings.
+            triggerLabel={sortLabels.triggerLabel(t('phaseF.componentsAppSidebar.tags'), sortBy)}
+          />
         </>
       )
     })

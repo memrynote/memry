@@ -2,6 +2,8 @@ import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { getExtension } from '@memry/shared/file-types'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { FolderInfo } from '../../../preload/index.d'
+import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
+import { compareNotes, compareFolders } from './notes-tree-sort'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderNode, TreeStructure } from '@/lib/virtualized-tree-utils'
 
@@ -120,7 +122,11 @@ export function remapExpandedFolderIds(
 export function buildTreeFromNotes(
   notes: NoteListItem[],
   folders: FolderInfo[],
-  positions: Record<string, number>
+  positions: Record<string, number>,
+  // Defaults to 'manual', which is exactly what this function did before sort
+  // modes existed: stored position first, newest-first (notes) / A→Z (folders)
+  // for anything unpositioned. Callers that pass nothing keep the old order.
+  sortMode: SidebarSortMode = 'manual'
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
@@ -182,19 +188,8 @@ export function buildTreeFromNotes(
     }
   })
 
-  const sortByPosition = (a: NoteListItem, b: NoteListItem): number => {
-    const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
-    const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
-    if (posA !== posB) return posA - posB
-    return b.modified.getTime() - a.modified.getTime()
-  }
-
-  const sortFoldersByPosition = (a: FolderNode, b: FolderNode): number => {
-    const posA = positions[a.path] ?? Number.MAX_SAFE_INTEGER
-    const posB = positions[b.path] ?? Number.MAX_SAFE_INTEGER
-    if (posA !== posB) return posA - posB
-    return a.name.localeCompare(b.name)
-  }
+  const sortByPosition = compareNotes(sortMode, positions)
+  const sortFoldersByPosition = compareFolders<FolderNode>(sortMode, positions)
 
   rootNotes.sort(sortByPosition)
 

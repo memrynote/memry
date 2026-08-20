@@ -51,6 +51,7 @@
     "./search-types": "./src/search-api.ts",
     "./settings-schemas": "./src/settings-schemas.ts",
     "./settings-sync": "./src/settings-sync.ts",
+    "./sidebar-sort": "./src/sidebar-sort.ts",
     "./sync-api": "./src/sync-api.ts",
     "./sync-payloads": "./src/sync-payloads.ts",
     "./tags-api": "./src/tags-api.ts",

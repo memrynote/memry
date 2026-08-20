@@ -411,7 +411,18 @@
       "updateDownloadingPercent": "Downloading {percent}%",
       "updateRestart": "Restart",
       "updateInstallingTitle": "Installing update",
-      "updateInstallingSubtitle": "MemryNote will restart automatically."
+      "updateInstallingSubtitle": "MemryNote will restart automatically.",
+      "sortLabel": "Sort {{section}}: {{mode}}",
+      "sortModeManual": "Manual",
+      "sortModeNameAsc": "Name A → Z",
+      "sortModeNameDesc": "Name Z → A",
+      "sortModeModifiedDesc": "Modified: newest first",
+      "sortModeModifiedAsc": "Modified: oldest first",
+      "sortModeCreatedDesc": "Created: newest first",
+      "sortModeCreatedAsc": "Created: oldest first",
+      "sortModeCountDesc": "Most used",
+      "sortModeCountAsc": "Least used",
+      "sortSaveFailed": "Could not save the sort order"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Resize Day Panel",

@@ -239,6 +239,8 @@ export function createGeneratedRpcApi({
       "set": ((key, value) => invoke("settings:set", { key, value })) as GeneratedRpcApi["settings"]["set"],
       "getJournalSettings": (() => invoke("settings:getJournalSettings")) as GeneratedRpcApi["settings"]["getJournalSettings"],
       "setJournalSettings": ((settings) => invoke("settings:setJournalSettings", settings)) as GeneratedRpcApi["settings"]["setJournalSettings"],
+      "getSidebarSortModes": (() => invoke("settings:getSidebarSortModes")) as GeneratedRpcApi["settings"]["getSidebarSortModes"],
+      "setSidebarSortMode": ((surface, mode) => invoke("settings:setSidebarSortMode", { surface, mode })) as GeneratedRpcApi["settings"]["setSidebarSortMode"],
       "getAISettings": (() => invoke("settings:getAISettings")) as GeneratedRpcApi["settings"]["getAISettings"],
       "setAISettings": ((settings) => invoke("settings:setAISettings", settings)) as GeneratedRpcApi["settings"]["setAISettings"],
       "getVoiceTranscriptionSettings": (() => invoke("settings:getVoiceTranscriptionSettings")) as GeneratedRpcApi["settings"]["getVoiceTranscriptionSettings"],

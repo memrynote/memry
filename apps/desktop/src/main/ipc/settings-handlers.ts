@@ -71,6 +71,18 @@ import {
   sanitizeWeekdayTemplateMap,
   type WeekdayTemplateMap
 } from '../settings/journal-template-keys'
+import {
+  SIDEBAR_SORT_SETTINGS_KEY,
+  readResolvedSidebarSortModes,
+  writeSidebarSortMode
+} from '../settings/sidebar-sort-store'
+import {
+  SIDEBAR_SORT_DEFAULTS,
+  SidebarSortModeSchema,
+  SidebarSortSurfaceSchema,
+  type SidebarSortMode,
+  type SidebarSortSurface
+} from '@memry/contracts/sidebar-sort'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../inbox/review-reminder-constants'
 import { sendTestReviewNotification } from '../inbox/review-notification'
 import { trackMainEvent } from '../telemetry/track'
@@ -527,6 +539,46 @@ export function registerSettingsHandlers(): void {
 
   // Get journal settings
   ipcMain.handle(SettingsChannels.invoke.GET_JOURNAL_SETTINGS, () => getJournalSettings())
+
+  ipcMain.handle(SettingsChannels.invoke.GET_SIDEBAR_SORT_MODES, () => {
+    const db = getDbOrNull()
+    // No vault open yet: hand back the defaults rather than an error, so the
+    // sidebar renders its pre-existing order instead of an empty section.
+    if (!db) return { ...SIDEBAR_SORT_DEFAULTS }
+    return readResolvedSidebarSortModes(db)
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_SIDEBAR_SORT_MODE,
+    (_event, { surface, mode }: { surface: SidebarSortSurface; mode: SidebarSortMode }) => {
+      const db = getDbOrNull()
+      if (!db) {
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+      }
+
+      const parsedSurface = SidebarSortSurfaceSchema.safeParse(surface)
+      const parsedMode = SidebarSortModeSchema.safeParse(mode)
+      if (!parsedSurface.success || !parsedMode.success) {
+        return { success: false, error: 'Invalid sidebar sort surface or mode' }
+      }
+
+      try {
+        const next = writeSidebarSortMode(db, parsedSurface.data, parsedMode.data)
+        broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+          key: SIDEBAR_SORT_SETTINGS_KEY,
+          value: next
+        })
+        trackMainEvent('setting_changed', {
+          surface: 'settings',
+          action: 'changed',
+          dimensions: { setting: `sidebarSort.${parsedSurface.data}` }
+        })
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
 
   // Set journal settings
   ipcMain.handle(

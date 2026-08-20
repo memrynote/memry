@@ -5,6 +5,28 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 
 import { SidebarTagList } from './sidebar-tag-list'
 
+/**
+ * The section's sort mode moved off per-device localStorage onto the synced
+ * settings channel, so these tests drive that channel instead. `storedModes`
+ * stands in for what the vault holds; asserting against it is asserting that
+ * the choice was persisted where another device can see it.
+ */
+const storedModes: Record<string, string> = {}
+
+beforeEach(() => {
+  for (const key of Object.keys(storedModes)) delete storedModes[key]
+  ;(window as unknown as { api: unknown }).api = {
+    settings: {
+      getSidebarSortModes: async () => ({ ...storedModes }),
+      setSidebarSortMode: async (surface: string, mode: string) => {
+        storedModes[surface] = mode
+        return { success: true }
+      }
+    },
+    onSettingsChanged: () => () => {}
+  }
+})
+
 const mocks = vi.hoisted(() => ({
   query: {
     tags: [] as Array<{
@@ -128,13 +150,21 @@ vi.mock('@/components/ui/picker', () => {
     )
   }
 
+  // Spreads the rest, like the real PickerTrigger: callers identify the control
+  // by `data-testid`/`data-sort-mode`, and a stand-in that swallowed them would
+  // make those hooks look broken here while working in the app.
   Picker.Trigger = ({
     children,
-    'aria-label': ariaLabel
+    'aria-label': ariaLabel,
+    variant: _variant,
+    className: _className,
+    ...rest
   }: {
     children: ReactNode
     'aria-label'?: string
-  }) => {
+    variant?: string
+    className?: string
+  } & Record<string, unknown>) => {
     const { open, setOpen } = usePickerCtx()
     return (
       <button
@@ -142,6 +172,7 @@ vi.mock('@/components/ui/picker', () => {
         aria-label={ariaLabel}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
+        {...rest}
       >
         {children}
       </button>
@@ -234,7 +265,7 @@ describe('SidebarTagList', () => {
     // a count-ordered tree; 'manual' (now the default) would order these
     // untagged-sortOrder fixtures alphabetically instead. Pin the sort
     // explicitly rather than depending on whatever the default happens to be.
-    localStorage.setItem('sidebar-tags-sort', 'count-desc')
+    storedModes.tags = 'count-desc'
     mocks.query.tags = [
       { tag: 'work', count: 5, color: 'blue' },
       { tag: 'work/project', count: 3, color: 'green' },
@@ -268,9 +299,9 @@ describe('SidebarTagList', () => {
       color: 'red'
     })
 
-    fireEvent.click(screen.getByLabelText(/sort tags/i))
-    fireEvent.click(screen.getByRole('option', { name: 'A → Z' }))
-    expect(localStorage.getItem('sidebar-tags-sort')).toBe('alpha-asc')
+    fireEvent.click(screen.getByTestId('sidebar-sort-tags'))
+    fireEvent.click(screen.getByRole('option', { name: 'sortModeNameAsc' }))
+    await waitFor(() => expect(storedModes.tags).toBe('name-asc'))
 
     fireEvent.click(screen.getByRole('button', { name: 'Search tags' }))
     const input = screen.getByPlaceholderText('filterTags')
@@ -329,20 +360,41 @@ describe('SidebarTagList', () => {
   })
 
   it('defaults to manual sort', async () => {
-    localStorage.removeItem('sidebar-tags-sort')
     renderSidebarTagList()
     await waitFor(() => {
-      expect(screen.getByLabelText(/sort tags: manual/i)).toBeInTheDocument()
+      expect(screen.getByTestId('sidebar-sort-tags')).toHaveAttribute('data-sort-mode', 'manual')
     })
+  })
+
+  it('carries an older per-device preference over to the synced setting once', async () => {
+    localStorage.setItem('sidebar-tags-sort', 'alpha-desc')
+    renderSidebarTagList()
+    await waitFor(() => expect(storedModes.tags).toBe('name-desc'))
+    // The legacy key survives: downgrading to a build that still reads it must
+    // not find the preference gone.
+    expect(localStorage.getItem('sidebar-tags-sort')).toBe('alpha-desc')
+  })
+
+  it('lets a mode already synced from another device beat the legacy key', async () => {
+    localStorage.setItem('sidebar-tags-sort', 'alpha-desc')
+    storedModes.tags = 'count-desc'
+    renderSidebarTagList()
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar-sort-tags')).toHaveAttribute(
+        'data-sort-mode',
+        'count-desc'
+      )
+    })
+    expect(storedModes.tags).toBe('count-desc')
   })
 
   it('keeps the existing sort options working inside each category', async () => {
     renderSidebarTagList()
     await waitFor(() => {
-      expect(screen.getByLabelText(/sort tags/i)).toBeInTheDocument()
+      expect(screen.getByTestId('sidebar-sort-tags')).toBeInTheDocument()
     })
-    await userEvent.click(screen.getByLabelText(/sort tags/i))
-    await userEvent.click(screen.getByRole('option', { name: /a → z/i }))
+    await userEvent.click(screen.getByTestId('sidebar-sort-tags'))
+    await userEvent.click(screen.getByRole('option', { name: 'sortModeNameAsc' }))
 
     const work = within(screen.getByTestId('tag-group-work'))
     expect(work.getAllByRole('button').map((b) => b.textContent)).toEqual(['meetings', 'okr'])
