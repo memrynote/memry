@@ -82,6 +82,7 @@ import {
   usePasteLinkMenu
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
+import { TableBorderHandles } from './table-border-handles'
 import { PasteLinkMenu } from './paste-link-menu'
 import { handleEditorPaste } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
@@ -1431,6 +1432,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             slashMenu={false}
             emojiPicker={false}
             filePanel={false}
+            // BlockNote anchors its row/column handles with floating-ui beside
+            // the table, never on it. `TableBorderHandles` below draws ours on
+            // the cell borders instead. Turning this off also removes the cell
+            // handle and the add/remove row+column extend buttons — the cell
+            // menu comes back when these bars are wired.
+            tableHandles={false}
           >
             {/* Memry's toolbar on every surface, review or not: BlockNote's stock
               one has no list toggles, so the template editor used to be the odd
@@ -1567,6 +1574,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               shouldOpen={(tr) => !isDateMentionActive(tr)}
             />
           </BlockNoteView>
+
+          <TableBorderHandles containerEl={innerContainerEl} />
 
           {aiEnabled && (
             <TagSuggestionPopover
