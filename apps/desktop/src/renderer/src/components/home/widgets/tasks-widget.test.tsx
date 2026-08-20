@@ -54,7 +54,8 @@ vi.mock('@/lib/task-utils/task-filters', () => ({
 }))
 
 vi.mock('@/lib/task-utils/task-view-helpers', () => ({
-  getFilteredTasks: (input: typeof tasks) => input
+  getFilteredTasks: (input: typeof tasks) => input,
+  getTasksInDueWindow: (input: typeof tasks) => input
 }))
 
 vi.mock('@/contexts/tabs/context', () => ({

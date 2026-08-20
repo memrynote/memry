@@ -32,12 +32,15 @@ describe('resolveTasksFilter', () => {
     expect(resolveTasksFilter({})).toEqual({ kind: 'view', viewId: 'today' })
   })
 
-  it('reads tomorrow / week date ranges', () => {
-    expect(resolveTasksFilter({ dateRange: 'tomorrow' })).toEqual({
-      kind: 'view',
-      viewId: 'tomorrow'
-    })
-    expect(resolveTasksFilter({ dateRange: 'week' })).toEqual({ kind: 'view', viewId: 'week' })
+  it('reads the date ranges the header pill offers', () => {
+    for (const viewId of ['all', 'today', 'tomorrow', 'next7', 'nodue'] as const) {
+      expect(resolveTasksFilter({ dateRange: viewId })).toEqual({ kind: 'view', viewId })
+    }
+  })
+
+  it('maps legacy week / upcoming ranges onto next7', () => {
+    expect(resolveTasksFilter({ dateRange: 'week' })).toEqual({ kind: 'view', viewId: 'next7' })
+    expect(resolveTasksFilter({ dateRange: 'upcoming' })).toEqual({ kind: 'view', viewId: 'next7' })
   })
 
   it('falls back to today for an unknown date range', () => {
@@ -45,7 +48,7 @@ describe('resolveTasksFilter', () => {
   })
 
   it('prefers a saved filter when set', () => {
-    expect(resolveTasksFilter({ savedFilterId: 'sf1', dateRange: 'week' })).toEqual({
+    expect(resolveTasksFilter({ savedFilterId: 'sf1', dateRange: 'next7' })).toEqual({
       kind: 'saved',
       savedFilterId: 'sf1'
     })
@@ -76,11 +79,31 @@ describe('selectTasksForWidget', () => {
     expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
   })
 
-  // The date views are all due-date windows, so undated tasks are invisible in
-  // every one of them. A saved "No due date" filter is the only way the widget
-  // can surface them.
-  it('surfaces undated tasks through a saved no-due-date filter', () => {
+  it('selects every open task for the all view', () => {
+    const result = selectTasksForWidget(tasks, projects, [], { dateRange: 'all' })
+    expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
+  })
+
+  it('spans the next seven days for the next7 view', () => {
+    const result = selectTasksForWidget(tasks, projects, [], { dateRange: 'next7' })
+    expect(result.map((t) => t.id).sort()).toEqual(['next-week', 'today', 'tomorrow'])
+  })
+
+  it('selects only undated tasks for the nodue view', () => {
     const undated = { ...task('undated', 0), dueDate: null }
+    const result = selectTasksForWidget([...tasks, undated], projects, [], { dateRange: 'nodue' })
+    expect(result.map((t) => t.id)).toEqual(['undated'])
+  })
+
+  it('keeps undated tasks out of the due-date views', () => {
+    const undated = { ...task('undated', 0), dueDate: null }
+    for (const dateRange of ['today', 'tomorrow', 'next7']) {
+      const result = selectTasksForWidget([...tasks, undated], projects, [], { dateRange })
+      expect(result.map((t) => t.id)).not.toContain('undated')
+    }
+  })
+
+  it('uses a saved no-due-date filter when present', () => {
     const saved: SavedFilter = {
       id: 'sf-none',
       name: 'No due date',
@@ -91,16 +114,10 @@ describe('selectTasksForWidget', () => {
       starred: false,
       createdAt: new Date()
     }
-
+    const undated = { ...task('undated', 0), dueDate: null }
     const result = selectTasksForWidget([...tasks, undated], projects, [saved], {
       savedFilterId: 'sf-none'
     })
     expect(result.map((t) => t.id)).toEqual(['undated'])
-
-    // …and no date view can: this is the gap the saved filter closes.
-    for (const dateRange of ['today', 'tomorrow', 'week']) {
-      const viewResult = selectTasksForWidget([...tasks, undated], projects, [saved], { dateRange })
-      expect(viewResult.map((t) => t.id)).not.toContain('undated')
-    }
   })
 })

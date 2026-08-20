@@ -4,7 +4,8 @@ import { useSavedFilters } from '@/hooks/use-task-filters'
 import {
   resolveTasksFilter,
   selectTasksForWidget,
-  TASK_WIDGET_VIEWS,
+  TASK_WIDGET_DATE_VIEWS,
+  TASK_WIDGET_NO_DUE_VIEW,
   type TaskWidgetView
 } from '@/lib/home/tasks-widget-filter'
 import type { WidgetComponentProps, WidgetConfigEditorProps } from '@/lib/home/widget-registry'
@@ -19,9 +20,11 @@ import { ChevronDown, Filter } from '@/lib/icons/icon-map'
 import { useT } from '@memry/i18n/renderer'
 
 const VIEW_LABEL_KEYS: Record<TaskWidgetView, string> = {
+  all: 'home.widget.filter.all',
   today: 'home.widget.filter.today',
   tomorrow: 'home.widget.filter.tomorrow',
-  week: 'home.widget.filter.week'
+  next7: 'home.widget.filter.next7',
+  nodue: 'home.widget.filter.noDueDate'
 }
 
 export function TasksHeaderFilter({
@@ -51,7 +54,7 @@ export function TasksHeaderFilter({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {TASK_WIDGET_VIEWS.map((view) => (
+        {TASK_WIDGET_DATE_VIEWS.map((view) => (
           <DropdownMenuItem
             key={view}
             onSelect={() => onChange({ ...config, dateRange: view, savedFilterId: undefined })}
@@ -68,6 +71,18 @@ export function TasksHeaderFilter({
             {filter.name}
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() =>
+            onChange({
+              ...config,
+              dateRange: TASK_WIDGET_NO_DUE_VIEW,
+              savedFilterId: undefined
+            })
+          }
+        >
+          {t(VIEW_LABEL_KEYS[TASK_WIDGET_NO_DUE_VIEW])}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
