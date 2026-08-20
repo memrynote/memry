@@ -21,6 +21,7 @@ import {
   writeMarkdownNote
 } from './markdown.ts'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
+import { resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 
 export interface NoteRecord {
   id: string
@@ -82,6 +83,11 @@ export interface ResolvedNoteRecord {
   fileType: string
 }
 
+export interface ResolvedWikiTargetRecord extends ResolvedNoteRecord {
+  /** The heading `[[Note#Heading]]` addresses, or `null` when it names none. */
+  heading: string | null
+}
+
 interface NoteMetadataRow {
   id: string
   path: string
@@ -105,6 +111,7 @@ export interface NotesService {
   getLinks(idOrPath: string): Promise<NoteLinksResponse>
   previewByTitle(title: string): Promise<NotePreviewRecord | null>
   resolveByTitle(title: string): Promise<ResolvedNoteRecord | null>
+  resolveWikiTarget(target: string): Promise<ResolvedWikiTargetRecord | null>
   setLocalOnly(idOrPath: string, localOnly: boolean): Promise<NoteRecord>
   localOnlyCount(): Promise<{ count: number }>
   delete(idOrPath: string): Promise<boolean>
@@ -460,6 +467,19 @@ export function createNotesService({
         title: row.title,
         fileType: row.fileType ?? 'markdown'
       }
+    },
+
+    /**
+     * Resolve a wiki-link target — `Note`, `Note#Heading` or `Note#^block-id`.
+     *
+     * `resolveByTitle` answers "is there a note with this title" and nothing
+     * else, so `[[Meeting#Decisions]]` misses it and a CLI or agent following
+     * that link gets `null`. This is that lookup with the renderer's
+     * split-first/raw-fallback reading layered on top (#1557).
+     */
+    async resolveWikiTarget(target) {
+      const resolved = await resolveTargetWith(target, (title) => this.resolveByTitle(title))
+      return resolved ? { ...resolved.match, heading: resolved.heading } : null
     },
 
     async setLocalOnly(idOrPath, localOnly) {

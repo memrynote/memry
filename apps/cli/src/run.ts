@@ -327,10 +327,12 @@ async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       )
       return
     case 'resolve':
+      // Heading-aware on purpose: `[[Meeting#Decisions]]` is a link somebody
+      // can paste here, and it must reach `Meeting` (#1557).
       print(
         io,
         parsed.json,
-        await app.notes.resolveByTitle(requireFirst(parsed.positionals, 'note title'))
+        await app.notes.resolveWikiTarget(requireFirst(parsed.positionals, 'note title'))
       )
       return
     case 'links':
@@ -1936,8 +1938,7 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
           parsed.json,
           await app.calendar.bindings.list({
             sourceType: getFlag(parsed.flags, 'source-type') as
-              | CalendarBindingListOptions['sourceType']
-              | undefined,
+              CalendarBindingListOptions['sourceType'] | undefined,
             sourceId: getFlag(parsed.flags, 'source'),
             provider: getFlag(parsed.flags, 'provider'),
             includeArchived: hasFlag(parsed.flags, 'archived')
@@ -2017,7 +2018,9 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
       })
       return
     default:
-      throw new Error('Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete')
+      throw new Error(
+        'Usage: memrynote [--vault <path>] calendar events create|get|list|update|delete'
+      )
   }
 }
 

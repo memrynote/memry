@@ -92,6 +92,18 @@ export interface WikiLinkResolution {
   fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 }
 
+/**
+ * A resolution that read the target as wiki-link grammar, not as a bare title.
+ *
+ * `resolveByTitle` is heading-blind by contract, so `[[Meeting#Decisions]]`
+ * misses it entirely; this reads the note half first and falls back to the raw
+ * string, which is what keeps a note really named `Sprint #4` reachable.
+ */
+export interface WikiLinkTargetResolution extends WikiLinkResolution {
+  /** The heading to scroll to, or `null` when the link names none. */
+  heading: string | null
+}
+
 export interface WikiLinkPreview {
   id: string
   title: string
@@ -429,6 +441,14 @@ export const notesRpc = defineDomain({
     resolveByTitle: defineMethod<(title: string) => Promise<WikiLinkResolution | null>>({
       channel: NotesChannels.invoke.RESOLVE_BY_TITLE,
       params: ['title']
+    }),
+    /**
+     * Resolve `Note`, `Note#Heading` or `Note#^block-id` to the note it names.
+     * Agents follow links with this; `resolveByTitle` answers title questions.
+     */
+    resolveWikiTarget: defineMethod<(target: string) => Promise<WikiLinkTargetResolution | null>>({
+      channel: NotesChannels.invoke.RESOLVE_WIKI_TARGET,
+      params: ['target']
     }),
     previewByTitle: defineMethod<(title: string) => Promise<WikiLinkPreview | null>>({
       channel: NotesChannels.invoke.PREVIEW_BY_TITLE,

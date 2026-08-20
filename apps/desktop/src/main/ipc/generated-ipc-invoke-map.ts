@@ -239,6 +239,7 @@ export interface MainIpcInvokeHandlers {
   "notes:rename-property-option": (...args: [{ propertyName: string; oldValue: string; newValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:reorder": (...args: [{ folderPath: string; notePaths: string[]; }]) => Awaited<{ success: true; } | { success: false; error: string }>
   "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; } | null>>
+  "notes:resolve-wiki-target": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; heading: string | null; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes-crud").Note; }>>
   "notes:reveal-in-finder": (...args: [string]) => Awaited<Promise<void>>
   "notes:set-calendar-property-visibility": (...args: [{ name: string; showOnCalendar: boolean; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>

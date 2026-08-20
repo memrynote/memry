@@ -4,7 +4,8 @@ import {
   isBlockReference,
   normalizeHeading,
   wikiLinkLabel,
-  replaceWikiLinks
+  replaceWikiLinks,
+  resolveWikiTarget
 } from './wiki-target'
 
 describe('splitWikiTarget', () => {
@@ -114,5 +115,91 @@ describe('replaceWikiLinks', () => {
     expect(replaceWikiLinks('an [[ unclosed and a [link](url)')).toBe(
       'an [[ unclosed and a [link](url)'
     )
+  })
+})
+
+describe('resolveWikiTarget', () => {
+  const meeting = { id: 'note_meeting', title: 'Meeting' }
+  const sprint = { id: 'note_sprint', title: 'Sprint #4' }
+
+  /** A title lookup over a fixed set of notes, recording what it was asked. */
+  function vault(...notes: Array<{ id: string; title: string }>) {
+    const asked: string[] = []
+    const lookup = async (title: string) => {
+      asked.push(title)
+      return notes.find((note) => note.title === title) ?? null
+    }
+    return { asked, lookup }
+  }
+
+  it('reaches the note half of `Note#Heading` and reports the heading', async () => {
+    const { lookup } = vault(meeting)
+    expect(await resolveWikiTarget('Meeting#Decisions', lookup)).toEqual({
+      match: meeting,
+      heading: 'Decisions'
+    })
+  })
+
+  it('falls back to the raw string, so a note really named `Sprint #4` wins', async () => {
+    const { asked, lookup } = vault(sprint)
+    expect(await resolveWikiTarget('Sprint #4', lookup)).toEqual({ match: sprint, heading: null })
+    expect(asked).toEqual(['Sprint', 'Sprint #4'])
+  })
+
+  it('prefers the split match when both halves name a note', async () => {
+    const { lookup } = vault(sprint, { id: 'note_sprint_only', title: 'Sprint' })
+    const resolved = await resolveWikiTarget('Sprint #4', lookup)
+    expect(resolved?.match.id).toBe('note_sprint_only')
+    expect(resolved?.heading).toBe('4')
+  })
+
+  it('never looks a title up twice when the target carries no `#`', async () => {
+    const { asked, lookup } = vault(meeting)
+    expect(await resolveWikiTarget('Meeting', lookup)).toEqual({ match: meeting, heading: null })
+    expect(asked).toEqual(['Meeting'])
+  })
+
+  it('opens the note of a block reference, with nothing to scroll to', async () => {
+    const { lookup } = vault(meeting)
+    expect(await resolveWikiTarget('Meeting#^abc123', lookup)).toEqual({
+      match: meeting,
+      heading: null
+    })
+  })
+
+  it('reports no heading when the raw string is what matched', async () => {
+    const { lookup } = vault({ id: 'note_hash', title: 'Meeting#Decisions' })
+    const resolved = await resolveWikiTarget('Meeting#Decisions', lookup)
+    expect(resolved?.heading).toBeNull()
+  })
+
+  it('resolves a nested heading to its last segment', async () => {
+    const { lookup } = vault(meeting)
+    expect((await resolveWikiTarget('Meeting#Q3#Decisions', lookup))?.heading).toBe('Decisions')
+  })
+
+  it('leaves a self-link `[[#Heading]]` to the caller that knows the note', async () => {
+    const { asked, lookup } = vault(meeting)
+    expect(await resolveWikiTarget('#Decisions', lookup)).toBeNull()
+    expect(asked).toEqual([])
+  })
+
+  it('resolves nothing for a blank target, without a lookup', async () => {
+    const { asked, lookup } = vault(meeting)
+    expect(await resolveWikiTarget('   ', lookup)).toBeNull()
+    expect(asked).toEqual([])
+  })
+
+  it('returns null when neither half names a note', async () => {
+    const { lookup } = vault(meeting)
+    expect(await resolveWikiTarget('Missing#Heading', lookup)).toBeNull()
+  })
+
+  it('accepts a synchronous lookup', async () => {
+    expect(
+      await resolveWikiTarget('Meeting#Decisions', (title) =>
+        title === 'Meeting' ? meeting : undefined
+      )
+    ).toEqual({ match: meeting, heading: 'Decisions' })
   })
 })

@@ -283,6 +283,39 @@ describe('notes-handlers extra coverage', () => {
     await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
   })
 
+  // #1557: `resolveByTitle` is heading-blind by contract, so an agent following
+  // `[[Meeting#Decisions]]` used to get `null`.
+  it('resolves a heading target to its note half, and a `#` title to itself', async () => {
+    const meeting = { id: 'note-m', path: 'Meeting.md', title: 'Meeting', fileType: 'markdown' }
+    mocks.resolveNoteByTitle.mockImplementation((_db: unknown, title: string) =>
+      title === 'Meeting' ? meeting : undefined
+    )
+
+    expect(await invoke(NotesChannels.invoke.RESOLVE_WIKI_TARGET, 'Meeting#Decisions')).toEqual({
+      id: 'note-m',
+      path: 'Meeting.md',
+      title: 'Meeting',
+      fileType: 'markdown',
+      heading: 'Decisions'
+    })
+
+    const sprint = { id: 'note-s', path: 'Sprint #4.md', title: 'Sprint #4', fileType: null }
+    mocks.resolveNoteByTitle.mockImplementation((_db: unknown, title: string) =>
+      title === 'Sprint #4' ? sprint : undefined
+    )
+
+    expect(await invoke(NotesChannels.invoke.RESOLVE_WIKI_TARGET, 'Sprint #4')).toEqual({
+      id: 'note-s',
+      path: 'Sprint #4.md',
+      title: 'Sprint #4',
+      fileType: 'markdown',
+      heading: null
+    })
+
+    mocks.resolveNoteByTitle.mockImplementation(() => undefined)
+    await expect(invoke(NotesChannels.invoke.RESOLVE_WIKI_TARGET, 'Missing#H')).resolves.toBeNull()
+  })
+
   it('handles property definition and option mutation branches', async () => {
     mocks.createPropertyDefinitionRecord.mockReturnValue({ name: 'Rating', type: 'number' })
 

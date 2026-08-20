@@ -278,6 +278,22 @@ test('runs core commands against a vault and prints JSON output', async () => {
   assert.equal(noteResolveCode, 0)
   assert.equal((JSON.parse(stdout.at(-1) ?? '{}') as { path?: string }).path, linkedNote.path)
 
+  const noteResolveHeadingCode = await runCli(
+    ['--vault', vaultPath, '--json', 'notes', 'resolve', 'Linked Note#Details'],
+    {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    }
+  )
+  assert.equal(noteResolveHeadingCode, 0)
+  // #1557: `[[Note#Heading]]` used to resolve to nothing at all here.
+  const resolvedHeading = JSON.parse(stdout.at(-1) ?? '{}') as {
+    path?: string
+    heading?: string | null
+  }
+  assert.equal(resolvedHeading.path, linkedNote.path)
+  assert.equal(resolvedHeading.heading, 'Details')
+
   const noteLinksCode = await runCli(
     ['--vault', vaultPath, '--json', 'notes', 'links', note.id ?? ''],
     {
