@@ -53,7 +53,16 @@ const SEL = {
   // the menu exposes a destructive "Remove" item.
   widgetMenu: '[data-testid="widget-menu"]',
   // Home tab in the main tab strip (regular-tab.tsx sets nav-home on the home tab)
-  homeTab: '[data-testid="nav-home"]'
+  homeTab: '[data-testid="nav-home"]',
+  // Board manager: a dialog opened from the switcher's "Manage boards" item. It owns
+  // rename (inline field), reorder (dnd-kit drag handle) and delete.
+  manageBoards: '[data-testid="home-layout-manage"]',
+  manager: '[data-testid="board-manager"]',
+  managerRow: '[data-testid="board-manager-row"]',
+  managerDrag: '[data-testid="board-manager-drag"]',
+  managerRename: '[data-testid="board-manager-rename"]',
+  managerNameInput: '[data-testid="board-manager-name-input"]',
+  managerDelete: '[data-testid="board-manager-delete"]'
 }
 
 // i18n English strings (packages/i18n/src/locales/en/common.json → "home")
@@ -195,6 +204,26 @@ async function selectBoard(page, boardId) {
   await item.scrollIntoViewIfNeeded()
   await item.click()
   await expect(boardItems(page).first()).toBeHidden({ timeout: 20000 })
+}
+
+/** Open the board manager dialog from the switcher dropdown. */
+async function openBoardManager(page) {
+  await openSwitcher(page)
+  await page.locator(SEL.manageBoards).click()
+  await expect(page.locator(SEL.manager)).toBeVisible({ timeout: 20000 })
+  await expect(page.locator(SEL.managerRow).first()).toBeVisible({ timeout: 20000 })
+}
+
+/** Close the board manager dialog. */
+async function closeBoardManager(page) {
+  await page.keyboard.press('Escape')
+  await expect(page.locator(SEL.manager)).toBeHidden({ timeout: 20000 })
+}
+
+/** Board ids ordered by their persisted position. */
+async function boardIdsInOrder(page) {
+  const boards = await listBoards(page)
+  return [...boards].sort((a, b) => a.position - b.position).map((b) => b.id)
 }
 
 /** The id of the currently active board, read from the data DB + localStorage. */
@@ -380,11 +409,100 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
     await expect(page.locator(SEL.switcher)).toContainText(first.name, { timeout: 20000 })
   })
 
-  test.skip('B7: FUTURE — rename / delete / reorder boards', async () => {
-    // Plan 1 ships only board select + create. useHomeBoards exposes
-    // renameBoard/deleteBoard/reorderBoards, but board-switcher.tsx wires
-    // neither rename, delete, nor reorder controls. Enable once the switcher UI
-    // exposes those actions.
+  test('B7: renaming a board from the manager persists and re-labels the switcher', async ({
+    page
+  }) => {
+    await ready(page)
+    await waitForSeed(page)
+
+    const [board] = await listBoards(page)
+    await openBoardManager(page)
+
+    const row = page.locator(`${SEL.managerRow}[data-board-id="${board.id}"]`)
+    await row.locator(SEL.managerRename).click()
+
+    // The field is opened from a Radix menu selection; a menu restores focus to its
+    // trigger when its content unmounts (~150ms later), which would blur the field
+    // and commit an unchanged name. jsdom cannot see that — assert focus survives.
+    const input = page.locator(SEL.managerNameInput)
+    await expect(input).toBeFocused({ timeout: 20000 })
+    await page.waitForTimeout(600)
+    await expect(input).toBeVisible()
+    await expect(input).toBeFocused()
+
+    await input.fill('Planning')
+    await page.keyboard.press('Enter')
+
+    await expect
+      .poll(async () => (await listBoards(page)).find((b) => b.id === board.id)?.name, {
+        timeout: 20000
+      })
+      .toBe('Planning')
+
+    await closeBoardManager(page)
+    await expect(page.locator(SEL.switcher)).toContainText('Planning', { timeout: 20000 })
+
+    // And it survives a reload — the rename went to the DB, not just local state.
+    await page.reload()
+    await ready(page)
+    await expect(page.locator(SEL.switcher)).toContainText('Planning', { timeout: 20000 })
+  })
+
+  test('B8: dragging a row in the manager reorders the boards', async ({ page }) => {
+    await ready(page)
+    await waitForSeed(page)
+
+    await createBoard(page)
+    await expect.poll(async () => (await listBoards(page)).length, { timeout: 20000 }).toBe(2)
+
+    const before = await boardIdsInOrder(page)
+    await openBoardManager(page)
+
+    const handle = page
+      .locator(`${SEL.managerRow}[data-board-id="${before[1]}"] ${SEL.managerDrag}`)
+      .first()
+    const target = page.locator(`${SEL.managerRow}[data-board-id="${before[0]}"]`).first()
+    const from = await handle.boundingBox()
+    const to = await target.boundingBox()
+
+    // dnd-kit needs a pointer press, movement past its 6px activation distance, and
+    // intermediate moves before the drop lands.
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 - 12, { steps: 5 })
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 - 4, { steps: 10 })
+    await page.mouse.up()
+
+    await expect
+      .poll(async () => (await boardIdsInOrder(page)).join(','), { timeout: 20000 })
+      .toBe([before[1], before[0]].join(','))
+
+    await closeBoardManager(page)
+    await page.reload()
+    await ready(page)
+    expect((await boardIdsInOrder(page)).join(',')).toBe([before[1], before[0]].join(','))
+  })
+
+  test('B9: deleting a board from the manager removes it', async ({ page }) => {
+    await ready(page)
+    await waitForSeed(page)
+
+    await createBoard(page)
+    await expect.poll(async () => (await listBoards(page)).length, { timeout: 20000 }).toBe(2)
+
+    const boards = await listBoards(page)
+    const doomed = boards.find((b) => b.name !== 'Home')
+    await openBoardManager(page)
+    await page
+      .locator(`${SEL.managerRow}[data-board-id="${doomed.id}"] ${SEL.managerDelete}`)
+      .click()
+
+    await expect
+      .poll(async () => (await listBoards(page)).map((b) => b.id), { timeout: 20000 })
+      .not.toContain(doomed.id)
+
+    // The last remaining board cannot be deleted.
+    await expect(page.locator(SEL.managerDelete)).toBeDisabled({ timeout: 20000 })
   })
 })
 

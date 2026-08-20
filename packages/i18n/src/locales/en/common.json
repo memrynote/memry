@@ -733,7 +733,13 @@
       "deleteAria": "Delete layout",
       "newAria": "New board",
       "newName": "New board",
-      "defaultName": "Home"
+      "defaultName": "Home",
+      "manage": "Manage boards",
+      "manageTitle": "Manage boards",
+      "manageDescription": "Rename, reorder, or delete your Home boards.",
+      "renameAria": "Rename board",
+      "reorderAria": "Reorder board",
+      "nameLabel": "Board name"
     },
     "greeting": {
       "morning": "Good morning",
