@@ -62,13 +62,14 @@ import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
+import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type DropPosition = 'before' | 'after' | 'inside'
+export type { DropPosition }
 
 export type MoveOperation = {
   draggedId: string
@@ -295,7 +296,7 @@ interface FolderRowProps {
   onBulkDelete?: () => void
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
-  onDragOver: (e: React.DragEvent, itemId: string, hasChildren: boolean) => void
+  onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
   folderTemplateName?: string
@@ -391,9 +392,12 @@ function FolderRow({
 
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
-      onDragOver(e, item.id, item.hasChildren)
+      // `true` regardless of `item.hasChildren` — an empty folder is still a
+      // folder, and reading emptiness here is what made a newly created one
+      // refuse every drop until it had a child.
+      onDragOver(e, item.id, true)
     },
-    [item.id, item.hasChildren, onDragOver]
+    [item.id, onDragOver]
   )
 
   return (
@@ -616,7 +620,7 @@ interface NoteRowProps {
   onBulkDelete?: () => void
   onDragStart: (e: React.DragEvent, itemId: string) => void
   onDragEnd: () => void
-  onDragOver: (e: React.DragEvent, itemId: string, hasChildren: boolean) => void
+  onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
 }
@@ -1168,7 +1172,7 @@ export function VirtualizedNotesTree({
   }, [])
 
   const handleDragOver = useCallback(
-    (e: React.DragEvent, itemId: string, hasChildren: boolean) => {
+    (e: React.DragEvent, itemId: string, canDropInside: boolean) => {
       // A file coming from outside the app is not a reorder — the sidebar's file
       // drop zone handles it, and a before/after indicator would lie about it.
       if (e.dataTransfer.types.includes('Files')) return
@@ -1178,18 +1182,7 @@ export function VirtualizedNotesTree({
       e.dataTransfer.dropEffect = 'move'
 
       const rect = e.currentTarget.getBoundingClientRect()
-      const y = e.clientY - rect.top
-      const height = rect.height
-      const threshold = height / 3
-
-      let position: DropPosition
-      if (y < threshold) {
-        position = 'before'
-      } else if (y > height - threshold) {
-        position = 'after'
-      } else {
-        position = hasChildren ? 'inside' : 'after'
-      }
+      const position = resolveDropPosition(e.clientY - rect.top, rect.height, canDropInside)
 
       setDragState((prev) => ({
         ...prev,
