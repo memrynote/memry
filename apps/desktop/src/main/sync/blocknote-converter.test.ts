@@ -2422,3 +2422,130 @@ describe('toggle blocks survive the markdown round-trip (#1643)', () => {
     expect(await rewrite(markdown)).toBe(markdown)
   })
 })
+
+/**
+ * #1639 — a cell's colour is the one colour a note could not keep.
+ *
+ * BlockNote holds it in the cell's own props and GFM has nowhere to put it, so
+ * `blocksToMarkdownLossy` writes `| a | b |` and the colour is gone on the next
+ * open. Enabling the cell colour menu without this would have shipped a control
+ * whose result vanished on save — the #1643 bug class, on a new surface.
+ *
+ * These drive the real ServerBlockNoteEditor through markdown → Y.Doc →
+ * markdown, which is the path that writes the vault file for a synced note.
+ */
+describe('table cell colours survive the markdown round trip (#1639)', () => {
+  const roundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const blocksToMd = async (blocks: NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>) => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    blocksToYFragment(blocks, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+
+  const cellsOf = (block: unknown) =>
+    (block as { content: { rows: Array<{ cells: Array<{ props: Record<string, string> }> }> } })
+      .content.rows
+
+  it('leaves a table nobody has coloured byte-identical', async () => {
+    // #given the tables already in every vault
+    const canonical = await roundTrip(TABLE_MD)
+
+    // #then no marker is written for them…
+    expect(canonical).not.toContain('table-colors')
+    // …and a second pass changes nothing, which is what write-back compares
+    expect(await roundTrip(canonical!)).toBe(canonical)
+  })
+
+  it('writes a coloured cell as a marker and reads it back onto the same cell', async () => {
+    // #given a table whose second-row first cell was coloured from the cell menu
+    const blocks = await markdownToBlocks(TABLE_MD)
+    Object.assign(cellsOf(blocks![0])[1].cells[0].props, {
+      backgroundColor: 'red',
+      textColor: 'blue'
+    })
+
+    // #when it is saved
+    const saved = await blocksToMd(blocks!)
+
+    // #then the colour is on disk, in front of the table it belongs to
+    expect(saved).toContain(
+      '<!-- table-colors:{"1:0":{"textColor":"blue","backgroundColor":"red"}} -->'
+    )
+    expect(saved).toContain('| Ship')
+
+    // #and reading the note back puts it on the cell it came from
+    const reparsed = await markdownToBlocks(saved!)
+    expect(cellsOf(reparsed![0])[1].cells[0].props).toMatchObject({
+      backgroundColor: 'red',
+      textColor: 'blue'
+    })
+    expect(cellsOf(reparsed![0])[0].cells[0].props).toMatchObject({
+      backgroundColor: 'default',
+      textColor: 'default'
+    })
+
+    // #and the second save is byte-identical to the first
+    expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+
+  it('keeps a table-level colour and its cell colours on separate marker lines', async () => {
+    // #given both colour paths used on one table
+    const blocks = await markdownToBlocks(TABLE_MD)
+    ;(blocks![0].props as Record<string, string>).textColor = 'green'
+    Object.assign(cellsOf(blocks![0])[0].cells[1].props, { backgroundColor: 'yellow' })
+
+    // #when
+    const saved = await blocksToMd(blocks!)
+
+    // #then the block marker comes first, the cell marker second
+    expect(saved!.split('\n').slice(0, 2)).toEqual([
+      '<!-- colors:{"textColor":"green"} -->',
+      '<!-- table-colors:{"0:1":{"backgroundColor":"yellow"}} -->'
+    ])
+
+    // #and both survive the reopen, together
+    const reparsed = await markdownToBlocks(saved!)
+    expect(reparsed![0].props).toMatchObject({ textColor: 'green' })
+    expect(cellsOf(reparsed![0])[0].cells[1].props).toMatchObject({ backgroundColor: 'yellow' })
+    expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+
+  it('ignores a marker naming a cell the table no longer has', async () => {
+    // #given a note edited by hand in another editor: the row the marker names
+    // was deleted, the marker was not
+    const md = `<!-- table-colors:{"7:3":{"backgroundColor":"red"}} -->\n${TABLE_MD}`
+
+    // #when
+    const blocks = await markdownToBlocks(md)
+
+    // #then the table still parses, and no marker is written back for it
+    expect(blocks![0].type).toBe('table')
+    expect(await blocksToMd(blocks!)).not.toContain('table-colors')
+  })
+
+  // The other half of #1639: the report was "no formatting in tables at all".
+  // Marks inside a cell need no marker — markdown carries them natively — and
+  // this says so, so it is not rediscovered as a bug the next time.
+  it('round-trips bold and italic inside a cell without any marker', async () => {
+    // #given
+    const md = ['| Name | Status |', '| --- | --- |', '| **Ship** | *Done* |'].join('\n')
+
+    // #when
+    const out = await roundTrip(md)
+
+    // #then
+    expect(out).toContain('**Ship**')
+    expect(out).toContain('*Done*')
+    expect(out).not.toContain('table-colors')
+    expect(await roundTrip(out!)).toBe(out)
+  })
+})

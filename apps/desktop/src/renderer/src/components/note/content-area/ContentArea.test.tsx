@@ -554,6 +554,18 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.blockNoteOptions.tables).toMatchObject({ headers: true })
   })
 
+  // Same default, same consequence: BlockNote hides the cell colour menu unless
+  // both flags are on, which left a table the one place in a note where colour
+  // could not be reached (#1639).
+  it('enables the table cell colour menu', () => {
+    render(<ContentArea noteId="note-1" />)
+
+    expect(contentAreaMocks.blockNoteOptions.tables).toMatchObject({
+      cellBackgroundColor: true,
+      cellTextColor: true
+    })
+  })
+
   // The signed-out clobber: with no session the editor was never bound to a
   // Y.Doc, so keystrokes reached markdown alone and the sign-in that rebuilt the
   // doc from the server wrote it back over them. The local doc is the editor's

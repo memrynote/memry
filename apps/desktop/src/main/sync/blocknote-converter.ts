@@ -23,10 +23,16 @@ import {
 } from '@memry/shared/task-block'
 import {
   type BlockColors,
+  type TableCellColors,
+  applyTableCellColors,
+  extractTableCellColors,
   BLOCK_COLORS_LINE_REGEX,
+  TABLE_CELL_COLORS_LINE_REGEX,
   hasNonDefaultColors,
   parseBlockColorsMarker,
-  serializeBlockColorsMarker
+  parseTableCellColorsMarker,
+  serializeBlockColorsMarker,
+  serializeTableCellColorsMarker
 } from '@memry/shared/block-colors'
 import {
   applyInlineColorTokens,
@@ -508,6 +514,7 @@ async function parseContentWithColorMarkers(
   const blocks: Block[] = []
   let buffer: string[] = []
   let pendingColors: BlockColors | null = null
+  let pendingTableColors: TableCellColors | null = null
 
   const flushBuffer = async (): Promise<void> => {
     if (buffer.length === 0) return
@@ -515,7 +522,11 @@ async function parseContentWithColorMarkers(
     if (pendingColors && parsed[0]) {
       parsed[0].props = { ...parsed[0].props, ...pendingColors }
     }
+    if (pendingTableColors && parsed[0]) {
+      applyTableCellColors(parsed[0].content, pendingTableColors)
+    }
     pendingColors = null
+    pendingTableColors = null
     blocks.push(...parsed)
     buffer = []
   }
@@ -540,10 +551,23 @@ async function parseContentWithColorMarkers(
       }
     }
 
+    // Same rule, one level down: the colors of the individual cells of the
+    // table that follows. `flushBuffer` returns early on an empty buffer, so
+    // the two markers can sit on consecutive lines without clearing each other.
+    if (TABLE_CELL_COLORS_LINE_REGEX.test(trimmed)) {
+      const cellColors = parseTableCellColorsMarker(trimmed)
+      if (cellColors) {
+        await flushBuffer()
+        pendingTableColors = cellColors
+        continue
+      }
+    }
+
     const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
     if (marker) {
       await flushBuffer()
       pendingColors = null
+      pendingTableColors = null
       blocks.push(marker)
       continue
     }
@@ -623,6 +647,22 @@ function parseHttpUrl(url: string): URL | null {
   }
 }
 
+/**
+ * The marker lines a block needs in front of it to keep the colors markdown
+ * cannot carry: its own text/background color, and — for a table — the colors
+ * of its individual cells. Empty for everything else, which is what keeps the
+ * bytes of every note without a colored block exactly as they were.
+ */
+function colorMarkerLines(block: Block): string[] {
+  const lines: string[] = []
+  if (hasNonDefaultColors(block.props as BlockColors)) {
+    lines.push(serializeBlockColorsMarker(block.props as BlockColors))
+  }
+  const cellColors = extractTableCellColors(block.content)
+  if (cellColors) lines.push(serializeTableCellColorsMarker(cellColors))
+  return lines
+}
+
 async function blocksToMarkdownPreserving(
   editor: ServerBlockNoteEditor,
   blocks: Block[]
@@ -647,6 +687,8 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
+    const colorMarkers = colorMarkerLines(block)
+
     if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
       // `- [ ] … {task:id}` line ourselves. Subtasks are kept on the immediately
@@ -671,7 +713,7 @@ async function blocksToMarkdownPreserving(
         contentGroup = []
       }
       emptyCount++
-    } else if (hasNonDefaultColors(block.props as BlockColors)) {
+    } else if (colorMarkers.length > 0) {
       if (contentGroup.length > 0) {
         const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
@@ -684,7 +726,7 @@ async function blocksToMarkdownPreserving(
       const blockMd = await serializeBlocks(editor, [block] as PartialBlock[])
       segments.push({
         type: 'content',
-        text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
+        text: `${colorMarkers.join('\n')}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
