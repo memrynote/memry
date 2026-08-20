@@ -1,5 +1,6 @@
 import * as Y from 'yjs'
 import fsp from 'fs/promises'
+import { randomUUID } from 'crypto'
 import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -15,6 +16,11 @@ import {
   resetWritebackState
 } from './crdt-writeback'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
+import {
+  readSnapshotWatermark,
+  writeSnapshotWatermark,
+  type CrdtSnapshotWatermark
+} from './crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
 import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
@@ -98,6 +104,8 @@ export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
   private openLocks = new Map<string, Promise<Y.Doc>>()
   private persistence: CrdtPersistence | null = null
+  /** See `storeId`. Minted on every successful open, dropped on `destroy()`. */
+  private storeIdentity: string | null = null
   private persistenceReady = false
   private persistenceInitPromise: Promise<void> | null = null
   private updateQueue: CrdtUpdateQueue | null = null
@@ -187,6 +195,12 @@ export class CrdtProvider {
     // Preflight, quarantine and probe live in crdt-persistence.ts; null means
     // the store could not be trusted and this provider runs in-memory.
     this.persistence = await openCrdtPersistence(target.storagePath)
+    // Minted per successful open, never derived from the path: two opens of the
+    // same directory are still two store lifetimes, and anything holding state
+    // that describes the first one must not carry it into the second. A store
+    // that could not be opened leaves this null, which is what makes in-memory
+    // mode read as "no store" rather than as "an empty one".
+    this.storeIdentity = this.persistence ? randomUUID() : null
     this.persistenceReady = true
     recordSessionPersistenceOutcome(this.persistence !== null)
 
@@ -214,6 +228,64 @@ export class CrdtProvider {
    */
   hasPersistence(): boolean {
     return this.persistence !== null
+  }
+
+  /**
+   * Opaque identity of the store this provider currently holds open, or `null`
+   * when it holds none — no vault yet, in-memory mode, or after `destroy()`.
+   *
+   * It exists so that anything caching state *derived from* the store can tell
+   * that the store underneath it changed. The durable snapshot watermarks live
+   * inside the store and so cannot outlive it, but the sweep also keeps them in
+   * memory for the length of a pass, and that copy has no such guarantee: a
+   * vault switch, a quarantine-and-reopen or a re-path replaces the store while
+   * the process keeps running. Comparing this value is how that copy gets
+   * dropped in the same operation. A fresh id after a benign reopen costs
+   * nothing — the watermarks are re-read from the store that just opened.
+   */
+  get storeId(): string | null {
+    return this.persistence ? this.storeIdentity : null
+  }
+
+  /**
+   * This note's persisted snapshot watermark, or `null` when there is none to
+   * act on.
+   *
+   * Read through the store handle and nowhere else, which is the point: no
+   * store, no watermark. `null` means *unknown*, and every caller must answer an
+   * unknown with a fetch — a store written by a build that predates this key
+   * lands here, and so does a read that failed.
+   */
+  async getSnapshotWatermark(noteId: string): Promise<CrdtSnapshotWatermark | null> {
+    const persistence = this.persistence
+    if (!persistence) return null
+    try {
+      return await readSnapshotWatermark(persistence, noteId)
+    } catch (err) {
+      // A watermark that cannot be read is a watermark that does not exist, and
+      // that answer only ever costs one extra snapshot GET.
+      log.warn('Could not read the persisted CRDT snapshot watermark', { noteId, error: err })
+      return null
+    }
+  }
+
+  /**
+   * Record this note's snapshot watermark in the store.
+   *
+   * Called after the bytes it describes are already on their way into the same
+   * LevelDB: `applyRemoteUpdate` hands the update to `storeUpdate` before this
+   * runs, and y-leveldb serialises its transactions, so the document write is
+   * queued ahead of the meta write. A crash between them loses the watermark and
+   * keeps the document, which is the direction this whole feature must fail in.
+   */
+  async putSnapshotWatermark(noteId: string, watermark: CrdtSnapshotWatermark): Promise<void> {
+    const persistence = this.persistence
+    if (!persistence) return
+    try {
+      await writeSnapshotWatermark(persistence, noteId, watermark)
+    } catch (err) {
+      log.warn('Could not persist the CRDT snapshot watermark', { noteId, error: err })
+    }
   }
 
   /**
@@ -595,6 +667,10 @@ export class CrdtProvider {
       }
       this.persistence = null
     }
+    // Dropped with the store, in the same operation. Anything still holding
+    // watermarks read out of that store now sees a different `storeId` and has
+    // to throw its copy away — see the getter.
+    this.storeIdentity = null
     this.persistenceReady = false
 
     this.openLocks.clear()

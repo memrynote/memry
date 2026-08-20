@@ -615,8 +615,24 @@ Everything else falls through to a fetch: an absent `snapshotMeta` key (an older
 server left out of the response, and any note this session holds no merged revision for. A missed
 skip costs one request; a wrong skip costs a note body.
 
-The bookkeeping is per session and in memory, so a rebuilt or re-pathed CRDT store loses it in the
-same operation and the next sweep re-downloads. Nothing is written to disk and no format changes.
+The bookkeeping — `{ appliedSequence, snapshotRevision }` per note, the **snapshot watermark** — is
+persisted **inside the per-vault CRDT store**, so the warm path survives an app restart and a fresh
+sign-in rather than paying a full cold sweep on every launch. It is a y-leveldb document meta key,
+which puts it in the same LevelDB, in the same directory, behind the same handle as the note's
+updates: there is no way to read a watermark without the store that holds the document it describes.
+
+That location is forced, not chosen. A watermark that outlives its document makes the sweep skip
+that baseline **forever** against a body that never had it. Because a meta key sits inside the key
+range `clearDocument` wipes, purging a note drops its watermark in the same operation; quarantining,
+rebuilding or re-pathing the store moves or destroys every watermark with every document; and a
+store that could not be opened at all leaves the provider in memory-only mode with no handle to read
+a watermark through. The watermark is never written for a snapshot that was not actually received —
+`GET /sync/crdt/snapshot/:noteId` answers `null` when the D1 row exists but its R2 blob is gone.
+
+The key is additive. A store written by a build that predates it has no record, which reads as
+**unknown → fetch**, never as "sequence 0 → skip", so the first sweep on such a store costs exactly
+what it cost before. A newer store read by an older build is inert: the older build never asks for
+the key. No protocol change, no D1 schema change, no IPC contract change.
 
 Two properties this does **not** change. The sweep stays exhaustive — every note in a chunk is still
 named in the probe, because the sweep is the only channel by which a body-only remote edit reaches a

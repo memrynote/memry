@@ -21,6 +21,15 @@ export interface CrdtPersistence {
   destroy(): Promise<void> | void
   storeUpdate(noteId: string, update: Uint8Array): Promise<void>
   flushDocument(noteId: string): Promise<void>
+  /**
+   * y-leveldb's per-document metadata, keyed under `['v1', noteId, 'meta', …]`
+   * — inside the range `clearDocument` wipes, so anything stored here is
+   * dropped with the document rather than surviving it. That is what makes it
+   * the only correct home for the snapshot watermark; see
+   * `crdt-snapshot-watermark.ts`.
+   */
+  getMeta(noteId: string, metaKey: string): Promise<unknown>
+  setMeta(noteId: string, metaKey: string, value: unknown): Promise<void>
 }
 
 /**
