@@ -238,6 +238,29 @@ describe('pasting into a table cell', () => {
     expect(calls).toEqual([{ prioritizeMarkdownOverHTML: false, plainTextAsMarkdown: false }])
   })
 
+  it('defers to the default handler when the editor cannot answer', () => {
+    // A paste landing mid-teardown: `transact` has no view to read a selection
+    // from. That must not escape into the DOM paste handler, which would take
+    // pasting down with it — the answer is simply "not in a cell".
+    const tornDownEditor = {
+      transact: () => {
+        throw new Error('editor view is gone')
+      }
+    } as never as BlockNoteEditor
+
+    expect(isSelectionInTableCell(tornDownEditor)).toBe(false)
+
+    const calls: Array<unknown> = []
+    handleEditorPaste({
+      editor: tornDownEditor,
+      defaultPasteHandler: (options) => {
+        calls.push(options)
+        return true
+      }
+    } as any)
+    expect(calls).toEqual([undefined])
+  })
+
   it('moves text from one cell to another on cut and paste', () => {
     const editor = mountEditor()
     const source = findText(editor, 'Nobody')
