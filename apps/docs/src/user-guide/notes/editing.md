@@ -226,10 +226,18 @@ This works inside a table cell too. **Mention** replaces the pasted URL in that 
 
 Pasted text is normally read as Markdown, so a pasted `# Heading` becomes a heading and a pasted `| a | b |` becomes a table. Inside a table cell that reading is switched off: a cell holds text, and text is what you get. Paste a row of pipes into a cell and you get a row of pipes, not a second table spliced over the one you are editing.
 
-Two things follow from a cell holding text only:
+Two things follow from a cell holding a single line of inline content:
 
 - Pasted line breaks stay inside the one cell. A Markdown table row is a single line, so they are saved as spaces — the words all survive, the line breaks do not.
 - Copying **cells** rather than text still pastes as cells. A cell or a range of cells copied from a table in memrynote keeps its shape and fills the grid from wherever the cursor is, the way a spreadsheet does.
+
+## Images in a Table Cell
+
+A table cell can hold a picture as well as text. Put the cursor in the cell and paste an image, or drag an image file onto the cell — it lands inside that cell rather than after the table, and text can sit on either side of it.
+
+The image is written into your note as ordinary markdown, `![name](path)`, so the row stays a normal table row that Obsidian and any other markdown editor can read. A table you wrote by hand with images already in it now opens with those images showing, instead of an empty cell.
+
+Cell images are capped at the height of a few lines so one large screenshot cannot stretch a row out of shape. Outside a table, an image on its own line is still a full image block with a caption and a resize handle — that has not changed.
 
 ## Link Previews
 
