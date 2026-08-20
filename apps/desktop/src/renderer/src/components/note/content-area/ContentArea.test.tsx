@@ -29,6 +29,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   fetchLinkPreview: vi.fn(),
   toastError: vi.fn(),
   defaultFileItemClick: vi.fn(),
+  pickImageForCell: vi.fn(),
   openSuggestionMenu: vi.fn(),
   registerPlugin: vi.fn(),
   createLinkMentionContent: vi.fn(
@@ -218,6 +219,9 @@ vi.mock('./hooks', () => ({
     handleDrop: vi.fn()
   })),
   useEditorFileUpload: vi.fn(),
+  useTableCellImage: vi.fn(() => ({
+    pickImageForCell: contentAreaMocks.pickImageForCell
+  })),
   useBlockMarqueeSelection: vi.fn(() => ({
     marqueeRect: null,
     highlightRects: [],
@@ -989,6 +993,52 @@ describe('ContentArea', () => {
     await expect(slashController.getItems('photo')).resolves.toEqual([
       expect.objectContaining({ key: 'image' })
     ])
+  })
+
+  it('swaps the Image slash item for the in-cell picker while the caret is in a cell', async () => {
+    // #given a caret inside a table cell. BlockNote's own Image item inserts a
+    // BLOCK, which a cell cannot hold: it lands after the whole table and takes
+    // the caret with it, leaving the cell empty (#1640).
+    contentAreaMocks.editor.transact = (run: (tr: unknown) => unknown) =>
+      run({
+        selection: {
+          $from: {
+            depth: 3,
+            node: (depth: number) => ({
+              type: { name: ['table', 'tableRow', 'tableCell'][depth - 1] }
+            })
+          }
+        }
+      })
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when
+    const [imageItem] = await slashController.getItems('image')
+
+    // #then the same row, relabelled by nothing — it just picks a file and
+    // inserts the inline node instead of a block
+    expect(imageItem).toMatchObject({ key: 'image', title: 'Image' })
+    imageItem.onItemClick()
+    expect(contentAreaMocks.pickImageForCell).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the Image slash item alone outside a table cell', async () => {
+    // #given the ordinary case — the block image, with its caption and resize
+    // handle, is the right answer everywhere else
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+
+    // #when
+    const [imageItem] = await slashController.getItems('image')
+
+    // #then
+    imageItem.onItemClick?.()
+    expect(contentAreaMocks.pickImageForCell).not.toHaveBeenCalled()
   })
 
   it('inserts new tables with the header row markdown is going to give them anyway', async () => {

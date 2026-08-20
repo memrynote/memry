@@ -1070,6 +1070,17 @@ const INLINE_CASES = [
       remind: 'none',
       timeFormat: 'system'
     })
+  },
+  {
+    nodeName: 'inlineImage',
+    // Seeded as a STRING, which is what a synced Y.Doc actually delivers: a
+    // width read as NaN here surfaces as a missing suffix on disk, silently.
+    attrs: { src: '../attachments/n1/photo.png', alt: 'photo.png', width: '300' },
+    // The only case whose on-disk bytes DIFFER by context, and the difference is
+    // remark's: `|` is the table cell delimiter, so it is escaped in a cell and
+    // left bare in a paragraph. Both are asserted, against the same node.
+    text: '![photo.png|300](../attachments/n1/photo.png)',
+    tableText: '![photo.png\\|300](../attachments/n1/photo.png)'
   }
 ] as const
 
@@ -1490,7 +1501,12 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   wikiLink: '[[Roadmap]]',
   hashTag: '#roadmap',
   linkMention: '((mention:https%3A%2F%2Fx.com))',
-  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))'
+  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))',
+  // The only custom inline form CommonMark already owns. It is here for the
+  // opposite reason to the others: `inlineImage` parses `<img>`, so this gate is
+  // what says the images every existing note is full of still behave exactly as
+  // they did in a list item, a quote, a heading and a code fence.
+  inlineImage: '![p.png](p.png)'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -1520,7 +1536,24 @@ describe('a custom spec must not claim the block its text sits in', () => {
     expect(Object.keys(INLINE_TEXT_FORMS).sort()).toEqual([...MEMRY_INLINE_CONTENT_TYPES].sort())
   })
 
-  const cases = MEMRY_INLINE_CONTENT_TYPES.flatMap((type) =>
+  /**
+   * `inlineImage` is swept through the table-cell case below but not through
+   * the block contexts, and the exemption is the point rather than a gap.
+   *
+   * Its disk form is CommonMark's own `![alt](src)`, which outside a table cell
+   * still parses as an image BLOCK — so an image glued into a heading, a quote
+   * or the middle of a sentence is dropped on parse, exactly as it was before
+   * this spec existed (`separateBlockImages` is the workaround built for that,
+   * and the limitation is asserted directly further down). The spec's `parse`
+   * claims an `<img>` only inside a `td`/`th`, so it is not what claims those
+   * blocks — sweeping it here would assert a pre-existing markdown limitation
+   * under the banner of a parse gate it cannot fail.
+   */
+  const BLOCK_CONTEXT_EXEMPT = new Set<string>(['inlineImage'])
+
+  const cases = MEMRY_INLINE_CONTENT_TYPES.filter(
+    (type) => !BLOCK_CONTEXT_EXEMPT.has(type)
+  ).flatMap((type) =>
     BLOCK_CONTEXTS.map(([context, wrap]) => [type, context, wrap(INLINE_TEXT_FORMS[type])] as const)
   )
 
@@ -1534,6 +1567,19 @@ describe('a custom spec must not claim the block its text sits in', () => {
     // #then byte-identical — write-back byte-compares, so anything else rewrites
     // the note in every vault on next open
     expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('an image outside a table cell is still block-only, as it was before', async () => {
+    // #given the pre-existing limitation the exemption above names: BlockNote
+    // parses `![…](…)` as a block, and a heading has no room for one. Recorded
+    // rather than rediscovered — and asserted here so that if inline images are
+    // ever widened beyond cells, this is the test that says so out loud.
+    const doc = new Y.Doc()
+    await markdownToYFragment('# ![p.png](p.png)', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when / #then unchanged by this spec: the image is dropped, the heading
+    // survives. `inlineImage` claims `<img>` only inside a `td`/`th`.
+    expect(await yDocToMarkdown(doc)).toBe('#')
   })
 
   it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {
@@ -2062,21 +2108,22 @@ describe('custom inline content inside a table', () => {
     expect(markdown).toContain(expected)
   })
 
-  it.each(INLINE_CASES)(
-    '$nodeName keeps its on-disk form in a table cell',
-    async ({ nodeName, attrs, text }) => {
-      // #given the same table-driven list the top-level round-trip uses, so a
-      // new inline spec is covered here too or the coverage gate above is red.
-      // A cell is the one place BlockNote reaches `render`, which is how a rich
-      // or throwing server implementation reaches the vault file.
-      const markdown = await tableMarkdown([{ type: nodeName, props: { ...attrs } }])
+  it.each(INLINE_CASES)('$nodeName keeps its on-disk form in a table cell', async (inlineCase) => {
+    const { nodeName, attrs, text } = inlineCase
+    // `inlineImage` is the one whose bytes differ in a cell — remark escapes
+    // the `|` its width rides behind, because there it is the delimiter.
+    const expected = 'tableText' in inlineCase ? inlineCase.tableText : text
+    // #given the same table-driven list the top-level round-trip uses, so a
+    // new inline spec is covered here too or the coverage gate above is red.
+    // A cell is the one place BlockNote reaches `render`, which is how a rich
+    // or throwing server implementation reaches the vault file.
+    const markdown = await tableMarkdown([{ type: nodeName, props: { ...attrs } }])
 
-      // #then the conversion succeeds at all (a throwing render returns null)…
-      expect(markdown).not.toBeNull()
-      // …and the cell holds the textual form, not the editor's rich markup
-      expect(markdown).toContain(text)
-    }
-  )
+    // #then the conversion succeeds at all (a throwing render returns null)…
+    expect(markdown).not.toBeNull()
+    // …and the cell holds the textual form, not the editor's rich markup
+    expect(markdown).toContain(expected)
+  })
 
   it('a date mention keeps its token in a table cell', async () => {
     // #given
@@ -2547,5 +2594,151 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
     expect(out).toContain('*Done*')
     expect(out).not.toContain('table-colors')
     expect(await roundTrip(out!)).toBe(out)
+  })
+})
+
+/**
+ * Images inside table cells (#1640).
+ *
+ * The gate that matters is this one, not a spec unit test: a `tableCell` holds
+ * inline content only, so before `inlineImage` existed the picture was dropped
+ * by ProseMirror during the parse — `| ![a](x.png) |` came back `|  |` with no
+ * error anywhere. And the node has to exist in THIS process specifically, since
+ * y-prosemirror answers a node name its schema cannot build by deleting the
+ * element out of the shared Y.Doc.
+ */
+describe('blocknote-converter table cell images', () => {
+  const IMG = '../attachments/n1/photo.png'
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return yDocToMarkdown(doc)
+  }
+
+  it('keeps an image in a table cell through markdown → Yjs → markdown', async () => {
+    // #given a GFM table whose second cell is a picture
+    const markdown = `| name | shot |\n| --- | --- |\n| alpha | ![photo.png](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the ref reaches the vault file unchanged — a note-relative path, so
+    // the note still resolves on the next device rather than pinning this one.
+    expect(result).toContain(`![photo.png](${IMG})`)
+    expect(result).toContain('alpha')
+  })
+
+  it('parses the cell image as an inlineImage node, not a dropped block', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`| a |\n| --- |\n| ![photo.png](${IMG}) |\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    const cells = JSON.stringify(blocks)
+    expect(cells).toContain('"type":"inlineImage"')
+    expect(cells).toContain(IMG)
+  })
+
+  it('survives the y-prosemirror round trip with nothing unrepresentable', async () => {
+    // #given a doc holding the node y-prosemirror would delete if main lacked
+    // the spec — the failure mode this whole schema package exists to stop
+    const doc = new Y.Doc()
+    await markdownToYFragment(
+      `| a |\n| --- |\n| ![photo.png](${IMG}) |\n`,
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #when / #then
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it('keeps text on both sides of the image in one cell', async () => {
+    // #given inline content means the picture shares the cell with words
+    const markdown = `| a |\n| --- |\n| before ![photo.png](${IMG}) after |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then
+    expect(result).toContain(`before ![photo.png](${IMG}) after`)
+  })
+
+  it('keeps a dragged width through markdown → Yjs → markdown', async () => {
+    // #given the width rides in the alt as `name|300`, and remark escapes the
+    // pipe on the way out — a BARE `|` there is the cell delimiter and splits
+    // the row in half, which is why the escaped form is the one on disk
+    const markdown = `| a |\n| --- |\n| ![photo.png\\|300](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the escaped form survives — a BARE `|` would have split the row
+    expect(result).toContain(`![photo.png\\|300](${IMG})`)
+    expect(result?.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+
+    // #and it is stable: remark re-pads column widths once, then nothing moves.
+    // Write-back byte-compares, so drift here rewrites every note with a sized
+    // cell image on every open.
+    expect(await roundTrip(result!)).toBe(result)
+  })
+
+  it('parses the width off the alt into the node’s own prop', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`| a |\n| --- |\n| ![photo.png\\|300](${IMG}) |\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then the name and the width are separate again — the alt a screen reader
+    // gets must not be a layout instruction
+    expect(JSON.stringify(blocks)).toContain('"alt":"photo.png","width":300')
+  })
+
+  it('leaves an unsized cell image unsized', async () => {
+    // #given every cell image written before the grip existed
+    const markdown = `| a |\n| --- |\n| ![photo.png](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then no `|0` suffix is invented, and the bytes settle
+    expect(result).toContain(`![photo.png](${IMG})`)
+    expect(result).not.toContain('|0]')
+    expect(await roundTrip(result!)).toBe(result)
+  })
+
+  it('leaves Obsidian’s `300x200` size alone rather than rewriting it', async () => {
+    // #given a vault written in Obsidian. Claiming this as a width would
+    // re-serialize it as `|300` — a silent edit to somebody else's file
+    const markdown = `| a |\n| --- |\n| ![photo.png\\|300x200](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then it stays exactly what it was — not narrowed to `|300`
+    expect(result).toContain(`![photo.png\\|300x200](${IMG})`)
+    expect(await roundTrip(result!)).toBe(result)
+  })
+
+  it('leaves a standalone image as an image block', async () => {
+    // #given the regression that matters: `inlineImage` also parses `<img>`, so
+    // claiming one outside a cell would convert every existing note's images
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`![photo.png](${IMG})\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    expect(blocks!.some((b) => b.type === 'image')).toBe(true)
+    expect(JSON.stringify(blocks)).not.toContain('inlineImage')
   })
 })

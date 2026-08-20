@@ -19,6 +19,8 @@
 import {
   createHashTagSpec,
   createDateMentionSpec,
+  createInlineImageSpec,
+  inlineImageSerialization,
   dateMentionSerialization,
   hashTagSerialization,
   LinkMentionSerializationOnly,
@@ -37,6 +39,9 @@ export function createServerInlineSpecs(): MemryInlineSpecs {
     ),
     dateMention: createDateMentionSpec((inlineContent) =>
       dateMentionSerialization.toExternalHTML(inlineContent)
+    ),
+    inlineImage: createInlineImageSpec((inlineContent) =>
+      inlineImageSerialization.toExternalHTML(inlineContent)
     )
   }
 }

@@ -2750,6 +2750,62 @@ del.bn-inline-content {
   font-weight: 500;
 }
 
+/* Inline image — a picture inside a line of text, which in practice means
+   inside a table cell (#1640). Capped by the line so one large screenshot
+   cannot blow a row's height out; the cell stays scannable and the image is
+   still clickable at full size in the vault. */
+.inline-image {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 8em;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+/* The wrapper exists for the grip to be positioned against. `line-height: 0`
+   stops the inline box adding a descender strip under the picture, which would
+   put the grip a few pixels below the image it resizes. */
+.inline-image-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+/* A 10px hit strip on the inline-end edge — comfortably grabbable without
+   covering the picture. Shown on hover only: a grip painted on every cell image
+   at rest turns a table of screenshots into a row of handles. */
+.inline-image-grip {
+  position: absolute;
+  inset-inline-end: -4px;
+  inset-block: 0;
+  width: 10px;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.inline-image-wrap:hover .inline-image-grip {
+  opacity: 1;
+}
+
+.inline-image-grip::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 4px;
+  inset-block: 12%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inline-image-grip {
+    transition: none;
+  }
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,

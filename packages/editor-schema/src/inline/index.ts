@@ -4,11 +4,13 @@ import { linkMentionConfig } from './link-mention'
 import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
+import { inlineImageConfig } from './inline-image'
 
 export * from './wiki-link'
 export * from './link-mention'
 export * from './hash-tag'
 export * from './date-mention'
+export * from './inline-image'
 
 /**
  * The specs each process supplies for itself. The config and the serialization
@@ -16,7 +18,7 @@ export * from './date-mention'
  * or `WikiLink` / `WikiLinkSerializationOnly`), so only presentation and
  * HTML-paste behaviour differ.
  *
- * Every one of the four is listed. None can be "shared whole": BlockNote
+ * Every one of the five is listed. None can be "shared whole": BlockNote
  * serializes inline content inside a TABLE through `render`, so the editor's
  * rich implementation reaching the main process rewrites that cell's markdown.
  */
@@ -37,6 +39,12 @@ export interface MemryInlineSpecs {
    * and dropping domain/title/favicon/siteName from disk.
    */
   linkMention: InlineContentSpec<typeof linkMentionConfig>
+  /**
+   * The picture inside a table cell (#1640). Portable config and serialization;
+   * only the editor flavour resolves a note-relative `src` for display, which is
+   * why the render half is still supplied per process.
+   */
+  inlineImage: InlineContentSpec<typeof inlineImageConfig>
 }
 
 /**
@@ -53,7 +61,8 @@ export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
     wikiLink: specs.wikiLink,
     linkMention: specs.linkMention,
     hashTag: specs.hashTag,
-    dateMention: specs.dateMention
+    dateMention: specs.dateMention,
+    inlineImage: specs.inlineImage
   }
   assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
   return registered
@@ -64,5 +73,6 @@ export const MEMRY_INLINE_CONTENT_TYPES = [
   'wikiLink',
   'linkMention',
   'hashTag',
-  'dateMention'
+  'dateMention',
+  'inlineImage'
 ] as const
