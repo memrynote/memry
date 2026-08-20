@@ -45,7 +45,7 @@ Widgets are the cards on a board. Available types:
 
 The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
 
-The Tasks widget has a filter pill in its header: pick **Today**, **Tomorrow**, or **Week**, or pick any [saved filter](/user-guide/tasks/filters-sorting). The pill's label and the count next to it both follow whatever you chose. A saved filter is the only way to put tasks with **no due date** on the dashboard — the three date views are all due-date windows, so undated work never appears in them.
+The Tasks widget has a filter pill in its header, and it offers the same scopes as the Tasks page: **All**, **Today**, **Tomorrow**, **Next 7 days**. Below those come your starred [saved filters](/user-guide/tasks/filters-sorting), and last is **No due date** — open work that never got a date. The pill's label and the count next to it both follow whatever you chose. Star a filter on the Tasks page and it shows up in this dropdown on its own; there is nothing else to configure.
 
 ### Add a widget
 

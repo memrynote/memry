@@ -5,7 +5,6 @@ import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
 import { FolderWidget } from './folder-widget'
 import { FolderHeaderControls } from './folder-header-controls'
-import { TasksWidgetConfigEditor } from './tasks-widget-config-editor'
 import { TasksHeaderFilter, TasksHeaderCount } from './tasks-header'
 import { InboxHeaderFilter, InboxHeaderCount } from './inbox-header'
 import { InboxWidgetFooter } from './inbox-footer'
@@ -39,7 +38,6 @@ registerWidget({
   defaultLayout: { w: 4, h: 4 },
   defaultConfig: { dateRange: 'today' },
   Component: TasksWidget,
-  ConfigEditor: TasksWidgetConfigEditor,
   HeaderFilter: TasksHeaderFilter,
   HeaderCount: TasksHeaderCount
 })
