@@ -3566,3 +3566,98 @@ del.bn-inline-content {
   overflow-x: hidden;
   overscroll-behavior: contain;
 }
+
+/* ============================================================================
+   THIRD-PARTY OVERRIDE — BLOCKNOTE TABLE ROW/COLUMN HANDLE
+   ============================================================================ */
+
+/*
+ * Verified against @blocknote/react + @blocknote/shadcn 0.47.
+ *
+ * The row/column handle is the 6-dot drag button BlockNote parks at a row's
+ * inline-start edge and a column's top edge, and whose click opens the
+ * add/delete row-and-column menu. At rest it is the full 24px icon, sitting
+ * half on top of the first cell — the loudest thing on a table the moment the
+ * pointer enters it.
+ *
+ * Neither @blocknote/core/style.css nor @blocknote/shadcn/style.css styles
+ * `.bn-table-handle` at all: its whole appearance comes from the bundled
+ * shadcn Button (`variant="ghost"` plus `h-fit w-fit p-0 text-gray-400`, so
+ * the box is exactly the icon) and from the icon itself. That is why the
+ * override lives here rather than in a wrapper component — one stylesheet rule
+ * reaches every BlockNote surface in the app (note editor, task descriptions,
+ * inbox items, journal, template editor, canvas note bodies) without any of
+ * them having to pass a `tableHandles` render prop.
+ *
+ * Two stages, Notion's shape:
+ *   rest  — a slim pill, no icon. The 2px ring is painted in the editor
+ *           background so the pill knocks itself out of the cell border it
+ *           overlaps instead of merging with it.
+ *   hover — the icon button comes back, so the drag affordance stays
+ *           discoverable and the click target grows.
+ * WHEN the handle shows is untouched; that is BlockNote's own hover tracking.
+ *
+ * `box-sizing: content-box` is deliberate. `.bn-root *` inherits border-box,
+ * which would spend 4 of the pill's 6px on the ring and leave a 2px hairline.
+ * Here `width`/`height` are the pill itself and the ring is drawn outside it,
+ * so the painted pill is 6x18 (18x6 for a column) and the element measures
+ * 10x22 including the ring.
+ *
+ * The column handle is the same rule: BlockNote gives it an inline
+ * `transform: rotate(0.25turn)`, so 6x18 renders rotated. Nothing here sets
+ * `transform` — that inline style would win anyway.
+ *
+ * Specificity, not `!important`: `.bn-container` + the class is 0-2-0, which
+ * beats the Button's `w-fit`/`h-fit`/`transition-all` utilities, and the hover
+ * rules at 0-3-0 beat the ghost variant's `hover:bg-accent`. The handle is
+ * always rendered inside the `.bn-container` div (BlockNote portals node views
+ * and the drag preview, never the table-handle positioner).
+ *
+ * `[data-state='open']` holds the expanded state while the handle's menu is
+ * open, so the button does not collapse under a menu the pointer has left.
+ * `.bn-table-cell-handle` is a different control (it opens Colors) and is
+ * deliberately not touched.
+ */
+.bn-container .bn-table-handle {
+  box-sizing: content-box;
+  width: 6px;
+  height: 18px;
+  border: 2px solid var(--background);
+  border-radius: 4px;
+  background-color: var(--text-tertiary);
+  /* Clips the faded-out icon, which is `shrink-0` and stays 24px wide inside
+     the pill — without this it would still take hover events off-pill. */
+  overflow: hidden;
+  transition:
+    width 100ms ease-in-out,
+    height 100ms ease-in-out,
+    background-color 100ms ease-in-out,
+    border-color 100ms ease-in-out;
+}
+
+.bn-container .bn-table-handle [data-test='tableHandle'] {
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.bn-container .bn-table-handle:hover,
+.bn-container .bn-table-handle:focus-visible,
+.bn-container .bn-table-handle[data-state='open'] {
+  width: 24px;
+  height: 24px;
+  border-color: transparent;
+  background-color: var(--surface-active);
+}
+
+.bn-container .bn-table-handle:hover [data-test='tableHandle'],
+.bn-container .bn-table-handle:focus-visible [data-test='tableHandle'],
+.bn-container .bn-table-handle[data-state='open'] [data-test='tableHandle'] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-container .bn-table-handle,
+  .bn-container .bn-table-handle [data-test='tableHandle'] {
+    transition: none;
+  }
+}

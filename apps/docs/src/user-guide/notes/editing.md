@@ -51,6 +51,11 @@ Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
 
+A handle rests as a small pill so it stays out of the way of what the table
+says. Hover the pill and it grows into the drag handle: from there you can drag
+the row or column to a new position, or click it for the menu that adds and
+deletes rows and columns.
+
 ### Cell colour and formatting
 
 Hover a cell and click the handle inside it to open the cell menu, then
