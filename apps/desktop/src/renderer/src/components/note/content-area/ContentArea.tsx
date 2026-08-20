@@ -391,10 +391,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const editor = useCreateBlockNote({
     schema: editorSchema,
     setIdAttribute: true,
-    // Off by default in BlockNote 0.47, which leaves the table handle menu with
-    // no way to make a header row at all — while markdown storage hands every
-    // table one on the way back in.
-    tables: { headers: true },
+    // All off by default in BlockNote 0.47. `headers` leaves the table handle
+    // menu with no way to make a header row at all — while markdown storage
+    // hands every table one on the way back in. The two colour flags are pure
+    // UI gates on the cell menu (nothing in the schema turns on with them), and
+    // without them a table was the one place in a note where colour was
+    // unreachable (#1639). What the cell holds is written back through the
+    // `<!-- table-colors:… -->` marker, so the colour survives the save.
+    tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
     uploadFile,
     resolveFileUrl,
     placeholders: {

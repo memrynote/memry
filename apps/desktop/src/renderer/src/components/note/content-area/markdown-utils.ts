@@ -12,10 +12,16 @@ import {
 } from '@memry/shared/empty-lines'
 import {
   type BlockColors,
+  type TableCellColors,
+  applyTableCellColors,
+  extractTableCellColors,
   BLOCK_COLORS_LINE_REGEX,
+  TABLE_CELL_COLORS_LINE_REGEX,
   hasNonDefaultColors,
   parseBlockColorsMarker,
-  serializeBlockColorsMarker
+  parseTableCellColorsMarker,
+  serializeBlockColorsMarker,
+  serializeTableCellColorsMarker
 } from '@memry/shared/block-colors'
 import {
   applyInlineColorTokens,
@@ -68,6 +74,22 @@ function hasMarkerSerializedChildren(block: Block): boolean {
   return children.some(
     (child) => !canSerializeChildNatively(block, child) || hasMarkerSerializedChildren(child)
   )
+}
+
+/**
+ * The marker lines a block needs in front of it to keep the colors markdown
+ * cannot carry: its own text/background color, and — for a table — the colors
+ * of its individual cells. Empty for everything else, so a note with no colored
+ * block keeps exactly the bytes it had.
+ */
+function colorMarkerLines(block: Block): string[] {
+  const lines: string[] = []
+  if (hasNonDefaultColors(block.props as BlockColors)) {
+    lines.push(serializeBlockColorsMarker(block.props as BlockColors))
+  }
+  const cellColors = extractTableCellColors(block.content)
+  if (cellColors) lines.push(serializeTableCellColorsMarker(cellColors))
+  return lines
 }
 
 async function parseMarkdownChunkPreservingNesting(
@@ -302,6 +324,9 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
               if (part.colors && parsed[0]) {
                 parsed[0].props = { ...parsed[0].props, ...part.colors }
               }
+              if (part.tableColors && parsed[0]) {
+                applyTableCellColors(parsed[0].content, part.tableColors)
+              }
               blocks.push(...parsed)
             }
           }
@@ -347,6 +372,8 @@ export async function serializeBlocksPreservingBlanks(
   }
 
   for (const block of blocks) {
+    const colorMarkers = colorMarkerLines(block)
+
     if ((block.type as string) === 'taskBlock') {
       await flushContent()
       flushGap()
@@ -399,13 +426,13 @@ export async function serializeBlocksPreservingBlanks(
     } else if (isEmptyParagraph(block)) {
       await flushContent()
       emptyCount++
-    } else if (hasNonDefaultColors(block.props as BlockColors)) {
+    } else if (colorMarkers.length > 0) {
       await flushContent()
       flushGap()
       const blockMd = await serializeBlocks(editor, [block])
       segments.push({
         type: 'content',
-        text: `${serializeBlockColorsMarker(block.props as BlockColors)}\n${blockMd.trim()}`
+        text: `${colorMarkers.join('\n')}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       await flushContent()
@@ -432,7 +459,7 @@ export async function serializeBlocksPreservingBlanks(
 }
 
 type EmbedPart =
-  | { kind: 'text'; text: string; colors?: BlockColors }
+  | { kind: 'text'; text: string; colors?: BlockColors; tableColors?: TableCellColors }
   | { kind: 'embed'; url: string; videoId: string }
   | { kind: 'bookmark'; url: string }
   | { kind: 'file'; props: FileBlockProps }
@@ -446,14 +473,17 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
   const parts: EmbedPart[] = []
   let buffer: string[] = []
   let pendingColors: BlockColors | null = null
+  let pendingTableColors: TableCellColors | null = null
 
   const flushBuffer = (): void => {
     if (buffer.length === 0) return
     const part: EmbedPart = { kind: 'text', text: buffer.join('\n') }
     if (pendingColors) part.colors = pendingColors
+    if (pendingTableColors) part.tableColors = pendingTableColors
     parts.push(part)
     buffer = []
     pendingColors = null
+    pendingTableColors = null
   }
 
   for (const line of lines) {
@@ -466,12 +496,24 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
         continue
       }
     }
+    // Same rule, one level down: the colors of the individual cells of the
+    // table that follows. `flushBuffer` returns early on an empty buffer, so
+    // the two markers can sit on consecutive lines without clearing each other.
+    if (TABLE_CELL_COLORS_LINE_REGEX.test(trimmedLine)) {
+      const cellColors = parseTableCellColorsMarker(trimmedLine)
+      if (cellColors) {
+        flushBuffer()
+        pendingTableColors = cellColors
+        continue
+      }
+    }
     const fileProps = FILE_BLOCK_LINE_REGEX.test(trimmedLine)
       ? parseFileBlockMarker(trimmedLine)
       : null
     if (fileProps) {
       flushBuffer()
       pendingColors = null
+      pendingTableColors = null
       parts.push({ kind: 'file', props: fileProps })
       continue
     }

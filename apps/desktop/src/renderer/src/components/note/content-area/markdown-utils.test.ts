@@ -709,3 +709,77 @@ describe('isEmptyParagraph', () => {
     expect(isEmptyParagraph({ type: 'paragraph', content: ['text'] } as any)).toBe(false)
   })
 })
+
+/**
+ * #1639 — the non-collaborative save path's half of the table cell colour
+ * marker. Its twin (`blocknote-converter.ts`) is pinned by round trips through
+ * a real ServerBlockNoteEditor; what is under test here is the plumbing: the
+ * marker goes in front of the table, and comes back onto the same cell.
+ */
+describe('table cell colours (#1639)', () => {
+  const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+
+  const cell = (text: string, colors: Record<string, string> = {}) => ({
+    type: 'tableCell',
+    content: [{ type: 'text', text, styles: {} }],
+    props: { colspan: 1, rowspan: 1, textAlignment: 'left', ...colors }
+  })
+
+  const table = (colors: Record<string, string> = {}) => ({
+    type: 'table',
+    props: {},
+    content: {
+      type: 'tableContent',
+      columnWidths: [null, null],
+      headerRows: 1,
+      rows: [
+        { cells: [cell('Name'), cell('Status')] },
+        { cells: [cell('Ship', colors), cell('Done')] }
+      ]
+    },
+    children: []
+  })
+
+  /** A table in, GFM out — and back, ignoring the cell text the marker never touches. */
+  const tableEditor = {
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown.includes('|') ? [table()] : []
+    ),
+    blocksToMarkdownLossy: vi.fn(async () => TABLE_MD)
+  }
+
+  it('writes the marker in front of the table it belongs to', async () => {
+    // #given the cell menu was used on the second row's first cell
+    const blocks = [table({ backgroundColor: 'red', textColor: 'blue' })]
+
+    // #when
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, blocks as any[])
+
+    // #then
+    expect(markdown).toBe(
+      `<!-- table-colors:{"1:0":{"textColor":"blue","backgroundColor":"red"}} -->\n${TABLE_MD}`
+    )
+  })
+
+  it('writes nothing extra for a table nobody has coloured', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, [table()] as any[])
+
+    expect(markdown).toBe(TABLE_MD)
+  })
+
+  it('reads the marker back onto the cell it names', async () => {
+    // #given the note as it sits on disk
+    const markdown = `<!-- table-colors:{"1:0":{"backgroundColor":"red"}} -->\n${TABLE_MD}`
+
+    // #when
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    // #then the colour is on the cell, and the marker is not a paragraph of its own
+    expect(blocks).toHaveLength(1)
+    expect((blocks[0] as any).content.rows[1].cells[0].props).toMatchObject({
+      backgroundColor: 'red',
+      colspan: 1
+    })
+    expect((blocks[0] as any).content.rows[0].cells[0].props).not.toHaveProperty('backgroundColor')
+  })
+})

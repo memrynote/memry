@@ -105,6 +105,12 @@ async function placeCursorAtEndOf(page: Page, cellText: string): Promise<void> {
  * BlockNote's copy handler bails out when the DOM selection is collapsed, so a
  * cut fired before the selection lands is silently a no-op. Repeat the gesture
  * until the browser agrees the text is selected.
+ *
+ * The selection is read a beat after the keys, not in the same tick: measured,
+ * `Shift+End` lands in the DOM before ProseMirror has taken it into its own
+ * state, and in that window the DOM selection reads as the whole rest of the
+ * block while the editor still thinks the cursor is collapsed. Both have to
+ * agree before a cut can do anything.
  */
 async function selectCellText(page: Page, cellText: string): Promise<void> {
   await expect
@@ -113,11 +119,19 @@ async function selectCellText(page: Page, cellText: string): Promise<void> {
         await cell(page, cellText).click()
         await page.keyboard.press('Home')
         await page.keyboard.press('Shift+End')
-        return page.evaluate(() => window.getSelection()?.toString() ?? '')
+        await page.waitForTimeout(150)
+        return page.evaluate(() => {
+          const view = (window as any).__memryEditor?.prosemirrorView
+          const { from, to } = view?.state.selection ?? {}
+          return {
+            dom: window.getSelection()?.toString() ?? '',
+            editor: view ? (view.state.doc.textBetween(from, to, ' ') as string) : ''
+          }
+        })
       },
       { message: `DOM selection over "${cellText}"`, timeout: 10_000 }
     )
-    .toBe(cellText)
+    .toEqual({ dom: cellText, editor: cellText })
 }
 
 async function pastePlainText(page: Page, text: string): Promise<void> {

@@ -51,6 +51,27 @@ Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
 
+### Cell colour and formatting
+
+Hover a cell and click the handle inside it to open the cell menu, then
+**Colors** to set that cell's text or background colour. Bold, italic,
+underline, links and mentions all work inside a cell exactly as they do in a
+paragraph — select the text and use the toolbar or the usual shortcuts.
+
+A markdown table has no column for a cell colour, so Memry writes it on a
+comment line just above the table, the same way a coloured paragraph is stored:
+
+```text
+<!-- table-colors:{"1:0":{"backgroundColor":"red"}} -->
+| Task | State |
+| --- | --- |
+| Shipping | Open |
+```
+
+The key is the cell's position — `row:column`, counting from zero and counting
+the header row. Other markdown editors ignore the comment and show the table
+normally. Text styles need no such line: markdown carries them itself.
+
 ## Slash Commands
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.
