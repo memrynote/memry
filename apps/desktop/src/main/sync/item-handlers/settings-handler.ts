@@ -13,6 +13,13 @@ import { getCurrentVaultPath } from '../../store'
 import { getDatabase } from '../../database'
 import { getSetting, setSetting, deleteSetting } from '../../database/queries/settings'
 import { INBOX_REVIEW_LAST_NOTIFIED_KEY } from '../../inbox/review-reminder-constants'
+import {
+  JOURNAL_DEFAULT_TEMPLATE_KEY,
+  JOURNAL_WEEKDAY_TEMPLATES_KEY,
+  parseWeekdayTemplateMap,
+  sanitizeWeekdayTemplateMap,
+  type WeekdayTemplateMap
+} from '../../settings/journal-template-keys'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -89,6 +96,18 @@ function propagateMergedSettings(merged: SyncedSettings): void {
     }
   }
 
+  // Journal template settings live in the local data DB as flat `journal.*`
+  // rows (not the portable config.json prefs), so they persist regardless of
+  // whether a vault path resolves — same reasoning as inbox above.
+  let journalBroadcast: JournalBroadcastPayload | null = null
+  if (merged.journal) {
+    try {
+      journalBroadcast = propagateMergedJournalSettings(merged.journal)
+    } catch (err) {
+      log.warn('Failed to propagate merged journal settings:', err)
+    }
+  }
+
   let vaultPath: string | null = null
   try {
     vaultPath = getCurrentVaultPath()
@@ -133,9 +152,54 @@ function propagateMergedSettings(merged: SyncedSettings): void {
     }
   }
 
-  broadcastSettingsChanged(merged)
+  broadcastSettingsChanged(merged, journalBroadcast)
 
   applySyncedLocale(merged.general?.language)
+}
+
+interface JournalBroadcastPayload {
+  defaultTemplate?: string | null
+  weekdayTemplates?: WeekdayTemplateMap
+}
+
+/**
+ * Write inbound journal template settings to the local data DB and return what
+ * the renderer should be told.
+ *
+ * The weekday map is *merged*, never replaced: settings sync only carries
+ * fields that have been written since this device learned to sync them
+ * (`seedUnclocked` returns 0 for settings, so nothing is back-filled). A day
+ * this device set before that point has no clock and never left the machine —
+ * overwriting the whole map with the synced subset would silently drop it.
+ *
+ * A `null` day is a real value, not an absence: it means "this day was cleared,
+ * fall back to the default template", and it has to survive the merge to beat a
+ * stale remote id.
+ */
+function propagateMergedJournalSettings(
+  journal: NonNullable<SyncedSettings['journal']>
+): JournalBroadcastPayload {
+  const db = getDatabase()
+  const payload: JournalBroadcastPayload = {}
+
+  if (journal.defaultTemplate !== undefined) {
+    if (journal.defaultTemplate === null) {
+      deleteSetting(db, JOURNAL_DEFAULT_TEMPLATE_KEY)
+    } else {
+      setSetting(db, JOURNAL_DEFAULT_TEMPLATE_KEY, journal.defaultTemplate)
+    }
+    payload.defaultTemplate = journal.defaultTemplate
+  }
+
+  if (journal.weekdayTemplates) {
+    const current = parseWeekdayTemplateMap(getSetting(db, JOURNAL_WEEKDAY_TEMPLATES_KEY))
+    const incoming = sanitizeWeekdayTemplateMap(journal.weekdayTemplates)
+    const next = { ...current, ...incoming }
+    setSetting(db, JOURNAL_WEEKDAY_TEMPLATES_KEY, JSON.stringify(next))
+    payload.weekdayTemplates = next
+  }
+
+  return payload
 }
 
 // A language changed on another device has to take the same runtime path as a
@@ -165,7 +229,10 @@ function applySyncedLocale(candidate: string | undefined): void {
  * which the previous hand-rolled loop tolerated. Keep tolerating it, but log it
  * rather than dropping it silently.
  */
-function broadcastSettingsChanged(merged: SyncedSettings): void {
+function broadcastSettingsChanged(
+  merged: SyncedSettings,
+  journal: JournalBroadcastPayload | null
+): void {
   try {
     if (merged.general) {
       broadcastToAllWindows(SettingsChannels.events.CHANGED, {
@@ -185,6 +252,16 @@ function broadcastSettingsChanged(merged: SyncedSettings): void {
       broadcastToAllWindows(SettingsChannels.events.CHANGED, {
         key: 'inbox',
         value: merged.inbox
+      })
+    }
+
+    // Broadcast the DB-authoritative merge, not `merged.journal`: the synced
+    // view omits days this device set before settings sync covered them, and a
+    // shallow patch would replace the renderer's whole map with that subset.
+    if (journal && Object.keys(journal).length > 0) {
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: 'journal',
+        value: journal
       })
     }
   } catch (err) {

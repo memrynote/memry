@@ -24,6 +24,8 @@ interface UseJournalSettingsReturn {
   updateSettings: (updates: Partial<JournalSettings>) => Promise<boolean>
   /** Set the default template (convenience method) */
   setDefaultTemplate: (templateId: string | null) => Promise<boolean>
+  /** Set (or clear, with null) the template for one weekday, 0 = Sunday */
+  setWeekdayTemplate: (weekday: number, templateId: string | null) => Promise<boolean>
 }
 
 /**
@@ -46,6 +48,7 @@ interface UseJournalSettingsReturn {
 export function useJournalSettings(): UseJournalSettingsReturn {
   const [settings, setSettings] = useState<JournalSettings>({
     defaultTemplate: null,
+    weekdayTemplates: {},
     showSchedule: true,
     showTasks: true,
     showAIConnections: true,
@@ -105,8 +108,17 @@ export function useJournalSettings(): UseJournalSettingsReturn {
       try {
         const result = await window.api.settings.setJournalSettings(updates)
         if (result.success) {
-          // Optimistically update local state
-          setSettings((prev) => ({ ...prev, ...updates }))
+          // Optimistically update local state. The weekday map is patched a day
+          // at a time — main merges it into the stored map and broadcasts the
+          // whole thing back — so spreading the patch wholesale here would drop
+          // every other day until that broadcast arrives.
+          setSettings((prev) => ({
+            ...prev,
+            ...updates,
+            ...(updates.weekdayTemplates
+              ? { weekdayTemplates: { ...prev.weekdayTemplates, ...updates.weekdayTemplates } }
+              : {})
+          }))
           return true
         }
         setError(
@@ -137,12 +149,22 @@ export function useJournalSettings(): UseJournalSettingsReturn {
     [updateSettings]
   )
 
+  const setWeekdayTemplate = useCallback(
+    async (weekday: number, templateId: string | null): Promise<boolean> => {
+      // Clearing writes an explicit null rather than dropping the key: the entry
+      // is what the per-day sync clock refers to.
+      return updateSettings({ weekdayTemplates: { [String(weekday)]: templateId } })
+    },
+    [updateSettings]
+  )
+
   return {
     settings,
     isLoading,
     error,
     updateSettings,
-    setDefaultTemplate
+    setDefaultTemplate,
+    setWeekdayTemplate
   }
 }
 
