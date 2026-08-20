@@ -6,8 +6,10 @@ import { getI18n } from 'react-i18next'
  * @module components/note/content-area/file-block
  */
 
-import { useState, useCallback, useRef, useLayoutEffect } from 'react'
+import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import type { PDFDocumentProxy as PdfDocumentProxy } from 'pdfjs-dist'
 import { createReactBlockSpec } from '@blocknote/react'
 import { fileBlockConfig } from '@memry/editor-schema/blocks'
 import { Document, Page, pdfjs } from 'react-pdf'
@@ -20,8 +22,6 @@ import {
   Download,
   Upload,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   LeftToRightBlockQuote,
   TextAlignCenter,
   RightToLeftBlockQuote
@@ -90,6 +90,10 @@ const PDF_SNAP_THRESHOLD = 24
 const DEFAULT_PDF_CARD_WIDTH = 600
 // Card border (box-sizing: border-box) subtracted to get the page render width.
 const PDF_CARD_BORDER = 2
+// Vertical gap between stacked pages in the continuous scroll.
+const PDF_PAGE_GAP = 8
+// Aspect (height / width) assumed until pdf.js reports the real first page.
+const LETTER_ASPECT = 11 / 8.5
 
 function clampWidth(value: number, max: number): number {
   return Math.round(Math.min(Math.max(value, MIN_PDF_WIDTH), max))
@@ -130,10 +134,13 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
   const [error, setError] = useState<string | null>(null)
 
   // --- Paging ---------------------------------------------------------------
-  // The embed stays chromeless at rest; the page controls are a hover overlay
-  // and only exist at all when the document actually has more than one page.
+  // The embed reads as one continuous document: every page is stacked in a
+  // scroller and only the pages near the viewport are mounted. The chrome is a
+  // read-only page indicator, revealed on hover like the alignment controls.
   const [numPages, setNumPages] = useState(0)
-  const [currentPage, setCurrentPage] = useState(1)
+  /** First page's height / width at scale 1, straight from pdf.js. */
+  const [pageAspect, setPageAspect] = useState<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // --- Resize state ---------------------------------------------------------
   // The column bounds the max width so the page never overflows horizontally;
@@ -141,9 +148,6 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
   // live so a stored size larger than the current layout clamps down.
   const viewRef = useRef<HTMLDivElement>(null)
   const [maxWidth, setMaxWidth] = useState(0)
-  // Natural (unclipped) height of the rendered first page; caps the crop.
-  const pageContentRef = useRef<HTMLDivElement>(null)
-  const [pageNaturalHeight, setPageNaturalHeight] = useState(0)
   // Non-null only while dragging, for smooth feedback before the commit.
   const [draftWidth, setDraftWidth] = useState<number | null>(null)
   const [draftHeight, setDraftHeight] = useState<number | null>(null)
@@ -167,31 +171,73 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     return () => observer.disconnect()
   }, [])
 
-  useLayoutEffect(() => {
-    const el = pageContentRef.current
-    if (!el) return
-    const measure = () => setPageNaturalHeight(el.scrollHeight)
-    measure()
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
   // Width scales the whole embed (card + page) like an image. Height is an
-  // independent crop: shrinking it clips the first page from the top so only
-  // the opening of the document shows — no inner scroll.
+  // independent crop on the viewport into the document: shrinking it shows less
+  // of the scroll at a time, it does not change how much of the file is there.
   const columnWidth = maxWidth > 0 ? maxWidth : DEFAULT_PDF_CARD_WIDTH
   const storedWidth = width > 0 ? width : columnWidth
   const widthLimit = columnWidth
   const cardWidth = Math.min(draftWidth ?? storedWidth, widthLimit)
   const pageWidth = Math.max(140, cardWidth - PDF_CARD_BORDER)
 
-  const heightLimit = pageNaturalHeight > 0 ? pageNaturalHeight : Infinity
+  // One page tall is both the default viewport and the crop ceiling, so an
+  // untouched embed looks exactly like the single-page preview it replaces.
+  // Rounded up so a single-page embed never overflows its own viewport by a
+  // fraction of a pixel and grows a scrollbar it has nothing to scroll to.
+  const pageNaturalHeight = Math.ceil(pageWidth * (pageAspect ?? LETTER_ASPECT))
+  const heightLimit = numPages > 0 ? pageNaturalHeight : Infinity
   const draftCrop = draftHeight != null ? Math.min(draftHeight, heightLimit) : null
   const storedCrop = height > 0 ? Math.min(height, heightLimit) : 0
   // Effective crop height; `undefined` lets the card wrap the full first page.
   const cardHeight = draftCrop ?? (storedCrop > 0 ? storedCrop : undefined)
+  // While the document is still loading the frame has no page to size itself
+  // against, so it stays auto and wraps the loading indicator.
+  const frameHeight = cardHeight ?? (numPages > 0 ? pageNaturalHeight : undefined)
+
+  // --- Continuous scroll ----------------------------------------------------
+  // A row is one page plus the gap that follows it. The last page has no gap,
+  // so a single-page embed is exactly as tall as its page. Pages of a
+  // mixed-size document are re-measured once painted; the estimate only has to
+  // be right for the common case where every page is the same size.
+  const isLastPage = (index: number): boolean => index === numPages - 1
+  const estimateRowHeight = (index: number): number =>
+    isLastPage(index) ? pageNaturalHeight : pageNaturalHeight + PDF_PAGE_GAP
+
+  const measurePage = (el: Element): number => {
+    const measured = el.getBoundingClientRect().height
+    // A page pdf.js has not painted yet (and every element under jsdom)
+    // measures 0, which would collapse the whole list onto one offset.
+    if (measured > 0) return measured
+    return estimateRowHeight(Number((el as HTMLElement).dataset.index ?? 0))
+  }
+
+  const virtualizer = useVirtualizer({
+    count: numPages,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: estimateRowHeight,
+    measureElement: measurePage,
+    overscan: 1
+  })
+
+  // Resizing the embed changes every row's height; the virtualizer keeps its
+  // cached measurements until it is told to drop them.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [pageNaturalHeight, numPages, virtualizer])
+
+  const virtualPages = virtualizer.getVirtualItems()
+
+  // The indicator follows the scroll, not the other way round. It cannot be
+  // derived during render: the virtualizer only re-renders when the mounted
+  // window changes, and a short document never leaves its first window.
+  const [currentPage, setCurrentPage] = useState(1)
+  const trackCurrentPage = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    // The page being read is the first one still showing below the top edge.
+    const row = virtualizer.getVirtualItemForOffset(el.scrollTop + PDF_PAGE_GAP)
+    if (row) setCurrentPage(row.index + 1)
+  }, [virtualizer])
 
   // Snap width to the column edge and height to the full page before committing.
   // Height "full" is the page's natural height, which changes with width, so it
@@ -283,18 +329,22 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
     [cardWidth, cardHeight, width, height, widthLimit, heightLimit, pageNaturalHeight, onResize]
   )
 
-  const handleLoadSuccess = ({ numPages: total }: { numPages: number }) => {
-    setNumPages(total)
-    setCurrentPage(1)
+  // Measure the first page rather than assuming Letter: an A4 or landscape
+  // document would otherwise scroll in rows of the wrong height.
+  const handleLoadSuccess = (pdf: PdfDocumentProxy) => {
+    setNumPages(pdf.numPages)
     setLoading(false)
+    if (typeof pdf.getPage !== 'function') return
+    void pdf
+      .getPage(1)
+      .then((page) => {
+        const viewport = page.getViewport({ scale: 1 })
+        if (viewport.width > 0) setPageAspect(viewport.height / viewport.width)
+      })
+      .catch(() => {
+        // An unmeasurable first page just keeps the assumed aspect.
+      })
   }
-
-  const goToPage = useCallback(
-    (page: number) => {
-      setCurrentPage((current) => (page >= 1 && page <= numPages ? page : current))
-    },
-    [numPages]
-  )
 
   const handleLoadError = (err: Error) => {
     setError(
@@ -335,88 +385,93 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
         )}
         style={{ width: cardWidth }}
       >
-        {/* Clipped frame: rounded border + first-page crop (no inner scroll). */}
+        {/* Scrolling frame: rounded border + a viewport one page tall by
+            default. Every page of the document is reachable by scrolling; only
+            the pages near the viewport are mounted. */}
         <div
-          className="relative overflow-hidden rounded-md border border-border bg-muted/30"
-          style={{ height: cardHeight }}
+          ref={scrollRef}
+          data-testid="pdf-embed-scroll"
+          onScroll={trackCurrentPage}
+          className="relative overflow-y-auto overflow-x-hidden rounded-md border border-border bg-muted/30"
+          style={{ height: frameHeight }}
         >
-          <div ref={pageContentRef} className="bg-white dark:bg-zinc-900">
+          <div className="bg-white dark:bg-zinc-900">
             <Document
               file={url}
               onLoadSuccess={handleLoadSuccess}
               onLoadError={handleLoadError}
               loading={PDF_LOADING_INDICATOR}
             >
-              <Page
-                pageNumber={currentPage}
-                width={pageWidth}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-              />
+              <div
+                data-testid="pdf-embed-sizer"
+                className="relative w-full"
+                style={{ height: numPages > 0 ? virtualizer.getTotalSize() : undefined }}
+              >
+                {virtualPages.map((row) => (
+                  <div
+                    key={row.key}
+                    data-index={row.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      insetInlineStart: 0,
+                      width: '100%',
+                      paddingBottom: isLastPage(row.index) ? 0 : PDF_PAGE_GAP,
+                      transform: `translateY(${row.start}px)`
+                    }}
+                  >
+                    <Page
+                      pageNumber={row.index + 1}
+                      width={pageWidth}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                    />
+                  </div>
+                ))}
+              </div>
             </Document>
           </div>
-
-          {/* Page controls — hover reveal, bottom-centered. `inset-x-0` + a
-              centering flex row keeps this RTL-safe without a translate, and
-              only the pill itself takes pointer events so the page stays
-              selectable underneath. Sits above react-pdf's text layer (z-2). */}
-          {!loading && !error && numPages > 1 && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-              <div className="pointer-events-auto flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 shadow-sm">
-                <button
-                  type="button"
-                  aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.previousPage')}
-                  disabled={currentPage <= 1}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => goToPage(currentPage - 1)}
-                  className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50 disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
-                </button>
-                <span className="px-1 text-xs tabular-nums text-muted-foreground">
-                  {currentPage} / {numPages}
-                </span>
-                <button
-                  type="button"
-                  aria-label={tPhaseF('phaseF.componentsNoteContentAreaFileBlock.nextPage')}
-                  disabled={currentPage >= numPages}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => goToPage(currentPage + 1)}
-                  className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50 disabled:opacity-40 disabled:hover:bg-transparent"
-                >
-                  <ChevronRight className="h-4 w-4 rtl:rotate-180" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Alignment controls — hover reveal, top-inline-end */}
-          {!loading && !error && (
-            <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-              {PDF_ALIGN_VALUES.map((value) => {
-                const Icon = PDF_ALIGN_ICONS[value]
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-label={alignLabels[value]}
-                    aria-pressed={align === value}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => onAlign(value)}
-                    className={cn(
-                      'flex h-5 w-5 items-center justify-center rounded transition-colors',
-                      align === value
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-accent/50'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </div>
+
+        {/* Page indicator — hover reveal, bottom-centered, read-only now that
+            scrolling is what moves through the document. A sibling of the
+            scroller rather than a child, so it stays put while pages scroll
+            past. `inset-x-0` + a centering flex row keeps it RTL-safe. */}
+        {!loading && !error && numPages > 1 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="rounded-md border border-border bg-background/90 px-1.5 py-0.5 text-xs tabular-nums text-muted-foreground shadow-sm">
+              {currentPage} / {numPages}
+            </div>
+          </div>
+        )}
+
+        {/* Alignment controls — hover reveal, top-inline-end */}
+        {!loading && !error && (
+          <div className="absolute top-2 end-2 z-10 flex items-center gap-px rounded-md border border-border bg-background/90 p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            {PDF_ALIGN_VALUES.map((value) => {
+              const Icon = PDF_ALIGN_ICONS[value]
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={alignLabels[value]}
+                  aria-pressed={align === value}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => onAlign(value)}
+                  className={cn(
+                    'flex h-5 w-5 items-center justify-center rounded transition-colors',
+                    align === value
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {/* Corner resize brackets — sit just outside the bottom corners. Faint
             at rest rather than hidden: a control that only exists on hover is a
