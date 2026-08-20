@@ -87,6 +87,7 @@ import {
   getAllTagDefinitions
 } from '../notes/store'
 import { getIndexDatabase, getDatabase } from '../database'
+import { resolveWikiTarget } from '@memry/shared/wiki-target'
 import { countLocalOnlyNoteMetadata, listPropertyDefinitions } from '@memry/storage-data'
 import { getNotesInFolder, reorderNotesInFolder, getAllNotePositions } from '../notes/store'
 import { emitNoteAttachmentSaved } from '../notes/runtime-effects'
@@ -255,6 +256,26 @@ export function registerNotesHandlers(): void {
         path: result.path,
         title: result.title,
         fileType: result.fileType ?? 'markdown'
+      }
+    })
+  )
+
+  // notes:resolve-wiki-target - Resolve a WikiLink target, heading half and all
+  // `resolveByTitle` is heading-blind by contract, so `[[Meeting#Decisions]]`
+  // misses it; this reads the note half first and falls back to the raw string,
+  // which is what an agent following a link needs (#1557).
+  ipcMain.handle(
+    NotesChannels.invoke.RESOLVE_WIKI_TARGET,
+    createStringHandler(async (target) => {
+      const db = getIndexDatabase()
+      const resolved = await resolveWikiTarget(target, (title) => resolveNoteByTitle(db, title))
+      if (!resolved) return null
+      return {
+        id: resolved.match.id,
+        path: resolved.match.path,
+        title: resolved.match.title,
+        fileType: resolved.match.fileType ?? 'markdown',
+        heading: resolved.heading
       }
     })
   )

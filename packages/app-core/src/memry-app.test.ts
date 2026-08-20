@@ -194,6 +194,14 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.equal(await app.notes.exists(note.id), true)
   assert.equal((await app.notes.previewByTitle('Linked Note'))?.id, linkedNote.id)
   assert.equal((await app.notes.resolveByTitle('Linked Note'))?.path, linkedNote.path)
+  // #1557: a wiki-link target, not a bare title — the note half resolves and
+  // the heading half comes back for the caller to scroll to.
+  assert.equal(await app.notes.resolveByTitle('Linked Note#Details'), null)
+  const headingTarget = await app.notes.resolveWikiTarget('Linked Note#Details')
+  assert.equal(headingTarget?.path, linkedNote.path)
+  assert.equal(headingTarget?.heading, 'Details')
+  assert.equal((await app.notes.resolveWikiTarget('Linked Note'))?.heading, null)
+  assert.equal(await app.notes.resolveWikiTarget('Missing Note#Details'), null)
   const noteLinks = await app.notes.getLinks(note.id)
   assert.equal(
     noteLinks.outgoing.some(

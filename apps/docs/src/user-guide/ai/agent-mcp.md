@@ -428,6 +428,11 @@ actions, external open/reveal actions, import dialogs, OS settings panes, teleme
 diagnostics reporting, and raw secret writes. Unsupported or unavailable desktop API operations
 return a structured MCP error instead of falling back to an arbitrary desktop call.
 
+`notes.resolveWikiTarget` follows a wiki link the way the editor does: `Meeting#Decisions` resolves
+to the note `Meeting` and reports `heading: "Decisions"`, while a note genuinely titled `Sprint #4`
+still resolves to itself. `notes.resolveByTitle` stays a plain title lookup and returns nothing for a
+target carrying a heading, so use `notes.resolveWikiTarget` when the string came out of a `[[…]]`.
+
 Inbox items convert through the bridge into any of the four targets the app itself offers:
 `inbox.convertToNote`, `inbox.convertToTask`, `inbox.convertToEvent`, and
 `inbox.convertToReminder`. `notes.applyTemplate` applies a template the agent can already read

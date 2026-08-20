@@ -56,6 +56,7 @@ memrynote notes get note_abc123
 memrynote notes exists note_abc123
 memrynote notes preview "Draft"
 memrynote notes resolve "Draft"
+memrynote notes resolve "Draft#Open questions"
 memrynote notes links note_abc123
 memrynote notes update note_abc123 --append "More text" --properties '{"status":"active"}'
 memrynote notes rename note_abc123 "Final Draft"
@@ -81,6 +82,8 @@ memrynote folders create Projects
 memrynote folders rename Projects Archive/Projects
 memrynote folders delete Archive/Projects --yes
 ```
+
+`notes resolve` takes a wiki-link target, so `Draft#Open questions` resolves to the note `Draft` and reports `heading` alongside it. A note whose title really contains a `#` still wins over the split reading, so `Sprint #4` resolves to itself.
 
 Destructive commands require `--yes`.
 Note snapshots use the same version-history storage as the desktop app. Restoring a snapshot creates a backup snapshot of the current note first.

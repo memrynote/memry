@@ -115,3 +115,56 @@ export function replaceWikiLinks(
     render(wikiLinkLabel(target, alias))
   )
 }
+
+/** A wiki-link target matched to a record, plus the heading to scroll to. */
+export interface ResolvedWikiTarget<T> {
+  match: T
+  /**
+   * The heading the link addresses, or `null` when there is nothing to scroll
+   * to — no `#` in the target, a `#^block-id` we cannot find, or a match that
+   * came from the raw string, where the `#` turned out to be part of the title.
+   */
+  heading: string | null
+}
+
+/**
+ * Resolve a wiki-link target through a title lookup, split half first.
+ *
+ * The order is the whole point and it is load-bearing in both directions:
+ * `[[Meeting#Decisions]]` must reach `Meeting`, and `[[Sprint #4]]` must still
+ * reach the note somebody really named `Sprint #4`. `resolveByTitle` itself
+ * stays heading-blind on purpose — its contract is "is there a note with this
+ * title", and folding wiki grammar into it would make `Sprint #4` unfindable
+ * by its own name. So the grammar lives here, one layer up, where every caller
+ * outside the renderer (the CLI, the agent MCP surface) can share it.
+ *
+ * `lookup` is whatever "find a note with this title" means to the caller — a
+ * data-DB row for the CLI, an index-DB row in the main process.
+ */
+export async function resolveWikiTarget<T>(
+  target: string,
+  lookup: (title: string) => T | null | undefined | Promise<T | null | undefined>
+): Promise<ResolvedWikiTarget<T> | null> {
+  const raw = target.trim()
+  if (!raw) return null
+
+  const { note, heading } = splitWikiTarget(raw)
+
+  if (heading !== null) {
+    // `[[#Heading]]` addresses the note it is written in. There is no title to
+    // look up, and the caller — which knows which note that is — answers it.
+    if (!note) return null
+
+    const bySplit = await lookup(note)
+    if (bySplit) return { match: bySplit, heading: headingAnchor(heading) }
+  }
+
+  const byRaw = await lookup(raw)
+  return byRaw ? { match: byRaw, heading: null } : null
+}
+
+/** The heading half as something to scroll to, or `null` when it is not. */
+function headingAnchor(heading: string): string | null {
+  if (!heading || isBlockReference(heading)) return null
+  return heading
+}

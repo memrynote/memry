@@ -24,6 +24,7 @@ export const AgentMcpDesktopReadOperations = [
   'notes.getByPath',
   'notes.getFile',
   'notes.resolveByTitle',
+  'notes.resolveWikiTarget',
   'notes.previewByTitle',
   'notes.list',
   'notes.getTags',
@@ -344,8 +345,7 @@ export const AgentMcpDesktopApiRequestSchema = z.object({
 export type AgentMcpDesktopApiRequest = z.infer<typeof AgentMcpDesktopApiRequestSchema>
 
 export type AgentMcpDesktopApiResponse =
-  | { ok: true; data: unknown }
-  | { ok: false; error: { code: string; message: string } }
+  { ok: true; data: unknown } | { ok: false; error: { code: string; message: string } }
 
 // ============================================================================
 // Canvas item writes (#916)

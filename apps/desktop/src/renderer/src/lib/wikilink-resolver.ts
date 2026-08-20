@@ -9,7 +9,7 @@
 
 import { notesService } from '@/services/notes-service'
 import { getFileType, getExtension, isSupported } from '@memry/shared/file-types'
-import { splitWikiTarget, isBlockReference } from '@memry/shared/wiki-target'
+import { splitWikiTarget, isBlockReference, resolveWikiTarget } from '@memry/shared/wiki-target'
 
 // ============================================================================
 // Types
@@ -117,16 +117,12 @@ export async function resolveWikiLink(target: string): Promise<ResolvedWikiLink>
   const extension = getExtension(trimmedTarget)
   const hasKnownExtension = extension !== '' && isSupported(extension)
 
-  // Split first: `[[Note#Heading]]` must reach `Note`, never the
-  // `Note#Heading.md` this bug used to create.
-  if (hasHeading) {
-    const bySplit = await notesService.resolveByTitle(note)
-    if (bySplit) return resolvedRecord(bySplit, anchor)
-  }
-
-  // Raw second: the `#` was part of the name after all, so it names no heading.
-  const resolved = await notesService.resolveByTitle(trimmedTarget)
-  if (resolved) return resolvedRecord(resolved, null)
+  // Split first, raw second — the shared rule, so the CLI and the agent MCP
+  // surface read a link exactly the way the editor does (#1557).
+  const resolved = await resolveWikiTarget(trimmedTarget, (title) =>
+    notesService.resolveByTitle(title)
+  )
+  if (resolved) return resolvedRecord(resolved.match, resolved.heading)
 
   // Not found in database
   if (hasKnownExtension) {
