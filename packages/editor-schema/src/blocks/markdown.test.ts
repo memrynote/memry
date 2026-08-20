@@ -1,0 +1,139 @@
+import { describe, expect, it } from 'vitest'
+import { serializeToggleBlock, splitMarkdownByToggles } from './markdown'
+
+describe('serializeToggleBlock', () => {
+  it('wraps the body in blank lines so renderers format it as markdown', () => {
+    expect(serializeToggleBlock('Title', 'Body')).toBe(
+      [
+        '<details data-memry-toggle>',
+        '<summary>Title</summary>',
+        '',
+        'Body',
+        '',
+        '</details>'
+      ].join('\n')
+    )
+  })
+
+  it('omits the blank lines for an empty toggle', () => {
+    expect(serializeToggleBlock('Title', '')).toBe(
+      ['<details data-memry-toggle>', '<summary>Title</summary>', '</details>'].join('\n')
+    )
+  })
+
+  it('folds a multi-line summary onto one line', () => {
+    // `<summary>` closes on its own line: a soft break inside the toggle's own
+    // content would split the tag and the block would never parse back.
+    expect(serializeToggleBlock('One\nTwo', '')).toContain('<summary>One Two</summary>')
+  })
+
+  it('puts a colour marker on the line before the block', () => {
+    expect(serializeToggleBlock('Title', '', '<!-- colors:{"textColor":"red"} -->')).toBe(
+      [
+        '<!-- colors:{"textColor":"red"} -->',
+        '<details data-memry-toggle>',
+        '<summary>Title</summary>',
+        '</details>'
+      ].join('\n')
+    )
+  })
+})
+
+describe('splitMarkdownByToggles', () => {
+  it('returns one markdown segment when there is no toggle', () => {
+    expect(splitMarkdownByToggles('Just text\n\nMore')).toEqual([
+      { kind: 'markdown', text: 'Just text\n\nMore' }
+    ])
+  })
+
+  it('splits a toggle out of the text around it', () => {
+    const markdown = ['Before', '', serializeToggleBlock('Title', 'Body'), '', 'After'].join('\n')
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      { kind: 'markdown', text: 'Before' },
+      { kind: 'toggle', summary: 'Title', body: 'Body', colorsMarker: null },
+      { kind: 'markdown', text: 'After' }
+    ])
+  })
+
+  it('keeps a body that holds its own paragraph gaps intact', () => {
+    // The line-by-line scanners downstream would shred this at the gap, which
+    // is why the split has to happen first.
+    const body = 'One\n\n\nTwo'
+
+    expect(splitMarkdownByToggles(serializeToggleBlock('Title', body))).toEqual([
+      { kind: 'toggle', summary: 'Title', body, colorsMarker: null }
+    ])
+  })
+
+  it('closes on the matching tag, not on a nested one', () => {
+    const inner = serializeToggleBlock('Inner', 'Deep')
+
+    expect(splitMarkdownByToggles(serializeToggleBlock('Outer', inner))).toEqual([
+      { kind: 'toggle', summary: 'Outer', body: inner, colorsMarker: null }
+    ])
+  })
+
+  it('is not closed early by a foreign <details> nested in the body', () => {
+    const body = ['<details>', '<summary>Theirs</summary>', '</details>'].join('\n')
+
+    expect(splitMarkdownByToggles(serializeToggleBlock('Ours', body))).toEqual([
+      { kind: 'toggle', summary: 'Ours', body, colorsMarker: null }
+    ])
+  })
+
+  it('hands the preceding colour marker to the toggle', () => {
+    const markdown = [
+      'Before',
+      '',
+      '<!-- colors:{"textColor":"red"} -->',
+      ...serializeToggleBlock('Title', '').split('\n')
+    ].join('\n')
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      { kind: 'markdown', text: 'Before' },
+      {
+        kind: 'toggle',
+        summary: 'Title',
+        body: '',
+        colorsMarker: '<!-- colors:{"textColor":"red"} -->'
+      }
+    ])
+  })
+
+  it('leaves a bare <details> alone — it is not ours to rewrite', () => {
+    const markdown = ['<details>', '<summary>Theirs</summary>', '', 'Body', '', '</details>'].join(
+      '\n'
+    )
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+  })
+
+  it('leaves an open tag with no <summary> after it alone', () => {
+    const markdown = ['<details data-memry-toggle>', 'Body', '</details>'].join('\n')
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+  })
+
+  it('leaves an unterminated toggle alone rather than swallowing the note', () => {
+    const markdown = ['<details data-memry-toggle>', '<summary>Title</summary>', '', 'Rest'].join(
+      '\n'
+    )
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+  })
+
+  it('ignores a toggle quoted inside a code fence', () => {
+    const markdown = ['```html', serializeToggleBlock('Example', 'Body'), '```'].join('\n')
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+  })
+
+  it('ignores a closing tag quoted inside a fence in the body', () => {
+    const body = ['```html', '</details>', '```'].join('\n')
+
+    expect(splitMarkdownByToggles(serializeToggleBlock('Docs', body))).toEqual([
+      { kind: 'toggle', summary: 'Docs', body, colorsMarker: null }
+    ])
+  })
+})

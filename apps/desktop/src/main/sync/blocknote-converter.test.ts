@@ -2129,3 +2129,221 @@ describe('custom block markers are not claimed out of context', () => {
     expect(performance.now() - started).toBeLessThan(50)
   })
 })
+
+describe('toggle blocks survive the markdown round-trip (#1643)', () => {
+  const toggleBlock = (summary: string, children: unknown[] = []) => ({
+    id: `toggle-${summary}`,
+    type: 'toggleListItem',
+    props: { backgroundColor: 'default', textColor: 'default', textAlignment: 'left' },
+    content: [{ type: 'text', text: summary, styles: {} }],
+    children
+  })
+
+  const paragraph = (text: string) => ({
+    id: `p-${text}`,
+    type: 'paragraph',
+    props: { backgroundColor: 'default', textColor: 'default', textAlignment: 'left' },
+    content: [{ type: 'text', text, styles: {} }],
+    children: []
+  })
+
+  async function serialize(blocks: unknown[]): Promise<string> {
+    const doc = new Y.Doc()
+    expect(blocksToYFragment(blocks as never, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    const markdown = await yDocToMarkdown(doc)
+    expect(markdown).not.toBeNull()
+    return markdown!
+  }
+
+  /** One markdown → Yjs → markdown pass, the way write-back actually runs. */
+  async function rewrite(markdown: string): Promise<string> {
+    const doc = new Y.Doc()
+    expect(await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))).toBe(true)
+    const next = await yDocToMarkdown(doc)
+    expect(next).not.toBeNull()
+    return next!
+  }
+
+  it('writes a toggle as <details data-memry-toggle>, not as a bullet', async () => {
+    // #given a toggle with a paragraph nested under it
+    const blocks = [toggleBlock('Details', [paragraph('Hidden')])]
+
+    // #when
+    const markdown = await serialize(blocks)
+
+    // #then
+    expect(markdown).toBe(
+      [
+        '<details data-memry-toggle>',
+        '<summary>Details</summary>',
+        '',
+        'Hidden',
+        '',
+        '</details>'
+      ].join('\n')
+    )
+    // the shape the issue reports: a plain bullet with the fold gone
+    expect(markdown).not.toMatch(/^- Details$/m)
+  })
+
+  it('parses it back into a toggleListItem carrying its children', async () => {
+    // #given
+    const markdown = await serialize([toggleBlock('Details', [paragraph('Hidden')])])
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        content: [{ type: 'text', text: 'Details', styles: {} }],
+        children: [
+          expect.objectContaining({
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Hidden', styles: {} }]
+          })
+        ]
+      })
+    ])
+  })
+
+  it('keeps an image nested inside a toggle', async () => {
+    // #given the user's case: a toggle used to hide an image
+    const url = 'memry-file://local/v/attachments/n/diagram.png'
+    const markdown = await serialize([
+      toggleBlock('Screenshots', [
+        {
+          id: 'img',
+          type: 'image',
+          props: { url, caption: '', previewWidth: 512, backgroundColor: 'default' },
+          children: []
+        }
+      ])
+    ])
+    expect(markdown).toContain(url)
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        children: [expect.objectContaining({ type: 'image' })]
+      })
+    ])
+  })
+
+  it('nests a toggle inside a toggle', async () => {
+    // #given
+    const markdown = await serialize([
+      toggleBlock('Outer', [toggleBlock('Inner', [paragraph('Deep')])])
+    ])
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        content: [{ type: 'text', text: 'Outer', styles: {} }],
+        children: [
+          expect.objectContaining({
+            type: 'toggleListItem',
+            content: [{ type: 'text', text: 'Inner', styles: {} }],
+            children: [expect.objectContaining({ type: 'paragraph' })]
+          })
+        ]
+      })
+    ])
+  })
+
+  it('is byte-stable over six write-back passes, not just two', async () => {
+    // #given every shape the block can hold, in one note. Two passes cannot
+    // tell "converged" from "grows by a fixed amount every save" (#1457).
+    const first = await serialize([
+      paragraph('Before'),
+      toggleBlock('Outer', [
+        paragraph('One'),
+        toggleBlock('Inner', [paragraph('Deep')]),
+        paragraph('Two')
+      ]),
+      paragraph('After')
+    ])
+    // otherwise a build that never writes a toggle passes this vacuously: plain
+    // bullets are stable too
+    expect(first).toContain('<summary>Outer</summary>')
+    expect(first).toContain('<summary>Inner</summary>')
+
+    // #when
+    let current = first
+    const passes: string[] = []
+    for (let i = 0; i < 6; i++) {
+      current = await rewrite(current)
+      passes.push(current)
+    }
+
+    // #then every pass produced exactly the same bytes as the first write
+    expect(passes).toEqual(Array.from({ length: 6 }, () => first))
+  })
+
+  it('leaves a plain <details> the app never wrote untouched', async () => {
+    // #given a collapsible an Obsidian user hand-wrote — no memry attribute.
+    // Claiming it would run its body through BlockNote and rewrite the file.
+    const markdown = ['<details>', '<summary>Theirs</summary>', '', 'Body', '', '</details>'].join(
+      '\n'
+    )
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks?.some((block) => block.type === 'toggleListItem')).toBe(false)
+  })
+
+  it('leaves a toggle quoted inside a code fence as code', async () => {
+    // #given a note documenting the format
+    const markdown = [
+      '```html',
+      '<details data-memry-toggle>',
+      '<summary>Example</summary>',
+      '</details>',
+      '```'
+    ].join('\n')
+
+    // #when
+    const blocks = await markdownToBlocks(markdown)
+
+    // #then
+    expect(blocks).toEqual([expect.objectContaining({ type: 'codeBlock' })])
+    expect(await rewrite(markdown)).toBe(markdown)
+  })
+
+  it('keeps a coloured toggle both coloured and folded', async () => {
+    // #given — before the toggle branch existed the colour marker path claimed
+    // this block and flattened the fold; the fix must not trade one for the other
+    const blocks = [
+      {
+        ...toggleBlock('Warning', [paragraph('Why')]),
+        props: { backgroundColor: 'red', textColor: 'default', textAlignment: 'left' }
+      }
+    ]
+
+    // #when
+    const markdown = await serialize(blocks)
+    const parsed = await markdownToBlocks(markdown)
+
+    // #then
+    expect(markdown.startsWith('<!-- colors:{"backgroundColor":"red"} -->\n<details')).toBe(true)
+    expect(parsed).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        props: expect.objectContaining({ backgroundColor: 'red' }),
+        children: [expect.objectContaining({ type: 'paragraph' })]
+      })
+    ])
+    expect(await rewrite(markdown)).toBe(markdown)
+  })
+})

@@ -16,6 +16,9 @@
  * `file-block-markers.ts`, from which these moved verbatim.
  */
 
+import { BLOCK_COLORS_LINE_REGEX } from '@memry/shared/block-colors'
+import { createFenceTracker } from '@memry/shared/markdown-fences'
+
 // ---------------------------------------------------------------------------
 // callout — `> [!type]` followed by the content, one `> ` per line
 // ---------------------------------------------------------------------------
@@ -152,4 +155,170 @@ export function parseFileBlockMarker(marker: string): FileBlockProps | null {
   } catch {
     return null
   }
+}
+
+// ---------------------------------------------------------------------------
+// toggleListItem — `<details data-memry-toggle>` wrapping a `<summary>` and the
+// collapsed body
+// ---------------------------------------------------------------------------
+
+/**
+ * BlockNote's own HTML export writes a toggle as a plain `<li>`, so markdown
+ * gets it back as a bullet and the fold — plus every block nested under it —
+ * is gone on the next open (#1643). This is the form that survives instead.
+ *
+ * `<details>`/`<summary>` is valid HTML inside GFM, so GitHub and Obsidian
+ * render the note as a real collapsible section rather than as markup.
+ *
+ * The `data-memry-toggle` attribute is what makes the block OURS. A bare
+ * `<details>` block written by hand in Obsidian is left as the author wrote it:
+ * claiming it would run its body through BlockNote's markdown parser, and
+ * anything that parser cannot represent comes back different — write-back
+ * byte-compares, so that difference is a rewrite of a file Memry never wrote.
+ * Renderers ignore the unknown attribute, so nothing is lost by carrying it.
+ */
+export const TOGGLE_OPEN_LINE = '<details data-memry-toggle>'
+export const TOGGLE_CLOSE_LINE = '</details>'
+
+/** Only a `<details>` carrying our attribute, alone on its line, is a toggle. */
+const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle>$/
+/** Any `<details>` open tag — used for depth only, so a foreign one nested in a
+ * toggle body cannot close the toggle early. */
+const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
+const TOGGLE_SUMMARY_LINE_REGEX = /^<summary>(.*)<\/summary>$/
+
+export interface ToggleBlockSegment {
+  kind: 'toggle'
+  /** Inline markdown of the toggle's own line — the part that stays visible. */
+  summary: string
+  /** Markdown of the blocks nested under it; `''` for an empty toggle. */
+  body: string
+  /** A `<!-- colors:{…} -->` line that preceded the block, verbatim, or null. */
+  colorsMarker: string | null
+}
+
+export interface ToggleMarkdownSegment {
+  kind: 'markdown'
+  text: string
+}
+
+export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment
+
+export function serializeToggleBlock(
+  summaryMarkdown: string,
+  bodyMarkdown: string,
+  colorsMarker?: string | null
+): string {
+  // `<summary>` closes on its own line, so a soft break inside the toggle's own
+  // content would split the tag and stop the block from parsing back at all.
+  const summary = summaryMarkdown.replace(/\s*\n\s*/g, ' ').trim()
+  const body = bodyMarkdown.trim()
+
+  const lines = [TOGGLE_OPEN_LINE, `<summary>${summary}</summary>`]
+  // The blank lines are not cosmetic: without them CommonMark reads the body as
+  // part of the raw HTML block and GitHub/Obsidian render it unformatted.
+  if (body) lines.push('', body, '')
+  lines.push(TOGGLE_CLOSE_LINE)
+
+  const block = lines.join('\n')
+  return colorsMarker ? `${colorsMarker}\n${block}` : block
+}
+
+/**
+ * Split markdown into toggle regions and everything between them.
+ *
+ * Callers parse the `markdown` segments however they normally would and rebuild
+ * a `toggleListItem` from each toggle segment, recursing into `body` with the
+ * same parser. Splitting has to happen BEFORE the blank-line and marker-line
+ * scanners: those work line by line and would shred a toggle body apart at its
+ * own paragraph gaps.
+ *
+ * An unterminated `<details data-memry-toggle>` stays markdown. Swallowing the
+ * rest of the note into a block the author never closed loses more than it
+ * saves.
+ */
+export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[] {
+  const lines = markdown.split('\n')
+  const segments: ToggleContentSegment[] = []
+  const fence = createFenceTracker()
+  let buffer: string[] = []
+
+  /**
+   * Flush the pending markdown. Before a toggle, a trailing `<!-- colors:{…} -->`
+   * is handed back instead of flushed: the marker applies to the block that
+   * follows it, and that block is about to become a segment of its own.
+   */
+  const flushMarkdown = (popColorsMarker: boolean): string | null => {
+    let marker: string | null = null
+
+    if (popColorsMarker) {
+      while (buffer.length > 0 && !buffer[buffer.length - 1].trim()) buffer.pop()
+      const last = buffer[buffer.length - 1]?.trim()
+      if (last && BLOCK_COLORS_LINE_REGEX.test(last)) {
+        marker = last
+        buffer.pop()
+      }
+    }
+
+    const text = buffer.join('\n').trim()
+    if (text) segments.push({ kind: 'markdown', text })
+    buffer = []
+    return marker
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const insideFence = fence.consume(lines[i])
+    const region =
+      !insideFence && TOGGLE_OPEN_LINE_REGEX.test(lines[i].trim())
+        ? readToggleRegion(lines, i)
+        : null
+
+    if (!region) {
+      buffer.push(lines[i])
+      continue
+    }
+
+    const colorsMarker = flushMarkdown(true)
+    segments.push({ kind: 'toggle', summary: region.summary, body: region.body, colorsMarker })
+    // The region's own lines never reach the outer fence tracker, which is
+    // correct: they belong to the toggle, not to the markdown around it.
+    i = region.endIndex
+  }
+
+  flushMarkdown(false)
+  return segments
+}
+
+function readToggleRegion(
+  lines: readonly string[],
+  openIndex: number
+): { summary: string; body: string; endIndex: number } | null {
+  const summaryMatch = lines[openIndex + 1]?.trim().match(TOGGLE_SUMMARY_LINE_REGEX)
+  if (!summaryMatch) return null
+
+  const fence = createFenceTracker()
+  const body: string[] = []
+  let depth = 1
+
+  for (let i = openIndex + 2; i < lines.length; i++) {
+    const line = lines[i]
+    if (!fence.consume(line)) {
+      const trimmed = line.trim()
+      if (DETAILS_OPEN_LINE_REGEX.test(trimmed)) {
+        depth++
+      } else if (trimmed === TOGGLE_CLOSE_LINE) {
+        depth--
+        if (depth === 0) {
+          return {
+            summary: summaryMatch[1].trim(),
+            body: body.join('\n').trim(),
+            endIndex: i
+          }
+        }
+      }
+    }
+    body.push(line)
+  }
+
+  return null
 }

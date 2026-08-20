@@ -590,6 +590,116 @@ describe('serializeBlocksPreservingBlanks', () => {
   })
 })
 
+describe('toggle blocks (#1643)', () => {
+  /** Text in, text out — enough to see which markdown the two paths produce. */
+  const textEditor = {
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown
+        .split(/\n\n+/)
+        .filter((chunk) => chunk.trim())
+        .map((chunk) => ({
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: chunk.trim(), styles: {} }],
+          children: []
+        }))
+    ),
+    blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+      blocks
+        .map((block) =>
+          Array.isArray(block.content)
+            ? block.content.map((content: any) => content.text ?? '').join('')
+            : ''
+        )
+        .filter(Boolean)
+        .join('\n\n')
+    )
+  }
+
+  const toggle = (summary: string, children: unknown[] = []) => ({
+    type: 'toggleListItem',
+    props: {},
+    content: [{ type: 'text', text: summary, styles: {} }],
+    children
+  })
+
+  const paragraph = (text: string) => ({
+    type: 'paragraph',
+    props: {},
+    content: [{ type: 'text', text, styles: {} }],
+    children: []
+  })
+
+  it('serializes a toggle and its children into one <details> region', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(textEditor, [
+      toggle('Details', [paragraph('Hidden')])
+    ] as any[])
+
+    expect(markdown).toBe(
+      [
+        '<details data-memry-toggle>',
+        '<summary>Details</summary>',
+        '',
+        'Hidden',
+        '',
+        '</details>'
+      ].join('\n')
+    )
+  })
+
+  it('parses that region back into a toggleListItem with its children', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(textEditor, [
+      toggle('Outer', [paragraph('One'), toggle('Inner', [paragraph('Deep')])])
+    ] as any[])
+
+    const blocks = await parseMarkdownPreservingBlanks(textEditor, markdown)
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        content: [{ type: 'text', text: 'Outer', styles: {} }],
+        children: [
+          expect.objectContaining({ content: [{ type: 'text', text: 'One', styles: {} }] }),
+          expect.objectContaining({
+            type: 'toggleListItem',
+            content: [{ type: 'text', text: 'Inner', styles: {} }],
+            children: [
+              expect.objectContaining({ content: [{ type: 'text', text: 'Deep', styles: {} }] })
+            ]
+          })
+        ]
+      })
+    ])
+  })
+
+  it('re-serializes to the same bytes over six passes', async () => {
+    // Two passes cannot tell "converged" from "grows a fixed amount every save".
+    const first = await serializeBlocksPreservingBlanks(textEditor, [
+      paragraph('Before'),
+      toggle('Outer', [paragraph('One'), toggle('Inner', [paragraph('Deep')])]),
+      paragraph('After')
+    ] as any[])
+    expect(first).toContain('<summary>Inner</summary>')
+
+    let current = first
+    for (let pass = 0; pass < 6; pass++) {
+      const blocks = await parseMarkdownPreservingBlanks(textEditor, current)
+      current = await serializeBlocksPreservingBlanks(textEditor, blocks)
+      expect(current).toBe(first)
+    }
+  })
+
+  it('leaves a plain <details> the app never wrote as markdown', async () => {
+    const markdown = ['<details>', '<summary>Theirs</summary>', '', 'Body', '', '</details>'].join(
+      '\n'
+    )
+
+    const blocks = await parseMarkdownPreservingBlanks(textEditor, markdown)
+
+    expect(blocks.some((block) => block.type === 'toggleListItem')).toBe(false)
+  })
+})
+
 describe('isEmptyParagraph', () => {
   it('detects only empty paragraph blocks', () => {
     expect(isEmptyParagraph({ type: 'heading', content: [] } as any)).toBe(false)
