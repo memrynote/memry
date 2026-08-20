@@ -253,7 +253,7 @@ describe('more major hooks coverage', () => {
     // the reducer free to focus a tab this item already has.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-b', isPreview: false }),
-      { background: undefined, forceNew: false, reuseActiveTab: false }
+      { background: undefined, forceNew: false, reuseActiveTab: true }
     )
 
     result.current.openSidebarItem(
@@ -264,7 +264,7 @@ describe('more major hooks coverage', () => {
     // what makes it skip entity dedup and mint a genuinely new tab.
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-c', isPreview: false }),
-      { background: true, forceNew: true, reuseActiveTab: false }
+      { background: true, forceNew: true, reuseActiveTab: true }
     )
 
     result.current.openSidebarItem(

@@ -26,7 +26,11 @@ export const GeneralSettingsSchema = z.object({
   /**
    * Whether clicking a page in the sidebar opens a new tab. Off means the click
    * reuses the active (unpinned) tab, so browsing ten notes leaves one tab.
-   * Defaults to `true` — the behaviour every existing install already has.
+   *
+   * Defaults to `false`. It shipped defaulting to `true`, which made a browsing
+   * pass spawn a tab per click; existing installs are moved to `false` once by
+   * `main/settings/flip-open-pages-in-new-tab.ts`, which leaves an explicit
+   * user choice alone.
    */
   openPagesInNewTab: z.boolean(),
   clockFormat: z.enum(['12h', '24h']),
@@ -46,7 +50,7 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   language: 'en',
   onboardingCompleted: false,
   createInSelectedFolder: true,
-  openPagesInNewTab: true,
+  openPagesInNewTab: false,
   clockFormat: '12h',
   dateFormat: 'DD.MM.YYYY'
 }

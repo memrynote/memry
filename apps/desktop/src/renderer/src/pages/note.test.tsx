@@ -757,7 +757,8 @@ describe('NotePage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open backlink' }))
     expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'note', entityId: 'backlink-1' })
+      expect.objectContaining({ type: 'note', entityId: 'backlink-1' }),
+      { reuseActiveTab: true }
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open linked task' }))
@@ -950,21 +951,24 @@ describe('NotePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Internal note link' }))
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'note', entityId: 'existing-note' })
+        expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
+        { reuseActiveTab: true }
       )
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Internal file link' }))
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'file', entityId: 'file-1' })
+        expect.objectContaining({ type: 'file', entityId: 'file-1' }),
+        { reuseActiveTab: true }
       )
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'note', entityId: 'created-note' })
+        expect.objectContaining({ type: 'note', entityId: 'created-note' }),
+        { reuseActiveTab: true }
       )
     )
 

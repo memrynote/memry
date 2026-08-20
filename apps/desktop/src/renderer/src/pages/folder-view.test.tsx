@@ -578,12 +578,14 @@ describe('FolderViewPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open note' }))
     expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'note', entityId: 'note-1', title: 'Folder Note' })
+      expect.objectContaining({ type: 'note', entityId: 'note-1', title: 'Folder Note' }),
+      { reuseActiveTab: true }
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open child folder' }))
     expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'folder', entityId: 'Work/Plans/Child' })
+      expect.objectContaining({ type: 'folder', entityId: 'Work/Plans/Child' }),
+      { reuseActiveTab: true }
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open tag' }))
@@ -607,7 +609,8 @@ describe('FolderViewPage', () => {
     )
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'note', entityId: 'new-note' })
+        expect.objectContaining({ type: 'note', entityId: 'new-note' }),
+        { reuseActiveTab: true }
       )
     )
 
@@ -650,7 +653,9 @@ describe('FolderViewPage', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Open grouped note' }))
-    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'note-1' }))
+    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ entityId: 'note-1' }), {
+      reuseActiveTab: true
+    })
 
     mocks.folderState.activeView = null
     mocks.folderState.isLoading = true
@@ -827,7 +832,8 @@ describe('FolderViewPage tag scope row opening by kind', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Open note' }))
 
     expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'note', entityId: 'note-1' })
+      expect.objectContaining({ type: 'note', entityId: 'note-1' }),
+      { reuseActiveTab: true }
     )
     expect(mocks.openSidebarItem).not.toHaveBeenCalled()
   })
