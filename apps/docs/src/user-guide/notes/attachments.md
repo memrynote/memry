@@ -54,6 +54,11 @@ file page before it clears cancels it cleanly.
 
 Images render as image blocks (not file blocks). Drag them to resize; double-click for the lightbox.
 
+Inside a table cell an image is inline instead: a cell holds text-level content only, so
+the image sits in the cell with a capped height. Pasting or dropping an image onto a cell
+puts it there rather than below the table. See
+[Images in a Table Cell](./editing.md#images-in-a-table-cell).
+
 ### Zooming and Panning
 
 Opening an image as a file page gives you the full viewer: zoom in and out, reset to fit, and rotate

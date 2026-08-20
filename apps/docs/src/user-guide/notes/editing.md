@@ -190,6 +190,32 @@ Pasting a URL offers four ways to keep it: plain **URL**, an inline **Mention** 
 
 This works inside a table cell too. **Mention** replaces the pasted URL in that one cell and leaves the rest of the table alone. **Embed** and **Bookmark** are blocks in their own right and a cell holds text only, so they take the URL out of the cell and place the card after the whole table.
 
+## Images in a Table Cell
+
+Images work inside table cells: paste a screenshot into a cell, or drop an image file
+onto one, and it lands in that cell rather than as a block underneath the table. Use it
+for a "before / after" column, a progress log of visual iterations, or a profile table
+with a picture beside each row.
+
+Cell images are stored the same way as any other markdown image, so the file on disk
+stays portable:
+
+```markdown
+| Iteration | Shot                      |
+| --------- | ------------------------- |
+| v1        | ![v1](attachments/v1.png) |
+```
+
+An image sitting in a line of text works the same way — `Here it is ![shot](shot.png)`
+keeps the image on the line instead of moving it to its own block. So do images in a
+heading or inside a quote.
+
+Images are capped at a readable height so one screenshot cannot stretch a row to the
+height of the window. An image on its own line is still a full image block, which is
+what you want most of the time: drag its edge to resize, double-click for the lightbox.
+
+Pasting an image anywhere outside a table is unchanged — you get the usual image block.
+
 ## Link Previews
 
 Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.
