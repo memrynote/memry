@@ -170,6 +170,23 @@ if (
 
 This mirrors `shouldStartMarquee` in `components/note/content-area/marquee-hit-test.ts`. Regression coverage: `tests/e2e/editor-drag-handle-menu.e2e.ts`.
 
+## A Closing Menu Still Steals Focus from the Field It Just Opened
+
+A Radix menu is not gone when it closes. `Presence` keeps it mounted for its exit animation — roughly 150ms — and it keeps answering pointer events for that whole window. A pointer leaving an item runs the menu's `onItemLeave`, which focuses the menu content; a pointer moving over an item focuses the item. Both are normal menu behaviour, and both are fatal to a "Rename" item that opens an inline field on the row underneath: the field focuses itself a frame after the click, the menu takes focus back a beat later, and because a blur commits and closes these fields, the rename ends before a key is pressed. Nothing throws, so no telemetry fires.
+
+It reads as random because it only happens when the pointer moves during the fade. Hold the mouse perfectly still and the rename works.
+
+Two guards are needed, and neither holds alone:
+
+1. `data-[state=closed]:pointer-events-none` on `ContextMenuContent` and `DropdownMenuContent` (`components/ui/*.tsx`), so a menu on its way out is no longer hit-testable and the pointermove storm stops.
+2. `handleInlineRenameBlur` (`lib/inline-rename-focus.ts`) on the field itself: a blur whose `relatedTarget` sits inside a menu already marked `data-state="closed"` is focus theft, not the user leaving, so take focus back instead of committing. This absorbs the single boundary event the browser fires when guard 1 flips hit-testing.
+
+Guard 2 deliberately ignores menus that are still open: a menu the user opens over an active field owns focus, and taking it back there fights the menu's own focus trap forever.
+
+The separate `onCloseAutoFocus` → `preventDefault()` in `components/ui/context-menu.tsx` covers a _different_ path — the focus restore Radix runs when the content unmounts. Do not mistake one for the other.
+
+**Testing this needs a moving pointer.** `page.click()` parks the mouse where it clicked, so a spec that clicks a menu item and then asserts is blind to this whole class. `tests/e2e/sidebar-folder-rename.e2e.ts` nudges the pointer in 6px steps for ~150ms after the click (`clickMenuItemAndMoveOn`); all three of its cases fail without the guards above. jsdom cannot see it at all — it runs no exit animation, so the menu unmounts in the same commit.
+
 ## Global Keydown Listeners Must Not Depend on Render State
 
 `useKeyboardShortcuts` (`hooks/use-keyboard-shortcuts-base.ts`), `useChordShortcuts` and `useInboxKeyboard` each bind exactly one `window` `keydown` listener per mount. The handler reads the shortcut list — and the tab/inbox state it acts on — from a ref refreshed after every render, so it always sees fresh values without re-registering.
