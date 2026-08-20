@@ -13,6 +13,7 @@ import { canvasFolders } from '@memry/db-schema/schema/canvas-folder'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
+import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
@@ -273,6 +274,15 @@ function getLocalSyncableRefs(db: DrizzleDb): LocalSyncableRef[] {
     addLocalRef({ id: h.id, type: 'home_page' })
   }
 
+  const syncedCustomIcons = db
+    .select({ id: customIcons.id })
+    .from(customIcons)
+    .where(isNotNull(customIcons.clock))
+    .all()
+  for (const icon of syncedCustomIcons) {
+    addLocalRef({ id: icon.id, type: 'custom_icon' })
+  }
+
   const syncedBookmarks = db
     .select({ id: bookmarks.id })
     .from(bookmarks)
@@ -389,6 +399,10 @@ function buildRefPayload(db: DrizzleDb, ref: LocalSyncableRef): string | null {
     }
     case 'home_page': {
       const row = db.select().from(homePages).where(eq(homePages.id, ref.id)).get()
+      return row ? JSON.stringify(row) : null
+    }
+    case 'custom_icon': {
+      const row = db.select().from(customIcons).where(eq(customIcons.id, ref.id)).get()
       return row ? JSON.stringify(row) : null
     }
     case 'bookmark': {

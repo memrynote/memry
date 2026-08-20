@@ -11,6 +11,7 @@ import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { templates } from '@memry/db-schema/schema/templates'
 import { homePages } from '@memry/db-schema/schema/home-pages'
+import { customIcons } from '@memry/db-schema/schema/custom-icons'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   type VectorClock,
@@ -238,6 +239,22 @@ export function incrementHomePageClockOffline(db: DataDb, boardId: string): void
     log.debug('Incremented offline home board clock', { boardId })
   } catch (err) {
     log.warn('Failed to increment offline home board clock', { boardId, error: err })
+  }
+}
+
+export function incrementCustomIconClockOffline(db: DataDb, iconId: string): void {
+  try {
+    const icon = db.select().from(customIcons).where(eq(customIcons.id, iconId)).get()
+    if (!icon) return
+
+    const existingClock = (icon.clock as VectorClock) ?? {}
+    const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
+
+    db.update(customIcons).set({ clock: newClock }).where(eq(customIcons.id, iconId)).run()
+
+    log.debug('Incremented offline custom icon clock', { iconId })
+  } catch (err) {
+    log.warn('Failed to increment offline custom icon clock', { iconId, error: err })
   }
 }
 

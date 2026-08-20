@@ -300,6 +300,23 @@ export const FolderConfigSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+/**
+ * A custom folder/note icon: its label plus the image bytes themselves.
+ *
+ * The bytes ride inside the record payload rather than the attachment pipeline
+ * because a normalized icon is a few KB — small enough that carrying it here
+ * keeps every device's `.memry/icons` directory self-healing from the DB row.
+ */
+export const CustomIconSyncPayloadSchema = z.object({
+  name: z.string().optional(),
+  ext: z.string().optional(),
+  /** Base64-encoded image bytes. */
+  data: z.string().optional(),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional()
+})
+
 export const CalendarEventSyncPayloadSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
@@ -525,6 +542,7 @@ export const AgentMessageSyncPayloadSchema = z.object({
 })
 
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
+export type CustomIconSyncPayload = z.infer<typeof CustomIconSyncPayloadSchema>
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
 export type CalendarBindingSyncPayload = z.infer<typeof CalendarBindingSyncPayloadSchema>

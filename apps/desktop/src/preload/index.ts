@@ -37,6 +37,7 @@ import { agentMcpApi } from './api/agent-mcp'
 import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
 import { homePagesApi, homePagesEvents } from './api/home-pages'
+import { customIconsApi, customIconsEvents } from './api/custom-icons'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -98,6 +99,7 @@ export const api = {
   ...vaultEvents,
   ...contentEvents,
   ...homePagesEvents,
+  ...customIconsEvents,
   ...journalEvents,
   ...bookmarkEvents,
   ...searchEvents,
@@ -120,6 +122,7 @@ export const api = {
   agent: agentApi,
   import: importApi,
   homePages: homePagesApi,
+  customIcons: customIconsApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,
