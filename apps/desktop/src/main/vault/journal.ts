@@ -11,6 +11,7 @@
 import path from 'path'
 import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { getStatus, getConfig } from './index'
 import { ensureDirectory } from './file-ops'
 import { VaultError, VaultErrorCode } from '../lib/errors'
@@ -412,7 +413,7 @@ export function extractPreview(content: string, maxLength = 100): string {
 
   // Remove links but keep text
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-  cleaned = cleaned.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, '$2$1')
+  cleaned = replaceWikiLinks(cleaned)
 
   // Remove images
   cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]+\)/g, '')

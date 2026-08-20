@@ -604,3 +604,13 @@ describe('extractPreview', () => {
     expect(preview).toBe('Multiple spaces and newlines')
   })
 })
+
+describe('extractPreview wiki links (issue #1556)', () => {
+  it('reads a heading link as its note half', () => {
+    expect(extractPreview('see [[Sprint Notes#Retro]] today')).toBe('see Sprint Notes today')
+  })
+
+  it('reads an aliased link as its alias, not alias-welded-to-target', () => {
+    expect(extractPreview('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})

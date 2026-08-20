@@ -71,3 +71,47 @@ export function isBlockReference(heading: string): boolean {
 export function normalizeHeading(heading: string): string {
   return heading.trim().toLowerCase()
 }
+
+/**
+ * The text a wiki-link reads as once the brackets are gone.
+ *
+ * Six plain-text surfaces — search snippets, journal previews, note excerpts,
+ * the home journal widget and HTML/PDF export — cannot render a chip, so they
+ * strip the brackets and keep what is inside. Keeping the whole target leaks
+ * the heading half (`Note#Heading`), and the alias, when there is one, is the
+ * label the user chose and the only thing they expect to read.
+ *
+ * The heading half goes because these callers have no note table to consult:
+ * `resolveWikiLink`'s split-first-then-raw order needs a lookup, and a string
+ * pass cannot do one. The cost is `[[Sprint #4]]`, a title that really carries
+ * a `#`, reading as `Sprint` in a preview — cosmetic, and confined to text that
+ * was never the link itself.
+ */
+export function wikiLinkLabel(target: string, alias?: string | null): string {
+  const chosen = alias?.trim() ?? ''
+  if (chosen) return chosen
+
+  const { note, heading } = splitWikiTarget(target)
+  // `[[#Heading]]` addresses the note it sits in, so the heading is the whole
+  // of what it says; anything else would leave the sentence with a hole in it.
+  return note || (heading ?? '')
+}
+
+/** Matches `[[target]]` and `[[target|alias]]`. */
+const WIKI_LINK_RUN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g
+
+/**
+ * Replace every `[[…]]` run with its label, optionally wrapped by `render`.
+ *
+ * The one place all six strippers now agree. They used to each carry their own
+ * pair of regexes, and two of them replaced with `'$2$1'` — which concatenates
+ * rather than chooses, so `[[Sprint Notes|retro]]` came out `retroSprint Notes`.
+ */
+export function replaceWikiLinks(
+  markdown: string,
+  render: (label: string) => string = (label) => label
+): string {
+  return markdown.replace(WIKI_LINK_RUN, (_run, target: string, alias?: string) =>
+    render(wikiLinkLabel(target, alias))
+  )
+}

@@ -47,3 +47,8 @@ test('snippet: collapses whitespace and caps length at 180 chars', () => {
   assert.ok(result.length <= 180)
   assert.ok(!/\s{2,}/.test(result))
 })
+
+test('snippet: a wiki link reads as its note half, or its alias (issue #1556)', () => {
+  const content = 'see [[Sprint Notes#Retro]], [[Sprint Notes|retro]] and [[Plain]]'
+  assert.equal(snippet(content), 'see Sprint Notes, retro and Plain')
+})

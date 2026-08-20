@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import { getNoteMetadataByPath } from '@memry/storage-data'
 import type { FileType } from '@memry/shared/file-types'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from './ids.ts'
 import type { DataDb } from './database.ts'
 import { parseMarkdownNote } from './markdown.ts'
@@ -185,10 +186,7 @@ function escapeHtml(text: string): string {
 }
 
 function wikiLinksToText(markdown: string): string {
-  return markdown
-    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
-    .replace(/\[\[([^\]]+)\]\]/g, '$1')
-    .replace(/<!--\s*file:\{[^}]+\}\s*-->/g, '')
+  return replaceWikiLinks(markdown).replace(/<!--\s*file:\{[^}]+\}\s*-->/g, '')
 }
 
 function markdownToPlainText(markdown: string): string {

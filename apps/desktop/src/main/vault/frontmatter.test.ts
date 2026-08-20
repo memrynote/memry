@@ -439,3 +439,13 @@ describe('resolvePropertyType — the shared precedence ladder', () => {
     expect(resolvePropertyType('father', [], undefined, infer)).toBe('text')
   })
 })
+
+describe('createSnippet wiki links (issue #1556)', () => {
+  it('reads a heading link as its note half', () => {
+    expect(createSnippet('see [[Sprint Notes#Retro]] today')).toBe('see Sprint Notes today')
+  })
+
+  it('reads an aliased link as its alias, not alias-welded-to-target', () => {
+    expect(createSnippet('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})

@@ -102,6 +102,18 @@ A note whose title genuinely contains `#` still works: `[[Sprint #4]]` opens the
 Backlinks and the graph treat `[[Meeting#Decisions]]` as a link to **Meeting** — the heading
 narrows where you land, not what the link points at.
 
+### Where a link cannot be a chip
+
+Search results, note and journal previews, the Home journal widget, and HTML or PDF export
+are plain text, so a link is shown as its label rather than as a chip. The label is the
+alias when the link has one, and the note's title otherwise: `[[Meeting#Decisions]]` reads
+"Meeting" and `[[Meeting#Decisions|the outcome]]` reads "the outcome". The heading half is
+dropped rather than shown, because a preview has no note to scroll.
+
+One consequence is worth knowing: these previews cannot tell `Sprint #4` the title apart
+from a heading link, so `[[Sprint #4]]` reads "Sprint" in a search snippet even though the
+link itself still opens the note called "Sprint #4". Nothing in the file changes.
+
 ::: warning Block references are not supported
 `[[Meeting#^block-id]]` opens **Meeting** at the top rather than jumping to the block.
 memrynote does not assign persistent block ids, so there is nothing to scroll to.
