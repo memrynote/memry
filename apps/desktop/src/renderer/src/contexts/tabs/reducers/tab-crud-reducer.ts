@@ -126,22 +126,26 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         if (activeTabIndex !== -1) {
           const activeTab = targetGroup.tabs[activeTabIndex]
           if (!activeTab.isPinned) {
+            // KEEPS the active tab's id: this is the same tab changing content,
+            // not a close-plus-open. A fresh id would put the old id through the
+            // strip's exit animation beside the new one entering — two tabs (and
+            // two aria-selected) on screen for the duration — and would strand
+            // the history entries pointing at the old id.
             const newTab: Tab = {
               ...tab,
               isPreview: false,
-              id: generateId(),
+              id: activeTab.id,
               openedAt: Date.now(),
               lastAccessedAt: Date.now()
             }
             const newTabs = [...targetGroup.tabs]
             newTabs[activeTabIndex] = newTab
 
-            const pruned = pruneHistory(targetGroup, new Set([activeTab.id]))
             return {
               ...state,
               tabGroups: {
                 ...state.tabGroups,
-                [groupId]: { ...pruned, tabs: newTabs, activeTabId: newTab.id }
+                [groupId]: { ...targetGroup, tabs: newTabs, activeTabId: newTab.id }
               }
             }
           }
@@ -289,15 +293,17 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         const activeIndex = targetGroup.tabs.findIndex((t) => t.id === targetGroup.activeTabId)
         const activeTab = activeIndex === -1 ? undefined : targetGroup.tabs[activeIndex]
         if (activeTab && !activeTab.isPinned) {
+          // Same id-preservation as replaceActive above: reuse is this tab
+          // changing content, so the strip must not play a close-plus-open.
+          const reusedTab: Tab = { ...newTab, id: activeTab.id }
           const reusedTabs = [...targetGroup.tabs]
-          reusedTabs[activeIndex] = newTab
+          reusedTabs[activeIndex] = reusedTab
 
-          const pruned = pruneHistory(targetGroup, new Set([activeTab.id]))
           return {
             ...state,
             tabGroups: {
               ...state.tabGroups,
-              [groupId]: { ...pruned, tabs: reusedTabs, activeTabId: newTab.id }
+              [groupId]: { ...targetGroup, tabs: reusedTabs, activeTabId: reusedTab.id }
             },
             activeGroupId: groupId
           }
