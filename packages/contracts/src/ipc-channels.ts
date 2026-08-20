@@ -659,6 +659,22 @@ export type BookmarksEventChannel =
   (typeof BookmarksChannels.events)[keyof typeof BookmarksChannels.events]
 
 // ============================================================================
+// Recents Channels
+// ============================================================================
+
+export const RecentsChannels = {
+  invoke: {
+    /** Record that an item was opened (upsert by item, bumps the timestamp) */
+    RECORD: 'recents:record',
+    /** List recently opened items, newest first, resolved against the note cache */
+    LIST: 'recents:list'
+  }
+} as const
+
+export type RecentsInvokeChannel =
+  (typeof RecentsChannels.invoke)[keyof typeof RecentsChannels.invoke]
+
+// ============================================================================
 // Inbox Channels
 // ============================================================================
 // InboxChannels lives in ./inbox-channels.ts (extracted to stay under the

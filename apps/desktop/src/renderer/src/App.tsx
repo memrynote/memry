@@ -22,6 +22,7 @@ import { ThemeProvider } from 'next-themes'
 
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
+import { useRecordRecentlyOpened } from '@/hooks/use-recently-opened'
 import { useTabPersistence, useSessionRestore, STORAGE_KEY } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
@@ -172,6 +173,7 @@ const AppContent = (): React.JSX.Element => {
   useAgentMcpCurrentNoteResponder({ enabled: aiEnabled })
   useAgentMcpDesktopApiResponder({ enabled: aiEnabled })
   useAgentMcpCanvasWriteResponder({ enabled: aiEnabled })
+  useRecordRecentlyOpened()
   const lastTrackedTabTypeRef = useRef<TabType | null>(null)
   useEffect(() => {
     if (!activeTab) return

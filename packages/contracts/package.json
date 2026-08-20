@@ -46,6 +46,7 @@
     "./reminder-types": "./src/reminder-types.ts",
     "./reminders-api": "./src/reminders-api.ts",
     "./saved-filters-api": "./src/saved-filters-api.ts",
+    "./recents-api": "./src/recents-api.ts",
     "./search-api": "./src/search-api.ts",
     "./search-types": "./src/search-api.ts",
     "./settings-schemas": "./src/settings-schemas.ts",

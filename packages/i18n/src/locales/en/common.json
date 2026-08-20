@@ -697,8 +697,12 @@
         "week": "This Week"
       },
       "recentlyEdited": "Recently edited",
+      "recentlyOpened": "Recently opened",
       "recentMeta": "edited {time}",
       "recentMetaWithFolder": "{folder} · edited {time}",
+      "openedMeta": "opened {time}",
+      "openedMetaWithFolder": "{folder} · opened {time}",
+      "noRecentlyOpened": "Notes you open show up here",
       "bookmarks": "Bookmarks",
       "tasks": "Tasks",
       "calendar": "Calendar",

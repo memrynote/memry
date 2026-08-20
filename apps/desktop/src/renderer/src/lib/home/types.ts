@@ -3,6 +3,7 @@
 export type WidgetSize = 'S' | 'M' | 'L'
 export type WidgetType =
   | 'recently-edited'
+  | 'recently-opened'
   | 'bookmarks'
   | 'tasks'
   | 'inbox'
