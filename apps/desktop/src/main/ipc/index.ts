@@ -27,6 +27,7 @@ import {
   checkSyncIntegrity
 } from './sync-core-handlers'
 import { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+import { registerRecentsHandlers, unregisterRecentsHandlers } from './recents-handlers'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
@@ -144,6 +145,7 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   registerCryptoHandlers()
 
   // Register search handlers
+  registerRecentsHandlers()
   registerSearchHandlers()
 
   // Register graph handlers
@@ -211,6 +213,7 @@ export function unregisterAllHandlers(): void {
   unregisterRelationHandlers()
   unregisterSyncHandlers()
   unregisterCryptoHandlers()
+  unregisterRecentsHandlers()
   unregisterSearchHandlers()
   unregisterGraphHandlers()
   unregisterAIInlineHandlers()
@@ -261,6 +264,7 @@ export { registerPropertiesHandlers, unregisterPropertiesHandlers } from './prop
 export { registerRelationHandlers, unregisterRelationHandlers } from './relation-handlers'
 export { registerSyncHandlers, unregisterSyncHandlers } from './sync-core-handlers'
 export { registerCryptoHandlers, unregisterCryptoHandlers } from './crypto-handlers'
+export { registerRecentsHandlers, unregisterRecentsHandlers } from './recents-handlers'
 export { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'

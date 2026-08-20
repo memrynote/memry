@@ -130,7 +130,6 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
                   widget={w}
                   size={size}
                   title={t('home.widget.unknown')}
-                  onRemove={() => onChange(removeWidget(board, w.id))}
                   content={
                     <p data-testid="widget-unknown" className="text-sm text-muted-foreground">
                       {t('home.widget.unknown')}

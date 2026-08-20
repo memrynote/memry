@@ -20,6 +20,7 @@ import { tagsApi, tagEvents } from './api/tags'
 import { remindersApi, reminderEvents } from './api/reminders'
 import { inboxEvents } from './api/inbox'
 import { folderViewApi, folderViewEvents } from './api/folder-view'
+import { recentsApi } from './api/recents'
 import { searchApi, graphApi, searchEvents } from './api/search'
 import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api/sync-identity'
 import {
@@ -88,6 +89,7 @@ export const api = {
   journal: journalApi,
   bookmarks: bookmarksApi,
   graph: graphApi,
+  recents: recentsApi,
   search: searchApi,
   quickCapture: quickCaptureApi,
   showContextMenu: contextMenuApi,

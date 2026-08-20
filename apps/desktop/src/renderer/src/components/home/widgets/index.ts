@@ -1,5 +1,6 @@
 import { registerWidget } from '@/lib/home/widget-registry'
 import { RecentlyEditedWidget } from './recently-edited-widget'
+import { RecentlyOpenedWidget } from './recently-opened-widget'
 import { BookmarksWidget } from './bookmarks-widget'
 import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
@@ -22,6 +23,15 @@ registerWidget({
   defaultLayout: { w: 4, h: 4 },
   defaultConfig: {},
   Component: RecentlyEditedWidget
+})
+
+registerWidget({
+  type: 'recently-opened',
+  titleKey: 'home.widget.recentlyOpened',
+  icon: 'clock',
+  defaultLayout: { w: 4, h: 4 },
+  defaultConfig: {},
+  Component: RecentlyOpenedWidget
 })
 
 registerWidget({

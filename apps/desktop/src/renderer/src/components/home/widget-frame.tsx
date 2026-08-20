@@ -17,7 +17,10 @@ interface WidgetFrameProps {
   // Content-density tier derived from the widget's current grid span (see sizeTier).
   size: WidgetSize
   title: string
-  onRemove: () => void
+  // Omitted for a widget type this build does not know: boards sync, so an older
+  // app pulling a newer widget must not be able to delete it out from under the
+  // device that added it (home_page is whole-row LWW).
+  onRemove?: () => void
   icon?: string
   HeaderFilter?: FC<WidgetConfigEditorProps>
   HeaderCount?: FC<WidgetComponentProps>
@@ -90,9 +93,11 @@ export function WidgetFrame({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem variant="destructive" onSelect={onRemove}>
-              {t('home.widget.remove')}
-            </DropdownMenuItem>
+            {onRemove && (
+              <DropdownMenuItem variant="destructive" onSelect={onRemove}>
+                {t('home.widget.remove')}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

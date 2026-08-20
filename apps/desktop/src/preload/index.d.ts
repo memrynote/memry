@@ -892,6 +892,8 @@ import type {
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
 
+import type { RecentlyOpenedItem } from '@memry/contracts/recents-api'
+
 export interface SearchClientAPI {
   query(params: {
     text: string
@@ -916,6 +918,12 @@ export interface SearchClientAPI {
   }): Promise<SearchReason>
   clearReasons(): Promise<{ cleared: true }>
   getAllTags(): Promise<string[]>
+}
+
+// Recents API (device-local "recently opened" trail)
+export interface RecentsClientAPI {
+  record(input: { itemId: string; itemType: 'note' }): Promise<{ recorded: boolean }>
+  list(limit?: number): Promise<RecentlyOpenedItem[]>
 }
 
 // Graph API
@@ -1749,6 +1757,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   bookmarks: BookmarksClientAPI
   tags: TagsClientAPI
   reminders: RemindersClientAPI
+  recents: RecentsClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
