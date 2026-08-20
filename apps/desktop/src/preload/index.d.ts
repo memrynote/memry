@@ -1261,6 +1261,7 @@ export interface GeneralSettingsDTO {
   language: Locale
   onboardingCompleted: boolean
   createInSelectedFolder: boolean
+  openPagesInNewTab: boolean
   clockFormat: '12h' | '24h'
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
 }

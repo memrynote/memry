@@ -114,7 +114,8 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         position,
         background,
         forceNew,
-        replaceActive
+        replaceActive,
+        reuseActiveTab
       } = action.payload
       const targetGroup = state.tabGroups[groupId]
 
@@ -270,6 +271,37 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         id: generateId(),
         openedAt: Date.now(),
         lastAccessedAt: Date.now()
+      }
+
+      // "Clicking a page reuses the current tab". Deliberately down here rather
+      // than beside `replaceActive` at the top: every dedup branch above must
+      // run first, so a page that is already open is focused where it is instead
+      // of being cloned over the active tab. Pinned tabs are never reused, and
+      // an explicit new-tab/background/position open opts out entirely.
+      if (
+        reuseActiveTab &&
+        !forceNew &&
+        !background &&
+        position === undefined &&
+        !tab.isPinned &&
+        targetGroup.activeTabId
+      ) {
+        const activeIndex = targetGroup.tabs.findIndex((t) => t.id === targetGroup.activeTabId)
+        const activeTab = activeIndex === -1 ? undefined : targetGroup.tabs[activeIndex]
+        if (activeTab && !activeTab.isPinned) {
+          const reusedTabs = [...targetGroup.tabs]
+          reusedTabs[activeIndex] = newTab
+
+          const pruned = pruneHistory(targetGroup, new Set([activeTab.id]))
+          return {
+            ...state,
+            tabGroups: {
+              ...state.tabGroups,
+              [groupId]: { ...pruned, tabs: reusedTabs, activeTabId: newTab.id }
+            },
+            activeGroupId: groupId
+          }
+        }
       }
 
       let insertIndex = position ?? targetGroup.tabs.length

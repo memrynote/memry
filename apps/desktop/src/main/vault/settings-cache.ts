@@ -57,6 +57,9 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (general.createInSelectedFolder !== undefined) {
         seedPrefs.createInSelectedFolder = general.createInSelectedFolder
       }
+      if (general.openPagesInNewTab !== undefined) {
+        seedPrefs.openPagesInNewTab = general.openPagesInNewTab
+      }
     } catch {
       log.warn('Failed to parse existing general settings for migration')
     }
@@ -94,7 +97,8 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     fontFamily: prefs.fontFamily,
     accentColor: prefs.accentColor,
     language: language.success ? language.data : GENERAL_SETTINGS_DEFAULTS.language,
-    createInSelectedFolder: prefs.createInSelectedFolder
+    createInSelectedFolder: prefs.createInSelectedFolder,
+    openPagesInNewTab: prefs.openPagesInNewTab
   }
 
   const editorCache: EditorSettings = {

@@ -68,6 +68,7 @@ describe('VaultPreferencesSchema', () => {
       accentColor: '#ff0000',
       language: 'tr',
       createInSelectedFolder: false,
+      openPagesInNewTab: false,
       editor: {
         width: 'full' as const,
         toolbarMode: 'sticky' as const,

@@ -97,7 +97,8 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'fontFamily',
   'accentColor',
   'language',
-  'createInSelectedFolder'
+  'createInSelectedFolder',
+  'openPagesInNewTab'
 ]
 
 const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
