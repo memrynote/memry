@@ -33,17 +33,22 @@ If two devices reorder boards at the same time, the last write wins for position
 
 Widgets are the cards on a board. Available types:
 
-| Widget          | Shows                                             |
-| --------------- | ------------------------------------------------- |
-| Recently Edited | Notes ordered by last-modified, most recent first |
-| Bookmarks       | Your bookmarked notes                             |
-| Tasks           | Tasks, with an inline filter and count            |
-| Inbox           | Unfiled inbox items, with a triage row            |
-| Folder          | The contents of a chosen folder                   |
-| Calendar        | An at-a-glance calendar of upcoming entries       |
-| Journal         | Today's journal entry and your current streak     |
+| Widget          | Shows                                                  |
+| --------------- | ------------------------------------------------------ |
+| Recently Edited | Notes ordered by last-modified, most recent first      |
+| Bookmarks       | Your bookmarked notes                                  |
+| Tasks           | Tasks, with an inline filter and count                 |
+| Inbox           | Unfiled inbox items, with a triage row                 |
+| Folder          | The contents of a chosen folder                        |
+| Calendar        | An at-a-glance calendar of upcoming entries            |
+| Journal         | Today's journal entry and your current streak          |
+| Project         | One project's overview, tasks, notes, files and events |
 
 The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
+
+The Project widget is a chosen project in miniature. Its header carries the project's own name and icon, so several of them side by side stay tellable apart, and its body has the same five tabs as the project page: **Overview**, **Tasks**, **Notes**, **Files** and **Events**. Rows behave as they do on the page — open a note, tick a task off, change a status or a priority.
+
+Pick the project from **Configure** in the widget menu. Two actions hand off to the full project page rather than happening in the widget: adding a task and adding a file both need the page's capture bar and its drop zone, so they open the project on that tab. The tab you are looking at is not remembered — a project widget opens on **Overview** each time Memry starts. If the project is later deleted or archived (including on another device, since boards sync) the widget says so and stays where it is; it never removes itself from your board.
 
 The Tasks widget has a filter pill in its header: pick **Today**, **Tomorrow**, or **Week**, or pick any [saved filter](/user-guide/tasks/filters-sorting). The pill's label and the count next to it both follow whatever you chose. A saved filter is the only way to put tasks with **no due date** on the dashboard — the three date views are all due-date windows, so undated work never appears in them.
 

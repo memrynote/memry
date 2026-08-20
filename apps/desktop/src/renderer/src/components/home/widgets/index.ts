@@ -13,6 +13,9 @@ import { CalendarWidget } from './calendar-widget'
 import { CalendarHeaderLabel, CalendarHeaderCount, CalendarFooter } from './calendar-header'
 import { JournalWidget } from './journal-widget'
 import { JournalHeaderStreak } from './journal-header'
+import { ProjectWidget } from './project-widget'
+import { ProjectWidgetTitle } from './project-widget-header'
+import { ProjectWidgetConfigEditor } from './project-widget-config-editor'
 
 registerWidget({
   type: 'recently-edited',
@@ -86,4 +89,18 @@ registerWidget({
   defaultConfig: {},
   Component: JournalWidget,
   HeaderFilter: JournalHeaderStreak
+})
+
+registerWidget({
+  type: 'project',
+  titleKey: 'home.widget.project',
+  icon: 'folder-kanban',
+  // Taller and wider than the default 4x4: the body carries a five-tab strip above
+  // its rows, and five labels need roughly half the board's width to sit on one line.
+  defaultLayout: { w: 4, h: 5 },
+  minLayout: { w: 4, h: 3 },
+  defaultConfig: { projectId: '' },
+  Component: ProjectWidget,
+  Title: ProjectWidgetTitle,
+  ConfigEditor: ProjectWidgetConfigEditor
 })

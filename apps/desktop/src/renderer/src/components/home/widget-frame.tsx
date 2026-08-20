@@ -19,6 +19,9 @@ interface WidgetFrameProps {
   title: string
   onRemove: () => void
   icon?: string
+  // Replaces the static title + icon when present (see WidgetDefinition.Title). `title` is still
+  // required: it stays the accessible name of the drag handle, which a custom Title need not carry.
+  Title?: FC<WidgetComponentProps>
   ConfigEditor?: FC<WidgetConfigEditorProps>
   HeaderFilter?: FC<WidgetConfigEditorProps>
   HeaderCount?: FC<WidgetComponentProps>
@@ -39,6 +42,7 @@ export function WidgetFrame({
   title,
   onRemove,
   icon,
+  Title,
   ConfigEditor,
   HeaderFilter,
   HeaderCount,
@@ -66,10 +70,16 @@ export function WidgetFrame({
         className="widget-drag-handle flex cursor-grab items-center gap-2 px-3.5 py-2.5"
         aria-label={t('home.widget.dragAria')}
       >
-        {Icon && <Icon className="size-4 shrink-0 text-[var(--tint)]" aria-hidden="true" />}
-        <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-          {title}
-        </span>
+        {Title ? (
+          <Title config={widget.config} size={size} />
+        ) : (
+          <>
+            {Icon && <Icon className="size-4 shrink-0 text-[var(--tint)]" aria-hidden="true" />}
+            <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+              {title}
+            </span>
+          </>
+        )}
         {HeaderFilter && (
           <span className="widget-no-drag">
             <HeaderFilter config={widget.config} onChange={(c) => onConfigChange?.(c)} />
