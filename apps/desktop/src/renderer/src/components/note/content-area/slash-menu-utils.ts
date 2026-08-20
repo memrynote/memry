@@ -69,9 +69,7 @@ export function withTableHeaderRow<T extends { key?: string; onItemClick?: () =>
               content: {
                 ...content,
                 headerRows: 1,
-                rows: lastRow
-                  ? [...content.rows, JSON.parse(JSON.stringify(lastRow)) as TableRow]
-                  : content.rows
+                rows: lastRow ? [...content.rows, structuredClone(lastRow)] : content.rows
               }
             })
           }
