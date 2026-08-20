@@ -94,6 +94,7 @@ import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { remapCrossDeviceAttachmentPath } from './lib/attachment-path-remap'
 import { decideFrameNavigation } from './lib/frame-navigation'
+import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
@@ -559,6 +560,18 @@ function configureCsp(): void {
           }
         : {}
     )
+  })
+}
+
+/**
+ * Give http(s) embeds an identifiable embedder. The packaged renderer's
+ * document is `file://`, from which Chromium sends no `Referer` — see
+ * `lib/embed-referer.ts` for why YouTube then fails with Error 153.
+ */
+function configureEmbedReferer(): void {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    const requestHeaders = decideEmbedRequestHeaders(details.url, details.requestHeaders)
+    callback(requestHeaders ? { requestHeaders } : {})
   })
 }
 
@@ -1633,6 +1646,7 @@ const appReady = app.whenReady().then(async () => {
 
   // Configure CSP, cert pinning, and permission handlers before the window loads
   configureCsp()
+  configureEmbedReferer()
   configureCertificatePinning()
   configureSessionPermissions()
 

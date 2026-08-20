@@ -68,6 +68,20 @@ describe('useHomeBoards', () => {
     expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', widgets: [] })
   })
 
+  it('renameBoard calls api.update with the new name only', async () => {
+    const { result } = renderHook(() => useHomeBoards(), { wrapper })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
+    await act(() => result.current.renameBoard('b1', 'Planning'))
+    expect(window.api.homePages.update).toHaveBeenCalledWith({ id: 'b1', name: 'Planning' })
+  })
+
+  it('reorderBoards calls api.reorder with the new id order', async () => {
+    const { result } = renderHook(() => useHomeBoards(), { wrapper })
+    await waitFor(() => expect(result.current.boards).toHaveLength(1))
+    await act(() => result.current.reorderBoards(['b2', 'b1']))
+    expect(window.api.homePages.reorder).toHaveBeenCalledWith(['b2', 'b1'])
+  })
+
   // Boards sync, so a peer's create/rename/drag/delete arrives as an event
   // rather than a local mutation — without these the second device shows a stale
   // board until restart.

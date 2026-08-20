@@ -23,7 +23,7 @@ import { ThemeProvider } from 'next-themes'
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
 import { useRecordRecentlyOpened } from '@/hooks/use-recently-opened'
-import { useTabPersistence, useSessionRestore, STORAGE_KEY } from '@/contexts/tabs/persistence'
+import { useTabSessionPersistence, STORAGE_KEY } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
@@ -124,11 +124,10 @@ function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JS
  * Must be rendered inside TabProvider.
  */
 function TabPersistenceManager({ children }: { children: React.ReactNode }): React.JSX.Element {
-  // Auto-save tab state on changes (debounced)
-  useTabPersistence()
-
-  // Restore session on mount
-  useSessionRestore()
+  // Restore the stored session on mount, and hold the debounced auto-save until
+  // that restore has landed — otherwise the save writes the provider's default
+  // Home tab over the session the restore is still on its way to read.
+  useTabSessionPersistence()
 
   return <>{children}</>
 }

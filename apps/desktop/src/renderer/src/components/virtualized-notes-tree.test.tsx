@@ -1,6 +1,6 @@
 import type React from 'react'
 import { createRef } from 'react'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -159,6 +159,48 @@ const noteMap = new Map([
   [workNote.id, workNote],
   [rootNote.id, rootNote]
 ])
+
+// A folder with nothing in it yet — the shape a user gets straight out of "New
+// folder", and the one that used to refuse every drop.
+const emptyFolderTree: TreeStructure = {
+  folders: [
+    { name: 'Work', path: 'Work', icon: null, children: [], notes: [workNote] },
+    { name: 'Archive', path: 'Archive', icon: null, children: [], notes: [] }
+  ],
+  rootNotes: [rootNote]
+}
+
+const ROW_HEIGHT = 28
+
+const stubRowRect = (row: HTMLElement) => {
+  Object.defineProperty(row, 'getBoundingClientRect', {
+    configurable: true,
+    value: () =>
+      ({
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: ROW_HEIGHT,
+        width: 100,
+        height: ROW_HEIGHT,
+        toJSON: () => ({})
+      }) as DOMRect
+  })
+}
+
+/**
+ * jsdom's `DragEvent` drops mouse coordinates, so `fireEvent.dragOver(row, {
+ * clientY })` hands the tree `undefined` — every geometry comparison then fails
+ * and whatever the row falls back to wins, which is how a test can "pass" while
+ * proving nothing about the drop bands. Set the coordinate on the event itself.
+ */
+const dragOverAt = (row: HTMLElement, clientY: number, dataTransfer: unknown) => {
+  const event = createEvent.dragOver(row, { dataTransfer })
+  Object.defineProperty(event, 'clientY', { value: clientY })
+  fireEvent(row, event)
+}
 
 const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNotesTree>> = {}) => {
   const props: React.ComponentProps<typeof VirtualizedNotesTree> = {
@@ -449,6 +491,78 @@ describe('VirtualizedNotesTree', () => {
 
     getItemSpy.mockRestore()
     setItemSpy.mockRestore()
+  })
+
+  it('drops a folder inside an empty folder, which has no children to infer it from', () => {
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    renderTree({ tree: emptyFolderTree, onMove })
+
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      types: [] as string[],
+      setData: vi.fn(),
+      getData: vi.fn()
+    }
+    const source = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    const target = screen.getByText('Archive').closest('[role="treeitem"]') as HTMLElement
+    stubRowRect(target)
+
+    fireEvent.dragStart(source, { dataTransfer })
+    dragOverAt(target, ROW_HEIGHT / 2, dataTransfer)
+    fireEvent.drop(target, { dataTransfer })
+
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'folder-Archive',
+      position: 'inside'
+    })
+  })
+
+  it('keeps the reorder bands at the edges of a folder row and off a note row', () => {
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    renderTree({ tree: emptyFolderTree, onMove })
+
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      types: [] as string[],
+      setData: vi.fn(),
+      getData: vi.fn()
+    }
+    const source = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    const folderTarget = screen.getByText('Archive').closest('[role="treeitem"]') as HTMLElement
+    const noteTarget = screen.getByText('Root').closest('[role="treeitem"]') as HTMLElement
+    stubRowRect(folderTarget)
+    stubRowRect(noteTarget)
+
+    fireEvent.dragStart(source, { dataTransfer })
+    dragOverAt(folderTarget, 1, dataTransfer)
+    fireEvent.drop(folderTarget, { dataTransfer })
+    expect(onMove).toHaveBeenLastCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'folder-Archive',
+      position: 'before'
+    })
+
+    fireEvent.dragStart(source, { dataTransfer })
+    dragOverAt(folderTarget, ROW_HEIGHT - 1, dataTransfer)
+    fireEvent.drop(folderTarget, { dataTransfer })
+    expect(onMove).toHaveBeenLastCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'folder-Archive',
+      position: 'after'
+    })
+
+    // A note takes no children, so its middle is a reorder, never an "inside".
+    fireEvent.dragStart(source, { dataTransfer })
+    dragOverAt(noteTarget, ROW_HEIGHT / 2, dataTransfer)
+    fireEvent.drop(noteTarget, { dataTransfer })
+    expect(onMove).toHaveBeenLastCalledWith({
+      draggedId: 'folder-Work',
+      targetId: 'note-root',
+      position: 'after'
+    })
   })
 
   it('handles external scroll, imperative node expansion, ctrl selection, and folder drop edges', () => {

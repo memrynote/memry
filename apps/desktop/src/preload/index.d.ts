@@ -70,6 +70,11 @@ import type {
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+import type {
+  CustomIcon,
+  CustomIconAddInput,
+  CustomIconRenameInput
+} from '@memry/contracts/custom-icons-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -588,6 +593,13 @@ export interface HomePage {
   icon?: string
   position: number
   widgets: WidgetInstance[]
+}
+
+export interface CustomIconsClientAPI {
+  list(): Promise<CustomIcon[]>
+  add(input: CustomIconAddInput): Promise<CustomIcon>
+  rename(input: CustomIconRenameInput): Promise<CustomIcon>
+  delete(id: string): Promise<{ success: boolean }>
 }
 
 export interface HomePagesClientAPI {
@@ -1755,6 +1767,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
+  customIcons: CustomIconsClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {
@@ -1809,6 +1822,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
+  onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void

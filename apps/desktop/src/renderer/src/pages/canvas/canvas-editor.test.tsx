@@ -80,7 +80,9 @@ const mocks = vi.hoisted(() => ({
   fileGet: vi.fn(),
   taskGet: vi.fn(),
   eventGet: vi.fn(),
-  windowOpen: vi.fn()
+  windowOpen: vi.fn(),
+  /** Live `canvas:too-large` subscribers, so a test can fire the event. */
+  tooLargeListeners: new Set<(event: { id: string }) => void>()
 }))
 
 vi.mock('@excalidraw/excalidraw', () => ({
@@ -148,7 +150,10 @@ vi.mock('@/services/canvas-service', () => ({
     uploadAsset: vi.fn(),
     canUploadAsset: vi.fn(async () => ({ canUpload: true }))
   },
-  onCanvasTooLarge: () => () => {}
+  onCanvasTooLarge: (callback: (event: { id: string }) => void) => {
+    mocks.tooLargeListeners.add(callback)
+    return () => mocks.tooLargeListeners.delete(callback)
+  }
 }))
 vi.mock('./canvas-card-overlay', () => ({ CanvasCardLayer: () => null }))
 vi.mock('@/contexts/tabs', () => ({
@@ -388,6 +393,100 @@ describe('CanvasEditor persistence safety', () => {
     expect(mocks.excalidrawProps.UIOptions).toEqual({
       canvasActions: { export: false, loadScene: false, saveToActiveFile: false }
     })
+  })
+})
+
+/**
+ * The too-large-to-sync notice (#1625/C2).
+ *
+ * The scene autosaves on every change, and main emits `canvas:too-large` for
+ * each oversized save — so a per-event toast reappeared every time the user
+ * nudged an element. The notice is edge-triggered instead: announced when the
+ * canvas stops syncing, re-armed only once a save syncs again.
+ */
+describe('CanvasEditor too-large-to-sync notice', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mocks.update.mockReset().mockResolvedValue({ id: 'c1', tooLarge: true })
+    mocks.toastError.mockReset()
+    mocks.serializeAsJSON.mockClear()
+    mocks.api.elements = []
+    mocks.api.isLoading = true
+    mocks.api.selectedElementIds = {}
+    mocks.api.showHyperlinkPopup = false
+    mocks.onChange = null
+    mocks.tooLargeListeners.clear()
+    mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
+    mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
+    installWindowApi()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** Fires main's `canvas:too-large` broadcast at the mounted editor. */
+  function emitTooLarge(id: string): void {
+    act(() => {
+      for (const listener of mocks.tooLargeListeners) {
+        listener({ id })
+      }
+    })
+  }
+
+  /** Drives one autosave with a changed scene, so the persister actually writes. */
+  async function saveOnce(elements: unknown[]): Promise<void> {
+    mocks.api.elements = elements
+    mocks.api.isLoading = false
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+  }
+
+  it('announces an oversized scene once across repeated autosaves', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    await saveOnce([{ id: 'a' }])
+    await saveOnce([{ id: 'a' }, { id: 'b' }])
+    await saveOnce([{ id: 'a' }, { id: 'b' }, { id: 'c' }])
+
+    expect(mocks.update).toHaveBeenCalledTimes(3)
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledWith('canvas.tooLargeToSync', {
+      id: 'canvas-too-large-c1'
+    })
+  })
+
+  it('collapses repeated too-large events into the one notice', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    emitTooLarge('c1')
+    emitTooLarge('c1')
+    emitTooLarge('c1')
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores a too-large event for a different canvas', () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    emitTooLarge('other')
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('re-announces after a save syncs again', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    emitTooLarge('c1')
+    mocks.update.mockResolvedValue({ id: 'c1', tooLarge: false })
+    await saveOnce([{ id: 'a' }])
+    emitTooLarge('c1')
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(2)
   })
 })
 

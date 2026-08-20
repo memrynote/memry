@@ -89,6 +89,7 @@ all (signed out, or on the free plan): there is no other device holding a copy.
 | Attachments (encrypted blobs)                                  | ✓     |
 | Agent chat conversations and terminal messages (paid accounts) | ✓     |
 | Folder icons                                                   | ✓     |
+| Custom icons (uploaded images)                                 | ✓     |
 
 ## What Does **Not** Get Synced
 

@@ -100,6 +100,7 @@ const runtimeMocks = vi.hoisted(() => {
     reminderSync: service('reminder'),
     templateSync: service('template'),
     homePageSync: service('home_page'),
+    customIconSync: service('custom_icon'),
     projectSync: service('project'),
     settingsSync: service('settings'),
     noteSync: service('note'),
@@ -285,6 +286,10 @@ vi.mock('./template-sync', () => ({
 vi.mock('./home-page-sync', () => ({
   initHomePageSyncService: runtimeMocks.homePageSync.init,
   resetHomePageSyncService: runtimeMocks.homePageSync.reset
+}))
+vi.mock('./custom-icon-sync', () => ({
+  initCustomIconSyncService: runtimeMocks.customIconSync.init,
+  resetCustomIconSyncService: runtimeMocks.customIconSync.reset
 }))
 vi.mock('./reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,

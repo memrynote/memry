@@ -6,10 +6,11 @@ import { cn } from '@/lib/utils'
 import { useClickOutside } from './use-click-outside'
 import { X } from '@/lib/icons'
 import { HugeIconGrid } from './HugeIconGrid'
-import { toIconValue } from './emoji-icon-utils'
+import { CustomIconGrid } from './CustomIconGrid'
+import { toCustomIconValue, toIconValue } from './emoji-icon-utils'
 import { useT } from '@memry/i18n/renderer'
 
-type PickerTab = 'emoji' | 'icons'
+type PickerTab = 'emoji' | 'icons' | 'custom'
 
 interface EmojiPickerProps {
   isOpen: boolean
@@ -86,6 +87,14 @@ export function EmojiPicker({
     [onSelect, onClose]
   )
 
+  const handleCustomIconSelect = useCallback(
+    (iconId: string) => {
+      onSelect(toCustomIconValue(iconId))
+      onClose()
+    },
+    [onSelect, onClose]
+  )
+
   const handleRemove = useCallback(() => {
     onRemove()
     onClose()
@@ -141,12 +150,24 @@ export function EmojiPicker({
         >
           {t('menus.emoji.iconsTab')}
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('custom')}
+          className={cn(
+            'flex-1 px-4 py-2 text-sm font-medium transition-colors',
+            activeTab === 'custom'
+              ? 'text-foreground border-b-2 border-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {t('menus.emoji.customTab')}
+        </button>
       </div>
 
       <div
         ref={contentRef}
         style={
-          activeTab === 'icons' && contentSize
+          activeTab !== 'emoji' && contentSize
             ? { width: contentSize.width, height: contentSize.height, overflow: 'hidden' }
             : undefined
         }
@@ -176,8 +197,10 @@ export function EmojiPicker({
               'flags'
             ]}
           />
-        ) : (
+        ) : activeTab === 'icons' ? (
           <HugeIconGrid onSelect={handleIconSelect} />
+        ) : (
+          <CustomIconGrid onSelect={handleCustomIconSelect} />
         )}
       </div>
 

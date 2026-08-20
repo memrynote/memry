@@ -3,6 +3,8 @@ import sodium from 'libsodium-wrappers-sumo'
 import { eq } from 'drizzle-orm'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import { createCrdtSyncAdapter, createSyncAdapterRegistry } from '@memry/sync-core'
+import type { RecordLocalSyncAdapter, SyncAdapter } from '@memry/sync-core'
+import type { SyncItemType } from '@memry/contracts/sync-api'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { getDatabase, type DataDb } from '../database'
 import { isAppShuttingDown } from '../app-shutdown'
@@ -30,6 +32,7 @@ import { getCurrentDeviceId } from './current-device-id'
 import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
 import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
 import { initHomePageSyncService, resetHomePageSyncService } from './home-page-sync'
+import { initCustomIconSyncService, resetCustomIconSyncService } from './custom-icon-sync'
 import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
 import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './canvas-folder-sync'
@@ -56,6 +59,7 @@ import {
   resetCalendarExternalEventSyncService
 } from './calendar-external-event-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
+import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
@@ -212,6 +216,7 @@ function resetSyncServiceSingletons(): void {
   resetBookmarkSyncService()
   resetTemplateSyncService()
   resetHomePageSyncService()
+  resetCustomIconSyncService()
   resetReminderSyncService()
   resetCanvasSyncService()
   resetCanvasFolderSyncService()
@@ -402,6 +407,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const bookmarkSync = initBookmarkSyncService(recordSyncDeps)
       const templateSync = initTemplateSyncService(recordSyncDeps)
       const homePageSync = initHomePageSyncService(recordSyncDeps)
+      const customIconSync = initCustomIconSyncService(recordSyncDeps)
       const reminderSync = initReminderSyncService(recordSyncDeps)
       const canvasSync = initCanvasSyncService(recordSyncDeps)
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
@@ -417,57 +423,31 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const calendarBindingSync = initCalendarBindingSyncService(recordSyncDeps)
       const calendarExternalEventSync = initCalendarExternalEventSyncService(recordSyncDeps)
 
+      // One line per record type: the crdt entries below still spell themselves
+      // out, but the record ones are all the same shape and the file sits on the
+      // 800-line lint ceiling.
+      const recordAdapter = (
+        type: SyncItemType,
+        local: RecordLocalSyncAdapter
+      ): SyncAdapter<typeof runtimeSyncDb, EmitToWindows> => ({
+        type,
+        kind: 'record',
+        local,
+        remote: getRemoteSyncAdapter(type)
+      })
+
       const adapters = createSyncAdapterRegistry([
-        { type: 'task', kind: 'record', local: taskSync, remote: getRemoteSyncAdapter('task') },
-        { type: 'inbox', kind: 'record', local: inboxSync, remote: getRemoteSyncAdapter('inbox') },
-        {
-          type: 'task_activity',
-          kind: 'record',
-          local: taskActivitySync,
-          remote: getRemoteSyncAdapter('task_activity')
-        },
-        {
-          type: 'filter',
-          kind: 'record',
-          local: filterSync,
-          remote: getRemoteSyncAdapter('filter')
-        },
-        {
-          type: 'bookmark',
-          kind: 'record',
-          local: bookmarkSync,
-          remote: getRemoteSyncAdapter('bookmark')
-        },
-        {
-          type: 'template',
-          kind: 'record',
-          local: templateSync,
-          remote: getRemoteSyncAdapter('template')
-        },
-        {
-          type: 'home_page',
-          kind: 'record',
-          local: homePageSync,
-          remote: getRemoteSyncAdapter('home_page')
-        },
-        {
-          type: 'reminder',
-          kind: 'record',
-          local: reminderSync,
-          remote: getRemoteSyncAdapter('reminder')
-        },
-        {
-          type: 'project',
-          kind: 'record',
-          local: projectSync,
-          remote: getRemoteSyncAdapter('project')
-        },
-        {
-          type: 'settings',
-          kind: 'record',
-          local: settingsSync,
-          remote: getRemoteSyncAdapter('settings')
-        },
+        recordAdapter('task', taskSync),
+        recordAdapter('inbox', inboxSync),
+        recordAdapter('task_activity', taskActivitySync),
+        recordAdapter('filter', filterSync),
+        recordAdapter('bookmark', bookmarkSync),
+        recordAdapter('template', templateSync),
+        recordAdapter('home_page', homePageSync),
+        recordAdapter('custom_icon', customIconSync),
+        recordAdapter('reminder', reminderSync),
+        recordAdapter('project', projectSync),
+        recordAdapter('settings', settingsSync),
         {
           type: 'note',
           kind: 'crdt',
@@ -475,60 +455,15 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
           remote: getRemoteSyncAdapter('note'),
           crdt: createCrdtSyncAdapter('note', { documentContentOnly: true })
         },
-        {
-          type: 'journal',
-          kind: 'record',
-          local: journalSync,
-          remote: getRemoteSyncAdapter('journal')
-        },
-        {
-          type: 'tag_definition',
-          kind: 'record',
-          local: tagDefinitionSync,
-          remote: getRemoteSyncAdapter('tag_definition')
-        },
-        {
-          type: 'tag_category',
-          kind: 'record',
-          local: tagCategorySync,
-          remote: getRemoteSyncAdapter('tag_category')
-        },
-        {
-          type: 'folder_config',
-          kind: 'record',
-          local: folderConfigSync,
-          remote: getRemoteSyncAdapter('folder_config')
-        },
-        {
-          type: 'calendar_event',
-          kind: 'record',
-          local: calendarEventSync,
-          remote: getRemoteSyncAdapter('calendar_event')
-        },
-        {
-          type: 'calendar_source',
-          kind: 'record',
-          local: calendarSourceSync,
-          remote: getRemoteSyncAdapter('calendar_source')
-        },
-        {
-          type: 'calendar_binding',
-          kind: 'record',
-          local: calendarBindingSync,
-          remote: getRemoteSyncAdapter('calendar_binding')
-        },
-        {
-          type: 'calendar_external_event',
-          kind: 'record',
-          local: calendarExternalEventSync,
-          remote: getRemoteSyncAdapter('calendar_external_event')
-        },
-        {
-          type: 'canvas',
-          kind: 'record',
-          local: canvasSync,
-          remote: getRemoteSyncAdapter('canvas')
-        },
+        recordAdapter('journal', journalSync),
+        recordAdapter('tag_definition', tagDefinitionSync),
+        recordAdapter('tag_category', tagCategorySync),
+        recordAdapter('folder_config', folderConfigSync),
+        recordAdapter('calendar_event', calendarEventSync),
+        recordAdapter('calendar_source', calendarSourceSync),
+        recordAdapter('calendar_binding', calendarBindingSync),
+        recordAdapter('calendar_external_event', calendarExternalEventSync),
+        recordAdapter('canvas', canvasSync),
         {
           type: 'canvas_folder',
           kind: 'record',

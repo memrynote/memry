@@ -10,6 +10,7 @@ export type WidgetType =
   | 'folder'
   | 'calendar'
   | 'journal'
+  | 'project'
 
 export interface WidgetInstance {
   id: string

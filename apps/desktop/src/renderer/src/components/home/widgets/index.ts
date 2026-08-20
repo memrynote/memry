@@ -6,7 +6,6 @@ import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
 import { FolderWidget } from './folder-widget'
 import { FolderHeaderControls } from './folder-header-controls'
-import { TasksWidgetConfigEditor } from './tasks-widget-config-editor'
 import { TasksHeaderFilter, TasksHeaderCount } from './tasks-header'
 import { InboxHeaderFilter, InboxHeaderCount } from './inbox-header'
 import { InboxWidgetFooter } from './inbox-footer'
@@ -14,6 +13,8 @@ import { CalendarWidget } from './calendar-widget'
 import { CalendarHeaderLabel, CalendarHeaderCount, CalendarFooter } from './calendar-header'
 import { JournalWidget } from './journal-widget'
 import { JournalHeaderStreak } from './journal-header'
+import { ProjectWidget } from './project-widget'
+import { ProjectWidgetPicker } from './project-widget-picker'
 
 registerWidget({
   type: 'recently-edited',
@@ -49,7 +50,6 @@ registerWidget({
   defaultLayout: { w: 4, h: 4 },
   defaultConfig: { dateRange: 'today' },
   Component: TasksWidget,
-  ConfigEditor: TasksWidgetConfigEditor,
   HeaderFilter: TasksHeaderFilter,
   HeaderCount: TasksHeaderCount
 })
@@ -96,4 +96,17 @@ registerWidget({
   defaultConfig: {},
   Component: JournalWidget,
   HeaderFilter: JournalHeaderStreak
+})
+
+registerWidget({
+  type: 'project',
+  titleKey: 'home.widget.project',
+  icon: 'folder-kanban',
+  // Taller and wider than the default 4x4: the body carries a five-tab strip above
+  // its rows, and five labels need roughly half the board's width to sit on one line.
+  defaultLayout: { w: 4, h: 5 },
+  minLayout: { w: 4, h: 3 },
+  defaultConfig: { projectId: '' },
+  Component: ProjectWidget,
+  HeaderFilter: ProjectWidgetPicker
 })

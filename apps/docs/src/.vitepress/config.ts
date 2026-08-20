@@ -63,6 +63,7 @@ function unifiedSidebar() {
             { text: 'Wiki Links & Backlinks', link: '/user-guide/notes/wiki-links' },
             { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
             { text: 'Attachments', link: '/user-guide/notes/attachments' },
+            { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
             { text: 'Version History', link: '/user-guide/notes/version-history' }

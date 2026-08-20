@@ -377,7 +377,14 @@
       "idx": 53,
       "version": "6",
       "when": 1787168001775,
-      "tag": "0053_recently_opened",
+      "tag": "0053_custom_icons",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1787226759433,
+      "tag": "0054_recently_opened",
       "breakpoints": true
     }
   ]

@@ -3,6 +3,7 @@ import '@/components/home/widgets'
 import { HomeHeader } from '@/components/home/home-header'
 import { BoardGrid } from '@/components/home/board-grid'
 import { BoardEmptyState } from '@/components/home/board-empty-state'
+import { BoardManagerDialog } from '@/components/home/board-manager-dialog'
 import { HomeDisabledLauncher } from '@/components/home/home-disabled-launcher'
 import { useHomeBoards } from '@/hooks/use-home-boards'
 import { useHomeSeedGate } from '@/hooks/use-home-seed-gate'
@@ -59,6 +60,7 @@ export default function HomePage(): React.JSX.Element {
   }, [openTab])
 
   const [galleryOpen, setGalleryOpen] = useState(false)
+  const [managerOpen, setManagerOpen] = useState(false)
   // The header floats over the board (.home-chrome, sticky); its material (blur + translucent
   // background) only appears once content actually scrolls underneath it.
   const [scrolled, setScrolled] = useState(false)
@@ -69,7 +71,9 @@ export default function HomePage(): React.JSX.Element {
     setActiveBoardId,
     isLoading,
     createBoard,
+    renameBoard,
     deleteBoard,
+    reorderBoards,
     updateWidgets
   } = useHomeBoards()
 
@@ -144,12 +148,21 @@ export default function HomePage(): React.JSX.Element {
           onSelectBoard={setActiveBoardId}
           onCreateBoard={() => void createBoard(t('home.board.newName'))}
           onDeleteBoard={(id) => void deleteBoard(id)}
+          onManageBoards={() => setManagerOpen(true)}
           showAddWidget={!isLoading && !!localActive}
           galleryOpen={galleryOpen}
           onGalleryOpenChange={setGalleryOpen}
           onAddWidget={handleAddWidget}
         />
       </div>
+      <BoardManagerDialog
+        boards={localBoards}
+        open={managerOpen}
+        onOpenChange={setManagerOpen}
+        onRename={(id, name) => void renameBoard(id, name)}
+        onDelete={(id) => void deleteBoard(id)}
+        onReorder={(ids) => void reorderBoards(ids)}
+      />
       {showSkeleton && (
         <output
           data-testid="home-board-loading"

@@ -5,6 +5,7 @@ import {
   CheckSquare,
   Clock,
   Folder,
+  FolderKanban,
   Inbox,
   TrendingUp
 } from '@/lib/icons/icon-map'
@@ -19,5 +20,6 @@ export const WIDGET_ICONS: Record<string, typeof Clock> = {
   inbox: Inbox,
   folder: Folder,
   calendar: Calendar,
-  'book-open': BookOpen
+  'book-open': BookOpen,
+  'folder-kanban': FolderKanban
 }

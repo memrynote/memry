@@ -295,5 +295,9 @@
     "updateFailed": "Failed to update template",
     "deleteFailed": "Failed to delete template",
     "duplicateFailed": "Failed to duplicate template"
+  },
+  "customIcon": {
+    "unreadableImage": "That image could not be read. Try a PNG, JPG, GIF, WEBP or SVG file.",
+    "tooLarge": "That image is too large. Pick a file under 2 MB."
   }
 }

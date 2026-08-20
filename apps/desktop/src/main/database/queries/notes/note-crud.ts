@@ -274,11 +274,30 @@ export function getAllNoteIds(db: IndexDb): string[] {
     .map((r) => r.id)
 }
 
+/**
+ * Every CRDT-backed note in the vault, most recently modified first.
+ *
+ * The order is the paced catch-up sweep's priority. `FullSyncRunner` queues
+ * these ids in the order they arrive and the queue drains FIFO, so a note that
+ * changed recently — by this user, or by the device this one is catching up
+ * with — is both the note most likely to actually be stale and the note most
+ * likely to be opened next. Unordered, this returned rowid order, which is
+ * index-build order and says nothing about either. `idx_note_cache_modified`
+ * already covers the sort.
+ *
+ * Ordering only, never filtering. The sweep is the sole channel by which a
+ * body-only remote edit reaches a device that missed the `crdt_updated`
+ * broadcast — bodies never travel in the record change feed — so it stays
+ * exhaustive and every markdown note is still returned. A vault with uniform
+ * mtimes (restored from backup, freshly cloned, bulk-imported) simply falls
+ * back to an arbitrary order, which is what it had before.
+ */
 export function getAllCrdtNoteIds(db: IndexDb): string[] {
   return db
     .select({ id: noteCache.id })
     .from(noteCache)
     .where(eq(noteCache.fileType, 'markdown'))
+    .orderBy(desc(noteCache.modifiedAt))
     .all()
     .map((r) => r.id)
 }

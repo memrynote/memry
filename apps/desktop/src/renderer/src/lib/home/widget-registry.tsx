@@ -22,7 +22,6 @@ export interface WidgetDefinition {
   minLayout?: { w: number; h: number }
   defaultConfig: Record<string, unknown>
   Component: FC<WidgetComponentProps>
-  ConfigEditor?: FC<WidgetConfigEditorProps>
   // Optional header slots rendered inside WidgetFrame: a filter control (left of the spacer)
   // and a count (right of the spacer). Used by the Tasks widget.
   HeaderFilter?: FC<WidgetConfigEditorProps>

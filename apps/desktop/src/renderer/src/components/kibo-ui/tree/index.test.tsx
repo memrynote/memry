@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { forwardRef } from 'react'
 
@@ -182,6 +182,17 @@ function dataTransfer(types: string[] = []) {
   }
 }
 
+/**
+ * jsdom's `DragEvent` drops mouse coordinates, so `fireEvent.dragOver(row, {
+ * clientY })` hands the tree `undefined` and every drop band comparison fails.
+ * Set the coordinate on the event itself to test the geometry for real.
+ */
+function dragOverAt(row: HTMLElement, clientY: number, transfer: unknown) {
+  const event = createEvent.dragOver(row, { dataTransfer: transfer })
+  Object.defineProperty(event, 'clientY', { value: clientY })
+  fireEvent(row, event)
+}
+
 describe('TreeProvider and tree primitives', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -276,6 +287,48 @@ describe('TreeProvider and tree primitives', () => {
 
     fireEvent.dragLeave(childB, { relatedTarget: document.body })
     fireEvent.dragEnd(root)
+  })
+
+  it('drops a node inside an empty folder row', () => {
+    // #given — a folder with nothing in it yet. The virtualized copy of this
+    // tree used to infer "takes children" from "has children" and refused the
+    // drop; both trees now share `resolveDropPosition`.
+    const onMove = vi.fn()
+    render(
+      <TreeProvider persistKey="tree-empty-folder" draggable onMove={onMove}>
+        <TreeView>
+          <TreeNode nodeId="note">
+            <TreeNodeTrigger>
+              <span>Loose Note</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+          <TreeNode nodeId="folder-empty" acceptsDropInside>
+            <TreeNodeTrigger>
+              <span>Empty Folder</span>
+            </TreeNodeTrigger>
+          </TreeNode>
+        </TreeView>
+      </TreeProvider>
+    )
+
+    const source = screen.getByText('Loose Note').closest('[data-tree-node-id]') as HTMLElement
+    const target = screen.getByText('Empty Folder').closest('[data-tree-node-id]') as HTMLElement
+    target.getBoundingClientRect = vi.fn(
+      () => ({ top: 0, height: 28, right: 100, left: 0 }) as DOMRect
+    )
+
+    // #when — the drag hovers the middle of the row
+    const transfer = dataTransfer()
+    fireEvent.dragStart(source, { dataTransfer: transfer })
+    dragOverAt(target, 14, transfer)
+    fireEvent.drop(target, { dataTransfer: transfer })
+
+    // #then
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'note',
+      targetId: 'folder-empty',
+      position: 'inside'
+    })
   })
 
   it('lets a file dragged in from the OS reach the sidebar instead of swallowing it', () => {
