@@ -218,6 +218,7 @@ vi.mock('./hooks', () => ({
     handleDrop: vi.fn()
   })),
   useEditorFileUpload: vi.fn(),
+  useTableCellImage: vi.fn(),
   useBlockMarqueeSelection: vi.fn(() => ({
     marqueeRect: null,
     highlightRects: [],

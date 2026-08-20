@@ -1070,6 +1070,11 @@ const INLINE_CASES = [
       remind: 'none',
       timeFormat: 'system'
     })
+  },
+  {
+    nodeName: 'inlineImage',
+    attrs: { src: '../attachments/n1/photo.png', alt: 'photo.png' },
+    text: '![photo.png](../attachments/n1/photo.png)'
   }
 ] as const
 
@@ -1490,7 +1495,12 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   wikiLink: '[[Roadmap]]',
   hashTag: '#roadmap',
   linkMention: '((mention:https%3A%2F%2Fx.com))',
-  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))'
+  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))',
+  // The only custom inline form CommonMark already owns. It is here for the
+  // opposite reason to the others: `inlineImage` parses `<img>`, so this gate is
+  // what says the images every existing note is full of still behave exactly as
+  // they did in a list item, a quote, a heading and a code fence.
+  inlineImage: '![p.png](p.png)'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -1520,7 +1530,24 @@ describe('a custom spec must not claim the block its text sits in', () => {
     expect(Object.keys(INLINE_TEXT_FORMS).sort()).toEqual([...MEMRY_INLINE_CONTENT_TYPES].sort())
   })
 
-  const cases = MEMRY_INLINE_CONTENT_TYPES.flatMap((type) =>
+  /**
+   * `inlineImage` is swept through the table-cell case below but not through
+   * the block contexts, and the exemption is the point rather than a gap.
+   *
+   * Its disk form is CommonMark's own `![alt](src)`, which outside a table cell
+   * still parses as an image BLOCK — so an image glued into a heading, a quote
+   * or the middle of a sentence is dropped on parse, exactly as it was before
+   * this spec existed (`separateBlockImages` is the workaround built for that,
+   * and the limitation is asserted directly further down). The spec's `parse`
+   * claims an `<img>` only inside a `td`/`th`, so it is not what claims those
+   * blocks — sweeping it here would assert a pre-existing markdown limitation
+   * under the banner of a parse gate it cannot fail.
+   */
+  const BLOCK_CONTEXT_EXEMPT = new Set<string>(['inlineImage'])
+
+  const cases = MEMRY_INLINE_CONTENT_TYPES.filter(
+    (type) => !BLOCK_CONTEXT_EXEMPT.has(type)
+  ).flatMap((type) =>
     BLOCK_CONTEXTS.map(([context, wrap]) => [type, context, wrap(INLINE_TEXT_FORMS[type])] as const)
   )
 
@@ -1534,6 +1561,19 @@ describe('a custom spec must not claim the block its text sits in', () => {
     // #then byte-identical — write-back byte-compares, so anything else rewrites
     // the note in every vault on next open
     expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('an image outside a table cell is still block-only, as it was before', async () => {
+    // #given the pre-existing limitation the exemption above names: BlockNote
+    // parses `![…](…)` as a block, and a heading has no room for one. Recorded
+    // rather than rediscovered — and asserted here so that if inline images are
+    // ever widened beyond cells, this is the test that says so out loud.
+    const doc = new Y.Doc()
+    await markdownToYFragment('# ![p.png](p.png)', doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when / #then unchanged by this spec: the image is dropped, the heading
+    // survives. `inlineImage` claims `<img>` only inside a `td`/`th`.
+    expect(await yDocToMarkdown(doc)).toBe('#')
   })
 
   it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {
@@ -2547,5 +2587,91 @@ describe('table cell colours survive the markdown round trip (#1639)', () => {
     expect(out).toContain('*Done*')
     expect(out).not.toContain('table-colors')
     expect(await roundTrip(out!)).toBe(out)
+  })
+})
+
+ * Images inside table cells (#1640).
+ *
+ * The gate that matters is this one, not a spec unit test: a `tableCell` holds
+ * inline content only, so before `inlineImage` existed the picture was dropped
+ * by ProseMirror during the parse — `| ![a](x.png) |` came back `|  |` with no
+ * error anywhere. And the node has to exist in THIS process specifically, since
+ * y-prosemirror answers a node name its schema cannot build by deleting the
+ * element out of the shared Y.Doc.
+ */
+describe('blocknote-converter table cell images', () => {
+  const IMG = '../attachments/n1/photo.png'
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return yDocToMarkdown(doc)
+  }
+
+  it('keeps an image in a table cell through markdown → Yjs → markdown', async () => {
+    // #given a GFM table whose second cell is a picture
+    const markdown = `| name | shot |\n| --- | --- |\n| alpha | ![photo.png](${IMG}) |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then the ref reaches the vault file unchanged — a note-relative path, so
+    // the note still resolves on the next device rather than pinning this one.
+    expect(result).toContain(`![photo.png](${IMG})`)
+    expect(result).toContain('alpha')
+  })
+
+  it('parses the cell image as an inlineImage node, not a dropped block', async () => {
+    // #given
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`| a |\n| --- |\n| ![photo.png](${IMG}) |\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    const cells = JSON.stringify(blocks)
+    expect(cells).toContain('"type":"inlineImage"')
+    expect(cells).toContain(IMG)
+  })
+
+  it('survives the y-prosemirror round trip with nothing unrepresentable', async () => {
+    // #given a doc holding the node y-prosemirror would delete if main lacked
+    // the spec — the failure mode this whole schema package exists to stop
+    const doc = new Y.Doc()
+    await markdownToYFragment(
+      `| a |\n| --- |\n| ![photo.png](${IMG}) |\n`,
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #when / #then
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it('keeps text on both sides of the image in one cell', async () => {
+    // #given inline content means the picture shares the cell with words
+    const markdown = `| a |\n| --- |\n| before ![photo.png](${IMG}) after |\n`
+
+    // #when
+    const result = await roundTrip(markdown)
+
+    // #then
+    expect(result).toContain(`before ![photo.png](${IMG}) after`)
+  })
+
+  it('leaves a standalone image as an image block', async () => {
+    // #given the regression that matters: `inlineImage` also parses `<img>`, so
+    // claiming one outside a cell would convert every existing note's images
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(`![photo.png](${IMG})\n`, fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    expect(blocks!.some((b) => b.type === 'image')).toBe(true)
+    expect(JSON.stringify(blocks)).not.toContain('inlineImage')
   })
 })

@@ -2750,6 +2750,19 @@ del.bn-inline-content {
   font-weight: 500;
 }
 
+/* Inline image — a picture inside a line of text, which in practice means
+   inside a table cell (#1640). Capped by the line so one large screenshot
+   cannot blow a row's height out; the cell stays scannable and the image is
+   still clickable at full size in the vault. */
+.inline-image {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 8em;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,

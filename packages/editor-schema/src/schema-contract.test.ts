@@ -39,6 +39,7 @@ import {
   createMemryInlineContentSpecs,
   dateMentionConfig,
   hashTagConfig,
+  inlineImageConfig,
   linkMentionConfig,
   wikiLinkConfig,
   type MemryInlineSpecs
@@ -73,7 +74,8 @@ const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object
   wikiLink: wikiLinkConfig,
   linkMention: linkMentionConfig,
   hashTag: hashTagConfig,
-  dateMention: dateMentionConfig
+  dateMention: dateMentionConfig,
+  inlineImage: inlineImageConfig
 }
 
 /** One block per custom type, as the renderer authors it. */
@@ -155,6 +157,10 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
       remind: 'none',
       timeFormat: 'system'
     }
+  },
+  inlineImage: {
+    type: 'inlineImage',
+    props: { src: '../attachments/n1/photo.png', alt: 'photo.png' }
   }
 }
 

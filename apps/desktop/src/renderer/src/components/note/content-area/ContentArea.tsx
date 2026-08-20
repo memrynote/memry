@@ -79,7 +79,8 @@ import {
   useEditorSync,
   useTagSuggestions,
   useWikiLinkSuggestions,
-  usePasteLinkMenu
+  usePasteLinkMenu,
+  useTableCellImage
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
@@ -547,6 +548,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onDragReset: handleDrop,
     fetchNotePath
   })
+
+  // Hook #6b: Image pasted/dropped into a table cell → inline image (#1640)
+  useTableCellImage({ editor, editable, containerRef, noteIdRef })
 
   // Hook #7: Paste link menu (URL / Mention / Embed)
   const handlePasteLinkSelect = useCallback(
