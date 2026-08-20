@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   closeAllDatabases: vi.fn(),
   ensureDefaultTaskProject: vi.fn(),
   promoteSpatialCanvas: vi.fn(),
+  flipOpenPagesInNewTabDefault: vi.fn(),
   reloadPropertyDefinitions: vi.fn(),
   destroyPropertyDefinitions: vi.fn(),
   migrateSettingsToConfig: vi.fn(),
@@ -133,6 +134,10 @@ vi.mock('../database', () => ({
 
 vi.mock('../settings/promote-spatial-canvas', () => ({
   promoteSpatialCanvas: (...args: unknown[]) => mocks.promoteSpatialCanvas(...args)
+}))
+
+vi.mock('../settings/flip-open-pages-in-new-tab', () => ({
+  flipOpenPagesInNewTabDefault: (...args: unknown[]) => mocks.flipOpenPagesInNewTabDefault(...args)
 }))
 
 vi.mock('../database/defaults', () => ({

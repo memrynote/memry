@@ -67,7 +67,7 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     language: 'en',
     onboardingCompleted: false,
     createInSelectedFolder: true,
-    openPagesInNewTab: true,
+    openPagesInNewTab: false,
     clockFormat: '12h',
     dateFormat: 'DD.MM.YYYY'
   },

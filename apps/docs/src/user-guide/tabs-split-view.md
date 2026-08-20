@@ -45,7 +45,7 @@ Useful for: today's journal, your "now" note, the shared project.
 
 ## Opening Items
 
-Single-clicking a note, view, search result, or sidebar item opens a permanent tab. If that item is already open, memrynote focuses the existing tab instead of creating another copy.
+Single-clicking a note, view, search result, or sidebar item reuses the current tab, so working through a run of pages leaves one tab behind rather than a row of them. If that item is already open, memrynote focuses the existing tab instead of creating another copy, and a pinned tab is never replaced — the page opens beside it. To get a fresh tab per click instead, turn on **Settings → General → Open Pages in a New Tab**.
 
 Inactive workspace surfaces stay unloaded until first use. Inbox remains ready on cold open, while
 heavier surfaces such as Tasks, Calendar, Graph, and the right-side Agent/Day Panel mount when the

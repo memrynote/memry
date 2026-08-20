@@ -12,13 +12,14 @@ import type {
 import { compare, merge, increment } from './vector-clock'
 import { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
+import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from './settings-sync-keys'
 
 type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('SettingsSync')
 
-const SETTINGS_KEY = 'synced_settings'
-const CLOCKS_KEY = 'synced_settings_clocks'
+const SETTINGS_KEY = SETTINGS_SYNC_SETTINGS_KEY
+const CLOCKS_KEY = SETTINGS_SYNC_CLOCKS_KEY
 
 interface SettingsSyncDeps {
   db: DrizzleDb

@@ -77,6 +77,7 @@ import {
   snapshotProjectFrontmatterBackfill
 } from './backfill-project-frontmatter'
 import { promoteSpatialCanvas } from '../settings/promote-spatial-canvas'
+import { flipOpenPagesInNewTabDefault } from '../settings/flip-open-pages-in-new-tab'
 import { migrateTemplateFilesToDb } from './templates-migration'
 import { reconcileCanvasFiles } from '../canvas/reconcile'
 import { configureLazyAgentServices } from '../agent/lazy-services'
@@ -411,6 +412,11 @@ async function openVault(vaultPath: string): Promise<void> {
 
   // One-time: clear a collateral `spatialCanvas: false` left by pre-M7 writes.
   promoteSpatialCanvas(dataDb)
+
+  // One-time: clear the collateral `openPagesInNewTab: true` left by writes made
+  // while that was the default. Must follow migrateSettingsToConfig, which is
+  // what settles config.json as the source of truth for this field.
+  flipOpenPagesInNewTabDefault(dataDb, vaultPath)
 
   // One-time import of pre-sync template files into the data DB. Settings
   // guarded, so deleted templates are never resurrected.
