@@ -254,8 +254,12 @@
       "custom": {
         "searchPlaceholder": "Search your icons",
         "dropHint": "Drop an image or click to upload",
+        "urlPlaceholder": "Or paste an image link",
+        "urlLabel": "Image link",
+        "urlSubmit": "Download this image",
+        "downloading": "Downloading…",
         "adding": "Adding…",
-        "empty": "No custom icons yet. Drop an image to add one.",
+        "empty": "No custom icons yet. Drop an image or paste a link to add one.",
         "noMatches": "No custom icons match that search",
         "unsupportedFile": "{name} is not a supported image",
         "addFailed": "Could not add that icon",
@@ -265,7 +269,8 @@
         "delete": "Delete {name}",
         "renameLabel": "Icon name",
         "saveName": "Save name",
-        "cancelRename": "Cancel rename"
+        "cancelRename": "Cancel rename",
+        "addUrlFailed": "Could not download that image"
       }
     }
   },

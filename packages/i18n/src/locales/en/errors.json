@@ -298,6 +298,9 @@
   },
   "customIcon": {
     "unreadableImage": "That image could not be read. Try a PNG, JPG, GIF, WEBP or SVG file.",
-    "tooLarge": "That image is too large. Pick a file under 2 MB."
+    "tooLarge": "That image is too large. Pick a file under 2 MB.",
+    "invalidUrl": "That is not a web link. Paste an http or https image address.",
+    "downloadFailed": "That image could not be downloaded. Check the link and try again.",
+    "unsupportedUrl": "That link is not a PNG, JPG, GIF, WEBP or SVG image."
   }
 }

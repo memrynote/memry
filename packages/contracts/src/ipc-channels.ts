@@ -964,6 +964,8 @@ export const CustomIconsChannels = {
     LIST: 'custom-icons:list',
     /** Store an uploaded image as a custom icon */
     ADD: 'custom-icons:add',
+    /** Download an image from a URL and store it as a custom icon */
+    ADD_FROM_URL: 'custom-icons:add-from-url',
     /** Change a custom icon's display name */
     RENAME: 'custom-icons:rename',
     /** Remove a custom icon and its file */
