@@ -250,13 +250,44 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
 
   // §5.6: a save whose scene is too large to sync is kept locally but never
   // pushed; surface it so the divergence is never silent.
+  //
+  // The signal fires on EVERY oversized save, and the scene is auto-saved
+  // whenever anything on the canvas moves — so announcing it per event buried
+  // the user under an endless stack of identical toasts while they worked
+  // (#1625/C2). The announcement is therefore edge-triggered: once when the
+  // canvas stops syncing, re-armed only after a save syncs again. The stable
+  // toast id is the second line of defence — sonner replaces rather than
+  // stacks, so even a repeat announcement can never pile up.
+  const tooLargeAnnouncedRef = useRef(false)
+  const announceSyncability = useCallback(
+    (tooLarge: boolean): void => {
+      if (!tooLarge) {
+        tooLargeAnnouncedRef.current = false
+        return
+      }
+      if (tooLargeAnnouncedRef.current) {
+        return
+      }
+      tooLargeAnnouncedRef.current = true
+      toast.error(t('canvas.tooLargeToSync'), { id: `canvas-too-large-${canvasId}` })
+    },
+    [canvasId, t]
+  )
+  // The persister's save closure is built once per canvas, so it reads the
+  // announcer through a ref rather than re-creating the persister on every
+  // language change.
+  const announceSyncabilityRef = useRef(announceSyncability)
+  useEffect(() => {
+    announceSyncabilityRef.current = announceSyncability
+  }, [announceSyncability])
+
   useEffect(() => {
     return onCanvasTooLarge((event) => {
       if (event.id === canvasId) {
-        toast.error(t('canvas.tooLargeToSync'))
+        announceSyncabilityRef.current(true)
       }
     })
-  }, [canvasId, t])
+  }, [canvasId])
 
   const persisterRef = useRef<{ notifyChange: () => void; flush: () => Promise<void> } | null>(null)
 
@@ -355,11 +386,15 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
           trackRendererError('canvas_asset_externalize', err)
           // Fall back to the original scene — the pre-push size guard surfaces oversize saves.
         }
-        await canvasService.update({
+        const saved = await canvasService.update({
           id: canvasId,
           scene: sceneToSave,
           entityRefs: extractEntityRefs(elements)
         })
+        // The only signal that carries BOTH edges: the too-large event fires
+        // for oversized saves only, so a save that syncs again is what re-arms
+        // the announcement above.
+        announceSyncabilityRef.current(saved.tooLarge)
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
       lastSavedScene: initialScene,
