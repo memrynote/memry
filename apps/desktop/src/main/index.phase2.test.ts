@@ -86,6 +86,7 @@ const readdirSyncMock = vi.fn(() => [])
 const statSyncMock = vi.fn(() => ({ size: 10 }))
 const createReadStreamMock = vi.fn()
 const webRequestOnHeadersReceivedMock = vi.fn()
+const webRequestOnBeforeSendHeadersMock = vi.fn()
 const protocolHandleMock = vi.fn()
 const protocolRegisterSchemesMock = vi.fn()
 const ipcMainOnMock = vi.fn()
@@ -421,7 +422,8 @@ vi.mock('electron', () => ({
   session: {
     defaultSession: {
       webRequest: {
-        onHeadersReceived: webRequestOnHeadersReceivedMock
+        onHeadersReceived: webRequestOnHeadersReceivedMock,
+        onBeforeSendHeaders: webRequestOnBeforeSendHeadersMock
       },
       setCertificateVerifyProc: setCertificateVerifyProcMock,
       setPermissionRequestHandler: setPermissionRequestHandlerMock,
@@ -1149,6 +1151,35 @@ describe('main index phase2 exports', () => {
     const externalCallback = vi.fn()
     cspCallback({ url: 'https://example.com/script.js', responseHeaders: {} }, externalCallback)
     expect(externalCallback).toHaveBeenCalledWith({})
+  })
+
+  it('gives the youtube embed a referrer the file:// document cannot send', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const headersCallback = webRequestOnBeforeSendHeadersMock.mock.calls.at(-1)?.[0] as (
+      details: { url: string; requestHeaders: Record<string, string> },
+      callback: (response: { requestHeaders?: Record<string, string> }) => void
+    ) => void
+    expect(headersCallback).toBeTypeOf('function')
+
+    const embedCallback = vi.fn()
+    headersCallback(
+      { url: 'https://www.youtube-nocookie.com/embed/abc', requestHeaders: { Accept: '*/*' } },
+      embedCallback
+    )
+    expect(embedCallback).toHaveBeenCalledWith({
+      requestHeaders: { Accept: '*/*', Referer: 'https://memrynote.com/' }
+    })
+
+    const otherCallback = vi.fn()
+    headersCallback(
+      { url: 'https://api.memrynote.com/sync', requestHeaders: { Accept: '*/*' } },
+      otherCallback
+    )
+    expect(otherCallback).toHaveBeenCalledWith({})
   })
 
   it('configures certificate pinning callbacks when pins are available', async () => {
