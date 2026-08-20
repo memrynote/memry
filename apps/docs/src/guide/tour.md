@@ -24,7 +24,7 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
-Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping *into* a folder works whatever the sort.
+Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort.
 
 ### Sorting a section
 
@@ -45,10 +45,17 @@ Two things follow from picking a mode:
 
 - **Drag-to-reorder only applies in Manual.** In any other mode the list is
   derived from the items themselves, so a position you dragged would be
-  re-sorted straight over. Dragging an item into a *folder* or *project* still
+  re-sorted straight over. Dragging an item into a _folder_ or _project_ still
   works in every mode — that is a move, not a reorder.
 - **Your manual order is kept.** Switching to Name or Modified and back to
   Manual restores the arrangement you made; it is stored, not recomputed.
+
+In Manual sort, a note or folder you create appears **at the top of the folder
+you created it in**, above everything you have arranged there — not at the
+bottom of the list. Naming it does not move it again, and neither does renaming
+a folder: the whole folder keeps its arrangement, and so does everything inside
+it. A folder you have never dragged is not affected; it keeps ordering itself
+(notes newest first, folders A → Z) until you arrange it yourself.
 
 Sort modes are saved per vault and sync, so another device that opens the same
 vault shows the same order. Each section syncs independently — changing
