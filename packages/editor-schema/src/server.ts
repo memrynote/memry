@@ -21,6 +21,8 @@ import {
   createDateMentionSpec,
   dateMentionSerialization,
   hashTagSerialization,
+  createInlineImageSpec,
+  inlineImageSerialization,
   LinkMentionSerializationOnly,
   WikiLinkSerializationOnly,
   type MemryInlineSpecs
@@ -37,6 +39,12 @@ export function createServerInlineSpecs(): MemryInlineSpecs {
     ),
     dateMention: createDateMentionSpec((inlineContent) =>
       dateMentionSerialization.toExternalHTML(inlineContent)
+    ),
+    // The raw `src`, exactly as it sits on disk. Resolving it here would write
+    // this machine's vault path back into the note the first time someone put
+    // an image in a table cell (#1640).
+    inlineImage: createInlineImageSpec((inlineContent) =>
+      inlineImageSerialization.toExternalHTML(inlineContent)
     )
   }
 }

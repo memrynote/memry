@@ -66,6 +66,7 @@ import {
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createTableCellImagePlugin } from './table-cell-image-plugin'
 
 import {
   useBlockNoteSetup,
@@ -505,6 +506,22 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     )
     return registerEditorPlugin(editor, plugin)
   }, [editor, isReviewEnabled])
+
+  // A table cell holds inline content only, so BlockNote's own file paste — which
+  // always builds an image BLOCK — could not put an image in one (#1640). Inside
+  // a cell the image becomes an `inlineImage` instead; everywhere else this
+  // plugin does not fire and the block image is still what you get.
+  useEffect(() => {
+    const plugin = createTableCellImagePlugin(async (file) => {
+      const result = await uploadFile(file)
+      return typeof result === 'string' ? result : ''
+    })
+    // Prepended: ProseMirror gives the paste to the first `handlePaste` that
+    // claims it, and BlockNote's own file handling is already in the list — it
+    // was building an image BLOCK and dropping it BELOW the table. Safe to go
+    // first because this handler declines anything outside a cell.
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor, uploadFile])
 
   // Hook #3: Wiki link suggestions
   const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(editor)

@@ -7,6 +7,7 @@ import { createTaskBlock } from './task-block'
 import { HashTag } from './hash-tag'
 import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
+import { InlineImage } from './inline-image'
 
 // Built through the shared factory so the main process gets a schema with the
 // same node types. Main converts the shared Y.Doc through y-prosemirror, which
@@ -31,7 +32,10 @@ export const editorSchema = createMemrySchema({
     wikiLink: WikiLink,
     linkMention: LinkMention,
     hashTag: HashTag,
-    dateMention: DateMention
+    dateMention: DateMention,
+    // The editor flavour of inlineImage: same node as main's, plus display-time
+    // resolution of a note-relative `src`.
+    inlineImage: InlineImage
   }
 })
 

@@ -1070,8 +1070,90 @@ const INLINE_CASES = [
       remind: 'none',
       timeFormat: 'system'
     })
+  },
+  {
+    nodeName: 'inlineImage',
+    // A note-relative ref, which is the only thing that may ever reach disk:
+    // the renderer resolves it to an absolute `memry-file://` URL for display,
+    // and that URL carries one machine's vault path (#1640).
+    attrs: { src: '../attachments/n1/shot.png', alt: 'shot' },
+    text: '![shot](../attachments/n1/shot.png)'
   }
 ] as const
+
+/**
+ * #1640: a table cell could not hold an image at all.
+ *
+ * BlockNote's `image` is a block and a `tableCell` takes inline content only,
+ * so the `<img>` in a cell matched no node and was dropped on parse — the note
+ * came back from disk with an empty cell. GFM allows phrasing content in a
+ * cell, `![alt](src)` is phrasing, and `inlineImage` is the node that carries
+ * it. This is the round trip that has to hold: the file on disk, through the
+ * shared Y.Doc, back to the same bytes.
+ *
+ * Inside a table BlockNote reaches `render`, never `toExternalHTML` — cell
+ * content goes through ProseMirror's own DOM serializer — so this is also the
+ * test that says main's `render` emits the raw ref rather than a resolved URL.
+ */
+describe('an image in a table cell survives the CRDT write path', () => {
+  const TABLE = [
+    '| Iteration | Shot |',
+    '| --- | --- |',
+    '| v1 | ![v1](../attachments/n1/v1.png) |',
+    '| v2 | ![v2](../attachments/n1/v2.png) |'
+  ].join('\n')
+
+  it('carries both cell images back to markdown, and settles', async () => {
+    // #given a vault note whose table holds images, as another editor wrote it
+    const doc = new Y.Doc()
+    const ok = await markdownToYFragment(TABLE, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(ok).toBe(true)
+
+    // #when write-back serializes it
+    const first = await yDocToMarkdown(doc)
+
+    // #then both images are still there — before this node the cells came back
+    // empty — and the table is still a table
+    expect(first).toContain('![v1](../attachments/n1/v1.png)')
+    expect(first).toContain('![v2](../attachments/n1/v2.png)')
+    expect(first?.split('\n')).toHaveLength(4)
+
+    // #and the second pass is byte-identical, so a note stops being rewritten
+    // after remark has padded the columns once
+    const settled = new Y.Doc()
+    await markdownToYFragment(first ?? '', settled.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(await yDocToMarkdown(settled)).toBe(first)
+  })
+
+  it('keeps the images in the shared doc rather than deleting them', async () => {
+    // #given the same note
+    const doc = new Y.Doc()
+    await markdownToYFragment(TABLE, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const before = Y.encodeStateAsUpdate(doc)
+
+    // #when
+    await yDocToMarkdown(doc)
+
+    // #then y-prosemirror answers a node its schema cannot build by DELETING
+    // it, and that deletion replicates to every device
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it('leaves a standalone image line as an image block', async () => {
+    // #given the shape every existing note already has: `![x](y)` on its own
+    // line. The inline node's `parse` runs as a `tag: "*"` rule, so it sees
+    // this one too and must hand it back to the image BLOCK.
+    const markdown = '![a photo](../attachments/n1/photo.png)'
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when / #then unchanged bytes, and the node is still `image`
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.type).toBe('image')
+  })
+})
 
 describe('custom inline nodes survive the CRDT write path', () => {
   /**
@@ -1490,7 +1572,8 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   wikiLink: '[[Roadmap]]',
   hashTag: '#roadmap',
   linkMention: '((mention:https%3A%2F%2Fx.com))',
-  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))'
+  dateMention: '((date:eyJhbmNob3JJZCI6ImExIn0))',
+  inlineImage: '![shot](../attachments/n1/shot.png)'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -1520,20 +1603,43 @@ describe('a custom spec must not claim the block its text sits in', () => {
     expect(Object.keys(INLINE_TEXT_FORMS).sort()).toEqual([...MEMRY_INLINE_CONTENT_TYPES].sort())
   })
 
+  /**
+   * `type|context` pairs whose BYTES move for a reason that predates the spec.
+   * Listed by hand so an entry is a decision rather than an accident, and the
+   * pair still asserts what this gate is actually for: the marker survives and
+   * the block around it is not swallowed.
+   *
+   * `inlineImage` in a list item — BlockNote lifts a list item's ELEMENT
+   * children into a `blockGroup` before any spec is consulted, so `- ![x](y)`
+   * has always parsed as an image BLOCK nested under the bullet and been
+   * written back in Memry's nesting-marker form. Measured on main before
+   * `inlineImage` existed; adding the node changed neither side of it.
+   */
+  const NOT_BYTE_STABLE: ReadonlySet<string> = new Set([
+    'inlineImage|a bullet item',
+    'inlineImage|a numbered item'
+  ])
+
   const cases = MEMRY_INLINE_CONTENT_TYPES.flatMap((type) =>
     BLOCK_CONTEXTS.map(([context, wrap]) => [type, context, wrap(INLINE_TEXT_FORMS[type])] as const)
   )
 
-  it.each(cases)('%s inside %s survives untouched', async (_type, _context, markdown) => {
+  it.each(cases)('%s inside %s survives untouched', async (type, context, markdown) => {
     // #given a vault note as it exists on disk today
     const doc = new Y.Doc()
     const ok = await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(ok).toBe(true)
 
     // #when the converter reads and writes it back
+    const result = await yDocToMarkdown(doc)
+
     // #then byte-identical — write-back byte-compares, so anything else rewrites
     // the note in every vault on next open
-    expect(await yDocToMarkdown(doc)).toBe(markdown)
+    if (NOT_BYTE_STABLE.has(`${type}|${context}`)) {
+      expect(result).toContain(INLINE_TEXT_FORMS[type])
+      return
+    }
+    expect(result).toBe(markdown)
   })
 
   it.each(MEMRY_INLINE_CONTENT_TYPES)('%s inside a table cell keeps the table', async (type) => {

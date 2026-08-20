@@ -39,6 +39,7 @@ import {
   createMemryInlineContentSpecs,
   dateMentionConfig,
   hashTagConfig,
+  inlineImageConfig,
   linkMentionConfig,
   wikiLinkConfig,
   type MemryInlineSpecs
@@ -73,7 +74,8 @@ const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object
   wikiLink: wikiLinkConfig,
   linkMention: linkMentionConfig,
   hashTag: hashTagConfig,
-  dateMention: dateMentionConfig
+  dateMention: dateMentionConfig,
+  inlineImage: inlineImageConfig
 }
 
 /** One block per custom type, as the renderer authors it. */
@@ -155,6 +157,12 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
       remind: 'none',
       timeFormat: 'system'
     }
+  },
+  // A note-relative ref, which is the case that matters: `render` reaching the
+  // vault with a resolved absolute URL is the failure this fixture guards.
+  inlineImage: {
+    type: 'inlineImage',
+    props: { src: '../attachments/n1/shot.png', alt: 'a screenshot' }
   }
 }
 

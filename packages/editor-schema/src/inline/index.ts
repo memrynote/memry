@@ -4,11 +4,13 @@ import { linkMentionConfig } from './link-mention'
 import { wikiLinkConfig } from './wiki-link'
 import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
+import { inlineImageConfig } from './inline-image'
 
 export * from './wiki-link'
 export * from './link-mention'
 export * from './hash-tag'
 export * from './date-mention'
+export * from './inline-image'
 
 /**
  * The specs each process supplies for itself. The config and the serialization
@@ -37,6 +39,13 @@ export interface MemryInlineSpecs {
    * and dropping domain/title/favicon/siteName from disk.
    */
   linkMention: InlineContentSpec<typeof linkMentionConfig>
+  /**
+   * The editor's flavour resolves a note-relative `src` for display; main's
+   * emits the raw ref. Same node, same on-disk form — and the raw ref is what
+   * both of them SERIALIZE, or a table cell would write this machine's vault
+   * path into the note (#1640).
+   */
+  inlineImage: InlineContentSpec<typeof inlineImageConfig>
 }
 
 /**
@@ -53,7 +62,8 @@ export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
     wikiLink: specs.wikiLink,
     linkMention: specs.linkMention,
     hashTag: specs.hashTag,
-    dateMention: specs.dateMention
+    dateMention: specs.dateMention,
+    inlineImage: specs.inlineImage
   }
   assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
   return registered
@@ -64,5 +74,6 @@ export const MEMRY_INLINE_CONTENT_TYPES = [
   'wikiLink',
   'linkMention',
   'hashTag',
-  'dateMention'
+  'dateMention',
+  'inlineImage'
 ] as const

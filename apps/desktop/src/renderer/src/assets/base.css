@@ -2750,6 +2750,19 @@ del.bn-inline-content {
   font-weight: 500;
 }
 
+/* An image sitting in a line of text or in a table cell (#1640). Capped so a
+   screenshot dropped into a cell does not stretch the row to the height of the
+   window; `vertical-align: middle` sits it on the line rather than on the
+   baseline, where it would push the row's text down. */
+.inline-image {
+  display: inline-block;
+  max-height: 160px;
+  max-width: 100%;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,
