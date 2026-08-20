@@ -65,6 +65,47 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
   })
 }
 
+/**
+ * Promote the raw `[[…]]` text a collaborative document opens with (#1642).
+ *
+ * Main parses the vault file into the shared Y.Doc with a `wikiLink` spec that
+ * has no `parse` rule, so `[[X]]` reaches the doc as plain TEXT — the renderer
+ * is the only thing that promotes it (`wiki-link-collab-promotion.test.ts`).
+ * The load effect below never did: it returns early for a collaborative
+ * document, so `normalizeNoteBlocks` runs on the markdown path only. Promotion
+ * on this path was left entirely to `handleChange`, which fires on a change
+ * EVENT — in practice the transaction y-prosemirror dispatches when the shared
+ * content reaches the editor, which is why opening a note usually does show
+ * chips. But nothing guarantees that event: it has to land after BlockNote's
+ * `onChange` subscriber is registered, and when it does not there is no second
+ * chance, because a document that is merely READ never changes again. That is
+ * the reported failure — a page of links that opens as plain, unclickable text
+ * and stays that way until the user types into it.
+ *
+ * So the open path promotes for itself, and stops depending on the event.
+ *
+ * A NORMAL `replaceBlocks`, deliberately: this is a CRDT mutation like any
+ * other, so y-prosemirror diffs it into the shared doc and it converges with
+ * every other device. `replaceInitialBlocksWithoutHistory` must not be used
+ * here — it removes and re-inserts the whole document, which on a shared doc is
+ * one device overwriting another's body.
+ *
+ * Idempotent by construction: a promoted `wikiLink` node carries its target in
+ * props, so `[[` never reappears and `normalizeWikiLinks` stops matching. A
+ * second open writes no CRDT update at all, which is what keeps "opening a note
+ * must not rewrite it" (#1434) true. Only wiki links promote here — hash tags
+ * and date mentions have no promoter on the collaborative path and must stay
+ * the bytes they were opened with.
+ */
+function promoteWikiLinksInSharedDoc(editor: any): void {
+  const normalized = normalizeWikiLinks(editor.document as Block[], {
+    skipBlockId: editingWikiLinkBlockId(editor)
+  })
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
 function clearYjsUndoHistory(editor: any): void {
   const state = editor?._tiptapEditor?.state
   if (!state) return
@@ -256,6 +297,10 @@ export function useEditorSync({
     }
 
     if (yjsFragment) {
+      // Before the history is cleared, so opening a note never leaves an
+      // undoable step: Cmd+Z here would turn the chips back into raw text and
+      // push that to every device.
+      promoteWikiLinksInSharedDoc(editor)
       clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {

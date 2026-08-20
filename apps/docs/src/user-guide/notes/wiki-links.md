@@ -183,6 +183,16 @@ The rewritten link is **relative to the note**, so it keeps working after the no
 your other devices, and the vault stays readable by Obsidian.
 :::
 
+## Links Written Outside memrynote
+
+A `[[wiki link]]` typed into a note file by something other than memrynote — Obsidian, a
+script, another editor, or a note arriving from one of your other devices — is a chip as
+soon as you open the note. You do not have to edit the note to wake the links up, and
+opening it does not change the file: a link is stored as `[[Target]]` either way.
+
+Earlier builds could show such a page as plain, unclickable text until you typed into the
+note or reopened it a few times. Opening the note is now enough.
+
 ## Backlinks Panel
 
 The collapsible **Backlinks** section at the bottom of every note lists every other note that links to it — including notes that point to it through a `[[wiki link]]` or through a

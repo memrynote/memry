@@ -27,6 +27,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor, type Block } from '@blocknote/core'
 import * as Y from 'yjs'
+import { TextSelection } from '@tiptap/pm/state'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
 // The file block's PDF preview pulls pdf.js, which touches `DOMMatrix` at
@@ -64,8 +65,8 @@ interface CollabEditor {
   fragment: Y.XmlFragment
 }
 
-function createCollaborativeEditor(): CollabEditor {
-  const doc = new Y.Doc()
+function createCollaborativeEditor(existingDoc?: Y.Doc): CollabEditor {
+  const doc = existingDoc ?? new Y.Doc()
   const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
 
   // Exactly how ContentArea builds it when `isCollaborationActive(...)` is true.
@@ -106,7 +107,13 @@ function nodeNames(fragment: Y.XmlFragment): string[] {
   return names
 }
 
-/** Renders the real hook and hands back its real `handleChange`. */
+/**
+ * Renders the real hook and hands back its real `handleChange`.
+ *
+ * Rendering it IS opening the note: the hook's load effect is what runs on
+ * mount, and for the #1642 tests below that effect is the whole subject —
+ * `handleChange` is deliberately never called there.
+ */
 function mountEditorSync(editor: BlockNoteEditor, fragment: Y.XmlFragment): () => void {
   const { result } = renderHook(() =>
     useEditorSync({
@@ -116,6 +123,23 @@ function mountEditorSync(editor: BlockNoteEditor, fragment: Y.XmlFragment): () =
     })
   )
   return result.current.handleChange
+}
+
+/** The `target` of every `wikiLink` run in one block, in order. */
+function wikiLinkTargets(editor: BlockNoteEditor, blockIndex = 0): string[] {
+  const content = (editor.document[blockIndex] as Block).content as Array<{
+    type: string
+    props?: { target?: string }
+  }>
+  return content.filter((run) => run.type === 'wikiLink').map((run) => run.props?.target ?? '')
+}
+
+/** Park the caret inside the raw `[[…]]` run of the first paragraph. */
+function putCaretInsideRawRun(editor: BlockNoteEditor, text: string): void {
+  const tiptap = (editor as unknown as { _tiptapEditor: any })._tiptapEditor
+  const offset = text.indexOf('[[') + 3
+  const { state, dispatch } = tiptap.view
+  dispatch(state.tr.setSelection(TextSelection.create(state.doc, 1 + offset)))
 }
 
 describe('the renderer promotes [[X]] inside a collaborative document', () => {
@@ -203,5 +227,150 @@ describe('the renderer promotes [[X]] inside a collaborative document', () => {
     expect(updates).toEqual([])
     expect(nodeNames(fragment)).not.toContain('hashTag')
     expect(nodeNames(fragment)).not.toContain('dateMention')
+  })
+})
+
+/**
+ * #1642. The tests above drive `handleChange`, which fires on an EDIT. That was
+ * the ONLY promoter on the collaborative path, and it is the whole bug: a note
+ * whose Y.Doc holds raw `[[X]]` — pulled from another device, seeded from a
+ * file written outside Memry, or written by a pre-#1457 build — opened as
+ * plain, unclickable text and stayed that way until the user typed into it.
+ *
+ * Nothing below ever calls `handleChange`. Mounting the hook is the whole act:
+ * that is what opening a note does.
+ */
+describe('opening a collaborative note promotes its links without an edit', () => {
+  it('turns raw [[X]] into a chip on open', () => {
+    // #given a shared doc holding what main's parser leaves behind
+    const { editor, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, 'See [[Wiki Link]] for details.')
+    expect(nodeNames(fragment)).not.toContain('wikiLink')
+
+    // #when the note is opened and nothing else happens — no keystroke
+    mountEditorSync(editor, fragment)
+
+    // #then the link is a node, in the editor and in the shared doc
+    expect(wikiLinkTargets(editor)).toEqual(['Wiki Link'])
+    expect(nodeNames(fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
+  })
+
+  it('shows the chip on a device that never touched the note', () => {
+    // #given device A, which wrote the raw text, and its update on the wire
+    const deviceA = createCollaborativeEditor()
+    seedWithPlainText(deviceA.editor, 'See [[Wiki Link]] for details.')
+    const fromA = Y.encodeStateAsUpdate(deviceA.doc)
+
+    // #when device B receives it and opens the note — the reported case: the
+    // user reads a page of links they did not write
+    const docB = new Y.Doc()
+    Y.applyUpdate(docB, fromA)
+    const deviceB = createCollaborativeEditor(docB)
+    expect(nodeNames(deviceB.fragment)).not.toContain('wikiLink')
+
+    mountEditorSync(deviceB.editor, deviceB.fragment)
+
+    // #then B sees a chip…
+    expect(wikiLinkTargets(deviceB.editor)).toEqual(['Wiki Link'])
+
+    // …and the promotion converges back onto A as one node rather than
+    // clobbering A's body, because it went in as an ordinary CRDT mutation and
+    // not as a whole-document replace
+    Y.applyUpdate(deviceA.doc, Y.encodeStateAsUpdate(docB))
+    expect(nodeNames(deviceA.fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
+    expect(wikiLinkTargets(deviceA.editor)).toEqual(['Wiki Link'])
+  })
+
+  it('promotes every link in the document, not just the first block', () => {
+    // #given the shape the report describes: a page that is a list of links
+    const { editor, fragment } = createCollaborativeEditor()
+    editor.replaceBlocks(editor.document, [
+      { type: 'bulletListItem', content: [{ type: 'text', text: '[[A]]', styles: {} }] } as never,
+      { type: 'bulletListItem', content: [{ type: 'text', text: '[[B]]', styles: {} }] } as never,
+      { type: 'paragraph', content: [{ type: 'text', text: 'and [[C]]', styles: {} }] } as never
+    ])
+
+    // #when
+    mountEditorSync(editor, fragment)
+
+    // #then all three, and the blocks around them are untouched
+    const authored = editor.document.filter(
+      (block) => (block.content as unknown[] | undefined)?.length
+    )
+    expect(authored.map((block) => block.type)).toEqual([
+      'bulletListItem',
+      'bulletListItem',
+      'paragraph'
+    ])
+    expect(
+      authored.map(
+        (block) => (block.content as Array<{ props?: { target?: string } }>).at(-1)?.props?.target
+      )
+    ).toEqual(['A', 'B', 'C'])
+  })
+
+  it('reopening a doc that already holds the node writes nothing', () => {
+    // #given a note opened once, so the promotion has happened
+    const { editor, doc, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, 'See [[Wiki Link]] for details.')
+    mountEditorSync(editor, fragment)
+    expect(nodeNames(fragment)).toContain('wikiLink')
+
+    // #when it is opened again — the cold reopen, doc rebuilt from the store
+    const updates: Uint8Array[] = []
+    doc.on('update', (update: Uint8Array) => updates.push(update))
+    mountEditorSync(editor, fragment)
+    mountEditorSync(editor, fragment)
+
+    // #then no CRDT update at all. Opening a note must not rewrite it (#1434),
+    // and a promotion that ran on every open would push a doc update — and a
+    // write-back — to every device, every time anyone read the note.
+    expect(updates).toEqual([])
+    expect(nodeNames(fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
+  })
+
+  it('leaves a hash tag and a date mention token as plain text', () => {
+    // #given the same guarantee the edit path carries: only wiki links have a
+    // promoter here, and the open path must not quietly acquire more
+    const { editor, doc, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, 'Tagged #hashtag on ((date:eyJhbmNob3JJZCI6ImExIn0)).')
+    const updates: Uint8Array[] = []
+    doc.on('update', (update: Uint8Array) => updates.push(update))
+
+    // #when
+    mountEditorSync(editor, fragment)
+
+    // #then
+    expect(updates).toEqual([])
+    expect(nodeNames(fragment)).not.toContain('hashTag')
+    expect(nodeNames(fragment)).not.toContain('dateMention')
+  })
+
+  it('leaves the block whose raw run holds the caret alone, and promotes the rest', () => {
+    // #given a caret parked inside a raw `[[…]]` run — what un-promoting a chip
+    // to edit it leaves behind (`wiki-link-edit-plugin.ts`). Re-promoting under
+    // that caret is the one case normalization must decline, and the open path
+    // carries the same exemption the edit path does.
+    const caretText = 'See [[Wiki Link]] and [[Sibling Run]].'
+    const { editor, fragment } = createCollaborativeEditor()
+    editor.replaceBlocks(editor.document, [
+      { type: 'paragraph', content: [{ type: 'text', text: caretText, styles: {} }] } as never,
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Also [[Other Block]].', styles: {} }]
+      } as never
+    ])
+    putCaretInsideRawRun(editor, caretText)
+
+    // #when
+    mountEditorSync(editor, fragment)
+
+    // #then the caret's whole block is skipped — the sibling run inside it too,
+    // which is what makes this exemption coarse and safe rather than clever…
+    expect(wikiLinkTargets(editor, 0)).toEqual([])
+    // …while every other block promotes as usual, so the exemption is a skip
+    // and not an excuse to do nothing
+    expect(wikiLinkTargets(editor, 1)).toEqual(['Other Block'])
+    expect(nodeNames(fragment).filter((name) => name === 'wikiLink')).toHaveLength(1)
   })
 })
