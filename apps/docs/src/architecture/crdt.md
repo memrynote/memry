@@ -356,22 +356,28 @@ targets docs with zero attached windows, so active editor docs are never evicted
 provider metrics expose the open doc count, encoded size, and per-doc `windowCount`
 so memory growth can be observed without inspecting private provider state.
 
-That cap bounds how many notes one sync pass may hold at a time. The batch CRDT pull
-opens every note it is about to fetch before it sends the request and keeps them open
-until their updates are applied, so it splits its work into chunks of
-`CrdtProvider.inactiveDocCapacity`. An unsplit pass larger than the cap evicts the notes
-it opened first, and their updates are then dropped as "unopened doc" — a whole-vault
-pass, which is what a sign-in or a reconnect sweep produces, is several times the cap.
-Chunking also keeps each request under the server's 100-note limit on
-`/sync/crdt/updates/batch`.
+That cap bounds how many notes one sync pass may hold at a time — but only the **apply**
+phase of it. The apply phase opens every note it is about to fetch before it sends the
+request and keeps them open until their updates are applied, so it splits into sub-chunks
+of `CrdtProvider.inactiveDocCapacity`. An unsplit pass larger than the cap evicts the
+notes it opened first, and their updates are then dropped as "unopened doc" — a
+whole-vault pass, which is what a sign-in or a reconnect sweep produces, is several times
+the cap.
+
+The **probe** phase is not bound by it, because it opens no document at all. Its only
+ceiling is the server's 100-note limit on the `notes` array of
+`/sync/crdt/updates/batch`, so `applyCrdtBatch` chunks at 100 and sub-chunks the apply
+phase at the doc cache inside each one. Sizing the outer loop at the doc cache instead
+would spend one probe request per 32 notes rather than per 100, and the probe request is
+the entire cost of a warm sweep.
 
 The vault-wide sweep hands its work to that same batch path rather than pulling one note
-at a time, and sizes its own chunks at `min(CRDT_SWEEP_CHUNK_NOTES, inactiveDocCapacity)`
-so a paced chunk is one batch request rather than several. Batching alone is not a fix for
-request volume, though: the batch endpoint batches the **incrementals**, not the snapshot
-baselines, which are still fetched one note at a time inside the pass. A 121-note sweep
-goes from 242 requests to roughly 125 — half, not a handful. What keeps it under the
-server's limits is the pacing described in [Reconnect Recovery](#reconnect-recovery).
+at a time, and sizes its own chunks at `CRDT_SWEEP_CHUNK_NOTES` — the probe's size.
+Batching alone is not a fix for request volume: the batch endpoint batches the
+**incrementals**, not the snapshot baselines, which are still fetched one note at a time
+whenever a baseline is actually needed. A cold 121-note sweep goes from 242 requests to
+roughly 125 — half, not a handful. What keeps it under the server's limits is the pacing
+described in [Reconnect Recovery](#reconnect-recovery).
 
 For the same reason, "this doc has no state" and "this doc is not open" are treated as
 different answers when the pass decides whether to seed a note from local markdown. A
@@ -703,28 +709,71 @@ Deciding _whether_ to sweep is not enough, because a sweep that runs fires again
 note in the vault at once. Down the one-note-at-a-time path that was two GETs per note:
 121 notes meant 242 requests in about four seconds, and the server refused most of them.
 
-The sweep is therefore drained in chunks — `CRDT_SWEEP_CHUNK_NOTES` notes every
-`CRDT_SWEEP_CHUNK_INTERVAL_MS` — against **two independent server budgets**, both keyed by
-device rather than by account:
+The sweep is therefore drained in **paced chunks of `CRDT_SWEEP_CHUNK_NOTES`** against
+**two independent server budgets**, both keyed by device rather than by account:
 
-| Endpoint                                                    | Bucket            | Limit      | Cost per chunk    |
-| ----------------------------------------------------------- | ----------------- | ---------- | ----------------- |
-| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 600 / 60 s | one GET per note  |
-| `POST /sync/crdt/updates/batch`                             | `crdt_batch_pull` | 30 / 60 s  | at least one POST |
+| Endpoint                                                    | Bucket            | Limit      | Spent by                         |
+| ----------------------------------------------------------- | ----------------- | ---------- | -------------------------------- |
+| `GET /sync/crdt/snapshot/:noteId`, `GET /sync/crdt/updates` | `crdt_pull`       | 600 / 60 s | the apply phase                  |
+| `POST /sync/crdt/updates/batch`                             | `crdt_batch_pull` | 30 / 60 s  | the probe, and every apply round |
 
-At 25 notes every 15 seconds that is 100 snapshot GETs and 4 batch POSTs per minute —
-16.7 % of the pull bucket and 13.3 % of the batch bucket. Because both buckets are per
-device, a second device sweeping at the same time spends its own rather than eating into
-this one. The pull bucket is still the tighter of the two if the cadence is raised — 600
-GETs buy 24 chunks a minute at 25 notes each, against the batch bucket's 30 — but the
-sweep sits a sixth of the way into it, not against the edge. Only the _rate_ matters, not
-the total: a 1,000-note vault is 40 batch POSTs, which would blow the 30-per-minute bucket
-fired at once but is 4 per minute spread over the ten minutes the paced sweep takes. Cost
-per minute is constant in vault size; only the duration grows.
+The margin is **never more than 50 % of either bucket**. The other half pays for editor
+traffic, the un-paced priority batch, broadcast-driven single-note pulls, and a second
+sweep a flapping socket may start before the first has drained. That gives 300 GET/min and
+15 POST/min, or **200 ms per snapshot GET** and **4 s per batch POST**.
 
-The batch POST figure is a floor rather than an exact count, because a chunk loops while
-any of its notes still reports `hasMore`. That only binds on a first-sync backlog, and it
-is no longer destructive when it happens — see below.
+**Two paces, not one.** Since the snapshot baseline became conditional, the two phases of
+a chunk spend different buckets and cannot share a cadence:
+
+- the **probe** is one `POST /sync/crdt/updates/batch` with `limit: 1` for the whole
+  chunk. It opens no document and downloads no snapshot, so the doc cache does not bound
+  it and it is sized at the server's 100-note cap;
+- the **apply** phase opens each remaining note, fetches its baseline if the probe could
+  not rule it out, and loops the batch endpoint for incrementals. It is bounded by
+  `inactiveDocCapacity`.
+
+100 notes every 4 s is the right warm pace and 1,500 GET/min if the chunk turns out to be
+cold; 32 notes every 6.4 s is the right cold pace and takes a warm 1,000-note vault three
+and a half minutes to confirm nothing changed. So the interval is **charged, not fixed**:
+`pullCrdtForNotes` returns what the chunk actually spent per bucket, and the next chunk
+waits for the slower of the two to earn it back —
+
+```
+delay = max(CRDT_SWEEP_CHUNK_INTERVAL_MS,
+            batchPosts   * CRDT_SWEEP_MS_PER_BATCH_POST,
+            snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET)
+```
+
+Both rates are then ≤ 50 % by construction, in every regime, without the client having to
+know in advance which regime it is in — which it cannot, because that is what the probe is
+for. For a 1,000-note vault:
+
+| Regime     | Per 100-note chunk                   | Charged delay | GET/min    | POST/min  | Wall clock  |
+| ---------- | ------------------------------------ | ------------- | ---------- | --------- | ----------- |
+| Warm       | 1 probe POST, 0 GETs                 | 4 s           | 0 (0 %)    | 15 (50 %) | ~40 s       |
+| Cold       | 100 GETs, 4 apply POSTs, no probe    | 20 s          | 300 (50 %) | 12 (40 %) | ~3 min 20 s |
+| Old server | one wasted probe, then the cold cost | 20 s          | 300 (50 %) | 12–15     | ~3 min 20 s |
+
+Before this, at 25 notes every 15 s with an unconditional baseline, all three regimes cost
+100 GET/min and 4 POST/min and took **ten minutes**. A cold vault costs no probe at all —
+no note has a watermark, so nothing could be skipped and the request is not sent.
+
+The batch POST figure is a **floor rather than an exact count**, because an apply
+sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the
+counts are measured rather than predicted: at one round per sub-chunk the GET slice binds,
+and from two rounds the POST slice binds and the sweep slows down instead of bursting
+through the batch bucket. A fixed 6.4 s interval with two rounds would have been 64 POSTs
+across 200 s — 64 % of the bucket, silently.
+
+Only the _rate_ matters, not the total: cost per minute is constant in vault size and only
+the duration grows, so no vault can reproduce the 242-requests-in-4-seconds storm. For the
+same reason the per-note snapshot GETs inside a chunk stay **serial**; firing them in
+parallel is that storm again, whatever the chunk size.
+
+The sweep is paced, never **selective**. Every note in the vault is still named in every
+pass; these numbers decide what a note costs, never whether it is looked at. Note bodies
+never travel in the record change feed, so the sweep is the only channel by which a
+body-only remote edit reaches a device that missed the broadcast.
 
 **Notes with a live editor skip the queue.** They are pulled in their own batch ahead of
 the paced drain, because the note the user is looking at is the one whose stale body is

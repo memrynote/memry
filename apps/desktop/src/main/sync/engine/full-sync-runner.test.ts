@@ -6,7 +6,11 @@ import {
   CRDT_RECONNECT_SWEEP_FLOOR_MS,
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
+  CRDT_SWEEP_MS_PER_BATCH_POST,
+  CRDT_SWEEP_MS_PER_SNAPSHOT_GET,
+  crdtSweepChunkDelayMs,
   SYNC_STATE_KEYS,
+  type CrdtPullCost,
   type SyncContext
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -60,7 +64,19 @@ class FakeCrdtSync {
    */
   unmerged = new Set<string>()
   pullCrdtForNote = vi.fn(async () => {})
-  pullCrdtForNotes = vi.fn(async (_noteIds: string[], _signal?: AbortSignal) => {})
+  /**
+   * The real coordinator reports what the chunk spent, per rate-limit bucket,
+   * and the runner charges its next interval against it. A warm chunk — one
+   * probe POST, no snapshot GETs — is the default here, which lands exactly on
+   * CRDT_SWEEP_CHUNK_INTERVAL_MS. Regime-by-regime rates are pinned in
+   * crdt-sweep-pacing.test.ts against a real coordinator.
+   */
+  pullCrdtForNotes = vi.fn(
+    async (_noteIds: string[], _signal?: AbortSignal): Promise<CrdtPullCost> => ({
+      snapshotGets: 0,
+      batchPosts: 1
+    })
+  )
 
   get hasUnmergedNotes(): boolean {
     return this.unmerged.size > 0
@@ -1110,23 +1126,73 @@ describe('FullSyncRunner', () => {
       return h.crdtSync.pullCrdtForNotes.mock.calls.flatMap(([ids]) => ids)
     }
 
-    it('#then the chunk size and interval stay inside BOTH server rate limits', () => {
-      // The server meters these two paths in separate buckets, both keyed by
-      // deviceId rather than by account (sync-server routes/sync.ts:476-501):
-      //   GET  /sync/crdt/snapshot/:noteId + /sync/crdt/updates -> 600 / 60s
-      //   POST /sync/crdt/updates/batch                         ->  30 / 60s
-      // A chunk of N notes costs N snapshot GETs (the batch endpoint batches the
-      // incrementals, not the baselines) plus at least one batch POST, so tuning
-      // either constant has to be checked against both ceilings — the batch
-      // bucket is twenty times tighter and easy to miss.
-      const chunksPerMinute = 60_000 / CRDT_SWEEP_CHUNK_INTERVAL_MS
-      const snapshotGetsPerMinute = CRDT_SWEEP_CHUNK_NOTES * chunksPerMinute
-      const batchPostsPerMinute = chunksPerMinute
+    // The server meters the two phases of a chunk in separate buckets, both
+    // keyed by deviceId rather than by account (sync-server routes/sync.ts):
+    //   GET  /sync/crdt/snapshot/:noteId + /sync/crdt/updates -> 600 / 60s
+    //   POST /sync/crdt/updates/batch                         ->  30 / 60s
+    // The margin is 50% of each, leaving the rest for editor traffic, the
+    // un-paced priority batch, broadcast-driven single-note pulls and a second
+    // sweep a flapping socket may start.
+    const GET_BUDGET_PER_MIN = 600
+    const POST_BUDGET_PER_MIN = 30
+    const MARGIN = 0.5
 
-      // No doubling for a second device: the buckets are per device, so a second
-      // device sweeping at the same time spends its own.
-      expect(snapshotGetsPerMinute).toBeLessThan(600)
-      expect(batchPostsPerMinute).toBeLessThan(30)
+    const ratesFor = (cost: CrdtPullCost): { gets: number; posts: number } => {
+      const chunksPerMinute = 60_000 / crdtSweepChunkDelayMs(cost)
+      return {
+        gets: cost.snapshotGets * chunksPerMinute,
+        posts: cost.batchPosts * chunksPerMinute
+      }
+    }
+
+    it.each([
+      // Warm: the probe settles every note. One POST, no GET, no doc opened.
+      ['warm', { snapshotGets: 0, batchPosts: 1 }],
+      // Cold: no watermark anywhere, so no probe is sent at all — 100 baselines
+      // and ceil(100/32) = 4 apply rounds.
+      ['cold', { snapshotGets: CRDT_SWEEP_CHUNK_NOTES, batchPosts: 4 }],
+      // Old server: one wasted probe on the first chunk, then the flag latches
+      // and the cost is the cold one exactly.
+      ['old server, first chunk', { snapshotGets: CRDT_SWEEP_CHUNK_NOTES, batchPosts: 5 }],
+      // A cold chunk whose notes have a real backlog: applyCrdtBatchChunk loops
+      // while any note reports `hasMore`, so the POST count is a floor. Four
+      // rounds per sub-chunk is the case a fixed interval would have blown the
+      // batch bucket on.
+      ['cold, R = 4 batch rounds', { snapshotGets: CRDT_SWEEP_CHUNK_NOTES, batchPosts: 16 }]
+    ])('#then the %s regime stays inside BOTH buckets', (_name, cost: CrdtPullCost) => {
+      const { gets, posts } = ratesFor(cost)
+
+      expect(gets).toBeLessThanOrEqual(GET_BUDGET_PER_MIN * MARGIN)
+      expect(posts).toBeLessThanOrEqual(POST_BUDGET_PER_MIN * MARGIN)
+    })
+
+    it('#then the two phases are paced by their own bucket, not a shared one', () => {
+      // The point of the split. A warm chunk spends only `crdt_batch_pull`, so
+      // it must not be held back by the GET pace; a cold chunk of the same 100
+      // notes spends `crdt_pull` a hundred times over and must be.
+      const warm = crdtSweepChunkDelayMs({ snapshotGets: 0, batchPosts: 1 })
+      const cold = crdtSweepChunkDelayMs({ snapshotGets: CRDT_SWEEP_CHUNK_NOTES, batchPosts: 4 })
+
+      expect(warm).toBe(CRDT_SWEEP_MS_PER_BATCH_POST)
+      expect(cold).toBe(CRDT_SWEEP_CHUNK_NOTES * CRDT_SWEEP_MS_PER_SNAPSHOT_GET)
+      expect(cold).toBeGreaterThan(warm)
+
+      // 1,000 notes: ten chunks either way, but ~40 s warm against ~3 min 20 s
+      // cold — and ten minutes before this pacing existed.
+      const chunks = Math.ceil(1000 / CRDT_SWEEP_CHUNK_NOTES)
+      expect(chunks * warm).toBeLessThanOrEqual(60_000)
+      expect(chunks * cold).toBeLessThanOrEqual(4 * 60_000)
+    })
+
+    it('#then a chunk that spends more POSTs waits longer instead of bursting', () => {
+      // The R > 1 floor. Every extra `hasMore` round is another POST on the
+      // batch bucket, so the count is measured rather than assumed: the sweep
+      // slows down, it does not overrun.
+      const one = crdtSweepChunkDelayMs({ snapshotGets: 0, batchPosts: 1 })
+      const eight = crdtSweepChunkDelayMs({ snapshotGets: 0, batchPosts: 8 })
+
+      expect(eight).toBe(one * 8)
+      expect((8 * 60_000) / eight).toBeLessThanOrEqual(POST_BUDGET_PER_MIN * MARGIN)
     })
 
     it('#then the whole sweep leaves through the batch path, never one pull per note', async () => {
@@ -1146,16 +1212,16 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then only one chunk goes out per interval, whatever the vault size', async () => {
-      const h = sweepingHarness(60)
+      const h = sweepingHarness(250)
 
       await h.runner.run()
 
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
       expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toHaveLength(CRDT_SWEEP_CHUNK_NOTES)
 
-      // Nothing more may go out before the interval elapses: 25 notes is 25
-      // snapshot GETs plus one batch POST, and four of those per minute is what
-      // keeps a sweeping device near 104 requests/minute.
+      // Nothing more may go out before the charged interval elapses. The fake
+      // reports a warm chunk — one probe POST, no snapshot GETs — which charges
+      // exactly CRDT_SWEEP_CHUNK_INTERVAL_MS.
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS - 1)
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
 
@@ -1167,19 +1233,44 @@ describe('FullSyncRunner', () => {
 
       // Paced, not sampled: every note is still covered, exactly once.
       const pulled = pulledNoteIds(h)
-      expect(pulled).toHaveLength(60)
-      expect(new Set(pulled)).toEqual(new Set(noteIds(60)))
+      expect(pulled).toHaveLength(250)
+      expect(new Set(pulled)).toEqual(new Set(noteIds(250)))
     })
 
-    it('#then a chunk never outgrows the provider doc cache', async () => {
-      // Handing applyCrdtBatch more notes than it can hold open makes it split
-      // the chunk internally and spend an extra batch POST doing it — the exact
-      // request the pacing arithmetic budgets for.
-      const h = sweepingHarness(60, fakeCrdtProvider({ inactiveDocCapacity: 4 }))
+    it('#then the paced chunk is the probe size, NOT the doc cache size', async () => {
+      // The split. The probe opens no document, so the doc cache cannot bound
+      // it — the server's 100-note cap on the batch endpoint is the only
+      // ceiling. Clamping here would spend one probe POST per 32 notes instead
+      // of per 100, and the probe POST is the whole cost of a warm sweep.
+      // The doc-cache bound still exists; it moved to the apply phase inside
+      // applyCrdtBatch, and is pinned in crdt-sweep-pacing.test.ts.
+      const h = sweepingHarness(250, fakeCrdtProvider({ inactiveDocCapacity: 4 }))
 
       await h.runner.run()
 
-      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toHaveLength(4)
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toHaveLength(CRDT_SWEEP_CHUNK_NOTES)
+    })
+
+    it('#then a chunk that spent GETs pushes the next chunk out', async () => {
+      // A cold chunk is charged against `crdt_pull` rather than the floor, so
+      // the next one waits the GET pace, not the probe pace.
+      const h = sweepingHarness(250)
+      h.crdtSync.pullCrdtForNotes.mockResolvedValue({
+        snapshotGets: CRDT_SWEEP_CHUNK_NOTES,
+        batchPosts: 4
+      })
+
+      await h.runner.run()
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      // The warm pace would have fired a second chunk by now.
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(
+        CRDT_SWEEP_CHUNK_NOTES * CRDT_SWEEP_MS_PER_SNAPSHOT_GET - CRDT_SWEEP_CHUNK_INTERVAL_MS
+      )
+      expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(2)
     })
 
     it('#then a note with a live editor is pulled before the paced queue', async () => {
@@ -1196,7 +1287,7 @@ describe('FullSyncRunner', () => {
     })
 
     it('#then a second sweep joins the running drain instead of starting its own', async () => {
-      const h = sweepingHarness(60)
+      const h = sweepingHarness(250)
 
       await h.runner.run()
       // A reconnect past the floor, so the gate sweeps the vault again while the
@@ -1212,17 +1303,17 @@ describe('FullSyncRunner', () => {
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(2)
 
       // ...and the second sweep re-queues the vault once, not once per copy
-      // already waiting. 25 pulled by the first chunk, then the 60 the second
-      // sweep queued — the 35 still waiting were deduped into it. An array queue
-      // would have carried those 35 twice and pulled 120.
+      // already waiting. 100 pulled by the first chunk, then the 250 the second
+      // sweep queued — the 150 still waiting were deduped into it. An array
+      // queue would have carried those 150 twice and pulled 500.
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 5)
-      expect(pulledNoteIds(h)).toHaveLength(CRDT_SWEEP_CHUNK_NOTES + 60)
+      expect(pulledNoteIds(h)).toHaveLength(CRDT_SWEEP_CHUNK_NOTES + 250)
     })
 
     it('#then disposing the runner cancels the rest of the paced sweep', async () => {
       // Engine teardown (vault switch, sign-out): a timer left armed keeps
       // pulling against a vault this engine no longer owns.
-      const h = sweepingHarness(60)
+      const h = sweepingHarness(250)
 
       await h.runner.run()
       expect(h.crdtSync.pullCrdtForNotes).toHaveBeenCalledTimes(1)
