@@ -99,17 +99,31 @@ class FakeCrdtSync {
 }
 
 /**
- * The runner asks the provider two things: which notes still have a live editor
- * (those skip the paced queue, because that is the note the user is looking at),
- * and how many docs it can hold open at once (so a paced chunk never outgrows
- * the LRU and gets its docs closed underneath it).
+ * The runner asks the provider three things: which notes still have a live
+ * editor (those skip the paced queue, because that is the note the user is
+ * looking at), every doc it is holding at all (the LRU keeps up to 32 after
+ * their editors closed — those lead the paced queue), and how many docs it can
+ * hold open at once (so a paced chunk never outgrows the LRU and gets its docs
+ * closed underneath it).
+ *
+ * `openNoteIds` defaults to the active set because the real `getOpenNoteIds()`
+ * returns a superset of `getOpenNoteIds({ active: true })`.
  */
-function fakeCrdtProvider({ activeNoteIds = [] as string[], inactiveDocCapacity = 32 } = {}): {
+function fakeCrdtProvider({
+  activeNoteIds = [] as string[],
+  openNoteIds,
+  inactiveDocCapacity = 32
+}: {
+  activeNoteIds?: string[]
+  openNoteIds?: string[]
+  inactiveDocCapacity?: number
+} = {}): {
   getOpenNoteIds: ReturnType<typeof vi.fn>
   inactiveDocCapacity: number
 } {
+  const open = openNoteIds ?? activeNoteIds
   return {
-    getOpenNoteIds: vi.fn(() => activeNoteIds),
+    getOpenNoteIds: vi.fn(({ active = false } = {}) => (active ? activeNoteIds : open)),
     inactiveDocCapacity
   }
 }
@@ -1284,6 +1298,91 @@ describe('FullSyncRunner', () => {
       // of open editors.
       expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toEqual(['note-40'])
       expect(h.crdtSync.pullCrdtForNotes.mock.calls[1][0]).not.toContain('note-40')
+    })
+
+    // #1614: three tiers, not two. Live editors bypass the pace (above), the
+    // provider's LRU leads the paced queue, and the vault tail arrives from
+    // getAllCrdtNoteIds in modifiedAt DESC. All of it is ordering: the sweep is
+    // the only channel a body-only remote edit reaches this device through, so
+    // nothing may ever be dropped to make room for a higher tier.
+    it('#then open-but-inactive docs lead the paced queue', async () => {
+      // The 32-doc LRU is a recently-opened list, already in memory. Those notes
+      // are one click away and today they get no priority at all — note-150 would
+      // wait out a whole chunk purely because of where it sits in the vault.
+      // The vault must outrun one chunk and the open notes must sit past the
+      // first one, or the tier buys nothing here and the test passes for free.
+      const h = sweepingHarness(250, fakeCrdtProvider({ openNoteIds: ['note-150', 'note-200'] }))
+
+      await h.runner.run()
+
+      const firstChunk = h.crdtSync.pullCrdtForNotes.mock.calls[0][0]
+      expect(firstChunk.slice(0, 2)).toEqual(['note-150', 'note-200'])
+      expect(firstChunk).toHaveLength(CRDT_SWEEP_CHUNK_NOTES)
+    })
+
+    it('#then a live editor still outranks an open-but-inactive doc', async () => {
+      const h = sweepingHarness(
+        60,
+        fakeCrdtProvider({ activeNoteIds: ['note-40'], openNoteIds: ['note-40', 'note-50'] })
+      )
+
+      await h.runner.run()
+
+      // The active note leaves un-paced in its own batch; the cached-but-closed
+      // one only leads the paced queue.
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toEqual(['note-40'])
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[1][0][0]).toBe('note-50')
+    })
+
+    it('#then the order the sweep supplies is the order the queue drains', async () => {
+      // getAllCrdtNoteIds now returns modifiedAt DESC, and nothing between it
+      // and the wire may re-sort: pendingPulls is a Set drained with Array.from
+      // and the paced queue is a Set read by iteration, so insertion order IS
+      // the priority. If that ever stops holding, the ORDER BY buys nothing.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['newest', 'middle', 'oldest'])
+
+      await h.runner.run()
+
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0]).toEqual(['newest', 'middle', 'oldest'])
+    })
+
+    it('#then open docs jump ahead of a drain already in progress', async () => {
+      // A sweep landing mid-catch-up is the case that matters: appending would
+      // put a note the user just opened behind everything the previous pass has
+      // left waiting, which on a large vault is minutes.
+      const open: string[] = []
+      const h = sweepingHarness(60, fakeCrdtProvider({ openNoteIds: open }))
+
+      await h.runner.run()
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[0][0][0]).toBe('note-0')
+
+      open.push('note-59')
+      h.ws.connectionGeneration += 1
+      await h.runner.run()
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+      expect(h.crdtSync.pullCrdtForNotes.mock.calls[1][0][0]).toBe('note-59')
+    })
+
+    it('#then prioritising never drops a note from the sweep', async () => {
+      // The invariant the whole ordering change is subordinate to. Note bodies
+      // never travel in the record change feed, so a note the sweep skips keeps
+      // a stale body until some later sweep happens to include it — a slow
+      // catch-up turned into a silent one. Priority, never filtering.
+      const h = sweepingHarness(
+        60,
+        fakeCrdtProvider({ activeNoteIds: ['note-3'], openNoteIds: ['note-3', 'note-50'] })
+      )
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 5)
+
+      const pulled = pulledNoteIds(h)
+      expect(new Set(pulled)).toEqual(new Set(noteIds(60)))
+      // Exactly once, too: re-ordering must not duplicate work either.
+      expect(pulled).toHaveLength(60)
     })
 
     it('#then a second sweep joins the running drain instead of starting its own', async () => {
