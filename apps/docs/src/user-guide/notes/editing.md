@@ -40,6 +40,16 @@ Available from the slash menu (`/`) or the block-handle drag-out:
 - Table
 - Wiki-link block (or inline `[[...]]`)
 
+## Tables
+
+`/table` inserts a table with a header row and two body rows. The header row is
+part of the table, not a style: notes are stored as markdown, and a markdown
+table always writes its first row as the header.
+
+Use the row and column handles on the edge of a table to toggle a header row or
+a header column on and off. The same table controls are available in task
+descriptions and in inbox items.
+
 ## Slash Commands
 
 Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` jumps straight to Heading 2. Press <kbd>Enter</kbd> to confirm.

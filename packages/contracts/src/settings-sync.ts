@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { VectorClockSchema } from './sync-api'
+import { SidebarSortModesSchema } from './sidebar-sort'
 
 export const SyncedSettingsSchema = z.object({
   general: z
@@ -74,6 +75,15 @@ export const SyncedSettingsSchema = z.object({
       // payload and stall every other synced setting. Readers ignore anything
       // outside "0".."6".
       weekdayTemplates: z.record(z.string(), z.string().nullable()).optional()
+    })
+    .optional(),
+  // Same per-key clocking as journal.weekdayTemplates above: field clocks are
+  // keyed by dotted path at arbitrary depth, so each surface
+  // ('sidebar.sortModes.collections', ...) carries its own clock and two
+  // devices changing two different sections both keep their change.
+  sidebar: z
+    .object({
+      sortModes: SidebarSortModesSchema.optional()
     })
     .optional()
 })

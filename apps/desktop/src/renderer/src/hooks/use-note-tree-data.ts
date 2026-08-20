@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { useSidebarSortMode } from './use-sidebar-sort-mode'
 import {
   useNotesList,
   useNoteFoldersQuery,
@@ -57,6 +58,7 @@ export interface NoteTreeData {
 
 export function useNoteTreeData(): NoteTreeData {
   const [limit, setLimit] = useState(NOTE_TREE_PAGE_SIZE)
+  const { mode: sortMode } = useSidebarSortMode('collections')
 
   // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
   // localOnly/fileType and nothing else, so main skips the snippet and the
@@ -139,8 +141,8 @@ export function useNoteTreeData(): NoteTreeData {
   }, [notes])
 
   const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders, notePositions)
-  }, [notes, folders, notePositions])
+    return buildTreeFromNotes(notes, folders, notePositions, sortMode)
+  }, [notes, folders, notePositions, sortMode])
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()

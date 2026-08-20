@@ -37,6 +37,10 @@ import { SidebarUpdateButton } from '@/components/sidebar/sidebar-update-button'
 import { SidebarFeedbackButton } from '@/components/sidebar/sidebar-feedback-button'
 import { SidebarBookmarkList } from '@/components/sidebar/sidebar-bookmark-list'
 import { CanvasTree, type CanvasTreeActions } from '@/components/sidebar/canvas-tree/canvas-tree'
+import { SidebarSortPicker } from '@/components/sidebar/sidebar-sort-picker'
+import { useSidebarSortLabels } from '@/components/sidebar/use-sidebar-sort-labels'
+import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
+import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
@@ -110,6 +114,12 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  */
 function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: AppSidebarProps) {
   const { t: tPhaseF } = useT('common')
+  const { mode: collectionsSortMode, setMode: setCollectionsSortMode } =
+    useSidebarSortMode('collections')
+  const { mode: projectsSortMode, setMode: setProjectsSortMode } = useSidebarSortMode('projects')
+  const { mode: bookmarksSortMode, setMode: setBookmarksSortMode } = useSidebarSortMode('bookmarks')
+  const { mode: canvasesSortMode, setMode: setCanvasesSortMode } = useSidebarSortMode('canvases')
+  const sortLabels = useSidebarSortLabels()
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
@@ -404,10 +414,23 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // the Tasks page reads from. Nullable accessor so the sidebar still renders
   // if it's ever mounted outside a TasksProvider (see app-sidebar.test.tsx).
   const tasksContext = useTasksOptional()
-  const activeProjects = useMemo(
-    () => (tasksContext?.projects ?? []).filter((project) => !project.isArchived),
-    [tasksContext?.projects]
-  )
+  const activeProjects = useMemo(() => {
+    const active = (tasksContext?.projects ?? []).filter((project) => !project.isArchived)
+    // The context already hands these over in stored-position order, so the
+    // index IS the position — there is no position field on the renderer's
+    // Project to read instead.
+    return active
+      .map((project, position) => ({
+        project,
+        name: project.name,
+        position,
+        // Optional: a Project handed over without a creation date sorts by its
+        // stored position instead of crashing the whole section.
+        created: project.createdAt?.getTime?.()
+      }))
+      .sort(compareListItems(projectsSortMode))
+      .map((entry) => entry.project)
+  }, [tasksContext?.projects, projectsSortMode])
 
   // Open a project's Project Home page (entityId dedupe keeps it to one tab per project)
   const handleProjectClick = useCallback(
@@ -506,6 +529,16 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           defaultExpanded={false}
           actions={
             <>
+              <SidebarSortPicker
+                surface="collections"
+                mode={collectionsSortMode}
+                onModeChange={(next) => void setCollectionsSortMode(next)}
+                labels={sortLabels.labels}
+                triggerLabel={sortLabels.triggerLabel(
+                  tPhaseF('phaseF.componentsAppSidebar.collections'),
+                  collectionsSortMode
+                )}
+              />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -584,21 +617,33 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           // "+" open is then the only entry point on screen.
           actionsAlwaysVisible={activeProjects.length === 0}
           actions={
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleCreateProject}
-                  className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                  aria-label={tPhaseF('phaseF.componentsAppSidebar.newProject')}
-                >
-                  <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {tPhaseF('phaseF.componentsAppSidebar.newProject')}
-              </TooltipContent>
-            </Tooltip>
+            <>
+              <SidebarSortPicker
+                surface="projects"
+                mode={projectsSortMode}
+                onModeChange={(next) => void setProjectsSortMode(next)}
+                labels={sortLabels.labels}
+                triggerLabel={sortLabels.triggerLabel(
+                  tPhaseF('phaseF.componentsAppSidebar.projects'),
+                  projectsSortMode
+                )}
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleCreateProject}
+                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newProject')}
+                  >
+                    <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {tPhaseF('phaseF.componentsAppSidebar.newProject')}
+                </TooltipContent>
+              </Tooltip>
+            </>
           }
         >
           <SortableProjectList
@@ -610,6 +655,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             onProjectDelete={noopProjectAction}
             onProjectsReorder={noopProjectAction}
             onCreateProject={handleCreateProject}
+            reorderDisabled={!isReorderable(projectsSortMode)}
           />
         </SidebarSection>
 
@@ -618,8 +664,24 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           id="bookmarks"
           label={tPhaseF('phaseF.componentsAppSidebar.bookmarks')}
           defaultExpanded={false}
+          actions={
+            <SidebarSortPicker
+              surface="bookmarks"
+              mode={bookmarksSortMode}
+              onModeChange={(next) => void setBookmarksSortMode(next)}
+              labels={sortLabels.labels}
+              triggerLabel={sortLabels.triggerLabel(
+                tPhaseF('phaseF.componentsAppSidebar.bookmarks'),
+                bookmarksSortMode
+              )}
+            />
+          }
         >
-          <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
+          <SidebarBookmarkList
+            maxVisible={6}
+            onBookmarkClick={handleBookmarkClick}
+            sortMode={bookmarksSortMode}
+          />
         </SidebarSection>
 
         {/* CANVASES Section (gated by the spatialCanvas flag, default on) */}
@@ -631,6 +693,16 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
             totalCount={canvasCount}
             actions={
               <>
+                <SidebarSortPicker
+                  surface="canvases"
+                  mode={canvasesSortMode}
+                  onModeChange={(next) => void setCanvasesSortMode(next)}
+                  labels={sortLabels.labels}
+                  triggerLabel={sortLabels.triggerLabel(
+                    tPhaseF('canvas.sectionLabel'),
+                    canvasesSortMode
+                  )}
+                />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button

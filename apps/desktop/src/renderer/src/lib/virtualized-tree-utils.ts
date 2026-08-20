@@ -224,3 +224,25 @@ export function estimateTreeHeight(itemCount: number): number {
 export function shouldVirtualize(tree: TreeStructure): boolean {
   return countTreeItems(tree) >= VIRTUALIZATION_THRESHOLD
 }
+
+/**
+ * First row index that must move down to open the drop gap, or null when the
+ * drag opens no space.
+ *
+ * Both sidebar trees animate a "make room" gap while a row is dragged between
+ * two others. An `inside` drop moves an item into a folder and opens nothing;
+ * a drop `before` a row pushes that row down, `after` pushes the one below it.
+ */
+export function dropGapStartIndex(
+  dropTargetId: string | null,
+  dropPosition: 'before' | 'after' | 'inside' | null,
+  indexOf: (id: string) => number
+): number | null {
+  if (!dropTargetId) return null
+  if (dropPosition !== 'before' && dropPosition !== 'after') return null
+
+  const index = indexOf(dropTargetId)
+  if (index === -1) return null
+
+  return dropPosition === 'before' ? index : index + 1
+}

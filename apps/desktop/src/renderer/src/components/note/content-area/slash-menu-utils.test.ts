@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { orderSlashMenuItemsByGroup } from './slash-menu-utils'
+import { orderSlashMenuItemsByGroup, withTableHeaderRow } from './slash-menu-utils'
 
 const groups = <T extends { group?: string }>(items: T[]) => items.map((i) => i.group)
 
@@ -49,5 +49,94 @@ describe('orderSlashMenuItemsByGroup', () => {
 
   it('returns an empty array unchanged', () => {
     expect(orderSlashMenuItemsByGroup([])).toEqual([])
+  })
+})
+
+describe('withTableHeaderRow', () => {
+  // BlockNote's default `/table` inserts a header-less 2x3 table, and the
+  // cursor lands inside it, so the editor reports the table as the cursor block.
+  function editorWithInsertedTable(headerRows?: number, rowCount = 2) {
+    const row = () => ({ cells: [{ text: '' }, { text: '' }, { text: '' }] })
+    const block = {
+      id: 'tbl',
+      type: 'table',
+      content: {
+        type: 'tableContent' as const,
+        columnWidths: [null, null, null],
+        ...(headerRows === undefined ? {} : { headerRows }),
+        rows: Array.from({ length: rowCount }, row)
+      }
+    }
+    const updates: unknown[] = []
+    return {
+      block,
+      updates,
+      editor: {
+        getTextCursorPosition: () => ({ block }),
+        updateBlock: (_target: unknown, update: unknown) => updates.push(update)
+      }
+    }
+  }
+
+  const tableItem = (onItemClick: () => void) => [
+    { key: 'paragraph', onItemClick: () => {} },
+    { key: 'table', onItemClick }
+  ]
+
+  it('gives a freshly inserted table a header row plus the two body rows', () => {
+    const { editor, updates } = editorWithInsertedTable()
+    let inserted = false
+    const items = withTableHeaderRow(
+      tableItem(() => {
+        inserted = true
+      }),
+      editor
+    )
+
+    items.find((i) => i.key === 'table')!.onItemClick!()
+
+    expect(inserted).toBe(true)
+    expect(updates).toHaveLength(1)
+    const content = (updates[0] as { content: { headerRows: number; rows: unknown[] } }).content
+    expect(content.headerRows).toBe(1)
+    // One header row on top of the two body rows BlockNote hands out, so the
+    // table markdown writes and the table markdown reads back are the same one.
+    expect(content.rows).toHaveLength(3)
+  })
+
+  it('leaves every other item untouched', () => {
+    const { editor } = editorWithInsertedTable()
+    const original = tableItem(() => {})
+    const items = withTableHeaderRow(original, editor)
+
+    expect(items.find((i) => i.key === 'paragraph')).toBe(original[0])
+  })
+
+  it('does not re-promote a table that already has a header row', () => {
+    const { editor, updates } = editorWithInsertedTable(1)
+    const items = withTableHeaderRow(
+      tableItem(() => {}),
+      editor
+    )
+
+    items.find((i) => i.key === 'table')!.onItemClick!()
+
+    expect(updates).toEqual([])
+  })
+
+  it('does nothing when the insert did not leave the cursor in a table', () => {
+    const updates: unknown[] = []
+    const editor = {
+      getTextCursorPosition: () => ({ block: { type: 'paragraph', content: [] } }),
+      updateBlock: (_t: unknown, u: unknown) => updates.push(u)
+    }
+    const items = withTableHeaderRow(
+      tableItem(() => {}),
+      editor
+    )
+
+    items.find((i) => i.key === 'table')!.onItemClick!()
+
+    expect(updates).toEqual([])
   })
 })

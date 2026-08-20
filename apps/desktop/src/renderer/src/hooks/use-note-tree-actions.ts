@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useTabActions } from '@/contexts/tabs'
+import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
+import { isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { notesKeys, useNoteMutations } from '@/hooks/use-notes-query'
 import type { Note } from '@memry/contracts/notes-api'
 import type { NoteListItem } from '@/hooks/use-notes-query'
@@ -718,6 +720,13 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     [deps, refreshFolderTree]
   )
 
+  // Reordering writes a stored position, and only the manual mode reads one.
+  // Under a time or name mode the write would land and the list would then be
+  // re-sorted right over it, so the row appears to spring back — better to not
+  // reorder at all than to persist an order the user cannot see.
+  const { mode: collectionsSortMode } = useSidebarSortMode('collections')
+  const reorderAllowed = isReorderable(collectionsSortMode)
+
   const handleReorderInFolder = useCallback(
     async (
       folderPath: string,
@@ -725,6 +734,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       targetNoteId: string,
       position: DropPosition
     ): Promise<boolean> => {
+      if (!reorderAllowed) return false
       const folderNotes = getNotesInFolder(deps.tree, folderPath)
       if (folderNotes.length < 2) return false
 
@@ -761,7 +771,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps]
+    [deps, reorderAllowed]
   )
 
   const handleReorderFoldersInParent = useCallback(
@@ -771,6 +781,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       targetFolderPath: string,
       position: DropPosition
     ): Promise<boolean> => {
+      if (!reorderAllowed) return false
       const siblingFolders = getFoldersInParent(deps.tree, parentPath)
       if (siblingFolders.length < 2) return false
 
@@ -802,7 +813,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps]
+    [deps, reorderAllowed]
   )
 
   const handleMove = useCallback(

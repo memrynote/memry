@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { useDroppable } from '@dnd-kit/core'
+import { useDndContext, useDroppable } from '@dnd-kit/core'
+import { PROJECT_SORT_DRAG_TYPE } from './sidebar-drag-types'
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
 import { Settings } from '@/lib/icons'
@@ -32,6 +33,8 @@ interface SortableProjectItemProps {
   onEdit: (project: Project) => void
   onArchive: (project: Project) => void
   onDelete: (projectId: string) => void
+  /** Reordering only applies in the manual sort mode; a sorted list is not draggable. */
+  reorderDisabled?: boolean
 }
 
 /**
@@ -45,7 +48,8 @@ export const SortableProjectItem = ({
   onClick,
   onEdit,
   onArchive: _onArchive,
-  onDelete: _onDelete
+  onDelete: _onDelete,
+  reorderDisabled = false
 }: SortableProjectItemProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('notes')
   const { t: tTasks } = useT('tasks')
@@ -62,17 +66,37 @@ export const SortableProjectItem = ({
     transform,
     transition,
     isDragging: isSortableDragging
-  } = useSortable({ id: project.id })
+  } = useSortable({
+    id: project.id,
+    disabled: reorderDisabled,
+    // Named so a drag can be identified as "a project being reordered" rather
+    // than inferred from the absence of a type, which every other untyped
+    // sortable in the app would also match.
+    data: { type: PROJECT_SORT_DRAG_TYPE, projectId: project.id }
+  })
+
+  // While a project is being dragged to reorder, the row must NOT advertise
+  // itself as a task drop target: dnd-kit would resolve `over` to this
+  // droppable's `project-<id>`, the reorder never sees a project id to drop
+  // next to, and the drop falls through to "0 tasks moved".
+  const { active } = useDndContext()
+  const isReorderingAProject = active?.data?.current?.type === PROJECT_SORT_DRAG_TYPE
 
   // Droppable for receiving tasks
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: `project-${project.id}`,
+    disabled: isReorderingAProject,
     data: {
       type: 'project',
       projectId: project.id,
       project
     }
   })
+
+  // dnd-kit stops reporting `isOver` for a disabled droppable, but the drop-here
+  // affordance is guarded explicitly too: a project being dragged to reorder
+  // must never look like it is about to swallow tasks.
+  const showTaskDropTarget = isOver && !isReorderingAProject
 
   // Combine refs
   const setRefs = (node: HTMLLIElement | null): void => {
@@ -86,7 +110,7 @@ export const SortableProjectItem = ({
   }
 
   // Show as drop zone when a task is being dragged (not a project)
-  const showAsDropZone = dragState.isDragging && !isSortableDragging
+  const showAsDropZone = dragState.isDragging && !isSortableDragging && !isReorderingAProject
 
   // Native HTML5 drop target for sidebar notes/files dragged from the notes tree
   const [isNoteDragOver, setIsNoteDragOver] = useState(false)
@@ -136,14 +160,14 @@ export const SortableProjectItem = ({
         isSortableDragging && 'opacity-50 z-50',
         // Drop zone visual feedback
         showAsDropZone && 'border border-dotted border-muted-foreground/40 rounded-md',
-        isOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm',
+        showTaskDropTarget && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm',
         isNoteDragOver && 'bg-primary/10 ring-2 ring-primary rounded-md shadow-sm'
       )}
       {...attributes}
       {...listeners}
     >
       {/* Drop indicator when hovering */}
-      {isOver && (
+      {showTaskDropTarget && (
         <span className="absolute end-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium z-10">
           {tPhaseF('phaseF.componentsSidebarSortableProjectItem.dropHere')}
         </span>
@@ -188,7 +212,7 @@ export const SortableProjectItem = ({
       </ContextMenu>
 
       {/* Task count badge - hide when showing drop indicator */}
-      {!isOver && (
+      {!showTaskDropTarget && (
         <SidebarMenuBadge className={cn('top-1', !isActive && 'group-hover/project:hidden')}>
           {project.taskCount > 0 ? project.taskCount : ''}
         </SidebarMenuBadge>

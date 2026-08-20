@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { resolveProjectReorderTarget } from '@/components/sidebar/sidebar-drag-types'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
@@ -470,21 +471,25 @@ function App(): React.JSX.Element {
 
       const activeData = active.data.current
 
-      // Handle project reordering in sidebar (not handled by useDragHandlers)
-      if (activeData?.type === undefined && over.id !== active.id) {
-        const activeIndex = projects.findIndex((p) => p.id === active.id)
-        const overIndex = projects.findIndex((p) => p.id === over.id)
-        if (activeIndex !== -1 && overIndex !== -1) {
-          setProjects((prev) => {
-            const reorderedProjects = arrayMove(prev, activeIndex, overIndex)
-            void tasksService.reorderProjects(
-              reorderedProjects.map((project) => project.id),
-              reorderedProjects.map((_, index) => index)
-            )
-            return reorderedProjects
-          })
-          return
-        }
+      // Handle project reordering in sidebar (not handled by useDragHandlers).
+      // Keyed on the explicit drag type: the old `type === undefined` test also
+      // matched every other untyped sortable in the shared DndContext.
+      const projectReorder = resolveProjectReorderTarget({
+        activeType: activeData?.type,
+        activeId: String(active.id),
+        overId: String(over.id),
+        projectIds: projects.map((p) => p.id)
+      })
+      if (projectReorder) {
+        setProjects((prev) => {
+          const reorderedProjects = arrayMove(prev, projectReorder.from, projectReorder.to)
+          void tasksService.reorderProjects(
+            reorderedProjects.map((project) => project.id),
+            reorderedProjects.map((_, index) => index)
+          )
+          return reorderedProjects
+        })
+        return
       }
 
       // Delegate all task operations to useDragHandlers

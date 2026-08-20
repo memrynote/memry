@@ -16,6 +16,7 @@
  */
 
 import * as React from 'react'
+import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
@@ -235,8 +236,7 @@ function CanvasConfirmDialog({
  * rename can touch anything.
  */
 type EditTarget =
-  | { kind: 'canvas'; id: string }
-  | { kind: 'folder'; path: string; materialized: boolean }
+  { kind: 'canvas'; id: string } | { kind: 'folder'; path: string; materialized: boolean }
 
 interface EditState {
   target: EditTarget
@@ -353,7 +353,11 @@ export function CanvasTree({
     void Promise.resolve().then(() => onCountChange?.(count))
   }, [canvases.length, onCountChange])
 
-  const tree = React.useMemo(() => buildCanvasTree(canvases, folders), [canvases, folders])
+  const { mode: sortMode } = useSidebarSortMode('canvases')
+  const tree = React.useMemo(
+    () => buildCanvasTree(canvases, folders, sortMode),
+    [canvases, folders, sortMode]
+  )
 
   const showFilter = canvases.length >= filterThreshold
   // A filter typed while the input was showing must not keep hiding rows once

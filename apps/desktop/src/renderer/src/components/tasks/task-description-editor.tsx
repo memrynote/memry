@@ -49,6 +49,9 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
   const isContentReadyRef = useRef(false)
 
   const editor = useCreateBlockNote({
+    // Same header-row toggle the note body gets — the same markdown round-trip
+    // applies here, so the two surfaces have to agree about tables.
+    tables: { headers: true },
     placeholders: {
       default: placeholder,
       heading: 'Heading',

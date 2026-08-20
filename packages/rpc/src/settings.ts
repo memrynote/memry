@@ -12,6 +12,7 @@ import type {
   VoiceTranscriptionSettings
 } from '../../contracts/src/settings-schemas.ts'
 import { SettingsChannels } from '../../contracts/src/ipc-channels.ts'
+import type { SidebarSortMode, SidebarSortSurface } from '../../contracts/src/sidebar-sort.ts'
 import {
   defineDomain,
   defineEvent,
@@ -150,6 +151,16 @@ export const settingsRpc = defineDomain({
     setJournalSettings: defineMethod<(settings: Partial<JournalSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_JOURNAL_SETTINGS,
       params: ['settings']
+    }),
+    getSidebarSortModes: defineMethod<() => Promise<Record<SidebarSortSurface, SidebarSortMode>>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_SORT_MODES
+    }),
+    setSidebarSortMode: defineMethod<
+      (surface: SidebarSortSurface, mode: SidebarSortMode) => SuccessResponse
+    >({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_SORT_MODE,
+      params: ['surface', 'mode'],
+      invokeArgs: ['{ surface, mode }']
     }),
     getAISettings: defineMethod<() => Promise<AISettings>>({
       channel: SettingsChannels.invoke.GET_AI_SETTINGS

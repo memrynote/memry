@@ -20,6 +20,7 @@ import {
   sanitizeWeekdayTemplateMap,
   type WeekdayTemplateMap
 } from '../../settings/journal-template-keys'
+import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
 import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -105,6 +106,27 @@ function propagateMergedSettings(merged: SyncedSettings): void {
       journalBroadcast = propagateMergedJournalSettings(merged.journal)
     } catch (err) {
       log.warn('Failed to propagate merged journal settings:', err)
+    }
+  }
+
+  // Sidebar sort modes live only in the local data DB, same as inbox: persist
+  // before the vault-path guard so a merge landing while the path is null still
+  // reaches the DB the sidebar reads. Merging per surface (not replacing the
+  // whole map) keeps a remote change to one section from clobbering a local
+  // change to another — the field clocks are already per surface.
+  if (merged.sidebar?.sortModes) {
+    try {
+      const db = getDatabase()
+      const raw = getSetting(db, SIDEBAR_SORT_SETTINGS_KEY)
+      const current = raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+      const next = { ...current, ...merged.sidebar.sortModes }
+      setSetting(db, SIDEBAR_SORT_SETTINGS_KEY, JSON.stringify(next))
+      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+        key: SIDEBAR_SORT_SETTINGS_KEY,
+        value: next
+      })
+    } catch (err) {
+      log.warn('Failed to propagate merged sidebar sort modes:', err)
     }
   }
 
