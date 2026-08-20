@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
 import { remapExpandedFolderIds } from '@/components/notes-tree-utils'
+import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
 import { useT } from '@memry/i18n/renderer'
 
@@ -35,7 +36,7 @@ type NodeInfo = {
   inheritedIcon?: string
 }
 
-export type DropPosition = 'before' | 'after' | 'inside'
+export type { DropPosition }
 
 export type DragState = {
   draggedId: string | null
@@ -760,19 +761,11 @@ export const TreeNodeTrigger = ({
       const rect = triggerRef.current?.getBoundingClientRect()
       if (!rect) return
 
-      const y = e.clientY - rect.top
-      const height = rect.height
-      const canDropInside = hasChildren || acceptsDropInside
-      const threshold = canDropInside ? height / 4 : height / 2
-
-      let position: DropPosition
-      if (y < threshold) {
-        position = 'before'
-      } else if (y > height - threshold) {
-        position = 'after'
-      } else {
-        position = canDropInside ? 'inside' : 'after'
-      }
+      const position = resolveDropPosition(
+        e.clientY - rect.top,
+        rect.height,
+        hasChildren || acceptsDropInside
+      )
 
       setDragState({ dropTargetId: nodeId, dropPosition: position })
     },
