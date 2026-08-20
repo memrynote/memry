@@ -920,11 +920,55 @@ describe('normalizeWindowError', () => {
     expect(JSON.stringify(detail)).not.toContain('/Users/kaan')
   })
 
-  it('keeps a generic code when the message names no error class', () => {
+  it('names the opaque cross-origin case instead of leaving it a bare WindowError', () => {
     // #given the opaque cross-origin case: "Script error." and no location
     const normalized = normalizeWindowError({ error: null, message: 'Script error.' })
 
-    // #then a stable, non-leaking code is reported
+    // #then a stable, non-leaking code is reported — and it says which case this
+    // is, which the bare WindowError bucket never did
+    expect(toErrorCode(normalized)).toBe('WindowError_ScriptError')
+    expect(normalized.message).toBe('')
+  })
+
+  it('names the engine-generated ResizeObserver notification', () => {
+    // #given Chromium's own loop notification, reported with no error object and
+    // a useless `index.html:0:0` location — one of the shapes that made up the
+    // empty WindowError group in production
+    const normalized = normalizeWindowError({
+      error: null,
+      message: 'ResizeObserver loop completed with undelivered notifications.',
+      filename: 'file:///C:/Program%20Files/Memrynote/resources/app.asar/out/renderer/index.html',
+      lineno: 0,
+      colno: 0
+    })
+
+    // #then it is separable from every other window error
+    expect(toErrorCode(normalized)).toBe('WindowError_ResizeObserverLoop')
+    // #and the fixed engine text is still not copied anywhere
+    expect(normalized.message).toBe('')
+    expect(JSON.stringify(buildErrorDetail(normalized))).not.toContain('ResizeObserver')
+  })
+
+  it('distinguishes a window error that carried no message at all', () => {
+    // #given an ErrorEvent with an empty message — indistinguishable, before
+    // this, from one whose message simply named no error class
+    const normalized = normalizeWindowError({
+      error: null,
+      message: '',
+      filename: 'file:///opt/MemryNote/resources/app.asar/out/renderer/index.html',
+      lineno: 0,
+      colno: 0
+    })
+
+    // #then the absence is itself reported
+    expect(toErrorCode(normalized)).toBe('WindowError_Empty')
+  })
+
+  it('leaves an unrecognized message as a bare WindowError', () => {
+    // #given prose that is neither an error class nor a known engine string
+    const normalized = normalizeWindowError({ error: null, message: 'something went sideways' })
+
+    // #then the existing code is unchanged, so existing queries keep matching
     expect(toErrorCode(normalized)).toBe('WindowError')
     expect(normalized.message).toBe('')
   })

@@ -575,24 +575,53 @@ const sourceFrame = (report: WindowErrorReport): string | undefined => {
   return `    at window_error (${filename.slice(0, MAX_SOURCE_FILENAME)}:${line}:${column})`
 }
 
+// Window `error` notifications the engine generates itself. Each string is a
+// fixed literal emitted by Chromium — it embeds nothing from the document, the
+// vault or the user — so recognizing one by exact match is safe in a way that
+// copying arbitrary message text is not. Matched only to pick a code; the text
+// is still never carried onto the returned Error.
+const BROWSER_MESSAGE_CODES = new Map<string, string>([
+  ['Script error.', 'WindowError_ScriptError'],
+  ['Script error', 'WindowError_ScriptError'],
+  ['ResizeObserver loop limit exceeded', 'WindowError_ResizeObserverLoop'],
+  ['ResizeObserver loop completed with undelivered notifications', 'WindowError_ResizeObserverLoop'],
+  [
+    'ResizeObserver loop completed with undelivered notifications.',
+    'WindowError_ResizeObserverLoop'
+  ]
+])
+
+// The residual, un-triageable window errors reported as a bare `WindowError`
+// with an empty message and a `…/index.html:0:0` frame fork on one question the
+// payload never answered: was there a message at all? A recognized engine
+// notification answers it by name; an absent message answers it as
+// WindowError_Empty; anything else stays `WindowError` and now means "a message
+// existed, and it named no error class" rather than "unknown".
+const windowErrorCode = (message: string): string | undefined =>
+  BROWSER_MESSAGE_CODES.get(message) ?? (message ? undefined : 'WindowError_Empty')
+
 /**
  * Normalize a window `error` event into an Error that carries a code and a
  * location. `event.error` is absent for cross-origin scripts and for some
  * Chromium failure paths, and passing the bare `event.message` string on landed
  * in telemetry as `StringError` with no stack — nothing to triage at all.
  *
- * Privacy: the message is only pattern-matched for its leading error class; its
- * text is never copied. The filename rides along as a stack frame, so it goes
- * through the same redaction as any other frame.
+ * Privacy: the message is only pattern-matched — for its leading error class,
+ * then against a closed list of engine-generated notifications. Its text is
+ * never copied. The filename rides along as a stack frame, so it goes through
+ * the same redaction as any other frame.
  */
 export const normalizeWindowError = (report: WindowErrorReport): Error => {
   const frames = ownStackFrames(report.error)
   if (isError(report.error) && frames) return report.error
 
   const normalized = new Error()
-  const messageClass =
-    typeof report.message === 'string' ? MESSAGE_ERROR_CLASS.exec(report.message)?.[1] : undefined
-  normalized.name = toSafeToken(enumishName(report.error) ?? messageClass, 'WindowError')
+  const message = typeof report.message === 'string' ? report.message.trim() : ''
+  const messageClass = message ? MESSAGE_ERROR_CLASS.exec(message)?.[1] : undefined
+  normalized.name = toSafeToken(
+    enumishName(report.error) ?? messageClass ?? windowErrorCode(message),
+    'WindowError'
+  )
   const stack = frames ?? sourceFrame(report)
   if (stack) normalized.stack = stack
   return normalized
