@@ -5,6 +5,7 @@
  */
 
 import { useRef, useState, useLayoutEffect, useCallback } from 'react'
+import { AnimatePresence, LazyMotion, domAnimation, m, useReducedMotion } from 'motion/react'
 import { useDndContext } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, LayoutAlignRightIcon } from '@/lib/icons'
@@ -80,6 +81,17 @@ export const TabBarWithDrag = ({
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const { t: tPhaseF } = useT('common')
   const group = useTabGroup(groupId)
+
+  // Tab enter/exit animation (#1368 deleted the never-wired variants; this is
+  // the wired version). Kept fast so the strip never feels laggy, and skipped
+  // entirely under prefers-reduced-motion.
+  const prefersReducedMotion = useReducedMotion()
+  const tabEnterTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.16, ease: 'easeOut' as const }
+  const tabExitTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.13, ease: 'easeIn' as const }
   const {
     toggle: toggleDayPanel,
     isOpen: isDayPanelOpen,
@@ -170,141 +182,177 @@ export const TabBarWithDrag = ({
   const scrollToEnd = (): void => scrollByLogical(200)
 
   return (
-    <TabBarContextMenu groupId={groupId}>
-      <div
-        className={cn(
-          'drag-region flex items-end shrink-0',
-          'bg-transparent',
-          'relative',
-          'border-b border-border',
-          isDayPanelResizing
-            ? 'transition-[padding-inline-start] duration-200 ease-linear'
-            : 'transition-[padding-inline-start,margin-inline-end] duration-200 ease-linear',
-          needsChromeSpacer && 'ps-[var(--chrome-width)]',
-          className
-        )}
-        style={{ marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0 }}
-        role="tablist"
-        aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
-        aria-orientation="horizontal"
-        data-group-id={groupId}
-      >
-        {/* Pinned tabs section (not in sortable context) */}
-        {pinnedTabs.length > 0 && (
-          <>
-            <div className="no-drag flex items-end px-1.5 gap-0.5 pb-0">
-              {pinnedTabs.map((tab) => (
-                <TabContextMenu key={tab.id} tab={tab} groupId={groupId}>
-                  <PinnedTab tab={tab} groupId={groupId} isActive={tab.id === group.activeTabId} />
-                </TabContextMenu>
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-5 bg-border mx-1 mb-2" />
-          </>
-        )}
-
-        {/* Scroll to start button */}
-        {canScrollToStart && (
-          <button
-            type="button"
-            onClick={scrollToStart}
-            className={cn(
-              'no-drag',
-              'flex items-center justify-center w-7 h-[calc(100%-4px)]',
-              'bg-gradient-to-r from-muted/95 via-muted/70 to-transparent',
-              'hover:from-surface-active/95',
-              'transition-all duration-150 ease-out z-20',
-              'absolute start-0 bottom-px'
-            )}
-            aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsLeft')}
-          >
-            <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
-          </button>
-        )}
-
-        {/* Regular tabs section (sortable) — tabs are direct flex children so they
-            share the strip evenly and overflow it once they hit their min width */}
+    // Same LazyMotion bundle the sidebar tree loads — `m.` components need the
+    // feature set in context, and the two surfaces share the one chunk.
+    <LazyMotion features={domAnimation}>
+      <TabBarContextMenu groupId={groupId}>
         <div
-          ref={scrollRef}
-          onWheel={handleWheel}
-          data-testid="tab-strip"
           className={cn(
-            'flex-1 flex items-end gap-0.5 px-1 pb-0 overflow-x-auto',
-            // Wheel scrolling assigns scrollLeft directly, which the CSS property
-            // animates — so that one still needs the CSS-side gate.
-            'scroll-smooth motion-reduce:scroll-auto',
-            'scrollbar-none [&::-webkit-scrollbar]:hidden',
-            '[-ms-overflow-style:none] [scrollbar-width:none]',
-            canScrollToStart && 'ps-7',
-            canScrollToEnd && 'pe-7'
+            'drag-region flex items-end shrink-0',
+            'bg-transparent',
+            'relative',
+            'border-b border-border',
+            isDayPanelResizing
+              ? 'transition-[padding-inline-start] duration-200 ease-linear'
+              : 'transition-[padding-inline-start,margin-inline-end] duration-200 ease-linear',
+            needsChromeSpacer && 'ps-[var(--chrome-width)]',
+            className
           )}
+          style={{ marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0 }}
+          role="tablist"
+          aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
+          aria-orientation="horizontal"
+          data-group-id={groupId}
         >
-          <SortableContext
-            items={regularTabs.map((t) => t.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            {regularTabs.map((tab) => (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                groupId={groupId}
-                isActive={tab.id === group.activeTabId}
-              />
-            ))}
-          </SortableContext>
+          {/* Pinned tabs section (not in sortable context) */}
+          {pinnedTabs.length > 0 && (
+            <>
+              <div className="no-drag flex items-end px-1.5 gap-0.5 pb-0">
+                <AnimatePresence initial={false}>
+                  {pinnedTabs.map((tab) => (
+                    <m.div
+                      key={tab.id}
+                      className="overflow-hidden"
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: 36, opacity: 1, transition: tabEnterTransition }}
+                      exit={{ width: 0, opacity: 0, transition: tabExitTransition }}
+                    >
+                      <TabContextMenu tab={tab} groupId={groupId}>
+                        <PinnedTab
+                          tab={tab}
+                          groupId={groupId}
+                          isActive={tab.id === group.activeTabId}
+                        />
+                      </TabContextMenu>
+                    </m.div>
+                  ))}
+                </AnimatePresence>
+              </div>
 
-          {/* New tab — inline after last tab, Chrome-style. Once the strip overflows
+              {/* Divider */}
+              <div className="w-px h-5 bg-border mx-1 mb-2" />
+            </>
+          )}
+
+          {/* Scroll to start button */}
+          {canScrollToStart && (
+            <button
+              type="button"
+              onClick={scrollToStart}
+              className={cn(
+                'no-drag',
+                'flex items-center justify-center w-7 h-[calc(100%-4px)]',
+                'bg-gradient-to-r from-muted/95 via-muted/70 to-transparent',
+                'hover:from-surface-active/95',
+                'transition-all duration-150 ease-out z-20',
+                'absolute start-0 bottom-px'
+              )}
+              aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsLeft')}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
+            </button>
+          )}
+
+          {/* Regular tabs section (sortable) — tabs are direct flex children so they
+            share the strip evenly and overflow it once they hit their min width */}
+          <div
+            ref={scrollRef}
+            onWheel={handleWheel}
+            data-testid="tab-strip"
+            className={cn(
+              'flex-1 flex items-end gap-0.5 px-1 pb-0 overflow-x-auto',
+              // Wheel scrolling assigns scrollLeft directly, which the CSS property
+              // animates — so that one still needs the CSS-side gate.
+              'scroll-smooth motion-reduce:scroll-auto',
+              'scrollbar-none [&::-webkit-scrollbar]:hidden',
+              '[-ms-overflow-style:none] [scrollbar-width:none]',
+              canScrollToStart && 'ps-7',
+              canScrollToEnd && 'pe-7'
+            )}
+          >
+            <SortableContext
+              items={regularTabs.map((t) => t.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {/* The motion wrapper is the strip's flex item and the @container the
+                tab's compression tiers query against (moved off SortableTab).
+                Width animates through the min/max clamps so the flex share
+                sweeps open on enter and shut on exit while neighbours reflow. */}
+              <AnimatePresence initial={false}>
+                {regularTabs.map((tab) => (
+                  <m.div
+                    key={tab.id}
+                    className="no-drag @container flex-[1_1_var(--tab-w-max)] overflow-hidden"
+                    initial={{ maxWidth: 0, minWidth: 0, opacity: 0 }}
+                    animate={{
+                      maxWidth: 240,
+                      minWidth: 52,
+                      opacity: 1,
+                      transition: tabEnterTransition
+                    }}
+                    exit={{ maxWidth: 0, minWidth: 0, opacity: 0, transition: tabExitTransition }}
+                  >
+                    <SortableTab
+                      tab={tab}
+                      groupId={groupId}
+                      isActive={tab.id === group.activeTabId}
+                    />
+                  </m.div>
+                ))}
+              </AnimatePresence>
+            </SortableContext>
+
+            {/* New tab — inline after last tab, Chrome-style. Once the strip overflows
               it is pinned outside the scroller instead, so it stays reachable. */}
-          {!isOverflowing && (
+            {!isOverflowing && (
+              <div className="no-drag flex items-center shrink-0 px-1 self-center">
+                <NewTabMenu groupId={groupId} />
+              </div>
+            )}
+          </div>
+
+          {/* Scroll to end button */}
+          {canScrollToEnd && (
+            <button
+              type="button"
+              onClick={scrollToEnd}
+              className={cn(
+                'no-drag',
+                'flex items-center justify-center w-7 h-[calc(100%-4px)]',
+                'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
+                'hover:from-surface-active/95',
+                'transition-all duration-150 ease-out z-20',
+                // Clears the pinned new-tab button (36px), plus the day-panel toggle (48px)
+                showDayPanelToggleButton
+                  ? 'absolute end-[84px] bottom-px'
+                  : 'absolute end-[36px] bottom-px'
+              )}
+              aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
+            >
+              <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
+            </button>
+          )}
+
+          {/* New tab — pinned past the scroller while the strip overflows */}
+          {isOverflowing && (
             <div className="no-drag flex items-center shrink-0 px-1 self-center">
               <NewTabMenu groupId={groupId} />
             </div>
           )}
+
+          {/* Tab actions */}
+          {showDayPanelToggleButton && (
+            <div className="no-drag ms-auto flex items-center gap-1 self-center pe-[13px] ps-2">
+              <TabBarAction
+                icon={<LayoutAlignRightIcon className="w-4 h-4 transition-colors duration-150" />}
+                tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
+                onClick={toggleDayPanel}
+              />
+            </div>
+          )}
         </div>
-
-        {/* Scroll to end button */}
-        {canScrollToEnd && (
-          <button
-            type="button"
-            onClick={scrollToEnd}
-            className={cn(
-              'no-drag',
-              'flex items-center justify-center w-7 h-[calc(100%-4px)]',
-              'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
-              'hover:from-surface-active/95',
-              'transition-all duration-150 ease-out z-20',
-              // Clears the pinned new-tab button (36px), plus the day-panel toggle (48px)
-              showDayPanelToggleButton
-                ? 'absolute end-[84px] bottom-px'
-                : 'absolute end-[36px] bottom-px'
-            )}
-            aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
-          >
-            <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors rtl:rotate-180" />
-          </button>
-        )}
-
-        {/* New tab — pinned past the scroller while the strip overflows */}
-        {isOverflowing && (
-          <div className="no-drag flex items-center shrink-0 px-1 self-center">
-            <NewTabMenu groupId={groupId} />
-          </div>
-        )}
-
-        {/* Tab actions */}
-        {showDayPanelToggleButton && (
-          <div className="no-drag ms-auto flex items-center gap-1 self-center pe-[13px] ps-2">
-            <TabBarAction
-              icon={<LayoutAlignRightIcon className="w-4 h-4 transition-colors duration-150" />}
-              tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
-              onClick={toggleDayPanel}
-            />
-          </div>
-        )}
-      </div>
-    </TabBarContextMenu>
+      </TabBarContextMenu>
+    </LazyMotion>
   )
 }
 

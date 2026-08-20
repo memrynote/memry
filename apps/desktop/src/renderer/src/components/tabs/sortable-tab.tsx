@@ -45,12 +45,9 @@ export const SortableTab = ({ tab, groupId, isActive }: SortableTabProps): React
     <TabContextMenu
       tab={tab}
       groupId={groupId}
-      // This wrapper is the tab strip's flex item: it shares the strip evenly with
-      // its siblings, and is the container the tab's compression tiers query against.
-      className={cn(
-        'no-drag @container',
-        'flex-[1_1_var(--tab-w-max)] min-w-[var(--tab-w-min)] max-w-[var(--tab-w-max)]'
-      )}
+      // The strip's flex-item/@container role moved up to the enter/exit motion
+      // wrapper in TabBarWithDrag, which now owns this tab's width.
+      className="w-full min-w-0"
     >
       <div
         ref={setNodeRef}
