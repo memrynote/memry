@@ -83,6 +83,7 @@ import {
 } from './hooks'
 import { BlockMarqueeOverlay } from './block-marquee-overlay'
 import { PasteLinkMenu } from './paste-link-menu'
+import { handleEditorPaste } from './table-cell-paste'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
@@ -404,6 +405,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       checkListItem: t('editor.content.todoPlaceholder')
     },
     dictionary: { ...coreEn, ai: aiEn } as any,
+    pasteHandler: handleEditorPaste,
     ...(yjsFragment
       ? {
           collaboration: {
