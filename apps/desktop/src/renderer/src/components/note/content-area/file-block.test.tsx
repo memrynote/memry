@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createFileBlock,
   createFileBlockContent,
@@ -16,6 +16,17 @@ const mocks = vi.hoisted(() => ({
   },
   pdfPageCount: 2
 }))
+
+interface PdfViewport {
+  width: number
+  height: number
+}
+
+/** Point size of the mocked page: a portrait page twice as tall as it is wide. */
+const PAGE_POINT_WIDTH = 300
+const PAGE_POINT_HEIGHT = 600
+/** Viewport the embed's scroller reports under jsdom, which lays nothing out. */
+const SCROLL_VIEWPORT_HEIGHT = 400
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
@@ -46,11 +57,25 @@ vi.mock('react-pdf', () => ({
   }: {
     children: React.ReactNode
     file: string
-    onLoadSuccess?: (payload: { numPages: number }) => void
+    onLoadSuccess?: (pdf: {
+      numPages: number
+      getPage: (page: number) => Promise<{ getViewport: (o: { scale: number }) => PdfViewport }>
+    }) => void
     onLoadError?: (error: Error) => void
   }) => (
     <div data-testid="pdf-document" data-file={file}>
-      <button type="button" onClick={() => onLoadSuccess?.({ numPages: mocks.pdfPageCount })}>
+      <button
+        type="button"
+        onClick={() =>
+          onLoadSuccess?.({
+            numPages: mocks.pdfPageCount,
+            getPage: () =>
+              Promise.resolve({
+                getViewport: () => ({ width: PAGE_POINT_WIDTH, height: PAGE_POINT_HEIGHT })
+              })
+          })
+        }
+      >
         load pdf
       </button>
       <button type="button" onClick={() => onLoadError?.(new Error('broken pdf'))}>
@@ -63,10 +88,43 @@ vi.mock('react-pdf', () => ({
   pdfjs: { GlobalWorkerOptions: {} }
 }))
 
+/** Scroll the embed to `offset` px, the way the virtualizer observes it. */
+const scrollEmbedTo = (offset: number): void => {
+  const scroller = screen.getByTestId('pdf-embed-scroll')
+  Object.defineProperty(scroller, 'scrollTop', { value: offset, configurable: true })
+  fireEvent.scroll(scroller)
+}
+
+/** Offset that puts the top of `page` at the top of the embed's viewport. */
+const pageOffset = (page: number): number => {
+  const total = Number.parseFloat(screen.getByTestId('pdf-embed-sizer').style.height)
+  return (total / mocks.pdfPageCount) * (page - 1)
+}
+
 describe('file block helpers', () => {
+  let originalOffsetHeight: PropertyDescriptor | undefined
+
   beforeEach(() => {
     mocks.syncState = { uploadProgress: {}, downloadProgress: {} }
     mocks.pdfPageCount = 2
+
+    originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+    // @tanstack/react-virtual sizes its viewport from `offsetHeight`, which
+    // jsdom always reports as 0. Give the embed's scroller a real viewport.
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.dataset.testid === 'pdf-embed-scroll' ? SCROLL_VIEWPORT_HEIGHT : 0
+      }
+    })
+  })
+
+  afterEach(() => {
+    if (originalOffsetHeight) {
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight)
+    } else {
+      delete (HTMLElement.prototype as unknown as Record<string, unknown>).offsetHeight
+    }
   })
 
   it('serializes, parses, and creates file block content', () => {
@@ -256,7 +314,7 @@ describe('file block helpers', () => {
     })
   })
 
-  it('pages through a multi-page PDF from the hover controls', () => {
+  it('scrolls continuously through a multi-page PDF and tracks the page', async () => {
     const Render = (createFileBlock as any).render
 
     render(
@@ -273,24 +331,23 @@ describe('file block helpers', () => {
       />
     )
     fireEvent.click(screen.getAllByText('load pdf')[0])
+    // The first page's aspect lands asynchronously from pdf.js.
+    await screen.findByTestId('pdf-embed-sizer')
 
-    const prev = screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.previousPage')
-    const next = screen.getByLabelText('phaseF.componentsNoteContentAreaFileBlock.nextPage')
-
-    // Opens on page 1; there is no page before it.
+    // Both pages are in the same scroller — no button needed to reach page 2.
     expect(screen.getByText('page 1')).toBeInTheDocument()
-    expect(screen.getByText('1 / 2')).toBeInTheDocument()
-    expect(prev).toBeDisabled()
-    expect(next).toBeEnabled()
-
-    fireEvent.click(next)
     expect(screen.getByText('page 2')).toBeInTheDocument()
-    expect(screen.getByText('2 / 2')).toBeInTheDocument()
-    expect(next).toBeDisabled()
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
 
-    fireEvent.click(prev)
-    expect(screen.getByText('page 1')).toBeInTheDocument()
-    expect(prev).toBeDisabled()
+    // The controls that used to be the only way through are gone.
+    expect(screen.queryByLabelText('phaseF.componentsNoteContentAreaFileBlock.nextPage')).toBeNull()
+
+    // Scrolling past the first page moves the indicator with the reader.
+    scrollEmbedTo(pageOffset(2))
+    expect(screen.getByText('2 / 2')).toBeInTheDocument()
+
+    scrollEmbedTo(0)
+    expect(screen.getByText('1 / 2')).toBeInTheDocument()
   })
 
   it('keeps single-page PDFs chromeless (no page controls)', () => {
@@ -312,7 +369,7 @@ describe('file block helpers', () => {
     )
     fireEvent.click(screen.getAllByText('load pdf')[0])
 
-    expect(screen.queryByLabelText('phaseF.componentsNoteContentAreaFileBlock.nextPage')).toBeNull()
+    expect(screen.queryByText('1 / 1')).toBeNull()
     // The rest of the chrome-free embed still works.
     expect(screen.getByRole('slider')).toBeInTheDocument()
   })

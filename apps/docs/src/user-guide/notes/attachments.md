@@ -27,7 +27,9 @@ Each attachment renders as a block with:
 
 ## PDF Inline Preview
 
-PDFs render inline as a clean first-page preview — no viewer chrome — so a note reads as a document with its source embedded. Open the file page (double-click the sidebar item) for the full multi-page viewer with zoom and find-in-page.
+PDFs render inline as a clean scrolling preview — no viewer chrome — so a note reads as a document with its source embedded. The embed opens one page tall and **scrolls through the whole document**: keep scrolling inside it to read past the first page. A small `3 / 12` page indicator appears while you hover, so you can tell where you are. Only the pages near the embed's viewport are drawn, so a long PDF in a note stays as light as a short one.
+
+Open the file page (double-click the sidebar item) for the full multi-page viewer with zoom and find-in-page.
 
 The file page viewer opens **fitted to the width of its pane**, so a document is readable straight away rather than at a fixed 100%. It keeps fitting as you resize the window or toggle the thumbnail sidebar — until you set a zoom yourself, after which your zoom is kept and restored with the tab. **Fit to width** puts it back. Fitting measures the real page, so A4 and landscape pages fit correctly too.
 
@@ -35,10 +37,10 @@ The viewer also has a thumbnail sidebar for jumping between pages. It draws only
 
 The embed's controls sit on the preview itself. The resize corners are faintly visible at rest; hovering the preview, or clicking to select it, brings out the full set:
 
-- **Resize** — drag either bottom corner. Width scales the whole embed like an image; dragging upward shortens it, cropping the first page from the top so only the opening shows (no inner scroll). The embed can be widened up to the note column.
+- **Resize** — drag either bottom corner. Width scales the whole embed like an image; dragging upward shortens it, so less of the document shows at a time — the rest is still there to scroll to. The embed can be widened up to the note column.
 - **Align** — the top-right toolbar aligns the embed **left**, **center**, or **right** within the note column.
 
-Size, crop, and alignment are **saved with the note** and restored when you reopen it.
+Size, crop, and alignment are **saved with the note** and restored when you reopen it. The page you scrolled to is not — an embed always reopens at its first page.
 
 ## Audio Attachments
 
