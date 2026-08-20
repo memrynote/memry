@@ -10,10 +10,21 @@ import {
 } from '../http-client'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
 import { trackMainError } from '../../telemetry/diagnostics'
-import type { SyncContext } from './sync-context'
+import type { CrdtPullCost, SyncContext } from './sync-context'
 import type { CrdtProvider } from '../crdt-provider'
 
 const log = createLogger('CrdtSyncCoordinator')
+
+/**
+ * The server's cap on the `notes` array of `POST /sync/crdt/updates/batch`
+ * (`CrdtBatchPullSchema`, sync-server routes/sync.ts). A protocol fact, not a
+ * pacing knob: it bounds the probe, which opens no document and so is not bound
+ * by the doc cache, and it bounds an apply sub-chunk too, for the rare provider
+ * configured to hold more docs open than the server will accept in one request.
+ */
+const CRDT_BATCH_MAX_NOTES = 100
+
+const noCost = (): CrdtPullCost => ({ snapshotGets: 0, batchPosts: 0 })
 
 export type ResolveDeviceKey = (deviceId: string) => Promise<Uint8Array | null>
 
@@ -396,8 +407,12 @@ export class CrdtSyncCoordinator {
     noteId: string,
     token: string,
     vaultKey: Uint8Array,
-    mode: 'single' | 'batch'
+    mode: 'single' | 'batch',
+    cost: CrdtPullCost
   ): Promise<{ since: number; verified: boolean }> {
+    // Charged before the request, not after: a GET that throws still spent the
+    // bucket, and a failure is exactly when the next chunk most needs to wait.
+    cost.snapshotGets++
     const snapshotResult = await fetchCrdtSnapshot(noteId, token)
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
       return { since: 0, verified: true }
@@ -510,7 +525,10 @@ export class CrdtSyncCoordinator {
       // note stays flagged. Every failure path below re-owes it.
       this.pendingPulls.delete(noteId)
 
-      const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single')
+      // The single-note path is not paced, so nothing reads this back. It is
+      // still counted rather than made optional, so there is one shape for
+      // "what a baseline costs" instead of two.
+      const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'single', noCost())
       let since = baseline.since
       let sawUnmerged = !baseline.verified
       // Owed a pull as well as flagged, matching the batch path: a signer that
@@ -626,7 +644,8 @@ export class CrdtSyncCoordinator {
     token: string,
     vaultKey: Uint8Array,
     signal?: AbortSignal
-  ): Promise<void> {
+  ): Promise<CrdtPullCost> {
+    const cost = noCost()
     const crdtProvider = this.ctx.deps.crdtProvider
     // The engine only holds an AbortController for the duration of a pull or a
     // push, so a caller outside one (the paced sweep) has to bring its own —
@@ -634,7 +653,7 @@ export class CrdtSyncCoordinator {
     // `ctx.abortController` unconditionally here made every out-of-cycle batch
     // return without doing anything.
     const effectiveSignal = signal ?? this.ctx.abortController?.signal
-    if (!crdtProvider || !effectiveSignal) return
+    if (!crdtProvider || !effectiveSignal) return cost
 
     // Same guard as the single-note path — see `applyCrdtIncrementals` — and
     // applied before the chunking below rather than inside it, so a vault with
@@ -646,28 +665,26 @@ export class CrdtSyncCoordinator {
         skipped: noteIds.length - syncable.length
       })
     }
-    if (syncable.length === 0) return
+    if (syncable.length === 0) return cost
 
-    // A pass holds every one of its notes open from before the request is sent
-    // until that note's updates are applied, so it must never open more than
-    // the provider keeps cached: past the limit the LRU closes the notes it
-    // opened first, applyRemoteUpdate drops their updates as "unopened doc",
-    // and the seed check below then sees no state vector at all. The passes
-    // that matter are exactly the oversized ones — a sign-in or a reconnect
-    // sweep hands over the whole vault, several times the limit.
-    //
-    // Chunking here also keeps each request under the server's 100-note cap on
-    // /sync/crdt/updates/batch, which a whole-vault pass otherwise blows past.
-    const chunkSize = crdtProvider.inactiveDocCapacity
-    for (let i = 0; i < syncable.length; i += chunkSize) {
-      if (effectiveSignal.aborted) return
+    // Chunked at the PROBE's ceiling, which is the server's 100-note cap on
+    // /sync/crdt/updates/batch and nothing else. The probe opens no document,
+    // so the doc cache does not bound it — the apply phase inside each chunk
+    // sub-chunks itself at `inactiveDocCapacity`, which is where that bound
+    // belongs. Sizing this loop at the doc cache instead would spend one probe
+    // POST per 32 notes rather than per 100, and the probe POST is the whole
+    // cost of a warm sweep.
+    for (let i = 0; i < syncable.length; i += CRDT_BATCH_MAX_NOTES) {
+      if (effectiveSignal.aborted) return cost
       await this.applyCrdtBatchChunk(
-        syncable.slice(i, i + chunkSize),
+        syncable.slice(i, i + CRDT_BATCH_MAX_NOTES),
         token,
         vaultKey,
-        effectiveSignal
+        effectiveSignal,
+        cost
       )
     }
+    return cost
   }
 
   /**
@@ -684,7 +701,8 @@ export class CrdtSyncCoordinator {
   private async probeBatchChunk(
     noteIds: string[],
     token: string,
-    signal: AbortSignal
+    signal: AbortSignal,
+    cost: CrdtPullCost
   ): Promise<CrdtBatchPullResponse | null> {
     if (this.snapshotMetaUnsupported) return null
     // No watermark for any note in the chunk means nothing can match, so every
@@ -696,8 +714,11 @@ export class CrdtSyncCoordinator {
     if (!noteIds.some((noteId) => this.lastAppliedSequence.has(noteId))) return null
 
     const result = await withRetry(
-      () =>
-        postToServer<CrdtBatchPullResponse>(
+      () => {
+        // Inside the retry callback, so an attempt the server 5xx'd is charged
+        // like any other: the bucket counts attempts, not successes.
+        cost.batchPosts++
+        return postToServer<CrdtBatchPullResponse>(
           '/sync/crdt/updates/batch',
           {
             notes: noteIds.map((noteId) => ({
@@ -713,7 +734,8 @@ export class CrdtSyncCoordinator {
             limit: 1
           },
           token
-        ),
+        )
+      },
       { maxRetries: 3, baseDelayMs: 2000, signal, retryOn429: false }
     ).then((r) => r.value)
 
@@ -785,28 +807,22 @@ export class CrdtSyncCoordinator {
     return appliedSequence
   }
 
+  /**
+   * One probe-sized chunk: at most `CRDT_BATCH_MAX_NOTES` notes, one probe POST
+   * for all of them, then the apply phase over whatever the probe could not
+   * settle — sub-chunked at the doc cache, because that phase holds its notes
+   * open across an await and the probe does not.
+   */
   private async applyCrdtBatchChunk(
     noteIds: string[],
     token: string,
     vaultKey: Uint8Array,
-    signal: AbortSignal
+    signal: AbortSignal,
+    cost: CrdtPullCost
   ): Promise<void> {
     const crdtProvider = this.ctx.deps.crdtProvider
     if (!crdtProvider) return
 
-    const syncOpenedNoteIds = new Set<string>()
-    // Per-pass record, so only a note this pass walked cleanly may have its
-    // standing flag cleared at the end.
-    const sawUnmerged = new Set<string>()
-    // No `pendingPulls.delete` here, deliberately — the single-note path needs
-    // one and this does not. Every caller of this path (the priority pull and
-    // the paced sweep chunks) is handed notes that `drainPendingPulls()` has
-    // already emptied out of the set, so a note that IS in it at this point was
-    // put back by something running concurrently, and its payload is not in
-    // this chunk. Keeping the flag standing is the right answer there.
-    // `pullCrdtForNote` has no drain in front of it — the `crdt_updated`
-    // broadcast and the pending-note replay call it directly — so a note's own
-    // earlier debt would otherwise block its clear forever.
     try {
       // PHASE 0 — hydrate. Read this chunk's watermarks out of the CRDT store,
       // so the first sweep after a relaunch or a fresh sign-in can skip the
@@ -822,7 +838,7 @@ export class CrdtSyncCoordinator {
       // body-only remote edit reaches a device by — note bodies never travel in
       // the record change feed — so a note dropped here would go stale with no
       // second chance.
-      const probe = await this.probeBatchChunk(noteIds, token, signal)
+      const probe = await this.probeBatchChunk(noteIds, token, signal, cost)
 
       // Notes whose baseline the probe proved redundant, mapped to the `since`
       // to resume from in place of the one a baseline would have produced.
@@ -867,11 +883,92 @@ export class CrdtSyncCoordinator {
 
       if (activeNoteIds.length === 0) return
 
-      // PHASE 2 — apply. Unchanged from the unconditional path, over the notes
-      // that actually have work.
+      // PHASE 2 — apply, in sub-chunks the provider can actually hold open.
+      //
+      // This is the LRU bound, and it is a hard one: a sub-chunk holds every
+      // one of its notes open from before the request is sent until that note's
+      // updates are applied, so past `inactiveDocCapacity` the cache closes the
+      // notes it opened first, `applyRemoteUpdate` drops their updates as
+      // "unopened doc", and the seed check then sees no state vector at all.
+      // Capped at the server's batch limit too, for a provider configured to
+      // hold more docs open than one request may name.
+      const applySize = Math.max(
+        1,
+        Math.min(crdtProvider.inactiveDocCapacity, CRDT_BATCH_MAX_NOTES)
+      )
+      for (let i = 0; i < activeNoteIds.length; i += applySize) {
+        if (signal.aborted) {
+          // The sub-chunks not reached were never walked, so they stay owed.
+          for (const noteId of activeNoteIds.slice(i)) this.owePendingPull(noteId)
+          return
+        }
+        await this.applyProbedNotes(
+          activeNoteIds.slice(i, i + applySize),
+          skipBaseline,
+          token,
+          vaultKey,
+          signal,
+          cost
+        )
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        log.debug('applyCrdtBatch aborted via signal')
+        return
+      }
+      log.warn('Failed to apply CRDT batch', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+      // The chunk failed as a unit (a rate-limited or dead-lettered batch POST
+      // takes every note in it), so every note in it is owed a retry. A
+      // sub-chunk that already finished is re-queued too: re-applying a CRDT
+      // update is a no-op, its watermark is already flushed, and the next pass
+      // settles it from the probe for one request instead of dropping it.
+      for (const noteId of noteIds) this.owePendingPull(noteId)
+      // One undecryptable update aborts the remaining notes in the pass —
+      // engine-level sync_run_completed still reports success without this.
+      if (!this.applyFailureReported.has('__batch__')) {
+        this.applyFailureReported.add('__batch__')
+        trackMainError('sync', 'crdt_apply_failed', err)
+      }
+    }
+  }
+
+  /**
+   * The apply phase over one doc-cache-sized group: open, baseline where the
+   * probe could not rule it out, then loop the batch endpoint for incrementals.
+   *
+   * Its notes are opened and closed inside this call, so a chunk larger than the
+   * doc cache still never holds more than `inactiveDocCapacity` docs at once.
+   */
+  private async applyProbedNotes(
+    noteIds: string[],
+    skipBaseline: Map<string, number>,
+    token: string,
+    vaultKey: Uint8Array,
+    signal: AbortSignal,
+    cost: CrdtPullCost
+  ): Promise<void> {
+    const crdtProvider = this.ctx.deps.crdtProvider
+    if (!crdtProvider) return
+
+    const syncOpenedNoteIds = new Set<string>()
+    // Per-pass record, so only a note this pass walked cleanly may have its
+    // standing flag cleared at the end.
+    const sawUnmerged = new Set<string>()
+    // No `pendingPulls.delete` here, deliberately — the single-note path needs
+    // one and this does not. Every caller of this path (the priority pull and
+    // the paced sweep chunks) is handed notes that `drainPendingPulls()` has
+    // already emptied out of the set, so a note that IS in it at this point was
+    // put back by something running concurrently, and its payload is not in
+    // this chunk. Keeping the flag standing is the right answer there.
+    // `pullCrdtForNote` has no drain in front of it — the `crdt_updated`
+    // broadcast and the pending-note replay call it directly — so a note's own
+    // earlier debt would otherwise block its clear forever.
+    try {
       const sinceMap = new Map<string, number>()
 
-      for (const noteId of activeNoteIds) {
+      for (const noteId of noteIds) {
         const wasOpen = crdtProvider.getDoc(noteId) != null
         try {
           await crdtProvider.open(noteId, undefined, { skipSeed: true })
@@ -899,7 +996,7 @@ export class CrdtSyncCoordinator {
         }
 
         try {
-          const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch')
+          const baseline = await this.applySnapshotBaseline(noteId, token, vaultKey, 'batch', cost)
           sinceMap.set(noteId, baseline.since)
           if (!baseline.verified) {
             sawUnmerged.add(noteId)
@@ -911,7 +1008,7 @@ export class CrdtSyncCoordinator {
           // the pass. Skip it; the next pass retries it — which only holds
           // because it is re-queued here. This is the hottest failure path under
           // a rate limit: the baselines are one GET per note, so they are the
-          // bulk of a sweep's requests and the first thing the server sheds.
+          // bulk of a cold sweep's requests and the first thing the server sheds.
           log.warn('Failed to apply CRDT snapshot baseline, skipping note in batch', {
             noteId,
             error: err instanceof Error ? err.message : String(err)
@@ -935,12 +1032,17 @@ export class CrdtSyncCoordinator {
         const notes = Array.from(activeSince, ([noteId, since]) => ({ noteId, since }))
 
         const result = await withRetry(
-          () =>
-            postToServer<CrdtBatchPullResponse>(
+          () => {
+            // Every round of this loop is another POST on `crdt_batch_pull` —
+            // the "one POST per chunk" figure is a floor, so it is counted
+            // here rather than assumed by the pacer.
+            cost.batchPosts++
+            return postToServer<CrdtBatchPullResponse>(
               '/sync/crdt/updates/batch',
               { notes, limit: 100 },
               token
-            ),
+            )
+          },
           {
             maxRetries: 3,
             baseDelayMs: 2000,
@@ -999,11 +1101,12 @@ export class CrdtSyncCoordinator {
         this.clearUnmergedIfClean(noteId, sawUnmerged.has(noteId))
       }
 
-      // Seed only notes whose snapshot baseline succeeded. A note skipped at :205
-      // was opened with { skipSeed: true } and stays open with an empty state
-      // vector; seeding it here would persist local markdown, and the next pass's
-      // real server snapshot would then merge as an independent insertion →
-      // duplicated note body. Its baseline failed transiently; the next pass fetches it.
+      // Seed only notes whose snapshot baseline succeeded. A note whose baseline
+      // threw was opened with { skipSeed: true } and stays open with an empty
+      // state vector; seeding it here would persist local markdown, and the next
+      // pass's real server snapshot would then merge as an independent insertion
+      // → duplicated note body. Its baseline failed transiently; the next pass
+      // fetches it.
       for (const noteId of sinceMap.keys()) {
         const postVector = crdtProvider.getStateVector(noteId)
         // No vector at all means the doc is no longer open, which is not the
@@ -1022,26 +1125,10 @@ export class CrdtSyncCoordinator {
           })
         }
       }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        log.debug('applyCrdtBatch aborted via signal')
-        return
-      }
-      log.warn('Failed to apply CRDT batch', {
-        error: err instanceof Error ? err.message : String(err)
-      })
-      // The chunk failed as a unit (a rate-limited or dead-lettered batch POST
-      // takes every note in it), so every note in it is owed a retry.
-      for (const noteId of noteIds) this.owePendingPull(noteId)
-      // One undecryptable update aborts the remaining notes in the pass —
-      // engine-level sync_run_completed still reports success without this.
-      if (!this.applyFailureReported.has('__batch__')) {
-        this.applyFailureReported.add('__batch__')
-        trackMainError('sync', 'crdt_apply_failed', err)
-      }
     } finally {
       // Before the docs are closed, so the store is still the one these
-      // watermarks describe.
+      // watermarks describe — and per sub-chunk rather than per chunk, so a
+      // later sub-chunk failing cannot lose what an earlier one merged.
       await this.flushWatermarks()
       for (const noteId of syncOpenedNoteIds) {
         await crdtProvider.closeIfInactive(noteId)
@@ -1085,30 +1172,31 @@ export class CrdtSyncCoordinator {
    * incrementals), which is what turned a 121-note sweep into 242 requests in
    * about four seconds. This path shares one incrementals POST across the whole
    * group, so the same 121 notes cost roughly 125 requests — the snapshot
-   * baselines are still one GET per note inside `applyCrdtBatch`, so this halves
-   * the traffic rather than collapsing it to a handful of calls. Pacing, not
-   * batching, is what actually keeps a sweep under the limit; see
-   * CRDT_SWEEP_CHUNK_NOTES.
+   * baselines are still one GET per note inside `applyCrdtBatch` whenever a
+   * baseline is actually needed, so on a cold group this halves the traffic
+   * rather than collapsing it to a handful of calls. A warm group costs one
+   * probe POST and nothing else. Pacing, not batching, is what actually keeps a
+   * sweep under the limit; see CRDT_SWEEP_CHUNK_NOTES.
    *
    * Credentials are resolved once per group instead of once per note, which also
    * removes a keychain read per note. A group that cannot get them is owed a
    * retry rather than dropped: the sweep hands this method the whole vault, so
    * silently returning would strand every stale body until the next sweep.
    */
-  async pullCrdtForNotes(noteIds: string[], signal?: AbortSignal): Promise<void> {
-    if (noteIds.length === 0) return
+  async pullCrdtForNotes(noteIds: string[], signal?: AbortSignal): Promise<CrdtPullCost> {
+    if (noteIds.length === 0) return noCost()
     log.debug('pullCrdtForNotes entered', { count: noteIds.length })
 
     const token = await this.ctx.deps.getAccessToken()
     if (!token) {
       for (const noteId of noteIds) this.owePendingPull(noteId)
-      return
+      return noCost()
     }
 
     const vaultKey = await this.ctx.deps.getVaultKey()
     if (!vaultKey) {
       for (const noteId of noteIds) this.owePendingPull(noteId)
-      return
+      return noCost()
     }
 
     // A caller that can outlive this group passes its own signal: the paced
@@ -1118,8 +1206,12 @@ export class CrdtSyncCoordinator {
     // never fires, which is the behaviour the engine's own controller gave.
     const effectiveSignal = signal ?? new AbortController().signal
     try {
-      await this.applyCrdtBatch(noteIds, token, vaultKey, effectiveSignal)
-      log.debug('pullCrdtForNotes completed', { count: noteIds.length })
+      const cost = await this.applyCrdtBatch(noteIds, token, vaultKey, effectiveSignal)
+      log.debug('pullCrdtForNotes completed', { count: noteIds.length, ...cost })
+      // What this group actually spent, per bucket. The paced sweep charges its
+      // next interval against it — see `crdtSweepChunkDelayMs`. Every other
+      // caller (the un-paced priority batch) discards it.
+      return cost
     } finally {
       secureCleanup(vaultKey)
     }

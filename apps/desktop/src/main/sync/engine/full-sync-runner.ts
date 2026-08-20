@@ -10,6 +10,7 @@ import {
   CRDT_RECONNECT_SWEEP_FLOOR_MS,
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
+  crdtSweepChunkDelayMs,
   SYNC_STATE_KEYS
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -503,9 +504,13 @@ export class FullSyncRunner {
       }
 
       if (priority.length > 0) {
-        this.actions.scheduleSync(() =>
-          this.crdtSync.pullCrdtForNotes(priority, this.sweepPullSignal())
-        )
+        this.actions.scheduleSync(async () => {
+          // Its cost is deliberately discarded: this batch jumps the pace by
+          // design — the note the user is looking at must not wait behind a
+          // catch-up — and it is bounded by the number of open editors, which
+          // is what the other half of each bucket's margin is reserved for.
+          await this.crdtSync.pullCrdtForNotes(priority, this.sweepPullSignal())
+        })
       }
     }
 
@@ -536,13 +541,13 @@ export class FullSyncRunner {
       return
     }
 
-    // Never hand `applyCrdtBatch` more notes than the provider can hold open at
-    // once: it would split the chunk internally and spend an extra batch POST
-    // doing so, which is exactly the request the pacing arithmetic budgets for.
-    const chunkSize = Math.max(
-      1,
-      Math.min(CRDT_SWEEP_CHUNK_NOTES, crdtProvider.inactiveDocCapacity)
-    )
+    // The PROBE's size, not the apply phase's. One `POST /sync/crdt/updates/batch`
+    // covers the whole chunk without opening a document, so the doc cache does
+    // not bound it — `applyCrdtBatch` sub-chunks the apply phase at
+    // `inactiveDocCapacity` itself, which is where that bound belongs. Clamping
+    // here to the doc cache instead would spend one probe POST per 32 notes,
+    // and the probe POST is the entire cost of a warm sweep.
+    const chunkSize = Math.max(1, CRDT_SWEEP_CHUNK_NOTES)
     const chunk: string[] = []
     for (const noteId of this.pacedCrdtPullQueue) {
       if (chunk.length >= chunkSize) break
@@ -557,8 +562,21 @@ export class FullSyncRunner {
 
     this.pacedCrdtChunkInFlight = true
     this.actions.scheduleSync(async () => {
+      // The floor covers the throw: a chunk that failed part-way still spent
+      // whatever it spent, and the count is lost with the rejection. Waiting the
+      // minimum is the conservative reading, and every note in it is owed to the
+      // next cycle anyway.
+      let delayMs = CRDT_SWEEP_CHUNK_INTERVAL_MS
       try {
-        await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal())
+        // The interval is CHARGED, not fixed. A warm chunk of 100 costs one
+        // probe POST and waits 4 s; the same 100 notes cold cost 100 snapshot
+        // GETs and four apply rounds and wait 20 s. One constant cannot be
+        // right for both, and the client cannot know which it is in until the
+        // chunk has run — that is what the probe is for. See
+        // `crdtSweepChunkDelayMs` for the full derivation.
+        delayMs = crdtSweepChunkDelayMs(
+          await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal())
+        )
       } finally {
         // Re-arm from the chunk's completion, not from when it was issued, so a
         // slow chunk stretches the interval instead of overlapping the next one.
@@ -566,18 +584,23 @@ export class FullSyncRunner {
         // queue: they are owed to the next cycle, deliberately, because retrying
         // them here would just re-run into whatever refused them.
         this.pacedCrdtChunkInFlight = false
-        this.armPacedCrdtPullTimer()
+        this.armPacedCrdtPullTimer(delayMs)
       }
     })
   }
 
-  private armPacedCrdtPullTimer(): void {
+  /**
+   * `delayMs` defaults to the floor, which is what the blocked-drain path wants:
+   * offline, or a fullSync holding `scheduleSync`, spent no request budget, so
+   * it only needs to look again soon.
+   */
+  private armPacedCrdtPullTimer(delayMs: number = CRDT_SWEEP_CHUNK_INTERVAL_MS): void {
     if (this.pacedCrdtPullTimer || this.pacedCrdtPullQueue.size === 0) return
 
     this.pacedCrdtPullTimer = setTimeout(() => {
       this.pacedCrdtPullTimer = null
       this.pumpPacedCrdtPulls()
-    }, CRDT_SWEEP_CHUNK_INTERVAL_MS)
+    }, delayMs)
     this.pacedCrdtPullTimer.unref?.()
   }
 }
