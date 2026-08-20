@@ -31,6 +31,7 @@ interface FakeSnapshotRow {
   size_bytes: number
   signer_device_id: string
   created_at: number
+  revision: string
 }
 
 interface PreparedCall {
@@ -107,17 +108,19 @@ function createD1Database(): D1Database {
             return { sequence_num: row.sequence_num } as T
           }
 
-          if (
-            sql.startsWith('SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots')
-          ) {
+          if (sql.startsWith('SELECT id, blob_key, sequence_num, signer_device_id')) {
             const row = snapshots.get(
               snapshotKey(params[0] as string, params[1] as string, params[2] as string)
             )
             if (!row) return null
             return {
+              id: row.id,
               blob_key: row.blob_key,
               sequence_num: row.sequence_num,
-              signer_device_id: row.signer_device_id
+              signer_device_id: row.signer_device_id,
+              created_at: row.created_at,
+              size_bytes: row.size_bytes,
+              revision: row.revision
             } as T
           }
 
@@ -156,11 +159,20 @@ function createD1Database(): D1Database {
             return { results: rows as T[] }
           }
 
+          if (sql.startsWith('SELECT id, note_id, sequence_num, revision')) {
+            const [userId, vaultId, ...noteIds] = params as string[]
+            const rows = noteIds
+              .map((noteId) => snapshots.get(snapshotKey(userId, vaultId, noteId)))
+              .filter((row): row is FakeSnapshotRow => row !== undefined)
+            return { results: rows as T[] }
+          }
+
           return { results: [] as T[] }
         },
         async run() {
           if (sql.startsWith('INSERT INTO crdt_snapshots')) {
-            const row: FakeSnapshotRow = {
+            const key = snapshotKey(params[1] as string, params[2] as string, params[3] as string)
+            const incoming: FakeSnapshotRow = {
               id: params[0] as string,
               user_id: params[1] as string,
               vault_id: params[2] as string,
@@ -169,9 +181,39 @@ function createD1Database(): D1Database {
               sequence_num: params[5] as number,
               size_bytes: params[6] as number,
               signer_device_id: params[7] as string,
-              created_at: params[8] as number
+              created_at: params[8] as number,
+              revision: params[9] as string
             }
-            snapshots.set(snapshotKey(row.user_id, row.vault_id, row.note_id), row)
+
+            const existing = snapshots.get(key)
+            if (!existing) {
+              snapshots.set(key, incoming)
+              return { meta: { changes: 1 } }
+            }
+
+            // On conflict SQLite applies ONLY the columns named in DO UPDATE SET,
+            // and `id` is deliberately not one of them. Modelling the clause
+            // rather than overwriting the whole row is what lets the revision-bump
+            // assertion actually fail: a SET clause that forgets `revision` leaves
+            // the stored one behind, which is the failure this token exists to
+            // prevent.
+            const setClause = sql.slice(sql.indexOf('DO UPDATE SET'))
+            const updated: FakeSnapshotRow = { ...existing }
+            const target = updated as unknown as Record<string, unknown>
+            const source = incoming as unknown as Record<string, unknown>
+            for (const column of [
+              'blob_key',
+              'sequence_num',
+              'size_bytes',
+              'signer_device_id',
+              'created_at',
+              'revision'
+            ]) {
+              if (setClause.includes(`${column} = excluded.${column}`)) {
+                target[column] = source[column]
+              }
+            }
+            snapshots.set(key, updated)
             return { meta: { changes: 1 } }
           }
 
@@ -373,16 +415,148 @@ describe('CRDT service sequencing', () => {
       2
     )
 
-    expect(result['note-1'].hasMore).toBe(true)
-    expect(result['note-1'].updates.map((update) => update.sequence_num)).toEqual([1, 2])
-    expect(result['note-2'].hasMore).toBe(false)
-    expect(result['note-2'].updates.map((update) => update.sequence_num)).toEqual([1])
+    expect(result.notes['note-1'].hasMore).toBe(true)
+    expect(result.notes['note-1'].updates.map((update) => update.sequence_num)).toEqual([1, 2])
+    expect(result.notes['note-2'].hasMore).toBe(false)
+    expect(result.notes['note-2'].updates.map((update) => update.sequence_num)).toEqual([1])
   })
 
   it('returns an empty batch result when no notes are requested', async () => {
     const db = createD1Database()
 
-    await expect(getBatchUpdates(db, 'user-1', 'vault-1', [], 10)).resolves.toEqual({})
+    await expect(getBatchUpdates(db, 'user-1', 'vault-1', [], 10)).resolves.toEqual({
+      notes: {},
+      snapshotMeta: {}
+    })
+  })
+
+  it('assigns a revision on the first snapshot for a note', async () => {
+    // #given
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    // #when
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-a', bytes('snap-a'))
+
+    // #then a real token, not the '' the column defaults to and not the legacy fallback
+    const snapshot = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+    expect(snapshot?.revision).toEqual(expect.any(String))
+    expect(snapshot?.revision).not.toBe('')
+    expect(snapshot?.revision.startsWith('legacy:')).toBe(false)
+  })
+
+  // FM1. A revision that fails to move when the blob does is the whole design's
+  // central risk: the client skips a snapshot it needed and keeps a stale body
+  // forever. The replacement path is where it goes wrong, because the row already
+  // exists and `sequence_num` is deliberately PINNED across it — so the revision
+  // is the only thing left that can say "this changed".
+  it('assigns a NEW revision when a snapshot is replaced, even though the sequence stays pinned', async () => {
+    // #given a note with a snapshot already stored
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    await storeUpdates(db, 'user-1', 'vault-1', 'note-1', 'device-a', [bytes('a1')])
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-a', bytes('snap-a'))
+    const first = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+
+    // #when the blob is replaced through the ON CONFLICT path
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-b', bytes('snap-b'))
+    const second = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+
+    // #then the revision moved
+    expect(second?.revision).not.toBe(first?.revision)
+    expect(second?.revision).not.toBe('')
+
+    // #and the sequence number did NOT, which is exactly why it cannot be the token
+    expect(second?.sequenceNum).toBe(first?.sequenceNum)
+    expect(new TextDecoder().decode(second!.snapshotData)).toBe('snap-b')
+  })
+
+  it('advertises on the batch pull the same revision the snapshot read returns', async () => {
+    // #given two notes with snapshots and a third with none
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-1', 'device-a', bytes('snap-1'))
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-2', 'device-b', bytes('snap-2'))
+
+    // #when the batch pull names all three
+    const result = await getBatchUpdates(
+      db,
+      'user-1',
+      'vault-1',
+      [
+        { noteId: 'note-1', since: 0 },
+        { noteId: 'note-2', since: 0 },
+        { noteId: 'note-3', since: 0 }
+      ],
+      10
+    )
+
+    // #then the metadata matches the per-note read a client would otherwise make
+    const snapshot1 = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+    expect(result.snapshotMeta['note-1']).toEqual({
+      sequenceNum: snapshot1!.sequenceNum,
+      revision: snapshot1!.revision,
+      signerDeviceId: 'device-a'
+    })
+    expect(result.snapshotMeta['note-2'].signerDeviceId).toBe('device-b')
+
+    // #and a note the server has no snapshot for is simply absent
+    expect(result.snapshotMeta['note-3']).toBeUndefined()
+    expect(result.notes['note-3']).toEqual({ updates: [], hasMore: false })
+  })
+
+  // Rows written before the column existed carry '' — the migration deliberately
+  // does not backfill. Both read paths must coalesce to the SAME string, or a
+  // client comparing what it merged from the GET against what the batch
+  // advertises would re-download every legacy snapshot forever.
+  it('coalesces a pre-migration row to the same legacy revision on both read paths', async () => {
+    // #given a row the old server wrote, so revision is the column default
+    const legacyRow = {
+      id: 'snap-legacy',
+      note_id: 'note-1',
+      blob_key: 'user-1/vaults/vault-1/crdt/note-1/snapshot',
+      sequence_num: 7,
+      signer_device_id: 'device-a',
+      created_at: 1_700_000_000,
+      size_bytes: 42,
+      revision: ''
+    }
+    const db = {
+      prepare(sql: string) {
+        const prepared = {
+          bind: () => prepared,
+          async first() {
+            return sql.startsWith('SELECT id, blob_key, sequence_num, signer_device_id')
+              ? legacyRow
+              : null
+          },
+          async all() {
+            return {
+              results: sql.startsWith('SELECT id, note_id, sequence_num, revision')
+                ? [legacyRow]
+                : []
+            }
+          }
+        }
+        return prepared as unknown as D1PreparedStatement
+      },
+      async batch(statements: D1PreparedStatement[]) {
+        return Promise.all(statements.map((statement) => statement.all()))
+      }
+    } as unknown as D1Database
+
+    const storage = createMemoryBucket()
+    await storage.put(legacyRow.blob_key, bytes('legacy'))
+
+    // #when both paths read it
+    const snapshot = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
+    const batch = await getBatchUpdates(db, 'user-1', 'vault-1', [{ noteId: 'note-1', since: 0 }], 10)
+
+    // #then the token is derived from the row and is identical across them
+    expect(snapshot?.revision).toBe('legacy:snap-legacy:1700000000:42')
+    expect(batch.snapshotMeta['note-1'].revision).toBe(snapshot?.revision)
   })
 
   it('returns null when a snapshot row or object is missing', async () => {

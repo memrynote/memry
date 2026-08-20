@@ -1250,20 +1250,25 @@ describe('sync routes', () => {
 
     it('returns encoded batch CRDT updates', async () => {
       vi.mocked(getBatchUpdates).mockResolvedValueOnce({
-        note_1: {
-          updates: [
-            {
-              id: 'update-8',
-              user_id: 'user-1',
-              vault_id: 'vault-1',
-              note_id: 'note_1',
-              sequence_num: 8,
-              update_data: bytes('batch'),
-              signer_device_id: 'device-2',
-              created_at: 222
-            }
-          ],
-          hasMore: false
+        notes: {
+          note_1: {
+            updates: [
+              {
+                id: 'update-8',
+                user_id: 'user-1',
+                vault_id: 'vault-1',
+                note_id: 'note_1',
+                sequence_num: 8,
+                update_data: bytes('batch'),
+                signer_device_id: 'device-2',
+                created_at: 222
+              }
+            ],
+            hasMore: false
+          }
+        },
+        snapshotMeta: {
+          note_1: { sequenceNum: 4, revision: 'rev-1', signerDeviceId: 'device-2' }
         }
       })
 
@@ -1291,6 +1296,12 @@ describe('sync routes', () => {
             ],
             hasMore: false
           }
+        },
+        // Additive top-level key. A client that gets no `snapshotMeta` at all is
+        // talking to a server that predates it; a note absent from a present map
+        // has no server snapshot.
+        snapshotMeta: {
+          note_1: { sequenceNum: 4, revision: 'rev-1', signerDeviceId: 'device-2' }
         }
       })
       expect(getBatchUpdates).toHaveBeenCalledWith(
@@ -1484,14 +1495,20 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(await res.json()).toEqual({ snapshot: null, sequenceNum: 0, signerDeviceId: null })
+      expect(await res.json()).toEqual({
+        snapshot: null,
+        sequenceNum: 0,
+        signerDeviceId: null,
+        revision: null
+      })
     })
 
     it('returns encoded CRDT snapshots and validates snapshot ids', async () => {
       vi.mocked(getSnapshot).mockResolvedValueOnce({
         snapshotData: bytes('snapshot'),
         sequenceNum: 20,
-        signerDeviceId: 'device-2'
+        signerDeviceId: 'device-2',
+        revision: 'rev-1'
       })
 
       let res = await app.request(
@@ -1502,10 +1519,13 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
+      // The revision the client just merged, so the next batch pull can tell it
+      // this baseline is still current.
       expect(await res.json()).toEqual({
         snapshot: btoa('snapshot'),
         sequenceNum: 20,
-        signerDeviceId: 'device-2'
+        signerDeviceId: 'device-2',
+        revision: 'rev-1'
       })
 
       res = await app.request(

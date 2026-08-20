@@ -51,7 +51,40 @@ interface CrdtSnapshot {
   size_bytes: number
   signer_device_id: string
   created_at: number
+  revision: string
 }
+
+/**
+ * What a client needs to decide whether the server's snapshot for a note moved,
+ * without downloading it.
+ */
+export interface CrdtSnapshotMeta {
+  sequenceNum: number
+  revision: string
+  signerDeviceId: string
+}
+
+interface SnapshotRevisionRow {
+  id: string
+  created_at: number
+  size_bytes: number
+  revision: string
+}
+
+/**
+ * Rows written before `revision` existed carry '' (the column default; the
+ * migration deliberately does not backfill). They coalesce at READ time to a
+ * token derived from the row itself: `id` is never rewritten by the upsert, so
+ * it discriminates a deleted-and-recreated row, while `created_at` and
+ * `size_bytes` move whenever the blob is replaced.
+ *
+ * Both read paths -- `getSnapshot` and the batch metadata read -- must produce
+ * the SAME string for the same row, or a client comparing the token it merged
+ * from the GET against the token the batch advertises would never match, and
+ * would re-download every legacy snapshot forever.
+ */
+const coalesceRevision = (row: SnapshotRevisionRow): string =>
+  row.revision !== '' ? row.revision : `legacy:${row.id}:${row.created_at}:${row.size_bytes}`
 
 const getMaxSequenceNumber = async (
   db: D1Database,
@@ -159,14 +192,38 @@ export const getUpdates = async (
   }
 }
 
+/**
+ * The one statement that reads snapshot metadata for a whole batch of notes.
+ *
+ * Handed back as a prepared statement rather than executed here so
+ * `getBatchUpdates` can append it to the `db.batch()` it already sends: this is
+ * one extra statement on an existing round trip, not a second round trip.
+ */
+const getBatchSnapshotMeta = (
+  db: D1Database,
+  userId: string,
+  vaultId: string,
+  noteIds: string[]
+): D1PreparedStatement =>
+  db
+    .prepare(
+      `SELECT id, note_id, sequence_num, revision, created_at, size_bytes, signer_device_id
+       FROM crdt_snapshots
+       WHERE user_id = ? AND vault_id = ? AND note_id IN (${noteIds.map(() => '?').join(', ')})`
+    )
+    .bind(userId, vaultId, ...noteIds)
+
 export const getBatchUpdates = async (
   db: D1Database,
   userId: string,
   vaultId: string,
   notes: Array<{ noteId: string; since: number }>,
   limitPerNote: number
-): Promise<Record<string, { updates: CrdtUpdate[]; hasMore: boolean }>> => {
-  if (notes.length === 0) return {}
+): Promise<{
+  notes: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }>
+  snapshotMeta: Record<string, CrdtSnapshotMeta>
+}> => {
+  if (notes.length === 0) return { notes: {}, snapshotMeta: {} }
 
   const statements = notes.map((n) =>
     db
@@ -175,18 +232,39 @@ export const getBatchUpdates = async (
       )
       .bind(userId, vaultId, n.noteId, n.since, limitPerNote + 1)
   )
+  statements.push(
+    getBatchSnapshotMeta(
+      db,
+      userId,
+      vaultId,
+      notes.map((n) => n.noteId)
+    )
+  )
 
   const batchResults = await db.batch(statements)
 
-  const result: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }> = {}
+  const noteResults: Record<string, { updates: CrdtUpdate[]; hasMore: boolean }> = {}
   for (let i = 0; i < notes.length; i++) {
     const rows = (batchResults[i] as D1Result<CrdtUpdate>).results ?? []
-    result[notes[i].noteId] = {
+    noteResults[notes[i].noteId] = {
       updates: rows.slice(0, limitPerNote),
       hasMore: rows.length > limitPerNote
     }
   }
-  return result
+
+  // A note absent from this map has no server snapshot at all.
+  const snapshotMeta: Record<string, CrdtSnapshotMeta> = {}
+  const metaRows =
+    (batchResults[notes.length] as D1Result<CrdtSnapshot> | undefined)?.results ?? []
+  for (const row of metaRows) {
+    snapshotMeta[row.note_id] = {
+      sequenceNum: row.sequence_num,
+      revision: coalesceRevision(row),
+      signerDeviceId: row.signer_device_id
+    }
+  }
+
+  return { notes: noteResults, snapshotMeta }
 }
 
 export const storeSnapshot = async (
@@ -199,6 +277,11 @@ export const storeSnapshot = async (
   snapshotData: ArrayBuffer
 ): Promise<{ sequenceNum: number }> => {
   const id = crypto.randomUUID()
+  // Fresh on EVERY write, insert and conflict alike, and never conditional on
+  // whether the bytes look different. A revision that fails to move when the
+  // blob does leaves a client skipping a snapshot it needed, with a stale body
+  // forever -- the one failure this token exists to prevent.
+  const revision = crypto.randomUUID()
   const now = Math.floor(Date.now() / 1000)
   const blobKey = generateCrdtKey(userId, noteId, vaultId)
   const currentSeq = await getMaxSequenceNumber(db, userId, vaultId, noteId)
@@ -227,10 +310,10 @@ export const storeSnapshot = async (
 
     await db
       .prepare(
-        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (user_id, vault_id, note_id)
-         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at`
+         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision`
       )
       .bind(
         id,
@@ -241,7 +324,8 @@ export const storeSnapshot = async (
         sequenceNum,
         snapshotData.byteLength,
         signerDeviceId,
-        now
+        now,
+        revision
       )
       .run()
   } catch (error) {
@@ -266,13 +350,20 @@ export const getSnapshot = async (
   userId: string,
   vaultId: string,
   noteId: string
-): Promise<{ snapshotData: ArrayBuffer; sequenceNum: number; signerDeviceId: string } | null> => {
+): Promise<{
+  snapshotData: ArrayBuffer
+  sequenceNum: number
+  signerDeviceId: string
+  revision: string
+} | null> => {
   const row = await db
     .prepare(
-      'SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?'
+      'SELECT id, blob_key, sequence_num, signer_device_id, created_at, size_bytes, revision FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?'
     )
     .bind(userId, vaultId, noteId)
-    .first<{ blob_key: string; sequence_num: number; signer_device_id: string }>()
+    .first<
+      SnapshotRevisionRow & { blob_key: string; sequence_num: number; signer_device_id: string }
+    >()
 
   if (!row) return null
 
@@ -282,7 +373,12 @@ export const getSnapshot = async (
   if (!obj) return null
 
   const snapshotData = await obj.arrayBuffer()
-  return { snapshotData, sequenceNum: row.sequence_num, signerDeviceId: row.signer_device_id }
+  return {
+    snapshotData,
+    sequenceNum: row.sequence_num,
+    signerDeviceId: row.signer_device_id,
+    revision: coalesceRevision(row)
+  }
 }
 
 export const pruneUpdatesBeforeSnapshot = async (

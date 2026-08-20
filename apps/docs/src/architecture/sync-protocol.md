@@ -548,9 +548,9 @@ list.
 | `POST /sync/pull`                 | down      | Fetch updates since cursor                                                       |
 | `POST /sync/crdt/updates`         | up        | Incremental Yjs binary updates                                                   |
 | `GET /sync/crdt/updates`          | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)        |
-| `POST /sync/crdt/updates/batch`   | down      | Incremental updates for up to 100 notes in one request; never snapshot baselines |
+| `POST /sync/crdt/updates/batch`   | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`      |
 | `POST /sync/crdt/snapshot`        | up        | Full Yjs document baseline; prunes the note's stored updates at or below it      |
-| `GET /sync/crdt/snapshot/:noteId` | down      | The note's snapshot baseline, applied before its incrementals                    |
+| `GET /sync/crdt/snapshot/:noteId` | down      | The note's snapshot baseline and its `revision`, applied before its incrementals |
 | `GET /sync/vaults`                | down      | List the account's registered vaults                                             |
 | `POST /sync/vaults`               | up        | Register or update a vault's encrypted name                                      |
 | `POST /auth/*`                    | mixed     | OTP, sign-in, refresh, sign-out                                                  |
@@ -564,6 +564,31 @@ moves metadata only. A device reads a body by applying the baseline from
 `POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
 request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
 per note and dominate a first-sync sweep's request count.
+
+### Snapshot revisions
+
+A snapshot baseline carries a `revision`: an opaque token the server replaces on every snapshot
+write, so a client can tell whether the server's baseline moved without downloading it.
+
+- `GET /sync/crdt/snapshot/:noteId` returns `revision` alongside `snapshot`, `sequenceNum` and
+  `signerDeviceId`, so a device learns the token for the baseline it just merged. When the note has
+  no server snapshot the response is `{ snapshot: null, sequenceNum: 0, signerDeviceId: null, revision: null }`.
+- `POST /sync/crdt/updates/batch` returns a top-level `snapshotMeta` map beside `notes`:
+  `{ "<noteId>": { "sequenceNum": 42, "revision": "…", "signerDeviceId": "…" } }`. A note absent from
+  a present map has no server snapshot at all; an absent `snapshotMeta` key means the server predates
+  this field.
+
+The token is deliberately not `sequenceNum`. A replacement snapshot keeps the note's existing
+sequence number so later incrementals stay pullable, so the number does not move when the blob does.
+It is random per write rather than a counter, so a row deleted and recreated — vault deletion,
+account recreation — cannot reuse a token a client still holds.
+
+Rows written before the field existed are not backfilled; the server derives a deterministic token
+for them at read time from the row's identity, creation time and size, and the next snapshot push
+replaces it with a real one. Both read paths return the same token for the same row.
+
+Both fields are additive: an older client reads these responses through an unvalidated cast and
+ignores the extra keys.
 
 Pushing a snapshot is an assertion, not just a write: once the snapshot is stored,
 `pruneUpdatesBeforeSnapshot` deletes every `crdt_updates` row for that note at or below the
