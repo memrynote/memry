@@ -64,6 +64,7 @@ import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { useT } from '@memry/i18n/renderer'
+import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
 
 // ============================================================================
 // Types
@@ -500,7 +501,9 @@ function FolderRow({
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => onFolderRenameSubmit?.(item.folder.path)}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => onFolderRenameSubmit?.(item.folder.path))
+              }
               onClick={(e) => e.stopPropagation()}
               disabled={isFolderRenaming}
               className={RENAME_INPUT_CLASS}
@@ -804,7 +807,9 @@ function NoteRow({
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => onRenameSubmit?.(item.note.id, item.note.path)}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => onRenameSubmit?.(item.note.id, item.note.path))
+              }
               onClick={(e) => e.stopPropagation()}
               disabled={isRenaming}
               className={RENAME_INPUT_CLASS}

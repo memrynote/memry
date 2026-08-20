@@ -45,6 +45,7 @@ import {
   type FolderNode
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
 import { cn } from '@/lib/utils'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import type { NoteListItem } from '@/hooks/use-notes-query'
@@ -427,7 +428,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => void actions.handleRenameSubmit(note.id, note.path)}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => void actions.handleRenameSubmit(note.id, note.path))
+              }
               onClick={(e) => e.stopPropagation()}
               disabled={actions.isRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
@@ -549,7 +552,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => void actions.handleFolderRenameSubmit(folder.path)}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => void actions.handleFolderRenameSubmit(folder.path))
+              }
               onClick={(e) => e.stopPropagation()}
               disabled={actions.isFolderRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
