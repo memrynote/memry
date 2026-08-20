@@ -147,6 +147,12 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 
 The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
 
+### The restore goes first
+
+Saving is held until the stored session has been read back. Before that, a slow launch could let the first automatic save run while the window was still showing its opening Home tab, which wrote that single tab over the session waiting in storage — the restore then had nothing left to bring back, and you arrived at a Home tab even if you had closed Home before quitting. Pinned tabs went the same way, since they live in the same stored layout.
+
+The launches most likely to hit it were the slow ones: a large vault, the first open after an update, a cold start on a busy machine. That is also why it tended to show up more often over time rather than all at once. Nothing about your stored layout was ever corrupted, so no cleanup is needed — the first launch after updating restores the session you last quit with.
+
 ### Scroll Position
 
 Note tabs — including the template editor and release-notes tabs — remember where you were reading. Switch to another tab and back, or restart with **Restore Session** on, and the note returns to the same place.

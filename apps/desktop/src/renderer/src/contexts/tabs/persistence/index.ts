@@ -17,4 +17,9 @@ export type { SyncSaveFailure, SyncSaveResult } from './storage'
 export { migratePersistedState, needsMigration, getMigrationDescription } from './migrations'
 
 // Hooks
-export { useTabPersistence, useSessionRestore, useManualPersistence } from './hooks'
+export {
+  useTabPersistence,
+  useSessionRestore,
+  useTabSessionPersistence,
+  useManualPersistence
+} from './hooks'
