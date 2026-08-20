@@ -170,11 +170,11 @@ builds. The allowlist is enforced on the client, where the data still is.
 An event that reports a failed HTTP request may also carry a `failure` object
 (`TelemetryFailureDetailSchema`) with three bounded fields:
 
-| Field        | Shape                                        | PostHog property |
-| ------------ | -------------------------------------------- | ---------------- |
-| `httpStatus` | integer 100–599                              | `http_status`    |
-| `serverCode` | the server's `SCREAMING_SNAKE` `error.code`  | `server_code`    |
-| `retryable`  | boolean — was the failure classified retryable | `retryable`     |
+| Field        | Shape                                          | PostHog property |
+| ------------ | ---------------------------------------------- | ---------------- |
+| `httpStatus` | integer 100–599                                | `http_status`    |
+| `serverCode` | the server's `SCREAMING_SNAKE` `error.code`    | `server_code`    |
+| `retryable`  | boolean — was the failure classified retryable | `retryable`      |
 
 This exists because `sync_error` used to ship one opaque `server_error` label covering 400, 403,
 404, 409 and every 5xx alike (#1584): a permanent client-side contract bug and a transient edge 5xx
@@ -269,7 +269,7 @@ offline quit never stalls the exit.
 | Voice           | `voice_recording_completed` (duration + bytes), `transcription_completed` (success/failure + processing duration)                                                                                                                |
 | Settings        | `setting_changed` — surface only, never the value                                                                                                                                                                                |
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
-| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request))                                                                                           |
+| Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request))                                                                                          |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
@@ -835,6 +835,21 @@ reason, phase, mode, status, kind, result`, plus numeric metric keys like
   separate one laptop on a train from many installs failing in a row. An install that has not
   completed a single check in 24 hours _and_ has failed at least 6 checks in that time raises one
   exception (latched until the next successful check), so a genuinely stuck updater is still loud.
+- **Expired GitHub signed asset URLs**: GitHub serves a release asset by redirecting to a
+  short-lived signed `release-assets.githubusercontent.com` URL. When the follow-up GET lands after
+  that token expires, GitHub answers with the non-standard status **618 `jwt:expired`**, and
+  electron-updater has no retry on that path — `builder-util-runtime`'s `retryOnServerError` is
+  never called there, and its `isServerError()` covers `500-599`, so it would not match a 618
+  anyway. One expired token therefore lost the whole update check (36 production exceptions across
+  four releases, all in the `check` phase). The token is minted fresh on each redirect, so
+  `checkForUpdates()` now retries twice, two seconds apart, on a 618 — or a 403 whose URL is the
+  signed-asset host, host-gated so an unrelated 403 is never retried into a loop
+  (`isExpiredSignedAssetError` in `apps/desktop/src/main/updater-error-severity.ts`). Only the
+  attempt that still fails reaches the `error` handler: a recovered check does not flip the update
+  surface to an error, does not advance the stuck-updater streak, and ships one
+  `app_log_recorded` `warn` (`update check hit an expired release-asset url, retrying`) instead of
+  an exception. A 618 that survives every retry is reported exactly as before — the severity
+  classification above is unchanged.
 - **Process lifecycle**: the main process reports a `child-process-gone` fault with a composite
   `type:reason:name` error code (e.g. `Utility:crashed:Embeddings`). The worker label comes from
   Electron's `details.name`, **not** `details.serviceName`: Electron routes a fork's `serviceName`

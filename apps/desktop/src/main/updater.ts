@@ -13,6 +13,7 @@ import { trackMainEvent } from './telemetry/track'
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 import {
   classifyUpdaterError,
+  isExpiredSignedAssetError,
   isUpdaterCheckPhase,
   recordUpdaterCheckFailure,
   recordUpdaterCheckSuccess,
@@ -184,6 +185,27 @@ function currentErrorPhase(): UpdaterErrorPhase {
   }
 }
 
+/**
+ * Extra attempts for a check that died on an expired GitHub signed-asset URL,
+ * and the pause before each. A check is three small GETs, so asking again is
+ * cheap; the delay is there because the expiry is a timing race, not a state we
+ * can observe. Bounded at two so a genuinely refused asset still fails within
+ * seconds instead of retrying forever.
+ */
+const SIGNED_ASSET_RETRY_ATTEMPTS = 2
+const SIGNED_ASSET_RETRY_DELAY_MS = 2_000
+
+/**
+ * Retries still available for the in-flight check. electron-updater emits its
+ * `error` event *before* checkForUpdates() rejects, so without this the first
+ * attempt would already have flipped the UI to `error` and shipped an exception
+ * for a failure we are about to recover from. Zero whenever no check is running,
+ * so a download- or install-phase failure is never suppressed.
+ */
+let signedAssetRetriesLeft = 0
+
+const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
 let initialized = false
 let activeCheck: Promise<AppUpdateState> | null = null
 let activeDownload: Promise<AppUpdateState> | null = null
@@ -326,6 +348,22 @@ export function initializeUpdater(): void {
     const message =
       error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
     const phase = currentErrorPhase()
+    // An expired signed release-asset URL is a token that aged out mid-redirect,
+    // not a broken update. runUpdateCheck() is about to ask GitHub again for a
+    // fresh one, so leave the user-facing state and the telemetry alone —
+    // surfacing a failure we then recover from is the noise, not the signal.
+    if (
+      signedAssetRetriesLeft > 0 &&
+      isUpdaterCheckPhase(phase) &&
+      isExpiredSignedAssetError(error)
+    ) {
+      logger.warn(
+        'update check hit an expired release-asset url, retrying',
+        error,
+        describeUpdaterError(error, phase)
+      )
+      return
+    }
     // The local main.log line and the user-facing state stay at error severity:
     // only the telemetry severity is classified.
     logger.error('updater error', error, describeUpdaterError(error, phase))
@@ -398,14 +436,39 @@ export async function checkForUpdates(options?: {
     return activeCheck
   }
 
-  activeCheck = autoUpdater
-    .checkForUpdates()
+  activeCheck = runUpdateCheck()
     .then(() => getUpdateState())
     .finally(() => {
       activeCheck = null
     })
 
   return activeCheck
+}
+
+/**
+ * Run the check, asking again when GitHub's signed release-asset URL expired
+ * between the redirect and the follow-up GET (status 618, `jwt:expired`).
+ * electron-updater does not retry that itself, so a single aged-out token used
+ * to lose the whole check — 36 production exceptions across four releases, all
+ * in the check phase. Only the final attempt reaches the `error` handler.
+ */
+async function runUpdateCheck(): Promise<void> {
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      signedAssetRetriesLeft = SIGNED_ASSET_RETRY_ATTEMPTS - attempt
+      try {
+        await autoUpdater.checkForUpdates()
+        return
+      } catch (error) {
+        if (signedAssetRetriesLeft <= 0 || !isExpiredSignedAssetError(error)) {
+          throw error
+        }
+        await delay(SIGNED_ASSET_RETRY_DELAY_MS * (attempt + 1))
+      }
+    }
+  } finally {
+    signedAssetRetriesLeft = 0
+  }
 }
 
 export async function downloadUpdate(): Promise<AppUpdateState> {
