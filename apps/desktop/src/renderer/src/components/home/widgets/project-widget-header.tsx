@@ -1,43 +1,8 @@
 import { useCallback, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import { useTasksContext } from '@/contexts/tasks'
-import { ProjectIcon } from '@/components/tasks/project-icon'
-import { FolderKanban } from '@/lib/icons/icon-map'
 import { cn } from '@/lib/utils'
-import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import type { ProjectTabKey } from '@/pages/project/use-project-hub'
 import { PROJECT_TAB_KEYS } from '@/pages/project/project-view-state'
-import { readProjectId } from './project-widget-config'
-
-/**
- * The widget header's name, in place of the static "Project" label. Three project
- * widgets side by side are only distinguishable by this, which is why the frame
- * grew a `Title` slot rather than the widget printing its name in the body.
- */
-export function ProjectWidgetTitle({ config }: WidgetComponentProps): React.JSX.Element {
-  const { t } = useT('common')
-  const { projects } = useTasksContext()
-  const projectId = readProjectId(config)
-  const project = projects.find((candidate) => candidate.id === projectId) ?? null
-
-  return (
-    <span className="flex min-w-0 items-center gap-2">
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        <ProjectIcon
-          icon={project?.icon}
-          color={project?.color}
-          className="size-4"
-          fallback={
-            <FolderKanban className="size-4 text-[var(--text-tertiary)]" aria-hidden="true" />
-          }
-        />
-      </span>
-      <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-        {project?.name ?? t('home.widget.project')}
-      </span>
-    </span>
-  )
-}
 
 interface ProjectWidgetTabsProps {
   active: ProjectTabKey

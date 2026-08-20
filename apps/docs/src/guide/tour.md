@@ -24,6 +24,8 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
+Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders.
+
 The **Notes** tree loads 10,000 notes at a time, most recently modified first. If your vault holds more than that, a footer row under the tree says how many older notes it is not showing and offers **Load more** to pull in the next batch. Notes past the ceiling are never hidden silently — and they stay reachable through search either way.
 
 At the bottom of the sidebar, a footer row holds three controls, left to right:

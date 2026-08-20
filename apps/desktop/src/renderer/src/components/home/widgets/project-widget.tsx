@@ -50,8 +50,7 @@ export function ProjectWidget({ config }: WidgetComponentProps): React.JSX.Eleme
     onOpenProjectPage: openProjectPage
   })
 
-  // Never configured. The config editor is one click away in the widget menu, and
-  // the header already opens it on mount for a freshly added widget.
+  // Never configured: the project picker sits in the widget's header.
   if (!projectId)
     return <WidgetEmptyState icon={FolderKanban} label={t('home.widget.projectNoSelection')} />
 

@@ -5,7 +5,6 @@ import { TasksWidget } from './tasks-widget'
 import { InboxWidget } from './inbox-widget'
 import { FolderWidget } from './folder-widget'
 import { FolderHeaderControls } from './folder-header-controls'
-import { TasksWidgetConfigEditor } from './tasks-widget-config-editor'
 import { TasksHeaderFilter, TasksHeaderCount } from './tasks-header'
 import { InboxHeaderFilter, InboxHeaderCount } from './inbox-header'
 import { InboxWidgetFooter } from './inbox-footer'
@@ -14,8 +13,7 @@ import { CalendarHeaderLabel, CalendarHeaderCount, CalendarFooter } from './cale
 import { JournalWidget } from './journal-widget'
 import { JournalHeaderStreak } from './journal-header'
 import { ProjectWidget } from './project-widget'
-import { ProjectWidgetTitle } from './project-widget-header'
-import { ProjectWidgetConfigEditor } from './project-widget-config-editor'
+import { ProjectWidgetPicker } from './project-widget-picker'
 
 registerWidget({
   type: 'recently-edited',
@@ -42,7 +40,6 @@ registerWidget({
   defaultLayout: { w: 4, h: 4 },
   defaultConfig: { dateRange: 'today' },
   Component: TasksWidget,
-  ConfigEditor: TasksWidgetConfigEditor,
   HeaderFilter: TasksHeaderFilter,
   HeaderCount: TasksHeaderCount
 })
@@ -101,6 +98,5 @@ registerWidget({
   minLayout: { w: 4, h: 3 },
   defaultConfig: { projectId: '' },
   Component: ProjectWidget,
-  Title: ProjectWidgetTitle,
-  ConfigEditor: ProjectWidgetConfigEditor
+  HeaderFilter: ProjectWidgetPicker
 })

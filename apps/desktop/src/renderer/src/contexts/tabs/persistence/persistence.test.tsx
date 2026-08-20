@@ -2,7 +2,12 @@ import { act, render, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useManualPersistence, useSessionRestore, useTabPersistence } from './hooks'
+import {
+  useManualPersistence,
+  useSessionRestore,
+  useTabPersistence,
+  useTabSessionPersistence
+} from './hooks'
 import {
   consumeSyncSaveFailure,
   isQuotaExceededError,
@@ -24,7 +29,19 @@ const mocks = vi.hoisted(() => ({
   unregisterPendingSave: vi.fn(),
   toastError: vi.fn(),
   toastWarning: vi.fn(),
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+  // The restore reads storage only once the flag IPC has answered; holding this
+  // true is how a test stands in for a cold start whose main process is busy.
+  flagsLoading: false,
+  flags: {
+    home: true,
+    inbox: true,
+    journal: true,
+    tasks: true,
+    calendar: true,
+    graph: true,
+    spatialCanvas: true
+  }
 }))
 
 vi.mock('sonner', () => ({
@@ -58,6 +75,16 @@ vi.mock('@/lib/save-registry', () => ({
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => mocks.logger
+}))
+
+vi.mock('@/hooks/use-feature-flags', () => ({
+  useFeatureFlags: () => ({
+    flags: mocks.flags,
+    isLoading: mocks.flagsLoading,
+    error: null,
+    isEnabled: () => true,
+    setFlag: vi.fn()
+  })
 }))
 
 /**
@@ -269,6 +296,48 @@ function SessionRestoreProbe({
 let manualSnapshot: ReturnType<typeof useManualPersistence> | null = null
 function ManualPersistenceProbe({ storage }: { storage: TabStorage }) {
   manualSnapshot = useManualPersistence(storage)
+  return null
+}
+
+/**
+ * What `createInitialState` hands the provider before anything is restored:
+ * one Home tab, in a group whose id has nothing to do with the stored session.
+ */
+const startupState = (): TabSystemState =>
+  ({
+    activeGroupId: 'startup-group',
+    tabGroups: {
+      'startup-group': {
+        id: 'startup-group',
+        activeTabId: 'home-1',
+        tabs: [
+          {
+            id: 'home-1',
+            type: 'home',
+            title: 'Home',
+            icon: 'home',
+            path: '/home',
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false,
+            openedAt: 1,
+            lastAccessedAt: 1
+          }
+        ],
+        isActive: true,
+        back: [],
+        forward: []
+      }
+    },
+    layout: { type: 'leaf', tabGroupId: 'startup-group' },
+    settings: state().settings,
+    recentlyClosed: []
+  }) as TabSystemState
+
+/** Mounts the pair exactly the way `TabPersistenceManager` does at app start. */
+function StartupProbe({ storage, debounceMs }: { storage: TabStorage; debounceMs: number }) {
+  sessionSnapshot = useTabSessionPersistence({ storage, debounceMs })
   return null
 }
 
@@ -746,5 +815,79 @@ describe('tab persistence hooks', () => {
     )
     await act(async () => manualSnapshot?.clear())
     expect(storage.clear).toHaveBeenCalled()
+  })
+})
+
+describe('tab session persistence startup order', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    localStorage.clear()
+    mocks.tabsState = startupState()
+    mocks.flagsLoading = true
+    sessionSnapshot = null
+
+    // Stand in for the reducer: the real provider swaps its default state for
+    // the restored one, which is what the first post-restore save must write.
+    mocks.dispatch.mockImplementation((action: { type: string; payload?: unknown }) => {
+      if (action.type !== 'RESTORE_SESSION') return
+      mocks.tabsState = {
+        ...(mocks.tabsState as TabSystemState),
+        ...(action.payload as Partial<TabSystemState>)
+      } as TabSystemState
+    })
+  })
+
+  afterEach(() => {
+    mocks.flagsLoading = false
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('does not overwrite the stored session while the restore is still gated on feature flags', async () => {
+    const stored = persisted()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    })
+    const tree = () => (
+      <QueryClientProvider client={queryClient}>
+        <StartupProbe storage={localStorageAdapter} debounceMs={25} />
+      </QueryClientProvider>
+    )
+
+    const { rerender } = render(tree())
+
+    // Four debounce windows pass with the flag IPC still unanswered. This gap is
+    // the whole bug: auto-save used to fill it with the Home-only default, and
+    // the restore then read its own damage back as the user's session.
+    act(() => vi.advanceTimersByTime(100))
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual(stored)
+
+    // Flags land; the restore finally gets its read.
+    mocks.flagsLoading = false
+    rerender(tree())
+
+    await waitFor(() =>
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'RESTORE_SESSION' })
+      )
+    )
+
+    const restoreCall = mocks.dispatch.mock.calls.find(
+      (call) => call[0]?.type === 'RESTORE_SESSION'
+    )
+    const payload = restoreCall?.[0].payload as Partial<TabSystemState> | undefined
+    expect(payload?.tabGroups?.['group-1'].tabs.map((item) => item.id)).toEqual(['pin-1', 'note-1'])
+
+    // Saving resumes once the restore has landed, and what it writes is the
+    // restored session rather than the default it started from.
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
+    act(() => vi.advanceTimersByTime(100))
+
+    const written = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as PersistedTabState
+    expect(Object.keys(written.tabGroups)).toEqual(['group-1'])
+    expect(written.tabGroups['group-1'].tabs.map((item) => item.id)).toEqual(['pin-1', 'note-1'])
   })
 })

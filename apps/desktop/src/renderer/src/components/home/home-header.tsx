@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { WidgetGallery } from '@/components/home/widget-gallery'
-import { Check, ChevronDown, Plus, Trash } from '@/lib/icons/icon-map'
+import { Check, ChevronDown, Plus, Settings2, Trash } from '@/lib/icons/icon-map'
 
 // Start/end of the local day as ISO strings. Stable for the whole day, so the
 // calendar query key doesn't churn between renders.
@@ -31,6 +31,7 @@ interface HomeHeaderProps {
   onSelectBoard: (id: string) => void
   onCreateBoard: () => void
   onDeleteBoard: (id: string) => void
+  onManageBoards: () => void
   showAddWidget: boolean
   galleryOpen: boolean
   onGalleryOpenChange: (open: boolean) => void
@@ -47,12 +48,19 @@ export function HomeHeader({
   onSelectBoard,
   onCreateBoard,
   onDeleteBoard,
+  onManageBoards,
   showAddWidget,
   galleryOpen,
   onGalleryOpenChange,
   onAddWidget
 }: HomeHeaderProps): React.JSX.Element {
   const { t, i18n } = useT('common')
+
+  // A Radix menu restores focus to its trigger when the content UNMOUNTS — after the
+  // exit animation, ~150ms later. The board manager opens an inline rename field, so
+  // that late restore would blur the field and close it (see canvas-row-menu, and the
+  // e2e B7 case). Decline the restore for that one path only.
+  const suppressCloseAutoFocus = useRef(false)
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
@@ -102,7 +110,15 @@ export function HomeHeader({
             <span className="max-w-40 truncate font-medium">{activeName}</span>
             <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-52">
+          <DropdownMenuContent
+            align="end"
+            className="min-w-52"
+            onCloseAutoFocus={(event) => {
+              if (!suppressCloseAutoFocus.current) return
+              suppressCloseAutoFocus.current = false
+              event.preventDefault()
+            }}
+          >
             {boards.map((b) => (
               <DropdownMenuItem
                 key={b.id}
@@ -134,6 +150,16 @@ export function HomeHeader({
             <DropdownMenuItem data-testid="home-layout-new" onSelect={onCreateBoard}>
               <Plus className="size-4 shrink-0" aria-hidden="true" />
               {t('home.board.newName')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="home-layout-manage"
+              onSelect={() => {
+                suppressCloseAutoFocus.current = true
+                onManageBoards()
+              }}
+            >
+              <Settings2 className="size-4 shrink-0" aria-hidden="true" />
+              {t('home.board.manage')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

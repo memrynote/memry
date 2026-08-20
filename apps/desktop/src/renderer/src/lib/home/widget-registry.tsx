@@ -22,13 +22,8 @@ export interface WidgetDefinition {
   minLayout?: { w: number; h: number }
   defaultConfig: Record<string, unknown>
   Component: FC<WidgetComponentProps>
-  ConfigEditor?: FC<WidgetConfigEditorProps>
   // Optional header slots rendered inside WidgetFrame: a filter control (left of the spacer)
   // and a count (right of the spacer). Used by the Tasks widget.
-  // `Title` replaces the static `titleKey` label when a widget's header names the thing it is
-  // configured to show rather than the widget type — the Project widget renders the project's
-  // own name and icon, which three side-by-side instances need to tell each other apart.
-  Title?: FC<WidgetComponentProps>
   HeaderFilter?: FC<WidgetConfigEditorProps>
   HeaderCount?: FC<WidgetComponentProps>
   // Optional footer pinned below the scroll area. Used by the Inbox widget (triage row).

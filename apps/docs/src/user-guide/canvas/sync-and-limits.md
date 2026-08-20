@@ -53,6 +53,11 @@ device, but stops syncing until it gets smaller, and memrynote tells you so
 rather than failing silently. Splitting a very large board into several
 canvases is the usual fix.
 
+The warning appears once, when the board crosses the limit — not again on every
+edit while you keep working. It comes back when there is something new to say:
+after you reopen the board and it is still too large, or after a save that
+synced is followed by one that is too large again.
+
 ## Known limitations
 
 - Real-time co-editing of one canvas is not supported (see conflict copies).

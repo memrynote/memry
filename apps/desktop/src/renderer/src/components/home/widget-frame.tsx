@@ -1,4 +1,4 @@
-import { useState, type FC, type ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { WidgetComponentProps, WidgetConfigEditorProps } from '@/lib/home/widget-registry'
 import type { WidgetInstance, WidgetSize } from '@/lib/home/types'
@@ -19,10 +19,6 @@ interface WidgetFrameProps {
   title: string
   onRemove: () => void
   icon?: string
-  // Replaces the static title + icon when present (see WidgetDefinition.Title). `title` is still
-  // required: it stays the accessible name of the drag handle, which a custom Title need not carry.
-  Title?: FC<WidgetComponentProps>
-  ConfigEditor?: FC<WidgetConfigEditorProps>
   HeaderFilter?: FC<WidgetConfigEditorProps>
   HeaderCount?: FC<WidgetComponentProps>
   Footer?: FC<WidgetComponentProps>
@@ -42,8 +38,6 @@ export function WidgetFrame({
   title,
   onRemove,
   icon,
-  Title,
-  ConfigEditor,
   HeaderFilter,
   HeaderCount,
   Footer,
@@ -51,7 +45,6 @@ export function WidgetFrame({
   content
 }: WidgetFrameProps): React.JSX.Element {
   const { t } = useT('common')
-  const [configOpen, setConfigOpen] = useState(false)
   const Icon = icon ? WIDGET_ICONS[icon] : undefined
   return (
     <div
@@ -70,16 +63,10 @@ export function WidgetFrame({
         className="widget-drag-handle flex cursor-grab items-center gap-2 px-3.5 py-2.5"
         aria-label={t('home.widget.dragAria')}
       >
-        {Title ? (
-          <Title config={widget.config} size={size} />
-        ) : (
-          <>
-            {Icon && <Icon className="size-4 shrink-0 text-[var(--tint)]" aria-hidden="true" />}
-            <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
-              {title}
-            </span>
-          </>
-        )}
+        {Icon && <Icon className="size-4 shrink-0 text-[var(--tint)]" aria-hidden="true" />}
+        <span className="truncate text-[11px] font-semibold uppercase tracking-[0.07em] text-[var(--text-tertiary)]">
+          {title}
+        </span>
         {HeaderFilter && (
           <span className="widget-no-drag">
             <HeaderFilter config={widget.config} onChange={(c) => onConfigChange?.(c)} />
@@ -103,26 +90,12 @@ export function WidgetFrame({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {ConfigEditor && (
-              <DropdownMenuItem
-                data-testid="widget-config-toggle"
-                onSelect={() => setConfigOpen((open) => !open)}
-              >
-                {t('home.widget.configure')}
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem variant="destructive" onSelect={onRemove}>
               {t('home.widget.remove')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-      {ConfigEditor && configOpen && (
-        <div data-testid="widget-config-panel" className="widget-no-drag border-b px-3.5 py-2.5">
-          <ConfigEditor config={widget.config} onChange={(c) => onConfigChange?.(c)} />
-        </div>
-      )}
 
       <div className="min-h-0 flex-1 overflow-auto px-3.5 py-3">{content}</div>
       {Footer && <Footer config={widget.config} size={size} />}

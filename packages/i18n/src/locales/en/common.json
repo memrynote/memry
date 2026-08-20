@@ -689,12 +689,13 @@
       "resizeAria": "Resize to {size}",
       "menuAria": "Widget options",
       "resize": "Size",
-      "configure": "Configure",
       "remove": "Remove",
       "filter": {
+        "all": "All",
         "today": "Due Today",
         "tomorrow": "Tomorrow",
-        "week": "This Week"
+        "next7": "Next 7 days",
+        "noDueDate": "No due date"
       },
       "recentlyEdited": "Recently edited",
       "recentMeta": "edited {time}",
@@ -721,7 +722,6 @@
       "folderView_gallery": "Gallery",
       "folderViewSelect": "View",
       "project": "Project",
-      "projectLabel": "Project",
       "projectNoSelection": "No project selected",
       "projectMissing": "This project is no longer available",
       "projectNoTasks": "No tasks",
@@ -730,17 +730,20 @@
       "journalToday": "Today",
       "journalYesterday": "Yesterday",
       "loadError": "Couldn't load",
-      "unknown": "Unknown widget",
-      "savedFilterLabel": "Saved filter",
-      "savedFilterDefault": "Today",
-      "savedFilterHint": "Star filters on the Tasks page to use them here"
+      "unknown": "Unknown widget"
     },
     "board": {
       "label": "Home layout",
       "deleteAria": "Delete layout",
       "newAria": "New board",
       "newName": "New board",
-      "defaultName": "Home"
+      "defaultName": "Home",
+      "manage": "Manage boards",
+      "manageTitle": "Manage boards",
+      "manageDescription": "Rename, reorder, or delete your Home boards.",
+      "renameAria": "Rename board",
+      "reorderAria": "Reorder board",
+      "nameLabel": "Board name"
     },
     "greeting": {
       "morning": "Good morning",
