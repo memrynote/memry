@@ -73,6 +73,15 @@ function ContextMenuSubContent({
   )
 }
 
+/**
+ * A closing menu is a corpse: `Presence` keeps it mounted for its exit
+ * animation, and Radix answers pointer events that whole time — a pointer
+ * leaving an item runs `onItemLeave`, which focuses the menu content again.
+ * When the item just opened an inline rename field, that focus lands ~150ms
+ * after the field did and blurs it, and a blur is a commit for those fields.
+ * `pointer-events-none` while closed makes the corpse inert; the matching
+ * `onCloseAutoFocus` guard below covers the separate unmount-restore path.
+ */
 function ContextMenuContent({
   className,
   onCloseAutoFocus,
@@ -87,7 +96,7 @@ function ContextMenuContent({
           onCloseAutoFocus?.(e)
         }}
         className={cn(
-          'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-[var(--shadow-card-hover)]',
+          'bg-popover text-popover-foreground data-[state=closed]:pointer-events-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-[var(--shadow-card-hover)]',
           'floating-content-motion',
           className
         )}
