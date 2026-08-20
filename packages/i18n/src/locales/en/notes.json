@@ -248,7 +248,24 @@
       "iconsTab": "Icons",
       "searchPlaceholder": "Search",
       "noIcons": "No icons found",
-      "clearSearch": "Clear search"
+      "clearSearch": "Clear search",
+      "customTab": "Custom",
+      "custom": {
+        "searchPlaceholder": "Search your icons",
+        "dropHint": "Drop an image or click to upload",
+        "adding": "Adding…",
+        "empty": "No custom icons yet. Drop an image to add one.",
+        "noMatches": "No custom icons match that search",
+        "unsupportedFile": "{name} is not a supported image",
+        "addFailed": "Could not add that icon",
+        "deleteFailed": "Could not delete that icon",
+        "renameFailed": "Could not rename that icon",
+        "rename": "Rename {name}",
+        "delete": "Delete {name}",
+        "renameLabel": "Icon name",
+        "saveName": "Save name",
+        "cancelRename": "Cancel rename"
+      }
     }
   },
   "outline": {

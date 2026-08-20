@@ -16,6 +16,7 @@ import {
   incrementBookmarkClockOffline,
   incrementTemplateClockOffline,
   incrementHomePageClockOffline,
+  incrementCustomIconClockOffline,
   incrementCanvasClockOffline,
   incrementCanvasFolderClockOffline,
   incrementFilterClockOffline,
@@ -29,6 +30,7 @@ import {
 import { getBookmarkSyncService } from './bookmark-sync'
 import { getTemplateSyncService } from './template-sync'
 import { getHomePageSyncService } from './home-page-sync'
+import { getCustomIconSyncService } from './custom-icon-sync'
 import { getCanvasSyncService } from './canvas-sync'
 import { getCanvasFolderSyncService } from './canvas-folder-sync'
 import { getFilterSyncService } from './filter-sync'
@@ -409,6 +411,34 @@ const localSyncRegistry = createSyncAdapterRegistry([
       enqueueDelete(itemId: string, snapshotPayload?: string): void {
         if (!snapshotPayload) return
         enqueueDeleteOrDefer('home_page', getHomePageSyncService(), itemId, snapshotPayload)
+      }
+    }
+  },
+  {
+    type: 'custom_icon',
+    kind: 'record',
+    local: {
+      enqueueCreate(itemId: string): void {
+        const service = getCustomIconSyncService()
+        if (service) {
+          service.enqueueCreate(itemId)
+          return
+        }
+
+        incrementCustomIconClockOffline(getDatabase(), itemId)
+      },
+      enqueueUpdate(itemId: string): void {
+        const service = getCustomIconSyncService()
+        if (service) {
+          service.enqueueUpdate(itemId)
+          return
+        }
+
+        incrementCustomIconClockOffline(getDatabase(), itemId)
+      },
+      enqueueDelete(itemId: string, snapshotPayload?: string): void {
+        if (!snapshotPayload) return
+        enqueueDeleteOrDefer('custom_icon', getCustomIconSyncService(), itemId, snapshotPayload)
       }
     }
   },

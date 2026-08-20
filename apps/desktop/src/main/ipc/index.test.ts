@@ -69,7 +69,9 @@ const hoisted = vi.hoisted(() => ({
   registerImportHandlers: vi.fn(),
   unregisterImportHandlers: vi.fn(),
   registerHomePageHandlers: vi.fn(),
-  unregisterHomePageHandlers: vi.fn()
+  unregisterHomePageHandlers: vi.fn(),
+  registerCustomIconHandlers: vi.fn(),
+  unregisterCustomIconHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -195,6 +197,10 @@ vi.mock('./import-handlers', () => ({
 vi.mock('./home-page-handlers', () => ({
   registerHomePageHandlers: hoisted.registerHomePageHandlers,
   unregisterHomePageHandlers: hoisted.unregisterHomePageHandlers
+}))
+vi.mock('./custom-icon-handlers', () => ({
+  registerCustomIconHandlers: hoisted.registerCustomIconHandlers,
+  unregisterCustomIconHandlers: hoisted.unregisterCustomIconHandlers
 }))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'

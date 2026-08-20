@@ -931,6 +931,32 @@ export const LocaleChannels = {
 } as const
 
 // ============================================================================
+// Custom Icons Channels
+// ============================================================================
+
+export const CustomIconsChannels = {
+  invoke: {
+    /** List every custom icon in the open vault */
+    LIST: 'custom-icons:list',
+    /** Store an uploaded image as a custom icon */
+    ADD: 'custom-icons:add',
+    /** Change a custom icon's display name */
+    RENAME: 'custom-icons:rename',
+    /** Remove a custom icon and its file */
+    DELETE: 'custom-icons:delete'
+  },
+  events: {
+    /** The custom icon library changed (locally or from a peer) */
+    UPDATED: 'custom-icons:updated'
+  }
+} as const
+
+export type CustomIconsInvokeChannel =
+  (typeof CustomIconsChannels.invoke)[keyof typeof CustomIconsChannels.invoke]
+export type CustomIconsEventChannel =
+  (typeof CustomIconsChannels.events)[keyof typeof CustomIconsChannels.events]
+
+// ============================================================================
 // Telemetry Channels
 // ============================================================================
 
