@@ -30,6 +30,12 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { useDndMonitor } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
+import { SortableBookmarkItem } from '@/components/sidebar/sortable-bookmark-item'
+import { BOOKMARK_SORT_DRAG_TYPE } from '@/components/sidebar/sidebar-drag-types'
+import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
@@ -45,6 +51,8 @@ interface SidebarBookmarkListProps {
   onBookmarkClick?: (bookmark: BookmarkWithItem) => void
   /** Custom class name */
   className?: string
+  /** Which order to show them in; only 'manual' allows drag-to-reorder. */
+  sortMode?: SidebarSortMode
 }
 
 /**
@@ -89,20 +97,48 @@ const bookmarkItemTypeToTabType: Record<string, TabType> = {
 export function SidebarBookmarkList({
   maxVisible = 8,
   onBookmarkClick,
-  className
+  className,
+  sortMode = 'manual'
 }: SidebarBookmarkListProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
-  const { bookmarks, isLoading, error, removeBookmark } = useBookmarks({
+  const { bookmarks, isLoading, error, removeBookmark, reorderBookmarks } = useBookmarks({
     sortBy: 'position',
     sortOrder: 'asc'
   })
   const { isActiveItem } = useSidebarNavigation()
   const [showAll, setShowAll] = React.useState(false)
 
+  const reorderable = isReorderable(sortMode)
+
   // Filter to only existing items
   const validBookmarks = React.useMemo(() => {
-    return bookmarks.filter((b) => b.itemExists)
-  }, [bookmarks])
+    return bookmarks
+      .filter((b) => b.itemExists)
+      .map((bookmark) => ({
+        bookmark,
+        name: bookmark.itemTitle ?? '',
+        position: bookmark.position,
+        created: Date.parse(bookmark.createdAt)
+      }))
+      .sort(compareListItems(sortMode))
+      .map((entry) => entry.bookmark)
+  }, [bookmarks, sortMode])
+
+  // REQUIRES a surrounding DndContext — useDndMonitor throws without one. The
+  // app's DragProvider wraps the whole tree, so the sidebar's single call site
+  // always satisfies this; any new call site (or test) must provide one too.
+  // Ids here are bookmark ids; a drag that started anywhere else is ignored.
+  useDndMonitor({
+    onDragEnd: ({ active, over }) => {
+      if (!reorderable || !over || active.id === over.id) return
+      if (active.data.current?.type !== BOOKMARK_SORT_DRAG_TYPE) return
+      const from = validBookmarks.findIndex((b) => b.id === active.id)
+      const to = validBookmarks.findIndex((b) => b.id === over.id)
+      if (from === -1 || to === -1) return
+      const next = arrayMove(validBookmarks, from, to)
+      void reorderBookmarks(next.map((b) => b.id))
+    }
+  })
 
   const visibleBookmarks = showAll ? validBookmarks : validBookmarks.slice(0, maxVisible)
   const hasMore = validBookmarks.length > maxVisible
@@ -151,83 +187,88 @@ export function SidebarBookmarkList({
 
   return (
     <div className={className}>
-      {visibleBookmarks.map((bookmark) => {
-        const Icon = getBookmarkIcon(bookmark.itemType)
-        const iconColor = getBookmarkIconColor(bookmark.itemType)
-        const title = bookmark.itemTitle || 'Untitled'
-        const emoji = bookmark.itemMeta?.emoji
+      <SortableContext
+        items={visibleBookmarks.map((b) => b.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {visibleBookmarks.map((bookmark) => {
+          const Icon = getBookmarkIcon(bookmark.itemType)
+          const iconColor = getBookmarkIconColor(bookmark.itemType)
+          const title = bookmark.itemTitle || 'Untitled'
+          const emoji = bookmark.itemMeta?.emoji
 
-        // Create SidebarItem to check active state from tab system
-        const tabType = bookmarkItemTypeToTabType[bookmark.itemType] || 'note'
-        const sidebarItem: SidebarItem = {
-          type: tabType,
-          title,
-          path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
-          entityId: bookmark.itemId
-        }
+          // Create SidebarItem to check active state from tab system
+          const tabType = bookmarkItemTypeToTabType[bookmark.itemType] || 'note'
+          const sidebarItem: SidebarItem = {
+            type: tabType,
+            title,
+            path: bookmark.itemMeta?.path || `/${bookmark.itemType}/${bookmark.itemId}`,
+            entityId: bookmark.itemId
+          }
 
-        return (
-          <SidebarMenuItem key={bookmark.id}>
-            <ContextMenu>
-              <ContextMenuTrigger asChild>
-                <SidebarMenuButton
-                  tooltip={title}
-                  onClick={handleBookmarkClick(bookmark)}
-                  isActive={isActiveItem(sidebarItem)}
-                  className="group pe-8"
-                >
-                  {/* Icon or emoji */}
-                  {emoji ? (
-                    <NoteIconDisplay
-                      value={emoji}
-                      className="size-4 flex items-center justify-center text-sm shrink-0"
-                    />
-                  ) : (
-                    <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
-                  )}
+          return (
+            <SortableBookmarkItem key={bookmark.id} id={bookmark.id} disabled={!reorderable}>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <SidebarMenuButton
+                    tooltip={title}
+                    onClick={handleBookmarkClick(bookmark)}
+                    isActive={isActiveItem(sidebarItem)}
+                    className="group pe-8"
+                  >
+                    {/* Icon or emoji */}
+                    {emoji ? (
+                      <NoteIconDisplay
+                        value={emoji}
+                        className="size-4 flex items-center justify-center text-sm shrink-0"
+                      />
+                    ) : (
+                      <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
+                    )}
 
-                  <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
-                    {title}
-                  </span>
-                </SidebarMenuButton>
-              </ContextMenuTrigger>
-              <ContextMenuContent className="w-48">
-                <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
-              </ContextMenuContent>
-            </ContextMenu>
+                    <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
+                      {title}
+                    </span>
+                  </SidebarMenuButton>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
+                </ContextMenuContent>
+              </ContextMenu>
 
-            {/* Actions dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction
-                  className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
-                  showOnHover
-                >
-                  <MoreHorizontal className="size-4" />
-                  <span className="sr-only">
-                    {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.moreOptions')}
-                  </span>
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <OpenTargetMenuItems
-                  tab={createTabFromSidebarItem(sidebarItem)}
-                  component={DropdownMenuItem}
-                />
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={(...args) => void handleRemoveBookmark(bookmark)(...args)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="size-4 me-2" />
+              {/* Actions dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction
+                    className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+                    showOnHover
+                  >
+                    <MoreHorizontal className="size-4" />
+                    <span className="sr-only">
+                      {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.moreOptions')}
+                    </span>
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <OpenTargetMenuItems
+                    tab={createTabFromSidebarItem(sidebarItem)}
+                    component={DropdownMenuItem}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(...args) => void handleRemoveBookmark(bookmark)(...args)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-4 me-2" />
 
-                  {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.remove')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        )
-      })}
+                    {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.remove')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SortableBookmarkItem>
+          )
+        })}
+      </SortableContext>
 
       {/* Show more/less button */}
       {hasMore && (

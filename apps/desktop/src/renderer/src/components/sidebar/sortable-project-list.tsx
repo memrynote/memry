@@ -15,6 +15,8 @@ interface SortableProjectListProps {
   onProjectDelete: (projectId: string) => void
   onProjectsReorder: (projects: Project[]) => void
   onCreateProject: () => void
+  /** Drag-to-reorder is only meaningful in the manual sort mode. */
+  reorderDisabled?: boolean
 }
 
 /**
@@ -34,7 +36,8 @@ export const SortableProjectList = ({
   onProjectArchive,
   onProjectDelete,
   onProjectsReorder: _onProjectsReorder,
-  onCreateProject
+  onCreateProject,
+  reorderDisabled = false
 }: SortableProjectListProps): React.JSX.Element => {
   // Handle project click
   const handleProjectClick = useCallback(
@@ -66,6 +69,7 @@ export const SortableProjectList = ({
           onEdit={onProjectEdit}
           onArchive={onProjectArchive}
           onDelete={onProjectDelete}
+          reorderDisabled={reorderDisabled}
         />
       ))}
     </SortableContext>

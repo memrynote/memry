@@ -12,6 +12,7 @@ import { TodayTaskRow } from './tasks/today-task-row'
 import { SubtaskRow } from './tasks/subtask-row'
 import { ParentTaskRow } from './tasks/parent-task-row'
 import { TabBarWithDrag } from './tabs/tab-bar-with-drag'
+import { DndContext } from '@dnd-kit/core'
 import { SidebarBookmarkList } from './sidebar/sidebar-bookmark-list'
 import { useTreeDelete } from './hooks/use-tree-delete'
 import type { Task } from '@/data/task-model'
@@ -50,8 +51,33 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({ t: (key: string) => key })
 }))
 
+vi.mock('@dnd-kit/core', () => ({
+  // Minimal stand-in: a provider so useDndMonitor finds a context, and a
+  // monitor that simply records the callbacks without firing them — these
+  // cases are cold renders, not drags.
+  DndContext: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  useDndMonitor: () => {},
+  useDroppable: () => ({ setNodeRef: () => {}, isOver: false }),
+  useDndContext: () => ({ active: null })
+}))
+
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  // Bookmark rows became drag-to-reorder sortables; the stand-in returns the
+  // idle shape so these cold renders exercise the row, not the drag.
+  useSortable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: () => {},
+    transform: null,
+    transition: undefined,
+    isDragging: false
+  }),
+  arrayMove: <T,>(items: T[], from: number, to: number): T[] => {
+    const next = [...items]
+    next.splice(to, 0, ...next.splice(from, 1))
+    return next
+  },
   verticalListSortingStrategy: {},
   horizontalListSortingStrategy: {}
 }))
@@ -1058,7 +1084,9 @@ describe('cold major renderer components', () => {
   it('renders bookmarks and tab bar actions across empty, error, and populated states', async () => {
     const onBookmarkClick = vi.fn()
     const { rerender } = render(
-      <SidebarBookmarkList maxVisible={1} onBookmarkClick={onBookmarkClick} />
+      <DndContext>
+        <SidebarBookmarkList maxVisible={1} onBookmarkClick={onBookmarkClick} />
+      </DndContext>
     )
 
     fireEvent.click(screen.getByText('Bookmarked note'))
@@ -1069,21 +1097,33 @@ describe('cold major renderer components', () => {
     await waitFor(() => expect(mocks.removeBookmark).toHaveBeenCalledWith('bookmark-1'))
 
     mocks.bookmarksLoading = true
-    rerender(<SidebarBookmarkList />)
+    rerender(
+      <DndContext>
+        <SidebarBookmarkList />
+      </DndContext>
+    )
     expect(
       screen.getByText('phaseF.componentsSidebarSidebarBookmarkList.loadingBookmarks')
     ).toBeInTheDocument()
 
     mocks.bookmarksLoading = false
     mocks.bookmarksError = new Error('load failed')
-    rerender(<SidebarBookmarkList />)
+    rerender(
+      <DndContext>
+        <SidebarBookmarkList />
+      </DndContext>
+    )
     expect(
       screen.getByText('phaseF.componentsSidebarSidebarBookmarkList.failedToLoadBookmarks')
     ).toBeInTheDocument()
 
     mocks.bookmarksError = null
     mocks.bookmarks = []
-    rerender(<SidebarBookmarkList />)
+    rerender(
+      <DndContext>
+        <SidebarBookmarkList />
+      </DndContext>
+    )
     expect(
       screen.getByText('phaseF.componentsSidebarSidebarBookmarkList.noBookmarksYet')
     ).toBeInTheDocument()

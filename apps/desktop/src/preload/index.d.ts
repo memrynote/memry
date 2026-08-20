@@ -5,6 +5,7 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
   AgentEvent,
   AgentBackendId,
@@ -1323,6 +1324,12 @@ export interface SettingsClientAPI {
   getJournalSettings(): Promise<JournalSettings>
   setJournalSettings(
     settings: Partial<JournalSettings>
+  ): Promise<{ success: boolean; error?: string }>
+  /** Every sidebar section's effective sort mode, defaults filled in. */
+  getSidebarSortModes(): Promise<Record<SidebarSortSurface, SidebarSortMode>>
+  setSidebarSortMode(
+    surface: SidebarSortSurface,
+    mode: SidebarSortMode
   ): Promise<{ success: boolean; error?: string }>
   // AI Settings (local model - no API key needed)
   getAISettings(): Promise<AISettings>

@@ -24,7 +24,38 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
-Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders.
+Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping *into* a folder works whatever the sort.
+
+### Sorting a section
+
+Each section header carries a sort control. Open it to choose how that
+section is ordered:
+
+- **Manual** — the order you arranged by dragging
+- **Name A → Z** / **Z → A**
+- **Modified: newest / oldest first**
+- **Created: newest / oldest first**
+- **Most used** / **Least used** — Tags only, by how often each tag is applied
+
+The options differ per section, because the underlying items differ: projects
+and bookmarks carry no modification date, tags have a usage count but no
+dates, and canvases have no manual order.
+
+Two things follow from picking a mode:
+
+- **Drag-to-reorder only applies in Manual.** In any other mode the list is
+  derived from the items themselves, so a position you dragged would be
+  re-sorted straight over. Dragging an item into a *folder* or *project* still
+  works in every mode — that is a move, not a reorder.
+- **Your manual order is kept.** Switching to Name or Modified and back to
+  Manual restores the arrangement you made; it is stored, not recomputed.
+
+Sort modes are saved per vault and sync, so another device that opens the same
+vault shows the same order. Each section syncs independently — changing
+Collections on one device and Tags on another keeps both changes.
+
+Sections start in the order they have always used, so an existing vault looks
+unchanged until you pick something else.
 
 The **Notes** tree loads 10,000 notes at a time, most recently modified first. If your vault holds more than that, a footer row under the tree says how many older notes it is not showing and offers **Load more** to pull in the next batch. Notes past the ceiling are never hidden silently — and they stay reachable through search either way.
 

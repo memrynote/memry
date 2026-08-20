@@ -12,6 +12,7 @@
  */
 
 import type { CanvasSummary } from '@/services/canvas-service'
+import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
 import type { CanvasFolder } from '@/services/canvas-folder-service'
 
 // ============================================================================
@@ -161,15 +162,43 @@ export function countCanvasNodes(nodes: CanvasTreeNode[]): number {
   )
 }
 
+/**
+ * Canvas folders carry no timestamp — a BuildFolder is name/path/icon — so a
+ * time mode leaves them A→Z, matching the notes tree's rule for the same
+ * reason. Only the name modes flip folders.
+ */
+function compareCanvasFolders(mode: SidebarSortMode): (a: BuildFolder, b: BuildFolder) => number {
+  if (mode === 'name-desc') return (a, b) => compareLabels(b.name, a.name)
+  return (a, b) => compareLabels(a.name, b.name)
+}
+
+function compareCanvases(mode: SidebarSortMode): (a: CanvasSummary, b: CanvasSummary) => number {
+  switch (mode) {
+    case 'name-desc':
+      return (a, b) => compareLabels(b.title ?? '', a.title ?? '')
+    case 'modified-desc':
+      return (a, b) => b.updatedAt - a.updatedAt
+    case 'modified-asc':
+      return (a, b) => a.updatedAt - b.updatedAt
+    case 'created-desc':
+      return (a, b) => b.createdAt - a.createdAt
+    case 'created-asc':
+      return (a, b) => a.createdAt - b.createdAt
+    default:
+      return (a, b) => compareLabels(a.title ?? '', b.title ?? '')
+  }
+}
+
 function toNodes(
   folders: Map<string, BuildFolder>,
   canvases: CanvasSummary[],
-  depth: number
+  depth: number,
+  mode: SidebarSortMode
 ): CanvasTreeNode[] {
   const folderNodes: CanvasTreeNode[] = [...folders.values()]
-    .sort((a, b) => compareLabels(a.name, b.name))
+    .sort(compareCanvasFolders(mode))
     .map((folder) => {
-      const children = toNodes(folder.folders, folder.canvases, depth + 1)
+      const children = toNodes(folder.folders, folder.canvases, depth + 1, mode)
       return {
         kind: 'folder',
         path: folder.path,
@@ -183,7 +212,7 @@ function toNodes(
     })
 
   const canvasNodes: CanvasTreeNode[] = [...canvases]
-    .sort((a, b) => compareLabels(a.title ?? '', b.title ?? ''))
+    .sort(compareCanvases(mode))
     .map((canvas) => ({ kind: 'canvas', canvas, depth }))
 
   // Folders first, then canvases — the concatenation IS the rule.
@@ -200,7 +229,9 @@ function toNodes(
  */
 export function buildCanvasTree(
   canvases: CanvasSummary[],
-  folders: CanvasFolder[]
+  folders: CanvasFolder[],
+  // Defaults to the A→Z order this function has always produced.
+  mode: SidebarSortMode = 'name-asc'
 ): CanvasTreeNode[] {
   const roots = new Map<string, BuildFolder>()
   const rootCanvases: CanvasSummary[] = []
@@ -221,7 +252,7 @@ export function buildCanvasTree(
     else rootCanvases.push(canvas)
   }
 
-  return toNodes(roots, rootCanvases, 0)
+  return toNodes(roots, rootCanvases, 0, mode)
 }
 
 /**

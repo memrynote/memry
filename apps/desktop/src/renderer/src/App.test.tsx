@@ -209,8 +209,16 @@ vi.mock('@/contexts/drag-context', () => ({
         onClick={() =>
           onDragEnd(
             {
-              active: { id: 'project-b', data: { current: {} } },
-              over: { id: 'project-a' }
+              // Mirrors what SortableProjectItem actually emits: a typed drag,
+              // and an `over` that is the row's TASK drop target (`row-<id>`),
+              // which is what wins the collision in the real sidebar. The old
+              // fixture sent an untyped drag onto a bare id — a shape the app
+              // never produces — so it passed while the feature was broken.
+              active: {
+                id: 'project-b',
+                data: { current: { type: 'project-sort', projectId: 'project-b' } }
+              },
+              over: { id: 'project-project-a' }
             },
             { isDragging: false }
           )

@@ -22,7 +22,9 @@ const mocks = vi.hoisted(() => ({
     isDragging: false
   },
   droppableState: {
-    isOver: false
+    isOver: false,
+    // The drag dnd-kit reports as in flight, or null for none.
+    active: null as { data: { current: { type: string } } } | null
   },
   dragState: {
     isDragging: false
@@ -91,7 +93,11 @@ vi.mock('@dnd-kit/core', () => ({
   useDroppable: () => ({
     setNodeRef: vi.fn(),
     isOver: mocks.droppableState.isOver
-  })
+  }),
+  // The row reads the in-flight drag to decide whether it may advertise itself
+  // as a task drop target. `active: null` is "nothing is being dragged", which
+  // is the state these cold-render cases describe.
+  useDndContext: () => ({ active: mocks.droppableState.active ?? null })
 }))
 
 vi.mock('@dnd-kit/utilities', () => ({
@@ -403,6 +409,15 @@ describe('note and sidebar cold surfaces', () => {
       screen.getByText('phaseF.componentsSidebarSortableProjectItem.dropHere')
     ).toBeInTheDocument()
     expect(screen.queryByText('3')).toBeNull()
+
+    // Dragging a project to REORDER it must not turn the rows into task drop
+    // targets. It used to: the row's droppable won the collision, the drop
+    // resolved to no project, and the reorder was reported as "0 tasks moved".
+    mocks.droppableState.active = { data: { current: { type: 'project-sort' } } }
+    rerender(<SortableProjectItem project={project} isActive={false} {...handlers} />)
+    expect(screen.queryByText('phaseF.componentsSidebarSortableProjectItem.dropHere')).toBeNull()
+    expect(container.querySelector('.border-dotted')).toBeNull()
+    mocks.droppableState.active = null
 
     mocks.sortableState.isDragging = true
     mocks.droppableState.isOver = false

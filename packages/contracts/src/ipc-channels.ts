@@ -384,6 +384,10 @@ export const SettingsChannels = {
     GET_JOURNAL_SETTINGS: 'settings:getJournalSettings',
     /** Set journal settings */
     SET_JOURNAL_SETTINGS: 'settings:setJournalSettings',
+    /** Get the sidebar sections' sort modes */
+    GET_SIDEBAR_SORT_MODES: 'settings:getSidebarSortModes',
+    /** Set one sidebar section's sort mode */
+    SET_SIDEBAR_SORT_MODE: 'settings:setSidebarSortMode',
     /** Get AI settings (enabled flag) */
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */
