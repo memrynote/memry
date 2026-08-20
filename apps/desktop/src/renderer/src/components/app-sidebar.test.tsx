@@ -238,7 +238,9 @@ vi.mock('@/contexts/selected-folder-context', () => ({
 }))
 
 vi.mock('@/hooks/use-general-settings', () => ({
-  useGeneralSettings: () => ({ settings: { createInSelectedFolder: true } })
+  useGeneralSettings: () => ({
+    settings: { createInSelectedFolder: true, openPagesInNewTab: true }
+  })
 }))
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({

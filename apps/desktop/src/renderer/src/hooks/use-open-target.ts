@@ -14,9 +14,9 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useTabActions, useTabs } from '@/contexts/tabs'
-import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
-import type { Tab } from '@/contexts/tabs/types'
+import type { OpenTabOptions, Tab } from '@/contexts/tabs/types'
 import { getSiblingGroupId } from '@/components/split-view/layout-helpers'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 
 /** Tab data as the callers build it, before the reducer stamps id/timestamps. */
 export type OpenTargetTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
@@ -27,12 +27,35 @@ export interface OpenTargetOptions {
 }
 
 /**
- * True when this tab type can meaningfully exist twice. Home, Inbox, Calendar,
- * Tasks, Journal, Graph and Tags are declared single-instance, so "Open in New
- * Tab" is a no-op for them — surfaces hide the menu row rather than offer a
- * command that silently does nothing.
+ * The "clicking a page opens a new tab" preference (#1644), as open options.
+ *
+ * `openPage` is what a plain click/activation calls: with the preference on it
+ * behaves exactly like `openTab`; with it off it asks the reducer to reuse the
+ * active tab. The reducer runs that request only after every dedup branch, so a
+ * page that is already open still just gets focused, and it never touches a
+ * pinned tab. Explicit gestures — "Open in New Tab", "Open to the Side",
+ * middle-click — do not go through here: stated intent beats the preference.
  */
-export const canOpenInNewTab = (type: Tab['type']): boolean => !SINGLETON_TAB_TYPES.includes(type)
+export const useOpenPage = () => {
+  const { openTab } = useTabActions()
+  const { settings } = useGeneralSettings()
+  const reuseActiveTab = !settings.openPagesInNewTab
+
+  const openPage = useCallback(
+    (tab: OpenTargetTab, options?: OpenTabOptions) => {
+      // With the preference on and nothing else to say, openPage IS openTab —
+      // no options object, so call sites and their tests read identically.
+      if (!reuseActiveTab && !options) {
+        openTab(tab)
+        return
+      }
+      openTab(tab, { reuseActiveTab, ...options })
+    },
+    [openTab, reuseActiveTab]
+  )
+
+  return { openPage, reuseActiveTab }
+}
 
 export const useOpenTarget = () => {
   const { openTab, splitView } = useTabActions()
@@ -50,11 +73,12 @@ export const useOpenTarget = () => {
    *
    * `forceNew` is what makes this differ from a plain click: without it, OPEN_TAB
    * finds the entity already open — in this pane or another — and just focuses
-   * it. Singletons keep the focus behaviour; they cannot exist twice.
+   * it. That includes singletons: a second Home or Inbox in the same pane is a
+   * deliberate duplicate (#1644), no longer declined.
    */
   const openInNewTab = useCallback(
     (tab: OpenTargetTab, options: OpenTargetOptions = {}) => {
-      openTab(tab, { forceNew: canOpenInNewTab(tab.type), background: options.background })
+      openTab(tab, { forceNew: true, background: options.background })
     },
     [openTab]
   )

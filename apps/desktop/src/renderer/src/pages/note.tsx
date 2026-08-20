@@ -54,6 +54,7 @@ import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useOpenPage } from '@/hooks/use-open-target'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { ReminderPicker } from '@/components/reminder'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
@@ -1072,6 +1073,29 @@ export function NotePage({ noteId }: NotePageProps) {
     window.open(href, '_blank', 'noopener,noreferrer')
   }, [])
 
+  // "Clicking a page opens a new tab" (#1644) covers in-note navigation too:
+  // with it off, following a wiki link or a backlink navigates this tab in
+  // place. Guarded on this note being the active tab — reuse replaces the
+  // active tab of the active group, so a link clicked in a background pane
+  // must not clobber an unrelated tab (same guard as the file conversion
+  // above). Dedup still runs first: a target already open just gets focused.
+  const { reuseActiveTab: reusePreferred } = useOpenPage()
+  const openLinked = useCallback(
+    (tab: Parameters<typeof openTab>[0]) => {
+      if (
+        reusePreferred &&
+        activeTab != null &&
+        activeTab.entityId === noteId &&
+        !activeTab.isPinned
+      ) {
+        openTab(tab, { reuseActiveTab: true })
+      } else {
+        openTab(tab)
+      }
+    },
+    [openTab, reusePreferred, activeTab?.entityId, activeTab?.isPinned, noteId]
+  )
+
   const handleInternalLinkClick = useCallback(
     async (linkedNoteIdOrTitle: string) => {
       const target = linkedNoteIdOrTitle?.trim()
@@ -1092,7 +1116,7 @@ export function NotePage({ noteId }: NotePageProps) {
         switch (resolution.type) {
           case 'file':
             // Open file in appropriate viewer (image, video, PDF, audio)
-            openTab({
+            openLinked({
               type: 'file',
               title: resolution.title,
               icon: resolution.icon,
@@ -1109,7 +1133,7 @@ export function NotePage({ noteId }: NotePageProps) {
             // Open note in editor, carrying the heading the link named. The
             // target page consumes it once its own editor has produced headings
             // — text is all we have, and block ids only exist over there.
-            openTab({
+            openLinked({
               type: 'note',
               title: resolution.title,
               icon: 'file-text',
@@ -1133,7 +1157,7 @@ export function NotePage({ noteId }: NotePageProps) {
               toast.error(t('page.toast.createLinkedFailed'))
               return
             }
-            openTab({
+            openLinked({
               type: 'note',
               title: result.note.title,
               icon: 'file-text',
@@ -1157,7 +1181,7 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openTab, createNote, t, scrollToHeadingText, prefersReducedMotion]
+    [openLinked, createNote, t, scrollToHeadingText, prefersReducedMotion]
   )
 
   const handleBacklinkClick = useCallback(
@@ -1171,7 +1195,7 @@ export function NotePage({ noteId }: NotePageProps) {
           }
         : undefined
 
-      openTab({
+      openLinked({
         type: 'note',
         title: noteTitle,
         icon: 'file-text',
@@ -1184,7 +1208,7 @@ export function NotePage({ noteId }: NotePageProps) {
         ...(viewState && { viewState })
       })
     },
-    [openTab, backlinks]
+    [openLinked, backlinks]
   )
 
   // Handle clicking on a linked task

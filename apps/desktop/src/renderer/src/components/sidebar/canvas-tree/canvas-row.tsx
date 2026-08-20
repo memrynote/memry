@@ -47,6 +47,7 @@ import {
 } from './canvas-row-menu'
 import { CanvasRowNameInput, type CanvasRowEdit } from './canvas-row-name-input'
 import { canvasTabData } from '@/lib/sidebar-tab-data'
+import { useOpenTarget } from '@/hooks/use-open-target'
 
 const CANVAS_ICON_SPACER = <div className="h-4 w-4" />
 
@@ -129,6 +130,17 @@ export function CanvasRow({
     kind: 'open-target',
     id: 'open-target',
     tab: canvasTabData(canvas, t('canvas.untitled'))
+  }
+
+  // Middle-click = the row's "Open in New Tab" as a gesture, opening in the
+  // background. Guarded like the plain click: an unreadable canvas cannot open,
+  // and a row being renamed keeps the pointer for its text field. Read on
+  // mousedown because a middle click never produces `click`.
+  const { openInNewTab } = useOpenTarget()
+  const handleMiddleClick = (event: React.MouseEvent): void => {
+    if (event.button !== 1 || unreadable || edit) return
+    event.preventDefault()
+    openInNewTab(canvasTabData(canvas, t('canvas.untitled')), { background: true })
   }
 
   const entries: CanvasMenuEntry[] = unreadable
@@ -246,6 +258,7 @@ export function CanvasRow({
           className="flex items-center gap-1"
           style={{ paddingInlineStart: `${depth * CANVAS_ROW_INDENT_PX}px` }}
           onClick={() => onOpen(canvas)}
+          onMouseDown={handleMiddleClick}
           onKeyDown={handleKeyDown}
           // A row that cannot open must say why before it is clicked, not after.
           title={unreadable ? t('canvas.unreadable') : undefined}

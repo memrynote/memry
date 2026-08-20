@@ -26,6 +26,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useOpenPage } from '@/hooks/use-open-target'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FolderTableView } from '@/components/folder-view/folder-table-view'
 import { GroupedTable } from '@/components/folder-view/grouped-table'
@@ -87,6 +88,8 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   const { openTab, closeTab, getActiveTab } = useTabs()
+  // Plain opens honour the "clicking a page opens a new tab" preference (#1644).
+  const { openPage } = useOpenPage()
   const { openSidebarItem } = useSidebarNavigation()
   const { tags: allTags } = useNoteTagsQuery()
   const { folders, setFolderIcon } = useNoteFoldersQuery()
@@ -353,7 +356,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const handleNoteOpen = (noteId: string): void => {
     const note = notes.find((n) => n.id === noteId)
     if (note) {
-      openTab({
+      openPage({
         type: 'note',
         title: note.title,
         icon: 'file-text',
@@ -431,7 +434,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     const fullPath = folderPath ? `${folderPath}${subfolderPath}` : subfolderPath.slice(1)
     const folderName = subfolderPath.split('/').pop() || 'Folder'
 
-    openTab({
+    openPage({
       type: 'folder',
       title: folderName,
       icon: 'folder',
@@ -631,23 +634,28 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     [deleteView, storedViewName, setStoredViewName]
   )
 
-  // Handle opening note in new tab (for context menu)
+  // Handle opening note in new tab (for context menu). `forceNew` makes the
+  // command do what its label says — without it the open dedups by entityId and
+  // merely focuses a copy that is already open somewhere.
   const handleOpenInNewTab = useCallback(
     (noteId: string): void => {
       const note = notes.find((n) => n.id === noteId)
       if (note) {
-        openTab({
-          type: 'note',
-          title: note.title,
-          icon: 'file-text',
-          emoji: note.emoji,
-          path: `/notes/${note.id}`,
-          entityId: note.id,
-          isPinned: false,
-          isModified: false,
-          isPreview: false,
-          isDeleted: false
-        })
+        openTab(
+          {
+            type: 'note',
+            title: note.title,
+            icon: 'file-text',
+            emoji: note.emoji,
+            path: `/notes/${note.id}`,
+            entityId: note.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          },
+          { forceNew: true }
+        )
       }
     },
     [notes, openTab]
@@ -762,7 +770,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   // Navigate to a breadcrumb ancestor folder
   const handleBreadcrumbNav = useCallback(
     (path: string, label: string): void => {
-      openTab({
+      openPage({
         type: 'folder',
         title: label,
         icon: 'folder',
@@ -774,7 +782,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
         isDeleted: false
       })
     },
-    [openTab]
+    [openPage]
   )
 
   // ============================================================================
@@ -797,7 +805,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
       )
 
       if (result.success && result.note) {
-        openTab({
+        openPage({
           type: 'note',
           title: result.note.title || 'Untitled',
           icon: 'file-text',
@@ -813,7 +821,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
     } catch (err) {
       log.error('Failed to create note:', err)
     }
-  }, [createNote, scope, openTab])
+  }, [createNote, scope, openPage])
 
   /**
    * Handle clearing all search and filters.

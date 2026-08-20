@@ -191,8 +191,7 @@ describe('useNoteTreeActions', () => {
         title: 'A',
         path: '/notes/work-a',
         entityId: 'work-a'
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     act(() => result.current.handleSelectionChange(['other']))
@@ -202,14 +201,12 @@ describe('useNoteTreeActions', () => {
         title: 'C',
         path: '/file/other',
         entityId: 'other'
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     act(() => result.current.handleOpenFolderView('Work/Nested'))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' }),
-      { reuseActiveTab: false }
+      expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' })
     )
 
     await act(async () => {

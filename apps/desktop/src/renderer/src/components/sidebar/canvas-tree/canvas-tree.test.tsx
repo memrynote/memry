@@ -35,6 +35,13 @@ const mocks = vi.hoisted(() => ({
 
 // `t` returns the key's last segment so assertions read like the label, and
 // appends the interpolated count so a count-bearing string stays observable.
+// The row-level middle-click / preference hooks reach useTabActions, which
+// these renders have no TabProvider for — stub the whole open-target module.
+vi.mock('@/hooks/use-open-target', () => ({
+  useOpenTarget: () => ({ openInNewTab: vi.fn(), openToTheSide: vi.fn() }),
+  useOpenPage: () => ({ openPage: vi.fn(), reuseActiveTab: false })
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, params?: Record<string, unknown>) => {

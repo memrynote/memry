@@ -13,7 +13,7 @@ import { createWidget as makeWidget } from '@/lib/home/widget-registry'
 import type { HomePage, WidgetType } from '@/lib/home/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useT } from '@memry/i18n/renderer'
-import { useTabs } from '@/contexts/tabs'
+import { useOpenPage } from '@/hooks/use-open-target'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 
@@ -36,13 +36,15 @@ function asLocalPage(page: {
 export default function HomePage(): React.JSX.Element {
   const { t } = useT('common')
   const { flags } = useFeatureFlags()
-  const { openTab } = useTabs()
+  // New-note creation honours the "clicking a page opens a new tab" preference
+  // (#1644): with it off, the note takes over this Home tab.
+  const { openPage } = useOpenPage()
 
   const handleCreateNote = useCallback(async () => {
     try {
       const result = await notesService.create({ title: 'Untitled', content: '' })
       if (result.success && result.note) {
-        openTab({
+        openPage({
           type: 'note',
           title: result.note.title || 'Untitled',
           icon: 'file-text',
@@ -57,7 +59,7 @@ export default function HomePage(): React.JSX.Element {
     } catch (error) {
       log.error('Failed to create new note:', error)
     }
-  }, [openTab])
+  }, [openPage])
 
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [managerOpen, setManagerOpen] = useState(false)

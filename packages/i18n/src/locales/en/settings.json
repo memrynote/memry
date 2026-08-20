@@ -154,7 +154,7 @@
     "tabs": {
       "openPagesInNewTab": {
         "label": "Open Pages in a New Tab",
-        "description": "Clicking a page in the sidebar opens it in a new tab. When off, it reuses the current tab \u2014 pinned tabs are never replaced. \"Open in New Tab\" and \"Open to the Side\" always open a new tab."
+        "description": "Clicking or creating a page \u2014 notes, folders, projects, canvases, tags, bookmarks \u2014 opens it in a new tab. When off, the current tab is reused, including when following links inside a note; pinned tabs are never replaced. \"Open in New Tab\", \"Open to the Side\" and middle-click always open a new tab."
       },
       "restoreSession": {
         "label": "Restore Session on Start",

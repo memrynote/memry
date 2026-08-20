@@ -5,9 +5,10 @@ import HomePage from './home'
 // Stub the widgets barrel (Task 9 fills this)
 vi.mock('@/components/home/widgets', () => ({}))
 
-// HomePage reads openTab from the tabs context; no TabProvider in this test
+// HomePage opens tabs through useOpenPage; no TabProvider in this test
 vi.mock('@/contexts/tabs', () => ({
-  useTabs: () => ({ openTab: vi.fn() })
+  useTabs: () => ({ openTab: vi.fn() }),
+  useTabActions: () => ({ openTab: vi.fn() })
 }))
 
 // Stub child components to avoid dnd-kit / WIDGET_REGISTRY / react-query deps

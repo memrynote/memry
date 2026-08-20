@@ -9,6 +9,13 @@ import { assertSmallTextContrast } from '@tests/utils/contrast'
 // holds to 4.5:1. jsdom has no cascade and no layout, so the ratios come from
 // the literal hex in base.css — see tests/utils/contrast.ts.
 
+// The row-level middle-click / preference hooks reach useTabActions, which
+// these renders have no TabProvider for — stub the whole open-target module.
+vi.mock('@/hooks/use-open-target', () => ({
+  useOpenTarget: () => ({ openInNewTab: vi.fn(), openToTheSide: vi.fn() }),
+  useOpenPage: () => ({ openPage: vi.fn(), reuseActiveTab: false })
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, params?: Record<string, unknown>) =>

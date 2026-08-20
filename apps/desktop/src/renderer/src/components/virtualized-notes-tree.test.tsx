@@ -260,8 +260,7 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-work',
         isPreview: false,
         type: 'note'
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     fireEvent.doubleClick(screen.getByText('Alpha'))
@@ -270,8 +269,7 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-work',
         isPreview: false,
         type: 'note'
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     await user.click(screen.getByText('Root'))
@@ -280,8 +278,7 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-root',
         isPreview: false,
         type: 'file'
-      }),
-      { reuseActiveTab: false }
+      })
     )
   })
 
@@ -302,6 +299,25 @@ describe('VirtualizedNotesTree', () => {
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({ type: 'folder', entityId: 'Work' }),
       { reuseActiveTab: true }
+    )
+  })
+
+  // Middle-click is an explicit gesture: always a new background tab, even
+  // with the preference set to reuse.
+  it('middle-click opens rows in a background tab regardless of the preference', () => {
+    mocks.openPagesInNewTab = false
+    renderTree()
+
+    fireEvent.mouseDown(screen.getByText('Alpha'), { button: 1 })
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'note-work', type: 'note' }),
+      { forceNew: true, background: true }
+    )
+
+    fireEvent.mouseDown(screen.getByText('Work'), { button: 1 })
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'folder', entityId: 'Work' }),
+      { forceNew: true, background: true }
     )
   })
 
@@ -333,8 +349,7 @@ describe('VirtualizedNotesTree', () => {
       expect.objectContaining({
         type: 'folder',
         entityId: 'Work'
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     await user.click(screen.getByRole('button', { name: 'folder icon' }))
@@ -440,8 +455,7 @@ describe('VirtualizedNotesTree', () => {
       expect.objectContaining({
         entityId: 'note-work',
         isPreview: false
-      }),
-      { reuseActiveTab: false }
+      })
     )
 
     await user.click(screen.getByRole('button', { name: 'New Note' }))

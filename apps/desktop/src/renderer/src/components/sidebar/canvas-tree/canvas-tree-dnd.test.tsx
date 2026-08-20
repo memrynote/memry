@@ -39,6 +39,13 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn()
 }))
 
+// The row-level middle-click / preference hooks reach useTabActions, which
+// these renders have no TabProvider for — stub the whole open-target module.
+vi.mock('@/hooks/use-open-target', () => ({
+  useOpenTarget: () => ({ openInNewTab: vi.fn(), openToTheSide: vi.fn() }),
+  useOpenPage: () => ({ openPage: vi.fn(), reuseActiveTab: false })
+}))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, params?: Record<string, unknown>) => {

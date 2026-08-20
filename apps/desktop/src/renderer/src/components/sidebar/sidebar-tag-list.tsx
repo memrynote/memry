@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
 import { useT } from '@memry/i18n/renderer'
 import { SIDEBAR_SORT_DEFAULTS, type SidebarSortMode } from '@memry/contracts/sidebar-sort'
@@ -219,6 +220,24 @@ function TagTreeItem({
     onTagClick(node.fullPath, node.color ?? '')
   }
 
+  // Middle-click opens the tag in a background tab — the row's "Open in New
+  // Tab" as a gesture (mousedown: middle never produces `click`).
+  const { openInNewTab } = useOpenTarget()
+  const handleTagMiddleClick = (e: React.MouseEvent): void => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    openInNewTab(
+      createTabFromSidebarItem({
+        type: 'tag',
+        title: node.name,
+        path: '/tags/' + node.fullPath,
+        entityId: node.fullPath,
+        color: node.color ?? ''
+      }),
+      { background: true }
+    )
+  }
+
   return (
     <>
       <div
@@ -247,6 +266,7 @@ function TagTreeItem({
             <button
               type="button"
               onClick={handleTagClick}
+              onMouseDown={handleTagMiddleClick}
               title={`${node.fullPath} (${node.totalCount})`}
               className={cn(
                 'flex items-center gap-1.5 rounded-sm py-0.5 px-1.5 text-[11px] font-medium leading-3.5 min-w-0',

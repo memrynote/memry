@@ -16,6 +16,7 @@ import {
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
+import { useOpenTarget } from '@/hooks/use-open-target'
 import { useOptionalDragContext } from '@/contexts/drag-context'
 import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -147,6 +148,23 @@ export const SortableProjectItem = ({
     [project.id, project.name, tTasks]
   )
 
+  // The same tab the context menu's "Open in New Tab" builds — middle-click is
+  // that command as a gesture, opening in the background (mousedown: middle
+  // never produces `click`).
+  const { openInNewTab } = useOpenTarget()
+  const projectTab = createTabFromSidebarItem({
+    type: 'project',
+    title: project.name,
+    icon: 'folder',
+    path: `/project/${project.id}`,
+    entityId: project.id
+  })
+  const handleMiddleClick = (e: React.MouseEvent): void => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    openInNewTab(projectTab, { background: true })
+  }
+
   return (
     <SidebarMenuItem
       ref={setRefs}
@@ -180,6 +198,7 @@ export const SortableProjectItem = ({
             tooltip={project.name}
             isActive={isActive}
             onClick={onClick}
+            onMouseDown={handleMiddleClick}
             className="h-7 gap-1.5 rounded-[5px] py-0 ps-1"
           >
             {/* Leading block mirrors the tree: expander slot + icon slot */}
@@ -199,15 +218,7 @@ export const SortableProjectItem = ({
           </SidebarMenuButton>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          <OpenTargetMenuItems
-            tab={createTabFromSidebarItem({
-              type: 'project',
-              title: project.name,
-              icon: 'folder',
-              path: `/project/${project.id}`,
-              entityId: project.id
-            })}
-          />
+          <OpenTargetMenuItems tab={projectTab} />
         </ContextMenuContent>
       </ContextMenu>
 
