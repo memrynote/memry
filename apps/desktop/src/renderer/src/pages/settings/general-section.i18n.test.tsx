@@ -83,6 +83,7 @@ describe('GeneralSettings i18n', () => {
       language: 'en',
       onboardingCompleted: true,
       createInSelectedFolder: true,
+      openPagesInNewTab: true,
       clockFormat: '12h'
     })
     api.settings.setGeneralSettings = vi.fn().mockResolvedValue({ success: true })
@@ -197,17 +198,22 @@ describe('GeneralSettings i18n', () => {
 
     await user.click(switches[3])
     await waitFor(() =>
-      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ openPagesInNewTab: false })
     )
 
     await user.click(switches[4])
+    await waitFor(() =>
+      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
+    )
+
+    await user.click(switches[5])
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
         createInSelectedFolder: false
       })
     )
 
-    await user.click(switches[5])
+    await user.click(switches[6])
     await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
 
     const selects = screen.getAllByRole('combobox')

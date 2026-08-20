@@ -54,6 +54,18 @@ export interface NoteTreeActionsDeps {
 export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const { settings: generalSettings } = useGeneralSettings()
   const { openTab, closeTab, updateTabTitleByEntityId } = useTabActions()
+
+  // Every plain sidebar open goes through here so the "clicking a page opens a
+  // new tab" preference has one place to live. The explicit gestures — Open in
+  // New Tab, Open to the Side, Cmd-click — go through useOpenTarget and stay
+  // untouched: stated intent always wins over the preference.
+  const openPagesInNewTab = generalSettings.openPagesInNewTab
+  const openPage = useCallback(
+    (tab: Parameters<typeof openTab>[0]) => {
+      openTab(tab, { reuseActiveTab: !openPagesInNewTab })
+    },
+    [openTab, openPagesInNewTab]
+  )
   const queryClient = useQueryClient()
   const originalRenameTitle = useRef<string>('')
 
@@ -97,7 +109,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           const fileType = (note.fileType ?? 'markdown') as FileType
           const isMarkdown = fileType === 'markdown'
 
-          openTab({
+          openPage({
             type: isMarkdown ? 'note' : 'file',
             title: getDisplayName(note.path),
             icon: getTabIconForFileType(fileType),
@@ -112,13 +124,13 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         }
       }
     },
-    [deps, openTab]
+    [deps, openPage]
   )
 
   const handleOpenFolderView = useCallback(
     (folderPath: string, icon?: string | null) => {
       const folderName = folderPath.split('/').pop() || 'Folder'
-      openTab({
+      openPage({
         type: 'folder',
         title: folderName,
         icon: 'folder',
@@ -131,7 +143,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         isDeleted: false
       })
     },
-    [openTab]
+    [openPage]
   )
 
   // ---- Create note ----
@@ -156,7 +168,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
       if (result.success && result.note) {
         const newNote = result.note
-        openTab({
+        openPage({
           type: 'note',
           title: getDisplayName(newNote.path),
           icon: 'file-text',
@@ -191,7 +203,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsCreating(false)
     }
-  }, [isCreating, generalSettings.createInSelectedFolder, deps, openTab])
+  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
@@ -209,7 +221,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
 
         if (result.success && result.note) {
           const newNote = result.note
-          openTab({
+          openPage({
             type: 'note',
             title: getDisplayName(newNote.path),
             icon: 'file-text',
@@ -239,7 +251,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
-    [isCreating, deps.mutations.createNote, openTab]
+    [isCreating, deps.mutations.createNote, openPage]
   )
 
   // ---- Create folder ----

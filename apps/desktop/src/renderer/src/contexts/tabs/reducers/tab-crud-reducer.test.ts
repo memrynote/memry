@@ -551,4 +551,107 @@ describe('tabCrudReducer', () => {
     expect(reopened.tabGroups.g1.activeTabId).toBe('note-a')
     expect(reopened.recentlyClosed).toHaveLength(0)
   })
+
+  // Issue #1644 — "clicking a page reuses the current tab" preference.
+  describe('reuseActiveTab', () => {
+    const newNote = {
+      type: 'note' as const,
+      title: 'Fresh',
+      icon: 'file',
+      path: '/note/fresh',
+      entityId: 'fresh',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    }
+
+    /** baseState()'s active tab is the pinned 'pin'; most cases want a real page. */
+    const activeOn = (tabId: string): TabSystemState => {
+      const state = baseState()
+      return {
+        ...state,
+        tabGroups: { ...state.tabGroups, g1: { ...state.tabGroups.g1, activeTabId: tabId } }
+      }
+    }
+
+    it('reuses the active tab instead of appending a new one', () => {
+      const next = tabCrudReducer(
+        activeOn('note-a'),
+        openAction({ reuseActiveTab: true, tab: newNote })
+      )
+
+      // 'note-a' was the active tab; it is gone, replaced in place.
+      expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'generated-1', 'tasks'])
+      expect(next.tabGroups.g1.activeTabId).toBe('generated-1')
+      expect(next.tabGroups.g1.tabs[1].entityId).toBe('fresh')
+    })
+
+    it('leaves a pinned active tab alone and opens beside it', () => {
+      const next = tabCrudReducer(
+        activeOn('pin'),
+        openAction({ reuseActiveTab: true, tab: newNote })
+      )
+
+      expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual([
+        'pin',
+        'note-a',
+        'tasks',
+        'generated-1'
+      ])
+      expect(next.tabGroups.g1.activeTabId).toBe('generated-1')
+    })
+
+    it('focuses an already-open page rather than cloning it over the active tab', () => {
+      const next = tabCrudReducer(
+        activeOn('tasks'),
+        openAction({ reuseActiveTab: true, tab: { ...newNote, entityId: 'note-a' } })
+      )
+
+      expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['pin', 'note-a', 'tasks'])
+      expect(next.tabGroups.g1.activeTabId).toBe('note-a')
+    })
+
+    it('never collapses an explicit new-tab or background open', () => {
+      const state = activeOn('note-a')
+
+      const forced = tabCrudReducer(
+        state,
+        openAction({ reuseActiveTab: true, forceNew: true, tab: newNote })
+      )
+      expect(forced.tabGroups.g1.tabs).toHaveLength(4)
+
+      const background = tabCrudReducer(
+        state,
+        openAction({ reuseActiveTab: true, background: true, tab: newNote })
+      )
+      expect(background.tabGroups.g1.tabs).toHaveLength(4)
+      expect(background.tabGroups.g1.activeTabId).toBe('note-a')
+      expect(background.tabGroups.g1.tabs.map((t) => t.id)).toContain('note-a')
+    })
+
+    it('browsing ten pages leaves one tab', () => {
+      const single = baseState({
+        tabGroups: {
+          g1: group('g1', [tab('note-a', 'note', { entityId: 'note-a' })], 'note-a'),
+          g2: group('g2', [tab('calendar', 'calendar', { path: '/calendar' })])
+        }
+      })
+
+      const final = Array.from({ length: 10 }).reduce<TabSystemState>(
+        (acc, _unused, i) =>
+          tabCrudReducer(
+            acc,
+            openAction({
+              reuseActiveTab: true,
+              tab: { ...newNote, title: `Page ${i}`, path: `/note/p${i}`, entityId: `p${i}` }
+            })
+          ),
+        single
+      )
+
+      expect(final.tabGroups.g1.tabs).toHaveLength(1)
+      expect(final.tabGroups.g1.tabs[0].entityId).toBe('p9')
+    })
+  })
 })

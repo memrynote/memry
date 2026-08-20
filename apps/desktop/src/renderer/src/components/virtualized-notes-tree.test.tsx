@@ -14,7 +14,14 @@ import { isRevealed } from '@tests/utils/reveal'
 
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
-  scrollToIndex: vi.fn()
+  scrollToIndex: vi.fn(),
+  openPagesInNewTab: true
+}))
+
+vi.mock('@/hooks/use-general-settings', () => ({
+  useGeneralSettings: () => ({
+    settings: { openPagesInNewTab: mocks.openPagesInNewTab }
+  })
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -233,6 +240,7 @@ const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNo
 describe('VirtualizedNotesTree', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.openPagesInNewTab = true
     localStorage.clear()
     localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Work']))
   })
@@ -252,7 +260,8 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-work',
         isPreview: false,
         type: 'note'
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     fireEvent.doubleClick(screen.getByText('Alpha'))
@@ -261,7 +270,8 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-work',
         isPreview: false,
         type: 'note'
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     await user.click(screen.getByText('Root'))
@@ -270,7 +280,28 @@ describe('VirtualizedNotesTree', () => {
         entityId: 'note-root',
         isPreview: false,
         type: 'file'
-      })
+      }),
+      { reuseActiveTab: false }
+    )
+  })
+
+  // #1644 — the virtualized tree opens tabs itself, so it must honour the
+  // preference the non-virtualized tree gets through useNoteTreeActions.
+  it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {
+    mocks.openPagesInNewTab = false
+    const user = userEvent.setup()
+    renderTree()
+
+    await user.click(screen.getByText('Alpha'))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'note-work', type: 'note' }),
+      { reuseActiveTab: true }
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Open folder view' }))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'folder', entityId: 'Work' }),
+      { reuseActiveTab: true }
     )
   })
 
@@ -302,7 +333,8 @@ describe('VirtualizedNotesTree', () => {
       expect.objectContaining({
         type: 'folder',
         entityId: 'Work'
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     await user.click(screen.getByRole('button', { name: 'folder icon' }))
@@ -408,7 +440,8 @@ describe('VirtualizedNotesTree', () => {
       expect.objectContaining({
         entityId: 'note-work',
         isPreview: false
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     await user.click(screen.getByRole('button', { name: 'New Note' }))

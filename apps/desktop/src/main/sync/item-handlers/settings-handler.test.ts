@@ -152,6 +152,24 @@ describe('settingsHandler.applyUpsert', () => {
     expect(prefsArg.language).toBe('tr')
   })
 
+  // #1644 — the preference must reach the other device's config.json, and
+  // `false` is the value that matters: a truthiness check would drop it.
+  it('#given a synced openPagesInNewTab=false #then writes it to config.json', () => {
+    mockGetSettings.mockReturnValue({
+      general: { openPagesInNewTab: false }
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { openPagesInNewTab: false } },
+      fieldClocks: { 'general.openPagesInNewTab': { 'device-B': 2 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    const prefsArg = mockWritePreferences.mock.calls[0][1]
+    expect(prefsArg.openPagesInNewTab).toBe(false)
+  })
+
   it('#given merged settings with editor fields #then writes editor to config.json', () => {
     mockGetSettings.mockReturnValue({
       editor: { width: 'wide' }

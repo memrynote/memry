@@ -11,6 +11,7 @@ import { notesService } from '@/services/notes-service'
 
 const mocks = vi.hoisted(() => ({
   createInSelectedFolder: true,
+  openPagesInNewTab: true,
   openTab: vi.fn(),
   closeTab: vi.fn(),
   updateTabTitleByEntityId: vi.fn()
@@ -43,7 +44,10 @@ vi.mock('@/lib/ipc-error', () => ({
 
 vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({
-    settings: { createInSelectedFolder: mocks.createInSelectedFolder }
+    settings: {
+      createInSelectedFolder: mocks.createInSelectedFolder,
+      openPagesInNewTab: mocks.openPagesInNewTab
+    }
   })
 }))
 
@@ -158,6 +162,7 @@ describe('useNoteTreeActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.createInSelectedFolder = true
+    mocks.openPagesInNewTab = true
     window.api.templates.list.mockResolvedValue({
       success: true,
       templates: [{ id: 'tpl-1', name: 'Meeting note' }]
@@ -186,7 +191,8 @@ describe('useNoteTreeActions', () => {
         title: 'A',
         path: '/notes/work-a',
         entityId: 'work-a'
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     act(() => result.current.handleSelectionChange(['other']))
@@ -196,12 +202,14 @@ describe('useNoteTreeActions', () => {
         title: 'C',
         path: '/file/other',
         entityId: 'other'
-      })
+      }),
+      { reuseActiveTab: false }
     )
 
     act(() => result.current.handleOpenFolderView('Work/Nested'))
     expect(mocks.openTab).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' })
+      expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' }),
+      { reuseActiveTab: false }
     )
 
     await act(async () => {
@@ -388,6 +396,35 @@ describe('useNoteTreeActions', () => {
     expect(selected.deps.setSelectedIds).toHaveBeenCalledWith([])
 
     await waitFor(() => expect(result.current.isMoving).toBe(false))
+  })
+
+  // Issue #1644 — the preference is what the sidebar passes down; the reducer's
+  // own behaviour is covered in tab-crud-reducer.test.ts.
+  it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {
+    mocks.openPagesInNewTab = false
+    const { result, mutations } = renderActions()
+
+    act(() => result.current.handleSelectionChange(['work-a']))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'work-a' }),
+      {
+        reuseActiveTab: true
+      }
+    )
+
+    mutations.createNote.mutateAsync.mockResolvedValueOnce({
+      success: true,
+      note: { id: 'created', path: 'Work/Created.md', emoji: undefined }
+    })
+    await act(async () => {
+      await result.current.handleCreateNoteInFolder('Work')
+    })
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'created' }),
+      {
+        reuseActiveTab: true
+      }
+    )
   })
 
   it('handles no-op and failure paths without leaving transient state stuck', async () => {

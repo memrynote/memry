@@ -13,7 +13,8 @@ export const SyncedSettingsSchema = z.object({
       accentColor: z.string().optional(),
       startOnBoot: z.boolean().optional(),
       language: z.string().optional(),
-      createInSelectedFolder: z.boolean().optional()
+      createInSelectedFolder: z.boolean().optional(),
+      openPagesInNewTab: z.boolean().optional()
     })
     .optional(),
   editor: z

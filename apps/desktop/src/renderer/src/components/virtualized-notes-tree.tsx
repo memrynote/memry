@@ -62,6 +62,7 @@ import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { useT } from '@memry/i18n/renderer'
 
@@ -907,6 +908,10 @@ export function VirtualizedNotesTree({
 }: VirtualizedNotesTreeProps) {
   const { t } = useT('notes')
   const { openTab } = useTabActions()
+  // Same preference the non-virtualized tree honours through useNoteTreeActions'
+  // openPage — this tree opens tabs itself, so it has to read it too (#1644).
+  const { settings: generalSettings } = useGeneralSettings()
+  const reuseActiveTab = !generalSettings.openPagesInNewTab
   const parentRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
   const usesExternalScroll = !!scrollContainerRef
@@ -1122,28 +1127,28 @@ export function VirtualizedNotesTree({
         if (!isFolder(itemId)) {
           const note = noteMap.get(itemId)
           if (note) {
-            openTab(noteTabData(note))
+            openTab(noteTabData(note), { reuseActiveTab })
           }
         }
       }
     },
-    [selectedIds, onSelectionChange, flatItems, noteMap, openTab, anchorId]
+    [selectedIds, onSelectionChange, flatItems, noteMap, openTab, anchorId, reuseActiveTab]
   )
 
   // Handle note double-click
   const handleNoteDoubleClick = useCallback(
     (note: NoteListItem) => {
-      openTab(noteTabData(note))
+      openTab(noteTabData(note), { reuseActiveTab })
     },
-    [openTab]
+    [openTab, reuseActiveTab]
   )
 
   // Handle opening folder view from hover icon
   const handleOpenFolderView = useCallback(
     (folderPath: string, icon?: string | null) => {
-      openTab(folderTabData(folderPath, icon))
+      openTab(folderTabData(folderPath, icon), { reuseActiveTab })
     },
-    [openTab]
+    [openTab, reuseActiveTab]
   )
 
   // Drag event handlers

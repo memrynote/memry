@@ -23,6 +23,12 @@ export const GeneralSettingsSchema = z.object({
   language: LocaleSchema,
   onboardingCompleted: z.boolean(),
   createInSelectedFolder: z.boolean(),
+  /**
+   * Whether clicking a page in the sidebar opens a new tab. Off means the click
+   * reuses the active (unpinned) tab, so browsing ten notes leaves one tab.
+   * Defaults to `true` — the behaviour every existing install already has.
+   */
+  openPagesInNewTab: z.boolean(),
   clockFormat: z.enum(['12h', '24h']),
   dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'])
 })
@@ -40,6 +46,7 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   language: 'en',
   onboardingCompleted: false,
   createInSelectedFolder: true,
+  openPagesInNewTab: true,
   clockFormat: '12h',
   dateFormat: 'DD.MM.YYYY'
 }

@@ -92,6 +92,14 @@ export function GeneralSettings() {
     [t, updateTabSettings, updateContextSettings]
   )
 
+  const handleOpenPagesInNewTabChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateGeneralSettings({ openPagesInNewTab: enabled })
+      if (!success) toast.error(t('general.tabs.error'))
+    },
+    [t, updateGeneralSettings]
+  )
+
   const handleCreateInSelectedFolderChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateGeneralSettings({ createInSelectedFolder: enabled })
@@ -374,6 +382,17 @@ export function GeneralSettings() {
       </SettingsGroup>
 
       <SettingsGroup label={t('general.groups.tabBehavior')}>
+        <SettingRow
+          label={t('general.tabs.openPagesInNewTab.label')}
+          description={t('general.tabs.openPagesInNewTab.description')}
+        >
+          <Switch
+            checked={generalSettings.openPagesInNewTab}
+            onCheckedChange={(...args) => void handleOpenPagesInNewTabChange(...args)}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+
         <SettingRow
           label={t('general.tabs.restoreSession.label')}
           description={t('general.tabs.restoreSession.description')}

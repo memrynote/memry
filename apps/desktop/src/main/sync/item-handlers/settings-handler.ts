@@ -151,6 +151,9 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         if (g.createInSelectedFolder !== undefined) {
           prefsUpdate.createInSelectedFolder = g.createInSelectedFolder
         }
+        if (g.openPagesInNewTab !== undefined) {
+          prefsUpdate.openPagesInNewTab = g.openPagesInNewTab
+        }
       }
 
       if (merged.editor) {

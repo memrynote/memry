@@ -264,6 +264,13 @@ export interface OpenTabOptions {
   forceNew?: boolean
   /** Replace the currently active tab instead of creating a new one */
   replaceActive?: boolean
+  /**
+   * Reuse the active tab rather than minting a new one — but only after the
+   * dedup/focus branches have had their say, so an entity already open is still
+   * focused where it is. Pinned tabs are never reused. This is what the
+   * "clicking a page opens a new tab" preference turns on when it is off.
+   */
+  reuseActiveTab?: boolean
 }
 
 /**
@@ -282,6 +289,8 @@ export type TabAction =
         forceNew?: boolean
         /** Replace the currently active tab instead of creating a new one */
         replaceActive?: boolean
+        /** Reuse the active tab instead of minting a new one, after dedup */
+        reuseActiveTab?: boolean
       }
     }
   | { type: 'CLOSE_TAB'; payload: { tabId: string; groupId: string } }

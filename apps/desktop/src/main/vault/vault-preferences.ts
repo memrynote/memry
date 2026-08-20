@@ -27,6 +27,7 @@ export const VaultPreferencesSchema = z.object({
   // below stays tolerant on purpose (see its comment).
   language: LocaleSchema,
   createInSelectedFolder: z.boolean(),
+  openPagesInNewTab: z.boolean(),
   editor: EditorPreferencesSchema
 })
 
@@ -46,6 +47,7 @@ export const VAULT_PREFERENCES_DEFAULTS: VaultPreferences = {
   accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor,
   language: GENERAL_SETTINGS_DEFAULTS.language,
   createInSelectedFolder: GENERAL_SETTINGS_DEFAULTS.createInSelectedFolder,
+  openPagesInNewTab: GENERAL_SETTINGS_DEFAULTS.openPagesInNewTab,
   editor: EDITOR_PREFERENCES_DEFAULTS
 }
 
@@ -55,7 +57,8 @@ export const PORTABLE_GENERAL_FIELDS = [
   'fontFamily',
   'accentColor',
   'language',
-  'createInSelectedFolder'
+  'createInSelectedFolder',
+  'openPagesInNewTab'
 ] as const satisfies readonly (keyof VaultPreferences)[]
 
 // Deliberately hand-rolled instead of VaultPreferencesSchema.parse(): config.json
@@ -86,6 +89,7 @@ export function readPreferences(vaultPath: string): VaultPreferences {
       language: prefs.language ?? VAULT_PREFERENCES_DEFAULTS.language,
       createInSelectedFolder:
         prefs.createInSelectedFolder ?? VAULT_PREFERENCES_DEFAULTS.createInSelectedFolder,
+      openPagesInNewTab: prefs.openPagesInNewTab ?? VAULT_PREFERENCES_DEFAULTS.openPagesInNewTab,
       editor: {
         ...EDITOR_PREFERENCES_DEFAULTS,
         ...(prefs.editor ?? {})

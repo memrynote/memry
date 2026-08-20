@@ -105,6 +105,10 @@
       "error": "Saat biçimi güncellenemedi"
     },
     "tabs": {
+      "openPagesInNewTab": {
+        "label": "Sayfalar\u0131 Yeni Sekmede A\u00e7",
+        "description": "Kenar \u00e7ubu\u011funda bir sayfaya t\u0131klamak onu yeni bir sekmede a\u00e7ar. Kapal\u0131yken mevcut sekme yeniden kullan\u0131l\u0131r \u2014 sabitlenmi\u015f sekmeler asla de\u011fi\u015ftirilmez. \"Yeni Sekmede A\u00e7\" ve \"Yan Tarafta A\u00e7\" her zaman yeni sekme a\u00e7ar."
+      },
       "restoreSession": {
         "label": "Başlangıçta Oturumu Geri Yükle",
         "description": "Son oturumunuzdaki sekmeleri yeniden açın"
