@@ -29,6 +29,13 @@ const BLOCK_CONTENT_SELECTOR = '.bn-block-content'
 const INLINE_CONTENT_SELECTOR = '.bn-inline-content'
 
 /**
+ * A table cell. BlockNote renders one as a bare `<td><p>text</p></td>` — that
+ * inner paragraph carries no class at all, so cells need naming in their own
+ * right rather than being reached through `.bn-inline-content`.
+ */
+const TABLE_CELL_SELECTOR = 'td, th'
+
+/**
  * Is this press outside every block — i.e. in the margin, the gutter, or the
  * empty space below the last block?
  *
@@ -140,8 +147,23 @@ export function shouldStartMarquee(target: EventTarget | null): target is HTMLEl
  * is deliberately the block box, not the line box: reclassifying the tail of a
  * short line would mean measuring line boxes on every mousedown, and users have
  * no reliable sense of where a line ended. The practical consequence, stated so
- * it is not later filed as a bug: the only place to begin a right-side marquee
- * is the gray margin outside the column.
+ * it is not later filed as a bug: the only place to begin a marquee on the
+ * right is the gray margin outside the column.
+ *
+ * ## Why table cells are asked about separately
+ *
+ * The tripwire below is not hypothetical — a table is the case where it already
+ * bites. BlockNote renders a cell as `<td colspan="1" rowspan="1"><p>text</p></td>`,
+ * and that inner `<p>` carries no `.bn-inline-content` class, unlike the one in
+ * a paragraph block. So the check above answers "no text" for every press
+ * inside a table, the text itself included, and a drag across cells started a
+ * marquee instead of selecting cells. Because a table is a single block, that
+ * marquee then selected the whole table: the cells looked selected, but
+ * Backspace deleted the entire table rather than the cells' contents.
+ *
+ * Naming cells here hands every in-table drag to prosemirror-tables, which owns
+ * cell selection. The table can still be marquee-selected as a block from the
+ * margin beside it, where no `td` is under the pointer.
  *
  * TRIPWIRE, read this before upgrading BlockNote. `.bn-inline-content` is a
  * BlockNote-internal class name, not a contract. If an upgrade renames it, this
@@ -152,5 +174,6 @@ export function shouldStartMarquee(target: EventTarget | null): target is HTMLEl
  * derives the name from here.
  */
 export function hasSelectableTextAt(target: Element): boolean {
-  return target.closest(INLINE_CONTENT_SELECTOR) !== null
+  if (target.closest(INLINE_CONTENT_SELECTOR) !== null) return true
+  return target.closest(TABLE_CELL_SELECTOR) !== null
 }

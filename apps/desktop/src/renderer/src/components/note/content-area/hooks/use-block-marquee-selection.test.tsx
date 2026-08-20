@@ -293,6 +293,20 @@ describe('useBlockMarqueeSelection', () => {
     trigger.append(line)
     const boldRun = document.createElement('strong')
     line.append(boldRun)
+    // A table cell, spelled the way BlockNote renders one: a bare `<td>` whose
+    // inner paragraph carries no class. Nothing here matches
+    // `.bn-inline-content`, so before the cell rule a drag across cells started
+    // a marquee — and since a table is one block, that marquee swallowed the
+    // whole table. Covered against the real markup in
+    // marquee-hit-test.integration.test.ts.
+    const table = document.createElement('div')
+    table.className = 'bn-block-content'
+    table.setAttribute('data-content-type', 'table')
+    trigger.append(table)
+    const cell = document.createElement('td')
+    table.append(cell)
+    const cellParagraph = document.createElement('p')
+    cell.append(cellParagraph)
 
     const { result, unmount } = renderHook(() =>
       useBlockMarqueeSelection({
@@ -314,7 +328,7 @@ describe('useBlockMarqueeSelection', () => {
       })
     }
 
-    for (const insideText of [line, boldRun]) {
+    for (const insideText of [line, boldRun, cell, cellParagraph]) {
       act(() => {
         insideText.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
         document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 70 }))
