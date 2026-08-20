@@ -89,3 +89,13 @@ describe('entrySnippet', () => {
     expect(entrySnippet('---\ndate: 2026-06-23\n---\nBody text')).toBe('Body text')
   })
 })
+
+describe('entrySnippet wiki links (issue #1556)', () => {
+  it('reads a heading link as its note half', () => {
+    expect(entrySnippet('see [[Sprint Notes#Retro]] today')).toBe('see Sprint Notes today')
+  })
+
+  it('reads an aliased link as its alias, not the raw target|alias run', () => {
+    expect(entrySnippet('see [[Sprint Notes|retro]] today')).toBe('see retro today')
+  })
+})

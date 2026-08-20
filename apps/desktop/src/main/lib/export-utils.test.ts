@@ -14,6 +14,14 @@ describe('export-utils', () => {
     const html = markdownToHtml(markdown)
     expect(html).toContain('<span class="wiki-link">Note Title</span>')
     expect(html).toContain('<span class="wiki-link">Display</span>')
+  })
+
+  it('markdownToHtml drops the heading half of a heading link (issue #1556)', () => {
+    const html = markdownToHtml('see [[Sprint Notes#Retro]] and [[Sprint Notes|retro]]')
+    expect(html).toContain('<span class="wiki-link">Sprint Notes</span>')
+    expect(html).toContain('<span class="wiki-link">retro</span>')
+    expect(html).not.toContain('#Retro')
+    expect(html).not.toContain('retroSprint Notes')
     expect(html).not.toContain('file:{id:123}')
     expect(html).toContain('<p>')
   })

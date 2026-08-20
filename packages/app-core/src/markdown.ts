@@ -1,4 +1,5 @@
 import matter from 'gray-matter'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 
 export type Eol = '\n' | '\r\n'
 
@@ -157,9 +158,7 @@ function stripMarkup(markdown: string): string {
     withoutComments = withoutComments.replace(/<!--[\s\S]*?-->/g, '') // memry block/colors/file markers + any HTML comment
   } while (withoutComments !== previous)
 
-  return withoutComments
-    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2') // wiki link w/ alias → alias
-    .replace(/\[\[([^\]]+)\]\]/g, '$1') // wiki link → target
+  return replaceWikiLinks(withoutComments) // wiki link → alias, else the note half
     .replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, '')) // fenced code → inner text
     .replace(/`([^`]+)`/g, '$1') // inline code
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // image → alt

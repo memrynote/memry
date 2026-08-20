@@ -15,7 +15,7 @@ import {
 } from '@memry/app-core/markdown'
 import { generateNoteId, isValidNoteId } from '../lib/id'
 import { isRelationValue } from '@memry/contracts/relation-uri'
-import { splitWikiTarget } from '@memry/shared/wiki-target'
+import { replaceWikiLinks, splitWikiTarget } from '@memry/shared/wiki-target'
 
 // ============================================================================
 // Types
@@ -601,7 +601,7 @@ export function createSnippet(content: string, maxLength = 200): string {
 
   // Remove links but keep text
   cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-  cleaned = cleaned.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, '$2$1')
+  cleaned = replaceWikiLinks(cleaned)
 
   // Remove images
   cleaned = cleaned.replace(/!\[[^\]]*\]\([^)]+\)/g, '')

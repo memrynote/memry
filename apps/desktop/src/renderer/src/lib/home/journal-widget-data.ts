@@ -1,3 +1,4 @@
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import type { HeatmapEntry } from '../../../../preload/index.d'
 
 export interface WeekDay {
@@ -64,12 +65,13 @@ export function relativeDayLabel(iso: string, todayIso: string, lang: string): R
 // ponytail: light markdown strip — drop frontmatter/markers, collapse whitespace, slice.
 // Upgrade to the shared snippet util if entries need richer formatting.
 export function entrySnippet(content: string, max = 140): string {
-  const text = content
-    .replace(/^---\n[\s\S]*?\n---\n?/, '')
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    // The heading half goes with the brackets. Keeping it left `Note#Heading`,
-    // and the `#` strip two lines down then welded that into `NoteHeading`.
-    .replace(/\[\[([^\]#]*)(?:#[^\]]*)?\]\]/g, '$1')
+  const withoutLinks = replaceWikiLinks(
+    content.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  )
+  const text = withoutLinks
+    // The heading half went with the brackets above. Keeping it left
+    // `Note#Heading`, and the `#` strip below then welded that into
+    // `NoteHeading`.
     .replace(/[#>*_`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()

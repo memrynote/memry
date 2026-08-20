@@ -7,6 +7,7 @@
  */
 
 import { marked } from 'marked'
+import { replaceWikiLinks } from '@memry/shared/wiki-target'
 
 // ============================================================================
 // Types
@@ -46,12 +47,11 @@ marked.setOptions({
  * Handles wiki-links by converting them to plain text spans.
  */
 export function markdownToHtml(markdown: string): string {
-  // Pre-process: Convert wiki-links [[Title]] or [[Title|Display]] to plain text
-  const processedMarkdown = markdown
-    // [[Title|Display]] -> Display
-    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '<span class="wiki-link">$2</span>')
-    // [[Title]] -> Title
-    .replace(/\[\[([^\]]+)\]\]/g, '<span class="wiki-link">$1</span>')
+  // Pre-process: wiki-links become plain spans labelled the way a chip would be
+  const processedMarkdown = replaceWikiLinks(
+    markdown,
+    (label) => `<span class="wiki-link">${label}</span>`
+  )
     // Strip file block comments <!-- file:{...} -->
     .replace(/<!--\s*file:\{[^}]+\}\s*-->/g, '')
 

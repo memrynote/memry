@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { splitWikiTarget, isBlockReference, normalizeHeading } from './wiki-target'
+import {
+  splitWikiTarget,
+  isBlockReference,
+  normalizeHeading,
+  wikiLinkLabel,
+  replaceWikiLinks
+} from './wiki-target'
 
 describe('splitWikiTarget', () => {
   it('leaves a plain target alone', () => {
@@ -64,5 +70,49 @@ describe('isBlockReference', () => {
 describe('normalizeHeading', () => {
   it('folds case and trims', () => {
     expect(normalizeHeading('  Decisions ')).toBe(normalizeHeading('decisions'))
+  })
+})
+
+describe('wikiLinkLabel', () => {
+  it('drops the heading half, keeping the note (#1556)', () => {
+    expect(wikiLinkLabel('Sprint Notes#Retro')).toBe('Sprint Notes')
+  })
+
+  it('prefers the alias over either half', () => {
+    expect(wikiLinkLabel('Sprint Notes#Retro', 'retro')).toBe('retro')
+  })
+
+  it('ignores a blank alias', () => {
+    expect(wikiLinkLabel('Sprint Notes', '   ')).toBe('Sprint Notes')
+  })
+
+  it('reads a self-link as its heading, the only text it carries', () => {
+    expect(wikiLinkLabel('#Decisions')).toBe('Decisions')
+  })
+
+  it('keeps the note half of a block reference', () => {
+    expect(wikiLinkLabel('Meeting#^abc123')).toBe('Meeting')
+  })
+})
+
+describe('replaceWikiLinks', () => {
+  it('renders every run in a sentence', () => {
+    expect(replaceWikiLinks('see [[A#B]], [[C|see it]] and [[D]]')).toBe('see A, see it and D')
+  })
+
+  // The two `'$2$1'` sites concatenated instead of choosing, so an aliased link
+  // came out as alias-then-target welded together.
+  it('does not weld the alias onto the target', () => {
+    expect(replaceWikiLinks('[[Sprint Notes|retro]]')).toBe('retro')
+  })
+
+  it('wraps each label when a renderer is given', () => {
+    expect(replaceWikiLinks('[[A#B]] x', (label) => `<i>${label}</i>`)).toBe('<i>A</i> x')
+  })
+
+  it('leaves text that is not a link alone', () => {
+    expect(replaceWikiLinks('an [[ unclosed and a [link](url)')).toBe(
+      'an [[ unclosed and a [link](url)'
+    )
   })
 })
