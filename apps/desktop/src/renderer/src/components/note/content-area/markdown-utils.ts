@@ -29,6 +29,11 @@ import {
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
+import {
+  serializeToggleBlock,
+  splitMarkdownByToggles,
+  type ToggleBlockSegment
+} from '@memry/editor-schema/blocks'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeBookmark } from './bookmark-block'
@@ -131,6 +136,26 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
   return parts.join('\n\n')
 }
 
+/**
+ * A toggle owns its whole subtree on disk: the children go INSIDE the
+ * `<details>`, serialized by the same top-level walk, so nested toggles, images
+ * and blank-line gaps inside a toggle behave exactly as they do on a page.
+ *
+ * The toggle's own line is serialized as a paragraph, not as itself: BlockNote
+ * writes a `toggleListItem` as a plain `<li>` (its `toExternalHTML`), which
+ * would put a stray `- ` inside the `<summary>`.
+ */
+async function serializeToggle(editor: any, block: Block): Promise<string> {
+  const summaryBlock = { ...block, type: 'paragraph', children: [] } as unknown as Block
+  const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
+  const children = (block.children ?? []) as Block[]
+  const body = children.length > 0 ? await serializeBlocksPreservingBlanks(editor, children) : ''
+  const colors = block.props as BlockColors
+  const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
+
+  return serializeToggleBlock(summary, body, colorsMarker)
+}
+
 export function sanitizeBlockIds(blocks: Block[]): Block[] {
   let didChange = false
 
@@ -197,7 +222,49 @@ export async function parseMarkdownPreservingBlanks(
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text: maskedMarkdown, spans } = maskInlineColorSpans(withEmbeds)
-  const calloutSegments = splitMarkdownByCallouts(maskedMarkdown)
+  const blocks = await parseMaskedMarkdown(editor, maskedMarkdown)
+
+  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+}
+
+/**
+ * Toggle regions come off FIRST, before the callout / blank-line / marker
+ * scanners: those read one line at a time and would shred a toggle body apart
+ * at its own paragraph gaps. Each body re-enters this function, so a toggle
+ * nested inside a toggle works at any depth, images and all.
+ *
+ * A toggle nested under a LIST item is out of scope here — it reaches markdown
+ * through the block-nesting markers and still flattens to a bullet, exactly as
+ * it did before (#1643 is about toggles on a page).
+ */
+async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block[]> {
+  const blocks: Block[] = []
+
+  for (const segment of splitMarkdownByToggles(markdown)) {
+    if (segment.kind === 'toggle') {
+      blocks.push(await parseToggleSegment(editor, segment))
+    } else {
+      blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
+    }
+  }
+
+  return blocks
+}
+
+async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Promise<Block> {
+  const parsedSummary = await editor.tryParseMarkdownToBlocks(segment.summary)
+  const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
+
+  return {
+    type: 'toggleListItem' as const,
+    props: { ...(colors ?? {}) },
+    content: parsedSummary[0]?.content ?? [],
+    children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
+  } as unknown as Block
+}
+
+async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promise<Block[]> {
+  const calloutSegments = splitMarkdownByCallouts(markdown)
   const blocks: Block[] = []
 
   for (const cseg of calloutSegments) {
@@ -252,7 +319,7 @@ export async function parseMarkdownPreservingBlanks(
     }
   }
 
-  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+  return blocks
 }
 
 export async function serializeBlocksPreservingBlanks(
@@ -325,6 +392,10 @@ export async function serializeBlocksPreservingBlanks(
         type: 'content',
         text: serializeCalloutBlock(calloutType, contentMd.trim())
       })
+    } else if ((block.type as string) === 'toggleListItem') {
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: await serializeToggle(editor, block) })
     } else if (isEmptyParagraph(block)) {
       await flushContent()
       emptyCount++

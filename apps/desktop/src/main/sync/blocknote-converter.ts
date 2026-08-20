@@ -5,7 +5,10 @@ import {
   BOOKMARK_LINE_REGEX,
   EMBED_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
-  parseFileBlockMarker
+  parseFileBlockMarker,
+  serializeToggleBlock,
+  splitMarkdownByToggles,
+  type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
@@ -45,6 +48,7 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
+import { createFenceTracker } from '@memry/shared/markdown-fences'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -383,6 +387,26 @@ async function serializeBlocksWithNestingMarkers(
 }
 
 /**
+ * Toggle blocks own their whole subtree on disk: children go INSIDE the
+ * `<details>`, serialized by the same top-level walk, so nested toggles, images
+ * and blank-line gaps inside a toggle behave exactly as they do on a page.
+ *
+ * The toggle's own line is serialized as a paragraph, not as itself: BlockNote
+ * writes a `toggleListItem` as a plain `<li>`, which would put a stray `- `
+ * inside the `<summary>`. Byte-identical to the renderer's `serializeToggle`.
+ */
+async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
+  const summaryBlock = { ...block, type: 'paragraph', children: [] } as unknown as PartialBlock
+  const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
+  const children = (block.children ?? []) as Block[]
+  const body = children.length > 0 ? await blocksToMarkdownPreserving(editor, children) : ''
+  const colors = block.props as BlockColors
+  const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
+
+  return serializeToggleBlock(summary, body, colorsMarker)
+}
+
+/**
  * Main-process twin of the renderer's embed resolution: same rewrite, but the
  * vault lookup is a direct call instead of an IPC round trip. A closed vault or
  * an unreadable index resolves nothing, which leaves every embed as written.
@@ -411,7 +435,57 @@ async function markdownToBlocksPreserving(
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))
-  const segments = splitMarkdownPreservingBlanks(text)
+  const blocks = await parseMaskedMarkdown(editor, text)
+
+  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+}
+
+/**
+ * Twin of the renderer's `parseMaskedMarkdown` (markdown-utils.ts).
+ *
+ * Toggle regions come off FIRST, before the blank-line and marker-line
+ * scanners: those read one line at a time and would shred a toggle body apart
+ * at its own paragraph gaps. Each body re-enters this function, so a toggle
+ * nested inside a toggle works at any depth, images and all.
+ */
+async function parseMaskedMarkdown(
+  editor: ServerBlockNoteEditor,
+  markdown: string
+): Promise<Block[]> {
+  const blocks: Block[] = []
+
+  for (const segment of splitMarkdownByToggles(markdown)) {
+    if (segment.kind === 'toggle') {
+      blocks.push(await parseToggleSegment(editor, segment))
+    } else {
+      blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
+    }
+  }
+
+  return blocks
+}
+
+async function parseToggleSegment(
+  editor: ServerBlockNoteEditor,
+  segment: ToggleBlockSegment
+): Promise<Block> {
+  const parsedSummary = await editor.tryParseMarkdownToBlocks(segment.summary)
+  const colors = segment.colorsMarker ? parseBlockColorsMarker(segment.colorsMarker) : null
+
+  return {
+    type: 'toggleListItem',
+    id: randomUUID(),
+    props: { ...(colors ?? {}) },
+    content: parsedSummary[0]?.content ?? [],
+    children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
+  } as unknown as Block
+}
+
+async function parseMarkdownWithoutToggles(
+  editor: ServerBlockNoteEditor,
+  markdown: string
+): Promise<Block[]> {
+  const segments = splitMarkdownPreservingBlanks(markdown)
   const blocks: Block[] = []
 
   for (const seg of segments) {
@@ -424,7 +498,7 @@ async function markdownToBlocksPreserving(
     }
   }
 
-  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+  return blocks
 }
 
 async function parseContentWithColorMarkers(
@@ -479,43 +553,6 @@ async function parseContentWithColorMarkers(
   await flushBuffer()
 
   return blocks
-}
-
-/**
- * CommonMark fence tracking, not a parity toggle.
- *
- * A boolean flipped by /^(?:```|~~~)/ is wrong in the way that matters here: it
- * tracks neither the fence character nor its length, so a ```` ```` ```` block
- * quoting an inner ``` — the shape of any note that documents this very marker
- * format — reads as closed halfway through. The example marker inside it then
- * parses as a real block and write-back rewrites the file around it.
- *
- * A fence opens with 3+ of ` or ~ (up to 3 leading spaces) and closes only on
- * the SAME character, at least as long, with nothing after it.
- */
-function createFenceTracker(): { consume: (line: string) => boolean } {
-  let open: { char: string; length: number } | null = null
-
-  return {
-    /** True when `line` is inside a fence — the opening/closing lines included. */
-    consume: (line) => {
-      const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/)
-      if (!match) return open !== null
-
-      const char = match[1][0]
-      const length = match[1].length
-      if (open === null) {
-        // An info string may not contain a backtick (CommonMark 4.5).
-        if (char === '`' && match[2].includes('`')) return false
-        open = { char, length }
-        return true
-      }
-      if (char === open.char && length >= open.length && match[2].trim() === '') {
-        open = null
-      }
-      return true
-    }
-  }
 }
 
 /**
@@ -623,6 +660,10 @@ async function blocksToMarkdownPreserving(
         }
       }
       segments.push({ type: 'content', text: lines.join('\n') })
+    } else if ((block.type as string) === 'toggleListItem') {
+      await flushContentGroup()
+      flushGap()
+      segments.push({ type: 'content', text: await serializeToggle(editor, block) })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
         const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
