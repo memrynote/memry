@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
+import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 
 const contentAreaMocks = vi.hoisted(() => ({
@@ -543,6 +544,16 @@ describe('ContentArea', () => {
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
+  // BlockNote 0.47 defaults `tables.headers` to false, which removes the table
+  // handle menu's header-row toggle entirely — while the markdown the note is
+  // saved as always writes a header separator. The editor has to offer the row
+  // the file format is going to insist on.
+  it('enables the table header row toggle', () => {
+    render(<ContentArea noteId="note-1" />)
+
+    expect(contentAreaMocks.blockNoteOptions.tables).toMatchObject({ headers: true })
+  })
+
   // The signed-out clobber: with no session the editor was never bound to a
   // Y.Doc, so keystrokes reached markdown alone and the sign-in that rebuilt the
   // doc from the server wrote it back over them. The local doc is the editor's
@@ -966,6 +977,40 @@ describe('ContentArea', () => {
     await expect(slashController.getItems('photo')).resolves.toEqual([
       expect.objectContaining({ key: 'image' })
     ])
+  })
+
+  it('inserts new tables with the header row markdown is going to give them anyway', async () => {
+    const defaultTableClick = vi.fn()
+    const table = {
+      id: 'new-table',
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        columnWidths: [null, null],
+        rows: [{ cells: [{}, {}] }, { cells: [{}, {}] }]
+      }
+    }
+    vi.mocked(getDefaultReactSlashMenuItems).mockReturnValueOnce([
+      { key: 'table', title: 'Table', group: 'Basic blocks', onItemClick: defaultTableClick }
+    ] as never)
+    contentAreaMocks.editor.getTextCursorPosition.mockReturnValue({ block: table })
+
+    render(<ContentArea noteId="note-1" />)
+    const slashController = contentAreaMocks.suggestionControllers.find(
+      (controller) => controller.triggerCharacter === '/'
+    )
+    const items = await slashController.getItems('table')
+
+    items[0].onItemClick()
+
+    expect(defaultTableClick).toHaveBeenCalledTimes(1)
+    expect(contentAreaMocks.editor.updateBlock).toHaveBeenCalledWith(
+      table,
+      expect.objectContaining({
+        type: 'table',
+        content: expect.objectContaining({ headerRows: 1 })
+      })
+    )
   })
 
   it('registers the wiki-link edit plugin, prepended, through the undo-safe wrapper', () => {
