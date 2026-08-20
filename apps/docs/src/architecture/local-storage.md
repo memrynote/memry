@@ -236,6 +236,12 @@ Attachments and vault media reach the renderer through the custom `memry-file://
 - `window.open` on a memry-file URL never opens a window or reaches `shell.openExternal`: the main process resolves the path with the same rules and, if it passes the directory check, opens the file in the OS default app via `shell.openPath`.
 - In-window navigation is guarded the same way: a `will-frame-navigate` listener on every window's webContents (`src/main/index.ts`, policy in `src/main/lib/frame-navigation.ts`) pins the main frame to the local app document (the packaged `file://` page, or the dev-server origin in dev) plus `memry-file:`. External `http(s)`/`mailto` links cancel the navigation and open in the OS browser; `javascript:`, `data:`, `file:` and unknown schemes are denied outright. Subframes stay permissive for `http(s)` — the CSP `frame-src` directive is the origin gate for embeds like youtube-nocookie — while local and script schemes remain blocked there too.
 
+### Identifying the embedder for http(s) embeds
+
+The packaged renderer is loaded with `loadFile()`, so the note document's origin is `file://`, and Chromium sends no `Referer` from a `file://` document to an https subframe. YouTube refuses to configure its player for an embedder it cannot identify: the embed HTML comes back carrying `ERROR_CODE_EMBEDDER_IDENTITY_MISSING_REFERRER`, and the player renders "Error 153 — Video player configuration error" instead of the video.
+
+An `onBeforeSendHeaders` handler (`src/main/index.ts`, policy in `src/main/lib/embed-referer.ts`) names the app's own site as the embedder — `Referer: https://memrynote.com/` — on a youtube-nocookie request that carries no referrer of its own. Only the `file://` subframe load arrives bare: the dev-server document's `http://localhost` origin, and every request the player itself makes from inside the loaded frame, keep their own referrer and are left untouched. That asymmetry is also why the bug is unreachable in dev.
+
 ### What a note stores for an attachment
 
 A note never stores the absolute `memry-file://` URL — that carries one machine's vault path, so the same note on a second device resolves it to nothing. What lands in the markdown is a path relative to the note itself:
