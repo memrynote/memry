@@ -134,6 +134,8 @@ A selection box follows the pointer and every block it touches is highlighted, t
 
 A bookmark card is the one exception: its whole surface is a link, so clicking it opens the link and a drag has to begin in the margin beside it instead.
 
+Inside a table, dragging selects **cells**, not blocks — a drag from one cell to another selects the range between them, and <kbd>Backspace</kbd> then clears those cells and leaves the table standing. To select the table itself as a block, begin the drag in the margin beside it, the same as for any other block.
+
 With blocks selected, <kbd>Backspace</kbd> deletes them, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> indent and outdent them, and <kbd>Esc</kbd> clears the selection.
 
 One consequence worth knowing: the empty space to the right of a short line still counts as that line's text, so the right-hand margin outside the column is the place to begin a right-side block selection.
