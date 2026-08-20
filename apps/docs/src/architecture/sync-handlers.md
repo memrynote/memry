@@ -29,6 +29,7 @@ apps/desktop/src/main/sync/item-handlers/
 ├─ inbox-handler.ts
 ├─ template-handler.ts
 ├─ home-page-handler.ts
+├─ custom-icon-handler.ts
 ├─ agent-conversation-handler.ts
 ├─ agent-message-handler.ts
 └─ index.ts              # registry: getHandler(type), getAllHandlers()
