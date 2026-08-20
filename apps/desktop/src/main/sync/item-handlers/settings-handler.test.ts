@@ -215,6 +215,52 @@ describe('settingsHandler.applyUpsert', () => {
     expect(mockWritePreferences).not.toHaveBeenCalled()
   })
 
+  // The order lives only in the local data DB (like the sort modes), so an
+  // inbound merge has to write it there — a broadcast alone would show the new
+  // order until the next restart and then quietly lose it.
+  it('#given a remote sidebar section order #then persists it and tells the renderer', () => {
+    setSetting(testDb.db, 'sidebar.sectionOrder', JSON.stringify(['collections', 'tags']))
+    mockGetSettings.mockReturnValue({
+      sidebar: { sectionOrder: ['tags', 'collections', 'projects'] }
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { sidebar: { sectionOrder: ['tags', 'collections', 'projects'] } },
+      fieldClocks: { 'sidebar.sectionOrder': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(JSON.parse(getSetting(testDb.db, 'sidebar.sectionOrder') as string)).toEqual([
+      'tags',
+      'collections',
+      'projects'
+    ])
+    const broadcast = mockSend.mock.calls.find(
+      (call: unknown[]) =>
+        call[0] === SettingsChannels.events.CHANGED &&
+        (call[1] as { key?: string })?.key === 'sidebar.sectionOrder'
+    )
+    expect(broadcast?.[1]).toEqual({
+      key: 'sidebar.sectionOrder',
+      value: ['tags', 'collections', 'projects']
+    })
+  })
+
+  it('#given a remote merge with no sidebar order #then leaves the stored order alone', () => {
+    setSetting(testDb.db, 'sidebar.sectionOrder', JSON.stringify(['tags']))
+    mockGetSettings.mockReturnValue({ general: { theme: 'light' } })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { theme: 'light' } },
+      fieldClocks: { 'general.theme': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(JSON.parse(getSetting(testDb.db, 'sidebar.sectionOrder') as string)).toEqual(['tags'])
+  })
+
   it('#given remote inbox reminder time change #then clears the local last-notified guard', () => {
     setSetting(
       testDb.db,

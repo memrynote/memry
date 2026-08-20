@@ -1332,6 +1332,9 @@ export interface SettingsClientAPI {
     surface: SidebarSortSurface,
     mode: SidebarSortMode
   ): Promise<{ success: boolean; error?: string }>
+  /** Section ids in the order the user dragged them; empty means the default. */
+  getSidebarSectionOrder(): Promise<string[]>
+  setSidebarSectionOrder(order: string[]): Promise<{ success: boolean; error?: string }>
   // AI Settings (local model - no API key needed)
   getAISettings(): Promise<AISettings>
   setAISettings(settings: Partial<AISettings>): Promise<{ success: boolean; error?: string }>

@@ -383,6 +383,7 @@
       "newProject": "New project",
       "bookmarks": "Bookmarks",
       "tags": "Tags",
+      "reorderSection": "Reorder {section}",
       "dropFilesToImport": "Drop files to import",
       "dropFilesIntoVaultRoot": "Vault root",
       "newNoteN": "New note (⌘N)",
@@ -422,7 +423,8 @@
       "sortModeCreatedAsc": "Created: oldest first",
       "sortModeCountDesc": "Most used",
       "sortModeCountAsc": "Least used",
-      "sortSaveFailed": "Could not save the sort order"
+      "sortSaveFailed": "Could not save the sort order",
+      "sectionOrderSaveFailed": "Could not save the sidebar order"
     },
     "componentsDayPanelGlobalDayPanel": {
       "resizeDayPanel": "Resize Day Panel",

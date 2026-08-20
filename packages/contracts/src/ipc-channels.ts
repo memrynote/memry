@@ -388,6 +388,10 @@ export const SettingsChannels = {
     GET_SIDEBAR_SORT_MODES: 'settings:getSidebarSortModes',
     /** Set one sidebar section's sort mode */
     SET_SIDEBAR_SORT_MODE: 'settings:setSidebarSortMode',
+    /** Get the order the sidebar sections render in */
+    GET_SIDEBAR_SECTION_ORDER: 'settings:getSidebarSectionOrder',
+    /** Set the order the sidebar sections render in */
+    SET_SIDEBAR_SECTION_ORDER: 'settings:setSidebarSectionOrder',
     /** Get AI settings (enabled flag) */
     GET_AI_SETTINGS: 'settings:getAISettings',
     /** Set AI settings */

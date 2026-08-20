@@ -9,6 +9,8 @@ import { AppSidebar } from './app-sidebar'
 const mocks = vi.hoisted(() => ({
   openSidebarItem: vi.fn(),
   isActiveItem: vi.fn(() => false),
+  savedOrder: [] as string[],
+  setSectionOrder: vi.fn(),
   projects: [{ id: 'p1', name: 'Launch', color: '#f00', isArchived: false }] as Array<{
     id: string
     name: string
@@ -134,6 +136,14 @@ vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { createInSelectedFolder: false } })
 }))
 
+vi.mock('@/hooks/use-sidebar-section-order', () => ({
+  useSidebarSectionOrder: () => ({
+    order: mocks.savedOrder,
+    setOrder: mocks.setSectionOrder,
+    error: null
+  })
+}))
+
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({
     openSidebarItem: mocks.openSidebarItem,
@@ -205,64 +215,50 @@ vi.mock('@/components/sidebar/sortable-project-list', () => ({
   )
 }))
 
-const DEFAULT_PROJECTS = [{ id: 'p1', name: 'Launch', color: '#f00', isArchived: false }]
-
 // AppSidebar's sections are sortable, and dnd-kit's monitor requires an enclosing
 // DndContext — the app mounts one in App.tsx (DragProvider) around everything.
 const DndWrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
   <DndContext>{children}</DndContext>
 )
 
-describe('AppSidebar projects section', () => {
+describe('AppSidebar section order', () => {
   beforeEach(() => {
-    mocks.projects = DEFAULT_PROJECTS.map((project) => ({ ...project }))
-    mocks.openSidebarItem.mockClear()
+    mocks.savedOrder = []
+    mocks.setSectionOrder.mockClear()
   })
 
-  // The section header "+" is the only project entry point that does not go
-  // through the Tasks page: the empty-state CTA disappears after the first
-  // project, and nothing else in the sidebar creates one.
-  it('opens the project modal in create mode from the section header', () => {
+  const renderedOrder = (): string[] =>
+    screen
+      .getAllByTestId('sidebar-section-sortable')
+      .map((node) => node.getAttribute('data-section-id') ?? '')
+
+  it('renders the default order when nothing was saved', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
-    expect(screen.queryByTestId('project-modal')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByLabelText('newProject'))
-
-    expect(screen.getByTestId('project-modal')).toHaveTextContent('create')
+    expect(renderedOrder()).toEqual(['collections', 'projects', 'bookmarks', 'canvases', 'tags'])
   })
 
-  it('pins the header actions open while there are no projects', () => {
-    mocks.projects = []
+  it('renders the saved order, slotting in sections it does not mention', () => {
+    mocks.savedOrder = ['tags', 'bookmarks']
+
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
-    expect(screen.getByRole('region', { name: 'projects' })).toHaveAttribute(
-      'data-actions-pinned',
-      'true'
-    )
+    expect(renderedOrder()).toEqual(['collections', 'projects', 'tags', 'bookmarks', 'canvases'])
   })
 
-  it('lets the header actions fall back to hover once a project exists', () => {
+  it('ignores a saved id this build does not render', () => {
+    mocks.savedOrder = ['shelves', 'tags', 'collections', 'projects', 'bookmarks', 'canvases']
+
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
-    expect(screen.getByRole('region', { name: 'projects' })).toHaveAttribute(
-      'data-actions-pinned',
-      'false'
-    )
+    expect(renderedOrder()).toEqual(['tags', 'collections', 'projects', 'bookmarks', 'canvases'])
   })
 
-  it('renders active projects and opens Project Home on click', () => {
+  it('gives every section a named drag handle', () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
 
-    expect(screen.getByText('Launch')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Launch'))
-
-    expect(mocks.openSidebarItem).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'project',
-        entityId: 'p1'
-      })
-    )
+    expect(screen.getAllByTestId('sidebar-section-drag')).toHaveLength(5)
+    // `reorderSection` is the key; the mocked t() returns the last segment.
+    expect(screen.getAllByLabelText('reorderSection')).toHaveLength(5)
   })
 })

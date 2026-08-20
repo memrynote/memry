@@ -42,6 +42,9 @@ import { useSidebarSortLabels } from '@/components/sidebar/use-sidebar-sort-labe
 import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
 import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
 import { SortableProjectList } from '@/components/sidebar/sortable-project-list'
+import { SidebarSectionAction } from '@/components/sidebar/sidebar-section-action'
+import { SortableSidebarSections } from '@/components/sidebar/sortable-sidebar-sections'
+import { resolveSidebarSectionOrder } from '@/components/sidebar/sidebar-section-order'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { SidebarDrillDownContainer } from '@/components/sidebar/sidebar-drill-down-container'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -49,6 +52,7 @@ import { Picker } from '@/components/ui/picker'
 import { NewItemMenuItems } from '@/components/tabs/new-item-menu-items'
 import { useSelectedFolder } from '@/contexts/selected-folder-context'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useSidebarSectionOrder } from '@/hooks/use-sidebar-section-order'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import type { OpenSidebarItemOptions } from '@/hooks/use-sidebar-navigation'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
@@ -187,6 +191,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   const { openTab } = useTabActions()
 
   const { settings: generalSettings } = useGeneralSettings()
+  const { order: sectionOrder, setOrder: setSectionOrder } = useSidebarSectionOrder()
 
   // Handle creating a new note (⌘N shortcut target)
   const handleNewNote = useCallback(async () => {
@@ -507,6 +512,208 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
   // required prop types without a reachable dead control.
   const noopProjectAction = useCallback((): void => {}, [])
 
+  // Sections in their default order. What the user dragged lives in
+  // `sidebar.sectionOrder` (per vault, synced); a saved order that names a
+  // section this build does not render is filtered, and a section the saved
+  // order never saw falls back to its slot here (#1645).
+  const sectionLabels: Record<string, string> = {
+    collections: tPhaseF('phaseF.componentsAppSidebar.collections'),
+    projects: tPhaseF('phaseF.componentsAppSidebar.projects'),
+    bookmarks: tPhaseF('phaseF.componentsAppSidebar.bookmarks'),
+    canvases: tPhaseF('canvas.sectionLabel'),
+    tags: tPhaseF('phaseF.componentsAppSidebar.tags')
+  }
+
+  const sectionNodes: Record<string, React.ReactNode> = {
+    collections: (
+      <SidebarSection
+        id="collections"
+        label={tPhaseF('phaseF.componentsAppSidebar.collections')}
+        defaultExpanded={false}
+        actions={
+          <>
+            <SidebarSortPicker
+              surface="collections"
+              mode={collectionsSortMode}
+              onModeChange={(next) => void setCollectionsSortMode(next)}
+              labels={sortLabels.labels}
+              triggerLabel={sortLabels.triggerLabel(
+                tPhaseF('phaseF.componentsAppSidebar.collections'),
+                collectionsSortMode
+              )}
+            />
+            <SidebarSectionAction
+              icon={foldersExpanded ? ChevronsDown : ChevronsUp}
+              label={foldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
+              onClick={() => {
+                if (foldersExpanded) {
+                  notesActionsRef.current?.collapseAll()
+                } else {
+                  notesActionsRef.current?.expandAll()
+                }
+                setFoldersExpanded(!foldersExpanded)
+              }}
+            />
+            <SidebarSectionAction
+              icon={FilePlus}
+              label={tPhaseF('phaseF.componentsAppSidebar.newNote')}
+              tooltip={tPhaseF('phaseF.componentsAppSidebar.newNote2')}
+              onClick={() => notesActionsRef.current?.createNote()}
+            />
+            <SidebarSectionAction
+              icon={FolderPlus}
+              label={tPhaseF('phaseF.componentsAppSidebar.newFolder')}
+              tooltip={tPhaseF('phaseF.componentsAppSidebar.newFolder2')}
+              onClick={() => notesActionsRef.current?.createFolder()}
+            />
+          </>
+        }
+      >
+        <NotesTree
+          ref={notesActionsRef}
+          onTargetFolderChange={handleTargetFolderChange}
+          fileDropFolder={isDraggingFiles ? dropFolder : null}
+          scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
+        />
+      </SidebarSection>
+    ),
+    projects: (
+      <SidebarSection
+        id="projects"
+        label={tPhaseF('phaseF.componentsAppSidebar.projects')}
+        defaultExpanded={false}
+        totalCount={activeProjects.length}
+        // With no projects the section body is an empty-state CTA nobody sees
+        // while the section is collapsed — which it is by default. Pinning the
+        // "+" open is then the only entry point on screen.
+        actionsAlwaysVisible={activeProjects.length === 0}
+        actions={
+          <>
+            <SidebarSortPicker
+              surface="projects"
+              mode={projectsSortMode}
+              onModeChange={(next) => void setProjectsSortMode(next)}
+              labels={sortLabels.labels}
+              triggerLabel={sortLabels.triggerLabel(
+                tPhaseF('phaseF.componentsAppSidebar.projects'),
+                projectsSortMode
+              )}
+            />
+            <SidebarSectionAction
+              icon={Plus}
+              label={tPhaseF('phaseF.componentsAppSidebar.newProject')}
+              onClick={handleCreateProject}
+            />
+          </>
+        }
+      >
+        <SortableProjectList
+          projects={activeProjects}
+          activeProjectId={null}
+          onProjectClick={handleProjectClick}
+          onProjectEdit={handleEditProject}
+          onProjectArchive={noopProjectAction}
+          onProjectDelete={noopProjectAction}
+          onProjectsReorder={noopProjectAction}
+          onCreateProject={handleCreateProject}
+          reorderDisabled={!isReorderable(projectsSortMode)}
+        />
+      </SidebarSection>
+    ),
+    bookmarks: (
+      <SidebarSection
+        id="bookmarks"
+        label={tPhaseF('phaseF.componentsAppSidebar.bookmarks')}
+        defaultExpanded={false}
+        actions={
+          <SidebarSortPicker
+            surface="bookmarks"
+            mode={bookmarksSortMode}
+            onModeChange={(next) => void setBookmarksSortMode(next)}
+            labels={sortLabels.labels}
+            triggerLabel={sortLabels.triggerLabel(
+              tPhaseF('phaseF.componentsAppSidebar.bookmarks'),
+              bookmarksSortMode
+            )}
+          />
+        }
+      >
+        <SidebarBookmarkList
+          maxVisible={6}
+          onBookmarkClick={handleBookmarkClick}
+          sortMode={bookmarksSortMode}
+        />
+      </SidebarSection>
+    ),
+    // Canvases stays out of the map entirely while its flag is off, so the
+    // saved order simply has no slot for it; flipping the flag back on drops
+    // it into its default place again.
+    ...(isEnabled('spatialCanvas')
+      ? {
+          canvases: (
+            <SidebarSection
+              id="canvases"
+              label={tPhaseF('canvas.sectionLabel')}
+              defaultExpanded={false}
+              totalCount={canvasCount}
+              actions={
+                <>
+                  <SidebarSortPicker
+                    surface="canvases"
+                    mode={canvasesSortMode}
+                    onModeChange={(next) => void setCanvasesSortMode(next)}
+                    labels={sortLabels.labels}
+                    triggerLabel={sortLabels.triggerLabel(
+                      tPhaseF('canvas.sectionLabel'),
+                      canvasesSortMode
+                    )}
+                  />
+                  <SidebarSectionAction
+                    icon={Plus}
+                    label={tPhaseF('canvas.newCanvas')}
+                    onClick={() => void handleCreateCanvas()}
+                  />
+                  <SidebarSectionAction
+                    icon={FolderPlus}
+                    label={tPhaseF('canvas.newCanvasFolder')}
+                    onClick={() => canvasTreeRef.current?.createFolder()}
+                  />
+                </>
+              }
+            >
+              <CanvasTree
+                ref={canvasTreeRef}
+                onCanvasClick={handleCanvasOpen}
+                onCountChange={setCanvasCount}
+                onTargetFolderChange={handleCanvasTargetFolderChange}
+              />
+            </SidebarSection>
+          )
+        }
+      : {}),
+    tags: (
+      <SidebarSection
+        id="tags"
+        label={tPhaseF('phaseF.componentsAppSidebar.tags')}
+        defaultExpanded={false}
+        actions={tagsActions}
+      >
+        <SidebarTagList maxVisible={6} onActionsReady={setTagsActions} />
+      </SidebarSection>
+    )
+  }
+
+  const sectionList = (
+    <SortableSidebarSections
+      sections={resolveSidebarSectionOrder(Object.keys(sectionNodes), sectionOrder).map((id) => ({
+        id,
+        label: sectionLabels[id],
+        node: sectionNodes[id]
+      }))}
+      onReorder={setSectionOrder}
+    />
+  )
+
   // Main sidebar content (shown when not drilling down)
   const mainContent = (
     <>
@@ -522,238 +729,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         {...{ [FILE_DROP_FOLDER_ATTR]: '' }}
         {...dropHandlers}
       >
-        {/* COLLECTIONS Section */}
-        <SidebarSection
-          id="collections"
-          label={tPhaseF('phaseF.componentsAppSidebar.collections')}
-          defaultExpanded={false}
-          actions={
-            <>
-              <SidebarSortPicker
-                surface="collections"
-                mode={collectionsSortMode}
-                onModeChange={(next) => void setCollectionsSortMode(next)}
-                labels={sortLabels.labels}
-                triggerLabel={sortLabels.triggerLabel(
-                  tPhaseF('phaseF.componentsAppSidebar.collections'),
-                  collectionsSortMode
-                )}
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (foldersExpanded) {
-                        notesActionsRef.current?.collapseAll()
-                      } else {
-                        notesActionsRef.current?.expandAll()
-                      }
-                      setFoldersExpanded(!foldersExpanded)
-                    }}
-                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={foldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                  >
-                    {foldersExpanded ? (
-                      <ChevronsDown className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                    ) : (
-                      <ChevronsUp className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {foldersExpanded ? 'Collapse all folders' : 'Expand all folders'}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => notesActionsRef.current?.createNote()}
-                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newNote')}
-                  >
-                    <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {tPhaseF('phaseF.componentsAppSidebar.newNote2')}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => notesActionsRef.current?.createFolder()}
-                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newFolder')}
-                  >
-                    <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {tPhaseF('phaseF.componentsAppSidebar.newFolder2')}
-                </TooltipContent>
-              </Tooltip>
-            </>
-          }
-        >
-          <NotesTree
-            ref={notesActionsRef}
-            onTargetFolderChange={handleTargetFolderChange}
-            fileDropFolder={isDraggingFiles ? dropFolder : null}
-            scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
-          />
-        </SidebarSection>
-
-        {/* PROJECTS Section */}
-        <SidebarSection
-          id="projects"
-          label={tPhaseF('phaseF.componentsAppSidebar.projects')}
-          defaultExpanded={false}
-          totalCount={activeProjects.length}
-          // With no projects the section body is an empty-state CTA nobody sees
-          // while the section is collapsed — which it is by default. Pinning the
-          // "+" open is then the only entry point on screen.
-          actionsAlwaysVisible={activeProjects.length === 0}
-          actions={
-            <>
-              <SidebarSortPicker
-                surface="projects"
-                mode={projectsSortMode}
-                onModeChange={(next) => void setProjectsSortMode(next)}
-                labels={sortLabels.labels}
-                triggerLabel={sortLabels.triggerLabel(
-                  tPhaseF('phaseF.componentsAppSidebar.projects'),
-                  projectsSortMode
-                )}
-              />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleCreateProject}
-                    className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newProject')}
-                  >
-                    <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {tPhaseF('phaseF.componentsAppSidebar.newProject')}
-                </TooltipContent>
-              </Tooltip>
-            </>
-          }
-        >
-          <SortableProjectList
-            projects={activeProjects}
-            activeProjectId={null}
-            onProjectClick={handleProjectClick}
-            onProjectEdit={handleEditProject}
-            onProjectArchive={noopProjectAction}
-            onProjectDelete={noopProjectAction}
-            onProjectsReorder={noopProjectAction}
-            onCreateProject={handleCreateProject}
-            reorderDisabled={!isReorderable(projectsSortMode)}
-          />
-        </SidebarSection>
-
-        {/* BOOKMARKS Section */}
-        <SidebarSection
-          id="bookmarks"
-          label={tPhaseF('phaseF.componentsAppSidebar.bookmarks')}
-          defaultExpanded={false}
-          actions={
-            <SidebarSortPicker
-              surface="bookmarks"
-              mode={bookmarksSortMode}
-              onModeChange={(next) => void setBookmarksSortMode(next)}
-              labels={sortLabels.labels}
-              triggerLabel={sortLabels.triggerLabel(
-                tPhaseF('phaseF.componentsAppSidebar.bookmarks'),
-                bookmarksSortMode
-              )}
-            />
-          }
-        >
-          <SidebarBookmarkList
-            maxVisible={6}
-            onBookmarkClick={handleBookmarkClick}
-            sortMode={bookmarksSortMode}
-          />
-        </SidebarSection>
-
-        {/* CANVASES Section (gated by the spatialCanvas flag, default on) */}
-        {isEnabled('spatialCanvas') && (
-          <SidebarSection
-            id="canvases"
-            label={tPhaseF('canvas.sectionLabel')}
-            defaultExpanded={false}
-            totalCount={canvasCount}
-            actions={
-              <>
-                <SidebarSortPicker
-                  surface="canvases"
-                  mode={canvasesSortMode}
-                  onModeChange={(next) => void setCanvasesSortMode(next)}
-                  labels={sortLabels.labels}
-                  triggerLabel={sortLabels.triggerLabel(
-                    tPhaseF('canvas.sectionLabel'),
-                    canvasesSortMode
-                  )}
-                />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => void handleCreateCanvas()}
-                      className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                      aria-label={tPhaseF('canvas.newCanvas')}
-                    >
-                      <Plus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {tPhaseF('canvas.newCanvas')}
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => canvasTreeRef.current?.createFolder()}
-                      className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                      aria-label={tPhaseF('canvas.newCanvasFolder')}
-                    >
-                      <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {tPhaseF('canvas.newCanvasFolder')}
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            }
-          >
-            <CanvasTree
-              ref={canvasTreeRef}
-              onCanvasClick={handleCanvasOpen}
-              onCountChange={setCanvasCount}
-              onTargetFolderChange={handleCanvasTargetFolderChange}
-            />
-          </SidebarSection>
-        )}
-
-        {/* TAGS Section */}
-        <SidebarSection
-          id="tags"
-          label={tPhaseF('phaseF.componentsAppSidebar.tags')}
-          defaultExpanded={false}
-          actions={tagsActions}
-        >
-          <SidebarTagList maxVisible={6} onActionsReady={setTagsActions} />
-        </SidebarSection>
+        {sectionList}
 
         {/*
           Drop affordance. It never takes pointer events and never covers the

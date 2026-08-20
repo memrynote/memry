@@ -61,6 +61,19 @@ Sort modes are saved per vault and sync, so another device that opens the same
 vault shows the same order. Each section syncs independently — changing
 Collections on one device and Tags on another keeps both changes.
 
+### Reordering the sections themselves
+
+The sections come in a fixed order, but you can change it. Hover a section
+header and a grip appears at its left edge: drag it to move that whole section
+above or below another. The header's own click still expands and collapses the
+section, and keyboard users can pick the grip up with <kbd>Space</kbd> and move
+it with the arrow keys.
+
+Like sort modes, the arrangement is saved per vault and syncs. A section you
+have never had — one added by a later version, or one whose feature you switch
+back on — appears in its usual place rather than at the bottom, and a section
+this version does not know about is ignored.
+
 Sections start in the order they have always used, so an existing vault looks
 unchanged until you pick something else.
 
