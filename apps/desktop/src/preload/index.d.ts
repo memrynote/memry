@@ -74,6 +74,7 @@ import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type {
   CustomIcon,
   CustomIconAddInput,
+  CustomIconAddFromUrlInput,
   CustomIconRenameInput
 } from '@memry/contracts/custom-icons-api'
 
@@ -599,6 +600,7 @@ export interface HomePage {
 export interface CustomIconsClientAPI {
   list(): Promise<CustomIcon[]>
   add(input: CustomIconAddInput): Promise<CustomIcon>
+  addFromUrl(input: CustomIconAddFromUrlInput): Promise<CustomIcon>
   rename(input: CustomIconRenameInput): Promise<CustomIcon>
   delete(id: string): Promise<{ success: boolean }>
 }

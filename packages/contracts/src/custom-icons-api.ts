@@ -41,6 +41,21 @@ export const CustomIconAddSchema = z.object({
 })
 export type CustomIconAddInput = z.infer<typeof CustomIconAddSchema>
 
+/**
+ * Add an icon by downloading it from a URL.
+ *
+ * The URL is fetched once, in the main process, and only its bytes are kept —
+ * nothing about the icon stays remote, so rendering it never touches the
+ * network and the record that syncs is the same local-bytes record an upload
+ * produces.
+ */
+export const CustomIconAddFromUrlSchema = z.object({
+  url: z.string().min(1).max(2048),
+  /** Optional label; the file name in the URL is used when omitted. */
+  name: z.string().min(1).max(CUSTOM_ICON_NAME_MAX_LENGTH).optional()
+})
+export type CustomIconAddFromUrlInput = z.infer<typeof CustomIconAddFromUrlSchema>
+
 export const CustomIconRenameSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(CUSTOM_ICON_NAME_MAX_LENGTH)

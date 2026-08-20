@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { refreshCustomIcons, useCustomIcons } from '@/lib/custom-icons-store'
-import { Check, Pencil, Trash2, Upload, X } from '@/lib/icons'
+import { ArrowRight, Check, Link, Loader2, Pencil, Trash2, Upload, X } from '@/lib/icons'
 
 const log = createLogger('CustomIconGrid')
 
@@ -50,8 +50,11 @@ interface CustomIconGridProps {
 /**
  * The picker's third tab: the vault's own icon library.
  *
- * Icons arrive by drop or file picker, keep a user-editable name, and stay
- * listed until deleted — the library is the point, not a one-shot upload.
+ * Icons arrive by drop, file picker or link, keep a user-editable name, and
+ * stay listed until deleted — the library is the point, not a one-shot upload.
+ *
+ * A pasted link is downloaded by the main process and stored like any other
+ * icon; nothing here ever renders from a remote address.
  */
 export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Element {
   const { t } = useT('notes')
@@ -60,6 +63,8 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
   const [search, setSearch] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
+  const [url, setUrl] = useState('')
+  const [isDownloading, setIsDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -101,13 +106,50 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
     [t]
   )
 
+  const addFromUrl = useCallback(
+    async (link: string) => {
+      const api = window.api?.customIcons
+      const trimmed = link.trim()
+      if (!api || !trimmed) return
+
+      setIsDownloading(true)
+      setError(null)
+      try {
+        await api.addFromUrl({ url: trimmed })
+        await refreshCustomIcons()
+        setUrl('')
+      } catch (err) {
+        log.warn('Failed to add custom icon from URL', err)
+        setError(extractErrorMessage(err, t('menus.emoji.custom.addUrlFailed')))
+      } finally {
+        setIsDownloading(false)
+      }
+    },
+    [t]
+  )
+
+  /**
+   * An image dragged out of a browser arrives as a link, not a file, so the
+   * same drop target takes both.
+   */
   const handleDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault()
       setIsDragging(false)
-      void addFiles(Array.from(event.dataTransfer.files))
+      const files = Array.from(event.dataTransfer.files)
+      if (files.length > 0) {
+        void addFiles(files)
+        return
+      }
+      const dropped = (
+        event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain')
+      )
+        .split('\n')
+        .map((line) => line.trim())
+        .find((line) => /^https?:\/\//i.test(line))
+      if (dropped) void addFromUrl(dropped)
     },
-    [addFiles]
+    [addFiles, addFromUrl]
   )
 
   const handleDelete = useCallback(
@@ -183,6 +225,48 @@ export function CustomIconGrid({ onSelect }: CustomIconGridProps): React.JSX.Ele
             event.target.value = ''
           }}
         />
+
+        <div
+          className={cn(
+            'flex items-center gap-2 rounded-md border border-border px-2',
+            'transition-colors focus-within:border-foreground/40'
+          )}
+        >
+          {isDownloading ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+          ) : (
+            <Link className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <input
+            type="url"
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void addFromUrl(url)
+              }
+            }}
+            disabled={isDownloading}
+            placeholder={
+              isDownloading
+                ? t('menus.emoji.custom.downloading')
+                : t('menus.emoji.custom.urlPlaceholder')
+            }
+            aria-label={t('menus.emoji.custom.urlLabel')}
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:opacity-60"
+          />
+          {url.trim() && !isDownloading && (
+            <button
+              type="button"
+              onClick={() => void addFromUrl(url)}
+              aria-label={t('menus.emoji.custom.urlSubmit')}
+              className="rounded p-1 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
