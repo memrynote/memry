@@ -26,6 +26,19 @@ function parseMindMapOpen(raw: unknown): boolean | undefined {
   return typeof raw === 'boolean' ? raw : undefined
 }
 
+/**
+ * No branch opened. A shared, frozen value so closing an already-collapsed map
+ * is a no-op to React rather than a fresh set on every commit.
+ *
+ * Note what is NOT here: a view-state key. Expansion is deliberately kept in
+ * memory only. The ids in it are derived from block ids, which the note re-mints
+ * whenever it is edited, rebuilt or opened on another device, so persisting them
+ * would fill tab state with identifiers that are stale by the time they are read
+ * — and would have to be parsed and kept version-tolerant forever for a state
+ * the user restores with one click.
+ */
+const NO_EXPANSION: ReadonlySet<string> = new Set<string>()
+
 /** The slice of a BlockNote editor the map reads. */
 interface BlockTreeHost {
   document?: unknown
@@ -67,6 +80,11 @@ export interface UseMindMapResult {
   close: () => void
   /** Null until the map is open and has been built. */
   map: MindMap | null
+  /**
+   * Open the branch a "+N more" node stands for. In-memory only: it is dropped
+   * when the map closes, and never written to tab view state.
+   */
+  expandBranch: (nodeId: string) => void
   /** Pass to the content area in place of the callback that was composed in. */
   handleEditorReady: (editor: unknown) => void
   /**
@@ -108,6 +126,12 @@ export function useMindMap({
     []
   )
 
+  /** Same contract, same reason: a fold marker is chrome, so it is translated. */
+  const formatMore = useCallback(
+    (count: number) => translate.current('mindMap.more', { count }),
+    []
+  )
+
   const [storedOpen, setStoredOpen] = useTabViewState<boolean>({
     key: MIND_MAP_VIEW_STATE_KEY,
     defaultValue: false,
@@ -118,6 +142,16 @@ export function useMindMap({
   const editorRef = useRef<BlockTreeHost | null>(null)
   const [editorRevision, setEditorRevision] = useState(0)
   const [map, setMap] = useState<MindMap | null>(null)
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(NO_EXPANSION)
+
+  const expandBranch = useCallback((nodeId: string) => {
+    setExpanded((previous) => {
+      if (previous.has(nodeId)) return previous
+      const next = new Set(previous)
+      next.add(nodeId)
+      return next
+    })
+  }, [])
 
   const handleEditorReady = useCallback(
     (editor: unknown) => {
@@ -134,16 +168,23 @@ export function useMindMap({
         rootLabel: noteTitle,
         direction,
         noteId,
-        formatContentCount
+        formatContentCount,
+        formatMore,
+        expanded
       }),
-    [direction, noteId, noteTitle, formatContentCount]
+    [direction, noteId, noteTitle, formatContentCount, formatMore, expanded]
   )
 
   // Layout, not passive: the note body is hidden in the same commit that flips
   // the toggle, so a map that arrived a frame later would paint a blank gap.
+  //
+  // Closing drops the expansion with the map. Nothing to clean up on the way
+  // out, and nothing to reconcile on the way in: the next open is the note's
+  // shape as the note is now, which is the only shape those ids still fit.
   useLayoutEffect(() => {
     if (!isOpen) {
       setMap(null)
+      setExpanded(NO_EXPANSION)
       return
     }
     setMap(build())
@@ -166,7 +207,7 @@ export function useMindMap({
   }, [storedOpen, setStoredOpen])
 
   return useMemo(
-    () => ({ isAvailable, isOpen, toggle, close, map, handleEditorReady, refresh }),
-    [isAvailable, isOpen, toggle, close, map, handleEditorReady, refresh]
+    () => ({ isAvailable, isOpen, toggle, close, map, expandBranch, handleEditorReady, refresh }),
+    [isAvailable, isOpen, toggle, close, map, expandBranch, handleEditorReady, refresh]
   )
 }

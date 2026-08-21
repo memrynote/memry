@@ -33,6 +33,12 @@ const root = map.nodes.find((node) => node.kind === 'root')!
 const link = map.nodes.find((node) => node.kind === 'wikiLink')!
 const task = map.nodes.find((node) => node.kind === 'task')!
 
+/** A note wide enough that the root folds its overflow behind a marker. */
+const marker = buildMindMap(
+  Array.from({ length: 40 }, (_, index) => heading(`b-${index}`, 1, `Section ${index}`)),
+  { rootLabel: 'Test Note', noteId: 'note-1' }
+).nodes.find((node) => node.kind === 'more')!
+
 let container: HTMLElement
 let top: HTMLElement
 /** Every scroll the run asked for, in order, with what it was aimed at. */
@@ -42,9 +48,11 @@ function setup(options: { smooth?: boolean } = {}) {
   const close = vi.fn()
   const openNote = vi.fn()
   const openTask = vi.fn()
+  const expandBranch = vi.fn()
   const view = renderHook(() =>
     useMindMapNavigation({
       close,
+      expandBranch,
       getContainer: () => container,
       getTopElement: () => top,
       smooth: options.smooth ?? true,
@@ -52,7 +60,7 @@ function setup(options: { smooth?: boolean } = {}) {
       openTask
     })
   )
-  return { close, openNote, openTask, view }
+  return { close, openNote, openTask, expandBranch, view }
 }
 
 /** The block, once whatever gates the editor's render has let it through. */
@@ -123,6 +131,19 @@ describe('useMindMapNavigation', () => {
     renderBlock('b-alpha')
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
     for (const entry of scrolled) expect(entry.target).toBe(beta)
+  })
+
+  it('opens a fold marker in place, without closing the map or scrolling', () => {
+    const { close, expandBranch, view } = setup()
+
+    act(() => view.result.current.activateNode(marker))
+
+    expect(expandBranch).toHaveBeenCalledWith(marker.id)
+    // A fold is undone where it is: closing the map here would hide the branch
+    // the user just asked to see. (A wiki link also leaves the map open, but it
+    // leaves the NOTE — this one goes nowhere at all.)
+    expect(close).not.toHaveBeenCalled()
+    expect(scrolled).toHaveLength(0)
   })
 
   it('sends the root node to the top of the note', () => {

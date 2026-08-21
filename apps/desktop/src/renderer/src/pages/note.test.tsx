@@ -1918,5 +1918,111 @@ describe('NotePage', () => {
       )
       expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
     })
+
+    describe('caps and folding', () => {
+      /** More bullets under one heading than the map draws at once. */
+      const overflowing = (count: number): unknown[] => [
+        {
+          id: 'b-h1',
+          type: 'heading',
+          props: { level: 1 },
+          content: [{ type: 'text', text: 'Alpha' }]
+        },
+        ...Array.from({ length: count }, (_, index) => ({
+          id: `b-item-${index + 1}`,
+          type: 'bulletListItem',
+          content: [{ type: 'text', text: `Item ${index + 1}` }]
+        }))
+      ]
+
+      const treeItems = (): HTMLElement[] =>
+        within(screen.getByRole('tree')).getAllByRole('treeitem')
+
+      const marker = (): HTMLElement | null =>
+        screen.getByRole('tree').querySelector<HTMLElement>('[data-mind-map-kind="more"]')
+
+      it('opens a folded branch in place and never writes down that it did', async () => {
+        mocks.editorBlocks = overflowing(15)
+        renderWithProviders(<NotePage noteId="note-1" />)
+        await openMap()
+
+        // Root, the heading, the children that fit, and one marker for the rest
+        // — translated and pluralised through the app's own layer.
+        expect(treeItems()).toHaveLength(15)
+        expect(marker()).toHaveTextContent('mindMap.more:{"count":3}')
+
+        // Through the drawing, which is where a user actually clicks: the
+        // bitmap hands back the box's deep link and nothing else.
+        fireEvent.click(drawnBoxFor('memry://note/note-1#^mm-b-h1-more'))
+
+        await waitFor(() => expect(marker()).toBeNull())
+        expect(treeItems()).toHaveLength(17)
+        // In place: the map is still open. A fold is undone where it is, and
+        // the one node kind that is not a place in the note does not navigate.
+        expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
+
+        // Nothing about the expansion reached tab state. Node ids are minted
+        // from block ids, so a stored one is stale the moment the note changes.
+        expect(mocks.tabViewState).toMatchObject({ noteMindMap: true })
+        expect(JSON.stringify(mocks.tabViewState)).not.toContain('mm-')
+        expect(JSON.stringify(mocks.tabViewState)).not.toContain('more')
+      })
+
+      it('forgets an expansion when the map closes', async () => {
+        mocks.editorBlocks = overflowing(15)
+        renderWithProviders(<NotePage noteId="note-1" />)
+        await openMap()
+        fireEvent.click(drawnBoxFor('memry://note/note-1#^mm-b-h1-more'))
+        await waitFor(() => expect(marker()).toBeNull())
+
+        fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+        await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+        fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+        await screen.findByTestId('note-mind-map')
+
+        // Back to the folded shape: expansion lives exactly as long as the map.
+        expect(marker()).toHaveTextContent('mindMap.more:{"count":3}')
+        expect(treeItems()).toHaveLength(15)
+      })
+
+      it('says above the map when it is at its limit, and stays quiet otherwise', async () => {
+        renderWithProviders(<NotePage noteId="note-1" />)
+        await openMap()
+        expect(screen.getByTestId('note-mind-map-cap-notice')).toBeEmptyDOMElement()
+
+        fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+        await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+
+        // A note far past the whole-map budget: wide, and three levels deep.
+        mocks.editorBlocks = Array.from({ length: 12 }, (_, top) => [
+          {
+            id: `h1-${top}`,
+            type: 'heading',
+            props: { level: 1 },
+            content: [{ type: 'text', text: `Section ${top}` }]
+          },
+          ...Array.from({ length: 12 }, (_, mid) => [
+            {
+              id: `h2-${top}-${mid}`,
+              type: 'heading',
+              props: { level: 2 },
+              content: [{ type: 'text', text: `Part ${top}.${mid}` }]
+            },
+            {
+              id: `b-${top}-${mid}`,
+              type: 'bulletListItem',
+              content: [{ type: 'text', text: `Item ${top}.${mid}` }]
+            }
+          ]).flat()
+        ]).flat()
+        await openMap()
+
+        const notice = await screen.findByTestId('note-mind-map-cap-notice')
+        expect(notice).toHaveTextContent('mindMap.nodeCapNotice:{"count":200}')
+        // Above the picture and outside it — an image role's contents are
+        // presentational, so a notice inside it would reach nobody.
+        expect(screen.getByRole('img')).not.toContainElement(notice)
+      })
+    })
   })
 })

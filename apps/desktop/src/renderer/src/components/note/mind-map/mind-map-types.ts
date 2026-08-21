@@ -61,6 +61,13 @@ export type MindMapNodeKind =
    * is inside the note it names is the graph view's question, not this one's.
    */
   | 'wikiLink'
+  /**
+   * A fold marker: "+N more", standing for the children of its parent that the
+   * children-per-parent cap held back. It is not a place in the note — it is
+   * the handle that opens the branch again — so activating it expands rather
+   * than navigates. `foldedCount` is how many it stands for.
+   */
+  | 'more'
 
 /**
  * Content that is not structure. It never becomes a node; it is counted on the
@@ -114,10 +121,24 @@ export interface MindMapNode {
   /** Content sitting under this node that is not drawn, in a stable order. */
   contents: MindMapContentCount[]
   /**
-   * The second line of the node: its tags and its content counts, already
-   * composed. Tags are user content; the counts come from
-   * `MindMapOptions.formatContentCount`, so this is the one place the two
-   * projections read their badge text from and they cannot disagree.
+   * How many nodes folded INTO this one and are therefore not drawn anywhere:
+   * everything past the depth cap, plus everything the whole-map node cap had
+   * no budget left for. Zero for a node that hides nothing.
+   *
+   * On a `more` node this is not a fold into it but what it stands for — the
+   * children its parent held back — and it is what the node is labelled with.
+   *
+   * It is the number the "nothing disappears silently" promise is kept with, so
+   * it is data rather than only wording: a caller with no translator still sees
+   * exactly how much is not on the picture.
+   */
+  foldedCount: number
+  /**
+   * The second line of the node: its tags, its content counts and how much
+   * folded into it, already composed. Tags are user content; the counts come
+   * from `MindMapOptions.formatContentCount` and `MindMapOptions.formatMore`,
+   * so this is the one place the two projections read their badge text from and
+   * they cannot disagree.
    */
   detail: string
   children: MindMapNode[]
@@ -136,6 +157,7 @@ export interface MindMapPositionedNode {
   wikiTarget: string | null
   tags: string[]
   contents: MindMapContentCount[]
+  foldedCount: number
   detail: string
   parentId: string | null
   x: number
@@ -234,6 +256,30 @@ export interface MindMapOptions {
    * the data never disappears, only its wording.
    */
   formatContentCount?: (kind: MindMapContentKind, count: number) => string
+  /**
+   * Turns "two folded away" into words, for a `more` node's label and for the
+   * fold badge on a node something folded into. Supplied by the caller for the
+   * same reason `formatContentCount` is: a fold marker is app chrome and has to
+   * be translated and pluralised, while this pipeline stays pure.
+   *
+   * Omitting it labels a `more` node `+2` — a number, no language — and leaves
+   * the fold badge out of `detail`. `foldedCount` carries the fact either way.
+   */
+  formatMore?: (count: number) => string
+  /**
+   * Ids of the `more` nodes the user has opened, so their parents draw every
+   * child instead of folding the overflow.
+   *
+   * A set of ids rather than a boolean per branch because a `more` node's id is
+   * derived from its parent's, so the same branch opens to the same shape on
+   * every rebuild — expanding twice lands on identical coordinates.
+   *
+   * Deliberately NOT persisted anywhere: these ids are minted from block ids,
+   * which the note re-mints as soon as it is edited or opened on another
+   * device, so stored expansion would go stale the moment it mattered. It lives
+   * for as long as the map is open and no longer.
+   */
+  expanded?: ReadonlySet<string>
 }
 
 /**
@@ -248,8 +294,14 @@ export interface MindMap {
   /** Drawing elements: one box per node, one connector per parent→child edge. */
   elements: MindMapElement[]
   direction: MindMapDirection
-  /** Node total including the root. */
+  /** Node total including the root. Never above `MIND_MAP_MAX_NODES`. */
   nodeCount: number
+  /**
+   * True when the whole-map node cap is what stopped the map drawing more.
+   * The host says so above the picture: a user who cannot tell a complete map
+   * from a truncated one stops trusting either.
+   */
+  reachedNodeCap: boolean
   /** True when the note contributed nothing to branch from. */
   isEmpty: boolean
   bounds: MindMapBounds

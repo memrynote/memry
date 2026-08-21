@@ -57,7 +57,44 @@ function itemFor(items: HTMLElement[], label: string): HTMLElement {
   return item
 }
 
+/** A note wide enough for the root to fold its overflow behind a marker. */
+const foldedMap = buildMindMap(
+  Array.from({ length: 40 }, (_, index) => heading(`b-${index + 1}`, 1, `Section ${index + 1}`)),
+  { rootLabel: 'Test Note', noteId: 'note-1', formatMore: (count) => `+${count} more` }
+)
+
+function renderFoldedTree(): { onActivateNode: ReturnType<typeof vi.fn>; marker: HTMLElement } {
+  const onActivateNode = vi.fn()
+  render(
+    <MindMapTree nodes={foldedMap.nodes} label="Map of Test Note" onActivateNode={onActivateNode} />
+  )
+  const node = foldedMap.nodes.find((candidate) => candidate.kind === 'more')!
+  const marker = within(screen.getByRole('tree'))
+    .getAllByRole('treeitem')
+    .find((item) => item.dataset.mindMapNode === node.id)
+  if (!marker) throw new Error('no tree item for the fold marker')
+  return { onActivateNode, marker }
+}
+
 describe('MindMapTree', () => {
+  it('announces a fold marker as a branch that is shut, and opens it on Enter', () => {
+    const { onActivateNode, marker } = renderFoldedTree()
+
+    // Not a dead label: a treeitem that says it is collapsed is a control a
+    // reader knows to activate, which is the whole point of "+N more".
+    expect(marker).toHaveAttribute('aria-expanded', 'false')
+    expect(marker).toHaveAttribute('data-mind-map-kind', 'more')
+    expect(marker).toHaveTextContent('+28 more')
+    expect(marker).not.toHaveAttribute('data-mind-map-block')
+
+    fireEvent.keyDown(marker, { key: 'Enter' })
+    expect(onActivateNode).toHaveBeenCalledTimes(1)
+    expect(onActivateNode.mock.calls[0][0]).toMatchObject({ kind: 'more', foldedCount: 28 })
+
+    fireEvent.click(marker)
+    expect(onActivateNode).toHaveBeenCalledTimes(2)
+  })
+
   it('activates the node that was clicked, and only that node', () => {
     const { onActivateNode, items } = renderTree()
 

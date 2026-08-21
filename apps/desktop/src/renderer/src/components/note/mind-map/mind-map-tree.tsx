@@ -26,6 +26,19 @@ function isTickable(kind: MindMapNodeKind): boolean {
   return kind === 'check' || kind === 'task'
 }
 
+/**
+ * Whether this item announces itself as open, shut, or neither.
+ *
+ * A fold marker has no children of its own but stands for a branch that is
+ * shut, and activating it opens that branch in place. Saying so is the whole
+ * difference between "+3 more" reading as a dead label and reading as the
+ * control it is.
+ */
+function expandedState(branch: Branch): boolean | undefined {
+  if (branch.node.kind === 'more') return false
+  return branch.children.length > 0 ? true : undefined
+}
+
 interface MindMapTreeProps {
   nodes: readonly MindMapPositionedNode[]
   /** Translated; names the note the tree belongs to. */
@@ -90,7 +103,7 @@ function BranchItems({
           aria-level={level}
           aria-posinset={index + 1}
           aria-setsize={branches.length}
-          aria-expanded={branch.children.length > 0 ? true : undefined}
+          aria-expanded={expandedState(branch)}
           // A tickable item announces its tick. This is what "dimmed and struck
           // through" means to a reader who cannot see the drawing, so it is a
           // real ARIA state rather than the `data-` attribute next to it.

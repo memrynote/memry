@@ -1261,6 +1261,7 @@ export function NotePage({ noteId }: NotePageProps) {
   )
   const mindMapNavigation = useMindMapNavigation({
     close: mindMap.close,
+    expandBranch: mindMap.expandBranch,
     getContainer: getEditorContainer,
     getTopElement: getNoteBody,
     smooth: !prefersReducedMotion,

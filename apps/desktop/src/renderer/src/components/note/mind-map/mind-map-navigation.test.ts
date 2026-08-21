@@ -17,12 +17,24 @@ function actions() {
   return {
     navigateToBlock: vi.fn<(blockId: string | null) => void>(),
     openNote: vi.fn<(wikiTarget: string) => void>(),
-    openTask: vi.fn<(taskId: string) => void>()
+    openTask: vi.fn<(taskId: string) => void>(),
+    expandBranch: vi.fn<(nodeId: string) => void>()
   }
 }
 
 const blocks = [heading('b-alpha', 1, 'Alpha'), heading('b-beta', 2, 'Beta')]
 const map = buildMindMap(blocks, { rootLabel: 'Test Note', noteId: 'note-1' })
+
+/**
+ * A note wide enough that its root grows a fold marker, so the one node kind
+ * that is not a place in the note has a real instance to be dispatched.
+ */
+const folded = buildMindMap(
+  Array.from({ length: 40 }, (_, index) => heading(`b-${index + 1}`, 1, `Section ${index + 1}`)),
+  { rootLabel: 'Test Note', noteId: 'note-1' }
+)
+
+const marker = folded.nodes.find((candidate) => candidate.kind === 'more')!
 
 function node(label: string): MindMapPositionedNode {
   const found = map.nodes.find((candidate) => candidate.label === label)
@@ -35,6 +47,23 @@ describe('activateMindMapNode', () => {
     const acted = actions()
     activateMindMapNode(node('Alpha'), acted)
     expect(acted.navigateToBlock).toHaveBeenCalledWith('b-alpha')
+    expect(acted.expandBranch).not.toHaveBeenCalled()
+  })
+
+  it('opens the branch a fold marker stands for, without leaving the map', () => {
+    const acted = actions()
+    activateMindMapNode(marker, acted)
+
+    // Its own id, which is derived from its parent's — that is what the host
+    // holds on to, and it is why expanding is a set of ids rather than a shape.
+    expect(acted.expandBranch).toHaveBeenCalledWith(marker.id)
+    expect(marker.id).toBe('mm-root-more')
+    // A fold marker is not a place in the note, and not a place anywhere else
+    // either: sending it down any of the other three would close the map AND
+    // leave the fold in place.
+    expect(acted.navigateToBlock).not.toHaveBeenCalled()
+    expect(acted.openNote).not.toHaveBeenCalled()
+    expect(acted.openTask).not.toHaveBeenCalled()
   })
 
   it('sends the root node to the top of the note', () => {
@@ -203,6 +232,17 @@ describe('nodeFromMindMapLink', () => {
     // clicked — and no box in this map ever carries one: a wiki-link box points
     // at its own node here, and WHERE that node goes is `wikiTarget` on it.
     expect(nodeFromMindMapLink('memry://note/other#^b-beta', map.nodes, 'note-1')).toBeNull()
+  })
+
+  it('resolves a fold marker, which owns no block of its own', () => {
+    const box = folded.elements.find((element) => element.id === marker.id)!
+    if (box.type !== 'rectangle') throw new Error('the marker drew no box')
+
+    // Without this the drawing would answer a click on "+N more" with the root,
+    // because both are blockless — and the user would be scrolled to the top of
+    // their note instead of having the branch opened.
+    expect(nodeFromMindMapLink(box.link!, folded.nodes, 'note-1')).toBe(marker)
+    expect(box.link).toBe(`memry://note/note-1#^${marker.id}`)
   })
 
   it('refuses a block anchor no node in this map owns', () => {

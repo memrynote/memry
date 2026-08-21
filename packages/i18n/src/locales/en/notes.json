@@ -969,6 +969,8 @@
     "treeLabel": "Mind map outline of {title}",
     "emptyHint": "Add a heading to this note and the map will branch.",
     "linkHint": "link to another page",
+    "more": "{count, plural, one {+# more} other {+# more}}",
+    "nodeCapNotice": "This map is at its limit of {count, plural, one {# node} other {# nodes}}; the rest is folded into the nearest node above it.",
     "badge": {
       "table": "{count, plural, one {# table} other {# tables}}",
       "code": "{count, plural, one {# code block} other {# code blocks}}",
