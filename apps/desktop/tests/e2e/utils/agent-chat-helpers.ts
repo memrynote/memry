@@ -38,6 +38,26 @@ export function getAgentModelTrigger(page: Page): Locator {
   return page.getByTestId('agent-model-trigger')
 }
 
+/**
+ * Pick a model from the composer's settings menu.
+ *
+ * Three steps rather than one now: the model and reasoning controls moved out of
+ * the composer row into a settings menu, and the model list behind it became
+ * searchable. The search box is what makes the click unambiguous — the open list
+ * carries every provider's models at once, so a bare name can match more than
+ * one row.
+ */
+export async function selectAgentModel(
+  page: Page,
+  query: string,
+  name: RegExp | string
+): Promise<void> {
+  await getAgentModelTrigger(page).click()
+  await page.getByTestId('agent-model-submenu-trigger').click()
+  await page.getByRole('textbox', { name: /search models/i }).fill(query)
+  await page.getByRole('menuitem', { name }).first().click()
+}
+
 export async function enableManualAgentToolApproval(page: Page): Promise<void> {
   await page.evaluate(() => window.api.agent.setPreferences({ toolApprovalMode: 'ask' }))
 }

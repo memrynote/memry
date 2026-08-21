@@ -14,7 +14,8 @@ import {
   approveAgentToolCall,
   enableManualAgentToolApproval,
   getAgentComposer,
-  openAgentChat
+  openAgentChat,
+  selectAgentModel
 } from './utils/agent-chat-helpers'
 import {
   createNote,
@@ -120,8 +121,9 @@ test.describe('Agent chat create-task flow', () => {
     )
 
     await openAgentChat(page)
-    await page.getByRole('button', { name: /Claude/ }).click()
-    await page.getByRole('menuitem', { name: /^Local$/ }).click()
+    // The local backend is picked by picking its model: `fake-local` is the id
+    // set on the provider above, and the picker lists it under Local.
+    await selectAgentModel(page, 'fake-local', 'fake-local')
 
     const composer = getAgentComposer(page)
     await expect(composer).toBeEnabled()

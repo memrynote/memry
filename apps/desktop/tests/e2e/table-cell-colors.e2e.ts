@@ -16,7 +16,7 @@
  * ServerBlockNoteEditor through markdown → Y.Doc → markdown.
  */
 
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
@@ -64,10 +64,43 @@ async function createNote(page: Page, title: string, content = '') {
   )
 }
 
+/**
+ * The editor is on screen AND bound — the second half is what a reload needs.
+ *
+ * A visible `.bn-editor` is only the paint: `window.__memryEditor` is published
+ * from an effect that runs after it, and until it does the node on screen is one
+ * the next render replaces. Clicking into that node loses whatever it selected,
+ * which reads later as a keyboard shortcut that did nothing.
+ */
 async function waitForEditor(page: Page) {
   const editor = page.locator(SELECTORS.noteEditor).first()
   await editor.waitFor({ state: 'visible', timeout: 15_000 })
+  await page.waitForFunction(
+    () => Boolean((window as unknown as { __memryEditor?: unknown }).__memryEditor),
+    undefined,
+    { timeout: 15_000 }
+  )
   return editor
+}
+
+/**
+ * Double-click the cell until the word it holds is really selected.
+ *
+ * A mark needs a selection, and the click that makes one races the editor
+ * settling after a reload — so this retries the gesture rather than asserting
+ * once and pressing a shortcut into a caret, which applies a stored mark,
+ * changes no text, and shows up 20 seconds later as an unchanged file.
+ */
+async function selectWordInCell(page: Page, cell: Locator, word: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await cell.dblclick({ position: WORD_START })
+        return page.evaluate(() => window.getSelection()?.toString() ?? '')
+      },
+      { timeout: 20_000 }
+    )
+    .toBe(word)
 }
 
 async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
@@ -180,7 +213,7 @@ test.describe('Table cell colours E2E (#1639)', () => {
     // centre: a cell is a fixed 120px wide and a short word leaves the middle
     // of it empty, where a double-click selects nothing at all.
     const bodyCell = page.locator(`${SELECTORS.noteEditor} td`).first()
-    await bodyCell.dblclick({ position: WORD_START })
+    await selectWordInCell(page, bodyCell, 'Shipping')
     const boldButton = page.locator('[data-test="bold"]').first()
     await expect(boldButton).toBeVisible({ timeout: 10_000 })
     await boldButton.click()
@@ -199,8 +232,10 @@ test.describe('Table cell colours E2E (#1639)', () => {
     await ready(page)
     await openNoteByTitle(page, title)
 
+    await waitForEditor(page)
+
     const stateCell = page.locator(`${SELECTORS.noteEditor} td`).nth(1)
-    await stateCell.dblclick({ position: WORD_START })
+    await selectWordInCell(page, stateCell, 'Open')
     await page.keyboard.press('ControlOrMeta+i')
 
     // #then that mark lands too

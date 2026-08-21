@@ -12,7 +12,7 @@ import {
   approveAgentToolCall,
   enableManualAgentToolApproval,
   getAgentComposer,
-  getAgentModelTrigger,
+  selectAgentModel,
   openAgentChat
 } from './utils/agent-chat-helpers'
 import {
@@ -69,8 +69,9 @@ test.describe('Agent chat Codex create-task flow', () => {
     await enableManualAgentToolApproval(page)
 
     await openAgentChat(page)
-    await getAgentModelTrigger(page).click()
-    await page.getByRole('menuitem', { name: /codex/i }).click()
+    // `gpt-5` narrows the list to Codex's own models — no Claude or local model
+    // carries it — so the first row left standing is a Codex one.
+    await selectAgentModel(page, 'gpt-5', /^GPT-5/i)
 
     const composer = getAgentComposer(page)
     await expect(composer).toBeEnabled()
