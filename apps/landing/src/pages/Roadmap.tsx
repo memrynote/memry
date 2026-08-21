@@ -97,9 +97,75 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
     period: 'August 2026',
     items: [
       {
+        title: 'Note mind map',
+        caption:
+          'See a note as a live map of its headings, lists, tasks, and wiki links. Fold what runs past the caps, export it as an image, or save it as a canvas you own.'
+      },
+      {
+        title: 'Real table editing',
+        caption:
+          'Handles on the border lines, row, column, and cell menus, cell colours that survive a save, and images inside cells.'
+      },
+      {
+        title: 'Tabs come back the way you left them',
+        caption:
+          'Reuse the current tab on a plain click, restore scroll position and view state after a restart, and open any sidebar row in a new tab or beside this one.'
+      },
+      {
+        title: 'Home boards sync across devices',
+        caption:
+          'Plus a manager for renaming, reordering, and deleting boards, a Project widget, a Recently opened widget, and the full due-date filter set in Tasks.'
+      },
+      {
+        title: 'A sidebar you can order yourself',
+        caption:
+          'Drag the five sections into your own order and give each one a sort mode, synced per vault.'
+      },
+      {
+        title: 'Custom icons for folders and notes',
+        caption:
+          'Use your own image, or pull one from a link. The bytes live in the vault and travel with it.'
+      },
+      { title: 'Tag categories, a tag hub, and single-tag pages' },
+      {
+        title: 'Project hub redesign and relation properties',
+        caption:
+          'Link notes, files, tasks, and events from a property, and assign a note to a project.'
+      },
+      {
+        title: 'Canvases are plain .excalidraw files in your vault',
+        caption:
+          'With their own folder tree, and shapes that can link to any item in the vault by name.'
+      },
+      {
+        title: 'Links that point inside a note',
+        caption:
+          'Pick a heading while you are still writing the link, give any link its own name, and address a place inside a note with a memry:// link.'
+      },
+      {
+        title: 'PDF viewer rework',
+        caption:
+          'Scroll continuously through an embedded PDF, one toolbar with an editable page number, and documents that open fitted to their pane.'
+      },
+      { title: 'Tasks: per-task activity log, natural-language dates, and repeats in quick-add' },
+      { title: 'Per-weekday journal templates, synced per day' },
+      { title: 'Importers for NotePlan 3 and Microsoft OneNote' },
+      { title: 'Multiple Google accounts in Calendar, with per-account calendar selection' },
+      {
+        title: 'Agent Chat composer rebuild',
+        caption:
+          'Voice dictation, a turn of tool activity collapsed into one row, and agents that can draw on a canvas over MCP.'
+      },
+      {
         title: 'Web clipper live on the Chrome Web Store',
         caption:
-          'Install the memrynote clipper straight from the Chrome Web Store — one click from any page to your Inbox.'
+          'One click from any page to your Inbox, automated Firefox add-on publishing, and real PDF capture when the tab is a PDF.'
+      },
+      { title: 'Live force simulation with node dragging in graph view' },
+      {
+        title: 'Stability and fixes',
+        caption:
+          'A long sync and CRDT reliability sweep, tabs that survive a restart, quitting that saves your latest edits, attachments that resolve on a second device, folder renames without a phantom row, a search index that repairs itself, and Windows updates that install over a running binary.'
       }
     ]
   },
@@ -111,11 +177,55 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         caption:
           'Direct downloads for macOS, Windows, and Linux, with purchases open and the waitlist retired.'
       },
+      {
+        title: 'Spatial canvas',
+        caption:
+          'Drag notes, tasks, and events onto an infinite board, edit the cards in place, and sync the whole scene end-to-end encrypted.'
+      },
       { title: 'Web clipper for Firefox and Edge' },
       { title: 'Chrome Web Store publish pipeline' },
+      {
+        title: 'Renamed to memrynote',
+        caption:
+          'Runtime identity, logs, stored secrets, and app data moved over, with a migration for existing installs.'
+      },
+      {
+        title: 'Your vault files stay yours',
+        caption:
+          'No write without a semantic change, app keys out of your frontmatter, and filenames that avoid Obsidian-forbidden characters.'
+      },
+      { title: 'Resizable, alignable inline PDF embeds' },
+      { title: 'Drag a task onto the calendar to schedule it' },
+      { title: 'Tag tasks from the UI' },
+      { title: 'Per-note and per-journal width, over a single global default' },
+      { title: 'Darker two-tone dark theme' },
+      {
+        title: 'Landing site rebuild',
+        caption: 'New homepage, pricing grid, dedicated /login, a /compare hub, and a clipper page.'
+      },
+      {
+        title: 'Motion pass across calendar, home, editor, and landing',
+        caption: 'Floating chrome, spring view transitions, and press feedback.'
+      },
+      {
+        title: 'Vault recovery and deletion',
+        caption:
+          'Recover an orphaned vault with your recovery phrase, or delete a vault from your account while keeping the files on disk.'
+      },
+      { title: 'Secrets moved from keytar to Electron safeStorage' },
+      { title: 'Daily inbox review reminder' },
       { title: 'Persistent Connect Google Calendar prompt' },
       { title: 'Property-type icon doubles as a drag handle in properties' },
-      { title: 'Faster macOS auto-updates via app.asar repack' }
+      {
+        title: 'Update flow rework',
+        caption:
+          'Short-interval polling, silent opt-in downloads, an in-app prompt, and a dedicated install screen on restart.'
+      },
+      {
+        title: 'Stability and fixes',
+        caption:
+          'Attachments survive cross-device sync, notes stop arriving as Untitled, undo works from Ctrl+Z on Windows and Linux, opening a vault no longer waits on embeddings, and Google Calendar data is isolated from AI surfaces.'
+      }
     ]
   },
   {
@@ -130,18 +240,53 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         caption:
           'Bring your vault over from Obsidian, Notion, Roam, Bear, Evernote, Apple Notes, Google Keep, Todoist, TickTick, Raindrop, and CSV.'
       },
+      {
+        title: 'Folder views redesigned',
+        caption:
+          'List, Board, and Gallery layouts beside the table, with sorting, bulk actions, and multi-select.'
+      },
+      {
+        title: 'A Home dashboard you can arrange',
+        caption:
+          'Drag and resize the widgets, including a tasks widget driven by your own saved filters.'
+      },
+      {
+        title: 'Multiple vaults per account',
+        caption:
+          'A vault switcher, an account vault directory, and device linking that adopts the right vault instead of guessing.'
+      },
+      {
+        title: 'Web account area on memrynote.com',
+        caption: 'Passwordless sign-in with a billing and sync dashboard.'
+      },
+      { title: 'Task reminders with an upcoming and past panel in Inbox' },
+      { title: 'One-way Google Calendar sync, for reading it without writing back' },
+      { title: 'Inbox conversion: turn a captured item into an event, reminder, or task' },
+      { title: 'Inline date and reminder mentions with /date' },
+      { title: 'Custom tag colours and a per-tag icon picker' },
+      { title: 'Flat vault root for Obsidian compatibility' },
       { title: 'Optional per-module toggles to turn features on or off' },
       { title: 'First-run interactive onboarding tour' },
       { title: 'Account and sync settings redesign' },
       { title: 'Agent provider auto-save with inline connection checks' },
       { title: 'Calendar drag-and-drop event reschedule and resize' },
       { title: 'Broad native application menu bar' },
-      { title: 'Default white theme for new users' }
+      { title: 'Default white theme for new users' },
+      {
+        title: 'Stability and fixes',
+        caption:
+          'The auto-update restart loop is broken for good, Windows builds stopped failing on a locked env file, submenus escape their parent menu, and pending CRDT writes flush on shutdown instead of being dropped.'
+      }
     ]
   },
   {
     period: 'May 2026',
     items: [
+      {
+        title: 'Agent Chat',
+        caption:
+          'A vault-aware assistant inside the app, backed by a local MCP server that exposes notes, tasks, journals, inbox, and calendar as read tools with approval-gated writes.'
+      },
       {
         title: 'Agent Chat: per-turn permissions',
         caption: 'Vault-only, computer access, and web search controls in the composer.'
@@ -152,8 +297,25 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         title: 'Voice memos with transcription and related items',
         caption: 'Inline recorder, transcript previews, and audio-aware mention picker.'
       },
+      { title: 'Every AI feature is optional, and off until you turn it on' },
       { title: 'Memrynote CLI' },
-      { title: 'Landing demo refresh, founder story, and event analytics' }
+      {
+        title: 'Paid sync tiers',
+        caption:
+          'A three-tier pricing page, account-linked checkout, per-vault storage accounting, and sync gated on a real entitlement.'
+      },
+      {
+        title: 'Product telemetry you can switch off',
+        caption: 'Anonymous usage and sync-reliability metrics, with a toggle in General settings.'
+      },
+      { title: 'Landing demo refresh, founder story, feature pages, and this roadmap' },
+      { title: 'Terms, Privacy, and Refund pages' },
+      { title: 'Date-based release versions with humanized release notes' },
+      {
+        title: 'Stability and fixes',
+        caption:
+          'Certificate pins scoped by hostname, a hardened Paddle checkout, dev profiles isolated per worktree, and agent runs that stop cleanly instead of duplicating their final result.'
+      }
     ]
   },
   {
