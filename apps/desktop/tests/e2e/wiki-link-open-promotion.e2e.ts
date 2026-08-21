@@ -228,7 +228,22 @@ test.describe('Wiki links on open', () => {
 
     // #then the link is a chip. Before #1642 it was plain text here, and stayed
     // plain until the user typed into the note — which is the whole report.
-    await expect(page.locator(`[data-wiki-link][data-target="${target}"]`)).toBeVisible()
+    //
+    // All three layers in one assertion, because "no chip" on its own does not
+    // say which one gave way: the file is what the other app wrote, the shared
+    // doc is what main made of it, and the chip is what the editor did with
+    // that. A failure prints the whole object, so the layer that stopped is
+    // named by the diff rather than guessed at from a screenshot.
+    await expect
+      .poll(
+        async () => ({
+          file: (await getNoteFileBodyByTitle(page, title))?.includes(`[[${target}]]`) ?? false,
+          doc: (await getCrdtDocBodyById(electronApp, note.id))?.includes(`[[${target}]]`) ?? false,
+          chips: await page.locator(`[data-wiki-link][data-target="${target}"]`).count()
+        }),
+        { timeout: 60_000 }
+      )
+      .toEqual({ file: true, doc: true, chips: 1 })
   })
 
   test('the chips survive a reload, and the second open rewrites nothing', async ({ page }) => {

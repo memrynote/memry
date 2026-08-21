@@ -446,3 +446,7 @@ opened this session, is updated the same way.
 
 A note you are looking at while its file changes merges the change in place, so an edit you
 are making at the same time is not thrown away.
+
+memrynote will not write over bytes it has not read. If a note's file has changed since
+memrynote last looked at it, the app leaves the file alone until it has taken that change in,
+rather than saving an older version of the note over it.

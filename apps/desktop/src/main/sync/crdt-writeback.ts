@@ -17,6 +17,7 @@ import {
   ensureDirectory
 } from '../vault/file-ops'
 import {
+  generateContentHash,
   parseNote,
   serializeNote,
   serializeParsedNote,
@@ -513,6 +514,32 @@ async function writebackExisting(
   if (existingRaw !== null && fileContent === existingRaw) {
     log.debug('Write-back is a no-op, skipping', { noteId })
     return
+  }
+
+  // The file changed under this doc, and the change has not been ingested yet.
+  //
+  // `contentHash` is what the index last read off disk, so a mismatch means an
+  // edit made somewhere else — Obsidian, a script, a file another device wrote —
+  // that this doc has never seen. Writing here replaces those bytes with a body
+  // that predates them, and nothing keeps a copy: the edit is simply gone. It is
+  // reachable from an ordinary sequence, too — edit the file while its note is
+  // not the one on screen, then open that note, and the doc loaded from
+  // persistence writes its older body straight over the edit.
+  //
+  // Skipping costs a round, not the edit. The ingest already on its way feeds
+  // the file into this doc (`feedExternalEditToCrdt`), and the update that
+  // merge produces writes back from the merged result. A note whose hash was
+  // never measured — a tier-0 sidebar row, listed from `stat` alone — has
+  // nothing to compare and writes as it always did.
+  if (existingRaw !== null && cached.contentHash) {
+    const onDisk = generateContentHash(existingRaw)
+    if (onDisk !== cached.contentHash) {
+      log.warn('Write-back skipped: the file changed outside the app', {
+        noteId,
+        path: relativePath
+      })
+      return
+    }
   }
 
   if (existingRaw !== null && parsed) {

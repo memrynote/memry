@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   ensureDirectory: vi.fn(),
   deleteFile: vi.fn(),
   parseNote: vi.fn(),
+  generateContentHash: vi.fn(),
   serializeNote: vi.fn(),
   serializeParsedNote: vi.fn(),
   getDefaultNoteDir: vi.fn(),
@@ -90,7 +91,8 @@ vi.mock('../vault/file-ops', () => ({
 vi.mock('../vault/frontmatter', () => ({
   parseNote: (...args: unknown[]) => mocks.parseNote(...args),
   serializeNote: (...args: unknown[]) => mocks.serializeNote(...args),
-  serializeParsedNote: (...args: unknown[]) => mocks.serializeParsedNote(...args)
+  serializeParsedNote: (...args: unknown[]) => mocks.serializeParsedNote(...args),
+  generateContentHash: (...args: unknown[]) => mocks.generateContentHash(...args)
 }))
 
 vi.mock('../vault/notes', () => ({
@@ -180,6 +182,7 @@ describe('crdt writeback', () => {
     mocks.getNoteCacheByPath.mockReturnValue(undefined)
     mocks.getNoteMetadataById.mockReturnValue(undefined)
     mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown')
+    mocks.generateContentHash.mockImplementation((content: string) => `hash:${content}`)
     mocks.parseNote.mockReturnValue({
       frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
       content: 'old markdown'
@@ -270,6 +273,49 @@ describe('crdt writeback', () => {
       performedCount: 1,
       lastMarkdown: 'updated markdown'
     })
+  })
+
+  /**
+   * A file edited outside the app, by a doc that has not been told yet.
+   *
+   * This is not a sync corner: edit a note's file in Obsidian while some other
+   * note is on screen, then open it. Its doc is loaded from persistence with the
+   * body from before the edit, and the write-back would put that older body
+   * straight over the newer bytes — with no snapshot of them and nothing left to
+   * recover from.
+   */
+  it('does not write over a file whose bytes the index has not read yet', async () => {
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Existing.md',
+      title: 'Existing',
+      // What the index read last time — the file on disk has moved on since.
+      contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
+    })
+    mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown\n\n- [[Somewhere]]')
+
+    scheduleWriteback('note-1', makeDoc('Existing', []))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.maybeCreateSignificantSnapshot).not.toHaveBeenCalled()
+  })
+
+  it('writes back as usual once the index and the file agree', async () => {
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Existing.md',
+      title: 'Existing',
+      contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
+    })
+
+    scheduleWriteback('note-1', makeDoc('Existing', []))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
   })
 
   it('keeps the file and reports when the doc holds a node the schema cannot represent', async () => {
