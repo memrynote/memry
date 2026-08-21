@@ -1,7 +1,8 @@
 # Mind Map
 
 See the shape of a note instead of scrolling through it. The mind map draws the
-note's title as the root and branches through its headings.
+note's title as the root and branches through its headings, lists, tasks and
+containers.
 
 <!-- screenshot: a note's headings drawn as a mind map -->
 
@@ -25,18 +26,48 @@ edited, and the note is untouched by opening it.
   heading in between; the H3 simply nests one step deeper.
 - A note whose first heading is a deep level attaches that heading straight to
   the root. Relative depth is what places a heading, not the number you wrote.
-- Paragraphs and other blocks are not drawn yet. Content before the first
-  heading belongs to the root.
+- **Bullet, numbered and checklist items** branch off the heading they sit
+  under. Numbered items keep their numbers, and a list that restarts in the
+  editor restarts in the map.
+- **Nested list items** branch off their parent item, so the indentation you
+  already wrote is what you see.
+- **Tasks** are nodes of their own, so commitments are part of the note's shape
+  instead of being buried in it.
+- **Toggles and callouts** open into their children. Content you collapsed in
+  the editor is still discoverable in the map, and a callout holding a checklist
+  is not reduced to one node.
+- Content before the first heading belongs to the root.
 
 A note with no headings opens on the root alone, with a hint that adding a
 heading will branch it.
+
+### Ticked Items
+
+A checklist item or a task you have already completed is drawn dimmed, with a
+rule through its label. The map shows what is written, not what should have
+been.
+
+### Tags and Counter Badges
+
+Some things are content rather than structure, and drawing a node for each of
+them would bury the shape of the note under it. They are counted instead, never
+dropped:
+
+- **Tags** written inside a heading or a list item become a small badge on that
+  node rather than nodes of their own, so a heavily tagged note does not drown
+  the map.
+- **Tables, code blocks, images, quotes, embeds, bookmarks and file blocks**
+  are not drawn. The node above them — usually the heading they sit under —
+  carries a badge saying what is there, such as `2 tables · 1 code block`.
+- **Paragraphs** are never nodes. **Date mentions, link mentions and inline
+  pictures** stay as plain text inside the label of the node that holds them.
 
 ## Clicking a Node
 
 The map is navigation, not just a picture.
 
-- Click a **heading node** and the map closes and the note reopens at that
-  heading.
+- Click a **heading, list, task, toggle or callout node** and the map closes and
+  the note reopens at that block.
 - Click the **root** — the note's title — to come back to the top of the note.
 - The **outline panel** stays available while the map shows, and clicking a
   heading there does exactly the same thing. One control, one behaviour.
@@ -66,10 +97,11 @@ than against it.
 ## Accessibility
 
 The drawing sits beside a real tree in the page, so every node is announced by a
-screen reader with its nesting level, and every node can be reached and opened
-with the keyboard. The map takes a single tab stop: arrow keys move between
-nodes from there. The map region itself is labelled with the note's name and how
-many nodes it holds.
+screen reader with its nesting level, its badges, and — for a checklist item or
+a task — whether it is ticked, and every node can be reached and opened with the
+keyboard. The map takes a single tab stop: arrow keys move between nodes from
+there. The map region itself is labelled with the note's name and how many nodes
+it holds.
 
 ## Turning It Off
 

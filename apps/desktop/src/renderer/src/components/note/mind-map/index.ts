@@ -16,6 +16,8 @@ export type { UseMindMapNavigationResult } from './use-mind-map-navigation'
 export type {
   MindMap,
   MindMapBounds,
+  MindMapContentCount,
+  MindMapContentKind,
   MindMapDirection,
   MindMapElement,
   MindMapNode,

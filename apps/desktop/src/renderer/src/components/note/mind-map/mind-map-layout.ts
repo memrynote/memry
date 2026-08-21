@@ -18,10 +18,10 @@ import type {
 
 /** Box metrics. Kept generous so the drawing library never has to grow a box. */
 export const MIND_MAP_FONT_SIZE = 16
-const CHAR_WIDTH = 9
-const PADDING_X = 16
+export const CHAR_WIDTH = 9
+export const PADDING_X = 16
 const PADDING_Y = 10
-const LINE_HEIGHT = 22
+export const LINE_HEIGHT = 22
 const MIN_WIDTH = 96
 const MAX_WIDTH = 264
 const MIN_HEIGHT = 42
@@ -30,17 +30,29 @@ const COLUMN_GAP = 72
 /** Vertical room between two boxes that share a column. */
 const SIBLING_GAP = 16
 
-const MAX_CHARS_PER_LINE = Math.floor((MAX_WIDTH - PADDING_X * 2) / CHAR_WIDTH)
+export const MAX_CHARS_PER_LINE = Math.floor((MAX_WIDTH - PADDING_X * 2) / CHAR_WIDTH)
 
-function boxWidth(label: string): number {
-  const ideal = PADDING_X * 2 + label.length * CHAR_WIDTH
+/** How many wrapped lines a run of text needs inside a box. */
+export function lineCount(text: string): number {
+  return text === '' ? 0 : Math.ceil(text.length / MAX_CHARS_PER_LINE)
+}
+
+/**
+ * A node's text as the box has to hold it: the label, then its badge line when
+ * there is one. Both are one text run to the drawing library, so both are
+ * measured the same way — a box the library has to grow is the one failure
+ * worth avoiding here.
+ */
+function boxWidth(node: MindMapNode): number {
+  const chars = Math.max(node.label.length, node.detail.length)
+  const ideal = PADDING_X * 2 + chars * CHAR_WIDTH
   if (ideal < MIN_WIDTH) return MIN_WIDTH
   if (ideal > MAX_WIDTH) return MAX_WIDTH
   return ideal
 }
 
-function boxHeight(label: string): number {
-  const lines = Math.max(1, Math.ceil(label.length / MAX_CHARS_PER_LINE))
+function boxHeight(node: MindMapNode): number {
+  const lines = Math.max(1, lineCount(node.label)) + lineCount(node.detail)
   return Math.max(MIN_HEIGHT, lines * LINE_HEIGHT + PADDING_Y * 2)
 }
 
@@ -56,8 +68,8 @@ function measure(node: MindMapNode, parentId: string | null): Measured {
   return {
     node,
     parentId,
-    width: boxWidth(node.label),
-    height: boxHeight(node.label),
+    width: boxWidth(node),
+    height: boxHeight(node),
     children: node.children.map((child) => measure(child, node.id))
   }
 }
@@ -125,6 +137,10 @@ export function layoutMindMap(
       kind: item.node.kind,
       level: item.node.level,
       depth: item.node.depth,
+      isDone: item.node.isDone,
+      tags: item.node.tags,
+      contents: item.node.contents,
+      detail: item.node.detail,
       parentId: item.parentId,
       // RTL mirrors the whole map about the root's leading edge, so the tree
       // grows with the reading direction instead of against it.
