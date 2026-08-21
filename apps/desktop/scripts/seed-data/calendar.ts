@@ -77,7 +77,7 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     recurrenceRule: {
       freq: 'WEEKLY',
       interval: 1,
-      byDay: ['MO', 'TU', 'WE', 'TH', 'FR']
+      byDay: ['MO', 'WE', 'FR']
     },
     location: 'Hangout — meet.google.com/abc-defg-hij',
     colorId: '6366f1',
@@ -269,17 +269,6 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
   // ========================================================================
   // Cancelled event
   // ========================================================================
-  {
-    id: generateId(),
-    title: 'Coffee with R. (cancelled)',
-    description: 'Rescheduled — moved to next month.',
-    location: 'Sightglass, SoMa',
-    startAt: isoDateAt(1, 9, 30),
-    endAt: isoDateAt(1, 10, 30),
-    timezone: 'America/Los_Angeles',
-    colorId: '6b7280',
-    visibility: 'default'
-  },
 
   // ========================================================================
   // Deep work blocks (a few, scattered)
@@ -298,22 +287,6 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     title: '🧠 Deep work — writing',
     startAt: isoDateAt(1, 6),
     endAt: isoDateAt(1, 8),
-    timezone: 'America/Los_Angeles',
-    colorId: '6366f1'
-  },
-  {
-    id: generateId(),
-    title: '🧠 Deep work — memrynote',
-    startAt: isoDateAt(2, 6),
-    endAt: isoDateAt(2, 9),
-    timezone: 'America/Los_Angeles',
-    colorId: '6366f1'
-  },
-  {
-    id: generateId(),
-    title: '🧠 Deep work — writing',
-    startAt: isoDateAt(3, 6),
-    endAt: isoDateAt(3, 8),
     timezone: 'America/Los_Angeles',
     colorId: '6366f1'
   },
@@ -346,14 +319,6 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     location: 'Park',
     startAt: isoDateAt(1, 17),
     endAt: isoDateAt(1, 17, 30),
-    timezone: 'America/Los_Angeles',
-    colorId: '10b981'
-  },
-  {
-    id: generateId(),
-    title: '🏃 Cardio — Intervals',
-    startAt: isoDateAt(4, 8),
-    endAt: isoDateAt(4, 8, 30),
     timezone: 'America/Los_Angeles',
     colorId: '10b981'
   },
@@ -393,33 +358,6 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
     endAt: isoDateAt(6, 22),
     timezone: 'America/Los_Angeles',
     colorId: 'ec4899'
-  },
-  {
-    id: generateId(),
-    title: 'Friend wedding',
-    isAllDay: true,
-    startAt: allDayStart(45),
-    endAt: allDayEnd(45),
-    timezone: 'America/Los_Angeles',
-    colorId: 'ec4899'
-  },
-  {
-    id: generateId(),
-    title: 'Quarterly tax estimate',
-    description: 'Q2 estimate. See [[Finances]].',
-    startAt: isoDateAt(40, 10),
-    endAt: isoDateAt(40, 11),
-    timezone: 'America/Los_Angeles',
-    colorId: '6b7280'
-  },
-  {
-    id: generateId(),
-    title: 'Annual checkup — eye doctor',
-    location: 'Berkeley Eye Center',
-    startAt: isoDateAt(28, 11),
-    endAt: isoDateAt(28, 12),
-    timezone: 'America/Los_Angeles',
-    colorId: '10b981'
   },
 
   // ========================================================================

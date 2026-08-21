@@ -133,7 +133,8 @@ export function insertFolderConfigs(db: DataDb, folders: SeedFolderConfig[]): nu
 export interface SeedPropertyDefinition {
   name: string
   type: string
-  options?: string[] | null
+  /** Raw option list, or a pre-serialized JSON string (status categories). */
+  options?: string[] | string | null
   defaultValue?: string | null
   color?: string | null
 }
@@ -145,7 +146,11 @@ export function insertPropertyDefinitions(db: DataDb, defs: SeedPropertyDefiniti
       defs.map((d) => ({
         name: d.name,
         type: d.type,
-        options: d.options ? JSON.stringify(d.options) : null,
+        options: d.options
+          ? typeof d.options === 'string'
+            ? d.options
+            : JSON.stringify(d.options)
+          : null,
         defaultValue: d.defaultValue ?? null,
         color: d.color ?? null
       }))

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { PROJECT_LINKS } from './project-links'
 import { PROJECTS } from './tasks'
 import { CALENDAR_EVENTS } from './calendar'
-import { NOTE_IDS } from './notes'
+import { NOTE_IDS, NOTE_METADATA, NOTES } from './notes'
 
 const NOTE_ID_SET = new Set<string>(Object.values(NOTE_IDS))
 const EVENT_ID_SET = new Set<string>(CALENDAR_EVENTS.map((e) => e.id))
@@ -63,6 +63,23 @@ describe('project links seed data', () => {
       if (link.itemType !== 'note') continue
       const project = PROJECTS.find((p) => p.id === link.projectId)
       expect(link.itemId).not.toBe(project?.homeNoteId)
+    }
+  })
+
+  it('backs every seeded note link with `project` frontmatter', () => {
+    // The seeded rows are only a head start: note→project membership is derived
+    // from frontmatter by the note-project-links projector, so a row without a
+    // matching `project:` key is deleted the first time that note is indexed.
+    const pathById = new Map(NOTE_METADATA.map((n) => [n.id, n.path]))
+    const projectsByPath = new Map(
+      NOTES.map((n) => [n.relativePath, (n.frontmatter.project as string[] | undefined) ?? []])
+    )
+    const nameById = new Map(PROJECTS.map((p) => [p.id, p.name]))
+
+    for (const link of PROJECT_LINKS) {
+      if (link.itemType !== 'note') continue
+      const path = pathById.get(link.itemId)!
+      expect(projectsByPath.get(path), path).toContain(nameById.get(link.projectId))
     }
   })
 })

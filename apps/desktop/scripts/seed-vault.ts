@@ -10,6 +10,7 @@
 import { writeFileSync } from 'fs'
 import { resolve } from 'path'
 import { homedir } from 'os'
+import matter from 'gray-matter'
 
 import { wipeVault } from './seed-vault/wipe'
 import { writeNoteFiles } from './seed-vault/file-writer'
@@ -35,7 +36,6 @@ import {
   insertTaskTags,
   openDataDb
 } from './seed-vault/db-writer'
-import type { SeedTagCategory, SeedTagDefinition } from './seed-vault/db-writer'
 import { generateId } from '../src/main/lib/id'
 import {
   allocateCanvasPath,
@@ -52,6 +52,8 @@ import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
 import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
 import { HOME_BOOKMARKS, HOME_PAGES } from './seed-data/home'
 import { CANVASES } from './seed-data/canvas'
+import { buildPropertiesFileData, PROPERTY_DEFINITION_ROWS } from './seed-data/properties'
+import { TAG_CATEGORIES, TAG_PALETTE } from './seed-data/tags'
 
 interface CliArgs {
   vaultPath: string
@@ -75,102 +77,18 @@ function parseArgs(argv: string[]): CliArgs {
   }
 }
 
-const TAG_CATEGORY_IDS = {
-  engineering: generateId(),
-  projects: generateId(),
-  reading: generateId(),
-  travel: generateId(),
-  routines: generateId()
-} as const
-
-const TAG_CATEGORIES: SeedTagCategory[] = [
-  { id: TAG_CATEGORY_IDS.engineering, name: 'Engineering', sortOrder: 0 },
-  { id: TAG_CATEGORY_IDS.projects, name: 'Projects', sortOrder: 1 },
-  { id: TAG_CATEGORY_IDS.reading, name: 'Reading', sortOrder: 2 },
-  { id: TAG_CATEGORY_IDS.travel, name: 'Travel', sortOrder: 3 },
-  { id: TAG_CATEGORY_IDS.routines, name: 'Routines', sortOrder: 4 }
-]
-
-// `research` / `active` / `archive` stay uncategorized on purpose — the sidebar
-// and tag hub both need a populated Uncategorized bucket to look real.
-const TAG_PALETTE: SeedTagDefinition[] = [
-  { name: 'research', color: '#3b82f6' },
-  { name: 'active', color: '#10b981' },
-  { name: 'archive', color: '#6b7280' },
-  {
-    name: 'tech/typescript',
-    color: '#0ea5e9',
-    categoryId: TAG_CATEGORY_IDS.engineering,
-    sortOrder: 0
-  },
-  { name: 'tech/sql', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 1 },
-  { name: 'tech/sync', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 2 },
-  { name: 'tech/rust', color: '#dc2626', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 3 },
-  {
-    name: 'tech/electron',
-    color: '#9333ea',
-    categoryId: TAG_CATEGORY_IDS.engineering,
-    sortOrder: 4
-  },
-  {
-    name: 'tech/postgres',
-    color: '#0284c7',
-    categoryId: TAG_CATEGORY_IDS.engineering,
-    sortOrder: 5
-  },
-  { name: 'tech/python', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.engineering, sortOrder: 6 },
-  { name: 'projects/memry', color: '#6366f1', categoryId: TAG_CATEGORY_IDS.projects, sortOrder: 0 },
-  {
-    name: 'projects/active',
-    color: '#14b8a6',
-    categoryId: TAG_CATEGORY_IDS.projects,
-    sortOrder: 1
-  },
-  {
-    name: 'projects/personal',
-    color: '#f97316',
-    categoryId: TAG_CATEGORY_IDS.projects,
-    sortOrder: 2
-  },
-  { name: 'projects/home', color: '#84cc16', categoryId: TAG_CATEGORY_IDS.projects, sortOrder: 3 },
-  { name: 'sci-fi', color: '#8b5cf6', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 0 },
-  { name: 'fiction', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 1 },
-  { name: 'nonfiction', color: '#ec4899', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 2 },
-  { name: 'classic', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 3 },
-  { name: 'reread', color: '#0ea5e9', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 4 },
-  { name: 'reading', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 5 },
-  { name: 'favorites', color: '#f59e0b', categoryId: TAG_CATEGORY_IDS.reading, sortOrder: 6 },
-  { name: 'travel/asia', color: '#f97316', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 0 },
-  { name: 'travel/europe', color: '#0ea5e9', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 1 },
-  { name: 'travel/japan', color: '#ef4444', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 2 },
-  { name: 'food', color: '#e11d48', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 3 },
-  { name: 'city-break', color: '#22c55e', categoryId: TAG_CATEGORY_IDS.travel, sortOrder: 4 },
-  { name: 'fitness', color: '#84cc16', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 0 },
-  { name: 'daily', color: '#6366f1', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 1 },
-  { name: 'flow', color: '#10b981', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 2 },
-  { name: 'reflection', color: '#a855f7', categoryId: TAG_CATEGORY_IDS.routines, sortOrder: 3 }
-]
-
-const PROPERTY_DEFS = [
-  { name: 'rating', type: 'number', color: '#f59e0b' },
-  { name: 'status', type: 'text', color: '#6366f1' },
-  { name: 'priority', type: 'text', color: '#ef4444' },
-  { name: 'mood', type: 'number', color: '#a855f7' },
-  { name: 'weight', type: 'number', color: '#84cc16' },
-  { name: 'bodyFat', type: 'number', color: '#84cc16' },
-  { name: 'author', type: 'text', color: '#0ea5e9' },
-  { name: 'director', type: 'text', color: '#ec4899' },
-  { name: 'genre', type: 'text', color: '#8b5cf6' },
-  { name: 'language', type: 'text', color: '#10b981' },
-  { name: 'level', type: 'text', color: '#6b7280' },
-  { name: 'location', type: 'text', color: '#f97316' },
-  { name: 'year', type: 'number', color: '#6366f1' },
-  { name: 'pages', type: 'number', color: '#f59e0b' },
-  { name: 'deadline', type: 'date', color: '#ef4444' },
-  { name: 'startDate', type: 'date', color: '#10b981' },
-  { name: 'endDate', type: 'date', color: '#10b981' },
-  { name: 'owner', type: 'text', color: '#6b7280' }
-]
+/**
+ * `.memry/properties.md` — the source of truth PropertyDefinitionsService reads
+ * on vault open. Without it the seeded `property_definitions` rows are dropped
+ * the first time the vault is opened and every note property falls back to
+ * inferred text.
+ */
+function writePropertyDefinitionsFile(vaultPath: string): void {
+  const propertiesPath = resolve(vaultPath, '.memry', 'properties.md')
+  writeFileSync(propertiesPath, matter.stringify('', { properties: buildPropertiesFileData() }), {
+    encoding: 'utf8'
+  })
+}
 
 function writeMinimalConfig(vaultPath: string): void {
   const configPath = resolve(vaultPath, '.memry', 'config.json')
@@ -206,6 +124,9 @@ async function main(): Promise<void> {
   console.log('  → Writing .memry/config.json')
   writeMinimalConfig(vaultPath)
 
+  console.log('  → Writing .memry/properties.md')
+  writePropertyDefinitionsFile(vaultPath)
+
   const dataDbPath = resolve(vaultPath, '.memry', 'data.db')
   console.log(`  → Opening + migrating data.db at ${dataDbPath}`)
   const { db, close } = openDataDb(dataDbPath)
@@ -220,7 +141,7 @@ async function main(): Promise<void> {
     const folderCount = insertFolderConfigs(db, FOLDER_CONFIGS)
     console.log(`  → folder_configs: ${folderCount}`)
 
-    const propCount = insertPropertyDefinitions(db, PROPERTY_DEFS)
+    const propCount = insertPropertyDefinitions(db, PROPERTY_DEFINITION_ROWS)
     console.log(`  → property_definitions: ${propCount}`)
 
     // Files carry no Memry ids — canonical rows keep seeded ids stable

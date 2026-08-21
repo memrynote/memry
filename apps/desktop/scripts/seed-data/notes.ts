@@ -87,7 +87,18 @@ export const NOTE_IDS = {
   travelOsakaRamen: generateNoteId(),
   travelTokyoCafes: generateNoteId(),
   travelAirportLounges: generateNoteId(),
-  travelRomeWeekend: generateNoteId()
+  travelRomeWeekend: generateNoteId(),
+  travelLisbonFoodMap: generateNoteId(),
+  // Added for a fuller vault
+  projBetaFeedback: generateNoteId(),
+  projNewsletterIdeas: generateNoteId(),
+  techVitestPatterns: generateNoteId(),
+  techKeyboardShortcuts: generateNoteId(),
+  lifeWeeklyReview: generateNoteId(),
+  lifePeopleILearnFrom: generateNoteId(),
+  weightSleepLog: generateNoteId(),
+  bookShoeDog: generateNoteId(),
+  movieTheBear: generateNoteId()
 } as const
 
 export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [
@@ -752,8 +763,8 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     tags: ['fitness', 'cut'],
     customProps: {
       status: 'active',
-      startDate: '2026-04-01',
-      endDate: '2026-06-15',
+      startDate: seedJournalDate('2026-04-01'),
+      endDate: seedJournalDate('2026-06-15'),
       weight: 82.4,
       bodyFat: 18,
       mood: 4
@@ -762,8 +773,8 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     daysAgoModified: 0,
     body: `## Targets
 
-- **Start**: 87.1 kg / 21% BF (2026-04-01)
-- **Target**: 78 kg / 14% BF (by 2026-06-15)
+- **Start**: 87.1 kg / 21% BF (${seedJournalDate('2026-04-01')})
+- **Target**: 78 kg / 14% BF (by ${seedJournalDate('2026-06-15')})
 - **Pace**: ~0.5 kg / week — sustainable, hold strength
 
 ## Strategy
@@ -796,12 +807,12 @@ See running table in [[Cutting Log]]. Wikilinked journal entries: [[${seedJourna
 
 | Date | Weight (kg) | BF % | Notes |
 |------|-------------|------|-------|
-| 2026-04-05 | 87.1 | 21.0 | Starting line |
-| 2026-04-12 | 86.4 | 20.4 | Easy week |
-| 2026-04-19 | 85.5 | 19.6 | Cardio added |
-| 2026-04-26 | 85.0 | 19.1 | Stalled, kept patient |
-| 2026-05-03 | 84.0 | 18.4 | Whoosh |
-| 2026-05-08 | 82.4 | 18.0 | On pace |
+| ${seedJournalDate('2026-04-05')} | 87.1 | 21.0 | Starting line |
+| ${seedJournalDate('2026-04-12')} | 86.4 | 20.4 | Easy week |
+| ${seedJournalDate('2026-04-19')} | 85.5 | 19.6 | Cardio added |
+| ${seedJournalDate('2026-04-26')} | 85.0 | 19.1 | Stalled, kept patient |
+| ${seedJournalDate('2026-05-03')} | 84.0 | 18.4 | Whoosh |
+| ${seedJournalDate('2026-05-08')} | 82.4 | 18.0 | On pace |
 
 ## Observations
 
@@ -912,9 +923,9 @@ Heart rate monitor on, not optional.
     daysAgoModified: -1,
     body: `Loose log — only the meals that surprised me.
 
-- 2026-05-06 — Korean BBQ. Stayed lean by stacking veg first; came in under 1100 kcal.
-- 2026-05-04 — Pizza Saturday. Two slices, walked an hour after.
-- 2026-05-02 — Found a great mackerel teishoku spot near the office.
+- ${seedJournalDate('2026-05-06')} — Korean BBQ. Stayed lean by stacking veg first; came in under 1100 kcal.
+- ${seedJournalDate('2026-05-04')} — Pizza Saturday. Two slices, walked an hour after.
+- ${seedJournalDate('2026-05-02')} — Found a great mackerel teishoku spot near the office.
 
 #fitness #food
 `
@@ -932,7 +943,7 @@ Heart rate monitor on, not optional.
 
 Compares to [[2026 Cut]] start.
 
-![Front 2026-05-08](attachments/weight-front-may.jpg)
+![Front ${seedJournalDate('2026-05-08')}](attachments/weight-front-may.jpg)
 
 #fitness
 `
@@ -1171,14 +1182,14 @@ If a relationship is important, it should show up *in the calendar*, not just in
     customProps: {
       status: 'active',
       priority: 'high',
-      deadline: '2026-07-01',
+      deadline: seedJournalDate('2026-07-01'),
       owner: 'Kaan'
     },
     daysAgoCreated: -90,
     daysAgoModified: 0,
     body: `## Launch plan
 
-Aim for 2026-07-01. Soft launch to ~50 friends + IndieHackers.
+Aim for ${seedJournalDate('2026-07-01')}. Soft launch to ~50 friends + IndieHackers.
 
 ## What's left
 
@@ -1217,7 +1228,7 @@ Tasks tagged \`#projects/memry\` show up under "memrynote Launch" project — th
     customProps: {
       status: 'active',
       priority: 'high',
-      deadline: '2026-06-01',
+      deadline: seedJournalDate('2026-06-01'),
       owner: 'Kaan'
     },
     daysAgoCreated: -200,
@@ -1247,7 +1258,7 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
     customProps: {
       status: 'active',
       priority: 'medium',
-      deadline: '2026-12-31',
+      deadline: seedJournalDate('2026-12-31'),
       owner: 'Kaan'
     },
     daysAgoCreated: -150,
@@ -1281,7 +1292,7 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
     customProps: {
       status: 'active',
       priority: 'medium',
-      deadline: '2026-07-01',
+      deadline: seedJournalDate('2026-07-01'),
       owner: 'Kaan'
     },
     daysAgoCreated: -60,
@@ -1313,14 +1324,14 @@ People who already journal but resent their tool. Bonus: programmers, researcher
     customProps: {
       status: 'active',
       priority: 'low',
-      deadline: '2026-09-15',
+      deadline: seedJournalDate('2026-09-15'),
       owner: 'Self'
     },
     daysAgoCreated: -45,
     daysAgoModified: -1,
     body: `## Spring
 
-- [x] Tomato seedlings — done 2026-04-12
+- [x] Tomato seedlings — done ${seedJournalDate('2026-04-12')}
 - [x] Basil — three pots
 - [ ] Bell peppers — week of 5/15
 - [ ] Mint divider barriers (it'll take over otherwise)
@@ -1341,7 +1352,7 @@ Focus on what survives a heat dome: peppers, eggplant, zucchini.
     customProps: {
       status: 'backlog',
       priority: 'medium',
-      deadline: '2026-10-01',
+      deadline: seedJournalDate('2026-10-01'),
       owner: 'Self'
     },
     daysAgoCreated: -30,
@@ -1375,7 +1386,7 @@ Focus on what survives a heat dome: peppers, eggplant, zucchini.
     customProps: {
       status: 'active',
       priority: 'low',
-      deadline: '2026-06-15',
+      deadline: seedJournalDate('2026-06-15'),
       owner: 'Self'
     },
     daysAgoCreated: -25,
@@ -1442,7 +1453,7 @@ Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
     customProps: {
       status: 'active',
       priority: 'medium',
-      deadline: '2026-09-15',
+      deadline: seedJournalDate('2026-09-15'),
       owner: 'Self'
     },
     daysAgoCreated: -55,
@@ -1462,7 +1473,7 @@ Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
 ## Submitted to
 
 - StrangeLoop — pending
-- LocalFirst Conf — accepted, talk on 2026-09-15
+- LocalFirst Conf — accepted, talk on ${seedJournalDate('2026-09-15')}
 
 #projects/personal #speaking
 `
@@ -1851,8 +1862,8 @@ docker system prune -af --volumes
     aliases: ['Istanbul weekend', 'Istanbul city guide'],
     customProps: {
       location: 'Istanbul, Turkey',
-      startDate: '2026-05-23',
-      endDate: '2026-05-25',
+      startDate: seedJournalDate('2026-05-23'),
+      endDate: seedJournalDate('2026-05-25'),
       status: 'planning'
     },
     daysAgoCreated: -3,
@@ -1901,8 +1912,8 @@ docker system prune -af --volumes
     tags: ['travel/asia', 'travel/japan', 'memoir'],
     customProps: {
       location: 'Tokyo, Japan',
-      startDate: '2026-04-12',
-      endDate: '2026-04-19',
+      startDate: seedJournalDate('2026-04-12'),
+      endDate: seedJournalDate('2026-04-19'),
       status: 'done'
     },
     daysAgoCreated: -60,
@@ -1946,8 +1957,8 @@ Linked journal entries: [[${seedJournalDate('2026-04-15')}]], [[${seedJournalDat
     tags: ['travel/asia', 'travel/japan'],
     customProps: {
       location: 'Kyoto, Japan',
-      startDate: '2026-04-15',
-      endDate: '2026-04-15',
+      startDate: seedJournalDate('2026-04-15'),
+      endDate: seedJournalDate('2026-04-15'),
       status: 'done'
     },
     daysAgoCreated: -23,
@@ -1977,8 +1988,8 @@ Linked: [[Tokyo Trip]] (the parent), journal [[${seedJournalDate('2026-04-15')}]
     tags: ['travel/europe', 'travel/portugal'],
     customProps: {
       location: 'Lisbon, Portugal',
-      startDate: '2025-11-08',
-      endDate: '2025-11-13',
+      startDate: seedJournalDate('2025-11-08'),
+      endDate: seedJournalDate('2025-11-13'),
       status: 'done'
     },
     daysAgoCreated: -190,
@@ -2004,8 +2015,8 @@ Linked: [[Tokyo Trip]] (the parent), journal [[${seedJournalDate('2026-04-15')}]
     tags: ['travel/europe', 'travel/iceland', 'planning'],
     customProps: {
       location: 'Iceland',
-      startDate: '2026-08-12',
-      endDate: '2026-08-22',
+      startDate: seedJournalDate('2026-08-12'),
+      endDate: seedJournalDate('2026-08-22'),
       status: 'planning'
     },
     daysAgoCreated: -40,
@@ -2065,8 +2076,8 @@ Linked: [[Tokyo Trip]] (the parent), journal [[${seedJournalDate('2026-04-15')}]
     tags: ['travel/asia', 'travel/korea', 'food'],
     customProps: {
       location: 'Seoul, South Korea',
-      startDate: '2025-09-12',
-      endDate: '2025-09-18',
+      startDate: seedJournalDate('2025-09-12'),
+      endDate: seedJournalDate('2025-09-18'),
       status: 'done'
     },
     daysAgoCreated: -240,
@@ -2088,8 +2099,8 @@ Linked: [[Tokyo Trip]] (the parent), journal [[${seedJournalDate('2026-04-15')}]
     tags: ['travel/americas', 'travel/mexico', 'art'],
     customProps: {
       location: 'Mexico City',
-      startDate: '2025-06-04',
-      endDate: '2025-06-10',
+      startDate: seedJournalDate('2025-06-04'),
+      endDate: seedJournalDate('2025-06-10'),
       status: 'done'
     },
     daysAgoCreated: -340,
@@ -2177,8 +2188,8 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
     aliases: ['Rome trip', 'Rome city break'],
     customProps: {
       location: 'Rome, Italy',
-      startDate: '2026-09-18',
-      endDate: '2026-09-20',
+      startDate: seedJournalDate('2026-09-18'),
+      endDate: seedJournalDate('2026-09-20'),
       status: 'planning'
     },
     daysAgoCreated: -2,
@@ -2213,14 +2224,544 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
 
 ## Links
 
-- Journal: [[2026-07-10]]
+- Journal: [[${seedJournalDate('2026-05-15')}]]
 - Packing: [[Packing List]]
 - Food notes: [[Food Diary]]
 
 #travel/europe #food #city-break
 `
+  },
+
+  // ============================================================================
+  // ADDED — a fuller vault: the working notes a real person accumulates around
+  // the projects above.
+  // ============================================================================
+  {
+    id: NOTE_IDS.projBetaFeedback,
+    relativePath: 'projects/Beta Feedback.md',
+    title: 'Beta Feedback',
+    emoji: '🗣️',
+    tags: ['projects/memry', 'launch', 'reference'],
+    customProps: { status: 'active', priority: 'high', owner: 'me' },
+    daysAgoCreated: -14,
+    daysAgoModified: 0,
+    body: `Everything the first twelve testers said, in their words, sorted by how often it came up.
+
+> [!important] The rule
+> A quote goes in verbatim. My interpretation goes in the right-hand column, clearly marked as mine.
+
+## Themes
+
+| Theme | Said by | What they actually want | Status |
+|-------|---------|-------------------------|--------|
+| "Where did my note go?" | 7 | Recently-edited, always visible | shipped |
+| Sync anxiety | 5 | A visible last-synced timestamp | in progress |
+| Too many empty states | 4 | Sensible starting content | planning |
+| Mobile, please | 9 | Read-only is enough for now | backlog |
+| Keyboard-only flow | 3 | Command palette for everything | planning |
+
+## Quotes worth keeping
+
+> "I trusted it the moment I saw the files sitting in a normal folder."
+
+> "The encryption thing matters to me but I don't want to *think* about it."
+
+> "I closed the laptop mid-sentence and it was still there. That's the whole pitch."
+
+## What I am not doing
+
+- Not adding a web clipper this cycle — see [[memrynote Roadmap]]
+- Not chasing the one request for a Kanban board
+- Not rewriting the graph view because two people found it slow; the graph gets pagination instead
+
+## Next
+
+- [ ] Turn the top three themes into issues
+- [x] Reply to everyone individually
+- [ ] Second round of invites after the sync timestamp lands
+
+#projects/memry #launch
+`
+  },
+  {
+    id: NOTE_IDS.projNewsletterIdeas,
+    relativePath: 'projects/Newsletter Ideas.md',
+    title: 'Newsletter Ideas',
+    emoji: '✉️',
+    tags: ['writing', 'ideas', 'gtm'],
+    customProps: { status: 'idea', priority: 'low' },
+    daysAgoCreated: -21,
+    daysAgoModified: -3,
+    body: `A holding pen. Nothing here is committed to; most of it will never be written.
+
+## Drafts in the drawer
+
+1. **"Your notes should outlive your app."** — the local-first argument without the jargon
+2. **"I read 24 books and remembered four."** — retention, not consumption; pairs with [[On Reading]]
+3. **"What a cut taught me about shipping."** — the [[2026 Cut]] as a delivery metaphor, if I can keep it from being insufferable
+4. **"Twelve testers, one week."** — the honest version of [[Beta Feedback]]
+
+## Format I keep coming back to
+
+- One idea, 800 words, no roundups
+- Every issue ends with a single thing to try
+- Ship on a schedule I can hold in a bad week, not a good one
+
+## Open question
+
+Do I want an audience, or do I want an excuse to write? Answering that honestly changes the whole thing.
+
+#writing #ideas
+`
+  },
+  {
+    id: NOTE_IDS.techVitestPatterns,
+    relativePath: 'tech/Vitest Patterns.md',
+    title: 'Vitest Patterns',
+    emoji: '🧪',
+    tags: ['tech/typescript', 'tests', 'reference'],
+    customProps: { status: 'reference' },
+    daysAgoCreated: -47,
+    daysAgoModified: -6,
+    body: `The handful of things I re-look-up every time.
+
+## Mock a module, keep one real export
+
+\`\`\`ts
+vi.mock('./logger', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./logger')>()),
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
+\`\`\`
+
+## Fake timers without deadlocking async code
+
+\`\`\`ts
+vi.useFakeTimers({ shouldAdvanceTime: true })
+await vi.advanceTimersByTimeAsync(1_000)
+\`\`\`
+
+## Rules I learned the hard way
+
+| Rule | Why |
+|------|-----|
+| Reset module state in \`beforeEach\` | Singletons leak between files, not just tests |
+| Never assert on a snapshot you did not read | It will happily record a bug |
+| One behavior per test name | A failing name should tell you the bug |
+| Prefer a real object over a mock | A mock only proves the mock works |
+
+> [!warning] Partial mocks are a trap
+> Mock a module partially and every *new* export silently becomes \`undefined\` for that file. Prefer building a real fixture.
+
+See also: [[TypeScript Patterns]], [[Electron Gotchas]].
+
+#tech/typescript #tests
+`
+  },
+  {
+    id: NOTE_IDS.techKeyboardShortcuts,
+    relativePath: 'tech/Keyboard Shortcuts.md',
+    title: 'Keyboard Shortcuts',
+    emoji: '⌨️',
+    tags: ['tech/editor', 'tooling', 'reference'],
+    customProps: { status: 'reference' },
+    daysAgoCreated: -60,
+    daysAgoModified: -11,
+    body: `The ones I actually use, not the ones I keep meaning to learn.
+
+## Editor
+
+| Keys | Does |
+|------|------|
+| \`⌘K\` | Command palette — the only one that matters |
+| \`⌘P\` | Jump to a note by name |
+| \`⌘⇧F\` | Search the whole vault |
+| \`⌘[\` / \`⌘]\` | Back and forward through what I opened |
+| \`⌘\\\` | Split the editor |
+
+## Terminal
+
+| Keys | Does |
+|------|------|
+| \`⌃R\` | Reverse search — still the best shortcut ever shipped |
+| \`⌃A\` / \`⌃E\` | Start and end of line |
+| \`⌥←\` / \`⌥→\` | Move by word |
+
+## Still not automatic
+
+- Multi-cursor by pattern
+- Anything involving marks in vim — see [[Vim Motions]]
+
+#tech/editor #tooling
+`
+  },
+  {
+    id: NOTE_IDS.lifeWeeklyReview,
+    relativePath: 'life/Weekly Review.md',
+    title: 'Weekly Review',
+    emoji: '🔁',
+    tags: ['reflection', 'habits', 'recurring'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -110,
+    daysAgoModified: -2,
+    body: `Sunday evening, twenty minutes, same four questions. The consistency is the whole feature.
+
+## The questions
+
+1. **What actually moved?** Not what I was busy with — what moved.
+2. **What did I avoid, and why?** The why is where the information is.
+3. **What am I carrying that I can put down?**
+4. **What is the one thing next week is *for*?**
+
+## The pass
+
+- [ ] Empty the inbox to zero
+- [ ] Reschedule anything that slipped twice — twice means it is not real
+- [ ] Skim this week's journal entries
+- [ ] Write the one-thing sentence at the top of Monday
+
+> [!note] The failure mode
+> When this becomes a status report to myself, it stops working. Keep it a conversation.
+
+## Feeds into
+
+- [[Year in Review 2025]] at the end of the year
+- [[Morning Routine]] the next day
+
+#reflection #habits
+`
+  },
+  {
+    id: NOTE_IDS.lifePeopleILearnFrom,
+    relativePath: 'life/People I Learn From.md',
+    title: 'People I Learn From',
+    emoji: '👥',
+    tags: ['people', 'learning', 'reference'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -160,
+    daysAgoModified: -19,
+    body: `Not a network. A short list of people whose thinking changes mine, and what specifically I take from each.
+
+| Who | What I take | Where |
+|-----|-------------|-------|
+| M. | Says the uncomfortable thing first, kindly | Weekly coffee |
+| D. | Refuses to be impressed by complexity | Work |
+| My brother | Long-horizon patience about money | Sunday calls |
+| A former manager | Asks "and then what?" three times | Occasional email |
+
+## What I am borrowing this year
+
+- **From M.** — name the actual objection instead of hedging around it
+- **From D.** — "can you draw it?" as a bullshit detector
+- **From the internet, carefully** — read the people who show their work, ignore the ones who show their results
+
+> "You are the average of the five people you spend the most time with" is too neat, but the direction is right.
+
+See also: [[Relationships]], [[My Why]].
+
+#people #learning
+`
+  },
+  {
+    id: NOTE_IDS.weightSleepLog,
+    relativePath: 'weight/Sleep Log.md',
+    title: 'Sleep Log',
+    emoji: '😴',
+    tags: ['fitness', 'health', 'tracking', 'log'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -30,
+    daysAgoModified: 0,
+    body: `Tracking sleep because [[Cutting Log]] made it obvious that the bad weeks were the short-sleep weeks.
+
+## Last two weeks
+
+| Night | Hours | Woke up | Note |
+|-------|-------|---------|------|
+| Mon | 7.4 | once | Normal |
+| Tue | 6.1 | twice | Late screen, obviously |
+| Wed | 8.0 | no | Best lift of the week followed |
+| Thu | 7.2 | once | — |
+| Fri | 6.4 | once | Dinner ran late |
+| Sat | 8.3 | no | No alarm |
+| Sun | 7.6 | no | Back on schedule |
+
+## What correlates
+
+- **Under 7 hours** → weigh-in stalls and the squat feels heavy
+- **Screens after 22:30** → 40 minutes longer to fall asleep, every time
+- Caffeine after 14:00 is not the problem I assumed it was
+
+## Rules that stuck
+
+- [x] Phone charges outside the bedroom
+- [x] Same wake time on weekends, within an hour
+- [ ] Actually go to bed when the light goes on — still 0 for 12
+
+#fitness #health #tracking
+`
+  },
+  {
+    id: NOTE_IDS.bookShoeDog,
+    relativePath: 'books/Shoe Dog.md',
+    title: 'Shoe Dog',
+    emoji: '👟',
+    tags: ['nonfiction', 'memoir', 'favorites'],
+    customProps: {
+      author: 'Phil Knight',
+      year: 2016,
+      pages: 400,
+      status: 'done',
+      rating: 5,
+      genre: 'memoir'
+    },
+    daysAgoCreated: -75,
+    daysAgoModified: -30,
+    body: `The most honest founder memoir I have read, mostly because it is written by someone with nothing left to prove.
+
+## What stayed with me
+
+- **It was nearly over, constantly.** For a decade. The version told in retrospect always flattens that.
+- **The bank was the antagonist**, not the competitor. Cash flow is the plot.
+- He never sounds like he enjoyed it, and he never suggests he would trade it.
+
+> "Don't tell people how to do things, tell them what to do and let them surprise you with their results."
+
+## Where it argues with [[The Almanack of Naval Ravikant]]
+
+Naval's version is leverage and calm. Knight's is grinding and terror. Both are true; the second one is less quotable, which is exactly why it is worth reading.
+
+## Pair with
+
+- [[On Writing]] — same trick, a craft memoir that refuses to be inspirational
+- [[Four Thousand Weeks]] — for the counter-argument
+
+#books/nonfiction #memoir
+`
+  },
+  {
+    id: NOTE_IDS.movieTheBear,
+    relativePath: 'movies/The Bear.md',
+    title: 'The Bear',
+    emoji: '🔪',
+    tags: ['movies', 'movies/drama', 'craft', 'favorites'],
+    customProps: {
+      director: 'Christopher Storer',
+      year: 2022,
+      status: 'watched',
+      rating: 5,
+      genre: 'drama'
+    },
+    daysAgoCreated: -55,
+    daysAgoModified: -12,
+    body: `Not a film, but it lives here anyway.
+
+## Why it works
+
+- The kitchen is loud and the show is *quiet* about what it means. It trusts you.
+- Every episode is about a system failing under load. I recognize the feeling professionally.
+- The one-take episode is the flex everyone talks about; the still one after it is the better hour.
+
+## The line I keep
+
+> "Every second counts."
+
+Used as encouragement in season one and as a threat by season two, which is the whole thesis.
+
+## Pair with
+
+- [[Kitchen Confidential]] — the nonfiction source of this energy
+- [[Goodfellas]] — for the same chaos filmed as pleasure instead of pressure
+
+#movies #craft
+`
+  },
+  {
+    id: NOTE_IDS.travelLisbonFoodMap,
+    relativePath: 'travel/Lisbon Food Map.md',
+    title: 'Lisbon Food Map',
+    emoji: '🥐',
+    tags: ['travel/europe', 'travel/portugal', 'food', 'city-break'],
+    customProps: {
+      status: 'planning',
+      location: 'Lisbon, Portugal',
+      startDate: seedJournalDate('2026-05-23'),
+      endDate: seedJournalDate('2026-05-25')
+    },
+    daysAgoCreated: -9,
+    daysAgoModified: 0,
+    body: `Companion to [[Lisbon Notes]] — this one is only food, ordered by neighborhood so it works while walking.
+
+> [!tip] Two rules
+> One planned meal a day, maximum. The rest is whatever is open and full of locals.
+
+## Alfama
+
+| Place | What | When |
+|-------|------|------|
+| A corner tasca, no sign | Grilled sardines | Lunch, early |
+| Pastelaria near the cathedral | Pastel de nata, still warm | Any time |
+
+## Príncipe Real
+
+| Place | What | When |
+|-------|------|------|
+| The natural wine bar | Petiscos, standing up | Before dinner |
+| Bakery on the square | Sourdough, take it to the park | Morning |
+
+## Cais do Sodré
+
+- Seafood, late, loud
+- The market hall for the one meal where we cannot agree
+
+## Non-negotiable
+
+- [ ] Bifana from a counter, eaten standing
+- [ ] Ginjinha in a chocolate cup, once, ironically, then again sincerely
+- [ ] Coffee at least four times a day — it is 80 cents, this is the whole reason to be here
+
+## Links
+
+- Trip: [[Lisbon Notes]]
+- Journal: [[${seedJournalDate('2026-05-15')}]]
+- Running list: [[Food Diary]]
+
+#travel/europe #food #city-break
+`
   }
 ]
+
+/**
+ * Project membership, by project name.
+ *
+ * `project` is the reserved frontmatter key the note-project-links projector
+ * reads to derive `project_links` rows, so this — not the pre-seeded rows in
+ * ./project-links — is what survives the note's next index pass. A project's own
+ * overview note is deliberately absent: Project Home already renders it at the
+ * top and would otherwise list it twice.
+ */
+const NOTE_PROJECTS: Record<string, string[]> = {
+  [NOTE_IDS.projMemryRoadmap]: ['memrynote Launch'],
+  [NOTE_IDS.projMemryArchitecture]: ['memrynote Launch'],
+  [NOTE_IDS.projMemryGTM]: ['memrynote Launch'],
+  [NOTE_IDS.techCRDTArchitecture]: ['memrynote Launch'],
+  [NOTE_IDS.techElectronGotchas]: ['memrynote Launch'],
+  [NOTE_IDS.techSqliteVec]: ['memrynote Launch'],
+  [NOTE_IDS.projConferenceTalk]: ['memrynote Launch', 'Side Projects'],
+
+  [NOTE_IDS.travelPackingList]: ['Istanbul Weekend', 'Travel: Tokyo'],
+  [NOTE_IDS.travelAirportLounges]: ['Istanbul Weekend'],
+
+  [NOTE_IDS.bookDune]: ['Reading'],
+  [NOTE_IDS.bookProjectHailMary]: ['Reading'],
+  [NOTE_IDS.bookFourThousandWeeks]: ['Reading'],
+  [NOTE_IDS.bookAtomicHabits]: ['Reading'],
+  [NOTE_IDS.bookOnWriting]: ['Reading'],
+  [NOTE_IDS.bookSapiens]: ['Reading'],
+  [NOTE_IDS.bookManSearchMeaning]: ['Reading'],
+
+  [NOTE_IDS.weightTrainingSplit]: ['Fitness 2026'],
+  [NOTE_IDS.weightCardioPlan]: ['Fitness 2026'],
+  [NOTE_IDS.weightProteinTargets]: ['Fitness 2026'],
+  [NOTE_IDS.weightSundayWeighIn]: ['Fitness 2026'],
+  [NOTE_IDS.weightCuttingLog]: ['Fitness 2026'],
+  [NOTE_IDS.weightFoodDiary]: ['Fitness 2026'],
+
+  [NOTE_IDS.travelKyotoDayTrip]: ['Travel: Tokyo'],
+  [NOTE_IDS.travelOsakaRamen]: ['Travel: Tokyo'],
+  [NOTE_IDS.travelTokyoCafes]: ['Travel: Tokyo'],
+
+  [NOTE_IDS.projBlogRedesign]: ['Side Projects'],
+  [NOTE_IDS.projOpenSourceFork]: ['Side Projects'],
+  [NOTE_IDS.techRustNotes]: ['Side Projects'],
+  [NOTE_IDS.projGardenSchedule]: ['Side Projects'],
+  [NOTE_IDS.projHomeRenovation]: ['Side Projects'],
+
+  [NOTE_IDS.projBetaFeedback]: ['memrynote Launch'],
+  [NOTE_IDS.projNewsletterIdeas]: ['Side Projects'],
+  [NOTE_IDS.techVitestPatterns]: ['memrynote Launch'],
+  [NOTE_IDS.weightSleepLog]: ['Fitness 2026'],
+  [NOTE_IDS.bookShoeDog]: ['Reading']
+}
+
+/**
+ * Folder-wide `area` so every note carries at least one select property — the
+ * options come from `.memry/properties.md`, so these render as colored chips
+ * rather than inferred text.
+ */
+const FOLDER_AREAS: Record<string, string> = {
+  books: 'Learning',
+  movies: 'Learning',
+  weight: 'Health',
+  life: 'Learning',
+  projects: 'Work',
+  tech: 'Learning',
+  travel: 'Travel'
+}
+
+/**
+ * Per-note extras layered on top of `customProps`: the multi-value and
+ * relation-ish properties that make the info panel look like a vault someone
+ * actually keeps, without editing 74 literals by hand.
+ */
+const EXTRA_PROPS: Record<string, Record<string, unknown>> = {
+  [NOTE_IDS.bookDune]: { format: ['Hardcover', 'Audiobook'], source: ['Rewatch'], shared: false },
+  [NOTE_IDS.bookProjectHailMary]: { format: ['Kindle'], source: ['Recommended'] },
+  [NOTE_IDS.bookAtomicHabits]: { format: ['Kindle'], source: ['Recommended'] },
+  [NOTE_IDS.bookDeepWork]: { format: ['Hardcover'], source: ['Bookclub'] },
+  [NOTE_IDS.bookSapiens]: { format: ['Audiobook'], source: ['Bookclub'] },
+  [NOTE_IDS.bookFourThousandWeeks]: { format: ['Kindle'], source: ['Recommended'] },
+  [NOTE_IDS.bookManSearchMeaning]: { format: ['Hardcover'], source: ['Rewatch'] },
+  [NOTE_IDS.bookOnWriting]: { format: ['Kindle'], source: ['Backlog'] },
+  [NOTE_IDS.bookTheMartian]: { format: ['Kindle'], source: ['Backlog'] },
+
+  [NOTE_IDS.movieDune2021]: { format: ['Cinema'], source: ['Rewatch'] },
+  [NOTE_IDS.movieInterstellar]: { format: ['Streaming'], source: ['Rewatch'] },
+  [NOTE_IDS.movieParasite]: { format: ['Streaming'], source: ['Recommended'] },
+  [NOTE_IDS.movieSpiritedAway]: { format: ['Streaming'], source: ['Rewatch'] },
+  [NOTE_IDS.movieWatchlist2026]: { source: ['Backlog'], reviewOn: seedJournalDate('2026-05-24') },
+
+  [NOTE_IDS.techTypescriptPatterns]: { language: 'typescript', level: 'advanced' },
+  [NOTE_IDS.techRustNotes]: { language: 'rust', level: 'beginner' },
+  [NOTE_IDS.techPostgresIndexing]: { language: 'sql', level: 'intermediate' },
+  [NOTE_IDS.techSqliteVec]: { language: 'sql', level: 'advanced' },
+  [NOTE_IDS.techDrizzleORM]: { language: 'typescript', level: 'intermediate' },
+  [NOTE_IDS.techDockerCheatsheet]: { language: 'shell', level: 'beginner' },
+  [NOTE_IDS.techGitWorkflow]: { language: 'shell', level: 'intermediate' },
+  [NOTE_IDS.techCMUDatabaseCourse]: {
+    language: 'sql',
+    level: 'advanced',
+    url: 'https://15445.courses.cs.cmu.edu/'
+  },
+
+  [NOTE_IDS.projMemryLaunch]: {
+    energy: 'deep',
+    priority: 'high',
+    reviewOn: seedJournalDate('2026-05-12'),
+    shared: true
+  },
+  [NOTE_IDS.projMemryRoadmap]: { energy: 'deep', reviewOn: seedJournalDate('2026-05-12') },
+  [NOTE_IDS.projMemryGTM]: { energy: 'shallow', shared: true },
+  [NOTE_IDS.projConferenceTalk]: { energy: 'deep', priority: 'high' },
+  [NOTE_IDS.projHomeRenovation]: { area: 'Home', energy: 'admin' },
+  [NOTE_IDS.projGardenSchedule]: { area: 'Home', energy: 'shallow' },
+
+  [NOTE_IDS.lifeFinances]: { area: 'Money', energy: 'admin' },
+  [NOTE_IDS.lifeMorningRoutine]: { energy: 'shallow' },
+  [NOTE_IDS.lifeYearReview2025]: { energy: 'deep', reviewOn: seedJournalDate('2026-05-31') },
+
+  [NOTE_IDS.travelLisbonNotes]: { energy: 'shallow', shared: true },
+  [NOTE_IDS.travelIstanbul]: { energy: 'shallow', shared: true },
+  [NOTE_IDS.travelPackingList]: { energy: 'admin' },
+
+  [NOTE_IDS.projBetaFeedback]: { energy: 'deep', shared: true },
+  [NOTE_IDS.projNewsletterIdeas]: { energy: 'shallow' },
+  [NOTE_IDS.techVitestPatterns]: { language: 'typescript', level: 'intermediate' },
+  [NOTE_IDS.techKeyboardShortcuts]: { level: 'beginner' },
+  [NOTE_IDS.lifeWeeklyReview]: { energy: 'shallow', reviewOn: seedJournalDate('2026-05-10') },
+  [NOTE_IDS.bookShoeDog]: { format: ['Hardcover'], source: ['Recommended'] },
+  [NOTE_IDS.movieTheBear]: { format: ['Streaming'], source: ['Recommended'] },
+  [NOTE_IDS.travelLisbonFoodMap]: { energy: 'shallow', shared: true }
+}
 
 /** Canonical note_metadata rows so note ids stay stable across indexing. */
 export const NOTE_METADATA = SPECS.map((spec) => ({
@@ -2240,7 +2781,12 @@ export const NOTES: NoteFile[] = SPECS.map((spec) => {
     frontmatter: {
       ...(spec.tags.length > 0 ? { tags: spec.tags } : {}),
       ...(spec.aliases ? { aliases: spec.aliases } : {}),
-      ...(spec.customProps ?? {})
+      ...(NOTE_PROJECTS[spec.id] ? { project: NOTE_PROJECTS[spec.id] } : {}),
+      ...(FOLDER_AREAS[spec.relativePath.split('/')[0]]
+        ? { area: FOLDER_AREAS[spec.relativePath.split('/')[0]] }
+        : {}),
+      ...(spec.customProps ?? {}),
+      ...(EXTRA_PROPS[spec.id] ?? {})
     },
     body: spec.body,
     modified

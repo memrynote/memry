@@ -262,13 +262,117 @@ export const INBOX_ITEMS: SeedInboxItem[] = [
   {
     id: id('nt'),
     type: 'note',
-    title: 'Old note — try candle-making class',
+    title: 'Try the candle-making class',
     content: 'Archived because the weekend filled up.',
     captureSource: 'quick-capture',
-    archivedAt: offsetISO(-95, 18),
-    createdAt: offsetISO(-180, 11),
-    modifiedAt: offsetISO(-95, 18),
+    archivedAt: offsetISO(-12, 18),
+    createdAt: offsetISO(-40, 11),
+    modifiedAt: offsetISO(-12, 18),
     tags: ['projects/personal']
+  },
+
+  // ========================================================================
+  // Today — a working inbox, captured across the day.
+  //
+  // Everything here stays consumer-facing on purpose: this is the surface the
+  // landing screenshots show, and developer jargon reads as "not for me".
+  // ========================================================================
+  {
+    id: id('nt'),
+    type: 'note',
+    title: 'Swap the hallway shelf for a bench',
+    content: 'Somewhere to actually sit and put shoes on. Measure the wall before looking.',
+    captureSource: 'quick-capture',
+    createdAt: offsetISO(0, 10),
+    modifiedAt: offsetISO(0, 10),
+    tags: ['projects/home', 'ideas']
+  },
+  {
+    id: id('lnk'),
+    type: 'link',
+    title: 'How to keep basil alive past week two',
+    content: 'Water from the bottom, pinch the tops. Apparently I have been doing both wrong.',
+    sourceUrl: 'https://example.com/basil-care',
+    sourceTitle: 'How to keep basil alive past week two',
+    captureSource: 'browser-extension',
+    metadata: { publisher: 'Balcony Gardener', author: 'June Park', readingTime: 5 },
+    createdAt: offsetISO(0, 11),
+    modifiedAt: offsetISO(0, 11),
+    tags: ['projects/home', 'garden']
+  },
+  {
+    id: id('img'),
+    type: 'image',
+    title: 'Photo — the bookshelf wall as it is now',
+    content: 'Before shot. Compare after the shelves go up so I can tell it was worth it.',
+    captureSource: 'quick-capture',
+    attachmentPath: 'attachments/inbox/bookshelf-wall.png',
+    thumbnailPath: 'attachments/inbox/bookshelf-wall.thumb.png',
+    metadata: { width: 2048, height: 1152 },
+    createdAt: offsetISO(0, 13),
+    modifiedAt: offsetISO(0, 13),
+    tags: ['projects/home', 'shopping']
+  },
+  {
+    id: id('rmd'),
+    type: 'reminder',
+    title: 'Renew the gym membership',
+    content: 'Expires at the end of the month. Ask about the off-peak rate first.',
+    captureSource: 'reminder',
+    snoozedUntil: offsetISO(2, 9),
+    snoozeReason: 'Ask about the off-peak rate on Saturday',
+    createdAt: offsetISO(-1, 16),
+    modifiedAt: offsetISO(-1, 16),
+    tags: ['fitness', 'admin']
+  },
+  {
+    id: id('soc'),
+    type: 'social',
+    title: 'Instagram — the balcony herb setup I want',
+    content: 'Rail planters, three pots, drip tray underneath. Saved for the spring redo.',
+    sourceUrl: 'https://instagram.com/p/balcony-herb-setup/',
+    sourceTitle: 'Balcony herb setup — Instagram',
+    captureSource: 'browser-extension',
+    metadata: { platform: 'instagram', authorHandle: '@smallspacegarden' },
+    createdAt: offsetISO(-1, 20),
+    modifiedAt: offsetISO(-1, 20),
+    tags: ['projects/home', 'garden']
+  },
+  {
+    id: id('clp'),
+    type: 'clip',
+    title: 'Excerpt: "Under seven hours and the whole week bends."',
+    content: 'Matches what my own sleep notes show. Save the study link too.',
+    sourceUrl: 'https://example.com/sleep-and-strength',
+    sourceTitle: 'Sleep and strength — what the data says',
+    captureSource: 'browser-extension',
+    metadata: { publisher: 'Barbell Science', author: 'Dr. Iris Vance' },
+    createdAt: offsetISO(-2, 7),
+    modifiedAt: offsetISO(-2, 7),
+    tags: ['fitness', 'health']
+  },
+  {
+    id: id('nt'),
+    type: 'note',
+    title: 'Ask D. about the Lisbon place with the sardines',
+    content: 'The corner one in Alfama with no sign. Goes on the food list before we book.',
+    captureSource: 'quick-capture',
+    createdAt: offsetISO(-3, 18),
+    modifiedAt: offsetISO(-3, 18),
+    tags: ['travel/europe', 'food']
+  },
+  {
+    id: id('pdf'),
+    type: 'pdf',
+    title: 'Museum membership renewal',
+    content: 'Two-person tier is barely more than one. Renew before the exhibition opens.',
+    sourceUrl: 'https://example.com/docs/museum-membership.pdf',
+    captureSource: 'browser-extension',
+    attachmentPath: 'attachments/inbox/museum-membership.pdf',
+    metadata: { pages: 4, fileSize: 320000 },
+    createdAt: offsetISO(-4, 9),
+    modifiedAt: offsetISO(-4, 9),
+    tags: ['art', 'admin']
   }
 ]
 

@@ -24,8 +24,8 @@ const KNOWN_IDS = new Set<string>([
 ])
 
 describe('canvas seed data', () => {
-  it('seeds two populated canvases', () => {
-    expect(CANVASES).toHaveLength(2)
+  it('seeds six populated canvases', () => {
+    expect(CANVASES).toHaveLength(6)
     for (const canvas of CANVASES) {
       const scene = JSON.parse(canvas.scene) as SceneShape
       expect(scene.type).toBe('excalidraw')

@@ -10,8 +10,63 @@ interface JournalSpec {
 }
 
 // Narrative dates below run on a fixed timeline; seedJournalDate shifts them so the
-// story lands around the run day. The final entry (JOURNAL_ANCHOR) maps to today.
+// story lands around the run day. JOURNAL_ANCHOR (2026-05-08) maps to the day the
+// seed runs, so the entries before it land in the past and the ones after it in the
+// future — the journal opens with history behind today and plans ahead of it.
 const ENTRIES: JournalSpec[] = [
+  {
+    date: '2026-03-26',
+    mood: 3,
+    tags: ['daily', 'planning', 'work'],
+    body: `Spent the morning untangling what "finish memrynote" actually means. Wrote the list. It is shorter than the anxiety suggested.
+
+- Drafted the first cut of [[memrynote Roadmap]]
+- Closed two stale branches
+- Bought running shoes I have been putting off for a month`
+  },
+  {
+    date: '2026-03-28',
+    mood: 4,
+    tags: ['daily', 'reading'],
+    body: `Finished [[Four Thousand Weeks]] on the balcony. The argument lands harder at 34 than it would have at 24.
+
+> "You will not get everything done, and pretending otherwise is the problem."
+
+Made pasta. Went to bed early for once.`
+  },
+  {
+    date: '2026-03-31',
+    mood: 4,
+    tags: ['daily', 'reflection'],
+    body: `End of March. Quiet month, and quiet turned out to be the point.
+
+**Worked:** morning writing block, no phone before 09:00, Sunday meal prep.
+**Did not:** evening screen curfew, stretching, replying to anything on time.`
+  },
+  {
+    date: '2026-04-02',
+    mood: 3,
+    tags: ['daily', 'work', 'low-energy'],
+    body: `Debugged a sync ordering bug for four hours and it turned out to be a clock comparison. Four hours.
+
+Note to self, written in anger and kept on purpose: *read the timestamps before reading the logic.*`
+  },
+  {
+    date: '2026-04-05',
+    mood: 4,
+    tags: ['daily', 'fitness', 'planning'],
+    body: `Weighed in at 87.1 kg. That is the starting line for [[2026 Cut]] and I am writing it down so it is real.
+
+Plan is boring on purpose: protein floor, three lifts, one long walk, weekly weigh-in. See [[Training Split]].`
+  },
+  {
+    date: '2026-04-07',
+    mood: 5,
+    tags: ['daily', 'flow', 'writing'],
+    body: `First proper flow session in weeks. 06:10 to 09:40 without looking up once.
+
+Wrote the whole "why local-first" section of the [[Conference Talk]] outline. It reads like someone who believes it.`
+  },
   {
     date: '2026-04-09',
     mood: 4,
@@ -258,6 +313,79 @@ Best day this week. The morning routine — see [[Morning Routine]] — is *payi
 - [ ] Finish the book chapter before bed
 
 Small win: took a longer walk after lunch and came back with a clearer head.`
+  },
+  {
+    date: '2026-05-09',
+    mood: 4,
+    tags: ['daily', 'planning', 'work'],
+    body: `Sketched next week before it sketches me.
+
+## Focus
+
+1. Ship the calendar property chips — see [[memrynote Roadmap]]
+2. Second draft of the [[Conference Talk]]
+3. Lisbon bookings in [[Lisbon Notes]]
+
+Everything else is negotiable.`
+  },
+  {
+    date: '2026-05-10',
+    mood: 5,
+    tags: ['daily', 'fitness'],
+    body: `Sunday weigh-in: 83.6 kg. Six weeks in and the trend line is boringly straight, which is exactly what I wanted.
+
+Long walk, then groceries, then nothing at all. Updated [[Cutting Log]].`
+  },
+  {
+    date: '2026-05-12',
+    mood: 4,
+    tags: ['daily', 'work', 'meetings'],
+    body: `Sprint planning ran long but landed somewhere honest: cut two features, keep the date.
+
+Lunch outside. First warm day where sitting still felt good.`
+  },
+  {
+    date: '2026-05-13',
+    mood: 5,
+    tags: ['daily', 'flow', 'writing'],
+    body: `Three hours on the launch post. It finally sounds like a person instead of a changelog.
+
+Pairs with [[memrynote GTM]] — the positioning line from there is doing a lot of work.`
+  },
+  {
+    date: '2026-05-15',
+    mood: 4,
+    tags: ['daily', 'travel', 'planning'],
+    body: `Lisbon logistics evening. Flights held, one hotel booked, the rest deliberately empty.
+
+- [x] Book flights
+- [x] Hotel in Alfama
+- [ ] Pick two dinners, leave the rest to chance
+- [ ] Reread [[Packing List]] the night before`
+  },
+  {
+    date: '2026-05-17',
+    mood: 5,
+    tags: ['daily', 'reflection', 'gratitude'],
+    body: `A slow Sunday that I did not try to optimize.
+
+Three things worth keeping: coffee on the balcony, the long call with my brother, finishing a book in one sitting.`
+  },
+  {
+    date: '2026-05-19',
+    mood: 4,
+    tags: ['daily', 'work'],
+    body: `Beta invites out to the first twelve people. The nervous kind of good.
+
+Two bugs reported within the hour, both small, both fixed before dinner. See [[memrynote Launch]].`
+  },
+  {
+    date: '2026-05-21',
+    mood: 4,
+    tags: ['daily', 'reading', 'reflection'],
+    body: `Started [[Man's Search for Meaning]] again. Different book at a different age, same three pages that stop me every time.
+
+Lifted. Slept eight hours. Nothing dramatic, which is the whole trick.`
   }
 ]
 

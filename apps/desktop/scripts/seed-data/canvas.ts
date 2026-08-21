@@ -4,7 +4,7 @@ import { TASKS } from './tasks'
 import { CALENDAR_EVENTS } from './calendar'
 
 // ============================================================================
-// Spatial canvases — two demo boards built from Excalidraw scene JSON.
+// Spatial canvases — six demo boards built from Excalidraw scene JSON.
 //
 // The scene string is serializeAsJSON-shaped ({ type, version, elements,
 // appState, files }); Excalidraw's restore fills element defaults on load, so
@@ -252,4 +252,185 @@ function buildLaunchCanvas(): SeedCanvasData {
   }
 }
 
-export const CANVASES: SeedCanvasData[] = [buildIstanbulCanvas(), buildLaunchCanvas()]
+function buildReadingCanvas(): SeedCanvasData {
+  const refs: SeedCanvasEntityRef[] = [
+    { entityType: 'note', entityId: NOTE_IDS.lifeOnReading },
+    { entityType: 'note', entityId: NOTE_IDS.bookDune },
+    { entityType: 'note', entityId: NOTE_IDS.bookProjectHailMary },
+    { entityType: 'note', entityId: NOTE_IDS.bookSapiens },
+    { entityType: 'note', entityId: NOTE_IDS.bookFourThousandWeeks },
+    { entityType: 'note', entityId: NOTE_IDS.bookAtomicHabits },
+    { entityType: 'task', entityId: taskId('Finish reading Sapiens') },
+    { entityType: 'task', entityId: taskId('Read Dune Messiah') }
+  ]
+  const elements: SceneElement[] = [
+    text(0, 'Reading Map 2026', { x: 40, y: 8 }, 28),
+    text(1, 'the shelf, arranged by what it did to me', { x: 40, y: 46 }, 16),
+
+    lane(2, { x: 0, y: 90, width: 620, height: 280 }),
+    text(3, 'Fiction', { x: 24, y: 106 }, 16),
+    card(4, refs[1], { x: 40, y: 150 }),
+    card(5, refs[2], { x: 330, y: 150 }),
+
+    lane(6, { x: 700, y: 90, width: 900, height: 280 }),
+    text(7, 'Nonfiction', { x: 724, y: 106 }, 16),
+    card(8, refs[3], { x: 740, y: 150 }),
+    card(9, refs[4], { x: 1030, y: 150 }),
+    card(10, refs[5], { x: 1320, y: 150 }),
+
+    text(11, 'In flight', { x: 40, y: 420 }, 20),
+    card(12, refs[6], { x: 40, y: 460 }),
+    card(13, refs[7], { x: 330, y: 460 }),
+    card(14, refs[0], { x: 740, y: 460 }),
+    text(15, 'why I read at all', { x: 780, y: 428 }, 16),
+
+    arrow(16, { x: 300, y: 234 }, { x: 740, y: 234 }),
+    arrow(17, { x: 170, y: 318 }, { x: 170, y: 460 }),
+    text(18, 'next up →', { x: 400, y: 200 }, 16)
+  ]
+  return {
+    id: generateId(),
+    title: 'Reading Map 2026',
+    scene: scene(elements),
+    entityRefs: dedupeRefs(refs)
+  }
+}
+
+function buildCutCanvas(): SeedCanvasData {
+  const refs: SeedCanvasEntityRef[] = [
+    { entityType: 'note', entityId: NOTE_IDS.weightCut2026 },
+    { entityType: 'note', entityId: NOTE_IDS.weightTrainingSplit },
+    { entityType: 'note', entityId: NOTE_IDS.weightProteinTargets },
+    { entityType: 'note', entityId: NOTE_IDS.weightCardioPlan },
+    { entityType: 'note', entityId: NOTE_IDS.weightCuttingLog },
+    { entityType: 'task', entityId: taskId('Sunday weigh-in') },
+    { entityType: 'task', entityId: taskId('Sunday meal prep') },
+    { entityType: 'calendar_event', entityId: eventId('🏋️ Lift — Lower') }
+  ]
+  const elements: SceneElement[] = [
+    text(0, '2026 Cut — the loop', { x: 40, y: 8 }, 28),
+
+    card(1, refs[0], { x: 480, y: 70 }),
+    text(2, 'the plan', { x: 520, y: 40 }, 16),
+
+    text(3, 'Three inputs', { x: 40, y: 300 }, 20),
+    card(4, refs[1], { x: 40, y: 340 }),
+    card(5, refs[2], { x: 330, y: 340 }),
+    card(6, refs[3], { x: 620, y: 340 }),
+
+    text(7, 'One feedback loop', { x: 960, y: 300 }, 20),
+    card(8, refs[4], { x: 960, y: 340 }),
+    card(9, refs[5], { x: 1250, y: 340 }),
+
+    card(10, refs[6], { x: 620, y: 580 }),
+    card(11, refs[7], { x: 330, y: 580 }),
+
+    arrow(12, { x: 560, y: 240 }, { x: 300, y: 340 }),
+    arrow(13, { x: 610, y: 240 }, { x: 700, y: 340 }),
+    arrow(14, { x: 880, y: 424 }, { x: 960, y: 424 }),
+    arrow(15, { x: 1090, y: 510 }, { x: 610, y: 200 }),
+    text(16, 'measure, then adjust ↺', { x: 900, y: 540 }, 16)
+  ]
+  return {
+    id: generateId(),
+    title: '2026 Cut — the loop',
+    scene: scene(elements),
+    entityRefs: dedupeRefs(refs)
+  }
+}
+
+function buildArchitectureCanvas(): SeedCanvasData {
+  const refs: SeedCanvasEntityRef[] = [
+    { entityType: 'note', entityId: NOTE_IDS.projMemryArchitecture },
+    { entityType: 'note', entityId: NOTE_IDS.techCRDTArchitecture },
+    { entityType: 'note', entityId: NOTE_IDS.techDrizzleORM },
+    { entityType: 'note', entityId: NOTE_IDS.techSqliteVec },
+    { entityType: 'note', entityId: NOTE_IDS.techElectronGotchas },
+    { entityType: 'note', entityId: NOTE_IDS.techTypescriptPatterns },
+    { entityType: 'task', entityId: taskId('CRDT sync v1') },
+    { entityType: 'task', entityId: taskId('Graph view: lazy load > 500 nodes') }
+  ]
+  const elements: SceneElement[] = [
+    text(0, 'How the app is put together', { x: 40, y: 8 }, 28),
+
+    text(1, 'Renderer', { x: 40, y: 70 }, 20),
+    lane(2, { x: 0, y: 100, width: 620, height: 250 }),
+    card(3, refs[5], { x: 40, y: 140 }),
+    card(4, refs[4], { x: 330, y: 140 }),
+
+    text(5, 'Main process', { x: 700, y: 70 }, 20),
+    lane(6, { x: 660, y: 100, width: 620, height: 250 }),
+    card(7, refs[0], { x: 700, y: 140 }),
+    card(8, refs[1], { x: 990, y: 140 }),
+
+    text(9, 'Storage', { x: 40, y: 400 }, 20),
+    lane(10, { x: 0, y: 430, width: 620, height: 250 }),
+    card(11, refs[2], { x: 40, y: 470 }),
+    card(12, refs[3], { x: 330, y: 470 }),
+
+    text(13, 'In flight', { x: 700, y: 400 }, 20),
+    card(14, refs[6], { x: 700, y: 470 }),
+    card(15, refs[7], { x: 990, y: 470 }),
+
+    arrow(16, { x: 620, y: 224 }, { x: 700, y: 224 }),
+    arrow(17, { x: 830, y: 308 }, { x: 300, y: 470 }),
+    text(18, 'IPC — every call is a contract', { x: 380, y: 360 }, 16)
+  ]
+  return {
+    id: generateId(),
+    title: 'How the app is put together',
+    scene: scene(elements),
+    entityRefs: dedupeRefs(refs)
+  }
+}
+
+function buildTokyoCanvas(): SeedCanvasData {
+  const refs: SeedCanvasEntityRef[] = [
+    { entityType: 'note', entityId: NOTE_IDS.travelTokyoTrip },
+    { entityType: 'note', entityId: NOTE_IDS.travelKyotoDayTrip },
+    { entityType: 'note', entityId: NOTE_IDS.travelTokyoCafes },
+    { entityType: 'note', entityId: NOTE_IDS.travelOsakaRamen },
+    { entityType: 'note', entityId: NOTE_IDS.travelAirportLounges },
+    { entityType: 'calendar_event', entityId: eventId('Tokyo flight') },
+    { entityType: 'calendar_event', entityId: eventId('Tokyo — Ghibli Museum') },
+    { entityType: 'calendar_event', entityId: eventId('Dinner — Tonkatsu Maisen') }
+  ]
+  const elements: SceneElement[] = [
+    text(0, 'Tokyo, in order', { x: 40, y: 8 }, 28),
+    text(1, 'eight days, laid out the way they happened', { x: 40, y: 46 }, 16),
+
+    card(2, refs[5], { x: 40, y: 120 }),
+    card(3, refs[4], { x: 330, y: 120 }),
+    card(4, refs[0], { x: 620, y: 120 }),
+    card(5, refs[2], { x: 910, y: 120 }),
+
+    card(6, refs[1], { x: 330, y: 400 }),
+    card(7, refs[6], { x: 620, y: 400 }),
+    card(8, refs[7], { x: 910, y: 400 }),
+    card(9, refs[3], { x: 1200, y: 400 }),
+
+    arrow(10, { x: 300, y: 204 }, { x: 330, y: 204 }),
+    arrow(11, { x: 590, y: 204 }, { x: 620, y: 204 }),
+    arrow(12, { x: 880, y: 204 }, { x: 910, y: 204 }),
+    arrow(13, { x: 750, y: 288 }, { x: 460, y: 400 }),
+    arrow(14, { x: 590, y: 484 }, { x: 620, y: 484 }),
+    arrow(15, { x: 880, y: 484 }, { x: 910, y: 484 }),
+    arrow(16, { x: 1170, y: 484 }, { x: 1200, y: 484 }),
+    text(17, 'the day that made the trip', { x: 340, y: 370 }, 16)
+  ]
+  return {
+    id: generateId(),
+    title: 'Tokyo, in order',
+    scene: scene(elements),
+    entityRefs: dedupeRefs(refs)
+  }
+}
+
+export const CANVASES: SeedCanvasData[] = [
+  buildIstanbulCanvas(),
+  buildLaunchCanvas(),
+  buildReadingCanvas(),
+  buildCutCanvas(),
+  buildArchitectureCanvas(),
+  buildTokyoCanvas()
+]
