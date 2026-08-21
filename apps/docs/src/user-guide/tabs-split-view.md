@@ -8,6 +8,8 @@ Open many things at once. Pin the ones you keep coming back to. Split the worksp
 
 Every note, view, search, project, journal entry, or settings panel opens in a tab. Tabs persist across app restarts when **Restore Session** is on (default; see [Settings → General](/user-guide/settings#general)).
 
+Opening a tab — or switching notes, days, or views inside one — paints the content immediately. Notes, tasks, the inbox, the journal, and the calendar have no entrance animation, so nothing fades or slides into place before you can read it.
+
 ### Tab Bar
 
 Across the top of the app. Drag to reorder. Drag onto a pane edge to split.
