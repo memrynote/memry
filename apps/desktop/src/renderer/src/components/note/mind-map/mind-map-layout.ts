@@ -142,6 +142,7 @@ export function layoutMindMap(
       wikiTarget: item.node.wikiTarget,
       tags: item.node.tags,
       contents: item.node.contents,
+      foldedCount: item.node.foldedCount,
       detail: item.node.detail,
       parentId: item.parentId,
       // RTL mirrors the whole map about the root's leading edge, so the tree

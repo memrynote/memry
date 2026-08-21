@@ -21,7 +21,7 @@ export function buildMindMap(
   options: MindMapOptions
 ): MindMap {
   const direction = options.direction ?? 'ltr'
-  const tree = projectBlocks(blocks, options)
+  const { tree, reachedNodeCap } = projectBlocks(blocks, options)
   const { nodes, bounds } = layoutMindMap(tree, direction)
 
   return {
@@ -30,6 +30,7 @@ export function buildMindMap(
     elements: mintElements(nodes, direction, options.noteId),
     direction,
     nodeCount: nodes.length,
+    reachedNodeCap,
     isEmpty: tree.children.length === 0,
     bounds
   }

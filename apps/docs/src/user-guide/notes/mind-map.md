@@ -83,6 +83,36 @@ dropped:
   a `[[wiki link]]` is the one inline thing that does not, because it points
   somewhere else.
 
+## When a Note Is Big
+
+A map that draws everything stops being readable, so the map has limits. The
+rule that governs all of them is that **nothing disappears quietly**: every
+omission is visible on the map, and most of them you can open back up.
+
+- **Too many items under one heading.** The first dozen are drawn and the rest
+  stand behind a **`+N more`** node. Click it — or select it and press Enter —
+  and that branch opens in place, right where it was. Nothing else on the map
+  moves. Wiki-link nodes count towards this like anything else, so a section
+  packed with links folds the same way rather than sprawling.
+- **Branches nested very deep.** Anything past six levels folds into the
+  deepest node still drawn, and that node carries a `+N more` badge saying how
+  much is behind it. Click that node to open the note at that block and read the
+  rest there.
+- **Very long labels** are clipped with an ellipsis — a very long note title
+  included, since the root is a box like any other. The node still opens the
+  block, where the full text is.
+- **A very large note.** The map draws at most 200 nodes. When it reaches that,
+  a one-line notice appears above the map and whatever is left over is counted
+  on the nearest node that is drawn, in the same `+N more` badge.
+
+Opening a branch is not a way around the 200-node limit: if opening one fills
+the map, the notice appears and the rest folds onto the node above it.
+
+Branches you open are remembered for as long as the map is open and no longer.
+Close the map and open it again and it is back to its folded shape — the map is
+rebuilt from the note each time, and a note that has been edited would not have
+the same branches to open anyway.
+
 ## Clicking a Node
 
 The map is navigation, not just a picture.
@@ -101,6 +131,8 @@ The map is navigation, not just a picture.
   body does.
 - Opening another note leaves the map where it was. It is a view of _this_ note,
   so the tab you came from is still on the map when you return to it.
+- Click a **`+N more`** node to open that branch in place. This is the other
+  node that does not take you back into the note: a fold is undone where it is.
 - The **outline panel** stays available while the map shows, and clicking a
   heading there does exactly the same thing. One control, one behaviour.
 

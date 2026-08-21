@@ -51,10 +51,10 @@ const BLOCKS: MindMapSourceBlock[] = [
 
 const activateNode = vi.fn()
 
-function renderView(): ReturnType<typeof render> {
+function renderView(blocks: MindMapSourceBlock[] = BLOCKS): ReturnType<typeof render> {
   return render(
     <MindMapView
-      map={buildMindMap(BLOCKS, { rootLabel: 'Test Note', noteId: 'note-1' })}
+      map={buildMindMap(blocks, { rootLabel: 'Test Note', noteId: 'note-1' })}
       noteId="note-1"
       noteTitle="Test Note"
       onActivateNode={activateNode}
@@ -139,6 +139,49 @@ describe('MindMapView toolbar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy as vector' }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to copy the map'))
+  })
+
+  it('says nothing about a limit the note never reaches', async () => {
+    await renderMap()
+
+    // The region is there — it has to already exist for a screen reader to
+    // announce it later — but it says nothing.
+    expect(screen.getByTestId('note-mind-map-cap-notice')).toBeEmptyDOMElement()
+  })
+
+  it('says the map is at its limit, above the picture and outside it', async () => {
+    // Wide and deep enough that the whole-map budget runs out on it.
+    const section = (id: string, level: number, text: string): MindMapSourceBlock => ({
+      id,
+      type: 'heading',
+      props: { level },
+      content: [{ type: 'text', text }]
+    })
+    const huge: MindMapSourceBlock[] = Array.from({ length: 12 }, (_, top) => [
+      section(`h1-${top}`, 1, `Section ${top}`),
+      ...Array.from({ length: 12 }, (_, mid) => [
+        section(`h2-${top}-${mid}`, 2, `Part ${top}.${mid}`),
+        {
+          id: `b-${top}-${mid}`,
+          type: 'bulletListItem',
+          content: [{ type: 'text', text: `Item ${top}.${mid}` }]
+        }
+      ]).flat()
+    ]).flat()
+    renderView(huge)
+
+    const notice = await screen.findByTestId('note-mind-map-cap-notice')
+    // Translated, and a live region so it also arrives when expanding a branch
+    // is what spent the last of the budget.
+    expect(notice).toHaveTextContent('This map is at its limit of 200 nodes')
+    expect(notice).toHaveAttribute('role', 'status')
+    // Above the drawing and never inside it: an image role makes its contents
+    // presentational, so a notice nested in it would reach nobody.
+    expect(screen.getByTestId('note-mind-map')).toContainElement(notice)
+    expect(screen.getByRole('img')).not.toContainElement(notice)
+    expect(notice.compareDocumentPosition(screen.getByRole('img'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
   })
 
   it('takes its controls back when the drawing surface goes away', async () => {

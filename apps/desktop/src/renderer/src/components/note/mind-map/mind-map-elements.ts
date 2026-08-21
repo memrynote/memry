@@ -41,6 +41,17 @@ const LINK_LABEL = '#364fc7'
 const DONE_STROKE = '#ced4da'
 const DONE_FILL = '#f8f9fa'
 const DONE_LABEL = '#adb5bd'
+/**
+ * A fold marker reads as a control rather than as content: the accent outline
+ * is the same one the root carries, on the ordinary white fill, so it is
+ * recognisably ours and unmistakably not a piece of the note.
+ *
+ * Deliberately NOT dashed. A dashed outline is #1672's "this is another
+ * document" signal, and a fold marker is the opposite — it stands for content
+ * of THIS note that is folded away. Two meanings on one outline would make
+ * neither readable.
+ */
+const MORE_STROKE = '#ff671a'
 /** Adaptive corner radius. */
 const ROUNDNESS = { type: 3 }
 
@@ -55,11 +66,17 @@ const ROUNDNESS = { type: 3 }
  * - a box standing for a block anchors on that block;
  * - the root has no block — it is the note's title — so it carries no anchor,
  *   which reads as "this note, from the top";
- * - a wiki-link box has no block either, so it anchors on its own node id,
- *   which is minted from the block that held the link and lives exactly as
- *   long. Where the link actually goes is `wikiTarget` on the node, not this
- *   href: a wiki target is a title, and turning one into a note id is a
- *   database lookup this pure pipeline cannot do.
+ * - every OTHER blockless box anchors on its own node id. Today that is a
+ *   wiki link, whose id is minted from the block that held it, and a "+N more"
+ *   fold marker, whose id is minted from the parent it folds. One rule rather
+ *   than one per kind: the root is the only box that may share the unanchored
+ *   href, and everything else is told apart by its own id.
+ *
+ * Where a wiki-link box actually goes is `wikiTarget` on the node, not this
+ * href: a wiki target is a title, and turning one into a note id is a database
+ * lookup this pure pipeline cannot do. What a fold marker does is expand, which
+ * is not a destination at all. Both are decided in `activateMindMapNode`; this
+ * href only has to say WHICH box was clicked.
  */
 function nodeLink(node: MindMapPositionedNode, noteId: string | undefined): string | undefined {
   if (!noteId) return undefined
@@ -152,6 +169,7 @@ export function mintElements(
   for (const node of nodes) {
     const isRoot = node.kind === 'root'
     const isLink = node.kind === 'wikiLink'
+    const isMore = node.kind === 'more'
     elements.push({
       type: 'rectangle',
       id: node.id,
@@ -164,9 +182,11 @@ export function mintElements(
         ? ROOT_STROKE
         : isLink
           ? LINK_STROKE
-          : node.isDone
-            ? DONE_STROKE
-            : NODE_STROKE,
+          : isMore
+            ? MORE_STROKE
+            : node.isDone
+              ? DONE_STROKE
+              : NODE_STROKE,
       backgroundColor: isRoot
         ? ROOT_FILL
         : isLink

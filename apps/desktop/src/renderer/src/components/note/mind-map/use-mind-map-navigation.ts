@@ -31,6 +31,11 @@ import { activateMindMapNode, type MindMapNodeActivation } from './mind-map-navi
 interface UseMindMapNavigationOptions {
   /** Closes the map. A no-op when it is already closed. */
   close: () => void
+  /**
+   * Opens the branch a "+N more" node stands for, in place. The one node kind
+   * that does not close the map: a fold is undone where it is, not by leaving.
+   */
+  expandBranch: (nodeId: string) => void
   /** The pane the block lives in — never the document, which in split view
    * would scroll whichever pane comes first rather than this one. */
   getContainer: () => HTMLElement | null
@@ -61,6 +66,7 @@ export interface UseMindMapNavigationResult {
 
 export function useMindMapNavigation({
   close,
+  expandBranch,
   getContainer,
   getTopElement,
   smooth,
@@ -106,8 +112,8 @@ export function useMindMapNavigation({
   )
 
   const activateNode = useCallback<MindMapNodeActivation>(
-    (node) => activateMindMapNode(node, { navigateToBlock, openNote, openTask }),
-    [navigateToBlock, openNote, openTask]
+    (node) => activateMindMapNode(node, { navigateToBlock, openNote, openTask, expandBranch }),
+    [navigateToBlock, openNote, openTask, expandBranch]
   )
 
   return useMemo(() => ({ navigateToBlock, activateNode }), [navigateToBlock, activateNode])

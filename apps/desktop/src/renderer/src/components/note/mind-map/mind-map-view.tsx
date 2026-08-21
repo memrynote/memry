@@ -1,6 +1,6 @@
 /**
- * The map surface: its toolbar, the drawing, its accessible twin, and the
- * empty-note hint.
+ * The map surface: its toolbar, the size notice, the drawing, its accessible
+ * twin, and the empty-note hint.
  *
  * Two projections of one layout result sit side by side here — the picture for
  * people who can see it, the tree for everyone and everything else. They are
@@ -108,6 +108,9 @@ export function MindMapView({
     [controls, copy, t]
   )
 
+  // Empty until the map is actually at its limit — see the region below.
+  const capNotice = map.reachedNodeCap ? t('mindMap.nodeCapNotice', { count: map.nodeCount }) : ''
+
   // A click on the drawing arrives as the deep link of the box it landed on;
   // that is the only handle a bitmap surface gives us. Resolving it back to a
   // node here means both projections end in the same activation, rather than
@@ -123,6 +126,23 @@ export function MindMapView({
   return (
     <div className="relative flex h-full w-full flex-col bg-background" data-testid="note-mind-map">
       <MindMapToolbar actions={actions} label={t('mindMap.toolbar.label')} />
+
+      {/* Above the picture and outside it, for the same reason the toolbar is:
+          anything inside an image role is presentational, and this is the one
+          line that tells a reader the map is not the whole note.
+
+          Mounted whether or not it has anything to say, and empty when it does
+          not. A live region that appears with its text already in it is one a
+          screen reader can miss entirely — and the moment this line matters
+          most is the one where opening a branch is what spent the last of the
+          budget, which happens while the reader is already here. */}
+      <p
+        role="status"
+        className={capNotice === '' ? 'sr-only' : 'px-3 pb-2 text-xs text-text-tertiary'}
+        data-testid="note-mind-map-cap-notice"
+      >
+        {capNotice}
+      </p>
 
       <div
         role="img"
