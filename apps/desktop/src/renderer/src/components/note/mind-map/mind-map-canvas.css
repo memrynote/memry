@@ -1,0 +1,17 @@
+/**
+ * The one thing `element.link` bought that a DOM overlay cannot re-create.
+ *
+ * The drawing library sets its cursor as an inline style on the interactive
+ * canvas, and re-sets it on pointer moves — in view mode it is `grab`, and it
+ * used to become `pointer` over a linked element for us. Only a rule marked
+ * important outranks an inline style, so the pointer cursor is declared here
+ * and switched on by the data attribute the surface sets while a node is under
+ * the cursor.
+ *
+ * Deliberately keyed on `canvas` and on our own attribute, not on any class the
+ * library owns: the two canvases inside this wrapper are the library's, but the
+ * selector says nothing about how it names them.
+ */
+.mind-map-surface[data-node-hover='true'] canvas {
+  cursor: pointer !important;
+}

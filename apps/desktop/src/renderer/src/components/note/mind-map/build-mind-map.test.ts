@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { buildMindMap } from './build-mind-map'
+import { mindMapHrefOf } from './mind-map-hover'
 import type {
   MindMapBoxElement,
   MindMapNode,
@@ -403,17 +404,25 @@ describe('buildMindMap — elements', () => {
 describe('buildMindMap — deep links', () => {
   const blocks = [heading('a', 1, 'Alpha'), heading('a1', 2, 'Alpha one')]
 
-  function boxes(map: ReturnType<typeof buildMindMap>): Map<string, { link?: string }> {
+  /**
+   * The deep link each box carries, keyed by node id.
+   *
+   * Read out of `customData`, which is where the DRAWN map keeps its hrefs.
+   * `element.link` is the field the drawing library paints its permanent link
+   * glyph from, and on a map every single box is linked — so the map keeps its
+   * addresses somewhere the renderer will not decorate them.
+   */
+  function hrefs(map: ReturnType<typeof buildMindMap>): Map<string, string | null> {
     return new Map(
       map.elements
         .filter((element) => element.type === 'rectangle')
-        .map((box) => [box.id, box] as const)
+        .map((box) => [box.id, mindMapHrefOf(box)] as const)
     )
   }
 
   it('draws no links at all without a note to point at', () => {
     const map = buildMindMap(blocks, { rootLabel: 'Note' })
-    for (const box of boxes(map).values()) expect(box.link).toBeUndefined()
+    for (const href of hrefs(map).values()) expect(href).toBeNull()
   })
 
   it('anchors a heading box at its own block', () => {
@@ -421,7 +430,7 @@ describe('buildMindMap — deep links', () => {
     const alpha = map.nodes.find((node) => node.label === 'Alpha')!
 
     // A block anchor: exact, and meaningful only in the session that minted it.
-    expect(boxes(map).get(alpha.id)?.link).toBe('memry://note/note-1#^a')
+    expect(hrefs(map).get(alpha.id)).toBe('memry://note/note-1#^a')
   })
 
   it('anchors the root at nothing, because the title is not a block', () => {
@@ -429,15 +438,37 @@ describe('buildMindMap — deep links', () => {
     const root = map.nodes.find((node) => node.kind === 'root')!
 
     // No fragment — which reads as "this note, from the top".
-    expect(boxes(map).get(root.id)?.link).toBe('memry://note/note-1')
+    expect(hrefs(map).get(root.id)).toBe('memry://note/note-1')
   })
 
   it('links every box and no connector', () => {
     const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
     for (const element of map.elements) {
-      if (element.type === 'rectangle') expect(element.link).toMatch(/^memry:\/\/note\/note-1/)
-      else expect(element).not.toHaveProperty('link')
+      if (element.type === 'rectangle') {
+        expect(mindMapHrefOf(element)).toMatch(/^memry:\/\/note\/note-1/)
+      } else {
+        expect(element).not.toHaveProperty('customData')
+      }
     }
+  })
+
+  it('puts no `link` on any drawn element, so no glyph is ever painted', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+
+    // The whole of problem 1 in #1688: the library's glyph condition is
+    // `element.link && !selected`, with no hover gate and no prop, appState
+    // field or CSS surface that suppresses it. The only way the map does not
+    // wear a wall of identical blue squares is to carry no `link` at all.
+    for (const element of map.elements) expect(element).not.toHaveProperty('link')
+  })
+
+  it('carries no display label on a drawn href, which nothing on screen reads', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+
+    // The map renders its own affordance from the node it hit, so an on-screen
+    // href never has to describe itself. Only a FILE needs a `?label=`, because
+    // only a file is read by code that is not ours.
+    for (const href of hrefs(map).values()) expect(href).not.toContain('label=')
   })
 
   it('lays out identically whether or not the boxes carry links', () => {

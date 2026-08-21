@@ -14,8 +14,9 @@
  * by then — and it is why the relationship is one-way: the reverse would need a
  * database field, a sync handler and a compatibility plan it does not earn.
  *
- * Three things the snapshot changes about the map as drawn, all for the same
- * reason — the file outlives the document that produced it:
+ * Four things the snapshot changes about the map as drawn, all for the same
+ * reason — the file outlives the document that produced it, and nothing of ours
+ * is watching when it is opened:
  *
  * 1. **Links anchor on heading TEXT, never on a block id.** Block ids are
  *    minted at parse time and markdown does not carry them, so a copied vault,
@@ -28,6 +29,17 @@
  *    A card is roughly ten times the size of a map node and a dozen of them
  *    make the map unreadable. The user can add real cards by hand — it is their
  *    canvas.
+ * 4. **Every link carries the name of what it opens**, as a `?label=` hint, so
+ *    the canvas' own hover bubble reads `… → Q3 Risks` rather than a
+ *    `memry://` URL. It is a hint and never an identity — the id is what
+ *    resolves — and it is additive: a build that never heard of labels drops it
+ *    and opens the same note at the same heading.
+ *
+ * Their links stay exactly where an ordinary canvas expects them, in
+ * `element.link`. The DRAWN map moved its own out of that field (the glyph it
+ * paints is noise on a map), but a saved canvas is not ours to render — it is
+ * opened by `CanvasEditor` like any other, and stripping its links would take
+ * away the one thing that makes it more than a picture.
  *
  * Two node kinds need saying out loud, because neither is a place in this note:
  *
@@ -66,6 +78,22 @@ export interface MindMapSnapshotOptions {
    * module note above.
    */
   wikiHrefs?: ReadonlyMap<string, string>
+  /**
+   * Node id → the name its link should announce, as a `?label=` hint on the
+   * href.
+   *
+   * The fourth thing the snapshot changes about the map as drawn, and the one
+   * that only a file needs. The drawing library prints `element.link` verbatim
+   * in its hover bubble, so without this a saved canvas hovers as
+   * `memry://note/skfe4c9o0z15#Q3%20Risks`. `CanvasEditor` already watches for
+   * that bubble and swaps in whatever `linkBubbleLabel` reads off the href — it
+   * has simply had nothing to read, because the map wrote no label. So the
+   * readable name is bought with a label rather than with rendering code.
+   *
+   * Composed by the caller: it is a destination chain whose separator is
+   * translated chrome, and this module has no translator.
+   */
+  labels?: ReadonlyMap<string, string>
 }
 
 /**
@@ -76,13 +104,14 @@ export interface MindMapSnapshotOptions {
  */
 export function mintSnapshotElements(
   map: MindMap,
-  { noteId, generatedLabel, wikiHrefs }: MindMapSnapshotOptions
+  { noteId, generatedLabel, wikiHrefs, labels }: MindMapSnapshotOptions
 ): MindMapElement[] {
   return mintElements(map.nodes, map.direction, {
     noteId,
     anchor: 'heading',
     rootDetail: generatedLabel,
-    wikiHrefs
+    wikiHrefs,
+    labels
   })
 }
 

@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { buildMindMap } from './build-mind-map'
+import { mindMapHrefOf } from './mind-map-hover'
 import type {
   MindMapBoxElement,
   MindMapNode,
@@ -253,17 +254,18 @@ describe('buildMindMap — wiki links are drawn apart from the note', () => {
     const link = boxFor(map, 'Roadmap')
     const sentence = boxFor(map, 'Read')
 
-    // In view mode the whole box is the link's hit area, so two boxes sharing
-    // one href would send a click to whichever came first.
-    expect(link.link).not.toBe(sentence.link)
-    expect(sentence.link).toBe('memry://note/note-1#^b')
-    expect(link.link).toBe(`memry://note/note-1#^${positioned(map, 'Roadmap').id}`)
+    // The whole box is the hit area — the map's own hit test keeps what view
+    // mode used to give it — so two boxes sharing one href would send a click
+    // to whichever came first.
+    expect(mindMapHrefOf(link)).not.toBe(mindMapHrefOf(sentence))
+    expect(mindMapHrefOf(sentence)).toBe('memry://note/note-1#^b')
+    expect(mindMapHrefOf(link)).toBe(`memry://note/note-1#^${positioned(map, 'Roadmap').id}`)
   })
 
   it('keeps the href of every box unique', () => {
     const hrefs = map.elements
       .filter((element): element is MindMapBoxElement => element.type === 'rectangle')
-      .map((box) => box.link)
+      .map((box) => mindMapHrefOf(box))
 
     expect(new Set(hrefs).size).toBe(hrefs.length)
   })

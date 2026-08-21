@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseMemryHref, tabFromMemryHref } from '@/lib/memry-links'
 import { buildMindMap } from './build-mind-map'
+import { mindMapHrefOf } from './mind-map-hover'
 import { mindMapSceneJson, mintSnapshotElements, uniqueCanvasTitle } from './mind-map-snapshot'
 import type { MindMapBoxElement, MindMapElement, MindMapSourceBlock } from './mind-map-types'
 
@@ -352,8 +353,10 @@ describe('mintSnapshotElements — wiki-link nodes', () => {
     const node = map.nodes.find((n) => n.kind === 'wikiLink')!
     const drawn = boxes(map.elements).get(node.id)!
 
-    // On screen the href is only a click handle, and it IS a node-id anchor.
-    expect(drawn.link).toBe(`memry://note/n1#^${node.id}`)
+    // On screen the href is only a click handle, it IS a node-id anchor, and it
+    // is carried in `customData` so no link glyph is painted over the map.
+    expect(mindMapHrefOf(drawn)).toBe(`memry://note/n1#^${node.id}`)
+    expect(drawn).not.toHaveProperty('link')
     // In a file that names a block this device never minted.
     expect(linkBox().link).not.toMatch(/#\^/)
   })

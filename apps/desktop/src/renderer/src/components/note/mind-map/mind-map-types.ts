@@ -210,17 +210,34 @@ export interface MindMapBoxElement {
     strokeColor: string
   }
   /**
-   * A `memry://` deep link back into the note, present only when the build was
-   * given a note id. It is what makes a drawn box clickable at all: the drawing
-   * surface is a bitmap with no DOM, and its link hit test — the whole bounding
-   * box, in view mode — is the only handle a click has on a node.
+   * A `memry://` deep link back into the note, on a box destined for a FILE.
+   *
+   * It is what makes a box in a saved canvas clickable: an ordinary canvas has
+   * no code of ours watching it, so the link has to be something the drawing
+   * library itself acts on. A saved canvas outlives the document that produced
+   * it, so the anchor here is heading TEXT — never a block id, which dies with
+   * that document.
+   *
+   * Absent on the DRAWN map, and deliberately: `element.link` also paints a
+   * permanent glyph, and a map where every box is linked is a wall of identical
+   * blue squares over a picture whose whole point is shape. The drawn map
+   * carries its href in `customData` instead.
+   */
+  link?: string
+  /**
+   * The same `memry://` deep link, on a box drawn on SCREEN, kept where the
+   * renderer will not paint anything for it.
+   *
+   * It is still the only handle a click on a bitmap has — the map hit-tests it
+   * itself (`mind-map-hover.ts`) and resolves it back to a node through
+   * `nodeFromMindMapLink`, preserving what view mode's own link hit test gave
+   * us: the whole bounding box, not a glyph.
    *
    * A block anchor is right HERE and only here: these elements are drawn for
    * the session that minted them, and a block id lives exactly as long as the
-   * document that minted it. A saved canvas outlives that, so the file's links
-   * will carry heading text instead.
+   * document that minted it.
    */
-  link?: string
+  customData?: { memryHref: string }
 }
 
 /**

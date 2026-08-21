@@ -25,7 +25,11 @@ const mocks = vi.hoisted(() => ({
   toCanvasScene: vi.fn((elements: readonly unknown[]) => JSON.stringify({ elements })),
   create: vi.fn(),
   list: vi.fn(),
-  resolveWikiLink: vi.fn()
+  resolveWikiLink: vi.fn(),
+  hoverLabels: new Map<string, { chain: string; hint: string | null }>() as ReadonlyMap<
+    string,
+    { chain: string; hint: string | null }
+  >
 }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -48,10 +52,14 @@ vi.mock('@/lib/wikilink-resolver', () => ({ resolveWikiLink: mocks.resolveWikiLi
 
 vi.mock('./mind-map-canvas', () => ({
   MindMapCanvas: ({
+    hoverLabels,
     onControlsChange
   }: {
+    hoverLabels: ReadonlyMap<string, { chain: string; hint: string | null }>
     onControlsChange?: (controls: Record<string, unknown> | null) => void
   }) => {
+    // What the surface was handed, so a test can read it without a canvas.
+    mocks.hoverLabels = hoverLabels
     useEffect(() => {
       if (!mocks.handsControlsUp) return
       onControlsChange?.({
@@ -335,9 +343,89 @@ describe('MindMapView toolbar', () => {
       strokeStyle?: string
     }>
     // The saved box opens the note it names, on any device — not a node id only
-    // this session could have understood.
-    expect(elements.some((element) => element.link === 'memry://note/n2#Plan')).toBe(true)
+    // this session could have understood — and it says so in words, because the
+    // canvas' own bubble prints the href verbatim unless the href names itself.
+    expect(elements.some((element) => element.link === 'memry://note/n2?label=Roadmap#Plan')).toBe(
+      true
+    )
     expect(elements.every((element) => !element.link?.includes('#^'))).toBe(true)
+  })
+
+  it('names every saved link, so a canvas hovers as words rather than as a URL', async () => {
+    renderView([
+      {
+        id: 'b-h1',
+        type: 'heading',
+        props: { level: 1 },
+        content: [{ type: 'text', text: 'Q3 Risks' }]
+      },
+      {
+        id: 'b-item',
+        type: 'bulletListItem',
+        content: [{ type: 'text', text: 'Hire a designer' }]
+      }
+    ])
+    await screen.findByRole('toolbar')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
+    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+
+    const boxes = (
+      mocks.toCanvasScene.mock.calls[0][0] as Array<{ type: string; id: string; link?: string }>
+    ).filter((element) => element.type === 'rectangle')
+
+    // Every one of them, not just the interesting ones: a canvas with one URL
+    // left in it still hovers as a URL.
+    expect(boxes.length).toBeGreaterThan(0)
+    for (const box of boxes) {
+      expect(new URL(box.link!).searchParams.get('label')).toBeTruthy()
+    }
+
+    const item = boxes.find((box) => box.id.endsWith('b-item'))!
+    // The destination, as a chain: the section it lands in, then the row. The
+    // separator is the only translated part.
+    expect(new URL(item.link!).searchParams.get('label')).toBe(
+      '\u2026 \u2192 Q3 Risks \u2192 Hire a designer'
+    )
+    // And the label never disturbs the anchor, which is what actually resolves.
+    expect(item.link).toContain('#Q3%20Risks')
+  })
+
+  it('hands the drawing a name for every box it drew, keyed the way a click arrives', async () => {
+    renderView([
+      {
+        id: 'b-h1',
+        type: 'heading',
+        props: { level: 1 },
+        content: [{ type: 'text', text: 'Q3 Risks' }]
+      },
+      {
+        id: 'b-p',
+        type: 'paragraph',
+        content: [{ type: 'wikiLink', props: { target: 'Roadmap' } }]
+      }
+    ])
+    await screen.findByTestId('mind-map-canvas')
+
+    // Keyed by href because that is what a box carries and what the hit test
+    // hands back — the drawing has no node ids to give, the library having
+    // regenerated every one of them.
+    expect(
+      [...mocks.hoverLabels.keys()].every((href) => href.startsWith('memry://note/note-1'))
+    ).toBe(true)
+    expect(mocks.hoverLabels.get('memry://note/note-1')).toEqual({
+      chain: 'Test Note',
+      hint: null
+    })
+    expect(mocks.hoverLabels.get('memry://note/note-1#^b-h1')).toEqual({
+      chain: 'Test Note \u2192 Q3 Risks',
+      hint: null
+    })
+
+    // A wiki node names the note it points AT, and says in words that it leaves
+    // this one — the same sentence the accessible tree gives it.
+    const wiki = [...mocks.hoverLabels.values()].find((label) => label.hint !== null)
+    expect(wiki).toEqual({ chain: 'Roadmap', hint: 'link to another page' })
   })
 
   it('takes its controls back when the drawing surface goes away', async () => {
