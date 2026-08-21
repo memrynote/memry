@@ -855,6 +855,9 @@ export const TreeNodeTrigger = ({
               onClick?.(e)
             }}
             onFocus={() => setFocusedId(nodeId)}
+            // A context-menu click does not focus the row on its own, so
+            // arrow navigation had nothing to start from once the menu closed.
+            onContextMenu={() => triggerRef.current?.focus()}
             onKeyDown={handleKeyDown}
             onDragStartCapture={handleDragStart as unknown as React.DragEventHandler}
             onDragEndCapture={handleDragEnd}

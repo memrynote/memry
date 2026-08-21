@@ -63,6 +63,7 @@ import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
+import { isTreeNavKey, resolveTreeNavIntent, type TreeNavRow } from '@/lib/tree-keyboard-nav'
 import { useT } from '@memry/i18n/renderer'
 import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
 
@@ -388,6 +389,12 @@ function FolderRow({
     [item.id, onToggleExpand]
   )
 
+  // A context-menu click does not focus the row on its own, so the arrows had
+  // nothing to navigate from once the menu closed.
+  const handleContextMenu = useCallback(() => {
+    rowRef.current?.focus()
+  }, [])
+
   const handleOpenFolderViewClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -434,6 +441,7 @@ function FolderRow({
           style={{ paddingLeft: `${item.level * 16 + 8}px` }}
           onClick={handleClick}
           onMouseDown={handleMiddleClick}
+          onContextMenu={handleContextMenu}
           onKeyDown={handleKeyDown}
           onDragStart={handleDragStart}
           onDragEnd={onDragEnd}
@@ -719,6 +727,12 @@ function NoteRow({
     [item.note, onDoubleClick]
   )
 
+  // See the folder row: a context-menu click leaves focus where it was, which
+  // strands arrow navigation.
+  const handleContextMenu = useCallback(() => {
+    rowRef.current?.focus()
+  }, [])
+
   const handleDragStart = useCallback(
     (e: React.DragEvent) => {
       onDragStart(e, item.id)
@@ -754,6 +768,7 @@ function NoteRow({
           style={{ paddingLeft: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
           onClick={handleClick}
           onMouseDown={handleMiddleClick}
+          onContextMenu={handleContextMenu}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
           onDragStart={handleDragStart}
@@ -1257,15 +1272,89 @@ export function VirtualizedNotesTree({
     [dragState, onMove]
   )
 
-  // Keyboard handler for Delete key
+  // Finder-style arrow navigation. Rows only carry their depth, and a parent is
+  // the nearest row above at a shallower depth — which is exactly what the flat
+  // visible list already encodes.
+  const navRows = useMemo<TreeNavRow[]>(
+    () =>
+      flatItems.map((item) => ({
+        id: item.id,
+        level: item.level,
+        // An empty folder is still a folder: Right has to open it so a note can
+        // be dropped in later, even though there is nothing to step into.
+        isExpandable: item.type === 'folder',
+        isExpanded: item.type === 'folder' && item.isExpanded
+      })),
+    [flatItems]
+  )
+
+  /**
+   * Focus a row by id. Only rows near the viewport are mounted, so a row the
+   * arrows just walked onto may not exist yet — scroll the virtualizer to it
+   * and focus one frame later, once it has been rendered.
+   */
+  const focusRow = useCallback(
+    (nodeId: string, index: number) => {
+      const find = (): HTMLElement | null => {
+        const wrappers = parentRef.current?.querySelectorAll('[data-tree-node-id]') ?? []
+        for (const wrapper of wrappers) {
+          if (wrapper.getAttribute('data-tree-node-id') !== nodeId) continue
+          // `data-tree-node-id` sits on the positioned wrapper; the focusable
+          // row is the treeitem inside it.
+          return wrapper.querySelector('[role="treeitem"]')
+        }
+        return null
+      }
+
+      const mounted = find()
+      if (mounted) {
+        mounted.focus()
+        return
+      }
+
+      virtualizer.scrollToIndex(index, { align: 'auto' })
+      requestAnimationFrame(() => find()?.focus())
+    },
+    [virtualizer]
+  )
+
+  // Keyboard handler: Delete, plus arrow navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // An inline rename owns its own arrows — they move the caret, not the
+      // selection.
+      const target = e.target as HTMLElement | null
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
         e.preventDefault()
         onBulkDelete?.()
+        return
       }
+
+      if (!isTreeNavKey(e.key) || e.metaKey || e.ctrlKey || e.altKey) return
+
+      // Whichever row the keystroke came from wins; a keystroke on the
+      // container itself — right after a context menu closed, say — falls back
+      // to the current selection so the arrows still have somewhere to start.
+      const fromRow = target?.closest?.('[data-tree-node-id]')?.getAttribute('data-tree-node-id')
+      const currentId = fromRow ?? selectedIds[selectedIds.length - 1] ?? null
+
+      const intent = resolveTreeNavIntent(navRows, currentId, e.key)
+      if (!intent) return
+
+      e.preventDefault()
+
+      if (intent.type === 'expand' || intent.type === 'collapse') {
+        handleToggleExpand(intent.id)
+        return
+      }
+
+      onSelectionChange([intent.id])
+      setAnchorId(intent.id)
+      focusRow(intent.id, intent.index)
     },
-    [selectedIds, onBulkDelete]
+    [selectedIds, onBulkDelete, navRows, handleToggleExpand, onSelectionChange, focusRow]
   )
 
   const virtualItems = virtualizer.getVirtualItems()
