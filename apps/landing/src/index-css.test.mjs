@@ -28,6 +28,17 @@ describe('landing page background CSS', () => {
     assert.ok(Number(opacityMatch[1]) <= 0.25, 'Page grain SVG opacity must stay subtle')
   })
 
+  it('gives the dark zones the same grid with a light dot', () => {
+    const zone = readRule('.zone-dark')
+
+    assert.match(
+      zone,
+      /--page-dot-grid: radial-gradient\(circle, rgb\(245 240 234 \/ 0\.07\) 1px, transparent 1\.2px\);/
+    )
+    assert.match(zone, /background-image:\s*\n?\s*var\(--page-dot-grid\),/)
+    assert.match(zone, /background-size:\s*\n?\s*14px 14px,/)
+  })
+
   it('declares the dot grid once, at the grid size both surfaces share', () => {
     assert.match(
       readRule(':root'),

@@ -56,6 +56,10 @@ export function FinalCta({ title, sub, location, secondary, footnote, className 
       >
         <div className="pointer-events-none absolute inset-0" style={{ background: CTA_WASH }} />
 
+        {/* The page's dot grid + grain, same as the hero: the panel lays its own colour
+            over the page ground, so the texture is repainted on top of it. */}
+        <div aria-hidden className="page-texture pointer-events-none absolute inset-0" />
+
         <div className="relative">
           <img
             src="/favicon.svg"

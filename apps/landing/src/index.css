@@ -365,14 +365,30 @@ h6 {
 }
 
 /* Dark zone for cinematic sections */
+/* The dark zones (the privacy break and the footer) carry the same dot grid as the paper
+   page, with the dot flipped to light so it reads on ink. The grain below it is the dark
+   zone's own, coarser one, and it keeps its overlay blend; the grid sits on top at normal
+   blend, so the dots stay an even light and are not re-tinted by the surface under them. */
 .zone-dark {
   --color-ink-inverted: #f5f0ea;
   --color-dark-muted: #b8ada5;
   --color-rule: rgb(245 240 234 / 0.13);
+  /* The grid is restated rather than recoloured through a token: a custom property that
+     holds a var() resolves against the element it is DECLARED on (:root), not the one that
+     uses it, so an inherited --page-dot-color would never reach the gradient. */
+  --page-dot-grid: radial-gradient(circle, rgb(245 240 234 / 0.07) 1px, transparent 1.2px);
   background-color: var(--color-dark);
   color: var(--color-ink-inverted);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  background-blend-mode: overlay;
+  background-image:
+    var(--page-dot-grid),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    auto;
+  background-blend-mode: normal, overlay;
 }
 
 .zone-dark ::selection {
