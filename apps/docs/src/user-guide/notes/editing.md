@@ -63,6 +63,9 @@ border lines rather than floating beside it:
 | on the cell's own right border                   | inner border | the **cell** menu — **Colors**, and splitting or merging          |
 
 Hover a mark and it grows into a small six-dot button; click it for the menu.
+A mark's clickable area reaches a few pixels either side of the line it is
+drawn on, so you do not have to land on the line itself — it is easier to hit
+than it looks.
 
 Row and column live on the table's outer edges on purpose. An inner vertical
 line belongs to two cells at once — the line to a cell's left is the line to
@@ -73,7 +76,16 @@ cell menu, which is the only one that acts on a single cell.
 While the cursor is in a cell, that cell is outlined in your accent colour, and
 that one column edge cannot be dragged to resize — the mark sits on the same
 line, and resizing would take the pointer before you could click it. Every
-other edge resizes as usual; click into another cell to resize that one.
+other edge resizes as usual; click into another cell to resize that one. The
+marks stay up while you move along that edge, so the cell you are typing in is
+the easiest one to open a menu for, not the hardest.
+
+### Selecting cells
+
+Drag across cells to select them. The selection is a range of cells, and
+Backspace clears what is inside them and leaves the table standing. To select
+the table itself as a block — to move it or delete it whole — start the drag in
+the margin beside it rather than inside a cell.
 
 ### Cell colour and formatting
 
