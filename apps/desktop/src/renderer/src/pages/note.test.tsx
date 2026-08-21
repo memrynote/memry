@@ -52,6 +52,10 @@ const mocks = vi.hoisted(() => ({
   editorBlocks: [] as unknown[],
   /** One entry per editor the mocked content area built. */
   editorInstances: [] as unknown[],
+  /** The controls the map surface hands up to its toolbar. */
+  mindMapFit: vi.fn(),
+  mindMapCopyImage: vi.fn(),
+  mindMapCopyVector: vi.fn(),
   onDeleted: vi.fn(),
   onUpdated: vi.fn(),
   onRenamed: vi.fn(),
@@ -265,29 +269,43 @@ vi.mock('@/hooks/use-feature-flags', () => ({
 vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
   MindMapCanvas: ({
     elements,
-    onOpenLink
+    onOpenLink,
+    onControlsChange
   }: {
     elements: Array<{ id: string; link?: string }>
     onOpenLink: (href: string) => void
-  }) => (
-    <div data-testid="mind-map-canvas" data-element-count={elements.length}>
-      {/* Excalidraw hands a click back as the link of the box it landed on —
-          in view mode the whole box is the hit area. Standing in for that is
-          all this needs to do; everything downstream of it is the real path. */}
-      {elements
-        .filter((element) => Boolean(element.link))
-        .map((element) => (
-          <button
-            key={element.id}
-            type="button"
-            data-testid={`mind-map-box-${element.id}`}
-            onClick={() => onOpenLink(element.link!)}
-          >
-            {element.link}
-          </button>
-        ))}
-    </div>
-  )
+    onControlsChange?: (controls: Record<string, unknown> | null) => void
+  }) => {
+    // The real surface hands its controls up once it is live and takes them
+    // back when it goes away; the toolbar is wired to nothing until it does.
+    useEffect(() => {
+      onControlsChange?.({
+        fit: mocks.mindMapFit,
+        copyImage: mocks.mindMapCopyImage,
+        copyVector: mocks.mindMapCopyVector
+      })
+      return () => onControlsChange?.(null)
+    }, [onControlsChange])
+    return (
+      <div data-testid="mind-map-canvas" data-element-count={elements.length}>
+        {/* Excalidraw hands a click back as the link of the box it landed on —
+            in view mode the whole box is the hit area. Standing in for that is
+            all this needs to do; everything downstream of it is the real path. */}
+        {elements
+          .filter((element) => Boolean(element.link))
+          .map((element) => (
+            <button
+              key={element.id}
+              type="button"
+              data-testid={`mind-map-box-${element.id}`}
+              onClick={() => onOpenLink(element.link!)}
+            >
+              {element.link}
+            </button>
+          ))}
+      </div>
+    )
+  }
 }))
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
@@ -800,6 +818,8 @@ describe('NotePage', () => {
     mocks.spatialCanvasEnabled = true
     mocks.direction = 'ltr'
     mocks.editorInstances = []
+    mocks.mindMapCopyImage.mockResolvedValue(undefined)
+    mocks.mindMapCopyVector.mockResolvedValue(undefined)
     mocks.editorBlocks = [
       { id: 'b-intro', type: 'paragraph', content: [{ type: 'text', text: 'Preamble' }] },
       {
@@ -1649,6 +1669,34 @@ describe('NotePage', () => {
 
       const region = screen.getByRole('img')
       expect(region).toHaveAccessibleName('mindMap.regionLabel:{"title":"Test Note","count":3}')
+    })
+
+    it('keeps the map toolbar inside the map, and only while the map shows', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('editor-content')
+      // Note mode: the map has no controls anywhere, because there is no map.
+      expect(screen.queryByTestId('mind-map-toolbar')).not.toBeInTheDocument()
+
+      const map = await openMap()
+      const toolbar = await screen.findByRole('toolbar', { name: 'mindMap.toolbar.label' })
+      // Inside the map area — never a second meaning for the note's own menu.
+      expect(map).toContainElement(toolbar)
+      expect(
+        within(toolbar)
+          .getAllByRole('button')
+          .map((b) => b.getAttribute('aria-label'))
+      ).toEqual(['mindMap.toolbar.fit', 'mindMap.toolbar.copyImage', 'mindMap.toolbar.copyVector'])
+
+      // Wired to the live surface, not to a rebuilt copy of the map.
+      fireEvent.click(screen.getByTestId('mind-map-toolbar-fit'))
+      expect(mocks.mindMapFit).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByTestId('mind-map-toolbar-copy-image'))
+      expect(mocks.mindMapCopyImage).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByTestId('mind-map-toolbar-copy-vector'))
+      expect(mocks.mindMapCopyVector).toHaveBeenCalledTimes(1)
+
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await waitFor(() => expect(screen.queryByTestId('mind-map-toolbar')).not.toBeInTheDocument())
     })
 
     it('opens a note with no headings on the root alone, and keeps the toggle live', async () => {

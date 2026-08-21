@@ -76,6 +76,27 @@ Nodes work from the keyboard too. Tab into the map, move between nodes with the
 up and down arrows (Home and End jump to the ends), and press Enter or Space to
 open the one you are on.
 
+## The Map's Own Toolbar
+
+A small toolbar sits at the top of the map, and only there — the note's overflow
+menu is never repurposed, so the same button in the same place always does the
+same thing.
+
+- **Fit to view** frames the whole map again after you have panned or zoomed.
+- **Copy as image** puts the map on the clipboard as a PNG, ready to paste into
+  a note, a message or a slide.
+- **Copy as vector** puts the map on the clipboard as SVG markup, which design
+  tools paste as editable artwork.
+
+Both copies contain the map **as you are looking at it**, so anything you have
+opened up in the map is in the copy too. They are exported on a transparent
+background and always in the map's light colours, so the same note copies the
+same way whichever app theme you are in. If a copy cannot be made, memrynote
+tells you rather than failing quietly.
+
+The map's camera is not remembered. Close the map and open it again and it
+frames the whole thing afresh — the same place **Fit to view** takes you.
+
 ## Coming Back to the Note
 
 Your work is exactly where you left it. The editor is only hidden while the map
