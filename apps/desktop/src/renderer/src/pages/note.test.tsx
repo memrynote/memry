@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { NotePage } from './note'
 import { toast } from 'sonner'
@@ -44,6 +44,14 @@ const mocks = vi.hoisted(() => ({
   unregisterPendingSave: vi.fn(),
   pickerOnValueChange: null as ((value: string) => void) | null,
   contentAreaMounts: 0,
+  /** What the tab would persist; the mind-map toggle lives in here. */
+  tabViewState: {} as Record<string, unknown>,
+  spatialCanvasEnabled: true,
+  direction: 'ltr' as 'ltr' | 'rtl',
+  /** Blocks the mocked editor reports as its live document. */
+  editorBlocks: [] as unknown[],
+  /** One entry per editor the mocked content area built. */
+  editorInstances: [] as unknown[],
   onDeleted: vi.fn(),
   onUpdated: vi.fn(),
   onRenamed: vi.fn(),
@@ -72,7 +80,8 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
       values ? `${key}:${JSON.stringify(values)}` : key
-  })
+  }),
+  useDirection: () => mocks.direction
 }))
 
 vi.mock('react-i18next', () => ({
@@ -209,20 +218,54 @@ vi.mock('@/lib/wikilink-resolver', () => ({
   resolveWikiLink: mocks.resolveWikiLink
 }))
 
-vi.mock('@/contexts/tabs', () => ({
-  useTabs: () => ({
-    openTab: mocks.openTab,
-    closeTab: mocks.closeTab,
-    setTabDeleted: mocks.setTabDeleted,
-    updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
-  }),
-  // useOpenPage (wiki/backlink navigation preference) reads openTab from here.
-  useTabActions: () => ({ openTab: mocks.openTab }),
-  useActiveTab: () => ({
-    id: '/notes/note-1',
-    entityId: 'note-1',
-    viewState: { highlightText: 'Important', highlightStart: 1, highlightEnd: 10 }
+vi.mock('@/contexts/tabs', () => {
+  // Stable across renders: `useTabViewState` puts these in hook dependencies.
+  const tabActions = {
+    dispatch: (action: { type: string; payload: { viewState?: Record<string, unknown> } }) => {
+      if (action.type !== 'SAVE_TAB_STATE') return
+      Object.assign(mocks.tabViewState, action.payload.viewState ?? {})
+    },
+    getTab: () => ({ viewState: mocks.tabViewState })
+  }
+  return {
+    useTabs: () => ({
+      openTab: mocks.openTab,
+      closeTab: mocks.closeTab,
+      setTabDeleted: mocks.setTabDeleted,
+      updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
+    }),
+    // useOpenPage (wiki/backlink navigation preference) reads openTab from here.
+    useTabActions: () => ({ openTab: mocks.openTab }),
+    useTabActionsOptional: () => tabActions,
+    useActiveTab: () => ({
+      id: '/notes/note-1',
+      entityId: 'note-1',
+      viewState: { highlightText: 'Important', highlightStart: 1, highlightEnd: 10 }
+    })
+  }
+})
+
+vi.mock('@/contexts/tabs/tab-identity', () => ({
+  useTabIdentity: () => ({ tabId: '/notes/note-1', groupId: 'group-1' })
+}))
+
+vi.mock('@/hooks/use-feature-flags', () => ({
+  useFeatureFlags: () => ({
+    flags: { spatialCanvas: mocks.spatialCanvasEnabled },
+    isLoading: false,
+    error: null,
+    isEnabled: (feature: string) =>
+      feature === 'spatialCanvas' ? mocks.spatialCanvasEnabled : true,
+    setFlag: vi.fn()
   })
+}))
+
+// The map's drawing chunk imports Excalidraw; the accessible tree beside it is
+// what these tests read, and what an end-to-end run reads too.
+vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
+  MindMapCanvas: ({ elements }: { elements: unknown[] }) => (
+    <div data-testid="mind-map-canvas" data-element-count={elements.length} />
+  )
 }))
 
 vi.mock('@/hooks/use-sidebar-navigation', () => ({
@@ -275,6 +318,7 @@ vi.mock('@/components/note', () => ({
     breadcrumb,
     stats,
     sideRail,
+    overlay,
     marqueeZoneRef,
     onHeadingClick
   }: {
@@ -285,6 +329,7 @@ vi.mock('@/components/note', () => ({
     breadcrumb: React.ReactNode
     stats?: { wordCount?: number }
     sideRail?: React.ReactNode
+    overlay?: React.ReactNode
     marqueeZoneRef: (element: HTMLDivElement | null) => void
     onHeadingClick: (id: string) => void
   }) => (
@@ -300,6 +345,7 @@ vi.mock('@/components/note', () => ({
       {actions}
       {children}
       {sideRail}
+      {overlay}
     </div>
   ),
   ContentArea: ({
@@ -310,7 +356,8 @@ vi.mock('@/components/note', () => ({
     onLinkClick,
     onInternalLinkClick,
     onInlineTagsChange,
-    focusAtEndRef
+    focusAtEndRef,
+    review
   }: {
     initialContent: string
     externalContentRevision?: number
@@ -322,13 +369,30 @@ vi.mock('@/components/note', () => ({
     onInternalLinkClick: (target: string) => void
     onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
+    review?: { onEditorReady?: (editor: unknown) => void }
   }) => {
     const [content] = useState(initialContent)
+    // A fresh mount mints a fresh editor, exactly as the real one does — which
+    // is what makes "same instance across a round trip" a real assertion and
+    // not a comment.
+    const [editor] = useState(() => {
+      const instance = {
+        get document() {
+          return mocks.editorBlocks
+        }
+      }
+      mocks.editorInstances.push(instance)
+      return instance
+    })
     focusAtEndRef.current = mocks.refetchNote
     // Counting mounts (not renders) is the point: an update from elsewhere must
     // reach the live editor as a prop, never as a fresh editor instance.
+    const onEditorReady = review?.onEditorReady
     useEffect(() => {
       mocks.contentAreaMounts += 1
+      onEditorReady?.(editor)
+      return () => onEditorReady?.(null)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
     return (
       <div>
@@ -700,6 +764,25 @@ describe('NotePage', () => {
     mocks.pickerOnValueChange = null
     mocks.propertyOnBlocked = null
     mocks.contentAreaMounts = 0
+    mocks.tabViewState = {}
+    mocks.spatialCanvasEnabled = true
+    mocks.direction = 'ltr'
+    mocks.editorInstances = []
+    mocks.editorBlocks = [
+      { id: 'b-intro', type: 'paragraph', content: [{ type: 'text', text: 'Preamble' }] },
+      {
+        id: 'b-h1',
+        type: 'heading',
+        props: { level: 1 },
+        content: [{ type: 'text', text: 'Alpha' }]
+      },
+      {
+        id: 'b-h2',
+        type: 'heading',
+        props: { level: 3 },
+        content: [{ type: 'text', text: 'Alpha detail' }]
+      }
+    ]
     Element.prototype.scrollIntoView = vi.fn()
     mocks.resolveWikiLink.mockImplementation((target: string) => {
       if (target === 'Existing Note')
@@ -1374,6 +1457,150 @@ describe('NotePage', () => {
       expect(mocks.contentAreaMounts).toBe(1)
       // ...and find still walks the editor, which is where the text is
       expect(mocks.findInPageEnabled).toBe(true)
+    })
+  })
+
+  describe('mind map', () => {
+    const openMap = async (): Promise<HTMLElement> => {
+      const toggle = await screen.findByTestId('note-mind-map-toggle')
+      fireEvent.click(toggle)
+      return await screen.findByTestId('note-mind-map')
+    }
+
+    it('offers the toggle alongside the reminder and bookmark actions', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      const toggle = await screen.findByTestId('note-mind-map-toggle')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(toggle).toHaveAccessibleName('editor.toolbar.showMindMap')
+      expect(toggle).not.toBeDisabled()
+      // The other two note actions are still where they were.
+      expect(screen.getByRole('button', { name: 'Pick reminder' })).toBeInTheDocument()
+      expect(screen.getByTitle('editor.toolbar.addBookmark')).toBeInTheDocument()
+    })
+
+    it('does not offer the map when the spatial-canvas feature is off', async () => {
+      mocks.spatialCanvasEnabled = false
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await screen.findByTestId('editor-content')
+      expect(screen.queryByTestId('note-mind-map-toggle')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument()
+    })
+
+    it('shows the map, then gives the note back, and never touches the overflow menu', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      const menuBefore = (await screen.findByTestId('note-more-menu')).outerHTML
+
+      const map = await openMap()
+      expect(map).toBeInTheDocument()
+      expect(await screen.findByTestId('note-mind-map-toggle')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      )
+      // Header, breadcrumb and the note's own menu are untouched in both modes:
+      // the same button in the same place doing different work is how people
+      // delete things by accident.
+      expect(screen.getAllByText('Test Note').length).toBeGreaterThan(0)
+      expect(screen.getByTestId('note-more-menu').outerHTML).toBe(menuBefore)
+
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      expect(screen.getByTestId('note-mind-map-toggle')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByTestId('note-more-menu').outerHTML).toBe(menuBefore)
+    })
+
+    it('keeps the very same editor instance across a round trip', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('editor-content')
+      expect(mocks.editorInstances).toHaveLength(1)
+      const before = mocks.editorInstances[0]
+
+      await openMap()
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+
+      // The direct guarantee behind undo history, the cursor, the selection and
+      // the CRDT binding: not "it re-rendered", but the identical object.
+      expect(mocks.editorInstances).toHaveLength(1)
+      expect(mocks.editorInstances[0]).toBe(before)
+      expect(mocks.contentAreaMounts).toBe(1)
+    })
+
+    it('hides the body without collapsing it, and takes it out of the tab order', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      const bodyBefore = await screen.findByTestId('note-body')
+      expect(bodyBefore).not.toHaveAttribute('inert')
+
+      await openMap()
+
+      const body = screen.getByTestId('note-body')
+      // Same node — nothing was torn down and rebuilt.
+      expect(body).toBe(bodyBefore)
+      expect(body).toHaveAttribute('inert')
+      expect(body).toHaveAttribute('aria-hidden', 'true')
+      // `invisible` keeps the layout box; `hidden` would collapse the scroll
+      // height and reset the offset the user came back to.
+      expect(body.className).toContain('invisible')
+      expect(body.className).not.toContain('hidden')
+      expect(screen.getByTestId('editor-content')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await waitFor(() => expect(screen.getByTestId('note-body')).not.toHaveAttribute('inert'))
+      expect(screen.getByTestId('note-body')).toBe(bodyBefore)
+    })
+
+    it('writes the map into tab view state and reopens there', async () => {
+      const first = renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+      expect(mocks.tabViewState).toMatchObject({ noteMindMap: true })
+      first.unmount()
+
+      // A restored tab lands straight in map view.
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('note-mind-map')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await waitFor(() => expect(mocks.tabViewState.noteMindMap).toBe(false))
+    })
+
+    it('projects every node into a real tree beside the drawing', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      const tree = await screen.findByRole('tree')
+      const items = within(tree).getAllByRole('treeitem')
+      // Root, one heading, and the deeper heading under it — the paragraph is
+      // not a node, and the skipped level minted no phantom between them.
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Test NoteAlphaAlpha detail',
+        'AlphaAlpha detail',
+        'Alpha detail'
+      ])
+      expect(items.map((item) => item.getAttribute('aria-level'))).toEqual(['1', '2', '3'])
+      expect(screen.getByTestId('mind-map-canvas')).toBeInTheDocument()
+    })
+
+    it('labels the map region with the note and its node count', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      const region = screen.getByRole('img')
+      expect(region).toHaveAccessibleName('mindMap.regionLabel:{"title":"Test Note","count":3}')
+    })
+
+    it('opens a note with no headings on the root alone, and keeps the toggle live', async () => {
+      mocks.editorBlocks = [
+        { id: 'b-1', type: 'paragraph', content: [{ type: 'text', text: 'Just prose.' }] }
+      ]
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      const tree = await screen.findByRole('tree')
+      expect(within(tree).getAllByRole('treeitem')).toHaveLength(1)
+      expect(screen.getByTestId('note-mind-map-empty-hint')).toHaveTextContent('mindMap.emptyHint')
+      // A disabled control explains nothing; the hint does.
+      expect(screen.getByTestId('note-mind-map-toggle')).not.toBeDisabled()
     })
   })
 })

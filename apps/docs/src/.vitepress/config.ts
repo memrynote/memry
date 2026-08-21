@@ -66,6 +66,7 @@ function unifiedSidebar() {
             { text: 'Custom Icons', link: '/user-guide/notes/custom-icons' },
             { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
             { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
+            { text: 'Mind Map', link: '/user-guide/notes/mind-map' },
             { text: 'Version History', link: '/user-guide/notes/version-history' }
           ]
         },

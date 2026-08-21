@@ -140,6 +140,8 @@
       "setReminder": "Set reminder",
       "removeBookmark": "Remove bookmark",
       "addBookmark": "Add bookmark",
+      "showMindMap": "Show mind map",
+      "hideMindMap": "Hide mind map",
       "hideLocalGraph": "Hide local graph",
       "showLocalGraph": "Show local graph",
       "moreActions": "More actions",
@@ -961,5 +963,10 @@
     "groupHeader": {
       "noteCount": "{count, plural, one {# note} other {# notes}}"
     }
+  },
+  "mindMap": {
+    "regionLabel": "Mind map of {title}, {count, plural, one {# node} other {# nodes}}",
+    "treeLabel": "Mind map outline of {title}",
+    "emptyHint": "Add a heading to this note and the map will branch."
   }
 }

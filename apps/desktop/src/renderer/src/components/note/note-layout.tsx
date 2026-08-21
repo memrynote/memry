@@ -30,6 +30,12 @@ interface NoteLayoutProps {
   stats?: OutlineInfoPanelProps['stats']
   fullWidth?: boolean
   sideRail?: ReactNode
+  /**
+   * Covers the scrolling content, leaving the chrome and the outline panel
+   * reachable. The children stay mounted underneath — the note mind map relies
+   * on that, because unmounting the editor would destroy its undo history.
+   */
+  overlay?: ReactNode
   contentWidth?: string
   marqueeZoneRef?: (el: HTMLDivElement | null) => void
   onRailHiddenChange?: (hidden: boolean) => void
@@ -54,6 +60,7 @@ export function NoteLayout({
   stats,
   fullWidth = false,
   sideRail,
+  overlay,
   contentWidth,
   marqueeZoneRef,
   onRailHiddenChange,
@@ -176,6 +183,15 @@ export function NoteLayout({
           </div>
         </div>
       </div>
+
+      {overlay && (
+        <div
+          data-note-layout-overlay
+          className="absolute inset-x-0 bottom-0 top-[var(--note-chrome-height)] z-20"
+        >
+          {overlay}
+        </div>
+      )}
 
       <OutlineInfoPanel
         headings={headings}
