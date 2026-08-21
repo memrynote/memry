@@ -253,16 +253,20 @@ test.describe('Table border handles', () => {
       expect(Math.abs(centre - lineFrom(hovered.x, border))).toBeGreaterThan(TOLERANCE)
     }
 
-    // #and a resting bar is a bare line: no border, no ring, no outline
-    const resting = await page.locator('[data-memry-table-handle="row"]').evaluate((element) => {
-      const style = getComputedStyle(element)
-      return {
-        borderTopWidth: style.borderTopWidth,
-        outlineStyle: style.outlineStyle,
-        boxShadow: style.boxShadow,
-        borderRadius: style.borderTopLeftRadius
-      }
-    })
+    // #and a resting bar is a bare line: no border, no ring, no outline.
+    // Read off the PILL, which is what the nub paints — the button around it
+    // is a transparent hit area padded out past the line on the thin axis.
+    const resting = await page
+      .locator('[data-memry-table-handle="row"] .memry-table-handle-pill')
+      .evaluate((element) => {
+        const style = getComputedStyle(element)
+        return {
+          borderTopWidth: style.borderTopWidth,
+          outlineStyle: style.outlineStyle,
+          boxShadow: style.boxShadow,
+          borderRadius: style.borderTopLeftRadius
+        }
+      })
     expect(resting).toEqual({
       borderTopWidth: '0px',
       outlineStyle: 'none',
@@ -275,11 +279,12 @@ test.describe('Table border handles', () => {
     // #when the pointer moves onto the row bar it becomes Notion's button,
     // 14 wide x 22 tall for a bar standing on the inline axis
     const rowControl = page.locator('[data-memry-table-handle="row"]')
+    const rowPill = rowControl.locator('.memry-table-handle-pill')
     await rowControl.hover()
     await expect
       .poll(
         async () => {
-          const grown = await rowControl.boundingBox()
+          const grown = await rowPill.boundingBox()
           return grown ? `${Math.round(grown.width)}x${Math.round(grown.height)}` : 'gone'
         },
         { timeout: 5_000 }
@@ -287,7 +292,7 @@ test.describe('Table border handles', () => {
       .toBe('14x22')
 
     // #and it is still centred on the same border line it was resting on
-    const grown = await box(rowControl)
+    const grown = await box(rowPill)
     expect(Math.abs(grown.x + grown.width / 2 - lineFrom(tableBox.x, border))).toBeLessThanOrEqual(
       TOLERANCE
     )
@@ -300,12 +305,62 @@ test.describe('Table border handles', () => {
     await expect
       .poll(
         async () => {
-          const wide = await colControl.boundingBox()
+          const wide = await colControl.locator('.memry-table-handle-pill').boundingBox()
           return wide ? `${Math.round(wide.width)}x${Math.round(wide.height)}` : 'gone'
         },
         { timeout: 5_000 }
       )
       .toBe('22x14')
+  })
+
+  test('the nub reaches past the line it paints, and survives the resize shield', async ({
+    page
+  }) => {
+    // #given a note holding a 3x3 table
+    const note = await createNote(page, `Table Nub Reach ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, GRID_DOC)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const bodyRow = editor.locator('table tr').nth(1)
+    const middleCell = bodyRow.locator('td').nth(1)
+    await expect(middleCell).toBeVisible({ timeout: 15_000 })
+
+    // #when the caret is put in the middle cell, so its own inline-end border
+    // carries BOTH its nub and the resize shield
+    await middleCell.click({ position: IN_CELL })
+    await expect(page.locator('[data-memry-table-resize-shield]')).toHaveCount(1, {
+      timeout: 10_000
+    })
+
+    const cellNub = page.locator('[data-memry-table-handle="cell"]')
+    const cellPill = cellNub.locator('.memry-table-handle-pill')
+    await expect(cellNub).toBeVisible({ timeout: 10_000 })
+
+    // #then the nub's hit box reaches past the 3px bar it paints. The pointer
+    // arrives across the thin axis, so that is the axis that is padded — the
+    // long axis is left alone because it is where a column resize drag starts.
+    const restingPill = await box(cellPill)
+    const restingHit = await box(cellNub)
+    expect(Math.abs(restingPill.width - BAR_THICKNESS)).toBeLessThanOrEqual(TOLERANCE)
+    expect(restingHit.width).toBeGreaterThan(restingPill.width + 4)
+    expect(Math.abs(restingHit.height - restingPill.height)).toBeLessThanOrEqual(TOLERANCE)
+
+    // #and the pointer can travel along that border — over the shield, off the
+    // nub — without the bars dropping. The shield is not a `<td>`, and reading
+    // it as "the table was left" is what made a focused cell's nub unreachable.
+    const cellBox = await box(middleCell)
+    const edge = cellBox.x + cellBox.width
+    await page.mouse.move(edge - 1, cellBox.y + 4)
+    await expect(cellNub).toBeVisible()
+    await expect(page.locator('[data-memry-table-handles] .memry-table-handle')).toHaveCount(3)
+
+    // #and arriving from inside the cell, a press one pixel short of the line
+    // opens the cell menu instead of landing in the text
+    await page.mouse.move(edge - 5, cellBox.y + cellBox.height / 2)
+    await page.mouse.down()
+    await page.mouse.up()
+    await expect(page.getByText('Colors', { exact: true }).first()).toBeVisible({ timeout: 5_000 })
   })
 
   test("the caret's cell is ringed in the accent, and the ring follows the caret", async ({

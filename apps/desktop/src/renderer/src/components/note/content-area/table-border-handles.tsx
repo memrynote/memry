@@ -115,6 +115,15 @@ const stopEvent = (event: { stopPropagation: () => void }): void => event.stopPr
 /** Marks the overlay so pointer bookkeeping can tell it apart from the table. */
 const OVERLAY_ATTR = 'data-memry-table-handles'
 
+/**
+ * Marks the resize shield, for the same pointer bookkeeping.
+ *
+ * The shield covers the focused cell's inline-end border, which is the exact
+ * strip that cell's own nub stands on. It is not a `<td>`, so without this the
+ * hover lookup reads a pointer that reached it as "the table was left".
+ */
+const SHIELD_ATTR = 'data-memry-table-resize-shield'
+
 /** Marks a menu that was moved out of the wrapper, for its layer in base.css. */
 const MENU_CLASS = 'memry-table-menu'
 
@@ -342,6 +351,14 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   const tableHandles = useExtension(TableHandlesExtension)
 
   const hoveredCellRef = useRef<HTMLTableCellElement | null>(null)
+  /**
+   * The cell the caret is in — the one the resize shield covers.
+   *
+   * Kept beside `focusRing` rather than inside it because it is read from a
+   * DOM listener, where a state value would be the one captured when the
+   * listener was installed.
+   */
+  const focusCellRef = useRef<HTMLTableCellElement | null>(null)
   const [geometry, setGeometry] = useState<Geometry | null>(null)
   const [focusRing, setFocusRing] = useState<FocusRing | null>(null)
   /**
@@ -407,12 +424,14 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   const resolveFocus = useCallback((): void => {
     const view = editor.prosemirrorView
     if (!view || view.isDestroyed) {
+      focusCellRef.current = null
       setFocusRing(null)
       return
     }
     const { node } = view.domAtPos(view.state.selection.from)
     const element = node instanceof Element ? node : node.parentElement
     const cell = element?.closest<HTMLTableCellElement>(CELL_SELECTOR) ?? null
+    focusCellRef.current = cell
     setFocusRing(cell ? measureFocus(cell) : null)
   }, [editor])
 
@@ -465,7 +484,19 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
       // that reaches one must not read as "the table was left".
       if (target.closest(`[${OVERLAY_ATTR}]`)) return
 
-      const cell = target.closest<HTMLTableCellElement>(CELL_SELECTOR)
+      // The shield stands ON the focused cell's inline-end border, which is
+      // where that cell's own nub is. It is a sibling of the table, not a
+      // `<td>`, so the plain lookup answers "no cell" and takes the bars down
+      // the moment the pointer approaches the very control the shield exists
+      // to protect — the reason a focused cell's nub was unreachable while an
+      // unfocused one was easy.
+      const shielded = target.closest(`[${SHIELD_ATTR}]`) !== null
+      const focusCell = focusCellRef.current
+      const cell = shielded
+        ? focusCell?.isConnected
+          ? focusCell
+          : null
+        : target.closest<HTMLTableCellElement>(CELL_SELECTOR)
       if (cell === hoveredCellRef.current) return
       hoveredCellRef.current = cell
       setGeometry(cell ? measure(cell) : null)
@@ -551,7 +582,15 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
                     // handle's.
                     onMouseDown={(event) => event.preventDefault()}
                   >
-                    <DragDots />
+                    {/*
+                      The button is the hit target and the pill is the paint:
+                      the button is padded out across the bar's thin axis so
+                      the pointer does not have to land on a 3px line, while
+                      what the user sees stays exactly the line's width.
+                    */}
+                    <span className="memry-table-handle-pill">
+                      <DragDots />
+                    </span>
                   </button>
                 </Trigger>
                 {bar.kind === 'cell' ? (

@@ -3649,6 +3649,19 @@ del.bn-inline-content {
   z-index: 10;
   -webkit-user-select: none;
   user-select: none;
+
+  /*
+   * How far the nub's HIT area reaches past the bar it paints, on the bar's
+   * thin axis only.
+   *
+   * A 3px line is a 3px target, and the pointer has to arrive along the thin
+   * axis to reach it — approaching a vertical nub means crossing the last few
+   * pixels of a cell. Padding the long axis as well was tried and rejected:
+   * a vertical nub's 18px band is already easy to hit, and growing it upward
+   * would swallow the top of the cell's own edge, which is where a column
+   * resize drag starts.
+   */
+  --memry-table-handle-hit: 4px;
 }
 
 /*
@@ -3675,11 +3688,16 @@ del.bn-inline-content {
 }
 
 /*
- * Rest: a bare bar sitting on the cell border line, slightly thicker than it.
- * Matching the border's own 1px was tried and rejected — at that width the nub
- * is a control nobody can find. No border, no ring, no outline and no radius
- * either. (A knock-out ring is what made the earlier attempt read as a pill
- * floating beside the table.)
+ * The control is the HIT area; `.memry-table-handle-pill` inside it is the
+ * paint. They were one element, sized to the 3px line, and the result was a
+ * control the pointer had to land on exactly — worse still inside the focused
+ * cell, whose resize shield covers the same line. Splitting them lets the
+ * target reach `--memry-table-handle-hit` past the line on the thin axis while
+ * what the user sees stays the width of the line.
+ *
+ * Transparent, and carrying none of the paint: no background, no border, no
+ * ring, no outline, no radius. Its box grows in step with the pill on hover so
+ * the pill, which clips its own glyph, is never clipped by this in turn.
  */
 .memry-table-handle-control {
   flex: none;
@@ -3691,8 +3709,36 @@ del.bn-inline-content {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background-color: var(--text-tertiary);
+  background: transparent;
   color: var(--primary-foreground);
+  transition:
+    inline-size 100ms ease-in-out,
+    block-size 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control {
+  inline-size: calc(var(--memry-table-handle-thickness) + 2 * var(--memry-table-handle-hit));
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control {
+  inline-size: var(--memry-table-handle-length);
+  block-size: calc(var(--memry-table-handle-thickness) + 2 * var(--memry-table-handle-hit));
+}
+
+/*
+ * Rest: a bare bar sitting on the cell border line, slightly thicker than it.
+ * Matching the border's own 1px was tried and rejected — at that width the nub
+ * is a control nobody can find. No border, no ring, no outline and no radius
+ * either. (A knock-out ring is what made the earlier attempt read as a pill
+ * floating beside the table.)
+ */
+.memry-table-handle-pill {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--text-tertiary);
   /* Clips the glyph's own empty margins so they cannot take hover off the bar. */
   overflow: hidden;
   transition:
@@ -3702,12 +3748,12 @@ del.bn-inline-content {
     border-radius 100ms ease-in-out;
 }
 
-.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control {
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-pill {
   inline-size: var(--memry-table-handle-thickness);
   block-size: var(--memry-table-handle-length);
 }
 
-.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control {
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-pill {
   inline-size: var(--memry-table-handle-length);
   block-size: var(--memry-table-handle-thickness);
 }
@@ -3725,6 +3771,19 @@ del.bn-inline-content {
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:hover,
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible,
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-state='open'] {
+  inline-size: calc(14px + 2 * var(--memry-table-handle-hit));
+  block-size: 22px;
+}
+
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control:hover
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control:focus-visible
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-pill {
   inline-size: 14px;
   block-size: 22px;
 }
@@ -3732,6 +3791,19 @@ del.bn-inline-content {
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:hover,
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible,
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-state='open'] {
+  inline-size: 22px;
+  block-size: calc(14px + 2 * var(--memry-table-handle-hit));
+}
+
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control:hover
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control:focus-visible
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-pill {
   inline-size: 22px;
   block-size: 14px;
 }
@@ -3742,9 +3814,9 @@ del.bn-inline-content {
  * pointer moved off it onto its own open menu, leaving the menu hanging off
  * nothing.
  */
-.memry-table-handle-control:hover,
-.memry-table-handle-control:focus-visible,
-.memry-table-handle-control[data-state='open'] {
+.memry-table-handle-control:hover .memry-table-handle-pill,
+.memry-table-handle-control:focus-visible .memry-table-handle-pill,
+.memry-table-handle-control[data-state='open'] .memry-table-handle-pill {
   border-radius: 4px;
   background-color: var(--primary);
 }
@@ -3770,6 +3842,7 @@ del.bn-inline-content {
 
 @media (prefers-reduced-motion: reduce) {
   .memry-table-handle-control,
+  .memry-table-handle-pill,
   .memry-table-handle-icon {
     transition: none;
   }
