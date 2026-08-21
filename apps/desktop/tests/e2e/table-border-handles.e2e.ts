@@ -667,90 +667,92 @@ test.describe('Table border handles', () => {
       ])
   })
 
-  test('a keyboard alone can add a row and delete a column', async ({ page }) => {
-    // #given a note holding a 3x3 table whose every cell is separately named,
-    // so acting on the neighbouring row or column shows up as the wrong name
-    // surviving rather than as a count that happens to match
-    const note = await createNote(page, `Table Keyboard Menu ${Date.now()}`)
-    await openNoteByHandle(page, note)
-    await setDocument(page, GRID_DOC)
-
-    const editor = page.locator(SELECTORS.noteEditor).first()
-    const rows = editor.locator('table tr')
+  /**
+   * Everything below is driven by keys.
+   *
+   * The caret has to start somewhere and the editor is only reachable by
+   * clicking into it, so each test clicks the FIRST header cell once and walks
+   * to its target from there: a menu that read the clicked cell instead of the
+   * caret's would act on H1 and be caught by the grid that comes out.
+   */
+  const walkToA2 = async (page: Page): Promise<void> => {
+    const rows = page.locator(SELECTORS.noteEditor).first().locator('table tr')
     await expect(rows).toHaveCount(3, { timeout: 15_000 })
-
-    /**
-     * The caret has to start somewhere, and the editor is only reachable by
-     * clicking into it. Everything after this first click is keys: the cell the
-     * menu acts on is reached with arrows, so a menu that read the CLICKED cell
-     * instead of the caret's would act on H1 and be caught.
-     */
     await rows.nth(0).locator('th, td').nth(0).click({ position: IN_CELL })
-
     const anchor = page.locator('[data-memry-table-keyboard-anchor]')
-    const menu = page.locator('.memry-table-keyboard-menu')
-
-    /**
-     * The label of the menu item that currently holds the focus, or '' while
-     * the focus is still on the menu's own box.
-     */
-    const focusedItem = (): Promise<string> =>
-      page.evaluate(() => {
-        const active = document.activeElement
-        if (active?.getAttribute('data-slot') !== 'dropdown-menu-item') return ''
-        return (active.textContent ?? '').trim()
-      })
-
-    /**
-     * Walk the menu with ArrowDown until `label` holds the focus, then run it.
-     *
-     * Each press waits for the highlight to actually move: Radix moves the
-     * focus a frame after the key, and pressing again before it lands leaves
-     * the walk stuck on the first item.
-     */
-    const runByKeyboard = async (label: string): Promise<void> => {
-      const trail: string[] = []
-      for (let step = 0; step < 12; step += 1) {
-        const here = await focusedItem()
-        if (here === label) {
-          await page.keyboard.press('Enter')
-          return
-        }
-        trail.push(here || '(menu)')
-        await page.keyboard.press('ArrowDown')
-        await expect.poll(focusedItem, { timeout: 5_000 }).not.toBe(here)
-      }
-      throw new Error(`${label} never took the focus. Walked: ${trail.join(' -> ')}`)
-    }
-
-    // #when the caret is walked to A2 — row 1, column 1 — with the keys that
-    // move between cells. ArrowRight would walk the text inside a cell first;
-    // Tab is the one that crosses a cell boundary in one press.
+    await expect(anchor).toHaveCount(1, { timeout: 10_000 })
+    // ArrowRight would walk the text inside a cell first; Tab is the one that
+    // crosses a cell boundary in a single press.
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Tab')
     await expect(anchor).toHaveAttribute('data-row-index', '1', { timeout: 10_000 })
     await expect(anchor).toHaveAttribute('data-col-index', '1')
+  }
 
-    // #and the table menu is asked for with the keyboard
+  /**
+   * The label of the menu item that holds the focus, or '' while the focus is
+   * still on the menu's own box.
+   */
+  const focusedItem = (page: Page): Promise<string> =>
+    page.evaluate(() => {
+      const active = document.activeElement
+      if (active?.getAttribute('data-slot') !== 'dropdown-menu-item') return ''
+      return (active.textContent ?? '').trim()
+    })
+
+  /**
+   * Walk the open menu with ArrowDown until `label` holds the focus, then run
+   * it with Enter.
+   *
+   * Each press waits for the highlight to actually move: Radix moves the focus
+   * a frame after the key, and pressing again before it lands leaves the walk
+   * stuck on the first item.
+   */
+  const runByKeyboard = async (page: Page, label: string): Promise<void> => {
+    const walked: string[] = []
+    for (let step = 0; step < 12; step += 1) {
+      const here = await focusedItem(page)
+      if (here === label) {
+        await page.keyboard.press('Enter')
+        return
+      }
+      walked.push(here || '(menu)')
+      await page.keyboard.press('ArrowDown')
+      await expect.poll(() => focusedItem(page), { timeout: 5_000 }).not.toBe(here)
+    }
+    throw new Error(`${label} never took the focus. Walked: ${walked.join(' -> ')}`)
+  }
+
+  test('a keyboard alone adds a row, and names the cell it will act on', async ({ page }) => {
+    // #given a note holding a 3x3 table whose every cell is separately named,
+    // so acting on the neighbouring row shows up as the wrong name surviving
+    // rather than as a count that happens to match
+    const note = await createNote(page, `Table Keyboard Row ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, GRID_DOC)
+
+    // #when the caret is walked to A2 — row 1, column 1 — and the table menu is
+    // asked for with the keyboard
+    await walkToA2(page)
+    const menu = page.locator('.memry-table-keyboard-menu')
     await page.keyboard.press('ControlOrMeta+Shift+Enter')
     await expect(menu).toBeVisible({ timeout: 10_000 })
 
     // #then the menu names the cell it will act on, counted the way a person
     // counts, and Radix hands that name to the dropdown as its own
     await expect(menu).toContainText('Row 2 · Column 2')
-    await expect(menu).toHaveAttribute('aria-labelledby', /.+/)
     const menuName = await menu.evaluate((element) => {
       const id = element.getAttribute('aria-labelledby')
       return id ? (document.getElementById(id)?.getAttribute('aria-label') ?? '') : ''
     })
     expect(menuName).toBe('Table actions for row 2, column 2')
 
-    // #and the caret's own Enter never reached the editor: the cell still holds
-    // the one line it started with
+    // #and the keystroke that opened it never reached the editor: the cell is
+    // not split and still holds the one line it started with
     expect(textGrid(await tableShape(page))[1][1]).toBe('A2')
 
-    // #when "Add row below" is reached with arrows and run with Enter
-    await runByKeyboard('Add row below')
+    // #when "Add row below" is reached with the arrow keys and run with Enter
+    await runByKeyboard(page, 'Add row below')
 
     // #then the new row is under A, not under the header and not at the end
     await expect
@@ -761,20 +763,19 @@ test.describe('Table border handles', () => {
         ['', '', ''],
         ['B1', 'B2', 'B3']
       ])
+  })
 
-    // #when the same is done for the middle COLUMN, from a fresh table
+  test('a keyboard alone deletes the caret’s column', async ({ page }) => {
+    // #given the same 3x3 table, with the caret walked to A2
+    const note = await createNote(page, `Table Keyboard Column ${Date.now()}`)
+    await openNoteByHandle(page, note)
     await setDocument(page, GRID_DOC)
-    await expect(rows).toHaveCount(3, { timeout: 15_000 })
-    await rows.nth(0).locator('th, td').nth(0).click({ position: IN_CELL })
-    // Replacing the document drops the caret, and with it the anchor; wait for
-    // the click to put both back before the keys start.
-    await expect(anchor).toHaveCount(1, { timeout: 10_000 })
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('Tab')
-    await expect(anchor).toHaveAttribute('data-col-index', '1', { timeout: 10_000 })
+    await walkToA2(page)
+
+    // #when the menu is opened and "Delete column" is run, both from keys
     await page.keyboard.press('ControlOrMeta+Shift+Enter')
-    await expect(menu).toBeVisible({ timeout: 10_000 })
-    await runByKeyboard('Delete column')
+    await expect(page.locator('.memry-table-keyboard-menu')).toBeVisible({ timeout: 10_000 })
+    await runByKeyboard(page, 'Delete column')
 
     // #then column 1 is the column that went, in every row
     await expect
@@ -787,7 +788,7 @@ test.describe('Table border handles', () => {
   })
 
   test('Escape closes the keyboard menu and hands the caret back to its cell', async ({ page }) => {
-    // #given a note holding a 3x3 table, with the caret walked into A2
+    // #given a 3x3 table with the caret at the END of A1, put there with keys
     const note = await createNote(page, `Table Keyboard Escape ${Date.now()}`)
     await openNoteByHandle(page, note)
     await setDocument(page, GRID_DOC)
@@ -797,25 +798,21 @@ test.describe('Table border handles', () => {
     await expect(rows).toHaveCount(3, { timeout: 15_000 })
     await rows.nth(0).locator('th, td').nth(0).click({ position: IN_CELL })
     await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('Tab')
-    // `Tab` crosses into the next cell with that cell's text SELECTED — that is
-    // prosemirror-tables' own `goToNextCell`. Collapse it to a caret at the end,
-    // so what lands after `Escape` is an insertion and not a replacement.
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('End')
 
-    const menu = page.locator('.memry-table-keyboard-menu')
+    const anchor = page.locator('[data-memry-table-keyboard-anchor]')
+    await expect(anchor).toHaveAttribute('data-row-index', '1', { timeout: 10_000 })
+    await expect(anchor).toHaveAttribute('data-col-index', '0')
 
     // #when the menu is opened and then dismissed with Escape
+    const menu = page.locator('.memry-table-keyboard-menu')
     await page.keyboard.press('ControlOrMeta+Shift+Enter')
     await expect(menu).toBeVisible({ timeout: 10_000 })
     await page.keyboard.press('Escape')
     await expect(menu).toHaveCount(0, { timeout: 10_000 })
 
-    // #then the table is untouched, and typing lands back in the cell the menu
-    // was opened from — a caret left on the closed menu's trigger would put
-    // these characters nowhere
-    // #and the focus is back inside the editor itself, not left on the box the
-    // menu hung from
+    // #then the focus is back inside the editor, not left on the box the menu
+    // hung from
     await expect
       .poll(
         () =>
@@ -829,14 +826,15 @@ test.describe('Table border handles', () => {
       )
       .toBe('editor')
 
+    // #and typing lands back in the cell the menu was opened from, at the caret
+    // it was opened with — nothing else in the table moved
     await page.keyboard.type('zz')
     await expect
-      .poll(async () => textGrid(await tableShape(page))[1][1], { timeout: 10_000 })
-      .toBe('A2zz')
-    expect(textGrid(await tableShape(page))).toEqual([
-      ['H1', 'H2', 'H3'],
-      ['A1', 'A2zz', 'A3'],
-      ['B1', 'B2', 'B3']
-    ])
+      .poll(async () => textGrid(await tableShape(page)), { timeout: 10_000 })
+      .toEqual([
+        ['H1', 'H2', 'H3'],
+        ['A1zz', 'A2', 'A3'],
+        ['B1', 'B2', 'B3']
+      ])
   })
 })
