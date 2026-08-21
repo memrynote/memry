@@ -976,6 +976,15 @@
       "embed": "{count, plural, one {# embed} other {# embeds}}",
       "bookmark": "{count, plural, one {# bookmark} other {# bookmarks}}",
       "file": "{count, plural, one {# file} other {# files}}"
+    },
+    "toolbar": {
+      "label": "Mind map actions",
+      "fit": "Fit to view",
+      "copyImage": "Copy as image",
+      "copyVector": "Copy as vector",
+      "imageCopied": "Map copied as an image",
+      "vectorCopied": "Map copied as vector artwork",
+      "copyFailed": "Failed to copy the map"
     }
   }
 }
