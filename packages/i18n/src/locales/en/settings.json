@@ -271,8 +271,15 @@
           "monospace": "Monospace"
         }
       },
+      "customFont": {
+        "label": "Custom Font",
+        "description": "Use a font installed on this computer. Falls back to the font family above if it is not available.",
+        "placeholder": "e.g. Iosevka",
+        "notInstalled": "Not installed on this computer \u2014 using the fallback font."
+      },
       "fontSizeError": "Failed to update font size",
-      "fontFamilyError": "Failed to update font family"
+      "fontFamilyError": "Failed to update font family",
+      "customFontError": "Failed to update custom font"
     }
   },
   "editor": {

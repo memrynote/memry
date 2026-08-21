@@ -16,6 +16,7 @@ const defaultSettings = {
   theme: 'system' as const,
   fontSize: 'medium' as const,
   fontFamily: 'system' as const,
+  customFontFamily: '',
   accentColor: '#6366f1',
   startOnBoot: false,
   language: 'en'
@@ -68,5 +69,35 @@ describe('useThemeSync', () => {
     expect(document.documentElement.style.getPropertyValue('--font-sans')).toContain(
       'Crimson Pro Variable'
     )
+  })
+
+  it('#given a custom font #when synced #then it leads the stack and the chosen family follows', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: { ...defaultSettings, fontFamily: 'serif', customFontFamily: 'Iosevka Term' },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    renderHook(() => useThemeSync())
+
+    const stack = document.documentElement.style.getPropertyValue('--font-sans')
+    expect(stack.startsWith("'Iosevka Term',")).toBe(true)
+    expect(stack).toContain('Crimson Pro Variable')
+  })
+
+  it('#given a custom font over the system family #when synced #then the system stack is the fallback', () => {
+    vi.mocked(useGeneralSettings).mockReturnValue({
+      settings: { ...defaultSettings, customFontFamily: '"Comic Sans MS"; color: red' },
+      isLoading: false,
+      error: null,
+      updateSettings: vi.fn()
+    })
+
+    renderHook(() => useThemeSync())
+
+    const stack = document.documentElement.style.getPropertyValue('--font-sans')
+    expect(stack.startsWith("'Comic Sans MS color red',")).toBe(true)
+    expect(stack).toContain('ui-sans-serif')
   })
 })

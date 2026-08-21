@@ -18,6 +18,14 @@ export const GeneralSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'white', 'system']),
   fontSize: z.enum(['small', 'medium', 'large']),
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
+  /**
+   * The name of a font installed on this machine, applied ahead of `fontFamily`
+   * when it is non-empty. Free text: the app cannot ship a list of every font a
+   * machine has, and a name that is not installed simply loses the CSS font
+   * stack race, so the interface falls back to `fontFamily` (or the system
+   * default) with no extra handling. Empty means "no custom font".
+   */
+  customFontFamily: z.string().max(64),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   startOnBoot: z.boolean(),
   language: LocaleSchema,
@@ -45,6 +53,7 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   theme: 'white',
   fontSize: 'medium',
   fontFamily: 'system',
+  customFontFamily: '',
   accentColor: DEFAULT_ACCENT_COLOR,
   startOnBoot: false,
   language: 'en',

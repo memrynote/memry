@@ -140,6 +140,7 @@ vi.mock('../vault/vault-preferences', () => ({
     'theme',
     'fontSize',
     'fontFamily',
+    'customFontFamily',
     'accentColor',
     'language',
     'createInSelectedFolder'

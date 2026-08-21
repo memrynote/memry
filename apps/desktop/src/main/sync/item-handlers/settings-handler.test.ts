@@ -170,6 +170,25 @@ describe('settingsHandler.applyUpsert', () => {
     expect(prefsArg.openPagesInNewTab).toBe(false)
   })
 
+  // Same truthiness trap as openPagesInNewTab above: '' is how the other device
+  // says "custom font cleared", and dropping it would leave this device's
+  // interface stuck on a font the user already removed.
+  it('#given a synced customFontFamily cleared to empty #then writes it to config.json', () => {
+    mockGetSettings.mockReturnValue({
+      general: { customFontFamily: '' }
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { customFontFamily: '' } },
+      fieldClocks: { 'general.customFontFamily': { 'device-B': 4 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    const prefsArg = mockWritePreferences.mock.calls[0][1]
+    expect(prefsArg.customFontFamily).toBe('')
+  })
+
   it('#given merged settings with editor fields #then writes editor to config.json', () => {
     mockGetSettings.mockReturnValue({
       editor: { width: 'wide' }

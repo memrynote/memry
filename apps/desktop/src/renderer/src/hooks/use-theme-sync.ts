@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { useGeneralSettings } from './use-general-settings'
 import { setDateFormatPref } from '@/lib/format-date'
+import { sanitizeCustomFontName } from '@/lib/custom-font'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('ThemeSync')
@@ -45,13 +46,21 @@ export function useThemeSync(): void {
 
   useEffect(() => {
     if (isLoading) return
-    const family = FONT_FAMILY_MAP[settings.fontFamily]
+    const chosen = FONT_FAMILY_MAP[settings.fontFamily]
+    // A custom font is a preference in front of the chosen family, not instead
+    // of it: it goes first in the stack, so a name this machine does not have
+    // installed falls through to the chosen family (or the system stack) with
+    // nothing to detect. Sanitizing also keeps the value from escaping the
+    // declaration it is interpolated into.
+    const custom = sanitizeCustomFontName(settings.customFontFamily ?? '')
+    const family = custom ? `'${custom}', ${chosen || FONT_FAMILY_MAP['sans-serif']}` : chosen
+
     if (family) {
       document.documentElement.style.setProperty('--font-sans', family)
     } else {
       document.documentElement.style.removeProperty('--font-sans')
     }
-  }, [isLoading, settings.fontFamily])
+  }, [isLoading, settings.fontFamily, settings.customFontFamily])
 
   // Keep format-date's module cache in sync so pure (non-React) date helpers
   // format with the user's chosen format.

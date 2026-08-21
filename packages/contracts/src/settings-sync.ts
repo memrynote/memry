@@ -10,6 +10,10 @@ export const SyncedSettingsSchema = z.object({
       fontFamily: z
         .enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter'])
         .optional(),
+      // Loose string, not the sanitized shape the UI enforces: a name written
+      // by another device must ride along rather than fail the whole settings
+      // payload and stall every other synced setting.
+      customFontFamily: z.string().optional(),
       accentColor: z.string().optional(),
       startOnBoot: z.boolean().optional(),
       language: z.string().optional(),

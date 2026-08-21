@@ -52,6 +52,11 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (general.theme) seedPrefs.theme = general.theme
       if (general.fontSize) seedPrefs.fontSize = general.fontSize
       if (general.fontFamily) seedPrefs.fontFamily = general.fontFamily
+      // Empty string is a real value here ("no custom font"), so this checks for
+      // undefined rather than truthiness like the enum fields above.
+      if (general.customFontFamily !== undefined) {
+        seedPrefs.customFontFamily = general.customFontFamily
+      }
       if (general.accentColor) seedPrefs.accentColor = general.accentColor
       if (general.language) seedPrefs.language = general.language
       if (general.createInSelectedFolder !== undefined) {
@@ -98,6 +103,7 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     theme: prefs.theme,
     fontSize: prefs.fontSize,
     fontFamily: prefs.fontFamily,
+    customFontFamily: prefs.customFontFamily,
     accentColor: prefs.accentColor,
     language: language.success ? language.data : GENERAL_SETTINGS_DEFAULTS.language,
     createInSelectedFolder: prefs.createInSelectedFolder,

@@ -256,6 +256,7 @@ Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — pl
 
 - **Font Size** — Small (14px) / Medium (16px) / Large (20px). Sets the base interface size; the whole app and note editor text scale with it.
 - **Font Family** — System, Sans-Serif, Serif, Monospace, Gelasio, Geist, Inter
+- **Custom Font** — Type the name of any font installed on your computer to use it for the interface. It takes precedence over the font family above, which stays as the fallback: if the font is not installed on a given computer, that computer keeps rendering the chosen family instead, and the settings row says so. Leave the field empty to turn the custom font off. Like the rest of Appearance, this setting syncs to your other devices — a font that only one of them has installed still falls back gracefully on the others.
 
 ---
 
