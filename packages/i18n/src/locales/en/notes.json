@@ -129,6 +129,10 @@
       "listPlaceholder": "List item",
       "todoPlaceholder": "To-do item"
     },
+    "table": {
+      "keyboardMenuAria": "Table actions for row {row}, column {column}",
+      "keyboardMenuTitle": "Row {row} · Column {column}"
+    },
     "list": {
       "bulleted": "Bulleted list",
       "numbered": "Numbered list",

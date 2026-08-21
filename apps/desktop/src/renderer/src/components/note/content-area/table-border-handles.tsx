@@ -11,7 +11,9 @@ import {
 import { createPortal } from 'react-dom'
 import { TableHandlesExtension } from '@blocknote/core/extensions'
 import {
+  AddButton,
   ComponentsContext,
+  DeleteButton,
   TableCellMenu,
   TableHandleMenu,
   useBlockNoteEditor,
@@ -20,6 +22,9 @@ import {
   useEditorSelectionChange,
   useExtension
 } from '@blocknote/react'
+import { useT } from '@memry/i18n/renderer'
+
+import { isTableMenuShortcut } from './table-keyboard-menu'
 
 /**
  * Table row/column/cell handles that sit ON the table's own border lines.
@@ -66,7 +71,10 @@ import {
  *
  * Separately from all of this, and driven by the caret rather than the pointer,
  * the cell holding the selection is ringed in the user's accent — see
- * `measureFocus`.
+ * `measureFocus`, and gets the row and column actions on a keyboard shortcut —
+ * see `openKeyboardMenu`. Hover is not a gesture every user has: without that
+ * shortcut, adding a row or deleting a column is unreachable by keyboard and by
+ * touch alike.
  */
 
 /**
@@ -126,6 +134,9 @@ const SHIELD_ATTR = 'data-memry-table-resize-shield'
 
 /** Marks a menu that was moved out of the wrapper, for its layer in base.css. */
 const MENU_CLASS = 'memry-table-menu'
+
+/** The `openBarRef` pin for the keyboard's menu, which belongs to no bar. */
+const KEYBOARD_MENU_KEY = 'keyboard'
 
 const CELL_SELECTOR = '[data-content-type="table"] td, [data-content-type="table"] th'
 
@@ -350,6 +361,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   const components = useComponentsContext()
   const tableHandles = useExtension(TableHandlesExtension)
 
+  const { t } = useT('notes')
   const hoveredCellRef = useRef<HTMLTableCellElement | null>(null)
   /**
    * The cell the caret is in — the one the resize shield covers.
@@ -361,6 +373,9 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   const focusCellRef = useRef<HTMLTableCellElement | null>(null)
   const [geometry, setGeometry] = useState<Geometry | null>(null)
   const [focusRing, setFocusRing] = useState<FocusRing | null>(null)
+  const keyboardTriggerRef = useRef<HTMLButtonElement | null>(null)
+  /** Whether the keyboard menu is up, for the anchor's own focus handler. */
+  const keyboardMenuOpenRef = useRef(false)
   /**
    * The bar whose menu is open, or null. While a menu is open the bars are
    * pinned to the cell it was opened from: the pointer is over the menu, which
@@ -473,6 +488,94 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     [editor, tableHandles]
   )
 
+  /**
+   * Open the row/column menu on the caret's cell, from the keyboard.
+   *
+   * The nubs are raised by hover and are not in the tab order, so without this
+   * every row and column action is mouse-only — a keyboard-only user cannot add
+   * a row or delete a column at all (#1661), and neither can a touch user, who
+   * has no hover either.
+   *
+   * Aiming is the same as the mouse path's: replay a `mousemove` on the cell so
+   * `TableHandlesExtension`'s own plugin view names it, then freeze while the
+   * menu is up. The menu's items read their row and column indices from that
+   * state, not from a prop.
+   *
+   * Opening it is a `pointerdown` on the anchor, not a synthetic `Enter` on it,
+   * even though Radix opens on either: the anchor lives inside the table, so a
+   * bubbling `Enter` reaches ProseMirror's own keydown handler on the way out
+   * and splits the block under the caret. `pointerdown` is inert for
+   * ProseMirror, and `fakeEvent` is the flag `@blocknote/shadcn`'s trigger
+   * wrapper looks for to let one through to Radix.
+   */
+  const openKeyboardMenu = useCallback((): boolean => {
+    const cell = focusCellRef.current
+    const trigger = keyboardTriggerRef.current
+    if (!cell?.isConnected || !trigger) return false
+
+    pointExtensionAtCell(cell)
+    tableHandles.freezeHandles()
+    const press = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 })
+    ;(press as PointerEvent & { fakeEvent?: boolean }).fakeEvent = true
+    trigger.dispatchEvent(press)
+    return true
+  }, [tableHandles])
+
+  const handleKeyboardOpenChange = useCallback(
+    (open: boolean): void => {
+      keyboardMenuOpenRef.current = open
+      if (open) {
+        // Same pin as a nub's menu: hover bookkeeping must not tear anything
+        // down while this menu, portalled outside the editor, holds the pointer.
+        openBarRef.current = KEYBOARD_MENU_KEY
+        return
+      }
+
+      tableHandles.unfreezeHandles()
+      openBarRef.current = null
+      // Focus is handed back by `handleAnchorFocus`, not from here: Radix
+      // restores it to the trigger on its own schedule, and a `focus()` racing
+      // that lands nowhere.
+    },
+    [tableHandles]
+  )
+
+  /**
+   * Hand focus on from the anchor to the editor.
+   *
+   * Radix focuses the trigger when the menu closes, however it was closed —
+   * `Escape`, an item, or a click outside. The trigger is a box over a cell, not
+   * a place a caret can live, so it passes focus straight on: the ProseMirror
+   * selection never moved, so the caret lands back in the cell the menu was
+   * opened from, which is what `Escape` has to do.
+   *
+   * Only while the menu is CLOSED. Radix's focus scope pulls focus back into an
+   * open menu, so bouncing it out from here turns every arrow key into a fight:
+   * focus leaves for the editor, the scope hauls it back to the menu's own box,
+   * and the highlight starts again from the first item.
+   */
+  const handleAnchorFocus = useCallback((): void => {
+    if (keyboardMenuOpenRef.current) return
+    editor.focus()
+  }, [editor])
+
+  useEffect(() => {
+    if (!containerEl) return
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (openBarRef.current) return
+      if (!isTableMenuShortcut(event)) return
+      if (!openKeyboardMenu()) return
+      // Capture phase, so this lands before ProseMirror's own handler on
+      // `view.dom` — `Mod+Shift+Enter` must not also split the cell.
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    containerEl.addEventListener('keydown', handleKeyDown, true)
+    return () => containerEl.removeEventListener('keydown', handleKeyDown, true)
+  }, [containerEl, openKeyboardMenu])
+
   useEffect(() => {
     if (!containerEl) return
 
@@ -545,9 +648,10 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
           className="memry-table-handles"
           contentEditable={false}
           suppressContentEditableWarning
-          // Pointer-only, by design: the bars are raised by hover and are not in
-          // the tab order, so announcing them would offer a control no keyboard
-          // can reach. Reaching these menus from the keyboard is #1661.
+          // Pointer-only, by design: the bars are raised by hover and are not
+          // in the tab order, so announcing them would offer a control no
+          // keyboard can reach. The keyboard has its own way to the same
+          // actions — see `keyboardMenu` below.
           aria-hidden="true"
         >
           {geometry.bars.map((bar) => (
@@ -607,6 +711,70 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
     )
   }
 
+  /**
+   * The keyboard's way into the row and column actions.
+   *
+   * One menu rather than the pointer's two, because a keyboard has no cell to
+   * point at: the caret's cell names both a row and a column at once, so both
+   * sets of actions belong in the menu that cell opens. The items are
+   * BlockNote's own `AddButton` / `DeleteButton`, so the edits and their labels
+   * are the same ones the nubs perform.
+   *
+   * Mounted for as long as the caret is in a cell, not raised by the shortcut:
+   * Radix opens a dropdown from an event on its trigger, so the trigger has to
+   * already be there when the key is pressed. It is a box over that cell which
+   * takes no pointer events and paints nothing — the cell under it is still
+   * being typed in.
+   */
+  let keyboardMenu: ReactNode = null
+  if (focusRing && menuComponents) {
+    const { Root, Trigger, Dropdown, Divider, Label } = menuComponents.Generic.Menu
+    // 1-based: the row and column a person counts, not the array index.
+    const position = { row: focusRing.rowIndex + 1, column: focusRing.colIndex + 1 }
+    keyboardMenu = createPortal(
+      <ComponentsContext.Provider value={menuComponents}>
+        <Root onOpenChange={handleKeyboardOpenChange}>
+          <Trigger>
+            <button
+              ref={keyboardTriggerRef}
+              type="button"
+              tabIndex={-1}
+              className="memry-table-keyboard-anchor"
+              data-memry-table-keyboard-anchor=""
+              data-row-index={focusRing.rowIndex}
+              data-col-index={focusRing.colIndex}
+              contentEditable={false}
+              suppressContentEditableWarning
+              onFocus={handleAnchorFocus}
+              // Radix names the dropdown after its trigger, so the row and
+              // column reach a screen reader as the menu's own name.
+              aria-label={t('editor.table.keyboardMenuAria', position)}
+              style={{
+                insetInlineStart: `${focusRing.inlineStart}px`,
+                insetBlockStart: `${focusRing.blockStart}px`,
+                inlineSize: `${focusRing.inlineSize}px`,
+                blockSize: `${focusRing.blockSize}px`
+              }}
+            />
+          </Trigger>
+          {/* `@blocknote/shadcn`'s dropdown forwards className and nothing
+            else, so the class is also what names this menu in the E2E. */}
+          <Dropdown className="bn-table-handle-menu memry-table-keyboard-menu">
+            <Label>{t('editor.table.keyboardMenuTitle', position)}</Label>
+            <DeleteButton orientation="row" />
+            <AddButton orientation="row" side="above" />
+            <AddButton orientation="row" side="below" />
+            <Divider />
+            <DeleteButton orientation="column" />
+            <AddButton orientation="column" side="left" />
+            <AddButton orientation="column" side="right" />
+          </Dropdown>
+        </Root>
+      </ComponentsContext.Provider>,
+      focusRing.wrapper
+    )
+  }
+
   return (
     <>
       {focusRing &&
@@ -649,6 +817,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
           focusRing.wrapper
         )}
       {handles}
+      {keyboardMenu}
     </>
   )
 }

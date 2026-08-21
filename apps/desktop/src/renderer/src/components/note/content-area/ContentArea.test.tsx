@@ -132,7 +132,11 @@ vi.mock('@blocknote/react', () => ({
     Provider: ({ children }: { children: React.ReactNode }) => children
   },
   TableCellMenu: () => <div data-testid="table-cell-menu" />,
-  TableHandleMenu: () => <div data-testid="table-handle-menu" />
+  TableHandleMenu: () => <div data-testid="table-handle-menu" />,
+  // The keyboard menu's items, for the same reason: it only renders once the
+  // caret is measured inside a cell, which needs layout jsdom does not have.
+  AddButton: () => <div data-testid="table-add-button" />,
+  DeleteButton: () => <div data-testid="table-delete-button" />
 }))
 
 vi.mock('sonner', () => ({
