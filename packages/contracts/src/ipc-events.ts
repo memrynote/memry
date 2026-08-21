@@ -23,6 +23,7 @@ export const EVENT_CHANNELS = {
   OAUTH_CALLBACK: 'auth:oauth-callback',
   OAUTH_ERROR: 'auth:oauth-error',
   ATTACHMENT_UPLOAD_FAILED: 'sync:attachment-upload-failed',
+  ATTACHMENT_MATERIALIZED: 'sync:attachment-materialized',
   DEVICE_REMOVED: 'sync:device-removed',
   DEVICE_RENAMED: 'sync:device-renamed',
   LINKING_FINALIZED: 'sync:linking-finalized',
@@ -151,6 +152,24 @@ export interface ClockSkewWarningEvent {
 
 export interface OAuthErrorEvent {
   error: string
+}
+
+/**
+ * An attachment this device did not have is now on disk.
+ *
+ * A note that is already open resolved its attachment URLs when its blocks were
+ * built, and nothing re-runs that: BlockNote calls `resolveFileUrl` once per
+ * block, and the inline PDF preview latches its load error and never retries.
+ * So a file that lands a second later is invisible until the whole renderer is
+ * torn down — closing the note is not enough, because the editor stays mounted.
+ * This is the signal that lets those blocks ask again.
+ *
+ * Deliberately carries only the note id. The renderer re-resolves whatever that
+ * note references rather than matching on a path, so it does not need to agree
+ * with main about how a ref maps onto this device's disk.
+ */
+export interface AttachmentMaterializedEvent {
+  noteId: string
 }
 
 export interface AttachmentUploadFailedEvent {

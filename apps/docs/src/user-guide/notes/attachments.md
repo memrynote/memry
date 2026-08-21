@@ -144,6 +144,8 @@ A note whose attachments were never handed to the server at all — because they
 
 You do not have to do anything for this. Open the app on the device that has the files, leave it connected, and the notes catch up on their own — a broken image or a PDF that would not load on your other devices starts working once the upload lands.
 
+On the receiving device you do not have to reopen anything either. A note that is already on screen when one of its attachments arrives shows it as soon as the file lands — the image fills in and a PDF that could not load renders itself. Previously that took a full restart of the app: closing and reopening the note was not enough, because the editor never came down.
+
 ## Garbage Collection
 
 Files that are no longer referenced by any note are pruned during periodic vacuum. You don't need to clean them up manually.

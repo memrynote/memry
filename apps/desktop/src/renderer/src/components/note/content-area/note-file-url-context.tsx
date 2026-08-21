@@ -14,21 +14,33 @@
  * to close.
  */
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react'
+import {
+  getAttachmentRevision,
+  subscribeToAttachmentRevisions,
+  withAttachmentRevision
+} from '@/lib/attachment-revision'
 
 type FileUrlResolver = (url: string) => Promise<string>
 
 const NoteFileUrlContext = createContext<FileUrlResolver | null>(null)
+/** The note whose attachments these blocks belong to, for revisioning. */
+const NoteIdContext = createContext<string | undefined>(undefined)
 
 export function NoteFileUrlProvider({
   resolveFileUrl,
+  noteId,
   children
 }: {
   resolveFileUrl: FileUrlResolver
+  /** Optional: a surface that does not know its note id simply never revisions. */
+  noteId?: string
   children: React.ReactNode
 }) {
   return (
-    <NoteFileUrlContext.Provider value={resolveFileUrl}>{children}</NoteFileUrlContext.Provider>
+    <NoteFileUrlContext.Provider value={resolveFileUrl}>
+      <NoteIdContext.Provider value={noteId}>{children}</NoteIdContext.Provider>
+    </NoteFileUrlContext.Provider>
   )
 }
 
@@ -46,6 +58,12 @@ const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
  */
 export function useResolvedFileUrl(url: string): string | null {
   const resolve = useContext(NoteFileUrlContext)
+  const noteId = useContext(NoteIdContext)
+  // Re-render when an attachment for this note lands, and hand the block a URL
+  // it has not seen before so it actually asks for the file again.
+  const revision = useSyncExternalStore(subscribeToAttachmentRevisions, () =>
+    getAttachmentRevision(noteId)
+  )
   const isResolved = !url || HAS_SCHEME.test(url)
   const [resolved, setResolved] = useState<string | null>(isResolved ? url : null)
 
@@ -63,5 +81,5 @@ export function useResolvedFileUrl(url: string): string | null {
     }
   }, [resolve, url, isResolved])
 
-  return resolved
+  return resolved === null ? null : withAttachmentRevision(resolved, revision)
 }

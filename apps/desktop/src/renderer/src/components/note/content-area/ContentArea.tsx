@@ -63,6 +63,7 @@ import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { vaultService } from '@/services/vault-service'
 import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
+import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/attachment-revision'
 import { NoteFileUrlProvider } from './note-file-url-context'
 import {
   ReviewFormattingToolbar,
@@ -298,6 +299,32 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
     noteIdRef.current = noteId
+  }, [noteId])
+
+  // BlockNote resolves an image block's URL once, while building the block's
+  // DOM, and keeps whatever came back — so unlike Memry's own file block there
+  // is no React state a fresh request can be re-rendered out of. When an
+  // attachment for this note lands, re-point the editor's vault-served images
+  // at the revisioned URL so they ask for the file again; a note that was open
+  // while its images synced in otherwise showed nothing until the app was
+  // restarted. This only ever touches the DOM: block props, and therefore the
+  // note's markdown on disk, are left exactly as they were.
+  useEffect(() => {
+    return subscribeToAttachmentRevisions(() => {
+      const revision = getAttachmentRevision(noteId)
+      if (revision <= 0) return
+      const root = containerRef.current
+      if (!root) return
+      for (const img of root.querySelectorAll<HTMLImageElement>('img[src^="memry-file:"]')) {
+        try {
+          const next = new URL(img.src)
+          next.searchParams.set('v', String(revision))
+          img.src = next.toString()
+        } catch {
+          // An unparseable src is not ours to rewrite.
+        }
+      }
+    })
   }, [noteId])
 
   // `uploadFile` is handed to BlockNote once, at editor creation, so anything it
@@ -1314,7 +1341,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // reaches it. Handing the same resolver down the tree is what lets a
   // note-relative PDF/attachment ref load — see `note-file-url-context`.
   return (
-    <NoteFileUrlProvider resolveFileUrl={resolveFileUrl}>
+    <NoteFileUrlProvider resolveFileUrl={resolveFileUrl} noteId={noteId}>
       <div
         ref={containerRef}
         role="region"

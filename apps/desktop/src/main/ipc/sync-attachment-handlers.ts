@@ -457,6 +457,11 @@ export function registerAttachmentHandlers(): void {
           ? await service.downloadAttachment(attachmentId, diskPath, { targetIsDir: true })
           : await service.downloadAttachment(attachmentId, diskPath)
         markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
+        // The bytes are on disk now, but a note that is already open resolved
+        // its attachment URLs when its blocks were built and never asks again.
+        // Without this the file is invisible until the app is restarted —
+        // reopening the note does not help, the editor never unmounts.
+        broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, { noteId })
         // Embedded attachments land inside attachments/<noteId>/ — the note's
         // own fileSize (a binary-note concept) must not be overwritten by them.
         if (!intoDir) {

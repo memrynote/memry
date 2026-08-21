@@ -738,6 +738,13 @@ function FileBlockRender({
     <div ref={contentRef} className="file-block my-2" contentEditable={false}>
       {isPdf ? (
         <PdfPreview
+          // Keyed by URL so a changed one rebuilds the preview from scratch. A
+          // load error is otherwise terminal — the red card survives for as long
+          // as the block is mounted, and the editor does not unmount when the
+          // note is closed, so an attachment that synced in a moment later
+          // stayed invisible until the app was restarted. The URL is what
+          // changes when this note's attachments land (see `attachment-revision`).
+          key={resolvedUrl}
           url={resolvedUrl}
           name={name}
           width={width ?? 0}

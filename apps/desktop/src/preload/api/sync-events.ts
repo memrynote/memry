@@ -7,6 +7,7 @@ import type {
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
   UploadProgressEvent,
+  AttachmentMaterializedEvent,
   AttachmentUploadFailedEvent,
   DownloadProgressEvent,
   InitialSyncProgressEvent,
@@ -54,6 +55,11 @@ export const syncEvents = {
     callback: (event: AttachmentUploadFailedEvent) => void
   ): (() => void) =>
     subscribe<AttachmentUploadFailedEvent>(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, callback),
+
+  onAttachmentMaterialized: (
+    callback: (event: AttachmentMaterializedEvent) => void
+  ): (() => void) =>
+    subscribe<AttachmentMaterializedEvent>(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, callback),
 
   onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void): (() => void) =>
     subscribe<InitialSyncProgressEvent>(SYNC_EVENTS.INITIAL_SYNC_PROGRESS, callback),

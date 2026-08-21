@@ -49,6 +49,7 @@ import type {
   LinkingApprovedEvent,
   LinkingFinalizedEvent,
   UploadProgressEvent,
+  AttachmentMaterializedEvent,
   AttachmentUploadFailedEvent,
   DownloadProgressEvent,
   InitialSyncProgressEvent,
@@ -1887,6 +1888,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void
   onDownloadProgress: (callback: (event: DownloadProgressEvent) => void) => () => void
   onAttachmentUploadFailed: (callback: (event: AttachmentUploadFailedEvent) => void) => () => void
+  onAttachmentMaterialized: (callback: (event: AttachmentMaterializedEvent) => void) => () => void
   onInitialSyncProgress: (callback: (event: InitialSyncProgressEvent) => void) => () => void
   onQueueCleared: (callback: (event: QueueClearedEvent) => void) => () => void
   onSyncPaused: (callback: (event: SyncPausedEvent) => void) => () => void
