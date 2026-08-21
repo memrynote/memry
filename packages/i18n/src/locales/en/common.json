@@ -319,7 +319,7 @@
       "groupJournals": "Journals",
       "groupProjects": "Projects",
       "groupFolders": "Folders",
-      "useUrl": "Link to {{url}}",
+      "useUrl": "Link to {url}",
       "shapeTarget": "A shape on this canvas",
       "missingTarget": "No longer on this canvas"
     },
@@ -413,7 +413,7 @@
       "updateRestart": "Restart",
       "updateInstallingTitle": "Installing update",
       "updateInstallingSubtitle": "MemryNote will restart automatically.",
-      "sortLabel": "Sort {{section}}: {{mode}}",
+      "sortLabel": "Sort {section}: {mode}",
       "sortModeManual": "Manual",
       "sortModeNameAsc": "Name A → Z",
       "sortModeNameDesc": "Name Z → A",
