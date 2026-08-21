@@ -1,6 +1,7 @@
 import { PageHead } from '@/components/shared/PageHead'
 import { Hero2 } from '@/components/site/Hero2'
 import { EverythingRow } from '@/components/site/EverythingRow'
+import { SplitVsOne } from '@/components/site/SplitVsOne'
 import { UseCasesGallery } from '@/components/site/UseCasesGallery'
 import { Features } from '@/components/sections/Features'
 import { ConnectedShowcase } from '@/components/site/ConnectedShowcase'
@@ -16,6 +17,7 @@ export function Home() {
       <PageHead page="home" jsonLd />
       <Hero2 />
       <EverythingRow />
+      <SplitVsOne />
       <Features />
       <FounderNote>
         I built MemryNote because I was tired of my life being split across four apps that all

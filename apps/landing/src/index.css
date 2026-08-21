@@ -452,3 +452,36 @@ h6 {
   width: 100%;
   object-fit: cover;
 }
+
+/* ——— Split vs One: falling chips and breathing orbit ———
+   Transform-only so the compositor carries them; the global reduced-motion block above
+   already reduces both to a single frame. */
+@keyframes rain-fall {
+  from {
+    transform: translate3d(0, -50%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.rain-track {
+  animation: rain-fall var(--rain-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+@keyframes orbit-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, -5px, 0);
+  }
+  50% {
+    transform: translate3d(0, 5px, 0);
+  }
+}
+
+.orbit-breathe {
+  animation: orbit-breathe var(--breathe-duration, 5.5s) ease-in-out infinite;
+  animation-delay: var(--breathe-delay, 0s);
+  will-change: transform;
+}
