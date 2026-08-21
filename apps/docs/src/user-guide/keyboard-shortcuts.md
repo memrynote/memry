@@ -97,6 +97,28 @@ When the inbox or a card has focus:
 | Open source URL | <kbd>O</kbd>                              |
 | Archive         | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
 
+## Notes Tree
+
+When a row in the sidebar **Collections** tree has focus — click one, or open a
+row's context menu and dismiss it. The arrow keys then move between rows instead
+of scrolling the sidebar.
+
+| Action                              | Shortcut                                  |
+| ----------------------------------- | ----------------------------------------- |
+| Next / previous row                 | <kbd>↓</kbd> / <kbd>↑</kbd>               |
+| Open a folder, then step inside it  | <kbd>→</kbd>                              |
+| Close a folder, or go to its parent | <kbd>←</kbd>                              |
+| Delete selected (asks first)        | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
+
+<kbd>↓</kbd> and <kbd>↑</kbd> walk every visible row in order, in and out of open
+folders, and stop at the ends rather than wrapping. <kbd>→</kbd> opens a closed
+folder; press it again to move onto the first item inside. <kbd>←</kbd> closes an
+open folder, and on anything already closed — a note, or a folder you just shut —
+it jumps out to the parent folder. Moving onto a note opens it, the same as
+clicking it.
+
+While a row is renaming, the arrow keys move the text cursor instead.
+
 ## Canvases
 
 When a row in the sidebar **Canvases** tree has focus. Tab reaches the rows and
