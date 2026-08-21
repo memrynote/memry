@@ -60,10 +60,13 @@ test.describe('Linking selected text', () => {
 
     await openNoteByTitle(page, sourceTitle)
 
+    // Select with the mouse, the way the floating toolbar is meant to be
+    // summoned: BlockNote opens it off the pointer gesture, so a keyboard-only
+    // Home/Shift+End selection leaves the toolbar — and this button — unmounted.
     const editor = page.locator(SELECTORS.noteEditor).first()
     await editor.click()
-    await page.keyboard.press('Home')
-    await page.keyboard.press('Shift+End')
+    const line = editor.getByText(selected, { exact: false }).first()
+    await line.click({ clickCount: 3 })
 
     const linkButton = page.locator('[data-test="link-to-note"]').first()
     await expect(linkButton).toBeEnabled()

@@ -248,9 +248,12 @@ test.describe('File attachments and viewer E2E', () => {
       await page.reload()
       await page.waitForLoadState('domcontentloaded')
 
-      // onLoadSuccess sets numPages=1; the toolbar page counter then reads "1 / 1"
-      // and react-pdf paints the page to a <canvas>. Both prove the worker ran.
-      await expect(page.getByText('1 / 1')).toBeVisible({ timeout: 30_000 })
+      // onLoadSuccess sets numPages=1; the toolbar then shows page 1 of 1 — the
+      // current page is an editable input, the total is the text beside it — and
+      // react-pdf paints the page to a <canvas>. Both prove the worker ran.
+      const pageInput = page.getByTestId('pdf-page-input')
+      await expect(pageInput).toHaveValue('1', { timeout: 30_000 })
+      await expect(page.getByText('/ 1')).toBeVisible({ timeout: 30_000 })
       await expect(page.locator('canvas').first()).toBeVisible({ timeout: 30_000 })
     } finally {
       fs.rmSync(importDir, { recursive: true, force: true })
