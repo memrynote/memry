@@ -98,7 +98,8 @@ omission is visible on the map, and most of them you can open back up.
   deepest node still drawn, and that node carries a `+N more` badge saying how
   much is behind it. Click that node to open the note at that block and read the
   rest there.
-- **Very long labels** are clipped with an ellipsis. The node still opens the
+- **Very long labels** are clipped with an ellipsis — a very long note title
+  included, since the root is a box like any other. The node still opens the
   block, where the full text is.
 - **A very large note.** The map draws at most 200 nodes. When it reaches that,
   a one-line notice appears above the map and whatever is left over is counted

@@ -178,7 +178,9 @@ export function projectBlocks(
   const root: MindMapNode = {
     id: MIND_MAP_ROOT_ID,
     blockId: null,
-    label: options.rootLabel,
+    // The title is user content and a long one would draw a box as tall as a
+    // section, so the label cap covers it too. Clipped, never reworded.
+    label: clipLabel(options.rootLabel),
     kind: 'root',
     level: null,
     depth: 0,
@@ -268,6 +270,10 @@ export function projectBlocks(
       level: null,
       depth: parent.depth + 1,
       isDone: false,
+      // A fold marker stands for content, it is not content: it opens nothing
+      // outside this note and it is not a task.
+      taskId: null,
+      wikiTarget: null,
       tags: [],
       contents: [],
       foldedCount: 0,
@@ -490,7 +496,9 @@ function finish(
   // badge underneath it. Without a translator it still says how much, in digits
   // rather than in words — the number is the promise, the wording is chrome.
   if (node.kind === 'more') {
-    node.label = formatMore ? formatMore(node.foldedCount) : `+${node.foldedCount}`
+    // Clipped like any other label: a locale can word this far longer than
+    // English does, and the cap has to mean the same thing in all of them.
+    node.label = clipLabel(formatMore ? formatMore(node.foldedCount) : `+${node.foldedCount}`)
   }
 
   const tagged = node.tags.map((tag) => `#${tag}`).join(' ')

@@ -66,7 +66,12 @@ const foldedMap = buildMindMap(
 function renderFoldedTree(): { onActivateNode: ReturnType<typeof vi.fn>; marker: HTMLElement } {
   const onActivateNode = vi.fn()
   render(
-    <MindMapTree nodes={foldedMap.nodes} label="Map of Test Note" onActivateNode={onActivateNode} />
+    <MindMapTree
+      nodes={foldedMap.nodes}
+      label="Map of Test Note"
+      linkHint="link to another page"
+      onActivateNode={onActivateNode}
+    />
   )
   const node = foldedMap.nodes.find((candidate) => candidate.kind === 'more')!
   const marker = within(screen.getByRole('tree'))

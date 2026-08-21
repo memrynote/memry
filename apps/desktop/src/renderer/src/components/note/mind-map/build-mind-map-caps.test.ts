@@ -7,10 +7,10 @@
  * saying what it meant; these import the caps and assert the behaviour around
  * them instead.
  *
- * The load-bearing test in this file is the last one. Every other case checks
- * one cap; that one checks the promise the whole ticket rests on — that a block
- * which would have been a node is either DRAWN exactly once or COUNTED exactly
- * once, and never simply gone.
+ * The load-bearing cases are the last describe. Every other case checks one
+ * cap; those check the promise the whole thing rests on — that a block which
+ * would have been a node is either DRAWN exactly once or COUNTED exactly once,
+ * and never simply gone.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -208,6 +208,13 @@ describe('buildMindMap — the label cap', () => {
     const map = buildMindMap([heading('h', 1, 'Short enough')], TRANSLATED)
 
     expect(map.nodes[1].label).toBe('Short enough')
+  })
+
+  it('clips the note title too, which is a label like any other', () => {
+    const map = buildMindMap([], { ...TRANSLATED, rootLabel: long })
+
+    expect(map.tree.label.length).toBeLessThanOrEqual(MIND_MAP_MAX_LABEL_CHARS)
+    expect(map.tree.label.endsWith('…')).toBe(true)
   })
 })
 
