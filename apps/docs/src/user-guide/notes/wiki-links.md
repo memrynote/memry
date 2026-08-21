@@ -73,6 +73,11 @@ cursor away and it goes back to reading as a link.
 This is display only. Nothing is written, so moving the cursor around a note never marks it
 edited and never lands on the undo stack. To actually change the link, open it:
 
+A link you have just written is the one exception. Picking a note from the `[[` dropdown
+leaves the cursor against the new chip, and the link reads as a chip there rather than as
+its markdown — you see what you made. Move the cursor away and back and the markdown shows
+as it does beside any other link.
+
 ### Adding a heading to a link you already inserted
 
 A finished link is a single chip, so there is nothing to type a `#` into. Press
@@ -189,6 +194,10 @@ A `[[wiki link]]` typed into a note file by something other than memrynote — O
 script, another editor, or a note arriving from one of your other devices — is a chip as
 soon as you open the note. You do not have to edit the note to wake the links up, and
 opening it does not change the file: a link is stored as `[[Target]]` either way.
+
+This holds whether or not the note was the one on screen when the file changed. An edit
+made to a note you had switched away from is picked up the same way, and the note shows it
+the next time you open it.
 
 Earlier builds could show such a page as plain, unclickable text until you typed into the
 note or reopened it a few times. Opening the note is now enough.

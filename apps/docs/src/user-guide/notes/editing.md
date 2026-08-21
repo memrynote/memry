@@ -436,3 +436,13 @@ the file is measured again next time it changes.
 Very large files are measured in pieces rather than loaded all at once, so even a file too big
 to fit in memory gets a word count and becomes searchable. For those, search covers the
 beginning of the file rather than all of it.
+
+## When a Note Changes Outside memrynote
+
+Editing a note's file in another app — Obsidian, a script, a text editor — is picked up while
+memrynote is running, and the note carries the change the next time you look at it. This does
+not depend on the note being the one on screen: a note you had switched away from, or never
+opened this session, is updated the same way.
+
+A note you are looking at while its file changes merges the change in place, so an edit you
+are making at the same time is not thrown away.
