@@ -38,6 +38,12 @@ const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
  * shorter, i.e. resize the app window short-and-wide before capturing, don't crop after.
  * Target: ~2400x1200 real px (2:1) → cssWidth 1100 renders pixel-perfect at 550px tall.
  */
+/* The painted sky is nearly white at the top (its own mean is rgb(228 238 244)), so the
+   hero read as pale grey rather than sky. This wash deepens the blue where the headline
+   sits and fades out before the treeline, leaving the landscape's greens untouched. */
+const HERO_SKY_WASH =
+  'linear-gradient(to bottom, rgb(122 168 214 / 0.42) 0%, rgb(132 176 218 / 0.24) 40%, rgb(140 182 220 / 0.08) 62%, transparent 78%)'
+
 const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1448, height: 954 } as const
 const HERO_SHOT_CSS_WIDTH = '58rem'
 
@@ -222,6 +228,12 @@ export function Hero2() {
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full scale-105 object-cover blur-[3px]"
+        />
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{ background: HERO_SKY_WASH }}
         />
 
         {/* The page's dot grid + grain, re-painted over the sky so the texture carries
