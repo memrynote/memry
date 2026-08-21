@@ -1434,9 +1434,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             filePanel={false}
             // BlockNote anchors its row/column handles with floating-ui beside
             // the table, never on it. `TableBorderHandles` below draws ours on
-            // the cell borders instead. Turning this off also removes the cell
-            // handle and the add/remove row+column extend buttons — the cell
-            // menu comes back when these bars are wired.
+            // the cell borders instead and opens the same menus from them.
+            // Turning this off also removes the add/remove row+column extend
+            // buttons and row/column drag-to-reorder, which the bars do not
+            // carry yet.
             tableHandles={false}
           >
             {/* Memry's toolbar on every surface, review or not: BlockNote's stock
@@ -1573,9 +1574,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               minQueryLength={2}
               shouldOpen={(tr) => !isDateMentionActive(tr)}
             />
+            {/* Inside the view, not beside it: the bars portal themselves onto
+              the table's own border lines, but their menus are BlockNote's own
+              `TableHandleMenu` / `TableCellMenu`, which need the editor and
+              components contexts this view provides. */}
+            <TableBorderHandles containerEl={innerContainerEl} />
           </BlockNoteView>
-
-          <TableBorderHandles containerEl={innerContainerEl} />
 
           {aiEnabled && (
             <TagSuggestionPopover

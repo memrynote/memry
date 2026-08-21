@@ -3609,19 +3609,21 @@ del.bn-inline-content {
 }
 
 .memry-table-handle[data-orientation='vertical'] {
-  inline-size: 3px;
+  inline-size: var(--memry-table-handle-thickness);
   block-size: var(--memry-table-handle-length);
 }
 
 .memry-table-handle[data-orientation='horizontal'] {
   inline-size: var(--memry-table-handle-length);
-  block-size: 3px;
+  block-size: var(--memry-table-handle-thickness);
 }
 
 /*
- * Rest: a bare 3px bar. No border, no ring, no outline and no radius — it has
- * to read as the border line it covers. (A knock-out ring is what made the
- * previous attempt read as a pill floating beside the table.)
+ * Rest: a bare bar sitting on the cell border line, slightly thicker than it.
+ * Matching the border's own 1px was tried and rejected — at that width the nub
+ * is a control nobody can find. No border, no ring, no outline and no radius
+ * either. (A knock-out ring is what made the earlier attempt read as a pill
+ * floating beside the table.)
  */
 .memry-table-handle-control {
   flex: none;
@@ -3645,13 +3647,13 @@ del.bn-inline-content {
 }
 
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control {
-  inline-size: 3px;
+  inline-size: var(--memry-table-handle-thickness);
   block-size: var(--memry-table-handle-length);
 }
 
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control {
   inline-size: var(--memry-table-handle-length);
-  block-size: 3px;
+  block-size: var(--memry-table-handle-thickness);
 }
 
 /*
@@ -3665,19 +3667,28 @@ del.bn-inline-content {
  * flashing brand colour for.
  */
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:hover,
-.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible {
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-state='open'] {
   inline-size: 14px;
   block-size: 22px;
 }
 
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:hover,
-.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible {
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-state='open'] {
   inline-size: 22px;
   block-size: 14px;
 }
 
+/*
+ * `[data-state='open']` is the menu trigger's own state, set on the button by
+ * the dropdown. Without it the nub would snap back to a hairline the moment the
+ * pointer moved off it onto its own open menu, leaving the menu hanging off
+ * nothing.
+ */
 .memry-table-handle-control:hover,
-.memry-table-handle-control:focus-visible {
+.memry-table-handle-control:focus-visible,
+.memry-table-handle-control[data-state='open'] {
   border-radius: 4px;
   background-color: var(--primary);
 }
@@ -3696,7 +3707,8 @@ del.bn-inline-content {
 }
 
 .memry-table-handle-control:hover .memry-table-handle-icon,
-.memry-table-handle-control:focus-visible .memry-table-handle-icon {
+.memry-table-handle-control:focus-visible .memry-table-handle-icon,
+.memry-table-handle-control[data-state='open'] .memry-table-handle-icon {
   opacity: 1;
 }
 
@@ -3705,4 +3717,64 @@ del.bn-inline-content {
   .memry-table-handle-icon {
     transition: none;
   }
+}
+
+/*
+ * The cell holding the caret, ringed in the user's accent.
+ *
+ * Painted as a box in the wrapper rather than as a border on the `<td>`:
+ * ProseMirror owns the cell's own attributes and redraws over anything it did
+ * not write (see `table-border-handles.tsx`). `--tint-border` is the accent the
+ * user picks in Settings, at 50%, so the ring reads as "this cell" without
+ * shouting over the text in it.
+ *
+ * Under the bars, over the table: a nub and the ring meet on the same line at
+ * the table's edges, and the nub is the one you can click.
+ */
+.memry-table-cell-focus {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 1px solid var(--tint-border);
+  pointer-events: none;
+}
+
+/*
+ * The menu a nub opens, mounted in `.bn-container` instead of beside the nub.
+ * `.tableWrapper` clips on both axes, so a menu left where its trigger lives
+ * would be cut to the table's box and painted under the editor — see
+ * `table-border-handles.tsx`.
+ *
+ * The layer is stated against BlockNote's own base rather than as a number:
+ * `--bn-ui-base-z-index` is what its floating UI (`+10`, `+20`) is measured
+ * from, and a menu has to sit above all of it.
+ *
+ * `cursor` is set here because the menu is not the editor's text surface, and
+ * because `@blocknote/shadcn` gives every item `cursor: default`.
+ */
+.memry-table-menu {
+  z-index: calc(var(--bn-ui-base-z-index, 0) + 30);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.memry-table-menu [data-slot^='dropdown-menu-'] {
+  cursor: pointer;
+}
+
+/*
+ * The focused cell's inline-end border carries our cell nub AND
+ * prosemirror-tables' column-resize grab zone. The resize cursor and drag win
+ * the pointer, which makes the nub hard to hit, so while a cell holds the
+ * caret its inline-end edge is shielded: a transparent strip that swallows the
+ * pointer events before they reach the editor root.
+ *
+ * Only that one cell, and only while it has the caret — every other column
+ * edge resizes exactly as it did.
+ */
+.memry-table-resize-shield {
+  position: absolute;
+  z-index: 3;
+  cursor: text;
+  background: transparent;
 }

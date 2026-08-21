@@ -19,7 +19,7 @@ import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
-import { openNoteByHandle } from './utils/note-sync-helpers'
+import { getNoteFileBodyById, openNoteByHandle } from './utils/note-sync-helpers'
 
 const cell = (text: string) => ({
   type: 'tableCell',
@@ -41,19 +41,43 @@ const TABLE_DOC = [
 ]
 
 /**
+ * 3x3: one header row, two body rows, every cell separately named so a menu
+ * that acted on the neighbouring row/column/cell shows up as the wrong name
+ * surviving, not as a count that happens to match.
+ */
+const GRID_DOC = [
+  {
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      columnWidths: [null, null, null],
+      headerRows: 1,
+      rows: [
+        { cells: [cell('H1'), cell('H2'), cell('H3')] },
+        { cells: [cell('A1'), cell('A2'), cell('A3')] },
+        { cells: [cell('B1'), cell('B2'), cell('B3')] }
+      ]
+    }
+  }
+]
+
+/**
  * Where to aim a pointer inside a cell. Not the centre: a cell is a fixed
  * 120px wide and a short word leaves the middle empty. Not `{8, 8}` either —
  * the block drag handle overhangs the first column there.
  */
 const IN_CELL = { x: 20, y: 20 }
 
-/** The 1px border `@blocknote/core` paints on every `th`/`td`. */
-const CELL_BORDER = 1
-/** The resting bar covers that line and 1px either side of it. */
-const BAR_THICKNESS = 3
-
 /** Matches `BAR_LENGTH` in table-border-handles.tsx. */
 const BAR_LENGTH = 18
+
+/**
+ * Matches `BAR_THICKNESS`. A nub is thicker than the line it covers — matching
+ * the border's own 1px was tried and rejected as too faint to find — so this is
+ * asserted against the constant, while the CENTRE of the nub is still asserted
+ * against the measured border line.
+ */
+const BAR_THICKNESS = 3
 /** Every comparison is "the same line", so a pixel of rounding is the budget. */
 const TOLERANCE = 1
 
@@ -85,12 +109,39 @@ async function box(locator: Locator) {
   return value
 }
 
-/** Centre of the border line that STARTS at `edge` (a cell's start side). */
-const lineFrom = (edge: number): number => edge + CELL_BORDER / 2
-/** Centre of the border line that ENDS at `edge` (a cell's end side). */
-const lineTo = (edge: number): number => edge - CELL_BORDER / 2
+/** Centre of the border line of width `border` that STARTS at `edge`. */
+const lineFrom = (edge: number, border: number): number => edge + border / 2
+/** Centre of the border line of width `border` that ENDS at `edge`. */
+const lineTo = (edge: number, border: number): number => edge - border / 2
 
-/** Save a tight crop of the table so 3px bars are actually visible. */
+/** Every cell as `text` / `background`, row by row, from the live document. */
+async function tableShape(page: Page): Promise<{ text: string; background?: string }[][]> {
+  return page.evaluate(() => {
+    const editor = (window as any).__memryEditor
+    if (!editor) throw new Error('window.__memryEditor not exposed')
+    const table = editor.document.find((block: any) => block.type === 'table')
+    if (!table) throw new Error('no table in the document')
+    return table.content.rows.map((row: any) =>
+      row.cells.map((value: any) => ({
+        text: (value.content ?? []).map((part: any) => part.text ?? '').join(''),
+        background: value.props?.backgroundColor
+      }))
+    )
+  })
+}
+
+/** Just the text, which is what a wrong row/column deletion would give away. */
+const textGrid = (shape: { text: string }[][]): string[][] =>
+  shape.map((row) => row.map((value) => value.text))
+
+/** Save the whole window — a menu is portalled out of the table's own box. */
+async function shootPage(page: Page, name: string): Promise<void> {
+  if (!SHOT_DIR) return
+  if (!existsSync(SHOT_DIR)) mkdirSync(SHOT_DIR, { recursive: true })
+  await page.screenshot({ path: path.join(SHOT_DIR, name) })
+}
+
+/** Save a tight crop of the table so 1px bars are actually visible. */
 async function shootTable(page: Page, wrapper: Locator, name: string): Promise<void> {
   if (!SHOT_DIR) return
   if (!existsSync(SHOT_DIR)) mkdirSync(SHOT_DIR, { recursive: true })
@@ -113,65 +164,94 @@ test.describe('Table border handles', () => {
   })
 
   test('every bar lands on the cell border it claims, and morphs on hover', async ({ page }) => {
-    // #given a note holding a 2x2 table
+    // #given a note holding a 3x3 table. Three columns on purpose: for a cell
+    // in the MIDDLE column the table's outer inline-start edge and that cell's
+    // own inline-start border are different lines, which is the only way to
+    // tell where the row bar actually sits.
     const note = await createNote(page, `Table Border Handles ${Date.now()}`)
     await openNoteByHandle(page, note)
-    await setDocument(page, TABLE_DOC)
+    await setDocument(page, GRID_DOC)
 
     const editor = page.locator(SELECTORS.noteEditor).first()
     const bodyRow = editor.locator('table tr').nth(1)
-    const bodyCells = bodyRow.locator('td')
-    const firstBodyCell = bodyCells.first()
-    await expect(firstBodyCell).toBeVisible({ timeout: 15_000 })
+    const middleCell = bodyRow.locator('td').nth(1)
+    await expect(middleCell).toBeVisible({ timeout: 15_000 })
 
     // #and BlockNote's own handles are gone — nothing floats beside the table
-    await firstBodyCell.hover({ position: IN_CELL })
+    await middleCell.hover({ position: IN_CELL })
     await expect(page.locator('.bn-table-handle')).toHaveCount(0)
 
-    // #when the pointer rests in the first body cell
+    // #when the pointer rests in the middle body cell
     const bars = page.locator('[data-memry-table-handles] .memry-table-handle')
 
-    // #then exactly three bars are up, and all three belong to the ONE hovered
-    // cell: its inline-start border, its inline-end border, and the table's
-    // block-start border above it. Not the rest of the row, not the table.
+    // #then exactly three bars are up, all placed from the ONE hovered cell:
+    // the table's inline-start edge beside its row, the table's block-start
+    // edge above its column, and its own inline-end border.
     await expect(bars).toHaveCount(3, { timeout: 10_000 })
 
     const table = editor.locator('table').first()
     const tableBox = await box(table)
-    const cell0 = await box(bodyCells.nth(0))
+    const hovered = await box(middleCell)
+
+    // The nub is as thick as the line it covers, and the line's width is the
+    // cell's own — read it from the DOM instead of writing the number twice.
+    const border = await middleCell.evaluate((element) =>
+      parseFloat(getComputedStyle(element).borderInlineStartWidth)
+    )
+    expect(border).toBeGreaterThan(0)
 
     /** A nub covers the middle BAR_LENGTH of its segment, not the whole line. */
     const nubStart = (segmentStart: number, span: number): number =>
       segmentStart + (span - Math.min(BAR_LENGTH, span)) / 2
     const nubLength = (span: number): number => Math.min(BAR_LENGTH, span)
 
-    // --- the row bar: centred on the hovered cell's inline-start border ---
+    // --- the row bar: on the TABLE's inline-start outer border, beside the
+    // hovered cell's row ---
     const rowBar = await box(page.locator('[data-memry-table-bar="row"]'))
-    expect(rowBar.width).toBeCloseTo(BAR_THICKNESS, 0)
-    expect(Math.abs(rowBar.x + rowBar.width / 2 - lineFrom(cell0.x))).toBeLessThanOrEqual(TOLERANCE)
-    expect(Math.abs(rowBar.y - nubStart(cell0.y, cell0.height))).toBeLessThanOrEqual(TOLERANCE)
-    expect(Math.abs(rowBar.height - nubLength(cell0.height))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(rowBar.width - BAR_THICKNESS)).toBeLessThanOrEqual(TOLERANCE)
+    expect(
+      Math.abs(rowBar.x + rowBar.width / 2 - lineFrom(tableBox.x, border))
+    ).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(rowBar.y - nubStart(hovered.y, hovered.height))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(rowBar.height - nubLength(hovered.height))).toBeLessThanOrEqual(TOLERANCE)
 
     // --- the column bar: centred on the table's block-start border, over the
     // hovered cell's own inline extent ---
     const colBar = await box(page.locator('[data-memry-table-bar="column"]'))
-    expect(colBar.height).toBeCloseTo(BAR_THICKNESS, 0)
-    expect(Math.abs(colBar.y + colBar.height / 2 - lineFrom(tableBox.y))).toBeLessThanOrEqual(
-      TOLERANCE
-    )
-    expect(Math.abs(colBar.x - nubStart(cell0.x, cell0.width))).toBeLessThanOrEqual(TOLERANCE)
-    expect(Math.abs(colBar.width - nubLength(cell0.width))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(colBar.height - BAR_THICKNESS)).toBeLessThanOrEqual(TOLERANCE)
+    expect(
+      Math.abs(colBar.y + colBar.height / 2 - lineFrom(tableBox.y, border))
+    ).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(colBar.x - nubStart(hovered.x, hovered.width))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(colBar.width - nubLength(hovered.width))).toBeLessThanOrEqual(TOLERANCE)
 
     // --- one cell bar, centred on the hovered cell's inline-end border ---
     const cellBars = page.locator('[data-memry-table-bar="cell"]')
     await expect(cellBars).toHaveCount(1)
     const cellBar = await box(cellBars.first())
-    expect(cellBar.width).toBeCloseTo(BAR_THICKNESS, 0)
+    expect(Math.abs(cellBar.width - BAR_THICKNESS)).toBeLessThanOrEqual(TOLERANCE)
     expect(
-      Math.abs(cellBar.x + cellBar.width / 2 - lineTo(cell0.x + cell0.width))
+      Math.abs(cellBar.x + cellBar.width / 2 - lineTo(hovered.x + hovered.width, border))
     ).toBeLessThanOrEqual(TOLERANCE)
-    expect(Math.abs(cellBar.y - nubStart(cell0.y, cell0.height))).toBeLessThanOrEqual(TOLERANCE)
-    expect(Math.abs(cellBar.height - nubLength(cell0.height))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(cellBar.y - nubStart(hovered.y, hovered.height))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(cellBar.height - nubLength(hovered.height))).toBeLessThanOrEqual(TOLERANCE)
+
+    // #and nothing sits on the INTERIOR line to the hovered cell's left. That
+    // line is also the previous cell's inline-end border, so a handle there
+    // would address two cells at once — which is why the row bar moved out to
+    // the table's own edge.
+    const verticalCentres = await page
+      .locator('[data-memry-table-handles] .memry-table-handle[data-orientation="vertical"]')
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect()
+          return rect.x + rect.width / 2
+        })
+      )
+    expect(verticalCentres).toHaveLength(2)
+    for (const centre of verticalCentres) {
+      expect(Math.abs(centre - lineFrom(hovered.x, border))).toBeGreaterThan(TOLERANCE)
+    }
 
     // #and a resting bar is a bare line: no border, no ring, no outline
     const resting = await page.locator('[data-memry-table-handle="row"]').evaluate((element) => {
@@ -208,7 +288,9 @@ test.describe('Table border handles', () => {
 
     // #and it is still centred on the same border line it was resting on
     const grown = await box(rowControl)
-    expect(Math.abs(grown.x + grown.width / 2 - lineFrom(cell0.x))).toBeLessThanOrEqual(TOLERANCE)
+    expect(Math.abs(grown.x + grown.width / 2 - lineFrom(tableBox.x, border))).toBeLessThanOrEqual(
+      TOLERANCE
+    )
 
     await shootTable(page, editor.locator('.tableWrapper').first(), 'table-bar-hovered.png')
 
@@ -224,5 +306,309 @@ test.describe('Table border handles', () => {
         { timeout: 5_000 }
       )
       .toBe('22x14')
+  })
+
+  test("the caret's cell is ringed in the accent, and the ring follows the caret", async ({
+    page
+  }) => {
+    // #given a note holding a 3x3 table
+    const note = await createNote(page, `Table Cell Focus ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, GRID_DOC)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const rows = editor.locator('table tr')
+    await expect(rows).toHaveCount(3, { timeout: 15_000 })
+
+    const ring = page.locator('[data-memry-table-cell-focus]')
+
+    /** The ring's seam, and whether its box is the given cell's box. */
+    const ringOn = async (rowIndex: number, colIndex: number) => {
+      const cellBox = await box(rows.nth(rowIndex).locator('td, th').nth(colIndex))
+      const ringBox = await box(ring)
+      return {
+        count: await ring.count(),
+        row: await ring.getAttribute('data-row-index'),
+        col: await ring.getAttribute('data-col-index'),
+        offBy: Math.max(
+          Math.abs(ringBox.x - cellBox.x),
+          Math.abs(ringBox.y - cellBox.y),
+          Math.abs(ringBox.width - cellBox.width),
+          Math.abs(ringBox.height - cellBox.height)
+        )
+      }
+    }
+
+    // #when the caret is put in A1 by clicking
+    await rows.nth(1).locator('td').nth(0).click({ position: IN_CELL })
+    await expect(ring).toHaveCount(1, { timeout: 10_000 })
+
+    // #then the ring is exactly that cell's box, and there is only one of them
+    const first = await ringOn(1, 0)
+    expect({ count: first.count, row: first.row, col: first.col }).toEqual({
+      count: 1,
+      row: '1',
+      col: '0'
+    })
+    expect(first.offBy).toBeLessThanOrEqual(TOLERANCE)
+
+    // #and it is painted in the user's accent, not a colour of its own. The
+    // token is resolved through a probe because `--tint-border` is a
+    // `color-mix()` that `getPropertyValue` hands back unevaluated.
+    const paint = await ring.evaluate((element) => {
+      const probe = document.createElement('div')
+      probe.style.color = 'var(--tint-border)'
+      element.ownerDocument.body.appendChild(probe)
+      const tint = getComputedStyle(probe).color
+      probe.remove()
+      return { border: getComputedStyle(element).borderTopColor, tint }
+    })
+    expect(paint.border).toBe(paint.tint)
+
+    await shootTable(page, editor.locator('.tableWrapper').first(), 'table-cell-focus.png')
+
+    // #when the caret moves to the cell below with the KEYBOARD
+    await page.keyboard.press('ArrowDown')
+    await expect(ring).toHaveAttribute('data-row-index', '2', { timeout: 10_000 })
+
+    // #then the ring moved with it and left A1 bare
+    const moved = await ringOn(2, 0)
+    expect(moved.count).toBe(1)
+    expect(moved.col).toBe('0')
+    expect(moved.offBy).toBeLessThanOrEqual(TOLERANCE)
+    const neighbour = await box(rows.nth(1).locator('td').nth(0))
+    const ringBox = await box(ring)
+    expect(Math.abs(ringBox.y - neighbour.y)).toBeGreaterThan(TOLERANCE)
+
+    // #and typing does not shake it off the cell it is on
+    await page.keyboard.type('xy')
+    await expect(ring).toHaveAttribute('data-row-index', '2')
+    const typed = await ringOn(2, 0)
+    expect(typed.offBy).toBeLessThanOrEqual(TOLERANCE)
+
+    // #and clicking straight into another cell hands it over
+    await rows.nth(1).locator('td').nth(2).click({ position: IN_CELL })
+    await expect(ring).toHaveAttribute('data-col-index', '2', { timeout: 10_000 })
+    const clicked = await ringOn(1, 2)
+    expect(clicked.count).toBe(1)
+    expect(clicked.row).toBe('1')
+    expect(clicked.offBy).toBeLessThanOrEqual(TOLERANCE)
+  })
+
+  test('an open menu leaves the table wrapper and takes the pointer', async ({ page }) => {
+    // #given a note holding a 2x2 table
+    const note = await createNote(page, `Table Menu Layer ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, TABLE_DOC)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const bodyCell = editor.locator('table tr').nth(1).locator('td').first()
+    await expect(bodyCell).toBeVisible({ timeout: 15_000 })
+
+    // #when the row menu is opened from that cell's inline-start nub
+    await bodyCell.hover({ position: IN_CELL })
+    const rowNub = page.locator('[data-memry-table-handle="row"]')
+    await expect(rowNub).toBeVisible({ timeout: 10_000 })
+    await rowNub.click()
+    await expect(page.getByText('Delete row', { exact: true }).first()).toBeVisible({
+      timeout: 10_000
+    })
+    await shootPage(page, 'table-row-menu-open.png')
+
+    // #then it is not mounted inside `.tableWrapper`. That wrapper is the
+    // table's own scroll container — `overflow-x: auto`, `overflow-y: hidden`,
+    // `position: relative` — so a menu left beside its trigger is cut to the
+    // table's box and painted under the editor's own layers.
+    const layer = await page.evaluate(() => {
+      const menu = document.querySelector('.memry-table-menu')
+      const wrapper = document.querySelector('.tableWrapper')
+      const table = wrapper?.querySelector('table')
+      if (!menu || !wrapper || !table) return null
+
+      const rect = (element: Element) => {
+        const { x, y, width, height } = element.getBoundingClientRect()
+        return { x, y, width, height }
+      }
+      const menuBox = rect(menu)
+      const hit = document.elementFromPoint(
+        menuBox.x + menuBox.width / 2,
+        menuBox.y + menuBox.height / 2
+      )
+      return {
+        insideWrapper: Boolean(menu.closest('.tableWrapper')),
+        hitIsMenu: Boolean(hit) && (hit === menu || menu.contains(hit as Node)),
+        hitDescription: hit ? `${hit.tagName}.${String(hit.className || '(no class)')}` : 'nothing',
+        hitCursor: hit ? getComputedStyle(hit).cursor : 'none',
+        menuBox,
+        tableBox: rect(table),
+        wrapperBox: rect(wrapper),
+        viewport: { width: window.innerWidth, height: window.innerHeight }
+      }
+    })
+    if (!layer) throw new Error('no open menu found next to the table')
+    expect(layer.insideWrapper).toBe(false)
+
+    // #and the middle of the menu is the menu: a clipped or under-painted one
+    // leaves the editor's own content as the element under that point, which
+    // is also why the caret cursor used to survive over it
+    expect(layer.hitIsMenu, `the menu's own centre hit ${layer.hitDescription}`).toBe(true)
+    expect(layer.hitCursor).toBe('pointer')
+
+    // #and it is taller than the table it came from and reaches past the
+    // wrapper's bottom edge, which is exactly what the clip used to cut off
+    expect(layer.menuBox.height).toBeGreaterThan(layer.tableBox.height)
+    expect(layer.menuBox.y + layer.menuBox.height).toBeGreaterThan(
+      layer.wrapperBox.y + layer.wrapperBox.height
+    )
+
+    // #and none of it is off screen
+    expect(layer.menuBox.x).toBeGreaterThanOrEqual(0)
+    expect(layer.menuBox.y).toBeGreaterThanOrEqual(0)
+    expect(layer.menuBox.x + layer.menuBox.width).toBeLessThanOrEqual(layer.viewport.width)
+    expect(layer.menuBox.y + layer.menuBox.height).toBeLessThanOrEqual(layer.viewport.height)
+  })
+
+  test('the focused cell stops its own column resizing from fighting the nub', async ({ page }) => {
+    // #given a note holding a 3x3 table
+    const note = await createNote(page, `Table Resize Shield ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, GRID_DOC)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const bodyRow = editor.locator('table tr').nth(1)
+    const firstCell = bodyRow.locator('td').nth(0)
+    const middleCell = bodyRow.locator('td').nth(1)
+    await expect(middleCell).toBeVisible({ timeout: 15_000 })
+
+    /**
+     * Drag the middle cell's inline-end border. Always the SAME edge — the only
+     * thing that changes between the two halves of this test is which cell holds
+     * the caret, so a difference in outcome can only be the shield.
+     *
+     * Aimed near the TOP of the edge, never its middle: the nub occupies the
+     * middle 18px and swallows the pointer there, so a drag at the centre
+     * resizes nothing whether or not the shield exists — measured, and it is
+     * exactly how an earlier version of this test passed while proving nothing.
+     *
+     * The move before `mouse.down()` is not padding either: prosemirror-tables
+     * arms the resize from a `mousemove` near the edge and only then does
+     * `mousedown` start a drag, so pressing without approaching first is inert.
+     */
+    const dragMiddleEdge = async (by: number): Promise<number> => {
+      const rect = await box(middleCell)
+      const edge = rect.x + rect.width
+      const y = rect.y + 5
+      await page.mouse.move(edge - 12, y)
+      await page.mouse.move(edge, y, { steps: 4 })
+      await page.mouse.down()
+      await page.mouse.move(edge + by, y, { steps: 8 })
+      await page.mouse.up()
+      await page.waitForTimeout(200)
+      return (await box(middleCell)).width
+    }
+
+    // #when the caret is in the FIRST cell, so nothing shields the middle
+    // cell's edge, and that edge is dragged
+    await firstCell.click({ position: IN_CELL })
+    await expect(page.locator('[data-memry-table-resize-shield]')).toHaveCount(1, {
+      timeout: 10_000
+    })
+    const unshielded = await box(middleCell)
+    const afterUnshielded = await dragMiddleEdge(60)
+
+    // #then it resizes — column resizing at large is untouched
+    expect(afterUnshielded).toBeGreaterThan(unshielded.width + 1)
+
+    // #when the caret moves into the middle cell, putting its nub and its
+    // shield on that same edge, and the identical drag is repeated
+    await middleCell.click({ position: IN_CELL })
+    await expect(
+      page
+        .locator('[data-memry-table-resize-shield]')
+        .evaluate((el) => el.getBoundingClientRect().x)
+    ).resolves.toBeGreaterThan(0)
+    const shielded = await box(middleCell)
+    const afterShielded = await dragMiddleEdge(60)
+
+    // #then the edge does not move: the nub keeps it
+    expect(Math.abs(afterShielded - shielded.width)).toBeLessThanOrEqual(TOLERANCE)
+  })
+
+  test('each nub opens the menu for its own row, column and cell', async ({ page }) => {
+    // #given a note holding a 3x3 table whose every cell is separately named
+    const note = await createNote(page, `Table Handle Menus ${Date.now()}`)
+    await openNoteByHandle(page, note)
+    await setDocument(page, GRID_DOC)
+
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const rows = editor.locator('table tr')
+    await expect(rows).toHaveCount(3, { timeout: 15_000 })
+
+    const cellNub = page.locator('[data-memry-table-handle="cell"]')
+    const rowNub = page.locator('[data-memry-table-handle="row"]')
+    const colNub = page.locator('[data-memry-table-handle="column"]')
+
+    // --- the cell menu ---
+    // #when A1's inline-end nub is opened. That nub is 3px wide and centred on
+    // the 1px line A1 and A2 share, so the element under the cursor is as
+    // likely to be A2 — a menu that read the hovered cell instead of the nub's
+    // own would colour the neighbour, and would look identical doing it.
+    await rows.nth(1).locator('td').nth(0).hover({ position: IN_CELL })
+    await expect(cellNub).toBeVisible({ timeout: 10_000 })
+    await cellNub.click()
+
+    const colorsItem = page.getByText('Colors', { exact: true }).first()
+    await expect(colorsItem).toBeVisible({ timeout: 10_000 })
+    await shootPage(page, 'table-cell-menu-open.png')
+    await colorsItem.click()
+    await page.locator('[data-test="background-color-red"]').first().click()
+
+    // #then the colour is on A1 — row 1, column 0 — and on no other cell
+    await expect.poll(async () => (await tableShape(page))[1][0].background).toBe('red')
+    const coloured = await tableShape(page)
+    expect(coloured[1][1].background).not.toBe('red')
+    expect(coloured[0][0].background).not.toBe('red')
+    expect(coloured[2][0].background).not.toBe('red')
+
+    // #and the saved note names that one cell, `row:column`, and only it
+    await expect
+      .poll(async () => (await getNoteFileBodyById(page, note.id)) ?? '', { timeout: 20_000 })
+      .toContain('<!-- table-colors:')
+    const saved = await getNoteFileBodyById(page, note.id)
+    expect(saved).toContain('"1:0":{"backgroundColor":"red"}')
+    expect(saved).not.toContain('"1:1"')
+
+    // --- the row menu ---
+    // #when the LAST body row's inline-start nub deletes a row
+    await setDocument(page, GRID_DOC)
+    await rows.nth(2).locator('td').nth(1).hover({ position: IN_CELL })
+    await expect(rowNub).toBeVisible({ timeout: 10_000 })
+    await rowNub.click()
+    await page.getByText('Delete row', { exact: true }).first().click()
+
+    // #then row 2 is the row that went, not the row above it
+    await expect
+      .poll(async () => textGrid(await tableShape(page)))
+      .toEqual([
+        ['H1', 'H2', 'H3'],
+        ['A1', 'A2', 'A3']
+      ])
+
+    // --- the column menu ---
+    // #when the middle column's block-start nub deletes a column
+    await setDocument(page, GRID_DOC)
+    await rows.nth(1).locator('td').nth(1).hover({ position: IN_CELL })
+    await expect(colNub).toBeVisible({ timeout: 10_000 })
+    await colNub.click()
+    await page.getByText('Delete column', { exact: true }).first().click()
+
+    // #then column 1 is the column that went, in every row
+    await expect
+      .poll(async () => textGrid(await tableShape(page)))
+      .toEqual([
+        ['H1', 'H3'],
+        ['A1', 'A3'],
+        ['B1', 'B3']
+      ])
   })
 })
