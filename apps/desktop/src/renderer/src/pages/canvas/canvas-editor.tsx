@@ -116,6 +116,26 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   /** Card titles already resolved for the link bubble, so relabels are stable. */
   const cardTitles = useRef(new Map<string, string>())
 
+  /**
+   * Hands the imperative API out to BOTH sinks, from one stable identity.
+   *
+   * Stable because `excalidrawAPI` is one of the props Excalidraw's own memo
+   * comparator shallow-compares: an inline arrow is a fresh identity on every
+   * render of this component, so it fails that comparison every time and
+   * re-renders the whole surface — which fires `onChange`, which sets state
+   * here, which renders again. A `useCallback` breaks that circuit before it
+   * can close. (The same shape did close, and OOM'd, in the mind map.)
+   *
+   * Both sinks are load-bearing. The ref is what every callback below reads at
+   * call time, so it always describes the surface as it is right now; the state
+   * is what render-time consumers need — `useHandleLibrary` and the gate that
+   * mounts `CanvasCardLayer` — and a ref cannot drive either.
+   */
+  const handleApi = useCallback((instance: ExcalidrawImperativeAPI): void => {
+    apiRef.current = instance
+    setApi(instance)
+  }, [])
+
   // Parse the stored scene up front only to decide whether it is loadable —
   // and deliberately throw the parsed graph away. Retaining it (as a useMemo
   // did) kept a second full copy of the scene, inline image data URLs and all,
@@ -733,6 +753,29 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
     [openLinkPicker]
   )
 
+  /**
+   * The change work, mirrored so `handleChange` can close over nothing.
+   *
+   * A dependency list would not do: `interceptLinkEditor` depends on
+   * `openLinkPicker`, which depends on `t`, whose identity react-i18next only
+   * holds across ordinary renders — one unstable link is enough to churn the
+   * prop, and this is the prop that must never churn.
+   */
+  const changeHandlersRef = useRef({ recordViewport, interceptLinkEditor })
+  useLayoutEffect(() => {
+    changeHandlersRef.current = { recordViewport, interceptLinkEditor }
+  }, [recordViewport, interceptLinkEditor])
+
+  // Stable for the same reason `handleApi` is: `onChange` is shallow-compared
+  // by Excalidraw's memo, and it is the half of the loop that writes state.
+  const handleChange = useCallback<
+    NonNullable<React.ComponentProps<typeof Excalidraw>['onChange']>
+  >((_elements, appState) => {
+    persisterRef.current?.notifyChange()
+    changeHandlersRef.current.recordViewport(appState)
+    changeHandlersRef.current.interceptLinkEditor(appState)
+  }, [])
+
   // Excalidraw's own toolbar/menu i18n comes from its bundled translations via
   // langCode — independent of Memry's i18n and i18n:check; we do not translate
   // Excalidraw's internal UI ourselves.
@@ -785,10 +828,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       onKeyDownCapture={handleKeyDownCapture}
     >
       <Excalidraw
-        excalidrawAPI={(instance) => {
-          apiRef.current = instance
-          setApi(instance)
-        }}
+        excalidrawAPI={handleApi}
         initialData={loadInitialData}
         // The vault is the only store: hide Excalidraw's own file actions
         // (open .excalidraw, save to disk) so they can't bypass — or, via
@@ -800,11 +840,7 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
             saveToActiveFile: false
           }
         }}
-        onChange={(_elements, appState) => {
-          persisterRef.current?.notifyChange()
-          recordViewport(appState)
-          interceptLinkEditor(appState)
-        }}
+        onChange={handleChange}
         onLinkOpen={handleLinkOpen}
         // Three Memry themes exist (light/dark/white); anything not dark maps
         // to Excalidraw's light theme.

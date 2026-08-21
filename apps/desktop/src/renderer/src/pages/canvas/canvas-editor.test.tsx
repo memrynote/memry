@@ -1199,3 +1199,54 @@ describe('CanvasEditor viewport restore', () => {
     expect(cameraWrites()).toHaveLength(0)
   })
 })
+
+/**
+ * Prop identity across the Excalidraw boundary.
+ *
+ * Excalidraw memoizes itself and shallow-compares most of the props it is
+ * handed — `excalidrawAPI` and `onChange` among them. An inline arrow for
+ * either is a fresh identity on every render of this editor, so the surface
+ * re-renders on every render of the editor, and `onChange` writes state back
+ * into the editor: a circuit that stays open only for as long as nothing
+ * happens to close it. The mind map was handed the same shape and took a
+ * vitest worker to 4 GB with it, so this pins the identities down.
+ */
+describe('CanvasEditor Excalidraw prop identity', () => {
+  beforeEach(() => {
+    mocks.excalidrawProps = {}
+    mocks.linkDialogProps = {}
+    mocks.toastError.mockReset()
+    mocks.api.elements = [{ id: 'shape-1', type: 'rectangle' }]
+    mocks.api.selectedElementIds = { 'shape-1': true }
+    mocks.api.isLoading = false
+    mocks.api.showHyperlinkPopup = false
+    installWindowApi()
+  })
+
+  it('hands the surface the same excalidrawAPI and onChange across a re-render', () => {
+    const { rerender } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const first = { ...mocks.excalidrawProps }
+
+    rerender(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    expect(mocks.excalidrawProps.excalidrawAPI).toBe(first.excalidrawAPI)
+    expect(mocks.excalidrawProps.onChange).toBe(first.onChange)
+  })
+
+  it('keeps them stable when the editor re-renders on its own state', () => {
+    const { container } = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    const first = { ...mocks.excalidrawProps }
+
+    // Opening the link picker is a real setState in the editor — the same kind
+    // of write onChange performs, and the one that would feed the loop.
+    fireEvent.keyDown(container.querySelector('[data-canvas-editor]') as Element, {
+      key: 'K',
+      metaKey: true,
+      shiftKey: true
+    })
+
+    expect(mocks.linkDialogProps.open).toBe(true)
+    expect(mocks.excalidrawProps.excalidrawAPI).toBe(first.excalidrawAPI)
+    expect(mocks.excalidrawProps.onChange).toBe(first.onChange)
+  })
+})
