@@ -649,7 +649,18 @@
       "zoomOut": "Kicsinyítés",
       "zoomIn": "Nagyítás",
       "fitToWidth": "A szélességhez illeszkedik",
-      "rotate": "Forgatás"
+      "rotate": "Forgatás",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Nem sikerült betölteni a videót",
@@ -665,7 +676,8 @@
       "open": "Nyissa meg",
       "revealInFinder": "Fedezd fel a Finderben",
       "reveal": "Felfedni",
-      "unsupportedFileType": "Nem támogatott fájltípus"
+      "unsupportedFileType": "Nem támogatott fájltípus",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Új jegyzet létrehozása",

@@ -649,7 +649,18 @@
       "zoomOut": "Uzaklaştır",
       "zoomIn": "Yakınlaştır",
       "fitToWidth": "Genişliğe sığdır",
-      "rotate": "Döndür"
+      "rotate": "Döndür",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Video yüklenemedi",
@@ -665,7 +676,8 @@
       "open": "Açık",
       "revealInFinder": "Finder'da Göster",
       "reveal": "Açıkla",
-      "unsupportedFileType": "Desteklenmeyen dosya türü"
+      "unsupportedFileType": "Desteklenmeyen dosya türü",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Yeni not oluştur",

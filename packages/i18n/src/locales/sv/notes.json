@@ -649,7 +649,18 @@
       "zoomOut": "Zooma ut",
       "zoomIn": "Zooma in",
       "fitToWidth": "Passa till bredd",
-      "rotate": "Rotera"
+      "rotate": "Rotera",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Misslyckades med att ladda video",
@@ -665,7 +676,8 @@
       "open": "Öppna",
       "revealInFinder": "Visa i Finder",
       "reveal": "Visa",
-      "unsupportedFileType": "Otillåten filtyp"
+      "unsupportedFileType": "Otillåten filtyp",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Skapa ny anteckning",

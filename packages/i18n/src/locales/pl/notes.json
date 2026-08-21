@@ -649,7 +649,18 @@
       "zoomOut": "Pomniejsz",
       "zoomIn": "Powiększ",
       "fitToWidth": "Dopasuj do szerokości",
-      "rotate": "Obróć"
+      "rotate": "Obróć",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Nie udało się załadować wideo",
@@ -665,7 +676,8 @@
       "open": "Otwórz",
       "revealInFinder": "Pokaż w Finderze",
       "reveal": "Ujawnij",
-      "unsupportedFileType": "Nieobsługiwany typ pliku"
+      "unsupportedFileType": "Nieobsługiwany typ pliku",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Utwórz nową notatkę",

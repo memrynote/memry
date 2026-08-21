@@ -37,7 +37,24 @@ vi.mock('@/components/tasks/projects/add-file-to-project-dialog', () => ({
 }))
 
 vi.mock('@/components/viewers', () => ({
-  PdfViewer: ({ src }: { src: string }) => <div data-testid="pdf-viewer">{src}</div>,
+  PdfViewer: ({
+    src,
+    title,
+    chips,
+    actions
+  }: {
+    src: string
+    title?: string
+    chips?: React.ReactNode
+    actions?: React.ReactNode
+  }) => (
+    <div data-testid="pdf-viewer">
+      {src}
+      {title}
+      {chips}
+      {actions}
+    </div>
+  ),
   ImageViewer: ({ src, alt }: { src: string; alt: string }) => (
     <div data-testid="image-viewer">
       {src}
@@ -96,18 +113,34 @@ describe('FilePage', () => {
 
   it('loads metadata, renders file info, and opens or reveals the file', async () => {
     const user = userEvent.setup()
+    mocks.getFile.mockResolvedValue({ ...baseFile, fileType: 'image' })
     renderWithProviders(<FilePage fileId="file-1" />)
 
     expect(await screen.findByText('File title')).toBeInTheDocument()
     expect(screen.getByText('2.0 KB')).toBeInTheDocument()
-    expect(screen.getByTestId('pdf-viewer')).toHaveTextContent(
-      'memry-file://local/vault/notes/file.pdf'
-    )
 
     await user.click(screen.getByTitle('phaseF.pagesFile.openInDefaultApp'))
     expect(mocks.openExternal).toHaveBeenCalledWith('file-1')
 
     await user.click(screen.getByTitle('phaseF.pagesFile.revealInFinder'))
+    expect(mocks.revealInFinder).toHaveBeenCalledWith('file-1')
+  })
+
+  it('gives the PDF its name and actions instead of a second header above it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    const viewer = await screen.findByTestId('pdf-viewer')
+    expect(viewer).toHaveTextContent('memry-file://local/vault/notes/file.pdf')
+    // The name and the chips ride in the toolbar, not in a bar above it.
+    expect(viewer).toHaveTextContent('File title')
+    expect(viewer).toContainElement(screen.getByTestId('chips'))
+    // Nothing left over from the info bar: no size readout, no labelled buttons.
+    expect(screen.queryByText('2.0 KB')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('phaseF.pagesFile.openInDefaultApp')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTitle('phaseF.pagesFile.fileActions'))
+    await user.click(await screen.findByText('phaseF.pagesFile.revealInFinder'))
     expect(mocks.revealInFinder).toHaveBeenCalledWith('file-1')
   })
 
@@ -190,10 +223,22 @@ describe('FilePage', () => {
 
   it('opens the add-to-project dialog from the info-bar button', async () => {
     const user = userEvent.setup()
+    mocks.getFile.mockResolvedValue({ ...baseFile, fileType: 'image' })
     renderWithProviders(<FilePage fileId="file-1" />)
 
     expect(await screen.findByText('File title')).toBeInTheDocument()
     await user.click(screen.getByTitle('addToProject.menuLabel'))
+
+    expect(screen.getByTestId('add-file-dialog')).toBeInTheDocument()
+  })
+
+  it('opens the add-to-project dialog from the PDF toolbar menu', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<FilePage fileId="file-1" />)
+
+    await screen.findByTestId('pdf-viewer')
+    await user.click(screen.getByTitle('phaseF.pagesFile.fileActions'))
+    await user.click(await screen.findByText('addToProject.menuLabel'))
 
     expect(screen.getByTestId('add-file-dialog')).toBeInTheDocument()
   })

@@ -8,12 +8,25 @@ import { getI18n } from 'react-i18next'
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, FileWarning, Download, ExternalLink, FolderPlus } from '@/lib/icons'
+import {
+  Loader2,
+  FileWarning,
+  Download,
+  ExternalLink,
+  FolderPlus,
+  MoreHorizontal
+} from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService } from '@/services/notes-service'
 import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/viewers'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { FileMetadata } from '@memry/rpc/notes'
 import { useT } from '@memry/i18n/renderer'
@@ -97,6 +110,56 @@ function FileLoadingState() {
 }
 
 // ============================================================================
+// File Actions Menu
+// ============================================================================
+
+/**
+ * The file's actions as one `...` menu.
+ *
+ * The PDF viewer has no header of its own to spread three labelled buttons
+ * across, and its toolbar is already carrying the reading controls — so on that
+ * surface the same actions collapse into this.
+ */
+function FileActionsMenu({
+  file,
+  onAddToProject
+}: {
+  file: FileMetadata
+  onAddToProject: () => void
+}) {
+  const { t: tPhaseF } = useT('notes')
+  const { t: tTasks } = useT('tasks')
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          title={tPhaseF('phaseF.pagesFile.fileActions')}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={onAddToProject}>
+          <FolderPlus className="me-2 h-4 w-4" />
+          {tTasks('addToProject.menuLabel')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void window.api.notes.openExternal(file.id)}>
+          <ExternalLink className="me-2 h-4 w-4" />
+          {tPhaseF('phaseF.pagesFile.openInDefaultApp')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void window.api.notes.revealInFinder(file.id)}>
+          <Download className="me-2 h-4 w-4" />
+          {tPhaseF('phaseF.pagesFile.revealInFinder')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// ============================================================================
 // File Info Bar Component
 // ============================================================================
 
@@ -157,14 +220,22 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
 // File Viewer Component
 // ============================================================================
 
-function FileViewer({ file }: { file: FileMetadata }) {
+function FileViewer({ file, onAddToProject }: { file: FileMetadata; onAddToProject: () => void }) {
   const { t: tPhaseF } = useT('notes')
   // Convert absolute path to memry-file:// protocol URL for secure local file access
   const fileUrl = toMemryFileUrl(file.absolutePath)
 
   switch (file.fileType) {
     case 'pdf':
-      return <PdfViewer src={fileUrl} className="flex-1" />
+      return (
+        <PdfViewer
+          src={fileUrl}
+          className="flex-1"
+          title={file.title}
+          chips={<ItemProjectChips itemType="file" itemId={file.id} maxVisible={2} />}
+          actions={<FileActionsMenu file={file} onAddToProject={onAddToProject} />}
+        />
+      )
 
     case 'image':
       return <ImageViewer src={fileUrl} alt={file.title} className="flex-1" />
@@ -249,10 +320,15 @@ export function FilePage({ fileId }: FilePageProps) {
     )
   }
 
+  // The PDF viewer carries the file's name, chips and actions in its own
+  // toolbar, so stacking the info bar above it would say all of it twice and
+  // cost a strip of the page for the privilege.
+  const showInfoBar = file.fileType !== 'pdf'
+
   return (
     <div className={cn('flex h-full flex-col min-h-0')}>
-      <FileInfoBar file={file} onAddToProject={() => setAddToProjectOpen(true)} />
-      <FileViewer file={file} />
+      {showInfoBar && <FileInfoBar file={file} onAddToProject={() => setAddToProjectOpen(true)} />}
+      <FileViewer file={file} onAddToProject={() => setAddToProjectOpen(true)} />
       <AddFileToProjectDialog
         open={addToProjectOpen}
         onOpenChange={setAddToProjectOpen}

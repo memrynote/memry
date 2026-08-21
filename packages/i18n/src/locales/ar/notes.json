@@ -649,7 +649,18 @@
       "zoomOut": "تصغير",
       "zoomIn": "تكبير",
       "fitToWidth": "تناسب العرض",
-      "rotate": "تدوير"
+      "rotate": "تدوير",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "فشل تحميل الفيديو",
@@ -665,7 +676,8 @@
       "open": "مفتوح",
       "revealInFinder": "كشف في الباحث",
       "reveal": "كشف",
-      "unsupportedFileType": "نوع الملف غير معتمد"
+      "unsupportedFileType": "نوع الملف غير معتمد",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "إنشاء ملاحظة جديدة",

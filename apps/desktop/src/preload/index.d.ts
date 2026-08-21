@@ -1273,6 +1273,7 @@ export interface EditorSettingsDTO {
   width: 'normal' | 'full'
   toolbarMode: 'floating' | 'sticky'
   spellCheck: boolean
+  pdfAdaptToTheme: boolean
 }
 
 export interface TaskSettingsDTO {

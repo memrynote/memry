@@ -72,6 +72,9 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
       if (editor.width) editorSeed.width = editor.width
       if (editor.toolbarMode) editorSeed.toolbarMode = editor.toolbarMode
       if (editor.spellCheck !== undefined) editorSeed.spellCheck = editor.spellCheck
+      if (editor.pdfAdaptToTheme !== undefined) {
+        editorSeed.pdfAdaptToTheme = editor.pdfAdaptToTheme
+      }
       if (Object.keys(editorSeed).length > 0) {
         seedPrefs.editor = { ...EDITOR_SETTINGS_DEFAULTS, ...editorSeed }
       }
@@ -105,7 +108,8 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
     ...EDITOR_SETTINGS_DEFAULTS,
     width: prefs.editor.width,
     toolbarMode: prefs.editor.toolbarMode,
-    spellCheck: prefs.editor.spellCheck
+    spellCheck: prefs.editor.spellCheck,
+    pdfAdaptToTheme: prefs.editor.pdfAdaptToTheme
   }
 
   const existingGeneral = getSetting(db, 'general')

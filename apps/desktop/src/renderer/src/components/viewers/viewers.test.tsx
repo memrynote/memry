@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Profiler } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -493,32 +493,40 @@ describe('viewer components', () => {
     // jsdom gives the page pane no width, so the automatic fit cannot run and
     // the zoom steps below start from a plain 100%.
     await user.click(screen.getAllByRole('button', { name: 'load pdf' })[0])
-    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+    const pageField = (): HTMLInputElement =>
+      screen.getByTestId('pdf-page-input') as HTMLInputElement
+    expect(pageField()).toHaveValue('1')
+    expect(screen.getByText('/ 3')).toBeInTheDocument()
     expect(screen.getByText(/page 1 scale 1 rotate 0/)).toBeInTheDocument()
 
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
-    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+    expect(pageField()).toHaveValue('2')
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.previousPage'))
-    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+    expect(pageField()).toHaveValue('1')
 
+    // The zoom has no percentage readout any more, so the page it produced is
+    // what says the zoom happened.
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomIn'))
-    expect(screen.getByText('125%')).toBeInTheDocument()
+    expect(screen.getByText(/page 1 scale 1.25 /)).toBeInTheDocument()
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomOut'))
-    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(screen.getByText(/page 1 scale 1 /)).toBeInTheDocument()
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.rotate'))
     expect(screen.getByText(/rotate 90/)).toBeInTheDocument()
 
     // Give the pane a width so fit-to-width has something to measure against.
     // The page is rotated a quarter turn, so it is fitted across its 792pt
-    // height rather than its 612pt width: (1156 - 32) / 792 = 1.4192 -> 142%.
+    // height rather than its 612pt width: (1156 - 32) / 792 = 1.4192.
     Object.defineProperty(screen.getByTestId('pdf-page-view'), 'clientWidth', {
       value: 1156,
       configurable: true
     })
-    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.fitToWidth'))
-    expect(screen.getAllByText((_, node) => node?.textContent === '142%').length).toBeGreaterThan(0)
-    await user.click(screen.getByTitle('Hide thumbnails'))
-    expect(screen.getByTitle('Show thumbnails')).toBeInTheDocument()
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.viewOptions'))
+    await user.click(await screen.findByText('phaseF.componentsViewersPdfViewer.fitToWidth'))
+    await waitFor(() => expect(screen.getByText(/scale 1.419/)).toBeInTheDocument())
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.hideThumbnails'))
+    expect(
+      screen.getByTitle('phaseF.componentsViewersPdfViewer.showThumbnails')
+    ).toBeInTheDocument()
 
     await user.click(
       within(screen.getByTestId('pdf-document')).getByRole('button', { name: 'fail pdf' })

@@ -649,7 +649,18 @@
       "zoomOut": "Micșorați",
       "zoomIn": "Măriți",
       "fitToWidth": "Se potrivește la lățime",
-      "rotate": "Rotiți"
+      "rotate": "Rotiți",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Nu s-a încărcat videoclipul",
@@ -665,7 +676,8 @@
       "open": "Deschide",
       "revealInFinder": "Dezvăluie în Finder",
       "reveal": "Dezvăluie",
-      "unsupportedFileType": "Tip de fișier neacceptat"
+      "unsupportedFileType": "Tip de fișier neacceptat",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Creați o notă nouă",

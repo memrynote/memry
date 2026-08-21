@@ -1,12 +1,19 @@
 import { getI18n } from 'react-i18next'
 /**
  * PDF Viewer Component
- * Full-page PDF viewer with navigation, zoom, and thumbnail sidebar.
+ *
+ * Full-page PDF viewer with navigation, zoom, and a thumbnail rail.
+ *
+ * The toolbar is the viewer's ONLY chrome: the file page used to sit a second
+ * header above it carrying the file's name and its actions, which cost a strip
+ * of vertical space to say what the tab already said. Those now arrive through
+ * the `title`/`chips`/`actions` slots, so the surfaces that have no file behind
+ * them — a PDF attached to a review comment — simply pass nothing.
  *
  * @module components/viewers/pdf-viewer
  */
 
-import { useState, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Document, Page, pdfjs } from 'react-pdf'
@@ -22,20 +29,43 @@ import {
   Loader2,
   PanelLeft,
   PanelLeftClose,
-  Maximize2
+  Maximize2,
+  MoveVertical,
+  Settings2,
+  FileText,
+  Columns2,
+  BookOpen,
+  Moon
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { mayAutoPositionFor } from '@/hooks/use-tab-auto-position'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
 import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
 import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
 import {
   FILE_VIEW_STATE_KEYS,
   parseNullableScale,
+  parseStoredPdfFitMode,
   parsePdfPage,
+  parsePdfPageMode,
   parseRotation,
   parseViewerBoolean,
-  pdfPageScrollKey
+  pdfPageScrollKey,
+  pdfSpreadPages,
+  pdfSpreadStart,
+  resolveLegacyFitMode,
+  type StoredPdfFitMode,
+  type PdfPageMode
 } from '@/pages/file-view-state'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
@@ -52,6 +82,16 @@ interface PdfViewerProps {
   src: string
   /** CSS classes */
   className?: string
+  /** Name shown at the start of the toolbar. Omitted outside the file page. */
+  title?: string
+  /** Badges rendered next to the title — the file's project chips. */
+  chips?: React.ReactNode
+  /**
+   * File-level actions for the end of the toolbar (the `...` menu). Kept a
+   * slot rather than built in: the viewer has a `src`, not a file id, and the
+   * review-comment preview has no file record to act on at all.
+   */
+  actions?: React.ReactNode
 }
 
 const PDF_LOADING = (
@@ -60,14 +100,23 @@ const PDF_LOADING = (
   </div>
 )
 
-/** Zoom bounds shared by the buttons and by fit-to-width. */
+/** Zoom bounds shared by the buttons and by the fit modes. */
 const MIN_SCALE = 0.5
 const MAX_SCALE = 3
 const ZOOM_STEP = 0.25
-/** The `p-4` gutter around the page — width fit-to-width must not render under. */
+/** The `p-4` gutter around the page — a fit must not render under it. */
 const PAGE_VIEW_PADDING = 32
+/** Gutter between the two halves of a spread. */
+const SPREAD_GAP = 16
 
 const clampScale = (value: number): number => Math.min(Math.max(value, MIN_SCALE), MAX_SCALE)
+
+/** How many pages wide the layout is, regardless of how many the spread holds.
+ *
+ * A document's last page can be alone in a two-page spread. Fitting it as one
+ * column would render it at twice the width of every other page, so the fit is
+ * derived from the MODE and the lone page just leaves its half empty. */
+const columnsFor = (mode: PdfPageMode): number => (mode === 'single' ? 1 : 2)
 
 // ============================================================================
 // Thumbnail Rail
@@ -82,8 +131,11 @@ const THUMBNAIL_ROW_HEIGHT = THUMBNAIL_MEDIA_HEIGHT + 26
 
 interface PdfThumbnailRailProps {
   numPages: number
-  currentPage: number
+  /** Every page the main pane is showing — two of them in a spread. */
+  activePages: number[]
   onSelectPage: (page: number) => void
+  /** Inverted in dark themes alongside the page, so the rail matches it. */
+  adaptToTheme: boolean
 }
 
 /**
@@ -96,10 +148,12 @@ interface PdfThumbnailRailProps {
  */
 function PdfThumbnailRail({
   numPages,
-  currentPage,
-  onSelectPage
+  activePages,
+  onSelectPage,
+  adaptToTheme
 }: PdfThumbnailRailProps): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const leadPage = activePages[0] ?? 1
 
   const virtualizer = useVirtualizer({
     count: numPages,
@@ -112,9 +166,9 @@ function PdfThumbnailRail({
   // page changes from the toolbar, so pull it back into view.
   useEffect(() => {
     if (numPages > 0) {
-      virtualizer.scrollToIndex(currentPage - 1, { align: 'auto' })
+      virtualizer.scrollToIndex(leadPage - 1, { align: 'auto' })
     }
-  }, [currentPage, numPages, virtualizer])
+  }, [leadPage, numPages, virtualizer])
 
   return (
     <div
@@ -129,7 +183,7 @@ function PdfThumbnailRail({
       >
         {virtualizer.getVirtualItems().map((row) => {
           const page = row.index + 1
-          const isActive = page === currentPage
+          const isActive = activePages.includes(page)
 
           return (
             <button
@@ -137,7 +191,9 @@ function PdfThumbnailRail({
               type="button"
               data-testid="pdf-thumbnail"
               data-page={page}
-              aria-current={isActive ? 'page' : undefined}
+              // Only the page the spread STARTS on is the reading position;
+              // marking both would announce two current pages.
+              aria-current={page === leadPage ? 'page' : undefined}
               onClick={() => onSelectPage(page)}
               style={{
                 position: 'absolute',
@@ -153,7 +209,10 @@ function PdfThumbnailRail({
               )}
             >
               <div
-                className="flex items-center justify-center overflow-hidden"
+                className={cn(
+                  'flex items-center justify-center overflow-hidden',
+                  adaptToTheme && 'dark:[filter:invert(1)_hue-rotate(180deg)]'
+                )}
                 style={{ height: `${THUMBNAIL_MEDIA_HEIGHT}px` }}
               >
                 <Page
@@ -175,32 +234,110 @@ function PdfThumbnailRail({
 }
 
 // ============================================================================
+// Page Number Field
+// ============================================================================
+
+interface PdfPageFieldProps {
+  currentPage: number
+  numPages: number
+  onGoToPage: (page: number) => void
+  label: string
+}
+
+/**
+ * The `1 / 400` readout, with the left half editable.
+ *
+ * A rejected entry REVERTS rather than clamping: typing 9999 into a 400-page
+ * document is a typo, and silently landing on the last page reads as the
+ * viewer having obeyed something the user did not mean.
+ */
+function PdfPageField({
+  currentPage,
+  numPages,
+  onGoToPage,
+  label
+}: PdfPageFieldProps): React.JSX.Element {
+  const [draft, setDraft] = useState<string | null>(null)
+
+  const commit = useCallback(() => {
+    const raw = draft
+    setDraft(null)
+    if (raw === null) return
+    const parsed = Number.parseInt(raw.trim(), 10)
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > numPages) return
+    onGoToPage(parsed)
+  }, [draft, numPages, onGoToPage])
+
+  return (
+    <span className="flex items-center gap-1 text-sm text-muted-foreground">
+      <input
+        type="text"
+        inputMode="numeric"
+        data-testid="pdf-page-input"
+        aria-label={label}
+        title={label}
+        // Sized to the document rather than to a guess, so a 4-digit page
+        // number does not scroll inside a 2-digit box.
+        style={{ width: `${Math.max(2, String(numPages).length) + 1.5}ch` }}
+        className="h-7 rounded border border-transparent bg-transparent px-1 text-center tabular-nums text-foreground hover:border-border focus:border-border focus:outline-none focus:ring-1 focus:ring-ring"
+        value={draft ?? String(currentPage)}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            e.currentTarget.blur()
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            setDraft(null)
+            e.currentTarget.blur()
+          }
+        }}
+      />
+      <span className="tabular-nums">/ {numPages}</span>
+    </span>
+  )
+}
+
+// ============================================================================
 // PDF Viewer Component
 // ============================================================================
 
-export function PdfViewer({ src, className }: PdfViewerProps) {
+export function PdfViewer({ src, className, title, chips, actions }: PdfViewerProps) {
   const { t: tPhaseF } = useT('notes')
   const pageScrollRef = useRef<HTMLDivElement>(null)
   const [numPages, setNumPages] = useState<number>(0)
-  // The main pane shows one page at a time, so the page number IS the reading
-  // position — the scroll offset only refines it within that page.
+  // The main pane shows one spread at a time, so the page number IS the
+  // reading position — the scroll offset only refines it within that spread.
   const [currentPage, setCurrentPage] = useTabEntityViewState<number>({
     key: FILE_VIEW_STATE_KEYS.pdfPage,
     defaultValue: 1,
     parse: parsePdfPage
   })
-  // `null` is "the user has never zoomed this document", which is what lets
-  // fit-to-width run. See `hooks/use-tab-auto-position.ts`.
   const [storedScale, setStoredScale] = useTabEntityViewState<number | null>({
     key: FILE_VIEW_STATE_KEYS.pdfScale,
     defaultValue: null,
     parse: parseNullableScale
   })
+  // `'unset'` is a tab written before fit modes existed; those encoded "keep
+  // fitting" as a null scale. See `resolveLegacyFitMode`.
+  const [storedFitMode, setStoredFitMode] = useTabEntityViewState<StoredPdfFitMode>({
+    key: FILE_VIEW_STATE_KEYS.pdfFitMode,
+    defaultValue: 'unset',
+    parse: parseStoredPdfFitMode
+  })
+  const fitMode = resolveLegacyFitMode(storedFitMode, storedScale)
+  const [pageMode, setPageMode] = useTabEntityViewState<PdfPageMode>({
+    key: FILE_VIEW_STATE_KEYS.pdfPageMode,
+    defaultValue: 'single',
+    parse: parsePdfPageMode
+  })
   const [scale, setScale] = useState(storedScale ?? 1)
-  const storedScaleRef = useRef(storedScale)
+  const fitModeRef = useRef(fitMode)
   const scaleRef = useRef(scale)
   useLayoutEffect(() => {
-    storedScaleRef.current = storedScale
+    fitModeRef.current = fitMode
     scaleRef.current = scale
   })
   /** Size of the current page at scale 1, straight from pdf.js. */
@@ -217,11 +354,21 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     parse: parseViewerBoolean
   })
   const [error, setError] = useState<string | null>(null)
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
+  const adaptToTheme = editorSettings.pdfAdaptToTheme
+
+  // The stored page is only guaranteed to be a spread start for the mode it
+  // was stored under, so normalise before anything reads it.
+  const spreadStart = pdfSpreadStart(currentPage, pageMode)
+  const visiblePages = useMemo(
+    () => (numPages > 0 ? pdfSpreadPages(spreadStart, pageMode, numPages) : [spreadStart]),
+    [spreadStart, pageMode, numPages]
+  )
 
   const getPageScrollEl = useCallback(() => pageScrollRef.current, [])
   useTabScrollRestore({
     getScrollElement: getPageScrollEl,
-    key: pdfPageScrollKey(currentPage)
+    key: pdfPageScrollKey(spreadStart)
   })
 
   const handleLoadSuccess = useCallback((pdf: PdfDocumentProxy) => {
@@ -238,13 +385,34 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     )
   }, [])
 
+  /** Jump to the spread that holds `page`, never to a half of one. */
   const goToPage = useCallback(
     (page: number) => {
       if (page >= 1 && page <= numPages) {
-        setCurrentPage(page)
+        setCurrentPage(pdfSpreadStart(page, pageMode))
       }
     },
-    [numPages, setCurrentPage]
+    [numPages, pageMode, setCurrentPage]
+  )
+
+  const stepSpread = useCallback(
+    (direction: 1 | -1) => {
+      const width = pdfSpreadPages(spreadStart, pageMode, numPages).length
+      const target =
+        direction === 1 ? spreadStart + width : pdfSpreadStart(spreadStart - 1, pageMode)
+      if (target >= 1 && target <= numPages) setCurrentPage(target)
+    },
+    [spreadStart, pageMode, numPages, setCurrentPage]
+  )
+
+  const choosePageMode = useCallback(
+    (mode: PdfPageMode) => {
+      setPageMode(mode)
+      // The page on screen must stay on screen: its spread start moves when the
+      // parity changes underneath it.
+      setCurrentPage(pdfSpreadStart(spreadStart, mode))
+    },
+    [setPageMode, setCurrentPage, spreadStart]
   )
 
   // Measure the page pdf.js actually holds rather than assuming Letter: a page
@@ -254,7 +422,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     if (!pdf || typeof pdf.getPage !== 'function') return
     let cancelled = false
     void pdf
-      .getPage(currentPage)
+      .getPage(spreadStart)
       .then((page) => {
         if (cancelled) return
         const viewport = page.getViewport({ scale: 1 })
@@ -266,13 +434,13 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     return () => {
       cancelled = true
     }
-  }, [currentPage, numPages])
+  }, [spreadStart, numPages])
 
   /**
-   * Every zoom write goes through here. Fitting to the pane is auto-positioning
-   * rather than a choice, so it does NOT persist: storing it would freeze one
-   * pane's width into the tab and stop the document fitting the next time it is
-   * opened somewhere narrower.
+   * Every zoom write goes through here. A fit is derived from the pane, so it
+   * does NOT persist a scale: storing it would freeze one pane's width into the
+   * tab and stop the document fitting the next time it is opened somewhere
+   * narrower. What persists is the fit MODE.
    */
   const applyScale = useCallback(
     (raw: number, options?: { persist?: boolean }) => {
@@ -284,25 +452,36 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     [setStoredScale]
   )
 
-  /** The scale at which the current page fills the pane, or `null` if unmeasurable. */
+  /** The scale at which the layout fills the pane, or `null` if unmeasurable. */
   const computeFitScale = useCallback((): number | null => {
     const el = pageScrollRef.current
-    if (!el || !pageSize) return null
-    const available = el.clientWidth - PAGE_VIEW_PADDING
-    if (available <= 0) return null
-    // A quarter turn swaps the axis the page is measured across.
-    const acrossPane = rotation % 180 === 0 ? pageSize.width : pageSize.height
-    if (acrossPane <= 0) return null
-    return clampScale(available / acrossPane)
-  }, [pageSize, rotation])
+    if (!el || !pageSize || !fitMode) return null
+    // A quarter turn swaps the axes the page is measured on.
+    const quarterTurned = rotation % 180 !== 0
+    const across = quarterTurned ? pageSize.height : pageSize.width
+    const down = quarterTurned ? pageSize.width : pageSize.height
 
-  // Fit on open, and keep fitting while the tab has no zoom of its own — the
-  // pane changes width when the window resizes or the thumbnail rail toggles.
+    if (fitMode === 'height') {
+      const available = el.clientHeight - PAGE_VIEW_PADDING
+      if (available <= 0 || down <= 0) return null
+      return clampScale(available / down)
+    }
+
+    const columns = columnsFor(pageMode)
+    const available = el.clientWidth - PAGE_VIEW_PADDING - SPREAD_GAP * (columns - 1)
+    if (available <= 0 || across <= 0) return null
+    return clampScale(available / (across * columns))
+  }, [pageSize, rotation, fitMode, pageMode])
+
+  // Keep fitting while a fit mode is chosen — the pane changes width when the
+  // window resizes or the thumbnail rail toggles. This deliberately does NOT go
+  // through `mayAutoPositionFor`: a fit mode is a stored choice, not the
+  // auto-positioning a stored choice is supposed to suppress.
   useEffect(() => {
     const el = pageScrollRef.current
     if (!el) return
     const fit = () => {
-      if (!mayAutoPositionFor(storedScaleRef.current)) return
+      if (!fitModeRef.current) return
       const fitted = computeFitScale()
       if (fitted !== null) applyScale(fitted, { persist: false })
     }
@@ -313,23 +492,52 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     return () => observer.disconnect()
   }, [computeFitScale, applyScale])
 
-  const zoomIn = useCallback(() => {
-    applyScale(scaleRef.current + ZOOM_STEP)
-  }, [applyScale])
+  /** Picking a zoom by hand ends the fit; the number the user chose wins. */
+  const zoomBy = useCallback(
+    (delta: number) => {
+      setStoredFitMode(null)
+      applyScale(scaleRef.current + delta)
+    },
+    [applyScale, setStoredFitMode]
+  )
 
-  const zoomOut = useCallback(() => {
-    applyScale(scaleRef.current - ZOOM_STEP)
-  }, [applyScale])
+  const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy])
+  const zoomOut = useCallback(() => zoomBy(-ZOOM_STEP), [zoomBy])
 
   const rotate = useCallback(() => {
     setRotation((r) => (r + 90) % 360)
   }, [setRotation])
 
-  const fitToWidth = useCallback(() => {
-    const fitted = computeFitScale()
-    // Pressing the button IS a choice, so unlike the automatic fit it persists.
-    if (fitted !== null) applyScale(fitted)
-  }, [computeFitScale, applyScale])
+  /** Choosing a fit hands the zoom back to the pane, so the stored one goes. */
+  const chooseFit = useCallback(
+    (mode: 'width' | 'height') => {
+      setStoredScale(null)
+      setStoredFitMode(mode)
+    },
+    [setStoredScale, setStoredFitMode]
+  )
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      // The text layer is selectable and the page field is an input; neither
+      // should have its keystrokes stolen for navigation.
+      if (event.target instanceof HTMLInputElement) return
+      if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+        event.preventDefault()
+        stepSpread(1)
+      } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault()
+        stepSpread(-1)
+      } else if (event.key === 'Home') {
+        event.preventDefault()
+        goToPage(1)
+      } else if (event.key === 'End') {
+        event.preventDefault()
+        goToPage(numPages)
+      }
+    },
+    [stepSpread, goToPage, numPages]
+  )
 
   if (error) {
     return (
@@ -346,18 +554,25 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
     )
   }
 
+  const isFirstSpread = spreadStart <= 1
+  const isLastSpread = spreadStart + visiblePages.length > numPages
+
   return (
     <div className={cn('flex h-full flex-col bg-muted/20 min-h-0 overflow-hidden', className)}>
-      {/* Toolbar - fixed at top */}
-      <div className="flex items-center justify-between gap-1 sm:gap-2 px-2 sm:px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
-        <div className="flex items-center gap-1 sm:gap-2">
-          {/* Sidebar toggle */}
+      {/* Toolbar - the viewer's only chrome, fixed at top */}
+      <div className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 border-b border-border bg-background/80 backdrop-blur-sm flex-shrink-0">
+        {/* Start: what the file IS */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="h-8 w-8 p-0"
-            title={sidebarOpen ? 'Hide thumbnails' : 'Show thumbnails'}
+            className="h-8 w-8 shrink-0 p-0"
+            title={
+              sidebarOpen
+                ? tPhaseF('phaseF.componentsViewersPdfViewer.hideThumbnails')
+                : tPhaseF('phaseF.componentsViewersPdfViewer.showThumbnails')
+            }
           >
             {sidebarOpen ? (
               <PanelLeftClose className="h-4 w-4" />
@@ -365,72 +580,63 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
               <PanelLeft className="h-4 w-4" />
             )}
           </Button>
+          {title && (
+            <span className="hidden truncate text-sm font-medium md:inline" title={title}>
+              {title}
+            </span>
+          )}
+          {chips && <div className="hidden min-w-0 shrink lg:flex">{chips}</div>}
+        </div>
 
-          <div className="w-px h-5 bg-border hidden sm:block" />
-
-          {/* Page navigation */}
+        {/* Centre: where the reader IS, and how the page is laid out */}
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage <= 1}
+            onClick={() => stepSpread(-1)}
+            disabled={isFirstSpread}
             className="h-8 w-8 p-0"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.previousPage')}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-muted-foreground min-w-[60px] sm:min-w-[80px] text-center">
-            {currentPage} / {numPages}
-          </span>
+          <PdfPageField
+            currentPage={spreadStart}
+            numPages={numPages}
+            onGoToPage={goToPage}
+            label={tPhaseF('phaseF.componentsViewersPdfViewer.goToPage')}
+          />
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage >= numPages}
+            onClick={() => stepSpread(1)}
+            disabled={isLastSpread}
             className="h-8 w-8 p-0"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.nextPage')}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-        </div>
 
-        <div className="flex items-center gap-1 sm:gap-2">
-          {/* Zoom controls */}
+          <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
+
           <Button
             variant="ghost"
             size="sm"
             onClick={zoomOut}
-            className="h-8 w-8 p-0"
+            className="hidden h-8 w-8 p-0 md:inline-flex"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.zoomOut')}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-muted-foreground min-w-[40px] sm:min-w-[50px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={zoomIn}
-            className="h-8 w-8 p-0"
+            className="hidden h-8 w-8 p-0 md:inline-flex"
             title={tPhaseF('phaseF.componentsViewersPdfViewer.zoomIn')}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={fitToWidth}
-            className="h-8 w-8 p-0"
-            title={tPhaseF('phaseF.componentsViewersPdfViewer.fitToWidth')}
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-
-          <div className="w-px h-5 bg-border hidden sm:block" />
-
-          {/* Rotate */}
           <Button
             variant="ghost"
             size="sm"
@@ -440,7 +646,74 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           >
             <RotateCw className="h-4 w-4" />
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                title={tPhaseF('phaseF.componentsViewersPdfViewer.viewOptions')}
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuLabel>
+                {tPhaseF('phaseF.componentsViewersPdfViewer.fit')}
+              </DropdownMenuLabel>
+              {/* No fit is checked once the user picks a zoom; a radio group
+                  with nothing selected is the honest reading of that state. */}
+              <DropdownMenuRadioGroup
+                value={fitMode ?? ''}
+                onValueChange={(value) => chooseFit(value as 'width' | 'height')}
+              >
+                <DropdownMenuRadioItem value="width">
+                  <Maximize2 className="me-2 h-4 w-4" />
+                  {tPhaseF('phaseF.componentsViewersPdfViewer.fitToWidth')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="height">
+                  <MoveVertical className="me-2 h-4 w-4" />
+                  {tPhaseF('phaseF.componentsViewersPdfViewer.fitToHeight')}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>
+                {tPhaseF('phaseF.componentsViewersPdfViewer.pageLayout')}
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={pageMode}
+                onValueChange={(value) => choosePageMode(value as PdfPageMode)}
+              >
+                <DropdownMenuRadioItem value="single">
+                  <FileText className="me-2 h-4 w-4" />
+                  {tPhaseF('phaseF.componentsViewersPdfViewer.singlePage')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="two-odd">
+                  <Columns2 className="me-2 h-4 w-4" />
+                  {tPhaseF('phaseF.componentsViewersPdfViewer.twoPageOdd')}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="two-even">
+                  <BookOpen className="me-2 h-4 w-4" />
+                  {tPhaseF('phaseF.componentsViewersPdfViewer.twoPageEven')}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={adaptToTheme}
+                onCheckedChange={(checked) => {
+                  void updateEditorSettings({ pdfAdaptToTheme: checked === true })
+                }}
+              >
+                <Moon className="me-2 h-4 w-4" />
+                {tPhaseF('phaseF.componentsViewersPdfViewer.adaptToTheme')}
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        {/* End: what can be DONE with the file */}
+        <div className="flex flex-1 items-center justify-end gap-1">{actions}</div>
       </div>
 
       {/* Main content - one Document shared by the rail and the page view, so
@@ -457,26 +730,41 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           {sidebarOpen && (
             <PdfThumbnailRail
               numPages={numPages}
-              currentPage={currentPage}
+              activePages={visiblePages}
               onSelectPage={goToPage}
+              adaptToTheme={adaptToTheme}
             />
           )}
 
-          {/* PDF content - with both horizontal and vertical scrolling */}
+          {/* PDF content - with both horizontal and vertical scrolling.
+              `tabIndex` so the arrow keys have somewhere to land. */}
           <div
             ref={pageScrollRef}
             data-testid="pdf-page-view"
-            className="flex-1 overflow-auto min-h-0"
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            className="flex-1 overflow-auto min-h-0 focus:outline-none"
           >
-            <div className="inline-flex justify-center min-w-full p-4">
-              <Page
-                pageNumber={currentPage}
-                scale={scale}
-                rotate={rotation}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                className="shadow-lg"
-              />
+            <div
+              className={cn(
+                'inline-flex min-w-full justify-center p-4',
+                // Inverting is a no-op in light themes by construction, so the
+                // preference needs no theme read of its own.
+                adaptToTheme && 'dark:[filter:invert(1)_hue-rotate(180deg)]'
+              )}
+              style={{ gap: `${SPREAD_GAP}px` }}
+            >
+              {visiblePages.map((page) => (
+                <Page
+                  key={page}
+                  pageNumber={page}
+                  scale={scale}
+                  rotate={rotation}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  className="shadow-lg"
+                />
+              ))}
             </div>
           </div>
         </div>

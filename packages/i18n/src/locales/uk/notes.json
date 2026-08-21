@@ -649,7 +649,18 @@
       "zoomOut": "Зменшити масштаб",
       "zoomIn": "Збільшити масштаб",
       "fitToWidth": "Підігнати за шириною",
-      "rotate": "Повернути"
+      "rotate": "Повернути",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Не вдалося завантажити відео",
@@ -665,7 +676,8 @@
       "open": "Відкрити",
       "revealInFinder": "Показати у Finder",
       "reveal": "Показати",
-      "unsupportedFileType": "Тип файлу не підтримується"
+      "unsupportedFileType": "Тип файлу не підтримується",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Створити нову нотатку",

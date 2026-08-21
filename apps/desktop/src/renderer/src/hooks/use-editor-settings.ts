@@ -7,7 +7,8 @@ import { getI18n } from 'react-i18next'
 const DEFAULTS: EditorSettingsDTO = {
   width: 'normal',
   toolbarMode: 'floating',
-  spellCheck: false
+  spellCheck: false,
+  pdfAdaptToTheme: false
 }
 
 /** Reading-column width applied when editor width is 'normal' (notes + journal). */

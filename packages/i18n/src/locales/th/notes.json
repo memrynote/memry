@@ -649,7 +649,18 @@
       "zoomOut": "ซูมออก",
       "zoomIn": "ซูมเข้า",
       "fitToWidth": "ปรับให้พอดีกับความกว้าง",
-      "rotate": "หมุน"
+      "rotate": "หมุน",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "โหลดวิดีโอล้มเหลว",
@@ -665,7 +676,8 @@
       "open": "เปิด",
       "revealInFinder": "แสดงใน Finder",
       "reveal": "เปิดเผย",
-      "unsupportedFileType": "ประเภทไฟล์ไม่รองรับ"
+      "unsupportedFileType": "ประเภทไฟล์ไม่รองรับ",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "สร้างบันทึกใหม่",

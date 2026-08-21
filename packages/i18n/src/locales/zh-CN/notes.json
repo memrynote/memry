@@ -649,7 +649,18 @@
       "zoomOut": "缩小",
       "zoomIn": "放大",
       "fitToWidth": "适合宽度",
-      "rotate": "旋转"
+      "rotate": "旋转",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "加载视频失败",
@@ -665,7 +676,8 @@
       "open": "打开",
       "revealInFinder": "在 Finder 中显示",
       "reveal": "显示",
-      "unsupportedFileType": "不支持的文件类型"
+      "unsupportedFileType": "不支持的文件类型",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "创建新笔记",

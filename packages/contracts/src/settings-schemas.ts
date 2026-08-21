@@ -64,7 +64,13 @@ export const EditorSettingsSchema = z.object({
   // by older app versions keep working; only 'full' is treated as full width.
   width: z.preprocess((v) => (v === 'full' ? 'full' : 'normal'), z.enum(['normal', 'full'])),
   toolbarMode: z.enum(['floating', 'sticky']),
-  spellCheck: z.boolean()
+  spellCheck: z.boolean(),
+  /**
+   * Invert PDF pages while the app is in a dark theme. A viewing preference
+   * rather than a property of any one file, so it lives with the settings the
+   * vault carries instead of in a tab's view state.
+   */
+  pdfAdaptToTheme: z.boolean()
 })
 
 export type EditorSettings = z.infer<typeof EditorSettingsSchema>
@@ -74,7 +80,10 @@ export const EDITOR_SETTINGS_DEFAULTS: EditorSettings = {
   toolbarMode: 'floating',
   // Off by default: the editor has no misspelling suggestions in its context
   // menu, so squiggles would be noise the user cannot act on.
-  spellCheck: false
+  spellCheck: false,
+  // Off by default: inverting turns coloured charts and photographs into
+  // negatives, so it has to be the user's choice rather than a surprise.
+  pdfAdaptToTheme: false
 }
 
 // ============================================================================

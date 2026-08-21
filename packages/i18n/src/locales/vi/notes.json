@@ -649,7 +649,18 @@
       "zoomOut": "Thu nhỏ",
       "zoomIn": "Phóng to",
       "fitToWidth": "Vừa với chiều rộng",
-      "rotate": "Xoay"
+      "rotate": "Xoay",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Không thể tải video",
@@ -665,7 +676,8 @@
       "open": "Mở",
       "revealInFinder": "Hiển thị trong Finder",
       "reveal": "Hiện ra",
-      "unsupportedFileType": "Loại tệp không được hỗ trợ"
+      "unsupportedFileType": "Loại tệp không được hỗ trợ",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Tạo ghi chú mới",

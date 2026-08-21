@@ -31,9 +31,27 @@ PDFs render inline as a clean scrolling preview — no viewer chrome — so a no
 
 Open the file page (double-click the sidebar item) for the full multi-page viewer with zoom and find-in-page.
 
-The file page viewer opens **fitted to the width of its pane**, so a document is readable straight away rather than at a fixed 100%. It keeps fitting as you resize the window or toggle the thumbnail sidebar — until you set a zoom yourself, after which your zoom is kept and restored with the tab. **Fit to width** puts it back. Fitting measures the real page, so A4 and landscape pages fit correctly too.
+### The viewer toolbar
 
-The viewer also has a thumbnail sidebar for jumping between pages. It draws only the thumbnails currently scrolled into view, so a several-hundred-page PDF opens without rendering every page up front.
+Everything the viewer offers sits in a single bar across the top — the file's name and its project chips at the start, the reading controls in the middle, and the file's actions at the end. There is no separate header above it.
+
+**Jumping to a page.** The `12 / 340` readout is editable: click the page number, type the one you want, and press Enter. In a long document that beats scrolling the thumbnail rail. A number outside the document is treated as a typo — the field goes back to the page you were on rather than dropping you at the last page.
+
+**Fit and zoom.** The viewer opens **fitted to the width of its pane**, so a document is readable straight away rather than at a fixed 100%. It keeps fitting as you resize the window or toggle the thumbnail sidebar — until you set a zoom yourself with the `−` / `+` buttons, after which your zoom is kept and restored with the tab. Fitting measures the real page, so A4 and landscape pages fit correctly too.
+
+**View options** (the sliders button) holds the rest:
+
+- **Fit to width** / **Fit to height** — pick which way the page fills the pane. Choosing either hands the zoom back to the viewer, so it starts refitting again.
+- **Single page**, **Two-page (odd)**, **Two-page (even)** — read one page at a time or as a spread. Odd-start spreads run 1-2, 3-4; even-start leaves page 1 on its own like a book cover. Paging moves a whole spread at a time, and a page you jump to snaps to the spread that holds it.
+- **Adapt to theme** — invert PDF pages while the app is in a dark theme, so a white document stops glaring. Off by default, since it turns coloured charts and photographs into negatives. This one is a preference rather than a per-file setting: it applies to every PDF you open, and syncs with your other settings.
+
+Fit mode, page layout, zoom, rotation and the page you were on are remembered **per file tab**, so reopening a document puts you back where you were.
+
+**File actions.** The `⋯` menu at the end of the bar carries **Add to project**, **Open in default app** and **Reveal in Finder**.
+
+The viewer also has a thumbnail sidebar for jumping between pages. It draws only the thumbnails currently scrolled into view, so a several-hundred-page PDF opens without rendering every page up front. In a two-page spread both visible pages are highlighted in the rail.
+
+Images, audio and video still open under the usual file header — only the PDF viewer folds it into its toolbar.
 
 The embed's controls sit on the preview itself. The resize corners are faintly visible at rest; hovering the preview, or clicking to select it, brings out the full set:
 

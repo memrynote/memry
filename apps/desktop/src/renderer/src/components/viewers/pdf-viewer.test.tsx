@@ -23,6 +23,10 @@ const RAIL_VIEWPORT_HEIGHT = 600
 /** Width of the pane the page renders into, minus its `p-4` gutter. */
 const PAGE_VIEW_WIDTH = 1224
 const PAGE_VIEW_PADDING = 32
+/** Height of the pane, for the fit-to-height case. */
+const PAGE_VIEW_HEIGHT = 900
+/** Gutter the viewer puts between the halves of a spread. */
+const SPREAD_GAP = 16
 /** US Letter portrait at scale 1, in PDF points. */
 const LETTER_WIDTH = 612
 const LETTER_HEIGHT = 792
@@ -153,7 +157,22 @@ const rowHeight = (): number =>
 const fitScaleFor = (across: number): number => (PAGE_VIEW_WIDTH - PAGE_VIEW_PADDING) / across
 
 const mainCanvasScale = (): number =>
-  Number(screen.getByTestId('pdf-main-canvas').getAttribute('data-scale'))
+  Number(screen.getAllByTestId('pdf-main-canvas')[0]?.getAttribute('data-scale'))
+
+const pageField = (): HTMLInputElement => screen.getByTestId('pdf-page-input') as HTMLInputElement
+
+/** The pages the main pane is actually showing, in order. */
+const mainPages = (): number[] =>
+  screen.queryAllByTestId('pdf-main-canvas').map((node) => Number(node.getAttribute('data-page')))
+
+/** Open the toolbar's view menu and pick one of its radio options. */
+const chooseViewOption = async (
+  user: ReturnType<typeof userEvent.setup>,
+  option: string
+): Promise<void> => {
+  await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.viewOptions'))
+  await user.click(await screen.findByText(`phaseF.componentsViewersPdfViewer.${option}`))
+}
 
 describe('PdfViewer document loading and thumbnail windowing', () => {
   let scrollToSpy: ReturnType<typeof vi.fn>
@@ -218,7 +237,8 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     render(<PdfViewer src="memry-file://spec.pdf" />)
 
     const canvases = await screen.findAllByTestId('pdf-thumbnail-canvas')
-    expect(screen.getByText('1 / 400')).toBeInTheDocument()
+    expect(pageField()).toHaveValue('1')
+    expect(screen.getByText('/ 400')).toBeInTheDocument()
     expect(canvases.length).toBeGreaterThan(0)
     expect(canvases.length).toBeLessThan(20)
     expect([...pdfMocks.liveCanvases].filter((c) => c.kind === 'thumbnail')).toHaveLength(
@@ -244,8 +264,8 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
 
     await user.click(thumbnailFor(300))
 
-    expect(screen.getByText('300 / 400')).toBeInTheDocument()
-    expect(screen.getByTestId('pdf-main-canvas')).toHaveAttribute('data-page', '300')
+    expect(pageField()).toHaveValue('300')
+    expect(screen.getAllByTestId('pdf-main-canvas')[0]).toHaveAttribute('data-page', '300')
     expect(thumbnailFor(300)).toHaveAttribute('aria-current', 'page')
   })
 
@@ -260,7 +280,7 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
 
     scrollToSpy.mockClear()
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
-    expect(screen.getByText('2 / 400')).toBeInTheDocument()
+    expect(pageField()).toHaveValue('2')
 
     expect(scrollToSpy).toHaveBeenCalled()
     const requestedTop = Number(scrollToSpy.mock.calls.at(-1)?.[0]?.top)
@@ -312,8 +332,105 @@ describe('PdfViewer document loading and thumbnail windowing', () => {
     await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.zoomIn'))
     expect(mainCanvasScale()).not.toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
 
-    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.fitToWidth'))
-    expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3)
+    await chooseViewOption(user, 'fitToWidth')
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+  })
+
+  it('jumps to a page typed into the readout, and reverts one out of range', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+
+    await user.clear(pageField())
+    await user.type(pageField(), '317{Enter}')
+    expect(pageField()).toHaveValue('317')
+    expect(mainPages()).toEqual([317])
+
+    // Out of range is a typo, not a request for the last page: the field goes
+    // back to where the reader actually is.
+    await user.clear(pageField())
+    await user.type(pageField(), '9999{Enter}')
+    expect(pageField()).toHaveValue('317')
+    expect(mainPages()).toEqual([317])
+  })
+
+  it('shows two pages per spread and steps through them two at a time', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await chooseViewOption(user, 'twoPageOdd')
+
+    await waitFor(() => expect(mainPages()).toEqual([1, 2]))
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
+    expect(mainPages()).toEqual([3, 4])
+    expect(pageField()).toHaveValue('3')
+
+    // A page landed on mid-spread snaps to the spread that holds it, so the
+    // odd/even parity cannot drift and show a page twice.
+    await user.clear(pageField())
+    await user.type(pageField(), '52{Enter}')
+    expect(mainPages()).toEqual([51, 52])
+  })
+
+  it('leaves page 1 alone in an even-start spread', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await chooseViewOption(user, 'twoPageEven')
+
+    await waitFor(() => expect(mainPages()).toEqual([1]))
+    await user.click(screen.getByTitle('phaseF.componentsViewersPdfViewer.nextPage'))
+    expect(mainPages()).toEqual([2, 3])
+  })
+
+  it('halves the fit when a spread has to share the pane', async () => {
+    const user = userEvent.setup()
+    render(<PdfViewer src="memry-file://spec.pdf" />)
+
+    await screen.findByTestId('pdf-main-canvas')
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(fitScaleFor(LETTER_WIDTH), 3))
+
+    await chooseViewOption(user, 'twoPageOdd')
+
+    const available = PAGE_VIEW_WIDTH - PAGE_VIEW_PADDING - SPREAD_GAP
+    await waitFor(() => expect(mainCanvasScale()).toBeCloseTo(available / (LETTER_WIDTH * 2), 3))
+  })
+
+  it('fits down the pane height when asked to', async () => {
+    const user = userEvent.setup()
+    const originalClientHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'clientHeight'
+    )
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.dataset.testid === 'pdf-page-view' ? PAGE_VIEW_HEIGHT : 0
+      }
+    })
+
+    try {
+      render(<PdfViewer src="memry-file://spec.pdf" />)
+      await screen.findByTestId('pdf-main-canvas')
+
+      await chooseViewOption(user, 'fitToHeight')
+
+      await waitFor(() =>
+        expect(mainCanvasScale()).toBeCloseTo(
+          (PAGE_VIEW_HEIGHT - PAGE_VIEW_PADDING) / LETTER_HEIGHT,
+          3
+        )
+      )
+    } finally {
+      if (originalClientHeight) {
+        Object.defineProperty(HTMLElement.prototype, 'clientHeight', originalClientHeight)
+      } else {
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientHeight
+      }
+    }
   })
 
   it('releases the document proxy and every page canvas on unmount', async () => {
