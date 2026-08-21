@@ -5,8 +5,9 @@ import { Link } from 'react-router'
 import heroBg from '@/assets/hero-bg.png'
 import { Mascot } from '@/components/ui/mascot'
 import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
+import { DownloadPill } from '@/components/shared/DownloadCTA'
 import { trackLandingEvent } from '@/lib/analytics'
-import { downloadHref, osLabel, platformForOS, useDetectedOS } from '@/lib/download'
+import { useDetectedOS } from '@/lib/download'
 
 // Same cask the install guide documents (apps/docs/src/guide/install.md).
 const BREW_COMMAND = 'brew install --cask memrynote/tap/memry'
@@ -84,41 +85,6 @@ function HeadlineChip({
       <Mascot src={mascotSrc} className="size-[0.95em] shrink-0" />
       <span className="italic">{children}</span>
     </span>
-  )
-}
-
-/**
- * Primary hero CTA — label + a filled circle that carries the arrow, sitting on a
- * white halo ring. Geometry mirrors the Paper slogan artboard (58px tall, 18px
- * radius, 6px trailing inset so the circle nests inside the pill).
- */
-function HeroDownloadPill() {
-  const os = useDetectedOS()
-  const platform = platformForOS(os)
-  const label = platform ? `Download for ${osLabel(os)}` : 'Download'
-  const track = () =>
-    trackLandingEvent('landing_download_click', `download:${platform ?? 'all'}:hero`)
-
-  const className =
-    'group/pill inline-flex min-h-[58px] items-center justify-center gap-[22px] rounded-[18px] border-2 border-white/85 bg-terracotta py-[5px] ps-[21px] pe-1.5 shadow-[0_0_0_5px_rgb(255_255_255/0.58)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50'
-
-  const content = (
-    <>
-      <span className="text-[14px] font-semibold leading-[18px] text-white">{label}</span>
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-terracotta transition-transform duration-200 motion-safe:group-hover/pill:translate-x-0.5">
-        <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
-      </span>
-    </>
-  )
-
-  return platform ? (
-    <a href={downloadHref(platform)} onClick={track} className={className}>
-      {content}
-    </a>
-  ) : (
-    <Link to="/download/desktop" onClick={track} className={className}>
-      {content}
-    </Link>
   )
 }
 
@@ -304,7 +270,7 @@ export function Hero2() {
             animate={{ opacity: 1, y: 0 }}
             transition={HERO_IN}
           >
-            <HeroDownloadPill />
+            <DownloadPill location="hero" />
             <Link
               to="/pricing"
               onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}

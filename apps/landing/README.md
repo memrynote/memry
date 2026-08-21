@@ -28,11 +28,11 @@ cp apps/landing/.env.example apps/landing/.env.local
 
 Fill in your environment variables:
 
-| Variable                | Required | Description                                         |
-| ----------------------- | -------- | --------------------------------------------------- |
-| `RESEND_API_KEY`        | Yes      | API key from [Resend](https://resend.com)           |
-| `RESEND_SEGMENT_ID`     | Yes      | Segment ID for the `memrywaitlsit` waitlist segment |
-| `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery    |
+| Variable                | Required | Description                                          |
+| ----------------------- | -------- | ---------------------------------------------------- |
+| `RESEND_API_KEY`        | Yes      | API key from [Resend](https://resend.com)            |
+| `RESEND_SEGMENT_ID`     | Yes      | Segment ID the newsletter signup files contacts into |
+| `RESEND_WEBHOOK_SECRET` | Yes      | Signing secret for Resend event webhook delivery     |
 
 The landing site ships no third-party analytics or session replay. Anonymous desktop product usage
 metrics are collected separately by the desktop app and stored in Cloudflare Analytics Engine.

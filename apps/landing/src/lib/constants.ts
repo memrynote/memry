@@ -132,10 +132,10 @@ export const FOOTER_LINKS = {
   ],
   // Footer shows only marquee competitors; the long tail lives on the /compare hub.
   compare: [
-    { label: 'Obsidian alternative', href: '/obsidian-alternative' },
-    { label: 'Notion alternative', href: '/notion-alternative' },
-    { label: 'Evernote alternative', href: '/evernote-alternative' },
-    { label: 'Apple Notes alternative', href: '/apple-notes-alternative' },
+    { label: 'vs Obsidian', href: '/obsidian-alternative' },
+    { label: 'vs Notion', href: '/notion-alternative' },
+    { label: 'vs Evernote', href: '/evernote-alternative' },
+    { label: 'vs Apple Notes', href: '/apple-notes-alternative' },
     { label: 'Compare all', href: '/compare' }
   ],
   resources: [

@@ -85,6 +85,27 @@ const RAIN_COLUMNS: RainColumn[] = [
   }
 ]
 
+/*
+ * Scatter table for the falling chips. Fixed values, never Math.random: the page is
+ * prerendered, so the server and the client have to lay the same chip out at the same
+ * angle or React throws the markup away on hydrate. Read with a per-lane stride so the
+ * three columns never fall into the same rhythm. Tilts stay under 3.2deg — enough to
+ * read as a scattered pile, not so much that the labels start to feel drunk.
+ */
+const CHIP_TILT = [-2.4, 1.5, -0.8, 2.9, -1.9, 0.7, -3.1, 2.1, -1.2, 2.4, -0.6, 1.8]
+const CHIP_SHIFT = [0, 5, -4, 3, -6, 2, 4, -2, 6, -5, 3, -3]
+
+function chipScatter(lane: number, index: number) {
+  // Knuth's multiplicative hash, not a linear stride: any `index * k` walk collapses for
+  // some lane once k shares a factor with the table length, and that lane comes out with
+  // every chip at the same angle.
+  const hash = ((lane * 31 + index * 17 + 7) * 2654435761) >>> 0
+  return {
+    tilt: CHIP_TILT[hash % CHIP_TILT.length],
+    shift: CHIP_SHIFT[(hash >>> 8) % CHIP_SHIFT.length]
+  }
+}
+
 /** The sliver of rain above the copy: faint, fading out at both ends. */
 const RAIN_MASK_TOP =
   'linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.34) 34%, rgba(0, 0, 0, 0.34) 66%, transparent 100%)'
@@ -145,20 +166,41 @@ const COMPACT_PLACEMENT: Record<string, Placement> = {
   inbox: { top: 95, left: 22, width: 84 }
 }
 
-function RainChip({ label, kind }: { label: string; kind: ChipKind }) {
+function RainChip({
+  label,
+  kind,
+  tilt,
+  shift
+}: {
+  label: string
+  kind: ChipKind
+  tilt: number
+  shift: number
+}) {
   const Icon = CHIP_ICONS[kind]
 
   return (
-    <div className="flex w-full items-center gap-2 rounded-lg border border-border/60 bg-card/80 px-3 py-2.5">
+    <div
+      className="flex w-full items-center gap-2 rounded-lg border border-border/60 bg-card/80 px-3 py-2.5"
+      style={{ transform: `translateX(${shift}px) rotate(${tilt}deg)` }}
+    >
       <Icon className="size-3.5 shrink-0 text-muted/70" />
       <span className="truncate text-[13px] font-medium text-muted">{label}</span>
     </div>
   )
 }
 
-function RainLane({ column, className }: { column: RainColumn; className?: string }) {
+function RainLane({
+  column,
+  lane,
+  className
+}: {
+  column: RainColumn
+  lane: number
+  className?: string
+}) {
   return (
-    <div className={cn('min-w-0 flex-1', className)} style={{ paddingTop: column.offset }}>
+    <div className={cn('min-w-0 flex-1 px-2.5', className)} style={{ paddingTop: column.offset }}>
       <div
         className="rain-track flex flex-col gap-3"
         style={{ '--rain-duration': `${column.duration}s` } as CSSProperties}
@@ -166,9 +208,19 @@ function RainLane({ column, className }: { column: RainColumn; className?: strin
         {/* Two identical passes: the track scrolls exactly one pass, so the loop has no seam. */}
         {[0, 1].map((pass) => (
           <div key={pass} className="flex flex-col gap-3">
-            {column.chips.map((chip) => (
-              <RainChip key={`${pass}-${chip.label}`} label={chip.label} kind={chip.kind} />
-            ))}
+            {column.chips.map((chip, i) => {
+              const { tilt, shift } = chipScatter(lane, i)
+
+              return (
+                <RainChip
+                  key={`${pass}-${chip.label}`}
+                  label={chip.label}
+                  kind={chip.kind}
+                  tilt={tilt}
+                  shift={shift}
+                />
+              )
+            })}
           </div>
         ))}
       </div>
@@ -235,13 +287,26 @@ function WideOrbit() {
         aria-hidden="true"
         className="absolute inset-0 h-full w-full"
       >
+        {/* Two rings, not one: the outer carries the satellites, the inner draws the
+            gathering the copy is about. Both are terracotta rather than border grey so
+            the diagram reads as a diagram from across the page. */}
         <circle
           cx="310"
           cy="230"
           r="160"
-          stroke="var(--color-border)"
-          strokeWidth="1"
-          strokeDasharray="2 7"
+          stroke="var(--color-terracotta)"
+          strokeOpacity="0.42"
+          strokeWidth="1.5"
+          strokeDasharray="4 8"
+        />
+        <circle
+          cx="310"
+          cy="230"
+          r="104"
+          stroke="var(--color-terracotta)"
+          strokeOpacity="0.22"
+          strokeWidth="1.25"
+          strokeDasharray="3 7"
         />
         {[
           'M310 172 L310 94',
@@ -286,9 +351,19 @@ function CompactOrbit() {
           cx="171"
           cy="150"
           r="112"
-          stroke="var(--color-border)"
-          strokeWidth="1"
-          strokeDasharray="2 7"
+          stroke="var(--color-terracotta)"
+          strokeOpacity="0.42"
+          strokeWidth="1.4"
+          strokeDasharray="4 8"
+        />
+        <circle
+          cx="171"
+          cy="150"
+          r="72"
+          stroke="var(--color-terracotta)"
+          strokeOpacity="0.22"
+          strokeWidth="1.2"
+          strokeDasharray="3 7"
         />
         {[
           'M171 104 L171 62',
@@ -331,6 +406,7 @@ function RainField({ mask, className }: { mask: string; className?: string }) {
         <RainLane
           key={column.duration}
           column={column}
+          lane={i}
           className={i === 2 ? 'hidden sm:block' : undefined}
         />
       ))}

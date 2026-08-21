@@ -133,7 +133,7 @@ export function CommunityLoop() {
       <div className="mx-auto w-full max-w-6xl">
         <SectionTitle
           eyebrow="Community"
-          title="Stay in the loop"
+          title="Built in the open"
           sub="Follow what's shipping — and help decide what comes next."
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-5">

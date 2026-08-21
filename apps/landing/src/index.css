@@ -8,6 +8,9 @@
   --font-geist: 'Manrope', system-ui, sans-serif;
   --font-serif: 'Manrope', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  /* The line under a section heading runs on its own face, separate from the Manrope
+     body stack. */
+  --font-sub: 'DM Sans', sans-serif;
 
   --color-primary: #ff671a;
   --color-brand-800: #4d1a00;
@@ -38,6 +41,16 @@
   /* Held a touch darker than the lifted paper so card edges keep their definition. */
   --color-border: #e6e1d8;
   --color-card: #ffffff;
+  /* The page grid's hairline — deliberately at the edge of visible. Overridden inside
+     .zone-dark so the same rails stay readable on the dark footer. */
+  --color-rule: rgb(31 41 55 / 0.14);
+  /* Section heading + sub-line ink — a shade greener than --color-ink. */
+  --color-heading: #1d2521;
+  --color-subtext: #626965;
+  /* Half of max-w-7xl — where the page grid's vertical rails stand. */
+  --rail-half: 40rem;
+  /* Dash length of the page grid's rails and seams; the gap matches it. */
+  --rule-dash: 6px;
 
   /* Pastel section tints — muted, paper-compatible mega-card backgrounds */
   --color-tint-sky: #dfeaf2;
@@ -186,13 +199,78 @@ h6 {
   letter-spacing: -0.02em;
 }
 
+/* One section-heading style across the whole site. Unlayered on purpose: the base
+   h1–h6 rule is unlayered too, and a layered class would lose to it. That also means
+   `text-*` utilities lose to the color here — the three headings that sit on a dark
+   surface pass `text-ink-inverted!` to win it back. */
 .display-section {
   font-family: var(--font-serif);
   font-optical-sizing: auto;
-  font-weight: 400;
-  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
-  line-height: 1.08;
+  font-weight: 500;
+  font-style: normal;
+  font-size: 54px;
+  line-height: 57px;
   letter-spacing: -0.025em;
+  color: var(--color-heading);
+}
+
+/* The line under a section heading. */
+.section-sub {
+  font-family: var(--font-sub);
+  font-weight: 400;
+  font-style: normal;
+  font-size: 17px;
+  line-height: 28px;
+  color: var(--color-subtext);
+}
+
+/* ——— Page grid: two dashed rails down the page, dashed seams between sections ———
+   The rails are pseudo-elements rather than a border on a max-width wrapper, so a
+   full-bleed child (the closing CTA, the footer) keeps its full width and the lines
+   simply cross it. `--rail-half` is half of max-w-7xl, the site's content width; below
+   that the rails settle on the viewport edges.
+
+   The dashes are a repeating gradient, not `border-style: dashed`: the browser's own
+   dash length is tied to the 1px border width and comes out as dots. */
+.page-rails {
+  position: relative;
+}
+
+.page-rails::before,
+.page-rails::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-rule) 0 var(--rule-dash),
+    transparent var(--rule-dash) calc(var(--rule-dash) * 2)
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.page-rails::before {
+  inset-inline-start: max(0px, calc(50% - var(--rail-half)));
+}
+
+.page-rails::after {
+  inset-inline-end: max(0px, calc(50% - var(--rail-half)));
+}
+
+/* The seam between two stacked sections — stops where the rails run, so the grid
+   closes into a frame instead of bleeding past it. */
+.section-rule {
+  height: 1px;
+  width: min(100%, calc(var(--rail-half) * 2));
+  margin-inline: auto;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule) 0 var(--rule-dash),
+    transparent var(--rule-dash) calc(var(--rule-dash) * 2)
+  );
 }
 
 /* Double hairline rule, like a newspaper masthead. Color via currentColor. */
@@ -262,6 +340,7 @@ h6 {
 .zone-dark {
   --color-ink-inverted: #f5f0ea;
   --color-dark-muted: #b8ada5;
+  --color-rule: rgb(245 240 234 / 0.13);
   background-color: var(--color-dark);
   color: var(--color-ink-inverted);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");

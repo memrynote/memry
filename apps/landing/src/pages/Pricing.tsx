@@ -666,7 +666,7 @@ function BelieverNarrative() {
               <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
                 § 03 — The patron
               </p>
-              <h2 className="display-section text-ink-inverted">
+              <h2 className="display-section text-ink-inverted!">
                 Pay <span className="italic text-terracotta">$500 once.</span>
                 <br />
                 Keep memrynote independent.

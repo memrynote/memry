@@ -33,6 +33,9 @@ export type LandingEventName =
   | 'landing_account_open'
   | 'landing_account_signin'
   | 'landing_account_signout'
+  | 'landing_newsletter_submit'
+  | 'landing_newsletter_success'
+  | 'landing_newsletter_error'
 
 export type LandingCampaignKey =
   'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'utm_term'

@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, MoreHorizontal } from 'lucide-react'
 import { ClipperStack } from '@/components/site/ClipperStack'
 import { HomeSection, SectionTitle } from '@/components/site/primitives'
 import { AgentChatWidget } from '@/components/site/widgets/AgentChatWidget'
@@ -15,8 +15,9 @@ const DOCS_IMPORT_URL = 'https://docs.memrynote.com/user-guide/import'
 /*
  * Apps people arrive from — every logo is a real file in public/compare-logos.
  * `docs` deep-links the import guide. Obsidian has no anchor because it isn't an import
- * (the vault opens directly); Logseq, Joplin, UpNote and Tana have no importer of their
- * own — they export Markdown, so they point at the Markdown importer.
+ * (the vault opens directly); Logseq, Joplin and UpNote have no importer of their own —
+ * they export Markdown, so they point at the Markdown importer. The last slot in the grid
+ * is not an app: it is the "More" tile out to the full import guide.
  */
 const IMPORT_LOGOS: { logo: string; name: string; docs: string }[] = [
   { logo: 'obsidian.svg', name: 'Obsidian', docs: DOCS_IMPORT_URL },
@@ -41,8 +42,7 @@ const IMPORT_LOGOS: { logo: string; name: string; docs: string }[] = [
     name: 'Google Keep',
     docs: `${DOCS_IMPORT_URL}#importing-from-google-keep`
   },
-  { logo: 'upnote.png', name: 'UpNote', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` },
-  { logo: 'tana.png', name: 'Tana', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` }
+  { logo: 'upnote.png', name: 'UpNote', docs: `${DOCS_IMPORT_URL}#importing-from-markdown` }
 ]
 
 /*
@@ -304,6 +304,22 @@ export function ConnectedShowcase() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a
+                  href={DOCS_IMPORT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="More apps — read the import guide"
+                  className="group flex h-full flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-paper px-2 py-3 text-center transition duration-200 hover:-translate-y-0.5 hover:border-terracotta/40 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/50"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-ink/10 bg-white shadow-sm transition-shadow duration-200 group-hover:shadow-card">
+                    <MoreHorizontal aria-hidden className="h-5 w-5 text-terracotta" />
+                  </span>
+                  <span className="text-[11px] font-medium leading-tight text-muted transition-colors duration-200 group-hover:text-terracotta">
+                    More
+                  </span>
+                </a>
+              </li>
             </ul>
           </article>
         </div>
