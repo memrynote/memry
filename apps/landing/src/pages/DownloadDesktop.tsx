@@ -21,7 +21,6 @@ import { FinalCta } from '@/components/site/FinalCta'
 import { PageHero } from '@/components/site/PageHero'
 import { Button } from '@/components/ui/button'
 import { GITHUB_URL } from '@/lib/constants'
-import { SITE_TINTS } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
 import { DownloadButton } from '@/components/shared/DownloadCTA'
@@ -110,13 +109,6 @@ function TrustDots() {
 function DesktopHero() {
   return (
     <PageHero
-      tint={SITE_TINTS.downloadDesktop}
-      eyebrow={
-        <>
-          <Download className="h-3 w-3" strokeWidth={2} />
-          Desktop app · Available now
-        </>
-      }
       title={
         <>
           memrynote for <span className="italic text-terracotta">Desktop.</span>

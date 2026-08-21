@@ -52,7 +52,6 @@ import { PageHead } from '@/components/shared/PageHead'
 import { FinalCta } from '@/components/site/FinalCta'
 import { PageHero } from '@/components/site/PageHero'
 import { FeatureChip, SectionTitle } from '@/components/site/primitives'
-import { SITE_TINTS } from '@/lib/site-tints'
 
 interface FeatureItem {
   icon: LucideIcon
@@ -586,8 +585,6 @@ export function FeaturesPage() {
     <>
       <PageHead page="features" />
       <PageHero
-        tint={SITE_TINTS.features}
-        eyebrow="Everything, in one window"
         title="All your features"
         sub="One app. Every tool you need. 115+ features across four integrated pillars — no plugins required."
         actions={<PillarChips />}

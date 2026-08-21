@@ -90,16 +90,7 @@ export function SectionTitle({
       >
         {title}
       </h2>
-      {sub && (
-        <p
-          className={cn(
-            'mt-5 max-w-2xl text-base leading-relaxed text-muted md:text-lg',
-            centered && 'mx-auto'
-          )}
-        >
-          {sub}
-        </p>
-      )}
+      {sub && <p className={cn('section-sub mt-5 max-w-2xl', centered && 'mx-auto')}>{sub}</p>}
     </motion.div>
   )
 }
@@ -180,32 +171,12 @@ export function FeatureChip({ icon, label, href, trailingIcon, className }: Feat
   return <span className={chipClass}>{content}</span>
 }
 
-export interface FounderNoteProps {
-  children: ReactNode
-  className?: string
-}
-
-/** Quiet centered founder strip — small avatar + italic line, the founder's own words. */
-export function FounderNote({ children, className }: FounderNoteProps) {
-  return (
-    <motion.figure
-      initial={RISE_INITIAL}
-      whileInView={RISE_ANIMATE}
-      viewport={RISE_VIEWPORT}
-      transition={RISE_TRANSITION}
-      className={cn(
-        'mx-auto flex max-w-2xl flex-col items-center gap-4 px-6 py-14 text-center md:py-16',
-        className
-      )}
-    >
-      <blockquote className="font-serif text-xl italic leading-relaxed text-ink md:text-2xl">
-        {children}
-      </blockquote>
-      <figcaption className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted">
-        Kaan — founder, MemryNote
-      </figcaption>
-    </motion.figure>
-  )
+/**
+ * The dashed seam between two stacked sections. It stops where the page grid's vertical
+ * rails stand rather than bleeding to the viewport edge, so the grid reads as a frame.
+ */
+export function SectionRule() {
+  return <div aria-hidden className="section-rule" />
 }
 
 export interface HomeSectionProps {

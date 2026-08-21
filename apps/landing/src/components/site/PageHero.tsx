@@ -10,7 +10,8 @@ const EASE = [0.16, 1, 0.3, 1] as const
 const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
 export interface PageHeroProps {
-  tint: HeroTint
+  /** Omit for an untinted hero: no panel colour, no border, the page ground shows through. */
+  tint?: HeroTint
   /** ReactNode, not string: Download's kicker carries an icon. */
   eyebrow?: ReactNode
   title: ReactNode
@@ -42,9 +43,12 @@ export function PageHero({ tint, eyebrow, title, sub, actions, visual, className
     <section className="px-3 pb-4 pt-3 sm:px-6 md:pb-6">
       <div
         className={cn(
-          'relative mx-auto w-full overflow-hidden rounded-3xl border pb-8 md:pb-14',
-          isInk ? 'border-dark-border' : 'border-ink/5',
-          HERO_TINT_CLASSES[tint],
+          'relative mx-auto w-full overflow-hidden rounded-3xl pb-8 md:pb-14',
+          // Untinted: the panel keeps its geometry but drops colour and border, so the
+          // page's own paper, dot grid and grain run straight through the hero.
+          tint && 'border',
+          tint && (isInk ? 'border-dark-border' : 'border-ink/5'),
+          tint && HERO_TINT_CLASSES[tint],
           className
         )}
       >

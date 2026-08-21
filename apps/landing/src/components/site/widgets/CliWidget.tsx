@@ -209,7 +209,7 @@ export function CliWidget({ className }: CliWidgetProps) {
 
   return (
     <div
-      aria-label="MemryNote CLI — try a command"
+      aria-label="MemryNote CLI: try a command"
       onPointerDown={focusPrompt}
       className={cn(
         'flex h-full min-h-[400px] w-full cursor-text flex-col overflow-hidden rounded-[12px]',
@@ -236,7 +236,7 @@ export function CliWidget({ className }: CliWidgetProps) {
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[12px] font-medium"
           style={{ color: TERM.title }}
         >
-          memrynote — zsh
+          memrynote · zsh
         </span>
       </div>
 

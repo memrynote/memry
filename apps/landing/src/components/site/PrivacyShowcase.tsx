@@ -54,21 +54,6 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
   return { lines, setHovered }
 }
 
-const PILLARS = [
-  {
-    title: 'Zero-knowledge sync',
-    desc: 'Notes are encrypted on your machine before upload. We never hold your keys.'
-  },
-  {
-    title: 'Plain files, yours',
-    desc: 'Markdown on your own disk. Open your vault in any editor, leave any time.'
-  },
-  {
-    title: 'Open source',
-    desc: 'AGPL-3.0 licensed. Every line of the app is public — audit it yourself.'
-  }
-]
-
 const LIST_VARIANTS = {
   hidden: {},
   show: { transition: { staggerChildren: 0.12 } }
@@ -92,7 +77,7 @@ export function PrivacyShowcase() {
   const { lines: scrambled, setHovered } = useScramble(scrambleActive, 4, 28)
 
   return (
-    <section ref={ref} className="zone-dark px-4 py-20 sm:px-6 md:py-28">
+    <section ref={ref} className="page-rails zone-dark px-4 py-20 sm:px-6 md:py-28">
       <Container size="md">
         <motion.div
           className="mb-12 max-w-2xl md:mb-14"
@@ -104,16 +89,16 @@ export function PrivacyShowcase() {
           <p className="mb-4 font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
             Privacy
           </p>
-          <h2 className="display-section text-ink-inverted text-balance">
+          <h2 className="display-section text-ink-inverted! text-balance">
             Sealed before it <em className="text-terracotta">leaves your device.</em>
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-dark-muted md:text-lg">
-            Sync ships only ciphertext — XChaCha20-Poly1305, keys derived on your machine. What you
+            Sync ships only ciphertext: XChaCha20-Poly1305, keys derived on your machine. What you
             write stays between you and your devices.
           </p>
         </motion.div>
 
-        <div className="mb-16 grid gap-5 md:grid-cols-2">
+        <div className="mb-10 grid gap-5 md:grid-cols-2">
           <motion.div
             className="rounded-2xl border border-dark-border bg-dark-surface p-6 shadow-sm sm:p-7"
             initial="hidden"
@@ -156,26 +141,11 @@ export function PrivacyShowcase() {
         </div>
 
         <motion.div
-          className="grid gap-10 border-t border-dark-border pt-12 sm:grid-cols-3"
-          initial="hidden"
-          whileInView="show"
-          viewport={RISE_VIEWPORT}
-          variants={LIST_VARIANTS}
-        >
-          {PILLARS.map(({ title, desc }) => (
-            <motion.div key={title} variants={ITEM_VARIANTS}>
-              <h3 className="font-serif text-xl text-ink-inverted">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-dark-muted">{desc}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={RISE_VIEWPORT}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="mt-12"
+          className="mt-2"
         >
           <Link
             to="/security"

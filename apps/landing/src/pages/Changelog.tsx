@@ -15,7 +15,6 @@ import { PageHead } from '@/components/shared/PageHead'
 import { PageHero } from '@/components/site/PageHero'
 import { FeatureChip } from '@/components/site/primitives'
 import { GITHUB_URL } from '@/lib/constants'
-import { SITE_TINTS } from '@/lib/site-tints'
 
 interface ChangelogEntry {
   period: string
@@ -191,8 +190,6 @@ export function ChangelogPage() {
     <>
       <PageHead page="changelog" />
       <PageHero
-        tint={SITE_TINTS.changelog}
-        eyebrow="Release notes"
         title="Changelog"
         sub="Major memrynote milestones from the first desktop scaffold on December 1, 2025 to the current launch push. Small fixes, copy changes, and operational release notes stay in GitHub."
         actions={

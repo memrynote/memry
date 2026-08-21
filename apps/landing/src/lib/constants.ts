@@ -132,10 +132,10 @@ export const FOOTER_LINKS = {
   ],
   // Footer shows only marquee competitors; the long tail lives on the /compare hub.
   compare: [
-    { label: 'Obsidian alternative', href: '/obsidian-alternative' },
-    { label: 'Notion alternative', href: '/notion-alternative' },
-    { label: 'Evernote alternative', href: '/evernote-alternative' },
-    { label: 'Apple Notes alternative', href: '/apple-notes-alternative' },
+    { label: 'vs Obsidian', href: '/obsidian-alternative' },
+    { label: 'vs Notion', href: '/notion-alternative' },
+    { label: 'vs Evernote', href: '/evernote-alternative' },
+    { label: 'vs Apple Notes', href: '/apple-notes-alternative' },
     { label: 'Compare all', href: '/compare' }
   ],
   resources: [
@@ -158,7 +158,7 @@ export const FEATURES = [
     title: 'Inbox',
     tagline: 'Capture first, organize later.',
     description:
-      'A space for processing incoming information. Optional local AI clustering detects related items and suggests bulk actions — nothing leaves your device.',
+      'Every loose thought lands here first, then you snooze it, file it, or clear it in one pass.',
     highlights: ['Optional AI clustering', 'Quick capture', 'Snooze & file', 'Bulk actions'],
     screenshot: 'inbox'
   },
@@ -168,7 +168,7 @@ export const FEATURES = [
     title: 'Journal',
     tagline: 'Reflect. Daily.',
     description:
-      'A premium, reflective daily writing experience. Large writing area with dramatic date displays, time-based greetings, and day context showing your schedule and tasks.',
+      'One page a day. Your schedule and tasks sit beside it, so the writing has real context.',
     highlights: ['Day context sidebar', 'Time-based greetings', 'Templates', 'Beautiful writing'],
     screenshot: 'journal'
   },
@@ -178,7 +178,7 @@ export const FEATURES = [
     title: 'Notes',
     tagline: 'Your second brain, in Markdown.',
     description:
-      'A file-first, markdown-based knowledge base with rich-text capabilities. Wiki-links connect your thoughts, and backlinks show you where ideas are referenced.',
+      'Plain markdown files you own. Wiki-links connect them; backlinks show what points back.',
     highlights: ['[[Wiki links]]', 'Backlinks', '8 property types', 'Version history'],
     screenshot: 'notes'
   },
@@ -188,7 +188,7 @@ export const FEATURES = [
     title: 'Tasks',
     tagline: 'From thought to done.',
     description:
-      'A multi-dimensional task management system. Toggle between List, Kanban, and Calendar views. Organize tasks into projects with custom statuses and recurring schedules.',
+      'The same tasks as a list, a board, or a calendar. Subtasks, recurrence, filters that stick.',
     highlights: ['Kanban/Calendar/List', 'Subtasks', 'Recurring tasks', 'Smart filters'],
     screenshot: 'tasks'
   },
@@ -198,7 +198,7 @@ export const FEATURES = [
     title: 'Calendar',
     tagline: 'Your time, all in one place.',
     description:
-      'The calendar that knows about your tasks, deadlines, and journal entries. Two-way Google Calendar sync brings your meetings into the same view. Drag to reschedule, plot anything by date, and see your week in one glance.',
+      'Meetings, deadlines, tasks and journal days share one grid. Google sync runs both ways.',
     highlights: ['Google Calendar sync', 'Week view', 'Drag to reschedule', 'Start + due dates'],
     screenshot: 'calendar'
   }

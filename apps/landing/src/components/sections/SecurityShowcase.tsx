@@ -83,7 +83,7 @@ export function SecurityShowcase() {
           <p className="font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta">
             Privacy
           </p>
-          <h2 className="display-section mt-4 text-ink-inverted">
+          <h2 className="display-section mt-4 text-ink-inverted!">
             Sealed before it <em className="text-terracotta">leaves your device.</em>
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-dark-muted">

@@ -28,8 +28,8 @@ interface CannedReply {
 
 const CANNED_REPLIES: CannedReply[] = [
   {
-    text: 'You wrote about it on Thu, Jul 9 — three neighborhoods to stay in (Alfama, Baixa and Príncipe Real), plus a reminder to book the fado night early because it sold out last time.',
-    source: { title: 'Trip planning — Lisbon' }
+    text: 'You wrote about it on Thu, Jul 9: three neighborhoods to stay in (Alfama, Baixa and Príncipe Real), plus a reminder to book the fado night early because it sold out last time.',
+    source: { title: 'Trip planning, Lisbon' }
   },
   {
     text: 'Two books are still unread on your list: “The Design of Everyday Things” and the novel your sister recommended in June. You marked both “start before the trip.”',
@@ -48,8 +48,8 @@ const SEED_MESSAGES: ChatMessage[] = [
   {
     id: 2,
     role: 'assistant',
-    text: 'They’re in your gift-ideas note from last week — a ceramics class you’d take together, and the linen apron from the market in İzmir.',
-    source: { title: 'Gift ideas — Mom’s 60th' },
+    text: 'They’re in your gift-ideas note from last week: a ceramics class you’d take together, and the linen apron from the market in İzmir.',
+    source: { title: 'Gift ideas, Mom’s 60th' },
     complete: true,
     appended: false
   }

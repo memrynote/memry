@@ -21,7 +21,6 @@ import {
 } from '@/lib/constants'
 import { buildMemryBillingCompleteUrl, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
-import { SITE_TINTS } from '@/lib/site-tints'
 import { trackLandingEvent } from '@/lib/analytics'
 
 type Cadence = 'monthly' | 'annual'
@@ -201,8 +200,6 @@ function CheckoutNoticeBanner({ notice }: { notice: CheckoutNotice | null }) {
 function Hero() {
   return (
     <PageHero
-      tint={SITE_TINTS.pricing}
-      eyebrow="Pricing"
       title={
         <>
           Sync that respects your <span className="italic text-terracotta">wallet.</span>
@@ -666,7 +663,7 @@ function BelieverNarrative() {
               <p className="font-mono-accent text-xs uppercase tracking-[0.22em] text-terracotta">
                 § 03 — The patron
               </p>
-              <h2 className="display-section text-ink-inverted">
+              <h2 className="display-section text-ink-inverted!">
                 Pay <span className="italic text-terracotta">$500 once.</span>
                 <br />
                 Keep memrynote independent.

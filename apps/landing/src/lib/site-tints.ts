@@ -11,7 +11,10 @@
  * <PageHead page="..." />. site-tints.test.ts binds the two maps together.
  *
  * `home` is deliberately absent: it carries the painted landscape wallpaper instead, and
- * that stays exclusive to the homepage.
+ * The conversion pages (`pricing`, `downloadDesktop`), the timeline pages (`roadmap`,
+ * `changelog`) and `features` are absent too: their heroes run untinted on the page
+ * ground, so the plan cards, the download buttons and each page's own content colour
+ * carry them alone.
  */
 export type MegaCardTint = 'sky' | 'sage' | 'sand' | 'peach' | 'rose' | 'lilac' | 'mint'
 
@@ -57,17 +60,8 @@ export const SITE_TINTS = {
   webClipper: 'rose', // the only surface pointing outward
   cli: 'ink', // the terminal page's hero is a terminal
 
-  // Conversion — terracotta CTAs are strongest on peach
-  pricing: 'peach',
-  downloadDesktop: 'peach',
-
   // Discovery
-  features: 'sand',
   useCases: 'sand',
-
-  // Timeline
-  roadmap: 'sky',
-  changelog: 'sky',
 
   // Trust — carries the homepage PrivacyShowcase link visually
   privacy: 'mint',

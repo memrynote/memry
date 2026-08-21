@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Container } from './Container'
+import { AskAi } from '@/components/site/AskAi'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
 
@@ -57,7 +58,7 @@ export function Footer() {
   const { pathname } = useLocation()
 
   return (
-    <footer className="zone-dark overflow-hidden border-t border-white/10 py-20 md:py-24">
+    <footer className="page-rails zone-dark overflow-hidden border-t border-white/10 py-20 md:py-24">
       <Container>
         <div className="mb-16 grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-6 md:gap-10">
           <div className="col-span-2 pe-8">
@@ -72,9 +73,12 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-5 max-w-sm text-base leading-relaxed text-dark-muted">
-              Notes, tasks, and journal — finally in one place. Private, fast, and yours forever.
+              Notes, tasks, and journal, finally in one place. Private, fast, and yours forever.
             </p>
-            <p className="mt-6 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-dark-muted/70">
+            <div className="mt-7">
+              <AskAi />
+            </div>
+            <p className="mt-7 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-dark-muted/70">
               {TRUST_LINE.map((fact, i) => (
                 <span key={fact} className="inline-block">
                   {fact}
@@ -123,12 +127,16 @@ export function Footer() {
         </div>
       </Container>
 
-      {/* Full-bleed wordmark, flush to the footer's bottom edge; the negative
-          margin cancels the footer's own bottom padding. */}
+      {/* The wordmark, flush to the footer's bottom edge; the negative margin cancels the
+          footer's own bottom padding. It is sized to land exactly between the page grid's
+          rails: "memrynote" in DM Sans 500 runs 5.3x its font size wide, so 240px fills the
+          1280px rail box and 18.4vw fills a viewport-wide one — a hair under 100/5.3 so the
+          scrollbar, which vw counts and the rails do not, still has room. The old
+          16vw/260px clamp spilled past the rails once the viewport passed ~1537px. */}
       <p
         aria-hidden
         className="pointer-events-none -mb-20 mt-12 select-none text-center font-geist font-medium leading-[0.9] tracking-[-0.02em] text-ink-inverted/[0.07] [mask-image:linear-gradient(to_bottom,black_18%,transparent_86%)] [-webkit-mask-image:linear-gradient(to_bottom,black_18%,transparent_86%)] md:-mb-24"
-        style={{ fontSize: 'clamp(52px, 16vw, 260px)' }}
+        style={{ fontSize: 'clamp(52px, 18.4vw, 240px)' }}
       >
         memrynote
       </p>

@@ -1,13 +1,16 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Single-font site: text tokens all resolve to Manrope (token names kept so no
+  /* Single-font site: text tokens all resolve to DM Sans (token names kept so no
      component churn). --font-mono stays a REAL monospace — reserved for terminal
      and code surfaces (CLI page/snippet, code chips, ink stamps), not labels. */
-  --font-sans: 'Manrope', system-ui, sans-serif;
-  --font-geist: 'Manrope', system-ui, sans-serif;
-  --font-serif: 'Manrope', system-ui, sans-serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-geist: 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  /* The line under a section heading; same face as the body stack since the
+     single-font pass. */
+  --font-sub: 'DM Sans', sans-serif;
 
   --color-primary: #ff671a;
   --color-brand-800: #4d1a00;
@@ -21,9 +24,11 @@
 
   --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
-  /* Paper stack keeps its warm hue but sheds yellow as it deepens — the cream read
-     as heavy because b* climbed with every step down (2.7 → 3.2 → 5.6). */
-  --color-paper: #fffdfa;
+  /* The top step is neutral white — the page ground the dot grid and grain are tuned
+     against. The steps below it stay warm and shed yellow as they deepen (the cream
+     read as heavy because b* climbed with every step down: 3.2 → 5.6); they are
+     component surfaces (hover fills, chips, insets), not the page. */
+  --color-paper: #ffffff;
   --color-paper-alt: #fbf9f5;
   --color-paper-deep: #f5f1ea;
   --color-dark: #141210;
@@ -38,6 +43,16 @@
   /* Held a touch darker than the lifted paper so card edges keep their definition. */
   --color-border: #e6e1d8;
   --color-card: #ffffff;
+  /* The page grid's hairline — deliberately at the edge of visible. Overridden inside
+     .zone-dark so the same rails stay readable on the dark footer. */
+  --color-rule: rgb(31 41 55 / 0.14);
+  /* Section heading + sub-line ink — a shade greener than --color-ink. */
+  --color-heading: #1d2521;
+  --color-subtext: #626965;
+  /* Half of max-w-7xl — where the page grid's vertical rails stand. */
+  --rail-half: 40rem;
+  /* Dash length of the page grid's rails and seams; the gap matches it. */
+  --rule-dash: 6px;
 
   /* Pastel section tints — muted, paper-compatible mega-card backgrounds */
   --color-tint-sky: #dfeaf2;
@@ -68,12 +83,38 @@ html {
   color-scheme: light;
 }
 
+/* The page texture: a dot grid over a fine grain. Declared once here, consumed by
+   the body (the whole scroll height) and by `.page-texture`, which re-paints it on
+   panels that lay their own background over the body — the hero sky — so the texture
+   never breaks between sections. The grain carries its own opacity inside the SVG,
+   so nothing here depends on blend-mode support. Kept on :root rather than @theme:
+   these are painting recipes, not design tokens, and they must always be emitted. */
+:root {
+  --page-dot-grid: radial-gradient(circle, rgb(31 41 55 / 0.09) 1px, transparent 1.2px);
+  --page-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.22'/%3E%3C/svg%3E");
+}
+
+.page-texture {
+  background-image: var(--page-dot-grid), var(--page-grain);
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    200px 200px;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-paper);
   color: var(--color-ink);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.022'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  background-image: var(--page-dot-grid), var(--page-grain);
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    200px 200px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
@@ -186,13 +227,78 @@ h6 {
   letter-spacing: -0.02em;
 }
 
+/* One section-heading style across the whole site. Unlayered on purpose: the base
+   h1–h6 rule is unlayered too, and a layered class would lose to it. That also means
+   `text-*` utilities lose to the color here — the three headings that sit on a dark
+   surface pass `text-ink-inverted!` to win it back. */
 .display-section {
   font-family: var(--font-serif);
   font-optical-sizing: auto;
-  font-weight: 400;
-  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
-  line-height: 1.08;
+  font-weight: 500;
+  font-style: normal;
+  font-size: 54px;
+  line-height: 57px;
   letter-spacing: -0.025em;
+  color: var(--color-heading);
+}
+
+/* The line under a section heading. */
+.section-sub {
+  font-family: var(--font-sub);
+  font-weight: 400;
+  font-style: normal;
+  font-size: 17px;
+  line-height: 28px;
+  color: var(--color-subtext);
+}
+
+/* ——— Page grid: two dashed rails down the page, dashed seams between sections ———
+   The rails are pseudo-elements rather than a border on a max-width wrapper, so a
+   full-bleed child (the closing CTA, the footer) keeps its full width and the lines
+   simply cross it. `--rail-half` is half of max-w-7xl, the site's content width; below
+   that the rails settle on the viewport edges.
+
+   The dashes are a repeating gradient, not `border-style: dashed`: the browser's own
+   dash length is tied to the 1px border width and comes out as dots. */
+.page-rails {
+  position: relative;
+}
+
+.page-rails::before,
+.page-rails::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-rule) 0 var(--rule-dash),
+    transparent var(--rule-dash) calc(var(--rule-dash) * 2)
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.page-rails::before {
+  inset-inline-start: max(0px, calc(50% - var(--rail-half)));
+}
+
+.page-rails::after {
+  inset-inline-end: max(0px, calc(50% - var(--rail-half)));
+}
+
+/* The seam between two stacked sections — stops where the rails run, so the grid
+   closes into a frame instead of bleeding past it. */
+.section-rule {
+  height: 1px;
+  width: min(100%, calc(var(--rail-half) * 2));
+  margin-inline: auto;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule) 0 var(--rule-dash),
+    transparent var(--rule-dash) calc(var(--rule-dash) * 2)
+  );
 }
 
 /* Double hairline rule, like a newspaper masthead. Color via currentColor. */
@@ -222,7 +328,7 @@ h6 {
 }
 
 /* Label accent (kickers, footers, counters). Historically JetBrains Mono — now the
-   single-font pass keeps labels in Manrope; real mono is only for terminal/code
+   single-font pass keeps labels in DM Sans; real mono is only for terminal/code
    surfaces via `font-mono`. Class name kept: ~30 call sites. */
 .font-mono-accent {
   font-family: var(--font-sans);
@@ -259,13 +365,30 @@ h6 {
 }
 
 /* Dark zone for cinematic sections */
+/* The dark zones (the privacy break and the footer) carry the same dot grid as the paper
+   page, with the dot flipped to light so it reads on ink. The grain below it is the dark
+   zone's own, coarser one, and it keeps its overlay blend; the grid sits on top at normal
+   blend, so the dots stay an even light and are not re-tinted by the surface under them. */
 .zone-dark {
   --color-ink-inverted: #f5f0ea;
   --color-dark-muted: #b8ada5;
+  --color-rule: rgb(245 240 234 / 0.13);
+  /* The grid is restated rather than recoloured through a token: a custom property that
+     holds a var() resolves against the element it is DECLARED on (:root), not the one that
+     uses it, so an inherited --page-dot-color would never reach the gradient. */
+  --page-dot-grid: radial-gradient(circle, rgb(245 240 234 / 0.07) 1px, transparent 1.2px);
   background-color: var(--color-dark);
   color: var(--color-ink-inverted);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  background-blend-mode: overlay;
+  background-image:
+    var(--page-dot-grid),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    auto;
+  background-blend-mode: normal, overlay;
 }
 
 .zone-dark ::selection {
@@ -410,4 +533,78 @@ h6 {
   position: sticky;
   top: 6rem;
   height: fit-content;
+}
+
+/* ——— Hero product shot: cursor-origin video reveal ———
+   The still is the base layer; the muted loop sits on top behind a radial mask whose
+   radius is driven by --reveal. Hovering sets --ox/--oy to the pointer's entry point
+   and animates --reveal outward, so the video floods in from wherever the cursor
+   crossed the edge, then retracts to the exit point on leave.
+
+   --reveal MUST be registered with @property: an unregistered custom property is a
+   plain token and transitions discretely (snap, not sweep). Origin is swapped only
+   while --reveal is at its extreme, so re-centring the circle is never visible. */
+@property --reveal {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: -18;
+}
+
+.product-shot-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--ox, 50%) var(--oy, 50%),
+    #000 calc(var(--reveal) * 1%),
+    transparent calc(var(--reveal) * 1% + 18%)
+  );
+  mask-image: radial-gradient(
+    circle at var(--ox, 50%) var(--oy, 50%),
+    #000 calc(var(--reveal) * 1%),
+    transparent calc(var(--reveal) * 1% + 18%)
+  );
+  transition: --reveal 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-shot-video video {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* ——— Split vs One: falling chips and breathing orbit ———
+   Transform-only so the compositor carries them; the global reduced-motion block above
+   already reduces both to a single frame. */
+@keyframes rain-fall {
+  from {
+    transform: translate3d(0, -50%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.rain-track {
+  animation: rain-fall var(--rain-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+@keyframes orbit-breathe {
+  0%,
+  100% {
+    transform: translate3d(0, -5px, 0);
+  }
+  50% {
+    transform: translate3d(0, 5px, 0);
+  }
+}
+
+.orbit-breathe {
+  animation: orbit-breathe var(--breathe-duration, 5.5s) ease-in-out infinite;
+  animation-delay: var(--breathe-delay, 0s);
+  will-change: transform;
 }

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router'
 import { Menu, X, ChevronDown, type LucideIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Button } from '@/components/ui/button'
 import { Mascot } from '@/components/ui/mascot'
 import { Container } from './Container'
 import {
@@ -46,7 +45,7 @@ const MOBILE_DROPDOWN_SECTIONS: readonly {
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const className =
-    'rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-ink'
+    'rounded-lg px-2.5 py-2 text-xs leading-4 font-medium text-muted transition-colors hover:text-ink'
   const eventName = isExternalHref(href) ? 'landing_external_click' : 'landing_nav_click'
 
   return isExternalHref(href) ? (
@@ -112,12 +111,12 @@ function GitHubStarWidget({
   return (
     <a
       className={cn(
-        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100',
+        'github-star-widget inline-flex items-center rounded-[9px] border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-[color,background-color,border-color,transform] duration-200 hover:border-ink/15 hover:bg-card active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100',
         iconOnly
-          ? 'h-10 w-10 justify-center rounded-full p-0'
+          ? 'h-[34px] w-[34px] justify-center p-0'
           : compact
             ? 'gap-2 px-3 py-2 text-sm'
-            : 'h-9 gap-2 px-3 text-sm',
+            : 'min-h-[34px] gap-2 px-3 text-xs leading-4',
         className
       )}
       href={GITHUB_URL}
@@ -141,7 +140,7 @@ function GitHubStarWidget({
         <>
           <span>Star</span>
           {formattedStars ? (
-            <strong className="border-s border-border/80 ps-2 font-mono-accent text-[13px] font-semibold">
+            <strong className="border-s border-border/80 ps-2 font-mono-accent text-xs font-semibold">
               {formattedStars}
             </strong>
           ) : null}
@@ -155,7 +154,7 @@ function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIc
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors group-hover:text-ink"
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs leading-4 font-medium text-muted transition-colors group-hover:text-ink"
       aria-haspopup="true"
     >
       {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -252,7 +251,7 @@ function DesktopDropdown({
           make it a backdrop root and suppress the panel's backdrop blur until the
           transition ends (glass "popping in" late). Transform is safe.
           focus-within keeps the menu reachable by keyboard, not just hover. */}
-      <div className="invisible absolute start-0 top-full z-50 mt-3 origin-top translate-y-1 scale-[0.97] transition-[transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
+      <div className="invisible absolute start-1/2 top-full z-50 mt-3 origin-top -translate-x-1/2 translate-y-1 scale-[0.97] transition-[transform,visibility] duration-200 [transition-timing-function:var(--ease-out-expo)] rtl:translate-x-1/2 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:transition-[visibility]">
         <div
           className={cn(
             'rounded-[22px] border border-white/60 bg-card/55 backdrop-blur-2xl backdrop-saturate-150 p-3 opacity-0 transition-opacity duration-200 [transition-timing-function:var(--ease-out-expo)] group-hover:opacity-100 group-focus-within:opacity-100 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
@@ -447,62 +446,56 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full" className="relative z-10">
-        <nav className="relative mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/60 px-3 py-2 shadow-card sm:px-4">
+        {/* Three-lane bar: brand left, nav centered in its own track, actions pinned end.
+            The centre track only exists at lg — below that the grid falls back to two
+            cells and the actions stay hard against the trailing edge. */}
+        <nav className="relative mx-auto grid h-[50px] max-w-5xl grid-cols-[1fr_auto] items-center rounded-2xl border border-white/75 ps-4 pe-1.5 shadow-[0_10px_36px_rgba(43,61,78,0.10)] lg:grid-cols-[1fr_auto_1fr]">
           {/* Glass lives on a decor layer, not on <nav>: an element with backdrop-filter
               becomes the backdrop root for its subtree, which would stop the dropdown
               panels below from blurring the page behind them. */}
           <div
             aria-hidden
-            className="absolute inset-0 -z-10 rounded-full bg-card/55 backdrop-blur-2xl backdrop-saturate-150"
+            className="absolute inset-0 -z-10 rounded-2xl bg-card/[0.88] backdrop-blur-[18px] backdrop-saturate-150"
           />
-          <div className="flex items-center gap-2 lg:gap-5">
-            <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
-              <span className="flex h-7 w-7 items-center justify-center">
-                <img src="/favicon.svg" alt="" className="w-5 h-5" />
+          <Link to="/" className="group flex w-fit items-center gap-2" onClick={handleLogoClick}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+              <img src="/favicon.svg" alt="" className="h-7 w-7" />
+            </span>
+            <span className="flex items-center gap-2 leading-none">
+              <span className="block font-geist text-[17px] font-medium leading-none tracking-[-0.04em] text-ink transition-colors group-hover:text-terracotta">
+                memrynote
               </span>
-              <div className="leading-none">
-                <span className="flex items-center gap-2">
-                  <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
-                    memrynote
-                  </span>
-                  <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
-                    Beta
-                  </span>
-                </span>
-              </div>
+              <span className="rounded-full bg-terracotta/10 px-1.5 py-0.5 font-mono-accent text-[8px] uppercase tracking-[0.16em] text-terracotta">
+                Beta
+              </span>
+            </span>
+          </Link>
+
+          <div className="hidden items-center justify-center gap-2 lg:flex">
+            <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
+            <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
+            {DIRECT_NAV_LINKS.map((link) => (
+              <NavLink key={link.label} href={link.href} label={link.label} />
+            ))}
+          </div>
+
+          <div className="flex items-center justify-self-end gap-2">
+            <GitHubStarWidget className="hidden md:inline-flex" />
+            <GitHubStarWidget iconOnly className="md:hidden" />
+            <Link
+              to={accountHref}
+              onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
+              className="hidden min-h-[34px] items-center justify-center rounded-[9px] bg-terracotta px-3.5 text-xs font-medium leading-4 text-white shadow-[0_0_0_4px_rgb(255_103_26/0.16)] transition-colors duration-200 hover:bg-terracotta/90 md:inline-flex"
+            >
+              {accountLabel}
             </Link>
-
-            <div className="hidden items-center gap-1.5 lg:flex">
-              <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
-              <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
-              {DIRECT_NAV_LINKS.map((link) => (
-                <NavLink key={link.label} href={link.href} label={link.label} />
-              ))}
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            <GitHubStarWidget />
-            <span aria-hidden className="h-5 w-px bg-border/80" />
-            <Button variant="ghost" size="sm" className="rounded-full px-4" asChild>
-              <Link
-                to={accountHref}
-                onClick={() => trackLandingEvent('landing_nav_click', accountTarget)}
-              >
-                {accountLabel}
-              </Link>
-            </Button>
-          </div>
-
-          <div className="md:hidden flex items-center gap-2">
-            <GitHubStarWidget iconOnly className="h-9 w-9" />
             <button
               type="button"
-              className="rounded-full border border-border/70 bg-card/60 p-3 text-ink transition-[color,transform] duration-200 hover:text-terracotta active:scale-95 active:duration-75 motion-reduce:active:scale-100"
+              className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] border border-border/70 bg-card/60 text-ink transition-[color,transform] duration-200 hover:text-terracotta active:scale-95 active:duration-75 motion-reduce:active:scale-100 md:hidden"
               onClick={toggleMobileMenu}
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </nav>
@@ -526,7 +519,7 @@ export function Header() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-6xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]"
+                className="material-chrome mx-auto flex max-h-[calc(100dvh-88px)] max-w-5xl flex-col gap-1.5 overflow-y-auto rounded-[20px] border border-white/70 p-2.5 shadow-[var(--shadow-float)]"
               >
                 {MOBILE_DROPDOWN_SECTIONS.map((section) => (
                   <MobileDropdownSection

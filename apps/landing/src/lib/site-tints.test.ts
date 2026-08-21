@@ -16,12 +16,7 @@ const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8')
 // The spec's in-scope page list, written out here on purpose: this file encodes the
 // design decision, site-tints.ts encodes the implementation. If they drift, this fails.
 const IN_SCOPE_PAGES = [
-  'features',
   'useCases',
-  'pricing',
-  'downloadDesktop',
-  'roadmap',
-  'changelog',
   'notes',
   'tasks',
   'journal',
@@ -35,9 +30,19 @@ const IN_SCOPE_PAGES = [
   'security'
 ]
 
-// Pages that must stay untinted: home carries the painted wallpaper instead, and the
-// legal pages are out of scope entirely.
-const UNTINTED_PAGES = ['home', 'terms', 'refund']
+// Pages that must stay untinted: home carries the painted wallpaper instead, the
+// conversion and timeline pages run their heroes on the bare page ground, and the legal
+// pages are out of scope entirely.
+const UNTINTED_PAGES = [
+  'home',
+  'features',
+  'pricing',
+  'downloadDesktop',
+  'roadmap',
+  'changelog',
+  'terms',
+  'refund'
+]
 
 function tintToken(tint: HeroTint) {
   return tint === 'ink' ? '--color-dark' : `--color-tint-${tint}`

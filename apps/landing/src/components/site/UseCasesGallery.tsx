@@ -17,7 +17,7 @@ interface Persona {
 const PERSONAS: Persona[] = [
   {
     name: 'Writer',
-    line: 'Drafts, research, and journals — all in one quiet place.',
+    line: 'Drafts, research, and journals, all in one quiet place.',
     tint: 'sky',
     mascot: '/mascots/journal.png'
   },
@@ -54,8 +54,9 @@ const PERSONAS: Persona[] = [
 ]
 
 /**
- * "How people use it" — horizontal snap-scroll gallery of persona cards on
- * alternating pastel tints. Every card links to /use-cases.
+ * "How people use it" — six compact persona cards on alternating pastel tints, laid out
+ * as a grid inside the page grid's rails. It used to be a snap-scroll rail that ran off
+ * both edges of the page, which fought the rails now framing every section.
  */
 export function UseCasesGallery() {
   return (
@@ -66,45 +67,40 @@ export function UseCasesGallery() {
         sub="One calm place, set up your way."
       />
 
-      <div
-        className={cn(
-          '-mx-4 snap-x snap-mandatory overflow-x-auto pb-4 sm:-mx-6',
-          'scroll-ps-4 sm:scroll-ps-6',
-          '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-        )}
+      <ul
         aria-label="How people use MemryNote"
+        className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
       >
-        <ul className="mx-auto flex w-max gap-4 px-4 sm:gap-5 sm:px-6">
-          {PERSONAS.map((persona, i) => (
-            <motion.li
-              key={persona.name}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.7, delay: i * 0.06, ease: EASE }}
-              className="w-64 shrink-0 snap-start sm:w-72"
+        {PERSONAS.map((persona, i) => (
+          <motion.li
+            key={persona.name}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.7, delay: i * 0.06, ease: EASE }}
+          >
+            <Link
+              to="/use-cases"
+              className={cn(
+                'flex h-full flex-col gap-3 rounded-2xl border border-ink/5 p-4',
+                'transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-card',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta',
+                TINT_CLASSES[persona.tint]
+              )}
             >
-              <Link
-                to="/use-cases"
-                className={cn(
-                  'flex h-full flex-col gap-5 rounded-3xl border border-ink/5 p-6',
-                  'transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-card',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terracotta',
-                  TINT_CLASSES[persona.tint]
-                )}
-              >
-                <Mascot src={persona.mascot} className="h-16 w-16" />
-                <span>
-                  <span className="block text-lg font-semibold text-ink">{persona.name}</span>
-                  <span className="mt-1.5 block text-sm leading-relaxed text-muted">
-                    {persona.line}
-                  </span>
+              <Mascot src={persona.mascot} className="h-12 w-12" />
+              <span>
+                <span className="block text-[15px] font-semibold leading-tight text-ink">
+                  {persona.name}
                 </span>
-              </Link>
-            </motion.li>
-          ))}
-        </ul>
-      </div>
+                <span className="mt-1.5 block text-[13px] leading-snug text-muted">
+                  {persona.line}
+                </span>
+              </span>
+            </Link>
+          </motion.li>
+        ))}
+      </ul>
     </HomeSection>
   )
 }
