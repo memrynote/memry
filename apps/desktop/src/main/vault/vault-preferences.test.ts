@@ -72,6 +72,7 @@ describe('VaultPreferencesSchema', () => {
       editor: {
         width: 'full' as const,
         toolbarMode: 'sticky' as const,
+        pdfAdaptToTheme: false,
         spellCheck: false
       }
     }
@@ -84,7 +85,12 @@ describe('VaultPreferencesSchema', () => {
     for (const legacy of ['narrow', 'medium', 'wide']) {
       const input = {
         ...VAULT_PREFERENCES_DEFAULTS,
-        editor: { width: legacy, toolbarMode: 'floating' as const, spellCheck: false }
+        editor: {
+          width: legacy,
+          toolbarMode: 'floating' as const,
+          spellCheck: false,
+          pdfAdaptToTheme: false
+        }
       }
       const result = VaultPreferencesSchema.parse(input)
       expect(result.editor.width).toBe('normal')

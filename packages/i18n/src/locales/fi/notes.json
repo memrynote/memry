@@ -649,7 +649,18 @@
       "zoomOut": "Loitonna",
       "zoomIn": "Lähennä",
       "fitToWidth": "Soveltuu leveyteen",
-      "rotate": "Kierrä"
+      "rotate": "Kierrä",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Videon lataaminen epäonnistui",
@@ -665,7 +676,8 @@
       "open": "Avaa",
       "revealInFinder": "Paljasta Finderissa",
       "reveal": "Paljasta",
-      "unsupportedFileType": "Tiedostotyyppiä ei tueta"
+      "unsupportedFileType": "Tiedostotyyppiä ei tueta",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Luo uusi muistiinpano",

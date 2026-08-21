@@ -649,7 +649,18 @@
       "zoomOut": "ズームアウト",
       "zoomIn": "ズームイン",
       "fitToWidth": "幅に合わせる",
-      "rotate": "回転"
+      "rotate": "回転",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "ビデオのロードに失敗しました",
@@ -665,7 +676,8 @@
       "open": "開く",
       "revealInFinder": "ファインダーで表示",
       "reveal": "明らかにする",
-      "unsupportedFileType": "サポートされていないファイル形式です"
+      "unsupportedFileType": "サポートされていないファイル形式です",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "新しいメモを作成する",

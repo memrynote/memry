@@ -649,7 +649,18 @@
       "zoomOut": "Уменьшить масштаб",
       "zoomIn": "Увеличить масштаб",
       "fitToWidth": "По ширине",
-      "rotate": "Поворот"
+      "rotate": "Поворот",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Не удалось загрузить видео",
@@ -665,7 +676,8 @@
       "open": "Открыть",
       "revealInFinder": "Показать в Finder",
       "reveal": "Раскрыть",
-      "unsupportedFileType": "Неподдерживаемый тип файла"
+      "unsupportedFileType": "Неподдерживаемый тип файла",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Создать новую заметку",

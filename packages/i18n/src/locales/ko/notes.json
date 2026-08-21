@@ -649,7 +649,18 @@
       "zoomOut": "축소",
       "zoomIn": "확대",
       "fitToWidth": "너비에 맞춤",
-      "rotate": "회전"
+      "rotate": "회전",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "동영상을 로드하지 못했습니다.",
@@ -665,7 +676,8 @@
       "open": "열기",
       "revealInFinder": "Finder에 공개",
       "reveal": "공개",
-      "unsupportedFileType": "지원되지 않는 파일 형식"
+      "unsupportedFileType": "지원되지 않는 파일 형식",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "새 메모 만들기",

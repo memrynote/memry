@@ -649,7 +649,18 @@
       "zoomOut": "Zum keluar",
       "zoomIn": "Zum masuk",
       "fitToWidth": "Sesuai dengan lebar",
-      "rotate": "Putar"
+      "rotate": "Putar",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Gagal memuatkan video",
@@ -665,7 +676,8 @@
       "open": "Buka",
       "revealInFinder": "Dedahkan dalam Finder",
       "reveal": "Dedahkan",
-      "unsupportedFileType": "Jenis fail tidak disokong"
+      "unsupportedFileType": "Jenis fail tidak disokong",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Buat nota baharu",

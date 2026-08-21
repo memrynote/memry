@@ -17,6 +17,12 @@ interface ItemProjectChipsProps {
   itemId: string
   onProjectClick?: (projectId: string) => void
   className?: string
+  /**
+   * Cap on the chips rendered, with the rest counted in a trailing `+N`. For
+   * rows that share a line with other controls — the PDF toolbar — where an
+   * unbounded chip list would push them off the end.
+   */
+  maxVisible?: number
 }
 
 /**
@@ -28,7 +34,8 @@ export const ItemProjectChips = ({
   itemType,
   itemId,
   onProjectClick,
-  className
+  className,
+  maxVisible
 }: ItemProjectChipsProps): React.JSX.Element | null => {
   const { t } = useT('tasks')
   const [projects, setProjects] = useState<ProjectRef[]>([])
@@ -58,9 +65,12 @@ export const ItemProjectChips = ({
 
   if (!isLoading && projects.length === 0) return null
 
+  const visible = maxVisible === undefined ? projects : projects.slice(0, maxVisible)
+  const hiddenCount = projects.length - visible.length
+
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      {projects.map((project) => (
+      {visible.map((project) => (
         <button
           key={project.id}
           type="button"
@@ -79,6 +89,17 @@ export const ItemProjectChips = ({
           <span className="max-w-32 truncate">{project.name}</span>
         </button>
       ))}
+      {hiddenCount > 0 && (
+        <span
+          className="shrink-0 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground"
+          title={projects
+            .slice(visible.length)
+            .map((project) => project.name)
+            .join(', ')}
+        >
+          +{hiddenCount}
+        </span>
+      )}
     </div>
   )
 }

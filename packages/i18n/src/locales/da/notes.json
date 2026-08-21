@@ -649,7 +649,18 @@
       "zoomOut": "Zoom ud",
       "zoomIn": "Zoom ind",
       "fitToWidth": "Tilpas til bredden",
-      "rotate": "Roter"
+      "rotate": "Roter",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Videoen kunne ikke indlæses",
@@ -665,7 +676,8 @@
       "open": "Åbn",
       "revealInFinder": "Afsløre i Finder",
       "reveal": "Afsløre",
-      "unsupportedFileType": "Ikke-understøttet filtype"
+      "unsupportedFileType": "Ikke-understøttet filtype",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Opret ny note",

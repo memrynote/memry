@@ -649,7 +649,18 @@
       "zoomOut": "Zmeniť priblíženie na menšie",
       "zoomIn": "Priblížiť",
       "fitToWidth": "Prispôsobiť šírke",
-      "rotate": "Otočiť"
+      "rotate": "Otočiť",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Nepodarilo sa načítať video",
@@ -665,7 +676,8 @@
       "open": "Otvorené",
       "revealInFinder": "Zobraziť vo Finderi",
       "reveal": "Zobraziť",
-      "unsupportedFileType": "Nepodporovaný typ súboru"
+      "unsupportedFileType": "Nepodporovaný typ súboru",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Vytvoriť novú poznámku",

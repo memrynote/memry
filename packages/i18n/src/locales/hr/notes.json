@@ -649,7 +649,18 @@
       "zoomOut": "Smanji",
       "zoomIn": "Povećaj",
       "fitToWidth": "Prilagodi širini",
-      "rotate": "Rotirajte"
+      "rotate": "Rotirajte",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "Učitavanje videozapisa nije uspjelo",
@@ -665,7 +676,8 @@
       "open": "Otvoreno",
       "revealInFinder": "Otkrij u Finderu",
       "reveal": "otkriti",
-      "unsupportedFileType": "Nepodržana vrsta datoteke"
+      "unsupportedFileType": "Nepodržana vrsta datoteke",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "Stvori novu bilješku",

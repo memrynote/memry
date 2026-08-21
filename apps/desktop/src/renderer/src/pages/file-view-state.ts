@@ -17,6 +17,14 @@ export const FILE_VIEW_STATE_KEYS = {
   pdfScale: 'filePdfScale',
   pdfRotation: 'filePdfRotation',
   pdfSidebarOpen: 'filePdfSidebarOpen',
+  /**
+   * Which axis the page is fitted across, or `null` for "the user picked a
+   * zoom". This — not `pdfScale` — is what says whether the viewer refits when
+   * the pane changes width.
+   */
+  pdfFitMode: 'filePdfFitMode',
+  /** Single page, or a two-page spread starting on odd or on even pages. */
+  pdfPageMode: 'filePdfPageMode',
   /** Image zoom. `null` means "never zoomed" — fit to the container instead. */
   imageScale: 'fileImageScale',
   imageRotation: 'fileImageRotation',
@@ -51,6 +59,60 @@ export const parseNullableScale = (raw: unknown): number | null | undefined =>
 /** Only the four quarter turns the rotate button can produce. */
 export const parseRotation = (raw: unknown): number | undefined =>
   raw === 0 || raw === 90 || raw === 180 || raw === 270 ? raw : undefined
+
+/** Fit across the pane's width, down its height, or not at all. */
+export type PdfFitMode = 'width' | 'height' | null
+
+/**
+ * What the tab stores. `'unset'` is a real value rather than an absence: a
+ * `parse` that returns `undefined` REJECTS the entry, so "no fit mode written
+ * yet" cannot be spelled `undefined` here.
+ */
+export type StoredPdfFitMode = PdfFitMode | 'unset'
+
+export const parseStoredPdfFitMode = (raw: unknown): StoredPdfFitMode | undefined =>
+  raw === 'unset' || raw === null || raw === 'width' || raw === 'height' ? raw : undefined
+
+/**
+ * `two-odd` puts odd pages on the left (1-2, 3-4); `two-even` puts even pages
+ * there and leaves page 1 on its own, the way a book's cover sits alone.
+ */
+export type PdfPageMode = 'single' | 'two-odd' | 'two-even'
+
+export const parsePdfPageMode = (raw: unknown): PdfPageMode | undefined =>
+  raw === 'single' || raw === 'two-odd' || raw === 'two-even' ? raw : undefined
+
+/**
+ * The fit a tab written before {@link FILE_VIEW_STATE_KEYS.pdfFitMode} existed
+ * should come back with. Those tabs encoded "never zoomed, so keep fitting" as
+ * a `null` scale, which is exactly what fit-to-width means now.
+ */
+export const resolveLegacyFitMode = (
+  storedFitMode: StoredPdfFitMode,
+  storedScale: number | null
+): PdfFitMode => (storedFitMode !== 'unset' ? storedFitMode : storedScale === null ? 'width' : null)
+
+/**
+ * The first page of the spread that shows `page`.
+ *
+ * Snapping to the spread's start is what keeps the parity stable: without it a
+ * jump to page 51 in an even-start document would re-split every spread after
+ * it and show each page twice.
+ */
+export function pdfSpreadStart(page: number, mode: PdfPageMode): number {
+  if (mode === 'single') return page
+  if (mode === 'two-odd') return page % 2 === 1 ? page : page - 1
+  if (page <= 1) return 1
+  return page % 2 === 0 ? page : page - 1
+}
+
+/** The pages the spread starting at `start` shows, clamped to the document. */
+export function pdfSpreadPages(start: number, mode: PdfPageMode, numPages: number): number[] {
+  if (mode === 'single') return [start]
+  // An even-start document opens on page 1 alone, so it has no partner.
+  if (mode === 'two-even' && start === 1) return [1]
+  return [start, start + 1].filter((page) => page <= numPages)
+}
 
 export const parseViewerBoolean = (raw: unknown): boolean | undefined =>
   typeof raw === 'boolean' ? raw : undefined

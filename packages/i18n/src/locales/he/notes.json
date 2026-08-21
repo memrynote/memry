@@ -649,7 +649,18 @@
       "zoomOut": "זום החוצה",
       "zoomIn": "התקרב",
       "fitToWidth": "התאמה לרוחב",
-      "rotate": "סובב"
+      "rotate": "סובב",
+      "fitToHeight": "Fit to height",
+      "viewOptions": "View options",
+      "fit": "Fit",
+      "pageLayout": "Page layout",
+      "singlePage": "Single page",
+      "twoPageOdd": "Two-page (odd)",
+      "twoPageEven": "Two-page (even)",
+      "adaptToTheme": "Adapt to theme",
+      "goToPage": "Go to page",
+      "showThumbnails": "Show thumbnails",
+      "hideThumbnails": "Hide thumbnails"
     },
     "componentsViewersVideoPlayer": {
       "failedToLoadVideo": "טעינת הסרטון נכשלה",
@@ -665,7 +676,8 @@
       "open": "פתוח",
       "revealInFinder": "חשוף ב-Finder",
       "reveal": "לחשוף",
-      "unsupportedFileType": "סוג קובץ לא נתמך"
+      "unsupportedFileType": "סוג קובץ לא נתמך",
+      "fileActions": "File actions"
     },
     "pagesFolderView": {
       "createNewNote": "צור הערה חדשה",
