@@ -211,9 +211,12 @@ its heading, if the link named one — on any of your devices. If the link point
 at a note that does not exist yet, the node opens the source note at the section
 the link is written in instead, so it is never a dead box.
 
-Each link carries the name of what it opens, so hovering a node in the saved
-canvas shows `… → Q3 Risks` rather than the address behind it — including on a
-device that has never opened the note the map was made from.
+**The saved canvas reads like the map it came from.** Nothing marks a node until
+you point at one, and then the same small card appears under it naming what the
+click opens — `… → Q3 Risks` rather than the address behind it, including on a
+device that has never opened the note the map was made from. Click the card to
+go there. (On a canvas, unlike on the map, the box itself stays yours to select,
+drag and restyle; only the card opens the link.)
 
 **A "+N more" node stays in the saved canvas**, even though there is nothing for
 it to open in a document. It is what tells you the canvas is not the whole note,

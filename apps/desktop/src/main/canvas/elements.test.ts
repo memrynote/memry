@@ -72,6 +72,46 @@ describe('readSceneElements', () => {
     expect(result.elements[0]).toMatchObject({ entityType: 'note', entityId: 'note-1' })
   })
 
+  it('reports a saved mind map\u2019s href, which the box keeps out of `link`', () => {
+    // A map box carries its deep link in `customData` so the drawing library
+    // paints no glyph for it. Where it is stored is a rendering concern; a
+    // reader asking what the box points at gets the same answer either way.
+    const result = readSceneElements(
+      scene([
+        {
+          id: 'mm-b1',
+          type: 'rectangle',
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10,
+          customData: { memryHref: 'memry://note/n1#Risks' }
+        }
+      ])
+    )
+
+    expect(result.elements[0]?.link).toBe('memry://note/n1#Risks')
+  })
+
+  it('prefers a real `link` over the one a map box carries', () => {
+    const result = readSceneElements(
+      scene([
+        {
+          id: 'r1',
+          type: 'rectangle',
+          x: 0,
+          y: 0,
+          width: 10,
+          height: 10,
+          link: 'https://example.com',
+          customData: { memryHref: 'memry://note/n1' }
+        }
+      ])
+    )
+
+    expect(result.elements[0]?.link).toBe('https://example.com')
+  })
+
   it('ignores customData that is not a real entity ref', () => {
     const result = readSceneElements(
       scene([

@@ -57,6 +57,12 @@ function num(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
+/** The deep link a saved mind-map box carries. See `mind-map-hover.ts`. */
+function mindMapHref(customData: unknown): string | undefined {
+  if (typeof customData !== 'object' || customData === null) return undefined
+  return str((customData as { memryHref?: unknown }).memryHref)
+}
+
 function bindingId(value: unknown): string | undefined {
   if (!value || typeof value !== 'object') return undefined
   return str((value as { elementId?: unknown }).elementId)
@@ -137,7 +143,13 @@ export function readSceneElements(scene: string): CanvasSceneElements {
     if (strokeColor) view.strokeColor = strokeColor
     const backgroundColor = str(element.backgroundColor)
     if (backgroundColor) view.backgroundColor = backgroundColor
-    const link = str(element.link)
+    // A box saved from a note's mind map keeps its `memry://` href in
+    // `customData` rather than in `link` — the drawing library paints a
+    // permanent glyph for the latter, and a map is nothing but linked boxes
+    // (see `mind-map-snapshot.ts`). Where it is stored is a rendering concern;
+    // a reader asking what this element points at wants the same answer either
+    // way.
+    const link = str(element.link) ?? mindMapHref(element.customData)
     if (link) view.link = link
     const startElementId = bindingId(element.startBinding)
     if (startElementId) view.startElementId = startElementId

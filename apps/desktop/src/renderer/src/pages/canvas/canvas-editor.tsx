@@ -46,6 +46,7 @@ import { computeSceneSignature, createScenePersister } from './canvas-persistenc
 import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
+import { CanvasNodeLinkLayer } from './canvas-node-link-overlay'
 import { createVaultLibraryAdapter } from './canvas-library-adapter'
 import { extractEntityRefs, type CardElement } from './canvas-cards'
 import {
@@ -624,12 +625,9 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
    * links, when `isLocalLink` matches — assigns `window.location` and reloads
    * the entire app. Preventing the event's default is what disables both.
    */
-  const handleLinkOpen = useCallback<
-    NonNullable<React.ComponentProps<typeof Excalidraw>['onLinkOpen']>
-  >(
-    (element, event) => {
-      event.preventDefault()
-      const action = resolveCanvasLink(element.link, window.location.href)
+  const openHref = useCallback(
+    (href: string | null | undefined): void => {
+      const action = resolveCanvasLink(href, window.location.href)
 
       switch (action.kind) {
         case 'memry':
@@ -660,6 +658,16 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
       }
     },
     [openMemryTarget, t]
+  )
+
+  const handleLinkOpen = useCallback<
+    NonNullable<React.ComponentProps<typeof Excalidraw>['onLinkOpen']>
+  >(
+    (element, event) => {
+      event.preventDefault()
+      openHref(element.link)
+    },
+    [openHref]
   )
 
   /**
@@ -848,11 +856,17 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         langCode={langCode}
       />
       {api ? (
-        <CanvasCardLayer
-          excalidrawAPI={api}
-          wrapperRef={wrapperRef}
-          onSceneMutated={() => persisterRef.current?.notifyChange()}
-        />
+        <>
+          <CanvasCardLayer
+            excalidrawAPI={api}
+            wrapperRef={wrapperRef}
+            onSceneMutated={() => persisterRef.current?.notifyChange()}
+          />
+          {/* A saved mind map's boxes keep their href out of `element.link`,
+              where the library would paint a glyph on every one of them; this
+              is the affordance they carry instead. */}
+          <CanvasNodeLinkLayer excalidrawAPI={api} wrapperRef={wrapperRef} onOpen={openHref} />
+        </>
       ) : null}
       <CanvasLinkDialog
         open={linkPickerOpen}

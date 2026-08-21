@@ -30,16 +30,24 @@
  *    make the map unreadable. The user can add real cards by hand — it is their
  *    canvas.
  * 4. **Every link carries the name of what it opens**, as a `?label=` hint, so
- *    the canvas' own hover bubble reads `… → Q3 Risks` rather than a
- *    `memry://` URL. It is a hint and never an identity — the id is what
- *    resolves — and it is additive: a build that never heard of labels drops it
- *    and opens the same note at the same heading.
+ *    the affordance reads `… → Q3 Risks` rather than a `memry://` URL. It is a
+ *    hint and never an identity — the id is what resolves — and it is
+ *    additive: a build that never heard of labels drops it and opens the same
+ *    note at the same heading.
  *
- * Their links stay exactly where an ordinary canvas expects them, in
- * `element.link`. The DRAWN map moved its own out of that field (the glyph it
- * paints is noise on a map), but a saved canvas is not ours to render — it is
- * opened by `CanvasEditor` like any other, and stripping its links would take
- * away the one thing that makes it more than a picture.
+ * What does NOT change is where a box keeps its href: `customData`, exactly as
+ * the drawn map does, never `element.link`. That field paints a permanent glyph
+ * per linked element, and a map is nothing but linked boxes — so a saved map
+ * would wear a blue square on every card the drawn one does not. `CanvasEditor`
+ * renders the same hover affordance for these boxes instead
+ * (`canvas-node-link-overlay.tsx`), which is what makes a saved map read like
+ * the map it was saved from.
+ *
+ * The cost is stated rather than hidden: a build that predates that overlay
+ * opens one of these canvases and sees boxes it cannot click. Nothing is lost
+ * and nothing is corrupted — the href is right there in the file, and the
+ * build that wrote it is the build that reads it — but a downgrade is a
+ * picture until it upgrades again.
  *
  * Two node kinds need saying out loud, because neither is a place in this note:
  *
@@ -83,12 +91,12 @@ export interface MindMapSnapshotOptions {
    * href.
    *
    * The fourth thing the snapshot changes about the map as drawn, and the one
-   * that only a file needs. The drawing library prints `element.link` verbatim
-   * in its hover bubble, so without this a saved canvas hovers as
-   * `memry://note/skfe4c9o0z15#Q3%20Risks`. `CanvasEditor` already watches for
-   * that bubble and swaps in whatever `linkBubbleLabel` reads off the href — it
-   * has simply had nothing to read, because the map wrote no label. So the
-   * readable name is bought with a label rather than with rendering code.
+   * that only a file needs. The drawn map is rendered beside the note it was
+   * built from, so its affordance can be handed the names directly; a file has
+   * nothing beside it, and the only thing that travels with a box is its href.
+   * So the name is frozen into the query as `?label=`, and `linkBubbleLabel`
+   * reads it back out — the same reader the canvas' own link bubble uses, so a
+   * hand-made link and a saved map's link are named by one rule.
    *
    * Composed by the caller: it is a destination chain whose separator is
    * translated chrome, and this module has no translator.

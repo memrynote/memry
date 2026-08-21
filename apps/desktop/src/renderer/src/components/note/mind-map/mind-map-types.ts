@@ -210,32 +210,23 @@ export interface MindMapBoxElement {
     strokeColor: string
   }
   /**
-   * A `memry://` deep link back into the note, on a box destined for a FILE.
+   * A `memry://` deep link, kept where the renderer will not paint anything
+   * for it — never in `element.link`.
    *
-   * It is what makes a box in a saved canvas clickable: an ordinary canvas has
-   * no code of ours watching it, so the link has to be something the drawing
-   * library itself acts on. A saved canvas outlives the document that produced
-   * it, so the anchor here is heading TEXT — never a block id, which dies with
-   * that document.
+   * `element.link` is what the drawing library acts on, and what it paints a
+   * permanent blue glyph for. One glyph marks something on a canvas where a
+   * few shapes are linked; on a map, where EVERY box is, it is a wall of
+   * identical blue squares over a picture whose whole point is shape. So the
+   * href lives here on BOTH surfaces, and both render their own hover
+   * affordance from it: the drawn map in `mind-map-canvas.tsx`, a saved canvas
+   * in `canvas-node-link-overlay.tsx`. Same key, same hit test — the whole
+   * bounding box, which is what view mode's own link hit test gave us — so a
+   * map reads the same way after it is saved as it did while it was drawn.
    *
-   * Absent on the DRAWN map, and deliberately: `element.link` also paints a
-   * permanent glyph, and a map where every box is linked is a wall of identical
-   * blue squares over a picture whose whole point is shape. The drawn map
-   * carries its href in `customData` instead.
-   */
-  link?: string
-  /**
-   * The same `memry://` deep link, on a box drawn on SCREEN, kept where the
-   * renderer will not paint anything for it.
-   *
-   * It is still the only handle a click on a bitmap has — the map hit-tests it
-   * itself (`mind-map-hover.ts`) and resolves it back to a node through
-   * `nodeFromMindMapLink`, preserving what view mode's own link hit test gave
-   * us: the whole bounding box, not a glyph.
-   *
-   * A block anchor is right HERE and only here: these elements are drawn for
-   * the session that minted them, and a block id lives exactly as long as the
-   * document that minted it.
+   * Which anchor it carries still differs, and has to. On screen it may name a
+   * BLOCK, because these elements are drawn for the session that minted them
+   * and a block id lives exactly as long as that document. A saved canvas
+   * outlives it, so a file's boxes anchor on heading TEXT instead.
    */
   customData?: { memryHref: string }
 }

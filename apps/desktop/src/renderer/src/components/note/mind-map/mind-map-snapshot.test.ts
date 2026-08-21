@@ -55,6 +55,18 @@ function snapshot(blocks: readonly MindMapSourceBlock[] = BLOCKS): MindMapElemen
   return mintSnapshotElements(map, { noteId: 'n1', generatedLabel: GENERATED })
 }
 
+/**
+ * Where a box carries its deep link.
+ *
+ * `customData`, never `element.link` — the drawing library paints a permanent
+ * glyph for the latter, and a map is nothing but linked boxes. Read through one
+ * helper so the assertions below say what the link IS rather than where it
+ * happens to live.
+ */
+function hrefOf(box: MindMapBoxElement | undefined): string | undefined {
+  return box?.customData?.memryHref
+}
+
 function boxes(elements: readonly MindMapElement[]): Map<string, MindMapBoxElement> {
   return new Map(
     elements
@@ -67,19 +79,19 @@ describe('mintSnapshotElements — links that outlive the document', () => {
   it('anchors a heading on its own text, never on a block id', () => {
     const byId = boxes(snapshot())
 
-    expect(byId.get('mm-b-risks')?.link).toBe('memry://note/n1#Risks')
-    expect(byId.get('mm-b-cost')?.link).toBe('memry://note/n1#Cost')
+    expect(hrefOf(byId.get('mm-b-risks'))).toBe('memry://note/n1#Risks')
+    expect(hrefOf(byId.get('mm-b-cost'))).toBe('memry://note/n1#Cost')
   })
 
   it('anchors a list node on its nearest ancestor heading, however deep', () => {
     const byId = boxes(snapshot())
 
     // Directly under `Risks`…
-    expect(byId.get('mm-b-lock')?.link).toBe('memry://note/n1#Risks')
+    expect(hrefOf(byId.get('mm-b-lock'))).toBe('memry://note/n1#Risks')
     // …and nested one level further under the same one.
-    expect(byId.get('mm-b-deep')?.link).toBe('memry://note/n1#Risks')
+    expect(hrefOf(byId.get('mm-b-deep'))).toBe('memry://note/n1#Risks')
     // Under the deeper heading, not the one that opened the section.
-    expect(byId.get('mm-b-budget')?.link).toBe('memry://note/n1#Cost')
+    expect(hrefOf(byId.get('mm-b-budget'))).toBe('memry://note/n1#Cost')
   })
 
   it('anchors on nothing above the first heading, and at the root', () => {
@@ -87,8 +99,8 @@ describe('mintSnapshotElements — links that outlive the document', () => {
 
     // No heading to borrow: the link opens the note at the top, which is where
     // a build with no anchors at all would have put the reader anyway.
-    expect(byId.get('mm-b-intro')?.link).toBe('memry://note/n1')
-    expect(byId.get('mm-root')?.link).toBe('memry://note/n1')
+    expect(hrefOf(byId.get('mm-b-intro'))).toBe('memry://note/n1')
+    expect(hrefOf(byId.get('mm-root'))).toBe('memry://note/n1')
   })
 
   it('writes no block anchor anywhere in the document, whatever the note holds', () => {
@@ -114,14 +126,14 @@ describe('mintSnapshotElements — links that outlive the document', () => {
     for (const box of boxes(
       mintSnapshotElements(map, { noteId: 'n1', generatedLabel: GENERATED })
     ).values()) {
-      expect(box.link).not.toMatch(/#\^/)
+      expect(hrefOf(box)).not.toMatch(/#\^/)
     }
   })
 
   it('escapes a heading whose text would otherwise break the link', () => {
     const byId = boxes(snapshot([heading('b-q', 1, 'Q3 / Q4 plan?')]))
 
-    const href = byId.get('mm-b-q')!.link!
+    const href = hrefOf(byId.get('mm-b-q'))!
     expect(href).toBe('memry://note/n1#Q3%20%2F%20Q4%20plan%3F')
 
     const parsed = parseMemryHref(href)
@@ -131,11 +143,11 @@ describe('mintSnapshotElements — links that outlive the document', () => {
 
   it('round-trips through the parser a canvas will read it with', () => {
     for (const box of boxes(snapshot()).values()) {
-      const parsed = parseMemryHref(box.link!)
+      const parsed = parseMemryHref(hrefOf(box)!)
       // Still resolves to the note itself on a build that has never heard of
       // anchors: the item comes out of the path, the anchor out of the fragment.
       expect(parsed).toMatchObject({ kind: 'note', id: 'n1' })
-      expect(tabFromMemryHref(box.link!)).toMatchObject({ type: 'note', path: '/note/n1' })
+      expect(tabFromMemryHref(hrefOf(box)!)).toMatchObject({ type: 'note', path: '/note/n1' })
       if (parsed?.kind === 'note' && parsed.anchor) {
         expect(parsed.anchor.type).toBe('heading')
       }
@@ -188,8 +200,11 @@ describe('mintSnapshotElements — the document itself', () => {
     for (const element of snapshot()) {
       // `customData.entityType` is what makes a rectangle a live Memry card
       // (see `pages/canvas/canvas-cards.ts`). A card is roughly ten times the
-      // size of a map node, and a dozen make the map unreadable.
-      expect(element).not.toHaveProperty('customData')
+      // size of a map node, and a dozen make the map unreadable. The boxes DO
+      // carry `customData` — it is where their href lives — so what is asserted
+      // is the absence of the card keys, not of the field.
+      expect(element).not.toHaveProperty('customData.entityType')
+      expect(element).not.toHaveProperty('customData.entityId')
       expect(['rectangle', 'arrow', 'line']).toContain(element.type)
     }
   })
@@ -311,11 +326,11 @@ describe('mintSnapshotElements — a heading longer than the label cap', () => {
     // heading on the device that opens the canvas, so the link silently lands
     // at the top of the note instead of at the section.
     const href = `memry://note/n1#${encodeURIComponent(LONG)}`
-    expect(byId.get('mm-b-long')!.link).toBe(href)
+    expect(hrefOf(byId.get('mm-b-long'))).toBe(href)
     // And the child borrows the same whole text.
-    expect(byId.get('mm-b-kid')!.link).toBe(href)
+    expect(hrefOf(byId.get('mm-b-kid'))).toBe(href)
 
-    const parsed = parseMemryHref(byId.get('mm-b-long')!.link!)
+    const parsed = parseMemryHref(hrefOf(byId.get('mm-b-long'))!)
     if (parsed?.kind !== 'note') throw new Error('the link no longer names a note')
     expect(parsed.anchor).toEqual({ type: 'heading', text: LONG })
   })
@@ -339,13 +354,13 @@ describe('mintSnapshotElements — wiki-link nodes', () => {
 
     // The point of a saved wiki-link node: it opens the note it names, on any
     // device, rather than a node id only this session understood.
-    expect(box.link).toBe('memry://note/n2#Plan')
+    expect(hrefOf(box)).toBe('memry://note/n2#Plan')
   })
 
   it('falls back to the heading it is written under when it resolves to nothing', () => {
     // Never a dead box and never an invented destination: it opens the source
     // note at the section the link is written in.
-    expect(linkBox().link).toBe('memry://note/n1#Risks')
+    expect(hrefOf(linkBox())).toBe('memry://note/n1#Risks')
   })
 
   it('never carries the node-id anchor the drawn map gives it', () => {
@@ -358,7 +373,7 @@ describe('mintSnapshotElements — wiki-link nodes', () => {
     expect(mindMapHrefOf(drawn)).toBe(`memry://note/n1#^${node.id}`)
     expect(drawn).not.toHaveProperty('link')
     // In a file that names a block this device never minted.
-    expect(linkBox().link).not.toMatch(/#\^/)
+    expect(hrefOf(linkBox())).not.toMatch(/#\^/)
   })
 
   it('keeps the dashed outline that tells it apart from this note', () => {
@@ -391,8 +406,8 @@ describe('mintSnapshotElements — fold markers', () => {
   it('opens the note at the section the missing rows actually live in', () => {
     // It cannot expand in a file — there is nothing on the other side to expand
     // it — so it points at the place the folded content really is.
-    expect(box.link).toBe('memry://note/n1#Risks')
-    expect(box.link).not.toMatch(/#\^/)
+    expect(hrefOf(box)).toBe('memry://note/n1#Risks')
+    expect(hrefOf(box)).not.toMatch(/#\^/)
   })
 })
 

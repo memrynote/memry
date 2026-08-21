@@ -320,6 +320,7 @@
       "groupProjects": "Projects",
       "groupFolders": "Folders",
       "useUrl": "Link to {url}",
+      "openTarget": "Open {name}",
       "shapeTarget": "A shape on this canvas",
       "missingTarget": "No longer on this canvas"
     },
