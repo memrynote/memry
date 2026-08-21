@@ -43,14 +43,14 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {items.map((item, index) => {
+      {items.map((item) => {
         const folder = extractFolderFromPath(item.path)
         const time = formatRelative(item.openedAt)
         const meta = folder
           ? t('home.widget.openedMetaWithFolder', { folder, time })
           : t('home.widget.openedMeta', { time })
         return (
-          <WidgetRow key={item.itemId} index={index}>
+          <WidgetRow key={item.itemId}>
             <button
               type="button"
               data-testid="recently-opened-note"

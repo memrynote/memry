@@ -1,39 +1,22 @@
 import type { ComponentType, ReactNode } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
 
 interface WidgetRowProps {
-  index: number
   className?: string
   children: ReactNode
   'data-testid'?: string
   'data-task-id'?: string
 }
 
-// Shared entrance for widget list rows: when data replaces the skeleton the rows rise in with a
-// short stagger instead of a hard cut. Critically damped — a list entrance carries no momentum,
-// so no overshoot. Collapses to a plain fade under reduced motion.
+// Shared widget list row. No entrance animation: rows paint as soon as the data lands.
 export function WidgetRow({
-  index,
   className,
   children,
   ...dataProps
 }: WidgetRowProps): React.JSX.Element {
-  const reduceMotion = useReducedMotion()
   return (
-    <motion.li
-      className={className}
-      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
-      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-      transition={{
-        type: 'spring',
-        bounce: 0,
-        duration: 0.35,
-        delay: Math.min(index * 0.025, 0.2)
-      }}
-      {...dataProps}
-    >
+    <li className={className} {...dataProps}>
       {children}
-    </motion.li>
+    </li>
   )
 }
 

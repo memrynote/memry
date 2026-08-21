@@ -16,7 +16,7 @@ import {
   type UIEvent
 } from 'react'
 import { cn } from '@/lib/utils'
-import { motion, useReducedMotion } from 'motion/react'
+import { useReducedMotion } from 'motion/react'
 import { Loader2 } from '@/lib/icons'
 import {
   JournalMonthView,
@@ -939,13 +939,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 )}
                 style={{ maxWidth: isFullWidth ? '100%' : '64rem' }}
               >
-                {/* Content — materializes on day/view switch (crossfade only
-                    under reduced motion); critically damped spring, no overshoot */}
-                <motion.div
+                {/* No entrance animation: a day/view switch paints immediately */}
+                <div
                   key={`${currentViewState.type}-${selectedDate}`}
-                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
                   className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
                 >
                   {entryError && (
@@ -1138,7 +1134,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                       />
                     </div>
                   )}
-                </motion.div>
+                </div>
               </div>
             </div>
 

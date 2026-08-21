@@ -415,7 +415,7 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
       data-inbox-scroll
       className={cn('flex flex-col grow overflow-y-auto pt-[38px]', className)}
     >
-      <div className="fade-in-up stagger-1 flex shrink-0 pt-6 gap-3 px-6">
+      <div className="flex shrink-0 pt-6 gap-3 px-6">
         <StatCard
           label={t('insights.captured')}
           value={stats.totalItems}
@@ -441,12 +441,12 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
         />
       </div>
 
-      <div className="fade-in-up stagger-2 flex shrink-0 pt-4 gap-3 px-6">
+      <div className="flex shrink-0 pt-4 gap-3 px-6">
         <CaptureHeatmap patterns={patterns} />
         <TypeDistribution itemsByType={stats.itemsByType} />
       </div>
 
-      <div className="fade-in-up stagger-3 flex flex-col shrink-0 pt-4 gap-3 px-6 pb-6">
+      <div className="flex flex-col shrink-0 pt-4 gap-3 px-6 pb-6">
         <div className="text-muted-foreground font-sans font-medium text-xs/4">
           {t('insights.recentFilings')}
         </div>

@@ -85,7 +85,6 @@ export function CalendarWidget({ size }: WidgetComponentProps): React.JSX.Elemen
     rows.push(
       <WidgetRow
         key={ev.id}
-        index={i}
         data-testid="calendar-event"
         className={
           isNext

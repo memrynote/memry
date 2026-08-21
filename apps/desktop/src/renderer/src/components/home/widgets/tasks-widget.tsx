@@ -47,7 +47,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {filtered.map((task, index) => {
+      {filtered.map((task) => {
         const project =
           projects.find((p) => p.id === task.projectId) ??
           ({
@@ -58,7 +58,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
           } as unknown as Project)
 
         return (
-          <WidgetRow key={task.id} index={index} data-testid="task-item" data-task-id={task.id}>
+          <WidgetRow key={task.id} data-testid="task-item" data-task-id={task.id}>
             <TaskRow
               task={task}
               project={project}

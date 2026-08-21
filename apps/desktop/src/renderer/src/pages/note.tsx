@@ -16,7 +16,7 @@ import {
   type RefObject
 } from 'react'
 import { cn } from '@/lib/utils'
-import { motion, useReducedMotion } from 'motion/react'
+import { useReducedMotion } from 'motion/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ExportDialog } from '@/components/note/export-dialog'
 import { VersionHistory } from '@/components/note/version-history'
@@ -1539,14 +1539,10 @@ export function NotePage({ noteId }: NotePageProps) {
       breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
       stats={documentStats}
     >
-      {/* Note content — materializes on note switch (crossfade only under
-          reduced motion); critically damped spring, no overshoot */}
-      <motion.div
+      {/* Note content — no entrance animation: a note switch paints immediately */}
+      <div
         key={noteId}
         ref={noteBodyRef}
-        initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
         data-testid="note-body"
         // Hidden, never unmounted: unmounting destroys the editor instance and
         // with it the CRDT undo manager, so a look at the map would cost the
@@ -1748,7 +1744,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onTaskClick={handleLinkedTaskClick}
           />
         </div>
-      </motion.div>
+      </div>
 
       {/* Export Dialog */}
       <ExportDialog

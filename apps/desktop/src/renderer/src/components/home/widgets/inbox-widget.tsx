@@ -63,8 +63,8 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {items.slice(0, limit).map((item, index) => (
-        <WidgetRow key={item.id} index={index} className="group/row flex items-center gap-1">
+      {items.slice(0, limit).map((item) => (
+        <WidgetRow key={item.id} className="group/row flex items-center gap-1">
           <button
             type="button"
             data-testid="inbox-item"

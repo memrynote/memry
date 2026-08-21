@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -138,7 +137,6 @@ export function CalendarShell({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const { t } = useT('calendar')
   const hasGoogleCalendars = importedSources.length > 0
-  const prefersReducedMotion = useReducedMotion()
 
   // Scroll-edge state for the floating chrome: true once content is beneath it.
   // Views own their scroll containers (marked data-calendar-scroll); capture-phase
@@ -150,10 +148,9 @@ export function CalendarShell({
     setIsScrolled(target.scrollTop > 0)
   }, [])
 
-  // One key per rendered period: prev/next remounts the grid so it can slide in
-  // the direction of travel; a view switch materializes in place instead. Week is
-  // keyed on view only — its infinite scroller animates anchor changes itself.
-  const motionKey =
+  // One key per rendered period: prev/next remounts the grid. Week is keyed on
+  // view only — its infinite scroller handles anchor changes itself.
+  const viewKey =
     view === 'week'
       ? 'week'
       : view === 'day'
@@ -161,36 +158,12 @@ export function CalendarShell({
         : view === 'month'
           ? `month:${anchorDate.slice(0, 7)}`
           : `year:${anchorDate.slice(0, 4)}`
-  const transitionRef = useRef<{
-    key: string
-    view: CalendarWorkspaceView
-    anchorDate: string
-    initial: { opacity: number; x?: number; y?: number } | null
-  }>({ key: motionKey, view, anchorDate, initial: null })
-  if (transitionRef.current.key !== motionKey) {
-    const sameView = transitionRef.current.view === view
-    const forward = anchorDate >= transitionRef.current.anchorDate
+  const renderedKeyRef = useRef(viewKey)
+  if (renderedKeyRef.current !== viewKey) {
     // New period/view mounts unscrolled — drop the chrome edge with it
     setIsScrolled(false)
-    transitionRef.current = {
-      key: motionKey,
-      view,
-      anchorDate,
-      initial: prefersReducedMotion
-        ? { opacity: 0 }
-        : sameView
-          ? { opacity: 0, x: forward ? 20 : -20 }
-          : { opacity: 0, y: 8 }
-    }
-  } else if (
-    transitionRef.current.view !== view ||
-    transitionRef.current.anchorDate !== anchorDate
-  ) {
-    // Same key (week anchor changes): keep the baseline current without animating
-    transitionRef.current = { ...transitionRef.current, view, anchorDate }
+    renderedKeyRef.current = viewKey
   }
-  const viewInitial =
-    transitionRef.current.initial ?? (prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 })
 
   const handleRefreshGoogle = async (): Promise<void> => {
     if (isRefreshing) return
@@ -351,13 +324,7 @@ export function CalendarShell({
             {t('state.loading-calendar')}
           </div>
         ) : (
-          <motion.div
-            key={motionKey}
-            initial={viewInitial}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="h-full"
-          >
+          <div key={viewKey} className="h-full">
             {view === 'day' ? (
               <CalendarDayView
                 {...chipViewProps}
@@ -381,7 +348,7 @@ export function CalendarShell({
                 onAnchorChange={onAnchorChange}
               />
             )}
-          </motion.div>
+          </div>
         )}
       </div>
 

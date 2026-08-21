@@ -41,11 +41,11 @@ export function BookmarksWidget({ config, size }: WidgetComponentProps): React.J
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {bookmarks.slice(0, limit).map((b, index) => {
+      {bookmarks.slice(0, limit).map((b) => {
         const Icon = ICON_BY_TYPE[b.itemType] ?? FileText
         const typeLabel = b.itemType.charAt(0).toUpperCase() + b.itemType.slice(1)
         return (
-          <WidgetRow key={b.id} index={index}>
+          <WidgetRow key={b.id}>
             <button
               type="button"
               data-testid="bookmark-item"

@@ -1194,13 +1194,9 @@ export const TasksPage = ({
             </div>
           )}
 
-          {/* Content materializes on tab/view switch (crossfade only under
-              reduced motion); critically damped spring, no overshoot */}
-          <motion.div
+          {/* No entrance animation: a tab/view switch paints immediately */}
+          <div
             key={`${activeInternalTab}:${activeView}`}
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
             className="flex flex-1 min-h-0 flex-col overflow-hidden"
           >
             {/* Content Body - due-date window (flat listing, overdue first) */}
@@ -1304,7 +1300,7 @@ export const TasksPage = ({
                 />
               </div>
             )}
-          </motion.div>
+          </div>
         </main>
 
         {/* Task Detail Drawer */}

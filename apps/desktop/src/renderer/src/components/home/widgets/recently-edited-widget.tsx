@@ -36,14 +36,14 @@ export function RecentlyEditedWidget({ size }: WidgetComponentProps): React.JSX.
 
   return (
     <ul className="flex flex-col gap-0.5">
-      {notes.slice(0, limit).map((n, index) => {
+      {notes.slice(0, limit).map((n) => {
         const folder = extractFolderFromPath(n.path)
         const time = n.modified ? formatRelative(n.modified.toISOString()) : ''
         const meta = folder
           ? t('home.widget.recentMetaWithFolder', { folder, time })
           : t('home.widget.recentMeta', { time })
         return (
-          <WidgetRow key={n.id} index={index}>
+          <WidgetRow key={n.id}>
             <button
               type="button"
               data-testid="recent-note"

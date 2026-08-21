@@ -14,7 +14,6 @@ import {
   X
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { motion, useReducedMotion } from 'motion/react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { SRAnnouncer } from '@/components/sr-announcer'
@@ -89,7 +88,6 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const archivedSearchRef = useRef<HTMLInputElement>(null)
   // Scroll-edge state for the floating chrome: true once content is beneath it
   const [isScrolled, setIsScrolled] = useState(false)
-  const prefersReducedMotion = useReducedMotion()
   useInboxNotifications()
   const { items } = useInboxList()
   const { upcomingCount } = useInboxRemindersPanel()
@@ -419,15 +417,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         </PageToolbar>
 
         <div className="min-h-0 flex-1">
-          {/* Sub-view content materializes on view switch (crossfade only under
-              reduced motion); critically damped spring, no overshoot */}
-          <motion.div
-            key={currentView}
-            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-            className="h-full"
-          >
+          {/* No entrance animation: a view switch paints immediately */}
+          <div key={currentView} className="h-full">
             {currentView === 'inbox' && (
               <InboxListView
                 className={className}
@@ -442,7 +433,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               <InboxArchivedView className={className} searchQuery={archivedSearchQuery} />
             )}
             {currentView === 'insights' && <InboxHealthView className={className} />}
-          </motion.div>
+          </div>
         </div>
       </div>
 
