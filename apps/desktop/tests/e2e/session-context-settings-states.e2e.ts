@@ -1,7 +1,7 @@
 import type { ElectronApplication, Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { MOD, ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { createNote, navigateTo, SELECTORS } from './utils/electron-helpers'
+import { createNote, navigateTo, SELECTORS, showAllTasksScope } from './utils/electron-helpers'
 
 async function tabTitles(page: Page): Promise<string[]> {
   return page
@@ -182,7 +182,7 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible()
 
     await openSettingsSection(page, 'calendar')
-    await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible()
     await expect(page.getByText('Default behavior')).toBeVisible()
 
     await openSettingsSection(page, 'ai')
@@ -259,7 +259,7 @@ test.describe('Session, context menu, settings, shortcuts, and state E2E', () =>
     await expect(page.getByText('Inbox Zero')).toBeVisible()
 
     await navigateTo(page, 'tasks')
-    await page.getByRole('tab', { name: /^All\b/ }).click()
+    await showAllTasksScope(page)
     await expect(page.getByText('No tasks yet')).toBeVisible()
 
     await page

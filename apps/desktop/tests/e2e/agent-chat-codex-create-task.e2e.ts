@@ -19,7 +19,8 @@ import {
   createNote,
   navigateTo,
   waitForAppReady,
-  waitForVaultReady
+  waitForVaultReady,
+  showAllTasksScope
 } from './utils/electron-helpers'
 
 const AGENT_TASK_CREATE_TIMEOUT_MS = process.env.CI ? 60_000 : 20_000
@@ -89,7 +90,7 @@ test.describe('Agent chat Codex create-task flow', () => {
       .toBe(true)
 
     await navigateTo(page, 'tasks')
-    await page.getByRole('tab', { name: /^All\b/ }).click()
+    await showAllTasksScope(page)
     await expect(page.getByRole('button', { name: 'Task: Buy milk' })).toBeVisible()
   })
 })

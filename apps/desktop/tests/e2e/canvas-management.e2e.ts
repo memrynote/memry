@@ -22,6 +22,7 @@
  */
 import { test, expect, type Page } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
+import { setOpenPagesInNewTab } from './utils/electron-helpers'
 
 const CANVAS_DRAG_MIME = 'application/x-memry-canvas'
 
@@ -259,6 +260,9 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     page
   }) => {
     await openVault(page)
+    // Each create has to land in its own tab for the per-canvas close to be
+    // observable; tabs are reused by default.
+    await setOpenPagesInNewTab(page, true)
     await expandCanvasSection(page)
 
     // ---------------------------------------------------------------- set up

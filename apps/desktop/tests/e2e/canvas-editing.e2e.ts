@@ -6,6 +6,7 @@
  */
 import { test, expect, type Page } from './fixtures'
 import { MOD, ready } from './utils/desktop-test-helpers'
+import { setOpenPagesInNewTab } from './utils/electron-helpers'
 
 async function openVault(page: Page): Promise<void> {
   await page
@@ -354,6 +355,9 @@ test.describe('Spatial canvas — in-place editing (M6)', () => {
   test('cards survive an in-session canvas remount (restore regression)', async ({ page }) => {
     await openVault(page)
     await setSpatialCanvasFlag(page, true)
+    // Tabs are reused by default, so the canvas would replace the Home tab this
+    // test switches to. Give each opened page its own tab.
+    await setOpenPagesInNewTab(page, true)
     const canvasId = await createCanvasFromSidebar(page)
     const title = `Restore ${Date.now()}`
     const noteId = await seedNote(page, title, 'body')

@@ -630,3 +630,36 @@ export async function selectSearchResult(page: Page, text: string): Promise<void
     console.log(`Select search result: could not find "${text}"`)
   }
 }
+
+/**
+ * Switch the Tasks page scope to "All".
+ *
+ * The scope used to be a tab strip; it is now a Picker (combobox + listbox),
+ * so tests must open the trigger and choose the option.
+ */
+export async function showAllTasksScope(page: Page): Promise<void> {
+  const trigger = page.getByRole('combobox', { name: 'Task views' })
+  await trigger.click()
+  await page.getByRole('option', { name: /^All/ }).click()
+  await expect(trigger).toContainText('All')
+}
+
+/**
+ * Flip the "open pages in a new tab" general setting.
+ *
+ * Tabs are reused by default, so a test that needs one tab per opened page has
+ * to turn this on and wait for the renderer to pick the change up.
+ */
+export async function setOpenPagesInNewTab(page: Page, enabled: boolean): Promise<void> {
+  const result = await page.evaluate(
+    (value) => window.api.settings.setGeneralSettings({ openPagesInNewTab: value }),
+    enabled
+  )
+  expect(result.success).toBe(true)
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => (await window.api.settings.getGeneralSettings()).openPagesInNewTab)
+    )
+    .toBe(enabled)
+  await page.waitForTimeout(300)
+}

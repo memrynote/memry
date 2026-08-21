@@ -91,10 +91,9 @@ test.describe('Note mind map', () => {
     await expect(editor).not.toBeVisible()
 
     // The region announces itself as the note's map.
-    await expect(page.locator(`${MAP} [role="img"]`)).toHaveAttribute(
-      'aria-label',
-      new RegExp(NOTE_TITLE)
-    )
+    // Icons render as role="img" too, so match the labelled, non-decorative region.
+    const mapRegion = page.locator(`${MAP} [role="img"][aria-label]:not([aria-hidden="true"])`)
+    await expect(mapRegion).toHaveAttribute('aria-label', new RegExp(NOTE_TITLE))
 
     // Every heading in the note reached the tree.
     const headings = page.locator(HEADING_NODES)

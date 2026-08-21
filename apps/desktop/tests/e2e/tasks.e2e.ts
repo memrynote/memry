@@ -24,7 +24,8 @@ import {
   SELECTORS,
   SHORTCUTS,
   dragAndDrop as _dragAndDrop,
-  getElementCount as _getElementCount
+  getElementCount as _getElementCount,
+  showAllTasksScope
 } from './utils/electron-helpers'
 
 const MULTI_SELECT_MODIFIER = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -236,8 +237,7 @@ test.describe('Tasks Management', () => {
 
   test.describe('Task Drag and Drop', () => {
     const showAllTasks = async (page: Page): Promise<void> => {
-      const allTab = page.getByRole('tab', { name: /^All/ }).first()
-      await allTab.click()
+      await showAllTasksScope(page)
       await page.waitForTimeout(500)
     }
 

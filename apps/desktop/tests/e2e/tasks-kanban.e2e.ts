@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { navigateTo } from './utils/electron-helpers'
+import { navigateTo, showAllTasksScope } from './utils/electron-helpers'
 
 test.describe('Tasks and Kanban E2E', () => {
   test('covers custom statuses, task moves, bulk actions, saved filters, and Kanban rendering', async ({
@@ -145,7 +145,7 @@ test.describe('Tasks and Kanban E2E', () => {
     )
 
     await navigateTo(page, 'tasks')
-    await page.getByRole('tab', { name: /^All\b/ }).click()
+    await showAllTasksScope(page)
     await page.getByRole('radio', { name: 'Kanban view' }).click()
     await expect(page.getByLabel('Kanban board')).toBeVisible()
     await expect(page.getByRole('button', { name: result.activeTaskTitle })).toBeVisible()

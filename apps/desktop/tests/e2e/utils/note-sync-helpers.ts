@@ -131,6 +131,14 @@ async function waitForPersistedNoteBody(page: Page, noteId: string, body: string
 async function waitForNoteEditor(page: Page) {
   const editor = page.locator(SELECTORS.noteEditor).first()
   await editor.waitFor({ state: 'visible', timeout: 10000 })
+  // The editor paints before the effect that publishes it on window, and the
+  // journal surface makes that gap wide enough to lose. Wait for the global,
+  // otherwise every reader below throws instead of retrying.
+  await page.waitForFunction(
+    () => Boolean((window as unknown as { __memryEditor?: unknown }).__memryEditor),
+    undefined,
+    { timeout: 30000 }
+  )
   return editor
 }
 

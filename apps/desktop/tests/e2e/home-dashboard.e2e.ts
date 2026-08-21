@@ -502,6 +502,7 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
       .not.toContain(doomed.id)
 
     // The last remaining board cannot be deleted.
+    await expect(page.locator(SEL.managerRow)).toHaveCount(1, { timeout: 20000 })
     await expect(page.locator(SEL.managerDelete)).toBeDisabled({ timeout: 20000 })
   })
 })
