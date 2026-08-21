@@ -116,6 +116,17 @@ export interface AttachmentResult {
    * known, and an absolute `memry-file://` URL when it is not.
    */
   path?: string
+  /**
+   * Where the file actually landed on THIS machine, absolute and unprefixed.
+   *
+   * Separate from {@link AttachmentResult.path} because that one stopped being
+   * reversible: it is a note-relative ref, and a caller that needs a disk path
+   * cannot recover one from it. Sync is such a caller — it uploads the bytes —
+   * and reversing `path` back through `fromMemryFileUrl` threw on every
+   * relative ref, so the upload was never enqueued and the attachment stayed on
+   * the device that made it.
+   */
+  diskPath?: string
   /** Original filename */
   name?: string
   /** File size in bytes */
@@ -402,6 +413,7 @@ export async function saveAttachment(
         uniqueFilename,
         options?.notePath ?? resolveNotePath(noteId)
       ),
+      diskPath: filePath,
       name: originalFilename,
       size: data.length,
       mimeType: getMimeType(originalFilename),

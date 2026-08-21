@@ -332,6 +332,23 @@ describe('attachment operations', () => {
       expect(result.path).not.toContain(tempVault.path)
     })
 
+    it('also reports where the bytes landed, so sync can upload them', async () => {
+      // The note-relative ref is not reversible into a disk path, and sync
+      // needs one to read the file. Deriving it from `path` is what broke:
+      // every attachment written from the editor threw on the way to the
+      // upload queue and stayed on the single device that made it.
+      const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf', {
+        notePath: 'notes/Meeting.md'
+      })
+
+      expect(result.diskPath).toBeDefined()
+      expect(path.isAbsolute(result.diskPath as string)).toBe(true)
+      expect(fs.existsSync(result.diskPath as string)).toBe(true)
+      expect(path.dirname(result.diskPath as string)).toBe(
+        path.join(tempVault.path, 'attachments', 'note123')
+      )
+    })
+
     it('climbs once per folder between the note and the attachments tree', async () => {
       const result = await saveAttachment('note123', Buffer.from('data'), 'plan.pdf', {
         notePath: 'notes/work/q3/Review.md'

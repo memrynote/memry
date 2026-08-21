@@ -62,7 +62,6 @@ const mocks = vi.hoisted(() => {
     countLocalOnlyNoteMetadata: vi.fn(),
     listPropertyDefinitions: vi.fn(),
     emitNoteAttachmentSaved: vi.fn(),
-    fromMemryFileUrl: vi.fn(),
     service: {
       get: vi.fn(),
       upsert: vi.fn(),
@@ -183,10 +182,6 @@ vi.mock('../lib/main-i18n', () => ({
   })
 }))
 
-vi.mock('../lib/paths', () => ({
-  fromMemryFileUrl: mocks.fromMemryFileUrl
-}))
-
 vi.mock('../notes/runtime-effects', () => ({
   emitNoteAttachmentSaved: mocks.emitNoteAttachmentSaved
 }))
@@ -227,7 +222,6 @@ describe('notes-handlers extra coverage', () => {
     mocks.windowInstance.loadURL.mockResolvedValue(undefined)
     mocks.windowInstance.isDestroyed.mockReturnValue(false)
     mocks.fsWriteFile.mockResolvedValue(undefined)
-    mocks.fromMemryFileUrl.mockReturnValue('/vault/.memry/attachments/note-a/file.png')
     mocks.service.get.mockReturnValue(null)
     registerNotesHandlers()
   })
@@ -439,9 +433,15 @@ describe('notes-handlers extra coverage', () => {
   })
 
   it('handles attachments and import dialog workflows', async () => {
+    // The real shape a saved attachment comes back in: `path` is the
+    // note-relative ref that goes into the markdown, and only `diskPath` says
+    // where the bytes are. Feeding `path` to the sync emit threw on every save
+    // and the attachment never left the device — so this asserts the emit gets
+    // the disk path, not something derived from the ref.
     mocks.saveAttachment.mockResolvedValue({
       success: true,
-      path: 'memry-file://attachments/note-a/file.png'
+      path: '../attachments/note-a/file.png',
+      diskPath: '/vault/attachments/note-a/file.png'
     })
     await invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
       noteId: 'note-a',
@@ -450,7 +450,7 @@ describe('notes-handlers extra coverage', () => {
     })
     expect(mocks.emitNoteAttachmentSaved).toHaveBeenCalledWith(
       'note-a',
-      '/vault/.memry/attachments/note-a/file.png'
+      '/vault/attachments/note-a/file.png'
     )
 
     mocks.listNoteAttachments.mockResolvedValue([{ filename: 'file.png' }])

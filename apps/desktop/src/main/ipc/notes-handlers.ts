@@ -70,7 +70,6 @@ import {
 import { applyTemplateToNote } from '../notes/apply-template'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
-import { fromMemryFileUrl } from '../lib/paths'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import {
   syncFolderConfigSet,
@@ -735,10 +734,13 @@ export function registerNotesHandlers(): void {
         ? Buffer.from(input.data)
         : Buffer.from(new Uint8Array(input.data))
       const result = await saveAttachment(input.noteId, data, input.filename)
-      if (result.success && result.path) {
+      if (result.success && result.diskPath) {
         try {
-          const diskPath = fromMemryFileUrl(result.path)
-          emitNoteAttachmentSaved(input.noteId, diskPath)
+          // `result.diskPath`, never `result.path`: the latter is a note-relative
+          // ref, and running it back through `fromMemryFileUrl` threw on every
+          // save, so this emit never fired and no attachment written from the
+          // editor reached another device.
+          emitNoteAttachmentSaved(input.noteId, result.diskPath)
         } catch (error) {
           // Don't block local save if sync event fails — but a swallowed emit
           // means the attachment silently never syncs to other devices.

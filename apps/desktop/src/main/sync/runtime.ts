@@ -898,10 +898,19 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         .catch(() => {})
 
       // Retry attachment uploads that failed or were interrupted in earlier
-      // sessions — the durable outbox holds them across restarts.
-      void import('./attachment-outbox')
-        .then(({ drainAttachmentOutbox }) => drainAttachmentOutbox())
-        .catch(() => {})
+      // sessions — the durable outbox holds them across restarts. The backfill
+      // runs first and in the same chain: it puts rows in that outbox for files
+      // whose save-time emit never fired, and those rows are only picked up by
+      // the drain that follows them.
+      void (async () => {
+        await import('./attachment-backfill')
+          .then(({ backfillUnsyncedAttachments }) => backfillUnsyncedAttachments())
+          // A backfill that cannot run must never keep the drain from retrying
+          // the rows already pending — those are the older problem.
+          .catch((error: unknown) => log.warn('Attachment backfill skipped', { error }))
+        const { drainAttachmentOutbox } = await import('./attachment-outbox')
+        await drainAttachmentOutbox()
+      })().catch(() => {})
 
       // Deliberately here and not next to crdtProvider.init(): the drain needs
       // the snapshot push fn that init installs, but it also has to come after
