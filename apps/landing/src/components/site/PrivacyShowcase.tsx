@@ -93,7 +93,7 @@ export function PrivacyShowcase() {
             Sealed before it <em className="text-terracotta">leaves your device.</em>
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-dark-muted md:text-lg">
-            Sync ships only ciphertext — XChaCha20-Poly1305, keys derived on your machine. What you
+            Sync ships only ciphertext: XChaCha20-Poly1305, keys derived on your machine. What you
             write stays between you and your devices.
           </p>
         </motion.div>

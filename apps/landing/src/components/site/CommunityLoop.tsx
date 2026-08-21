@@ -43,7 +43,7 @@ const LOOP_CARDS: LoopCard[] = [
   },
   {
     title: 'Roadmap',
-    line: 'What we are building next — in the open.',
+    line: 'What we are building next, in the open.',
     href: '/roadmap',
     icon: <Mascot src="/mascots/roadmap.png" className="h-8 w-8" />,
     mascot: true,
@@ -51,14 +51,14 @@ const LOOP_CARDS: LoopCard[] = [
   },
   {
     title: 'X / Twitter',
-    line: 'Follow the build in public — @h4yfans.',
+    line: 'Follow the build in public: @h4yfans.',
     href: 'https://x.com/h4yfans',
     icon: <XIcon />,
     target: 'home-community:twitter'
   },
   {
     title: 'Reddit',
-    line: 'Questions, feedback and ideas — r/MemryNote.',
+    line: 'Questions, feedback and ideas: r/MemryNote.',
     href: 'https://www.reddit.com/r/MemryNote/',
     icon: <RedditIcon />,
     target: 'home-community:reddit'
@@ -134,7 +134,7 @@ export function CommunityLoop() {
         <SectionTitle
           eyebrow="Community"
           title="Built in the open"
-          sub="Follow what's shipping — and help decide what comes next."
+          sub="Follow what's shipping, and help decide what comes next."
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-5">
           {LOOP_CARDS.map((card, index) => (

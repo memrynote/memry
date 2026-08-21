@@ -5,7 +5,6 @@ import { PageHead } from '@/components/shared/PageHead'
 import { PageHero } from '@/components/site/PageHero'
 import { FeatureChip } from '@/components/site/primitives'
 import { GITHUB_URL } from '@/lib/constants'
-import { SITE_TINTS } from '@/lib/site-tints'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -453,8 +452,6 @@ export function RoadmapPage() {
     <>
       <PageHead page="roadmap" />
       <PageHero
-        tint={SITE_TINTS.roadmap}
-        eyebrow="Building in public"
         title="Roadmap"
         sub="What is available, what is active, and what is planned next. This is direction, not a release promise."
         actions={

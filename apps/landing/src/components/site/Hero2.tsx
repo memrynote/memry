@@ -224,6 +224,11 @@ export function Hero2() {
           className="absolute inset-0 h-full w-full scale-105 object-cover blur-[3px]"
         />
 
+        {/* The page's dot grid + grain, re-painted over the sky so the texture carries
+            through the hero instead of stopping where the wallpaper starts. Above the
+            backdrop, below the copy and the screenshot (both z-10). */}
+        <div aria-hidden className="page-texture pointer-events-none absolute inset-0" />
+
         {/* Copy + CTAs */}
         <div className="relative z-10 px-6 pt-28 text-center sm:px-10 md:pt-28">
           {/* Type geometry from the Paper slogan artboard: 54px cap, -0.055em tracking,

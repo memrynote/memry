@@ -140,8 +140,8 @@ export function Features() {
             Five modules. <em className="text-terracotta">One window.</em>
           </h2>
           <p className="section-sub mt-4">
-            Each module is a room, not another tab. Open the ones that help you — and switch the
-            rest off in settings.
+            Each module is a room, not another tab. Open the ones that help you, and switch the rest
+            off in settings.
           </p>
         </motion.div>
 

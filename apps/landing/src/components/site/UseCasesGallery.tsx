@@ -17,7 +17,7 @@ interface Persona {
 const PERSONAS: Persona[] = [
   {
     name: 'Writer',
-    line: 'Drafts, research, and journals — all in one quiet place.',
+    line: 'Drafts, research, and journals, all in one quiet place.',
     tint: 'sky',
     mascot: '/mascots/journal.png'
   },

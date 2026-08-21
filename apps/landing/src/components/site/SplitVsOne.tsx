@@ -58,7 +58,7 @@ const RAIN_COLUMNS: RainColumn[] = [
       { label: 'Trip planning', kind: 'note' },
       { label: 'Where did I write it?', kind: 'note' },
       { label: 'Newsletter cleanup', kind: 'task' },
-      { label: 'Invoice — Mar', kind: 'saved' },
+      { label: 'Invoice (Mar)', kind: 'saved' },
       { label: 'Book flights', kind: 'task' },
       { label: 'That one link', kind: 'saved' },
       { label: 'Q3 review doc', kind: 'note' },
@@ -458,7 +458,7 @@ export function SplitVsOne() {
                 It all stays in one place.
               </h3>
               <p className="max-w-[480px] text-base leading-relaxed text-muted lg:text-[17px]">
-                Notes, tasks, calendar, journal and everything you saved — one window, one memory.
+                Notes, tasks, calendar, journal and everything you saved. One window, one memory.
               </p>
             </div>
 
@@ -471,7 +471,7 @@ export function SplitVsOne() {
                 to="/features"
                 className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-2.5 text-[13px] font-medium text-muted transition-colors hover:text-ink"
               >
-                Canvas, Graph, Search — same window
+                Canvas, Graph, Search in one window
                 <ArrowRight className="size-3.5 text-terracotta" />
               </Link>
             </div>

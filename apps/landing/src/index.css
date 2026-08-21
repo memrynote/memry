@@ -1,15 +1,15 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Single-font site: text tokens all resolve to Manrope (token names kept so no
+  /* Single-font site: text tokens all resolve to DM Sans (token names kept so no
      component churn). --font-mono stays a REAL monospace — reserved for terminal
      and code surfaces (CLI page/snippet, code chips, ink stamps), not labels. */
-  --font-sans: 'Manrope', system-ui, sans-serif;
-  --font-geist: 'Manrope', system-ui, sans-serif;
-  --font-serif: 'Manrope', system-ui, sans-serif;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-geist: 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  /* The line under a section heading runs on its own face, separate from the Manrope
-     body stack. */
+  /* The line under a section heading; same face as the body stack since the
+     single-font pass. */
   --font-sub: 'DM Sans', sans-serif;
 
   --color-primary: #ff671a;
@@ -24,9 +24,11 @@
 
   --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
-  /* Paper stack keeps its warm hue but sheds yellow as it deepens — the cream read
-     as heavy because b* climbed with every step down (2.7 → 3.2 → 5.6). */
-  --color-paper: #fffdfa;
+  /* The top step is neutral white — the page ground the dot grid and grain are tuned
+     against. The steps below it stay warm and shed yellow as they deepen (the cream
+     read as heavy because b* climbed with every step down: 3.2 → 5.6); they are
+     component surfaces (hover fills, chips, insets), not the page. */
+  --color-paper: #ffffff;
   --color-paper-alt: #fbf9f5;
   --color-paper-deep: #f5f1ea;
   --color-dark: #141210;
@@ -81,12 +83,38 @@ html {
   color-scheme: light;
 }
 
+/* The page texture: a dot grid over a fine grain. Declared once here, consumed by
+   the body (the whole scroll height) and by `.page-texture`, which re-paints it on
+   panels that lay their own background over the body — the hero sky — so the texture
+   never breaks between sections. The grain carries its own opacity inside the SVG,
+   so nothing here depends on blend-mode support. Kept on :root rather than @theme:
+   these are painting recipes, not design tokens, and they must always be emitted. */
+:root {
+  --page-dot-grid: radial-gradient(circle, rgb(31 41 55 / 0.09) 1px, transparent 1.2px);
+  --page-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.22'/%3E%3C/svg%3E");
+}
+
+.page-texture {
+  background-image: var(--page-dot-grid), var(--page-grain);
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    200px 200px;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-paper);
   color: var(--color-ink);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.022'/%3E%3C/svg%3E");
-  background-size: 200px 200px;
+  background-image: var(--page-dot-grid), var(--page-grain);
+  background-position:
+    50% 0,
+    0 0;
+  background-size:
+    14px 14px,
+    200px 200px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
@@ -300,7 +328,7 @@ h6 {
 }
 
 /* Label accent (kickers, footers, counters). Historically JetBrains Mono — now the
-   single-font pass keeps labels in Manrope; real mono is only for terminal/code
+   single-font pass keeps labels in DM Sans; real mono is only for terminal/code
    surfaces via `font-mono`. Class name kept: ~30 call sites. */
 .font-mono-accent {
   font-family: var(--font-sans);

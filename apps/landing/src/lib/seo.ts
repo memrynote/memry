@@ -27,7 +27,7 @@ interface PageMeta {
 
 export const PAGE_META: Record<string, PageMeta> = {
   home: {
-    title: 'memrynote — Notes, tasks & journal in one local-first app',
+    title: 'memrynote: Notes, tasks & journal in one local-first app',
     description:
       'A local-first PKM that replaces your note app, task manager, and journal. Open source, end-to-end encrypted, yours forever.',
     path: '/'
