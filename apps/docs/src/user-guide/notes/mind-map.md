@@ -31,6 +31,20 @@ edited, and the note is untouched by opening it.
 A note with no headings opens on the root alone, with a hint that adding a
 heading will branch it.
 
+## Clicking a Node
+
+The map is navigation, not just a picture.
+
+- Click a **heading node** and the map closes and the note reopens at that
+  heading.
+- Click the **root** — the note's title — to come back to the top of the note.
+- The **outline panel** stays available while the map shows, and clicking a
+  heading there does exactly the same thing. One control, one behaviour.
+
+Nodes work from the keyboard too. Tab into the map, move between nodes with the
+up and down arrows (Home and End jump to the ends), and press Enter or Space to
+open the one you are on.
+
 ## Coming Back to the Note
 
 Your work is exactly where you left it. The editor is only hidden while the map
@@ -52,8 +66,10 @@ than against it.
 ## Accessibility
 
 The drawing sits beside a real tree in the page, so every node is announced by a
-screen reader with its nesting level. The map region itself is labelled with the
-note's name and how many nodes it holds.
+screen reader with its nesting level, and every node can be reached and opened
+with the keyboard. The map takes a single tab stop: arrow keys move between
+nodes from there. The map region itself is labelled with the note's name and how
+many nodes it holds.
 
 ## Turning It Off
 

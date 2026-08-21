@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { NotePage } from './note'
@@ -263,8 +263,30 @@ vi.mock('@/hooks/use-feature-flags', () => ({
 // The map's drawing chunk imports Excalidraw; the accessible tree beside it is
 // what these tests read, and what an end-to-end run reads too.
 vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
-  MindMapCanvas: ({ elements }: { elements: unknown[] }) => (
-    <div data-testid="mind-map-canvas" data-element-count={elements.length} />
+  MindMapCanvas: ({
+    elements,
+    onOpenLink
+  }: {
+    elements: Array<{ id: string; link?: string }>
+    onOpenLink: (href: string) => void
+  }) => (
+    <div data-testid="mind-map-canvas" data-element-count={elements.length}>
+      {/* Excalidraw hands a click back as the link of the box it landed on —
+          in view mode the whole box is the hit area. Standing in for that is
+          all this needs to do; everything downstream of it is the real path. */}
+      {elements
+        .filter((element) => Boolean(element.link))
+        .map((element) => (
+          <button
+            key={element.id}
+            type="button"
+            data-testid={`mind-map-box-${element.id}`}
+            onClick={() => onOpenLink(element.link!)}
+          >
+            {element.link}
+          </button>
+        ))}
+    </div>
   )
 }))
 
@@ -340,6 +362,11 @@ vi.mock('@/components/note', () => ({
       <button type="button" onClick={() => onHeadingClick('heading-1')}>
         Jump heading
       </button>
+      {/* The outline panel stays visible in map mode, so it is reachable here
+          in both modes — which is the point of the assertions that use it. */}
+      <button type="button" onClick={() => onHeadingClick('b-h1')}>
+        Jump Alpha
+      </button>
       {topBar}
       {breadcrumb}
       {actions}
@@ -404,6 +431,11 @@ vi.mock('@/components/note', () => ({
           {String(externalContentRevision ?? 'none')}
         </div>
         <div data-id="heading-1" />
+        {/* One `[data-id]` per block, exactly as the real editor renders — this
+            is what a jump to a block finds, or fails to find. */}
+        {(mocks.editorBlocks as Array<{ id: string }>).map((block) => (
+          <div key={block.id} data-id={block.id} />
+        ))}
         <button type="button" onClick={() => onMarkdownChange('# Changed')}>
           Change markdown
         </button>
@@ -1601,6 +1633,97 @@ describe('NotePage', () => {
       expect(screen.getByTestId('note-mind-map-empty-hint')).toHaveTextContent('mindMap.emptyHint')
       // A disabled control explains nothing; the hint does.
       expect(screen.getByTestId('note-mind-map-toggle')).not.toBeDisabled()
+    })
+
+    /** The tree item standing for a block, which is what a reader activates. */
+    const treeItemFor = (blockId: string): HTMLElement => {
+      const item = screen
+        .getByRole('tree')
+        .querySelector<HTMLElement>(`[data-mind-map-block="${blockId}"]`)
+      if (!item) throw new Error(`no tree item for ${blockId}`)
+      return item
+    }
+
+    /** The drawn box standing for a block: Excalidraw gives back its link. */
+    const drawnBoxFor = (href: string): HTMLElement => screen.getByText(href)
+
+    const blockElement = (blockId: string): Element => {
+      const element = document.querySelector(`[data-id="${blockId}"]`)
+      if (!element) throw new Error(`no block ${blockId}`)
+      return element
+    }
+
+    const expectLandedOnAlpha = async (scrolls: MockInstance): Promise<void> => {
+      // Both halves: the map has to go, or the body it hid cannot be seen, and
+      // the block has to be scrolled to, or the user is merely back at the top.
+      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      expect(scrolls).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    }
+
+    it('lands on the heading a map node names, and gives the note back', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+      const scrolls = vi.spyOn(blockElement('b-h1'), 'scrollIntoView')
+
+      fireEvent.click(treeItemFor('b-h1'))
+
+      await expectLandedOnAlpha(scrolls)
+    })
+
+    it('activates a node from the keyboard exactly as a click does', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+      const scrolls = vi.spyOn(blockElement('b-h1'), 'scrollIntoView')
+
+      fireEvent.keyDown(treeItemFor('b-h1'), { key: 'Enter' })
+
+      await expectLandedOnAlpha(scrolls)
+    })
+
+    it('lands on the same heading from the drawing', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+      const scrolls = vi.spyOn(blockElement('b-h1'), 'scrollIntoView')
+
+      // A block anchor, minted for this session: the drawing's only handle on
+      // which node a click landed on is the deep link the box carries.
+      fireEvent.click(drawnBoxFor('memry://note/note-1#^b-h1'))
+
+      await expectLandedOnAlpha(scrolls)
+    })
+
+    it('returns to the top of the note from the root node', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+      const scrolls = vi.spyOn(screen.getByTestId('note-body'), 'scrollIntoView')
+
+      // The root is the title, which is not a block — so its link has no anchor.
+      fireEvent.click(drawnBoxFor('memry://note/note-1'))
+
+      await waitFor(() => expect(screen.queryByTestId('note-mind-map')).not.toBeInTheDocument())
+      expect(scrolls).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    })
+
+    it('takes the identical path from the outline panel while the map is showing', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await openMap()
+      // One spy for both runs: the block is the same node throughout, because
+      // the body was hidden rather than unmounted.
+      const scrolls = vi.spyOn(blockElement('b-h1'), 'scrollIntoView')
+      fireEvent.click(treeItemFor('b-h1'))
+      await expectLandedOnAlpha(scrolls)
+      const mapCalls = [...scrolls.mock.calls]
+      scrolls.mockClear()
+
+      fireEvent.click(screen.getByTestId('note-mind-map-toggle'))
+      await screen.findByTestId('note-mind-map')
+      fireEvent.click(screen.getByRole('button', { name: 'Jump Alpha' }))
+
+      // One control, one behaviour: the outline panel is handed the very
+      // function the map's nodes end in, so this cannot drift from the above.
+      await expectLandedOnAlpha(scrolls)
+      expect(scrolls.mock.calls).toEqual(mapCalls)
     })
   })
 })

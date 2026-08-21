@@ -6,9 +6,13 @@
  */
 
 export { buildMindMap } from './build-mind-map'
+export { activateMindMapNode, nodeFromMindMapLink } from './mind-map-navigation'
+export type { MindMapNodeActions, MindMapNodeActivation } from './mind-map-navigation'
 export { MindMapView } from './mind-map-view'
 export { MIND_MAP_VIEW_STATE_KEY, useMindMap } from './use-mind-map'
 export type { UseMindMapResult } from './use-mind-map'
+export { useMindMapNavigation } from './use-mind-map-navigation'
+export type { UseMindMapNavigationResult } from './use-mind-map-navigation'
 export type {
   MindMap,
   MindMapBounds,

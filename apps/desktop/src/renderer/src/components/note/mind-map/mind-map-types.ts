@@ -86,6 +86,18 @@ export interface MindMapBoxElement {
     verticalAlign: 'middle'
     strokeColor: string
   }
+  /**
+   * A `memry://` deep link back into the note, present only when the build was
+   * given a note id. It is what makes a drawn box clickable at all: the drawing
+   * surface is a bitmap with no DOM, and its link hit test — the whole bounding
+   * box, in view mode — is the only handle a click has on a node.
+   *
+   * A block anchor is right HERE and only here: these elements are drawn for
+   * the session that minted them, and a block id lives exactly as long as the
+   * document that minted it. A saved canvas outlives that, so the file's links
+   * will carry heading text instead.
+   */
+  link?: string
 }
 
 /** The connector from a parent box to one of its children. */
@@ -116,6 +128,13 @@ export interface MindMapOptions {
   /** Defaults to `'ltr'`. In `'rtl'` the tree mirrors so it grows with the
    * reading direction rather than against it. */
   direction?: MindMapDirection
+  /**
+   * The note the map is of. Given it, every box is minted with a `memry://`
+   * deep link back to its own block, which is how a click on the drawing finds
+   * out which node it landed on. Left out, the map draws exactly as before and
+   * only the tree projection is clickable.
+   */
+  noteId?: string
 }
 
 /**

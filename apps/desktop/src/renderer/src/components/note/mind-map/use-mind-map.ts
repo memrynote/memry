@@ -44,6 +44,8 @@ function readBlocks(host: BlockTreeHost | null): MindMapSourceBlock[] {
 }
 
 interface UseMindMapOptions {
+  /** The note the map is of, so its boxes carry deep links back into it. */
+  noteId: string
   /** Root label. User content; never translated. */
   noteTitle: string
   /**
@@ -59,6 +61,10 @@ export interface UseMindMapResult {
   /** True while the map replaces the note body. */
   isOpen: boolean
   toggle: () => void
+  /** Gives the note back. A no-op when the map is already closed, so the
+   * outline panel can call it on every heading click without writing tab
+   * state each time. */
+  close: () => void
   /** Null until the map is open and has been built. */
   map: MindMap | null
   /** Pass to the content area in place of the callback that was composed in. */
@@ -71,7 +77,11 @@ export interface UseMindMapResult {
   refresh: () => void
 }
 
-export function useMindMap({ noteTitle, onEditorReady }: UseMindMapOptions): UseMindMapResult {
+export function useMindMap({
+  noteId,
+  noteTitle,
+  onEditorReady
+}: UseMindMapOptions): UseMindMapResult {
   const { isEnabled } = useFeatureFlags()
   const isAvailable = isEnabled('spatialCanvas')
   const direction = useDirection()
@@ -97,8 +107,8 @@ export function useMindMap({ noteTitle, onEditorReady }: UseMindMapOptions): Use
   )
 
   const build = useCallback(
-    () => buildMindMap(readBlocks(editorRef.current), { rootLabel: noteTitle, direction }),
-    [direction, noteTitle]
+    () => buildMindMap(readBlocks(editorRef.current), { rootLabel: noteTitle, direction, noteId }),
+    [direction, noteId, noteTitle]
   )
 
   // Layout, not passive: the note body is hidden in the same commit that flips
@@ -120,8 +130,15 @@ export function useMindMap({ noteTitle, onEditorReady }: UseMindMapOptions): Use
     setStoredOpen((previous) => !previous)
   }, [setStoredOpen])
 
+  const close = useCallback(() => {
+    // Guarded: the setter always dispatches, and the outline panel calls this on
+    // every heading click, map or no map.
+    if (!storedOpen) return
+    setStoredOpen(false)
+  }, [storedOpen, setStoredOpen])
+
   return useMemo(
-    () => ({ isAvailable, isOpen, toggle, map, handleEditorReady, refresh }),
-    [isAvailable, isOpen, toggle, map, handleEditorReady, refresh]
+    () => ({ isAvailable, isOpen, toggle, close, map, handleEditorReady, refresh }),
+    [isAvailable, isOpen, toggle, close, map, handleEditorReady, refresh]
   )
 }
