@@ -150,6 +150,7 @@ export function MindMapView({
       <MindMapTree
         nodes={map.nodes}
         label={t('mindMap.treeLabel', { title: noteTitle })}
+        linkHint={t('mindMap.linkHint')}
         onActivateNode={onActivateNode}
       />
     </div>

@@ -30,6 +30,12 @@ interface MindMapTreeProps {
   nodes: readonly MindMapPositionedNode[]
   /** Translated; names the note the tree belongs to. */
   label: string
+  /**
+   * Translated; says that a wiki-link node leaves this note. The drawing says
+   * it with a colour and a dashed outline, which a reader of this tree cannot
+   * see, so it is said in words here instead.
+   */
+  linkHint: string
   /** Called with the node the user clicked or pressed Enter/Space on. */
   onActivateNode: MindMapNodeActivation
 }
@@ -62,6 +68,7 @@ function BranchItems({
   branches,
   level,
   activeId,
+  linkHint,
   onActivate,
   onFocusNode,
   onNavigate
@@ -69,6 +76,7 @@ function BranchItems({
   branches: Branch[]
   level: number
   activeId: string | null
+  linkHint: string
   onActivate: MindMapNodeActivation
   onFocusNode: (nodeId: string) => void
   onNavigate: (key: string, nodeId: string) => void
@@ -118,6 +126,8 @@ function BranchItems({
           }}
         >
           <span>{branch.node.label}</span>
+          {/* What the dashed blue box says to everyone who can see it. */}
+          {branch.node.kind === 'wikiLink' && <span> {linkHint}</span>}
           {/* The same composed badge line the picture draws — one string, two
               projections, so they cannot say different things. */}
           {branch.node.detail !== '' && <span> {branch.node.detail}</span>}
@@ -127,6 +137,7 @@ function BranchItems({
                 branches={branch.children}
                 level={level + 1}
                 activeId={activeId}
+                linkHint={linkHint}
                 onActivate={onActivate}
                 onFocusNode={onFocusNode}
                 onNavigate={onNavigate}
@@ -139,7 +150,12 @@ function BranchItems({
   )
 }
 
-export function MindMapTree({ nodes, label, onActivateNode }: MindMapTreeProps): React.JSX.Element {
+export function MindMapTree({
+  nodes,
+  label,
+  linkHint,
+  onActivateNode
+}: MindMapTreeProps): React.JSX.Element {
   const treeRef = useRef<HTMLUListElement>(null)
   // Which item holds the single tab stop. It follows focus, so tabbing away and
   // back returns to where the user was rather than to the top. Seeded with the
@@ -184,6 +200,7 @@ export function MindMapTree({ nodes, label, onActivateNode }: MindMapTreeProps):
         branches={branches}
         level={1}
         activeId={activeId}
+        linkHint={linkHint}
         onActivate={onActivateNode}
         onFocusNode={onFocusNode}
         onNavigate={onNavigate}

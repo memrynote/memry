@@ -36,6 +36,7 @@ edited, and the note is untouched by opening it.
 - **Toggles and callouts** open into their children. Content you collapsed in
   the editor is still discoverable in the map, and a callout holding a checklist
   is not reduced to one node.
+- **Wiki links** become nodes of their own — see below.
 - Content before the first heading belongs to the root.
 
 A note with no headings opens on the root alone, with a hint that adding a
@@ -46,6 +47,24 @@ heading will branch it.
 A checklist item or a task you have already completed is drawn dimmed, with a
 rule through its label. The map shows what is written, not what should have
 been.
+
+### Wiki Links
+
+A `[[wiki link]]` points at another document, which is a real branch rather than
+a word in a sentence — so the map draws it as its own node, in blue and with a
+dashed outline, hanging off whatever held it.
+
+- A link written **in a heading** or **in a list item** branches off that node.
+- A link written **in a paragraph** branches off the node the paragraph belongs
+  to, usually the heading above it. Paragraphs are still never nodes, but what
+  they reach out to is not lost with them.
+- A list item that is **nothing but a link** becomes the link itself, so a list
+  of links is a fan of links rather than a row of empty boxes each holding one.
+- A link node shows what the note shows: its **alias** when it has one, the
+  target otherwise. Clicking it opens what the whole target names, heading and
+  all.
+- Link nodes are always leaves. What is inside the note a link names is the
+  graph view's question, not the map's.
 
 ### Tags and Counter Badges
 
@@ -60,15 +79,28 @@ dropped:
   are not drawn. The node above them — usually the heading they sit under —
   carries a badge saying what is there, such as `2 tables · 1 code block`.
 - **Paragraphs** are never nodes. **Date mentions, link mentions and inline
-  pictures** stay as plain text inside the label of the node that holds them.
+  pictures** stay as plain text inside the label of the node that holds them —
+  a `[[wiki link]]` is the one inline thing that does not, because it points
+  somewhere else.
 
 ## Clicking a Node
 
 The map is navigation, not just a picture.
 
-- Click a **heading, list, task, toggle or callout node** and the map closes and
-  the note reopens at that block.
+- Click a **heading, list, toggle or callout node** and the map closes and the
+  note reopens at that block.
 - Click the **root** — the note's title — to come back to the top of the note.
+- Click a **task node** and the task opens, so you can act on it rather than
+  merely find where it was written. A task block written before memrynote gave
+  tasks their own identity has none to open, and lands at its block instead.
+- Click a **wiki-link node** and the linked note — or file — opens, in a new tab
+  or this one according to **Settings → General → Open Pages in a New Tab**, the
+  preference you have already set. The map invents no tab behaviour of its own:
+  it goes through the same path as clicking that link in the note body, so it
+  also creates a missing note and reports a missing file exactly the way the
+  body does.
+- Opening another note leaves the map where it was. It is a view of _this_ note,
+  so the tab you came from is still on the map when you return to it.
 - The **outline panel** stays available while the map shows, and clicking a
   heading there does exactly the same thing. One control, one behaviour.
 
@@ -120,9 +152,10 @@ than against it.
 The drawing sits beside a real tree in the page, so every node is announced by a
 screen reader with its nesting level, its badges, and — for a checklist item or
 a task — whether it is ticked, and every node can be reached and opened with the
-keyboard. The map takes a single tab stop: arrow keys move between nodes from
-there. The map region itself is labelled with the note's name and how many nodes
-it holds.
+keyboard. A wiki-link node says in words that it leaves the note, because the
+blue dashed outline that says so in the picture cannot be heard. The map takes a
+single tab stop: arrow keys move between nodes from there. The map region itself
+is labelled with the note's name and how many nodes it holds.
 
 ## Turning It Off
 

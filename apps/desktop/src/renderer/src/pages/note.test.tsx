@@ -1803,5 +1803,120 @@ describe('NotePage', () => {
       await expectLandedOnAlpha(scrolls)
       expect(scrolls.mock.calls).toEqual(mapCalls)
     })
+
+    /** Blocks holding a link inside a heading and a link inside a list item. */
+    const linkedBlocks = [
+      {
+        id: 'b-h1',
+        type: 'heading',
+        props: { level: 1 },
+        content: [
+          { type: 'text', text: 'Reading' },
+          { type: 'wikiLink', props: { target: 'Existing Note', alias: '' } }
+        ]
+      },
+      {
+        id: 'b-item',
+        type: 'bulletListItem',
+        content: [{ type: 'wikiLink', props: { target: 'Diagram.pdf', alias: '' } }]
+      }
+    ]
+
+    const linkItems = (): HTMLElement[] =>
+      Array.from(
+        screen.getByRole('tree').querySelectorAll<HTMLElement>('[data-mind-map-kind="wikiLink"]')
+      )
+
+    it('draws a wiki link written in a heading and one written in a list item', async () => {
+      mocks.editorBlocks = linkedBlocks
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      // Both positions produce a node, and neither is left decorating the label
+      // that happened to contain it.
+      expect(linkItems().map((item) => item.textContent)).toEqual([
+        'Existing Note mindMap.linkHint',
+        'Diagram.pdf mindMap.linkHint'
+      ])
+      expect(screen.getByRole('tree').textContent).toContain('Reading')
+    })
+
+    it('opens the linked note from a wiki-link node, the way every other surface does', async () => {
+      mocks.editorBlocks = linkedBlocks
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      fireEvent.click(linkItems()[0])
+
+      // Straight through the page's own wiki-link path — the same resolver, the
+      // same tab call, and so the same open-in-new-tab preference the user set.
+      // No map-specific tab rule exists to drift from it.
+      await waitFor(() =>
+        expect(mocks.openTab).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
+          { reuseActiveTab: true }
+        )
+      )
+      expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Existing Note')
+      // The map is a view of THIS note; opening another one is not a reason to
+      // put it away.
+      expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
+    })
+
+    it('opens a linked file from the keyboard exactly as from a click', async () => {
+      mocks.editorBlocks = linkedBlocks
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      fireEvent.keyDown(linkItems()[1], { key: 'Enter' })
+
+      await waitFor(() =>
+        expect(mocks.openTab).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'file', entityId: 'file-1' }),
+          { reuseActiveTab: true }
+        )
+      )
+    })
+
+    it('opens the linked note from the drawing too', async () => {
+      mocks.editorBlocks = linkedBlocks
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      // A link box carries a handle of its OWN, never the one on the heading
+      // that held it, or a click here would scroll to that heading instead.
+      const nodeId = linkItems()[0].dataset.mindMapNode
+      fireEvent.click(drawnBoxFor(`memry://note/note-1#^${nodeId}`))
+
+      await waitFor(() =>
+        expect(mocks.openTab).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'note', entityId: 'existing-note' }),
+          { reuseActiveTab: true }
+        )
+      )
+    })
+
+    it('opens the task a task node stands for, not the block that mentions it', async () => {
+      mocks.editorBlocks = [
+        { id: 'b-task', type: 'taskBlock', props: { taskId: 'task-1', title: 'Linked task' } }
+      ]
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      fireEvent.click(treeItemFor('b-task'))
+
+      // The linked-tasks panel's own handler, which is why the project comes
+      // along: one task-opening path, not a second one owned by the map.
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+          viewState: expect.objectContaining({
+            openTaskId: 'task-1',
+            selectedProjectId: 'project-1'
+          })
+        })
+      )
+      expect(screen.getByTestId('note-mind-map')).toBeInTheDocument()
+    })
   })
 })

@@ -177,15 +177,16 @@ describe('buildMindMap — projection', () => {
           content: [
             { type: 'text', text: 'Ship ' },
             { type: 'link', href: 'https://memry.test', content: [{ type: 'text', text: 'v2' }] },
-            { type: 'text', text: ' with ' },
-            { type: 'wikiLink', props: { target: 'Roadmap', alias: 'the roadmap' } }
+            { type: 'text', text: ' with care' }
           ]
         }
       ],
       { rootLabel: 'Note' }
     )
 
-    expect(childLabels(map.tree)).toEqual(['Ship v2 with the roadmap'])
+    // A plain hyperlink is styling around text and stays in the label. A
+    // `[[wiki link]]` does not — see `build-mind-map-wiki-links.test.ts`.
+    expect(childLabels(map.tree)).toEqual(['Ship v2 with care'])
   })
 
   it('collapses whitespace but never translates or rewrites the label', () => {

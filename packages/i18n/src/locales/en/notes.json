@@ -968,6 +968,7 @@
     "regionLabel": "Mind map of {title}, {count, plural, one {# node} other {# nodes}}",
     "treeLabel": "Mind map outline of {title}",
     "emptyHint": "Add a heading to this note and the map will branch.",
+    "linkHint": "link to another page",
     "badge": {
       "table": "{count, plural, one {# table} other {# tables}}",
       "code": "{count, plural, one {# code block} other {# code blocks}}",

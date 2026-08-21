@@ -16,6 +16,11 @@
  *
  * The same `navigateToBlock` is what the outline panel is handed, so a heading
  * click has one behaviour whether or not the map is open.
+ *
+ * Two node kinds do not land in this note at all — a wiki link opens the note
+ * it names, a task opens its task — and neither closes the map. They are handed
+ * straight to the note page's own handlers for those things, so the map has no
+ * opening behaviour of its own to drift from the rest of the app.
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -33,6 +38,15 @@ interface UseMindMapNavigationOptions {
   getTopElement: () => HTMLElement | null
   /** False when the user asked for less motion. */
   smooth: boolean
+  /**
+   * The note page's own wiki-link handler, taking the target as written. Passed
+   * in rather than rebuilt so the map opens a link through the one path that
+   * already resolves it, creates it when it is missing, and honours the
+   * open-in-new-tab preference.
+   */
+  openNote: (wikiTarget: string) => void
+  /** The note page's own task handler. */
+  openTask: (taskId: string) => void
 }
 
 export interface UseMindMapNavigationResult {
@@ -49,7 +63,9 @@ export function useMindMapNavigation({
   close,
   getContainer,
   getTopElement,
-  smooth
+  smooth,
+  openNote,
+  openTask
 }: UseMindMapNavigationOptions): UseMindMapNavigationResult {
   // A wait outlives the click that started it, so a second click — or leaving
   // the note — has to call the first one off, or two of them fight over the
@@ -90,8 +106,8 @@ export function useMindMapNavigation({
   )
 
   const activateNode = useCallback<MindMapNodeActivation>(
-    (node) => activateMindMapNode(node, { navigateToBlock }),
-    [navigateToBlock]
+    (node) => activateMindMapNode(node, { navigateToBlock, openNote, openTask }),
+    [navigateToBlock, openNote, openTask]
   )
 
   return useMemo(() => ({ navigateToBlock, activateNode }), [navigateToBlock, activateNode])
