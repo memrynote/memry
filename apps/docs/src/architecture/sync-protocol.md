@@ -590,6 +590,14 @@ replaces it with a real one. Both read paths return the same token for the same 
 Both fields are additive: an older client reads these responses through an unvalidated cast and
 ignores the extra keys.
 
+`snapshotMeta` is read on the same round trip as the incrementals, as extra statements inside the
+batch the pull already sends. D1 refuses any single query carrying more than 100 bound parameters and
+answers the whole request with an error, and the metadata read binds the user and vault ahead of one
+parameter per note, so it is split into several statements sized under that ceiling rather than one
+statement naming every note in the chunk. A request-sized chunk of 100 notes would otherwise cross
+the line — and only a full chunk does, which is why a first sync on a new device was the one caller
+that hit it.
+
 ### The vault sweep's conditional baseline
 
 The vault-wide sweep uses `snapshotMeta` to stop re-downloading baselines a device already holds. It
