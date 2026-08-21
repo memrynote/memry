@@ -6,11 +6,11 @@ Press <kbd>⌘</kbd>+<kbd>F</kbd> for global search and command execution from a
 
 ## Opening
 
-| Where | Shortcut |
-| --- | --- |
-| Anywhere in the app | <kbd>⌘</kbd>+<kbd>F</kbd> |
+| Where                  | Shortcut                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| Anywhere in the app    | <kbd>⌘</kbd>+<kbd>F</kbd>                                                              |
 | Global hotkey (if set) | Configured in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts) |
-| Sidebar Search button | Click |
+| Sidebar Search button  | Click                                                                                  |
 
 <kbd>Esc</kbd> closes the palette.
 
@@ -31,12 +31,12 @@ Results are grouped by type, with snippet previews and relative dates.
 
 Number prefixes scope to a single source:
 
-| Prefix | Scope |
-| --- | --- |
-| <kbd>1</kbd> | Notes only |
+| Prefix       | Scope        |
+| ------------ | ------------ |
+| <kbd>1</kbd> | Notes only   |
 | <kbd>2</kbd> | Journal only |
-| <kbd>3</kbd> | Tasks only |
-| <kbd>4</kbd> | Inbox only |
+| <kbd>3</kbd> | Tasks only   |
+| <kbd>4</kbd> | Inbox only   |
 
 Type the number, then your query.
 
@@ -51,7 +51,9 @@ Examples:
 
 ## Recents
 
-When the palette is empty, recent queries and frequently used searches appear. Pin a query (right-click) to keep it at the top.
+When the palette is empty it shows your recent trail: the items you last opened from search, each with the query that led you to them. It is a way back to a note you found yesterday without remembering how you phrased it.
+
+The trail is keyboard-navigable like any result list — <kbd>↑</kbd> / <kbd>↓</kbd> move between entries and <kbd>Enter</kbd> opens the highlighted one. **Clear** wipes the trail.
 
 ## Semantic Search
 
