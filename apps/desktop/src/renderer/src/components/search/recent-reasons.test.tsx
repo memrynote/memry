@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Command } from 'cmdk'
 import { RecentReasons } from './recent-reasons'
 import type { SearchReason } from '@memry/contracts/search-api'
 
@@ -17,18 +18,37 @@ function createReason(overrides: Partial<SearchReason> = {}): SearchReason {
   }
 }
 
+// The palette hosts the trail inside cmdk so arrow keys reach it; the tests
+// mount the same shell.
+function renderReasons(props: {
+  reasons: SearchReason[]
+  onSelect: (reason: SearchReason) => void
+  onClear: () => void
+}): ReturnType<typeof render> {
+  return render(
+    <Command shouldFilter={false} loop>
+      <Command.Input autoFocus />
+      <Command.List>
+        <RecentReasons {...props} />
+      </Command.List>
+    </Command>
+  )
+}
+
 describe('RecentReasons', () => {
   const onSelect = vi.fn()
   const onClear = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // jsdom has no scrollIntoView; cmdk calls it whenever selection moves.
+    Element.prototype.scrollIntoView = vi.fn()
   })
 
   describe('empty state', () => {
     it('shows empty message when no reasons', () => {
       // #when
-      render(<RecentReasons reasons={[]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [], onSelect, onClear })
 
       // #then
       expect(screen.getByText('Search and click items to build your trail')).toBeInTheDocument()
@@ -36,7 +56,7 @@ describe('RecentReasons', () => {
 
     it('does not render clear button in empty state', () => {
       // #when
-      render(<RecentReasons reasons={[]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [], onSelect, onClear })
 
       // #then
       expect(screen.queryByText('Clear')).not.toBeInTheDocument()
@@ -49,7 +69,7 @@ describe('RecentReasons', () => {
       const reason = createReason()
 
       // #when
-      render(<RecentReasons reasons={[reason]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [reason], onSelect, onClear })
 
       // #then
       expect(screen.getByText('Turkey Trip Planning')).toBeInTheDocument()
@@ -65,7 +85,7 @@ describe('RecentReasons', () => {
       ]
 
       // #when
-      render(<RecentReasons reasons={reasons} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons, onSelect, onClear })
 
       // #then
       expect(screen.getByText('Note One')).toBeInTheDocument()
@@ -75,7 +95,7 @@ describe('RecentReasons', () => {
 
     it('renders header with "Reasons" label and clear button', () => {
       // #when
-      render(<RecentReasons reasons={[createReason()]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [createReason()], onSelect, onClear })
 
       // #then
       expect(screen.getByText('Reasons')).toBeInTheDocument()
@@ -89,7 +109,7 @@ describe('RecentReasons', () => {
       const reason = createReason()
       const user = userEvent.setup()
 
-      render(<RecentReasons reasons={[reason]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [reason], onSelect, onClear })
 
       // #when
       await user.click(screen.getByText('Turkey Trip Planning'))
@@ -103,7 +123,7 @@ describe('RecentReasons', () => {
       // #given
       const user = userEvent.setup()
 
-      render(<RecentReasons reasons={[createReason()]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [createReason()], onSelect, onClear })
 
       // #when
       await user.click(screen.getByText('Clear'))
@@ -120,7 +140,7 @@ describe('RecentReasons', () => {
       ]
       const user = userEvent.setup()
 
-      render(<RecentReasons reasons={reasons} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons, onSelect, onClear })
 
       // #when
       await user.click(screen.getByText('Beta'))
@@ -130,8 +150,73 @@ describe('RecentReasons', () => {
     })
   })
 
+  describe('keyboard navigation', () => {
+    it('registers every reason as a cmdk item', () => {
+      // #given
+      const reasons = [
+        createReason({ id: 'r1', itemTitle: 'Alpha' }),
+        createReason({ id: 'r2', itemTitle: 'Beta' })
+      ]
+
+      // #when
+      const { container } = renderReasons({ reasons, onSelect, onClear })
+
+      // #then
+      expect(container.querySelectorAll('[cmdk-item]')).toHaveLength(2)
+    })
+
+    it('selects the first reason on mount', () => {
+      // #given
+      const reasons = [
+        createReason({ id: 'r1', itemTitle: 'Alpha' }),
+        createReason({ id: 'r2', itemTitle: 'Beta' })
+      ]
+
+      // #when
+      const { container } = renderReasons({ reasons, onSelect, onClear })
+
+      // #then
+      expect(container.querySelector('[cmdk-item][data-selected="true"]')).toHaveTextContent(
+        'Alpha'
+      )
+    })
+
+    it('moves the selection with ArrowDown', async () => {
+      // #given
+      const reasons = [
+        createReason({ id: 'r1', itemTitle: 'Alpha' }),
+        createReason({ id: 'r2', itemTitle: 'Beta' })
+      ]
+      const user = userEvent.setup()
+      const { container } = renderReasons({ reasons, onSelect, onClear })
+
+      // #when
+      await user.keyboard('{ArrowDown}')
+
+      // #then
+      expect(container.querySelector('[cmdk-item][data-selected="true"]')).toHaveTextContent('Beta')
+    })
+
+    it('opens the highlighted reason with Enter', async () => {
+      // #given
+      const reasons = [
+        createReason({ id: 'r1', itemTitle: 'Alpha' }),
+        createReason({ id: 'r2', itemTitle: 'Beta' })
+      ]
+      const user = userEvent.setup()
+      renderReasons({ reasons, onSelect, onClear })
+
+      // #when
+      await user.keyboard('{ArrowDown}{Enter}')
+
+      // #then
+      expect(onSelect).toHaveBeenCalledOnce()
+      expect(onSelect).toHaveBeenCalledWith(reasons[1])
+    })
+  })
+
   describe('type icons', () => {
-    it('renders an SVG icon for each content type', () => {
+    it('renders an icon for each content type', () => {
       // #given — one of each type
       const reasons = [
         createReason({ id: 'r1', itemType: 'note', itemTitle: 'A Note' }),
@@ -141,14 +226,12 @@ describe('RecentReasons', () => {
       ]
 
       // #when
-      const { container } = render(
-        <RecentReasons reasons={reasons} onSelect={onSelect} onClear={onClear} />
-      )
+      const { container } = renderReasons({ reasons, onSelect, onClear })
 
       // #then — each reason row has an SVG icon
-      const reasonButtons = container.querySelectorAll('button[type="button"]')
-      // 4 reason buttons + 1 clear button = 5
-      expect(reasonButtons.length).toBeGreaterThanOrEqual(4)
+      const rows = container.querySelectorAll('[cmdk-item]')
+      expect(rows).toHaveLength(4)
+      rows.forEach((row) => expect(row.querySelector('svg')).toBeInTheDocument())
     })
 
     it('renders emoji icon instead of SVG when itemIcon is set', () => {
@@ -156,7 +239,7 @@ describe('RecentReasons', () => {
       const reason = createReason({ itemIcon: '🏗️' })
 
       // #when
-      render(<RecentReasons reasons={[reason]} onSelect={onSelect} onClear={onClear} />)
+      renderReasons({ reasons: [reason], onSelect, onClear })
 
       // #then
       expect(screen.getByText('🏗️')).toBeInTheDocument()
@@ -167,13 +250,11 @@ describe('RecentReasons', () => {
       const reason = createReason({ itemIcon: null })
 
       // #when
-      const { container } = render(
-        <RecentReasons reasons={[reason]} onSelect={onSelect} onClear={onClear} />
-      )
+      const { container } = renderReasons({ reasons: [reason], onSelect, onClear })
 
       // #then — should have an SVG icon, not an emoji
-      const reasonButton = container.querySelectorAll('button[type="button"]')[1]
-      expect(reasonButton?.querySelector('svg')).toBeInTheDocument()
+      const row = container.querySelector('[cmdk-item]')
+      expect(row?.querySelector('svg')).toBeInTheDocument()
     })
   })
 })
