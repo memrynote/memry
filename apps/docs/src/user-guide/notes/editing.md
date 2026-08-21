@@ -87,6 +87,23 @@ Backspace clears what is inside them and leaves the table standing. To select
 the table itself as a block — to move it or delete it whole — start the drag in
 the margin beside it rather than inside a cell.
 
+### Row and column actions from the keyboard
+
+The marks are raised by hover, which a keyboard and a touch screen do not have.
+With the cursor in a cell, press **Ctrl/Cmd + Shift + Enter** — or **Shift + F10**,
+or the **Context Menu** key — to open one menu holding both sets of actions:
+
+- Delete row, Add row above, Add row below
+- Delete column, Add column left, Add column right
+
+The menu is titled with the cell it will act on (`Row 2 · Column 2`, counting
+from one and counting the header row), and a screen reader announces the same
+row and column as the menu's name. Move through it with the arrow keys, run an
+item with Enter, and press **Escape** to close it — the cursor returns to the
+cell it was opened from.
+
+Cell colours and splitting or merging stay on the cell mark for now.
+
 ### Cell colour and formatting
 
 Open a cell's right-hand mark and choose **Colors** to set that cell's text or

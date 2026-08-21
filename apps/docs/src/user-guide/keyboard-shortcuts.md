@@ -61,6 +61,18 @@ A chord indicator briefly flashes when the prefix is active.
 | Open block menu  | Type `/`                               |
 | Find in page     | <kbd>⌘</kbd>+<kbd>F</kbd>              |
 
+With the cursor inside a table cell:
+
+| Action                 | Shortcut                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| Next / previous cell   | <kbd>Tab</kbd> / <kbd>⇧</kbd>+<kbd>Tab</kbd>                                             |
+| Row and column actions | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Enter</kbd>, <kbd>⇧</kbd>+<kbd>F10</kbd>, or Context Menu |
+
+The menu holds Delete row, Add row above / below, Delete column and Add column
+left / right, is named after the cell it acts on, and returns the cursor to that
+cell on <kbd>Esc</kbd>. See
+[Editing notes](./notes/editing.md#row-and-column-actions-from-the-keyboard).
+
 ## View
 
 | Action                         | Shortcut                                  |
