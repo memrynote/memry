@@ -32,6 +32,7 @@ import {
   Block
 } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
+import { MindMapView, useMindMap } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -67,6 +68,7 @@ import {
   Monitor,
   Maximize,
   ChartRelationship,
+  Hierarchy,
   PenLine,
   Pencil,
   Search,
@@ -793,6 +795,21 @@ export function NotePage({ noteId }: NotePageProps) {
   const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
   const [reviewRailHidden, setReviewRailHidden] = useState(false)
 
+  // Mind map. `onEditorReady` is composed rather than replaced so the map reads
+  // the live block tree off the editor that stays mounted behind it, with no
+  // new prop on the content area.
+  const mindMap = useMindMap({
+    noteTitle: note?.title ?? '',
+    onEditorReady: review.handleEditorReady
+  })
+  const { refresh: refreshMindMap } = mindMap
+  // The map is built when it opens, but a restored tab reopens it before the
+  // body has finished loading. The heading set arriving is the signal that the
+  // block tree behind the map is real.
+  useEffect(() => {
+    refreshMindMap()
+  }, [headings, refreshMindMap])
+
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
       if (!noteId || !note || newTitle === note.title) return
@@ -1304,6 +1321,32 @@ export function NotePage({ noteId }: NotePageProps) {
         />
       </Button>
 
+      {/* Mind map. Its own actions live inside the map, never in the overflow
+          menu above — the same control doing different work per mode is how
+          people delete things by accident. */}
+      {mindMap.isAvailable && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
+          onClick={mindMap.toggle}
+          disabled={isDeleted}
+          aria-pressed={mindMap.isOpen}
+          data-testid="note-mind-map-toggle"
+          title={mindMap.isOpen ? t('editor.toolbar.hideMindMap') : t('editor.toolbar.showMindMap')}
+          aria-label={
+            mindMap.isOpen ? t('editor.toolbar.hideMindMap') : t('editor.toolbar.showMindMap')
+          }
+        >
+          <Hierarchy
+            className={cn(
+              'h-3.5 w-3.5',
+              mindMap.isOpen ? 'text-accent-orange' : 'text-muted-foreground'
+            )}
+          />
+        </Button>
+      )}
+
       <Picker
         value={null}
         closeOnSelect={false}
@@ -1450,6 +1493,11 @@ export function NotePage({ noteId }: NotePageProps) {
       fullWidth={isFullWidth}
       contentWidth={noteContentWidth ?? undefined}
       sideRail={hasReviewContent ? <ReviewRail review={review} targetId={noteId} /> : undefined}
+      overlay={
+        mindMap.isOpen && mindMap.map ? (
+          <MindMapView map={mindMap.map} noteTitle={note.title} />
+        ) : undefined
+      }
       onRailHiddenChange={setReviewRailHidden}
       marqueeZoneRef={setMarqueeZoneEl}
       topBar={
@@ -1475,7 +1523,18 @@ export function NotePage({ noteId }: NotePageProps) {
         initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-        className="flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        data-testid="note-body"
+        // Hidden, never unmounted: unmounting destroys the editor instance and
+        // with it the CRDT undo manager, so a look at the map would cost the
+        // user their undo history. `invisible` also keeps the layout box, which
+        // is what leaves the scroll offset — and the cursor, the selection and
+        // the CRDT binding — exactly where they were.
+        inert={mindMap.isOpen || undefined}
+        aria-hidden={mindMap.isOpen || undefined}
+        className={cn(
+          'flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          mindMap.isOpen && 'invisible pointer-events-none'
+        )}
         style={{ maxWidth: noteContentWidth ?? '100%' }}
       >
         {/* Title + Metadata zone — ghost affordance appears on hover */}
@@ -1603,7 +1662,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   plainMarkdown: review.plainMarkdown,
                   marks: review.marks,
                   hoveredMarkId: review.hoveredMarkId,
-                  onEditorReady: review.handleEditorReady,
+                  onEditorReady: mindMap.handleEditorReady,
                   onAddComment: review.openCommentComposer,
                   getMarkdownSourceOffsetForEditorOffset:
                     review.getMarkdownSourceOffsetForEditorOffset,
