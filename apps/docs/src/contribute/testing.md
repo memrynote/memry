@@ -37,11 +37,33 @@ the generated vault stays current on the day a developer runs it. The seed set s
 real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
 other instead of standing alone.
 
+No literal dates. `seedJournalDate` in `scripts/seed-data/date.ts` shifts a narrative date by the
+offset between `JOURNAL_ANCHOR` and the run day, so entries and date properties dated before the
+anchor land in the past and the ones after it land in the future. It covers journal filenames, the
+`startDate` / `endDate` / `deadline` note properties, dated rows inside note bodies, and any
+`[[YYYY-MM-DD]]` wikilink pointing at a journal entry — a hardcoded date there dangles the moment
+the timeline moves.
+
 The project hub is seeded too: `project_links` rows point each project at its notes and calendar
 events (`scripts/seed-data/project-links.ts`), and `projects.home_note_id` supplies the overview
 note. Those links carry no foreign key to their target, so they are inserted after the notes and
 events they reference. File links are intentionally absent — binary files get their id from the
 indexer at vault-open time, so a pre-seeded file id would never match.
+
+For notes, those rows are only a head start. A markdown note's project membership lives in its
+`project:` frontmatter, and the note-project-links projector rebuilds `project_links` from it on
+every `note.upserted` — a seeded row with no matching frontmatter key is deleted the first time
+that note is indexed. `NOTE_PROJECTS` in `scripts/seed-data/notes.ts` is what actually makes the
+membership stick; `project-links.test.ts` fails if a seeded note link has no frontmatter behind it.
+
+Property definitions work the same way. `.memry/properties.md` is the source of truth: the service
+reloads it on vault open and rebuilds the `property_definitions` table from it, so definitions
+written only to the table are wiped before anyone sees them. The seed writes that file from
+`scripts/seed-data/properties.ts`, which is also where the `status` categories and the select and
+multiselect option lists live. Only the five persistable kinds may appear in the file — `status`,
+`select`, `multiselect`, `date`, `project` — because one unparsable entry fails the schema and
+discards every definition in it; text, number, URL and checkbox properties are typed by inference
+from their values instead.
 
 The seed includes canvases, written as plain `.excalidraw` files under `canvases/` through the
 app's own writer (`main/canvas/scene-file.ts`), so the seed can never drift from the real format.
