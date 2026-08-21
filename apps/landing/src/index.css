@@ -411,3 +411,44 @@ h6 {
   top: 6rem;
   height: fit-content;
 }
+
+/* ——— Hero product shot: cursor-origin video reveal ———
+   The still is the base layer; the muted loop sits on top behind a radial mask whose
+   radius is driven by --reveal. Hovering sets --ox/--oy to the pointer's entry point
+   and animates --reveal outward, so the video floods in from wherever the cursor
+   crossed the edge, then retracts to the exit point on leave.
+
+   --reveal MUST be registered with @property: an unregistered custom property is a
+   plain token and transitions discretely (snap, not sweep). Origin is swapped only
+   while --reveal is at its extreme, so re-centring the circle is never visible. */
+@property --reveal {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: -18;
+}
+
+.product-shot-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--ox, 50%) var(--oy, 50%),
+    #000 calc(var(--reveal) * 1%),
+    transparent calc(var(--reveal) * 1% + 18%)
+  );
+  mask-image: radial-gradient(
+    circle at var(--ox, 50%) var(--oy, 50%),
+    #000 calc(var(--reveal) * 1%),
+    transparent calc(var(--reveal) * 1% + 18%)
+  );
+  transition: --reveal 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.product-shot-video video {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}

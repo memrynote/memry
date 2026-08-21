@@ -1,19 +1,19 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
-import { ArrowRight, Play } from 'lucide-react'
+import { ArrowRight, Check, Copy, Play } from 'lucide-react'
 import { Link } from 'react-router'
 import heroBg from '@/assets/hero-bg.png'
-import paperLeft from '@/assets/paper-left.png'
-import paperRight from '@/assets/paper-right.png'
-import { Button } from '@/components/ui/button'
 import { Mascot } from '@/components/ui/mascot'
-import { DownloadButton } from '@/components/shared/DownloadCTA'
 import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
 import { trackLandingEvent } from '@/lib/analytics'
+import { downloadHref, osLabel, platformForOS, useDetectedOS } from '@/lib/download'
+
+// Same cask the install guide documents (apps/docs/src/guide/install.md).
+const BREW_COMMAND = 'brew install --cask memrynote/tap/memry'
 
 const EASE = [0.16, 1, 0.3, 1] as const
 
-// One synchronized entrance — every hero layer (copy, CTAs, papers, screenshot)
+// One synchronized entrance — every hero layer (copy, CTAs, screenshot)
 // shares this transition so the whole hero materializes at once, not in a stagger.
 const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 
@@ -39,6 +39,17 @@ const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
  */
 const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1448, height: 954 } as const
 const HERO_SHOT_CSS_WIDTH = '58rem'
+
+/**
+ * Silent loop revealed under the cursor on hover. `preload="none"` keeps it off the
+ * hero's paint budget entirely — the first byte is fetched on the first hover — and
+ * the poster is the still itself, so the mask sweeping open before the data lands
+ * shows the same pixels instead of a black hole.
+ */
+const HERO_VIDEO = '/demos/InboxVoice.mp4'
+const REVEAL_HIDDEN = -18
+const REVEAL_FULL = 125
+const REVEAL_MS = 750
 
 // Scroll-linked screenshot growth. The window lands at full size — the first paint is
 // already the "grown" state, because the shot is the reason people are here and it should
@@ -76,11 +87,144 @@ function HeadlineChip({
   )
 }
 
+/**
+ * Primary hero CTA — label + a filled circle that carries the arrow, sitting on a
+ * white halo ring. Geometry mirrors the Paper slogan artboard (58px tall, 18px
+ * radius, 6px trailing inset so the circle nests inside the pill).
+ */
+function HeroDownloadPill() {
+  const os = useDetectedOS()
+  const platform = platformForOS(os)
+  const label = platform ? `Download for ${osLabel(os)}` : 'Download'
+  const track = () =>
+    trackLandingEvent('landing_download_click', `download:${platform ?? 'all'}:hero`)
+
+  const className =
+    'group/pill inline-flex min-h-[58px] items-center justify-center gap-[22px] rounded-[18px] border-2 border-white/85 bg-terracotta py-[5px] ps-[21px] pe-1.5 shadow-[0_0_0_5px_rgb(255_255_255/0.58)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50'
+
+  const content = (
+    <>
+      <span className="text-[14px] font-semibold leading-[18px] text-white">{label}</span>
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-terracotta transition-transform duration-200 motion-safe:group-hover/pill:translate-x-0.5">
+        <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden />
+      </span>
+    </>
+  )
+
+  return platform ? (
+    <a href={downloadHref(platform)} onClick={track} className={className}>
+      {content}
+    </a>
+  ) : (
+    <Link to="/download/desktop" onClick={track} className={className}>
+      {content}
+    </Link>
+  )
+}
+
+/** Homebrew one-liner, click to copy. Only surfaces for visitors on macOS. */
+function BrewInstall() {
+  const os = useDetectedOS()
+  const [copied, setCopied] = useState(false)
+  const resetTimer = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
+    },
+    []
+  )
+
+  if (os !== 'mac') return null
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(BREW_COMMAND)
+    } catch {
+      return // clipboard blocked (insecure context / denied) — leave the text selectable
+    }
+    trackLandingEvent('landing_download_click', 'download:brew:hero')
+    setCopied(true)
+    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
+    resetTimer.current = window.setTimeout(() => setCopied(false), 1600)
+  }
+
+  return (
+    <div className="mt-5 flex justify-center">
+      <button
+        type="button"
+        onClick={() => void copy()}
+        aria-label={`Copy the Homebrew command: ${BREW_COMMAND}`}
+        className="inline-flex max-w-full items-center gap-2.5 rounded-xl border border-white/60 bg-white/45 py-2 ps-3.5 pe-2.5 text-start backdrop-blur-sm transition-colors duration-200 hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+      >
+        {/* Wraps rather than truncates: a half-shown shell command is unreadable. */}
+        <code className="break-all font-mono text-[12px] leading-4 text-muted">
+          <span aria-hidden className="select-none text-muted/60">
+            ${' '}
+          </span>
+          {BREW_COMMAND}
+        </code>
+        {copied ? (
+          <Check className="h-3.5 w-3.5 shrink-0 text-terracotta" aria-hidden />
+        ) : (
+          <Copy className="h-3.5 w-3.5 shrink-0 text-muted/70" aria-hidden />
+        )}
+      </button>
+      <span aria-live="polite" className="sr-only">
+        {copied ? 'Homebrew command copied' : ''}
+      </span>
+    </div>
+  )
+}
+
 export function Hero2() {
   const shot = HERO_SHOT
   const [demoOpen, setDemoOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const maskRef = useRef<HTMLSpanElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const pauseTimer = useRef<number | null>(null)
   const reduceMotion = useReducedMotion()
+
+  useEffect(
+    () => () => {
+      if (pauseTimer.current !== null) window.clearTimeout(pauseTimer.current)
+    },
+    []
+  )
+
+  // Pointer position as a percentage of the shot, written straight onto the mask's
+  // gradient origin. Swapped while --reveal is parked at an extreme, so it never jumps.
+  const setRevealOrigin = (event: React.PointerEvent<HTMLElement>) => {
+    const mask = maskRef.current
+    if (!mask) return
+    const rect = mask.getBoundingClientRect()
+    mask.style.setProperty('--ox', `${((event.clientX - rect.left) / rect.width) * 100}%`)
+    mask.style.setProperty('--oy', `${((event.clientY - rect.top) / rect.height) * 100}%`)
+  }
+
+  // Touch fires pointerenter on tap; there the tap should only open the lightbox.
+  const hoverCapable = () =>
+    typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+
+  const openReveal = (event: React.PointerEvent<HTMLElement>) => {
+    if (reduceMotion || !hoverCapable()) return
+    if (pauseTimer.current !== null) window.clearTimeout(pauseTimer.current)
+    setRevealOrigin(event)
+    maskRef.current?.style.setProperty('--reveal', String(REVEAL_FULL))
+    void videoRef.current?.play().catch(() => {
+      // Autoplay refused (power saving, or the file is still loading) — the poster
+      // matches the still underneath, so the reveal degrades to a no-op.
+    })
+  }
+
+  const closeReveal = (event: React.PointerEvent<HTMLElement>) => {
+    if (reduceMotion || !hoverCapable()) return
+    setRevealOrigin(event)
+    maskRef.current?.style.setProperty('--reveal', String(REVEAL_HIDDEN))
+    if (pauseTimer.current !== null) window.clearTimeout(pauseTimer.current)
+    pauseTimer.current = window.setTimeout(() => videoRef.current?.pause(), REVEAL_MS)
+  }
 
   // 0 at rest, 1 once the hero panel has scrolled past the top of the viewport.
   const { scrollYProgress } = useScroll({
@@ -95,18 +239,15 @@ export function Hero2() {
   )
 
   return (
-    <section id="hero" className="px-3 pb-4 pt-3 sm:px-6 md:pb-6">
-      {/* The illustrated sky mega-panel — rounded, inset from the viewport edges.
-          Top inset matches the nav's pt-3 so the fixed nav pill floats over the wallpaper.
+    <section id="hero">
+      {/* The illustrated sky mega-panel — full-bleed: no inset, no radius, no border, so
+          the wallpaper runs edge to edge and the fixed nav pill floats straight on it.
           The panel takes its natural content height, and that height is deliberately
           budgeted to land near 1090px on desktop: short enough that the section below
           peeks above the fold on a tall display, instead of the hero eating the screen.
           The budget is spent by pt-32 + the copy block + the screenshot's max-w — change
           any one of them and the fold moves. */}
-      <div
-        ref={panelRef}
-        className="relative mx-auto w-full overflow-hidden rounded-3xl border border-ink/5 bg-tint-sky pb-8 md:pb-10"
-      >
+      <div ref={panelRef} className="relative w-full overflow-hidden bg-tint-sky pb-8 md:pb-10">
         {/* Painted landscape backdrop — a whisper of blur pushes it back so the copy + app
             window read as the foreground; scale-105 hides the soft edges the blur would
             otherwise fade at the panel border. */}
@@ -119,8 +260,11 @@ export function Hero2() {
 
         {/* Copy + CTAs */}
         <div className="relative z-10 px-6 pt-28 text-center sm:px-10 md:pt-28">
+          {/* Type geometry from the Paper slogan artboard: 54px cap, -0.055em tracking,
+              105% leading, centered. The base h1 rule in index.css is unlayered, so it
+              outranks plain utilities — leading/tracking need the important modifier. */}
           <motion.h1
-            className="display-hero mx-auto max-w-4xl text-ink text-balance"
+            className="mx-auto max-w-4xl text-balance font-serif text-[clamp(2.125rem,4.6vw,3.375rem)] font-normal leading-[1.05]! tracking-[-0.055em]! text-ink"
             initial={{ opacity: 0, y: 18, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             transition={HERO_IN}
@@ -146,66 +290,44 @@ export function Hero2() {
           </motion.h1>
 
           <motion.p
-            className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg"
+            className="mx-auto mt-[34px] max-w-[760px] text-[17px] leading-[1.65] text-muted"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={HERO_IN}
           >
-            Offline-first. End-to-end encrypted. Yours.
+            Offline-first. End-to-end encrypted. Free forever. Yours.
           </motion.p>
 
           <motion.div
-            className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+            className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-[30px]"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={HERO_IN}
           >
-            <DownloadButton location="hero" />
-            <Button
-              size="lg"
-              variant="ghost"
-              className="rounded-full px-6 text-ink hover:bg-ink/5"
-              asChild
+            <HeroDownloadPill />
+            <Link
+              to="/pricing"
+              onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-4 text-[14px] font-medium leading-[18px] text-ink transition-colors duration-200 hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
             >
-              <Link
-                to="/pricing"
-                onClick={() => trackLandingEvent('landing_nav_click', 'pricing:hero')}
-              >
-                See pricing
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+              See pricing
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={HERO_IN}
+          >
+            <BrewInstall />
           </motion.div>
         </div>
-
-        {/* Torn-paper collage peeking from behind the app window — desk / note-app vibe.
-            Two halves of one sheet, each pinned to its own edge so the lined sheets hug the
-            left and the yellow legal pad hugs the right. Nudged below the panel edge (negative
-            bottom, clipped by overflow-hidden) so only the tops peek, behind the app window
-            (z-5 < z-10). motion owns `transform`, so the push-down uses `bottom`. */}
-        <motion.img
-          src={paperLeft}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -bottom-8 start-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px]"
-          initial={{ opacity: 0, y: 44 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={HERO_IN}
-        />
-        <motion.img
-          src={paperRight}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -bottom-8 end-0 z-[5] h-[170px] w-auto select-none sm:-bottom-10 sm:h-[235px] md:-bottom-14 md:h-[300px]"
-          initial={{ opacity: 0, y: 44 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={HERO_IN}
-        />
 
         {/* App screenshot — flat and whole. No perspective tilt: that 3D transform
             rasterized the high-res capture soft (the "blurry" look); flat renders it crisp.
             No translate/overflow bleed either, so the full window is shown, nothing trimmed
-            off the bottom — it sits warm in the sky with the papers peeking behind its base.
+            off the bottom — it sits warm in the sky, whole.
             Width comes from HERO_SHOT_CSS_WIDTH; see that comment before changing it. */}
         <motion.div
           className="relative z-10 mx-auto mt-8 w-[88%]"
@@ -215,9 +337,8 @@ export function Hero2() {
           style={{ maxWidth: HERO_SHOT_CSS_WIDTH, scale: reduceMotion ? 1 : shotScale }}
         >
           {/* The whole window is the demo trigger — click opens the video lightbox.
-              It's also the glass mat: the padding band IS the effect — sky (and the paper
-              collage behind its base) shows through it, frosted, so the shot sits in the
-              panel instead of on it. The inner white line is an inset box-shadow rather
+              It's also the glass mat: the padding band IS the effect — the sky shows
+              through it, frosted, so the shot sits in the panel instead of on it. The inner white line is an inset box-shadow rather
               than `ring-inset`, which leaves `ring-*` free for the focus ring.
               Opacity animates HERE, not on the wrapper: an ancestor at opacity < 1 becomes
               a backdrop root, which would leave the glass flat for the whole entrance and
@@ -230,6 +351,8 @@ export function Hero2() {
               trackLandingEvent('landing_hero_demo_open', 'hero')
               setDemoOpen(true)
             }}
+            onPointerEnter={openReveal}
+            onPointerLeave={closeReveal}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={HERO_IN}
@@ -245,12 +368,27 @@ export function Hero2() {
                 decoding="async"
                 className="block h-auto w-full"
               />
+              {/* Mask geometry lives in index.css — see .product-shot-video. */}
+              <span ref={maskRef} className="product-shot-video" aria-hidden>
+                <video ref={videoRef} muted loop playsInline preload="none" poster={shot.src}>
+                  <source src={HERO_VIDEO} type="video/mp4" />
+                </video>
+              </span>
             </div>
-            {/* Watch cue — hidden until hover/keyboard focus; always shown on touch (no hover). */}
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="flex translate-y-1 scale-95 items-center gap-2 rounded-full bg-ink/75 px-5 py-2.5 text-sm font-medium text-white opacity-0 shadow-[0_16px_50px_rgba(31,41,55,0.45)] backdrop-blur-md transition-[transform,opacity] duration-200 ease-out group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:scale-100 group-focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:translate-y-0 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100">
-                <Play className="h-4 w-4 fill-current" strokeWidth={1.6} />
-                Watch demo
+            {/* Watch cue — always on, never hover-gated: it's the only sign the shot is a
+                video. Light glass pill with a filled play disc, per the Paper Play chip. */}
+            {/* z-2: the reveal layer is z-1, and equal-DOM-order does not save an
+                auto-z sibling from a positioned one that declares a stack level. */}
+            <span className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center">
+              <span className="flex items-center gap-2.5 rounded-full bg-white/85 py-2 ps-2 pe-5 shadow-[0_18px_50px_rgb(0_0_0/0.18)] backdrop-blur-md transition-transform duration-300 ease-out motion-safe:group-hover:scale-105 motion-safe:group-focus-visible:scale-105">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-terracotta shadow-[0_8px_22px_rgb(255_103_26/0.45)]">
+                  <Play
+                    className="h-3.5 w-3.5 translate-x-[2px] fill-white text-white"
+                    strokeWidth={0}
+                    aria-hidden
+                  />
+                </span>
+                <span className="text-[14px] font-medium leading-[18px] text-ink">Watch demo</span>
               </span>
             </span>
           </motion.button>
