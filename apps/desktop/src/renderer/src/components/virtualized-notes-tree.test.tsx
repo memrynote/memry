@@ -704,4 +704,92 @@ describe('VirtualizedNotesTree', () => {
     rafSpy.mockRestore()
     cancelSpy.mockRestore()
   })
+  describe('Finder-style arrow navigation', () => {
+    const row = (label: string) =>
+      screen.getByText(label).closest('[role="treeitem"]') as HTMLElement
+
+    it('walks down and up the visible rows, selecting as it goes', () => {
+      const props = renderTree()
+
+      const work = row('Work')
+      work.focus()
+
+      fireEvent.keyDown(work, { key: 'ArrowDown' })
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work'])
+      expect(row('Alpha')).toHaveFocus()
+
+      fireEvent.keyDown(row('Alpha'), { key: 'ArrowUp' })
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['folder-Work'])
+      expect(row('Work')).toHaveFocus()
+    })
+
+    it('opens a closed folder with Right and closes it with Left', () => {
+      localStorage.setItem('sidebar-tree-expanded', JSON.stringify([]))
+      renderTree()
+
+      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(row('Work'), { key: 'ArrowRight' })
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+      // Second Right steps into the folder rather than reopening it.
+      fireEvent.keyDown(row('Work'), { key: 'ArrowRight' })
+      expect(row('Alpha')).toHaveFocus()
+
+      fireEvent.keyDown(row('Work'), { key: 'ArrowLeft' })
+      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+    })
+
+    it('walks Left out of a child onto its folder', () => {
+      const props = renderTree()
+
+      fireEvent.keyDown(row('Alpha'), { key: 'ArrowLeft' })
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['folder-Work'])
+      expect(row('Work')).toHaveFocus()
+    })
+
+    /**
+     * The flow that reported this: right-click a row, dismiss the menu, then
+     * press an arrow. Focus is on the row because the row claims it on
+     * contextmenu — without that the keystroke reached the scroll container and
+     * only scrolled the sidebar.
+     */
+    it('navigates from the row a right-click landed on', () => {
+      const props = renderTree()
+
+      fireEvent.contextMenu(row('Work'))
+      expect(row('Work')).toHaveFocus()
+
+      fireEvent.keyDown(row('Work'), { key: 'ArrowDown' })
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work'])
+    })
+
+    it('falls back to the selection when the keystroke misses every row', () => {
+      const props = renderTree({ selectedIds: ['folder-Work'] })
+
+      fireEvent.keyDown(screen.getByRole('tree'), { key: 'ArrowDown' })
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work'])
+    })
+
+    it('leaves the arrows to an inline rename input', () => {
+      const props = renderTree({
+        renamingFolderPath: 'Work',
+        folderRenameValue: 'Work'
+      })
+
+      const input = screen.getByDisplayValue('Work')
+      fireEvent.keyDown(input, { key: 'ArrowDown' })
+      expect(props.onSelectionChange).not.toHaveBeenCalled()
+    })
+
+    it('ignores an arrow with no row to move to', () => {
+      const props = renderTree()
+
+      fireEvent.keyDown(row('Work'), { key: 'ArrowUp' })
+      fireEvent.keyDown(row('Root'), { key: 'ArrowDown' })
+      fireEvent.keyDown(row('Root'), { key: 'ArrowRight' })
+      fireEvent.keyDown(row('Root'), { key: 'ArrowLeft' })
+      expect(props.onSelectionChange).not.toHaveBeenCalled()
+    })
+  })
 })

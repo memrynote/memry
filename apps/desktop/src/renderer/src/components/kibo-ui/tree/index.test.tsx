@@ -242,6 +242,11 @@ describe('TreeProvider and tree primitives', () => {
     fireEvent.keyDown(root, { key: 'ArrowDown' })
     expect(screen.getByTestId('selected')).toHaveTextContent('child-a')
 
+    // A right-click leaves focus where it was, which used to strand the arrows
+    // on the sidebar's scroll container.
+    fireEvent.contextMenu(root)
+    expect(root).toHaveFocus()
+
     fireEvent.keyDown(childA, { key: 'ArrowRight' })
     expect(screen.getByText('Grandchild')).toBeInTheDocument()
 
