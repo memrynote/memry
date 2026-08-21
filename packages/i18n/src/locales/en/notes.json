@@ -987,7 +987,11 @@
       "copyVector": "Copy as vector",
       "imageCopied": "Map copied as an image",
       "vectorCopied": "Map copied as vector artwork",
-      "copyFailed": "Failed to copy the map"
+      "copyFailed": "Failed to copy the map",
+      "saveCanvas": "Save as canvas",
+      "saved": "Saved as the canvas \u201c{title}\u201d",
+      "saveFailed": "Failed to save the map as a canvas",
+      "snapshotOn": "Snapshot \u00b7 {date}"
     }
   }
 }

@@ -140,6 +140,7 @@ export function layoutMindMap(
       isDone: item.node.isDone,
       taskId: item.node.taskId,
       wikiTarget: item.node.wikiTarget,
+      headingText: item.node.headingText,
       tags: item.node.tags,
       contents: item.node.contents,
       foldedCount: item.node.foldedCount,

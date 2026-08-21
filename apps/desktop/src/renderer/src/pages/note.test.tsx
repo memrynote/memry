@@ -1685,7 +1685,12 @@ describe('NotePage', () => {
         within(toolbar)
           .getAllByRole('button')
           .map((b) => b.getAttribute('aria-label'))
-      ).toEqual(['mindMap.toolbar.fit', 'mindMap.toolbar.copyImage', 'mindMap.toolbar.copyVector'])
+      ).toEqual([
+        'mindMap.toolbar.fit',
+        'mindMap.toolbar.copyImage',
+        'mindMap.toolbar.copyVector',
+        'mindMap.toolbar.saveCanvas'
+      ])
 
       // Wired to the live surface, not to a rebuilt copy of the map.
       fireEvent.click(screen.getByTestId('mind-map-toolbar-fit'))

@@ -1,12 +1,12 @@
 /**
- * Taking the map with you.
+ * Taking the map with you — onto the clipboard, or into a canvas of your own.
  *
  * Part of the lazy drawing chunk: it imports @excalidraw/excalidraw, so it is
- * only ever reached from `mind-map-canvas.tsx` and never from a module the main
+ * only ever reached through a dynamic import and never from a module the main
  * renderer bundle can see.
  *
- * The scene comes from the LIVE surface, never from a fresh `buildMindMap`
- * call. What the user copies has to be what the user is looking at — including
+ * A COPY comes from the LIVE surface, never from a fresh `buildMindMap` call.
+ * What the user copies has to be what the user is looking at — including
  * branches they expanded — and only the surface knows that.
  *
  * Both paths go through `navigator.clipboard`, which is the app's existing
@@ -24,11 +24,36 @@
  * Neither path needs a main-process channel, so no IPC contract is touched.
  */
 
-import { exportToBlob, exportToSvg } from '@excalidraw/excalidraw'
+import { convertToExcalidrawElements, exportToBlob, exportToSvg } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
+import { mindMapSceneJson } from './mind-map-snapshot'
+import type { MindMapElement } from './mind-map-types'
 
 /** The slice of the live surface an export reads. */
 export type MindMapSceneSource = Pick<ExcalidrawImperativeAPI, 'getSceneElements' | 'getFiles'>
+
+/**
+ * The map's element descriptors are plain data so the pipeline that mints them
+ * stays pure and testable without this chunk. The library's own skeleton type
+ * brands its point tuples, which no plain literal can satisfy, so the handover
+ * happens at the boundary — here and in `mind-map-canvas.tsx`.
+ */
+export const toSkeleton = (elements: readonly MindMapElement[]): ExcalidrawElementSkeleton[] =>
+  elements as unknown as ExcalidrawElementSkeleton[]
+
+/**
+ * Snapshot skeletons → a canvas document the vault can store.
+ *
+ * The conversion is what turns `start`/`end` ids into real arrow bindings, so
+ * a node dragged in the saved canvas keeps its connectors: the library
+ * regenerates every id on the way in and resolves the two by the ids the
+ * skeletons carried. It lives in this chunk because it is the drawing library's
+ * job; the document it goes into is minted purely (see `mind-map-snapshot.ts`).
+ */
+export function toCanvasScene(elements: readonly MindMapElement[]): string {
+  return mindMapSceneJson(convertToExcalidrawElements(toSkeleton(elements)))
+}
 
 /** Breathing room around the drawing, in scene units. */
 const EXPORT_PADDING = 16

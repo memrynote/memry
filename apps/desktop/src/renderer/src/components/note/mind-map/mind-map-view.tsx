@@ -26,14 +26,18 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import { Focus, Image, PenTool } from '@/lib/icons'
+import { Focus, Image, PenTool, Save } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { buildMemryHref } from '@/lib/memry-links'
+import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { canvasService } from '@/services/canvas-service'
 import { nodeFromMindMapLink, type MindMapNodeActivation } from './mind-map-navigation'
+import { mintSnapshotElements, uniqueCanvasTitle } from './mind-map-snapshot'
 import { MindMapToolbar, type MindMapToolbarAction } from './mind-map-toolbar'
 import { MindMapTree } from './mind-map-tree'
 import type { MindMapControls } from './mind-map-canvas'
-import type { MindMap } from './mind-map-types'
+import type { MindMap, MindMapPositionedNode } from './mind-map-types'
 
 const log = createLogger('NoteMindMap')
 
@@ -44,6 +48,62 @@ const log = createLogger('NoteMindMap')
 const LazyMindMapCanvas = lazy(async () => ({
   default: (await import('./mind-map-canvas')).MindMapCanvas
 }))
+
+/**
+ * Wiki-link nodes, resolved to hrefs that still mean something on another
+ * device.
+ *
+ * On screen a wiki-link box's href is only a click handle — the real
+ * destination is `wikiTarget`, a TITLE, and `activateMindMapNode` turns it into
+ * a tab. A saved canvas has neither: nothing on the other side reads
+ * `wikiTarget`, so the target has to be resolved to a real id here, once, at
+ * the moment the file is written.
+ *
+ * Through `resolveWikiLink`, the same resolver a `[[…]]` in the note body goes
+ * through, so a saved link opens exactly what clicking the link opens — a note
+ * at its heading, or a filed binary in its viewer. Resolved once per distinct
+ * target rather than once per node, because a note that links to `Roadmap` five
+ * times should cost one lookup.
+ *
+ * A target that resolves to nothing gets no entry, and its box falls back to
+ * the heading anchor every other node carries: it opens the source note at the
+ * section the link is written in. Better than a dead box, and it invents no
+ * destination — a `create` resolution means the note does not exist yet, and
+ * freezing "make this note" into a document is not a promise a file can keep.
+ */
+async function resolveWikiHrefs(
+  nodes: readonly MindMapPositionedNode[]
+): Promise<Map<string, string>> {
+  const links = nodes.filter((node) => node.kind === 'wikiLink' && node.wikiTarget !== null)
+  const targets = [...new Set(links.map((node) => node.wikiTarget as string))]
+
+  const byTarget = new Map<string, string>()
+  await Promise.all(
+    targets.map(async (target) => {
+      const resolved = await resolveWikiLink(target).catch(() => null)
+      if (!resolved || (resolved.type !== 'note' && resolved.type !== 'file')) return
+
+      const href = buildMemryHref({
+        kind: resolved.type,
+        id: resolved.id,
+        // A filed binary has no inside to address; a note takes the heading half
+        // of `[[Note#Heading]]` exactly as the editor would.
+        anchor:
+          resolved.type === 'note' && resolved.heading
+            ? { type: 'heading', text: resolved.heading }
+            : null
+      })
+      if (href) byTarget.set(target, href)
+    })
+  )
+
+  const hrefs = new Map<string, string>()
+  for (const node of links) {
+    const href = byTarget.get(node.wikiTarget as string)
+    if (href) hrefs.set(node.id, href)
+  }
+  return hrefs
+}
 
 interface MindMapViewProps {
   map: MindMap
@@ -63,6 +123,7 @@ export function MindMapView({
 }: MindMapViewProps): React.JSX.Element {
   const { t } = useT('notes')
   const [controls, setControls] = useState<MindMapControls | null>(null)
+  const [isSaving, setSaving] = useState(false)
 
   const copy = useCallback(
     (run: () => Promise<void>, success: string): void => {
@@ -76,6 +137,48 @@ export function MindMapView({
     },
     [t]
   )
+
+  /**
+   * Mints a canvas from the map as currently drawn, and lets go of it.
+   *
+   * A NEW canvas every time, at the canvas root, named after the note with the
+   * vault's own collision suffix. Nothing is overwritten and nothing is written
+   * back to the note: from here on the canvas is the user's alone.
+   *
+   * The date is formatted here because this is the layer with a locale, and it
+   * is frozen into the file — a snapshot says when it was taken, not what time
+   * it is now.
+   */
+  const save = useCallback((): void => {
+    setSaving(true)
+    void (async () => {
+      const [{ toCanvasScene }, existing, wikiHrefs] = await Promise.all([
+        import('./mind-map-export'),
+        canvasService.list(),
+        resolveWikiHrefs(map.nodes)
+      ])
+
+      const generatedLabel = t('mindMap.toolbar.snapshotOn', {
+        date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date())
+      })
+      const scene = toCanvasScene(mintSnapshotElements(map, { noteId, generatedLabel, wikiHrefs }))
+      // Only the canvas ROOT can collide: that is where this one is filed. The
+      // note's own folder tree is deliberately not mirrored — gluing the two
+      // trees together would make every note rename a canvas move.
+      const title = uniqueCanvasTitle(
+        noteTitle.trim() || t('editor.title.untitled'),
+        existing.canvases.filter((canvas) => canvas.folder === null).map((canvas) => canvas.title)
+      )
+
+      await canvasService.create({ title, scene, folder: null })
+      toast.success(t('mindMap.toolbar.saved', { title }))
+    })()
+      .catch((err: unknown) => {
+        log.warn('Failed to save the mind map as a canvas', err)
+        toast.error(extractErrorMessage(err, t('mindMap.toolbar.saveFailed')))
+      })
+      .finally(() => setSaving(false))
+  }, [map, noteId, noteTitle, t])
 
   const actions = useMemo<MindMapToolbarAction[]>(
     () => [
@@ -103,9 +206,22 @@ export function MindMapView({
         onSelect: () => {
           if (controls) copy(controls.copyVector, t('mindMap.toolbar.vectorCopied'))
         }
+      },
+      {
+        // A fourth entry in the same array, not a new slot: the toolbar takes
+        // its actions as data precisely so this needed no new prop.
+        //
+        // Unlike the three above it does not wait on the drawing surface — the
+        // saved document is minted from the map's own descriptors, not read off
+        // the live scene — so it is only inert while a save is in flight.
+        id: 'save-canvas',
+        label: t('mindMap.toolbar.saveCanvas'),
+        icon: Save,
+        disabled: isSaving,
+        onSelect: save
       }
     ],
-    [controls, copy, t]
+    [controls, copy, isSaving, save, t]
   )
 
   // Empty until the map is actually at its limit — see the region below.

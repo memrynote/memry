@@ -56,12 +56,52 @@ const MORE_STROKE = '#ff671a'
 const ROUNDNESS = { type: 3 }
 
 /**
+ * Which anchor a box's deep link carries.
+ *
+ * - `block` — the drawn map, handed straight back into the session that minted
+ *   it. Exact, and worthless anywhere else: a block id lives exactly as long as
+ *   the document that minted it.
+ * - `heading` — a map written to a file. Heading TEXT is all a link can carry
+ *   that outlives the document, and it is the house convention already
+ *   (`[[Note#Heading]]`). A node with no heading above it anchors on nothing,
+ *   which reads as "this note, from the top".
+ */
+export type MindMapLinkAnchor = 'block' | 'heading'
+
+export interface MintElementsOptions {
+  /** Given, every box carries a deep link back into this note. */
+  noteId?: string
+  /** Defaults to `block` — the drawn map's anchor. */
+  anchor?: MindMapLinkAnchor
+  /**
+   * An extra badge on the root box, ahead of whatever it already carries. The
+   * saved snapshot puts its generation date here so a canvas found months later
+   * says what it is; the drawn map passes nothing and reads as it always has.
+   *
+   * Ahead of, never instead of: the root's own detail may say how much folded
+   * into it, and replacing that line would drop the one thing telling the
+   * reader the map is not the whole note.
+   */
+  rootDetail?: string
+  /**
+   * Node id → the href that node's box should carry instead of an anchor into
+   * this note. Only read in `heading` mode, and only ever supplied for
+   * wiki-link nodes: their target is a title, and resolving a title to a note
+   * id is a database lookup this pure pipeline cannot do. The save path does
+   * the lookup and hands the answers in.
+   */
+  wikiHrefs?: ReadonlyMap<string, string>
+}
+
+/**
  * The deep link a box carries, or `undefined` when there is no note to point
  * at.
  *
  * Every box needs a link of its OWN, because the link is the only handle a
  * click on a bitmap has: two boxes sharing one would send a click to whichever
- * came first. So:
+ * came first.
+ *
+ * **On screen (`block`)** the link is an address within this session:
  *
  * - a box standing for a block anchors on that block;
  * - the root has no block — it is the note's title — so it carries no anchor,
@@ -77,9 +117,40 @@ const ROUNDNESS = { type: 3 }
  * lookup this pure pipeline cannot do. What a fold marker does is expand, which
  * is not a destination at all. Both are decided in `activateMindMapNode`; this
  * href only has to say WHICH box was clicked.
+ *
+ * **In a file (`heading`)** none of that survives. A node id means nothing to
+ * the device that opens the canvas, and there is no `activateMindMapNode` on
+ * the other side to interpret it — so every box anchors on the heading it sits
+ * under, and a box with no heading above it anchors on nothing and opens the
+ * note at the top. A wiki-link box is the one exception: it points OUT of this
+ * note, so the caller resolves its target and hands the href in through
+ * `wikiHrefs`, and a target that resolves to nothing falls back to the same
+ * heading anchor as everything else — which is at least where the link is
+ * written.
  */
-function nodeLink(node: MindMapPositionedNode, noteId: string | undefined): string | undefined {
+function nodeLink(
+  node: MindMapPositionedNode,
+  { noteId, anchor, wikiHrefs }: MintElementsOptions & { anchor: MindMapLinkAnchor }
+): string | undefined {
+  // Resolved by the caller, because a wiki target is a title and turning one
+  // into an id is a database lookup this pipeline must not grow.
+  if (anchor === 'heading') {
+    const resolved = wikiHrefs?.get(node.id)
+    if (resolved) return resolved
+  }
+
   if (!noteId) return undefined
+
+  if (anchor === 'heading') {
+    return (
+      buildMemryHref({
+        kind: 'note',
+        id: noteId,
+        anchor: node.headingText ? { type: 'heading', text: node.headingText } : null
+      }) ?? undefined
+    )
+  }
+
   const anchorId = node.blockId ?? (node.kind === 'root' ? null : node.id)
   return (
     buildMemryHref({
@@ -91,8 +162,15 @@ function nodeLink(node: MindMapPositionedNode, noteId: string | undefined): stri
 }
 
 /** What the box actually holds: the label, then its badge line when there is one. */
-function boxText(node: MindMapPositionedNode): string {
-  return node.detail === '' ? node.label : `${node.label}\n${node.detail}`
+function boxText(node: MindMapPositionedNode, detail: string): string {
+  return detail === '' ? node.label : `${node.label}\n${detail}`
+}
+
+/** How many wrapped lines a run of text takes inside a box of this width. */
+function linesIn(text: string, width: number): number {
+  if (text === '') return 0
+  const perLine = Math.max(1, Math.floor((width - PADDING_X * 2) / CHAR_WIDTH))
+  return Math.ceil(text.length / perLine)
 }
 
 /**
@@ -133,8 +211,9 @@ function strikeRules(node: MindMapPositionedNode, direction: MindMapDirection): 
 export function mintElements(
   nodes: readonly MindMapPositionedNode[],
   direction: MindMapDirection,
-  noteId?: string
+  options: MintElementsOptions = {}
 ): MindMapElement[] {
+  const { noteId, anchor = 'block', rootDetail, wikiHrefs } = options
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const elements: MindMapElement[] = []
 
@@ -151,8 +230,12 @@ export function mintElements(
     const endX = direction === 'rtl' ? node.x + node.width : node.x
     const endY = node.y + Math.round(node.height / 2)
 
+    // A bound arrow, not a line between two frozen points. The coordinates
+    // above are only where it STARTS life; the binding is what keeps it
+    // attached to both boxes once someone drags one, which is the whole
+    // difference between a picture and a canvas the user can work in.
     elements.push({
-      type: 'line',
+      type: 'arrow',
       id: `${node.id}-edge`,
       x: startX,
       y: startY,
@@ -160,6 +243,11 @@ export function mintElements(
         [0, 0],
         [endX - startX, endY - startY]
       ],
+      start: { id: parent.id },
+      end: { id: node.id },
+      startArrowhead: null,
+      endArrowhead: null,
+      roundness: null,
       strokeColor: EDGE_STROKE,
       strokeWidth: 1,
       roughness: 0
@@ -170,14 +258,24 @@ export function mintElements(
     const isRoot = node.kind === 'root'
     const isLink = node.kind === 'wikiLink'
     const isMore = node.kind === 'more'
+    const detail =
+      isRoot && rootDetail
+        ? [rootDetail, node.detail].filter((part) => part !== '').join(' · ')
+        : node.detail
     elements.push({
       type: 'rectangle',
       id: node.id,
-      link: nodeLink(node, noteId),
+      link: nodeLink(node, { noteId, anchor, wikiHrefs }),
       x: node.x,
       y: node.y,
       width: node.width,
-      height: node.height,
+      // A dated root needs lines the layout did not budget for. Grown here
+      // rather than in the layout, and downwards only: the drawn map's geometry
+      // stays byte-identical to what it has always been, and the root is alone
+      // in its column so nothing sits under it to collide with.
+      height:
+        node.height +
+        (linesIn(detail, node.width) - linesIn(node.detail, node.width)) * LINE_HEIGHT,
       strokeColor: isRoot
         ? ROOT_STROKE
         : isLink
@@ -200,7 +298,7 @@ export function mintElements(
       roundness: ROUNDNESS,
       ...(isLink && { strokeStyle: 'dashed' as const }),
       label: {
-        text: boxText(node),
+        text: boxText(node, detail),
         fontSize: MIND_MAP_FONT_SIZE,
         textAlign: direction === 'rtl' ? 'right' : 'left',
         verticalAlign: 'middle',
