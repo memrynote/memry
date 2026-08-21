@@ -91,6 +91,22 @@ export interface MintElementsOptions {
    * the lookup and hands the answers in.
    */
   wikiHrefs?: ReadonlyMap<string, string>
+  /**
+   * Node id → the name to carry on that node's href as a `?label=` hint.
+   *
+   * Only read in `heading` mode, because only a file needs it. The drawn map
+   * renders its own affordance from the node it hit, so an on-screen href never
+   * has to describe itself — and leaving the hint off keeps those hrefs exactly
+   * the strings they have always been.
+   *
+   * A saved canvas has no such affordance: the drawing library prints
+   * `element.link` verbatim in its bubble, and the only hook into that text is
+   * the label the href carries (`canvas-link-label.ts` reads it, `CanvasEditor`
+   * swaps it in). Composed by the caller, because the name is a destination
+   * chain whose separator is translated chrome and this module has no
+   * translator.
+   */
+  labels?: ReadonlyMap<string, string>
 }
 
 /**
@@ -100,6 +116,14 @@ export interface MintElementsOptions {
  * Every box needs a link of its OWN, because the link is the only handle a
  * click on a bitmap has: two boxes sharing one would send a click to whichever
  * came first.
+ *
+ * WHERE the box carries it differs by mode, and that is not cosmetic. In a file
+ * it goes in `element.link`, which is what makes the box clickable in an
+ * ordinary canvas at all. On the drawn map it goes in `customData` instead:
+ * `element.link` also paints a permanent blue glyph, one per linked element,
+ * and on a map where EVERY box is linked that marks nothing and buries the one
+ * thing the picture is for — its shape. The map renders its own hover
+ * affordance from this href instead (see `mind-map-hover.ts`).
  *
  * **On screen (`block`)** the link is an address within this session:
  *
@@ -130,10 +154,11 @@ export interface MintElementsOptions {
  */
 function nodeLink(
   node: MindMapPositionedNode,
-  { noteId, anchor, wikiHrefs }: MintElementsOptions & { anchor: MindMapLinkAnchor }
+  { noteId, anchor, wikiHrefs, labels }: MintElementsOptions & { anchor: MindMapLinkAnchor }
 ): string | undefined {
   // Resolved by the caller, because a wiki target is a title and turning one
-  // into an id is a database lookup this pipeline must not grow.
+  // into an id is a database lookup this pipeline must not grow. Its label is
+  // the caller's too, for the same reason.
   if (anchor === 'heading') {
     const resolved = wikiHrefs?.get(node.id)
     if (resolved) return resolved
@@ -146,6 +171,11 @@ function nodeLink(
       buildMemryHref({
         kind: 'note',
         id: noteId,
+        // Additive, and additive is the whole compatibility story: `label` sits
+        // in the query, which the parser has always read, and a build that has
+        // never heard of it drops it and opens the same note at the same
+        // heading. It cannot disturb the anchor, which lives in the fragment.
+        label: labels?.get(node.id) ?? null,
         anchor: node.headingText ? { type: 'heading', text: node.headingText } : null
       }) ?? undefined
     )
@@ -213,7 +243,7 @@ export function mintElements(
   direction: MindMapDirection,
   options: MintElementsOptions = {}
 ): MindMapElement[] {
-  const { noteId, anchor = 'block', rootDetail, wikiHrefs } = options
+  const { noteId, anchor = 'block', rootDetail, wikiHrefs, labels } = options
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const elements: MindMapElement[] = []
 
@@ -262,10 +292,20 @@ export function mintElements(
       isRoot && rootDetail
         ? [rootDetail, node.detail].filter((part) => part !== '').join(' · ')
         : node.detail
+    const href = nodeLink(node, { noteId, anchor, wikiHrefs, labels })
+    // One href, two homes. See `nodeLink` for why the drawn map keeps its out
+    // of `link`: that field is what paints the glyph, and a map is nothing but
+    // linked boxes.
+    const address =
+      href === undefined
+        ? {}
+        : anchor === 'heading'
+          ? { link: href }
+          : { customData: { memryHref: href } }
     elements.push({
       type: 'rectangle',
       id: node.id,
-      link: nodeLink(node, { noteId, anchor, wikiHrefs }),
+      ...address,
       x: node.x,
       y: node.y,
       width: node.width,

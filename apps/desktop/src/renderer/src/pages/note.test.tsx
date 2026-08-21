@@ -272,7 +272,7 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
     onOpenLink,
     onControlsChange
   }: {
-    elements: Array<{ id: string; link?: string }>
+    elements: Array<{ id: string; customData?: { memryHref: string } }>
     onOpenLink: (href: string) => void
     onControlsChange?: (controls: Record<string, unknown> | null) => void
   }) => {
@@ -288,19 +288,22 @@ vi.mock('@/components/note/mind-map/mind-map-canvas', () => ({
     }, [onControlsChange])
     return (
       <div data-testid="mind-map-canvas" data-element-count={elements.length}>
-        {/* Excalidraw hands a click back as the link of the box it landed on —
-            in view mode the whole box is the hit area. Standing in for that is
-            all this needs to do; everything downstream of it is the real path. */}
+        {/* The real surface hit-tests the box under the cursor and hands its
+            deep link back — the whole bounding box, as view mode's own link hit
+            test used to do for us. The href lives in `customData` rather than
+            `link` so the library paints no glyph over the map. Standing in for
+            that is all this needs to do; everything downstream is the real
+            path. */}
         {elements
-          .filter((element) => Boolean(element.link))
+          .filter((element) => Boolean(element.customData?.memryHref))
           .map((element) => (
             <button
               key={element.id}
               type="button"
               data-testid={`mind-map-box-${element.id}`}
-              onClick={() => onOpenLink(element.link!)}
+              onClick={() => onOpenLink(element.customData!.memryHref)}
             >
-              {element.link}
+              {element.customData!.memryHref}
             </button>
           ))}
       </div>

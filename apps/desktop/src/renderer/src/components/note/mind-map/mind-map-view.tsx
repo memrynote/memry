@@ -32,11 +32,13 @@ import { createLogger } from '@/lib/logger'
 import { buildMemryHref } from '@/lib/memry-links'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { canvasService } from '@/services/canvas-service'
+import { mindMapDestinations } from './mind-map-destination'
+import { mindMapHrefOf } from './mind-map-hover'
 import { nodeFromMindMapLink, type MindMapNodeActivation } from './mind-map-navigation'
 import { mintSnapshotElements, uniqueCanvasTitle } from './mind-map-snapshot'
 import { MindMapToolbar, type MindMapToolbarAction } from './mind-map-toolbar'
 import { MindMapTree } from './mind-map-tree'
-import type { MindMapControls } from './mind-map-canvas'
+import type { MindMapControls, MindMapHoverLabel } from './mind-map-canvas'
 import type { MindMap, MindMapPositionedNode } from './mind-map-types'
 
 const log = createLogger('NoteMindMap')
@@ -72,10 +74,19 @@ const LazyMindMapCanvas = lazy(async () => ({
  * freezing "make this note" into a document is not a promise a file can keep.
  */
 async function resolveWikiHrefs(
-  nodes: readonly MindMapPositionedNode[]
+  nodes: readonly MindMapPositionedNode[],
+  labels: ReadonlyMap<string, string>
 ): Promise<Map<string, string>> {
   const links = nodes.filter((node) => node.kind === 'wikiLink' && node.wikiTarget !== null)
   const targets = [...new Set(links.map((node) => node.wikiTarget as string))]
+
+  // A wiki node's name comes from its target alone, so every node sharing a
+  // target shares a name and the label can be resolved once per target too.
+  const labelByTarget = new Map<string, string>()
+  for (const node of links) {
+    const target = node.wikiTarget as string
+    if (!labelByTarget.has(target)) labelByTarget.set(target, labels.get(node.id) ?? '')
+  }
 
   const byTarget = new Map<string, string>()
   await Promise.all(
@@ -86,6 +97,10 @@ async function resolveWikiHrefs(
       const href = buildMemryHref({
         kind: resolved.type,
         id: resolved.id,
+        // So the canvas' link bubble says the page this box opens rather than
+        // its address. A hint, never an identity — the id is what resolves, and
+        // the opening path reads the item's real title before it names a tab.
+        label: labelByTarget.get(target) || null,
         // A filed binary has no inside to address; a note takes the heading half
         // of `[[Note#Heading]]` exactly as the editor would.
         anchor:
@@ -125,6 +140,48 @@ export function MindMapView({
   const [controls, setControls] = useState<MindMapControls | null>(null)
   const [isSaving, setSaving] = useState(false)
 
+  /**
+   * What each node's link opens, said as a name.
+   *
+   * Composed here because this is the layer with a translator: the separator
+   * between segments is chrome and has to follow the reading direction, while
+   * the names it joins — headings, list items, note titles — are the user's own
+   * words and are never translated.
+   *
+   * One derivation feeds both surfaces. The drawn map renders it on hover; the
+   * saved canvas freezes it into each href as a `?label=`, which is the only
+   * hook the drawing library's own bubble has.
+   */
+  const destinations = useMemo(
+    () => mindMapDestinations(map.nodes, { separator: t('mindMap.chain.separator') }),
+    [map.nodes, t]
+  )
+
+  /**
+   * The same names, keyed the way a click and a hover arrive: by the href the
+   * box carries.
+   *
+   * Read off the minted elements rather than re-derived, so the affordance can
+   * only ever describe a box that was actually drawn.
+   */
+  const hoverLabels = useMemo(() => {
+    const byId = new Map(map.nodes.map((node) => [node.id, node]))
+    const linkHint = t('mindMap.linkHint')
+    const labels = new Map<string, MindMapHoverLabel>()
+
+    for (const element of map.elements) {
+      if (element.type !== 'rectangle') continue
+      const href = mindMapHrefOf(element)
+      const node = byId.get(element.id)
+      if (href === null || !node) continue
+      labels.set(href, {
+        chain: destinations.get(node.id) ?? '',
+        hint: node.kind === 'wikiLink' ? linkHint : null
+      })
+    }
+    return labels
+  }, [destinations, map.elements, map.nodes, t])
+
   const copy = useCallback(
     (run: () => Promise<void>, success: string): void => {
       void run()
@@ -155,13 +212,15 @@ export function MindMapView({
       const [{ toCanvasScene }, existing, wikiHrefs] = await Promise.all([
         import('./mind-map-export'),
         canvasService.list(),
-        resolveWikiHrefs(map.nodes)
+        resolveWikiHrefs(map.nodes, destinations)
       ])
 
       const generatedLabel = t('mindMap.toolbar.snapshotOn', {
         date: new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date())
       })
-      const scene = toCanvasScene(mintSnapshotElements(map, { noteId, generatedLabel, wikiHrefs }))
+      const scene = toCanvasScene(
+        mintSnapshotElements(map, { noteId, generatedLabel, wikiHrefs, labels: destinations })
+      )
       // Only the canvas ROOT can collide: that is where this one is filed. The
       // note's own folder tree is deliberately not mirrored — gluing the two
       // trees together would make every note rename a canvas move.
@@ -178,7 +237,7 @@ export function MindMapView({
         toast.error(extractErrorMessage(err, t('mindMap.toolbar.saveFailed')))
       })
       .finally(() => setSaving(false))
-  }, [map, noteId, noteTitle, t])
+  }, [destinations, map, noteId, noteTitle, t])
 
   const actions = useMemo<MindMapToolbarAction[]>(
     () => [
@@ -268,6 +327,7 @@ export function MindMapView({
         <Suspense fallback={<div className="h-full w-full" aria-hidden="true" />}>
           <LazyMindMapCanvas
             elements={map.elements}
+            hoverLabels={hoverLabels}
             onOpenLink={handleOpenLink}
             onControlsChange={setControls}
           />

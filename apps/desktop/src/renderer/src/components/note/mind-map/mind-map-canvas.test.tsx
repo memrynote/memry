@@ -1,37 +1,65 @@
 /**
- * What the toolbar's actions actually do to the drawing.
+ * What the surface actually does: the toolbar's actions, and the link
+ * affordance the map draws for itself.
  *
  * The drawing library stands in for itself here: jsdom has no canvas to
  * rasterise to and no system clipboard to write to, so the real
  * `exportToBlob`/`exportToSvg` could not run and the real `navigator.clipboard`
- * does not exist. What these tests can prove is the part that has been wrong
- * before in this kind of code: that an export reads the LIVE scene rather than
- * the elements the map was built from, that the export settings are pinned
- * rather than inherited from the app's theme or the user's camera, and that a
- * failure travels up to the caller instead of being swallowed here.
+ * does not exist. The stand-in is faithful in the two places that matter — it
+ * hands up a live scene the exports read, and it converts viewport points to
+ * scene points the same way the library does — so what these tests prove is the
+ * wiring, which is where this kind of code has gone wrong before: that an
+ * export reads the LIVE scene rather than the elements the map was built from,
+ * that the export settings are pinned rather than inherited from the app's
+ * theme or the user's camera, that a failure travels up to the caller, and that
+ * the hover and the click land on the box the pointer is actually over.
  *
- * They deliberately do not prove that the resulting bytes are a valid PNG or
- * that a real clipboard accepts them — only a real browser can say that.
+ * They deliberately do not prove that the resulting bytes are a valid PNG, that
+ * a real clipboard accepts them, or that a real Excalidraw canvas puts its
+ * pixels where this arithmetic says it does — only a real browser can say that.
  */
 
 import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { exportToBlob, exportToSvg } from '@excalidraw/excalidraw'
-import { MindMapCanvas, type MindMapControls } from './mind-map-canvas'
+import { MindMapCanvas, type MindMapControls, type MindMapHoverLabel } from './mind-map-canvas'
 import type { MindMapElement } from './mind-map-types'
 
 /**
  * The scene the surface is showing — deliberately NOT the elements the map was
  * built from, so a test can tell the two apart. A branch the user expanded
  * lives here and nowhere else.
+ *
+ * Real geometry and real `customData`, because the hit test reads both off this
+ * same live scene: the library regenerates every id on the way in, so
+ * `customData` is the only field a box's address can survive in.
  */
-const LIVE_ELEMENTS = [{ id: 'live-1' }, { id: 'live-2' }]
+const ROOT_HREF = 'memry://note/n1'
+const ITEM_HREF = 'memry://note/n1#^b-item'
+const WIKI_HREF = 'memry://note/n1#^mm-b-item-link-1'
+
+const LIVE_ELEMENTS = [
+  { id: 'live-1', x: 0, y: 0, width: 100, height: 40, customData: { memryHref: ROOT_HREF } },
+  { id: 'live-2', x: 200, y: 0, width: 160, height: 40, customData: { memryHref: ITEM_HREF } },
+  { id: 'live-3', x: 200, y: 100, width: 160, height: 40, customData: { memryHref: WIKI_HREF } },
+  /** A connector: no address, so the hit test must never answer with it. */
+  { id: 'live-edge', x: 0, y: 0, width: 400, height: 400 }
+]
 const LIVE_FILES = { 'file-1': { id: 'file-1' } }
+
+const HOVER_LABELS: ReadonlyMap<string, MindMapHoverLabel> = new Map([
+  [ROOT_HREF, { chain: 'Test Note', hint: null }],
+  [ITEM_HREF, { chain: '\u2026 \u2192 Q3 Risks \u2192 Hire a designer', hint: null }],
+  [WIKI_HREF, { chain: 'Roadmap \u2192 Q3', hint: 'link to another page' }]
+])
 
 const mocks = vi.hoisted(() => ({
   scrollToContent: vi.fn(),
-  updateScene: vi.fn()
+  updateScene: vi.fn(),
+  onChange: vi.fn(() => () => {}),
+  /** The camera, as a test can move it. */
+  appState: { scrollX: 0, scrollY: 0, zoom: { value: 1 }, offsetLeft: 0, offsetTop: 0 }
 }))
 
 vi.mock('@excalidraw/excalidraw', () => ({
@@ -40,6 +68,8 @@ vi.mock('@excalidraw/excalidraw', () => ({
       excalidrawAPI({
         getSceneElements: () => LIVE_ELEMENTS,
         getFiles: () => LIVE_FILES,
+        getAppState: () => mocks.appState,
+        onChange: mocks.onChange,
         updateScene: mocks.updateScene,
         scrollToContent: mocks.scrollToContent
       })
@@ -47,6 +77,15 @@ vi.mock('@excalidraw/excalidraw', () => ({
     return <div data-testid="excalidraw" />
   },
   convertToExcalidrawElements: (elements: unknown[]) => elements,
+  // The library's own arithmetic, kept honest rather than stubbed: the hit test
+  // is only as right as this conversion.
+  viewportCoordsToSceneCoords: (
+    point: { clientX: number; clientY: number },
+    appState: { scrollX: number; scrollY: number; zoom: { value: number } }
+  ) => ({
+    x: point.clientX / appState.zoom.value - appState.scrollX,
+    y: point.clientY / appState.zoom.value - appState.scrollY
+  }),
   exportToBlob: vi.fn(),
   exportToSvg: vi.fn()
 }))
@@ -70,6 +109,7 @@ function mountSurface(): { controls: () => MindMapControls; unmount: () => void 
   const view = render(
     <MindMapCanvas
       elements={BUILT_ELEMENTS}
+      hoverLabels={HOVER_LABELS}
       onOpenLink={openLink}
       onControlsChange={(next) => {
         latest = next
@@ -85,9 +125,29 @@ function mountSurface(): { controls: () => MindMapControls; unmount: () => void 
   }
 }
 
+/** The drawing itself, which is what a pointer event on the canvas reaches. */
+function drawing(): HTMLElement {
+  return screen.getByTestId('excalidraw')
+}
+
+function pointAt(x: number, y: number): void {
+  fireEvent.pointerMove(drawing(), { clientX: x, clientY: y })
+}
+
+function clickAt(x: number, y: number): void {
+  fireEvent.pointerDown(drawing(), { clientX: x, clientY: y })
+  fireEvent.click(drawing(), { clientX: x, clientY: y })
+}
+
+function card(): HTMLElement | null {
+  return screen.queryByTestId('mind-map-hover-card')
+}
+
 describe('MindMapCanvas controls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.onChange.mockImplementation(() => () => {})
+    mocks.appState = { scrollX: 0, scrollY: 0, zoom: { value: 1 }, offsetLeft: 0, offsetTop: 0 }
     vi.stubGlobal('ClipboardItem', FakeClipboardItem)
     Object.defineProperty(globalThis.navigator, 'clipboard', {
       value: clipboard,
@@ -105,6 +165,7 @@ describe('MindMapCanvas controls', () => {
     const view = render(
       <MindMapCanvas
         elements={BUILT_ELEMENTS}
+        hoverLabels={HOVER_LABELS}
         onOpenLink={openLink}
         onControlsChange={(next) => {
           latest = next
@@ -191,5 +252,166 @@ describe('MindMapCanvas controls', () => {
 
     await expect(surface.controls().copyImage()).rejects.toThrow('Rasterising failed')
     expect(clipboard.write).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * The affordance the map draws for itself, now that its boxes carry no `link`
+ * for the library to decorate.
+ *
+ * What is asserted is the wiring and the arithmetic — which box a point lands
+ * on, what is said about it, and that a click reaches the same box. What jsdom
+ * cannot say is whether the card lands over the right pixels on a real canvas;
+ * the numbers are checked here, the picture is not.
+ */
+describe('MindMapCanvas link affordance', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.onChange.mockImplementation(() => () => {})
+    mocks.appState = { scrollX: 0, scrollY: 0, zoom: { value: 1 }, offsetLeft: 0, offsetTop: 0 }
+  })
+
+  it('says nothing until the pointer is over a node', () => {
+    mountSurface()
+    expect(card()).toBeNull()
+
+    // Inside the connector's bounds but on no box: an element with no address
+    // is not a node, however large it is.
+    pointAt(150, 60)
+    expect(card()).toBeNull()
+  })
+
+  it('names the node under the cursor, and only that node', () => {
+    mountSurface()
+
+    pointAt(240, 20)
+    expect(card()).toHaveTextContent('\u2026 \u2192 Q3 Risks \u2192 Hire a designer')
+    expect(card()).not.toHaveTextContent('Test Note')
+
+    pointAt(50, 20)
+    expect(card()).toHaveTextContent('Test Note')
+    expect(card()).not.toHaveTextContent('Q3 Risks')
+  })
+
+  it('answers for the whole box, not for a glyph in the corner of it', () => {
+    mountSurface()
+
+    // Every corner and the middle of live-2 (200,0 → 360,40). This is the
+    // property view mode's own link hit test gave us and the one thing a
+    // re-implementation could quietly take away.
+    for (const [x, y] of [
+      [200, 0],
+      [360, 0],
+      [200, 40],
+      [360, 40],
+      [280, 20]
+    ]) {
+      pointAt(x, y)
+      expect(card()).toHaveTextContent('Hire a designer')
+    }
+
+    // One pixel past the edge is not the box.
+    pointAt(361, 20)
+    expect(card()).toBeNull()
+  })
+
+  it('says when the link leaves this note, in the tree\u2019s own words', () => {
+    mountSurface()
+
+    pointAt(280, 120)
+    expect(card()).toHaveTextContent('Roadmap \u2192 Q3')
+    expect(card()).toHaveTextContent('link to another page')
+  })
+
+  it('is decoration on the picture rather than a second thing to read', () => {
+    mountSurface()
+    pointAt(280, 20)
+
+    // The accessible tree beside the map already carries this in words; a
+    // second copy would be read out twice. It is also never a pointer target —
+    // every event has to reach the drawing underneath it.
+    const layer = card()!.parentElement!
+    expect(layer).toHaveAttribute('aria-hidden', 'true')
+    expect(layer.className).toContain('pointer-events-none')
+  })
+
+  it('turns the cursor into a pointer only while a node is under it', () => {
+    const { container } = render(
+      <MindMapCanvas elements={BUILT_ELEMENTS} hoverLabels={HOVER_LABELS} onOpenLink={openLink} />
+    )
+    const wrapper = container.querySelector('.mind-map-surface')!
+    expect(wrapper).not.toHaveAttribute('data-node-hover')
+
+    pointAt(280, 20)
+    // The rule itself lives in CSS, because only a rule marked important
+    // outranks the inline cursor the library sets on its own canvas.
+    expect(wrapper).toHaveAttribute('data-node-hover', 'true')
+
+    pointAt(500, 500)
+    expect(wrapper).not.toHaveAttribute('data-node-hover')
+  })
+
+  it('follows the camera, so a pan does not leave the answer behind', () => {
+    mountSurface()
+
+    pointAt(240, 20)
+    expect(card()).toHaveTextContent('Hire a designer')
+
+    // The pointer has not moved; the drawing has. The same screen point is now
+    // over the root's box.
+    mocks.appState = { ...mocks.appState, scrollX: 200 }
+    pointAt(240, 20)
+    expect(card()).toHaveTextContent('Test Note')
+  })
+
+  it('opens what the box under the click points at, from anywhere in the box', () => {
+    mountSurface()
+
+    clickAt(205, 38)
+    expect(openLink).toHaveBeenCalledWith(ITEM_HREF)
+
+    clickAt(20, 20)
+    expect(openLink).toHaveBeenLastCalledWith(ROOT_HREF)
+
+    // A wiki-link box is handed back exactly like any other: WHERE it goes is
+    // decided downstream, from the node its href resolves to.
+    clickAt(280, 120)
+    expect(openLink).toHaveBeenLastCalledWith(WIKI_HREF)
+  })
+
+  it('opens nothing when the click lands on no box', () => {
+    mountSurface()
+
+    clickAt(150, 60)
+    expect(openLink).not.toHaveBeenCalled()
+  })
+
+  it('treats a press that travelled as a pan rather than as a click', () => {
+    mountSurface()
+
+    // In view mode a drag anywhere moves the camera, and finishing a pan over
+    // a node must not open it.
+    fireEvent.pointerDown(drawing(), { clientX: 210, clientY: 20 })
+    fireEvent.click(drawing(), { clientX: 300, clientY: 20 })
+    expect(openLink).not.toHaveBeenCalled()
+  })
+
+  it('forgets what was under the cursor when the map is rebuilt', () => {
+    const view = render(
+      <MindMapCanvas elements={BUILT_ELEMENTS} hoverLabels={HOVER_LABELS} onOpenLink={openLink} />
+    )
+    pointAt(240, 20)
+    expect(card()).not.toBeNull()
+
+    // A rebuilt map is a different drawing; whatever was under the cursor
+    // belonged to the old one.
+    view.rerender(
+      <MindMapCanvas
+        elements={[{ type: 'rectangle', id: 'built-2' }] as unknown as readonly MindMapElement[]}
+        hoverLabels={HOVER_LABELS}
+        onOpenLink={openLink}
+      />
+    )
+    expect(card()).toBeNull()
   })
 })

@@ -5,6 +5,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import { buildMindMap } from './build-mind-map'
+import { mindMapHrefOf } from './mind-map-hover'
 import { activateMindMapNode, nodeFromMindMapLink } from './mind-map-navigation'
 import type { MindMapBoxElement, MindMapPositionedNode, MindMapSourceBlock } from './mind-map-types'
 
@@ -171,7 +172,7 @@ describe('activateMindMapNode', () => {
     const fromTree = actions()
     const fromDrawing = actions()
     activateMindMapNode(beta, fromTree)
-    activateMindMapNode(nodeFromMindMapLink(box.link!, map.nodes, 'note-1')!, fromDrawing)
+    activateMindMapNode(nodeFromMindMapLink(mindMapHrefOf(box)!, map.nodes, 'note-1')!, fromDrawing)
 
     // Two projections of one layout, one activation: the picture cannot grow a
     // navigation behaviour the tree does not have.
@@ -194,8 +195,9 @@ describe('nodeFromMindMapLink', () => {
     // The round trip that matters: what the pipeline drew is what a click on it
     // resolves back to.
     for (const element of map.elements) {
-      if (element.type !== 'rectangle' || !element.link) continue
-      expect(nodeFromMindMapLink(element.link, map.nodes, 'note-1')?.id).toBe(element.id)
+      const href = element.type === 'rectangle' ? mindMapHrefOf(element) : null
+      if (href === null) continue
+      expect(nodeFromMindMapLink(href, map.nodes, 'note-1')?.id).toBe(element.id)
     }
   })
 
@@ -221,7 +223,7 @@ describe('nodeFromMindMapLink', () => {
 
     // Its sentence's box and its own carry different hrefs, so a click on the
     // link cannot resolve to the sentence that holds it.
-    expect(nodeFromMindMapLink(box.link!, linked.nodes, 'note-1')).toBe(link)
+    expect(nodeFromMindMapLink(mindMapHrefOf(box)!, linked.nodes, 'note-1')).toBe(link)
     expect(nodeFromMindMapLink('memry://note/note-1#^b-item', linked.nodes, 'note-1')?.kind).toBe(
       'bullet'
     )
@@ -241,8 +243,8 @@ describe('nodeFromMindMapLink', () => {
     // Without this the drawing would answer a click on "+N more" with the root,
     // because both are blockless — and the user would be scrolled to the top of
     // their note instead of having the branch opened.
-    expect(nodeFromMindMapLink(box.link!, folded.nodes, 'note-1')).toBe(marker)
-    expect(box.link).toBe(`memry://note/note-1#^${marker.id}`)
+    expect(nodeFromMindMapLink(mindMapHrefOf(box)!, folded.nodes, 'note-1')).toBe(marker)
+    expect(mindMapHrefOf(box)).toBe(`memry://note/note-1#^${marker.id}`)
   })
 
   it('refuses a block anchor no node in this map owns', () => {

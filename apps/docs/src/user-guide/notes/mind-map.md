@@ -140,6 +140,18 @@ Nodes work from the keyboard too. Tab into the map, move between nodes with the
 up and down arrows (Home and End jump to the ends), and press Enter or Space to
 open the one you are on.
 
+### Where a Node Goes
+
+Point at a node and a small card appears under it naming what the click opens:
+the last two steps of the path, such as `… → Q3 Risks → Hire a designer`. A
+wiki-link node names **the note it points at** rather than the one you are in,
+and says that it leaves the note. A `+N more` node names the branch it stands
+for.
+
+Nothing marks a node the rest of the time, and deliberately. Every node on a map
+is a link, so a marker on each of them would mark nothing and bury the shape the
+map is for. The whole node is the target either way — click anywhere on the box.
+
 ## The Map's Own Toolbar
 
 A small toolbar sits at the top of the map, and only there — the note's overflow
@@ -198,6 +210,10 @@ canvas is resolved when the canvas is written, so it opens the linked note — a
 its heading, if the link named one — on any of your devices. If the link points
 at a note that does not exist yet, the node opens the source note at the section
 the link is written in instead, so it is never a dead box.
+
+Each link carries the name of what it opens, so hovering a node in the saved
+canvas shows `… → Q3 Risks` rather than the address behind it — including on a
+device that has never opened the note the map was made from.
 
 **A "+N more" node stays in the saved canvas**, even though there is nothing for
 it to open in a document. It is what tells you the canvas is not the whole note,
