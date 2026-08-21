@@ -164,6 +164,11 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         if (g.theme) prefsUpdate.theme = g.theme
         if (g.fontSize) prefsUpdate.fontSize = g.fontSize
         if (g.fontFamily) prefsUpdate.fontFamily = g.fontFamily
+        // Not a truthiness check: '' is how a device says "custom font cleared",
+        // and dropping it would leave the other device's font stuck on.
+        if (g.customFontFamily !== undefined) {
+          prefsUpdate.customFontFamily = g.customFontFamily
+        }
         if (g.accentColor) prefsUpdate.accentColor = g.accentColor
         if (g.language) prefsUpdate.language = g.language
         if (g.createInSelectedFolder !== undefined) {

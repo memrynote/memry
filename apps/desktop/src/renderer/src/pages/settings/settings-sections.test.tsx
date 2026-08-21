@@ -32,7 +32,8 @@ const mocks = vi.hoisted(() => ({
       theme: 'system',
       accentColor: '#6366f1',
       fontSize: 'medium',
-      fontFamily: 'system'
+      fontFamily: 'system',
+      customFontFamily: ''
     },
     isLoading: false,
     updateSettings: vi.fn()
@@ -592,6 +593,17 @@ describe('settings section coverage', () => {
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
         fontFamily: 'monospace'
+      })
+    )
+
+    // A typed font name is saved sanitized on blur — the raw text goes into a
+    // CSS font stack, so anything that could escape the declaration is dropped.
+    const customFontInput = screen.getByLabelText('appearance.typography.customFont.label')
+    fireEvent.change(customFontInput, { target: { value: '"Iosevka Term"; color: red' } })
+    fireEvent.blur(customFontInput)
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        customFontFamily: 'Iosevka Term color red'
       })
     )
   })

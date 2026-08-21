@@ -65,6 +65,7 @@ describe('VaultPreferencesSchema', () => {
       theme: 'dark' as const,
       fontSize: 'large' as const,
       fontFamily: 'gelasio' as const,
+      customFontFamily: 'Iosevka Term',
       accentColor: '#ff0000',
       language: 'tr',
       createInSelectedFolder: false,

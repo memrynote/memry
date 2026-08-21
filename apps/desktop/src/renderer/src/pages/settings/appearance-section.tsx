@@ -9,6 +9,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { isFontInstalled, sanitizeCustomFontName, MAX_FONT_NAME_LENGTH } from '@/lib/custom-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -101,6 +102,9 @@ export function AppearanceSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+  // null means "not editing" — the row then shows the saved value, including one
+  // that arrived from another device.
+  const [customFontDraft, setCustomFontDraft] = useState<string | null>(null)
 
   const themeOptions: SegmentOption[] = THEME_OPTIONS.map((option) => ({
     value: option.value,
@@ -158,6 +162,18 @@ export function AppearanceSettings() {
     },
     [t, updateSettings]
   )
+
+  const customFontValue = customFontDraft ?? settings.customFontFamily ?? ''
+  const customFontName = sanitizeCustomFontName(customFontValue)
+  const customFontMissing = customFontName.length > 0 && !isFontInstalled(customFontName)
+
+  const commitCustomFont = useCallback(async () => {
+    const next = sanitizeCustomFontName(customFontDraft ?? '')
+    setCustomFontDraft(null)
+    if (customFontDraft === null || next === (settings.customFontFamily ?? '')) return
+    const success = await updateSettings({ customFontFamily: next })
+    if (!success) toast.error(t('appearance.typography.customFontError'))
+  }, [customFontDraft, settings.customFontFamily, t, updateSettings])
 
   if (isLoading) {
     return (
@@ -294,6 +310,33 @@ export function AppearanceSettings() {
               </SelectItem>
             </SelectContent>
           </Select>
+        </SettingRow>
+
+        <SettingRow
+          label={t('appearance.typography.customFont.label')}
+          description={t('appearance.typography.customFont.description')}
+        >
+          <div className="flex flex-col items-end shrink-0 gap-1">
+            <Input
+              placeholder={t('appearance.typography.customFont.placeholder')}
+              value={customFontValue}
+              onChange={(e) => setCustomFontDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void commitCustomFont()
+              }}
+              onBlur={() => void commitCustomFont()}
+              maxLength={MAX_FONT_NAME_LENGTH}
+              aria-label={t('appearance.typography.customFont.label')}
+              aria-describedby={customFontMissing ? 'custom-font-missing' : undefined}
+              className="w-48 h-7 text-xs bg-muted/50 border-border"
+              style={customFontName ? { fontFamily: `'${customFontName}'` } : undefined}
+            />
+            {customFontMissing && (
+              <span id="custom-font-missing" className="text-[11px]/4 text-muted-foreground">
+                {t('appearance.typography.customFont.notInstalled')}
+              </span>
+            )}
+          </div>
         </SettingRow>
       </SettingsGroup>
     </div>

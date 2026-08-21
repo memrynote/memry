@@ -112,6 +112,7 @@ const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
   'theme',
   'fontSize',
   'fontFamily',
+  'customFontFamily',
   'accentColor',
   'language',
   'createInSelectedFolder',
