@@ -75,9 +75,30 @@ vi.mock('./file-scan', async (importOriginal) => {
   return { ...actual, scanMarkdownFile: vi.fn(actual.scanMarkdownFile) }
 })
 
+/**
+ * The provider surface the external-edit feed actually uses.
+ *
+ * `getDoc` alone is not enough any more: a file edited while its note has no
+ * editor open is fed through `open`/`closeIfInactive`, so a mock that stops at
+ * `getDoc` would make that path throw into a `.catch` and read as a pass.
+ */
+const crdtProvider = vi.hoisted(() => ({
+  getDoc: vi.fn<(noteId: string) => unknown>(() => null),
+  open: vi.fn<
+    (noteId: string, windowId?: number, options?: { skipSeed?: boolean }) => Promise<unknown>
+  >(async () => ({ getXmlFragment: () => ({ length: 0 }) })),
+  closeIfInactive: vi.fn(async () => true)
+}))
+
+const replaceNoteBodyInCrdt = vi.hoisted(() => vi.fn(async () => true))
+
 vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local',
-  getCrdtProvider: vi.fn(() => ({ getDoc: vi.fn(() => null) }))
+  getCrdtProvider: vi.fn(() => crdtProvider)
+}))
+
+vi.mock('../sync/crdt-feed', () => ({
+  replaceNoteBodyInCrdt
 }))
 
 vi.mock('./index', () => ({
@@ -763,6 +784,95 @@ describe('vault watcher', () => {
     expect(syncNoteCreate).toHaveBeenCalledWith(cached!.id, 'ordinary', expect.any(Array), {
       sizeClass: 'note'
     })
+  })
+
+  // ==========================================================================
+  // An edit made outside Memry, to a note nothing has open
+  // ==========================================================================
+
+  /**
+   * The doc closes the moment its editor unmounts, so "no editor open" is the
+   * ordinary state of every note but the one on screen — switching notes before
+   * editing the file in Obsidian is enough. Dropping the edit there loses it for
+   * good: the persisted Y.Doc still holds the old body, the markdown seed only
+   * ever fills an EMPTY fragment, and nothing re-reads the file afterwards, so
+   * the note reopens with the body from before the edit and syncs that stale
+   * body onward.
+   */
+  async function feedExternalEdit(noteId: string, notePath: string, body: string): Promise<void> {
+    const raw = fs.readFileSync(notePath, 'utf8')
+    const parsed = parseNote(raw, path.relative(vault.path, notePath))
+    fs.writeFileSync(notePath, serializeNote(parsed.frontmatter, body), 'utf8')
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileChange(notePath)
+    // The feed is deliberately un-awaited by the change handler.
+    await vi.waitFor(() =>
+      expect(crdtProvider.open).toHaveBeenCalledWith(noteId, undefined, {
+        skipSeed: true
+      })
+    )
+  }
+
+  it('feeds an external edit into the persisted doc of a note with no editor open', async () => {
+    const notePath = createTestNote(vault, { title: 'closed-doc', content: 'Old body' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/closed-doc.md'))
+      .get()
+
+    // #given no doc in memory, but a persisted body behind it
+    crdtProvider.getDoc.mockReturnValue(null)
+    crdtProvider.open.mockResolvedValue({ getXmlFragment: () => ({ length: 3 }) })
+    crdtProvider.open.mockClear()
+    replaceNoteBodyInCrdt.mockClear()
+    crdtProvider.closeIfInactive.mockClear()
+
+    // #when the file grows a line behind the app's back
+    await feedExternalEdit(cached!.id, notePath, 'Old body\n\n- [[Somewhere]]')
+
+    // #then the new body reaches the CRDT rather than being dropped…
+    expect(replaceNoteBodyInCrdt).toHaveBeenCalledWith(
+      cached!.id,
+      expect.stringContaining('[[Somewhere]]')
+    )
+    // …and the doc is handed back, since no editor asked for it
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
+  })
+
+  it('leaves a note that has no persisted doc to its markdown seed', async () => {
+    const notePath = createTestNote(vault, { title: 'never-opened', content: 'Old body' })
+
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    await watcher.handleFileAdd(notePath)
+
+    const cached = indexDb.db
+      .select()
+      .from(noteCache)
+      .where(eq(noteCache.path, 'notes/never-opened.md'))
+      .get()
+
+    // #given a note never opened on this device: an empty fragment is not a
+    // stale body, it is no body at all, and the next open seeds it from this
+    // very file. Writing one here would push a body nothing asked for.
+    crdtProvider.getDoc.mockReturnValue(null)
+    crdtProvider.open.mockResolvedValue({ getXmlFragment: () => ({ length: 0 }) })
+    crdtProvider.open.mockClear()
+    replaceNoteBodyInCrdt.mockClear()
+    crdtProvider.closeIfInactive.mockClear()
+
+    await feedExternalEdit(cached!.id, notePath, 'Old body\n\n- [[Somewhere]]')
+
+    expect(replaceNoteBodyInCrdt).not.toHaveBeenCalled()
+    expect(crdtProvider.closeIfInactive).toHaveBeenCalledWith(cached!.id)
   })
 
   // ==========================================================================

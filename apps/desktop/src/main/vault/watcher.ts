@@ -40,6 +40,7 @@ import {
 } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NotesChannels, JournalChannels } from '@memry/contracts/ipc-channels'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import {
   trackPendingDelete,
   checkForRename,
@@ -155,13 +156,43 @@ function toIsoOrNull(value: string | Date | null | undefined): string | null {
 // out-of-app edits are infrequent and round-trip through MD destroys Yjs history anyway
 async function feedExternalEditToCrdt(noteId: string, markdownContent: string): Promise<void> {
   const provider = getCrdtProvider()
-  if (!provider.getDoc(noteId)) return
 
-  if (wasRecentNetworkUpdate(noteId)) {
-    emitEvent('sync:concurrent-edit', { noteId })
+  const feed = async (): Promise<void> => {
+    if (wasRecentNetworkUpdate(noteId)) {
+      emitEvent('sync:concurrent-edit', { noteId })
+    }
+
+    await replaceNoteBodyInCrdt(noteId, markdownContent)
   }
 
-  await replaceNoteBodyInCrdt(noteId, markdownContent)
+  if (provider.getDoc(noteId)) {
+    await feed()
+    return
+  }
+
+  // No editor holds the note, so there is no doc in memory to feed — and simply
+  // returning here loses the edit for good. The Y.Doc persisted when the note
+  // was last closed still carries the OLD body, `seedFromMarkdown` seeds an
+  // EMPTY fragment only, and nothing re-reads the file afterwards: reopening the
+  // note shows the body from before the edit while the vault file on disk holds
+  // the new one, and that stale body is what syncs to every other device.
+  // Switching to another note before editing the file outside Memry is the whole
+  // setup — the doc is closed the moment its editor unmounts.
+  //
+  // `skipSeed`, because an empty fragment here means something different and
+  // must be left alone: the note has no persisted CRDT body at all, its next
+  // open will seed from this very file, and minting a doc for it now would push
+  // a body nothing asked for.
+  const doc = await provider.open(noteId, undefined, { skipSeed: true })
+  try {
+    if (doc.getXmlFragment(CRDT_FRAGMENT_NAME).length === 0) return
+
+    await feed()
+  } finally {
+    // Only if it is still editor-less: the renderer may have opened the note
+    // while the replace was in flight, and that doc belongs to the editor now.
+    await provider.closeIfInactive(noteId)
+  }
 }
 
 // ============================================================================

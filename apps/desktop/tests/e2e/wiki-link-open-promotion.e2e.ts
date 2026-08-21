@@ -42,6 +42,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import {
+  getCrdtDocBodyById,
   getNoteFileBodyByTitle,
   getNoteHandleByTitle,
   getWritebackDebugById,
@@ -180,6 +181,7 @@ test.describe('Wiki links on open', () => {
    */
   test('links written into the file from outside are chips when the note is reopened', async ({
     page,
+    electronApp,
     testVaultPath
   }) => {
     await ready(page)
@@ -199,7 +201,18 @@ test.describe('Wiki links on open', () => {
     await expect(page.locator('[data-wiki-link]')).toHaveCount(0)
 
     // switch away so no editor is bound to the note while it changes on disk
+    const note = await getNoteHandleByTitle(page, title)
     await openWithoutTyping(page, target)
+
+    // …and wait until main has really let the doc go. Closing it is what the
+    // editor's unmount does, and until it happens the watcher still finds a live
+    // doc to feed — the easy half of this path, and not the half being tested.
+    // Asserting the close makes the hard half deterministic: CI won this race and
+    // reopened the note with its old body, while locally it lost and the suite
+    // was green on a bug.
+    await expect
+      .poll(() => getCrdtDocBodyById(electronApp, note.id), { timeout: 30_000 })
+      .toBeNull()
 
     // #when the file grows a link behind the app's back — Obsidian, a script,
     // a sync client, anything that is not this editor
