@@ -337,3 +337,53 @@ describe('buildMindMap — elements', () => {
     expect(boxes.map((box) => box.label.text)).toEqual(map.nodes.map((node) => node.label))
   })
 })
+
+describe('buildMindMap — deep links', () => {
+  const blocks = [heading('a', 1, 'Alpha'), heading('a1', 2, 'Alpha one')]
+
+  function boxes(map: ReturnType<typeof buildMindMap>): Map<string, { link?: string }> {
+    return new Map(
+      map.elements
+        .filter((element) => element.type === 'rectangle')
+        .map((box) => [box.id, box] as const)
+    )
+  }
+
+  it('draws no links at all without a note to point at', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note' })
+    for (const box of boxes(map).values()) expect(box.link).toBeUndefined()
+  })
+
+  it('anchors a heading box at its own block', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+    const alpha = map.nodes.find((node) => node.label === 'Alpha')!
+
+    // A block anchor: exact, and meaningful only in the session that minted it.
+    expect(boxes(map).get(alpha.id)?.link).toBe('memry://note/note-1#^a')
+  })
+
+  it('anchors the root at nothing, because the title is not a block', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+    const root = map.nodes.find((node) => node.kind === 'root')!
+
+    // No fragment — which reads as "this note, from the top".
+    expect(boxes(map).get(root.id)?.link).toBe('memry://note/note-1')
+  })
+
+  it('links every box and no connector', () => {
+    const map = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+    for (const element of map.elements) {
+      if (element.type === 'rectangle') expect(element.link).toMatch(/^memry:\/\/note\/note-1/)
+      else expect(element).not.toHaveProperty('link')
+    }
+  })
+
+  it('lays out identically whether or not the boxes carry links', () => {
+    const withoutLinks = buildMindMap(blocks, { rootLabel: 'Note' })
+    const withLinks = buildMindMap(blocks, { rootLabel: 'Note', noteId: 'note-1' })
+
+    // A link is an attribute of a box, never an input to where it sits.
+    expect(withLinks.nodes).toEqual(withoutLinks.nodes)
+    expect(withLinks.bounds).toEqual(withoutLinks.bounds)
+  })
+})

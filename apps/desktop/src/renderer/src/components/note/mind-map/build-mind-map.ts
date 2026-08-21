@@ -27,7 +27,7 @@ export function buildMindMap(
   return {
     tree,
     nodes,
-    elements: mintElements(nodes, direction),
+    elements: mintElements(nodes, direction, options.noteId),
     direction,
     nodeCount: nodes.length,
     isEmpty: tree.children.length === 0,

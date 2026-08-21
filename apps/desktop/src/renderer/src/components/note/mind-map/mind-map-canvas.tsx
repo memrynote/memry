@@ -30,9 +30,11 @@ const toSkeleton = (elements: readonly MindMapElement[]): ExcalidrawElementSkele
 
 interface MindMapCanvasProps {
   elements: readonly MindMapElement[]
+  /** The deep link of the box that was clicked. See `handleMindMapLinkOpen`. */
+  onOpenLink: (href: string) => void
 }
 
-export function MindMapCanvas({ elements }: MindMapCanvasProps): React.JSX.Element {
+export function MindMapCanvas({ elements, onOpenLink }: MindMapCanvasProps): React.JSX.Element {
   const { resolvedTheme } = useTheme()
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
 
@@ -54,6 +56,15 @@ export function MindMapCanvas({ elements }: MindMapCanvasProps): React.JSX.Eleme
         elements: convertToExcalidrawElements(toSkeleton(elements)),
         appState: { viewBackgroundColor: 'transparent' },
         scrollToContent: true
+      }}
+      // In view mode the whole box is the link's hit area, so this fires for a
+      // click anywhere on a node — which is what makes the drawing navigable at
+      // all. The default must be prevented: Excalidraw's fallback ends in
+      // `window.open`, which under Electron either does nothing or reloads the
+      // entire app (see `canvas-editor.tsx`, same trap).
+      onLinkOpen={(element, event) => {
+        event.preventDefault()
+        if (element.link) onOpenLink(element.link)
       }}
       viewModeEnabled
       zenModeEnabled

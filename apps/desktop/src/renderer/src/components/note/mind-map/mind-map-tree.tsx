@@ -10,14 +10,23 @@
  *
  * Visually hidden rather than absent: the picture is the visual presentation,
  * this is the same content for everyone else.
+ *
+ * It is also the map's keyboard surface. Focus moves with the arrow keys and
+ * only one item is ever in the tab order, which is the tree pattern and is also
+ * what keeps a note with fifty headings from becoming fifty invisible tab
+ * stops. Enter and Space activate, and land in the same place a click does.
  */
 
+import { useCallback, useMemo, useRef, useState } from 'react'
+import type { MindMapNodeActivation } from './mind-map-navigation'
 import type { MindMapPositionedNode } from './mind-map-types'
 
 interface MindMapTreeProps {
   nodes: readonly MindMapPositionedNode[]
   /** Translated; names the note the tree belongs to. */
   label: string
+  /** Called with the node the user clicked or pressed Enter/Space on. */
+  onActivateNode: MindMapNodeActivation
 }
 
 interface Branch {
@@ -46,10 +55,18 @@ function toBranches(nodes: readonly MindMapPositionedNode[]): Branch[] {
 
 function BranchItems({
   branches,
-  level
+  level,
+  activeId,
+  onActivate,
+  onFocusNode,
+  onNavigate
 }: {
   branches: Branch[]
   level: number
+  activeId: string | null
+  onActivate: MindMapNodeActivation
+  onFocusNode: (nodeId: string) => void
+  onNavigate: (key: string, nodeId: string) => void
 }): React.JSX.Element {
   return (
     <>
@@ -63,11 +80,43 @@ function BranchItems({
           aria-expanded={branch.children.length > 0 ? true : undefined}
           data-mind-map-node={branch.node.id}
           data-mind-map-block={branch.node.blockId ?? undefined}
+          // Roving: exactly one item is reachable with Tab, the arrows do the
+          // rest. Items nest, so every handler stops here — otherwise a click
+          // on a child would also activate every ancestor it sits inside.
+          tabIndex={branch.node.id === activeId ? 0 : -1}
+          onFocus={(event) => {
+            event.stopPropagation()
+            onFocusNode(branch.node.id)
+          }}
+          onClick={(event) => {
+            event.stopPropagation()
+            onActivate(branch.node)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              event.stopPropagation()
+              onActivate(branch.node)
+              return
+            }
+            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+              event.preventDefault()
+              event.stopPropagation()
+              onNavigate(event.key, branch.node.id)
+            }
+          }}
         >
           <span>{branch.node.label}</span>
           {branch.children.length > 0 && (
             <ul role="group">
-              <BranchItems branches={branch.children} level={level + 1} />
+              <BranchItems
+                branches={branch.children}
+                level={level + 1}
+                activeId={activeId}
+                onActivate={onActivate}
+                onFocusNode={onFocusNode}
+                onNavigate={onNavigate}
+              />
             </ul>
           )}
         </li>
@@ -76,10 +125,55 @@ function BranchItems({
   )
 }
 
-export function MindMapTree({ nodes, label }: MindMapTreeProps): React.JSX.Element {
+export function MindMapTree({ nodes, label, onActivateNode }: MindMapTreeProps): React.JSX.Element {
+  const treeRef = useRef<HTMLUListElement>(null)
+  // Which item holds the single tab stop. It follows focus, so tabbing away and
+  // back returns to where the user was rather than to the top. Seeded with the
+  // first node, which the layout always emits as the root.
+  const [focusedId, setFocusedId] = useState<string | null>(null)
+  const activeId = focusedId ?? nodes[0]?.id ?? null
+
+  const branches = useMemo(() => toBranches(nodes), [nodes])
+
+  const onFocusNode = useCallback((nodeId: string) => {
+    setFocusedId(nodeId)
+  }, [])
+
+  // Flat document order is what the arrows walk: it is what the reader hears,
+  // and it is the order the nodes were laid out in.
+  const onNavigate = useCallback((key: string, nodeId: string) => {
+    const items = Array.from(
+      treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []
+    )
+    if (items.length === 0) return
+    const index = items.findIndex((item) => item.dataset.mindMapNode === nodeId)
+    const next =
+      key === 'Home'
+        ? items[0]
+        : key === 'End'
+          ? items[items.length - 1]
+          : key === 'ArrowDown'
+            ? items[Math.min(index + 1, items.length - 1)]
+            : items[Math.max(index - 1, 0)]
+    next?.focus()
+  }, [])
+
   return (
-    <ul role="tree" aria-label={label} className="sr-only" data-testid="mind-map-tree">
-      <BranchItems branches={toBranches(nodes)} level={1} />
+    <ul
+      ref={treeRef}
+      role="tree"
+      aria-label={label}
+      className="sr-only"
+      data-testid="mind-map-tree"
+    >
+      <BranchItems
+        branches={branches}
+        level={1}
+        activeId={activeId}
+        onActivate={onActivateNode}
+        onFocusNode={onFocusNode}
+        onNavigate={onNavigate}
+      />
     </ul>
   )
 }

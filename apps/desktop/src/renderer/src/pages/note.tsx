@@ -32,7 +32,7 @@ import {
   Block
 } from '@/components/note'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
-import { MindMapView, useMindMap } from '@/components/note/mind-map'
+import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
 import { InfoSection, type NewProperty } from '@/components/note/info-section'
@@ -357,6 +357,9 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Find in page (Cmd+F)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  // Title, properties, tags and body together — the top of the note, which is
+  // where the mind map's root node lands.
+  const noteBodyRef = useRef<HTMLDivElement>(null)
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
 
   // Click anywhere in the marquee zone (full scroll area, minus title/metadata
@@ -656,19 +659,6 @@ export function NotePage({ noteId }: NotePageProps) {
   // Handlers
   // ============================================================================
 
-  const handleHeadingClick = useCallback(
-    (headingId: string) => {
-      // Scoped to this pane. `document.querySelector` returns whichever pane is
-      // first in the DOM, so in split view the outline scrolled the pane the
-      // user was not looking at. Smooth is right here — the jump happens inside
-      // content already on screen — unless the user asked for less motion.
-      scrollToHeadingBlock(editorContainerRef.current, headingId, {
-        smooth: !prefersReducedMotion
-      })
-    },
-    [prefersReducedMotion]
-  )
-
   /**
    * Scrolls to a heading by TEXT, which is all `[[Note#Heading]]` carries — a
    * block id is minted per document and means nothing to the note that wrote
@@ -799,10 +789,22 @@ export function NotePage({ noteId }: NotePageProps) {
   // the live block tree off the editor that stays mounted behind it, with no
   // new prop on the content area.
   const mindMap = useMindMap({
+    noteId: noteId ?? '',
     noteTitle: note?.title ?? '',
     onEditorReady: review.handleEditorReady
   })
   const { refresh: refreshMindMap } = mindMap
+  // One handler for the outline panel and for both projections of the map, so
+  // a heading click cannot mean two different things depending on what else is
+  // on screen. The map closes first; see the hook for why that is not optional.
+  const getEditorContainer = useCallback(() => editorContainerRef.current, [])
+  const getNoteBody = useCallback(() => noteBodyRef.current, [])
+  const mindMapNavigation = useMindMapNavigation({
+    close: mindMap.close,
+    getContainer: getEditorContainer,
+    getTopElement: getNoteBody,
+    smooth: !prefersReducedMotion
+  })
   // The map is built when it opens, but a restored tab reopens it before the
   // body has finished loading. The heading set arriving is the signal that the
   // block tree behind the map is real.
@@ -1488,14 +1490,19 @@ export function NotePage({ noteId }: NotePageProps) {
     <NoteLayout
       suppressScrollRestore={Boolean(initialHeadingText)}
       headings={headings}
-      onHeadingClick={handleHeadingClick}
+      onHeadingClick={mindMapNavigation.navigateToBlock}
       actions={actionIcons}
       fullWidth={isFullWidth}
       contentWidth={noteContentWidth ?? undefined}
       sideRail={hasReviewContent ? <ReviewRail review={review} targetId={noteId} /> : undefined}
       overlay={
         mindMap.isOpen && mindMap.map ? (
-          <MindMapView map={mindMap.map} noteTitle={note.title} />
+          <MindMapView
+            map={mindMap.map}
+            noteId={noteId ?? ''}
+            noteTitle={note.title}
+            onActivateNode={mindMapNavigation.activateNode}
+          />
         ) : undefined
       }
       onRailHiddenChange={setReviewRailHidden}
@@ -1520,6 +1527,7 @@ export function NotePage({ noteId }: NotePageProps) {
           reduced motion); critically damped spring, no overshoot */}
       <motion.div
         key={noteId}
+        ref={noteBodyRef}
         initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', bounce: 0, duration: 0.35 }}

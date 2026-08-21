@@ -8,8 +8,9 @@
  * for.
  */
 
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useCallback } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import { nodeFromMindMapLink, type MindMapNodeActivation } from './mind-map-navigation'
 import { MindMapTree } from './mind-map-tree'
 import type { MindMap } from './mind-map-types'
 
@@ -23,12 +24,33 @@ const LazyMindMapCanvas = lazy(async () => ({
 
 interface MindMapViewProps {
   map: MindMap
+  /** The note the map is of, so a drawn box's deep link resolves to a node. */
+  noteId: string
   /** The note title. User content; never translated. */
   noteTitle: string
+  /** One handler for both projections — the picture and the tree agree. */
+  onActivateNode: MindMapNodeActivation
 }
 
-export function MindMapView({ map, noteTitle }: MindMapViewProps): React.JSX.Element {
+export function MindMapView({
+  map,
+  noteId,
+  noteTitle,
+  onActivateNode
+}: MindMapViewProps): React.JSX.Element {
   const { t } = useT('notes')
+
+  // A click on the drawing arrives as the deep link of the box it landed on;
+  // that is the only handle a bitmap surface gives us. Resolving it back to a
+  // node here means both projections end in the same activation, rather than
+  // the picture growing a navigation path of its own.
+  const handleOpenLink = useCallback(
+    (href: string) => {
+      const node = nodeFromMindMapLink(href, map.nodes, noteId)
+      if (node) onActivateNode(node)
+    },
+    [map.nodes, noteId, onActivateNode]
+  )
 
   return (
     <div className="relative flex h-full w-full flex-col bg-background" data-testid="note-mind-map">
@@ -38,7 +60,7 @@ export function MindMapView({ map, noteTitle }: MindMapViewProps): React.JSX.Ele
         className="relative min-h-0 flex-1"
       >
         <Suspense fallback={<div className="h-full w-full" aria-hidden="true" />}>
-          <LazyMindMapCanvas elements={map.elements} />
+          <LazyMindMapCanvas elements={map.elements} onOpenLink={handleOpenLink} />
         </Suspense>
       </div>
 
@@ -51,7 +73,11 @@ export function MindMapView({ map, noteTitle }: MindMapViewProps): React.JSX.Ele
         </p>
       )}
 
-      <MindMapTree nodes={map.nodes} label={t('mindMap.treeLabel', { title: noteTitle })} />
+      <MindMapTree
+        nodes={map.nodes}
+        label={t('mindMap.treeLabel', { title: noteTitle })}
+        onActivateNode={onActivateNode}
+      />
     </div>
   )
 }
