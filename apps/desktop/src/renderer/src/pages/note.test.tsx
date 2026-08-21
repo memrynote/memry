@@ -1613,6 +1613,36 @@ describe('NotePage', () => {
       expect(screen.getByTestId('mind-map-canvas')).toBeInTheDocument()
     })
 
+    it('announces a ticked item and the content its heading only counts', async () => {
+      mocks.editorBlocks = [
+        {
+          id: 'h-1',
+          type: 'heading',
+          props: { level: 1 },
+          content: [{ type: 'text', text: 'Ship' }]
+        },
+        { id: 'tbl-1', type: 'table', content: { rows: [] } },
+        {
+          id: 'task-1',
+          type: 'taskBlock',
+          props: { taskId: 't1', title: 'Cut the build', checked: true }
+        }
+      ]
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await openMap()
+
+      const tree = await screen.findByRole('tree')
+      const [, section, task] = within(tree).getAllByRole('treeitem')
+      // The table is not a node; it is a translated, pluralised badge on the
+      // heading above it — through the translation layer, not hard-coded here.
+      expect(section).toHaveTextContent('mindMap.badge.table:{"count":1}')
+      expect(section).not.toHaveAttribute('aria-checked')
+      // "Struck through" for a reader who cannot see the drawing.
+      expect(task).toHaveAttribute('aria-checked', 'true')
+      expect(task).toHaveAttribute('data-mind-map-kind', 'task')
+      expect(task).toHaveAttribute('data-mind-map-block', 'task-1')
+    })
+
     it('labels the map region with the note and its node count', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       await openMap()

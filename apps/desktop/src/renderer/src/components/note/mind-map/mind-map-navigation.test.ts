@@ -35,6 +35,42 @@ describe('activateMindMapNode', () => {
     expect(navigateToBlock).toHaveBeenCalledWith(null)
   })
 
+  it('sends every other node kind to its own block, the way a heading goes', () => {
+    // The dispatch switches against a `never`, so this is the assertion that a
+    // kind added to the map was actually given a behaviour rather than a case
+    // that silently does nothing.
+    const structured = buildMindMap(
+      [
+        { id: 'b-bullet', type: 'bulletListItem', content: [{ type: 'text', text: 'Bullet' }] },
+        { id: 'b-number', type: 'numberedListItem', content: [{ type: 'text', text: 'Numbered' }] },
+        { id: 'b-check', type: 'checkListItem', content: [{ type: 'text', text: 'Check' }] },
+        { id: 'b-task', type: 'taskBlock', props: { taskId: 't-1', title: 'Task' } },
+        { id: 'b-toggle', type: 'toggleListItem', content: [{ type: 'text', text: 'Toggle' }] },
+        { id: 'b-callout', type: 'callout', content: [{ type: 'text', text: 'Callout' }] }
+      ],
+      { rootLabel: 'Test Note', noteId: 'note-1' }
+    )
+
+    const landed = structured.nodes
+      .filter((candidate) => candidate.kind !== 'root')
+      .map((candidate) => {
+        const navigateToBlock = vi.fn()
+        activateMindMapNode(candidate, { navigateToBlock })
+        return [candidate.kind, navigateToBlock.mock.calls]
+      })
+
+    expect(landed).toEqual([
+      ['bullet', [['b-bullet']]],
+      ['numbered', [['b-number']]],
+      ['check', [['b-check']]],
+      // A task lands on its block until it carries a task id (#1672); it must
+      // not silently do nothing in the meantime.
+      ['task', [['b-task']]],
+      ['toggle', [['b-toggle']]],
+      ['callout', [['b-callout']]]
+    ])
+  })
+
   it('lands a drawn box and its tree twin on the very same call', () => {
     const beta = node('Beta')
     const box = map.elements

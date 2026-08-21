@@ -21,7 +21,7 @@ export function buildMindMap(
   options: MindMapOptions
 ): MindMap {
   const direction = options.direction ?? 'ltr'
-  const tree = projectBlocks(blocks, options.rootLabel)
+  const tree = projectBlocks(blocks, options)
   const { nodes, bounds } = layoutMindMap(tree, direction)
 
   return {

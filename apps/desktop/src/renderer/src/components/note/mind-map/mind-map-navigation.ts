@@ -16,8 +16,8 @@ import type { MindMapPositionedNode } from './mind-map-types'
 
 /**
  * Everything a node can ask the note page to do. It has one member today
- * because the map draws two kinds of node, both of which are places in this
- * note; opening another note and opening a task join it with their own kinds.
+ * because every kind the map draws is a place in THIS note; opening another
+ * note (a wiki-link node) and opening a task join it with their own kinds.
  */
 export interface MindMapNodeActions {
   /**
@@ -37,8 +37,19 @@ export function activateMindMapNode(
   switch (node.kind) {
     case 'root':
     case 'heading':
-      // The root's `blockId` is null, which is already "the top of the note" —
-      // one branch, not two, because a node's block is what it navigates to.
+    case 'bullet':
+    case 'numbered':
+    case 'check':
+    case 'task':
+    case 'toggle':
+    case 'callout':
+      // Every kind the map draws is a place in this note, so they all land the
+      // same way: the granularity the user sees is the granularity they get
+      // back. The root's `blockId` is null, which already reads as "the top of
+      // the note" — one branch, not two, because a node's block IS what it
+      // navigates to. A task will open its task instead once it carries a task
+      // id (#1672); until it does, its block is the honest answer and doing
+      // nothing is not.
       actions.navigateToBlock(node.blockId)
       return
     default: {

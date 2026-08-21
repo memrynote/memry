@@ -7,12 +7,12 @@
  * type and look at the map at the same time.
  */
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useDirection } from '@memry/i18n/renderer'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useDirection, useT } from '@memry/i18n/renderer'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import { buildMindMap } from './build-mind-map'
-import type { MindMap, MindMapSourceBlock } from './mind-map-types'
+import type { MindMap, MindMapContentKind, MindMapSourceBlock } from './mind-map-types'
 
 /**
  * Tab view state key. Tab-scoped on purpose: the map is a property of a
@@ -85,6 +85,28 @@ export function useMindMap({
   const { isEnabled } = useFeatureFlags()
   const isAvailable = isEnabled('spatialCanvas')
   const direction = useDirection()
+  const { t } = useT('notes')
+
+  /**
+   * Counter badges are app chrome, so they are translated and pluralised here
+   * and handed to the pure pipeline, which has no translator of its own.
+   *
+   * Read through a ref, and the callback below never changes identity. That is
+   * not tidiness: this feeds the rebuild effect, so a formatter that churned
+   * per render would set state on every commit and the note page would never
+   * settle. The cost is that a language switch does not re-word the badges of
+   * an already-open map until it is toggled — the map is built on open anyway.
+   */
+  const translate = useRef(t)
+  useEffect(() => {
+    translate.current = t
+  }, [t])
+
+  const formatContentCount = useCallback(
+    (kind: MindMapContentKind, count: number) =>
+      translate.current(`mindMap.badge.${kind}`, { count }),
+    []
+  )
 
   const [storedOpen, setStoredOpen] = useTabViewState<boolean>({
     key: MIND_MAP_VIEW_STATE_KEY,
@@ -107,8 +129,14 @@ export function useMindMap({
   )
 
   const build = useCallback(
-    () => buildMindMap(readBlocks(editorRef.current), { rootLabel: noteTitle, direction, noteId }),
-    [direction, noteId, noteTitle]
+    () =>
+      buildMindMap(readBlocks(editorRef.current), {
+        rootLabel: noteTitle,
+        direction,
+        noteId,
+        formatContentCount
+      }),
+    [direction, noteId, noteTitle, formatContentCount]
   )
 
   // Layout, not passive: the note body is hidden in the same commit that flips

@@ -29,10 +29,47 @@ export interface MindMapSourceBlock {
 }
 
 /**
- * What a node stands for. Only the note title and its headings are drawn today;
- * lists, tasks and wiki links join this union in later work.
+ * What a node stands for.
+ *
+ * The governing rule is that containers branch and content does not: every kind
+ * here is something that really holds structure, so flattening it would destroy
+ * something the user wrote. Content — tables, code, images, quotes, embeds,
+ * bookmarks, files — is counted on its parent instead (see
+ * `MindMapContentKind`) rather than drawn, and is never silently dropped.
+ *
+ * Wiki links become their own kind in later work.
  */
-export type MindMapNodeKind = 'root' | 'heading'
+export type MindMapNodeKind =
+  | 'root'
+  | 'heading'
+  /** `bulletListItem`. */
+  | 'bullet'
+  /** `numberedListItem`; its number is kept at the front of the label. */
+  | 'numbered'
+  /** `checkListItem`; `isDone` follows its checkbox. */
+  | 'check'
+  /** Memry's `taskBlock`; `isDone` follows its checkbox. */
+  | 'task'
+  /** `toggleListItem` — branches into its children rather than hiding them. */
+  | 'toggle'
+  /** Memry's `callout` — branches into its children. */
+  | 'callout'
+
+/**
+ * Content that is not structure. It never becomes a node; it is counted on the
+ * nearest node above it, which then carries a badge naming what is there.
+ *
+ * `embed` covers `youtubeEmbed`, `video` and `audio`: all three are a piece of
+ * media the map cannot draw and would otherwise lose.
+ */
+export type MindMapContentKind =
+  'table' | 'code' | 'image' | 'quote' | 'embed' | 'bookmark' | 'file'
+
+/** How much of one content kind sits under a node. Never zero. */
+export interface MindMapContentCount {
+  kind: MindMapContentKind
+  count: number
+}
 
 /** A node in the logical tree, before any coordinates exist. */
 export interface MindMapNode {
@@ -43,10 +80,23 @@ export interface MindMapNode {
   /** User content. Never translated. */
   label: string
   kind: MindMapNodeKind
-  /** Heading level as written (1–6); `null` for the root. */
+  /** Heading level as written (1–6); `null` for everything else. */
   level: number | null
   /** Distance from the root. The root is 0. */
   depth: number
+  /** A ticked checklist item or task. Always false for other kinds. */
+  isDone: boolean
+  /** Inline hash tags found in this node's own text. User content, `#` stripped. */
+  tags: string[]
+  /** Content sitting under this node that is not drawn, in a stable order. */
+  contents: MindMapContentCount[]
+  /**
+   * The second line of the node: its tags and its content counts, already
+   * composed. Tags are user content; the counts come from
+   * `MindMapOptions.formatContentCount`, so this is the one place the two
+   * projections read their badge text from and they cannot disagree.
+   */
+  detail: string
   children: MindMapNode[]
 }
 
@@ -58,6 +108,10 @@ export interface MindMapPositionedNode {
   kind: MindMapNodeKind
   level: number | null
   depth: number
+  isDone: boolean
+  tags: string[]
+  contents: MindMapContentCount[]
+  detail: string
   parentId: string | null
   x: number
   y: number
@@ -100,8 +154,12 @@ export interface MindMapBoxElement {
   link?: string
 }
 
-/** The connector from a parent box to one of its children. */
-export interface MindMapEdgeElement {
+/**
+ * A straight rule: the connector from a parent box to one of its children, or
+ * the strike-through over a completed item's label. The drawing surface is a
+ * bitmap with no text decorations, so "struck through" has to be a real line.
+ */
+export interface MindMapLineElement {
   type: 'line'
   id: string
   x: number
@@ -112,7 +170,7 @@ export interface MindMapEdgeElement {
   roughness: number
 }
 
-export type MindMapElement = MindMapBoxElement | MindMapEdgeElement
+export type MindMapElement = MindMapBoxElement | MindMapLineElement
 
 /** Bounding box of every positioned node, so the host can fit the view. */
 export interface MindMapBounds {
@@ -135,6 +193,15 @@ export interface MindMapOptions {
    * only the tree projection is clickable.
    */
   noteId?: string
+  /**
+   * Turns "three tables" into words. Supplied by the caller because a counter
+   * badge is app chrome and has to be translated and pluralised, while this
+   * pipeline stays pure — it has no translator and must not grow one.
+   *
+   * Omitting it keeps the counts in `contents` and leaves them out of `detail`:
+   * the data never disappears, only its wording.
+   */
+  formatContentCount?: (kind: MindMapContentKind, count: number) => string
 }
 
 /**

@@ -6,7 +6,12 @@
 
 import { describe, expect, it } from 'vitest'
 import { buildMindMap } from './build-mind-map'
-import type { MindMapNode, MindMapSourceBlock } from './mind-map-types'
+import type {
+  MindMapBoxElement,
+  MindMapNode,
+  MindMapPositionedNode,
+  MindMapSourceBlock
+} from './mind-map-types'
 
 function heading(id: string, level: number, text: string): MindMapSourceBlock {
   return { id, type: 'heading', props: { level }, content: [{ type: 'text', text }] }
@@ -14,6 +19,35 @@ function heading(id: string, level: number, text: string): MindMapSourceBlock {
 
 function paragraph(id: string, text: string): MindMapSourceBlock {
   return { id, type: 'paragraph', content: [{ type: 'text', text }] }
+}
+
+/** Every block type below is a registered `config.type`, not a guess. */
+function listItem(
+  type: 'bulletListItem' | 'numberedListItem' | 'checkListItem' | 'toggleListItem' | 'callout',
+  id: string,
+  text: string,
+  extra: { props?: Record<string, unknown>; children?: MindMapSourceBlock[] } = {}
+): MindMapSourceBlock {
+  return {
+    id,
+    type,
+    props: extra.props,
+    content: [{ type: 'text', text }],
+    children: extra.children
+  }
+}
+
+function bullet(id: string, text: string, children?: MindMapSourceBlock[]): MindMapSourceBlock {
+  return listItem('bulletListItem', id, text, { children })
+}
+
+function taskBlock(id: string, title: string, checked = false): MindMapSourceBlock {
+  return { id, type: 'taskBlock', props: { taskId: `t-${id}`, title, checked } }
+}
+
+/** A translator stand-in: deterministic, and never the shape a locale file has. */
+function formatContentCount(kind: string, count: number): string {
+  return `${count} ${kind}`
 }
 
 /** Labels of a node's children, in order. */
@@ -101,7 +135,10 @@ describe('buildMindMap — projection', () => {
     expect(labelled(map.tree, 'First section').depth).toBe(1)
   })
 
-  it('finds headings nested inside container blocks', () => {
+  it('keeps a heading written inside a container inside it', () => {
+    // The toggle is a node of its own now, so the heading it holds stays where
+    // it was written rather than being hoisted out and leaving its own
+    // contents behind under a container it no longer belongs to.
     const map = buildMindMap(
       [
         heading('a', 1, 'Alpha'),
@@ -109,13 +146,15 @@ describe('buildMindMap — projection', () => {
           id: 'toggle',
           type: 'toggleListItem',
           content: [{ type: 'text', text: 'Collapsed' }],
-          children: [heading('b', 2, 'Hidden section')]
+          children: [heading('b', 2, 'Hidden section'), bullet('b1', 'Inside the section')]
         }
       ],
       { rootLabel: 'Note' }
     )
 
-    expect(childLabels(labelled(map.tree, 'Alpha'))).toEqual(['Hidden section'])
+    expect(childLabels(labelled(map.tree, 'Alpha'))).toEqual(['Collapsed'])
+    expect(childLabels(labelled(map.tree, 'Collapsed'))).toEqual(['Hidden section'])
+    expect(childLabels(labelled(map.tree, 'Hidden section'))).toEqual(['Inside the section'])
   })
 
   it('folds a blank heading into the nearest labelled ancestor instead of drawing an empty box', () => {
@@ -385,5 +424,352 @@ describe('buildMindMap — deep links', () => {
     // A link is an attribute of a box, never an input to where it sits.
     expect(withLinks.nodes).toEqual(withoutLinks.nodes)
     expect(withLinks.bounds).toEqual(withoutLinks.bounds)
+  })
+})
+
+describe('buildMindMap — lists, tasks and containers', () => {
+  it('branches bullet, numbered and checklist items off the heading above them', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Today'),
+        bullet('b', 'A loose thought'),
+        listItem('numberedListItem', 'n', 'A step'),
+        listItem('checkListItem', 'c', 'A box to tick')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(labelled(map.tree, 'Today'))).toEqual([
+      'A loose thought',
+      '1. A step',
+      'A box to tick'
+    ])
+    expect(labelled(map.tree, 'Today').children.map((child) => child.kind)).toEqual([
+      'bullet',
+      'numbered',
+      'check'
+    ])
+  })
+
+  it('numbers a run of items and starts a new run when something interrupts it', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Steps'),
+        listItem('numberedListItem', 'n1', 'First'),
+        listItem('numberedListItem', 'n2', 'Second'),
+        paragraph('p', 'An aside, which ends the list.'),
+        listItem('numberedListItem', 'n3', 'First again')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(labelled(map.tree, 'Steps'))).toEqual([
+      '1. First',
+      '2. Second',
+      '1. First again'
+    ])
+  })
+
+  it('starts a numbered run where the user moved it to', () => {
+    const map = buildMindMap(
+      [
+        listItem('numberedListItem', 'n1', 'Five', { props: { start: 5 } }),
+        listItem('numberedListItem', 'n2', 'Six')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(map.tree)).toEqual(['5. Five', '6. Six'])
+  })
+
+  it('branches a nested list item off its parent item, not off the heading', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Section'),
+        bullet('b1', 'Parent', [bullet('b2', 'Child', [bullet('b3', 'Grandchild')])]),
+        bullet('b4', 'Sibling')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(labelled(map.tree, 'Section'))).toEqual(['Parent', 'Sibling'])
+    expect(childLabels(labelled(map.tree, 'Parent'))).toEqual(['Child'])
+    expect(childLabels(labelled(map.tree, 'Child'))).toEqual(['Grandchild'])
+    expect(labelled(map.tree, 'Grandchild').depth).toBe(4)
+  })
+
+  it('draws a task block from its title and follows its tick', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Commitments'),
+        taskBlock('t1', 'Write the spec'),
+        taskBlock('t2', 'Ship it', true)
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    const tasks = labelled(map.tree, 'Commitments').children
+    expect(tasks.map((task) => [task.kind, task.label, task.isDone])).toEqual([
+      ['task', 'Write the spec', false],
+      ['task', 'Ship it', true]
+    ])
+  })
+
+  it('branches a toggle and a callout into their children rather than flattening them', () => {
+    const map = buildMindMap(
+      [
+        listItem('toggleListItem', 'tg', 'Collapsed in the editor', {
+          children: [bullet('tb', 'Still discoverable here')]
+        }),
+        listItem('callout', 'co', 'Watch out', {
+          props: { type: 'warning' },
+          children: [
+            listItem('checkListItem', 'cc', 'A checklist inside it', { props: { checked: true } })
+          ]
+        })
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(map.tree)).toEqual(['Collapsed in the editor', 'Watch out'])
+    expect(labelled(map.tree, 'Collapsed in the editor').kind).toBe('toggle')
+    expect(childLabels(labelled(map.tree, 'Collapsed in the editor'))).toEqual([
+      'Still discoverable here'
+    ])
+    expect(labelled(map.tree, 'Watch out').kind).toBe('callout')
+    expect(childLabels(labelled(map.tree, 'Watch out'))).toEqual(['A checklist inside it'])
+    expect(labelled(map.tree, 'A checklist inside it').isDone).toBe(true)
+  })
+
+  it('carries the source block on every node, which is what navigation lands on', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Section'),
+        bullet('b', 'A bullet'),
+        taskBlock('t', 'A task'),
+        listItem('toggleListItem', 'tg', 'A toggle')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(map.nodes.map((positioned) => positioned.blockId)).toEqual([null, 'h', 'b', 't', 'tg'])
+  })
+
+  it('folds an item with nothing to show and keeps what was under it', () => {
+    const map = buildMindMap(
+      [heading('h', 1, 'Section'), bullet('blank', '   ', [bullet('kept', 'Still here')])],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(labelled(map.tree, 'Section'))).toEqual(['Still here'])
+  })
+})
+
+describe('buildMindMap — tags and content badges', () => {
+  it('turns an inline tag into a badge on its node rather than a node of its own', () => {
+    const map = buildMindMap(
+      [
+        {
+          id: 'h',
+          type: 'heading',
+          props: { level: 1 },
+          content: [
+            { type: 'text', text: 'Plan ' },
+            { type: 'hashTag', props: { tag: 'q3', color: 'red', icon: '' } },
+            { type: 'text', text: ' review ' },
+            { type: 'hashTag', props: { tag: 'ops' } },
+            { type: 'hashTag', props: { tag: 'q3' } }
+          ]
+        }
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    const section = labelled(map.tree, 'Plan review')
+    expect(map.nodeCount).toBe(2)
+    // Out of the label, onto the node — and a tag written twice reads once.
+    expect(section.tags).toEqual(['q3', 'ops'])
+    expect(section.detail).toBe('#q3 #ops')
+  })
+
+  it('counts content on the node above it instead of drawing a node for it', () => {
+    const map = buildMindMap(
+      [
+        heading('h', 1, 'Section'),
+        { id: 'tbl', type: 'table', content: { type: 'tableContent', rows: [] } },
+        { id: 'code1', type: 'codeBlock', content: [{ type: 'text', text: 'const a = 1' }] },
+        { id: 'code2', type: 'codeBlock', content: [{ type: 'text', text: 'const b = 2' }] },
+        { id: 'img', type: 'image', props: { url: 'a.png' } },
+        { id: 'q', type: 'quote', content: [{ type: 'text', text: 'A quotation.' }] },
+        { id: 'yt', type: 'youtubeEmbed', props: { videoId: 'abc' } },
+        { id: 'vid', type: 'video', props: { url: 'a.mp4' } },
+        { id: 'aud', type: 'audio', props: { url: 'a.mp3' } },
+        { id: 'bk', type: 'bookmark', props: { url: 'https://memry.test' } },
+        { id: 'fl', type: 'file', props: { url: 'a.pdf', name: 'a.pdf' } }
+      ],
+      { rootLabel: 'Note', formatContentCount }
+    )
+
+    // Root plus the heading. Nothing above became a node of its own.
+    expect(map.nodeCount).toBe(2)
+    const section = labelled(map.tree, 'Section')
+    expect(section.contents).toEqual([
+      { kind: 'table', count: 1 },
+      { kind: 'code', count: 2 },
+      { kind: 'image', count: 1 },
+      { kind: 'quote', count: 1 },
+      // youtubeEmbed, video and audio all read as an embed.
+      { kind: 'embed', count: 3 },
+      { kind: 'bookmark', count: 1 },
+      { kind: 'file', count: 1 }
+    ])
+    expect(section.detail).toBe(
+      '1 table · 2 code · 1 image · 1 quote · 3 embed · 1 bookmark · 1 file'
+    )
+    // On the box the reader can see, not only in the data behind it.
+    const box = map.elements.find(
+      (element) => element.type === 'rectangle' && element.id === section.id
+    )
+    expect(box?.type === 'rectangle' && box.label.text).toBe(`Section\n${section.detail}`)
+  })
+
+  it('counts content against the container holding it, and the root before any heading', () => {
+    const map = buildMindMap(
+      [
+        { id: 'img', type: 'image', props: { url: 'a.png' } },
+        heading('h', 1, 'Section'),
+        listItem('toggleListItem', 'tg', 'A toggle', {
+          children: [{ id: 'code', type: 'codeBlock', content: [{ type: 'text', text: 'x' }] }]
+        })
+      ],
+      { rootLabel: 'Note', formatContentCount }
+    )
+
+    expect(map.tree.detail).toBe('1 image')
+    expect(labelled(map.tree, 'Section').detail).toBe('')
+    expect(labelled(map.tree, 'A toggle').detail).toBe('1 code')
+  })
+
+  it('keeps the counts and loses only their wording when no formatter is supplied', () => {
+    const map = buildMindMap(
+      [heading('h', 1, 'Section'), { id: 'tbl', type: 'table', content: { rows: [] } }],
+      { rootLabel: 'Note' }
+    )
+
+    const section = labelled(map.tree, 'Section')
+    expect(section.contents).toEqual([{ kind: 'table', count: 1 }])
+    expect(section.detail).toBe('')
+  })
+
+  it('keeps date mentions, link mentions and inline images as plain label text', () => {
+    const map = buildMindMap(
+      [
+        {
+          id: 'h',
+          type: 'heading',
+          props: { level: 1 },
+          content: [
+            { type: 'text', text: 'Due ' },
+            { type: 'dateMention', props: { dateISO: '2026-08-21', hasTime: false } },
+            { type: 'text', text: ' per ' },
+            {
+              type: 'linkMention',
+              props: { url: 'https://memry.test/x', domain: 'memry.test', title: 'the brief' }
+            },
+            { type: 'text', text: ' see ' },
+            { type: 'inlineImage', props: { src: 'chart.png', alt: 'the chart', width: 0 } }
+          ]
+        },
+        paragraph('p', 'A paragraph never becomes a node.')
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(map.nodeCount).toBe(2)
+    expect(childLabels(map.tree)).toEqual(['Due 2026-08-21 per the brief see the chart'])
+  })
+
+  it('lets the badge line widen and heighten the box that carries it', () => {
+    const plain = buildMindMap([heading('h', 1, 'Section')], { rootLabel: 'Note' })
+    const badged = buildMindMap(
+      [heading('h', 1, 'Section'), { id: 'tbl', type: 'table', content: { rows: [] } }],
+      { rootLabel: 'Note', formatContentCount: () => 'a considerably longer badge line' }
+    )
+
+    expect(badged.nodes[1].height).toBeGreaterThan(plain.nodes[1].height)
+    expect(badged.nodes[1].width).toBeGreaterThan(plain.nodes[1].width)
+  })
+})
+
+describe('buildMindMap — completed items', () => {
+  const map = buildMindMap(
+    [
+      heading('h', 1, 'Commitments'),
+      taskBlock('open', 'Still to do'),
+      taskBlock('done', 'Already done', true),
+      listItem('checkListItem', 'ticked', 'Ticked off', { props: { checked: true } })
+    ],
+    { rootLabel: 'Note' }
+  )
+
+  function boxOf(label: string): {
+    positioned: MindMapPositionedNode
+    box: MindMapBoxElement
+  } {
+    const positioned = map.nodes.find((candidate) => candidate.label === label)
+    if (!positioned) throw new Error(`no node labelled ${label}`)
+    const box = map.elements.find(
+      (element) => element.type === 'rectangle' && element.id === positioned.id
+    )
+    if (box?.type !== 'rectangle') throw new Error(`no box for ${label}`)
+    return { positioned, box }
+  }
+
+  it('dims a completed item and leaves an open one alone', () => {
+    const open = boxOf('Still to do')
+    const done = boxOf('Already done')
+
+    expect(done.box.label.strokeColor).not.toBe(open.box.label.strokeColor)
+    expect(done.box.strokeColor).not.toBe(open.box.strokeColor)
+    expect(done.box.backgroundColor).not.toBe(open.box.backgroundColor)
+  })
+
+  it('rules a completed label through, because the surface has no text decorations', () => {
+    const open = boxOf('Still to do')
+    const strikes = map.elements.filter((element) => element.id.includes('-strike-'))
+
+    expect(strikes.map((strike) => strike.id).sort()).toEqual([
+      'mm-done-strike-1',
+      'mm-ticked-strike-1'
+    ])
+    expect(
+      map.elements.some((element) => element.id.startsWith(`${open.positioned.id}-strike`))
+    ).toBe(false)
+
+    // Horizontal, over the label, inside the box it belongs to.
+    for (const label of ['Already done', 'Ticked off']) {
+      const { positioned } = boxOf(label)
+      const strike = strikes.find((candidate) => candidate.id.startsWith(`${positioned.id}-`))
+      if (strike?.type !== 'line') throw new Error(`no rule over ${label}`)
+      expect(strike.points[1][1]).toBe(0)
+      expect(strike.x).toBeGreaterThan(positioned.x)
+      expect(strike.y).toBeGreaterThan(positioned.y)
+      expect(strike.y).toBeLessThan(positioned.y + positioned.height)
+      expect(strike.x + strike.points[1][0]).toBeLessThanOrEqual(positioned.x + positioned.width)
+    }
+  })
+
+  it('mirrors the rule with the reading direction', () => {
+    const rtl = buildMindMap([taskBlock('done', 'Already done', true)], {
+      rootLabel: 'Note',
+      direction: 'rtl'
+    })
+
+    const positioned = rtl.nodes.find((candidate) => candidate.label === 'Already done')
+    const strike = rtl.elements.find((element) => element.id === 'mm-done-strike-1')
+    if (!positioned || strike?.type !== 'line') throw new Error('no rule in the RTL map')
+    // Hard against the trailing padding edge, which in RTL is where the text starts.
+    expect(strike.x).toBeGreaterThanOrEqual(positioned.x)
+    expect(strike.x + strike.points[1][0]).toBeLessThanOrEqual(positioned.x + positioned.width)
   })
 })

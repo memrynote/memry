@@ -19,7 +19,12 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { MindMapNodeActivation } from './mind-map-navigation'
-import type { MindMapPositionedNode } from './mind-map-types'
+import type { MindMapNodeKind, MindMapPositionedNode } from './mind-map-types'
+
+/** Kinds that carry a tick, and so have a checked state worth announcing. */
+function isTickable(kind: MindMapNodeKind): boolean {
+  return kind === 'check' || kind === 'task'
+}
 
 interface MindMapTreeProps {
   nodes: readonly MindMapPositionedNode[]
@@ -78,8 +83,14 @@ function BranchItems({
           aria-posinset={index + 1}
           aria-setsize={branches.length}
           aria-expanded={branch.children.length > 0 ? true : undefined}
+          // A tickable item announces its tick. This is what "dimmed and struck
+          // through" means to a reader who cannot see the drawing, so it is a
+          // real ARIA state rather than the `data-` attribute next to it.
+          aria-checked={isTickable(branch.node.kind) ? branch.node.isDone : undefined}
           data-mind-map-node={branch.node.id}
           data-mind-map-block={branch.node.blockId ?? undefined}
+          data-mind-map-kind={branch.node.kind}
+          data-mind-map-done={branch.node.isDone ? 'true' : undefined}
           // Roving: exactly one item is reachable with Tab, the arrows do the
           // rest. Items nest, so every handler stops here — otherwise a click
           // on a child would also activate every ancestor it sits inside.
@@ -107,6 +118,9 @@ function BranchItems({
           }}
         >
           <span>{branch.node.label}</span>
+          {/* The same composed badge line the picture draws — one string, two
+              projections, so they cannot say different things. */}
+          {branch.node.detail !== '' && <span> {branch.node.detail}</span>}
           {branch.children.length > 0 && (
             <ul role="group">
               <BranchItems

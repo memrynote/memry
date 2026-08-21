@@ -967,6 +967,15 @@
   "mindMap": {
     "regionLabel": "Mind map of {title}, {count, plural, one {# node} other {# nodes}}",
     "treeLabel": "Mind map outline of {title}",
-    "emptyHint": "Add a heading to this note and the map will branch."
+    "emptyHint": "Add a heading to this note and the map will branch.",
+    "badge": {
+      "table": "{count, plural, one {# table} other {# tables}}",
+      "code": "{count, plural, one {# code block} other {# code blocks}}",
+      "image": "{count, plural, one {# image} other {# images}}",
+      "quote": "{count, plural, one {# quote} other {# quotes}}",
+      "embed": "{count, plural, one {# embed} other {# embeds}}",
+      "bookmark": "{count, plural, one {# bookmark} other {# bookmarks}}",
+      "file": "{count, plural, one {# file} other {# files}}"
+    }
   }
 }
