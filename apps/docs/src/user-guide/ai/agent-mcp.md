@@ -58,9 +58,9 @@ Agent Chat can:
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
 - mention notes, tasks, journals, inbox items, and calendar events inline in a prompt with `@`
-- stream assistant text back into the sidebar
-- link returned or created memrynote items directly in assistant replies, with a collapsible Sources
-  section for the same items
+- stream assistant text back into the sidebar, with each new word resolving out of a soft blur
+- link returned or created memrynote items directly in assistant replies, showing cited items as
+  inline citation chips and listing all of them behind a source count under the reply
 - fold a turn's tool calls, tool results, and optional approvals into one collapsed activity row
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
@@ -98,12 +98,26 @@ assistant — they are never replayed into a later prompt.
 When a tool result includes a real memrynote reference, Agent Chat renders that item as a clickable
 mention instead of plain text. Lists link each returned note, task, inbox item, journal entry,
 calendar event, project, or folder that has a navigable reference. Create and update confirmations
-also link the affected item when the tool returns its ID or journal date. The reply footer shows a
-collapsible Sources section only when the assistant message contains those memrynote item links.
-Inbox snooze confirmations use the same explicit inbox item reference as other inbox writes.
+also link the affected item when the tool returns its ID or journal date. Inbox snooze confirmations
+use the same explicit inbox item reference as other inbox writes.
+
+Every finished reply carries an action row. Copy hands you the markdown the assistant wrote, not the
+flattened text on screen, so it pastes into a note with its formatting intact; the button
+acknowledges the copy for a moment and then returns. Next to it, replies that cited memrynote items
+show the first few item icons and a source count — `3 sources` — that expands into the full list.
+Each row in that list opens the item and names its type on the right. A reply that cited nothing
+shows only Copy.
+
+A link the reply also cited renders as an inline citation chip: a compact pill carrying the item's
+icon and its title, shortened when the title is long. Source references arrive over the course of a
+turn, so a link can appear as running text first and settle into a chip a moment later, without the
+text around it being redrawn. Links memrynote did not cite stay as ordinary item mentions.
+
+Both the blur-in on streaming text and the chip's arrival stand down when your system asks for
+reduced motion; the reply still updates, it just does so without the movement.
 
 memrynote only links explicit tool-provided references. Plain titles without an ID or date stay as
-normal text. Clickable item mentions use memrynote's standard link color, show a dotted underline on
+normal text. Uncited item mentions use memrynote's standard link color, show a dotted underline on
 hover, and display the matching item icon before the title. Each link shows exactly one icon: the
 item's own icon when it has one, otherwise the icon for its type. Note icons are read directly from
 the vault, so a linked note shows the same custom icon it has in the sidebar even while the reply is

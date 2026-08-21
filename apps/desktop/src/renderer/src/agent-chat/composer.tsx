@@ -515,7 +515,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onClose={closePicker}
         />
       )}
-      <div className="relative flex flex-col pb-8">
+      <div className="relative flex flex-col">
         <ConnectedToolsTray />
         <div
           ref={composerBoxRef}
@@ -604,7 +604,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                   aria-label={t('agentChat.stop')}
                   disabled={!agent}
                   onClick={cancelTurn}
-                  className="size-7 rounded-md bg-[#B7D4F0] p-0 text-white hover:bg-[#A6C9EB]"
+                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover"
                 >
                   <Square className="size-3" aria-hidden="true" />
                 </Button>
@@ -618,7 +618,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                     void submit()
                   }}
                   onClick={() => void submit()}
-                  className="size-7 rounded-md bg-[#B7D4F0] p-0 text-white hover:bg-[#A6C9EB] disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                 >
                   <ArrowUp className="size-3.5" aria-hidden="true" />
                 </Button>

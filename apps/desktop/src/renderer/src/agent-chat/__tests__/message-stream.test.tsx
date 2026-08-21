@@ -168,7 +168,7 @@ describe('MessageStream', () => {
     )
 
     const trigger = screen.getByRole('button', { name: /Searching notes/i })
-    expect(trigger.querySelector('.animate-spin')).not.toBeNull()
+    expect(trigger.querySelector('.agent-thinking-pixels')).not.toBeNull()
     expect(screen.queryByText('Reading app data')).not.toBeInTheDocument()
 
     fireEvent.click(trigger)
@@ -204,7 +204,7 @@ describe('MessageStream', () => {
     )
 
     const trigger = screen.getByRole('button', { name: /2 steps/i })
-    expect(trigger.querySelector('.animate-spin')).toBeNull()
+    expect(trigger.querySelector('.agent-thinking-pixels')).toBeNull()
     expect(screen.queryByText('Reading note')).not.toBeInTheDocument()
   })
 
@@ -233,14 +233,16 @@ describe('MessageStream', () => {
     const { rerender } = render(<MessageStream inFlight messages={messages} />)
 
     expect(
-      screen.getByRole('button', { name: /Reading app data/i }).querySelector('.animate-spin')
+      screen
+        .getByRole('button', { name: /Reading app data/i })
+        .querySelector('.agent-thinking-pixels')
     ).not.toBeNull()
 
     // The backend never reported results, so only the turn ending can settle the group.
     rerender(<MessageStream inFlight={false} messages={messages} />)
 
     const settled = screen.getByRole('button', { name: /2 steps/i })
-    expect(settled.querySelector('.animate-spin')).toBeNull()
+    expect(settled.querySelector('.agent-thinking-pixels')).toBeNull()
   })
 
   it('keeps an activity group open while a tool waits for approval', () => {
@@ -421,15 +423,15 @@ describe('MessageStream', () => {
 
     const link = screen.getByRole('link', { name: 'Movies' })
     expect(link).toHaveAttribute('href', 'memry://note/note-1')
-    expect(link).toHaveClass('text-[#81B4E5]')
-    expect(link).toHaveClass('hover:decoration-dotted')
+    // The turn listed this link as a source, so it reads as an inline citation.
+    expect(link).toHaveClass('agent-source-chip')
     expect(link).toHaveClass('items-center')
     expect(link).not.toHaveClass('items-baseline')
     expect(link).toHaveTextContent('🎬Movies')
     const linkIcon = link.querySelector('[data-agent-link-icon="note-custom"]')
     expect(linkIcon).not.toBeNull()
     expect(linkIcon?.classList.contains('align-middle')).toBe(true)
-    const sourcesTrigger = screen.getByRole('button', { name: /Used 1 source/i })
+    const sourcesTrigger = screen.getByRole('button', { name: /1 source/i })
     expect(sourcesTrigger).toBeInTheDocument()
 
     fireEvent.click(link)
@@ -444,10 +446,11 @@ describe('MessageStream', () => {
     )
 
     fireEvent.click(sourcesTrigger)
-    expect(screen.getAllByRole('link', { name: 'Movies' })).toHaveLength(2)
+    // The list row names its kind after the title, so match on the title alone.
+    expect(screen.getAllByRole('link', { name: /Movies/ })).toHaveLength(2)
     expect(
       screen
-        .getAllByRole('link', { name: 'Movies' })[1]
+        .getAllByRole('link', { name: /Movies/ })[1]
         ?.querySelector('[data-agent-link-icon="note-custom"]')
     ).not.toBeNull()
   })

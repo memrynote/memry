@@ -1,11 +1,13 @@
 import type { ComponentProps, HTMLAttributes } from 'react'
 import { memo } from 'react'
+import { useReducedMotion } from 'motion/react'
 import { cjk } from '@streamdown/cjk'
 import { code } from '@streamdown/code'
 import { math } from '@streamdown/math'
 import { mermaid } from '@streamdown/mermaid'
 import type { Pluggable, PluggableList, Plugin } from 'unified'
 import {
+  type AnimateOptions,
   defaultRehypePlugins,
   defaultUrlTransform,
   Streamdown,
@@ -81,19 +83,38 @@ const streamdownRehypePlugins: PluggableList = [
   defaultRehypePlugins.harden
 ]
 
+/**
+ * Words resolve out of blur as the turn streams. Only while it streams: the
+ * animate plugin rewrites every text node into per-word spans, which is dead
+ * weight — and an unreadable DOM for tests and screen readers — once the answer
+ * stands still.
+ */
+const streamAnimation: AnimateOptions = {
+  animation: 'blurIn',
+  sep: 'word',
+  duration: 420,
+  easing: 'cubic-bezier(0.22, 0.61, 0.25, 1)',
+  stagger: 55
+}
+
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        'min-w-0 max-w-full break-words leading-6 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-        className
-      )}
-      plugins={streamdownPlugins}
-      rehypePlugins={streamdownRehypePlugins}
-      urlTransform={memryUrlTransform}
-      {...props}
-    />
-  ),
+  ({ className, ...props }: MessageResponseProps) => {
+    const prefersReducedMotion = useReducedMotion()
+
+    return (
+      <Streamdown
+        className={cn(
+          'min-w-0 max-w-full break-words leading-6 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
+          className
+        )}
+        plugins={streamdownPlugins}
+        rehypePlugins={streamdownRehypePlugins}
+        urlTransform={memryUrlTransform}
+        animated={props.isAnimating && !prefersReducedMotion ? streamAnimation : false}
+        {...props}
+      />
+    )
+  },
   (previousProps, nextProps) =>
     previousProps.children === nextProps.children &&
     previousProps.isAnimating === nextProps.isAnimating &&

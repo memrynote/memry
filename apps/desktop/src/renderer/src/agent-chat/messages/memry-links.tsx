@@ -1,5 +1,5 @@
-import type { ComponentProps, ComponentType, MouseEvent } from 'react'
-import { useCallback } from 'react'
+import type { ComponentProps, ComponentType, MouseEvent, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo } from 'react'
 
 import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
@@ -25,7 +25,11 @@ import {
   Video
 } from '@/lib/icons'
 import { SidebarCalendar, SidebarJournal, SidebarTasks } from '@/lib/icons/sidebar-nav-icons'
-import { memryLinkClassName } from './memry-links-constants'
+import {
+  MEMRY_LINK_CHIP_MAX_LABEL,
+  memryLinkChipClassName,
+  memryLinkClassName
+} from './memry-links-constants'
 import { useVaultItemIcon } from './use-vault-item-icon'
 
 export function useMemryLinkNavigation(): (href: string, title?: string) => boolean {
@@ -44,20 +48,63 @@ export function useMemryLinkNavigation(): (href: string, title?: string) => bool
   )
 }
 
+const AgentSourceRefsContext = createContext<ReadonlyMap<string, AgentSourceRef>>(new Map())
+
+export function AgentSourceRefsProvider({
+  sources,
+  children
+}: {
+  sources: AgentSourceRef[]
+  children: ReactNode
+}): React.JSX.Element {
+  const byHref = useMemo(
+    () => new Map(sources.map((source) => [source.href, source] as const)),
+    [sources]
+  )
+
+  return (
+    <AgentSourceRefsContext.Provider value={byHref}>{children}</AgentSourceRefsContext.Provider>
+  )
+}
+
+/**
+ * A link the turn also listed as a source is a citation, so it renders as an
+ * inline chip; every other link stays running text.
+ *
+ * Source refs arrive over the course of a turn, often after the sentence that
+ * cites them. Reading them from context — rather than threading a fresh
+ * `components` object into the markdown renderer — lets a link upgrade in place
+ * without remounting the renderer, which would restart the streaming animation
+ * from the first word every time a lookup lands.
+ */
+export function CitedMemryLink(props: ComponentProps<'a'>): React.JSX.Element {
+  const byHref = useContext(AgentSourceRefsContext)
+  const source = typeof props.href === 'string' ? (byHref.get(props.href) ?? null) : null
+
+  return <MemryLink {...props} source={source} asChip={Boolean(source)} />
+}
+
 export function MemryLink({
   className,
   href,
   children,
   source,
+  asChip = false,
   onClick,
   ...props
-}: ComponentProps<'a'> & { source?: AgentSourceRef | null }): React.JSX.Element {
+}: ComponentProps<'a'> & {
+  source?: AgentSourceRef | null
+  /** Render as an inline citation chip instead of running link text. */
+  asChip?: boolean
+}): React.JSX.Element {
   const navigate = useMemryLinkNavigation()
   const isMemryLink = typeof href === 'string' && href.startsWith('memry://')
+  const isChip = asChip && isMemryLink
   const rawLabel = isMemryLink && source?.title ? source.title : children
-  const { icon: inlineIcon, label: labelChildren } = isMemryLink
+  const { icon: inlineIcon, label: splitLabel } = isMemryLink
     ? splitEdgeIcon(rawLabel)
     : { icon: null, label: rawLabel }
+  const labelChildren = isChip ? truncateChipLabel(splitLabel) : splitLabel
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event)
@@ -70,8 +117,9 @@ export function MemryLink({
   return (
     <a
       className={cn(
-        isMemryLink && memryLinkClassName,
-        isMemryLink && 'inline-flex items-center gap-1 align-baseline leading-[inherit]',
+        isChip && memryLinkChipClassName,
+        !isChip && isMemryLink && memryLinkClassName,
+        !isChip && isMemryLink && 'inline-flex items-center gap-1 align-baseline leading-[inherit]',
         className
       )}
       href={href}
@@ -80,14 +128,28 @@ export function MemryLink({
     >
       {isMemryLink ? (
         <>
-          <MemryLinkIcon href={href} source={source} fallbackIcon={inlineIcon} />
-          <span data-agent-link-label>{labelChildren}</span>
+          <MemryLinkIcon
+            href={href}
+            source={source}
+            fallbackIcon={inlineIcon}
+            className={isChip ? 'size-3' : undefined}
+          />
+          <span className={isChip ? 'truncate' : undefined} data-agent-link-label>
+            {labelChildren}
+          </span>
         </>
       ) : (
         children
       )}
     </a>
   )
+}
+
+function truncateChipLabel(label: React.ReactNode): React.ReactNode {
+  if (typeof label !== 'string') return label
+  const text = label.trim()
+  if (text.length <= MEMRY_LINK_CHIP_MAX_LABEL) return text
+  return `${text.slice(0, MEMRY_LINK_CHIP_MAX_LABEL - 1).trimEnd()}…`
 }
 
 const EMOJI_SOURCE =

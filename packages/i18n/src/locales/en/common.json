@@ -287,8 +287,12 @@
       "detectCli": "Could not detect agent backends",
       "loadDisclosure": "Could not load disclosure state"
     },
+    "actions": {
+      "copy": "Copy",
+      "copied": "Copied"
+    },
     "sources": {
-      "used": "{count, plural, one {Used # source} other {Used # sources}}"
+      "count": "{count, plural, one {# source} other {# sources}}"
     }
   },
   "canvas": {
