@@ -3622,3 +3622,215 @@ del.bn-inline-content {
   overflow-x: hidden;
   overscroll-behavior: contain;
 }
+
+/* ============================================================================
+   TABLE BORDER HANDLES — the overlay in `table-border-handles.tsx`
+   ============================================================================ */
+
+/*
+ * The geometry lives in the component (it measures cell rects from the DOM and
+ * inline-styles each bar onto a real border line); this file owns the two
+ * states the bar has and nothing else.
+ *
+ * BlockNote's own handles are off (`tableHandles={false}`), so nothing here
+ * fights `.bn-table-handle` — that element no longer renders in the note
+ * editor. These rules stand alone.
+ *
+ * Everything is logical (`inset-inline-start`, `inline-size`, `block-size`) so
+ * an RTL table puts the row bar on its other side with no second code path.
+ */
+
+.memry-table-handles {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  block-size: 0;
+  z-index: 10;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/*
+ * The positioner IS the border line: its box is exactly the 3px strip the bar
+ * paints over the cell's 1px border. Its own hit area is switched off — the
+ * control inside it takes the pointer, and at rest the two boxes coincide.
+ */
+.memry-table-handle {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.memry-table-handle[data-orientation='vertical'] {
+  inline-size: var(--memry-table-handle-thickness);
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] {
+  inline-size: var(--memry-table-handle-length);
+  block-size: var(--memry-table-handle-thickness);
+}
+
+/*
+ * Rest: a bare bar sitting on the cell border line, slightly thicker than it.
+ * Matching the border's own 1px was tried and rejected — at that width the nub
+ * is a control nobody can find. No border, no ring, no outline and no radius
+ * either. (A knock-out ring is what made the earlier attempt read as a pill
+ * floating beside the table.)
+ */
+.memry-table-handle-control {
+  flex: none;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: var(--text-tertiary);
+  color: var(--primary-foreground);
+  /* Clips the glyph's own empty margins so they cannot take hover off the bar. */
+  overflow: hidden;
+  transition:
+    inline-size 100ms ease-in-out,
+    block-size 100ms ease-in-out,
+    background-color 100ms ease-in-out,
+    border-radius 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control {
+  inline-size: var(--memry-table-handle-thickness);
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control {
+  inline-size: var(--memry-table-handle-length);
+  block-size: var(--memry-table-handle-thickness);
+}
+
+/*
+ * Hover/focus: Notion's column selector geometry — 22x14 for a bar lying along
+ * the block axis, the same box rotated for one standing on the inline axis.
+ * It stays centred on the bar because a flex item larger than its container
+ * overflows `center` alignment evenly on both sides, which — unlike
+ * `margin: auto` — behaves the same in RTL.
+ *
+ * `--primary`, not the terracotta accent: a table hover is not an event worth
+ * flashing brand colour for.
+ */
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:hover,
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-state='open'] {
+  inline-size: 14px;
+  block-size: 22px;
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:hover,
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-state='open'] {
+  inline-size: 22px;
+  block-size: 14px;
+}
+
+/*
+ * `[data-state='open']` is the menu trigger's own state, set on the button by
+ * the dropdown. Without it the nub would snap back to a hairline the moment the
+ * pointer moved off it onto its own open menu, leaving the menu hanging off
+ * nothing.
+ */
+.memry-table-handle-control:hover,
+.memry-table-handle-control:focus-visible,
+.memry-table-handle-control[data-state='open'] {
+  border-radius: 4px;
+  background-color: var(--primary);
+}
+
+.memry-table-handle-icon {
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+  fill: currentColor;
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-icon {
+  rotate: 90deg;
+}
+
+.memry-table-handle-control:hover .memry-table-handle-icon,
+.memry-table-handle-control:focus-visible .memry-table-handle-icon,
+.memry-table-handle-control[data-state='open'] .memry-table-handle-icon {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-table-handle-control,
+  .memry-table-handle-icon {
+    transition: none;
+  }
+}
+
+/*
+ * The cell holding the caret, ringed in the user's accent.
+ *
+ * Painted as a box in the wrapper rather than as a border on the `<td>`:
+ * ProseMirror owns the cell's own attributes and redraws over anything it did
+ * not write (see `table-border-handles.tsx`). `--tint-border` is the accent the
+ * user picks in Settings, at 50%, so the ring reads as "this cell" without
+ * shouting over the text in it.
+ *
+ * Under the bars, over the table: a nub and the ring meet on the same line at
+ * the table's edges, and the nub is the one you can click.
+ */
+.memry-table-cell-focus {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 1px solid var(--tint-border);
+  pointer-events: none;
+}
+
+/*
+ * The menu a nub opens, mounted in `.bn-container` instead of beside the nub.
+ * `.tableWrapper` clips on both axes, so a menu left where its trigger lives
+ * would be cut to the table's box and painted under the editor — see
+ * `table-border-handles.tsx`.
+ *
+ * The layer is stated against BlockNote's own base rather than as a number:
+ * `--bn-ui-base-z-index` is what its floating UI (`+10`, `+20`) is measured
+ * from, and a menu has to sit above all of it.
+ *
+ * `cursor` is set here because the menu is not the editor's text surface, and
+ * because `@blocknote/shadcn` gives every item `cursor: default`.
+ */
+.memry-table-menu {
+  z-index: calc(var(--bn-ui-base-z-index, 0) + 30);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.memry-table-menu [data-slot^='dropdown-menu-'] {
+  cursor: pointer;
+}
+
+/*
+ * The focused cell's inline-end border carries our cell nub AND
+ * prosemirror-tables' column-resize grab zone. The resize cursor and drag win
+ * the pointer, which makes the nub hard to hit, so while a cell holds the
+ * caret its inline-end edge is shielded: a transparent strip that swallows the
+ * pointer events before they reach the editor root.
+ *
+ * Only that one cell, and only while it has the caret — every other column
+ * edge resizes exactly as it did.
+ */
+.memry-table-resize-shield {
+  position: absolute;
+  z-index: 3;
+  cursor: text;
+  background: transparent;
+}

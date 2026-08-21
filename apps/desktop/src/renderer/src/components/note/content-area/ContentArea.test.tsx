@@ -86,6 +86,15 @@ vi.mock('@blocknote/react', () => ({
           {label}
         </button>
       )
+    },
+    // `TableBorderHandles` re-points `Generic.Menu.Dropdown` at `.bn-container`
+    // so a table menu is not clipped by the table's own scroll wrapper.
+    Generic: {
+      Menu: {
+        Root: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        Trigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        Dropdown: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+      }
     }
   })),
   useEditorState: vi.fn(() => ({ hasSelection: false, isMultiBlock: false })),
@@ -111,7 +120,19 @@ vi.mock('@blocknote/react', () => ({
     }
   ]),
   FilePanelController: () => <div data-testid="file-panel-controller" />,
-  UploadTab: () => <div data-testid="upload-tab" />
+  UploadTab: () => <div data-testid="upload-tab" />,
+  // `TableBorderHandles` reaches for the table-handle extension so the nubs on
+  // the cell borders can open BlockNote's own row/column/cell menus. It renders
+  // nothing until a cell is hovered, which jsdom (no layout) never reports —
+  // these only have to exist.
+  useExtension: vi.fn(() => ({ freezeHandles: vi.fn(), unfreezeHandles: vi.fn() })),
+  useEditorSelectionChange: vi.fn(),
+  useEditorChange: vi.fn(),
+  ComponentsContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => children
+  },
+  TableCellMenu: () => <div data-testid="table-cell-menu" />,
+  TableHandleMenu: () => <div data-testid="table-handle-menu" />
 }))
 
 vi.mock('sonner', () => ({
@@ -377,7 +398,15 @@ function resetEditor(): void {
     insertBlocks: vi.fn(),
     getExtension: vi.fn(() => ({ openSuggestionMenu: contentAreaMocks.openSuggestionMenu })),
     getTextCursorPosition: vi.fn(() => ({ block: urlBlock })),
-    prosemirrorView: { focus: vi.fn(), dom: { blur: vi.fn() } },
+    prosemirrorView: {
+      focus: vi.fn(),
+      dom: { blur: vi.fn() },
+      // `TableBorderHandles` reads the caret's cell off the selection to ring
+      // it; jsdom has no table here, so this only has to resolve to nothing.
+      isDestroyed: false,
+      state: { selection: { from: 0 } },
+      domAtPos: vi.fn(() => ({ node: document.body, offset: 0 }))
+    },
     _tiptapEditor: {
       state: { selection: { empty: true, $from: { parentOffset: 0 } } },
       destroy: vi.fn(),

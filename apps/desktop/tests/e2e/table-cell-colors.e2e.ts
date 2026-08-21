@@ -44,7 +44,8 @@ const TABLE_DOC = [
 const TABLE_MD = ['| Task | State |', '| --- | --- |', '| Shipping | Open |'].join('\n')
 
 /**
- * Where to double-click inside a cell to select its first word.
+ * Where to aim the pointer inside a cell — to hover it, or to double-click its
+ * first word.
  *
  * Not the centre: a cell is a fixed 120px wide, a short word leaves the middle
  * empty, and a double-click on empty cell space selects nothing. Not the very
@@ -109,11 +110,13 @@ test.describe('Table cell colours E2E (#1639)', () => {
     await setDocument(page, TABLE_DOC)
 
     // #when the body cell is coloured through the menu the flags unlock —
-    // with both off BlockNote renders no cell handle at all, so this hover
-    // finding one is itself the assertion that they are on
+    // with both off `TableCellMenu` renders nothing at all, so this menu
+    // having a Colors item is itself the assertion that they are on.
+    // The trigger is the cell's own inline-end nub (`table-border-handles.tsx`),
+    // which replaced BlockNote's floating `tableCellHandle`.
     const bodyCell = page.locator(`${SELECTORS.noteEditor} td`).first()
-    await bodyCell.hover()
-    const cellHandle = page.locator('[data-test="tableCellHandle"]').first()
+    await bodyCell.hover({ position: WORD_START })
+    const cellHandle = page.locator('[data-memry-table-handle="cell"]').first()
     await expect(cellHandle).toBeVisible({ timeout: 10_000 })
     await cellHandle.click()
     await page.getByText('Colors', { exact: true }).first().click()

@@ -51,12 +51,36 @@ Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
 
+### The handles on the border lines
+
+Put the pointer in a cell and three small grey marks appear, on the table's own
+border lines rather than floating beside it:
+
+| mark                                             | where        | opens                                                             |
+| ------------------------------------------------ | ------------ | ----------------------------------------------------------------- |
+| on the table's left edge, beside the cell's row  | outer border | the **row** menu — delete the row, insert one above or below      |
+| on the table's top edge, above the cell's column | outer border | the **column** menu — delete the column, insert one left or right |
+| on the cell's own right border                   | inner border | the **cell** menu — **Colors**, and splitting or merging          |
+
+Hover a mark and it grows into a small six-dot button; click it for the menu.
+
+Row and column live on the table's outer edges on purpose. An inner vertical
+line belongs to two cells at once — the line to a cell's left is the line to
+its neighbour's right — so a mark there would be ambiguous about which one it
+meant. The one inner line that is used, a cell's right border, belongs to the
+cell menu, which is the only one that acts on a single cell.
+
+While the cursor is in a cell, that cell is outlined in your accent colour, and
+that one column edge cannot be dragged to resize — the mark sits on the same
+line, and resizing would take the pointer before you could click it. Every
+other edge resizes as usual; click into another cell to resize that one.
+
 ### Cell colour and formatting
 
-Hover a cell and click the handle inside it to open the cell menu, then
-**Colors** to set that cell's text or background colour. Bold, italic,
-underline, links and mentions all work inside a cell exactly as they do in a
-paragraph — select the text and use the toolbar or the usual shortcuts.
+Open a cell's right-hand mark and choose **Colors** to set that cell's text or
+background colour. Bold, italic, underline, links and mentions all work inside
+a cell exactly as they do in a paragraph — select the text and use the toolbar
+or the usual shortcuts.
 
 A markdown table has no column for a cell colour, so Memry writes it on a
 comment line just above the table, the same way a coloured paragraph is stored:
