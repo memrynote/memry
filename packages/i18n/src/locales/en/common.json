@@ -210,11 +210,18 @@
       },
       "models": {
         "default": "Default",
-        "label": "Model"
+        "label": "Model",
+        "search": "Search models…",
+        "useCustom": "Use \"{query}\"",
+        "localEmpty": "No models found — check Settings",
+        "localSetup": "Set up in Settings…"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Reasoning",
+        "effort": "Effort"
       },
+      "includeCurrentNote": "Include current note",
+      "chooseModel": "Choose model",
       "claudeSettings": {
         "reasoning": {
           "low": "Low",

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type {
   AgentAccessMode,
-  AgentBackendId,
   AgentBackendModelList,
   AgentCliBackendId,
   AgentBackendOptions,
+  AgentLocalProviderSettings,
   AttachmentInput,
   CodexReasoningEffort,
   ClaudeEffort
@@ -13,31 +13,16 @@ import type {
 import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { useActiveTab } from '@/contexts/tabs'
-import {
-  AiWebBrowsing,
-  ArrowUp,
-  AtSign,
-  ChatGpt,
-  Check,
-  ChevronDown,
-  Claude,
-  Computer,
-  Plus,
-  Shield,
-  Square
-} from '@/lib/icons'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { ArrowUp, AtSign, Square } from '@/lib/icons'
 import { ConnectedToolsTray } from './connected-tools-tray'
+import {
+  ComposerSettingsMenu,
+  claudeReasoningOptions,
+  codexReasoningOptions
+} from './composer-settings-menu'
 import { VoiceDictationButton } from './voice-dictation-button'
 import {
   AgentPromptEditor,
@@ -84,63 +69,6 @@ const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> =
     'gpt-5.4-mini': 'GPT-5.4 Mini'
   }
 }
-
-type ReasoningOption<Value extends string> = {
-  value: Value
-  labelKey: string
-  summaryKey: string
-}
-
-const claudeReasoningOptions: Array<ReasoningOption<ClaudeEffort>> = [
-  {
-    value: 'low',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.low',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.low'
-  },
-  {
-    value: 'medium',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.medium',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.medium'
-  },
-  {
-    value: 'high',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.high',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.high'
-  },
-  {
-    value: 'xhigh',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.extraHighDefault',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.extraHigh'
-  },
-  {
-    value: 'max',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.max',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.max'
-  }
-]
-
-const codexReasoningOptions: Array<ReasoningOption<CodexReasoningEffort>> = [
-  {
-    value: 'low',
-    labelKey: 'agentChat.composer.codexSettings.reasoning.low',
-    summaryKey: 'agentChat.composer.codexSettings.reasoning.low'
-  },
-  {
-    value: 'medium',
-    labelKey: 'agentChat.composer.codexSettings.reasoning.mediumDefault',
-    summaryKey: 'agentChat.composer.codexSettings.reasoning.medium'
-  },
-  {
-    value: 'high',
-    labelKey: 'agentChat.composer.codexSettings.reasoning.high',
-    summaryKey: 'agentChat.composer.codexSettings.reasoning.high'
-  },
-  {
-    value: 'xhigh',
-    labelKey: 'agentChat.composer.codexSettings.reasoning.extraHigh',
-    summaryKey: 'agentChat.composer.codexSettings.reasoning.extraHigh'
-  }
-]
 
 function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
   return provider === 'claude_cli' || provider === 'codex_cli'
@@ -201,9 +129,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
+  const { open: openSettings } = useSettingsModal()
   const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
   const composerBoxRef = useRef<HTMLDivElement>(null)
-  const pendingMentionRef = useRef(false)
   const [promptValue, setPromptValue] = useState<AgentPromptValue>({
     text: '',
     attachments: [],
@@ -221,16 +149,23 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   )
   const [accessMode, setAccessMode] = useState<AgentAccessMode>(DEFAULT_ACCESS_MODE)
   const [webSearchEnabled, setWebSearchEnabled] = useState(false)
-  const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [includeCurrentNote, setIncludeCurrentNote] = useState(true)
+  const [dictationBusy, setDictationBusy] = useState(false)
   const [selectedModels, setSelectedModels] = useState<Record<AgentCliBackendId, string | null>>({
     ...DEFAULT_SELECTED_MODELS,
     ...storedPreference?.models
   })
+  const [localModel, setLocalModel] = useState<string | null>(storedPreference?.localModel ?? null)
   const [modelOptions, setModelOptions] =
     useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
-  const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
-  const [codexReasoning, setCodexReasoning] =
-    useState<CodexReasoningEffort>(DEFAULT_CODEX_REASONING)
+  const [localSettings, setLocalSettings] = useState<AgentLocalProviderSettings | null>(null)
+  const [localModels, setLocalModels] = useState<string[] | null>(null)
+  const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(
+    storedPreference?.efforts?.claude_cli ?? DEFAULT_CLAUDE_EFFORT
+  )
+  const [codexReasoning, setCodexReasoning] = useState<CodexReasoningEffort>(
+    storedPreference?.efforts?.codex_cli ?? DEFAULT_CODEX_REASONING
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -274,6 +209,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           ...current,
           [activeConversation.backend]: activeConversation.backendModel
         }))
+      } else if (activeConversation.backendModel) {
+        setLocalModel(activeConversation.backendModel)
       }
     }
   }
@@ -290,58 +227,31 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     ? modelOptions[selectedProvider]
     : null
 
-  const claudeProviderLabel = t('agentChat.composer.providers.claude')
-  const codexProviderLabel = t('agentChat.composer.providers.codex')
-  const localProviderLabel = t('agentChat.composer.providers.local')
   const backendStatuses = agent?.state.backendStatuses
-  const claudeDisabled = backendStatuses?.claude_cli.available === false
-  const codexDisabled = backendStatuses?.codex_cli.available === false
+  const claudeAvailable = backendStatuses?.claude_cli.available !== false
+  const codexAvailable = backendStatuses?.codex_cli.available !== false
   const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
   const busy = turnInFlight || submitting
   const providerReady =
     selectedProvider === 'local_openai_compatible' ||
     backendStatuses?.[selectedProvider]?.available !== false
-  const canSend =
-    Boolean(agent) &&
-    Boolean(sourceWindowId) &&
-    promptValue.text.trim().length > 0 &&
-    !busy &&
-    providerReady
+  const hasText = promptValue.text.trim().length > 0
+  const canSend = Boolean(agent) && Boolean(sourceWindowId) && hasText && !busy && providerReady
   const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''
-  const providerLabelById: Record<AgentProvider, string> = {
-    claude_cli: claudeProviderLabel,
-    codex_cli: codexProviderLabel,
-    local_openai_compatible: localProviderLabel
-  }
-  const selectedProviderLabel = providerLabelById[selectedProvider]
-  const accessLabelById: Record<AgentAccessMode, string> = {
-    vault_only: t('agentChat.composer.access.vaultOnly'),
-    computer_access: t('agentChat.composer.access.computerAccess')
-  }
-  const selectedAccessLabel = accessLabelById[accessMode]
-  const selectedWebSearchLabel = webSearchEnabled
-    ? t('agentChat.composer.webSearch.on')
-    : t('agentChat.composer.webSearch.off')
-  const permissionsAriaLabel = t('agentChat.composer.permissionsLabel', {
-    access: selectedAccessLabel,
-    webSearch: selectedWebSearchLabel
-  })
-  const permissionsActive = accessMode !== DEFAULT_ACCESS_MODE || webSearchEnabled
+  const localProviderLabel = t('agentChat.composer.providers.local')
   const selectedBackendModel = isCliProvider(selectedProvider)
     ? (selectedModels[selectedProvider] ??
       defaultModelForProvider(selectedProvider, selectedModelOptions))
     : null
-  const selectedModelLabel = selectedBackendModel
-    ? (selectedModelOptions?.models.find((model) => model.id === selectedBackendModel)?.label ??
-      MODEL_LABEL_FALLBACKS[selectedProvider as AgentCliBackendId][selectedBackendModel] ??
-      selectedBackendModel)
-    : t('agentChat.composer.models.default')
-  const SelectedProviderIcon =
-    selectedProvider === 'local_openai_compatible'
-      ? Computer
-      : selectedProvider === 'codex_cli'
-        ? ChatGpt
-        : Claude
+  const cliModelLabel = (backend: AgentCliBackendId, modelId: string): string =>
+    modelOptions[backend]?.models.find((model) => model.id === modelId)?.label ??
+    MODEL_LABEL_FALLBACKS[backend][modelId] ??
+    modelId
+  const effectiveLocalModel =
+    localModel ?? (localSettings?.model.trim() ? localSettings.model : null)
+  const localConfigured =
+    localSettings !== null &&
+    (localSettings.model.trim().length > 0 || (localModels?.length ?? 0) > 0)
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
@@ -353,22 +263,28 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const selectedReasoningOptions =
     selectedProvider === 'codex_cli' ? codexReasoningOptions : claudeReasoningOptions
   const selectedReasoningValue = selectedProvider === 'codex_cli' ? codexReasoning : claudeReasoning
-  const settingsSummary = t('agentChat.composer.settingsSummary', {
-    reasoning: t(selectedReasoning.summaryKey)
+  const effortSummary = t(selectedReasoning.summaryKey)
+  const currentModelValueLabel = isCliProvider(selectedProvider)
+    ? selectedBackendModel
+      ? cliModelLabel(selectedProvider, selectedBackendModel)
+      : t('agentChat.composer.models.default')
+    : (effectiveLocalModel ?? localProviderLabel)
+  const summaryLabel = !providerReady
+    ? t('agentChat.composer.chooseModel')
+    : isCliProvider(selectedProvider)
+      ? `${currentModelValueLabel} · ${effortSummary}`
+      : currentModelValueLabel
+  const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
+    model: currentModelValueLabel,
+    settings: isCliProvider(selectedProvider) ? effortSummary : localProviderLabel
   })
-  const modelAriaLabel = t('agentChat.composer.modelLabel', {
-    provider: selectedProviderLabel,
-    model: selectedModelLabel
-  })
-  const reasoningAriaLabel = t('agentChat.composer.reasoningLabel', {
-    reasoning: settingsSummary
-  })
-  const addContextAriaLabel = permissionsActive
-    ? t('agentChat.composer.addContextWithPermissions', { permissions: permissionsAriaLabel })
-    : t('agentChat.composer.addContext')
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
-      return { backend: 'local_openai_compatible', toolsEnabled: true }
+      return {
+        backend: 'local_openai_compatible',
+        toolsEnabled: true,
+        ...(effectiveLocalModel ? { model: effectiveLocalModel } : {})
+      }
     }
     if (selectedProvider === 'codex_cli') {
       return {
@@ -387,18 +303,42 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     accessMode !== DEFAULT_ACCESS_MODE || webSearchEnabled
       ? { accessMode, webSearchEnabled }
       : undefined
-  const selectModel = (model: string | null): void => {
-    if (!isCliProvider(selectedProvider)) return
-    const nextModels = { ...selectedModels, [selectedProvider]: model }
+  const persistPreference = (overrides: {
+    provider?: AgentProvider
+    models?: Record<AgentCliBackendId, string | null>
+    claudeEffort?: ClaudeEffort
+    codexEffort?: CodexReasoningEffort
+    localModel?: string | null
+  }): void => {
+    persistAgentModelPreference({
+      provider: overrides.provider ?? selectedProvider,
+      models: overrides.models ?? selectedModels,
+      efforts: {
+        claude_cli: overrides.claudeEffort ?? claudeReasoning,
+        codex_cli: overrides.codexEffort ?? codexReasoning
+      },
+      localModel: overrides.localModel !== undefined ? overrides.localModel : localModel
+    })
+  }
+  const selectCliModel = (backend: AgentCliBackendId, model: string): void => {
+    const nextModels = { ...selectedModels, [backend]: model }
+    setSelectedProvider(backend)
     setSelectedModels(nextModels)
-    persistAgentModelPreference({ provider: selectedProvider, models: nextModels })
+    persistPreference({ provider: backend, models: nextModels })
+  }
+  const selectLocalModel = (model: string): void => {
+    setSelectedProvider('local_openai_compatible')
+    setLocalModel(model)
+    persistPreference({ provider: 'local_openai_compatible', localModel: model })
   }
   const selectReasoning = (value: ClaudeEffort | CodexReasoningEffort): void => {
     if (selectedProvider === 'codex_cli') {
       setCodexReasoning(value as CodexReasoningEffort)
+      persistPreference({ codexEffort: value as CodexReasoningEffort })
       return
     }
     setClaudeReasoning(value)
+    persistPreference({ claudeEffort: value })
   }
   const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
     if (modelOptions[provider]) return
@@ -416,18 +356,26 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       }))
     }
   }
-  const handleModelMenuOpenChange = (open: boolean): void => {
-    setModelMenuOpen(open)
-    if (open && isCliProvider(selectedProvider)) {
-      void loadModelOptions(selectedProvider)
+  const loadLocalProviderData = async (): Promise<void> => {
+    if (localSettings !== null && localModels !== null) return
+    try {
+      const settings = await window.api.agent.getLocalProviderSettings()
+      setLocalSettings(settings)
+    } catch {
+      setLocalSettings(null)
+    }
+    try {
+      const list = await window.api.agent.listLocalModels()
+      setLocalModels(list.models)
+    } catch {
+      setLocalModels([])
     }
   }
-  const selectProvider = (provider: AgentProvider): void => {
-    setSelectedProvider(provider)
-    persistAgentModelPreference({ provider, models: selectedModels })
-    if (isCliProvider(provider)) {
-      void loadModelOptions(provider)
-    }
+  const handleSettingsMenuOpenChange = (open: boolean): void => {
+    if (!open) return
+    if (claudeAvailable) void loadModelOptions('claude_cli')
+    if (codexAvailable) void loadModelOptions('codex_cli')
+    void loadLocalProviderData()
   }
   const insertTranscript = useCallback((text: string): void => {
     const editor = promptEditorRef.current
@@ -437,6 +385,10 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     const needsSpace = existing.length > 0 && !/\s$/.test(existing)
     editor.insertText(needsSpace ? ` ${text}` : text)
     editor.focus()
+  }, [])
+  const triggerMention = useCallback((): void => {
+    promptEditorRef.current?.focus()
+    promptEditorRef.current?.insertMentionTrigger()
   }, [])
   const closePicker = useCallback(() => {
     setMentionQuery(null)
@@ -498,16 +450,19 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     if (!agent || !sourceWindowId || !currentText.trim() || busy) return
     const currentAttachments = dedupeAttachments([
       ...editorValue.attachments,
-      ...(currentNoteAttachment ? [currentNoteAttachment] : [])
+      ...(includeCurrentNote && currentNoteAttachment ? [currentNoteAttachment] : [])
     ])
     setSubmitting(true)
     try {
+      const selectedTurnModel = isCliProvider(selectedProvider)
+        ? selectedBackendModel
+        : effectiveLocalModel
       const targetConversationId =
         conversationId ??
         (
           await agent.createConversation({
-            backend: selectedProvider as AgentBackendId,
-            ...(selectedBackendModel ? { backendModel: selectedBackendModel } : {})
+            backend: selectedProvider,
+            ...(selectedTurnModel ? { backendModel: selectedTurnModel } : {})
           })
         ).id
       await agent.sendTurn({
@@ -533,6 +488,19 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
 
     void agent.cancelTurn(conversationId)
   }
+
+  const claudeCatalog = modelOptions.claude_cli?.models.length
+    ? modelOptions.claude_cli.models
+    : Object.entries(MODEL_LABEL_FALLBACKS.claude_cli).map(([id, label]) => ({ id, label }))
+  const codexCatalog = modelOptions.codex_cli?.models.length
+    ? modelOptions.codex_cli.models
+    : Object.entries(MODEL_LABEL_FALLBACKS.codex_cli).map(([id, label]) => ({ id, label }))
+  const localModelIds = (() => {
+    const ids = [...(localModels ?? [])]
+    const configuredModel = localSettings?.model.trim()
+    if (configuredModel && !ids.includes(configuredModel)) ids.unshift(configuredModel)
+    return ids
+  })()
 
   return (
     <div className="relative p-2">
@@ -588,218 +556,48 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           </div>
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={addContextAriaLabel}
-                    className="relative inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
-                  >
-                    <Plus className="size-3" aria-hidden="true" />
-                    {permissionsActive && (
-                      <span
-                        className="absolute -end-0.5 -top-0.5 size-2 rounded-full bg-foreground ring-2 ring-card"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="min-w-52 border-border/60 p-1.5"
-                  onCloseAutoFocus={(event) => {
-                    // Radix parks focus back on the trigger on close, which would
-                    // undo the caret we just placed in the editor.
-                    if (!pendingMentionRef.current) return
-                    pendingMentionRef.current = false
-                    event.preventDefault()
-                    promptEditorRef.current?.focus()
-                    promptEditorRef.current?.insertMentionTrigger()
-                  }}
-                >
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      pendingMentionRef.current = true
-                    }}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <AtSign className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{t('agentChat.composer.mentionContext')}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="px-2 py-1 text-xs font-medium">
-                    {t('agentChat.composer.permissions.label')}
-                  </DropdownMenuLabel>
-                  <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
-                    {t('agentChat.composer.permissions.access')}
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={(event) => {
-                      event.preventDefault()
-                      setAccessMode('vault_only')
-                    }}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{t('agentChat.composer.access.vaultOnly')}</span>
-                    {accessMode === 'vault_only' && (
-                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={(event) => {
-                      event.preventDefault()
-                      setAccessMode('computer_access')
-                    }}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{t('agentChat.composer.access.computerAccess')}</span>
-                    {accessMode === 'computer_access' && (
-                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
-                    {t('agentChat.composer.permissions.tools')}
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={webSearchEnabled}
-                    onCheckedChange={(checked) => setWebSearchEnabled(checked === true)}
-                    onSelect={(event) => event.preventDefault()}
-                    className="text-xs focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <AiWebBrowsing className="size-4 text-muted-foreground" aria-hidden="true" />
-                      <span>{t('agentChat.composer.webSearch.label')}</span>
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={modelAriaLabel}
-                    data-testid="agent-model-trigger"
-                    className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
-                  >
-                    <SelectedProviderIcon
-                      className={[
-                        'size-3.5 shrink-0',
-                        selectedProvider === 'claude_cli'
-                          ? 'text-[#FF671A]'
-                          : 'text-muted-foreground'
-                      ].join(' ')}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate text-[13px] leading-[18px] text-foreground">
-                      {isCliProvider(selectedProvider) ? selectedModelLabel : selectedProviderLabel}
-                    </span>
-                    <ChevronDown
-                      className="size-3 shrink-0 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
-                  <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                    {t('agentChat.composer.providers.label')}
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    disabled={claudeDisabled}
-                    onSelect={() => selectProvider('claude_cli')}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{claudeProviderLabel}</span>
-                    {selectedProvider === 'claude_cli' && (
-                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={codexDisabled}
-                    onSelect={() => selectProvider('codex_cli')}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{codexProviderLabel}</span>
-                    {selectedProvider === 'codex_cli' && (
-                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => selectProvider('local_openai_compatible')}
-                    className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  >
-                    <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <span>{localProviderLabel}</span>
-                    {selectedProvider === 'local_openai_compatible' && (
-                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
-                    )}
-                  </DropdownMenuItem>
-                  {isCliProvider(selectedProvider) && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                        {t('agentChat.composer.models.label')}
-                      </DropdownMenuLabel>
-                      {(selectedModelOptions?.models ?? []).map((model) => (
-                        <DropdownMenuItem
-                          key={model.id}
-                          onSelect={() => selectModel(model.id)}
-                          className="text-xs focus:bg-transparent focus:text-foreground"
-                        >
-                          <span>{model.label}</span>
-                          {selectedBackendModel === model.id && (
-                            <Check
-                              className="ms-auto size-3 text-muted-foreground"
-                              aria-hidden="true"
-                            />
-                          )}
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {isCliProvider(selectedProvider) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={reasoningAriaLabel}
-                      className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
-                    >
-                      <span className="truncate text-[13px] leading-[18px] text-foreground">
-                        {settingsSummary}
-                      </span>
-                      <ChevronDown
-                        className="size-3 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
-                    <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                      {t('agentChat.composer.settings.reasoning')}
-                    </DropdownMenuLabel>
-                    {selectedReasoningOptions.map((option) => (
-                      <DropdownMenuCheckboxItem
-                        key={option.value}
-                        checked={selectedReasoningValue === option.value}
-                        onCheckedChange={() => selectReasoning(option.value)}
-                        className="text-xs"
-                      >
-                        {t(option.labelKey)}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <ComposerSettingsMenu
+                ariaLabel={modelSettingsAriaLabel}
+                summaryLabel={summaryLabel}
+                providerReady={providerReady}
+                webSearchEnabled={webSearchEnabled}
+                includeCurrentNote={includeCurrentNote}
+                accessMode={accessMode}
+                selectedProvider={selectedProvider}
+                selectedBackendModel={selectedBackendModel}
+                effectiveLocalModel={effectiveLocalModel}
+                showEffort={isCliProvider(selectedProvider)}
+                effortSummary={effortSummary}
+                reasoningOptions={selectedReasoningOptions}
+                selectedReasoningValue={selectedReasoningValue}
+                currentModelValueLabel={currentModelValueLabel}
+                claudeAvailable={claudeAvailable}
+                codexAvailable={codexAvailable}
+                claudeCatalog={claudeCatalog}
+                codexCatalog={codexCatalog}
+                localSettingsLoaded={localSettings !== null}
+                localConfigured={localConfigured}
+                localModelIds={localModelIds}
+                onOpenChange={handleSettingsMenuOpenChange}
+                onToggleWebSearch={() => setWebSearchEnabled((value) => !value)}
+                onToggleIncludeCurrentNote={() => setIncludeCurrentNote((value) => !value)}
+                onSelectAccessMode={setAccessMode}
+                onSelectReasoning={selectReasoning}
+                onSelectCliModel={selectCliModel}
+                onSelectLocalModel={selectLocalModel}
+                onOpenProviderSettings={() => openSettings('agent-providers')}
+              />
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <VoiceDictationButton disabled={busy || !agent} onTranscript={insertTranscript} />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                aria-label={t('agentChat.composer.mentionContext')}
+                disabled={busy || !agent}
+                onClick={triggerMention}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <AtSign className="size-3.5" aria-hidden="true" />
+              </button>
               {turnInFlight ? (
                 <Button
                   type="button"
@@ -810,7 +608,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 >
                   <Square className="size-3" aria-hidden="true" />
                 </Button>
-              ) : (
+              ) : hasText && !dictationBusy ? (
                 <Button
                   type="button"
                   aria-label={t('agentChat.composer.send')}
@@ -824,6 +622,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 >
                   <ArrowUp className="size-3.5" aria-hidden="true" />
                 </Button>
+              ) : (
+                <VoiceDictationButton
+                  disabled={busy || !agent}
+                  onTranscript={insertTranscript}
+                  onBusyChange={setDictationBusy}
+                />
               )}
             </div>
           </div>

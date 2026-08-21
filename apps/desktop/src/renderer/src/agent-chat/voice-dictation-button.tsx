@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { useT } from '@memry/i18n/renderer'
@@ -21,6 +21,8 @@ const log = createLogger('AgentChat:VoiceDictation')
 interface VoiceDictationButtonProps {
   disabled?: boolean
   onTranscript: (text: string) => void
+  /** Reports recording/transcribing so the composer keeps this slot mounted mid-capture. */
+  onBusyChange?: (busy: boolean) => void
 }
 
 /**
@@ -30,7 +32,8 @@ interface VoiceDictationButtonProps {
  */
 export function VoiceDictationButton({
   disabled = false,
-  onTranscript
+  onTranscript,
+  onBusyChange
 }: VoiceDictationButtonProps): React.JSX.Element {
   const { t } = useT('common')
   const { open: openSettings } = useSettingsModal()
@@ -107,6 +110,11 @@ export function VoiceDictationButton({
   })
 
   const recording = state === 'requesting-permission' || state === 'recording'
+
+  useEffect(() => {
+    /* eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent -- recording flips inside useVoiceCapture's own event handlers, not in an event this component sees; the composer only needs the boolean to keep this slot mounted mid-capture */
+    onBusyChange?.(recording || transcribing)
+  }, [onBusyChange, recording, transcribing])
 
   const handleClick = useCallback(() => {
     if (transcribing) return

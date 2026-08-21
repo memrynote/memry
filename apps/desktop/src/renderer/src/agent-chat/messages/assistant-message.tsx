@@ -13,6 +13,7 @@ import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai
 import { cn } from '@/lib/utils'
 import { MemryLink, MemryLinkIcon, splitEdgeIcon, useMemryLinkNavigation } from './memry-links'
 import { memryLinkClassName } from './memry-links-constants'
+import { ThinkingIndicator } from './thinking-indicator'
 
 type AssistantMessageModel = Message & {
   content: Extract<Message['content'], { role: 'assistant' }>
@@ -52,11 +53,7 @@ function AssistantMessageContent({
           aria-label={t('agentChat.thinking')}
           className="min-w-10 overflow-visible border-0 bg-transparent px-3 py-0 shadow-none"
         >
-          <span className="flex items-center gap-1.5" aria-hidden="true">
-            <span className="size-2 animate-pulse rounded-full bg-foreground/60" />
-            <span className="size-2 animate-pulse rounded-full bg-foreground/60 [animation-delay:150ms]" />
-            <span className="size-2 animate-pulse rounded-full bg-foreground/60 [animation-delay:300ms]" />
-          </span>
+          <ThinkingIndicator label={t('agentChat.thinking')} />
         </MessageContent>
       </AIMessage>
     )

@@ -3925,3 +3925,63 @@ del.bn-inline-content {
   cursor: text;
   background: transparent;
 }
+
+/*
+ * Agent waiting state: a pixel grid whose chevron wavefront drives to the
+ * trailing edge, next to a label that shimmers along the same axis.
+ *
+ * Cells sit dim and are lit by their own delayed cycle, so the dim opacity is
+ * the resting value the animation returns to — reduced motion just drops the
+ * animation and the grid stays at rest.
+ */
+.agent-thinking-pixel {
+  opacity: 0.15;
+  animation-name: agent-thinking-pixel-on;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes agent-thinking-pixel-on {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.agent-thinking-label {
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 35%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 65%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: agent-thinking-shimmer 1.4s linear infinite;
+}
+
+@keyframes agent-thinking-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-thinking-pixel {
+    animation: none;
+  }
+
+  .agent-thinking-label {
+    color: var(--muted-foreground);
+    background-image: none;
+    animation: none;
+  }
+}

@@ -99,6 +99,36 @@ async function submitPrompt(): Promise<void> {
   })
 }
 
+async function openSettingsMenu(): Promise<void> {
+  // The composer schedules an editor focus on mount; let it land before the
+  // menu opens, or it fires mid-interaction and Radix closes the submenu.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 30))
+  })
+  fireEvent.pointerDown(screen.getByTestId('agent-model-trigger'))
+  await screen.findByRole('menuitem', { name: /web search/i })
+  // Opening also kicks off the model/local-provider loads; settle them before
+  // touching submenus so data landing mid-interaction can't detach content.
+  await act(async () => {})
+}
+
+// Radix SubTrigger opens on click when the event carries no mouse pointerType,
+// which is exactly what jsdom produces (same trick as dropdown-menu.test.tsx).
+function openSubmenu(trigger: HTMLElement): void {
+  fireEvent.click(trigger)
+}
+
+async function openModelSubmenu(): Promise<void> {
+  await openSettingsMenu()
+  openSubmenu(screen.getByTestId('agent-model-submenu-trigger'))
+  await screen.findByPlaceholderText('Search models…')
+}
+
+function closeMenus(): void {
+  fireEvent.keyDown(document, { key: 'Escape' })
+  fireEvent.keyDown(document, { key: 'Escape' })
+}
+
 describe('Composer', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -178,6 +208,14 @@ describe('Composer', () => {
       accessMode: 'vault_only',
       toolApprovalMode: 'always_accept'
     })
+    vi.mocked(window.api.agent.getLocalProviderSettings).mockResolvedValue({
+      preset: 'ollama',
+      baseUrl: 'http://localhost:11434/v1',
+      model: '',
+      apiKeyConfigured: false,
+      allowNonLoopback: false
+    })
+    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: [] })
   })
 
   it('submits on Enter', async () => {
@@ -217,8 +255,14 @@ describe('Composer', () => {
 
     expect(container.firstElementChild).not.toHaveClass('border-t')
     expect(screen.getByRole('textbox')).toHaveClass('!min-h-9')
-    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('rounded-md')
-    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('size-7')
+    expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Opus · Extra High')
+    expect(screen.getByRole('button', { name: 'Mention a note, task, or event' })).toHaveClass(
+      'size-7'
+    )
+    // The send button only appears once the prompt has text; the mic owns the
+    // slot at rest.
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
     expect(screen.queryByText('Agent')).not.toBeInTheDocument()
   })
 
@@ -258,7 +302,23 @@ describe('Composer', () => {
     expect(mic).not.toHaveClass('text-destructive')
   })
 
-  it('records, transcribes, and appends the transcript to the prompt', async () => {
+  it('swaps the mic for send once the prompt has text, and back when cleared', async () => {
+    renderComposer('conversation-1')
+
+    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+
+    await setPromptText('hello')
+
+    expect(screen.queryByRole('button', { name: 'Start voice dictation' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
+
+    await setPromptText('')
+
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+  })
+
+  it('records, transcribes, and inserts the transcript into the prompt', async () => {
     let resolveTranscription: (value: { success: boolean; text: string }) => void = () => {}
     vi.mocked(window.api.inbox.transcribeAudio).mockImplementation(
       () =>
@@ -268,7 +328,6 @@ describe('Composer', () => {
     )
     renderComposer('conversation-1')
 
-    await setPromptText('note this')
     await userEvent.click(screen.getByRole('button', { name: 'Start voice dictation' }))
 
     const recordingMic = await screen.findByRole('button', { name: 'Stop voice dictation' })
@@ -292,10 +351,9 @@ describe('Composer', () => {
       await Promise.resolve()
     })
 
-    await waitFor(() =>
-      expect(screen.getByRole('textbox')).toHaveTextContent('note this call the vet')
-    )
-    expect(screen.getByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveTextContent('call the vet'))
+    // The transcript filled the prompt, so the slot now shows send.
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
   })
 
   it('returns to idle and surfaces the error when the microphone is blocked', async () => {
@@ -323,47 +381,37 @@ describe('Composer', () => {
     expect(await screen.findByRole('button', { name: 'Start voice dictation' })).toBeInTheDocument()
   })
 
-  it('opens provider and model choices from the model chip', () => {
+  it('opens the composer settings menu from the model summary', async () => {
     renderComposer('conversation-1')
 
-    const providerTrigger = screen.getByRole('button', { name: 'Agent model: Claude Opus' })
-    expect(providerTrigger).not.toHaveClass('border')
-    expect(providerTrigger).toHaveClass('hover:bg-accent')
-    expect(providerTrigger).toHaveClass('rounded-md')
-    expect(providerTrigger).toHaveClass('data-[state=open]:bg-accent')
+    const trigger = screen.getByTestId('agent-model-trigger')
+    expect(trigger).not.toHaveClass('border')
+    expect(trigger).toHaveClass('hover:bg-accent')
+    expect(trigger).toHaveClass('rounded-md')
+    expect(trigger).toHaveClass('data-[state=open]:bg-accent')
 
-    fireEvent.pointerDown(providerTrigger)
+    await openSettingsMenu()
 
-    expect(screen.getByText('Provider')).toBeInTheDocument()
-
-    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('hover:bg-accent')
-    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-accent')
-    expect(screen.getByRole('menuitem', { name: /codex/i })).not.toHaveAttribute('data-disabled')
-    expect(screen.getByRole('menuitem', { name: /local/i })).not.toHaveAttribute('data-disabled')
+    expect(screen.getByRole('menuitem', { name: /web search/i })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /include current note/i })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /^access/i })).toHaveTextContent('Vault only')
+    expect(screen.getByRole('menuitem', { name: /^effort/i })).toHaveTextContent('Extra High')
+    expect(screen.getByTestId('agent-model-submenu-trigger')).toHaveTextContent('Opus')
+    expect(screen.queryByText('Provider')).not.toBeInTheDocument()
   })
 
   it('passes selected access mode and web search intent with the prompt', async () => {
     renderComposer('conversation-1')
 
-    const addTrigger = await screen.findByRole('button', { name: 'Add context' })
-    expect(addTrigger).toHaveClass('size-7')
-    expect(
-      screen.queryByRole('button', { name: 'Agent access: Vault only' })
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Web search: Off' })).not.toBeInTheDocument()
+    await openSettingsMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /web search/i }))
+    openSubmenu(screen.getByRole('menuitem', { name: /^access/i }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Computer access' }))
+    closeMenus()
 
-    fireEvent.pointerDown(addTrigger)
-    expect(screen.getByText('Permissions')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Computer access' }))
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Web search' }))
-    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', {
-          name: 'Add context (Agent permissions: Computer access, web search On)'
-        })
-      ).toBeInTheDocument()
-    })
+    await waitFor(() =>
+      expect(screen.queryByRole('menuitem', { name: /web search/i })).not.toBeInTheDocument()
+    )
 
     await setPromptText('check the launch page')
     await submitPrompt()
@@ -378,29 +426,79 @@ describe('Composer', () => {
     })
   })
 
-  it('splits provider/model and reasoning into the two composer chips', async () => {
+  it('shows Claude effort options in the effort submenu and updates the summary', async () => {
     renderComposer('conversation-1')
 
-    const modelTrigger = await screen.findByRole('button', { name: 'Agent model: Claude Opus' })
-    fireEvent.pointerDown(modelTrigger)
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
 
-    expect(screen.getByRole('menu')).toHaveClass('floating-content-motion')
-    expect(screen.getByText('Provider')).toBeInTheDocument()
-    expect(screen.getByText('Model')).toBeInTheDocument()
-    expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Custom model ID')).not.toBeInTheDocument()
-    expect(screen.queryByText('Reasoning')).not.toBeInTheDocument()
-    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    expect(
+      await screen.findByRole('menuitem', { name: 'Extra High (default)' })
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Ultrathink' })).not.toBeInTheDocument()
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Extra High' }))
-    expect(screen.getByText('Reasoning')).toBeInTheDocument()
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
-      'aria-checked',
-      'true'
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Low' }))
+    closeMenus()
+
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Opus · Low')
     )
   })
 
-  it('disables unavailable CLI providers from the backend status map', () => {
+  it('passes the selected Claude effort with the prompt', async () => {
+    renderComposer('conversation-1')
+
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Low' }))
+    closeMenus()
+
+    await setPromptText('quick answer')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'quick answer',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'low', model: 'opus' }
+    })
+  })
+
+  it('persists the effort pick across composer instances', async () => {
+    const first = renderComposer('conversation-1')
+
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Low' }))
+    closeMenus()
+    first.unmount()
+
+    renderComposer('conversation-1')
+
+    expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('Opus · Low')
+  })
+
+  it('passes the selected Claude model with the prompt', async () => {
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+    expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
+
+    await setPromptText('deep answer')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'deep answer',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'sonnet' }
+    })
+  })
+
+  it('hides the section of an unavailable CLI provider', async () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         inFlight: {},
@@ -421,80 +519,18 @@ describe('Composer', () => {
     })
     renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
+    await openModelSubmenu()
 
-    expect(screen.getByRole('menuitem', { name: /codex/i })).toHaveAttribute('data-disabled', '')
+    expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
+    expect(screen.queryByText('Codex')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'GPT-5.5' })).not.toBeInTheDocument()
   })
 
-  it('shows supported Claude effort settings next to the selected provider', () => {
+  it('passes Codex backend options when a Codex model is picked', async () => {
     renderComposer('conversation-1')
 
-    const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent reasoning: Extra High'
-    })
-    expect(settingsTrigger).toHaveClass('rounded-md')
-
-    fireEvent.pointerDown(settingsTrigger)
-
-    expect(screen.getByText('Reasoning')).toBeInTheDocument()
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    )
-    expect(screen.queryByText('Context Window')).not.toBeInTheDocument()
-    expect(screen.queryByRole('menuitemcheckbox', { name: 'Ultrathink' })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
-
-    expect(
-      screen.getByRole('button', {
-        name: 'Agent reasoning: Low'
-      })
-    ).toBeInTheDocument()
-  })
-
-  it('passes the selected Claude effort with the prompt', async () => {
-    renderComposer('conversation-1')
-
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Extra High' }))
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
-
-    await setPromptText('quick answer')
-    await submitPrompt()
-
-    expect(mockSendTurn).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
-      sourceWindowId: 'window-1',
-      text: 'quick answer',
-      attachments: [],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'low', model: 'opus' }
-    })
-  })
-
-  it('passes the selected Claude model with the prompt', async () => {
-    renderComposer('conversation-1')
-
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Claude Opus' }))
-    expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
-
-    await setPromptText('deep answer')
-    await submitPrompt()
-
-    expect(mockSendTurn).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
-      sourceWindowId: 'window-1',
-      text: 'deep answer',
-      attachments: [],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'sonnet' }
-    })
-  })
-
-  it('passes Codex backend options when Codex is selected', async () => {
-    renderComposer('conversation-1')
-
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.5' }))
 
     await setPromptText('create a task')
     await submitPrompt()
@@ -508,38 +544,34 @@ describe('Composer', () => {
     })
   })
 
-  it('shows supported Codex reasoning settings next to the selected provider', async () => {
+  it('shows supported Codex reasoning options once a Codex model is selected', async () => {
     renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.5' })
-
-    const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent reasoning: Medium'
-    })
-    expect(settingsTrigger).toHaveClass('rounded-md')
-
-    fireEvent.pointerDown(settingsTrigger)
-
-    expect(screen.getByText('Reasoning')).toBeInTheDocument()
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Medium (default)' })).toHaveAttribute(
-      'aria-checked',
-      'true'
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.5' }))
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('GPT-5.5 · Medium')
     )
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Low' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitemcheckbox', { name: 'High' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High' })).toBeInTheDocument()
-    expect(screen.queryByRole('menuitemcheckbox', { name: 'Max' })).not.toBeInTheDocument()
+
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
+
+    expect(await screen.findByRole('menuitem', { name: 'Medium (default)' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Low' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'High' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Extra High' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Max' })).not.toBeInTheDocument()
   })
 
   it('passes the selected Codex reasoning with the prompt', async () => {
     renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent reasoning: Medium' }))
-    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'High' }))
+    await openModelSubmenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.5' }))
+    await openSettingsMenu()
+    openSubmenu(screen.getByRole('menuitem', { name: /^effort/i }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'High' }))
+    closeMenus()
 
     await setPromptText('create a task')
     await submitPrompt()
@@ -553,28 +585,11 @@ describe('Composer', () => {
     })
   })
 
-  it('passes the selected Codex model with the prompt', async () => {
-    renderComposer('conversation-1')
-
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.5' }))
-    expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.4' }))
-
-    await setPromptText('create a task')
-    await submitPrompt()
-
-    expect(mockSendTurn).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
-      sourceWindowId: 'window-1',
-      text: 'create a task',
-      attachments: [],
-      backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.4' }
-    })
-  })
-
-  it('uses the highest suggested Codex model as the memrynote default', async () => {
+  it('uses the highest suggested Codex model when none was ever picked', async () => {
+    localStorage.setItem(
+      'memry:agent-model-preference',
+      JSON.stringify({ provider: 'codex_cli', models: {} })
+    )
     vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
       backend,
       supportsCustomModel: true,
@@ -593,12 +608,12 @@ describe('Composer', () => {
     }))
     renderComposer('conversation-1')
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent model: Claude Opus' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-
-    expect(
-      await screen.findByRole('button', { name: 'Agent model: Codex GPT-5.6' })
-    ).toBeInTheDocument()
+    // Opening the menu loads the Codex catalogue, which the default derives from.
+    await openSettingsMenu()
+    closeMenus()
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('GPT-5.6 · Medium')
+    )
 
     await setPromptText('create a task')
     await submitPrompt()
@@ -609,6 +624,71 @@ describe('Composer', () => {
       text: 'create a task',
       attachments: [],
       backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.6' }
+    })
+  })
+
+  it('lists configured local models and passes the pick with the prompt', async () => {
+    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({
+      models: ['llama3', 'qwen2.5']
+    })
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+
+    expect(await screen.findByRole('menuitem', { name: 'llama3' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'llama3' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('llama3')
+    )
+
+    await setPromptText('summarize offline')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'summarize offline',
+      attachments: [],
+      backendOptions: { backend: 'local_openai_compatible', toolsEnabled: true, model: 'llama3' }
+    })
+  })
+
+  it('offers Settings from the local section when no local setup exists', async () => {
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+
+    expect(await screen.findByRole('menuitem', { name: 'Set up in Settings…' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'llama3' })).not.toBeInTheDocument()
+  })
+
+  it('filters models and offers the query as a custom model id', async () => {
+    renderComposer('conversation-1')
+
+    await openModelSubmenu()
+    const search = screen.getByPlaceholderText('Search models…')
+
+    fireEvent.change(search, { target: { value: 'sonn' } })
+    expect(screen.getByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Opus' })).not.toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: 'opus-6' } })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Use "opus-6"' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('agent-model-trigger')).toHaveTextContent('opus-6 · Extra High')
+    )
+
+    await setPromptText('try the new model')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'try the new model',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus-6' }
     })
   })
 
@@ -636,7 +716,7 @@ describe('Composer', () => {
   it('creates a new conversation with selected backend model metadata', async () => {
     renderComposer(null)
 
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Claude Opus' }))
+    await openModelSubmenu()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
 
     await setPromptText('draft a plan')
@@ -1105,6 +1185,31 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'summarize',
       attachments: [{ kind: 'current_note', ref_id: '__current__', label: 'Current brief' }],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
+    })
+  })
+
+  it('drops the current note attachment when the toggle is off', async () => {
+    mockUseActiveTab.mockReturnValue({
+      id: 'tab-1',
+      type: 'note',
+      title: 'Current brief',
+      entityId: 'note-2'
+    })
+    renderComposer('conversation-1')
+
+    await openSettingsMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /include current note/i }))
+    closeMenus()
+
+    await setPromptText('summarize')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'summarize',
+      attachments: [],
       backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
     })
   })
