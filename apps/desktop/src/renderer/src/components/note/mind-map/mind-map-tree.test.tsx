@@ -22,9 +22,29 @@ const map = buildMindMap(
   { rootLabel: 'Test Note', noteId: 'note-1' }
 )
 
+/** Kept apart so the arrow-key walk above stays the shape it was written for. */
+const linkedMap = buildMindMap(
+  [
+    heading('b-alpha', 1, 'Alpha'),
+    {
+      id: 'b-item',
+      type: 'bulletListItem',
+      content: [{ type: 'wikiLink', props: { target: 'Roadmap#Q3', alias: 'the plan' } }]
+    }
+  ],
+  { rootLabel: 'Test Note', noteId: 'note-1' }
+)
+
 function renderTree(): { onActivateNode: ReturnType<typeof vi.fn>; items: HTMLElement[] } {
   const onActivateNode = vi.fn()
-  render(<MindMapTree nodes={map.nodes} label="Map of Test Note" onActivateNode={onActivateNode} />)
+  render(
+    <MindMapTree
+      nodes={map.nodes}
+      label="Map of Test Note"
+      linkHint="link to another page"
+      onActivateNode={onActivateNode}
+    />
+  )
   const items = within(screen.getByRole('tree')).getAllByRole('treeitem')
   return { onActivateNode, items }
 }
@@ -104,6 +124,41 @@ describe('MindMapTree', () => {
     // Tabbing away and back returns the user to where they were, not to the top.
     expect(itemFor(items, 'Alpha').tabIndex).toBe(0)
     expect(root.tabIndex).toBe(-1)
+  })
+
+  it('says a wiki-link node leaves the note, and activates it like any other', () => {
+    const onActivateNode = vi.fn()
+    render(
+      <MindMapTree
+        nodes={linkedMap.nodes}
+        label="Map of Test Note"
+        linkHint="link to another page"
+        onActivateNode={onActivateNode}
+      />
+    )
+    const node = linkedMap.nodes.find((candidate) => candidate.kind === 'wikiLink')!
+    const item = screen
+      .getByRole('tree')
+      .querySelector<HTMLElement>(`[data-mind-map-node="${node.id}"]`)!
+
+    // The picture says this with a colour and a dashed outline; a reader of
+    // this tree cannot see either, so it is said in words.
+    expect(item).toHaveTextContent('the plan link to another page')
+    expect(item).toHaveAttribute('data-mind-map-kind', 'wikiLink')
+    // A leaf: no group, and nothing to expand.
+    expect(item).not.toHaveAttribute('aria-expanded')
+    expect(item).not.toHaveAttribute('aria-checked')
+
+    fireEvent.keyDown(item, { key: 'Enter' })
+    fireEvent.click(item)
+
+    expect(onActivateNode).toHaveBeenCalledTimes(2)
+    expect(onActivateNode.mock.calls[0]).toEqual(onActivateNode.mock.calls[1])
+    expect(onActivateNode.mock.calls[0][0]).toMatchObject({
+      kind: 'wikiLink',
+      wikiTarget: 'Roadmap#Q3',
+      blockId: null
+    })
   })
 
   it('does not activate anything on an arrow key', () => {

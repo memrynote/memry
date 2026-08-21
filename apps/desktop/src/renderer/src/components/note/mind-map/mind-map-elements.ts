@@ -19,9 +19,13 @@ import type { MindMapDirection, MindMapElement, MindMapPositionedNode } from './
 
 /**
  * Authored for the light theme; the drawing library derives the dark one. Calm
- * and restrained on purpose — the map is a reading surface, not a chart. Three
- * treatments, not one per node kind: the title, the structure, and what is
- * already done.
+ * and restrained on purpose — the map is a reading surface, not a chart. Four
+ * treatments, not one per node kind: the title, the structure, what is already
+ * done, and what is not this note at all.
+ *
+ * A wiki link is drawn in a different colour AND with a dashed outline, so "a
+ * piece of this note" and "another document" stay distinguishable without
+ * colour vision.
  */
 const ROOT_STROKE = '#ff671a'
 const ROOT_FILL = '#fff1e8'
@@ -29,6 +33,10 @@ const NODE_STROKE = '#868e96'
 const NODE_FILL = '#ffffff'
 const LABEL_COLOR = '#1e1e1e'
 const EDGE_STROKE = '#adb5bd'
+/** A link out of the note. Blue is what a link has always been. */
+const LINK_STROKE = '#4c6ef5'
+const LINK_FILL = '#edf2ff'
+const LINK_LABEL = '#364fc7'
 /** Ticked items stay on the map and step back from it. */
 const DONE_STROKE = '#ced4da'
 const DONE_FILL = '#f8f9fa'
@@ -38,16 +46,29 @@ const ROUNDNESS = { type: 3 }
 
 /**
  * The deep link a box carries, or `undefined` when there is no note to point
- * at. The root has no block of its own — it is the note's title — so its link
- * carries no anchor, which reads as "this note, from the top".
+ * at.
+ *
+ * Every box needs a link of its OWN, because the link is the only handle a
+ * click on a bitmap has: two boxes sharing one would send a click to whichever
+ * came first. So:
+ *
+ * - a box standing for a block anchors on that block;
+ * - the root has no block — it is the note's title — so it carries no anchor,
+ *   which reads as "this note, from the top";
+ * - a wiki-link box has no block either, so it anchors on its own node id,
+ *   which is minted from the block that held the link and lives exactly as
+ *   long. Where the link actually goes is `wikiTarget` on the node, not this
+ *   href: a wiki target is a title, and turning one into a note id is a
+ *   database lookup this pure pipeline cannot do.
  */
 function nodeLink(node: MindMapPositionedNode, noteId: string | undefined): string | undefined {
   if (!noteId) return undefined
+  const anchorId = node.blockId ?? (node.kind === 'root' ? null : node.id)
   return (
     buildMemryHref({
       kind: 'note',
       id: noteId,
-      anchor: node.blockId ? { type: 'block', id: node.blockId } : null
+      anchor: anchorId ? { type: 'block', id: anchorId } : null
     }) ?? undefined
   )
 }
@@ -130,6 +151,7 @@ export function mintElements(
 
   for (const node of nodes) {
     const isRoot = node.kind === 'root'
+    const isLink = node.kind === 'wikiLink'
     elements.push({
       type: 'rectangle',
       id: node.id,
@@ -138,18 +160,31 @@ export function mintElements(
       y: node.y,
       width: node.width,
       height: node.height,
-      strokeColor: isRoot ? ROOT_STROKE : node.isDone ? DONE_STROKE : NODE_STROKE,
-      backgroundColor: isRoot ? ROOT_FILL : node.isDone ? DONE_FILL : NODE_FILL,
+      strokeColor: isRoot
+        ? ROOT_STROKE
+        : isLink
+          ? LINK_STROKE
+          : node.isDone
+            ? DONE_STROKE
+            : NODE_STROKE,
+      backgroundColor: isRoot
+        ? ROOT_FILL
+        : isLink
+          ? LINK_FILL
+          : node.isDone
+            ? DONE_FILL
+            : NODE_FILL,
       fillStyle: 'solid',
       strokeWidth: 1,
       roughness: 0,
       roundness: ROUNDNESS,
+      ...(isLink && { strokeStyle: 'dashed' as const }),
       label: {
         text: boxText(node),
         fontSize: MIND_MAP_FONT_SIZE,
         textAlign: direction === 'rtl' ? 'right' : 'left',
         verticalAlign: 'middle',
-        strokeColor: node.isDone ? DONE_LABEL : LABEL_COLOR
+        strokeColor: isLink ? LINK_LABEL : node.isDone ? DONE_LABEL : LABEL_COLOR
       }
     })
   }

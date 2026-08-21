@@ -1,10 +1,11 @@
 /**
- * Private helper — a block's inline content becomes a label and its tags.
+ * Private helper — a block's inline content becomes a label, its tags and the
+ * wiki links written inside it.
  *
- * Not exported outside this directory. Two things come out of one walk because
- * they are decided by the same pass: a hash tag becomes a badge on the node, so
- * it must leave the label at exactly the point it is collected, or the tag
- * would be shown twice.
+ * Not exported outside this directory. Three things come out of one walk
+ * because they are decided by the same pass: a hash tag becomes a badge and a
+ * wiki link becomes a node of its own, so both must leave the label at exactly
+ * the point they are collected, or each would be shown twice.
  *
  * Every inline spec Memry registers is content-less (`content: 'none'`) and
  * keeps its visible text in props, so the reader below is prop-driven rather
@@ -14,15 +15,15 @@
 /**
  * Where a content-less inline spec keeps its text, best first.
  *
- * - `wikiLink` → `alias`, else `target`
  * - `linkMention` → `title`, else `domain`, else `url`
  * - `inlineImage` → `alt` (a picture with no alt text contributes nothing)
  * - `dateMention` → `dateISO`, the only date form available without the
  *   renderer's clock and week-start settings
  *
- * `hashTag`'s `tag` is deliberately absent: a tag is a badge, not label text.
+ * `hashTag`'s `tag` and `wikiLink`'s `target`/`alias` are deliberately absent:
+ * a tag is a badge and a wiki link is a branch, neither is label text.
  */
-const INLINE_LABEL_PROPS = ['alias', 'target', 'title', 'alt', 'domain', 'url', 'dateISO'] as const
+const INLINE_LABEL_PROPS = ['title', 'alt', 'domain', 'url', 'dateISO'] as const
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -37,16 +38,28 @@ export function stringProp(props: unknown, key: string): string | null {
   return trimmed === '' ? null : trimmed
 }
 
+/** One `[[wiki link]]`, as the map needs to draw it and to open it. */
+export interface InlineWikiLink {
+  /** The target exactly as written — `Roadmap`, `Roadmap#Q3`, `diagram.pdf`. */
+  target: string
+  /** What the note shows for it: its alias when it has one, else the target. */
+  label: string
+}
+
 export interface InlineRead {
   text: string
   /** In document order, first occurrence wins, `#` already stripped. */
   tags: string[]
+  /** In document order, first occurrence of each target-and-label pair wins. */
+  links: InlineWikiLink[]
 }
 
-/** Total: any inline shape in, a label and its tags out. */
+/** Total: any inline shape in, a label, its tags and its wiki links out. */
 export function readInline(value: unknown): InlineRead {
   const tags: string[] = []
   const seen = new Set<string>()
+  const links: InlineWikiLink[] = []
+  const seenLinks = new Set<string>()
 
   const walk = (node: unknown): string => {
     if (typeof node === 'string') return node
@@ -64,6 +77,24 @@ export function readInline(value: unknown): InlineRead {
       return ''
     }
 
+    // A wiki link leaves the label here and reappears as a node of its own. The
+    // pair is what dedupes, not the target alone: `[[A|first]]` and
+    // `[[A|second]]` in one sentence are two things the note says.
+    if (node.type === 'wikiLink') {
+      const target = stringProp(node.props, 'target')
+      if (target !== null) {
+        const label = stringProp(node.props, 'alias') ?? target
+        // A separator no target or alias can contain, so `[[A B|C]]` and
+        // `[[A|B C]]` stay two distinct links rather than one.
+        const signature = `${target}\u0000${label}`
+        if (!seenLinks.has(signature)) {
+          seenLinks.add(signature)
+          links.push({ target, label })
+        }
+      }
+      return ''
+    }
+
     if (typeof node.text === 'string') return node.text
     if (node.content !== undefined) return walk(node.content)
 
@@ -74,7 +105,7 @@ export function readInline(value: unknown): InlineRead {
     return ''
   }
 
-  return { text: walk(value), tags }
+  return { text: walk(value), tags, links }
 }
 
 /** Collapses runs of whitespace so a wrapped label measures predictably. */

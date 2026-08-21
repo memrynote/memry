@@ -794,17 +794,8 @@ export function NotePage({ noteId }: NotePageProps) {
     onEditorReady: review.handleEditorReady
   })
   const { refresh: refreshMindMap } = mindMap
-  // One handler for the outline panel and for both projections of the map, so
-  // a heading click cannot mean two different things depending on what else is
-  // on screen. The map closes first; see the hook for why that is not optional.
   const getEditorContainer = useCallback(() => editorContainerRef.current, [])
   const getNoteBody = useCallback(() => noteBodyRef.current, [])
-  const mindMapNavigation = useMindMapNavigation({
-    close: mindMap.close,
-    getContainer: getEditorContainer,
-    getTopElement: getNoteBody,
-    smooth: !prefersReducedMotion
-  })
   // The map is built when it opens, but a restored tab reopens it before the
   // body has finished loading. The heading set arriving is the signal that the
   // block tree behind the map is real.
@@ -1252,6 +1243,30 @@ export function NotePage({ noteId }: NotePageProps) {
     },
     [openTab, linkedTasks]
   )
+
+  // One handler for the outline panel and for both projections of the map, so
+  // a heading click cannot mean two different things depending on what else is
+  // on screen. The map closes first; see the hook for why that is not optional.
+  //
+  // The two kinds that leave this note are handed the page's OWN handlers —
+  // the same `handleInternalLinkClick` a `[[…]]` in the body goes through, and
+  // the same `handleLinkedTaskClick` the linked-tasks panel goes through — so
+  // the map invents no tab behaviour of its own and inherits the
+  // open-in-new-tab preference the user already set. Declared here rather than
+  // beside the map's own state because both of those handlers are defined
+  // above it.
+  const openLinkedNote = useCallback(
+    (wikiTarget: string) => void handleInternalLinkClick(wikiTarget),
+    [handleInternalLinkClick]
+  )
+  const mindMapNavigation = useMindMapNavigation({
+    close: mindMap.close,
+    getContainer: getEditorContainer,
+    getTopElement: getNoteBody,
+    smooth: !prefersReducedMotion,
+    openNote: openLinkedNote,
+    openTask: handleLinkedTaskClick
+  })
 
   // ============================================================================
   // Render

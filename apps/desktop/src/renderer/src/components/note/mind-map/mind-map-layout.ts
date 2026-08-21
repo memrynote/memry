@@ -138,6 +138,8 @@ export function layoutMindMap(
       level: item.node.level,
       depth: item.node.depth,
       isDone: item.node.isDone,
+      taskId: item.node.taskId,
+      wikiTarget: item.node.wikiTarget,
       tags: item.node.tags,
       contents: item.node.contents,
       detail: item.node.detail,

@@ -13,12 +13,25 @@ function heading(id: string, level: number, text: string): MindMapSourceBlock {
   return { id, type: 'heading', props: { level }, content: [{ type: 'text', text }] }
 }
 
-const map = buildMindMap([heading('b-alpha', 1, 'Alpha')], {
-  rootLabel: 'Test Note',
-  noteId: 'note-1'
-})
+const map = buildMindMap(
+  [
+    heading('b-alpha', 1, 'Alpha'),
+    {
+      id: 'b-item',
+      type: 'bulletListItem',
+      content: [{ type: 'wikiLink', props: { target: 'Roadmap', alias: 'the plan' } }]
+    },
+    { id: 'b-task', type: 'taskBlock', props: { taskId: 't-1', title: 'Cut the build' } }
+  ],
+  {
+    rootLabel: 'Test Note',
+    noteId: 'note-1'
+  }
+)
 const alpha = map.nodes.find((node) => node.label === 'Alpha')!
 const root = map.nodes.find((node) => node.kind === 'root')!
+const link = map.nodes.find((node) => node.kind === 'wikiLink')!
+const task = map.nodes.find((node) => node.kind === 'task')!
 
 let container: HTMLElement
 let top: HTMLElement
@@ -27,15 +40,19 @@ let scrolled: Array<{ target: Element; options: boolean | ScrollIntoViewOptions 
 
 function setup(options: { smooth?: boolean } = {}) {
   const close = vi.fn()
+  const openNote = vi.fn()
+  const openTask = vi.fn()
   const view = renderHook(() =>
     useMindMapNavigation({
       close,
       getContainer: () => container,
       getTopElement: () => top,
-      smooth: options.smooth ?? true
+      smooth: options.smooth ?? true,
+      openNote,
+      openTask
     })
   )
-  return { close, view }
+  return { close, openNote, openTask, view }
 }
 
 /** The block, once whatever gates the editor's render has let it through. */
@@ -130,6 +147,32 @@ describe('useMindMapNavigation', () => {
 
     expect(fromMap).toEqual([{ target: block, options: { behavior: 'smooth', block: 'start' } }])
     expect(scrolled).toEqual(fromMap)
+  })
+
+  it('hands a wiki-link node to the page, leaving the map where it was', () => {
+    const { close, openNote, openTask, view } = setup()
+
+    act(() => view.result.current.activateNode(link))
+
+    // The target as written — the page's own wiki-link handler resolves it, so
+    // the map inherits the open-in-new-tab preference instead of inventing one.
+    expect(openNote).toHaveBeenCalledWith('Roadmap')
+    expect(openTask).not.toHaveBeenCalled()
+    // Nothing in THIS note was asked for, so nothing here closes or scrolls:
+    // the linked note arrives in whichever tab the preference says.
+    expect(close).not.toHaveBeenCalled()
+    expect(scrolled).toEqual([])
+  })
+
+  it('hands a task node to the page, leaving the map where it was', () => {
+    const { close, openNote, openTask, view } = setup()
+
+    act(() => view.result.current.activateNode(task))
+
+    expect(openTask).toHaveBeenCalledWith('t-1')
+    expect(openNote).not.toHaveBeenCalled()
+    expect(close).not.toHaveBeenCalled()
+    expect(scrolled).toEqual([])
   })
 
   it('honours a request for less motion', () => {

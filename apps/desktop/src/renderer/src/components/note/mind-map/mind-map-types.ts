@@ -37,7 +37,9 @@ export interface MindMapSourceBlock {
  * bookmarks, files — is counted on its parent instead (see
  * `MindMapContentKind`) rather than drawn, and is never silently dropped.
  *
- * Wiki links become their own kind in later work.
+ * A wiki link is the one kind that is not a piece of THIS note: it points at
+ * another document, which is a real branch rather than decoration on the label
+ * that happened to contain it.
  */
 export type MindMapNodeKind =
   | 'root'
@@ -54,6 +56,11 @@ export type MindMapNodeKind =
   | 'toggle'
   /** Memry's `callout` — branches into its children. */
   | 'callout'
+  /**
+   * A `[[wiki link]]` lifted out of the text that held it. Always a leaf: what
+   * is inside the note it names is the graph view's question, not this one's.
+   */
+  | 'wikiLink'
 
 /**
  * Content that is not structure. It never becomes a node; it is counted on the
@@ -86,6 +93,22 @@ export interface MindMapNode {
   depth: number
   /** A ticked checklist item or task. Always false for other kinds. */
   isDone: boolean
+  /**
+   * The task a `task` node stands for, so activating it can open the task
+   * rather than the block that mentions it. Null for every other kind, and for
+   * a task block that carries no id yet.
+   */
+  taskId: string | null
+  /**
+   * What a `wikiLink` node points at, exactly as the link was written —
+   * `Roadmap`, `Roadmap#Q3`, `diagram.pdf`. Null for every other kind.
+   *
+   * The target rather than a resolved id, because resolving a wiki target is a
+   * database lookup and this pipeline is pure. The note page hands it to the
+   * same resolver a `[[…]]` in the body goes through, so the map opens a link
+   * exactly the way the editor does.
+   */
+  wikiTarget: string | null
   /** Inline hash tags found in this node's own text. User content, `#` stripped. */
   tags: string[]
   /** Content sitting under this node that is not drawn, in a stable order. */
@@ -109,6 +132,8 @@ export interface MindMapPositionedNode {
   level: number | null
   depth: number
   isDone: boolean
+  taskId: string | null
+  wikiTarget: string | null
   tags: string[]
   contents: MindMapContentCount[]
   detail: string
@@ -133,6 +158,13 @@ export interface MindMapBoxElement {
   strokeWidth: number
   roughness: number
   roundness: { type: number }
+  /**
+   * Absent — the drawing library's own default, a solid outline — for every box
+   * that stands for a piece of this note. A wiki-link box is dashed, so "part
+   * of this note" and "another document" differ by outline as well as by
+   * colour, and are still told apart without colour vision.
+   */
+  strokeStyle?: 'dashed'
   label: {
     text: string
     fontSize: number

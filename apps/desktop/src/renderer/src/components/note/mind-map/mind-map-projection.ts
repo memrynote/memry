@@ -2,7 +2,7 @@
  * Private step 1 — an editor block tree becomes a logical mind-map tree.
  *
  * Not exported outside this directory: `buildMindMap` is the only seam, so this
- * file is free to change shape as later tickets add wiki links and caps.
+ * file is free to change shape as later tickets add caps.
  *
  * Two hierarchy mechanisms are merged in one pass, and they work nothing alike:
  *
@@ -21,9 +21,15 @@
  * not — but content is never silently invisible. A toggle really holds
  * children, so flattening it would destroy something the user wrote; a table is
  * content, so it is counted on the nearest node instead of being drawn.
+ *
+ * A wiki link is the one thing here that is not part of this note at all. It
+ * leaves the label of whatever held it and becomes a leaf of its own, the same
+ * way a hash tag leaves the label and becomes a badge — a link points at
+ * another document, and that is a branch rather than a word in a sentence.
  */
 
 import { normalizeLabel, readInline, stringProp, isRecord } from './mind-map-inline'
+import type { InlineWikiLink } from './mind-map-inline'
 import type {
   MindMapContentCount,
   MindMapContentKind,
@@ -118,6 +124,11 @@ function listStart(props: unknown): number | null {
  * - A block with nothing to show — no text and no tags — draws no box and does
  *   not join the level stack; whatever sits under it folds up to the nearest
  *   ancestor that does have something to show, rather than disappearing.
+ * - A wiki link becomes a leaf under the node its block belongs to, wherever it
+ *   was written: a heading, a list item, or a paragraph that is no node itself.
+ *   A block whose only content was its links therefore hands them straight to
+ *   its own parent, so a bullet list of links is a fan of links and not a fan
+ *   of empty boxes each holding one.
  */
 export function projectBlocks(
   blocks: readonly MindMapSourceBlock[],
@@ -131,6 +142,8 @@ export function projectBlocks(
     level: null,
     depth: 0,
     isDone: false,
+    taskId: null,
+    wikiTarget: null,
     tags: [],
     contents: [],
     detail: '',
@@ -156,6 +169,43 @@ export function projectBlocks(
     const counts = tallies.get(node) ?? new Map<MindMapContentKind, number>()
     counts.set(kind, (counts.get(kind) ?? 0) + 1)
     tallies.set(node, counts)
+  }
+
+  /**
+   * One leaf per wiki link written in a block, under whatever node that block
+   * belongs to — the block's own node when it minted one, otherwise the node
+   * the block itself would have hung from.
+   *
+   * Always a leaf: what is inside the note a link names is the graph view's
+   * question, not this one's.
+   *
+   * `blockId` is null on purpose. A wiki link is a run of inline content and
+   * not a block; and `blockId` is what a click navigates TO, so a link sharing
+   * its sentence's block id would send a click on the link to the sentence.
+   * What the link opens is carried in `wikiTarget` instead.
+   */
+  const addLinks = (
+    parent: MindMapNode,
+    blockId: string,
+    links: readonly InlineWikiLink[]
+  ): void => {
+    links.forEach((link, index) => {
+      parent.children.push({
+        id: mintId(`${blockId}-link-${index + 1}`),
+        blockId: null,
+        label: link.label,
+        kind: 'wikiLink',
+        level: null,
+        depth: parent.depth + 1,
+        isDone: false,
+        taskId: null,
+        wikiTarget: link.target,
+        tags: [],
+        contents: [],
+        detail: '',
+        children: []
+      })
+    })
   }
 
   /**
@@ -186,6 +236,10 @@ export function projectBlocks(
       if (kind === undefined) {
         const contentKind = CONTENT_KINDS.get(block.type)
         if (contentKind !== undefined) tally(parentIn(scope), contentKind)
+        // A paragraph is never a node, but a wiki link written in one is still
+        // somewhere this note reaches, so it branches off the node the
+        // paragraph belongs to rather than being lost with it.
+        addLinks(parentIn(scope), block.id, readInline(block.content).links)
         // Paragraphs, dividers and anything unregistered contribute no node and
         // never re-parent what is inside them.
         visitBlocks(block.children ?? [], scope)
@@ -195,13 +249,15 @@ export function projectBlocks(
       // A `taskBlock` has no inline content; its text is a prop.
       const read =
         kind === 'task'
-          ? { text: stringProp(block.props, 'title') ?? '', tags: [] }
+          ? { text: stringProp(block.props, 'title') ?? '', tags: [], links: [] }
           : readInline(block.content)
       const text = normalizeLabel(read.text)
 
       // Nothing to show: no box, no level-stack entry, and its children fold up
-      // to whatever this block's own parent was.
+      // to whatever this block's own parent was. Its links fold up with them —
+      // `- [[Roadmap]]` is a branch to Roadmap, not an empty box holding one.
       if (text === '' && read.tags.length === 0) {
+        addLinks(parentIn(scope), block.id, read.links)
         visitBlocks(block.children ?? [], scope)
         continue
       }
@@ -222,6 +278,11 @@ export function projectBlocks(
         level,
         depth: parent.depth + 1,
         isDone: (kind === 'check' || kind === 'task') && isChecked(block.props),
+        // Carried so activating a task node opens the task rather than the
+        // block that mentions it (#1667). A task block written by a build that
+        // never set one has none, and the node says so rather than inventing it.
+        taskId: kind === 'task' ? stringProp(block.props, 'taskId') : null,
+        wikiTarget: null,
         tags: read.tags,
         contents: [],
         detail: '',
@@ -230,6 +291,9 @@ export function projectBlocks(
       parent.children.push(node)
       if (level !== null) scope.stack.push({ level, node })
 
+      // The links written in this block come before the blocks written inside
+      // it, which is the order the note reads in.
+      addLinks(node, block.id, read.links)
       visitBlocks(block.children ?? [], { container: node, stack: [] })
     }
   }
