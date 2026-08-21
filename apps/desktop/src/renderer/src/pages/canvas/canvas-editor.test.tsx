@@ -15,18 +15,21 @@
  *    save-to-disk file dialog.
  */
 
-import { act, fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { buildMindMap } from '@/components/note/mind-map'
+import { mindMapDestinations } from '@/components/note/mind-map/mind-map-destination'
 import { mintSnapshotElements } from '@/components/note/mind-map/mind-map-snapshot'
+import type { MindMapBoxElement, MindMapElement } from '@/components/note/mind-map/mind-map-types'
 import { CanvasEditor } from './canvas-editor'
 import { clearCardTitleCache } from './canvas-link-target-title'
 
 interface FakeApi {
   getSceneElements: () => unknown[]
-  getAppState: () => { isLoading: boolean; selectedElementIds: Record<string, boolean> }
+  getAppState: () => Record<string, unknown>
+  onChange: (listener: () => void) => () => void
   getFiles: () => Record<string, unknown>
   scrollToContent: (...args: unknown[]) => void
   updateScene: (...args: unknown[]) => void
@@ -115,8 +118,22 @@ vi.mock('@excalidraw/excalidraw', () => ({
         getSceneElements: () => mocks.api.elements,
         getAppState: () => ({
           isLoading: mocks.api.isLoading,
-          selectedElementIds: mocks.api.selectedElementIds
+          selectedElementIds: mocks.api.selectedElementIds,
+          // The camera and the tool, which the node-link overlay reads before
+          // it will answer a hover. Identity camera: a client point is a scene
+          // point, so a test can aim at an element's own coordinates.
+          activeTool: { type: 'selection' },
+          selectedElementsAreBeingDragged: false,
+          resizingElement: null,
+          offsetLeft: 0,
+          offsetTop: 0,
+          scrollX: 0,
+          scrollY: 0,
+          zoom: { value: 1 }
         }),
+        // The overlay re-answers its hover on every committed change; nothing
+        // in these suites drives one, so the subscription only has to exist.
+        onChange: () => () => {},
         getFiles: () => ({}),
         scrollToContent: (...args: unknown[]) => mocks.scrollToContent(...args),
         updateScene: (...args: unknown[]) => mocks.updateScene(...args)
@@ -127,6 +144,12 @@ vi.mock('@excalidraw/excalidraw', () => ({
   },
   serializeAsJSON: (elements: unknown[], ...rest: unknown[]) =>
     mocks.serializeAsJSON(elements, ...rest),
+  // The identity camera the fake appState describes, so the overlay's hit test
+  // can be aimed with plain element coordinates.
+  viewportCoordsToSceneCoords: (point: { clientX: number; clientY: number }) => ({
+    x: point.clientX,
+    y: point.clientY
+  }),
   languages: [],
   defaultLang: { code: 'en' },
   // Library persistence is covered by the adapter's own tests; here it only
@@ -552,12 +575,13 @@ describe('CanvasEditor link opening', () => {
   /**
    * The receiving half of a saved mind map's links.
    *
-   * The href is not typed out here — it is minted by the real snapshot path, so
-   * this is the actual round trip: what the mind map WRITES into a canvas is
-   * what this editor READS back out of one. Typing the string by hand would let
-   * the two drift apart and still pass.
+   * Nothing here is typed out by hand — the scene is minted by the real
+   * snapshot path and the click goes through the real overlay, so this is the
+   * actual round trip: what the mind map WRITES into a canvas is what this
+   * editor READS back out of one. A hand-written href would let the two drift
+   * apart and still pass.
    */
-  it('lands a heading-anchored note link at that heading, not at the top', async () => {
+  function savedMindMap(): { elements: MindMapElement[]; listBox: MindMapBoxElement } {
     const map = buildMindMap(
       [
         {
@@ -576,15 +600,44 @@ describe('CanvasEditor link opening', () => {
     )
     const elements = mintSnapshotElements(map, { noteId: 'n1', generatedLabel: 'Snapshot' })
     const listBox = elements.find(
-      (element) => element.type === 'rectangle' && element.id === 'mm-b-li'
+      (element): element is MindMapBoxElement =>
+        element.type === 'rectangle' && element.id === 'mm-b-li'
     )
-    const href = listBox?.type === 'rectangle' ? listBox.link : undefined
+    if (!listBox) throw new Error('the saved map no longer draws a box for the list item')
+    return { elements, listBox }
+  }
+
+  /** Moves the pointer onto a box, which is what summons the overlay's card. */
+  function hover(box: MindMapBoxElement): void {
+    fireEvent.pointerMove(screen.getByTestId('excalidraw'), {
+      clientX: box.x + box.width / 2,
+      clientY: box.y + box.height / 2
+    })
+  }
+
+  /**
+   * The load-bearing half of "a saved map reads like the map it was saved
+   * from": the drawing library paints its permanent glyph off `element.link`,
+   * so a saved map must not put its href there.
+   */
+  it('leaves `element.link` empty on a saved map, so no box wears a glyph', () => {
+    const { elements } = savedMindMap()
+
+    for (const element of elements) {
+      expect(element).not.toHaveProperty('link')
+    }
+  })
+
+  it('lands a heading-anchored note link at that heading, not at the top', async () => {
+    const { elements, listBox } = savedMindMap()
     // A list item borrows the heading above it: heading TEXT is the only anchor
     // that still means anything on a device that never minted these block ids.
-    expect(href).toBe('memry://note/n1#Risks')
+    expect(listBox.customData?.memryHref).toBe('memry://note/n1#Risks')
+    mocks.api.elements = elements
 
     render(<CanvasEditor canvasId="c1" initialScene="" />)
-    clickLink(href!)
+    hover(listBox)
+    fireEvent.click(screen.getByTestId('canvas-node-link-card'))
     await act(async () => {})
 
     expect(mocks.openTab).toHaveBeenCalledWith(
@@ -594,6 +647,46 @@ describe('CanvasEditor link opening', () => {
         viewState: { headingText: 'Risks' }
       })
     )
+  })
+
+  it('names the destination on hover instead of printing the href', () => {
+    const map = buildMindMap(
+      [
+        {
+          id: 'b-h',
+          type: 'heading',
+          props: { level: 1 },
+          content: [{ type: 'text', text: 'Risks' }]
+        }
+      ],
+      { rootLabel: 'Roadmap', noteId: 'n1' }
+    )
+    const elements = mintSnapshotElements(map, {
+      noteId: 'n1',
+      generatedLabel: 'Snapshot',
+      labels: mindMapDestinations(map.nodes)
+    })
+    const headingBox = elements.find(
+      (element): element is MindMapBoxElement =>
+        element.type === 'rectangle' && element.id === 'mm-b-h'
+    )!
+    mocks.api.elements = elements
+
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    hover(headingBox)
+
+    // The name the save froze into the href, read back out of it — never
+    // `memry://note/n1#Risks`.
+    expect(screen.getByTestId('canvas-node-link-card')).toHaveTextContent('Roadmap → Risks')
+  })
+
+  it('shows nothing over a shape that carries no map link', () => {
+    mocks.api.elements = [{ id: 'plain', type: 'rectangle', x: 0, y: 0, width: 50, height: 50 }]
+
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    fireEvent.pointerMove(screen.getByTestId('excalidraw'), { clientX: 10, clientY: 10 })
+
+    expect(screen.queryByTestId('canvas-node-link-card')).toBeNull()
   })
 
   it('opens at the top when the link names a block, which this device never minted', async () => {

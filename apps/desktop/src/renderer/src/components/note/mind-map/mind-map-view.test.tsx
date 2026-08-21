@@ -73,6 +73,25 @@ vi.mock('./mind-map-canvas', () => ({
   }
 }))
 
+/** The slice of a saved element these assertions read. */
+interface SavedElement {
+  type: string
+  id: string
+  link?: string
+  strokeStyle?: string
+  customData?: { memryHref?: string }
+}
+
+/**
+ * Where a saved box carries its deep link.
+ *
+ * `customData`, never `element.link`: that field is what the drawing library
+ * paints its permanent glyph from, and a map is nothing but linked boxes.
+ */
+function hrefOf(element: SavedElement): string | undefined {
+  return element.customData?.memryHref
+}
+
 const BLOCKS: MindMapSourceBlock[] = [
   { id: 'b-h1', type: 'heading', props: { level: 1 }, content: [{ type: 'text', text: 'Alpha' }] }
 ]
@@ -337,18 +356,14 @@ describe('MindMapView toolbar', () => {
     // Asked the same resolver a `[[…]]` in the note body goes through.
     expect(mocks.resolveWikiLink).toHaveBeenCalledWith('Roadmap')
 
-    const elements = mocks.toCanvasScene.mock.calls[0][0] as Array<{
-      type: string
-      link?: string
-      strokeStyle?: string
-    }>
+    const elements = mocks.toCanvasScene.mock.calls[0][0] as SavedElement[]
     // The saved box opens the note it names, on any device — not a node id only
     // this session could have understood — and it says so in words, because the
-    // canvas' own bubble prints the href verbatim unless the href names itself.
-    expect(elements.some((element) => element.link === 'memry://note/n2?label=Roadmap#Plan')).toBe(
-      true
-    )
-    expect(elements.every((element) => !element.link?.includes('#^'))).toBe(true)
+    // affordance a canvas renders for it has nothing but the href to read.
+    expect(
+      elements.some((element) => hrefOf(element) === 'memry://note/n2?label=Roadmap#Plan')
+    ).toBe(true)
+    expect(elements.every((element) => !hrefOf(element)?.includes('#^'))).toBe(true)
   })
 
   it('names every saved link, so a canvas hovers as words rather than as a URL', async () => {
@@ -370,25 +385,47 @@ describe('MindMapView toolbar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
     await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
 
-    const boxes = (
-      mocks.toCanvasScene.mock.calls[0][0] as Array<{ type: string; id: string; link?: string }>
-    ).filter((element) => element.type === 'rectangle')
+    const boxes = (mocks.toCanvasScene.mock.calls[0][0] as SavedElement[]).filter(
+      (element) => element.type === 'rectangle'
+    )
 
     // Every one of them, not just the interesting ones: a canvas with one URL
     // left in it still hovers as a URL.
     expect(boxes.length).toBeGreaterThan(0)
     for (const box of boxes) {
-      expect(new URL(box.link!).searchParams.get('label')).toBeTruthy()
+      expect(new URL(hrefOf(box)!).searchParams.get('label')).toBeTruthy()
     }
 
     const item = boxes.find((box) => box.id.endsWith('b-item'))!
     // The destination, as a chain: the section it lands in, then the row. The
     // separator is the only translated part.
-    expect(new URL(item.link!).searchParams.get('label')).toBe(
+    expect(new URL(hrefOf(item)!).searchParams.get('label')).toBe(
       '\u2026 \u2192 Q3 Risks \u2192 Hire a designer'
     )
     // And the label never disturbs the anchor, which is what actually resolves.
-    expect(item.link).toContain('#Q3%20Risks')
+    expect(hrefOf(item)).toContain('#Q3%20Risks')
+  })
+
+  it('leaves `element.link` empty, so no saved box wears the library glyph', async () => {
+    renderView([
+      {
+        id: 'b-h1',
+        type: 'heading',
+        props: { level: 1 },
+        content: [{ type: 'text', text: 'Q3 Risks' }]
+      }
+    ])
+    await screen.findByRole('toolbar')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save as canvas' }))
+    await waitFor(() => expect(mocks.toCanvasScene).toHaveBeenCalledTimes(1))
+
+    // The glyph's only condition is `element.link`, hover-gated by nothing. A
+    // saved map keeps its href in `customData` for exactly that reason, and
+    // `CanvasEditor` renders the same hover affordance the drawn map does.
+    const elements = mocks.toCanvasScene.mock.calls[0][0] as SavedElement[]
+    expect(elements.some((element) => hrefOf(element) !== undefined)).toBe(true)
+    expect(elements.every((element) => element.link === undefined)).toBe(true)
   })
 
   it('hands the drawing a name for every box it drew, keyed the way a click arrives', async () => {

@@ -117,13 +117,14 @@ export interface MintElementsOptions {
  * click on a bitmap has: two boxes sharing one would send a click to whichever
  * came first.
  *
- * WHERE the box carries it differs by mode, and that is not cosmetic. In a file
- * it goes in `element.link`, which is what makes the box clickable in an
- * ordinary canvas at all. On the drawn map it goes in `customData` instead:
- * `element.link` also paints a permanent blue glyph, one per linked element,
- * and on a map where EVERY box is linked that marks nothing and buries the one
- * thing the picture is for — its shape. The map renders its own hover
- * affordance from this href instead (see `mind-map-hover.ts`).
+ * WHERE the box carries it is the same in both modes, and that is not
+ * cosmetic: it goes in `customData`, never in `element.link`. `element.link`
+ * paints a permanent blue glyph, one per linked element, and on a map where
+ * EVERY box is linked that marks nothing and buries the one thing the picture
+ * is for — its shape. Both surfaces render their own hover affordance from
+ * this href instead: the drawn map in `mind-map-canvas.tsx`, a saved canvas in
+ * `canvas-node-link-overlay.tsx`, off the same key and the same hit test
+ * (`mind-map-hover.ts`).
  *
  * **On screen (`block`)** the link is an address within this session:
  *
@@ -293,15 +294,9 @@ export function mintElements(
         ? [rootDetail, node.detail].filter((part) => part !== '').join(' · ')
         : node.detail
     const href = nodeLink(node, { noteId, anchor, wikiHrefs, labels })
-    // One href, two homes. See `nodeLink` for why the drawn map keeps its out
-    // of `link`: that field is what paints the glyph, and a map is nothing but
-    // linked boxes.
-    const address =
-      href === undefined
-        ? {}
-        : anchor === 'heading'
-          ? { link: href }
-          : { customData: { memryHref: href } }
+    // One href, one home. See `nodeLink` for why it stays out of `link`: that
+    // field is what paints the glyph, and a map is nothing but linked boxes.
+    const address = href === undefined ? {} : { customData: { memryHref: href } }
     elements.push({
       type: 'rectangle',
       id: node.id,
