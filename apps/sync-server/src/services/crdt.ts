@@ -193,25 +193,50 @@ export const getUpdates = async (
 }
 
 /**
- * The one statement that reads snapshot metadata for a whole batch of notes.
+ * D1 rejects any single query carrying more than 100 bound parameters, and the
+ * rejection is a 500 on the whole request, not a partial result. Mirrors the
+ * constant in `services/sync.ts`; the margin under 100 is deliberate.
+ */
+const D1_MAX_BIND_PARAMS = 95
+
+/**
+ * The statements that read snapshot metadata for a whole batch of notes.
  *
- * Handed back as a prepared statement rather than executed here so
- * `getBatchUpdates` can append it to the `db.batch()` it already sends: this is
- * one extra statement on an existing round trip, not a second round trip.
+ * Handed back as prepared statements rather than executed here so
+ * `getBatchUpdates` can append them to the `db.batch()` it already sends: extra
+ * statements on an existing round trip, not a second round trip.
+ *
+ * Split at the bind-parameter ceiling. The batch pull accepts up to 100 notes
+ * (`CrdtBatchPullSchema`), and user_id + vault_id are bound ahead of the ids, so
+ * one statement for a full chunk asked D1 for 102 parameters and failed the
+ * entire pull with a 500. That only bites on FULL chunks — a fresh install or a
+ * reinstall, where the sweep has enough notes to fill one — which is precisely
+ * the case where no device has the bodies yet.
  */
 const getBatchSnapshotMeta = (
   db: D1Database,
   userId: string,
   vaultId: string,
   noteIds: string[]
-): D1PreparedStatement =>
-  db
-    .prepare(
-      `SELECT id, note_id, sequence_num, revision, created_at, size_bytes, signer_device_id
+): D1PreparedStatement[] => {
+  const perStatement = D1_MAX_BIND_PARAMS - 2
+  const statements: D1PreparedStatement[] = []
+
+  for (let i = 0; i < noteIds.length; i += perStatement) {
+    const chunk = noteIds.slice(i, i + perStatement)
+    statements.push(
+      db
+        .prepare(
+          `SELECT id, note_id, sequence_num, revision, created_at, size_bytes, signer_device_id
        FROM crdt_snapshots
-       WHERE user_id = ? AND vault_id = ? AND note_id IN (${noteIds.map(() => '?').join(', ')})`
+       WHERE user_id = ? AND vault_id = ? AND note_id IN (${chunk.map(() => '?').join(', ')})`
+        )
+        .bind(userId, vaultId, ...chunk)
     )
-    .bind(userId, vaultId, ...noteIds)
+  }
+
+  return statements
+}
 
 export const getBatchUpdates = async (
   db: D1Database,
@@ -233,7 +258,7 @@ export const getBatchUpdates = async (
       .bind(userId, vaultId, n.noteId, n.since, limitPerNote + 1)
   )
   statements.push(
-    getBatchSnapshotMeta(
+    ...getBatchSnapshotMeta(
       db,
       userId,
       vaultId,
@@ -254,8 +279,11 @@ export const getBatchUpdates = async (
 
   // A note absent from this map has no server snapshot at all.
   const snapshotMeta: Record<string, CrdtSnapshotMeta> = {}
-  const metaRows =
-    (batchResults[notes.length] as D1Result<CrdtSnapshot> | undefined)?.results ?? []
+  // Everything past the per-note statements is metadata, however many statements
+  // the bind-parameter split turned it into.
+  const metaRows = batchResults
+    .slice(notes.length)
+    .flatMap((result) => (result as D1Result<CrdtSnapshot>).results ?? [])
   for (const row of metaRows) {
     snapshotMeta[row.note_id] = {
       sequenceNum: row.sequence_num,

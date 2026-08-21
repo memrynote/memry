@@ -60,6 +60,13 @@ function createD1Database(): D1Database {
 
       const prepared = {
         bind(...nextParams: unknown[]) {
+          // D1 refuses a query with more than 100 bound parameters and answers
+          // the whole request with an error. A double that accepts any number of
+          // them is the reason a 100-note batch pull could ship green here and
+          // 500 against a real database.
+          if (nextParams.length > 100) {
+            throw new Error('D1_ERROR: too many SQL variables')
+          }
           params = nextParams
           return prepared
         },
@@ -421,6 +428,36 @@ describe('CRDT service sequencing', () => {
     expect(result.notes['note-2'].updates.map((update) => update.sequence_num)).toEqual([1])
   })
 
+  // The batch pull accepts 100 notes, and a fresh install is the one caller that
+  // actually sends full chunks. A single metadata statement for all of them bound
+  // 102 parameters, over D1's ceiling, and took the entire pull down with a 500 —
+  // so the devices with no bodies yet were the only ones that could not get them.
+  it('pulls a full 100-note batch without exceeding the D1 bind-parameter ceiling', async () => {
+    // #given a full chunk of notes, one of which has a snapshot and updates
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    await storeUpdates(db, 'user-1', 'vault-1', 'note-42', 'device-a', [bytes('a1')])
+    await storeSnapshot(db, storage, 'user-1', 'vault-1', 'note-99', 'device-a', bytes('snap'))
+
+    const notes = Array.from({ length: 100 }, (_, i) => ({ noteId: `note-${i}`, since: 0 }))
+
+    // #when the whole chunk is pulled in one request
+    const result = await getBatchUpdates(db, 'user-1', 'vault-1', notes, 10)
+
+    // #then every note is answered, and the metadata split across statements is
+    // still collected as one map
+    expect(Object.keys(result.notes)).toHaveLength(100)
+    expect(result.notes['note-42'].updates.map((update) => update.sequence_num)).toEqual([1])
+    const snapshot = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-99')
+    expect(result.snapshotMeta['note-99']).toEqual({
+      sequenceNum: snapshot!.sequenceNum,
+      revision: snapshot!.revision,
+      signerDeviceId: 'device-a'
+    })
+    expect(result.snapshotMeta['note-42']).toBeUndefined()
+  })
+
   it('returns an empty batch result when no notes are requested', async () => {
     const db = createD1Database()
 
@@ -552,7 +589,13 @@ describe('CRDT service sequencing', () => {
 
     // #when both paths read it
     const snapshot = await getSnapshot(db, storage, 'user-1', 'vault-1', 'note-1')
-    const batch = await getBatchUpdates(db, 'user-1', 'vault-1', [{ noteId: 'note-1', since: 0 }], 10)
+    const batch = await getBatchUpdates(
+      db,
+      'user-1',
+      'vault-1',
+      [{ noteId: 'note-1', since: 0 }],
+      10
+    )
 
     // #then the token is derived from the row and is identical across them
     expect(snapshot?.revision).toBe('legacy:snap-legacy:1700000000:42')
