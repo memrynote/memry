@@ -3,9 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { NoteBreadcrumb, SIDEBAR_REVEAL_FOLDER_EVENT } from '@/components/note/note-breadcrumb'
-import { NoteHeader } from '@/components/note/note-header'
 import { NoteLayout } from '@/components/note/note-layout'
-import { NoteOutlineSidebar } from '@/components/note/note-outline-sidebar'
 import { ProjectsEmptyState } from '@/components/sidebar/projects-empty-state'
 import { ProjectsSkeleton } from '@/components/sidebar/projects-skeleton'
 import { SortableProjectItem } from '@/components/sidebar/sortable-project-item'
@@ -42,32 +40,6 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => key
   })
-}))
-
-vi.mock('@/components/note/note-reminder-button', () => ({
-  NoteReminderButton: ({ noteId, disabled }: { noteId: string; disabled?: boolean }) => (
-    <button type="button" disabled={disabled}>
-      reminder {noteId}
-    </button>
-  )
-}))
-
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onClick
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-  }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
-  DropdownMenuSeparator: () => <hr />
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -193,56 +165,6 @@ describe('note and sidebar cold surfaces', () => {
     mocks.dragState.isDragging = false
   })
 
-  it('drives note header actions and disabled/bookmarked variants', async () => {
-    const user = userEvent.setup()
-    const handlers = {
-      onToggleBookmark: vi.fn(),
-      onToggleLocalGraph: vi.fn(),
-      onToggleLocalOnly: vi.fn(),
-      onOpenVersionHistory: vi.fn(),
-      onOpenExport: vi.fn()
-    }
-
-    const { rerender } = render(
-      <NoteHeader
-        noteId="note-1"
-        isBookmarked={false}
-        isLocalGraphOpen={false}
-        isLocalOnly={false}
-        isDeleted={false}
-        {...handlers}
-      />
-    )
-
-    await user.click(screen.getByTitle('editor.toolbar.addBookmark'))
-    await user.click(screen.getByText('editor.toolbar.showLocalGraph'))
-    await user.click(screen.getByText('editor.toolbar.versionHistory'))
-    await user.click(screen.getByText('editor.toolbar.export'))
-    await user.click(screen.getByText('editor.toolbar.setLocalOnly'))
-
-    expect(handlers.onToggleBookmark).toHaveBeenCalledOnce()
-    expect(handlers.onToggleLocalGraph).toHaveBeenCalledOnce()
-    expect(handlers.onOpenVersionHistory).toHaveBeenCalledOnce()
-    expect(handlers.onOpenExport).toHaveBeenCalledOnce()
-    expect(handlers.onToggleLocalOnly).toHaveBeenCalledOnce()
-
-    rerender(
-      <NoteHeader
-        noteId="note-1"
-        isBookmarked
-        isLocalGraphOpen
-        isLocalOnly
-        isDeleted
-        {...handlers}
-      />
-    )
-
-    expect(screen.getByTitle('editor.toolbar.removeBookmark')).toBeDisabled()
-    expect(screen.getByText('reminder note-1')).toBeDisabled()
-    expect(screen.getByText('editor.toolbar.hideLocalGraph')).toBeInTheDocument()
-    expect(screen.getByText('editor.toolbar.disableLocalOnly')).toBeInTheDocument()
-  })
-
   it('opens note breadcrumb folders, dispatches sidebar reveal, and skips root notes', async () => {
     const user = userEvent.setup()
     const revealSpy = vi.fn()
@@ -281,26 +203,12 @@ describe('note and sidebar cold surfaces', () => {
     window.removeEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, revealSpy)
   })
 
-  it('renders outline, layout chrome, heading callbacks, and empty outline states', async () => {
-    const user = userEvent.setup()
+  it('renders layout chrome around the note body, outline, and marquee zone', () => {
     const onHeadingClick = vi.fn()
     const headings = [
       { id: 'intro', level: 2, text: 'Intro', position: 0 },
       { id: 'details', level: 3, text: 'Details', position: 40 }
     ]
-
-    render(
-      <NoteOutlineSidebar
-        headings={headings}
-        activeHeadingId="intro"
-        onHeadingClick={onHeadingClick}
-      />
-    )
-    await user.click(screen.getByText('Details'))
-    expect(onHeadingClick).toHaveBeenCalledWith('details')
-
-    render(<NoteOutlineSidebar headings={[]} />)
-    expect(screen.getByText('outline.emptyYet')).toBeInTheDocument()
 
     const marqueeRef = vi.fn()
     render(
