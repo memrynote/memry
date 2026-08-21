@@ -17,7 +17,8 @@ import {
   createWikiLinkEditPlugin,
   findWikiLinkRunAt,
   isEditingWikiLinkText,
-  openWikiLinkForSelection
+  openWikiLinkForSelection,
+  replaceActiveRunWithWikiLink
 } from './wiki-link-edit-plugin'
 
 const schema = new Schema({
@@ -361,6 +362,41 @@ describe('markdown shown beside the caret', () => {
       .filter(Boolean)
 
     expect(raws).toEqual(['[[A]]', '[[B]]'])
+  })
+
+  /**
+   * The one caret position this must NOT paint: the one a menu pick just left
+   * behind. `replaceActiveRunWithWikiLink` writes no trailing space — a link
+   * picked inside a sentence must not add a character to it — so the caret ends
+   * up against the new chip, and painting there would show the user the raw
+   * `[[Toplantı]]` of the link they just made. The markdown belongs to the
+   * gesture of moving TO a link, which is why the paint returns the moment the
+   * caret is placed there rather than left there.
+   */
+  it('leaves the chip a chip in the instant the menu writes it', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
+    const view = viewOf(opened)
+
+    expect(
+      replaceActiveRunWithWikiLink({ _tiptapEditor: { view } } as never, { target: 'Toplantı' })
+    ).toBe(true)
+
+    // The caret really is beside it — without that this test would pass on the
+    // chip simply not being adjacent.
+    const caret = view.state.selection.from
+    expect(view.state.doc.resolve(caret).nodeBefore?.type.name).toBe('wikiLink')
+    expect(decorationsOf(view.state)).toEqual([])
+
+    // Move away and come back: now it is a caret movement like any other.
+    const away = view.state.apply(
+      view.state.tr.setSelection(TextSelection.create(view.state.doc, 0))
+    )
+    const back = away.apply(away.tr.setSelection(TextSelection.create(away.doc, caret)))
+
+    expect(decorationsOf(back).map((d) => d.raw ?? d.class)).toEqual([
+      '[[Toplantı]]',
+      'wiki-link-hidden'
+    ])
   })
 })
 

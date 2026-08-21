@@ -49,7 +49,34 @@ import type { EditorView } from '@tiptap/pm/view'
 import type { Mark, Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
 import { wikiLinkToText } from './wiki-link'
 
-export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey('wikiLinkEdit')
+export const WIKI_LINK_EDIT_PLUGIN_KEY = new PluginKey<WikiLinkEditPluginState>('wikiLinkEdit')
+
+/**
+ * Marks the transaction that turns a raw run into the chip the user just picked.
+ *
+ * Separate from the plugin key's own meta (which every internal dispatch sets to
+ * mean "this edit is mine, do not re-promote it"): this one is narrower and says
+ * WHICH edit it was, because only an insertion suppresses the markdown paint.
+ */
+const WIKI_LINK_INSERTED_META = 'wikiLinkInserted'
+
+interface WikiLinkEditPluginState {
+  /**
+   * Where the caret was left by a menu pick, for as long as it stays there.
+   *
+   * `wikiLinksBesideCursor` paints a link's markdown whenever the caret is
+   * beside it — right after an arrow key or a click, which is the gesture that
+   * behaviour exists for, and also in the instant a link is created, which it
+   * does not. `replaceActiveRunWithWikiLink` leaves the caret against the new
+   * chip and writes no trailing space (deliberately — a link picked inside a
+   * sentence must not add a character to it), so without this the link the user
+   * just made would read back as `[[Note|the words]]` until they moved off it.
+   *
+   * Null once the selection is anywhere else: the paint is suppressed for that
+   * one caret position, not for the chip.
+   */
+  insertedAt: number | null
+}
 
 /** A leaf inline node counts as one character, so text offsets stay aligned. */
 const LEAF_PLACEHOLDER = '￼'
@@ -317,6 +344,7 @@ export function replaceActiveRunWithWikiLink(
 
   const tr = state.tr.replaceWith(run.from, run.to, type.create(attrs))
   tr.setMeta(WIKI_LINK_EDIT_PLUGIN_KEY, true)
+  tr.setMeta(WIKI_LINK_INSERTED_META, true)
   view.dispatch(tr)
   return true
 }
@@ -402,8 +430,25 @@ export interface WikiLinkEditPluginOptions {
 }
 
 export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}): Plugin {
-  return new Plugin({
+  return new Plugin<WikiLinkEditPluginState>({
     key: WIKI_LINK_EDIT_PLUGIN_KEY,
+
+    state: {
+      init: () => ({ insertedAt: null }),
+
+      apply(tr, value, _oldState, newState) {
+        if (tr.getMeta(WIKI_LINK_INSERTED_META)) return { insertedAt: newState.selection.from }
+        if (value.insertedAt === null) return value
+
+        // Mapped rather than compared raw: a remote edit earlier in the doc
+        // moves the caret's position without the caret going anywhere, and the
+        // chip should stay a chip through that.
+        const insertedAt = tr.mapping.map(value.insertedAt)
+        const selection = newState.selection
+        if (!selection.empty || selection.from !== insertedAt) return { insertedAt: null }
+        return { insertedAt }
+      }
+    },
 
     props: {
       decorations(state) {
@@ -420,7 +465,13 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
         // A chip the caret is beside reads as its markdown for as long as the
         // caret stays there. The chip is hidden rather than replaced, and the
         // markdown is a widget, so nothing here reaches the document.
+        const insertedAt = WIKI_LINK_EDIT_PLUGIN_KEY.getState(state)?.insertedAt ?? null
+
         for (const beside of wikiLinksBesideCursor(state)) {
+          // The chip the caret was just left against by a menu pick reads as a
+          // chip until the caret moves — see `WikiLinkEditPluginState`.
+          if (insertedAt !== null && beside.pos + beside.node.nodeSize === insertedAt) continue
+
           const text = sourceTextOf(beside.node)
           if (!text) continue
 
