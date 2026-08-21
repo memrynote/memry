@@ -21,20 +21,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Excalidraw, convertToExcalidrawElements } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
-import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
 import '@excalidraw/excalidraw/index.css'
 import { useTheme } from 'next-themes'
-import { copySceneAsImage, copySceneAsVector } from './mind-map-export'
+import { copySceneAsImage, copySceneAsVector, toSkeleton } from './mind-map-export'
 import type { MindMapElement } from './mind-map-types'
-
-/**
- * The map's element descriptors are plain data so the pipeline that mints them
- * stays pure and testable without this chunk. Excalidraw's own skeleton type
- * brands its point tuples, which no plain literal can satisfy, so the handover
- * happens here, once, at the boundary.
- */
-const toSkeleton = (elements: readonly MindMapElement[]): ExcalidrawElementSkeleton[] =>
-  elements as unknown as ExcalidrawElementSkeleton[]
 
 /**
  * What the map's toolbar can do, closed over the live surface.

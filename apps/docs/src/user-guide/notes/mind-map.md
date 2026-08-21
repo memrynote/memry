@@ -151,6 +151,8 @@ same thing.
   a note, a message or a slide.
 - **Copy as vector** puts the map on the clipboard as SVG markup, which design
   tools paste as editable artwork.
+- **Save as canvas** keeps the map: it becomes a real canvas you own. See
+  [Saving the Map as a Canvas](#saving-the-map-as-a-canvas) below.
 
 Both copies contain the map **as you are looking at it**, so anything you have
 opened up in the map is in the copy too. They are exported on a transparent
@@ -160,6 +162,62 @@ tells you rather than failing quietly.
 
 The map's camera is not remembered. Close the map and open it again and it
 frames the whole thing afresh — the same place **Fit to view** takes you.
+
+## Saving the Map as a Canvas
+
+**Save as canvas** turns the map into a canvas document — one you can rearrange,
+extend and build on like any other.
+
+The new canvas appears at the top level of **Canvases** in the sidebar, named
+after the note. If a canvas at that level already has that name, the new one
+gets a number after it (`Roadmap 2`, `Roadmap 3`), exactly the way the vault
+names any other file whose name is taken.
+
+Three things are worth knowing about it.
+
+**It is yours from the moment it exists.** Nothing regenerates it and nothing
+overwrites it. Edit it freely — memrynote will never come back and change it.
+
+**Saving twice gives you two canvases.** The second save never replaces the
+first, because the first might be an hour of your work by then. If you want one
+canvas, delete the one you do not want.
+
+**It says when it was taken.** The root node carries the date the map was
+generated, so a canvas you find months later announces itself as a snapshot of
+the note rather than a live view of it.
+
+Every node in the saved canvas keeps its link back into the note, and those
+links keep working on your other devices: they point at the **heading** a node
+sits under, which is something the note carries everywhere, rather than at an
+internal identifier that only exists on the machine that made the map. A list
+item links to the nearest heading above it. Nodes above the first heading — and
+the root — open the note at the top.
+
+**Wiki-link nodes open the note they name.** A `[[link]]` node in the saved
+canvas is resolved when the canvas is written, so it opens the linked note — at
+its heading, if the link named one — on any of your devices. If the link points
+at a note that does not exist yet, the node opens the source note at the section
+the link is written in instead, so it is never a dead box.
+
+**A "+N more" node stays in the saved canvas**, even though there is nothing for
+it to open in a document. It is what tells you the canvas is not the whole note,
+and how much is missing; clicking it takes you to the section in the note where
+those items actually live. The same is true of the counts on other nodes: if the
+map folded something into a node, the saved canvas still says so.
+
+Nodes are saved as plain shapes with links on them rather than as live memrynote
+cards. A card is around ten times the size of a map node, and a dozen of them
+would make the map unreadable. Add real cards by hand wherever you want them —
+it is your canvas.
+
+The connectors are real bound arrows, so dragging a node around takes its
+branches with it.
+
+The note itself keeps no record of the canvas. The relationship only runs one
+way: the canvas points back at the note, and the note knows nothing about the
+canvas.
+
+If a canvas cannot be created, memrynote tells you rather than failing quietly.
 
 ## Coming Back to the Note
 

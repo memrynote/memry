@@ -187,6 +187,9 @@ export function projectBlocks(
     isDone: false,
     taskId: null,
     wikiTarget: null,
+    // The root is the note itself, so it stands under no heading: a link to it
+    // reads as "this note, from the top".
+    headingText: null,
     tags: [],
     contents: [],
     foldedCount: 0,
@@ -274,6 +277,9 @@ export function projectBlocks(
       // outside this note and it is not a task.
       taskId: null,
       wikiTarget: null,
+      // What it folds away lives under the same heading its parent does, so a
+      // saved canvas can still point at the section the missing rows are in.
+      headingText: parent.headingText,
       tags: [],
       contents: [],
       foldedCount: 0,
@@ -327,6 +333,10 @@ export function projectBlocks(
         isDone: false,
         taskId: null,
         wikiTarget: link.target,
+        // The heading the LINK is written under, in THIS note — not anything
+        // about the note it names. It is the fallback a saved canvas falls back
+        // to when the target cannot be resolved to a real note.
+        headingText: parent.headingText,
         tags: [],
         contents: [],
         foldedCount: 0,
@@ -428,6 +438,18 @@ export function projectBlocks(
         // never set one has none, and the node says so rather than inventing it.
         taskId: kind === 'task' ? stringProp(block.props, 'taskId') : null,
         wikiTarget: null,
+        // A heading anchors on itself; everything else borrows whatever heading
+        // it sits under. `parent` is the open heading when there is one and the
+        // enclosing container otherwise, and a container already carries the
+        // heading IT sits under — so one read walks the whole chain, containers
+        // and their fresh level stacks included.
+        //
+        // `text`, not `label`: `label` has been through `clipLabel`, and an
+        // anchor clipped mid-heading resolves to nothing on the device that
+        // opens the saved canvas. The whole text is also what `extractHeadings`
+        // reads back on the other side — both drop content-less inline specs (a
+        // hash tag among them), so a heading tagged inline still matches.
+        headingText: kind === 'heading' ? text : parent.headingText,
         tags: read.tags,
         contents: [],
         foldedCount: 0,

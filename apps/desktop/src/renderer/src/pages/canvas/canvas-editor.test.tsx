@@ -19,6 +19,8 @@ import { act, fireEvent, render } from '@testing-library/react'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { buildMindMap } from '@/components/note/mind-map'
+import { mintSnapshotElements } from '@/components/note/mind-map/mind-map-snapshot'
 import { CanvasEditor } from './canvas-editor'
 import { clearCardTitleCache } from './canvas-link-target-title'
 
@@ -545,6 +547,63 @@ describe('CanvasEditor link opening', () => {
       expect.objectContaining({ type: 'note', path: '/note/n1', title: 'Roadmap' })
     )
     expect(mocks.windowOpen).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The receiving half of a saved mind map's links.
+   *
+   * The href is not typed out here — it is minted by the real snapshot path, so
+   * this is the actual round trip: what the mind map WRITES into a canvas is
+   * what this editor READS back out of one. Typing the string by hand would let
+   * the two drift apart and still pass.
+   */
+  it('lands a heading-anchored note link at that heading, not at the top', async () => {
+    const map = buildMindMap(
+      [
+        {
+          id: 'b-h',
+          type: 'heading',
+          props: { level: 1 },
+          content: [{ type: 'text', text: 'Risks' }]
+        },
+        {
+          id: 'b-li',
+          type: 'bulletListItem',
+          content: [{ type: 'text', text: 'Vendor lock-in' }]
+        }
+      ],
+      { rootLabel: 'Roadmap', noteId: 'n1' }
+    )
+    const elements = mintSnapshotElements(map, { noteId: 'n1', generatedLabel: 'Snapshot' })
+    const listBox = elements.find(
+      (element) => element.type === 'rectangle' && element.id === 'mm-b-li'
+    )
+    const href = listBox?.type === 'rectangle' ? listBox.link : undefined
+    // A list item borrows the heading above it: heading TEXT is the only anchor
+    // that still means anything on a device that never minted these block ids.
+    expect(href).toBe('memry://note/n1#Risks')
+
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    clickLink(href!)
+    await act(async () => {})
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        path: '/note/n1',
+        viewState: { headingText: 'Risks' }
+      })
+    )
+  })
+
+  it('opens at the top when the link names a block, which this device never minted', async () => {
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+
+    clickLink('memry://note/n1#^b-h')
+    await act(async () => {})
+
+    const tab = mocks.openTab.mock.calls[0][0] as { viewState?: unknown }
+    expect(tab.viewState).toBeUndefined()
   })
 
   it('reports a deleted target rather than opening a blank tab', async () => {

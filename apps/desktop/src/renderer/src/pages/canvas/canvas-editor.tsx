@@ -554,6 +554,15 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
    * whose entity is gone opens blank with no way back to what went wrong. The
    * singleton views (Tasks, Inbox, Calendar) open regardless of whether their
    * focus target still exists, so they are not worth the round trip.
+   *
+   * A HEADING anchor on the link is consumed here rather than in
+   * `tabFromMemryHref`, which deliberately says only WHICH item to open: where
+   * inside it to land is the opening page's business, and the note page already
+   * takes a heading through `viewState.headingText` (matched by text, trimmed
+   * and case-folded, once its own editor has produced headings). Text is the
+   * only anchor a link written into a canvas can carry — the file outlives the
+   * document that produced it, and block ids do not. A BLOCK anchor is
+   * therefore ignored: it would name a block this device has never minted.
    */
   const openMemryTarget = useCallback(
     async (href: string): Promise<void> => {
@@ -578,7 +587,11 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         toast.error(t('canvas.link.itemMissing'))
         return
       }
-      openTab(tab)
+
+      const heading =
+        parsed.kind === 'note' && parsed.anchor?.type === 'heading' ? parsed.anchor.text : null
+
+      openTab(heading ? { ...tab, viewState: { ...tab.viewState, headingText: heading } } : tab)
     },
     [openTab, t]
   )

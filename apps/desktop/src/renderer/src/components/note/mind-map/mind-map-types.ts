@@ -116,6 +116,20 @@ export interface MindMapNode {
    * exactly the way the editor does.
    */
   wikiTarget: string | null
+  /**
+   * The text of the nearest heading at or above this node, or `null` when
+   * nothing above it is a heading. User content, never translated.
+   *
+   * It exists because a link that is written to disk can only anchor on heading
+   * TEXT — block ids die with the document that minted them — and a list item
+   * has no heading of its own, so it borrows its nearest ancestor's.
+   *
+   * Computed where the heading's text is still WHOLE, rather than read back off
+   * `label`: `label` is a display string that `clipLabel` shortens past 72
+   * characters, and an anchor clipped to `A very long heading th…` resolves to
+   * nothing on the device that opens the canvas.
+   */
+  headingText: string | null
   /** Inline hash tags found in this node's own text. User content, `#` stripped. */
   tags: string[]
   /** Content sitting under this node that is not drawn, in a stable order. */
@@ -155,6 +169,7 @@ export interface MindMapPositionedNode {
   isDone: boolean
   taskId: string | null
   wikiTarget: string | null
+  headingText: string | null
   tags: string[]
   contents: MindMapContentCount[]
   foldedCount: number
@@ -209,9 +224,41 @@ export interface MindMapBoxElement {
 }
 
 /**
- * A straight rule: the connector from a parent box to one of its children, or
- * the strike-through over a completed item's label. The drawing surface is a
- * bitmap with no text decorations, so "struck through" has to be a real line.
+ * A straight rule with no arrowheads: the connector from a parent box to one of
+ * its children.
+ *
+ * An arrow rather than a line, and bound at both ends rather than drawn between
+ * two baked coordinates. On screen the two look identical — the arrowheads are
+ * off — but a saved canvas is hand-edited, and a connector whose endpoints are
+ * frozen numbers comes loose the first time the user drags a node. `start`/`end`
+ * name the boxes by the ids the boxes carry, which the drawing library resolves
+ * into real bindings even though it regenerates every id on the way in.
+ */
+export interface MindMapArrowElement {
+  type: 'arrow'
+  id: string
+  x: number
+  y: number
+  points: Array<[number, number]>
+  /** The parent box's id. */
+  start: { id: string }
+  /** The child box's id. */
+  end: { id: string }
+  /** Both null: a mind-map branch is a rule, not a direction. */
+  startArrowhead: null
+  endArrowhead: null
+  /** Null so a two-point connector stays a hard straight rule. */
+  roundness: null
+  strokeColor: string
+  strokeWidth: number
+  roughness: number
+}
+
+/**
+ * A straight rule: the strike-through over a completed item's label. The
+ * drawing surface is a bitmap with no text decorations, so "struck through" has
+ * to be a real line — and an unbound one, because it belongs to the box's text
+ * rather than to the space between two boxes.
  */
 export interface MindMapLineElement {
   type: 'line'
@@ -224,7 +271,7 @@ export interface MindMapLineElement {
   roughness: number
 }
 
-export type MindMapElement = MindMapBoxElement | MindMapLineElement
+export type MindMapElement = MindMapBoxElement | MindMapArrowElement | MindMapLineElement
 
 /** Bounding box of every positioned node, so the host can fit the view. */
 export interface MindMapBounds {
@@ -291,7 +338,10 @@ export interface MindMap {
   tree: MindMapNode
   /** Every node with coordinates, in depth-first order starting at the root. */
   nodes: MindMapPositionedNode[]
-  /** Drawing elements: one box per node, one connector per parent→child edge. */
+  /**
+   * Drawing elements: one box per node, one bound connector per parent→child
+   * edge, and a rule per line of a completed item's label.
+   */
   elements: MindMapElement[]
   direction: MindMapDirection
   /** Node total including the root. Never above `MIND_MAP_MAX_NODES`. */

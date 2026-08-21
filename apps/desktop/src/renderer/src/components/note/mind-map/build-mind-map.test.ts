@@ -339,7 +339,7 @@ describe('buildMindMap — elements', () => {
 
   it('mints one box per node and one connector per edge', () => {
     const boxes = map.elements.filter((element) => element.type === 'rectangle')
-    const edges = map.elements.filter((element) => element.type === 'line')
+    const edges = map.elements.filter((element) => element.type === 'arrow')
 
     expect(boxes).toHaveLength(map.nodeCount)
     expect(edges).toHaveLength(map.nodeCount - 1)
@@ -352,7 +352,7 @@ describe('buildMindMap — elements', () => {
 
     const boxIds = new Set(map.nodes.map((node) => node.id))
     for (const element of map.elements) {
-      if (element.type !== 'line') continue
+      if (element.type !== 'arrow') continue
       // A connector is named after the child it lands on, and every child in
       // the map has a box; a dangling connector would draw a line to nowhere.
       expect(boxIds.has(element.id.replace(/-edge$/, ''))).toBe(true)
@@ -361,10 +361,32 @@ describe('buildMindMap — elements', () => {
     }
   })
 
+  it('binds each connector to the two boxes it joins, by their own ids', () => {
+    const byId = new Map(map.nodes.map((node) => [node.id, node]))
+    const boxIds = new Set(map.elements.filter((el) => el.type === 'rectangle').map((el) => el.id))
+    const arrows = map.elements.filter((element) => element.type === 'arrow')
+    expect(arrows.length).toBeGreaterThan(0)
+
+    for (const arrow of arrows) {
+      const child = byId.get(arrow.id.replace(/-edge$/, ''))!
+      // Bindings, not baked coordinates: a node dragged in a saved canvas has
+      // to take its connectors with it, and frozen endpoints do not follow.
+      expect(arrow.start).toEqual({ id: child.parentId })
+      expect(arrow.end).toEqual({ id: child.id })
+      // Both ends must name a box that is actually in the scene, or the
+      // drawing library resolves the binding to nothing.
+      expect(boxIds.has(arrow.start.id)).toBe(true)
+      expect(boxIds.has(arrow.end.id)).toBe(true)
+      // A branch is a rule, not a direction.
+      expect(arrow.startArrowhead).toBeNull()
+      expect(arrow.endArrowhead).toBeNull()
+    }
+  })
+
   it('draws connectors from the parent box to the child box', () => {
     const byId = new Map(map.nodes.map((node) => [node.id, node]))
     for (const element of map.elements) {
-      if (element.type !== 'line') continue
+      if (element.type !== 'arrow') continue
       const child = byId.get(element.id.replace(/-edge$/, ''))!
       const parent = byId.get(child.parentId!)!
       expect(element.x).toBe(parent.x + parent.width)
