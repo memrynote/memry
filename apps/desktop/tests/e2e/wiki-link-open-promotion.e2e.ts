@@ -186,6 +186,14 @@ test.describe('Wiki links on open', () => {
    *
    * So the hold is the test. Anything that presses and releases in one tick
    * passes on the broken build.
+   *
+   * The hold is also the only place the SECOND report is visible. Moving
+   * navigation to a mouseup handler made the click work but not the flash: the
+   * caret is parked at mousedown, so the markdown is already painted by the
+   * time any mouseup handler runs, and the user watches `[[…]]` sit where their
+   * link was until the target opens. Hence the assertions BELOW the press and
+   * above the release — they read the editor at the exact moment the user is
+   * complaining about.
    */
   test('a click held like a human click still follows the link', async ({ page }) => {
     await ready(page)
@@ -209,10 +217,32 @@ test.describe('Wiki links on open', () => {
     await chip.hover()
     await page.mouse.down()
     await page.waitForTimeout(150)
+
+    // #then, while the button is STILL DOWN, the link is still a link.
+    //
+    // This is the second half of the report and the half a navigation
+    // assertion cannot see: with navigation moved to a mouseup handler the
+    // note does open, but the caret was already parked beside the chip at
+    // mousedown, so from the press until the target replaces the view the user
+    // is looking at `[[Alpha-1234]]` where their link used to be. Reading the
+    // editor here rather than after the release is the whole point — release
+    // first and the evidence is gone.
+    //
+    // Snapshots, then release, then assert: a failing assertion must not leave
+    // the mouse button held down for the rest of the file.
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const heldText = await editor.innerText()
+    const paintedRuns = await page.locator('[data-wiki-link-source]').count()
+    const chipStillRendered = await chip.isVisible()
+
     await page.mouse.up()
 
-    // #then it navigates. On the unfixed build this fails here: the title is
-    // still the source note's and `[[…]]` is painted where the chip was.
+    expect(paintedRuns).toBe(0)
+    expect(heldText).not.toContain('[[')
+    expect(chipStillRendered).toBe(true)
+
+    // #and it navigates. On the unfixed build this fails above rather than
+    // here: the note opens, but only after the flash.
     await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(targets[1])
   })
 

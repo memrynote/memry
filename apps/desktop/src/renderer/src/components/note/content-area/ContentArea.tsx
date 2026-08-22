@@ -866,12 +866,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           deleteTriggerCharacter: false
         }),
       // Following a link lives in the plugin rather than in a DOM click
-      // listener — `handleClickOn` there says why. Both halves of what the
-      // listener did, in the same order, so nothing downstream can tell the
-      // difference: the callback opens the note, and the window event is kept
-      // because it was broadcast before (nothing in the renderer subscribes to
-      // it today, so dropping it would be a silent contract change for
-      // anything outside).
+      // listener — `handleDOMEvents` there says why, and why it fires at
+      // mousedown. Both halves of what the listener did, in the same order, so
+      // nothing downstream can tell the difference: the callback opens the note,
+      // and the window event is kept because it was broadcast before (nothing in
+      // the renderer subscribes to it today, so dropping it would be a silent
+      // contract change for anything outside).
       onNavigate: (target) => {
         window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target } }))
         onInternalLinkClickRef.current?.(target)

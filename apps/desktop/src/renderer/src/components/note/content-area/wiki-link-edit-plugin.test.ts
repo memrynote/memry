@@ -501,109 +501,237 @@ describe('openWikiLinkForSelection', () => {
 })
 
 /**
- * Following a link, driven through the handler ProseMirror actually calls.
+ * Following a link, driven through the two DOM handlers ProseMirror actually
+ * calls — and at the moment it calls them.
  *
- * This is the whole point of the fix and cannot be tested through a DOM click:
- * a `click` event fires at mouseup, by which time the chip has been hidden to
- * make room for the markdown paint and the event has been retargeted to the
- * paragraph. `handleClickOn` is handed the node ProseMirror resolved from the
- * MOUSEDOWN position, so the repaint cannot take it away.
+ * The press is claimed at MOUSEDOWN, which is the whole fix. Anything that runs
+ * at mouseup is already too late: the caret has been parked beside the chip,
+ * the chip has been hidden and the raw `[[Target]]` painted in its place, and
+ * the user sits looking at markdown until the target note replaces the view.
+ * Preventing the default on the mousedown makes ProseMirror skip its own
+ * `handlers.mousedown` (`runCustomHandler` returns
+ * `handler(view, event) || event.defaultPrevented`), so the caret never moves
+ * and the paint never happens — which is also why `handleClickOn` cannot be
+ * where navigation lives: PM calls that from the `MouseDown` this suppresses.
  */
-describe('clicking a chip follows the link', () => {
-  function clickOn(
-    node: ProseMirrorNode,
-    options: { direct?: boolean; onNavigate?: boolean } & Partial<MouseEvent> = {}
+describe('pressing a chip follows the link', () => {
+  /**
+   * One editor's worth of plugin, view and events.
+   *
+   * `inside` is what the hit test finds under the pointer — the handler reads
+   * `posAtCoords`, never the coordinates themselves, so a test says WHAT was
+   * pressed rather than where. The chip sits at 3 in `a ␣chip␣ b`, the text at
+   * 1, and -1 is a pointer between nodes.
+   */
+  function harness(
+    options: {
+      attrs?: Record<string, unknown>
+      inside?: number
+      onNavigate?: boolean
+    } = {}
   ) {
-    const { direct = true, onNavigate: wantsCallback = true, ...eventProps } = options
+    const { attrs = { target: 'Toplantı' }, inside = 3, onNavigate: wantsCallback = true } = options
     const onNavigate = vi.fn()
     const plugin = createWikiLinkEditPlugin(wantsCallback ? { onNavigate } : {})
-    const view = viewOf(stateWith([chip({ target: 'A' })], 1))
+    const dispatched: Transaction[] = []
+    const view = {
+      state: stateWith([schema.text('a '), chip(attrs), schema.text(' b')], 1),
+      dispatch: (tr: Transaction) => dispatched.push(tr),
+      posAtCoords: () => (inside < 0 ? null : { pos: inside, inside })
+    }
 
-    const handled = plugin.props.handleClickOn!.call(
-      plugin,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      view as any,
-      1,
-      node,
-      0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {
+    function fire(type: 'mousedown' | 'mouseup', props: Partial<MouseEvent> = {}) {
+      let prevented = false
+      const event = {
         button: 0,
         shiftKey: false,
         altKey: false,
         metaKey: false,
         ctrlKey: false,
-        ...eventProps
-      } as any,
-      direct
-    )
+        clientX: 100,
+        clientY: 40,
+        ...props,
+        preventDefault: () => {
+          prevented = true
+        }
+      }
+      const handled = plugin.props.handleDOMEvents![type]!.call(
+        plugin,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        view as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        event as any
+      )
+      return { handled, prevented }
+    }
 
-    return { handled, onNavigate }
+    return { fire, onNavigate, plugin, view, dispatched }
   }
 
-  it('navigates on a direct left click, and takes the mouseup with it', () => {
-    const { handled, onNavigate } = clickOn(chip({ target: 'Toplantı' }))
+  it('takes the mousedown, and follows the link when the button comes back up', () => {
+    const { fire, onNavigate } = harness()
 
+    const down = fire('mousedown')
+    // Preventing the default is what stops PM placing the caret, which is what
+    // stops the markdown paint. Nothing has navigated yet — the press could
+    // still turn into a drag.
+    expect(down).toEqual({ handled: true, prevented: true })
+    expect(onNavigate).not.toHaveBeenCalled()
+
+    const up = fire('mouseup')
+
+    expect(up).toEqual({ handled: true, prevented: true })
     expect(onNavigate).toHaveBeenCalledWith('Toplantı')
-    // True is what makes PM `preventDefault()` the mouseup — without it the
-    // caret parks beside the chip and the markdown paint appears anyway.
-    expect(handled).toBe(true)
   })
 
   it('trims the target, exactly as the DOM handler it replaces did', () => {
-    const { onNavigate } = clickOn(chip({ target: '  Launch Plan  ' }))
+    const { fire, onNavigate } = harness({ attrs: { target: '  Launch Plan  ' } })
+
+    fire('mousedown')
+    fire('mouseup')
 
     expect(onNavigate).toHaveBeenCalledWith('Launch Plan')
   })
 
   it('carries the heading through — the link points at the heading, not the note', () => {
-    const { onNavigate } = clickOn(chip({ target: 'Continent#North America', alias: 'the north' }))
+    const { fire, onNavigate } = harness({
+      attrs: { target: 'Continent#North America', alias: 'the north' }
+    })
+
+    fire('mousedown')
+    fire('mouseup')
 
     expect(onNavigate).toHaveBeenCalledWith('Continent#North America')
   })
 
-  it('ignores an indirect click — that is a click in the paragraph', () => {
-    const paragraph = stateWith([chip({ target: 'A' })], 1).doc.firstChild!
-    const { handled, onNavigate } = clickOn(paragraph, { direct: false })
-
-    expect(handled).toBe(false)
-    expect(onNavigate).not.toHaveBeenCalled()
-  })
-
-  it('ignores a node that is not a wiki link', () => {
-    const { handled, onNavigate } = clickOn(schema.text('plain'))
-
-    expect(handled).toBe(false)
-    expect(onNavigate).not.toHaveBeenCalled()
-  })
-
-  // Left alone on purpose: shift-click extends a selection, and the rest stay
-  // free for an open-in-new-tab gesture.
-  const modified: Array<[string, Partial<MouseEvent>]> = [
-    ['shift', { shiftKey: true }],
-    ['alt', { altKey: true }],
+  // Nothing downstream of `onNavigate` reads a modifier — there is no
+  // background tab and no split pane to route one to — so a modified press
+  // follows the link like a plain one. Excluding them (which the handler this
+  // replaces did) only made ⌘/⌥+click on a link do nothing at all.
+  const navigating: Array<[string, Partial<MouseEvent>]> = [
     ['meta', { metaKey: true }],
     ['ctrl', { ctrlKey: true }],
-    ['middle/right button', { button: 1 }]
+    ['alt', { altKey: true }]
   ]
 
-  it.each(modified)('leaves a %s click to the default behaviour', (_label, eventProps) => {
-    const { handled, onNavigate } = clickOn(chip({ target: 'A' }), eventProps)
+  it.each(navigating)('follows the link on a %s press too', (_label, eventProps) => {
+    const { fire, onNavigate } = harness()
 
-    expect(handled).toBe(false)
+    expect(fire('mousedown', eventProps).prevented).toBe(true)
+    fire('mouseup', eventProps)
+
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+  })
+
+  // The one modifier that is left alone: shift extends a selection, and a
+  // selection that reaches across a link has to be able to start on it.
+  it('leaves a shift press to ProseMirror', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { shiftKey: true })).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup', { shiftKey: true }).handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('leaves a middle or right button press alone', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { button: 1 })).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the text beside a chip', 1],
+    ['a point between nodes', -1]
+  ])('ignores a press on %s', (_label, inside) => {
+    const { fire, onNavigate } = harness({ inside })
+
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup').handled).toBe(false)
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
   it('does nothing on a chip with no target', () => {
-    const { handled, onNavigate } = clickOn(chip({ target: '   ' }))
+    const { fire, onNavigate } = harness({ attrs: { target: '   ' } })
 
-    expect(handled).toBe(false)
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
     expect(onNavigate).not.toHaveBeenCalled()
   })
 
   // Surfaces that mount the plugin only for its editing behaviour must keep
-  // ProseMirror's own click handling rather than swallowing the event.
+  // ProseMirror's own mouse handling rather than swallowing the press — so this
+  // one must NOT prevent the default.
   it('falls through when no navigation callback is configured', () => {
-    expect(clickOn(chip({ target: 'A' }), { onNavigate: false }).handled).toBe(false)
+    const { fire } = harness({ onNavigate: false })
+
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup').handled).toBe(false)
+  })
+
+  it('does not follow a press that turned into a drag', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown', { clientX: 100, clientY: 40 })
+    const up = fire('mouseup', { clientX: 100, clientY: 60 })
+
+    expect(up).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('still follows a press that wobbled inside the slop ProseMirror allows', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown', { clientX: 100, clientY: 40 })
+    fire('mouseup', { clientX: 104, clientY: 36 })
+
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+  })
+
+  it('does nothing on a mouseup with no press behind it', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mouseup')).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // The press is consumed by the NEXT mousedown as well as by its own mouseup,
+  // so a press abandoned outside the editor cannot navigate later.
+  it('forgets a press as soon as another one starts', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown')
+    fire('mousedown', { shiftKey: true })
+
+    expect(fire('mouseup').handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The flash, which is the whole reason this moved to mousedown.
+   *
+   * The handler dispatches nothing and moves no caret, so the state the paint
+   * is derived from is the state the press started in — and `decorations`
+   * paints nothing for it. The second half is what keeps that from being a
+   * vacuous assertion: park the caret where ProseMirror's own mousedown would
+   * have put it and the markdown appears immediately.
+   */
+  it('paints no markdown for a press on a chip', () => {
+    const { fire, plugin, view, dispatched } = harness()
+
+    fire('mousedown')
+    fire('mouseup')
+
+    expect(dispatched).toEqual([])
+    expect(plugin.props.decorations!.call(plugin, view.state)).toBeNull()
+
+    const parked = view.state.apply(
+      view.state.tr.setSelection(TextSelection.create(view.state.doc, 4))
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const painted = plugin.props.decorations!.call(plugin, parked) as any
+    expect(painted?.find().map((d: any) => d.spec?.sourceText ?? d.type.attrs?.class)).toEqual([
+      '[[Toplantı]]',
+      'wiki-link-hidden'
+    ])
   })
 })

@@ -121,12 +121,12 @@ export function useBlockNoteSetup({
   //
   // Wiki-link chips are NOT handled here any more. A chip reads as its raw
   // `[[…]]` while the caret is beside it, and the chip element is hidden to
-  // make room for that — which happens between mousedown and mouseup on a
-  // normal human click, so by the time `click` fires the chip is gone from the
-  // DOM and the event has been retargeted to the paragraph. Navigation moved to
-  // `createWikiLinkEditPlugin`'s `handleClickOn`, which reads the position
-  // ProseMirror captured at mousedown. Do not restore a branch here: with both
-  // in place a fast click fires both and the note opens twice.
+  // make room for that — which happens within milliseconds of mousedown, so by
+  // the time `click` fires the chip is gone from the DOM and the event has been
+  // retargeted to the paragraph. Navigation moved to
+  // `createWikiLinkEditPlugin`, which claims the press at MOUSEDOWN so the
+  // caret is never parked beside the chip and that paint never appears. Do not
+  // restore a branch here: with both in place a click opens the note twice.
   useEffect(() => {
     if (!onLinkClick) return
 

@@ -22,10 +22,10 @@
  * headings are mostly spaces.
  *
  * Two things this deliberately does not do:
- * - Click ON a link is navigation, and stays navigation — and that is enforced
- *   HERE, by `handleClickOn`, not left to a DOM listener elsewhere. It was left
- *   to one, and the paint below is what broke it; the handler's own comment has
- *   the mechanism.
+ * - A press ON a link is navigation, and stays navigation — and that is claimed
+ *   HERE, at mousedown, not left to a DOM listener or to any handler that runs
+ *   at mouseup. The paint below is what defeats those; `handleDOMEvents` has the
+ *   mechanism.
  * - The `[[` and `]]` are REAL characters here, so "ghost brackets" means a
  *   decoration that dims them, not invented ones. Deleting them is allowed:
  *   a user who removes the brackets is turning the link back into prose, which
@@ -320,6 +320,42 @@ function hasPlainModifiers(event: KeyboardEvent): boolean {
 }
 
 /**
+ * How far a press may travel and still be a click.
+ *
+ * Four pixels because that is ProseMirror's own number
+ * (`MouseDown.updateAllowDefault` in prosemirror-view): past it PM stops
+ * treating the gesture as a click and lets the browser select text. Matching it
+ * keeps one threshold in the editor rather than two that disagree by a pixel.
+ */
+const PRESS_SLOP = 4
+
+interface PressedChip {
+  target: string
+  x: number
+  y: number
+}
+
+/**
+ * The wiki-link target the pointer is over, trimmed — or null for anything else.
+ *
+ * `posAtCoords().inside` is the position of the node the coordinates fall
+ * INSIDE, and -1 when they fall between nodes instead of on one. So this asks
+ * "is the press ON a chip", not "which text position is nearest to it" — the
+ * distinction that makes a press in the text beside a link fall through to
+ * ProseMirror untouched.
+ */
+function wikiLinkTargetAtCoords(view: EditorView, event: MouseEvent): string | null {
+  const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
+  if (!pos || pos.inside < 0) return null
+
+  const node = view.state.doc.nodeAt(pos.inside)
+  if (node?.type.name !== 'wikiLink') return null
+
+  const target = typeof node.attrs.target === 'string' ? node.attrs.target.trim() : ''
+  return target || null
+}
+
+/**
  * Replaces the raw `[[…]]` run the caret is in with a finished chip.
  *
  * Used when a suggestion is picked while editing an existing link. The menu's
@@ -434,13 +470,25 @@ export interface WikiLinkEditPluginOptions {
   /**
    * Follow the link the user clicked. Given the chip's `target`, trimmed.
    *
-   * The plugin owns navigation because only the plugin knows where the click
-   * LANDED rather than where it ended up — see `handleClickOn`.
+   * The plugin owns navigation because only the plugin knows where the press
+   * LANDED rather than where the click ended up — see `handleDOMEvents`.
    */
   onNavigate?: (target: string) => void
 }
 
 export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}): Plugin {
+  /**
+   * The chip a press landed on, held from mousedown until the matching mouseup.
+   *
+   * A closure rather than plugin state, and it is per-editor because this
+   * factory is per-editor: `ContentArea` calls it once inside an effect keyed on
+   * the editor and registers the plugin it returns, so two panes never share
+   * this. Plugin state would be the wrong home anyway — putting it there means a
+   * transaction per press, which is a Y.Doc update and a Yjs undo entry for a
+   * gesture that must not touch the document.
+   */
+  let pressed: PressedChip | null = null
+
   return new Plugin<WikiLinkEditPluginState>({
     key: WIKI_LINK_EDIT_PLUGIN_KEY,
 
@@ -507,57 +555,85 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
       },
 
       /**
-       * Following a link is a ProseMirror handler, NOT a DOM click listener,
-       * because by the time a `click` event fires the chip is no longer under
-       * the mouse.
+       * Following a link is claimed at MOUSEDOWN, and the timing IS the fix.
        *
-       * The chip is `contenteditable="false"`, so mousedown parks the caret
-       * immediately beside it. `decorations` above then does exactly what it is
-       * meant to do: it hides the chip (`wiki-link-hidden` → `display: none`)
-       * and paints the raw `[[Target]]` in its place. Chromium queues that
-       * repaint off `selectionchange`, and for a human click — mouse held 80ms,
-       * 150ms — it lands BETWEEN mousedown and mouseup. By mouseup there is no
-       * chip element left to be the click's target, so the browser retargets the
-       * event to the nearest surviving ancestor, the paragraph;
-       * `closest('[data-wiki-link]')` finds nothing and the click does nothing.
-       * The user is left looking at painted markdown, which reads as the note
-       * having dropped into "edit mode" — the regression 52c6cd07f introduced by
-       * adding the paint under a listener that could not survive it.
+       * The chip is `contenteditable="false"`, so a press beside it parks the
+       * caret there, and `decorations` above then does exactly what it is meant
+       * to do: it hides the chip (`wiki-link-hidden` → `display: none`) and
+       * paints the raw `[[Target]]` in its place. Chromium flushes that repaint
+       * off `selectionchange` within a few milliseconds of the press — long
+       * before a human lets go of the button, and longer still before the target
+       * note has opened. So a handler that runs at MOUSEUP cannot prevent it,
+       * whether that handler is a DOM `click` listener (whose event the browser
+       * has by then retargeted away from the deleted chip element, which is how
+       * navigation broke in the first place) or ProseMirror's own
+       * `handleClickOn`: navigation works, but the user watches the link they
+       * clicked read `[[abc]]` until the new tab replaces the view.
        *
-       * A synthetic zero-delay click still hits the chip, which is why this was
-       * green in E2E and broken for every real user.
+       * Preventing the default on the MOUSEDOWN removes the cause instead of
+       * racing it. prosemirror-view's `runCustomHandler` returns
+       * `handler(view, event) || event.defaultPrevented`, and `initInput`'s
+       * listener runs PM's own `handlers.mousedown` only while that is falsy —
+       * so a prevented mousedown means no `MouseDown` instance, no caret
+       * placement, no `selectionchange`, and `decorations()` is never recomputed.
+       * The chip is never hidden, so there is nothing to flash.
        *
-       * ProseMirror is immune to it: `MouseDown` captures `posAtCoords` at
-       * MOUSEDOWN and hands that position to `handleClickOn` on mouseup (it only
-       * re-hit-tests when the DOCUMENT changed, and a decoration is not a
-       * document change). Returning true makes PM `preventDefault()` the mouseup
-       * as well, so the caret is never parked beside the chip and the markdown
-       * paint the user was seeing never happens at all.
+       * The same skip is why navigation had to move here rather than stay in
+       * `handleClickOn`: PM calls that from `MouseDown.up`, and there is no
+       * `MouseDown` for this press any more. Exactly one navigation path — with
+       * a second one alongside it, a click would open the note twice.
        *
-       * Modified clicks fall through deliberately: shift-click extends a
-       * selection, and leaving the rest alone keeps a future open-in-new-tab
-       * free to claim them.
+       * The tradeoff, stated rather than discovered: a press that LANDS ON a
+       * chip no longer starts a PM text-selection drag, and no longer counts
+       * towards a double- or triple-click. Selecting a run of text that begins
+       * on a link means starting from the character beside it, or shift-clicking
+       * (which is left alone, below). Everything about a press in the TEXT beside
+       * a link — including the markdown paint that gesture exists for — is
+       * untouched.
        */
-      handleClickOn(
-        _view: EditorView,
-        _pos: number,
-        node: ProseMirrorNode,
-        _nodePos: number,
-        event: MouseEvent,
-        direct: boolean
-      ): boolean {
-        // `direct` false means the click was inside some ancestor of the chip,
-        // which is an ordinary click in the paragraph.
-        if (!direct || node.type.name !== 'wikiLink') return false
-        if (event.button !== 0) return false
-        if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false
-        if (!options.onNavigate) return false
+      handleDOMEvents: {
+        mousedown(view: EditorView, event: MouseEvent): boolean {
+          // Unconditional: an abandoned press must never navigate on a later,
+          // unrelated mouseup.
+          pressed = null
 
-        const target = typeof node.attrs.target === 'string' ? node.attrs.target.trim() : ''
-        if (!target) return false
+          // A surface that mounts this plugin for its editing behaviour alone
+          // keeps ProseMirror's click handling exactly as it is today.
+          if (!options.onNavigate) return false
 
-        options.onNavigate(target)
-        return true
+          // Shift extends a selection and has to keep doing so. ⌘/⌃/⌥ follow
+          // the link like a plain click does: nothing downstream of `onNavigate`
+          // reads a modifier — there is no background tab and no split pane to
+          // route them to — so excluding them would only make a modified click
+          // on a link do nothing at all, which is what it did between the DOM
+          // listener being removed and this handler landing.
+          if (event.button !== 0 || event.shiftKey) return false
+
+          const target = wikiLinkTargetAtCoords(view, event)
+          if (!target) return false
+
+          pressed = { target, x: event.clientX, y: event.clientY }
+          event.preventDefault()
+          return true
+        },
+
+        mouseup(_view: EditorView, event: MouseEvent): boolean {
+          const press = pressed
+          pressed = null
+          if (!press) return false
+
+          // A press that travelled is a drag, not a click — someone selecting
+          // across a link, or dragging the chip. Same slop PM allows itself.
+          if (
+            Math.abs(event.clientX - press.x) > PRESS_SLOP ||
+            Math.abs(event.clientY - press.y) > PRESS_SLOP
+          )
+            return false
+
+          options.onNavigate?.(press.target)
+          event.preventDefault()
+          return true
+        }
       },
 
       handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {
