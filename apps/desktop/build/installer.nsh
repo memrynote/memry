@@ -40,6 +40,44 @@
 # hits the same wall and the only way out is uninstall-then-reinstall. Renaming
 # is strictly better; we abort only if even the rename fails, which is the same
 # outcome as before, so this can never be worse than what it replaces.
+# Why customInstall exists — the Start menu entry must survive every path.
+#
+# electron-builder's keep-shortcuts handshake preserves shortcuts (and thus
+# Start/taskbar pins) across silent auto-updates, but it has two holes that
+# real Windows users fell into:
+#
+#   1. templates/nsis/include/installer.nsh's addStartMenuLink, on the
+#      keepShortcuts=true path, only RENAMES an existing link — a MISSING
+#      Start menu link is never recreated ("the user deleted it" is assumed).
+#      Any one-time loss becomes permanent: every later update keeps the
+#      shortcut missing, the app vanishes from Start search, and pinning
+#      looks broken to the user.
+#   2. include/installUtil.nsh's setIsTryToKeepShortcuts disables the keep
+#      mechanism entirely when allowToChangeInstallationDirectory is defined
+#      and the run is not an auto-update (--updated). Manually running a
+#      downloaded setup.exe over an existing install — the exact workaround
+#      users learned while in-place updates were broken (see
+#      customRemoveFiles below) — therefore wipes shortcuts and unregisters
+#      the AppUserModelID, killing Start menu and taskbar pins.
+#
+# Both holes end in the same state: no "$SMPROGRAMS\MemryNote.lnk". This
+# macro runs at the end of every install (fresh, auto-update, manual rerun)
+# and recreates the Start menu link only when it is missing, with the AUMID
+# stamped so Windows groups/pins it as com.memrynote.memry. When the link
+# exists it is left untouched, so a live pin is never disturbed. The pin
+# itself cannot be restored programmatically (Windows offers no API), but
+# with the link and AUMID back the user can re-pin — and with in-place
+# updates fixed, the keep path preserves that pin from then on.
+!macro customInstall
+  ${ifNot} ${FileExists} "$newStartMenuLink"
+    CreateShortCut "$newStartMenuLink" "$appExe" "" "$appExe" 0 "" "" "${APP_DESCRIPTION}"
+    ClearErrors
+    WinShell::SetLnkAUMI "$newStartMenuLink" "${APP_ID}"
+    # refresh the shell so Start search picks the entry up immediately
+    System::Call 'Shell32::SHChangeNotify(i 0x8000000, i 0, i 0, i 0)'
+  ${endIf}
+!macroend
+
 !macro customRemoveFiles
   ${if} ${isUpdated}
     CreateDirectory "$PLUGINSDIR\old-install"
