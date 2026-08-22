@@ -54,9 +54,10 @@ rather than failing silently. Splitting a very large board into several
 canvases is the usual fix.
 
 The warning appears once, when the board crosses the limit — not again on every
-edit while you keep working. It comes back when there is something new to say:
-after you reopen the board and it is still too large, or after a save that
-synced is followed by one that is too large again.
+edit while you keep working, and not again each time you switch to another tab
+and come back. It comes back when there is something new to say: after a save
+that synced is followed by one that is too large again, or the next time you
+start memrynote and the board is still too large.
 
 ## Known limitations
 
