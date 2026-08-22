@@ -145,9 +145,13 @@ allowed (backward compatibility is mandatory). Enforcement semantics in
 
 ### 3c. Write attribution
 
-Additive nullable columns on the item-write path (exact tables fixed in tasks.md
-against the current D1 schema): `client_platform TEXT NULL`,
+Additive nullable columns on the item-write path — **`sync_items`,
+`crdt_updates`, `crdt_snapshots`** (fixed against the current D1 schema in
+migration `0006_client_gate.sql`): `client_platform TEXT NULL`,
 `client_version TEXT NULL` stamped server-side from the header at write time.
+No backfill, and a partial index on `sync_items(user_id, vault_id,
+client_platform) WHERE client_platform IS NOT NULL` so the desktop-only present
+(every row NULL) costs nothing.
 NULL = written by a pre-header client. Enables incident tracing and targeted
 rollback of mobile-originated writes (FR-011). No read path depends on them.
 

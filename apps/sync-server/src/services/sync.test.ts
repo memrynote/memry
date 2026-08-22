@@ -2158,7 +2158,10 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
       db.prepare.mockReturnValue(stmt)
       db.batch.mockImplementation(async () => {
         await new Promise<void>((resolve) => gates.push(resolve))
-        const upsertArgs = stmt.bind.mock.calls.find((call) => call.length === 19)
+        // 21 binds = the sync_items upsert (19 columns, plus the two
+        // attribution columns). Identifying it by arity keeps this double from
+        // matching the storage-adjustment statement in the same batch.
+        const upsertArgs = stmt.bind.mock.calls.find((call) => call.length === 21)
         finalRow.blobKey = upsertArgs?.[5] as string
         finalRow.signature = upsertArgs?.[13] as string
         return []

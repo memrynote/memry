@@ -860,7 +860,10 @@ describe('sync routes', () => {
         'user-1',
         'device-1',
         [makePushItem()],
-        'vault-1'
+        'vault-1',
+        // Attribution: no x-memry-client header on these requests, so the
+        // handler passes null and the row is written unattributed.
+        null
       )
     })
 
@@ -919,7 +922,8 @@ describe('sync routes', () => {
         'user-1',
         'device-1',
         [makePushItem({ type: 'settings', clock: undefined })],
-        'vault-1'
+        'vault-1',
+        null
       )
     })
 
@@ -1128,7 +1132,10 @@ describe('sync routes', () => {
         'user-1',
         'device-1',
         [makePushItem()],
-        'vault-1'
+        'vault-1',
+        // Attribution: no x-memry-client header on these requests, so the
+        // handler passes null and the row is written unattributed.
+        null
       )
     })
 
@@ -1353,7 +1360,8 @@ describe('sync routes', () => {
         'vault-1',
         'note_1',
         'device-1',
-        expect.any(ArrayBuffer)
+        expect.any(ArrayBuffer),
+        null
       )
       expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', 'note_1')
     })

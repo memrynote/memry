@@ -19,6 +19,8 @@ interface FakeUpdateRow {
   sequence_num: number
   signer_device_id: string
   created_at: number
+  client_platform: string | null
+  client_version: string | null
 }
 
 interface FakeSnapshotRow {
@@ -32,6 +34,8 @@ interface FakeSnapshotRow {
   signer_device_id: string
   created_at: number
   revision: string
+  client_platform: string | null
+  client_version: string | null
 }
 
 interface PreparedCall {
@@ -72,10 +76,16 @@ function createD1Database(): D1Database {
         },
         async first<T>() {
           if (sql.startsWith('INSERT INTO crdt_updates')) {
+            // Bindings are positional and this double reads them by index, so
+            // the insert's own column list and the subquery's offsets have to
+            // be kept in step with crdt.ts by hand. Attribution added two
+            // columns to the SELECT list, pushing the subquery's
+            // (user, vault, note) triple from 7-9 to 9-11.
             const nextSequence =
               sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[7] as string, params[8] as string, params[9] as string) + 1
-                : getUpdateMax(params[7] as string, params[8] as string, params[9] as string) + 1
+                ? getCombinedMax(params[9] as string, params[10] as string, params[11] as string) +
+                  1
+                : getUpdateMax(params[9] as string, params[10] as string, params[11] as string) + 1
 
             updates.push({
               id: params[0] as string,
@@ -85,7 +95,9 @@ function createD1Database(): D1Database {
               update_data: params[4] as ArrayBuffer,
               sequence_num: nextSequence,
               signer_device_id: params[5] as string,
-              created_at: params[6] as number
+              created_at: params[6] as number,
+              client_platform: (params[7] as string | null) ?? null,
+              client_version: (params[8] as string | null) ?? null
             })
 
             return { sequence_num: nextSequence } as T
@@ -189,7 +201,9 @@ function createD1Database(): D1Database {
               size_bytes: params[6] as number,
               signer_device_id: params[7] as string,
               created_at: params[8] as number,
-              revision: params[9] as string
+              revision: params[9] as string,
+              client_platform: (params[10] as string | null) ?? null,
+              client_version: (params[11] as string | null) ?? null
             }
 
             const existing = snapshots.get(key)
@@ -214,7 +228,9 @@ function createD1Database(): D1Database {
               'size_bytes',
               'signer_device_id',
               'created_at',
-              'revision'
+              'revision',
+              'client_platform',
+              'client_version'
             ]) {
               if (setClause.includes(`${column} = excluded.${column}`)) {
                 target[column] = source[column]

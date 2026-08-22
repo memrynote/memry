@@ -16,6 +16,7 @@ import {
   RECORD_SYNC_ITEM_TYPES
 } from '@memry/contracts/sync-api'
 import { encodeSignaturePayload } from '../lib/cbor'
+import type { ClientIdentity } from '../lib/client-identity'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { deleteBlob, generateItemBlobKey, getBlob, putBlob } from './blob'
@@ -302,7 +303,8 @@ export const processRecordPushBatch = async (
   userId: string,
   deviceId: string,
   items: PushItemInput[],
-  vaultId = 'default'
+  vaultId = 'default',
+  client: ClientIdentity | null = null
 ): Promise<RecordPushBatchResult> => {
   await checkQuota(db, userId, estimatePushBatchBytes(items))
 
@@ -312,7 +314,7 @@ export const processRecordPushBatch = async (
   let maxCursor = 0
 
   for (const item of items) {
-    const result = await processPushItem(db, storage, userId, deviceId, item, vaultId)
+    const result = await processPushItem(db, storage, userId, deviceId, item, vaultId, client)
     outcomes.push({
       id: item.id,
       type: item.type,
@@ -347,7 +349,8 @@ export const processPushItem = async (
   userId: string,
   deviceId: string,
   item: PushItemInput,
-  vaultId = 'default'
+  vaultId = 'default',
+  client: ClientIdentity | null = null
 ): Promise<{ accepted: boolean; reason?: string; serverCursor?: number }> => {
   try {
     if (!isSupportedRecordSyncItemType(item.type)) {
@@ -422,8 +425,9 @@ export const processPushItem = async (
         `INSERT INTO sync_items (
           id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
           version, crypto_version, operation, server_cursor, signer_device_id, signature,
-          state_vector, clock, created_at, updated_at, deleted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          state_vector, clock, created_at, updated_at, deleted_at,
+          client_platform, client_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
           blob_key = excluded.blob_key,
           size_bytes = excluded.size_bytes,
@@ -437,7 +441,12 @@ export const processPushItem = async (
           state_vector = excluded.state_vector,
           clock = excluded.clock,
           updated_at = excluded.updated_at,
-          deleted_at = excluded.deleted_at`
+          deleted_at = excluded.deleted_at,
+          -- Attribution tracks the LATEST writer, not the creator: an incident
+          -- query asks "what did iOS write", and a desktop rewrite of the same
+          -- row is no longer a mobile-originated value.
+          client_platform = excluded.client_platform,
+          client_version = excluded.client_version`
       )
       .bind(
         crypto.randomUUID(),
@@ -458,7 +467,9 @@ export const processPushItem = async (
         clockJson,
         existingCreatedAt,
         now,
-        deletedAt
+        deletedAt,
+        client?.platform ?? null,
+        client?.version ?? null
       )
 
     const transactionalStatements = [upsertSyncItemStmt]
