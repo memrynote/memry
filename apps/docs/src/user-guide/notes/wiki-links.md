@@ -32,9 +32,9 @@ The link displays the target's current title, but the underlying reference uses 
 
 ## Following a Link
 
-Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
+Click any wiki link to open the target in a new tab — or in this tab, if you have turned "clicking a page opens a new tab" off in settings.
 
-A click on the link itself always follows it, however long you hold the button down. Placing the cursor beside a link is a separate gesture — see “Seeing a link’s markdown” below — and clicking on the link never does that instead of opening the note.
+A click on the link itself always follows it, however long you hold the button down, and the link never flashes its markdown on the way. One consequence: a drag that begins on a link does not select text — begin it in the words beside the link instead. Placing the cursor beside a link is a separate gesture — see “Seeing a link’s markdown” below — and clicking on the link never does that instead of opening the note.
 
 ## Linking to a Heading
 
