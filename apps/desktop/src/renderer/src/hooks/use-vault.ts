@@ -15,6 +15,7 @@ import {
   onVaultIndexRecovered
 } from '../services/vault-service'
 import { getI18n } from 'react-i18next'
+import { clearTabStateForVault } from '@/contexts/tabs/persistence'
 
 /**
  * Hook for vault state management.
@@ -299,6 +300,9 @@ export function useVaultList() {
   const removeVault = useCallback(
     async (path: string) => {
       await vaultService.remove(path)
+      // The removed vault's tabs would otherwise sit on the origin's quota
+      // forever, competing with the tab state of vaults the user still opens.
+      clearTabStateForVault(path)
       await refresh()
     },
     [refresh]

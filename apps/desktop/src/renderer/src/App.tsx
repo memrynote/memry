@@ -24,7 +24,7 @@ import { ThemeProvider } from 'next-themes'
 // Tab System imports
 import { TabProvider, useTabs } from '@/contexts/tabs'
 import { useRecordRecentlyOpened } from '@/hooks/use-recently-opened'
-import { useTabSessionPersistence, STORAGE_KEY } from '@/contexts/tabs/persistence'
+import { useTabSessionPersistence } from '@/contexts/tabs/persistence'
 import { TasksProvider } from '@/contexts/tasks'
 import { TabDragProvider, TabErrorBoundary } from '@/components/tabs'
 import { SplitViewContainer } from '@/components/split-view'
@@ -125,11 +125,20 @@ function ThemeSyncManager({ children }: { children: React.ReactNode }): React.JS
  * Component that enables tab session persistence.
  * Must be rendered inside TabProvider.
  */
-function TabPersistenceManager({ children }: { children: React.ReactNode }): React.JSX.Element {
+function TabPersistenceManager({
+  vaultPath,
+  children
+}: {
+  vaultPath: string | null
+  children: React.ReactNode
+}): React.JSX.Element {
   // Restore the stored session on mount, and hold the debounced auto-save until
   // that restore has landed — otherwise the save writes the provider's default
   // Home tab over the session the restore is still on its way to read.
-  useTabSessionPersistence()
+  //
+  // The vault path decides which session that is: each vault keeps its own tabs,
+  // so switching reads the other vault's set instead of destroying either.
+  useTabSessionPersistence({ vaultPath })
 
   return <>{children}</>
 }
@@ -400,9 +409,12 @@ function App(): React.JSX.Element {
     if (!vaultPath) return
     if (prevVaultPathRef.current && prevVaultPathRef.current !== vaultPath) {
       queryClient.clear()
-      localStorage.removeItem(STORAGE_KEY)
+      // Cached rows and expanded folder ids belong to the vault being left and
+      // mean nothing in the one being entered, so they go. Tab state does not:
+      // it is stored per vault and read back on the way in, so deleting it here
+      // was what left every switch on a bare Home tab, in both directions.
       localStorage.removeItem('sidebar-tree-expanded')
-      log.info('Vault switched, cleared query cache and tab state')
+      log.info('Vault switched, cleared query cache')
     }
     prevVaultPathRef.current = vaultPath
   }, [vaultPath, queryClient])
@@ -524,7 +536,7 @@ function App(): React.JSX.Element {
                   <HintModeProvider>
                     <TabProvider>
                       <AgentFeatureProvider>
-                        <TabPersistenceManager>
+                        <TabPersistenceManager vaultPath={vaultPath}>
                           <SettingsModalProvider>
                             <SelectedFolderProvider>
                               <SidebarDrillDownProvider>

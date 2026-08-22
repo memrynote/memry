@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getMockApi } from '@tests/utils/render'
 import { useVault, useVaultList } from './use-vault'
+import { tabStateStorageKey } from '@/contexts/tabs/persistence'
 
 function vaultApi() {
   return getMockApi() as {
@@ -183,9 +184,16 @@ describe('useVaultList', () => {
     })
     expect(result.current.vaults).toEqual([{ path: '/other', name: 'Other' }])
 
+    // A removed vault's tabs go with it: nothing will ever read them again, and
+    // they would sit on the origin's quota beside the vaults still in use.
+    localStorage.setItem(tabStateStorageKey('/other'), '{}')
+    localStorage.setItem(tabStateStorageKey('/vault'), '{}')
+
     await act(async () => {
       await result.current.removeVault('/other')
     })
     expect(api.vault.remove).toHaveBeenCalledWith('/other')
+    expect(localStorage.getItem(tabStateStorageKey('/other'))).toBeNull()
+    expect(localStorage.getItem(tabStateStorageKey('/vault'))).toBe('{}')
   })
 })

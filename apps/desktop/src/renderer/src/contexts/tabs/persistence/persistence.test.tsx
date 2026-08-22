@@ -9,13 +9,14 @@ import {
   useTabSessionPersistence
 } from './hooks'
 import {
+  clearTabStateForVault,
   consumeSyncSaveFailure,
   isQuotaExceededError,
   localStorageAdapter,
   saveSync
 } from './storage'
 import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
-import { STORAGE_KEY, type PersistedTabState, type TabStorage } from './types'
+import { STORAGE_KEY, tabStateStorageKey, type PersistedTabState, type TabStorage } from './types'
 import type { Tab, TabSystemState } from '@/contexts/tabs/types'
 
 const mocks = vi.hoisted(() => ({
@@ -336,8 +337,16 @@ const startupState = (): TabSystemState =>
   }) as TabSystemState
 
 /** Mounts the pair exactly the way `TabPersistenceManager` does at app start. */
-function StartupProbe({ storage, debounceMs }: { storage: TabStorage; debounceMs: number }) {
-  sessionSnapshot = useTabSessionPersistence({ storage, debounceMs })
+function StartupProbe({
+  storage,
+  vaultPath,
+  debounceMs
+}: {
+  storage?: TabStorage
+  vaultPath?: string | null
+  debounceMs: number
+}) {
+  sessionSnapshot = useTabSessionPersistence({ storage, vaultPath, debounceMs })
   return null
 }
 
@@ -415,7 +424,7 @@ describe('tab persistence serialization and storage', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota')
     })
-    expect(saveSync(persisted())).toMatchObject({ ok: false, reason: 'error' })
+    expect(saveSync(persisted(), STORAGE_KEY)).toMatchObject({ ok: false, reason: 'error' })
     setItem.mockRestore()
     expect(consumeSyncSaveFailure()).toBeNull()
   })
@@ -423,7 +432,11 @@ describe('tab persistence serialization and storage', () => {
   it('reports a refused synchronous save and leaves a marker for the next launch', () => {
     const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
 
-    expect(saveSync(persisted())).toEqual({ ok: false, reason: 'quota', at: expect.any(Number) })
+    expect(saveSync(persisted(), STORAGE_KEY)).toEqual({
+      ok: false,
+      reason: 'quota',
+      at: expect.any(Number)
+    })
     setItem.mockRestore()
 
     // The marker is what the next launch reads; consuming it is one-shot, so a
@@ -434,10 +447,10 @@ describe('tab persistence serialization and storage', () => {
 
   it('clears the failure marker once a synchronous save succeeds', () => {
     const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
-    saveSync(persisted())
+    saveSync(persisted(), STORAGE_KEY)
     setItem.mockRestore()
 
-    expect(saveSync(persisted())).toEqual({ ok: true })
+    expect(saveSync(persisted(), STORAGE_KEY)).toEqual({ ok: true })
     expect(localStorage.getItem(STORAGE_KEY)).toContain('pin-1')
     expect(consumeSyncSaveFailure()).toBeNull()
   })
@@ -723,7 +736,7 @@ describe('tab persistence hooks', () => {
 
   it('tells the user at the next launch that the last session was never saved', async () => {
     const setItem = refuseWritesTo(STORAGE_KEY, quotaError())
-    saveSync(serializeTabState(state()))
+    saveSync(serializeTabState(state()), STORAGE_KEY)
     setItem.mockRestore()
 
     const storage: TabStorage = {
@@ -755,7 +768,7 @@ describe('tab persistence hooks', () => {
 
     // A refusal that is not about space explains itself differently.
     const failAgain = refuseWritesTo(STORAGE_KEY, new Error('storage backend offline'))
-    saveSync(serializeTabState(state()))
+    saveSync(serializeTabState(state()), STORAGE_KEY)
     failAgain.mockRestore()
 
     render(withQueryClient(<SessionRestoreProbe storage={storage} />))
@@ -889,5 +902,238 @@ describe('tab session persistence startup order', () => {
     const written = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as PersistedTabState
     expect(Object.keys(written.tabGroups)).toEqual(['group-1'])
     expect(written.tabGroups['group-1'].tabs.map((item) => item.id)).toEqual(['pin-1', 'note-1'])
+  })
+})
+
+/**
+ * Reported by a beta user on 22 Aug 2026:
+ *
+ *   "Now concerning the tabs opened to remain when app relaunched, they are
+ *    preserved when I relaunch the app. But not if I switched to another vault.
+ *    It left me with the Home tab. I tested, switching back and forth between 2
+ *    vaults, opened many tabs on both, and switched. All gone, only Home tab.
+ *    But they are preserved when closing and reopening the app."
+ *
+ * Switching vaults remounts the whole tab tree, so the state in memory is meant
+ * to go — but the stored session went with it, in both directions, which is why
+ * switching back did not bring the first vault's tabs home either.
+ */
+describe('tab session persistence is scoped per vault', () => {
+  const VAULT_A = '/Users/aurelie/Vaults/Work'
+  const VAULT_B = '/Users/aurelie/Vaults/Personal'
+
+  const keyA = tabStateStorageKey(VAULT_A)
+  const keyB = tabStateStorageKey(VAULT_B)
+
+  const readKey = (key: string): PersistedTabState | null =>
+    JSON.parse(localStorage.getItem(key) ?? 'null') as PersistedTabState | null
+
+  const tabIdsAt = (key: string): string[] | null => {
+    const stored = readKey(key)
+    if (!stored) return null
+    return Object.values(stored.tabGroups).flatMap((group) => group.tabs.map((item) => item.id))
+  }
+
+  /** The session one vault is left holding: a pinned tab and a note tab. */
+  const sessionFor = (noteId: string): PersistedTabState =>
+    persisted({
+      tabGroups: {
+        'group-1': {
+          id: 'group-1',
+          activeTabId: noteId,
+          tabs: [
+            {
+              id: 'pin-1',
+              type: 'inbox',
+              title: 'Inbox',
+              icon: 'inbox',
+              path: '/inbox',
+              isPinned: true
+            },
+            {
+              id: noteId,
+              type: 'note',
+              title: noteId,
+              icon: 'file-text',
+              path: `/note/${noteId}`,
+              entityId: noteId,
+              isPinned: false
+            }
+          ]
+        }
+      }
+    })
+
+  const restorePayload = (): Partial<TabSystemState> | undefined => {
+    const call = mocks.dispatch.mock.calls.find((entry) => entry[0]?.type === 'RESTORE_SESSION')
+    return call?.[0].payload as Partial<TabSystemState> | undefined
+  }
+
+  const newQueryClient = () =>
+    new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+    })
+
+  const probe = (vaultPath: string) => (
+    <QueryClientProvider client={newQueryClient()}>
+      <StartupProbe vaultPath={vaultPath} debounceMs={25} />
+    </QueryClientProvider>
+  )
+
+  /** Swap the provider's state the way the reducer would once tabs are open. */
+  const holdSession = (session: PersistedTabState): void => {
+    mocks.tabsState = {
+      ...(mocks.tabsState as TabSystemState),
+      ...(deserializeTabState(session, mocks.flags) as Partial<TabSystemState>)
+    } as TabSystemState
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    localStorage.clear()
+    mocks.tabsState = startupState()
+    mocks.flagsLoading = false
+    sessionSnapshot = null
+
+    // Stand in for the reducer, the way the startup-order suite does: the real
+    // provider swaps its default state for the restored one.
+    mocks.dispatch.mockImplementation((action: { type: string; payload?: unknown }) => {
+      if (action.type !== 'RESTORE_SESSION') return
+      mocks.tabsState = {
+        ...(mocks.tabsState as TabSystemState),
+        ...(action.payload as Partial<TabSystemState>)
+      } as TabSystemState
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('leaves the other vault tabs alone and hands them back on the way home', async () => {
+    // Vault A already holds a session; vault B has never been opened.
+    localStorage.setItem(keyA, JSON.stringify(sessionFor('note-a')))
+
+    // --- Vault A ------------------------------------------------------------
+    const inVaultA = render(probe(VAULT_A))
+    await waitFor(() => expect(restorePayload()).toBeDefined())
+    expect(restorePayload()?.tabGroups?.['group-1'].tabs.map((item) => item.id)).toEqual([
+      'pin-1',
+      'note-a'
+    ])
+
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
+    act(() => vi.advanceTimersByTime(100))
+    expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
+
+    // --- Switch to vault B --------------------------------------------------
+    // `App` keys its tree by the vault path, so the switch is an unmount and a
+    // remount with the provider's default Home tab.
+    inVaultA.unmount()
+    mocks.dispatch.mockClear()
+    mocks.tabsState = startupState()
+
+    const inVaultB = render(probe(VAULT_B))
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
+
+    // A vault that has never been opened starts on Home, and says so by not
+    // restoring anything at all.
+    expect(restorePayload()).toBeUndefined()
+
+    // B opens its own tabs and they are written under B's key…
+    holdSession(sessionFor('note-b'))
+    inVaultB.rerender(probe(VAULT_B))
+    act(() => vi.advanceTimersByTime(100))
+    expect(tabIdsAt(keyB)).toEqual(['pin-1', 'note-b'])
+
+    // …while A's session is exactly where A left it. This is the assertion the
+    // report turns on: the switch used to delete this entry, which is why
+    // switching back showed nothing either.
+    expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
+
+    // --- Switch back to vault A ---------------------------------------------
+    inVaultB.unmount()
+    mocks.dispatch.mockClear()
+    mocks.tabsState = startupState()
+
+    render(probe(VAULT_A))
+    await waitFor(() => expect(restorePayload()).toBeDefined())
+
+    const restored = restorePayload()?.tabGroups?.['group-1'].tabs
+    expect(restored?.map((item) => item.id)).toEqual(['pin-1', 'note-a'])
+    expect(restored?.find((item) => item.id === 'pin-1')?.isPinned).toBe(true)
+  })
+
+  it('adopts the one pre-vault entry into the vault that opens, and only that one', async () => {
+    // What an install upgrading from a build with a single global key holds.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionFor('note-legacy')))
+
+    render(probe(VAULT_A))
+
+    // Nobody loses their tabs to the upgrade: the vault the app reopens is the
+    // vault they were left in, so it takes them over.
+    await waitFor(() => expect(restorePayload()).toBeDefined())
+    expect(restorePayload()?.tabGroups?.['group-1'].tabs.map((item) => item.id)).toEqual([
+      'pin-1',
+      'note-legacy'
+    ])
+    expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-legacy'])
+
+    // And the legacy entry is gone, so the next vault cannot inherit the same
+    // tabs a second time.
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+
+    mocks.dispatch.mockClear()
+    mocks.tabsState = startupState()
+    render(probe(VAULT_B))
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
+    expect(restorePayload()).toBeUndefined()
+    expect(localStorage.getItem(keyB)).toBeNull()
+  })
+
+  it('writes the pending debounce out on the way to the other vault', async () => {
+    localStorage.setItem(keyA, JSON.stringify(sessionFor('note-a')))
+
+    const inVaultA = render(probe(VAULT_A))
+    await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
+    act(() => vi.advanceTimersByTime(100))
+    expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
+
+    // One more tab, then the switch, inside the debounce window.
+    holdSession(sessionFor('note-late'))
+    inVaultA.rerender(probe(VAULT_A))
+    act(() => vi.advanceTimersByTime(5))
+    inVaultA.unmount()
+
+    expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-late'])
+  })
+
+  it('does not write the default Home tab over a session the restore never read', () => {
+    const stored = sessionFor('note-a')
+    localStorage.setItem(keyA, JSON.stringify(stored))
+
+    // The flag IPC never answers, so auto-save stays shut the whole time.
+    mocks.flagsLoading = true
+
+    const inVaultA = render(probe(VAULT_A))
+    act(() => vi.advanceTimersByTime(100))
+
+    // A switch that lands mid-restore takes the Home-only default with it.
+    inVaultA.unmount()
+    mocks.flagsLoading = false
+
+    expect(readKey(keyA)).toEqual(stored)
+  })
+
+  it('forgets a removed vault tab state instead of leaving it on the quota', () => {
+    localStorage.setItem(keyA, JSON.stringify(sessionFor('note-a')))
+    localStorage.setItem(keyB, JSON.stringify(sessionFor('note-b')))
+
+    clearTabStateForVault(VAULT_A)
+
+    expect(localStorage.getItem(keyA)).toBeNull()
+    expect(tabIdsAt(keyB)).toEqual(['pin-1', 'note-b'])
   })
 })
