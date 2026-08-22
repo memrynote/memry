@@ -75,9 +75,9 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 - [ ] T021 App-core split: move the 18 node-touching files behind seams or into desktop; pure domain stays importable by mobile — `packages/app-core/src/`
 - [ ] T022 Migrate sync test suites with their code; desktop suites pass unchanged (assertion changes require written justification in the PR)
 - [x] T023 Adapter conformance suite runnable against any implementation (desktop under node now; mobile later) — real adapters, not mocks — `packages/sync-client/src/adapters/__tests__/conformance.ts` _(`src/adapters/__tests__/conformance.ts` — `runAdapterConformance(harness, api)` with `describe`/`it`/`expect` injected, so desktop's Vitest run and mobile's on-device run share one suite. Real adapters: the harness supplies a live set per test. `harness.skip` exists but every entry needs a PR justification)_
-- [ ] T024 Boundary check walks real `apps/mobile` → `@memry/sync-client` reachability; green with the spike app importing the package
-- [ ] T025 Targeted desktop E2E smoke on the extraction branch: sync push/pull, offline reconnect, CRDT merge specs only
-- [ ] T026 [P] Docs impact for the extraction (`pnpm docs:impact --base origin/main --strict` + updates under `apps/docs/src/`)
+- [ ] T024 Boundary check walks real `apps/mobile` → `@memry/sync-client` reachability; green with the spike app importing the package _(BLOCKED on T018–T021: the boundary check already walks `apps/mobile` transitively (T003) and is green, but nothing in `apps/mobile` imports `@memry/sync-client` yet, so the rule is not yet exercised on a real edge.)_
+- [ ] T025 Targeted desktop E2E smoke on the extraction branch: sync push/pull, offline reconnect, CRDT merge specs only _(pending — runs when the extraction lands; nothing has moved yet beyond `vector-clock`.)_
+- [ ] T026 [P] Docs impact for the extraction (`pnpm docs:impact --base origin/main --strict` + updates under `apps/docs/src/`) _(partial: `pnpm docs:impact --base origin/main --strict` is GREEN for what landed — `apps/docs/src/architecture/sync-protocol.md` gained the client-gate / kill-switch / attribution section, `pnpm docs:build` green. Must be re-run when T018–T022 land.)_
 
 ### Server production-safety kit (additive; contracts/sync-protocol-additions.md §1–4)
 
@@ -86,9 +86,28 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 - [x] T029 [P] Stamp attribution columns on every item-write path from the header — `apps/sync-server/src/routes/` write handlers + tests _(`processPushItem` → `sync_items`; `storeUpdates`/`storeSnapshot` → `crdt_updates`/`crdt_snapshots`. Latest-writer semantics on conflict. Existing positional doubles in `crdt.test.ts` / `sync.test.ts` updated for the new bind arity — assertion-only, justified inline)_
 - [x] T030 [P] Embed platform policy in the account/status response so clients learn of a flipped switch without attempting a write — `apps/sync-server/src/routes/` + additive response field tests _(`GET /sync/status` gains optional `clientPolicy`; contracts `SyncStatus` + `SyncStatusSchema` extended additively. Header-less clients get byte-identical responses and pay no extra query)_
 - [x] T031 Backward-compat suite: header-less (legacy desktop) requests behave byte-for-byte as today across all touched endpoints — `apps/sync-server/src/__tests__/legacy-client-compat.test.ts` _(`src/__tests__/legacy-client-compat.test.ts`, 15 cases, driven against a **real** SQLite D1 provisioned from the migration ledger (`src/__tests__/d1-sqlite.ts`) — only auth is stubbed. Full sync-server suite green: 1032/1032, coverage thresholds met)_
-- [ ] T032 Remove the temporary `apps/mobile` exclusion from root turbo filters; root `pnpm typecheck && pnpm test` green with mobile included; `mobile-ci.yml` keeps device-specific jobs only (plan T1.9)
+- [ ] T032 Remove the temporary `apps/mobile` exclusion from root turbo filters; root `pnpm typecheck && pnpm test` green with mobile included; `mobile-ci.yml` keeps device-specific jobs only (plan T1.9) _(root filters are explicit allowlists, so this is an ADD not a removal. `@memry/sync-client` was added to `typecheck` and `test`; `@memry/mobile` is deliberately still out until the extraction lands.)_
 
 **Checkpoint — G1**: full quickstart §Phase 1 command list green; extraction PRs show mechanical diffs; desktop behaviour unchanged.
+
+**G1 status (2026-08-23): NOT GREEN — server kit + scaffold done, extraction open.**
+
+Green now: `pnpm lint`, `pnpm typecheck` (18/18), `pnpm test:desktop`
+(1389 files / 18131 tests, 0 failures), `pnpm --filter @memry/sync-server test`
+(1032, coverage thresholds met), `pnpm check:architecture`,
+`pnpm check:contracts`, `pnpm ipc:check`, `pnpm docs:impact --strict`,
+`pnpm docs:build`, `git diff --check`.
+
+Open: T018–T022 (the code move), T024, T025, T032.
+
+**Blocker for T018–T021** — T015 found that vault file I/O (~20 files) maps to
+none of the ten seams. `VaultDirectory` owns roots, `AttachmentStore` owns
+attachment bytes, `CrdtStorePath` owns the CRDT store location; nothing owns
+note/journal file reads and writes. Recommendation in
+[seam-inventory.md](../../packages/sync-client/docs/seam-inventory.md): widen
+`VaultDirectory` into a `VaultFileSystem` rather than add an eleventh seam.
+Needs owner sign-off — the contract says the ten-seam list is the decision
+record's and drift goes through review, not accretion.
 
 ---
 
