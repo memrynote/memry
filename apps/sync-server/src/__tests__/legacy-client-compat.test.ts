@@ -151,10 +151,15 @@ const request = (
   if (clientHeader) headers['x-memry-client'] = clientHeader
   // The push handler fires its broadcast through `executionCtx.waitUntil`, so
   // the request needs one exactly as the Workers runtime supplies.
-  return app.request(path, { ...rest, headers }, env as unknown as Record<string, unknown>, {
-    waitUntil: () => undefined,
-    passThroughOnException: () => undefined
-  } as unknown as ExecutionContext)
+  return app.request(
+    path,
+    { ...rest, headers },
+    env as unknown as Record<string, unknown>,
+    {
+      waitUntil: () => undefined,
+      passThroughOnException: () => undefined
+    } as unknown as ExecutionContext
+  )
 }
 
 const itemRow = (itemId: string) =>

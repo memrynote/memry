@@ -32,7 +32,7 @@
     "typecheck:extension": "pnpm --filter @memry/extension typecheck",
     "lint:extension": "pnpm --filter @memry/extension lint",
     "test:extension": "pnpm --filter @memry/extension test",
-    "typecheck": "pnpm repair:links && node scripts/run-turbo.js run typecheck --filter=@memry/contracts --filter=@memry/db-schema --filter=@memry/domain-inbox --filter=@memry/domain-notes --filter=@memry/domain-tasks --filter=@memry/editor-schema --filter=@memry/storage-data --filter=@memry/storage-vault --filter=@memry/app-core --filter=@memry/rpc --filter=@memry/sync-core --filter=@memry/shared --filter=@memry/cli --filter=@memry/desktop --filter=@memry/sync-server",
+    "typecheck": "pnpm repair:links && node scripts/run-turbo.js run typecheck --filter=@memry/contracts --filter=@memry/db-schema --filter=@memry/domain-inbox --filter=@memry/domain-notes --filter=@memry/domain-tasks --filter=@memry/editor-schema --filter=@memry/storage-data --filter=@memry/storage-vault --filter=@memry/app-core --filter=@memry/rpc --filter=@memry/sync-core --filter=@memry/sync-client --filter=@memry/shared --filter=@memry/cli --filter=@memry/desktop --filter=@memry/sync-server",
     "typecheck:packages": "pnpm repair:links && node scripts/run-turbo.js run typecheck --filter=@memry/contracts --filter=@memry/db-schema --filter=@memry/domain-inbox --filter=@memry/domain-notes --filter=@memry/domain-tasks --filter=@memry/editor-schema --filter=@memry/storage-data --filter=@memry/storage-vault --filter=@memry/app-core --filter=@memry/rpc --filter=@memry/sync-core --filter=@memry/shared --filter=@memry/cli",
     "typecheck:desktop": "pnpm --filter @memry/desktop typecheck",
     "typecheck:landing": "pnpm --filter @memry/landing typecheck",
