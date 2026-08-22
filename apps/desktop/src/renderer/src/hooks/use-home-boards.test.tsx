@@ -100,6 +100,23 @@ describe('useHomeBoards', () => {
     await waitFor(() => expect(listMock).toHaveBeenCalled())
   })
 
+  // The tab title is rendered from a second `useHomeBoards()` mounted above the
+  // tab tree, so a switch made on the Home page has to reach it. `localStorage`
+  // alone notifies nobody — a per-instance `useState` would leave the other
+  // consumer on the value it read at mount.
+  it('shares the active board id across hook instances', async () => {
+    const second = { ...board, id: 'b2', name: 'Work' }
+    vi.mocked(window.api.homePages.list).mockResolvedValue([board, second])
+    const { result: page } = renderHook(() => useHomeBoards(), { wrapper })
+    const { result: elsewhere } = renderHook(() => useHomeBoards(), { wrapper })
+    await waitFor(() => expect(elsewhere.current.boards).toHaveLength(2))
+
+    act(() => page.current.setActiveBoardId('b2'))
+
+    expect(elsewhere.current.activeBoardId).toBe('b2')
+    expect(elsewhere.current.activeBoard?.name).toBe('Work')
+  })
+
   it('unsubscribes from all three events on unmount', async () => {
     const { result, unmount } = renderHook(() => useHomeBoards(), { wrapper })
     await waitFor(() => expect(result.current.boards).toHaveLength(1))

@@ -64,6 +64,12 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ clear: queryClientClear })
 }))
 
+vi.mock('@/components/tabs/home-tab-title-sync', () => ({
+  // Owns a react-query subscription; `@tanstack/react-query` is fully mocked
+  // here. Its own suite covers it (`home-tab-title-sync.test.tsx`).
+  HomeTabTitleSync: () => null
+}))
+
 vi.mock('next-themes', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="theme-provider">{children}</div>
