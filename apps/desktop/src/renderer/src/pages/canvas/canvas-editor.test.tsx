@@ -25,6 +25,7 @@ import { mintSnapshotElements } from '@/components/note/mind-map/mind-map-snapsh
 import type { MindMapBoxElement, MindMapElement } from '@/components/note/mind-map/mind-map-types'
 import { CanvasEditor } from './canvas-editor'
 import { clearCardTitleCache } from './canvas-link-target-title'
+import { resetTooLargeNotices } from './canvas-too-large-notice'
 
 interface FakeApi {
   getSceneElements: () => unknown[]
@@ -441,6 +442,9 @@ describe('CanvasEditor too-large-to-sync notice', () => {
     mocks.api.showHyperlinkPopup = false
     mocks.onChange = null
     mocks.tooLargeListeners.clear()
+    // The notice is remembered for the whole app session, so each test starts
+    // from a fresh one.
+    resetTooLargeNotices()
     mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
     mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
     installWindowApi()
@@ -510,6 +514,88 @@ describe('CanvasEditor too-large-to-sync notice', () => {
     mocks.update.mockResolvedValue({ id: 'c1', tooLarge: false })
     await saveOnce([{ id: 'a' }])
     emitTooLarge('c1')
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(2)
+  })
+
+  /**
+   * #1643: only the active tab is mounted, so leaving the canvas destroys the
+   * editor and coming back builds a new one. The notice must not start over
+   * with it — the user meets the same warning again on every tab switch.
+   */
+  it('stays quiet when the canvas is left and reopened in the same session', async () => {
+    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    await saveOnce([{ id: 'a' }])
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+
+    first.unmount()
+
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    await saveOnce([{ id: 'a' }, { id: 'b' }])
+
+    expect(mocks.update).toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+  })
+
+  /**
+   * What makes the remount visible without the user touching anything: a canvas
+   * with externalized images is stored with a top-level `memryAssets` sidecar
+   * that serializeAsJSON never writes back, so the loaded scene and the
+   * serialized scene always differ and the first autosave after mount always
+   * runs — oversized, on arrival.
+   */
+  it('announces once for an image scene that saves on mount, not once per visit', async () => {
+    const storedScene = JSON.stringify({
+      elements: [{ id: 'img-1' }],
+      files: { 'file-1': { dataURL: 'memry-file://local/canvas-assets/abc.png' } },
+      memryAssets: [{ fileId: 'file-1', contentHash: 'abc', extension: 'png' }]
+    })
+    // No edit anywhere below: the scene Excalidraw reports is exactly the one
+    // that was stored, and the save happens because the sidecar cannot be
+    // serialized back.
+    const openCanvas = async (): Promise<{ unmount: () => void }> => {
+      const view = render(<CanvasEditor canvasId="c1" initialScene={storedScene} />)
+      await saveOnce([{ id: 'img-1' }])
+      return view
+    }
+
+    const first = await openCanvas()
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+    first.unmount()
+
+    const second = await openCanvas()
+    second.unmount()
+
+    expect(mocks.update.mock.calls.length).toBeGreaterThan(1)
+    expect(mocks.toastError).toHaveBeenCalledTimes(1)
+  })
+
+  it('still warns for a different canvas opened in the same session', async () => {
+    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    await saveOnce([{ id: 'a' }])
+    first.unmount()
+
+    mocks.update.mockResolvedValue({ id: 'c2', tooLarge: true })
+    render(<CanvasEditor canvasId="c2" initialScene="" />)
+    await saveOnce([{ id: 'a' }, { id: 'b' }])
+
+    expect(mocks.toastError).toHaveBeenCalledTimes(2)
+    expect(mocks.toastError).toHaveBeenLastCalledWith('canvas.tooLargeToSync', {
+      id: 'canvas-too-large-c2'
+    })
+  })
+
+  it('warns again after the canvas shrinks under the ceiling and grows past it', async () => {
+    const first = render(<CanvasEditor canvasId="c1" initialScene="" />)
+    await saveOnce([{ id: 'a' }])
+    mocks.update.mockResolvedValue({ id: 'c1', tooLarge: false })
+    await saveOnce([{ id: 'a' }, { id: 'b' }])
+    first.unmount()
+
+    mocks.update.mockResolvedValue({ id: 'c1', tooLarge: true })
+    render(<CanvasEditor canvasId="c1" initialScene="" />)
+    await saveOnce([{ id: 'a' }, { id: 'b' }, { id: 'c' }])
 
     expect(mocks.toastError).toHaveBeenCalledTimes(2)
   })
