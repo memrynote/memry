@@ -98,6 +98,8 @@ import {
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
 import { createWikiLinkEditPlugin } from './wiki-link-edit-plugin'
+import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
+import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
@@ -387,6 +389,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     notePathRef.current = notePath
   }, [notePath])
 
+  // Read through a ref by the wiki-link plugin below. Re-registering a
+  // ProseMirror plugin tears its view down and takes collaborative undo with it
+  // (see `registerEditorPlugin`), so that effect must not depend on a callback
+  // whose identity changes on every render of the page above.
+  const onInternalLinkClickRef = useRef(onInternalLinkClick)
+  useEffect(() => {
+    onInternalLinkClickRef.current = onInternalLinkClick
+  }, [onInternalLinkClick])
+
   // Only `pages/note.tsx` passes `notePath`; the journal, canvas cards and a
   // project's home note mount this editor knowing only the note's id. Since
   // attachments are now written relative to their note wherever they are saved,
@@ -463,7 +474,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     focusAtEndRef,
     editorContainerRef,
     onLinkClick,
-    onInternalLinkClick,
     initialHighlight,
     initialAnchorId
   })
@@ -854,9 +864,29 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       openMenu: () =>
         editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
           deleteTriggerCharacter: false
-        })
+        }),
+      // Following a link lives in the plugin rather than in a DOM click
+      // listener — `handleClickOn` there says why. Both halves of what the
+      // listener did, in the same order, so nothing downstream can tell the
+      // difference: the callback opens the note, and the window event is kept
+      // because it was broadcast before (nothing in the renderer subscribes to
+      // it today, so dropping it would be a silent contract change for
+      // anything outside).
+      onNavigate: (target) => {
+        window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target } }))
+        onInternalLinkClickRef.current?.(target)
+      }
     })
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
+
+  // `[ ] ` typed at the head of a table cell becomes an inline checkbox.
+  // BlockNote's own input rules own that gesture everywhere else and cannot
+  // fire inside a cell, so this never competes with them — see the plugin.
+  // Appended rather than prepended: it is an `appendTransaction`, so nothing
+  // about key handling order applies to it.
+  useEffect(() => {
+    return registerEditorPlugin(editor, createInlineCheckboxPlugin())
   }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
@@ -1491,6 +1521,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const inCell = isSelectionInTableCell(editor)
                 const defaults = withTableHeaderRow(
                   getDefaultReactSlashMenuItems(editor).map((item) => {
+                    // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                    // so inside a cell BlockNote puts the checklist after the
+                    // whole table. Inside a cell the item inserts the inline
+                    // node at the caret instead — same row, same label.
+                    if ((item as { key?: string }).key === 'check_list') {
+                      return inCell
+                        ? {
+                            ...item,
+                            onItemClick: () =>
+                              editor.insertInlineContent([createInlineCheckboxContent(false)])
+                          }
+                        : item
+                    }
                     if ((item as { key?: string }).key !== 'image') return item
                     // `img` and `picture` already ship as image aliases; `photo`
                     // did not, and is what people actually type.

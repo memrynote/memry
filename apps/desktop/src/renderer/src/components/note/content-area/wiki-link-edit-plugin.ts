@@ -22,7 +22,10 @@
  * headings are mostly spaces.
  *
  * Two things this deliberately does not do:
- * - Click ON a link is navigation, and stays navigation.
+ * - Click ON a link is navigation, and stays navigation — and that is enforced
+ *   HERE, by `handleClickOn`, not left to a DOM listener elsewhere. It was left
+ *   to one, and the paint below is what broke it; the handler's own comment has
+ *   the mechanism.
  * - The `[[` and `]]` are REAL characters here, so "ghost brackets" means a
  *   decoration that dims them, not invented ones. Deleting them is allowed:
  *   a user who removes the brackets is turning the link back into prose, which
@@ -427,6 +430,14 @@ export interface WikiLinkEditPluginOptions {
    * the menu's query window starts where a hand-typed link's would.
    */
   openMenu?: () => void
+
+  /**
+   * Follow the link the user clicked. Given the chip's `target`, trimmed.
+   *
+   * The plugin owns navigation because only the plugin knows where the click
+   * LANDED rather than where it ended up — see `handleClickOn`.
+   */
+  onNavigate?: (target: string) => void
 }
 
 export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}): Plugin {
@@ -482,12 +493,71 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
             Decoration.widget(beside.pos, () => renderSourceWidget(text), {
               side: -1,
               key: `wiki-link-source:${text}`,
-              raw: text
+              // NOT `raw`: that is a ProseMirror widget FLAG, and a truthy one
+              // makes PM skip both `contentEditable = 'false'` and the
+              // `ProseMirror-widget` class on the node it renders. The painted
+              // `[[…]]` then became editable DOM that is not in the document —
+              // the caret could walk into it and the typing went nowhere.
+              sourceText: text
             })
           )
         }
 
         return decorations.length > 0 ? DecorationSet.create(state.doc, decorations) : null
+      },
+
+      /**
+       * Following a link is a ProseMirror handler, NOT a DOM click listener,
+       * because by the time a `click` event fires the chip is no longer under
+       * the mouse.
+       *
+       * The chip is `contenteditable="false"`, so mousedown parks the caret
+       * immediately beside it. `decorations` above then does exactly what it is
+       * meant to do: it hides the chip (`wiki-link-hidden` → `display: none`)
+       * and paints the raw `[[Target]]` in its place. Chromium queues that
+       * repaint off `selectionchange`, and for a human click — mouse held 80ms,
+       * 150ms — it lands BETWEEN mousedown and mouseup. By mouseup there is no
+       * chip element left to be the click's target, so the browser retargets the
+       * event to the nearest surviving ancestor, the paragraph;
+       * `closest('[data-wiki-link]')` finds nothing and the click does nothing.
+       * The user is left looking at painted markdown, which reads as the note
+       * having dropped into "edit mode" — the regression 52c6cd07f introduced by
+       * adding the paint under a listener that could not survive it.
+       *
+       * A synthetic zero-delay click still hits the chip, which is why this was
+       * green in E2E and broken for every real user.
+       *
+       * ProseMirror is immune to it: `MouseDown` captures `posAtCoords` at
+       * MOUSEDOWN and hands that position to `handleClickOn` on mouseup (it only
+       * re-hit-tests when the DOCUMENT changed, and a decoration is not a
+       * document change). Returning true makes PM `preventDefault()` the mouseup
+       * as well, so the caret is never parked beside the chip and the markdown
+       * paint the user was seeing never happens at all.
+       *
+       * Modified clicks fall through deliberately: shift-click extends a
+       * selection, and leaving the rest alone keeps a future open-in-new-tab
+       * free to claim them.
+       */
+      handleClickOn(
+        _view: EditorView,
+        _pos: number,
+        node: ProseMirrorNode,
+        _nodePos: number,
+        event: MouseEvent,
+        direct: boolean
+      ): boolean {
+        // `direct` false means the click was inside some ancestor of the chip,
+        // which is an ordinary click in the paragraph.
+        if (!direct || node.type.name !== 'wikiLink') return false
+        if (event.button !== 0) return false
+        if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false
+        if (!options.onNavigate) return false
+
+        const target = typeof node.attrs.target === 'string' ? node.attrs.target.trim() : ''
+        if (!target) return false
+
+        options.onNavigate(target)
+        return true
       },
 
       handleKeyDown(view: EditorView, event: KeyboardEvent): boolean {

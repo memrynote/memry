@@ -16,7 +16,6 @@ interface BlockNoteSetupParams {
   focusAtEndRef?: React.RefObject<(() => void) | null>
   editorContainerRef: React.RefObject<HTMLDivElement | null>
   onLinkClick?: (href: string) => void
-  onInternalLinkClick?: (noteIdOrTitle: string) => void
   initialHighlight?: HighlightInfo
   /** For 'note_date' reminders: scroll to the inline date pill with this anchor id. */
   initialAnchorId?: string
@@ -33,7 +32,6 @@ export function useBlockNoteSetup({
   focusAtEndRef,
   editorContainerRef,
   onLinkClick,
-  onInternalLinkClick,
   initialHighlight,
   initialAnchorId
 }: BlockNoteSetupParams): BlockNoteSetupResult {
@@ -119,25 +117,22 @@ export function useBlockNoteSetup({
     }
   }, [editor, focusAtEndRef])
 
-  // Link click handler
+  // External link click handler.
+  //
+  // Wiki-link chips are NOT handled here any more. A chip reads as its raw
+  // `[[…]]` while the caret is beside it, and the chip element is hidden to
+  // make room for that — which happens between mousedown and mouseup on a
+  // normal human click, so by the time `click` fires the chip is gone from the
+  // DOM and the event has been retargeted to the paragraph. Navigation moved to
+  // `createWikiLinkEditPlugin`'s `handleClickOn`, which reads the position
+  // ProseMirror captured at mousedown. Do not restore a branch here: with both
+  // in place a fast click fires both and the note opens twice.
   useEffect(() => {
-    if (!onLinkClick && !onInternalLinkClick) return
+    if (!onLinkClick) return
 
     const handleClick = (e: Event): void => {
       const mouseEvent = e as globalThis.MouseEvent
       const target = mouseEvent.target as HTMLElement
-      const wikiLink = target.closest('[data-wiki-link]')
-      if (wikiLink) {
-        const targetTitle = wikiLink.getAttribute('data-target')?.trim()
-        if (targetTitle) {
-          mouseEvent.preventDefault()
-          window.dispatchEvent(
-            new CustomEvent('wikilink:click', { detail: { target: targetTitle } })
-          )
-          onInternalLinkClick?.(targetTitle)
-          return
-        }
-      }
       const link = target.closest('a')
       if (link) {
         const href = link.getAttribute('href')
@@ -160,7 +155,7 @@ export function useBlockNoteSetup({
     return () => {
       editorElement?.removeEventListener('click', handleClick)
     }
-  }, [onLinkClick, onInternalLinkClick, editorContainerRef])
+  }, [onLinkClick, editorContainerRef])
 
   // Scroll to highlight on mount
   useEffect(() => {

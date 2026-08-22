@@ -2811,6 +2811,27 @@ del.bn-inline-content {
   }
 }
 
+/* Inline checkbox — a tickable box inside a table cell, where `checkListItem`
+   (a BLOCK) cannot go. The node's own DOM ends in a space, and that space is
+   REAL CONTENT: it is what makes `| [ ] task |` serialize with a gap rather
+   than `| [ ]task |`. So nothing here may collapse or hide it. */
+.inline-checkbox {
+  display: inline;
+  white-space: nowrap;
+}
+
+.inline-checkbox input[type='checkbox'] {
+  /* Logical properties only: this flips to the right-hand side in RTL. */
+  margin-inline-end: 0.1em;
+  vertical-align: -0.1em;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.inline-checkbox input[type='checkbox']:disabled {
+  cursor: default;
+}
+
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
 .dark .bn-editor .inline-hash-tag,
 .dark .bn-container .inline-hash-tag,

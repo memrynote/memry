@@ -8,6 +8,7 @@ import { HashTag } from './hash-tag'
 import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
 import { InlineImage } from './inline-image'
+import { InlineCheckbox } from './inline-checkbox'
 
 // Built through the shared factory so the main process gets a schema with the
 // same node types. Main converts the shared Y.Doc through y-prosemirror, which
@@ -35,7 +36,11 @@ export const editorSchema = createMemrySchema({
     dateMention: DateMention,
     // A picture inside a table cell (#1640). Same node as main's; only the
     // note-relative `src` resolution is added here, for display.
-    inlineImage: InlineImage
+    inlineImage: InlineImage,
+    // A tickable checkbox inside a table cell — `checkListItem` is a block and
+    // a cell holds inline content only. Same node as main's; only the click
+    // handler that flips it is added here.
+    inlineCheckbox: InlineCheckbox
   }
 })
 

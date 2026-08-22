@@ -11,7 +11,7 @@ import { Schema } from '@tiptap/pm/model'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import type { Transaction } from '@tiptap/pm/state'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   activeRunWikiLink,
   createWikiLinkEditPlugin,
@@ -309,7 +309,13 @@ describe('markdown shown beside the caret', () => {
       (set as any)
         .find()
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((d: any) => ({ from: d.from, to: d.to, class: d.type.attrs?.class, raw: d.spec?.raw }))
+        .map((d: any) => ({
+          from: d.from,
+          to: d.to,
+          class: d.type.attrs?.class,
+          // `sourceText`, not `raw`: `raw` is ProseMirror's own widget flag.
+          raw: d.spec?.sourceText
+        }))
     )
   }
 
@@ -491,5 +497,113 @@ describe('openWikiLinkForSelection', () => {
 
     expect(firstWikiLink(closed)).toBeNull()
     expect(paragraphText(closed)).toBe('bkz Kuzey Amerika ve')
+  })
+})
+
+/**
+ * Following a link, driven through the handler ProseMirror actually calls.
+ *
+ * This is the whole point of the fix and cannot be tested through a DOM click:
+ * a `click` event fires at mouseup, by which time the chip has been hidden to
+ * make room for the markdown paint and the event has been retargeted to the
+ * paragraph. `handleClickOn` is handed the node ProseMirror resolved from the
+ * MOUSEDOWN position, so the repaint cannot take it away.
+ */
+describe('clicking a chip follows the link', () => {
+  function clickOn(
+    node: ProseMirrorNode,
+    options: { direct?: boolean; onNavigate?: boolean } & Partial<MouseEvent> = {}
+  ) {
+    const { direct = true, onNavigate: wantsCallback = true, ...eventProps } = options
+    const onNavigate = vi.fn()
+    const plugin = createWikiLinkEditPlugin(wantsCallback ? { onNavigate } : {})
+    const view = viewOf(stateWith([chip({ target: 'A' })], 1))
+
+    const handled = plugin.props.handleClickOn!.call(
+      plugin,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      view as any,
+      1,
+      node,
+      0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {
+        button: 0,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        ...eventProps
+      } as any,
+      direct
+    )
+
+    return { handled, onNavigate }
+  }
+
+  it('navigates on a direct left click, and takes the mouseup with it', () => {
+    const { handled, onNavigate } = clickOn(chip({ target: 'Toplantı' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+    // True is what makes PM `preventDefault()` the mouseup — without it the
+    // caret parks beside the chip and the markdown paint appears anyway.
+    expect(handled).toBe(true)
+  })
+
+  it('trims the target, exactly as the DOM handler it replaces did', () => {
+    const { onNavigate } = clickOn(chip({ target: '  Launch Plan  ' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('Launch Plan')
+  })
+
+  it('carries the heading through — the link points at the heading, not the note', () => {
+    const { onNavigate } = clickOn(chip({ target: 'Continent#North America', alias: 'the north' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('Continent#North America')
+  })
+
+  it('ignores an indirect click — that is a click in the paragraph', () => {
+    const paragraph = stateWith([chip({ target: 'A' })], 1).doc.firstChild!
+    const { handled, onNavigate } = clickOn(paragraph, { direct: false })
+
+    expect(handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('ignores a node that is not a wiki link', () => {
+    const { handled, onNavigate } = clickOn(schema.text('plain'))
+
+    expect(handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // Left alone on purpose: shift-click extends a selection, and the rest stay
+  // free for an open-in-new-tab gesture.
+  const modified: Array<[string, Partial<MouseEvent>]> = [
+    ['shift', { shiftKey: true }],
+    ['alt', { altKey: true }],
+    ['meta', { metaKey: true }],
+    ['ctrl', { ctrlKey: true }],
+    ['middle/right button', { button: 1 }]
+  ]
+
+  it.each(modified)('leaves a %s click to the default behaviour', (_label, eventProps) => {
+    const { handled, onNavigate } = clickOn(chip({ target: 'A' }), eventProps)
+
+    expect(handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('does nothing on a chip with no target', () => {
+    const { handled, onNavigate } = clickOn(chip({ target: '   ' }))
+
+    expect(handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // Surfaces that mount the plugin only for its editing behaviour must keep
+  // ProseMirror's own click handling rather than swallowing the event.
+  it('falls through when no navigation callback is configured', () => {
+    expect(clickOn(chip({ target: 'A' }), { onNavigate: false }).handled).toBe(false)
   })
 })
