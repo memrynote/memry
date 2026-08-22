@@ -9,6 +9,7 @@ shamefullyHoist: true
 
 # Replaces onlyBuiltDependencies (removed in pnpm 11)
 allowBuilds:
+  react-native-libsodium: true
   electron: true
   esbuild: true
   better-sqlite3: true
@@ -23,6 +24,7 @@ allowBuilds:
   re2: false
   workerd: false
   spawn-sync: false
+  unrs-resolver: true
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
@@ -97,3 +99,4 @@ minimumReleaseAgeExclude:
 
 patchedDependencies:
   '@blocknote/core@0.47.1': patches/@blocknote__core@0.47.1.patch
+  react-native-libsodium@1.7.0: patches/react-native-libsodium@1.7.0.patch

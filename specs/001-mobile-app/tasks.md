@@ -11,7 +11,7 @@ adapters (Constitution III). No blanket TDD elsewhere.
 **Organization**: Phases map 1:1 onto the release train from the decision record
 (plan.md §Release Train). **Train gates are serial** (Constitution: a phase does
 not start until the prior gate is green with evidence) — this overrides the
-generic "stories in parallel" pattern: parallelism ([P]) exists *within* phases
+generic "stories in parallel" pattern: parallelism ([P]) exists _within_ phases
 only. Train Phase 4 hosts stories US3–US9 + vault-parity completion; those may
 interleave, with the recorded cut order at the tail (canvas viewer first, then
 reminders).
@@ -30,22 +30,31 @@ at 0001).
 depends on them. Everything throwaway-tolerant except fixtures, boundary rule,
 CI. Verification: [quickstart.md](./quickstart.md) §Phase 0.
 
-- [ ] T001 Scaffold `apps/mobile`: Expo SDK 57 (pin ≥ 57.0.9), dev client + `expo prebuild` (iOS 17 target), Hermes, expo-router skeleton — `apps/mobile/package.json`, `apps/mobile/app.config.ts`, `apps/mobile/app/_layout.tsx`
-- [ ] T002 Configure Metro for the pnpm monorepo (workspace deps, package-exports resolution) and add `@memry/contracts` as a raw `./src/*.ts` workspace dep — `apps/mobile/metro.config.js`
-- [X] T003 [P] Add mobile reachability rule to `scripts/check-architecture-boundaries.js`: fail on any node builtin or `electron` import reachable from `apps/mobile`; prove red with a planted `node:fs` import, then green
-- [ ] T004 [P] Create `.github/workflows/mobile-ci.yml` (lint, `tsc -p apps/mobile`, Vitest for RN logic, boundary check) and exclude `apps/mobile` from root turbo `typecheck`/`test` filters (temporary — removed by T031) — `turbo.json`, root `package.json` filters
-- [X] T005 [P] Crypto vector generator + desktop proof suite: emit `packages/contracts/test-vectors/crypto-vectors.json` covering every record-§6 primitive (Argon2id 64 MiB/ops 3 per `packages/contracts/src/crypto.ts:28`, XChaCha20-Poly1305, Ed25519 seed/detached, kdf_derive_from_key, generichash keyed+length, auth, scalarmult, box_keypair, full vault-unlock flow); Vitest proves it against Node libsodium — `packages/contracts/scripts/gen-crypto-vectors.ts`, `packages/contracts/src/__tests__/crypto-vectors.test.ts`
-- [ ] T006 R1 spike: integrate `react-native-libsodium` v1.7.x + Expo config plugin in `apps/mobile` (research.md §B5/§C-R1)
-- [ ] T007 R1 spike: expose `crypto_scalarmult` (known gap; full libsodium is linked) via `patch-package` or upstream PR — `patches/react-native-libsodium+1.7.x.patch`
-- [ ] T008 R1 gate check: on-device harness runs all of `crypto-vectors.json`; **PASS = byte parity on every vector** (G0-a; fail ⇒ research.md §R1 fallback ladder, train stops) — `apps/mobile/src/crypto/__harness__/vector-parity.ts`
-- [ ] T009 [P] R2 gate check: benchmark app runs the research.md §R2 protocol (bulk insert, point reads, FTS5, Yjs append/replay, cold open) on both drivers on the reference device, release build; record table + decision in research.md §R2 (G0-c) — `apps/mobile/src/db/__bench__/driver-bench.ts`
-- [ ] T010 [P] R3 gate check: Metro bundles `@memry/contracts` + a pure `app-core` slice from raw TS source; release-mode boot on device; desktop dev + landing dev + root typecheck unaffected (G0-b; fail ⇒ research.md §R3 mitigation ladder)
-- [ ] T011 [P] R4 gate check: bridge throughput rig — minimal WebView, envelope per [contracts/webview-bridge.md](./contracts/webview-bridge.md), 50 KB doc, 10 keystrokes/s × 60 s, release build; record p95s + envelope counters, tune `T_flush`/`B_max` into the contract (G0-d) — `apps/mobile/src/editor/__rig__/bridge-throughput.tsx`
-- [ ] T012 Implement the mobile crypto module over the parity-proven binding, matching the `@memry/contracts` crypto surface — `apps/mobile/src/crypto/libsodium.ts`
-- [X] T013 [P] R6 desk spike: Apple review compliance memo (guidelines 3.1.x mapping, double-subscription notice wording, fallback plan) — `specs/001-mobile-app/apple-review-memo.md`
-- [ ] T014 **G0 gate demo**: device signs in to staging, pulls one desktop-created encrypted note, decrypts via T012, plaintext markdown SHA-256 equals desktop's; attach evidence bundle (CI links, parity output, benchmark table, hashes) to the Phase 0 issue — evidence names the pinned reference device (quickstart §Prerequisites), which all later perf gates reuse
+- [x] T001 Scaffold `apps/mobile`: Expo SDK 57 (pin ≥ 57.0.9), dev client + `expo prebuild` (iOS 17 target), Hermes, expo-router skeleton — `apps/mobile/package.json`, `apps/mobile/app.config.ts`, `apps/mobile/src/app/_layout.tsx` _(SDK 57.0.15; prebuild output in `apps/mobile/ios/`, deployment target 17.0; router skeleton under `src/app/`)_
+- [x] T002 Configure Metro for the pnpm monorepo (workspace deps, package-exports resolution) and add `@memry/contracts` as a raw `./src/*.ts` workspace dep — `apps/mobile/metro.config.js` _(proven: `expo export --platform ios` bundles `@memry/contracts/crypto` + `@memry/app-core/ids` from raw TS)_
+- [x] T003 [P] Add mobile reachability rule to `scripts/check-architecture-boundaries.js`: fail on any node builtin or `electron` import reachable from `apps/mobile`; prove red with a planted `node:fs` import, then green
+- [x] T004 [P] Create `.github/workflows/mobile-ci.yml` (lint, `tsc -p apps/mobile`, Vitest for RN logic, boundary check) and exclude `apps/mobile` from root turbo `typecheck`/`test` filters (temporary — removed by T031) — `turbo.json`, root `package.json` filters _(root filters are explicit allowlists that never included mobile — exclusion holds by construction; all CI steps verified green locally)_
+- [x] T005 [P] Crypto vector generator + desktop proof suite: emit `packages/contracts/test-vectors/crypto-vectors.json` covering every record-§6 primitive (Argon2id 64 MiB/ops 3 per `packages/contracts/src/crypto.ts:28`, XChaCha20-Poly1305, Ed25519 seed/detached, kdf_derive_from_key, generichash keyed+length, auth, scalarmult, box_keypair, full vault-unlock flow); Vitest proves it against Node libsodium — `packages/contracts/scripts/gen-crypto-vectors.ts`, `packages/contracts/src/__tests__/crypto-vectors.test.ts`
+- [x] T006 R1 spike: integrate `react-native-libsodium` v1.7.x + Expo config plugin in `apps/mobile` (research.md §B5/§C-R1) _(v1.7.0 installed, plugin in app.config.ts, prebuild green)_
+- [x] T007 R1 spike: expose `crypto_scalarmult` (known gap; full libsodium is linked) via `patch-package` or upstream PR — `patches/react-native-libsodium@1.7.0.patch` _(pnpm patch: JSI host functions `jsi_crypto_scalarmult{,_base}` + TS wrappers + BYTES constants; native compile verified at first device build)_
+- [x] T008 R1 gate check: on-device harness runs all of `crypto-vectors.json`; **PASS = byte parity on every vector** (G0-a; fail ⇒ research.md §R1 fallback ladder, train stops) — `apps/mobile/src/crypto/__harness__/vector-parity.ts` _(2026-08-23: **PARITY OK 33/33** on the reference device, release build — Argon2id 64 MiB included, no memory kill; also 33/33 on simulator. R1 CLOSED)_
+- [x] T009 [P] R2 gate check: benchmark app runs the research.md §R2 protocol (bulk insert, point reads, FTS5, Yjs append/replay, cold open) on both drivers on the reference device, release build; record table + decision in research.md §R2 (G0-c) — `apps/mobile/src/db/__bench__/driver-bench.ts` _(driver DECIDED: expo-sqlite — owner decision 2026-08-23, so single-driver threshold validation; **device release run ALL PASS 7/7**, table recorded in research.md §R2; two findings: prepared-statement bulk inserts mandatory (9× vs per-row), FTS5-vtab close segfault workaround)_
+- [x] T010 [P] R3 gate check: Metro bundles `@memry/contracts` + a pure `app-core` slice from raw TS source; release-mode boot on device; desktop dev + landing dev + root typecheck unaffected (G0-b; fail ⇒ research.md §R3 mitigation ladder) _(2026-08-23: release build with embedded bundle boots and runs the full G0 demo on the reference device — workspace raw-TS imports exercised end-to-end; root `pnpm typecheck` green; metro.config.js is app-local so desktop/landing tooling untouched. R3 finding: Hermes lacks global `crypto.getRandomValues` — libsodium-backed polyfill in `src/lib/crypto-polyfill.ts`, first import of the root layout)_
+- [x] T011 [P] R4 gate check: bridge throughput rig — minimal WebView, envelope per [contracts/webview-bridge.md](./contracts/webview-bridge.md), 50 KB doc, 10 keystrokes/s × 60 s, release build; record p95s + envelope counters, tune `T_flush`/`B_max` into the contract (G0-d) — `apps/mobile/src/editor/__rig__/bridge-throughput.tsx` _(2026-08-23 device release run: delivery p95 **2.0 ms** (≤ 100 budget), apply p95 0.08 ms, seq gaps **0**, 5 MB doc-load **116 ms**; adopted T_flush=24 ms, B_max=256 KiB. Caveat, recorded honestly: msgs/envelope = 1.0 because 10/s keystrokes (100 ms apart) never overlap a 24 ms flush window — coalescing is arithmetically unreachable in this workload, not defective; the batching proof re-runs at G3 on the real editor where Yjs update clusters arrive faster than T_flush)_
+- [x] T012 Implement the mobile crypto module over the parity-proven binding, matching the `@memry/contracts` crypto surface — `apps/mobile/src/crypto/libsodium.ts` _(proven in anger: the T014 device run drove this module end-to-end on real production data — Argon2id 64 MiB, KDF contexts, verifier, AEAD unwrap+open — with a desktop-equal plaintext hash)_
+- [x] T013 [P] R6 desk spike: Apple review compliance memo (guidelines 3.1.x mapping, double-subscription notice wording, fallback plan) — `specs/001-mobile-app/apple-review-memo.md`
+- [x] T014 **G0 gate demo**: device signs in to staging, pulls one desktop-created encrypted note, decrypts via T012, plaintext markdown SHA-256 equals desktop's; attach evidence bundle (CI links, parity output, benchmark table, hashes) to the Phase 0 issue — evidence names the pinned reference device (quickstart §Prerequisites), which all later perf gates reuse _(2026-08-23 DONE on the reference device — iPhone 12 Pro, release build, against **production** (owner decision; staging half-seeded): OTP → device reg → 24-word phrase → Argon2id 64 MiB (no memory kill) → verifier match → pull → deflate-flag decompress → note "Dune" sha256 `34115c91e2a584b63772cbb817eaad8b0ed35d4814433ca4e53a62f09d5dbcc3` byte-equal to desktop `parseMarkdownNote(raw).content` in both vault copies. Screenshots captured; evidence-bundle attachment to the Phase 0 issue still to do)_
 
 **Checkpoint — G0**: all five G0 checks green with evidence. Train may proceed.
+
+> **G0 GREEN — 2026-08-23.** (a) parity 33/33 on device ✓ · (b) release boot +
+> workspace raw-TS on device ✓ · (c) expo-sqlite thresholds 7/7 ✓ ·
+> (d) bridge p95 2.0 ms / seq gaps 0 / 5 MB 116 ms ✓ (coalescing re-proven at
+> G3) · (e) production note decrypted on device, sha256 byte-equal to desktop ✓.
+> Reference device pinned: iPhone 12 Pro (quickstart §Prerequisites).
+> Deviation on record: G0-e ran against production (owner decision —
+> staging half-seeded); spike's only account write was the revocable
+> device-registration row. **Phase 2 (extraction) may start.**
 
 ---
 
@@ -171,7 +180,7 @@ fires on time with the app closed.
 - [ ] T081 [US3] Task CRUD: due/scheduled dates, priority, recurrence, project assignment (FR-019) — `apps/mobile/src/features/tasks/`
 - [ ] T082 [US3] Note-checkbox ↔ task consistency on mobile edits (markdown is truth; FR-021) — `apps/mobile/src/features/tasks/note-checkbox-sync.ts`
 - [ ] T083 [US3] Projects: list + project view (tasks + notes), create/edit (FR-022) — `apps/mobile/app/(vault)/projects/`
-- [ ] T084 [US3] Reminders: schedule local notifications from synced data (expo-notifications), `reminders_local` bookkeeping, tap opens item (FR-023) — `apps/mobile/src/features/reminders/scheduler.ts` *(record cut order: reminders are the second-to-last cut)*
+- [ ] T084 [US3] Reminders: schedule local notifications from synced data (expo-notifications), `reminders_local` bookkeeping, tap opens item (FR-023) — `apps/mobile/src/features/reminders/scheduler.ts` _(record cut order: reminders are the second-to-last cut)_
 - [ ] T085 [US3] Stale-notification reconciliation: item completed/deleted elsewhere ⇒ sensible open state, never a ghost/crash; plus clock-skew behaviour — reminders fire per scheduled wall-clock and reconcile predictably with a wrong device clock (spec edge cases) — `apps/mobile/src/features/reminders/reconcile.ts`
 - [ ] T086 [P] [US3] Maestro flow: recurring task + completion + reminder-fire verification — `apps/mobile/.maestro/us3-tasks.yaml`
 

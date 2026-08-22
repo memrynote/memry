@@ -1,0 +1,204 @@
+{
+  "meta": {
+    "spec": "001-mobile-app T005 / R1 (G0-a)",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise",
+    "constants": {
+      "argon2": {
+        "MEMORY_LIMIT": 67108864,
+        "OPS_LIMIT": 3,
+        "SALT_LENGTH": 16
+      },
+      "xchacha20": {
+        "NONCE_LENGTH": 24,
+        "KEY_LENGTH": 32,
+        "TAG_LENGTH": 16
+      }
+    }
+  },
+  "argon2id": [
+    {
+      "description": "production params — the on-device gate vector (64 MiB / ops 3)",
+      "passwordUtf8": "correct horse battery staple — memry parity",
+      "saltHex": "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      "opsLimit": 3,
+      "memLimit": 67108864,
+      "outLength": 32,
+      "algorithm": "ARGON2ID13",
+      "derivedHex": "95e9282f351595d3b3ca49c59abf9a184c3512e55dbd28fa5435757c3dc1ab09"
+    },
+    {
+      "description": "minimum-params smoke vector (fast harness sanity check)",
+      "passwordUtf8": "memry-smoke",
+      "saltHex": "000102030405060708090a0b0c0d0e0f",
+      "opsLimit": 1,
+      "memLimit": 8192,
+      "outLength": 32,
+      "algorithm": "ARGON2ID13",
+      "derivedHex": "8afe0577c3be6bfd34b50acd40a319dea02c0181de761f5df47aeb652ae52622"
+    }
+  ],
+  "xchacha20poly1305Ietf": [
+    {
+      "description": "markdown body, no associated data",
+      "keyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "nonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+      "plaintextUtf8": "# Parity note\n\nSame bytes on every shell.\n",
+      "adHex": null,
+      "ciphertextHex": "7231a783f1a3da52ffb0254abbbd21bdd9884f2adbe462c070fcaff6636763e5746cf6aebfd7e7831de124a065d108ea0fc7ac88260d3c509a04"
+    },
+    {
+      "description": "binary plaintext with associated data",
+      "keyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+      "nonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+      "plaintextHex": "deadbeef00ff10203040506070809090",
+      "adHex": "6d656d72792d6164",
+      "ciphertextHex": "13e61355e4efa27971e0648fe2c37fbf08ce4716e872e1714565e0c29f447ecf"
+    }
+  ],
+  "ed25519": {
+    "seedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+    "publicKeyHex": "b533d8ad9fcfbdde0b481c1b334ddc3c53412fd614564e7e5afd020368d382c3",
+    "secretKeyHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0b533d8ad9fcfbdde0b481c1b334ddc3c53412fd614564e7e5afd020368d382c3",
+    "messageUtf8": "memry device signature parity",
+    "detachedSignatureHex": "975527c3006451b61f48715492d286db3bf4edf61d143e3d1d4b95287ad0108080023a8e29b53d204158040997ad103aedcb64315e2eddd480bfb8c5aa8f6e03",
+    "deviceIdHex": "164d71d9ac7df04847bcd966ea29f814"
+  },
+  "kdfDeriveFromKey": [
+    {
+      "contextName": "memry-vault-key-v1",
+      "ctx": "memryvlt",
+      "subkeyId": 1,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "391135007931b08aadeac5e109c43ad622f01e025ff1fcfb295511e41f865538"
+    },
+    {
+      "contextName": "memry-signing-key-v1",
+      "ctx": "memrysgn",
+      "subkeyId": 2,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "24d0e26e424a99c8ea2b1745b2d85c918aee9d34930bd0e26c09a1485d9a3ff1"
+    },
+    {
+      "contextName": "memry-verify-key-v1",
+      "ctx": "memryvrf",
+      "subkeyId": 3,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "64bffda235baddaf3330f224164c6cd03661fd40e443844f863ff286443a9c38"
+    },
+    {
+      "contextName": "memry-key-verifier-v1",
+      "ctx": "memrykve",
+      "subkeyId": 4,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "3e78cd5e81f5c22a9efee1a572aa80603067b273737b1bcad3d902c1e48d8531"
+    },
+    {
+      "contextName": "memry-linking-enc-v1",
+      "ctx": "memrylnk",
+      "subkeyId": 5,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "07e84e4f27c02f09a909b22281830586febb164367f58da2179888ea9605681a"
+    },
+    {
+      "contextName": "memry-linking-mac-v1",
+      "ctx": "memrymac",
+      "subkeyId": 6,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "d02c5215a43187e939f887750dbddbe0b71893dc1abcf2ba9a4f292e4882300a"
+    },
+    {
+      "contextName": "memry-linking-sas-v1",
+      "ctx": "memrysas",
+      "subkeyId": 7,
+      "length": 32,
+      "masterKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "derivedHex": "b6ce7e4cee3c0a5a690001bc7d904dc3a1c695463669329d80ea0f68c5c75bb2"
+    }
+  ],
+  "generichash": [
+    {
+      "description": "unkeyed, 16-byte output (deviceId shape)",
+      "messageHex": "b533d8ad9fcfbdde0b481c1b334ddc3c53412fd614564e7e5afd020368d382c3",
+      "keyHex": null,
+      "outLength": 16,
+      "hashHex": "164d71d9ac7df04847bcd966ea29f814"
+    },
+    {
+      "description": "keyed, 32-byte output",
+      "messageUtf8": "memry generichash parity",
+      "keyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+      "outLength": 32,
+      "hashHex": "db80dd11c2f4c3ef5ac8bed981b04e7118ba3f0b588c9aeddc5bb835f922b777"
+    },
+    {
+      "description": "unkeyed, 4-byte output (SAS shape)",
+      "messageHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "keyHex": null,
+      "outLength": 4,
+      "hashHex": "86aadefe"
+    }
+  ],
+  "auth": [
+    {
+      "messageUtf8": "memry linking mac parity",
+      "keyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+      "macHex": "946225155c4ab0a42cfc085ab9b13139b5da13a0bcb96a32d38e3c578d69d0f8"
+    }
+  ],
+  "scalarmult": {
+    "base": [
+      {
+        "scalarHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "publicKeyHex": "f0b4fd8be480349293ab61f0505ebb5bafccdf8a4127de221e6ef3db20e03d29"
+      },
+      {
+        "scalarHex": "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c",
+        "publicKeyHex": "d3baf56cb00bfcbb41a459bd640f05a77ed6110809bf5f21be1a08e51dff7409"
+      }
+    ],
+    "shared": [
+      {
+        "description": "ECDH both directions must agree",
+        "scalarHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+        "pointHex": "d3baf56cb00bfcbb41a459bd640f05a77ed6110809bf5f21be1a08e51dff7409",
+        "sharedSecretHex": "6cc804f784a6159bf6a9c1d6f549f5e116c7e0c1f7aeaaf073819682c3fd217b"
+      },
+      {
+        "scalarHex": "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c",
+        "pointHex": "f0b4fd8be480349293ab61f0505ebb5bafccdf8a4127de221e6ef3db20e03d29",
+        "sharedSecretHex": "6cc804f784a6159bf6a9c1d6f549f5e116c7e0c1f7aeaaf073819682c3fd217b"
+      }
+    ]
+  },
+  "boxKeypair": {
+    "description": "crypto_box keypair parity via public-key derivation from a fixed secret (crypto_box_keypair itself is random)",
+    "secretKeyHex": "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c",
+    "publicKeyHex": "d3baf56cb00bfcbb41a459bd640f05a77ed6110809bf5f21be1a08e51dff7409"
+  },
+  "vaultUnlockFlow": {
+    "description": "password → Argon2id(64 MiB/3) → masterKey; verifier = b64(kdf id4 memrykve); vaultKey = kdf id1 memryvlt; AEAD-unwrap fileKey; AEAD-open body; sha256(plaintext) must equal desktop",
+    "passwordUtf8": "memry mobile parity vault password",
+    "kdfSaltHex": "0123456789abcdef0123456789abcdef",
+    "argon2": {
+      "opsLimit": 3,
+      "memLimit": 67108864
+    },
+    "masterKeyHex": "14f06bc596568b270a9b64ebe259c8e9dee2051cbd75fc42ea9bb86e294b0cde",
+    "keyVerifierBase64": "HAxbEIpx9XZhZtkS9viRrPZOXQss3exChU+N3Na7zws=",
+    "vaultKeyHex": "3085f35a24fa4d5162a38f98e953fc9932af2645d5aa8f718e07e7be9f5ead40",
+    "fileKeyHex": "fedcba98765432100123456789abcdeffedcba98765432100123456789abcdef",
+    "keyNonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+    "encryptedKeyHex": "89a8a4f5af9eafeaeb5c2b04f77fc2b8933c34e76b354396a25b0e2292ec17984786e4970e04927ba08619bcb0b5296f",
+    "dataNonceHex": "17161514131211100f0e0d0c0b0a09080706050403020100",
+    "encryptedDataHex": "e06680b09079c635249a14bff331865bd176324c4bea895f589966a271e70fbb32cbaf1fc5aedd7d31e8602005f878b6a1cd00a8e4c9bbb7734982a0ccabd5a6903b113d06efd11d4a6c1c61b8b567151147b1349d6a6b548683",
+    "plaintextMarkdownUtf8": "---\ntitle: Parity\n---\n\n# Parity\n\nDecrypted on every shell, byte for byte.\n",
+    "plaintextSha256Hex": "f62caa074030a2193fe49d8479810d985af4dfda6213a1bcac24ad1d50bb946f"
+  }
+}

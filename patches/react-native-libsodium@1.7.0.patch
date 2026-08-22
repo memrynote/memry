@@ -1,0 +1,136 @@
+diff --git a/cpp/react-native-libsodium.cpp b/cpp/react-native-libsodium.cpp
+index a97e74b23936377c8279bf99defe4389d8e0ff8e..9e971c50c469f7cc338a90ecea1c2d6d3641f3b0 100644
+--- a/cpp/react-native-libsodium.cpp
++++ b/cpp/react-native-libsodium.cpp
+@@ -209,6 +209,8 @@ namespace ReactNativeLibsodium
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_generichash_KEYBYTES_MAX", static_cast<int>(crypto_generichash_KEYBYTES_MAX));
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_sign_SEEDBYTES", static_cast<int>(crypto_sign_SEEDBYTES));
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_auth_BYTES", static_cast<int>(crypto_auth_BYTES));
++        jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_scalarmult_BYTES", static_cast<int>(crypto_scalarmult_BYTES));
++        jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_scalarmult_SCALARBYTES", static_cast<int>(crypto_scalarmult_SCALARBYTES));
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_auth_KEYBYTES", static_cast<int>(crypto_auth_KEYBYTES));
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_kdf_hkdf_sha256_BYTES_MAX", static_cast<int>(crypto_kdf_hkdf_sha256_BYTES_MAX));
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_kdf_hkdf_sha256_BYTES_MIN", static_cast<int>(crypto_kdf_hkdf_sha256_BYTES_MIN));
+@@ -1281,6 +1283,53 @@ namespace ReactNativeLibsodium
+
+         jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_kdf_derive_from_key", std::move(jsi_crypto_kdf_derive_from_key));
+
++        auto jsi_crypto_scalarmult_base = jsi::Function::createFromHostFunction(
++            jsiRuntime,
++            jsi::PropNameID::forUtf8(jsiRuntime, "jsi_crypto_scalarmult_base"),
++            1,
++            [](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments, size_t count) -> jsi::Value
++            {
++                const std::string functionName = "crypto_scalarmult_base";
++
++                std::string privateKeyArgumentName = "privateKey";
++                unsigned int privateKeyArgumentPosition = 0;
++                validateIsArrayBuffer(functionName, runtime, arguments[privateKeyArgumentPosition], privateKeyArgumentName, true);
++
++                auto privateKeyArrayBuffer = arguments[privateKeyArgumentPosition].asObject(runtime).getArrayBuffer(runtime);
++                std::vector<uint8_t> publicKey(crypto_scalarmult_BYTES);
++                int result = crypto_scalarmult_base(publicKey.data(), privateKeyArrayBuffer.data(runtime));
++                throwOnBadResult(functionName, runtime, result);
++                return arrayBufferAsObject(runtime, publicKey);
++            });
++
++        jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_scalarmult_base", std::move(jsi_crypto_scalarmult_base));
++
++        auto jsi_crypto_scalarmult = jsi::Function::createFromHostFunction(
++            jsiRuntime,
++            jsi::PropNameID::forUtf8(jsiRuntime, "jsi_crypto_scalarmult"),
++            2,
++            [](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments, size_t count) -> jsi::Value
++            {
++                const std::string functionName = "crypto_scalarmult";
++
++                std::string privateKeyArgumentName = "privateKey";
++                unsigned int privateKeyArgumentPosition = 0;
++                validateIsArrayBuffer(functionName, runtime, arguments[privateKeyArgumentPosition], privateKeyArgumentName, true);
++
++                std::string publicKeyArgumentName = "publicKey";
++                unsigned int publicKeyArgumentPosition = 1;
++                validateIsArrayBuffer(functionName, runtime, arguments[publicKeyArgumentPosition], publicKeyArgumentName, true);
++
++                auto privateKeyArrayBuffer = arguments[privateKeyArgumentPosition].asObject(runtime).getArrayBuffer(runtime);
++                auto publicKeyArrayBuffer = arguments[publicKeyArgumentPosition].asObject(runtime).getArrayBuffer(runtime);
++                std::vector<uint8_t> sharedSecret(crypto_scalarmult_BYTES);
++                int result = crypto_scalarmult(sharedSecret.data(), privateKeyArrayBuffer.data(runtime), publicKeyArrayBuffer.data(runtime));
++                throwOnBadResult(functionName, runtime, result);
++                return arrayBufferAsObject(runtime, sharedSecret);
++            });
++
++        jsiRuntime.global().setProperty(jsiRuntime, "jsi_crypto_scalarmult", std::move(jsi_crypto_scalarmult));
++
+         auto jsi_crypto_aead_xchacha20poly1305_ietf_encrypt = jsi::Function::createFromHostFunction(
+             jsiRuntime,
+             jsi::PropNameID::forUtf8(jsiRuntime, "jsi_crypto_aead_xchacha20poly1305_ietf_encrypt"),
+diff --git a/src/lib.native.ts b/src/lib.native.ts
+index bfa7ea8ba73ed71b544b5c6de90296e4b9055321..19b5a8445404e6ac8aeb734cf16078dd89b2c71a 100644
+--- a/src/lib.native.ts
++++ b/src/lib.native.ts
+@@ -193,9 +193,19 @@ declare global {
+     info: string,
+     length: number
+   ): ArrayBuffer;
++  function jsi_crypto_scalarmult_base(privateKey: ArrayBuffer): ArrayBuffer;
++  function jsi_crypto_scalarmult(
++    privateKey: ArrayBuffer,
++    publicKey: ArrayBuffer
++  ): ArrayBuffer;
++  var jsi_crypto_scalarmult_BYTES: number;
++  var jsi_crypto_scalarmult_SCALARBYTES: number;
+ }
+
+ export const crypto_auth_BYTES = global.jsi_crypto_auth_BYTES;
++export const crypto_scalarmult_BYTES = global.jsi_crypto_scalarmult_BYTES;
++export const crypto_scalarmult_SCALARBYTES =
++  global.jsi_crypto_scalarmult_SCALARBYTES;
+ export const crypto_auth_KEYBYTES = global.jsi_crypto_auth_KEYBYTES;
+ export const crypto_secretbox_KEYBYTES = global.jsi_crypto_secretbox_KEYBYTES;
+ export const crypto_secretbox_NONCEBYTES =
+@@ -454,6 +464,44 @@ export function crypto_sign_detached(
+   return convertToOutputFormat(result, outputFormat);
+ }
+
++export function crypto_scalarmult_base(
++  privateKey: Uint8Array,
++  outputFormat?: Uint8ArrayOutputFormat | null
++): Uint8Array;
++export function crypto_scalarmult_base(
++  privateKey: Uint8Array,
++  outputFormat: StringOutputFormat
++): string;
++export function crypto_scalarmult_base(
++  privateKey: Uint8Array,
++  outputFormat: OutputFormat
++): unknown {
++  const result = global.jsi_crypto_scalarmult_base(toArrayBuffer(privateKey));
++  return convertToOutputFormat(result, outputFormat);
++}
++
++export function crypto_scalarmult(
++  privateKey: Uint8Array,
++  publicKey: Uint8Array,
++  outputFormat?: Uint8ArrayOutputFormat | null
++): Uint8Array;
++export function crypto_scalarmult(
++  privateKey: Uint8Array,
++  publicKey: Uint8Array,
++  outputFormat: StringOutputFormat
++): string;
++export function crypto_scalarmult(
++  privateKey: Uint8Array,
++  publicKey: Uint8Array,
++  outputFormat: OutputFormat
++): unknown {
++  const result = global.jsi_crypto_scalarmult(
++    toArrayBuffer(privateKey),
++    toArrayBuffer(publicKey)
++  );
++  return convertToOutputFormat(result, outputFormat);
++}
++
+ export function crypto_sign_verify_detached(
+   signature: Uint8Array,
+   message: string | Uint8Array,

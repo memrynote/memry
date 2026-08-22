@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./reminders": "./src/reminders.ts",
-    "./markdown": "./src/markdown.ts"
+    "./markdown": "./src/markdown.ts",
+    "./ids": "./src/ids.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

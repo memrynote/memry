@@ -1,0 +1,88 @@
+# Mobile CI (spec 001-mobile-app T004 / Train Phase 0).
+#
+# Root `pnpm typecheck` / `pnpm test` use explicit --filter allowlists that do
+# not include @memry/mobile, so the root pipelines are untouched by mobile code
+# by construction. That exclusion is temporary (constitution: removal is
+# tracked as T032) — this workflow is the mobile gate until then, and keeps
+# only device-specific jobs afterwards.
+name: Mobile CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/contracts/**'
+      - 'scripts/check-architecture-boundaries.js'
+      - 'patches/react-native-libsodium*'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/mobile-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/contracts/**'
+      - 'scripts/check-architecture-boundaries.js'
+      - 'patches/react-native-libsodium*'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/mobile-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+  NODE_OPTIONS: --max-old-space-size=4096
+  SKIP_ELECTRON_REBUILD: 1
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  mobile:
+    name: Lint, typecheck, test, and boundary check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint mobile
+        run: pnpm --filter @memry/mobile lint
+
+      - name: Typecheck mobile
+        run: pnpm --filter @memry/mobile typecheck
+
+      - name: Test mobile (Vitest, RN logic)
+        run: pnpm --filter @memry/mobile test
+
+      - name: Crypto parity vectors (desktop proof suite)
+        run: pnpm --filter @memry/contracts test -- src/__tests__/crypto-vectors.test.ts
+
+      - name: Architecture boundary check (mobile reachability)
+        run: pnpm check:architecture

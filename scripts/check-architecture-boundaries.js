@@ -1,7 +1,13 @@
 const fs = require('fs/promises')
+const fsSync = require('fs')
 const path = require('path')
+const { builtinModules } = require('module')
 
 const repoRoot = process.cwd()
+const mobileRoot = path.resolve(repoRoot, 'apps/mobile')
+const packagesRoot = path.resolve(repoRoot, 'packages')
+const nodeBuiltins = new Set(builtinModules)
+const mobileSkippedDirs = new Set(['node_modules', 'ios', 'android', '.expo', 'assets', 'scripts'])
 const desktopRoot = path.resolve(repoRoot, 'apps/desktop')
 const mainRoot = path.resolve(desktopRoot, 'src/main')
 const rendererRoot = path.resolve(desktopRoot, 'src/renderer/src')
@@ -277,8 +283,184 @@ function isBlockedFeatureSyncImport(resolvedPath) {
   return blockedFeatureSyncImports.some((targetPath) => matchesTarget(resolvedPath, targetPath))
 }
 
+function isNodeBuiltinSpecifier(specifier) {
+  if (specifier.startsWith('node:')) {
+    return true
+  }
+
+  const packageName = specifier.split('/')[0]
+  return nodeBuiltins.has(packageName)
+}
+
+function isElectronSpecifier(specifier) {
+  return specifier === 'electron' || specifier.startsWith('electron/')
+}
+
+let workspacePackageDirsCache = null
+
+async function getWorkspacePackageDirs() {
+  if (workspacePackageDirsCache) {
+    return workspacePackageDirsCache
+  }
+
+  const dirs = new Map()
+  const entries = await fs.readdir(packagesRoot, { withFileTypes: true })
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue
+    }
+
+    const packageJsonPath = path.join(packagesRoot, entry.name, 'package.json')
+    try {
+      const manifest = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'))
+      if (manifest.name) {
+        dirs.set(manifest.name, {
+          dir: path.join(packagesRoot, entry.name),
+          exports: manifest.exports ?? null
+        })
+      }
+    } catch {
+      // no manifest — not a workspace package
+    }
+  }
+
+  workspacePackageDirsCache = dirs
+  return dirs
+}
+
+function resolveSourceFile(basePath) {
+  const candidates = [
+    basePath,
+    `${basePath}.ts`,
+    `${basePath}.tsx`,
+    `${basePath}.js`,
+    `${basePath}.jsx`,
+    `${basePath}.mjs`,
+    `${basePath}.cjs`,
+    path.join(basePath, 'index.ts'),
+    path.join(basePath, 'index.tsx'),
+    path.join(basePath, 'index.js')
+  ]
+
+  for (const candidate of candidates) {
+    if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) {
+      return candidate
+    }
+  }
+
+  return null
+}
+
+function resolveWorkspaceImport(specifier, workspacePackages) {
+  const match = specifier.match(/^(@[^/]+\/[^/]+|[^@][^/]*)(?:\/(.+))?$/)
+  if (!match) {
+    return null
+  }
+
+  const packageInfo = workspacePackages.get(match[1])
+  if (!packageInfo) {
+    return null
+  }
+
+  const subpath = match[2] ? `./${match[2]}` : '.'
+  const exportsMap = packageInfo.exports
+  if (exportsMap && typeof exportsMap === 'object') {
+    const target = exportsMap[subpath]
+    if (typeof target === 'string') {
+      return resolveSourceFile(path.resolve(packageInfo.dir, target))
+    }
+  }
+
+  if (subpath === '.') {
+    return resolveSourceFile(path.resolve(packageInfo.dir, 'src/index'))
+  }
+
+  return resolveSourceFile(path.resolve(packageInfo.dir, 'src', match[2]))
+}
+
+async function walkMobileSources(dir) {
+  const files = []
+  const entries = await fs.readdir(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      if (mobileSkippedDirs.has(entry.name) || entry.name.startsWith('.')) {
+        continue
+      }
+      files.push(...(await walkMobileSources(path.join(dir, entry.name))))
+      continue
+    }
+
+    const filePath = path.join(dir, entry.name)
+    if (isSourceFile(filePath) && !isTestFile(filePath)) {
+      files.push(filePath)
+    }
+  }
+  return files
+}
+
+// Mobile reachability rule (spec 001-mobile-app T003 / Constitution I): nothing
+// reachable from apps/mobile — including transitively through workspace
+// packages — may import a node builtin or electron. Walks the real import
+// graph: mobile sources first, then every workspace package file they reach.
+async function checkMobileReachability(blockingViolations) {
+  if (!fsSync.existsSync(mobileRoot)) {
+    return
+  }
+
+  const workspacePackages = await getWorkspacePackageDirs()
+  const queue = await walkMobileSources(mobileRoot)
+  const visited = new Set()
+
+  while (queue.length > 0) {
+    const filePath = queue.pop()
+    const normalized = stripSourceExtension(filePath)
+    if (visited.has(normalized)) {
+      continue
+    }
+    visited.add(normalized)
+
+    let source
+    try {
+      source = await fs.readFile(filePath, 'utf8')
+    } catch {
+      continue
+    }
+
+    for (const { specifier } of scanImports(source)) {
+      if (isNodeBuiltinSpecifier(specifier)) {
+        blockingViolations.add(
+          formatViolation(filePath, specifier, 'node builtin reachable from apps/mobile')
+        )
+        continue
+      }
+
+      if (isElectronSpecifier(specifier)) {
+        blockingViolations.add(
+          formatViolation(filePath, specifier, 'electron reachable from apps/mobile')
+        )
+        continue
+      }
+
+      if (specifier.startsWith('.')) {
+        const resolved = resolveSourceFile(path.resolve(path.dirname(filePath), specifier))
+        if (resolved && isSourceFile(resolved) && !isTestFile(resolved)) {
+          queue.push(resolved)
+        }
+        continue
+      }
+
+      const workspaceResolved = resolveWorkspaceImport(specifier, workspacePackages)
+      if (workspaceResolved && isSourceFile(workspaceResolved) && !isTestFile(workspaceResolved)) {
+        queue.push(workspaceResolved)
+      }
+    }
+  }
+}
+
 async function main() {
   const blockingViolations = new Set()
+
+  await checkMobileReachability(blockingViolations)
 
   const rendererFiles = await getFilesForRoot(rendererRoot)
   for (const filePath of rendererFiles) {
