@@ -34,6 +34,8 @@ The link displays the target's current title, but the underlying reference uses 
 
 Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
 
+A click on the link itself always follows it, however long you hold the button down. Placing the cursor beside a link is a separate gesture — see “Seeing a link’s markdown” below — and clicking on the link never does that instead of opening the note.
+
 ## Linking to a Heading
 
 A link can name a heading inside its target, the way an Obsidian vault writes it:
@@ -65,8 +67,9 @@ offered.
 
 ### Seeing a link's markdown
 
-Put the cursor immediately before or after a link — by arrow key or by clicking there —
-and that link shows its markdown for as long as the cursor stays beside it:
+Put the cursor immediately before or after a link — by arrow key, or by clicking in the
+text beside it rather than on the link itself — and that link shows its markdown for as long
+as the cursor stays beside it:
 `[[Continent#North America|North America]]`, exactly what the vault file holds. Move the
 cursor away and it goes back to reading as a link.
 
