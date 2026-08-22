@@ -5,8 +5,14 @@ import { z } from 'zod'
  * `recently_opened` table. Not a sync item type.
  */
 
-/** Only notes for now; the field exists so canvas/journal can join later. */
-export const RecentlyOpenedItemTypeSchema = z.literal('note')
+/**
+ * Notes and canvases; the field exists so journal/file can join later.
+ *
+ * Widening only — 'note' stays valid, so rows written by older builds still
+ * parse and still resolve.
+ */
+export const RECENTLY_OPENED_ITEM_TYPES = ['note', 'canvas'] as const
+export const RecentlyOpenedItemTypeSchema = z.enum(RECENTLY_OPENED_ITEM_TYPES)
 export type RecentlyOpenedItemType = z.infer<typeof RecentlyOpenedItemTypeSchema>
 
 export const RecordRecentlyOpenedSchema = z.object({
@@ -21,8 +27,9 @@ export const ListRecentlyOpenedSchema = z.object({
 export type ListRecentlyOpenedInput = z.infer<typeof ListRecentlyOpenedSchema>
 
 /**
- * Title/emoji/path are resolved from the note cache at read time, so a row
- * whose note no longer exists is dropped rather than returned stale.
+ * Title/emoji/path are resolved at read time — from the note cache for notes
+ * and from the canvases table for canvases — so a row whose item no longer
+ * exists is dropped rather than returned stale.
  */
 export interface RecentlyOpenedItem {
   itemId: string
@@ -30,7 +37,12 @@ export interface RecentlyOpenedItem {
   openedAt: string
   title: string
   path: string
+  /**
+   * Icon value for the row: a bare emoji, or an `icon:`/`custom:` reference.
+   * Carries the canvas `icon` column for canvas rows.
+   */
   emoji: string | null
+  /** Note file type ('markdown', 'pdf', …), or 'canvas' for a canvas row. */
   fileType: string
 }
 

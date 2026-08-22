@@ -1,5 +1,6 @@
-import { desc, inArray, notInArray } from 'drizzle-orm'
+import { and, desc, inArray, isNull, notInArray } from 'drizzle-orm'
 import { recentlyOpened } from '@memry/db-schema/schema/recently-opened'
+import { canvases } from '@memry/db-schema/schema/canvas'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import {
   RECENTLY_OPENED_LIMIT,
@@ -51,11 +52,28 @@ export function recordRecentlyOpened(
 }
 
 /**
- * Newest-first trail, resolved against the note cache.
+ * Vault-relative display path for a canvas row.
  *
- * The trail lives in the data DB and the note cache in the index DB, so this
- * cannot be one SQL join. Rows whose note is gone are dropped rather than
- * returned under a stale title — which is also why the trail stores no title.
+ * The file is the source of truth, so its path is what the widget shows. A
+ * legacy row whose ciphertext could never be migrated has no file path; fall
+ * back to where the canvas would live so the row still reads as a canvas.
+ */
+function canvasPath(row: {
+  filePath: string | null
+  folder: string | null
+  title: string
+}): string {
+  if (row.filePath) return row.filePath
+  return ['canvases', row.folder, row.title].filter(Boolean).join('/')
+}
+
+/**
+ * Newest-first trail, resolved per item type at read time.
+ *
+ * Notes resolve against the note cache (index DB) and canvases against the
+ * canvases table (data DB), so this cannot be one SQL join. Rows whose item is
+ * gone — deleted note, trashed canvas — are dropped rather than returned under
+ * a stale title, which is also why the trail stores no title.
  */
 export function listRecentlyOpened(
   db: DataDb,
@@ -72,35 +90,73 @@ export function listRecentlyOpened(
   if (rows.length === 0) return []
 
   const noteIds = rows.filter((r) => r.itemType === 'note').map((r) => r.itemId)
-  if (noteIds.length === 0) return []
+  const canvasIds = rows.filter((r) => r.itemType === 'canvas').map((r) => r.itemId)
 
-  const notes = indexDb
-    .select({
-      id: noteCache.id,
-      title: noteCache.title,
-      path: noteCache.path,
-      emoji: noteCache.emoji,
-      fileType: noteCache.fileType
-    })
-    .from(noteCache)
-    .where(inArray(noteCache.id, noteIds))
-    .all()
+  const notesById = new Map(
+    (noteIds.length === 0
+      ? []
+      : indexDb
+          .select({
+            id: noteCache.id,
+            title: noteCache.title,
+            path: noteCache.path,
+            emoji: noteCache.emoji,
+            fileType: noteCache.fileType
+          })
+          .from(noteCache)
+          .where(inArray(noteCache.id, noteIds))
+          .all()
+    ).map((n) => [n.id, n] as const)
+  )
 
-  const byId = new Map(notes.map((n) => [n.id, n]))
+  const canvasesById = new Map(
+    (canvasIds.length === 0
+      ? []
+      : db
+          .select({
+            id: canvases.id,
+            title: canvases.title,
+            filePath: canvases.filePath,
+            folder: canvases.folder,
+            icon: canvases.icon
+          })
+          .from(canvases)
+          // Tombstoned canvases stay in the table for sync; they are gone as
+          // far as the user is concerned, so they must not surface here.
+          .where(and(inArray(canvases.id, canvasIds), isNull(canvases.deletedAt)))
+          .all()
+    ).map((c) => [c.id, c] as const)
+  )
 
   const items: RecentlyOpenedItem[] = []
   for (const row of rows) {
-    const note = byId.get(row.itemId)
-    if (!note) continue
-    items.push({
-      itemId: row.itemId,
-      itemType: row.itemType as RecentlyOpenedItemType,
-      openedAt: row.openedAt,
-      title: note.title,
-      path: note.path,
-      emoji: note.emoji ?? null,
-      fileType: note.fileType ?? 'markdown'
-    })
+    const itemType = row.itemType as RecentlyOpenedItemType
+    if (itemType === 'canvas') {
+      const canvas = canvasesById.get(row.itemId)
+      if (!canvas) continue
+      const title = canvas.title ?? ''
+      items.push({
+        itemId: row.itemId,
+        itemType,
+        openedAt: row.openedAt,
+        title,
+        path: canvasPath({ filePath: canvas.filePath, folder: canvas.folder, title }),
+        emoji: canvas.icon ?? null,
+        fileType: 'canvas'
+      })
+    } else {
+      const note = notesById.get(row.itemId)
+      if (!note) continue
+      items.push({
+        itemId: row.itemId,
+        itemType,
+        openedAt: row.openedAt,
+        title: note.title,
+        path: note.path,
+        emoji: note.emoji ?? null,
+        fileType: note.fileType ?? 'markdown'
+      })
+    }
     if (items.length >= limit) break
   }
   return items
