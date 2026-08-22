@@ -4,7 +4,7 @@
  */
 
 import type { TabStorage, PersistedTabState } from './types'
-import { STORAGE_KEY } from './types'
+import { STORAGE_KEY, tabStateStorageKey } from './types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('TabPersistence:Storage')
@@ -29,42 +29,113 @@ export const isQuotaExceededError = (error: unknown): boolean => {
 // =============================================================================
 
 /**
+ * Read one key, returning null for anything that is not a usable tab state.
+ * A key that holds garbage is treated as empty rather than thrown over: the
+ * cost of getting this wrong is the user's whole session.
+ */
+const readStateAt = (storageKey: string): PersistedTabState | null => {
+  try {
+    const json = localStorage.getItem(storageKey)
+    if (!json) return null
+
+    const parsed = JSON.parse(json)
+
+    // Basic validation
+    if (!parsed.version || !parsed.tabGroups || !parsed.layout) {
+      log.warn('Invalid persisted tab state, ignoring')
+      return null
+    }
+
+    return parsed as PersistedTabState
+  } catch (error) {
+    log.error('Failed to load tab state from localStorage:', error)
+    return null
+  }
+}
+
+/**
+ * Hand the one pre-scoping entry to the first vault that asks for its own.
+ *
+ * Upgrading installs have their tabs under the global key. Whichever vault the
+ * app opens on is the vault those tabs were left in — the app reopens the last
+ * vault — so it takes them over, and the legacy entry is dropped in the same
+ * breath so a later switch cannot inherit the same tabs into a second vault.
+ * Failing to clear it is the only way this can go wrong, so a refused write
+ * leaves the legacy entry alone and the vault simply starts empty.
+ */
+const adoptLegacyState = (storageKey: string): PersistedTabState | null => {
+  const legacy = readStateAt(STORAGE_KEY)
+  if (!legacy) return null
+
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(legacy))
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (error) {
+    log.error('Failed to adopt pre-vault tab state:', error)
+    return null
+  }
+
+  log.info('adopted pre-vault tab state into the open vault')
+  return legacy
+}
+
+/**
+ * LocalStorage adapter bound to one vault's key.
+ *
+ * Adapters are cached per key so the identity a caller passes to a React effect
+ * stays stable across renders — a fresh object each render would restart the
+ * auto-save debounce forever and nothing would ever be written.
+ */
+const adapterCache = new Map<string, TabStorage>()
+
+export const createLocalStorageAdapter = (vaultPath: string | null | undefined): TabStorage => {
+  const storageKey = tabStateStorageKey(vaultPath)
+  const cached = adapterCache.get(storageKey)
+  if (cached) return cached
+
+  const adapter: TabStorage = {
+    save: async (state: PersistedTabState): Promise<void> => {
+      try {
+        const json = JSON.stringify(state)
+        localStorage.setItem(storageKey, json)
+      } catch (error) {
+        log.error('Failed to save tab state to localStorage:', error)
+        throw error
+      }
+    },
+
+    load: async (): Promise<PersistedTabState | null> => {
+      const own = readStateAt(storageKey)
+      if (own) return own
+      if (storageKey === STORAGE_KEY) return null
+      return adoptLegacyState(storageKey)
+    },
+
+    clear: async (): Promise<void> => {
+      localStorage.removeItem(storageKey)
+    }
+  }
+
+  adapterCache.set(storageKey, adapter)
+  return adapter
+}
+
+/**
  * LocalStorage adapter for tab persistence
  * Best for simple web apps with small state
  */
-export const localStorageAdapter: TabStorage = {
-  save: async (state: PersistedTabState): Promise<void> => {
-    try {
-      const json = JSON.stringify(state)
-      localStorage.setItem(STORAGE_KEY, json)
-    } catch (error) {
-      log.error('Failed to save tab state to localStorage:', error)
-      throw error
-    }
-  },
+export const localStorageAdapter: TabStorage = createLocalStorageAdapter(null)
 
-  load: async (): Promise<PersistedTabState | null> => {
-    try {
-      const json = localStorage.getItem(STORAGE_KEY)
-      if (!json) return null
-
-      const parsed = JSON.parse(json)
-
-      // Basic validation
-      if (!parsed.version || !parsed.tabGroups || !parsed.layout) {
-        log.warn('Invalid persisted tab state, ignoring')
-        return null
-      }
-
-      return parsed as PersistedTabState
-    } catch (error) {
-      log.error('Failed to load tab state from localStorage:', error)
-      return null
-    }
-  },
-
-  clear: async (): Promise<void> => {
-    localStorage.removeItem(STORAGE_KEY)
+/**
+ * Forget one vault's stored tabs.
+ * Called when a vault is removed from the app, so a vault the user will never
+ * open again does not keep sitting on the origin's quota.
+ */
+export const clearTabStateForVault = (vaultPath: string): void => {
+  try {
+    localStorage.removeItem(tabStateStorageKey(vaultPath))
+  } catch (error) {
+    log.warn('Failed to clear tab state for removed vault:', error)
   }
 }
 
@@ -141,10 +212,10 @@ export const consumeSyncSaveFailure = (): SyncSaveFailure | null => {
  * regression far worse than the failed write. The result is returned instead so
  * they can log the truth rather than claim a flush that did not happen.
  */
-export const saveSync = (state: PersistedTabState): SyncSaveResult => {
+export const saveSync = (state: PersistedTabState, storageKey: string): SyncSaveResult => {
   try {
     const json = JSON.stringify(state)
-    localStorage.setItem(STORAGE_KEY, json)
+    localStorage.setItem(storageKey, json)
     clearSaveFailure()
     return { ok: true }
   } catch (error) {
@@ -171,6 +242,6 @@ export const saveSync = (state: PersistedTabState): SyncSaveResult => {
  * closed without moving off it), the replacement backend needs a migration read
  * from `STORAGE_KEY` and a downgrade story, which is its own change.
  */
-export const getDefaultStorage = (): TabStorage => {
-  return localStorageAdapter
+export const getDefaultStorage = (vaultPath?: string | null): TabStorage => {
+  return createLocalStorageAdapter(vaultPath ?? null)
 }
