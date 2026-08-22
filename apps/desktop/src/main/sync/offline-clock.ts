@@ -17,7 +17,7 @@ import {
   type VectorClock,
   type FieldClocks
 } from '@memry/contracts/sync-api'
-import { increment } from './vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { getCurrentDeviceId } from './current-device-id'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
 import { createLogger } from '../lib/logger'

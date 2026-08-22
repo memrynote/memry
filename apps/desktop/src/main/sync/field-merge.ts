@@ -3,8 +3,8 @@ import {
   type VectorClock,
   type FieldClocks
 } from '@memry/contracts/sync-api'
-import { merge as mergeClock } from './vector-clock'
-import { compare as compareClock } from './vector-clock'
+import { merge as mergeClock } from '@memry/sync-client/vector-clock'
+import { compare as compareClock } from '@memry/sync-client/vector-clock'
 
 export type { FieldClocks }
 

@@ -161,6 +161,7 @@
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",
     "@memry/storage-vault": "workspace:*",
+    "@memry/sync-client": "workspace:*",
     "@memry/sync-core": "workspace:*",
     "@memry/sync-harness": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",

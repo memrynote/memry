@@ -9,7 +9,7 @@ import type {
   FieldClockMap,
   SettingsSyncPayload
 } from '@memry/contracts/settings-sync'
-import { compare, merge, increment } from './vector-clock'
+import { compare, merge, increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
 import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from './settings-sync-keys'

@@ -8,7 +8,7 @@ import {
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
 import { BaseItemHandler } from './base-handler'

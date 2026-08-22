@@ -24,7 +24,7 @@
 
 CREATE TABLE IF NOT EXISTS client_policies (
   platform TEXT PRIMARY KEY,                  -- 'ios' | 'android' | 'desktop'
-  min_write_version TEXT,                     -- semver floor; NULL = no floor
+  min_write_version TEXT,                     -- semver floor, NULL = no floor
   writes_enabled INTEGER NOT NULL DEFAULT 1,  -- 0 = per-platform kill switch
   updated_at INTEGER NOT NULL
 );

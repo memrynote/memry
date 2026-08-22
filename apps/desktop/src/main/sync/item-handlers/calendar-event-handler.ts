@@ -7,7 +7,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { initAllFieldClocks } from '../field-merge'
 import {
   CALENDAR_EVENT_SYNCABLE_FIELDS,

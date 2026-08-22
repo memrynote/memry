@@ -7,7 +7,7 @@ import {
 import { CanvasFolderChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
 import { removeEmptyCanvasFolderDirs } from '../../canvas/scene-file'
 import { getCanvasVaultPath } from '../../canvas/vault-path'

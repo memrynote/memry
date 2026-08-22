@@ -13,6 +13,12 @@ table, in order. Both deploy workflows apply migrations **before**
   releases: first ship code that stops using the column, then a later migration
   drops it.
 - Number files sequentially, zero-padded (`0002_`, `0003_`, ...).
+- **No semicolon inside a trailing `-- comment`.** `tests/sync-harness`'s
+  migration runner drops full-line comments and then splits on `;`, so a
+  semicolon in a trailing comment tears the statement in two and every
+  harness-backed desktop integration test dies with
+  `D1_ERROR: incomplete input`. Wrangler itself parses correctly; the harness
+  does not.
 - `wrangler d1 migrations create <db> <name>` scaffolds a new file.
 
 ## Local dev

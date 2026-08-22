@@ -23,7 +23,7 @@ import {
 import { resolveTargetGoogleAccountId } from './account-routing'
 import { loadSourceAsGoogleEvent, pushEventWithConflictRetry } from './push-conflict-retry'
 import { isMemryUserSignedIn } from '../../sync/auth-state'
-import { increment } from '../../sync/vector-clock'
+import { increment } from '@memry/sync-client/vector-clock'
 import { createGoogleCalendarClient } from './client'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../field-merge-calendar'
 import {
