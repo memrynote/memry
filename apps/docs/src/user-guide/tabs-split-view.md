@@ -218,6 +218,12 @@ A toast is no use while the window is going away, so memrynote records the failu
 
 A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). On a compressed tab the dot takes the close button's place, so unsaved work stays visible. Closing a modified tab triggers a flush before close.
 
+## The Home Tab
+
+The Home tab is named after the board it is showing, not after the word "Home". Switch to another board and the tab follows; rename the board you are on and the tab picks the new name up straight away. A rename that arrives from another device counts too, and so does one that lands while Home is sitting in a background tab — the tab is retitled either way.
+
+A fresh vault seeds its first board as **Home**, so an untouched install reads exactly as it always did; the tab only changes once you rename that board or make another one. If the board you were on is deleted, the tab falls back to the first board that is left.
+
 ## Canvases in Tabs
 
 Canvases open as tabs too, so you can keep a board in one pane and a note in the other. Note that a note open in a visible pane is edited there, not on the canvas card — see [Cards & Links](./canvas/cards-and-links.md).

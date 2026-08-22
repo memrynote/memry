@@ -1,10 +1,41 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { HomePage, WidgetInstance } from '@memry/contracts/home-page-api'
 import { trackTelemetry } from '@/lib/telemetry'
 
 const ACTIVE_KEY = 'memry-home-active-board'
 const homeBoardsKey = ['home-boards'] as const
+
+/**
+ * The active board id is shared between hook instances, not private to one.
+ *
+ * `useHomeBoards` is mounted in more than one place — the Home page, and
+ * `HomeTabTitleSync` above the tab tree — and `localStorage` on its own
+ * notifies nobody: a write from one instance would leave every other one on the
+ * value it read into `useState` at mount, so the tab title would never learn
+ * which board the page switched to. A module-level store keeps them on one
+ * value, and also keeps two Home panes in a split from drifting apart.
+ *
+ * `localStorage` stays the source of truth rather than a cached copy: the
+ * snapshot is a string (stable for `useSyncExternalStore` by value), a session
+ * written by an older build is read unchanged, and a test clearing storage
+ * cannot be contradicted by module state that outlives it.
+ */
+const activeBoardListeners = new Set<() => void>()
+
+const subscribeActiveBoardId = (listener: () => void): (() => void) => {
+  activeBoardListeners.add(listener)
+  return () => {
+    activeBoardListeners.delete(listener)
+  }
+}
+
+const getStoredActiveBoardId = (): string | null => localStorage.getItem(ACTIVE_KEY)
+
+const setStoredActiveBoardId = (id: string): void => {
+  localStorage.setItem(ACTIVE_KEY, id)
+  for (const listener of activeBoardListeners) listener()
+}
 
 const trackBoardCustomized = (action: string, widgetCount?: number): void => {
   void trackTelemetry('home_board_customized', {
@@ -21,14 +52,7 @@ export function useHomeBoards() {
     queryFn: () => window.api.homePages.list()
   })
 
-  const [activeBoardId, setActiveBoardIdState] = useState<string | null>(() =>
-    localStorage.getItem(ACTIVE_KEY)
-  )
-
-  const setActiveBoardId = useCallback((id: string) => {
-    localStorage.setItem(ACTIVE_KEY, id)
-    setActiveBoardIdState(id)
-  }, [])
+  const activeBoardId = useSyncExternalStore(subscribeActiveBoardId, getStoredActiveBoardId)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: homeBoardsKey })
 
@@ -93,7 +117,7 @@ export function useHomeBoards() {
     boards,
     activeBoard,
     activeBoardId: resolvedActiveId,
-    setActiveBoardId,
+    setActiveBoardId: setStoredActiveBoardId,
     isLoading,
     createBoard: (name: string): Promise<HomePage> => createMut.mutateAsync(name),
     renameBoard: (id: string, name: string): Promise<void> =>
