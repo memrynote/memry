@@ -150,7 +150,10 @@ describe('Composer', () => {
       format: 'wav',
       waveform: []
     })
-    vi.mocked(window.api.settings.getVoiceRecordingReadiness).mockResolvedValue({ ready: true })
+    vi.mocked(window.api.settings.getVoiceRecordingReadiness).mockResolvedValue({
+      ready: true,
+      provider: 'local'
+    })
     vi.mocked(window.api.inbox.transcribeAudio).mockReset()
     mockSendTurn.mockReset()
     mockCancelTurn.mockReset()
@@ -498,7 +501,7 @@ describe('Composer', () => {
     })
   })
 
-  it('hides the section of an unavailable CLI provider', async () => {
+  it('shows a setup row instead of models for an unavailable CLI provider', async () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         inFlight: {},
@@ -522,7 +525,10 @@ describe('Composer', () => {
     await openModelSubmenu()
 
     expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
-    expect(screen.queryByText('Codex')).not.toBeInTheDocument()
+    expect(screen.getByText('Codex')).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'Not detected — set up in Settings…' })
+    ).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'GPT-5.5' })).not.toBeInTheDocument()
   })
 

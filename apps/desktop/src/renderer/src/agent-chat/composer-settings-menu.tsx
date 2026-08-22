@@ -321,6 +321,19 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                 ))}
               </>
             )}
+            {!props.claudeAvailable && normalizedQuery.length === 0 && (
+              <>
+                <DropdownMenuLabel className={sectionLabelClass}>
+                  {t('agentChat.composer.providers.claude')}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onSelect={props.onOpenProviderSettings}
+                  className="text-muted-foreground/70"
+                >
+                  <span>{t('agentChat.composer.models.cliSetup')}</span>
+                </DropdownMenuItem>
+              </>
+            )}
             {props.codexAvailable && codexModels.length > 0 && (
               <>
                 <DropdownMenuLabel className={sectionLabelClass}>
@@ -337,6 +350,19 @@ export function ComposerSettingsMenu(props: ComposerSettingsMenuProps): React.JS
                       selectedCheck}
                   </DropdownMenuItem>
                 ))}
+              </>
+            )}
+            {!props.codexAvailable && normalizedQuery.length === 0 && (
+              <>
+                <DropdownMenuLabel className={sectionLabelClass}>
+                  {t('agentChat.composer.providers.codex')}
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onSelect={props.onOpenProviderSettings}
+                  className="text-muted-foreground/70"
+                >
+                  <span>{t('agentChat.composer.models.cliSetup')}</span>
+                </DropdownMenuItem>
               </>
             )}
             {showCustomModelRow && customModelBackend && (

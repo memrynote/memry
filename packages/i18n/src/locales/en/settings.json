@@ -1569,8 +1569,25 @@
       "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
     },
     "groups": {
+      "cliAgents": "CLI agents",
       "local": "Local OpenAI-compatible provider",
       "actions": "Connection checks"
+    },
+    "cliAgents": {
+      "claude": {
+        "label": "Claude Code CLI",
+        "description": "Install Claude Code from claude.ai/code, then run `claude login`. MemryNote picks it up automatically."
+      },
+      "codex": {
+        "label": "Codex CLI",
+        "description": "Install with `npm install -g @openai/codex`, then run `codex login` to sign in to your OpenAI account. MemryNote picks it up automatically."
+      },
+      "status": {
+        "detected": "Detected · v{version}",
+        "detectedNoVersion": "Detected",
+        "belowMinimum": "v{version} installed — needs {minimum} or newer",
+        "notDetected": "Not detected"
+      }
     },
     "permissions": {
       "group": "Agent permissions",

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AgentAccessMode,
+  AgentBackendStatus,
   AgentLocalProviderPreset,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
   AgentPreferences,
-  AgentToolApprovalMode
+  AgentToolApprovalMode,
+  BackendStatusesResponse
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
@@ -42,6 +44,7 @@ export function AgentProvidersSection({
   const { t } = useT('settings')
   const [settings, setSettings] = useState<AgentLocalProviderSettings | null>(null)
   const [preferences, setPreferences] = useState<AgentPreferences | null>(null)
+  const [backendStatuses, setBackendStatuses] = useState<BackendStatusesResponse | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [models, setModels] = useState<string[]>([])
   const [status, setStatus] = useState<AgentLocalProviderProbeResult | null>(null)
@@ -57,6 +60,9 @@ export function AgentProvidersSection({
       if (cancelled) return
       setSettings(nextSettings)
       setPreferences(nextPreferences)
+    })
+    void window.api.agent.getBackendStatuses().then((statuses) => {
+      if (!cancelled) setBackendStatuses(statuses)
     })
     return () => {
       cancelled = true
@@ -164,6 +170,22 @@ export function AgentProvidersSection({
   const connectionError =
     status && (!status.connected || !status.modelAvailable) ? status.detail : null
 
+  const cliStatusText = (cli: AgentBackendStatus | undefined): string => {
+    if (!cli) return t('agentProviders.cliAgents.status.notDetected')
+    if (cli.available) {
+      return cli.version
+        ? t('agentProviders.cliAgents.status.detected', { version: cli.version })
+        : t('agentProviders.cliAgents.status.detectedNoVersion')
+    }
+    if (cli.version && cli.minimumRequired) {
+      return t('agentProviders.cliAgents.status.belowMinimum', {
+        version: cli.version,
+        minimum: cli.minimumRequired
+      })
+    }
+    return t('agentProviders.cliAgents.status.notDetected')
+  }
+
   if (!settings || !preferences) return null
 
   return (
@@ -217,6 +239,37 @@ export function AgentProvidersSection({
               </SelectItem>
             </SelectContent>
           </Select>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('agentProviders.groups.cliAgents')}>
+        <SettingRow
+          label={t('agentProviders.cliAgents.claude.label')}
+          description={t('agentProviders.cliAgents.claude.description')}
+        >
+          <span
+            className={
+              backendStatuses?.claude_cli.available
+                ? 'text-xs/4 text-green-600'
+                : 'text-xs/4 text-muted-foreground'
+            }
+          >
+            {cliStatusText(backendStatuses?.claude_cli)}
+          </span>
+        </SettingRow>
+        <SettingRow
+          label={t('agentProviders.cliAgents.codex.label')}
+          description={t('agentProviders.cliAgents.codex.description')}
+        >
+          <span
+            className={
+              backendStatuses?.codex_cli.available
+                ? 'text-xs/4 text-green-600'
+                : 'text-xs/4 text-muted-foreground'
+            }
+          >
+            {cliStatusText(backendStatuses?.codex_cli)}
+          </span>
         </SettingRow>
       </SettingsGroup>
 

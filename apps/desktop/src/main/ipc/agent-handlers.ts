@@ -38,7 +38,7 @@ import { broadcastAgentEvent, setAgentStreamTarget } from '../agent/runtime/even
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
-import { trackMainError } from '../telemetry/diagnostics'
+import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Agent')
@@ -424,12 +424,26 @@ async function backendModelFromOptions(
   return settings.model || null
 }
 
+// A missed CLI probe is otherwise invisible in telemetry: the status quietly
+// drives the UI and nothing is logged, so "the Codex option never appeared for
+// me" reports cannot be corroborated. One shipped line per backend per session.
+const reportedUndetectedClis = new Set<string>()
+
 async function getBackendStatuses(deps: AgentHandlerDeps): Promise<BackendStatusesResponse> {
   const [claude, codex, local] = await Promise.all([
     deps.backends.get('claude_cli').getStatus(),
     deps.backends.get('codex_cli').getStatus(),
     deps.backends.get('local_openai_compatible').getStatus()
   ])
+  for (const status of [claude, codex]) {
+    if (!status.available && !reportedUndetectedClis.has(status.backend)) {
+      reportedUndetectedClis.add(status.backend)
+      trackMainLog('warn', {
+        scope: 'AgentBackendStatus',
+        action: `${status.backend}_undetected`
+      })
+    }
+  }
   return {
     claude_cli: claude,
     codex_cli: codex,
