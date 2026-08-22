@@ -297,6 +297,18 @@ function installWindowApi() {
         allowNonLoopback: false
       }),
       getPreferences: vi.fn().mockResolvedValue(agentPreferences),
+      getBackendStatuses: vi.fn().mockResolvedValue({
+        claude_cli: { backend: 'claude_cli', available: true, version: '2.3.0' },
+        codex_cli: {
+          backend: 'codex_cli',
+          available: false,
+          reason: 'missing_binary',
+          detail: 'Install Codex CLI.',
+          version: null,
+          minimumRequired: '0.130.0'
+        },
+        local_openai_compatible: { backend: 'local_openai_compatible', available: true }
+      }),
       setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input })),
       setLocalProviderSettings: vi.fn(async (input) => ({
         preset: input.preset,
@@ -324,14 +336,14 @@ function installWindowApi() {
         toolsEnabled: true,
         detail: null
       })
-    },
+    } as unknown as typeof window.api.agent,
     syncOps: {
       getStorageBreakdown: vi.fn().mockResolvedValue({
         used: 1536,
         limit: 4096,
         breakdown: { notes: 1024, attachments: 256, crdt: 128, other: 128 }
       })
-    },
+    } as unknown as typeof window.api.syncOps,
     account: {
       getBillingStatus: vi.fn().mockResolvedValue({
         plan: 'free',
@@ -366,7 +378,7 @@ function installWindowApi() {
         success: true,
         portalUrl: 'https://paddle.test/portal'
       })
-    },
+    } as unknown as typeof window.api.account,
     settings: {
       ...window.api.settings,
       getTerminalCommandStatus: vi.fn().mockResolvedValue({
@@ -723,6 +735,14 @@ describe('settings section coverage', () => {
     expect(window.api.agent.getPreferences).toHaveBeenCalled()
 
     expect(await screen.findByText('agentProviders.permissions.group')).toBeInTheDocument()
+
+    // CLI agent detection status: Claude detected with a version, Codex missing.
+    expect(await screen.findByText('agentProviders.cliAgents.claude.label')).toBeInTheDocument()
+    expect(
+      await screen.findByText('agentProviders.cliAgents.status.detected {"version":"2.3.0"}')
+    ).toBeInTheDocument()
+    expect(screen.getByText('agentProviders.cliAgents.codex.label')).toBeInTheDocument()
+    expect(screen.getByText('agentProviders.cliAgents.status.notDetected')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('agentProviders.permissions.access.computerAccess'))
     await waitFor(() =>

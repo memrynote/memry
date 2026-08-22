@@ -48,6 +48,11 @@ message or provider check picks it up without a restart. If the CLI is removed, 
 its executable bit between that check and the moment a turn actually starts, the turn ends right
 away with a `Claude CLI failed to start: ...` (or `Codex CLI failed to start: ...`) error naming the
 reason, and the conversation is free to accept a new message as soon as the CLI is back.
+A CLI that is not detected is not hidden: the composer's model picker still lists the Claude and
+Codex sections with a muted "Not detected — set up in Settings…" row that opens
+[Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions), where a
+CLI agents group shows the live detection status of each CLI (version when found) alongside install
+and sign-in instructions (`claude login` / `codex login`).
 For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent

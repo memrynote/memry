@@ -214,7 +214,8 @@
         "search": "Search models…",
         "useCustom": "Use \"{query}\"",
         "localEmpty": "No models found — check Settings",
-        "localSetup": "Set up in Settings…"
+        "localSetup": "Set up in Settings…",
+        "cliSetup": "Not detected — set up in Settings…"
       },
       "settings": {
         "reasoning": "Reasoning",

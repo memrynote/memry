@@ -19,7 +19,6 @@
   "exclude": [
     "src/renderer/src/App.test.tsx",
     "src/renderer/src/agent-chat/__tests__/agent-provider.test.tsx",
-    "src/renderer/src/agent-chat/__tests__/composer.test.tsx",
     "src/renderer/src/agent-chat/__tests__/message-stream.test.tsx",
     "src/renderer/src/agent-mcp/canvas-write-handler.test.tsx",
     "src/renderer/src/agent-mcp/current-note-handler.test.tsx",
@@ -149,7 +148,6 @@
     "src/renderer/src/pages/settings/ai-section.test.tsx",
     "src/renderer/src/pages/settings/general-section.i18n.test.tsx",
     "src/renderer/src/pages/settings/properties-section.test.tsx",
-    "src/renderer/src/pages/settings/settings-sections.test.tsx",
     "src/renderer/src/pages/settings/setup-wizard.test.tsx",
     "src/renderer/src/pages/settings/shortcuts-section.test.tsx",
     "src/renderer/src/pages/tags-hub.test.tsx",
