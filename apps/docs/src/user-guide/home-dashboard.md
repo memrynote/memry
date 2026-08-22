@@ -10,10 +10,10 @@ Opening a board paints it in one pass — no entrance animation on the board or 
 
 A fresh vault auto-seeds a single board named **Home**. You can keep just that one or organize work across several boards.
 
-- **Switch boards** — pick a board from the board switcher in the header.
+- **Switch boards** — pick a board from the board switcher in the header. The Home tab takes the name of whichever board is open, so the tab strip says which one you are on.
 - **Create a board** — use **New board** in the switcher. It arrives named "New board"; rename it from the manager below.
 - **Manage boards** — **Manage boards** in the switcher opens a dialog listing every board:
-  - **Rename** — click a board's name (or the pencil) and type. **Enter** saves, **Esc** discards the edit and leaves the dialog open.
+  - **Rename** — click a board's name (or the pencil) and type. **Enter** saves, **Esc** discards the edit and leaves the dialog open. Renaming the board you are on retitles the Home tab with it.
   - **Reorder** — drag a row by its handle. The switcher and every synced device follow the new order.
   - **Delete** — the trash button removes a board and its widgets. The last remaining board can't be deleted.
 
