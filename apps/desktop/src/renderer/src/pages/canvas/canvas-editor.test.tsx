@@ -75,8 +75,11 @@ const mocks = vi.hoisted(() => ({
   excalidrawProps: {} as Record<string, unknown>,
   liveOpened: vi.fn(),
   liveClosed: vi.fn(),
+  // Mirrors the real serializeAsJSON's formatting — `JSON.stringify(data,
+  // null, 2)`. The dedupe baseline is compared byte-for-byte against this
+  // output, so a compact fake would hide the very mismatch these tests cover.
   serializeAsJSON: vi.fn((elements: unknown[], ..._rest: unknown[]) =>
-    JSON.stringify({ elements })
+    JSON.stringify({ elements }, null, 2)
   ),
   openTab: vi.fn(),
   toastError: vi.fn(),
@@ -234,6 +237,23 @@ vi.mock('./canvas-externalize', () => ({
 
 const STORED_SCENE = JSON.stringify({ elements: [{ id: 'stroke-1', type: 'freedraw' }] })
 
+/**
+ * The same ink as it comes back from `canvas:get`: main injects the
+ * `memryAssets` asset sidecar and re-emits the document compactly, so the
+ * stored string is never byte-identical to what serializeAsJSON produced.
+ */
+const STORED_SCENE_WITH_SIDECAR = JSON.stringify({
+  elements: [{ id: 'stroke-1', type: 'freedraw' }],
+  memryAssets: [
+    {
+      fileId: 'file-1',
+      contentHash: 'abc123',
+      mimeType: 'image/png',
+      byteLength: 42
+    }
+  ]
+})
+
 /** Drives the fake Excalidraw through "initialData has been applied". */
 function finishInit(): void {
   mocks.api.elements = [{ id: 'stroke-1', type: 'freedraw' }]
@@ -288,8 +308,29 @@ describe('CanvasEditor persistence safety', () => {
     })
     expect(mocks.update).toHaveBeenCalledTimes(1)
     expect(mocks.update).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'c1', scene: JSON.stringify({ elements: mocks.api.elements }) })
+      expect.objectContaining({
+        id: 'c1',
+        scene: JSON.stringify({ elements: mocks.api.elements }, null, 2)
+      })
     )
+  })
+
+  it('does not re-save a stored scene carrying the memryAssets sidecar (no edit)', async () => {
+    // Excalidraw fires onChange of its own accord once initialData is applied.
+    // Before the baseline was normalized, that first persist compared a fresh
+    // serializeAsJSON output against the sidecar-carrying, compactly re-emitted
+    // stored string, "found" a change, and rewrote + re-synced the scene on
+    // every canvas tab visit.
+    render(<CanvasEditor canvasId="c1" initialScene={STORED_SCENE_WITH_SIDECAR} />)
+    finishInit()
+    act(() => {
+      mocks.onChange?.()
+    })
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mocks.update).not.toHaveBeenCalled()
   })
 
   it('Cmd+S flushes to the vault and never reaches Excalidraw', async () => {
@@ -387,7 +428,7 @@ describe('CanvasEditor persistence safety', () => {
 
     expect(mocks.update).toHaveBeenCalledTimes(2)
     expect(mocks.update).toHaveBeenLastCalledWith(
-      expect.objectContaining({ scene: JSON.stringify({ elements: mocks.api.elements }) })
+      expect.objectContaining({ scene: JSON.stringify({ elements: mocks.api.elements }, null, 2) })
     )
   })
 

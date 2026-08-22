@@ -8,6 +8,10 @@ your notes. The server stores only ciphertext and never sees your board.
 Cards sync as references. The notes, tasks, and events they point at sync
 through their own channels, so a card on device B resolves to the same item.
 
+Opening a board is not an edit. Switching to a canvas tab and back leaves its
+modified date alone and pushes nothing to your other devices — only a change you
+actually make to the drawing does.
+
 Folders sync too, including their icons and including folders with nothing in
 them, so the structure you build on one device is the structure you find on the
 next. See [Organizing Canvases](./organizing.md). Folder support arrived with a

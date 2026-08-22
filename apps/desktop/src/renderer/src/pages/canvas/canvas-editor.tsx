@@ -43,7 +43,11 @@ import {
 } from './canvas-link-label'
 import { lookupCardTitle } from './canvas-link-target-title'
 import { resolveCanvasLink } from './canvas-link-open'
-import { computeSceneSignature, createScenePersister } from './canvas-persistence'
+import {
+  computeSceneSignature,
+  createScenePersister,
+  normalizeStoredScene
+} from './canvas-persistence'
 import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
@@ -425,7 +429,12 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         announceSyncabilityRef.current(saved.tooLarge)
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
-      lastSavedScene: initialScene,
+      // The stored scene, restated as this renderer would have serialized it.
+      // Main injects the `memryAssets` sidecar and re-emits the document
+      // canonically on the way to disk, so the raw string never equals a fresh
+      // serializeAsJSON output — and the first persist after every mount saved
+      // a scene nobody had touched (see normalizeStoredScene).
+      lastSavedScene: normalizeStoredScene(initialScene),
       onError: (err) => {
         log.error('Failed to save canvas scene', err)
         // The persister keeps the change pending and retries, but a failing
