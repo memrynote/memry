@@ -4,13 +4,19 @@
  * Copy path and the original + stored filename for a file block.
  */
 
+import { useRef } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
 import { NoteFileUrlProvider } from './note-file-url-context'
-import { AttachmentBlockContextMenu, AttachmentMenuButton } from './attachment-block-menu'
+import {
+  AttachmentBlockContextMenu,
+  AttachmentMenuButton,
+  ImageHoverMenuButton,
+  useImageHoverMenu
+} from './attachment-block-menu'
 
 const NOTE_ID = 'note-1'
 const URL = '../attachments/note-1/k3f9x2-report.pdf'
@@ -108,6 +114,65 @@ describe('AttachmentMenuButton', () => {
     for (const label of ['Reveal in Finder', 'Open in default app', 'Copy path']) {
       expect(screen.getByRole('menuitem', { name: label })).toHaveAttribute('data-disabled')
     }
+  })
+})
+
+function ImageHoverHarness({
+  resolveImage
+}: {
+  resolveImage: (el: HTMLElement) => { url: string; name: string } | null
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { hoverTarget, handleMenuOpenChange } = useImageHoverMenu(containerRef, resolveImage)
+
+  return (
+    <div ref={containerRef} data-testid="editor-container">
+      <div data-id="b1">
+        <img alt="embedded pic" src="memry-file://local/x.png" />
+      </div>
+      <p>plain paragraph</p>
+      {hoverTarget && (
+        <ImageHoverMenuButton target={hoverTarget} onOpenChange={handleMenuOpenChange} />
+      )}
+    </div>
+  )
+}
+
+describe('useImageHoverMenu + ImageHoverMenuButton', () => {
+  const resolveImage = () => ({ url: URL, name: 'report.pdf' })
+
+  it('shows the floating button while hovering an image and opens the menu from it', async () => {
+    const user = userEvent.setup()
+    renderWithProvider(<ImageHoverHarness resolveImage={resolveImage} />)
+
+    fireEvent.mouseOver(screen.getByAltText('embedded pic'))
+    const button = await screen.findByRole('button', { name: 'File actions' })
+
+    await user.click(button)
+    await waitFor(() => {
+      expect(mocks.resolveAttachment).toHaveBeenCalledWith(NOTE_ID, URL)
+    })
+    expect(await screen.findByRole('menuitem', { name: 'Reveal in Finder' })).toBeInTheDocument()
+    expect(await screen.findByText('Stored as k3f9x2-report.pdf')).toBeInTheDocument()
+  })
+
+  it('hides the button when the pointer moves off the image', async () => {
+    renderWithProvider(<ImageHoverHarness resolveImage={resolveImage} />)
+
+    fireEvent.mouseOver(screen.getByAltText('embedded pic'))
+    await screen.findByRole('button', { name: 'File actions' })
+
+    fireEvent.mouseOver(screen.getByText('plain paragraph'))
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'File actions' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows no button for an element that is not an image block', async () => {
+    renderWithProvider(<ImageHoverHarness resolveImage={() => null} />)
+
+    fireEvent.mouseOver(screen.getByAltText('embedded pic'))
+    expect(screen.queryByRole('button', { name: 'File actions' })).not.toBeInTheDocument()
   })
 })
 

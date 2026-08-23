@@ -10,7 +10,7 @@
  * which is what the beta feedback asked for: a way to find the original again.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
 import { Copy, ExternalLink, FolderOpen, MoreHorizontal } from '@/lib/icons'
@@ -203,17 +203,25 @@ export function AttachmentBlockContextMenu({
 export function AttachmentMenuButton({
   url,
   name,
-  className
+  className,
+  onOpenChange
 }: {
   url: string
   name: string
   className?: string
+  /** Extra open-state observer, chained after the resolve-on-open handler. */
+  onOpenChange?: (open: boolean) => void
 }) {
   const state = useAttachmentMenu(url)
   const { t } = useT('notes')
 
   return (
-    <DropdownMenu onOpenChange={state.handleOpenChange}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        state.handleOpenChange(open)
+        onOpenChange?.(open)
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -278,4 +286,113 @@ export function ImageAttachmentMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+// ============================================================================
+// Image blocks — hover "⋯" button floated over the image
+// ============================================================================
+
+export interface HoverImageTarget {
+  url: string
+  name: string
+  /** Viewport coordinates for the button, from the image's bounding rect. */
+  x: number
+  y: number
+}
+
+/**
+ * A floating "⋯" button that appears while the pointer is over an image block.
+ *
+ * The built-in image block has no custom render to mount a button in, so the
+ * host tracks pointer-over on the editor container and derives the hovered
+ * image's block props; this renders the same attachment menu at the image's
+ * top inline-end corner. `data-attachment-hover-menu` marks the button so the
+ * host's hover tracking treats moving onto it as still "on the image".
+ */
+export function ImageHoverMenuButton({
+  target,
+  onOpenChange
+}: {
+  target: HoverImageTarget
+  onOpenChange?: (open: boolean) => void
+}) {
+  return (
+    <div
+      data-attachment-hover-menu
+      style={{ position: 'fixed', top: target.y, left: target.x, zIndex: 30 }}
+    >
+      <AttachmentMenuButton
+        url={target.url}
+        name={target.name}
+        onOpenChange={onOpenChange}
+        className="h-6 w-6 rounded-md border border-border bg-background/90 shadow-sm"
+      />
+    </div>
+  )
+}
+
+/**
+ * Hover tracking for the floating image menu button.
+ *
+ * Attaches pointer listeners to the editor container; `resolveImage` maps a
+ * hovered element to the image block's raw props (or null). The target is kept
+ * while the pointer is on the image or the button, and while the menu is open.
+ */
+export function useImageHoverMenu(
+  containerRef: React.RefObject<HTMLElement | null>,
+  resolveImage: (el: HTMLElement) => { url: string; name: string } | null
+): {
+  hoverTarget: HoverImageTarget | null
+  handleMenuOpenChange: (open: boolean) => void
+} {
+  const [hoverTarget, setHoverTarget] = useState<HoverImageTarget | null>(null)
+  const menuOpenRef = useRef(false)
+
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    menuOpenRef.current = open
+    if (!open) setHoverTarget(null)
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const BUTTON_SIZE = 24
+    const INSET = 8
+
+    const handleOver = (e: MouseEvent) => {
+      if (menuOpenRef.current) return
+      const element = e.target as HTMLElement
+      if (element.closest?.('[data-attachment-hover-menu]')) return
+
+      const img = element.closest?.('img')
+      if (img instanceof HTMLElement) {
+        const info = resolveImage(img)
+        if (info) {
+          const rect = img.getBoundingClientRect()
+          setHoverTarget({
+            ...info,
+            x: rect.right - BUTTON_SIZE - INSET,
+            y: rect.top + INSET
+          })
+          return
+        }
+      }
+      setHoverTarget(null)
+    }
+
+    // A fixed-position button goes stale the moment the note scrolls under it.
+    const handleScroll = () => {
+      if (!menuOpenRef.current) setHoverTarget(null)
+    }
+
+    container.addEventListener('mouseover', handleOver)
+    container.addEventListener('scroll', handleScroll, true)
+    return () => {
+      container.removeEventListener('mouseover', handleOver)
+      container.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [containerRef, resolveImage])
+
+  return { hoverTarget, handleMenuOpenChange }
 }

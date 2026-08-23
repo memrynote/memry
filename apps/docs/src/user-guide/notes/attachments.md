@@ -37,7 +37,7 @@ The menu's header shows the **original filename** and the name the file is **sto
 
 If the file hasn't synced to this device yet, the menu still shows both names, but the actions stay disabled until the download lands.
 
-Image blocks get the same menu from a right-click on the image.
+Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
 
 ## PDF Inline Preview
 
