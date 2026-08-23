@@ -169,22 +169,102 @@ export const runAdapterConformance = (
       })
     })
 
-    seam('vaultDirectory', () => {
+    seam('vaultFileSystem', () => {
       it('provisions a root and then finds it — never dead-ends', async () => {
-        await withAdapters(async ({ vaultDirectory }) => {
-          const root = await vaultDirectory.provision(VAULT_ID)
+        await withAdapters(async ({ vaultFileSystem }) => {
+          const root = await vaultFileSystem.provision(VAULT_ID)
           expect(root.length > 0).toBe(true)
-          expect(await vaultDirectory.resolveVaultRoot(VAULT_ID)).toBe(root)
+          expect(await vaultFileSystem.resolveVaultRoot(VAULT_ID)).toBe(root)
 
-          const listed = await vaultDirectory.listLocalVaults()
+          const listed = await vaultFileSystem.listLocalVaults()
           expect(listed.some((vault) => vault.vaultId === VAULT_ID)).toBe(true)
         })
       })
 
       it('is idempotent — provisioning twice returns the same root', async () => {
-        await withAdapters(async ({ vaultDirectory }) => {
-          const first = await vaultDirectory.provision(VAULT_ID)
-          expect(await vaultDirectory.provision(VAULT_ID)).toBe(first)
+        await withAdapters(async ({ vaultFileSystem }) => {
+          const first = await vaultFileSystem.provision(VAULT_ID)
+          expect(await vaultFileSystem.provision(VAULT_ID)).toBe(first)
+        })
+      })
+
+      it('round-trips note text through nested directories it creates itself', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          // No mkdir in the interface on purpose: a write that must be preceded
+          // by one is a write that can be interrupted between the two.
+          await fs.writeFile(VAULT_ID, 'Notes/Nested/Dune.md', '# Dune\n')
+          expect(await fs.exists(VAULT_ID, 'Notes/Nested/Dune.md')).toBe(true)
+          expect(await fs.readFile(VAULT_ID, 'Notes/Nested/Dune.md')).toBe('# Dune\n')
+        })
+      })
+
+      it('overwrites in place rather than appending', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          await fs.writeFile(VAULT_ID, 'Notes/a.md', 'first')
+          await fs.writeFile(VAULT_ID, 'Notes/a.md', 'second')
+          expect(await fs.readFile(VAULT_ID, 'Notes/a.md')).toBe('second')
+        })
+      })
+
+      it('round-trips bytes as well as text', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          await fs.writeBytes(VAULT_ID, 'Files/blob.bin', bytes(0, 1, 254, 255))
+          expect(
+            sameBytes(await fs.readBytes(VAULT_ID, 'Files/blob.bin'), bytes(0, 1, 254, 255))
+          ).toBe(true)
+        })
+      })
+
+      it('answers absence with null / false rather than throwing', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          expect(await fs.readFile(VAULT_ID, 'Notes/missing.md')).toBe(null)
+          expect(await fs.readBytes(VAULT_ID, 'Notes/missing.md')).toBe(null)
+          expect(await fs.exists(VAULT_ID, 'Notes/missing.md')).toBe(false)
+          expect(await fs.remove(VAULT_ID, 'Notes/missing.md')).toBe(false)
+          expect(await fs.list(VAULT_ID, 'Notes/missing-dir')).toEqual([])
+        })
+      })
+
+      it('renames across directories, creating the destination parents', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          await fs.writeFile(VAULT_ID, 'Notes/old.md', 'body')
+          await fs.rename(VAULT_ID, 'Notes/old.md', 'Archive/2026/new.md')
+
+          expect(await fs.exists(VAULT_ID, 'Notes/old.md')).toBe(false)
+          expect(await fs.readFile(VAULT_ID, 'Archive/2026/new.md')).toBe('body')
+        })
+      })
+
+      it('lists a directory non-recursively, tagging files and directories', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          await fs.writeFile(VAULT_ID, 'Notes/a.md', 'a')
+          await fs.writeFile(VAULT_ID, 'Notes/sub/b.md', 'b')
+
+          const entries = await fs.list(VAULT_ID, 'Notes')
+          expect(entries.some((e) => e.path === 'Notes/a.md' && e.kind === 'file')).toBe(true)
+          expect(entries.some((e) => e.path === 'Notes/sub' && e.kind === 'directory')).toBe(true)
+          // Non-recursive: the nested file is NOT reported at this level.
+          expect(entries.some((e) => e.path === 'Notes/sub/b.md')).toBe(false)
+        })
+      })
+
+      it('removes an empty directory but refuses one that still holds a note', async () => {
+        await withAdapters(async ({ vaultFileSystem: fs }) => {
+          await fs.provision(VAULT_ID)
+          await fs.writeFile(VAULT_ID, 'Empty/.DS_Store', '')
+          await fs.writeFile(VAULT_ID, 'Kept/note.md', 'x')
+
+          expect(await fs.removeDirIfEmpty(VAULT_ID, 'Empty', ['.DS_Store'])).toBe(true)
+          // The whole point of the ignore list: anything NOT in it makes this a
+          // no-op, because a recursive delete here would be data loss.
+          expect(await fs.removeDirIfEmpty(VAULT_ID, 'Kept', ['.DS_Store'])).toBe(false)
+          expect(await fs.readFile(VAULT_ID, 'Kept/note.md')).toBe('x')
         })
       })
     })
@@ -257,8 +337,8 @@ export const runAdapterConformance = (
 
     seam('crdtPreflight', () => {
       it('reports health for a provisioned vault', async () => {
-        await withAdapters(async ({ crdtPreflight, vaultDirectory }) => {
-          await vaultDirectory.provision(VAULT_ID)
+        await withAdapters(async ({ crdtPreflight, vaultFileSystem }) => {
+          await vaultFileSystem.provision(VAULT_ID)
           const result = await crdtPreflight.verifyStoreHealth(VAULT_ID)
           expect(typeof result.ok).toBe('boolean')
         })

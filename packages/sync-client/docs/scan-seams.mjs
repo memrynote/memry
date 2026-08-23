@@ -30,7 +30,7 @@ const EXPLICIT = {
   'sync/attachment-events.ts': 'none — EventEmitter',
   'sync/attachments.ts': 'AttachmentStore',
   'sync/attachment-outbox.ts': 'AttachmentStore',
-  'sync/attachment-backfill.ts': 'AttachmentStore + VaultFiles',
+  'sync/attachment-backfill.ts': 'AttachmentStore + VaultFileSystem',
   'sync/worker.ts': 'none — desktop-only',
   'sync/worker-bridge.ts': 'none — desktop-only',
   'sync/blocknote-converter.ts': 'none — node:crypto',
@@ -71,7 +71,7 @@ for (const r of roots) {
     if (!seam) {
       if (specs.every(([s, t]) => s.startsWith('drizzle-orm/better-sqlite3') && t))
         seam = 'none — Drizzle type only'
-      else seam = 'VaultFiles *'
+      else seam = 'VaultFileSystem'
     }
     rows.push({ k, loc: src.split('\n').length, specs, seam })
   }

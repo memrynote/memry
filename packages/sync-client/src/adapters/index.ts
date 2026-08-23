@@ -9,6 +9,13 @@
  * Adding an eleventh seam requires a written justification in the PR. The
  * ten-seam list is the decision record's; drift goes through review, not
  * accretion.
+ *
+ * One approved amendment (owner decision, 2026-08-23): seam 6 is
+ * `VaultFileSystem`, not the record's `VaultDirectory`. The record's version
+ * owned vault roots only, which left every file that reads or writes note
+ * markdown with no platform-free way to say so. Roots and contents are the same
+ * concern at the same boundary, so the seam was widened rather than a new one
+ * added — the count is still ten.
  */
 export type {
   SyncHttpClient,
@@ -20,7 +27,7 @@ export type { CertificatePinningAdapter } from './certificate-pinning.ts'
 export type { CrdtDocState, CrdtPersistenceAdapter } from './crdt-persistence.ts'
 export type { CrdtStorePathAdapter } from './crdt-store-path.ts'
 export type { AttachmentStoreAdapter } from './attachment-store.ts'
-export type { LocalVault, VaultDirectoryAdapter } from './vault-directory.ts'
+export type { LocalVault, VaultDirEntry, VaultFileSystemAdapter } from './vault-file-system.ts'
 export type {
   DeviceInfo,
   DevicePlatform,
@@ -37,7 +44,7 @@ import type { CertificatePinningAdapter } from './certificate-pinning.ts'
 import type { CrdtPersistenceAdapter } from './crdt-persistence.ts'
 import type { CrdtStorePathAdapter } from './crdt-store-path.ts'
 import type { AttachmentStoreAdapter } from './attachment-store.ts'
-import type { VaultDirectoryAdapter } from './vault-directory.ts'
+import type { VaultFileSystemAdapter } from './vault-file-system.ts'
 import type { DeviceRegistrationAdapter } from './device-registration.ts'
 import type { CrdtProviderHost } from './crdt-provider.ts'
 import type { CrdtPreflightAdapter } from './crdt-preflight.ts'
@@ -50,7 +57,7 @@ export interface SyncPlatformAdapters {
   crdtPersistence: CrdtPersistenceAdapter
   crdtStorePath: CrdtStorePathAdapter
   attachmentStore: AttachmentStoreAdapter
-  vaultDirectory: VaultDirectoryAdapter
+  vaultFileSystem: VaultFileSystemAdapter
   deviceRegistration: DeviceRegistrationAdapter
   crdtProvider: CrdtProviderHost
   crdtPreflight: CrdtPreflightAdapter
@@ -64,7 +71,7 @@ export const SYNC_ADAPTER_SEAMS = [
   'crdtPersistence',
   'crdtStorePath',
   'attachmentStore',
-  'vaultDirectory',
+  'vaultFileSystem',
   'deviceRegistration',
   'crdtProvider',
   'crdtPreflight',

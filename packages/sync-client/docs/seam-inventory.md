@@ -27,7 +27,15 @@ they differ, the table is what the scanner found on this tree today.
 
 ## Findings that change the plan
 
-### 1. Vault file I/O has no seam — the one unassigned cluster
+### 1. Vault file I/O has no seam — RESOLVED 2026-08-23
+
+**Owner decision: seam 6 is widened to `VaultFileSystem`.** The interface lives
+in `src/adapters/vault-file-system.ts` and the amendment is recorded in
+`contracts/platform-adapters.md` §6. The seam count is still ten. Rows marked
+`VaultFiles *` below now belong to seam 6 — the inventory has zero unassigned
+files. The original finding is kept below for the reasoning.
+
+#### Original finding
 
 Twenty files read and write **vault files** (note markdown, journals, large-note
 overflow, CRDT write-back, attachment staging) straight through `node:fs`. None
@@ -40,13 +48,13 @@ of the ten seams covers this:
 Marked `VaultFiles *` in the tables below. This is the "zero unassigned"
 requirement failing honestly rather than being papered over.
 
-**Recommendation**: widen seam 6 from `VaultDirectory` to a `VaultFileSystem`
+**Recommendation (accepted)**: widen seam 6 from `VaultDirectory` to a `VaultFileSystem`
 that owns both — root resolution plus `readFile`/`writeFile`/`list`/`delete`/
 `rename` relative to a vault root. That is the same concern at the same
 boundary, so it does not spend the contract's "eleventh seam" budget; it does
 still need owner sign-off, because the contract says the ten-seam list is the
-decision record's and drift goes through review. **Blocking for T018–T021** —
-half the files below cannot be assigned until this is decided.
+decision record's and drift goes through review. ~~**Blocking for T018–T021**~~
+— signed off 2026-08-23; no longer blocking.
 
 ### 2. Twenty-three files are platform-bound by a _type_, not by code
 
@@ -106,7 +114,7 @@ the adapter implementations.
 | `sync/task-activity-sync.ts`             |  81 | `drizzle-orm/better-sqlite3` _(type)_ |
 | `sync/template-sync.ts`                  |  69 | `drizzle-orm/better-sqlite3` _(type)_ |
 
-### VaultFiles * — 19 files
+### VaultFileSystem — 19 files
 
 | File                                              | LOC | Platform imports                               |
 | ------------------------------------------------- | --: | ---------------------------------------------- |
@@ -189,7 +197,7 @@ the adapter implementations.
 | `sync/blocknote-converter.ts`                 | 766 | `node:crypto`    |
 | `sync/item-handlers/agent-message-handler.ts` | 243 | `node:crypto`    |
 
-### AttachmentStore + VaultFiles — 1 file
+### AttachmentStore + VaultFileSystem — 1 file
 
 | File                          | LOC | Platform imports |
 | ----------------------------- | --: | ---------------- |
@@ -239,5 +247,5 @@ the adapter implementations.
 
 ---
 
-`VaultFiles *` is not one of the ten seams — see finding 1. Every other row is
-assigned, so the inventory is complete modulo that single decision.
+`VaultFileSystem` rows belong to seam 6 (finding 1, resolved). Every row is
+assigned; the inventory has no unassigned files.

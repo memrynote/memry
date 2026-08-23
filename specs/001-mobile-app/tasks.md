@@ -100,14 +100,25 @@ Green now: `pnpm lint`, `pnpm typecheck` (18/18), `pnpm test:desktop`
 
 Open: T018–T022 (the code move), T024, T025, T032.
 
-**Blocker for T018–T021** — T015 found that vault file I/O (~20 files) maps to
-none of the ten seams. `VaultDirectory` owns roots, `AttachmentStore` owns
-attachment bytes, `CrdtStorePath` owns the CRDT store location; nothing owns
-note/journal file reads and writes. Recommendation in
-[seam-inventory.md](../../packages/sync-client/docs/seam-inventory.md): widen
-`VaultDirectory` into a `VaultFileSystem` rather than add an eleventh seam.
-Needs owner sign-off — the contract says the ten-seam list is the decision
-record's and drift goes through review, not accretion.
+**Seam amendment (owner decision, 2026-08-23) — no longer blocking.** T015 found
+that vault file I/O (~20 files) mapped to none of the ten seams: `VaultDirectory`
+owned roots, `AttachmentStore` attachment bytes, `CrdtStorePath` the CRDT store
+location, and nothing owned note/journal reads and writes. Seam 6 is widened to
+**`VaultFileSystem`** (roots _plus_ relative-path read/write/list/rename/remove,
+atomic writes, no `mkdir`), rather than adding an eleventh seam — the count stays
+ten. Interface: `packages/sync-client/src/adapters/vault-file-system.ts`;
+amendment recorded in
+[contracts/platform-adapters.md](./contracts/platform-adapters.md) §6 and
+[seam-inventory.md](../../packages/sync-client/docs/seam-inventory.md) finding 1.
+The content half deliberately matches the existing `NoteContentStore`, which
+desktop already implements and T034 already commits mobile to.
+
+**Known follow-up inside T018–T021 (has a fix, not a decision):**
+`item-handlers/agent-message-handler.ts` hashes with a **synchronous**
+`createHash('sha256')` inside `applyUpsert`, which the `SyncItemHandler`
+interface declares as sync. WebCrypto's `subtle.digest` is async, so the
+substitution is `@noble/hashes` (already in the tree, already a direct dep of
+`apps/mobile`) rather than making the whole handler interface async.
 
 ---
 
