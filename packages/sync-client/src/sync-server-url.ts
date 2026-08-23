@@ -11,7 +11,7 @@
  * this resolution; it now calls in here, so every sync-adjacent consumer —
  * sync HTTP, OAuth sign-in, canvas assets, attachments — reads one policy.
  */
-import { readEnv } from './env'
+import { readEnv } from './env.ts'
 
 const DEV_FALLBACK_URL = 'http://localhost:8787'
 

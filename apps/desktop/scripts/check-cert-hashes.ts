@@ -2,7 +2,7 @@ import {
   checkCertificatePinConfig,
   getConfiguredPinnedCertificateHashes,
   getConfiguredSyncCertHostname
-} from '../src/main/sync/certificate-pins.ts'
+} from '@memry/sync-client/certificate-pins'
 import { describeCertCheckHost, resolveCertCheckConfig } from './check-cert-hashes-config.ts'
 
 // App root comes from the shell wrapper; cwd is the fallback for `pnpm cert:check`

@@ -1,6 +1,6 @@
 import tls from 'node:tls'
 import crypto from 'node:crypto'
-import { parseExtractCertHashArgs } from '../src/main/sync/cert-hash-cli'
+import { parseExtractCertHashArgs } from '@memry/sync-client/cert-hash-cli'
 
 const { hostname, port } = parseExtractCertHashArgs(process.argv.slice(2))
 

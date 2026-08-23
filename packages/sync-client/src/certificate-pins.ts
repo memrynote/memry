@@ -1,4 +1,4 @@
-import { readEnv } from './env'
+import { readEnv } from './env.ts'
 
 export const DEFAULT_SYNC_CERT_HOSTNAME = 'sync.memrynote.com'
 
