@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as dataSchema from '@memry/db-schema/data-schema'
 
 import { reminderTargetType } from '@memry/contracts/reminder-types'
-import { createRemindersService, type RemindersServiceHooks } from './reminders.ts'
+import { createRemindersService, type RemindersServiceHooks } from '@memry/app-core/reminders'
 import type { DataDb } from './database.ts'
 
 test('reminder target types: canonical set is exactly the five supported targets', () => {

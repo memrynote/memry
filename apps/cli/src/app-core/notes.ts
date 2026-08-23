@@ -1,3 +1,5 @@
+import type { NoteRecord, NotesService } from '@memry/app-core/service-types'
+export type { NoteRecord, CreateNoteInput, UpdateNoteInput, NoteLinkRecord, NoteLinksResponse, NotePreviewRecord, ResolvedNoteRecord, ResolvedWikiTargetRecord, NotesService } from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
@@ -11,7 +13,7 @@ import {
 } from '@memry/storage-data'
 import { formatJournalFilename } from '@memry/storage-vault'
 import type { DataDb } from './database.ts'
-import { createId } from './ids.ts'
+import { createId } from '@memry/app-core/ids'
 import { isDeepStrictEqual } from 'node:util'
 import {
   parseMarkdownNote,
@@ -19,74 +21,9 @@ import {
   snippet,
   wordCount,
   writeMarkdownNote
-} from './markdown.ts'
+} from '@memry/app-core/markdown'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import { resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
-
-export interface NoteRecord {
-  id: string
-  path: string
-  title: string
-  content: string
-  tags: string[]
-  properties: Record<string, unknown>
-  emoji: string | null
-  localOnly: boolean
-  createdAt: string
-  modifiedAt: string
-  journalDate: string | null
-  wordCount: number
-  snippet: string
-}
-
-export interface CreateNoteInput {
-  title: string
-  content?: string
-  folder?: string
-  tags?: string[]
-  properties?: Record<string, unknown>
-}
-
-export interface UpdateNoteInput {
-  id: string
-  title?: string
-  content?: string
-  append?: string
-  tags?: string[]
-  properties?: Record<string, unknown>
-}
-
-export interface NoteLinkRecord {
-  title: string
-  noteId: string | null
-  path: string | null
-}
-
-export interface NoteLinksResponse {
-  outgoing: NoteLinkRecord[]
-  backlinks: Array<{ id: string; title: string; path: string }>
-}
-
-export interface NotePreviewRecord {
-  id: string
-  title: string
-  emoji: string | null
-  snippet: string
-  tags: Array<{ name: string; color: string }>
-  createdAt: string
-}
-
-export interface ResolvedNoteRecord {
-  id: string
-  path: string
-  title: string
-  fileType: string
-}
-
-export interface ResolvedWikiTargetRecord extends ResolvedNoteRecord {
-  /** The heading `[[Note#Heading]]` addresses, or `null` when it names none. */
-  heading: string | null
-}
 
 interface NoteMetadataRow {
   id: string
@@ -98,25 +35,6 @@ interface NoteMetadataRow {
   createdAt: string
   modifiedAt: string
   journalDate: string | null
-}
-
-export interface NotesService {
-  create(input: CreateNoteInput): Promise<NoteRecord>
-  get(idOrPath: string): Promise<NoteRecord | null>
-  list(options?: { folder?: string; journalOnly?: boolean; limit?: number }): Promise<NoteRecord[]>
-  update(input: UpdateNoteInput): Promise<NoteRecord>
-  exists(idOrPath: string): Promise<boolean>
-  rename(idOrPath: string, newTitle: string): Promise<NoteRecord>
-  move(idOrPath: string, newFolder: string): Promise<NoteRecord>
-  getLinks(idOrPath: string): Promise<NoteLinksResponse>
-  previewByTitle(title: string): Promise<NotePreviewRecord | null>
-  resolveByTitle(title: string): Promise<ResolvedNoteRecord | null>
-  resolveWikiTarget(target: string): Promise<ResolvedWikiTargetRecord | null>
-  setLocalOnly(idOrPath: string, localOnly: boolean): Promise<NoteRecord>
-  localOnlyCount(): Promise<{ count: number }>
-  delete(idOrPath: string): Promise<boolean>
-  getJournalByDate(date: string): Promise<NoteRecord | null>
-  upsertJournal(date: string, content: string, mode: 'write' | 'append'): Promise<NoteRecord>
 }
 
 function tagsFromFrontmatter(frontmatter: Record<string, unknown>): string[] {

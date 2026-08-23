@@ -12,14 +12,25 @@
     "memrynote": "./bin/memrynote.mjs"
   },
   "scripts": {
-    "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts",
+    "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts src/app-core/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@memry/app-core": "workspace:*"
+    "@memry/app-core": "workspace:*",
+    "@memry/contracts": "workspace:*",
+    "@memry/db-schema": "workspace:*",
+    "@memry/domain-notes": "workspace:*",
+    "@memry/shared": "workspace:*",
+    "@memry/storage-data": "workspace:*",
+    "@memry/storage-vault": "workspace:*",
+    "better-sqlite3": "^12.11.1",
+    "drizzle-orm": "^0.45.2",
+    "gray-matter": "^4.0.3",
+    "marked": "^17.0.1"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
-    "@types/node": "^25.9.5"
+    "@types/node": "^25.9.5",
+    "@types/better-sqlite3": "^7.6.13"
   }
 }

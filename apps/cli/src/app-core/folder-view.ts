@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { parseMarkdownNote, writeMarkdownNote } from './markdown.ts'
+import { parseMarkdownNote, writeMarkdownNote } from '@memry/app-core/markdown'
 import type { NoteRecord, NotesService } from './notes.ts'
 import { normalizePath, type VaultConfig } from './paths.ts'
 

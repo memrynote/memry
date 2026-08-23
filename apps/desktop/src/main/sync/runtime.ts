@@ -390,7 +390,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
 
       const queue = new SyncQueueManager(db)
-      type RuntimeSyncDb = SyncEngineDeps['db'] & Parameters<typeof initTaskSyncService>[0]['db']
+      // Both halves widened to the same DrizzleDb during the sync-client
+      // extraction, so the old intersection is a single type now.
+      type RuntimeSyncDb = SyncEngineDeps['db']
       const runtimeSyncDb = db as unknown as RuntimeSyncDb
 
       const getDeviceId = (): string | null => getCurrentDeviceId(db)

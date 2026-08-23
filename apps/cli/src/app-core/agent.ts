@@ -9,7 +9,7 @@ import type {
   BackendStatusesResponse
 } from '@memry/contracts/ipc-agent'
 
-import type { SettingsService } from './settings.ts'
+import type { SettingsService } from '@memry/app-core/settings'
 
 export interface AgentLocalProviderSettingsUpdateInput {
   preset?: AgentLocalProviderPreset

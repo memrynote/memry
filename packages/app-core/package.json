@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./reminders": "./src/reminders.ts",
     "./markdown": "./src/markdown.ts",
-    "./ids": "./src/ids.ts"
+    "./ids": "./src/ids.ts",
+    "./*": "./src/*.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -18,19 +19,13 @@
   "dependencies": {
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
-    "@memry/domain-notes": "workspace:*",
     "@memry/shared": "workspace:*",
-    "@memry/storage-data": "workspace:*",
-    "@memry/storage-vault": "workspace:*",
-    "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.45.2",
     "gray-matter": "^4.0.3",
-    "marked": "^17.0.1",
     "nanoid": "^5.1.6"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.9.5"
   }
 }

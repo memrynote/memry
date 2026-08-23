@@ -1,4 +1,4 @@
-import type { NotesService } from './notes.ts'
+import type { NotesService } from './service-types.ts'
 import type { TasksService } from './tasks.ts'
 
 export interface GraphNode {
