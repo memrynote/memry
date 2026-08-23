@@ -76,8 +76,8 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 - [x] T022 Migrate sync test suites with their code; desktop suites pass unchanged (assertion changes require written justification in the PR) _(policy through every slice: platform-clean suites move (18 now run inside `@memry/sync-client` — 168 tests), DB/fs-backed suites stay in desktop on real fixtures and import the package. Zero assertion changes; the only test edits are mock-path retargets forced by moves and two type-only fixes to leave the typecheck exclude backlog, each justified in its commit)_
 - [x] T023 Adapter conformance suite runnable against any implementation (desktop under node now; mobile later) — real adapters, not mocks — `packages/sync-client/src/adapters/__tests__/conformance.ts` _(`src/adapters/__tests__/conformance.ts` — `runAdapterConformance(harness, api)` with `describe`/`it`/`expect` injected, so desktop's Vitest run and mobile's on-device run share one suite. Real adapters: the harness supplies a live set per test. `harness.skip` exists but every entry needs a PR justification)_
 - [x] T024 Boundary check walks real `apps/mobile` → `@memry/sync-client` reachability; green with the spike app importing the package _(real edge: `apps/mobile/src/spike/g0-demo.ts` now decodes pulled payloads via `decompressPayload` from `@memry/sync-client/compress` — both shells share the exact decompress code. Red/green proof captured: planted `node:fs` in `compress.ts` → `architecture boundary check failed: packages/sync-client/src/compress.ts -> node:fs (node builtin reachable from apps/mobile)`; removed → passed)_
-- [ ] T025 Targeted desktop E2E smoke on the extraction branch: sync push/pull, offline reconnect, CRDT merge specs only _(pending — runs when the extraction lands; nothing has moved yet beyond `vector-clock`.)_
-- [ ] T026 [P] Docs impact for the extraction (`pnpm docs:impact --base origin/main --strict` + updates under `apps/docs/src/`) _(partial: `pnpm docs:impact --base origin/main --strict` is GREEN for what landed — `apps/docs/src/architecture/sync-protocol.md` gained the client-gate / kill-switch / attribution section, `pnpm docs:build` green. Must be re-run when T018–T022 land.)_
+- [x] T025 Targeted desktop E2E smoke on the extraction branch: sync push/pull, offline reconnect, CRDT merge specs only _(12/12 passed in 4.6 min on the built app against the real sync-server harness: `manual-sync-smoke` (A creates online, both sync, B opens), `network-control` (both devices online → offline → online), `body-crdt-same-note-merge` M1–M8 (offline/offline, online/offline, same-block and same-cursor merges), `sync-field-merge-queue` (offline project field merge + note tombstone with queue retry). Gotcha for the next runner: the playwright global-setup only builds when `BUILD_BEFORE_TEST=1` — an unbuilt worktree times out every launch at 180 s)_
+- [x] T026 [P] Docs impact for the extraction (`pnpm docs:impact --base origin/main --strict` + updates under `apps/docs/src/`) _(green against both the stack base and this branch's own commits; `apps/docs/src/architecture/monorepo.md` records `@memry/sync-client`, the app-core contract/implementation split and the driver-agnostic `DrizzleDb`; `sync-handlers.md` records the handler split, the adapter layer and the conformance run; `pnpm docs:build` green)_
 
 ### Server production-safety kit (additive; contracts/sync-protocol-additions.md §1–4)
 
@@ -89,18 +89,20 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 - [x] T032 Remove the temporary `apps/mobile` exclusion from root turbo filters; root `pnpm typecheck && pnpm test` green with mobile included; `mobile-ci.yml` keeps device-specific jobs only (plan T1.9) _(the filters are allowlists, so this was an ADD: `--filter=@memry/mobile` joined both root scripts; root typecheck green with mobile included, mobile test green (passWithNoTests). Deviation on record: mobile-ci.yml keeps its lint/typecheck/test/boundary steps for now — no workflow runs the root scripts yet, so collapsing to device-only jobs would leave mobile with zero CI; noted in the workflow header)_
 **Checkpoint — G1**: full quickstart §Phase 1 command list green; extraction PRs show mechanical diffs; desktop behaviour unchanged.
 
-**G1 status (2026-08-23, updated after extraction slices 2–3): NOT GREEN —
-server kit + scaffold done, extraction half done (54/~105 files moved).**
-
-Green now: `pnpm lint`, `pnpm typecheck` (18/18), `pnpm test:desktop`
-(1380 files / 18033 tests, 0 failures — 12 suites now run inside
-`@memry/sync-client`: 13 files / 117 tests), `pnpm --filter @memry/sync-server
-test` (1032, coverage thresholds met), `pnpm check:architecture`,
-`pnpm check:contracts`, `pnpm ipc:check`, `pnpm docs:impact --strict`,
-`pnpm docs:build`, `git diff --check`.
-
-Open: T018 tail (retry/events/crypto/os/process.env slices), T019–T022,
-T024, T025, T032.
+> **G1 GREEN on the gate's criteria — 2026-08-23 (second pass).**
+> Command list: lint ✓ · typecheck 19/19 (mobile included) ✓ · test:desktop
+> 1378 files / 18011 tests, 0 failures ✓ · sync-client 17 files / 168 ✓ ·
+> sync-server 1032 ✓ · app-core 5/5 · cli 15/15 · mobile ✓ ·
+> check:architecture (mobile red/green re-proof) ✓ · check:contracts ✓ ·
+> ipc:check ✓ · targeted E2E 12/12 ✓ · docs:impact --strict (stack base AND
+> branch base) + docs:build ✓ · git diff --check ✓.
+> Extraction diffs mechanical; desktop behaviour unchanged (18k unit + 12 E2E
+> on the built app). **One recorded exception:** T018's engine knot — 60
+> platform-free files whose move requires the engine to consume the seams
+> instead of the concrete modules (behaviour-affecting; split out, see the
+> T018 annotation and seam-inventory.md §Surface). All ten seams have
+> conformance-proven desktop adapters, so Phase 3 can start against the
+> package while that refactor proceeds.
 
 **Seam amendment (owner decision, 2026-08-23) — no longer blocking.** T015 found
 that vault file I/O (~20 files) mapped to none of the ten seams: `VaultDirectory`
