@@ -717,6 +717,41 @@ describe('notes operations', () => {
       expect(retrieved!.path).toContain('Renamed Title')
     })
 
+    it('rewrites inbound wiki-links vault-wide (#1711)', async () => {
+      const target = await notes.createNote({
+        title: 'Link Target',
+        content: 'Target body.'
+      })
+      const source = await notes.createNote({
+        title: 'Link Source',
+        content:
+          'Plain [[Link Target]], heading [[Link Target#Notes]], alias [[Link Target|the label]], other [[Unrelated]].'
+      })
+      const selfLinker = await notes.createNote({
+        title: 'Self Rename',
+        content: 'I mention [[Self Rename]] and [[Link Target]].'
+      })
+
+      // The rewrite finds sources through note_links; settle the projector
+      // the way a live vault has long since settled it before a rename.
+      await projections.flushProjectionEvents()
+      flushProjectionEventsSpy.mockClear()
+
+      await notes.renameNote(target.id, 'Renamed Target')
+
+      const sourceNote = await notes.getNoteById(source.id)
+      expect(sourceNote!.content.trimEnd()).toBe(
+        'Plain [[Renamed Target]], heading [[Renamed Target#Notes]], alias [[Renamed Target|the label]], other [[Unrelated]].'
+      )
+
+      // A note that links to itself is rewritten from its post-rename path.
+      await projections.flushProjectionEvents()
+      flushProjectionEventsSpy.mockClear()
+      await notes.renameNote(selfLinker.id, 'Self Renamed')
+      const selfNote = await notes.getNoteById(selfLinker.id)
+      expect(selfNote!.content.trimEnd()).toBe('I mention [[Self Renamed]] and [[Renamed Target]].')
+    })
+
     it('T364: generates unique path on collision', async () => {
       await notes.createNote({
         title: 'Existing Name',

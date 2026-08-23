@@ -116,6 +116,9 @@ test.describe('Graph links E2E', () => {
     )
     expect(renameResult.success).toBe(true)
 
+    // The rename rewrites the source's `[[Old]]` to `[[New]]` vault-wide
+    // (#1711), so the backlink survives on the CONTENT level, not just as a
+    // lingering `target_id` in the index.
     await expect
       .poll(
         () =>
@@ -142,9 +145,16 @@ test.describe('Graph links E2E', () => {
       )
       .toMatchObject({
         targetTitle: renamedTitle,
-        sourceContent: expect.stringContaining(seeded.oldWikilink),
+        sourceContent: expect.stringContaining(`[[${renamedTitle}]]`),
         outgoingTargetIds: expect.arrayContaining([seeded.targetId]),
-        incomingSourceIds: expect.arrayContaining([seeded.sourceId])
+        incomingSourceIds: expect.arrayContaining([seeded.sourceId]),
+        outgoingTargetTitles: expect.arrayContaining([renamedTitle])
       })
+
+    const sourceAfterRename = await page.evaluate(
+      ({ sourceId }) => window.api.notes.get(sourceId).then((note) => note?.content ?? ''),
+      seeded
+    )
+    expect(sourceAfterRename).not.toContain(seeded.oldWikilink)
   })
 })

@@ -23,6 +23,7 @@ import {
   atomicWrite
 } from './file-ops'
 import { rewriteNoteRefsForMove } from './rewrite-note-refs'
+import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { getNoteCacheById } from '@main/database/queries/notes'
@@ -108,6 +109,18 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
   // note" would otherwise drop the row this note was just given and send it
   // back to the bottom of a hand-ordered folder (#1646).
   carryPositionToPath(getDatabase(), existing.path, newRelativePath)
+
+  // Wiki-links address this note by its old title; every inbound `[[Old]]` in
+  // the vault is re-pointed now, or it rots into a duplicate-creating link
+  // (#1711). Applies to binary vault items too — `[[some-pdf]]` is title-based
+  // the same way. Runs after the cache sync above so the rewrite reads this
+  // note's new identity.
+  await rewriteInboundWikiLinksForRename({
+    noteId: id,
+    oldTitle: existing.title,
+    newTitle,
+    newPath: newRelativePath
+  })
 
   const note: Note = {
     ...existing,
