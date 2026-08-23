@@ -1,7 +1,7 @@
 import { net } from 'electron'
 import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
-import { resolveSyncServerUrl } from './sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 

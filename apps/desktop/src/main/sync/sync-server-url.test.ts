@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resolveSyncServerUrl } from './sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 
 const ORIGINAL_URL = process.env.SYNC_SERVER_URL
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV
@@ -59,7 +59,7 @@ describe('resolveSyncServerUrl', () => {
       // Import-time throws are what made the eager version untestable; a fresh
       // import with nothing configured must not blow up.
       vi.resetModules()
-      const fresh = await import('./sync-server-url')
+      const fresh = await import('@memry/sync-client/sync-server-url')
 
       process.env.SYNC_SERVER_URL = 'https://sync.memrynote.com'
       expect(fresh.resolveSyncServerUrl()).toBe('https://sync.memrynote.com')

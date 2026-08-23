@@ -63,8 +63,23 @@ export class SyncEventEmitter {
     return this.listenersByEvent.get(event)?.length ?? 0
   }
 
-  /** Listener bookkeeping is unbounded here; kept for call-site compatibility. */
-  setMaxListeners(_max: number): this {
+  /**
+   * Bookkeeping only — nothing here warns or throws at the ceiling. The value
+   * is kept because the listener-budget test asserts each sync emitter
+   * declares a deliberately low ceiling (node's default is 10).
+   */
+  private maxListeners = 10
+
+  setMaxListeners(max: number): this {
+    this.maxListeners = max
     return this
+  }
+
+  getMaxListeners(): number {
+    return this.maxListeners
+  }
+
+  eventNames(): string[] {
+    return [...this.listenersByEvent.keys()]
   }
 }

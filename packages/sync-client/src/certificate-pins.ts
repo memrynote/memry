@@ -1,3 +1,5 @@
+import { readEnv } from './env'
+
 export const DEFAULT_SYNC_CERT_HOSTNAME = 'sync.memrynote.com'
 
 export const PINNED_CERTIFICATE_HASHES_BY_HOST: Record<string, readonly string[]> = {
@@ -24,7 +26,7 @@ export function getPinnedCertificateHashesForHostname(hostname: string): readonl
   return PINNED_CERTIFICATE_HASHES_BY_HOST[normalizeHostname(hostname)] ?? []
 }
 
-export function getConfiguredSyncCertHostname(syncServerUrl = process.env.SYNC_SERVER_URL): string {
+export function getConfiguredSyncCertHostname(syncServerUrl = readEnv('SYNC_SERVER_URL')): string {
   if (!syncServerUrl) {
     return DEFAULT_SYNC_CERT_HOSTNAME
   }
@@ -38,7 +40,7 @@ export function getConfiguredSyncCertHostname(syncServerUrl = process.env.SYNC_S
 }
 
 export function getConfiguredPinnedCertificateHashes(
-  syncServerUrl = process.env.SYNC_SERVER_URL
+  syncServerUrl = readEnv('SYNC_SERVER_URL')
 ): readonly string[] {
   return getPinnedCertificateHashesForHostname(getConfiguredSyncCertHostname(syncServerUrl))
 }
