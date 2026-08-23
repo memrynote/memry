@@ -1,1 +1,1 @@
-export * from './memry-app.ts'
+export * from './service-types.ts'

@@ -4,8 +4,8 @@ import path from 'node:path'
 import { desc, eq } from 'drizzle-orm'
 import { noteCache, noteSnapshots, type SnapshotReason } from '@memry/db-schema/index-schema'
 import type { IndexDb } from './database.ts'
-import { createId } from './ids.ts'
-import { parseMarkdownNote } from './markdown.ts'
+import { createId } from '@memry/app-core/ids'
+import { parseMarkdownNote } from '@memry/app-core/markdown'
 import type { NotesService } from './notes.ts'
 
 export interface SnapshotListItem {

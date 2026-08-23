@@ -1,56 +1,10 @@
+import type { TemplateProperty, TemplateRecord, TemplatesService } from '@memry/app-core/service-types'
+export type { TemplateProperty, TemplateRecord, CreateTemplateInput, UpdateTemplateInput, TemplatesService } from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { createId } from './ids.ts'
-import { parseMarkdownNote, writeMarkdownNote } from './markdown.ts'
+import { createId } from '@memry/app-core/ids'
+import { parseMarkdownNote, writeMarkdownNote } from '@memry/app-core/markdown'
 import { getMemryDir, safeFilename } from './paths.ts'
-
-export interface TemplateProperty {
-  name: string
-  type: string
-  value: unknown
-  options?: string[]
-}
-
-export interface TemplateRecord {
-  id: string
-  name: string
-  description?: string
-  icon?: string | null
-  isBuiltIn: boolean
-  tags: string[]
-  properties: TemplateProperty[]
-  content: string
-  path: string
-  createdAt: string
-  modifiedAt: string
-}
-
-export interface CreateTemplateInput {
-  name: string
-  description?: string
-  icon?: string | null
-  tags?: string[]
-  properties?: TemplateProperty[]
-  content?: string
-}
-
-export interface UpdateTemplateInput {
-  name?: string
-  description?: string
-  icon?: string | null
-  tags?: string[]
-  properties?: TemplateProperty[]
-  content?: string
-}
-
-export interface TemplatesService {
-  list(): Promise<TemplateRecord[]>
-  get(id: string): Promise<TemplateRecord | null>
-  create(input: CreateTemplateInput): Promise<TemplateRecord>
-  update(id: string, input: UpdateTemplateInput): Promise<TemplateRecord>
-  duplicate(id: string, newName: string): Promise<TemplateRecord>
-  delete(id: string): Promise<boolean>
-}
 
 function templatesDir(vaultPath: string): string {
   return path.join(getMemryDir(vaultPath), 'templates')

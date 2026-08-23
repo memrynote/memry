@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm'
 import { savedFilters } from '@memry/db-schema/data-schema'
-import type { DataDb } from './database.ts'
+import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
 
 export interface SavedFilterRecord {

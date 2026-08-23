@@ -1,12 +1,12 @@
 import { desc, eq, sql, and } from 'drizzle-orm'
 import { searchReasons } from '@memry/db-schema/data-schema'
-import type { DataDb } from './database.ts'
+import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
-import type { InboxService } from './inbox.ts'
-import type { NotesService } from './notes.ts'
+import type { InboxService } from './service-types.ts'
+import type { NotesService } from './service-types.ts'
 import type { TagsService } from './tags.ts'
 import type { TasksService } from './tasks.ts'
-import type { TemplatesService } from './templates.ts'
+import type { TemplatesService } from './service-types.ts'
 
 export interface SearchStats {
   totalNotes: number

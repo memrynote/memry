@@ -5,7 +5,7 @@ import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as dataSchema from '@memry/db-schema/data-schema'
 
-import { createBookmarksService } from './bookmarks.ts'
+import { createBookmarksService } from '@memry/app-core/bookmarks'
 import type { DataDb } from './database.ts'
 
 // Builds the bookmarks table directly instead of going through

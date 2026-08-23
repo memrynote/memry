@@ -8,7 +8,7 @@ import {
 } from '@memry/contracts/locale-api'
 
 import { getConfigPath, getMemryDir } from './paths.ts'
-import type { SettingsService } from './settings.ts'
+import type { SettingsService } from '@memry/app-core/settings'
 
 export interface LocaleService {
   get(): Promise<Locale>

@@ -1,7 +1,7 @@
 // When you add or rename a subcommand/flag in this file, update
 // apps/docs/src/user-guide/cli-reference.md to match.
 
-import { createMemryApp as defaultCreateMemryApp, type MemryApp } from '@memry/app-core'
+import { createMemryApp as defaultCreateMemryApp, type MemryApp } from './app-core/memry-app.ts'
 
 export interface CliIo {
   stdout?: (line: string) => void
