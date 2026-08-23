@@ -59,6 +59,13 @@ platform-free record sync services (`bookmark-sync.ts`, `task-sync.ts`, …),
 the outbox `queue.ts` and the offline clock helpers moved with the handlers
 into `packages/sync-client/src/`.
 
+Desktop's implementations of the ten platform seams live under
+`apps/desktop/src/main/sync/adapters/` — the one place in the extraction
+surface where electron/node imports are sanctioned. `wiring.ts` holds the
+production factories, and the shared conformance suite
+(`@memry/sync-client/adapters/conformance`) runs against the real adapters
+under node in `adapters/conformance.test.ts`.
+
 ## Why Strategy Pattern (Phase 3)
 
 Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: every sync type has subtly different conflict resolution and side effects (e.g. tasks need field-level merge; notes need CRDT integration; inbox items have a triage state machine). Switch statements grew unwieldy.

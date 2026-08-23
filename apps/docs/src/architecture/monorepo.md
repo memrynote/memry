@@ -13,14 +13,15 @@ memrynote is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable doma
 
 ## Packages
 
-| Path                 | Purpose                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `packages/app-core`  | Shared vault-opening and command services used by non-renderer clients such as the CLI.                          |
-| `packages/contracts` | Zod-typed IPC and HTTP API contracts. The single source of truth for renderer↔main and client↔server boundaries. |
-| `packages/db-schema` | Drizzle ORM schemas for the data and index databases plus migration files.                                       |
-| `packages/storage-*` | Shared persistence adapters for local vault files and local data database access.                                |
-| `packages/domain-*`  | UI-agnostic domain command/query logic.                                                                          |
-| `packages/shared`    | Tiny set of shared utilities. Kept intentionally small to avoid coupling.                                        |
+| Path                   | Purpose                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `packages/app-core`    | Platform-free service contracts and pure domain logic (ids, markdown, reminders, tags, …) importable by any shell, mobile included. The node-bound `createMemryApp` implementation cluster lives with its only consumer, `apps/cli/src/app-core/`. |
+| `packages/sync-client` | The platform-free sync engine extraction: outbox, record sync services, vector clocks, CRDT merge/pending logic, and the ten platform adapter seams. Compiled with `types: []` so node globals cannot leak in; desktop implements the seams under `apps/desktop/src/main/sync/adapters/`. |
+| `packages/contracts`   | Zod-typed IPC and HTTP API contracts. The single source of truth for renderer↔main and client↔server boundaries. |
+| `packages/db-schema`   | Drizzle ORM schemas for the data and index databases plus migration files, and the driver-agnostic `DrizzleDb` type both shells share. |
+| `packages/storage-*`   | Shared persistence adapters for local vault files and local data database access.                                |
+| `packages/domain-*`    | UI-agnostic domain command/query logic.                                                                          |
+| `packages/shared`      | Tiny set of shared utilities. Kept intentionally small to avoid coupling.                                        |
 
 ## Shared Assets
 
