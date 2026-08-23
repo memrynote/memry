@@ -54,7 +54,7 @@ function storeDirName(vaultUuid: string): string {
 }
 
 /** Where the store for `vaultUuid` lives, whether or not any vault holds it now. */
-function vaultCrdtStorePath(vaultUuid: string): string {
+export function vaultCrdtStorePath(vaultUuid: string): string {
   return path.join(app.getPath('userData'), STORE_ROOT_DIRNAME, storeDirName(vaultUuid))
 }
 
