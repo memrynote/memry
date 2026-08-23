@@ -264,7 +264,10 @@ rejects any push whose clock has no entry greater than the one it already holds.
 the delete is answered `SYNC_REPLAY_DETECTED`, the queue row is cleared as already applied, the next
 pull serves the same orphan again, and the repair runs again — the loop it exists to end, running
 forever. A normal delete never hits this: it is built from a local row by the domain layer, which
-stamps the clock on the way out, and the push path sends `delete` payloads verbatim by design. An
+stamps the clock on the way out, and the push path sends `delete` payloads verbatim apart from the
+last-resort clock stamp described in
+[Initial seeding](/architecture/sync-handlers#initial-seeding), which only fires when the payload has
+no clock at all and so cannot lift a server clock past itself. An
 orphan has no local row, which is what makes it an orphan, so nothing else can stamp it. Without
 signing keys the stamp is impossible, and the orphan is left for the next pull rather than spending a
 push that would only be refused again.

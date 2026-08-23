@@ -2,6 +2,7 @@ import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { QueueClearedEvent, SyncStatusChangedEvent } from '@memry/contracts/ipc-events'
 import type { PushResponse, SyncItemType } from '@memry/contracts/sync-api'
+import { RECORD_CLOCK_REQUIRED_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { encryptPushBatch } from '../sync-crypto-batch'
 import { getHandler, getRemoteSyncAdapter } from '../item-handlers'
@@ -27,6 +28,8 @@ import {
 } from './sync-context'
 
 const log = createLogger('PushCoordinator')
+
+const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<string>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
 
 export class PushCoordinator {
   private ctx: SyncContext
@@ -523,7 +526,7 @@ export class PushCoordinator {
     deviceId: string,
     vaultKey: Uint8Array
   ): string {
-    if (item.operation === 'delete') return item.payload
+    if (item.operation === 'delete') return this.ensureRequiredClock(item, item.payload, deviceId)
 
     try {
       const adapter =
@@ -549,17 +552,51 @@ export class PushCoordinator {
           itemId: item.itemId.slice(0, 8),
           type: item.type
         })
-        return item.payload
+        return this.ensureRequiredClock(item, item.payload, deviceId)
       }
 
-      return fresh
+      return this.ensureRequiredClock(item, fresh, deviceId)
     } catch (err) {
       log.warn('Push: failed to build fresh payload, using frozen', {
         itemId: item.itemId.slice(0, 8),
         type: item.type,
         error: err
       })
-      return item.payload
+      return this.ensureRequiredClock(item, item.payload, deviceId)
+    }
+  }
+
+  /**
+   * Last-resort clock repair before a payload leaves the device. The handlers'
+   * `buildPushPayload` repair (#1215/#1223) only reaches a create/update whose
+   * row still exists locally — a delete, an orphaned row, or a handler throw
+   * falls back to the FROZEN queue payload, and a frozen payload written by a
+   * pre-#1223 build has no clock. The server requires a clock on every item of
+   * a clock-required type and one clock-less item fails the whole batch, so a
+   * single such row blocks the queue forever (Jerry's 601-pending Fedora
+   * install). Stamping only when the clock is absent keeps handler-built clocks
+   * untouched; the invented first clock is not persisted (deletes and orphans
+   * have no row to persist to), which matches buildDeletePayload's own
+   * `{ id, clock: increment({}, deviceId) }` fallback.
+   */
+  private ensureRequiredClock(
+    item: { itemId: string; type: string },
+    payload: string,
+    deviceId: string
+  ): string {
+    if (!RECORD_CLOCK_REQUIRED_TYPE_SET.has(item.type)) return payload
+    try {
+      const parsed = JSON.parse(payload) as Record<string, unknown> | null
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return payload
+      const clock = parsed.clock
+      if (clock && typeof clock === 'object' && !Array.isArray(clock)) return payload
+      log.info('Push: stamped missing clock on outgoing payload', {
+        itemId: item.itemId.slice(0, 8),
+        type: item.type
+      })
+      return JSON.stringify({ ...parsed, clock: { [deviceId]: 1 } })
+    } catch {
+      return payload
     }
   }
 }
