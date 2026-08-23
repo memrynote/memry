@@ -22,7 +22,10 @@ import { SELECTORS } from './utils/electron-helpers'
 const ORIGINAL_NAME = 'original-report.txt'
 
 interface SeededAttachment {
+  /** The note that is opened, whose body is the file-block marker. */
   noteId: string
+  /** The note the attachment was uploaded against — the on-disk folder key. */
+  attachmentNoteId: string
   storedFilename: string
 }
 
@@ -31,42 +34,54 @@ interface SeededAttachment {
  * uploaded attachment, then open it via the restored-session pattern (the
  * robust open used by note-menu-actions / pdf-embed-resize).
  */
-async function seedNoteWithFileBlock(page: Page, title: string): Promise<SeededAttachment> {
+async function seedNoteWithFileBlock(
+  page: Page,
+  vaultPath: string,
+  title: string
+): Promise<SeededAttachment> {
   const seeded = await page.evaluate(
     async ({ t, fileName }) => {
       const api = window.api
-      const note = await api.notes.create({ title: t, content: 'attachment host' })
-      if (!note.success || !note.note) throw new Error(note.error ?? 'note create failed')
+
+      // The attachment needs a host note to be uploaded against; the note that
+      // is actually opened is created afterwards WITH the marker as its initial
+      // content — a post-create `notes.update` would lose to the CRDT body,
+      // which keeps the body the note was created with.
+      const host = await api.notes.create({ title: `${t} host`, content: 'attachment host' })
+      if (!host.success || !host.note) throw new Error(host.error ?? 'host note create failed')
 
       const file = new File([new TextEncoder().encode('attachment menu e2e')], fileName, {
         type: 'text/plain'
       })
-      const uploaded = await api.notes.uploadAttachment(note.note.id, file)
+      const uploaded = await api.notes.uploadAttachment(host.note.id, file)
       if (!uploaded.success || !uploaded.path) {
         throw new Error(uploaded.error ?? 'attachment upload failed')
       }
-      const attachments = await api.notes.listAttachments(note.note.id)
+      const attachments = await api.notes.listAttachments(host.note.id)
       const storedFilename = attachments[0]?.filename
       if (!storedFilename) throw new Error('uploaded attachment not listed')
 
+      // Both notes sit in the same folder, so the host-relative ref resolves
+      // identically from the note that embeds it.
       const marker = `<!-- file:${JSON.stringify({
         url: uploaded.path,
         name: fileName,
         size: uploaded.size ?? 0,
         mimeType: 'text/plain'
       })} -->`
-      const updated = await api.notes.update({ id: note.note.id, content: marker })
-      if (!updated.success) throw new Error('note update failed')
+      const note = await api.notes.create({ title: t, content: marker })
+      if (!note.success || !note.note) throw new Error(note.error ?? 'note create failed')
 
-      return { noteId: note.note.id, storedFilename }
+      return { noteId: note.note.id, attachmentNoteId: host.note.id, storedFilename }
     },
     { t: title, fileName: ORIGINAL_NAME }
   )
 
   await page.addInitScript(
-    ({ noteId, t }) => {
+    ({ noteId, t, storageKey }) => {
+      // Tab state is stored per vault since #1702: `memry_tab_state:<vaultPath>`.
       localStorage.setItem(
-        'memry_tab_state',
+        storageKey,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -93,7 +108,7 @@ async function seedNoteWithFileBlock(page: Page, title: string): Promise<SeededA
         })
       )
     },
-    { noteId: seeded.noteId, t: title }
+    { noteId: seeded.noteId, t: title, storageKey: `memry_tab_state:${vaultPath}` }
   )
   await page.reload()
   await ready(page)
@@ -110,8 +125,9 @@ test.describe('Attachment block menu', () => {
     testVaultPath
   }) => {
     await ready(page)
-    const { noteId, storedFilename } = await seedNoteWithFileBlock(
+    const { attachmentNoteId, storedFilename } = await seedNoteWithFileBlock(
       page,
+      testVaultPath,
       uniqueLabel('Attachment Menu')
     )
 
@@ -122,7 +138,7 @@ test.describe('Attachment block menu', () => {
     const menu = page.locator('[data-testid="attachment-dropdown-menu"]')
     await expect(menu).toBeVisible()
     // Header: original filename + the stored (on-disk) filename.
-    await expect(menu.getByText(ORIGINAL_NAME)).toBeVisible()
+    await expect(menu.getByText(ORIGINAL_NAME, { exact: true })).toBeVisible()
     await expect(menu.getByText(`Stored as ${storedFilename}`)).toBeVisible()
 
     // OS-touching items: present + enabled, never clicked (no Finder on CI).
@@ -136,12 +152,18 @@ test.describe('Attachment block menu', () => {
     await expect(page.getByText('Path copied').first()).toBeVisible({ timeout: 5_000 })
 
     const clipboardText = await electronApp.evaluate(({ clipboard }) => clipboard.readText())
-    expect(clipboardText).toBe(path.join(testVaultPath, 'attachments', noteId, storedFilename))
+    expect(clipboardText).toBe(
+      path.join(testVaultPath, 'attachments', attachmentNoteId, storedFilename)
+    )
   })
 
-  test('right-click on the block opens the same menu', async ({ page }) => {
+  test('right-click on the block opens the same menu', async ({ page, testVaultPath }) => {
     await ready(page)
-    const { storedFilename } = await seedNoteWithFileBlock(page, uniqueLabel('Attachment Context'))
+    const { storedFilename } = await seedNoteWithFileBlock(
+      page,
+      testVaultPath,
+      uniqueLabel('Attachment Context')
+    )
 
     await page.locator('.file-attachment').first().click({ button: 'right' })
 
