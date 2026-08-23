@@ -290,6 +290,8 @@ Two things follow from a cell holding a single line of inline content:
 
 A table cell can hold a picture as well as text. With the cursor in the cell, type `/image` and pick a file, paste an image, or drag an image file onto the cell — it lands inside that cell rather than after the table, and text can sit on either side of it.
 
+Pasting works for a picture you copied as well as one you have as a file — from another note, from a web page, from a document. A cell holds text and pictures, not blocks, so a copied picture is placed inside the cell rather than dropped on the floor, which is what used to happen. Two things are deliberately left alone: a paste that mixes a picture in with text is handed to the ordinary paste, and a picture stored inside another note is not taken, because its path is written relative to that note and would arrive here already broken.
+
 The image is written into your note as ordinary markdown, `![name](path)`, so the row stays a normal table row that Obsidian and any other markdown editor can read. A table you wrote by hand with images already in it now opens with those images showing, instead of an empty cell.
 
 A cell image with no size of its own is capped at the height of a few lines, so one large screenshot cannot stretch a row out of shape. To give one a size of its own, hover it and drag the handle on its trailing edge — the picture keeps its proportions and the row grows with it.
@@ -297,6 +299,16 @@ A cell image with no size of its own is capped at the height of a few lines, so 
 That width is saved into the note as `![name|300](path)`, the same `|` convention Obsidian uses, so the size survives a sync and other markdown editors still read the row as an ordinary table row. Obsidian's two-number form (`name|300x200`) is left exactly as written rather than rewritten to a single width.
 
 Outside a table, an image on its own line is still a full image block with a caption and its own resize handle — that has not changed.
+
+## Checkboxes in a Table Cell
+
+A cell can hold a tickable checkbox. Type `[ ] ` at the start of a cell and it becomes one, or pick **Check List** from the `/` menu with the cursor in a cell. Click the box to tick it.
+
+The checkbox is stored as the plain text a markdown table can carry — a row reads `| [x] Buy milk |` on disk — so the table stays a table that Obsidian and every other markdown editor can read, and a table you wrote by hand with `[ ]` already in its cells opens with real checkboxes in it.
+
+Outside a table, `[ ] ` still makes a full check-list item on its own line, and that is the one that counts as a task. A checkbox inside a cell is a checkbox and nothing more: it does not appear in the task list, take a due date, or sync as a task.
+
+A cell whose text genuinely begins `[ ] ` becomes a checkbox too. The characters on disk are the same either way, so nothing is lost — the cell just shows a box you did not ask for.
 
 ## Link Previews
 

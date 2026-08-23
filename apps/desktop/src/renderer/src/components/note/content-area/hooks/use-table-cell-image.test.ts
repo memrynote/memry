@@ -105,9 +105,16 @@ function mountWithoutNote(editor: unknown, container: HTMLDivElement) {
   )
 }
 
-function paste(container: HTMLElement, files: File[]): ClipboardEvent {
+/**
+ * jsdom has no clipboard, so the flavours are supplied by hand — and `files`
+ * plus `text/html` is exactly the split that matters here: only a screenshot or
+ * a Finder copy carries a File, everything else is HTML with an `<img>` in it.
+ */
+function paste(container: HTMLElement, files: File[], html = ''): ClipboardEvent {
   const event = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent
-  Object.defineProperty(event, 'clipboardData', { value: { files } })
+  Object.defineProperty(event, 'clipboardData', {
+    value: { files, getData: (type: string) => (type === 'text/html' ? html : '') }
+  })
   container.dispatchEvent(event)
   return event
 }
@@ -212,6 +219,203 @@ describe('pasting an image with the caret in a cell', () => {
 
     // #then
     await waitFor(() => expect(mocks.uploadAttachment).not.toHaveBeenCalled())
+  })
+})
+
+/**
+ * The gesture the File branch never saw. Copying an image inside Memry, or out
+ * of a web page, Google Docs, Notion or Slack, puts NO file on the clipboard —
+ * BlockNote's own copy handler calls `clearData()` and writes HTML, and so does
+ * the browser. Those pastes reached BlockNote, which built an image BLOCK from
+ * `text/html`; a cell holds inline content only, so ProseMirror dropped it
+ * without an error or a toast. That is the "images still won't paste into a
+ * cell" report.
+ */
+describe('pasting an image that arrives as HTML with no file', () => {
+  /** A real 1×1 PNG, so the base64 decode is exercised rather than mocked. */
+  const PNG_DATA_URL =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+  function cellEditor(names = ['table', 'tableRow', 'tableCell']) {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const editor = makeEditor(selectionIn(...names))
+    mount(editor, container)
+    return { container, editor }
+  }
+
+  it('claims a remote image and inserts it as inline content', async () => {
+    // #given the shape a copy from a web page, Notion or Slack arrives in
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(container, [], '<img src="https://cdn.example.com/chart.png" alt="chart">')
+
+    // #then BlockNote never gets to build a block the cell cannot hold
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        {
+          type: 'inlineImage',
+          props: { src: 'https://cdn.example.com/chart.png', alt: 'chart', width: 0 }
+        }
+      ])
+    )
+    // an addressable URL needs no copy in the vault
+    expect(mocks.uploadAttachment).not.toHaveBeenCalled()
+  })
+
+  it('keeps the width the fragment measured', async () => {
+    // #given a real `width` attribute is what an HTML paste from the web carries
+    const { container, editor } = cellEditor()
+
+    // #when
+    paste(container, [], '<img src="https://cdn.example.com/a.png" alt="a" width="180">')
+
+    // #then
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        {
+          type: 'inlineImage',
+          props: { src: 'https://cdn.example.com/a.png', alt: 'a', width: 180 }
+        }
+      ])
+    )
+  })
+
+  it('leaves the same fragment alone outside a cell', () => {
+    // #given everywhere else the image BLOCK is the right answer, and BlockNote
+    // has to keep building it
+    const { container, editor } = cellEditor(['blockContainer', 'paragraph'])
+
+    // #when
+    const event = paste(container, [], '<img src="https://cdn.example.com/chart.png">')
+
+    // #then
+    expect(event.defaultPrevented).toBe(false)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it('refuses a memry-file:// src', () => {
+    // #given that URL names THIS machine's vault path; written into the row it
+    // resolves to nothing on any other device
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(
+      container,
+      [],
+      '<img src="memry-file://local/Users/k/Vault/attachments/n1/x.png">'
+    )
+
+    // #then
+    expect(event.defaultPrevented).toBe(false)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it('keeps a relative ref that belongs to this note', async () => {
+    // #given copying a picture from one cell of this note into another — the ref
+    // resolves against the same note either way
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(container, [], '<img src="../attachments/n1/a1b2c3-shot.png" alt="shot">')
+
+    // #then
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        {
+          type: 'inlineImage',
+          props: { src: '../attachments/n1/a1b2c3-shot.png', alt: 'shot', width: 0 }
+        }
+      ])
+    )
+  })
+
+  it("refuses another note's relative ref", () => {
+    // #given a ref is relative to the note it was copied FROM; kept as-is it
+    // would resolve against THIS note and show a broken image, silently
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(container, [], '<img src="../attachments/n2/a1b2c3-shot.png">')
+
+    // #then
+    expect(event.defaultPrevented).toBe(false)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it('leaves a mixed text-and-image fragment to the default paste', () => {
+    // #given re-inserting the text through `insertInlineContent` would flatten
+    // its links and bold to plain text — a worse regression than the missing
+    // image. Mixed fragments stay BlockNote's, and are a known follow-up.
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(
+      container,
+      [],
+      '<p>see <a href="https://x.test">this</a> <img src="https://cdn.example.com/a.png"></p>'
+    )
+
+    // #then
+    expect(event.defaultPrevented).toBe(false)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it('ignores the stylesheet Word and Google Docs ship inside the fragment', async () => {
+    // #given those rules are `textContent`, and would read as "there is text
+    // here" on every paste out of either app
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(
+      container,
+      [],
+      '<meta charset="utf-8"><style>td{color:red}</style><b><img src="https://lh7.example.com/a.png"></b>'
+    )
+
+    // #then
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
+  })
+
+  it('saves a data: image as an attachment instead of writing base64 into the row', async () => {
+    // #given a screenshot's base64 is megabytes, and the row is a line in the
+    // note's markdown FILE
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(container, [], `<img src="${PNG_DATA_URL}" alt="grab">`)
+
+    // #then the bytes go through the same upload every other image does…
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() => expect(mocks.uploadAttachment).toHaveBeenCalled())
+    const [noteId, file] = mocks.uploadAttachment.mock.calls[0] as [string, File]
+    expect(noteId).toBe('n1')
+    // the extension is what `saveAttachment` validates, so it has to be real
+    expect(file.name).toBe('pasted-image.png')
+    expect(file.type).toBe('image/png')
+
+    // …and what lands in the node is the vault-relative path it returned
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        { type: 'inlineImage', props: { src: '../attachments/n1/shot.png', alt: 'grab', width: 0 } }
+      ])
+    )
+  })
+
+  it('leaves a fragment with no image at all alone', () => {
+    // #given the ordinary rich-text paste into a cell, which is not ours
+    const { container, editor } = cellEditor()
+
+    // #when
+    const event = paste(container, [], '<p><strong>hello</strong></p>')
+
+    // #then
+    expect(event.defaultPrevented).toBe(false)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
   })
 })
 
@@ -332,18 +536,25 @@ describe('picking an image for the cell (the slash menu row)', () => {
 })
 
 describe('dropping an image onto a cell', () => {
-  function dropOn(target: HTMLElement, files: File[]): DragEvent {
+  function dropOn(target: HTMLElement, files: File[], html = ''): DragEvent {
     const event = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent
-    Object.defineProperty(event, 'dataTransfer', { value: { files } })
+    Object.defineProperty(event, 'dataTransfer', {
+      value: { files, getData: (type: string) => (type === 'text/html' ? html : '') }
+    })
     Object.defineProperty(event, 'clientX', { value: 10 })
     Object.defineProperty(event, 'clientY', { value: 20 })
     target.dispatchEvent(event)
     return event
   }
 
+  /**
+   * By tag, not by id: containers from earlier cases are still in the document,
+   * and jsdom answers a scoped `#id` query from the document-wide index — so the
+   * SECOND case to build a table gets back null.
+   */
   function tableIn(container: HTMLElement): HTMLElement {
-    container.innerHTML = '<table><tbody><tr><td id="cell">x</td></tr></tbody></table>'
-    return container.querySelector('#cell') as HTMLElement
+    container.innerHTML = '<table><tbody><tr><td>x</td></tr></tbody></table>'
+    return container.querySelector('td') as HTMLElement
   }
 
   it('moves the caret to the drop point before inserting', async () => {
@@ -365,6 +576,32 @@ describe('dropping an image onto a cell', () => {
     // the caret is moved to the drop position, not left wherever it was
     expect(editor.prosemirrorView.dispatch).toHaveBeenCalledWith({ selectedPos: 4 })
     await waitFor(() => expect(editor.insertInlineContent).toHaveBeenCalled())
+  })
+
+  it('takes an image dragged out of a browser, which carries HTML and no file', async () => {
+    // #given a drag from a web page puts `text/html` on the transfer and no
+    // file at all — the same split a copy has
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const cell = tableIn(container)
+    const editor = makeEditor(selectionIn('table', 'tableRow', 'tableCell'))
+    ;(editor.prosemirrorView as any).state.tr = { setSelection: (s: unknown) => s }
+    ;(editor.prosemirrorView as any).state.doc = { resolve: () => ({}) }
+    mount(editor, container)
+
+    // #when
+    const event = dropOn(cell, [], '<img src="https://cdn.example.com/chart.png" alt="chart">')
+
+    // #then
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(() =>
+      expect(editor.insertInlineContent).toHaveBeenCalledWith([
+        {
+          type: 'inlineImage',
+          props: { src: 'https://cdn.example.com/chart.png', alt: 'chart', width: 0 }
+        }
+      ])
+    )
   })
 
   it('leaves a drop outside a table to the existing block path', () => {

@@ -80,6 +80,27 @@ async function pasteImageAtCaret(page: Page, base64: string, name: string): Prom
   )
 }
 
+/**
+ * A paste carrying HTML and NO file — which is what every gesture except a
+ * screenshot or a Finder copy actually delivers. BlockNote's own copy handler
+ * clears the clipboard's files and writes `text/html`; so does every browser,
+ * Google Docs, Notion and Slack. Those used to reach BlockNote, which read
+ * `text/html` (its accepted-MIME order puts "Files" last), built an image BLOCK,
+ * and watched ProseMirror drop it because a cell holds inline content only.
+ */
+async function pasteHtmlAtCaret(page: Page, html: string): Promise<void> {
+  await page.evaluate((html) => {
+    const data = new DataTransfer()
+    data.setData('text/html', html)
+    const target = document.querySelector(
+      '[aria-label="Rich text editor"] [contenteditable="true"]'
+    )
+    target?.dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+    )
+  }, html)
+}
+
 test.describe('Table cell images', () => {
   test.beforeEach(async ({ page }) => {
     await waitForAppReady(page)
@@ -289,6 +310,59 @@ test.describe('Table cell images', () => {
 
     const body = stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
     expect(body.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+    expect(body).not.toContain('memry-file://')
+  })
+
+  test('pasting an image that arrives as HTML with no file writes it into the cell', async ({
+    page,
+    testVaultPath
+  }) => {
+    // #given the gesture the file-only interceptor never saw: copying a picture
+    // inside Memry, or out of a browser, Google Docs, Notion or Slack. Nothing
+    // reaches the clipboard but `text/html` with an `<img>` in it, and the cell
+    // stayed empty with no error to go on.
+    const title = `Cell Html Paste ${Date.now()}`
+    const absPath = seedVaultFile(
+      testVaultPath,
+      title,
+      ['| Iteration | Shot |', '| --- | --- |', '| v1 |  |', ''].join('\n')
+    )
+    await openInEditor(page, title)
+
+    // #when the caret is in the second cell and an image arrives as HTML only
+    const cell = page.locator(`${SELECTORS.noteEditor} tbody td`).nth(1)
+    await cell.click()
+    await pasteHtmlAtCaret(page, `<img src="data:image/png;base64,${PNG_BASE64}" alt="grabbed">`)
+
+    // #then the picture is IN the cell
+    const cellImage = page.locator(`${SELECTORS.noteEditor} td img.inline-image`).first()
+    await expect(cellImage).toBeVisible({ timeout: 20_000 })
+
+    // #and no image block was pushed out beside the table
+    const blockTypes = await page.evaluate(() =>
+      (window as any).__memryEditor.document.map((block: any) => block.type as string)
+    )
+    expect(blockTypes).not.toContain('image')
+
+    // #and the row on disk carries it as inline markdown
+    await expect
+      .poll(
+        () => {
+          try {
+            return stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
+          } catch {
+            return ''
+          }
+        },
+        { timeout: 25_000 }
+      )
+      .toMatch(/\|\s*v1\s*\|\s*!\[[^\]]*]\([^)]+\)\s*\|/)
+
+    const body = stripFrontmatter(fs.readFileSync(absPath, 'utf8'))
+    expect(body.split('\n').filter((line) => line.startsWith('|'))).toHaveLength(3)
+    // The bytes were saved as an attachment rather than inlined: a screenshot's
+    // base64 in the row would be megabytes of the note's own markdown file.
+    expect(body).not.toContain('data:image/png;base64')
     expect(body).not.toContain('memry-file://')
   })
 })

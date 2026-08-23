@@ -11,6 +11,7 @@ import {
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
+import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,
@@ -101,6 +102,37 @@ function promoteWikiLinksInSharedDoc(editor: any): void {
   const normalized = normalizeWikiLinks(editor.document as Block[], {
     skipBlockId: editingWikiLinkBlockId(editor)
   })
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Promote the raw `[ ]` text a collaborative document opens with.
+ *
+ * Exactly the same gap `promoteWikiLinksInSharedDoc` above closes, for the same
+ * reason: `normalizeNoteBlocks` runs on the markdown path only, and the
+ * collaborative path returns before it. Main parses the vault file into the
+ * shared Y.Doc with an `inlineCheckbox` spec whose `parse` claims an
+ * `<input type=checkbox>` — and there is never one, because GFM's task-list
+ * syntax is list-item only, so `| [ ] task |` reaches the doc as plain TEXT.
+ * The renderer is the only thing that can turn it back into a control.
+ *
+ * ON OPEN ONLY, deliberately — this is NOT added to `handleChange` the way wiki
+ * links are. A bare `[ ]` with nothing after it is a cell a user may be
+ * mid-way through typing, and promoting on every change would turn the third
+ * keystroke of a literal `[ ]` into a checkbox under their cursor. The typing
+ * gesture is owned by `inline-checkbox-plugin.ts`, which waits for the space
+ * that completes the token; this pass only ever sees text that was already on
+ * disk. An external edit that arrives later is promoted on the next open.
+ *
+ * Idempotent by construction: a promoted node leaves no `[ ]` text behind, so a
+ * second open writes no CRDT update at all — which is what keeps "opening a
+ * note must not rewrite it" (#1434) true. The bytes are unchanged either way,
+ * since the node serializes back to the token it was promoted from.
+ */
+function promoteInlineCheckboxesInSharedDoc(editor: any): void {
+  const normalized = normalizeInlineCheckboxes(editor.document as Block[])
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
@@ -301,6 +333,7 @@ export function useEditorSync({
       // undoable step: Cmd+Z here would turn the chips back into raw text and
       // push that to every device.
       promoteWikiLinksInSharedDoc(editor)
+      promoteInlineCheckboxesInSharedDoc(editor)
       clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {

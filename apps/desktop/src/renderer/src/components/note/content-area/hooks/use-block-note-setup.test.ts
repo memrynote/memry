@@ -69,17 +69,14 @@ function createPane(href: string) {
   const editorElement = mountEditorSurface(container, href)
   const { editor } = createEditor()
   const onLinkClick = vi.fn()
-  const onInternalLinkClick = vi.fn()
 
   return {
     container,
     editor,
     onLinkClick,
-    onInternalLinkClick,
     params: {
       editorContainerRef: { current: container } as React.RefObject<HTMLDivElement | null>,
-      onLinkClick,
-      onInternalLinkClick
+      onLinkClick
     },
     clickExternalLink: (): void => {
       editorElement
@@ -233,10 +230,20 @@ describe('useBlockNoteSetup', () => {
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('last', 'end')
   })
 
-  it('routes external and wiki-link clicks from the editor surface', () => {
+  /**
+   * Wiki links are deliberately NOT in this listener any more.
+   *
+   * The chip is hidden the moment the caret lands beside it, which on a real
+   * click happens before mouseup — so the `click` event's target is the
+   * paragraph, not the chip, and a DOM handler here can never see it.
+   * `createWikiLinkEditPlugin`'s `handleClickOn` owns navigation now, off the
+   * position ProseMirror captured at mousedown. Both would mean two
+   * navigations per fast click, so the assertion that nothing fires here is as
+   * load-bearing as the external-link half.
+   */
+  it('routes external link clicks from the editor surface, and leaves wiki links alone', () => {
     const { editor } = createEditor()
     const onLinkClick = vi.fn()
-    const onInternalLinkClick = vi.fn()
     const wikiEvent = vi.fn()
     const editorElement = mountEditorSurface(editorContainerRef.current!, 'https://memry.app')
     window.addEventListener('wikilink:click', wikiEvent)
@@ -245,8 +252,7 @@ describe('useBlockNoteSetup', () => {
       useBlockNoteSetup({
         editor,
         editorContainerRef,
-        onLinkClick,
-        onInternalLinkClick
+        onLinkClick
       })
     )
 
@@ -260,8 +266,7 @@ describe('useBlockNoteSetup', () => {
       .querySelector('a[href="#local"]')!
       .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 
-    expect(onInternalLinkClick).toHaveBeenCalledWith('Launch Plan')
-    expect(wikiEvent).toHaveBeenCalled()
+    expect(wikiEvent).not.toHaveBeenCalled()
     expect(onLinkClick).toHaveBeenCalledWith('https://memry.app')
     expect(onLinkClick).toHaveBeenCalledTimes(1)
 
