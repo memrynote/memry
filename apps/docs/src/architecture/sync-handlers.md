@@ -20,20 +20,44 @@ handler.applyUpsert(decoded, ctx)
 
 ## Files
 
+Handlers are split across two trees while the `@memry/sync-client` extraction
+is in progress. Platform-free handlers — the ones that touch only the data DB
+through the driver-agnostic `DrizzleDb` — live in the shared package; handlers
+that still reach into desktop-only code (vault files, crypto, converters)
+remain in the desktop tree until their seams land:
+
 ```
-apps/desktop/src/main/sync/item-handlers/
+packages/sync-client/src/item-handlers/   # platform-free (shared with mobile)
+├─ types.ts              # SyncItemHandler, ApplyContext, resolveClockConflict
+├─ base-handler.ts
+├─ bookmark-handler.ts
+├─ calendar-binding-handler.ts
+├─ calendar-external-event-handler.ts
+├─ calendar-source-handler.ts
+├─ filter-handler.ts
+├─ home-page-handler.ts
+├─ note-pin-helpers.ts
+├─ reminder-handler.ts
+├─ tag-category-handler.ts
+└─ task-activity-handler.ts
+
+apps/desktop/src/main/sync/item-handlers/ # desktop-bound (for now)
 ├─ note-handler.ts
 ├─ journal-handler.ts
 ├─ task-handler.ts
 ├─ project-handler.ts
 ├─ inbox-handler.ts
 ├─ template-handler.ts
-├─ home-page-handler.ts
 ├─ custom-icon-handler.ts
 ├─ agent-conversation-handler.ts
 ├─ agent-message-handler.ts
 └─ index.ts              # registry: getHandler(type), getAllHandlers()
 ```
+
+The registry stays in the desktop tree until every handler has moved. The
+platform-free record sync services (`bookmark-sync.ts`, `task-sync.ts`, …),
+the outbox `queue.ts` and the offline clock helpers moved with the handlers
+into `packages/sync-client/src/`.
 
 ## Why Strategy Pattern (Phase 3)
 
@@ -292,10 +316,13 @@ unclassifiable as well as fatal.
    `RECORD_SYNC_ITEM_TYPES`, `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, and `ENCRYPTABLE_ITEM_TYPES`. Never
    add to `LEGACY_RECORD_SYNC_ITEM_TYPES` — it is frozen at the pre-negotiation client's vocabulary.
 4. Implement a handler (the pull side) in
-   `apps/desktop/src/main/sync/item-handlers/<domain>-handler.ts`.
-5. Register it in `index.ts`.
-6. Implement a push service (the local side) in `apps/desktop/src/main/sync/<domain>-sync.ts`, then
-   register it in **both** `local-mutations.ts` and the adapter registry in `runtime.ts`.
+   `packages/sync-client/src/item-handlers/<domain>-handler.ts` when it only needs the data DB, or
+   `apps/desktop/src/main/sync/item-handlers/<domain>-handler.ts` when it still needs desktop-only
+   code.
+5. Register it in the desktop registry `index.ts`.
+6. Implement a push service (the local side) in `packages/sync-client/src/<domain>-sync.ts`
+   (platform-free is the default for record types), then register it in **both**
+   `local-mutations.ts` and the adapter registry in `runtime.ts`.
 7. Add a server-side validator in `apps/sync-server` if the new type has unusual constraints.
 8. Add tests under the handler file (every existing handler has one).
 9. Add a minimal payload for the type to `FIXTURE_OVERRIDES` in `item-handlers/registry.test.ts` if
