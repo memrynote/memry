@@ -23,7 +23,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SyncContext } from './sync-context'
 import { CrdtSyncCoordinator } from './crdt-sync-coordinator'
-import type { CrdtSnapshotWatermark } from '../crdt-snapshot-watermark'
+import type { CrdtSnapshotWatermark } from '@memry/sync-client/crdt-snapshot-watermark'
 import type { CrdtSnapshotMeta } from '../http-client'
 
 const fetchCrdtSnapshotMock = vi.fn()

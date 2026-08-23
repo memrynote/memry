@@ -19,9 +19,9 @@ import {
 } from '@memry/contracts/sync-api'
 import { increment } from '@memry/sync-client/vector-clock'
 import { getCurrentDeviceId } from './current-device-id'
-import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from './field-merge'
+import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import { createLogger } from '../lib/logger'
-import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 export const OFFLINE_DEVICE_KEY = OFFLINE_CLOCK_DEVICE_ID
 const log = createLogger('OfflineClock')
@@ -95,7 +95,7 @@ function incrementFieldClocksForFields(
 }
 
 export function incrementTaskClocksOffline(
-  db: DataDb,
+  db: DrizzleDb,
   taskId: string,
   changedFields: string[]
 ): void {
@@ -127,7 +127,7 @@ export function incrementTaskClocksOffline(
 }
 
 export function incrementProjectClocksOffline(
-  db: DataDb,
+  db: DrizzleDb,
   projectId: string,
   changedFields?: string[]
 ): void {
@@ -156,7 +156,7 @@ export function incrementProjectClocksOffline(
   }
 }
 
-export function incrementInboxClockOffline(db: DataDb, itemId: string): void {
+export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void {
   try {
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
     if (!item) return
@@ -172,7 +172,7 @@ export function incrementInboxClockOffline(db: DataDb, itemId: string): void {
   }
 }
 
-export function incrementFilterClockOffline(db: DataDb, filterId: string): void {
+export function incrementFilterClockOffline(db: DrizzleDb, filterId: string): void {
   try {
     const filter = db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get()
     if (!filter) return
@@ -194,7 +194,7 @@ export function incrementFilterClockOffline(db: DataDb, filterId: string): void 
  * its whole life. That is fine — the row is immutable, so the clock is never
  * compared against a later local edit.
  */
-export function incrementTaskActivityClockOffline(db: DataDb, activityId: string): void {
+export function incrementTaskActivityClockOffline(db: DrizzleDb, activityId: string): void {
   try {
     const row = db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get()
     if (!row) return
@@ -210,7 +210,7 @@ export function incrementTaskActivityClockOffline(db: DataDb, activityId: string
   }
 }
 
-export function incrementTemplateClockOffline(db: DataDb, templateId: string): void {
+export function incrementTemplateClockOffline(db: DrizzleDb, templateId: string): void {
   try {
     const template = db.select().from(templates).where(eq(templates.id, templateId)).get()
     if (!template) return
@@ -226,7 +226,7 @@ export function incrementTemplateClockOffline(db: DataDb, templateId: string): v
   }
 }
 
-export function incrementHomePageClockOffline(db: DataDb, boardId: string): void {
+export function incrementHomePageClockOffline(db: DrizzleDb, boardId: string): void {
   try {
     const board = db.select().from(homePages).where(eq(homePages.id, boardId)).get()
     if (!board) return
@@ -242,7 +242,7 @@ export function incrementHomePageClockOffline(db: DataDb, boardId: string): void
   }
 }
 
-export function incrementCustomIconClockOffline(db: DataDb, iconId: string): void {
+export function incrementCustomIconClockOffline(db: DrizzleDb, iconId: string): void {
   try {
     const icon = db.select().from(customIcons).where(eq(customIcons.id, iconId)).get()
     if (!icon) return
@@ -258,7 +258,7 @@ export function incrementCustomIconClockOffline(db: DataDb, iconId: string): voi
   }
 }
 
-export function incrementBookmarkClockOffline(db: DataDb, bookmarkId: string): void {
+export function incrementBookmarkClockOffline(db: DrizzleDb, bookmarkId: string): void {
   try {
     const bookmark = db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get()
     if (!bookmark) return
@@ -274,7 +274,7 @@ export function incrementBookmarkClockOffline(db: DataDb, bookmarkId: string): v
   }
 }
 
-export function incrementReminderClockOffline(db: DataDb, reminderId: string): void {
+export function incrementReminderClockOffline(db: DrizzleDb, reminderId: string): void {
   try {
     const reminder = db.select().from(reminders).where(eq(reminders.id, reminderId)).get()
     if (!reminder) return
@@ -325,7 +325,7 @@ export function incrementReminderClockOffline(db: DataDb, reminderId: string): v
  * synced" for notes created offline, and older builds treat such a row exactly
  * the same way (dirty-recovery is the only reader).
  */
-export function incrementNoteClockOffline(db: DataDb, noteId: string): void {
+export function incrementNoteClockOffline(db: DrizzleDb, noteId: string): void {
   try {
     const note = db.select().from(noteMetadata).where(eq(noteMetadata.id, noteId)).get()
     if (!note) return
@@ -356,7 +356,7 @@ export function incrementNoteClockOffline(db: DataDb, noteId: string): void {
   }
 }
 
-export function incrementCanvasClockOffline(db: DataDb, canvasId: string): void {
+export function incrementCanvasClockOffline(db: DrizzleDb, canvasId: string): void {
   try {
     const canvas = db.select().from(canvases).where(eq(canvases.id, canvasId)).get()
     if (!canvas) return
@@ -372,7 +372,7 @@ export function incrementCanvasClockOffline(db: DataDb, canvasId: string): void 
   }
 }
 
-export function incrementCanvasFolderClockOffline(db: DataDb, folderId: string): void {
+export function incrementCanvasFolderClockOffline(db: DrizzleDb, folderId: string): void {
   try {
     const folder = db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get()
     if (!folder) return

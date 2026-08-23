@@ -1,13 +1,11 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
-import type * as schema from '@memry/db-schema/data-schema'
 import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 interface TagCategorySyncDeps {
   queue: SyncQueueManager

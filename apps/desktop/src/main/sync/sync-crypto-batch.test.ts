@@ -30,7 +30,7 @@ vi.mock('./decrypt-item', () => ({
 }))
 
 import { decryptPullBatch, encryptPushBatch } from './sync-crypto-batch'
-import { ItemTooLargeError } from './note-size'
+import { ItemTooLargeError } from '@memry/sync-client/note-size'
 
 const vaultKey = new Uint8Array([1, 2, 3])
 const signingSecretKey = new Uint8Array([4, 5, 6])

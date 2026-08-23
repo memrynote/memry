@@ -5,10 +5,10 @@ import { initCrypto } from '../crypto/index'
 import { encrypt, wrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/primitives'
 import { signPayload } from '../crypto/signatures'
-import { compressPayload } from './compress'
+import { compressPayload } from '@memry/sync-client/compress'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
-import type { PullItemForDecrypt } from './worker-protocol'
+import type { PullItemForDecrypt } from '@memry/sync-client/worker-protocol'
 
 // decryptSingleItem is the trust boundary for everything the server hands us.
 // It must NEVER throw (a throw inside the pull loop aborts the whole page and

@@ -1,7 +1,7 @@
 import { eq, and, sql, desc, asc, lt, lte, count, notInArray } from 'drizzle-orm'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
-import type { DataDb } from '../database'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from '../lib/logger'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
 import { trackMainEvent } from '../telemetry/track'
@@ -59,7 +59,7 @@ export function coalesceSyncOperations(existing: string, incoming: string): stri
 }
 
 export class SyncQueueManager {
-  constructor(private readonly db: DataDb) {}
+  constructor(private readonly db: DrizzleDb) {}
 
   private onItemEnqueued: (() => void) | null = null
 

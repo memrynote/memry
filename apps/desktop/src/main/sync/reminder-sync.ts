@@ -1,13 +1,11 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
-import type * as schema from '@memry/db-schema/data-schema'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
-import { toOutboundReminderPayload } from './reminder-outbound'
+import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import type { SyncQueueManager } from './queue'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 interface ReminderSyncDeps {
   queue: SyncQueueManager

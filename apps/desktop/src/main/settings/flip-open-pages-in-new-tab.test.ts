@@ -6,7 +6,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { getSetting, setSetting } from '@main/database/queries/settings'
 import { readPreferences } from '@main/vault/vault-preferences'
 import { populateSettingsCacheFromConfig } from '@main/vault/settings-cache'
-import { SETTINGS_SYNC_CLOCKS_KEY } from '@main/sync/settings-sync-keys'
+import { SETTINGS_SYNC_CLOCKS_KEY } from '@memry/sync-client/settings-sync-keys'
 import {
   flipOpenPagesInNewTabDefault,
   OPEN_PAGES_IN_NEW_TAB_FLIPPED_KEY

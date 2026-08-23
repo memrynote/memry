@@ -10,7 +10,7 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
-import { isBeyondTaskActivityRetention } from '../task-activity-retention'
+import { isBeyondTaskActivityRetention } from '@memry/sync-client/task-activity-retention'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 

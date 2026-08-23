@@ -66,10 +66,10 @@ import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
 import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
-import { planCrdtUpdatePush } from './crdt-payload'
+import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
-import { markSyncEligible, markSyncIneligible } from './sync-eligibility'
+import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
@@ -845,7 +845,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         workerBridge,
         refreshAccessToken: () => refreshAccessToken(),
         calendarSyncOneSource: (sourceId) => {
-          void syncGoogleCalendarSource(runtimeSyncDb, sourceId).catch((err) => {
+          void syncGoogleCalendarSource(db, sourceId).catch((err) => {
             log.warn('calendarSyncOneSource failed', { sourceId, err })
           })
         },

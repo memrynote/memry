@@ -3,7 +3,7 @@ import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
 import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from './sync-server-url'
 import { withRetry } from './retry'
-import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from './crdt-payload'
+import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page

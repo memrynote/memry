@@ -1,7 +1,7 @@
 import sodium from 'libsodium-wrappers-sumo'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey, secureCleanup } from '../crypto/index'
-import { compressPayload, decompressPayload } from './compress'
+import { compressPayload, decompressPayload } from '@memry/sync-client/compress'
 import { SignatureVerificationError } from './decrypt'
 
 const NONCE_LEN = 24

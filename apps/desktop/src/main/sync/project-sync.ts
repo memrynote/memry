@@ -4,20 +4,20 @@ import { statuses } from '@memry/db-schema/schema/statuses'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { type FieldClocks, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from './field-merge'
+import { type FieldClocks, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import {
   hasOfflineClockData,
   incrementProjectClocksOffline,
   rebindOfflineClockData
 } from './offline-clock'
 import { createLogger } from '../lib/logger'
-import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const log = createLogger('ProjectSync')
 
 interface ProjectSyncDeps {
   queue: SyncQueueManager
-  db: DataDb
+  db: DrizzleDb
   getDeviceId: () => string | null
 }
 

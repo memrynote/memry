@@ -14,7 +14,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
-import { emitNoteUpdated } from '../note-events'
+import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '../attachment-events'
 import {
   markDownloadRequested,

@@ -4,18 +4,19 @@ import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
 
 function makeUpdate(doc: Y.Doc, text: string): Uint8Array {
   const updates: Uint8Array[] = []
-  doc.on('update', (u: Uint8Array) => updates.push(u))
+  const onUpdate = (u: Uint8Array) => updates.push(u)
+  doc.on('update', onUpdate)
   doc.getText('content').insert(doc.getText('content').length, text)
-  doc.off('update', updates.push)
+  doc.off('update', onUpdate)
   return updates[0]
 }
 
 describe('MicrotaskBatchBroadcaster', () => {
-  let broadcastFn: ReturnType<typeof vi.fn>
+  let broadcastFn: ReturnType<typeof vi.fn<(noteId: string, mergedUpdate: Uint8Array) => void>>
   let batcher: MicrotaskBatchBroadcaster
 
   beforeEach(() => {
-    broadcastFn = vi.fn()
+    broadcastFn = vi.fn<(noteId: string, mergedUpdate: Uint8Array) => void>()
     batcher = new MicrotaskBatchBroadcaster(broadcastFn)
   })
 

@@ -153,7 +153,6 @@
     "src/main/sync/item-handlers/tag-definition-handler.test.ts",
     "src/main/sync/item-handlers/task-handler-fk.test.ts",
     "src/main/sync/item-handlers/task-handler.test.ts",
-    "src/main/sync/microtask-batch-broadcaster.test.ts",
     "src/main/sync/queue.test.ts",
     "src/main/sync/runtime.test.ts",
     "src/main/sync/settings-sync.test.ts",

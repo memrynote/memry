@@ -8,7 +8,7 @@ import type { FieldClocks } from '@memry/contracts/sync-api'
 import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../../database/types'
 import { enqueueLocalSyncUpdate } from '../../sync/local-mutations'
-import { initAllFieldClocks } from '../../sync/field-merge'
+import { initAllFieldClocks } from '@memry/sync-client/field-merge'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS, mergeCalendarEventFields } from '../field-merge-calendar'
 import { emitCalendarChanged } from '../change-events'
 import {

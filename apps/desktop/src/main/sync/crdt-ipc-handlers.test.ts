@@ -82,7 +82,7 @@ vi.mock('./crdt-writeback', () => ({
   recordNetworkUpdate: vi.fn(),
   resetWritebackState: vi.fn()
 }))
-vi.mock('./microtask-batch-broadcaster', () => ({
+vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
     enqueue() {}
     flush() {}

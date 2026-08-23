@@ -20,6 +20,7 @@ import type {
   ProjectLinkedNote
 } from '@memry/domain-tasks'
 import type { DataDb } from '../types'
+import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 
 // ============================================================================
 // Project CRUD
@@ -78,7 +79,7 @@ export function getProjectById(db: DataDb, id: string): Project | undefined {
  * `item_type`: a binary file can carry `item_type: 'note'` from before a
  * conversion, and treating it as frontmatter-owned would drop its link.
  */
-export function isMarkdownNote(db: DataDb, itemId: string): boolean {
+export function isMarkdownNote(db: DrizzleDb, itemId: string): boolean {
   const row = db
     .select({ fileType: noteMetadata.fileType })
     .from(noteMetadata)
@@ -646,7 +647,7 @@ export function getProjectLink(
  * local row (or on the incoming entry) must not hide it.
  */
 export function getProjectLinkForItem(
-  db: DataDb,
+  db: DrizzleDb,
   projectId: string,
   itemId: string
 ): ProjectLink | undefined {
@@ -674,7 +675,7 @@ export function getProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
  * rides along in the note payload; carrying it here too would let a project pull
  * delete rows the local frontmatter had just derived.
  */
-export function listTableOwnedProjectLinks(db: DataDb, projectId: string): ProjectLink[] {
+export function listTableOwnedProjectLinks(db: DrizzleDb, projectId: string): ProjectLink[] {
   return db
     .select()
     .from(projectLinks)

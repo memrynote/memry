@@ -1,6 +1,6 @@
 import { decryptItemFromPull, SignatureVerificationError } from './decrypt'
-import type { DecryptedPullItem, DecryptionFailure, PullItemForDecrypt } from './worker-protocol'
-import { isCryptoErrorMessage } from './worker-protocol'
+import type { DecryptedPullItem, DecryptionFailure, PullItemForDecrypt } from '@memry/sync-client/worker-protocol'
+import { isCryptoErrorMessage } from '@memry/sync-client/worker-protocol'
 import { CryptoError } from '../crypto/crypto-errors'
 
 export type DecryptSingleResult =

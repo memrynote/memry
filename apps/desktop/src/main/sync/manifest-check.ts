@@ -1,6 +1,5 @@
 import { and, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '@memry/db-schema/data-schema'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
@@ -18,15 +17,14 @@ import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import type { RecordSyncItemType, RecordSyncManifest } from '@memry/contracts/sync-api'
 import { withRetry } from './retry'
-import { toOutboundReminderPayload } from './reminder-outbound'
-import { taskActivityRetentionCutoff } from './task-activity-retention'
+import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
+import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
 import type { SyncQueueManager } from './queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('ManifestCheck')
 

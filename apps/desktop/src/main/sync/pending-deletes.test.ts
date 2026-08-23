@@ -25,7 +25,7 @@ import { SyncQueueManager } from './queue'
 import { initTaskSyncService, resetTaskSyncService } from './task-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { enqueueLocalSyncDelete, flushPendingLocalDeletes } from './local-mutations'
-import { markSyncEligible, markSyncIneligible } from './sync-eligibility'
+import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 
 const DEVICE_ID = 'device-A'
 

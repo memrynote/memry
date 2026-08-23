@@ -1,10 +1,7 @@
 import { eq, isNotNull, and } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as indexSchema from '@memry/db-schema/index-schema'
+import type { IndexDrizzleDb as IndexDb } from '@memry/sync-client/drizzle-db'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { utcNow } from '@memry/shared/utc'
-
-type IndexDb = BetterSQLite3Database<typeof indexSchema>
 
 export function getPinnedTagsForNote(indexDb: IndexDb, noteId: string): string[] {
   const rows = indexDb

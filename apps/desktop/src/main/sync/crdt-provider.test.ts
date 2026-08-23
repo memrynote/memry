@@ -4,7 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { CrdtPreflightStage } from './crdt-preflight-protocol'
+import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
 
 type PreflightVerdict = {
   ok: boolean
@@ -235,7 +235,7 @@ vi.mock('./crdt-writeback', () => ({
   resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
 }))
 
-vi.mock('./microtask-batch-broadcaster', () => ({
+vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
     private queued = new Map<string, Uint8Array>()
 

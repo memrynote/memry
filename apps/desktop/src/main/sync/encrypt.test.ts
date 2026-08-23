@@ -5,8 +5,8 @@ import { decrypt, unwrapFileKey } from '../crypto/encryption'
 import { verifySignature } from '../crypto/signatures'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { encryptItemForPush, type EncryptItemInput } from './encrypt'
-import { decompressPayload } from './compress'
-import { ItemTooLargeError, NOTE_SYNC_MAX_BYTES, SYNC_ITEM_MAX_ENCRYPT_BYTES } from './note-size'
+import { decompressPayload } from '@memry/sync-client/compress'
+import { ItemTooLargeError, NOTE_SYNC_MAX_BYTES, SYNC_ITEM_MAX_ENCRYPT_BYTES } from '@memry/sync-client/note-size'
 
 beforeAll(async () => {
   await initCrypto()

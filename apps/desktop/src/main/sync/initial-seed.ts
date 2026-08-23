@@ -1,13 +1,11 @@
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as schema from '@memry/db-schema/data-schema'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import type { RemoteSyncAdapter } from '@memry/sync-core'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import { getAllRemoteSyncAdapters } from './item-handlers'
 import type { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('InitialSeed')
 

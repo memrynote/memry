@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import * as schema from '@memry/db-schema/data-schema'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { settings } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
@@ -12,9 +11,8 @@ import type {
 import { compare, merge, increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
 import { createLogger } from '../lib/logger'
-import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from './settings-sync-keys'
+import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from '@memry/sync-client/settings-sync-keys'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('SettingsSync')
 

@@ -1,12 +1,10 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
-import type * as schema from '@memry/db-schema/data-schema'
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 interface TaskActivitySyncDeps {
   queue: SyncQueueManager

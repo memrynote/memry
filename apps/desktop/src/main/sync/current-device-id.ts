@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
-import type { DataDb } from '../database'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 /**
  * The registered id for this device, or `null` before device registration and
@@ -14,7 +14,7 @@ import type { DataDb } from '../database'
  * `blockedFeatureSyncImports` (see scripts/check-architecture-boundaries.js) so
  * feature modules can import it without reaching into a sync service.
  */
-export function getCurrentDeviceId(db: DataDb): string | null {
+export function getCurrentDeviceId(db: DrizzleDb): string | null {
   const device = db
     .select({ id: syncDevices.id })
     .from(syncDevices)

@@ -13,7 +13,7 @@ import type { TaskActivityListInput, TaskActivityListResponse } from '@memry/con
 import { requireDatabase } from '../database'
 import { listTaskActivity, pruneTaskActivity } from '../database/queries/task-activity'
 import { getCurrentDeviceId } from '../sync/current-device-id'
-import { taskActivityRetentionCutoff } from '../sync/task-activity-retention'
+import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { createLogger } from '../lib/logger'
 
 const log = createLogger('TaskActivityHistory')

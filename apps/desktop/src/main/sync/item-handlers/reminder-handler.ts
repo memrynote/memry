@@ -7,7 +7,7 @@ import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
-import { toOutboundReminderPayload } from '../reminder-outbound'
+import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 

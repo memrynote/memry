@@ -13,7 +13,7 @@ import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '@memry/sync-client/vector-clock'
-import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '../field-merge'
+import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import { createLogger } from '../../lib/logger'
 import {
   listTableOwnedProjectLinks,

@@ -4,19 +4,19 @@ import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from './field-merge'
+import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import {
   hasOfflineClockData,
   incrementTaskClocksOffline,
   rebindOfflineClockData
 } from './offline-clock'
 import { createLogger } from '../lib/logger'
-import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const log = createLogger('TaskSync')
 
 function enrichWithJunctionData(
-  db: DataDb,
+  db: DrizzleDb,
   taskId: string,
   base: Record<string, unknown>
 ): Record<string, unknown> {
@@ -37,7 +37,7 @@ function enrichWithJunctionData(
 
 interface TaskSyncDeps {
   queue: SyncQueueManager
-  db: DataDb
+  db: DrizzleDb
   getDeviceId: () => string | null
 }
 

@@ -1,11 +1,10 @@
 import type { ZodType } from 'zod'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import type * as dataSchema from '@memry/db-schema/data-schema'
 import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { compare, merge } from '@memry/sync-client/vector-clock'
 
-export type DrizzleDb = BetterSQLite3Database<typeof dataSchema>
+export type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 export type EmitToWindows = (channel: string, data: unknown) => void
 export type ApplyResult = 'applied' | 'skipped' | 'conflict' | 'parse_error'
 

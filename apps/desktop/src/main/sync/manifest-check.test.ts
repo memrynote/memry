@@ -807,7 +807,7 @@ describe('checkManifestIntegrity', () => {
       })
 
       const { checkManifestIntegrity } = await import('./manifest-check')
-      const { toOutboundReminderPayload } = await import('./reminder-outbound')
+      const { toOutboundReminderPayload } = await import('@memry/sync-client/reminder-outbound')
 
       // #when
       await checkManifestIntegrity({

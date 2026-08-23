@@ -8,8 +8,8 @@ import type { SyncQueueManager } from '../queue'
 import {
   AGENT_CONVERSATION_SYNCABLE_FIELDS,
   type AgentConversationField
-} from '../agent-conversation-fields'
-import { initAllFieldClocks, mergeFields } from '../field-merge'
+} from '@memry/sync-client/agent-conversation-fields'
+import { initAllFieldClocks, mergeFields } from '@memry/sync-client/field-merge'
 import {
   agentConversationRowToModel,
   encryptConversationTitle

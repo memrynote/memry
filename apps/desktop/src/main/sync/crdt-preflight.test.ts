@@ -4,7 +4,7 @@ import {
   PREFLIGHT_MARK_BINDING_LOADED,
   PREFLIGHT_MARK_STARTED,
   PREFLIGHT_MARK_STORE_OPS
-} from './crdt-preflight-protocol'
+} from '@memry/sync-client/crdt-preflight-protocol'
 
 const mockFork = vi.hoisted(() => vi.fn())
 const mockSpawn = vi.hoisted(() => vi.fn())

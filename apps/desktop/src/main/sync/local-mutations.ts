@@ -1,11 +1,11 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
-import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
-import { isSyncEligible } from './sync-eligibility'
+import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import {
   buildContentDeletePayload,
   clearPendingDelete,
@@ -183,7 +183,7 @@ function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: stri
  * missing re-records itself through `deferDelete`, and a content type is left
  * untouched until its service exists.
  */
-export function flushPendingLocalDeletes(db: DataDb): number {
+export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
   if (pending.length === 0) return 0
 

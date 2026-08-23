@@ -8,7 +8,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
-import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
+import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import {
   scheduleWriteback,
   flushPendingWritebacks,
@@ -20,7 +20,7 @@ import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
   type CrdtSnapshotWatermark
-} from './crdt-snapshot-watermark'
+} from '@memry/sync-client/crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
 import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
