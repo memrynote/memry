@@ -212,7 +212,7 @@ describe('useWikiLinkHover', () => {
     expect(renders).toBe(baseline)
   })
 
-  it('ignores missing targets, null previews, stale async results, and service failures', async () => {
+  it('ignores missing targets, stale async results, and service failures', async () => {
     const api = getMockApi() as {
       notes: {
         previewByTitle: ReturnType<typeof vi.fn>
@@ -228,14 +228,6 @@ describe('useWikiLinkHover', () => {
     })
     expect(api.notes.previewByTitle).not.toHaveBeenCalled()
 
-    link.setAttribute('data-target', 'Missing')
-    api.notes.previewByTitle.mockResolvedValueOnce(null)
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300)
-    })
-    expect(result.current.isVisible).toBe(false)
-
     link.setAttribute('data-target', 'Broken')
     api.notes.previewByTitle.mockRejectedValueOnce(new Error('ipc failed'))
     act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
@@ -243,5 +235,89 @@ describe('useWikiLinkHover', () => {
       await vi.advanceTimersByTimeAsync(300)
     })
     expect(result.current.isVisible).toBe(false)
+  })
+
+  it('shows the not-found card for a target that resolves to nothing', async () => {
+    const api = getMockApi() as {
+      notes: {
+        previewByTitle: ReturnType<typeof vi.fn>
+        resolveTitles: ReturnType<typeof vi.fn>
+      }
+    }
+    api.notes.previewByTitle.mockResolvedValue(null)
+    api.notes.resolveTitles.mockResolvedValue({ Ghost: null })
+    const { container, link } = setupLink('Ghost')
+    const ref = { current: container }
+    const { result } = renderHook(() => useWikiLinkHover(ref))
+
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(result.current.isVisible).toBe(true)
+    expect(result.current.preview).toBeNull()
+    expect(result.current.missingTarget).toBe('Ghost')
+  })
+
+  it('shows no card for a non-markdown file that exists', async () => {
+    const api = getMockApi() as {
+      notes: {
+        previewByTitle: ReturnType<typeof vi.fn>
+        resolveTitles: ReturnType<typeof vi.fn>
+      }
+    }
+    api.notes.previewByTitle.mockResolvedValue(null)
+    api.notes.resolveTitles.mockResolvedValue({
+      'photo.png': { id: 'fil_1', path: 'photo.png' }
+    })
+    const { container, link } = setupLink('photo.png')
+    const ref = { current: container }
+    const { result } = renderHook(() => useWikiLinkHover(ref))
+
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(result.current.isVisible).toBe(false)
+    expect(result.current.missingTarget).toBeNull()
+  })
+
+  it('drops the cached negative on notes:created so the next hover re-asks', async () => {
+    const api = getMockApi() as {
+      notes: {
+        previewByTitle: ReturnType<typeof vi.fn>
+        resolveTitles: ReturnType<typeof vi.fn>
+      }
+      onNoteCreated: ReturnType<typeof vi.fn>
+    }
+    api.notes.previewByTitle.mockResolvedValue(null)
+    api.notes.resolveTitles.mockResolvedValue({ Ghost: null })
+    const { container, link } = setupLink('Ghost')
+    const ref = { current: container }
+    const { result } = renderHook(() => useWikiLinkHover(ref))
+
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(result.current.missingTarget).toBe('Ghost')
+    expect(api.notes.previewByTitle).toHaveBeenCalledTimes(1)
+
+    // The note gets created (this window or another device): drop the cache.
+    api.notes.previewByTitle.mockResolvedValue({ id: 'nte_ghost', title: 'Ghost' })
+    const createdCallbacks = api.onNoteCreated.mock.calls.map((call) => call[0] as () => void)
+    act(() => createdCallbacks.forEach((callback) => callback()))
+
+    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(api.notes.previewByTitle).toHaveBeenCalledTimes(2)
+    expect(result.current.missingTarget).toBeNull()
+    expect(result.current.preview).toEqual(expect.objectContaining({ id: 'nte_ghost' }))
   })
 })

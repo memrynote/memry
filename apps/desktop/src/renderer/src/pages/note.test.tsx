@@ -844,7 +844,7 @@ describe('NotePage', () => {
         return Promise.resolve({ type: 'note', id: 'existing-note', title: 'Existing Note' })
       if (target === 'Diagram.pdf')
         return Promise.resolve({ type: 'file', id: 'file-1', title: 'Diagram.pdf', icon: 'file' })
-      if (target === 'New Note') return Promise.resolve({ type: 'create' })
+      if (target === 'New Note') return Promise.resolve({ type: 'create', title: 'New Note' })
       return Promise.resolve({ type: 'not-found' })
     })
   })
@@ -1102,7 +1102,9 @@ describe('NotePage', () => {
       )
     )
 
+    // Clicking a dead link now asks first (#1716); Create keeps the old path.
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
+    fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
     await waitFor(() =>
       expect(mocks.openTab).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'note', entityId: 'created-note' }),
@@ -1115,8 +1117,18 @@ describe('NotePage', () => {
       expect(toast.error).toHaveBeenCalledWith('page.toast.fileNotFound:{"target":"Missing.png"}')
     )
 
+    // Cancel creates nothing.
+    mocks.createNote.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
+    fireEvent.click(await screen.findByText('button.cancel'))
+    await waitFor(() =>
+      expect(screen.queryByText('wikiLinkCreateDialog.create')).not.toBeInTheDocument()
+    )
+    expect(mocks.createNote).not.toHaveBeenCalled()
+
     mocks.createNote.mockResolvedValueOnce({ success: false })
     fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
+    fireEvent.click(await screen.findByText('wikiLinkCreateDialog.create'))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.createLinkedFailed'))
 
     mocks.resolveWikiLink.mockRejectedValueOnce(new Error('resolve failed'))

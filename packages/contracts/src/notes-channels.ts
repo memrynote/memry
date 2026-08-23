@@ -105,6 +105,8 @@ export const NotesChannels = {
     GET_FILE: 'notes:get-file',
     /** Resolve a WikiLink target by title (returns note or file metadata) */
     RESOLVE_BY_TITLE: 'notes:resolve-by-title',
+    /** Resolve a batch of WikiLink titles in one call (broken-link detection) */
+    RESOLVE_TITLES: 'notes:resolve-titles',
     /** Resolve a WikiLink target, heading half and all (`Note#Heading`) */
     RESOLVE_WIKI_TARGET: 'notes:resolve-wiki-target',
     /** Get preview data for a WikiLink hover card */

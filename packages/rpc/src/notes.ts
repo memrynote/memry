@@ -104,6 +104,13 @@ export interface WikiLinkTargetResolution extends WikiLinkResolution {
   heading: string | null
 }
 
+/**
+ * `resolveTitles` result: each requested title mapped to the note it resolves
+ * to (exact first, case-insensitive fallback — same rule as `resolveByTitle`),
+ * or `null` for a miss. Broken-link detection reads only the null-ness.
+ */
+export type WikiLinkTitleResolutions = Record<string, { id: string; path: string } | null>
+
 export interface WikiLinkPreview {
   id: string
   title: string
@@ -441,6 +448,14 @@ export const notesRpc = defineDomain({
     resolveByTitle: defineMethod<(title: string) => Promise<WikiLinkResolution | null>>({
       channel: NotesChannels.invoke.RESOLVE_BY_TITLE,
       params: ['title']
+    }),
+    /**
+     * Resolve a whole document's wiki targets in one call. An editor mount
+     * dedupes its `[[…]]` titles and asks once, instead of one IPC per link.
+     */
+    resolveTitles: defineMethod<(titles: string[]) => Promise<WikiLinkTitleResolutions>>({
+      channel: NotesChannels.invoke.RESOLVE_TITLES,
+      params: ['titles']
     }),
     /**
      * Resolve `Note`, `Note#Heading` or `Note#^block-id` to the note it names.

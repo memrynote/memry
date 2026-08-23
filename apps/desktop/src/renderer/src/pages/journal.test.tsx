@@ -145,6 +145,9 @@ vi.mock('@/hooks/use-notes-query', () => ({
       { tag: 'work', color: 'blue' },
       { tag: 'life', color: 'red' }
     ]
+  }),
+  useNoteMutations: () => ({
+    createNote: { mutateAsync: vi.fn() }
   })
 }))
 
@@ -617,7 +620,7 @@ describe('JournalPage', () => {
         title: 'Plan.pdf',
         icon: 'file'
       })
-      .mockResolvedValueOnce({ type: 'create' })
+      .mockResolvedValueOnce({ type: 'create', title: 'Linked Note' })
       .mockResolvedValueOnce({ type: 'not-found' })
       .mockRejectedValueOnce(new Error('resolver failed'))
 
@@ -633,8 +636,15 @@ describe('JournalPage', () => {
       )
     )
 
+    // The old dead-end "not found" toast is now the create-confirm dialog
+    // (#1716); Cancel leaves everything as it was.
     fireEvent.click(screen.getByText('internal link'))
-    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('Linked Note'))
+    expect(await screen.findByText('wikiLinkCreateDialog.body')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('button.cancel'))
+    await waitFor(() =>
+      expect(screen.queryByText('wikiLinkCreateDialog.body')).not.toBeInTheDocument()
+    )
+    expect(toast.info).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByText('internal link'))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Linked Note'))

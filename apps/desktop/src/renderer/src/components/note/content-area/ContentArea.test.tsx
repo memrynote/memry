@@ -233,6 +233,7 @@ vi.mock('./hooks', () => ({
     getWikiLinkItems: vi.fn(async () => [{ title: 'Wiki' }]),
     handleWikiLinkSelect: vi.fn()
   })),
+  useWikiLinkBroken: vi.fn(),
   useTagSuggestions: vi.fn(() => ({
     handleTagSuggestionSelect: vi.fn()
   })),

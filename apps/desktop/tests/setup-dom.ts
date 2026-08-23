@@ -139,6 +139,7 @@ const createMockApi = () => ({
     renameFolder: vi.fn().mockResolvedValue({ success: true }),
     deleteFolder: vi.fn().mockResolvedValue({ success: true }),
     resolveByTitle: vi.fn().mockResolvedValue(null),
+    resolveTitles: vi.fn().mockResolvedValue({}),
     resolveWikiTarget: vi.fn().mockResolvedValue(null),
     previewByTitle: vi.fn().mockResolvedValue(null),
     exists: vi.fn().mockResolvedValue(false),

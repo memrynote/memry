@@ -1,4 +1,12 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Create note?",
+    "body": "No note titled \"{title}\". Create it?",
+    "create": "Create"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Not found — click to create \"{title}\""
+  },
   "page": {
     "empty": {
       "title": "No note selected",

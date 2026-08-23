@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => {
     webContents,
     fsWriteFile: vi.fn(),
     resolveNoteByTitle: vi.fn(),
+    resolveNotesByTitles: vi.fn(),
     getNoteTags: vi.fn(),
     getAllTagDefinitions: vi.fn(),
     deleteNoteSnapshot: vi.fn(),
@@ -127,6 +128,7 @@ vi.mock('../notes/domain', () => ({
 
 vi.mock('../notes/store', () => ({
   resolveNoteByTitle: mocks.resolveNoteByTitle,
+  resolveNotesByTitles: mocks.resolveNotesByTitles,
   getNoteTags: mocks.getNoteTags,
   getAllTagDefinitions: mocks.getAllTagDefinitions,
   deleteNoteSnapshot: mocks.deleteNoteSnapshot,
@@ -229,6 +231,26 @@ describe('notes-handlers extra coverage', () => {
   afterEach(() => {
     unregisterNotesHandlers()
     mocks.handlers.clear()
+  })
+
+  it('resolves a batch of titles into a plain record over one channel', async () => {
+    mocks.resolveNotesByTitles.mockReturnValueOnce(
+      new Map([
+        ['Meeting Notes', { id: 'nte_meeting', path: 'Meeting Notes.md' }],
+        ['Missing', null]
+      ])
+    )
+
+    await expect(
+      invoke(NotesChannels.invoke.RESOLVE_TITLES, ['Meeting Notes', 'Missing'])
+    ).resolves.toEqual({
+      'Meeting Notes': { id: 'nte_meeting', path: 'Meeting Notes.md' },
+      Missing: null
+    })
+    expect(mocks.resolveNotesByTitles).toHaveBeenCalledWith(expect.anything(), [
+      'Meeting Notes',
+      'Missing'
+    ])
   })
 
   it('resolves WikiLink targets and preview metadata with tag colors', async () => {

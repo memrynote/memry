@@ -2735,6 +2735,21 @@ del.bn-inline-content {
   color: rgb(251, 191, 36) !important;
 }
 
+/* A wiki link whose target note does not exist. Applied from outside the chip
+   by a decoration plugin (the inline spec's render() is synchronous and has no
+   IPC access). Calm, not red: a dashed underline plus a muted tint — and
+   !important because the base .wiki-link color above is. */
+.wiki-link-broken {
+  color: rgb(146, 124, 96) !important;
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.dark .wiki-link-broken {
+  color: rgb(168, 152, 128) !important;
+}
+
 /* A wiki link opened for editing: the `[[` and `]]` are real characters the
    user can delete, so they are dimmed rather than hidden — the text still reads
    as a link without the brackets shouting. */

@@ -208,6 +208,7 @@
   "toast": {
     "unsavedRetry": "Your content is still in memory. Click to retry saving.",
     "noteNotFound": "Note \"{target}\" not found",
+    "createLinkedFailed": "Failed to create linked note",
     "fileNotFound": "File not found: {target}",
     "openLinkedItemFailed": "Failed to open linked item",
     "errorPrefix": "Error:"
