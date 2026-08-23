@@ -4,7 +4,7 @@ const debugSpy = vi.hoisted(() => vi.fn())
 const warnSpy = vi.hoisted(() => vi.fn())
 const errorSpy = vi.hoisted(() => vi.fn())
 
-vi.mock('../lib/logger', () => ({
+vi.mock('./logging', () => ({
   createLogger: () => ({
     info: vi.fn(),
     warn: warnSpy,

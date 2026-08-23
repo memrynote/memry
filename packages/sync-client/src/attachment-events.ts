@@ -1,5 +1,5 @@
-import { EventEmitter } from 'node:events'
-import { createLogger } from '../lib/logger'
+import { SyncEventEmitter } from '@memry/sync-client/emitter'
+import { createLogger } from './logging'
 
 const log = createLogger('AttachmentEvents')
 
@@ -25,7 +25,7 @@ type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void
 
 type SavedHandler = (event: AttachmentSavedEvent) => void
 
-class AttachmentEventBus extends EventEmitter {
+class AttachmentEventBus extends SyncEventEmitter {
   /**
    * Returns whether the event reached at least one listener.
    *

@@ -53,7 +53,7 @@ import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 import { isWritebackIgnored, wasRecentNetworkUpdate } from '../sync/crdt-writeback'
-import { attachmentEvents } from '../sync/attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { flushProjectionEvents } from '../projections'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'

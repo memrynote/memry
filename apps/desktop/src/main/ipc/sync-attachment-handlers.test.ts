@@ -106,7 +106,7 @@ vi.mock('../sync/attachment-outbox', async (importOriginal) => {
 const mockOnSaved = vi.fn()
 const mockOnDownloadNeeded = vi.fn()
 const mockRemoveAll = vi.fn()
-vi.mock('../sync/attachment-events', () => ({
+vi.mock('@memry/sync-client/attachment-events', () => ({
   attachmentEvents: {
     onSaved: (fn: unknown) => mockOnSaved(fn),
     onDownloadNeeded: (fn: unknown) => mockOnDownloadNeeded(fn),

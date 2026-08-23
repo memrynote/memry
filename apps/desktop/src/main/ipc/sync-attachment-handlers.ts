@@ -29,7 +29,7 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
-import { attachmentEvents } from '../sync/attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   markDownloadFailed,
   markDownloadSucceeded,

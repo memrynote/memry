@@ -32,7 +32,7 @@ vi.mock('../sync/local-mutations', () => ({
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
 vi.mock('@main/database/queries/notes', () => ({ updateNoteCache: vi.fn() }))
 vi.mock('../database', () => ({ getDatabase: vi.fn(), getIndexDatabase: vi.fn() }))
-vi.mock('../sync/attachment-events', () => ({ attachmentEvents: { emit: vi.fn() } }))
+vi.mock('@memry/sync-client/attachment-events', () => ({ attachmentEvents: { emit: vi.fn() } }))
 vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))

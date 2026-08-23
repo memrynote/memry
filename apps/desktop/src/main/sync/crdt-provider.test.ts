@@ -199,7 +199,7 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
   removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
 }))
-vi.mock('./attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
+vi.mock('@memry/sync-client/attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
 vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
