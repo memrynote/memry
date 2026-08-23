@@ -243,9 +243,25 @@ Turn the motion off with **Live motion** under the gear icon → **Display** if 
 still graph — the same forces then run once and stop, which is also the lighter option on
 very large vaults.
 
+## Renaming a Linked Note
+
+Renaming a note updates every wiki link that points at it, across the whole vault: each
+inbound `[[Old Title]]` becomes `[[New Title]]` in the source note itself, so the link
+keeps opening the same note and backlinks, mention counts, and the graph carry on
+unchanged. This covers every link form — `[[Old Title#Heading]]` keeps its heading,
+`[[Old Title|label]]` keeps its label (the visible text you chose never changes) — and it
+applies to attached files too: rename a PDF inside Memry and notes linking to it by name
+follow along.
+
+The rewrite is an ordinary edit to each source note, so it appears in open editors right
+away and syncs to your other devices like any other change. Links written in another app
+before the rename (or renames done outside Memry, in Finder or Explorer) are not covered —
+those show up as broken links below.
+
 ## Broken Links
 
-A wiki link whose target does not exist — a typo, a renamed note, or a deleted one — is
+A wiki link whose target does not exist — a typo, a note renamed outside Memry, or a
+deleted one — is
 shown with a **dashed underline and a muted tint** instead of the usual link colour, in
 both the note editor and the journal. Hovering it shows a small card reading
 **"Not found — click to create"** instead of the usual preview.
