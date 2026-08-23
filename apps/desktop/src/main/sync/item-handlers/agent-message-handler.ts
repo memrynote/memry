@@ -6,7 +6,7 @@ import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   agentMessageRowToModel,
   encryptMessageAttachments,
@@ -15,9 +15,9 @@ import {
 import { TERMINAL_STATUSES } from '../../agent/storage/types'
 import type { MessageStatus } from '../../agent/storage/types'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import { MissingSyncParentError } from './types'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AgentMessageHandler')
 

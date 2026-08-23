@@ -9,14 +9,14 @@ import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import { TagCategorySyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { eq } from 'drizzle-orm'
-import { SyncQueueManager } from './queue'
-import { tagCategoryHandler } from './item-handlers/tag-category-handler'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { tagCategoryHandler } from '@memry/sync-client/item-handlers/tag-category-handler'
 import {
   TagCategorySyncService,
   initTagCategorySyncService,
   getTagCategorySyncService,
   resetTagCategorySyncService
-} from './tag-category-sync'
+} from '@memry/sync-client/tag-category-sync'
 
 const TEST_CATEGORY = {
   id: 'category-1',

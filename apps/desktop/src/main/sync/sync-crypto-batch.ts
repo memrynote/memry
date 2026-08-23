@@ -3,7 +3,7 @@ import { createLogger } from '../lib/logger'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
 import { ItemTooLargeError } from '@memry/sync-client/note-size'
-import type { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { SyncWorkerBridge } from './worker-bridge'
 import type {
   RawPushItem,

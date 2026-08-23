@@ -13,8 +13,8 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import { calendarBindingHandler } from './calendar-binding-handler'
-import { calendarSourceHandler } from './calendar-source-handler'
+import { calendarBindingHandler } from '@memry/sync-client/item-handlers/calendar-binding-handler'
+import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
 
 /**
  * Gap coverage for `calendar-source-binding-handlers.test.ts`, which already

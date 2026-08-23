@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import { createTestDataDb, trackPreparedSql, type TestDatabaseResult } from '@tests/utils/test-db'
-import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from './queue'
+import { DEFAULT_MAX_ATTEMPTS, SyncQueueManager, type EnqueueInput } from '@memry/sync-client/queue'
 
 const makeInput = (overrides: Partial<EnqueueInput> = {}): EnqueueInput => ({
   type: 'note',

@@ -1,4 +1,4 @@
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 
 const log = createLogger('CrdtSnapshotScheduler')
 
@@ -65,8 +65,10 @@ export class CrdtSnapshotScheduler {
 
     const timer = setTimeout(() => this.fire(noteId), delay)
     // Never hold the process open for a deferred snapshot: shutdown flushes
-    // outstanding snapshots through pushAllSnapshots().
-    if (typeof timer.unref === 'function') timer.unref()
+    // outstanding snapshots through pushAllSnapshots(). unref exists only on
+    // node's Timeout — platform-free code probes for it structurally.
+    const maybeUnref = timer as unknown as { unref?: () => void }
+    if (typeof maybeUnref.unref === 'function') maybeUnref.unref()
     this.pending.set(noteId, { timer, firstRequestedAt })
   }
 

@@ -7,8 +7,8 @@ const broadcast = vi.hoisted(() => vi.fn())
 vi.mock('../lib/window-broadcast', () => ({ broadcastToAllWindows: broadcast }))
 vi.mock('electron', () => ({ ipcMain: { handle: vi.fn(), removeHandler: vi.fn() } }))
 
-import { SyncQueueManager } from './queue'
-import { initHomePageSyncService, resetHomePageSyncService } from './home-page-sync'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { initHomePageSyncService, resetHomePageSyncService } from '@memry/sync-client/home-page-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
 import { makeHomePageHandlers } from '../ipc/home-page-handlers'
 

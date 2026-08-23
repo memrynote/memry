@@ -5,7 +5,7 @@ import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import { initAllFieldClocks } from '@memry/sync-client/field-merge'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../calendar/field-merge-calendar'
-import type { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
 
 interface CalendarEventSyncDeps {

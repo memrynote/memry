@@ -10,7 +10,7 @@ import type {
 } from '@memry/contracts/settings-sync'
 import { compare, merge, increment } from '@memry/sync-client/vector-clock'
 import { SyncQueueManager } from './queue'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 import { SETTINGS_SYNC_CLOCKS_KEY, SETTINGS_SYNC_SETTINGS_KEY } from '@memry/sync-client/settings-sync-keys'
 
 

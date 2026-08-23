@@ -22,8 +22,8 @@ import {
   releaseDownloadAttempt,
   resetAttachmentDownloadSession,
   shouldAttemptDownload
-} from './attachment-download-state'
-import type { DrizzleDb } from './item-handlers/types'
+} from '@memry/sync-client/attachment-download-state'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const notFound = (): SyncServerError => new SyncServerError('Failed to fetch manifest', 404)

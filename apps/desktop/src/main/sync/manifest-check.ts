@@ -21,7 +21,7 @@ import { toOutboundReminderPayload } from '@memry/sync-client/reminder-outbound'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { getFromServer } from './http-client'
 import { itemRefKey } from './engine/sync-context'
-import type { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 

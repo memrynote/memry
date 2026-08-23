@@ -1,7 +1,7 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
-import { ERROR_RETENTION_DAYS } from '../queue'
+import { ERROR_RETENTION_DAYS } from '@memry/sync-client/queue'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import type { SyncContext } from './sync-context'

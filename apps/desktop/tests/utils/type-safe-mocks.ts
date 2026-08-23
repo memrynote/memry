@@ -19,7 +19,7 @@ import type { DataDb } from '../../src/main/database/client'
 import type {
   DrizzleDb as SyncDrizzleDb,
   ApplyContext
-} from '../../src/main/sync/item-handlers/types'
+} from '@memry/sync-client/item-handlers/types'
 import type {
   NotesClientAPI,
   TasksClientAPI,

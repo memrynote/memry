@@ -46,7 +46,7 @@ vi.mock('../vault/journal', async () => {
   }
 })
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   JournalSyncService,
   getJournalSyncService,

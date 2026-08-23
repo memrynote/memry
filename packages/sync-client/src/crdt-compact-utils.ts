@@ -1,5 +1,5 @@
 import * as Y from 'yjs'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 
 const log = createLogger('CrdtCompaction')
 

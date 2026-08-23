@@ -11,8 +11,8 @@ import { initCrypto } from '../crypto/index'
 import { encryptItemForPush } from './encrypt'
 import { decryptItemFromPull } from './decrypt'
 import type { DecryptItemInput } from './decrypt'
-import { SyncQueueManager } from './queue'
-import { SettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { SettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 beforeAll(async () => {
   await initCrypto()

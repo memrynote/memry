@@ -1,3 +1,6 @@
+// First import on purpose: wires @memry/sync-client's logger/telemetry
+// facades before any extracted sync module can log.
+import './sync/sync-client-runtime'
 import {
   app,
   shell,

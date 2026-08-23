@@ -5,7 +5,7 @@ import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getCurrentVaultPath } from '../store'
 import { enqueueUpload } from './attachment-outbox'
-import type { DrizzleDb } from './item-handlers/types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentBackfill')
 

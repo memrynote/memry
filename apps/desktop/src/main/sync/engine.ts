@@ -9,7 +9,7 @@ import type {
   ResumeSyncResult,
   SyncStatusValue
 } from '@memry/contracts/ipc-sync-ops'
-import type { QueueStats } from './queue'
+import type { QueueStats } from '@memry/sync-client/queue'
 import type { WebSocketMessage } from './websocket'
 import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'

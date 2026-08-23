@@ -224,7 +224,7 @@ vi.mock('./blocknote-converter', () => ({
   repairEmptyBlockIds: (...args: unknown[]) => mocks.repairEmptyBlockIds(...args)
 }))
 
-vi.mock('./crdt-compact-utils', () => ({
+vi.mock('@memry/sync-client/crdt-compact-utils', () => ({
   compactYDoc: (...args: unknown[]) => mocks.compactYDoc(...args)
 }))
 

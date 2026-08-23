@@ -7,8 +7,8 @@ import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import type { CanvasSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { MemryAssetDescriptor } from '@memry/contracts/canvas-api'
-import type { SyncQueueManager } from '../queue'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
@@ -62,7 +62,7 @@ import {
 } from '../../canvas/folder-store'
 import { reconcileCanvasFiles } from '../../canvas/reconcile'
 import { hashesReferencedByOtherCanvases } from '../../canvas/assets/asset-store'
-import { initCanvasSyncService, resetCanvasSyncService } from '../canvas-sync'
+import { initCanvasSyncService, resetCanvasSyncService } from '@memry/sync-client/canvas-sync'
 
 const ASSET_CTX = { marker: 'asset-ctx' }
 

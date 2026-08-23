@@ -12,7 +12,7 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../../sync/local-mutations'
-import { getCurrentDeviceId } from '../../sync/current-device-id'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { recordExternalTaskUpdate } from '../../tasks/activity-log'
 import { publishProjectionEvent } from '../../projections'
 import {

@@ -65,8 +65,8 @@ import {
   syncGoogleCalendarNow,
   syncGoogleCalendarSource
 } from './sync-service'
-import { SyncQueueManager } from '../../sync/queue'
-import { initReminderSyncService, resetReminderSyncService } from '../../sync/reminder-sync'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 
 describe('google calendar sync service', () => {
   let dbResult: TestDatabaseResult

@@ -270,7 +270,7 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-vi.mock('./queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
+vi.mock('@memry/sync-client/queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
 vi.mock('./network', () => ({ NetworkMonitor: runtimeMocks.NetworkMonitor }))
 vi.mock('./websocket', () => ({ WebSocketManager: runtimeMocks.WebSocketManager }))
 /**
@@ -304,58 +304,58 @@ vi.mock('../telemetry/diagnostics', () => ({
 vi.mock('./worker-bridge', () => ({ SyncWorkerBridge: runtimeMocks.SyncWorkerBridge }))
 vi.mock('./crdt-queue', () => ({ CrdtUpdateQueue: runtimeMocks.CrdtUpdateQueue }))
 
-vi.mock('./task-sync', () => ({
+vi.mock('@memry/sync-client/task-sync', () => ({
   initTaskSyncService: runtimeMocks.taskSync.init,
   resetTaskSyncService: runtimeMocks.taskSync.reset
 }))
-vi.mock('./inbox-sync', () => ({
+vi.mock('@memry/sync-client/inbox-sync', () => ({
   initInboxSyncService: runtimeMocks.inboxSync.init,
   resetInboxSyncService: runtimeMocks.inboxSync.reset
 }))
-vi.mock('./filter-sync', () => ({
+vi.mock('@memry/sync-client/filter-sync', () => ({
   initFilterSyncService: runtimeMocks.filterSync.init,
   resetFilterSyncService: runtimeMocks.filterSync.reset
 }))
-vi.mock('./task-activity-sync', () => ({
+vi.mock('@memry/sync-client/task-activity-sync', () => ({
   initTaskActivitySyncService: runtimeMocks.taskActivitySync.init,
   resetTaskActivitySyncService: runtimeMocks.taskActivitySync.reset
 }))
-vi.mock('./bookmark-sync', () => ({
+vi.mock('@memry/sync-client/bookmark-sync', () => ({
   initBookmarkSyncService: runtimeMocks.bookmarkSync.init,
   resetBookmarkSyncService: runtimeMocks.bookmarkSync.reset
 }))
 
-vi.mock('./template-sync', () => ({
+vi.mock('@memry/sync-client/template-sync', () => ({
   initTemplateSyncService: runtimeMocks.templateSync.init,
   resetTemplateSyncService: runtimeMocks.templateSync.reset
 }))
-vi.mock('./home-page-sync', () => ({
+vi.mock('@memry/sync-client/home-page-sync', () => ({
   initHomePageSyncService: runtimeMocks.homePageSync.init,
   resetHomePageSyncService: runtimeMocks.homePageSync.reset
 }))
-vi.mock('./custom-icon-sync', () => ({
+vi.mock('@memry/sync-client/custom-icon-sync', () => ({
   initCustomIconSyncService: runtimeMocks.customIconSync.init,
   resetCustomIconSyncService: runtimeMocks.customIconSync.reset
 }))
-vi.mock('./reminder-sync', () => ({
+vi.mock('@memry/sync-client/reminder-sync', () => ({
   initReminderSyncService: runtimeMocks.reminderSync.init,
   resetReminderSyncService: runtimeMocks.reminderSync.reset
 }))
-vi.mock('./canvas-sync', () => ({
+vi.mock('@memry/sync-client/canvas-sync', () => ({
   initCanvasSyncService: vi.fn(() => ({})),
   resetCanvasSyncService: vi.fn(),
   getCanvasSyncService: vi.fn(() => null)
 }))
-vi.mock('./canvas-folder-sync', () => ({
+vi.mock('@memry/sync-client/canvas-folder-sync', () => ({
   initCanvasFolderSyncService: vi.fn(() => ({})),
   resetCanvasFolderSyncService: vi.fn(),
   getCanvasFolderSyncService: vi.fn(() => null)
 }))
-vi.mock('./project-sync', () => ({
+vi.mock('@memry/sync-client/project-sync', () => ({
   initProjectSyncService: runtimeMocks.projectSync.init,
   resetProjectSyncService: runtimeMocks.projectSync.reset
 }))
-vi.mock('./settings-sync', () => ({
+vi.mock('@memry/sync-client/settings-sync', () => ({
   initSettingsSyncManager: runtimeMocks.settingsSync.init,
   resetSettingsSyncManager: runtimeMocks.settingsSync.reset
 }))
@@ -367,15 +367,15 @@ vi.mock('./journal-sync', () => ({
   initJournalSyncService: runtimeMocks.journalSync.init,
   resetJournalSyncService: runtimeMocks.journalSync.reset
 }))
-vi.mock('./tag-definition-sync', () => ({
+vi.mock('@memry/sync-client/tag-definition-sync', () => ({
   initTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.init,
   resetTagDefinitionSyncService: runtimeMocks.tagDefinitionSync.reset
 }))
-vi.mock('./tag-category-sync', () => ({
+vi.mock('@memry/sync-client/tag-category-sync', () => ({
   initTagCategorySyncService: runtimeMocks.tagCategorySync.init,
   resetTagCategorySyncService: runtimeMocks.tagCategorySync.reset
 }))
-vi.mock('./folder-config-sync', () => ({
+vi.mock('@memry/sync-client/folder-config-sync', () => ({
   initFolderConfigSyncService: runtimeMocks.folderConfigSync.init,
   resetFolderConfigSyncService: runtimeMocks.folderConfigSync.reset
 }))
@@ -383,15 +383,15 @@ vi.mock('./calendar-event-sync', () => ({
   initCalendarEventSyncService: runtimeMocks.calendarEventSync.init,
   resetCalendarEventSyncService: runtimeMocks.calendarEventSync.reset
 }))
-vi.mock('./calendar-source-sync', () => ({
+vi.mock('@memry/sync-client/calendar-source-sync', () => ({
   initCalendarSourceSyncService: runtimeMocks.calendarSourceSync.init,
   resetCalendarSourceSyncService: runtimeMocks.calendarSourceSync.reset
 }))
-vi.mock('./calendar-binding-sync', () => ({
+vi.mock('@memry/sync-client/calendar-binding-sync', () => ({
   initCalendarBindingSyncService: runtimeMocks.calendarBindingSync.init,
   resetCalendarBindingSyncService: runtimeMocks.calendarBindingSync.reset
 }))
-vi.mock('./calendar-external-event-sync', () => ({
+vi.mock('@memry/sync-client/calendar-external-event-sync', () => ({
   initCalendarExternalEventSyncService: runtimeMocks.calendarExternalEventSync.init,
   resetCalendarExternalEventSyncService: runtimeMocks.calendarExternalEventSync.reset
 }))

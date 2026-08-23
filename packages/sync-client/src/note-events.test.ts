@@ -2,14 +2,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { NoteUpdatedEvent } from '@memry/contracts/notes-api'
 
-vi.mock('../lib/logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn()
-  })
-}))
 
 import { emitNoteUpdated } from './note-events'
 

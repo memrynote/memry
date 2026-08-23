@@ -4,7 +4,7 @@ import { asc, and, eq, sql } from 'drizzle-orm'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
-import type { DrizzleDb } from './item-handlers/types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentOutbox')
 

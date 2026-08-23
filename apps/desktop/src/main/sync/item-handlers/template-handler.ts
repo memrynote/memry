@@ -4,12 +4,12 @@ import { TemplateSyncPayloadSchema, type TemplateSyncPayload } from '@memry/cont
 import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
 import { BUILT_IN_IDS } from '../../vault/built-in-templates'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('TemplateHandler')
 

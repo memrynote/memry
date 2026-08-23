@@ -34,7 +34,7 @@ import {
   markDownloadFailed,
   markDownloadSucceeded,
   releaseDownloadAttempt
-} from '../sync/attachment-download-state'
+} from '@memry/sync-client/attachment-download-state'
 import {
   enqueueUpload,
   clearUpload,

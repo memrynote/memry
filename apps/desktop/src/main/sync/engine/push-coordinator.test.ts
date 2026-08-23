@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@main/sync/queue'
+import { SyncQueueManager, DEFAULT_MAX_ATTEMPTS } from '@memry/sync-client/queue'
 import { setupTestDb, type TestDatabaseResult } from '@tests/utils/engine-mocks'
 import type { SyncContext } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'

@@ -65,7 +65,7 @@ vi.mock('./blocknote-converter', () => ({
   markdownToYFragment: vi.fn(),
   repairEmptyBlockIds: vi.fn(() => 0)
 }))
-vi.mock('./crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
+vi.mock('@memry/sync-client/crdt-compact-utils', () => ({ compactYDoc: vi.fn() }))
 // Lets one test hold the store init open the way a real preflight child does,
 // so crdt:open-doc can arrive while it is still in flight.
 const preflight = vi.hoisted(() => ({ gate: null as Promise<void> | null }))

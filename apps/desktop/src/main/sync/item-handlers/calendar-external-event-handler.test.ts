@@ -4,10 +4,10 @@ import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/util
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { CalendarExternalEventSyncPayloadSchema } from '@memry/contracts/sync-payloads'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { getHandler } from './index'
-import { MissingSyncParentError } from './types'
-import type { ApplyContext, DrizzleDb } from './types'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({

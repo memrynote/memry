@@ -11,7 +11,7 @@ import {
 } from '@memry/shared/file-types'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
@@ -21,7 +21,7 @@ import {
   pruneUnresolvableReferences,
   releaseDownloadAttempt,
   shouldAttemptDownload
-} from '../attachment-download-state'
+} from '@memry/sync-client/attachment-download-state'
 import { getIndexDatabase } from '../../database/client'
 import {
   deleteFile,
@@ -61,14 +61,14 @@ import {
   setNoteProperties
 } from '@main/database/queries/notes'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import { applyPinnedTags } from './note-pin-helpers'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import { applyPinnedTags } from '@memry/sync-client/item-handlers/note-pin-helpers'
 import {
   buildNotePushPayload,
   fetchLocalNote,
   seedUnclockedNotes
 } from './note-handler-sync-helpers'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('NoteHandler')
 

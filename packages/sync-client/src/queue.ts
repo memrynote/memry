@@ -2,10 +2,10 @@ import { eq, and, sql, desc, asc, lt, lte, count, notInArray } from 'drizzle-orm
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
 import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
-import { trackMainEvent } from '../telemetry/track'
-import { trackMainLog } from '../telemetry/diagnostics'
+import { trackMainEvent } from './telemetry'
+import { trackMainLog } from './telemetry'
 
 const log = createLogger('SyncQueue')
 

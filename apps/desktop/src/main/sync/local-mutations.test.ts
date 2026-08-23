@@ -4,35 +4,35 @@ vi.mock('../database', () => ({
   getDatabase: vi.fn()
 }))
 
-vi.mock('./task-sync', () => ({
+vi.mock('@memry/sync-client/task-sync', () => ({
   getTaskSyncService: vi.fn()
 }))
 
-vi.mock('./project-sync', () => ({
+vi.mock('@memry/sync-client/project-sync', () => ({
   getProjectSyncService: vi.fn()
 }))
 
-vi.mock('./inbox-sync', () => ({
+vi.mock('@memry/sync-client/inbox-sync', () => ({
   getInboxSyncService: vi.fn()
 }))
 
-vi.mock('./filter-sync', () => ({
+vi.mock('@memry/sync-client/filter-sync', () => ({
   getFilterSyncService: vi.fn()
 }))
 
-vi.mock('./bookmark-sync', () => ({
+vi.mock('@memry/sync-client/bookmark-sync', () => ({
   getBookmarkSyncService: vi.fn()
 }))
 
-vi.mock('./reminder-sync', () => ({
+vi.mock('@memry/sync-client/reminder-sync', () => ({
   getReminderSyncService: vi.fn()
 }))
 
-vi.mock('./template-sync', () => ({
+vi.mock('@memry/sync-client/template-sync', () => ({
   getTemplateSyncService: vi.fn()
 }))
 
-vi.mock('./home-page-sync', () => ({
+vi.mock('@memry/sync-client/home-page-sync', () => ({
   getHomePageSyncService: vi.fn()
 }))
 
@@ -44,19 +44,19 @@ vi.mock('./journal-sync', () => ({
   getJournalSyncService: vi.fn()
 }))
 
-vi.mock('./tag-definition-sync', () => ({
+vi.mock('@memry/sync-client/tag-definition-sync', () => ({
   getTagDefinitionSyncService: vi.fn()
 }))
 
-vi.mock('./tag-category-sync', () => ({
+vi.mock('@memry/sync-client/tag-category-sync', () => ({
   getTagCategorySyncService: vi.fn()
 }))
 
-vi.mock('./settings-sync', () => ({
+vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn()
 }))
 
-vi.mock('./folder-config-sync', () => ({
+vi.mock('@memry/sync-client/folder-config-sync', () => ({
   getFolderConfigSyncService: vi.fn()
 }))
 
@@ -64,19 +64,19 @@ vi.mock('./calendar-event-sync', () => ({
   getCalendarEventSyncService: vi.fn()
 }))
 
-vi.mock('./calendar-source-sync', () => ({
+vi.mock('@memry/sync-client/calendar-source-sync', () => ({
   getCalendarSourceSyncService: vi.fn()
 }))
 
-vi.mock('./calendar-binding-sync', () => ({
+vi.mock('@memry/sync-client/calendar-binding-sync', () => ({
   getCalendarBindingSyncService: vi.fn()
 }))
 
-vi.mock('./calendar-external-event-sync', () => ({
+vi.mock('@memry/sync-client/calendar-external-event-sync', () => ({
   getCalendarExternalEventSyncService: vi.fn()
 }))
 
-vi.mock('./offline-clock', () => ({
+vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementTaskClocksOffline: vi.fn(),
   incrementProjectClocksOffline: vi.fn(),
   incrementInboxClockOffline: vi.fn(),
@@ -89,13 +89,13 @@ vi.mock('./offline-clock', () => ({
 }))
 
 import { getDatabase } from '../database'
-import { getCalendarBindingSyncService } from './calendar-binding-sync'
+import { getCalendarBindingSyncService } from '@memry/sync-client/calendar-binding-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
-import { getCalendarExternalEventSyncService } from './calendar-external-event-sync'
-import { getCalendarSourceSyncService } from './calendar-source-sync'
-import { getFilterSyncService } from './filter-sync'
-import { getFolderConfigSyncService } from './folder-config-sync'
-import { getInboxSyncService } from './inbox-sync'
+import { getCalendarExternalEventSyncService } from '@memry/sync-client/calendar-external-event-sync'
+import { getCalendarSourceSyncService } from '@memry/sync-client/calendar-source-sync'
+import { getFilterSyncService } from '@memry/sync-client/filter-sync'
+import { getFolderConfigSyncService } from '@memry/sync-client/folder-config-sync'
+import { getInboxSyncService } from '@memry/sync-client/inbox-sync'
 import {
   incrementBookmarkClockOffline,
   incrementFilterClockOffline,
@@ -106,18 +106,18 @@ import {
   incrementTaskClocksOffline,
   incrementTemplateClockOffline,
   incrementHomePageClockOffline
-} from './offline-clock'
-import { getBookmarkSyncService } from './bookmark-sync'
-import { getReminderSyncService } from './reminder-sync'
-import { getTemplateSyncService } from './template-sync'
-import { getHomePageSyncService } from './home-page-sync'
-import { getProjectSyncService } from './project-sync'
+} from '@memry/sync-client/offline-clock'
+import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
+import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
+import { getTemplateSyncService } from '@memry/sync-client/template-sync'
+import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
+import { getProjectSyncService } from '@memry/sync-client/project-sync'
 import { getNoteSyncService } from './note-sync'
-import { getSettingsSyncManager } from './settings-sync'
+import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { getJournalSyncService } from './journal-sync'
-import { getTagDefinitionSyncService } from './tag-definition-sync'
-import { getTagCategorySyncService } from './tag-category-sync'
-import { getTaskSyncService } from './task-sync'
+import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
+import { getTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
+import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import {
   enqueueLocalSyncCreate,
   enqueueLocalSyncDelete,

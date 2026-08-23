@@ -20,7 +20,7 @@ import {
 import { increment } from '@memry/sync-client/vector-clock'
 import { getCurrentDeviceId } from './current-device-id'
 import { initAllFieldClocks, TASK_SYNCABLE_FIELDS, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 export const OFFLINE_DEVICE_KEY = OFFLINE_CLOCK_DEVICE_ID

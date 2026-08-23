@@ -4,10 +4,10 @@ import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/util
 import { taskActivity } from '@memry/db-schema/schema/task-activity'
 import type { TaskActivitySyncPayload } from '@memry/contracts/sync-payloads'
 import { TaskActivityChannels } from '@memry/contracts/ipc-channels'
-import { taskActivityHandler } from './task-activity-handler'
+import { taskActivityHandler } from '@memry/sync-client/item-handlers/task-activity-handler'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
-import type { ApplyContext } from './types'
-import type { SyncQueueManager } from '../queue'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 

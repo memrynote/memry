@@ -15,7 +15,7 @@ import os from 'os'
 import path from 'path'
 import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-body-tags-'))
 

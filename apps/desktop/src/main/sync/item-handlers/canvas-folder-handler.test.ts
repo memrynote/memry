@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm'
 import { canvasFolders, canvases } from '@memry/db-schema/data-schema'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { createTestDataDb, type TestDataDb } from '../../../test/helpers/test-data-db'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({

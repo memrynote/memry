@@ -36,7 +36,7 @@ vi.mock('../lib/logger', () => ({
 }))
 
 import { ItemApplier, type ApplyItemInput } from './apply-item'
-import { MissingSyncParentError } from './item-handlers/types'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { sortByApplyOrder } from './engine/pull-coordinator'
 
 const LATE_PROJECT = 'proj-late'

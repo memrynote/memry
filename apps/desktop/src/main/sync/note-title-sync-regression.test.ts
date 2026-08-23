@@ -39,7 +39,7 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { recoverDirtyItems } from './dirty-recovery'
 import { noteHandler } from './item-handlers/note-handler'
 

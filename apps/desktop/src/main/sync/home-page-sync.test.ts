@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { homePages } from '@memry/db-schema/schema/home-pages'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   initHomePageSyncService,
   getHomePageSyncService,
   resetHomePageSyncService
-} from './home-page-sync'
+} from '@memry/sync-client/home-page-sync'
 
 describe('HomePageSyncService', () => {
   let testDb: TestDatabaseResult

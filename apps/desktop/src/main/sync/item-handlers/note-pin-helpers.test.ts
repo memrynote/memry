@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { noteTags } from '@memry/db-schema/schema/notes-cache'
 import { createTestIndexDb, sql, type TestDatabaseResult, type TestDb } from '@tests/utils/test-db'
 
-import { applyPinnedTags, getPinnedTagsForNote } from './note-pin-helpers'
+import { applyPinnedTags, getPinnedTagsForNote } from '@memry/sync-client/item-handlers/note-pin-helpers'
 
 function insertNote(indexDb: TestDb, id: string): void {
   indexDb.run(sql`

@@ -38,9 +38,9 @@ import {
   getOrCreateTag,
   updateTagColor
 } from '../../database/queries/tag-definitions'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { ItemApplier } from '../apply-item'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 /** A payload from a build that does not know about `color` at all. */
 const withoutColor = (fields: Record<string, unknown>): TagDefinitionSyncPayload =>

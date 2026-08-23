@@ -12,7 +12,7 @@
 import type { TaskActivityListInput, TaskActivityListResponse } from '@memry/contracts/tasks-api'
 import { requireDatabase } from '../database'
 import { listTaskActivity, pruneTaskActivity } from '../database/queries/task-activity'
-import { getCurrentDeviceId } from '../sync/current-device-id'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { taskActivityRetentionCutoff } from '@memry/sync-client/task-activity-retention'
 import { createLogger } from '../lib/logger'
 

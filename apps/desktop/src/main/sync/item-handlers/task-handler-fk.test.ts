@@ -5,8 +5,8 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskHandler } from './task-handler'
-import { MissingSyncParentError } from './types'
-import type { ApplyContext } from './types'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import {
   TEST_PROJECT,
   TEST_STATUSES,

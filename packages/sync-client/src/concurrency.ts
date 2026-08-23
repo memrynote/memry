@@ -1,4 +1,4 @@
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 
 const log = createLogger('Concurrency')
 

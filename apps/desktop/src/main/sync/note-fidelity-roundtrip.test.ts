@@ -38,7 +38,7 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteProperties: () => mocks.properties
 }))
 
-vi.mock('./item-handlers/note-pin-helpers', () => ({
+vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   getPinnedTagsForNote: () => mocks.pinnedTags
 }))
 

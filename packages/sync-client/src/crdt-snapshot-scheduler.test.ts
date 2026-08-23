@@ -1,13 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../lib/logger', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  })
-}))
 
 import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
 

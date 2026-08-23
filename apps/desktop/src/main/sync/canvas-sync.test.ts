@@ -23,13 +23,13 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   CanvasSyncService,
   getCanvasSyncService,
   initCanvasSyncService,
   resetCanvasSyncService
-} from './canvas-sync'
+} from '@memry/sync-client/canvas-sync'
 
 let db: TestDataDb
 let queue: SyncQueueManager

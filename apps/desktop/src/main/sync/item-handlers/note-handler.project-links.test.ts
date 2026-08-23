@@ -16,7 +16,7 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { projectLinks } from '@memry/db-schema/schema/project-links'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-links-'))
 

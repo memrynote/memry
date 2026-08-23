@@ -9,9 +9,9 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { readTagViews, writeTagViews } from '../../database/queries/tag-definitions'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { tagDefinitionHandler } from './tag-definition-handler'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({

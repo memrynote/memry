@@ -12,7 +12,7 @@ import {
   listPendingUploads,
   drainOutboxWith
 } from './attachment-outbox'
-import type { DrizzleDb } from './item-handlers/types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment outbox', () => {
   let tempDir: string

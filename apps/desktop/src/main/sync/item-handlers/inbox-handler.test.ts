@@ -13,7 +13,7 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { inboxHandler } from './inbox-handler'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 
 let db: TestDataDb
 const emit = vi.fn()

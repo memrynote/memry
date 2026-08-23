@@ -12,7 +12,7 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import { tagCategoryHandler } from './tag-category-handler'
+import { tagCategoryHandler } from '@memry/sync-client/item-handlers/tag-category-handler'
 
 let db: TestDataDb
 const emit = vi.fn()

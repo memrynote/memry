@@ -69,7 +69,7 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 - [x] T015 Seam inventory: scan `apps/desktop/src/main/sync/` (314 files) + `packages/app-core` (18 node-touching) + `packages/storage-vault` (1); map every hit to one of the 10 seams (e.g. `network.ts` → http-client/runtime, `crdt-pending-notes.ts` → crdt-persistence); zero unassigned — `packages/sync-client/docs/seam-inventory.md` _(`packages/sync-client/docs/seam-inventory.md` + regenerable `scan-seams.mjs`. 174 non-test files scanned, 69 platform-touching, all assigned. **Three findings**: (1) vault file I/O (20 files) fits none of the ten seams — recommend widening `VaultDirectory` into `VaultFileSystem` rather than an 11th seam; **needs owner sign-off and blocks T018–T021**; (2) 23 `*-sync.ts` files are platform-bound only by the `BetterSQLite3Database` **type** — a type widening, no seam; (3) `node:events`/`node:crypto`/`node:os` are mechanical substitutions, not seams)_
 - [x] T016 Scaffold `packages/sync-client` (package.json with raw `./src` exports matching workspace conventions, tsconfig, turbo wiring) — `packages/sync-client/package.json` _(`packages/sync-client` — raw `./src` exports matching workspace convention, `base.json` tsconfig with `types: []` so node globals cannot leak in, registered in the root `typecheck` filter allowlist; `pnpm typecheck` 18/18 green)_
 - [x] T017 Define the 10 adapter interfaces exactly per [contracts/platform-adapters.md](./contracts/platform-adapters.md) — platform-free types only — `packages/sync-client/src/adapters/*.ts` _(one file per seam under `src/adapters/`, plus `SyncPlatformAdapters` and `SYNC_ADAPTER_SEAMS`. Lifted verbatim from contracts/platform-adapters.md; platform-free types only — `Uint8Array` for bytes, Promises for effects)_
-- [ ] T018 Move platform-free sync engine files (item-handlers registry, outbox logic, vector clocks, protocol client) into `packages/sync-client/src/` as import-path-only diffs, one seam per commit _(**STARTED, not complete.** `vector-clock.ts` + its suite moved as the first seam, proving the mechanism end-to-end: workspace wiring, `@memry/sync-client/vector-clock` subpath, 26 import-path-only edits, boundary check green. The remaining moves are **blocked on the T015 finding** — vault file I/O has no seam, so ~20 files cannot be assigned until `VaultDirectory` is widened or an 11th seam is approved.)_
+- [ ] T018 Move platform-free sync engine files (item-handlers registry, outbox logic, vector clocks, protocol client) into `packages/sync-client/src/` as import-path-only diffs, one seam per commit _(**IN PROGRESS — 54 of ~105 files moved, all gates green after each slice.** Slice 1: `vector-clock` (mechanism proof). Slice 2: 15 zero-dependency modules (compress, field-merge, crdt-payload, note-events, note-size, worker-protocol, …) + 10 platform-clean suites; the Drizzle **type widening landed** — canonical `DrizzleDb`/`IndexDrizzleDb` in `@memry/db-schema/drizzle-db` as `BaseSQLiteDatabase<'sync', { changes: number }, schema>`, all 23 type-only files now platform-free, `SyncQueueManager` and the helpers the type flows through widened, zero `await`s added. Slice 3: logging + telemetry **facades** (`sync-client/src/logging.ts`, `src/telemetry.ts`; desktop wires them as the first import of `main/index.ts` via `sync/sync-client-runtime.ts`) unblocked the outbox: `queue.ts`, `offline-clock`, `current-device-id`, 19 record `*-sync` services, `item-handlers/types` + 11 platform-free handlers moved (38 files + 2 clean suites). DB-backed suites stay in desktop and import the package. **Gotcha burned once:** two suites mocked `microtask-batch-broadcaster` by old relative path and went inert after the move — `vi.mock` specifiers must move to the package path with the module. Remaining: `retry` (extract http error classes first), `attachment-events`/`engine`/`network`/`websocket` (`node:events` emitter), `node:crypto`/`node:os` mech subs, `certificate-pins`/`sync-server-url` (`process.env`), then everything gated on VaultFileSystem (T021), CRDT seams (T019) and the db-accessor/i18n/store/window-broadcast facades.)_
 - [ ] T019 Move CRDT merge/pending logic behind the `CrdtPersistence` + `CrdtProvider` seams — `packages/sync-client/src/crdt/`
 - [ ] T020 Desktop adapter implementations (electron/node imports allowed **only** here) — `apps/desktop/src/main/sync/adapters/*.ts`
 - [ ] T021 App-core split: move the 18 node-touching files behind seams or into desktop; pure domain stays importable by mobile — `packages/app-core/src/`
@@ -90,15 +90,18 @@ additive and precedes any mobile write exposure. Verification: quickstart §Phas
 
 **Checkpoint — G1**: full quickstart §Phase 1 command list green; extraction PRs show mechanical diffs; desktop behaviour unchanged.
 
-**G1 status (2026-08-23): NOT GREEN — server kit + scaffold done, extraction open.**
+**G1 status (2026-08-23, updated after extraction slices 2–3): NOT GREEN —
+server kit + scaffold done, extraction half done (54/~105 files moved).**
 
 Green now: `pnpm lint`, `pnpm typecheck` (18/18), `pnpm test:desktop`
-(1389 files / 18131 tests, 0 failures), `pnpm --filter @memry/sync-server test`
-(1032, coverage thresholds met), `pnpm check:architecture`,
+(1380 files / 18033 tests, 0 failures — 12 suites now run inside
+`@memry/sync-client`: 13 files / 117 tests), `pnpm --filter @memry/sync-server
+test` (1032, coverage thresholds met), `pnpm check:architecture`,
 `pnpm check:contracts`, `pnpm ipc:check`, `pnpm docs:impact --strict`,
 `pnpm docs:build`, `git diff --check`.
 
-Open: T018–T022 (the code move), T024, T025, T032.
+Open: T018 tail (retry/events/crypto/os/process.env slices), T019–T022,
+T024, T025, T032.
 
 **Seam amendment (owner decision, 2026-08-23) — no longer blocking.** T015 found
 that vault file I/O (~20 files) mapped to none of the ten seams: `VaultDirectory`

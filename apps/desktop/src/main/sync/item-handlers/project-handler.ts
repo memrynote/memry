@@ -11,7 +11,7 @@ import {
 } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { increment } from '@memry/sync-client/vector-clock'
 import { mergeProjectFields, initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import { createLogger } from '../../lib/logger'
@@ -20,8 +20,8 @@ import {
   isMarkdownNote,
   getProjectLinkForItem
 } from '../../database/queries/projects'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('ProjectHandler')
 

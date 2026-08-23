@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
-import { compactYDoc, copyXmlFragment, copyYMap } from './crdt-compact-utils'
+import { compactYDoc, copyXmlFragment, copyYMap } from '@memry/sync-client/crdt-compact-utils'
 
 describe('crdt-compaction', () => {
   describe('compactYDoc', () => {

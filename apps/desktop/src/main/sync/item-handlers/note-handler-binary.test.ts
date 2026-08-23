@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { DrizzleDb } from './types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const VAULT_ROOT = '/tmp/test-vault-binary'
 
@@ -75,7 +75,7 @@ vi.mock('../../vault/file-ops', async () => {
   }
 })
 
-vi.mock('./note-pin-helpers', () => ({
+vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   getPinnedTagsForNote: vi.fn(() => []),
   applyPinnedTags: vi.fn()
 }))

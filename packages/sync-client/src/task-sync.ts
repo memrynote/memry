@@ -10,7 +10,7 @@ import {
   incrementTaskClocksOffline,
   rebindOfflineClockData
 } from './offline-clock'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const log = createLogger('TaskSync')

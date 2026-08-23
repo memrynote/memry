@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { attachmentDownloadFailures, attachmentUploadQueue } from '@memry/db-schema/data-schema'
-import { createLogger } from '../lib/logger'
+import { createLogger } from './logging'
 import type { DrizzleDb } from './item-handlers/types'
 
 const log = createLogger('AttachmentDownloadState')

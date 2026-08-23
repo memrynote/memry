@@ -19,9 +19,12 @@
   "dependencies": {
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
+    "@memry/shared": "workspace:*",
+    "@memry/sync-core": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "pako": "^2.1.0",
-    "yjs": "^13.6.29"
+    "yjs": "^13.6.29",
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
