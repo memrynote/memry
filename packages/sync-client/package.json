@@ -9,6 +9,7 @@
     "./adapters": "./src/adapters/index.ts",
     "./adapters/conformance": "./src/adapters/__tests__/conformance.ts",
     "./vector-clock": "./src/vector-clock.ts",
+    "./pull": "./src/pull/index.ts",
     "./*": "./src/*.ts"
   },
   "types": "./src/index.ts",

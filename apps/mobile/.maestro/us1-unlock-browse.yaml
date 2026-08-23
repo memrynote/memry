@@ -1,0 +1,45 @@
+# T055 — US1 smoke: sign-in → unlock → browse → open note.
+# Prereqs: staging account with a seeded vault; MEMRY_EMAIL / MEMRY_OTP /
+# MEMRY_PHRASE provided via `maestro test -e ...` (OTP entered from the mail
+# the runner reads; on a re-run with a stored session the flow short-circuits
+# past sign-in, which the optional blocks below tolerate).
+appId: com.memry.mobile
+---
+- launchApp
+# -- sign-in (skipped when a session already exists) --
+- runFlow:
+    when:
+      visible: 'Sign in'
+    commands:
+      - tapOn:
+          id: 'E-mail address'
+      - inputText: ${MEMRY_EMAIL}
+      - tapOn: 'Send code'
+      - tapOn:
+          id: 'One-time code'
+      - inputText: ${MEMRY_OTP}
+      - tapOn: 'Verify'
+# -- vault pick (first run only) --
+- runFlow:
+    when:
+      visible: 'Choose a vault'
+    commands:
+      - tapOn:
+          index: 0
+          below: 'Choose a vault'
+# -- unlock (whenever the vault key is absent) --
+- runFlow:
+    when:
+      visible: 'Unlock your vault'
+    commands:
+      - tapOn:
+          id: 'Recovery phrase, 24 words'
+      - inputText: ${MEMRY_PHRASE}
+      - tapOn: 'Unlock'
+# -- browse + open --
+- assertVisible: 'Notes'
+- tapOn:
+    below: 'Notes'
+    index: 0
+- assertVisible:
+    id: 'Note content'

@@ -976,6 +976,9 @@ importers:
       '@memry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@memry/storage-vault':
+        specifier: workspace:*
+        version: link:../../packages/storage-vault
       '@memry/sync-client':
         specifier: workspace:*
         version: link:../../packages/sync-client
@@ -1091,6 +1094,9 @@ importers:
         specifier: ^13.6.29
         version: 13.6.29
     devDependencies:
+      '@types/node':
+        specifier: ^25.2.2
+        version: 25.9.5
       '@types/pako':
         specifier: ^2.0.4
         version: 2.0.4

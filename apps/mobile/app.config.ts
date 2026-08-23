@@ -14,7 +14,13 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.memry.mobile',
     appleTeamId: 'TV343Q4W8A',
-    supportsTablet: false
+    supportsTablet: false,
+    // Vault DB + attachments must be readable when a BGAppRefreshTask runs
+    // before first unlock after reboot (data-model.md §1, verified in R7).
+    entitlements: {
+      'com.apple.developer.default-data-protection':
+        'NSFileProtectionCompleteUntilFirstUserAuthentication'
+    }
   },
   android: {
     package: 'com.memry.mobile',
@@ -44,7 +50,9 @@ const config: ExpoConfig = {
         }
       }
     ],
-    'react-native-libsodium'
+    'react-native-libsodium',
+    'expo-secure-store',
+    'expo-background-task'
   ],
   experiments: {
     typedRoutes: true,
