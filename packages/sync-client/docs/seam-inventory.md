@@ -8,22 +8,29 @@ that will own it. Regenerate with `node packages/sync-client/docs/scan-seams.mjs
 
 ## Surface scanned
 
-| Tree                          |   Files | Non-test | Platform-touching |
-| ----------------------------- | ------: | -------: | ----------------: |
-| `apps/desktop/src/main/sync/` |     314 |      145 |                55 |
-| `packages/app-core/src/`      |      31 |       26 |                13 |
-| `packages/storage-vault/src/` |       5 |        3 |                 1 |
-| **Total**                     | **350** |  **174** |            **69** |
+State after the G1 extraction (regenerate with the scanner for live numbers):
 
-"Platform-touching" = imports a node builtin, `electron*`, or a platform-bound
-package (`better-sqlite3`, `classic-level`, `keytar`, `y-leveldb`, `undici`,
-`chokidar`, `drizzle-orm/better-sqlite3`). The remaining **105 non-test files
-are already platform-free** and move into `packages/sync-client/src/` as
-import-path-only diffs (T018).
+| Tree                          | Files | Non-test | Platform-touching |
+| ----------------------------- | ----: | -------: | ----------------: |
+| `apps/desktop/src/main/sync/` |   253 |       99 |    27 (+6 adapter) |
+| `packages/app-core/src/`      |    14 |       13 |                 0 |
+| `packages/storage-vault/src/` |     5 |        3 |                 1 |
 
-The spec's counts (314 sync files, 18 node-touching in app-core, 1 in
-storage-vault) are close but not identical to the measured ones above; where
-they differ, the table is what the scanner found on this tree today.
+`packages/sync-client/src/` now holds **79 non-test modules** extracted from
+this surface. The original T015 scan (174 non-test files, 69 platform-touching,
+105 platform-free) is preserved in git history; the tables below are the
+post-extraction remainder.
+
+Of what remains in the desktop sync tree: the `sync/adapters/` rows are the
+sanctioned platform edge (T020 — electron/node imports are legal there by
+design); every other platform-touching row is the desktop implementation behind
+its seam. **60 platform-free files also remain in desktop** (engine/, the
+push/pull coordinators, the item-handler registry and its vault-bound handlers,
+decrypt/encrypt, apply-item, …): they form one dependency knot that reaches the
+concrete `http-client`/`crdt-provider`/vault/database/i18n/store modules, so
+they move only when the engine consumes the seams instead of the concrete
+modules — a behaviour-affecting refactor deliberately split out of the
+mechanical extraction.
 
 ## Findings that change the plan
 
@@ -84,168 +91,122 @@ alias in `item-handlers/types.ts` is the choke point for most of them.
 `app-core/paths.ts`. These stay in `apps/desktop` and are reached only through
 the adapter implementations.
 
-## Assignment
+## Assignment — post-extraction remainder
 
-### none — Drizzle type only — 23 files
+### VaultFileSystem — 9 files
 
-| File                                     | LOC | Platform imports                      |
-| ---------------------------------------- | --: | ------------------------------------- |
-| `sync/bookmark-sync.ts`                  |  69 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/calendar-binding-sync.ts`          |  80 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/calendar-event-sync.ts`            |  98 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/calendar-external-event-sync.ts`   |  82 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/calendar-source-sync.ts`           |  80 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/canvas-folder-sync.ts`             |  86 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/canvas-sync.ts`                    | 137 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/custom-icon-sync.ts`               |  68 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/dirty-recovery.ts`                 | 302 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/filter-sync.ts`                    |  73 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/folder-config-sync.ts`             |  80 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/home-page-sync.ts`                 |  68 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/inbox-sync.ts`                     | 108 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/initial-seed.ts`                   |  52 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/item-handlers/note-pin-helpers.ts` |  40 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/item-handlers/types.ts`            |  70 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/manifest-check.ts`                 | 452 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/reminder-sync.ts`                  |  73 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/settings-sync.ts`                  | 208 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/tag-category-sync.ts`              |  94 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/tag-definition-sync.ts`            | 126 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/task-activity-sync.ts`             |  81 | `drizzle-orm/better-sqlite3` _(type)_ |
-| `sync/template-sync.ts`                  |  69 | `drizzle-orm/better-sqlite3` _(type)_ |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `storage-vault/note-content-store.ts` | 84 | `fs/promises`, `path`, `node:crypto` |
+| `sync/crdt-writeback.ts` | 917 | `path` |
+| `sync/item-handlers/journal-handler.ts` | 259 | `fs` |
+| `sync/item-handlers/note-handler-sync-helpers.ts` | 140 | `fs` |
+| `sync/item-handlers/note-handler.ts` | 725 | `fs`, `path` |
+| `sync/journal-sync.ts` | 95 | `fs` |
+| `sync/large-notes.ts` | 87 | `fs` |
+| `sync/note-sync.ts` | 140 | `fs`, `path` |
+| `sync/vault-directory.ts` | 208 | `fs`, `path`, `electron` |
 
-### VaultFileSystem — 19 files
+### desktop adapter layer (platform imports legal) — 6 files
 
-| File                                              | LOC | Platform imports                               |
-| ------------------------------------------------- | --: | ---------------------------------------------- |
-| `app-core/folder-view.ts`                         | 370 | `node:fs/promises`, `node:path`                |
-| `app-core/folders.ts`                             |  75 | `node:fs/promises`, `node:path`                |
-| `app-core/inbox.ts`                               | 830 | `node:fs/promises`, `node:path`                |
-| `app-core/locale.ts`                              |  69 | `node:fs/promises`                             |
-| `app-core/note-files.ts`                          | 547 | `node:fs/promises`, `node:path`                |
-| `app-core/notes.ts`                               | 555 | `node:fs/promises`, `node:path`, `node:util`   |
-| `app-core/properties.ts`                          | 188 | `node:fs/promises`, `node:path`                |
-| `app-core/sync.ts`                                | 338 | `node:fs/promises`, `node:path`                |
-| `app-core/templates.ts`                           | 215 | `node:fs/promises`, `node:path`                |
-| `app-core/versions.ts`                            | 181 | `node:crypto`, `node:fs/promises`, `node:path` |
-| `storage-vault/note-content-store.ts`             |  84 | `fs/promises`, `path`, `node:crypto`           |
-| `sync/crdt-writeback.ts`                          | 917 | `path`                                         |
-| `sync/item-handlers/journal-handler.ts`           | 259 | `fs`                                           |
-| `sync/item-handlers/note-handler-sync-helpers.ts` | 140 | `fs`                                           |
-| `sync/item-handlers/note-handler.ts`              | 725 | `fs`, `path`                                   |
-| `sync/journal-sync.ts`                            |  95 | `fs`                                           |
-| `sync/large-notes.ts`                             |  87 | `fs`                                           |
-| `sync/note-sync.ts`                               | 140 | `fs`, `path`                                   |
-| `sync/vault-directory.ts`                         | 208 | `fs`, `path`, `electron`                       |
-
-### none — desktop-only — 5 files
-
-| File                    | LOC | Platform imports                                                                                              |
-| ----------------------- | --: | ------------------------------------------------------------------------------------------------------------- |
-| `app-core/agent.ts`     | 215 | `node:child_process`                                                                                          |
-| `app-core/database.ts`  | 202 | `better-sqlite3`, `drizzle-orm/better-sqlite3`, `drizzle-orm/better-sqlite3/migrator`, `node:fs`, `node:path` |
-| `app-core/paths.ts`     |  91 | `node:fs/promises`, `node:path`, `node:url`                                                                   |
-| `sync/worker-bridge.ts` | 459 | `worker_threads`, `path`                                                                                      |
-| `sync/worker.ts`        | 182 | `worker_threads`                                                                                              |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/adapters/attachment-store.ts` | 76 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/crdt-preflight.ts` | 49 | `node:fs` |
+| `sync/adapters/crdt-store-path.ts` | 23 | `node:fs` |
+| `sync/adapters/device-registration.ts` | 95 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/vault-file-system.ts` | 215 | `node:fs`, `node:path`, `node:crypto` |
+| `sync/adapters/wiring.ts` | 108 | `electron` |
 
 ### AttachmentStore — 2 files
 
-| File                        | LOC | Platform imports                                                      |
-| --------------------------- | --: | --------------------------------------------------------------------- |
-| `sync/attachment-outbox.ts` | 216 | `fs`, `crypto`                                                        |
-| `sync/attachments.ts`       | 993 | `node:fs`, `node:fs/promises`, `node:crypto`, `node:path`, `electron` |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/attachment-outbox.ts` | 215 | `fs` |
+| `sync/attachments.ts` | 993 | `node:fs`, `node:fs/promises`, `node:crypto`, `node:path`, `electron` |
 
 ### CrdtPersistence — 2 files
 
-| File                         | LOC | Platform imports                   |
-| ---------------------------- | --: | ---------------------------------- |
-| `sync/crdt-pending-notes.ts` | 430 | `crypto`, `fs`, `path`, `electron` |
-| `sync/crdt-persistence.ts`   | 255 | `y-leveldb`, `fs`, `os`            |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/crdt-pending-notes.ts` | 240 | `crypto`, `fs`, `path`, `electron` |
+| `sync/crdt-persistence.ts` | 255 | `y-leveldb`, `fs`, `os` |
 
 ### CrdtStorePath — 2 files
 
-| File                      | LOC | Platform imports                   |
-| ------------------------- | --: | ---------------------------------- |
-| `sync/crdt-store-move.ts` |  48 | `fs`                               |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/crdt-store-move.ts` | 48 | `fs` |
 | `sync/crdt-store-path.ts` | 308 | `path`, `crypto`, `fs`, `electron` |
 
 ### DeviceRegistration — 2 files
 
-| File                          | LOC | Platform imports |
-| ----------------------------- | --: | ---------------- |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
 | `sync/device-registration.ts` | 286 | `electron`, `os` |
-| `sync/linking-service.ts`     | 786 | `os`             |
+| `sync/linking-service.ts` | 786 | `os` |
 
-### HttpClient — 2 files
+### none — desktop-only — 2 files
 
-| File                  | LOC | Platform imports |
-| --------------------- | --: | ---------------- |
-| `sync/http-client.ts` | 343 | `electron`       |
-| `sync/websocket.ts`   | 373 | `events`         |
-
-### none — EventEmitter — 2 files
-
-| File                        | LOC | Platform imports |
-| --------------------------- | --: | ---------------- |
-| `sync/attachment-events.ts` |  91 | `node:events`    |
-| `sync/engine.ts`            | 873 | `events`         |
-
-### none — node:crypto — 2 files
-
-| File                                          | LOC | Platform imports |
-| --------------------------------------------- | --: | ---------------- |
-| `sync/blocknote-converter.ts`                 | 766 | `node:crypto`    |
-| `sync/item-handlers/agent-message-handler.ts` | 243 | `node:crypto`    |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/worker-bridge.ts` | 459 | `worker_threads`, `path` |
+| `sync/worker.ts` | 182 | `worker_threads` |
 
 ### AttachmentStore + VaultFileSystem — 1 file
 
-| File                          | LOC | Platform imports |
-| ----------------------------- | --: | ---------------- |
-| `sync/attachment-backfill.ts` | 112 | `fs`, `path`     |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/attachment-backfill.ts` | 112 | `fs`, `path` |
 
 ### CertificatePinning — 1 file
 
-| File                          | LOC | Platform imports                                    |
-| ----------------------------- | --: | --------------------------------------------------- |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
 | `sync/certificate-pinning.ts` | 212 | `node:https`, `node:tls`, `node:crypto`, `electron` |
 
 ### CrdtPreflight — 1 file
 
-| File                     | LOC | Platform imports                          |
-| ------------------------ | --: | ----------------------------------------- |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
 | `sync/crdt-preflight.ts` | 260 | `child_process`, `os`, `path`, `electron` |
 
 ### CrdtPreflight (desktop-only impl) — 1 file
 
-| File                           | LOC | Platform imports |
-| ------------------------------ | --: | ---------------- |
-| `sync/crdt-preflight-child.ts` |  98 | `fs`             |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/crdt-preflight-child.ts` | 98 | `fs` |
 
 ### CrdtProvider — 1 file
 
-| File                    |  LOC | Platform imports                    |
-| ----------------------- | ---: | ----------------------------------- |
-| `sync/crdt-provider.ts` | 1414 | `fs/promises`, `crypto`, `electron` |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/crdt-provider.ts` | 1413 | `fs/promises`, `electron` |
+
+### HttpClient — 1 file
+
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/http-client.ts` | 293 | `electron` |
 
 ### HttpClient + Runtime — 1 file
 
-| File              | LOC | Platform imports     |
-| ----------------- | --: | -------------------- |
-| `sync/network.ts` | 169 | `events`, `electron` |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/network.ts` | 169 | `electron` |
 
 ### Runtime — 1 file
 
-| File              |  LOC | Platform imports |
-| ----------------- | ---: | ---------------- |
-| `sync/runtime.ts` | 1066 | `electron`       |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/runtime.ts` | 1068 | `electron` |
 
 ### Runtime (logger) — 1 file
 
-| File                        | LOC | Platform imports        |
-| --------------------------- | --: | ----------------------- |
-| `sync/content-sync-base.ts` | 134 | `electron-log` _(type)_ |
+| File | LOC | Platform imports |
+| --- | ---: | --- |
+| `sync/content-sync-base.ts` | 134 | `electron-log` *(type)* |
 
 ---
 
-`VaultFileSystem` rows belong to seam 6 (finding 1, resolved). Every row is
-assigned; the inventory has no unassigned files.
+`VaultFileSystem` rows belong to seam 6 (finding 1, resolved). Adapter-layer rows are the platform edge, not extraction gaps.

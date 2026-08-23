@@ -68,6 +68,9 @@ for (const r of roots) {
     const k = key(f)
     const specs = [...hits.entries()]
     let seam = EXPLICIT[k]
+    // The adapter layer is the sanctioned platform edge (T020): electron/node
+    // imports are legal there by design, not an extraction gap.
+    if (!seam && k.startsWith('sync/adapters/')) seam = 'desktop adapter layer (platform imports legal)'
     if (!seam) {
       if (specs.every(([s, t]) => s.startsWith('drizzle-orm/better-sqlite3') && t))
         seam = 'none — Drizzle type only'
