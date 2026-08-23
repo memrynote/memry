@@ -595,8 +595,10 @@ describe('PushCoordinator', () => {
       expect(postToServerMock).toHaveBeenCalledTimes(2)
       const first = postToServerMock.mock.calls[0][1] as PushBody
       const second = postToServerMock.mock.calls[1][1] as PushBody
-      expect(first.items[0].encryptedData).toBe(v1)
-      expect(second.items[0].encryptedData).toBe(v2)
+      // The wire payload additionally carries the first clock the coordinator
+      // stamps on a clock-less payload of a clock-required type.
+      expect(JSON.parse(first.items[0].encryptedData)).toMatchObject({ title: 'first' })
+      expect(JSON.parse(second.items[0].encryptedData)).toMatchObject({ title: 'second' })
 
       expect(queue.getSize()).toBe(0)
     })
@@ -625,7 +627,7 @@ describe('PushCoordinator', () => {
       expect(postToServerMock).toHaveBeenCalledTimes(1)
       const body = postToServerMock.mock.calls[0][1] as PushBody
       expect(body.items).toHaveLength(1)
-      expect(body.items[0].encryptedData).toBe(v2)
+      expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({ title: 'second' })
       expect(queue.getSize()).toBe(0)
     })
 
@@ -684,8 +686,95 @@ describe('PushCoordinator', () => {
       const body = postToServerMock.mock.calls[0][1] as PushBody
       expect(body.items).toHaveLength(1)
       expect(body.items[0].operation).toBe('create')
-      expect(body.items[0].encryptedData).toBe(v2)
+      expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({ title: 'second' })
       expect(queue.getSize()).toBe(0)
+    })
+  })
+
+  // A frozen queue payload written by a pre-#1223 build has no clock, and the
+  // handlers' buildPushPayload repair never reaches a delete, an orphaned row,
+  // or a handler throw — those all push the frozen payload verbatim. The server
+  // requires a clock on every item of a clock-required type and one clock-less
+  // item fails the whole batch, so a single such row blocks the queue forever.
+  describe('#given a clock-less frozen payload of a clock-required type', () => {
+    it('#then a delete is stamped with a first clock before it is pushed', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-1',
+        operation: 'delete',
+        payload: JSON.stringify({ id: 'cal-ev-1', title: 'Standup' })
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items).toHaveLength(1)
+      expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({
+        id: 'cal-ev-1',
+        clock: { 'device-1': 1 }
+      })
+      expect(queue.getSize()).toBe(0)
+    })
+
+    it('#then an orphaned update falls back to the frozen payload with a clock stamped', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+      // Row no longer exists locally, so the handler cannot rebuild it.
+      getHandlerMock.mockReturnValue({ buildPushPayload: () => null, markPushSynced: vi.fn() })
+
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-2',
+        operation: 'update',
+        payload: JSON.stringify({ id: 'cal-ev-2', title: 'Retro' })
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(JSON.parse(body.items[0].encryptedData)).toMatchObject({
+        id: 'cal-ev-2',
+        clock: { 'device-1': 1 }
+      })
+    })
+
+    it('#then a payload that already carries a clock is left untouched', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      const payload = JSON.stringify({ id: 'cal-ev-3', clock: { 'device-9': 4 } })
+      queue.enqueue({
+        type: 'calendar_external_event',
+        itemId: 'cal-ev-3',
+        operation: 'delete',
+        payload
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items[0].encryptedData).toBe(payload)
+    })
+
+    it('#then a type without the clock requirement is never stamped', async () => {
+      const { coordinator, queue } = createHarness(getDb())
+      acceptAll()
+
+      const payload = JSON.stringify({ general: { theme: 'dark' } })
+      queue.enqueue({
+        type: 'settings',
+        itemId: 'synced_settings',
+        operation: 'update',
+        payload
+      })
+
+      await coordinator.push()
+
+      const body = postToServerMock.mock.calls[0][1] as PushBody
+      expect(body.items[0].encryptedData).toBe(payload)
     })
   })
 
