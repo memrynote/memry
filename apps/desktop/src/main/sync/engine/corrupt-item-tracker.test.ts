@@ -19,7 +19,7 @@ vi.mock('../http-client', () => ({
   postToServer: vi.fn()
 }))
 
-vi.mock('../retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 }))
 

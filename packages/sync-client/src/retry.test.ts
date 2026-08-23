@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NetworkError, RateLimitError, SyncServerError } from './http-client'
+import { NetworkError, RateLimitError, SyncServerError } from './http-errors'
 import { DeadLetterError, withRetry } from './retry'
 
 beforeEach(() => {

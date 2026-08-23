@@ -29,7 +29,7 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
-import { attachmentEvents } from '../sync/attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   markDownloadFailed,
   markDownloadSucceeded,
@@ -59,7 +59,7 @@ import {
 } from '../sync/note-attachment-metadata'
 import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime'
-import { resolveSyncServerUrl } from '../sync/sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getValidAccessToken } from '../sync/token-manager'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { getMainI18n } from '../lib/main-i18n'

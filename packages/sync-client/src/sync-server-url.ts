@@ -4,18 +4,19 @@
  * Read at call time — never captured in a module-level `const`. The main
  * process loads `.env.<environment>` via dotenv in `index.ts` *after* the IPC
  * handler modules are imported, so a top-level
- * `const URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'` freezes
+ * `const URL = readEnv('SYNC_SERVER_URL') || 'http://localhost:8787'` freezes
  * to the fallback before the env file is applied. In `dev` the fallback equals
  * `.env.dev`'s value so the bug is invisible; in `dev:staging` it silently
  * pinned OAuth/sync to localhost. `http-client.ts` used to carry its own copy of
  * this resolution; it now calls in here, so every sync-adjacent consumer —
  * sync HTTP, OAuth sign-in, canvas assets, attachments — reads one policy.
  */
+import { readEnv } from './env'
 
 const DEV_FALLBACK_URL = 'http://localhost:8787'
 
 export function resolveSyncServerUrl(): string {
-  const configured = process.env.SYNC_SERVER_URL
+  const configured = readEnv('SYNC_SERVER_URL')
   if (configured) return normalizeSyncServerUrl(configured)
 
   // The localhost fallback is a *development* convenience, not a runtime
@@ -58,7 +59,7 @@ export function resolveSyncServerUrl(): string {
   // configuration becomes a hard failure here. The only change is that OAuth
   // and canvas assets now report the same explicit config error instead of
   // dialing a localhost port nothing is listening on.
-  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+  if (readEnv('NODE_ENV') === 'development' || readEnv('NODE_ENV') === 'test') {
     return DEV_FALLBACK_URL
   }
 

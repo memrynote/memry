@@ -23,7 +23,7 @@ import {
   getSyncVaultHeaders,
   type FetchFn
 } from './http-client'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 
 import type {
   UploadInitRequest,
@@ -695,7 +695,7 @@ export class AttachmentSyncService {
       encryptedSize
     }
 
-    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
@@ -722,7 +722,7 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}`
 
     try {
-      const retryOpts: Partial<import('./retry').RetryOptions> = {
+      const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
         maxRetries: 2,
         baseDelayMs: 1000
       }
@@ -756,7 +756,7 @@ export class AttachmentSyncService {
     options?: { signal?: AbortSignal; isOnline?: () => boolean; onWaitingNetwork?: () => void }
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/chunk/${chunkIndex}`
-    const retryOpts: Partial<import('./retry').RetryOptions> = {
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
       maxRetries: 5,
       baseDelayMs: 2000,
       onRetry: (_attempt, error) => {
@@ -786,7 +786,7 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
     const body = JSON.stringify(encryptedManifest)
 
-    const retryOpts: Partial<import('./retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 

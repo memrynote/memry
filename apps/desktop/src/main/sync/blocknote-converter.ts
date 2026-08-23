@@ -12,7 +12,6 @@ import {
 } from '@memry/editor-schema/blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
-import { randomUUID } from 'node:crypto'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { parseCriticMarkup, writeCriticMarkupMarksToYDoc } from '@memry/shared'
@@ -212,7 +211,7 @@ export async function markdownToBlocks(
 // any block whose id is falsy before serializing.
 function ensureBlockIds(blocks: Block[]): void {
   for (const block of blocks) {
-    if (!block.id) (block as { id: string }).id = randomUUID()
+    if (!block.id) (block as { id: string }).id = crypto.randomUUID()
     const children = block.children as Block[] | undefined
     if (children?.length) ensureBlockIds(children)
   }
@@ -243,7 +242,7 @@ export function repairEmptyBlockIds(fragment: Y.XmlFragment): number {
       const el = child as Y.XmlElement
       if (typeof el.nodeName !== 'string' || typeof el.getAttribute !== 'function') continue
       if (BLOCK_CONTAINER_NODES.has(el.nodeName) && !el.getAttribute('id')) {
-        el.setAttribute('id', randomUUID())
+        el.setAttribute('id', crypto.randomUUID())
         repaired++
       }
       visit(el)
@@ -297,7 +296,7 @@ function createEmptyParagraph(): Block {
     type: 'paragraph',
     content: [],
     children: [],
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     props: {}
   } as unknown as Block
 }
@@ -480,7 +479,7 @@ async function parseToggleSegment(
 
   return {
     type: 'toggleListItem',
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     props: { ...(colors ?? {}) },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []

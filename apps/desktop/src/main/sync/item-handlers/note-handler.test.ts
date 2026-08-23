@@ -157,7 +157,7 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import { attachmentEvents } from '../attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { extractFolderFromPath } from '../note-sync'
 import {
   buildNotePushPayload,

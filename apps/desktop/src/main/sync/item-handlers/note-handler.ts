@@ -15,7 +15,7 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
-import { attachmentEvents } from '../attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   markDownloadRequested,
   pruneUnresolvableReferences,

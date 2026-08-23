@@ -1,6 +1,6 @@
 import { createLogger } from '../../lib/logger'
 import { secureCleanup } from '../../crypto/index'
-import { withRetry } from '../retry'
+import { withRetry } from '@memry/sync-client/retry'
 import {
   getFromServer,
   postToServer,

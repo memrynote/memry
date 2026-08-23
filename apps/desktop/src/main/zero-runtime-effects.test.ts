@@ -88,7 +88,7 @@ vi.mock('./lib/logger', () => ({
   })
 }))
 
-vi.mock('./sync/attachment-events', () => ({
+vi.mock('@memry/sync-client/attachment-events', () => ({
   attachmentEvents: {
     emitSaved: mocks.attachmentEmitSaved
   }

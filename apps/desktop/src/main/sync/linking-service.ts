@@ -37,7 +37,7 @@ import {
 import { createLogger } from '../lib/logger'
 
 import { getFromServer, postToServer, RateLimitError, SyncServerError } from './http-client'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 import {
   buildVaultTransfer,
   collectVaultTransfer,

@@ -17,7 +17,7 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { resolveSyncServerUrl } from './sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { trackMainEvent } from '../telemetry/track'
@@ -84,7 +84,7 @@ import {
   isKeyMaterialActivityRecent,
   keyMaterialActivityRemainingMs
 } from './key-verification'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,

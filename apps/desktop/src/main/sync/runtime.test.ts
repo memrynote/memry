@@ -395,7 +395,7 @@ vi.mock('./http-client', () => ({
   AttachmentTooLargeError: class AttachmentTooLargeError extends Error {}
 }))
 
-vi.mock('./retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: runtimeMocks.withRetry,
   // runtime.ts → sync-errors.ts imports this; the class itself is exercised in
   // sync-errors.test.ts, here it only needs to exist.

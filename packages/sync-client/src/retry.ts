@@ -1,4 +1,4 @@
-import { NetworkError, RateLimitError, SyncServerError } from './http-client'
+import { NetworkError, RateLimitError, SyncServerError } from './http-errors'
 
 export interface RetryOptions {
   maxRetries: number
