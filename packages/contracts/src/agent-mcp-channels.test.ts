@@ -49,6 +49,9 @@ const deliberatelyExcludedOperations = [
   'diagnostics.sendReport',
   'notes.openExternal',
   'notes.revealInFinder',
+  'notes.resolveAttachment',
+  'notes.revealAttachmentInFinder',
+  'notes.openAttachmentExternal',
   'notes.showImportDialog',
   'settings.openOsMicrophoneSettings'
 ] as const

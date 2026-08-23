@@ -15,6 +15,12 @@ import {
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/shadcn'
+import {
+  ImageAttachmentMenu,
+  ImageHoverMenuButton,
+  useImageHoverMenu,
+  type ImageMenuTarget
+} from './attachment-block-menu'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -1274,22 +1280,56 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  // A context-menu click on an image block opens the attachment menu (reveal /
+  // open / copy path — issue #1709). The built-in image block has no custom
+  // render to mount a trigger in, so the menu is a controlled dropdown anchored
+  // at the click point, and a hover "⋯" button floats over the image.
+  const [imageMenuTarget, setImageMenuTarget] = useState<ImageMenuTarget | null>(null)
+
+  // From a DOM element inside an image block to the block's raw stored props.
+  const resolveImageFromElement = useCallback(
+    (element: HTMLElement): { url: string; name: string } | null => {
+      const blockId = element.closest('[data-id]')?.getAttribute('data-id')
+      if (!blockId) return null
+
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'image') return null
+      const { url, name } = block.props as { url?: string; name?: string }
+      if (!url) return null
+
+      return { url, name: name || url.split('/').pop() || url }
+    },
+    [editor]
+  )
+
+  const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
+    useImageHoverMenu(containerRef, resolveImageFromElement)
+
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
+
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
-      if (!checkListBlock) return
+      if (checkListBlock) {
+        const blockId = checkListBlock.getAttribute('data-id')
+        if (!blockId) return
 
-      const blockId = checkListBlock.getAttribute('data-id')
-      if (!blockId) return
+        const block = editor.getBlock(blockId)
+        if (!block || block.type !== 'checkListItem') return
 
-      const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'checkListItem') return
+        e.preventDefault()
+        convertCheckboxToTask(blockId)
+        return
+      }
+
+      if (!target.closest('img')) return
+      const image = resolveImageFromElement(target)
+      if (!image) return
 
       e.preventDefault()
-      convertCheckboxToTask(blockId)
+      setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
     },
-    [editor, convertCheckboxToTask]
+    [editor, convertCheckboxToTask, resolveImageFromElement]
   )
 
   // Backspace-at-start guard for taskBlock neighbours.
@@ -1416,6 +1456,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         >
           {!marqueeZoneEl && (
             <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+          )}
+          {imageMenuTarget && (
+            <ImageAttachmentMenu
+              target={imageMenuTarget}
+              onClose={() => setImageMenuTarget(null)}
+            />
+          )}
+          {imageHoverTarget && !imageMenuTarget && (
+            <ImageHoverMenuButton
+              target={imageHoverTarget}
+              onOpenChange={handleImageHoverMenuOpenChange}
+            />
           )}
           <BlockNoteView
             editor={editor}

@@ -23,7 +23,21 @@ Each attachment renders as a block with:
 - File size
 - Type icon
 - A download button
-- A "Reveal in Finder" action (macOS)
+- A `⋯` menu with the file's actions (below)
+
+### Finding the Original File
+
+Every attachment block — the file card, the audio player, and the inline PDF preview — carries the same menu. Open it from the `⋯` button that appears on hover, or by right-clicking the block:
+
+- **Reveal in Finder** — show the stored file in your OS file manager
+- **Open in default app** — hand the file to whatever your OS opens that type with
+- **Copy path** — put the file's absolute on-disk path on the clipboard
+
+The menu's header shows the **original filename** and the name the file is **stored as** on disk. Attachments are saved under `<vault>/attachments/<note-id>/` with a short random prefix (`k3f9x2-report.pdf`), so this menu is the way to find or forward the original file without hunting through the vault by hand.
+
+If the file hasn't synced to this device yet, the menu still shows both names, but the actions stay disabled until the download lands.
+
+Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
 
 ## PDF Inline Preview
 
