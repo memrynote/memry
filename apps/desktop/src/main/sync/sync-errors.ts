@@ -6,7 +6,7 @@ import {
   RateLimitError,
   AttachmentTooLargeError
 } from './http-client'
-import { DeadLetterError } from './retry'
+import { DeadLetterError } from '@memry/sync-client/retry'
 
 export type { SyncErrorCategory }
 

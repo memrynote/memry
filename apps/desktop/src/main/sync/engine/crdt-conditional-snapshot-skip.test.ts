@@ -40,7 +40,7 @@ vi.mock('../../crypto/index', () => ({
   secureCleanup: vi.fn()
 }))
 
-vi.mock('../retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: async (fn: () => Promise<unknown>) => ({ value: await fn() })
 }))
 

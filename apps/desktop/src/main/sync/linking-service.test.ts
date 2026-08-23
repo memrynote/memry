@@ -80,7 +80,7 @@ vi.mock('./http-client', () => {
   }
 })
 
-vi.mock('./retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: mockWithRetry
 }))
 

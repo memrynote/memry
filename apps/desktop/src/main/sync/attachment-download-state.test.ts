@@ -10,7 +10,7 @@ vi.mock('electron', () => ({ net: { fetch: vi.fn() } }))
 
 import { runMigrations } from '../database/migrate'
 import { SyncServerError } from './http-client'
-import { DeadLetterError } from './retry'
+import { DeadLetterError } from '@memry/sync-client/retry'
 import { enqueueUpload } from './attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,

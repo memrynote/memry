@@ -382,7 +382,7 @@ vi.mock('./http-client', () => ({
   AttachmentTooLargeError: class AttachmentTooLargeError extends Error {}
 }))
 
-vi.mock('./retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: runtimeMocks.withRetry,
   DeadLetterError: class DeadLetterError extends Error {
     constructor(public lastError: unknown) {

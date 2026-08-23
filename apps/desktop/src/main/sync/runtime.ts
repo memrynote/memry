@@ -84,7 +84,7 @@ import {
   isKeyMaterialActivityRecent,
   keyMaterialActivityRemainingMs
 } from './key-verification'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
