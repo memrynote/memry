@@ -1,10 +1,10 @@
-# Mobile CI (spec 001-mobile-app T004 / Train Phase 0).
+# Mobile CI (spec 001-mobile-app T004 / Train Phase 0; filters joined in T032).
 #
-# Root `pnpm typecheck` / `pnpm test` use explicit --filter allowlists that do
-# not include @memry/mobile, so the root pipelines are untouched by mobile code
-# by construction. That exclusion is temporary (constitution: removal is
-# tracked as T032) — this workflow is the mobile gate until then, and keeps
-# only device-specific jobs afterwards.
+# Root `pnpm typecheck` / `pnpm test` allowlists now include @memry/mobile
+# (T032), which covers local and turbo runs. No GitHub workflow runs those
+# root scripts, so this workflow remains the mobile CI gate; once a root-script
+# CI job exists, the non-device steps here collapse into it and only
+# device-specific jobs stay (plan T1.9).
 name: Mobile CI
 
 on:

@@ -6,6 +6,7 @@
     "@expo/ui": "~57.0.12",
     "@memry/app-core": "workspace:*",
     "@memry/contracts": "workspace:*",
+    "@memry/sync-client": "workspace:*",
     "@noble/hashes": "^2.0.1",
     "@scure/bip39": "^2.0.0",
     "expo": "~57.0.15",

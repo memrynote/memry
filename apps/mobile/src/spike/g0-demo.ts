@@ -9,9 +9,9 @@
  * this at production.
  */
 import { sha256 } from '@noble/hashes/sha2.js'
+import { decompressPayload } from '@memry/sync-client/compress'
 import { mnemonicToSeed, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
-import { inflate } from 'pako'
 import sodium from 'react-native-libsodium'
 
 import {
@@ -217,11 +217,11 @@ export const pullAndDecryptNote = async (session: DemoSession): Promise<PulledNo
     fromBase64(item.blob.dataNonce),
     fileKey
   )
-  // Desktop compresses before encrypting (sync/compress.ts): first plaintext
-  // byte is a flag — 0x00 raw, 0x01 zlib deflate.
-  const flag = payloadBytes[0]
-  const body = payloadBytes.subarray(1)
-  const jsonBytes = flag === 0x01 ? inflate(body) : body
+  // Desktop compresses before encrypting; the flag byte (0x00 raw, 0x01 zlib
+  // deflate) and its handling live in the shared package, so both shells
+  // decode payloads with the same code (spec T024: this is the real
+  // apps/mobile → @memry/sync-client edge the boundary rule walks).
+  const jsonBytes = decompressPayload(payloadBytes)
   const payload = JSON.parse(new TextDecoder().decode(jsonBytes)) as {
     title?: string
     content?: string | null
