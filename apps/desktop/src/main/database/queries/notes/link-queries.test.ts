@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestIndexDb } from '@tests/utils/test-db'
 import { insertNoteCache, deleteNoteCache } from './note-crud'
-import { setNoteLinks, getIncomingReferences } from './link-queries'
+import { setNoteLinks, getIncomingReferences, resolveNotesByTitles } from './link-queries'
 import { setPropertyRefs } from './property-ref-queries'
 
 describe('getIncomingReferences', () => {
@@ -62,6 +62,31 @@ describe('getIncomingReferences', () => {
 
     const incoming = getIncomingReferences(db, 'nte_dad')
     expect(incoming.filter((r) => r.sourceNoteId === 'nte_john')).toHaveLength(2)
+  })
+
+  it('resolves exact, case-insensitive and missing titles in one call', () => {
+    insertNoteCache(db, {
+      id: 'nte_meeting',
+      path: 'notes/Meeting Notes.md',
+      title: 'Meeting Notes',
+      contentHash: 'hash-meeting',
+      wordCount: 0,
+      characterCount: 0,
+      createdAt: '2026-01-10T00:00:00.000Z',
+      modifiedAt: '2026-01-12T00:00:00.000Z'
+    })
+
+    const resolved = resolveNotesByTitles(db, ['Meeting Notes', 'meeting notes', 'No Such Note'])
+
+    expect(resolved.get('Meeting Notes')).toEqual({
+      id: 'nte_meeting',
+      path: 'notes/Meeting Notes.md'
+    })
+    expect(resolved.get('meeting notes')).toEqual({
+      id: 'nte_meeting',
+      path: 'notes/Meeting Notes.md'
+    })
+    expect(resolved.get('No Such Note')).toBeNull()
   })
 
   it('excludes a property ref whose source note no longer exists in note_cache', () => {

@@ -5,9 +5,12 @@ import { getTagColors, withAlpha } from '../tags-row/tag-colors'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
 import { FileText } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 interface WikiLinkPreviewCardProps {
-  preview: WikiLinkPreview
+  preview: WikiLinkPreview | null
+  /** Set instead of `preview` for a link that resolves to nothing (#1716). */
+  missingTarget?: string | null
   position: { top: number; left: number; placement: 'above' | 'below' }
   onMouseEnter: () => void
   onMouseLeave: () => void
@@ -17,6 +20,7 @@ interface WikiLinkPreviewCardProps {
 
 export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
   preview,
+  missingTarget,
   position,
   onMouseEnter,
   onMouseLeave,
@@ -24,6 +28,41 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
   onNoteClick
 }: WikiLinkPreviewCardProps) {
   const dateFormat = useDateFormat()
+  const { t } = useT('notes')
+
+  if (!preview) {
+    if (!missingTarget) return null
+    // The not-found card: one clickable line. The click goes through the same
+    // internal-link handler the chip itself does, which opens the
+    // create-confirm dialog.
+    return createPortal(
+      <div
+        data-wiki-link-preview=""
+        className="fixed z-50 w-[280px] rounded-[10px] border border-border/40 bg-popover shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-150"
+        style={{
+          top: position.top,
+          left: position.left,
+          transformOrigin: position.placement === 'below' ? 'top left' : 'bottom left',
+          color: 'var(--text-primary)'
+        }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <button
+          type="button"
+          onClick={() => onNoteClick?.(missingTarget)}
+          className="flex w-full items-center gap-1.5 py-3 px-3.5 text-start cursor-pointer rounded-[10px] transition-colors duration-150 hover:bg-[var(--surface-active)]"
+        >
+          <FileText className="size-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <span className="text-xs/[18px]" style={{ color: 'var(--text-tertiary)' }}>
+            {t('wikiLinkPreview.notFound', { title: missingTarget })}
+          </span>
+        </button>
+      </div>,
+      document.body
+    )
+  }
+
   return createPortal(
     <div
       data-wiki-link-preview=""

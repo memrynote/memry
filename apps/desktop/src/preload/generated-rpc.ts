@@ -74,6 +74,7 @@ export function createGeneratedRpcApi({
       "largeFileClose": ((sessionId) => invoke("notes:large-file-close", sessionId)) as GeneratedRpcApi["notes"]["largeFileClose"],
       "largeFileSearch": ((input) => invoke("notes:large-file-search", input)) as GeneratedRpcApi["notes"]["largeFileSearch"],
       "resolveByTitle": ((title) => invoke("notes:resolve-by-title", title)) as GeneratedRpcApi["notes"]["resolveByTitle"],
+      "resolveTitles": ((titles) => invoke("notes:resolve-titles", titles)) as GeneratedRpcApi["notes"]["resolveTitles"],
       "resolveWikiTarget": ((target) => invoke("notes:resolve-wiki-target", target)) as GeneratedRpcApi["notes"]["resolveWikiTarget"],
       "previewByTitle": ((title) => invoke("notes:preview-by-title", title)) as GeneratedRpcApi["notes"]["previewByTitle"],
       "update": ((input) => invoke("notes:update", input)) as GeneratedRpcApi["notes"]["update"],

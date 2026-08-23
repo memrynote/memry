@@ -83,6 +83,7 @@ import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
+import { WikiLinkCreateDialog } from '@/components/note/wiki-link-create-dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -221,6 +222,8 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false)
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
+  const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
@@ -1157,29 +1160,14 @@ export function NotePage({ noteId }: NotePageProps) {
             })
             break
 
-          case 'create': {
-            // Create new note under the resolution's title, NOT the raw target:
-            // for `[[Note#Heading]]` that is `Note`. Minting `Note#Heading.md`
-            // is the bug this fixes — a heading separator has no business in a
-            // filename, and the file was written to the vault and synced.
-            const result = await createNote.mutateAsync({ title: resolution.title })
-            if (!result.success || !result.note) {
-              toast.error(t('page.toast.createLinkedFailed'))
-              return
-            }
-            openLinked({
-              type: 'note',
-              title: result.note.title,
-              icon: 'file-text',
-              path: `/notes/${result.note.id}`,
-              entityId: result.note.id,
-              isPinned: false,
-              isModified: false,
-              isPreview: false,
-              isDeleted: false
-            })
+          case 'create':
+            // Ask before creating — a stale `[[Old Title]]` used to silently
+            // mint a duplicate note here (#1716). The dialog carries the
+            // resolution's title, NOT the raw target: for `[[Note#Heading]]`
+            // that is `Note` — a heading separator has no business in a
+            // filename.
+            setPendingWikiLinkCreate(resolution.title)
             break
-          }
 
           case 'not-found':
             // File-like target not found - show error instead of creating a note
@@ -1191,7 +1179,36 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openLinked, createNote, t, scrollToHeadingText, prefersReducedMotion]
+    [openLinked, t, scrollToHeadingText, prefersReducedMotion]
+  )
+
+  // The confirmed half of the dialog above: byte-identical to the old
+  // auto-create — default folder, open immediately.
+  const handleWikiLinkCreateConfirm = useCallback(
+    async (title: string) => {
+      try {
+        const result = await createNote.mutateAsync({ title })
+        if (!result.success || !result.note) {
+          toast.error(t('page.toast.createLinkedFailed'))
+          return
+        }
+        openLinked({
+          type: 'note',
+          title: result.note.title,
+          icon: 'file-text',
+          path: `/notes/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      } catch (err) {
+        log.error('Failed to create linked note:', err)
+        toast.error(t('page.toast.createLinkedFailed'))
+      }
+    },
+    [createNote, openLinked, t]
   )
 
   const handleBacklinkClick = useCallback(
@@ -1786,6 +1803,13 @@ export function NotePage({ noteId }: NotePageProps) {
         }
         noteTitle={note.title}
         onMove={(targetFolder) => void handleMoveToFolder(targetFolder)}
+      />
+
+      {/* Broken wiki-link create confirmation (#1716) */}
+      <WikiLinkCreateDialog
+        targetTitle={pendingWikiLinkCreate}
+        onClose={() => setPendingWikiLinkCreate(null)}
+        onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
       />
 
       {/* Delete confirmation */}

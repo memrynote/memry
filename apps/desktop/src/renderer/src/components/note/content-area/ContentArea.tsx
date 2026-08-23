@@ -79,6 +79,7 @@ import {
   useEditorFileUpload,
   useEditorSync,
   useTagSuggestions,
+  useWikiLinkBroken,
   useWikiLinkSuggestions,
   usePasteLinkMenu,
   useTableCellImage
@@ -551,6 +552,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Hook #3: Wiki link suggestions
   const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(editor)
+
+  // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
+  // live by note created/renamed/deleted events (#1716).
+  useWikiLinkBroken(editor)
 
   // Hook #4: Tag suggestions + inline plugin
   const { handleTagSuggestionSelect } = useTagSuggestions({
@@ -1625,24 +1630,27 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
           )}
 
-          {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
-            <WikiLinkPreviewCard
-              preview={wikiLinkHover.preview}
-              position={wikiLinkHover.position}
-              onMouseEnter={wikiLinkHover.handleCardMouseEnter}
-              onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-              onTagClick={(tag, color) =>
-                openSidebarItem({
-                  type: 'tag',
-                  title: tag,
-                  path: '/tags/' + tag,
-                  entityId: tag,
-                  color
-                })
-              }
-              onNoteClick={onInternalLinkClick}
-            />
-          )}
+          {wikiLinkHover.isVisible &&
+            (wikiLinkHover.preview || wikiLinkHover.missingTarget) &&
+            wikiLinkHover.position && (
+              <WikiLinkPreviewCard
+                preview={wikiLinkHover.preview}
+                missingTarget={wikiLinkHover.missingTarget}
+                position={wikiLinkHover.position}
+                onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+                onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+                onTagClick={(tag, color) =>
+                  openSidebarItem({
+                    type: 'tag',
+                    title: tag,
+                    path: '/tags/' + tag,
+                    entityId: tag,
+                    color
+                  })
+                }
+                onNoteClick={onInternalLinkClick}
+              />
+            )}
 
           {linkMentionHover.isVisible &&
             linkMentionHover.url &&
