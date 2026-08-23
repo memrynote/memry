@@ -162,6 +162,21 @@ export const NoteMoveSchema = z.object({
   newFolder: z.string() // Relative path from notes/
 })
 
+export const AttachmentActionSchema = z.object({
+  noteId: z.string(),
+  /** Raw `props.url` from a file/image block — note-relative or legacy `memry-file://local/…` */
+  url: z.string().min(1)
+})
+
+export interface AttachmentResolveResult {
+  /** Absolute on-disk path, remapped to this device's vault for cross-device notes */
+  absolutePath: string
+  /** Basename on disk, e.g. `k3f9x2-report.pdf` */
+  storedFilename: string
+  /** False while the attachment has not been downloaded/synced to this device yet */
+  exists: boolean
+}
+
 export const NoteListSchema = z.object({
   folder: z.string().optional(),
   tags: z.array(z.string()).optional(),
@@ -492,5 +507,8 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
+  resolveAttachment(noteId: string, url: string): Promise<AttachmentResolveResult>
+  revealAttachmentInFinder(noteId: string, url: string): Promise<void>
+  openAttachmentExternal(noteId: string, url: string): Promise<void>
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
 }

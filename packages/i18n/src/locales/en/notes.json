@@ -172,6 +172,13 @@
       "setLocalOnly": "Set local only",
       "delete": "Delete note"
     },
+    "attachmentMenu": {
+      "menuLabel": "File actions",
+      "storedAs": "Stored as {name}",
+      "notSynced": "Not synced to this device yet",
+      "revealFailed": "Failed to reveal file",
+      "openFailed": "Failed to open file"
+    },
     "breadcrumb": {
       "locationAria": "Note location",
       "parentFolderAria": "Go to parent folder"

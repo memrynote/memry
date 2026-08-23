@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
 import { useResolvedFileUrl } from './note-file-url-context'
+import { AttachmentBlockContextMenu, AttachmentMenuButton } from './attachment-block-menu'
 import type { FileBlockProps } from './file-block-markers'
 
 export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
@@ -126,9 +127,11 @@ interface PdfPreviewProps {
   onResize: (width: number, height: number) => void
   /** Commit a new alignment to the block props. */
   onAlign: (align: PdfAlign) => void
+  /** The attachment "⋯" menu button, rendered in the hover control cluster. */
+  menu?: React.ReactNode
 }
 
-function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfPreviewProps) {
+function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }: PdfPreviewProps) {
   const { t: tPhaseF } = useT('notes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -366,7 +369,8 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
       <div className="pdf-preview-error rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <FileText className="h-5 w-5" />
-          <span className="font-medium">{name}</span>
+          <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+          {menu}
         </div>
         <p className="mt-2 text-sm text-red-500">
           {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.failedToLoadPdf')}
@@ -470,6 +474,12 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
                 </button>
               )
             })}
+            {menu && (
+              <>
+                <div className="mx-0.5 h-4 w-px bg-border" />
+                {menu}
+              </>
+            )}
           </div>
         )}
 
@@ -568,9 +578,11 @@ interface FilePreviewProps {
   name: string
   size: number
   mimeType: string
+  /** The attachment "⋯" menu button. */
+  menu?: React.ReactNode
 }
 
-function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
+function FilePreview({ url, name, size, mimeType, menu }: FilePreviewProps) {
   const { t: tPhaseF } = useT('notes')
   const { state } = useSync()
 
@@ -599,6 +611,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
           {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download2')}
         </a>
       </Button>
+      {menu}
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay
           progress={activeTransfer.progress}
@@ -610,7 +623,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
   )
 }
 
-function AudioPreview({ url, name }: FilePreviewProps) {
+function AudioPreview({ url, name, menu }: FilePreviewProps) {
   const { state } = useSync()
 
   const uploadEntry = state.uploadProgress
@@ -642,6 +655,7 @@ function AudioPreview({ url, name }: FilePreviewProps) {
         >
           <track kind="captions" />
         </audio>
+        {menu}
       </div>
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay
@@ -734,31 +748,50 @@ function FileBlockRender({
     return <div ref={contentRef} className="file-block my-2" contentEditable={false} />
   }
 
+  // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
+  // and validates it against the vault itself.
+  const menuButton = <AttachmentMenuButton url={url} name={name} />
+
   return (
-    <div ref={contentRef} className="file-block my-2" contentEditable={false}>
-      {isPdf ? (
-        <PdfPreview
-          // Keyed by URL so a changed one rebuilds the preview from scratch. A
-          // load error is otherwise terminal — the red card survives for as long
-          // as the block is mounted, and the editor does not unmount when the
-          // note is closed, so an attachment that synced in a moment later
-          // stayed invisible until the app was restarted. The URL is what
-          // changes when this note's attachments land (see `attachment-revision`).
-          key={resolvedUrl}
-          url={resolvedUrl}
-          name={name}
-          width={width ?? 0}
-          height={height ?? 0}
-          align={align ?? 'left'}
-          onResize={handleResize}
-          onAlign={handleAlign}
-        />
-      ) : isAudio ? (
-        <AudioPreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
-      ) : (
-        <FilePreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
-      )}
-    </div>
+    <AttachmentBlockContextMenu url={url} name={name}>
+      <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+        {isPdf ? (
+          <PdfPreview
+            // Keyed by URL so a changed one rebuilds the preview from scratch. A
+            // load error is otherwise terminal — the red card survives for as long
+            // as the block is mounted, and the editor does not unmount when the
+            // note is closed, so an attachment that synced in a moment later
+            // stayed invisible until the app was restarted. The URL is what
+            // changes when this note's attachments land (see `attachment-revision`).
+            key={resolvedUrl}
+            url={resolvedUrl}
+            name={name}
+            width={width ?? 0}
+            height={height ?? 0}
+            align={align ?? 'left'}
+            onResize={handleResize}
+            onAlign={handleAlign}
+            menu={menuButton}
+          />
+        ) : isAudio ? (
+          <AudioPreview
+            url={resolvedUrl}
+            name={name}
+            size={size}
+            mimeType={mimeType}
+            menu={menuButton}
+          />
+        ) : (
+          <FilePreview
+            url={resolvedUrl}
+            name={name}
+            size={size}
+            mimeType={mimeType}
+            menu={menuButton}
+          />
+        )}
+      </div>
+    </AttachmentBlockContextMenu>
   )
 }
 

@@ -15,6 +15,7 @@ import {
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/shadcn'
+import { ImageAttachmentMenu, type ImageMenuTarget } from './attachment-block-menu'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -1274,20 +1275,45 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  // A context-menu click on an image block opens the attachment menu (reveal /
+  // open / copy path — issue #1709). The built-in image block has no custom
+  // render to mount a trigger in, so the menu is a controlled dropdown anchored
+  // at the click point.
+  const [imageMenuTarget, setImageMenuTarget] = useState<ImageMenuTarget | null>(null)
+
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
-      const checkListBlock = target.closest('[data-content-type="checkListItem"]')
-      if (!checkListBlock) return
 
-      const blockId = checkListBlock.getAttribute('data-id')
+      const checkListBlock = target.closest('[data-content-type="checkListItem"]')
+      if (checkListBlock) {
+        const blockId = checkListBlock.getAttribute('data-id')
+        if (!blockId) return
+
+        const block = editor.getBlock(blockId)
+        if (!block || block.type !== 'checkListItem') return
+
+        e.preventDefault()
+        convertCheckboxToTask(blockId)
+        return
+      }
+
+      if (!target.closest('img')) return
+      const blockId = target.closest('[data-id]')?.getAttribute('data-id')
       if (!blockId) return
 
       const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'checkListItem') return
+      if (!block || block.type !== 'image') return
+      const { url, name } = block.props as { url?: string; name?: string }
+      if (!url) return
 
       e.preventDefault()
-      convertCheckboxToTask(blockId)
+      setImageMenuTarget({
+        x: e.clientX,
+        y: e.clientY,
+        url,
+        name: name || url.split('/').pop() || url
+      })
     },
     [editor, convertCheckboxToTask]
   )
@@ -1416,6 +1442,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         >
           {!marqueeZoneEl && (
             <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+          )}
+          {imageMenuTarget && (
+            <ImageAttachmentMenu
+              target={imageMenuTarget}
+              onClose={() => setImageMenuTarget(null)}
+            />
           )}
           <BlockNoteView
             editor={editor}

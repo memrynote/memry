@@ -5,6 +5,7 @@ import type {
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
 import type {
+  AttachmentResolveResult,
   NoteSizeClass,
   NoteLargeFileInfo,
   LargeFileOpenResult,
@@ -532,6 +533,23 @@ export const notesRpc = defineDomain({
     revealInFinder: defineMethod<(id: string) => Promise<void>>({
       channel: NotesChannels.invoke.REVEAL_IN_FINDER,
       params: ['id']
+    }),
+    resolveAttachment: defineMethod<
+      (noteId: string, url: string) => Promise<AttachmentResolveResult>
+    >({
+      channel: NotesChannels.invoke.ATTACHMENT_RESOLVE,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
+    }),
+    revealAttachmentInFinder: defineMethod<(noteId: string, url: string) => Promise<void>>({
+      channel: NotesChannels.invoke.ATTACHMENT_REVEAL_IN_FINDER,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
+    }),
+    openAttachmentExternal: defineMethod<(noteId: string, url: string) => Promise<void>>({
+      channel: NotesChannels.invoke.ATTACHMENT_OPEN_EXTERNAL,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
     }),
     getPropertyDefinitions: defineMethod<() => Promise<PropertyDefinition[]>>({
       channel: NotesChannels.invoke.GET_PROPERTY_DEFINITIONS

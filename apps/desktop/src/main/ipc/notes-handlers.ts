@@ -20,8 +20,14 @@ import {
   SetLocalOnlySchema,
   ApplyTemplateSchema,
   LargeFileReadLinesSchema,
-  LargeFileSearchSchema
+  LargeFileSearchSchema,
+  AttachmentActionSchema
 } from '@memry/contracts/notes-api'
+import {
+  resolveAttachment,
+  revealAttachmentInFinder,
+  openAttachmentExternal
+} from '../vault/attachment-actions'
 import {
   openLargeFileSession,
   readLargeFileLines,
@@ -479,6 +485,30 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.REVEAL_IN_FINDER,
     createStringHandler(async (id) => {
       revealInFinder(id)
+    })
+  )
+
+  // notes:attachment-resolve - Resolve an attachment block url to disk path + stored name
+  ipcMain.handle(
+    NotesChannels.invoke.ATTACHMENT_RESOLVE,
+    createValidatedHandler(AttachmentActionSchema, (input) =>
+      resolveAttachment(input.noteId, input.url)
+    )
+  )
+
+  // notes:attachment-reveal-in-finder - Reveal an attachment in the OS file manager
+  ipcMain.handle(
+    NotesChannels.invoke.ATTACHMENT_REVEAL_IN_FINDER,
+    createValidatedHandler(AttachmentActionSchema, (input) => {
+      revealAttachmentInFinder(input.noteId, input.url)
+    })
+  )
+
+  // notes:attachment-open-external - Open an attachment with the OS default app
+  ipcMain.handle(
+    NotesChannels.invoke.ATTACHMENT_OPEN_EXTERNAL,
+    createValidatedHandler(AttachmentActionSchema, async (input) => {
+      await openAttachmentExternal(input.noteId, input.url)
     })
   )
 

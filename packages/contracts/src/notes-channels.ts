@@ -77,6 +77,12 @@ export const NotesChannels = {
     LIST_ATTACHMENTS: 'notes:list-attachments',
     /** Delete an attachment */
     DELETE_ATTACHMENT: 'notes:delete-attachment',
+    /** Resolve an attachment block's url to its on-disk path + stored filename */
+    ATTACHMENT_RESOLVE: 'notes:attachment-resolve',
+    /** Reveal an attachment in the OS file manager */
+    ATTACHMENT_REVEAL_IN_FINDER: 'notes:attachment-reveal-in-finder',
+    /** Open an attachment with the OS default app */
+    ATTACHMENT_OPEN_EXTERNAL: 'notes:attachment-open-external',
     /** Get folder config (template settings) */
     GET_FOLDER_CONFIG: 'notes:get-folder-config',
     /** Set folder config (template settings) */
