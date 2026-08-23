@@ -333,6 +333,17 @@ queued by older builds, so a stuck queue drains on the next push instead of wait
 sync. Stamping without persisting is not enough: the next local edit would tick from `{}` to the same
 clock the server already acked, and the update would be dropped as a replay.
 
+A handler's `buildPushPayload` repair only reaches a create or update whose local row still exists.
+Three cases skip it and fall back to the **frozen** queue payload: a `delete`, a row the handler can
+no longer read, and a handler that throws. A frozen payload written by a build that predates the
+stamping rule carries no clock, and one such row fails every batch forever. So `PushCoordinator`
+makes a last-resort check on the way out: for a type in `RECORD_CLOCK_REQUIRED_ITEM_TYPES`, a payload
+that parses to an object with no `clock` object leaves with `{ [deviceId]: 1 }` stamped on it. A
+payload that already has a clock — handler-built or frozen — is untouched, and an unparseable payload
+is sent as-is. This stamp is **not** persisted, because the cases that reach it have no local row to
+persist to; it matches the `{ id, clock: increment({}, deviceId) }` fallback `buildDeletePayload`
+already uses. It is a queue-unblocking backstop, not a substitute for stamping at write time.
+
 Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
 pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
 their SQLite envelopes and re-encode sync payloads without exposing plaintext to the server.

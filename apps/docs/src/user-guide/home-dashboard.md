@@ -10,10 +10,10 @@ Opening a board paints it in one pass — no entrance animation on the board or 
 
 A fresh vault auto-seeds a single board named **Home**. You can keep just that one or organize work across several boards.
 
-- **Switch boards** — pick a board from the board switcher in the header.
+- **Switch boards** — pick a board from the board switcher in the header. The Home tab takes the name of whichever board is open, so the tab strip says which one you are on.
 - **Create a board** — use **New board** in the switcher. It arrives named "New board"; rename it from the manager below.
 - **Manage boards** — **Manage boards** in the switcher opens a dialog listing every board:
-  - **Rename** — click a board's name (or the pencil) and type. **Enter** saves, **Esc** discards the edit and leaves the dialog open.
+  - **Rename** — click a board's name (or the pencil) and type. **Enter** saves, **Esc** discards the edit and leaves the dialog open. Renaming the board you are on retitles the Home tab with it.
   - **Reorder** — drag a row by its handle. The switcher and every synced device follow the new order.
   - **Delete** — the trash button removes a board and its widgets. The last remaining board can't be deleted.
 
@@ -39,7 +39,7 @@ Widgets are the cards on a board. Available types:
 | Widget          | Shows                                                  |
 | --------------- | ------------------------------------------------------ |
 | Recently Edited | Notes ordered by last-modified, most recent first      |
-| Recently Opened | Notes ordered by when you last opened them             |
+| Recently Opened | Notes and canvases ordered by when you last opened them |
 | Bookmarks       | Your bookmarked notes                                  |
 | Tasks           | Tasks, with an inline filter and count                 |
 | Inbox           | Unfiled inbox items, with a triage row                 |
@@ -48,9 +48,9 @@ Widgets are the cards on a board. Available types:
 | Journal         | Today's journal entry and your current streak          |
 | Project         | One project's overview, tasks, notes, files and events |
 
-**Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
+**Recently Edited and Recently Opened are siblings, not duplicates.** The first answers "what did I change?", the second "what did I read?" — and a note you open without typing in it appears only in the second. Recently Opened also lists canvases: a canvas row carries its own icon and reopens the canvas when you click it. A note you open _and_ edit shows up in both; the row subtitle is what tells them apart, reading "opened 12m ago" on one and "edited 3m ago" on the other.
 
-Unlike everything else on a board, the Recently Opened **list** is per-device: it shows what you opened on this machine. The widget's position and size still sync like any other widget — only the history behind it stays local, so your reading trail is not shipped between devices. Adding the widget on an existing vault starts it off with the notes you had opened from search; from there it fills in as you read. It keeps your 50 most recent notes, one entry per note, and a note only counts once it has been in front of you for a couple of seconds — flipping past a tab does not put it in the list.
+Unlike everything else on a board, the Recently Opened **list** is per-device: it shows what you opened on this machine. The widget's position and size still sync like any other widget — only the history behind it stays local, so your reading trail is not shipped between devices. Adding the widget on an existing vault starts it off with the notes you had opened from search; from there it fills in as you read. It keeps your 50 most recent items, one entry per note or canvas, and an item only counts once it has been in front of you for a couple of seconds — flipping past a tab does not put it in the list.
 
 The Calendar widget shows today's events. If you leave Memry open overnight it rolls over on its own at local midnight — the widget, its event count, and the "Next:" line all switch to the new day without a restart. The same applies after the machine wakes from sleep or the system clock changes.
 

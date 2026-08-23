@@ -18,8 +18,29 @@ import type {
 /** Current schema version for migrations */
 export const STORAGE_VERSION = 2
 
-/** Storage key for tab state */
+/**
+ * Storage key for tab state written before tabs were scoped per vault.
+ *
+ * Still read: an install upgrading from a build that kept one global entry has
+ * its tabs here, and the first vault to look for its own key adopts them (see
+ * `createLocalStorageAdapter`). Nothing writes it any more.
+ */
 export const STORAGE_KEY = 'memry_tab_state'
+
+/**
+ * Storage key holding one vault's tabs.
+ *
+ * Tabs are per-vault the way the rest of the app's vault state is: a note tab
+ * in one vault means nothing in another, so each vault gets its own entry and
+ * switching between them is a read, never a write to the vault being left.
+ *
+ * The vault path is the identity the renderer already switches on (`App` keys
+ * its whole tree by it), so it is the identity used here too. A vault with no
+ * path — no vault open — falls back to the legacy key, which is inert: the
+ * persistence manager only mounts inside the vault-open branch.
+ */
+export const tabStateStorageKey = (vaultPath: string | null | undefined): string =>
+  vaultPath ? `${STORAGE_KEY}:${vaultPath}` : STORAGE_KEY
 
 // =============================================================================
 // PERSISTED TYPES
