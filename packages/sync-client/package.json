@@ -21,6 +21,7 @@
     "@memry/db-schema": "workspace:*",
     "@memry/shared": "workspace:*",
     "@memry/sync-core": "workspace:*",
+    "cborg": "^4.5.8",
     "drizzle-orm": "^0.45.2",
     "pako": "^2.1.0",
     "yjs": "^13.6.29",
