@@ -1,6 +1,5 @@
 import * as Y from 'yjs'
 import fsp from 'fs/promises'
-import { randomUUID } from 'crypto'
 import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -200,7 +199,7 @@ export class CrdtProvider {
     // that describes the first one must not carry it into the second. A store
     // that could not be opened leaves this null, which is what makes in-memory
     // mode read as "no store" rather than as "an empty one".
-    this.storeIdentity = this.persistence ? randomUUID() : null
+    this.storeIdentity = this.persistence ? crypto.randomUUID() : null
     this.persistenceReady = true
     recordSessionPersistenceOutcome(this.persistence !== null)
 
