@@ -414,6 +414,24 @@ Errors additionally become `$exception` events for PostHog Error Tracking (`exce
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default.
 
+Three server-side guards keep this stream from flooding the PostHog quota:
+
+- **Warn-level log lines never reach Error Tracking.** The desktop demotes expected failures to
+  warn-level `app_log_recorded` lines precisely so they stay out of Error Tracking (#1587);
+  `exceptionEvent` promotes an `app_log_recorded` event only when its `action` is `error`.
+  Warn-level lines stay fully queryable as events and log records.
+- **Legacy drop-tripwire noise is dropped at ingestion.** Desktop versions before 2026.821 ship
+  the `local_mutation_dropped` tripwire once per polled row with no throttle or eligibility gate
+  (#1579) — at peak 45% of the project's entire event volume, triple-billed as product event,
+  `$exception` and log line. `isLegacyMutationDropNoise` drops those events before all three
+  sinks; fixed clients still forward their throttled diagnostic trickle.
+- **Per-install hourly exception budget.** `claimExceptionBudget`
+  (`services/exception-budget.ts`) caps `$exception` forwards at 60 per install per hour, reusing
+  the `rate_limits` table. Only the `$exception` stream is trimmed — the product events and log
+  lines for the same failures still forward, so a capped install stays diagnosable. The claim
+  fails open on D1 errors: a flaky database costs extra PostHog events, never a swallowed crash
+  report.
+
 #### Stack frames
 
 Error Tracking renders code locations **only** from `$exception_list[].stacktrace` — it never
