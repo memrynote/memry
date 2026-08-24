@@ -217,6 +217,27 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
       result.notes.push(
         `engine.pullBlobs on those ids → applied ${blobResult.applied}, still stuck ${after?.n ?? '?'} (types: ${stuckSample.map((s) => s.type).join(', ')})`
       )
+
+      // Size ladder: small pulls work, the first-sync 100-id chunks do not.
+      // Find the breaking size and surface the thrown error verbatim.
+      for (const size of [10, 50, 100]) {
+        const batch = await db.getAllAsync<{ id: string }>(
+          `SELECT id FROM sync_items WHERE payload_state = 'metadata-only' AND deleted_at IS NULL LIMIT ?`,
+          [size]
+        )
+        if (batch.length === 0) {
+          result.notes.push(`bulk ${size}: nothing left stuck`)
+          break
+        }
+        try {
+          const bulk = await engine.pullBlobs(batch.map((b) => b.id))
+          result.notes.push(`bulk ${batch.length} ids → applied ${bulk.applied}`)
+        } catch (err) {
+          result.notes.push(
+            `bulk ${batch.length} ids THREW: ${err instanceof Error ? `${err.name}: ${err.message.slice(0, 110)}` : String(err)}`
+          )
+        }
+      }
     }
   }
 
