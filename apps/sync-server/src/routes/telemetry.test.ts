@@ -322,4 +322,54 @@ describe('POST /telemetry/batch → PostHog', () => {
     const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
     expect(body.batch.map((e: { event: string }) => e.event)).toContain('note_created')
   })
+
+  // The pre-fix drop tripwire (#1579) was triple-billed: product event,
+  // $exception AND log line. It must vanish from every sink, not get demoted.
+  it('drops the legacy local_mutation_dropped tripwire from every sink', async () => {
+    // #given a pre-fix desktop batch with one tripwire event and one real event
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { env } = createEnv({
+      POSTHOG_KEY: 'phc_test',
+      POSTHOG_HOST: 'https://us.i.posthog.com'
+    })
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...sampleBatch,
+        appVersion: '2026.817.1',
+        events: [
+          {
+            id: '550e8400-e29b-41d4-a716-446655440010',
+            name: 'app_log_recorded',
+            occurredAt: VALID_TIMESTAMP,
+            surface: 'app',
+            action: 'warn',
+            result: 'failed',
+            errorCode: 'calendar_source',
+            dimensions: { log_action: 'local_mutation_dropped' }
+          },
+          sampleEvent
+        ]
+      })
+    })
+
+    // #when posting through the app
+    const response = await app.request(request, {}, env)
+
+    // #then the 202 still reports the raw count so old clients keep flushing
+    expect(response.status).toBe(202)
+    expect(((await response.json()) as { accepted: number }).accepted).toBe(2)
+    // #then the capture batch has the real event but no tripwire, no $exception
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled())
+    const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
+    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    const names = body.batch.map((e: { event: string }) => e.event)
+    expect(names).toContain('app_started')
+    expect(names).not.toContain('app_log_recorded')
+    expect(names).not.toContain('$exception')
+    // #then no log line was pushed for it either
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).endsWith('/i/v1/logs'))).toBe(false)
+  })
 })
