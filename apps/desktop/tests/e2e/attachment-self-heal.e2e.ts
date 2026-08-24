@@ -183,6 +183,14 @@ test.describe('Note attachments panel', () => {
     await ready(page)
     const seeded = await seedNoteWithFileBlock(page, testVaultPath, uniqueLabel('Attach Panel'))
 
+    // The panel lists the OPENED note's own folder; the seed uploads against a
+    // host note (the marker-as-initial-content workaround), so mirror the file
+    // into the opened note's folder the way a normal upload would have put it.
+    const hostPath = attachmentDiskPath(testVaultPath, seeded)
+    const ownDir = path.join(testVaultPath, 'attachments', seeded.noteId)
+    fs.mkdirSync(ownDir, { recursive: true })
+    fs.copyFileSync(hostPath, path.join(ownDir, seeded.storedFilename))
+
     await page.locator('[data-testid="note-more-menu"]').first().click()
     await page.getByRole('option', { name: 'Attachments…' }).click()
 
