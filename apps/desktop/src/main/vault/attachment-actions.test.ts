@@ -92,6 +92,28 @@ describe('resolveAttachment', () => {
     expect(result.storedFilename).toBe('k3f9x2-late.pdf')
   })
 
+  it('self-heals an externally renamed file via its unique prefix match (#1713)', () => {
+    const renamed = writeAttachment('attachments/n1/k3f9x2-report-final.pdf')
+
+    const result = resolveAttachment(NOTE_ID, '../attachments/n1/k3f9x2-report.pdf')
+
+    expect(result).toEqual({
+      absolutePath: renamed,
+      storedFilename: 'k3f9x2-report-final.pdf',
+      exists: true
+    })
+  })
+
+  it('leaves an ambiguous rename broken, still naming the expected file', () => {
+    writeAttachment('attachments/n1/k3f9x2-a.pdf')
+    writeAttachment('attachments/n1/k3f9x2-b.pdf')
+
+    const result = resolveAttachment(NOTE_ID, '../attachments/n1/k3f9x2-report.pdf')
+
+    expect(result.exists).toBe(false)
+    expect(result.storedFilename).toBe('k3f9x2-report.pdf')
+  })
+
   it('rejects a ref that escapes the vault', () => {
     expect(() => resolveAttachment(NOTE_ID, '../../../../etc/passwd')).toThrowError(
       expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
