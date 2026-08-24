@@ -86,8 +86,9 @@ memrynote folders delete Archive/Projects --yes
 `notes resolve` takes a wiki-link target, so `Draft#Open questions` resolves to the note `Draft` and reports `heading` alongside it. A note whose title really contains a `#` still wins over the split reading, so `Sprint #4` resolves to itself.
 
 Destructive commands require `--yes`.
+Folder arguments are vault-relative everywhere (`--folder`, `notes move`, the `folders` commands): the configured default note folder is only where an unplaced note lands, never a root other folders resolve under. `notes rename` also rewrites every inbound `[[Old Title]]` wiki-link across the vault — headings kept, aliases untouched — matching the desktop rename behavior.
 Note snapshots use the same version-history storage as the desktop app. Restoring a snapshot creates a backup snapshot of the current note first.
-Attachment commands write into the vault attachment folder. `import-files` copies supported markdown, PDF, image, audio, and video files into the notes folder; imported markdown is indexed immediately for follow-up CLI commands.
+Attachment commands write into the vault attachment folder. `import-files` copies supported markdown, PDF, image, audio, and video files into the target folder; imported markdown is indexed immediately for follow-up CLI commands. `notes attach` copies the file locally only — inserting an embed into the note body and carrying the attachment across devices still happen in the desktop runtime. `notes move` does not yet re-point relative attachment embeds inside the moved note's body; move attachment-heavy notes from the desktop app.
 
 ## Properties and Folder Views
 
@@ -111,7 +112,7 @@ memrynote folder-view suggestions note_abc123
 memrynote folder-view exists Projects
 ```
 
-Per-note properties are stored in note frontmatter. Property definitions are stored in the local database, and select-style definitions are also mirrored to `.memry/properties.md` for desktop compatibility. Folder view configuration is stored in the same `.folder.md` files used by the desktop Folder View.
+Per-note properties are stored in note frontmatter. Property definitions are stored in the local database, and portable definitions (`select`, `multiselect`, `status`, `date`, `project`) are also mirrored to `.memry/properties.md` for desktop compatibility; `relation` definitions stay DB-only by design. Folder view writes preserve the folder's `icon:` (emoji or `custom:<id>`), so a CLI view edit never wipes a desktop-set folder icon. Folder view configuration is stored in the same `.folder.md` files used by the desktop Folder View.
 Folder suggestions are deterministic local suggestions from existing vault folders; AI similarity suggestions still require the desktop runtime.
 
 ## Journal
@@ -264,7 +265,7 @@ memrynote reminders bulk-dismiss reminder_a reminder_b
 memrynote reminders delete reminder_abc123 --yes
 ```
 
-Reminder targets can be `note`, `journal`, or `highlight`. Highlight reminders also accept `--highlight-text`, `--highlight-start`, and `--highlight-end`. Reminder update, target lookup, count, snooze, dismiss, and bulk-dismiss commands write to the same local reminders table used by the desktop scheduler; desktop notifications, triggered reminder inbox creation, and calendar sync side effects still require the Electron runtime.
+Reminder targets can be `note`, `journal`, `highlight`, `task`, or `note_date`. Highlight reminders also accept `--highlight-text`, `--highlight-start`, and `--highlight-end`. Reminder update, target lookup, count, snooze, dismiss, and bulk-dismiss commands write to the same local reminders table used by the desktop scheduler; desktop notifications, triggered reminder inbox creation, and calendar sync side effects still require the Electron runtime.
 
 ## Settings
 
@@ -337,7 +338,7 @@ memrynote templates duplicate template_abc123 "Meeting Copy"
 memrynote templates delete template_abc123 --yes
 ```
 
-Templates are stored as markdown files in `.memry/templates`, matching the desktop template storage model.
+Custom templates are stored in the vault database (`data.db`) and sync across devices, matching the desktop template storage model. Legacy `.memry/templates/*.md` files are imported once on first run and left on disk as a downgrade path; desktop's built-in templates are not listed by the CLI.
 
 ## Bookmarks
 
@@ -394,3 +395,23 @@ memrynote calendar bindings get binding_abc123
 ```
 
 Local calendar event commands write to the same `calendar_events` table used by the desktop calendar. `calendar range` returns the desktop calendar projection shape for local events, due tasks, reminders, snoozed inbox items, and selected external events. Calendar source, Google settings, external-event, and binding commands inspect or update local provider metadata created by desktop sync. `calendar external promote` converts a synced external event mirror into a local editable event and archives the mirror, matching the desktop promotion behavior. Provider connection, OAuth, remote calendar listing, refresh flows, retry sync, and push/pull execution stay in the desktop runtime.
+
+## What the CLI leaves to the desktop app
+
+The CLI reads and writes the same vault files and databases as the desktop app,
+and it is careful never to destroy what it does not understand: unknown
+frontmatter keys, `.memry/config.json` preferences, folder icons, and desktop-
+written markers all survive CLI edits byte-for-byte. Some formats it passes
+through without interpreting:
+
+- **Canvases** (`canvases/*.excalidraw`) and the canvas shape library.
+- **Rich body markers**: toggle blocks (`<details data-memry-toggle>`), block/
+  table color comments, inline color spans, CriticMarkup comments and
+  suggestions, date-mention pills, and Obsidian-style `![[image.png]]` embeds.
+- **Markdown checkbox ↔ task reconciliation** — editing `- [x]` in a note via
+  the CLI does not complete the task row; the desktop watcher owns that.
+- **Custom image icons** (`.memry/icons/`) — preserved but not managed.
+- **Large-file handling** — the desktop's oversized-file read-only class is not
+  enforced by CLI note commands.
+
+For those, use the desktop app; the CLI keeps their bytes intact.

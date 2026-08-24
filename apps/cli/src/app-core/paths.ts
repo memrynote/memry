@@ -29,12 +29,24 @@ export function normalizePath(value: string): string {
   return normalized.slice(start, end)
 }
 
+// Mirrors desktop's `sanitizeFilename` (file-ops.ts): platform-invalid chars
+// plus `[ ] # ^`, which Obsidian ≥1.8 forbids in filenames (they break
+// wikilink syntax).
 export function safeFilename(value: string): string {
-  const cleaned = value
-    .replace(/[/:\\]/g, ' ')
+  let sanitized = value
+    .replace(/[<>:"/\\|?*[\]#^]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-  return cleaned.length > 0 ? cleaned : 'Untitled'
+
+  // Strip every leading dot (hidden files) and re-trim any whitespace it
+  // exposes. Loop because stripping the widened char set can leave `..` or
+  // `. Report`; a single slice would keep a `..` traversal or a leading space.
+  while (sanitized.startsWith('.')) {
+    sanitized = sanitized.slice(1).trim()
+  }
+
+  if (sanitized.length === 0) return 'untitled'
+  return sanitized.length > 200 ? sanitized.slice(0, 200) : sanitized
 }
 
 export function getMemryDir(vaultPath: string): string {

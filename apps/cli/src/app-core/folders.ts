@@ -42,7 +42,9 @@ export function createFoldersService({
   vaultPath: string
   config: VaultConfig
 }): FoldersService {
-  const root = path.join(vaultPath, config.defaultNoteFolder)
+  // Folder paths are vault-relative (#1204): `defaultNoteFolder` is where an
+  // unplaced note lands, not a notes root to resolve folders under.
+  const root = vaultPath
   const hiddenTopLevel = new Set(
     [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
       .filter(Boolean)

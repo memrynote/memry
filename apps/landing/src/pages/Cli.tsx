@@ -93,18 +93,18 @@ const EXAMPLES: { title: string; lines: TermLine[] }[] = [
   {
     title: 'notes & journal',
     lines: [
-      { prompt: 'memrynote notes create --title "Standup"' },
+      { prompt: 'memrynote notes create "Standup"' },
       { out: 'Created note "Standup" (note_a1b2)' },
-      { prompt: 'memrynote journal append --content "- shipped the CLI page"' },
+      { prompt: 'memrynote journal append 2026-07-03 "- shipped the CLI page"' },
       { out: 'Appended to 2026-07-03' }
     ]
   },
   {
     title: 'tasks',
     lines: [
-      { prompt: 'memrynote tasks create "Review PR" --project Work' },
+      { prompt: 'memrynote tasks create "Review PR" --tag work' },
       { out: 'Created task "Review PR" (task_9f3c)' },
-      { prompt: 'memrynote tasks list --status todo' },
+      { prompt: 'memrynote tasks today' },
       { out: '3 tasks · Review PR · Ship docs · Reply to Kaan' }
     ]
   },
@@ -203,10 +203,10 @@ export function CliPage() {
             <Term
               title="memrynote"
               lines={[
-                { prompt: 'memrynote notes create --title "Weekly review"' },
+                { prompt: 'memrynote notes create "Weekly review"' },
                 { out: 'Created note "Weekly review" (note_7ac1)' },
-                { prompt: 'memrynote --json tasks list --status todo' },
-                { out: '[{ "title": "Ship the CLI page", "status": "todo" }]' }
+                { prompt: 'memrynote --json tasks today' },
+                { out: '[{ "title": "Ship the CLI page", "dueDate": "2026-07-03" }]' }
               ]}
             />
             <div className="mt-8">

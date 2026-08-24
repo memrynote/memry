@@ -163,11 +163,17 @@ async function uniqueDestination(
   }
 }
 
+// `targetFolder` is vault-relative, the same contract as desktop's
+// `importFiles` since #1204; an import with no target lands under
+// `defaultNoteFolder`.
 function resolveTargetFolder(vaultPath: string, config: VaultConfig, targetFolder = ''): string {
-  const notesRoot = path.resolve(vaultPath, config.defaultNoteFolder)
-  const target = path.resolve(notesRoot, normalizePath(targetFolder))
-  if (target !== notesRoot && !target.startsWith(`${notesRoot}${path.sep}`)) {
-    throw new Error('Import target must stay inside the notes folder')
+  const vaultRoot = path.resolve(vaultPath)
+  const target = path.resolve(
+    vaultRoot,
+    normalizePath(targetFolder) || normalizePath(config.defaultNoteFolder)
+  )
+  if (target !== vaultRoot && !target.startsWith(`${vaultRoot}${path.sep}`)) {
+    throw new Error('Import target must stay inside the vault')
   }
   return target
 }

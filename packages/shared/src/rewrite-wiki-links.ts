@@ -6,7 +6,8 @@
  * next click on `[[Old Title]]` creates a duplicate note (#1711). The fix is
  * the Obsidian model: at rename time, rewrite the stale title inside every
  * source that links to the renamed note. This module is the pure string half
- * of that; `rename-link-rewrite.ts` finds the sources and persists the result.
+ * of that; the desktop's `rename-link-rewrite.ts` and the CLI's notes service
+ * find the sources and persist the result.
  *
  * Which occurrences are rewritten mirrors `resolveWikiTarget`'s split-first
  * order exactly, because a rewrite must only touch links that RESOLVED to the
@@ -28,7 +29,7 @@
  * contract as `rewriteNoteRefsForMove`.
  */
 
-import { splitWikiTarget } from '@memry/shared/wiki-target'
+import { splitWikiTarget } from './wiki-target.ts'
 
 /** `[[target]]` / `[[target|alias]]`; the alias group keeps its `|` prefix. */
 const WIKI_LINK_RUN = /\[\[([^\]|]+)(\|[^\]]+)?\]\]/g

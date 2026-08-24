@@ -133,12 +133,12 @@ memrynote notes <subcommand> [args]
 | ---------- | --------------- |
 | `<title>`  | New note title. |
 
-| Flag                  | Type        | Description                      |
-| --------------------- | ----------- | -------------------------------- |
-| `--content <text>`    | string      | Initial body. Defaults to empty. |
-| `--folder <path>`     | string      | Target folder.                   |
-| `--tag <name>`        | repeatable  | Tag to add. Pass multiple times. |
-| `--properties <json>` | JSON object | Initial frontmatter.             |
+| Flag                  | Type        | Description                                                                                     |
+| --------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
+| `--content <text>`    | string      | Initial body. Defaults to empty.                                                                |
+| `--folder <path>`     | string      | Target folder, vault-relative. Without it the note lands in the configured default note folder. |
+| `--tag <name>`        | repeatable  | Tag to add. Pass multiple times.                                                                |
+| `--properties <json>` | JSON object | Initial frontmatter.                                                                            |
 
 ```bash
 memrynote notes create "Draft" --content "First line" --folder Projects --tag writing
@@ -146,10 +146,10 @@ memrynote notes create "Draft" --content "First line" --folder Projects --tag wr
 
 ### list
 
-| Flag              | Type   | Description              |
-| ----------------- | ------ | ------------------------ |
-| `--folder <path>` | string | Restrict to one folder.  |
-| `--limit <n>`     | number | Max rows. Default `100`. |
+| Flag              | Type   | Description                              |
+| ----------------- | ------ | ---------------------------------------- |
+| `--folder <path>` | string | Restrict to one folder (vault-relative). |
+| `--limit <n>`     | number | Max rows. Default `100`.                 |
 
 ```bash
 memrynote notes list --folder Projects --limit 20
@@ -213,6 +213,10 @@ memrynote notes update note_abc123 --append "More text" --properties '{"status":
 
 ### rename
 
+Renames the note and rewrites every inbound `[[Old Title]]` wiki-link
+vault-wide — headings kept, aliases untouched, case-insensitive — the same way
+the desktop app does.
+
 | Positional     | Description |
 | -------------- | ----------- |
 | `<id-or-path>` | Note.       |
@@ -220,10 +224,10 @@ memrynote notes update note_abc123 --append "More text" --properties '{"status":
 
 ### move
 
-| Positional     | Description              |
-| -------------- | ------------------------ |
-| `<id-or-path>` | Note.                    |
-| `<folder>`     | Destination folder path. |
+| Positional     | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `<id-or-path>` | Note.                                                           |
+| `<folder>`     | Destination folder path, vault-relative. `''` = the vault root. |
 
 ### set-local-only
 
@@ -356,6 +360,9 @@ Requires `--yes`.
 
 ## folders
 
+Folder paths are vault-relative: the configured default note folder is only
+where an unplaced note lands, never a root the CLI resolves folders under.
+
 ### list
 
 ```bash
@@ -414,7 +421,10 @@ Renames a property key on one entity.
 
 ### definitions
 
-Lists workspace-wide property definitions.
+Lists workspace-wide property definitions. `select`, `multiselect`, `status`,
+`date`, and `project` definitions are mirrored into `.memry/properties.md` so
+the desktop app and other devices pick them up; `relation` definitions stay
+DB-only by design.
 
 ### define
 
@@ -1276,6 +1286,11 @@ Requires `--yes`.
 ---
 
 ## templates
+
+Custom templates live in the vault database (`data.db`) and sync across
+devices, the same store the desktop app uses. Legacy `.memry/templates/*.md`
+files are imported once on first run and then left on disk as a downgrade
+path. Desktop's built-in templates are not listed here.
 
 ### list
 

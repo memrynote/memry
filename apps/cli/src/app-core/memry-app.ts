@@ -183,7 +183,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const reminders = createRemindersService(databases.dataDb)
   const settings = createSettingsService(databases.dataDb)
   const locale = createLocaleService({ vaultPath, settings })
-  const templates = createTemplatesService(vaultPath)
+  const templates = createTemplatesService({ vaultPath, dataDb: databases.dataDb })
   const bookmarks = createBookmarksService(databases.dataDb)
   const savedFilters = createSavedFiltersService(databases.dataDb)
   const calendar = createCalendarService(databases.dataDb)
