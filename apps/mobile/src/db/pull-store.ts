@@ -97,16 +97,136 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
     })
   }
 
+  /**
+   * Apply one decoded batch. PREPARED statements, reused across the batch —
+   * the R2 finding made mandatory here by a field failure: ~100 items ran
+   * ~400 ad-hoc runAsync statements inside one transaction and expo-sqlite
+   * fell over in statement teardown (`finalizeAsync` FunctionCallException at
+   * 100 items; 50 passed). Four reused statements replace that churn.
+   */
   async applyRecordItems(items: DecodedRecordItem[]): Promise<void> {
+    const upserts = items.filter((i) => i.operation !== 'delete')
+
+    // Pre-answer "does a body row exist" in one query per ≤90-id window, so
+    // the per-note SELECT churn disappears too.
+    const existingBodies = new Set<string>()
+    const noteIds = upserts
+      .filter((i) => (i.type === 'note' || i.type === 'journal') && i.payloadJson)
+      .map((i) => i.id)
+    for (let i = 0; i < noteIds.length; i += 90) {
+      const window = noteIds.slice(i, i + 90)
+      const rows = await this.db.getAllAsync<{ item_id: string }>(
+        `SELECT item_id FROM note_bodies WHERE item_id IN (${window.map(() => '?').join(',')})`,
+        window
+      )
+      for (const row of rows) existingBodies.add(row.item_id)
+    }
+
     await this.db.withTransactionAsync(async () => {
-      for (const item of items) {
-        if (item.operation === 'delete') {
-          await this.applyDelete(item)
-        } else {
-          await this.applyUpsert(item)
+      const upsertStmt = await this.db.prepareAsync(
+        `INSERT INTO sync_items (id, type, vault_id, updated_at, deleted_at, vector_clock, payload_state, payload)
+         VALUES (?, ?, ?, ?, NULL, ?, 'full', ?)
+         ON CONFLICT(id) DO UPDATE SET
+           type = excluded.type,
+           updated_at = excluded.updated_at,
+           deleted_at = NULL,
+           vector_clock = excluded.vector_clock,
+           payload_state = 'full',
+           payload = excluded.payload`
+      )
+      const folderStmt = await this.db.prepareAsync(
+        `INSERT INTO folders (id, parent_id, name) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING`
+      )
+      const bodyUpsertStmt = await this.db.prepareAsync(
+        `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(item_id) DO UPDATE SET path = excluded.path, markdown = excluded.markdown, fetched_at = excluded.fetched_at`
+      )
+      const bodyPathStmt = await this.db.prepareAsync(
+        'UPDATE note_bodies SET path = ? WHERE item_id = ?'
+      )
+
+      try {
+        const seenFolders = new Set<string>()
+        for (const item of items) {
+          if (item.operation === 'delete') {
+            await this.applyDelete(item)
+            continue
+          }
+
+          await upsertStmt.executeAsync([
+            item.id,
+            item.type,
+            this.vaultId,
+            Date.now(),
+            item.clock ? JSON.stringify(item.clock) : null,
+            item.payloadJson ?? null
+          ])
+
+          if ((item.type === 'note' || item.type === 'journal') && item.payloadJson) {
+            await this.projectNoteWithStatements(item, existingBodies, seenFolders, {
+              folderStmt,
+              bodyUpsertStmt,
+              bodyPathStmt
+            })
+          }
+        }
+      } finally {
+        for (const stmt of [upsertStmt, folderStmt, bodyUpsertStmt, bodyPathStmt]) {
+          try {
+            await stmt.finalizeAsync()
+          } catch {
+            // teardown best-effort; the transaction outcome is what matters
+          }
         }
       }
     })
+  }
+
+  private async projectNoteWithStatements(
+    item: DecodedRecordItem,
+    existingBodies: Set<string>,
+    seenFolders: Set<string>,
+    statements: {
+      folderStmt: Awaited<ReturnType<VaultDb['prepareAsync']>>
+      bodyUpsertStmt: Awaited<ReturnType<VaultDb['prepareAsync']>>
+      bodyPathStmt: Awaited<ReturnType<VaultDb['prepareAsync']>>
+    }
+  ): Promise<void> {
+    let payload: NotePayloadProjection
+    try {
+      payload = JSON.parse(item.payloadJson ?? '') as NotePayloadProjection
+    } catch {
+      log.warn('Note payload unparseable; projection skipped', { itemId: item.id })
+      return
+    }
+
+    const folderPath = payload.folderPath ?? ''
+    if (folderPath) {
+      const segments = folderPath.split('/').filter(Boolean)
+      let parentId: string | null = null
+      let pathSoFar = ''
+      for (const segment of segments) {
+        pathSoFar = pathSoFar ? `${pathSoFar}/${segment}` : segment
+        if (!seenFolders.has(pathSoFar)) {
+          seenFolders.add(pathSoFar)
+          await statements.folderStmt.executeAsync([pathSoFar, parentId, segment])
+        }
+        parentId = pathSoFar
+      }
+    }
+
+    const title = payload.title ?? 'Untitled'
+    const relPath = folderPath ? `${folderPath}/${title}.md` : `${title}.md`
+    const hasBody = existingBodies.has(item.id)
+
+    // First materialization only: desktop's rule — record payloads carry
+    // content on CREATE pushes; for an existing body the CRDT path owns it.
+    if (typeof payload.content === 'string' && (item.operation === 'create' || !hasBody)) {
+      await statements.bodyUpsertStmt.executeAsync([item.id, relPath, payload.content, Date.now()])
+      existingBodies.add(item.id)
+    } else if (hasBody) {
+      await statements.bodyPathStmt.executeAsync([relPath, item.id])
+    }
   }
 
   private async applyDelete(item: DecodedRecordItem): Promise<void> {
@@ -130,86 +250,6 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
     await this.db.runAsync('DELETE FROM note_bodies WHERE item_id = ?', [item.id])
     await this.db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [item.id])
     await this.db.runAsync('DELETE FROM yjs_snapshots WHERE doc_id = ?', [item.id])
-  }
-
-  private async applyUpsert(item: DecodedRecordItem): Promise<void> {
-    await this.db.runAsync(
-      `INSERT INTO sync_items (id, type, vault_id, updated_at, deleted_at, vector_clock, payload_state, payload)
-       VALUES (?, ?, ?, ?, NULL, ?, 'full', ?)
-       ON CONFLICT(id) DO UPDATE SET
-         type = excluded.type,
-         updated_at = excluded.updated_at,
-         deleted_at = NULL,
-         vector_clock = excluded.vector_clock,
-         payload_state = 'full',
-         payload = excluded.payload`,
-      [
-        item.id,
-        item.type,
-        this.vaultId,
-        Date.now(),
-        item.clock ? JSON.stringify(item.clock) : null,
-        item.payloadJson ?? null
-      ]
-    )
-
-    if ((item.type === 'note' || item.type === 'journal') && item.payloadJson) {
-      await this.projectNote(item.id, item.payloadJson, item.operation === 'create')
-    }
-    if (item.type === 'folder_config' && item.payloadJson) {
-      // Folder tree is derived from note folderPaths plus folder_config rows;
-      // config payloads carry ordering/emoji which the browse UI reads from
-      // the verbatim payload, so nothing extra is projected here.
-    }
-  }
-
-  private async projectNote(itemId: string, payloadJson: string, isCreate: boolean): Promise<void> {
-    let payload: NotePayloadProjection
-    try {
-      payload = JSON.parse(payloadJson) as NotePayloadProjection
-    } catch {
-      log.warn('Note payload unparseable; projection skipped', { itemId })
-      return
-    }
-
-    const folderPath = payload.folderPath ?? ''
-    if (folderPath) {
-      await this.ensureFolders(folderPath)
-    }
-
-    const title = payload.title ?? 'Untitled'
-    const relPath = folderPath ? `${folderPath}/${title}.md` : `${title}.md`
-
-    // First materialization only: desktop's rule — record payloads carry
-    // content on CREATE pushes; for an existing body the CRDT path owns it.
-    const hasBody = await this.db.getFirstAsync<{ one: number }>(
-      'SELECT 1 AS one FROM note_bodies WHERE item_id = ?',
-      [itemId]
-    )
-    if (typeof payload.content === 'string' && (isCreate || hasBody === null)) {
-      await this.db.runAsync(
-        `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT(item_id) DO UPDATE SET path = excluded.path, markdown = excluded.markdown, fetched_at = excluded.fetched_at`,
-        [itemId, relPath, payload.content, Date.now()]
-      )
-    } else if (hasBody !== null) {
-      await this.db.runAsync('UPDATE note_bodies SET path = ? WHERE item_id = ?', [relPath, itemId])
-    }
-  }
-
-  private async ensureFolders(folderPath: string): Promise<void> {
-    const segments = folderPath.split('/').filter(Boolean)
-    let parentId: string | null = null
-    let pathSoFar = ''
-    for (const segment of segments) {
-      pathSoFar = pathSoFar ? `${pathSoFar}/${segment}` : segment
-      await this.db.runAsync(
-        `INSERT INTO folders (id, parent_id, name) VALUES (?, ?, ?)
-         ON CONFLICT(id) DO NOTHING`,
-        [pathSoFar, parentId, segment]
-      )
-      parentId = pathSoFar
-    }
   }
 
   async markItemCorrupt(id: string, reason: string): Promise<void> {
