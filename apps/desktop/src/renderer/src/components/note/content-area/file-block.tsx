@@ -828,6 +828,17 @@ function FileBlockRender({
     [editor, block]
   )
 
+  // The file on disk is already renamed when this runs (#1714); writing the new
+  // ref into the block is what records the rename in the note — and what carries
+  // it to the other devices, which rename their own copy from the body change.
+  const handleRenamed = useCallback(
+    (next: { url: string; name: string }) => {
+      const fileEditor = editor as FileBlockEditor | undefined
+      fileEditor?.updateBlock(block, { props: { ...block.props, url: next.url, name: next.name } })
+    },
+    [editor, block]
+  )
+
   // Don't render if no URL
   if (!url) {
     return (
@@ -846,13 +857,13 @@ function FileBlockRender({
 
   // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
   // and validates it against the vault itself.
-  const menuButton = <AttachmentMenuButton url={url} name={name} />
+  const menuButton = <AttachmentMenuButton url={url} name={name} onRenamed={handleRenamed} />
 
   // The file is gone from disk and self-heal found no unique match: name the
   // expected file so the user can repair the rename by hand (#1713).
   if (presence.missing) {
     return (
-      <AttachmentBlockContextMenu url={url} name={name}>
+      <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
         <div ref={contentRef} className="file-block my-2" contentEditable={false}>
           <MissingAttachmentCard
             name={name}
@@ -865,7 +876,7 @@ function FileBlockRender({
   }
 
   return (
-    <AttachmentBlockContextMenu url={url} name={name}>
+    <AttachmentBlockContextMenu url={url} name={name} onRenamed={handleRenamed}>
       <div ref={contentRef} className="file-block my-2" contentEditable={false}>
         {isPdf ? (
           <PdfPreview

@@ -32,12 +32,28 @@ Every attachment block — the file card, the audio player, and the inline PDF p
 - **Reveal in Finder** — show the stored file in your OS file manager. On Windows the item reads **Show in Explorer**, on Linux **Show in file manager**; this guide calls it **Reveal in Finder** throughout.
 - **Open in default app** — hand the file to whatever your OS opens that type with
 - **Copy path** — put the file's absolute on-disk path on the clipboard
+- **Rename…** — give the file a better name, on disk and on your other devices
 
 The menu's header shows the **original filename** and the name the file is **stored as** on disk. Attachments are saved under `<vault>/attachments/<note-id>/` with a short random prefix (`k3f9x2-report.pdf`), so this menu is the way to find or forward the original file without hunting through the vault by hand.
 
 If the file hasn't synced to this device yet, the menu still shows both names, but the actions stay disabled until the download lands.
 
 Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
+
+### Renaming an Attachment
+
+Files arrive with the name whatever produced them chose — `scan_0031.pdf`, `IMG_4471.png`. **Rename…** in the block menu fixes that for good: type a new name and MemryNote renames the file **on disk**, updates the block, and carries the rename to your other devices.
+
+Two things stay as they are, on purpose:
+
+- **The extension.** A `.pdf` stays a `.pdf`, so the block keeps rendering it as one. The dialog shows the extension next to the field rather than letting you edit it.
+- **The 6-character prefix.** `k3f9x2-scan.pdf` becomes `k3f9x2-invoice.pdf`. That prefix is what keeps two files with the same name apart, and what lets every other device recognise the file it already has as the one that was renamed.
+
+If the name you type is already taken inside that note's attachments folder, the file gets a `-2` (then `-3`, …) rather than overwriting anything.
+
+**Across devices**, nothing is re-uploaded — only the note travels. Each device renames its own copy of the file when the note's change arrives, so the file ends up with the same name everywhere, and the embed keeps working the whole time. A device that has not downloaded the file yet renames it as soon as it does. A device running an older build keeps showing the file correctly through the self-heal described below; it just keeps the old name on its own disk until it updates.
+
+A file renamed **outside** the app is a different case and is left alone — see below.
 
 ### The Attachments Panel
 
@@ -52,6 +68,8 @@ The attachments folder is yours to look at, and files in it sometimes get rename
 Now a missing file **heals at load time**: MemryNote looks for the renamed file inside the same note's attachments folder — a file that kept its 6-character prefix, or kept its name and lost the prefix — and serves it when the match is unambiguous. The note itself is never rewritten, so the repair is safe across synced devices; each device resolves against its own disk.
 
 If there is no safe match (the file is gone, or two candidates look equally likely), the block shows a card naming **the exact filename it expected**, so you can restore the name by hand. Renaming the file back — or to anything that keeps its prefix — fixes the block on the next load.
+
+A rename you make in Finder is never undone by MemryNote: it repairs the link, not your file. Only a **Rename…** from the block menu changes a name on disk, and only that rename travels between devices.
 
 ## PDF Inline Preview
 

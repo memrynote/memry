@@ -13,6 +13,7 @@
  * `src/main/vault/attachment-actions.test.ts`.
  */
 
+import fs from 'fs'
 import path from 'path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
@@ -164,6 +165,57 @@ test.describe('Attachment block menu', () => {
     expect(clipboardText).toBe(
       path.join(testVaultPath, 'attachments', attachmentNoteId, storedFilename)
     )
+  })
+
+  test('rename renames the file on disk and rewrites the block ref in the note', async ({
+    page,
+    testVaultPath
+  }) => {
+    await ready(page)
+    const title = uniqueLabel('Attachment Rename')
+    const { noteId, attachmentNoteId, storedFilename } = await seedNoteWithFileBlock(
+      page,
+      testVaultPath,
+      title
+    )
+
+    const card = page.locator('.file-attachment').first()
+    await card.hover()
+    await card.locator('[data-testid="attachment-menu-button"]').click()
+    await page
+      .locator('[data-testid="attachment-dropdown-menu"]')
+      .getByRole('menuitem', { name: 'Rename…' })
+      .click()
+
+    const dialog = page.locator('[data-testid="attachment-rename-dialog"]')
+    await expect(dialog).toBeVisible()
+    await dialog.getByLabel('Attachment name').fill('quarterly-report')
+    await dialog.getByRole('button', { name: 'Rename', exact: true }).click()
+
+    // The nanoid prefix survives; the middle segment is what changed.
+    const prefix = storedFilename.slice(0, 7)
+    const renamed = `${prefix}quarterly-report.txt`
+    const folder = path.join(testVaultPath, 'attachments', attachmentNoteId)
+    await expect
+      .poll(() => fs.existsSync(path.join(folder, renamed)), { timeout: 10_000 })
+      .toBe(true)
+    expect(fs.existsSync(path.join(folder, storedFilename))).toBe(false)
+
+    // The block shows the new name...
+    await expect(card.getByText('quarterly-report.txt')).toBeVisible()
+
+    // ...and the note's own markdown carries the new ref, which is the only
+    // thing that reaches the other devices — the blob is never re-uploaded.
+    const notePath = await page.evaluate(
+      async (id) => (await window.api.notes.get(id))?.path,
+      noteId
+    )
+    expect(notePath).toBeTruthy()
+    await expect
+      .poll(() => fs.readFileSync(path.join(testVaultPath, notePath as string), 'utf8'), {
+        timeout: 15_000
+      })
+      .toContain(renamed)
   })
 
   test('right-click on the block opens the same menu', async ({ page, testVaultPath }) => {

@@ -43,6 +43,7 @@ import {
   registerOutboxUploader
 } from '../sync/attachment-outbox'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
+import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { getStatus as getVaultStatus } from '../vault/index'
 
 import {
@@ -457,6 +458,13 @@ export function registerAttachmentHandlers(): void {
           ? await service.downloadAttachment(attachmentId, diskPath, { targetIsDir: true })
           : await service.downloadAttachment(attachmentId, diskPath)
         markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
+        // The manifest froze this file's name at upload, so a device that
+        // materializes it after an in-app rename (#1714) gets the OLD name.
+        // The note body is the authority — rename to what it asks for before
+        // anything is told the file exists.
+        if (intoDir && isDatabaseInitialized()) {
+          await applyDownloadedAttachmentName(noteId, result.filePath)
+        }
         // The bytes are on disk now, but a note that is already open resolved
         // its attachment URLs when its blocks were built and never asks again.
         // Without this the file is invisible until the app is restarted —

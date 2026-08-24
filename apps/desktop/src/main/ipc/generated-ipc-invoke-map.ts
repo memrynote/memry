@@ -198,6 +198,7 @@ export interface MainIpcInvokeHandlers {
   "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:apply-template": (...args: [{ noteId: string; templateId: string; mode: "full" | "body"; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:attachment-open-external": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
+  "notes:attachment-rename": (...args: [{ noteId: string; url: string; newName: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentRenameResult>>
   "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentResolveResult>>
   "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
   "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>

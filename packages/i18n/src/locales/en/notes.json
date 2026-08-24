@@ -177,6 +177,15 @@
       "missingTitle": "Attachment file missing",
       "missingExpected": "Expected file: {name}"
     },
+    "attachmentRename": {
+      "menuItem": "Rename…",
+      "title": "Rename attachment",
+      "description": "The file is renamed on disk and on your other devices. Its extension stays the same.",
+      "fieldLabel": "Attachment name",
+      "confirm": "Rename",
+      "renamed": "Renamed to {name}",
+      "failed": "Failed to rename attachment"
+    },
     "attachmentsDialog": {
       "title": "Attachments",
       "description": "Files stored with this note",

@@ -25,12 +25,14 @@ import {
 } from '../vault/frontmatter'
 import {
   getDefaultNoteDir,
+  getVaultRoot,
   toRelativePath,
   toAbsolutePath,
   maybeCreateSignificantSnapshot
 } from '../vault/notes'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
+import { reconcileRenamedAttachments } from '../vault/attachment-rename-reconcile'
 import { flushProjectionEvents } from '../projections'
 import { getIndexDatabase, getDatabase } from '../database/client'
 import { getNoteCacheById, getNoteCacheByPath } from '@main/database/queries/notes'
@@ -486,6 +488,25 @@ async function performWriteback(noteId: string, doc: Y.Doc): Promise<void> {
   }
 }
 
+/**
+ * Apply, on this device, the attachment rename a body change carries.
+ *
+ * Isolated from the write-back's own failure path on purpose: the file is
+ * already written when this runs, so a vault lookup or an unreadable
+ * attachments folder must not make a successful write-back look failed.
+ */
+function applyAttachmentRenames(
+  noteId: string,
+  previousContent: string | null,
+  nextContent: string
+): void {
+  try {
+    reconcileRenamedAttachments(noteId, previousContent, nextContent, getVaultRoot())
+  } catch (err) {
+    log.warn('Attachment rename reconcile failed during write-back', { noteId, err })
+  }
+}
+
 async function writebackExisting(
   noteId: string,
   cached: NonNullable<ReturnType<typeof getNoteCacheById>>,
@@ -559,6 +580,13 @@ async function writebackExisting(
 
   rememberIgnoredWrite(absolutePath)
   await atomicWrite(absolutePath, fileContent)
+
+  // An attachment rename that arrived in this body (#1714): the file is still
+  // on this device under its old name — the blob is never re-uploaded, so the
+  // encrypted manifest keeps the name it had at upload. Renaming here is what
+  // makes the rename real on every device rather than only on the one that
+  // performed it. Never throws; the note's own bytes are already written.
+  applyAttachmentRenames(noteId, existingRaw, fileContent)
 
   syncNoteToCache(
     indexDb,
@@ -700,6 +728,9 @@ async function writebackJournal(
 
     rememberIgnoredWrite(absolutePath)
     await atomicWrite(absolutePath, fileContent)
+
+    // Journals hold file/image blocks like any other note — see the note path.
+    applyAttachmentRenames(noteId, existingRaw, fileContent)
 
     syncNoteToCache(
       indexDb,

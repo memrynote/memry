@@ -5,6 +5,7 @@ import type {
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
 import type {
+  AttachmentRenameResult,
   AttachmentResolveResult,
   NoteSizeClass,
   NoteLargeFileInfo,
@@ -550,6 +551,13 @@ export const notesRpc = defineDomain({
       channel: NotesChannels.invoke.ATTACHMENT_OPEN_EXTERNAL,
       params: ['noteId', 'url'],
       invokeArgs: ['{ noteId, url }']
+    }),
+    renameAttachment: defineMethod<
+      (noteId: string, url: string, newName: string) => Promise<AttachmentRenameResult>
+    >({
+      channel: NotesChannels.invoke.ATTACHMENT_RENAME,
+      params: ['noteId', 'url', 'newName'],
+      invokeArgs: ['{ noteId, url, newName }']
     }),
     getPropertyDefinitions: defineMethod<() => Promise<PropertyDefinition[]>>({
       channel: NotesChannels.invoke.GET_PROPERTY_DEFINITIONS

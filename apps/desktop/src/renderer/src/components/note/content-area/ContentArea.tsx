@@ -21,6 +21,7 @@ import {
   useImageHoverMenu,
   type ImageMenuTarget
 } from './attachment-block-menu'
+import { AttachmentRenameFlow } from './attachment-rename-dialog'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -1288,7 +1289,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // From a DOM element inside an image block to the block's raw stored props.
   const resolveImageFromElement = useCallback(
-    (element: HTMLElement): { url: string; name: string } | null => {
+    (element: HTMLElement): { url: string; name: string; blockId: string } | null => {
       const blockId = element.closest('[data-id]')?.getAttribute('data-id')
       if (!blockId) return null
 
@@ -1297,9 +1298,34 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const { url, name } = block.props as { url?: string; name?: string }
       if (!url) return null
 
-      return { url, name: name || url.split('/').pop() || url }
+      return { url, name: name || url.split('/').pop() || url, blockId }
     },
     [editor]
+  )
+
+  // The rename dialog for an image lives HERE, not in the menu (#1714). Both
+  // image surfaces are rendered only while their menu is open or the pointer is
+  // over the image, so a dialog parented to them was unmounted by the very
+  // click that opened it — Rename looked like it did nothing at all.
+  const [imageRenameTarget, setImageRenameTarget] = useState<{
+    url: string
+    name: string
+    blockId: string
+  } | null>(null)
+
+  // An attachment rename (#1714) has already renamed the file on disk; the
+  // block's url has to follow, or the note keeps pointing at the old name.
+  const applyImageRename = useCallback(
+    (next: { url: string; name: string }): void => {
+      const blockId = imageRenameTarget?.blockId
+      if (!blockId) return
+      const block = editor.getBlock(blockId)
+      if (block && block.type === 'image') {
+        editor.updateBlock(block, { props: { url: next.url, name: next.name } })
+      }
+      setImageRenameTarget(null)
+    },
+    [editor, imageRenameTarget]
   )
 
   const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
@@ -1461,12 +1487,26 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ImageAttachmentMenu
               target={imageMenuTarget}
               onClose={() => setImageMenuTarget(null)}
+              onRequestRename={() => {
+                setImageRenameTarget(imageMenuTarget)
+                setImageMenuTarget(null)
+              }}
+            />
+          )}
+          {imageRenameTarget && (
+            <AttachmentRenameFlow
+              url={imageRenameTarget.url}
+              name={imageRenameTarget.name}
+              open
+              onOpenChange={(open) => !open && setImageRenameTarget(null)}
+              onRenamed={applyImageRename}
             />
           )}
           {imageHoverTarget && !imageMenuTarget && (
             <ImageHoverMenuButton
               target={imageHoverTarget}
               onOpenChange={handleImageHoverMenuOpenChange}
+              onRequestRename={() => setImageRenameTarget(imageHoverTarget)}
             />
           )}
           <BlockNoteView
