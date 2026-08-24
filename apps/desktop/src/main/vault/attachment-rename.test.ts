@@ -28,6 +28,7 @@ vi.mock('./notes-io', () => ({ getVaultRoot: () => vaultPath }))
 vi.mock('./index', () => ({ getStatus: () => ({ path: vaultPath }) }))
 
 import {
+  applyDownloadedAttachmentName,
   buildRenamedFilename,
   renameAttachment,
   resolveCollision,
@@ -95,6 +96,17 @@ describe('resolveCollision', () => {
     expect(resolveCollision(path.join(vaultPath, 'attachments', NOTE_ID), 'a-b.pdf')).toBe(
       'a-b.pdf'
     )
+  })
+
+  it('refuses rather than looping forever when every suffix is taken', () => {
+    const dir = path.join(vaultPath, 'attachments', NOTE_ID)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'k3f9x2-invoice.pdf'), 'x')
+    for (let n = 2; n < 100; n++) {
+      fs.writeFileSync(path.join(dir, `k3f9x2-invoice-${n}.pdf`), 'x')
+    }
+
+    expect(() => resolveCollision(dir, 'k3f9x2-invoice.pdf')).toThrow(NoteError)
   })
 
   it('walks -2, -3 while the name is taken', () => {
@@ -201,5 +213,47 @@ describe('renameAttachment', () => {
     expect(fs.existsSync(path.join(vaultPath, 'attachments', NOTE_ID, 'k3f9x2-scan.pdf'))).toBe(
       true
     )
+  })
+})
+
+describe('applyDownloadedAttachmentName', () => {
+  const NOTE_BODY = (filename: string): string =>
+    `---\nid: ${NOTE_ID}\n---\n\n<!-- file:{"url":"../attachments/${NOTE_ID}/${filename}"} -->`
+
+  function writeNote(body: string): void {
+    const absolute = path.join(vaultPath, NOTE_PATH)
+    fs.mkdirSync(path.dirname(absolute), { recursive: true })
+    fs.writeFileSync(absolute, body)
+  }
+
+  it('renames a downloaded file to the name the note body carries', async () => {
+    // The manifest froze the filename at upload, so a device materializing the
+    // file after a synced rename gets the OLD name.
+    writeNote(NOTE_BODY('k3f9x2-invoice.pdf'))
+    const downloaded = writeAttachment(`attachments/${NOTE_ID}/k3f9x2-scan.pdf`)
+
+    await applyDownloadedAttachmentName(NOTE_ID, downloaded)
+
+    expect(fs.existsSync(path.join(vaultPath, 'attachments', NOTE_ID, 'k3f9x2-invoice.pdf'))).toBe(
+      true
+    )
+    expect(fs.existsSync(downloaded)).toBe(false)
+  })
+
+  it('leaves the download alone when the note has no index row', async () => {
+    const downloaded = writeAttachment(`attachments/${NOTE_ID}/k3f9x2-scan.pdf`)
+
+    await applyDownloadedAttachmentName('unknown-note', downloaded)
+
+    expect(fs.existsSync(downloaded)).toBe(true)
+  })
+
+  it('swallows an unreadable note file rather than failing the download', async () => {
+    // The bytes are already on disk by the time this runs; a note that cannot
+    // be read must not turn a completed download into an error.
+    const downloaded = writeAttachment(`attachments/${NOTE_ID}/k3f9x2-scan.pdf`)
+
+    await expect(applyDownloadedAttachmentName(NOTE_ID, downloaded)).resolves.toBeUndefined()
+    expect(fs.existsSync(downloaded)).toBe(true)
   })
 })

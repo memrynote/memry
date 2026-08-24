@@ -173,6 +173,52 @@ describe('renaming from the menu (#1714)', () => {
     })
   })
 
+  it('submits on Enter and closes on Cancel without renaming', async () => {
+    const onRenamed = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(<AttachmentMenuButton url={URL} name="report.pdf" onRenamed={onRenamed} />)
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('attachment-rename-dialog')).not.toBeInTheDocument()
+    })
+    expect(mocks.renameAttachment).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+    const field = await screen.findByLabelText('Attachment name')
+    await user.clear(field)
+    await user.type(field, 'invoice{Enter}')
+
+    await waitFor(() => {
+      expect(mocks.renameAttachment).toHaveBeenCalledWith(NOTE_ID, URL, 'invoice.pdf')
+    })
+  })
+
+  it('renames from the right-click context menu too', async () => {
+    const onRenamed = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(
+      <AttachmentBlockContextMenu url={URL} name="report.pdf" onRenamed={onRenamed}>
+        <div>file card</div>
+      </AttachmentBlockContextMenu>
+    )
+
+    fireEvent.contextMenu(screen.getByText('file card'))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+    await user.click(await screen.findByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => {
+      expect(onRenamed).toHaveBeenCalledWith({
+        url: '../attachments/note-1/k3f9x2-invoice.pdf',
+        name: 'invoice.pdf'
+      })
+    })
+  })
+
   it('keeps the dialog open and does not touch the block when the rename fails', async () => {
     mocks.renameAttachment.mockRejectedValue(new Error('nope'))
     const onRenamed = vi.fn()

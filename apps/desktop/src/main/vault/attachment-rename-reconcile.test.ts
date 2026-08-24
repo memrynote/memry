@@ -168,6 +168,19 @@ describe('reconcileRenamedAttachments', () => {
     expect(fs.existsSync(path.join(attachmentsDir(), 'k3f9x2-renamed-by-hand.pdf'))).toBe(true)
   })
 
+  it('survives a ref the filesystem refuses', () => {
+    // A body ref carrying an encoded NUL decodes to a name no rename can take.
+    // The note's own bytes are already written when this runs, so it reports
+    // nothing applied rather than throwing through the write-back.
+    writeAttachment('k3f9x2-scan.pdf')
+    const hostileNext = `<!-- file:{"url":"../attachments/${NOTE_ID}/k3f9x2-%00bad.pdf"} -->`
+
+    expect(
+      reconcileRenamedAttachments(NOTE_ID, body('k3f9x2-scan.pdf'), hostileNext, vaultPath)
+    ).toEqual([])
+    expect(fs.existsSync(path.join(attachmentsDir(), 'k3f9x2-scan.pdf'))).toBe(true)
+  })
+
   it('does nothing without a previous body (a note written for the first time)', () => {
     writeAttachment('k3f9x2-scan.pdf')
     expect(
@@ -212,6 +225,16 @@ describe('reconcileDownloadedAttachmentName', () => {
         vaultPath
       )
     ).toBe(downloaded)
+    expect(fs.existsSync(downloaded)).toBe(true)
+  })
+
+  it('keeps the downloaded file when the body names something unrenameable', () => {
+    const downloaded = writeAttachment('k3f9x2-scan.pdf')
+    const hostile = `<!-- file:{"url":"../attachments/${NOTE_ID}/k3f9x2-%00bad.pdf"} -->`
+
+    expect(reconcileDownloadedAttachmentName(NOTE_ID, downloaded, hostile, vaultPath)).toBe(
+      downloaded
+    )
     expect(fs.existsSync(downloaded)).toBe(true)
   })
 
