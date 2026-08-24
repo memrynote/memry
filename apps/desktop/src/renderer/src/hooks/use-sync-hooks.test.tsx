@@ -116,8 +116,13 @@ describe('sync hooks', () => {
     rerender()
     expect(result.current.label).toBe('account.sync.statuses.offlinePending{"count":5}')
 
-    mocks.syncState.status = 'unknown-status'
+    mocks.syncState.status = 'local_only'
     mocks.syncState.pendingCount = 0
+    rerender()
+    expect(result.current.label).toBe('account.sync.statuses.localOnly')
+    expect(result.current.dotColor).toBe('bg-gray-400')
+
+    mocks.syncState.status = 'unknown-status'
     mocks.syncState.error = 'sync failed'
     mocks.syncState.conflicts = [{ itemId: 'n1', itemType: 'note', detectedAt: 1 }]
     rerender()

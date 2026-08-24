@@ -15,7 +15,7 @@ import { useSync } from '@/contexts/sync-context'
 import { notesService } from '@/services/notes-service'
 import { useT } from '@memry/i18n/renderer'
 
-type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
+type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'local_only' | 'unknown'
 
 interface SyncStatusDisplay {
   label: string
@@ -76,6 +76,14 @@ const STATUS_MAP: Record<string, Omit<SyncStatusDisplay, 'label'> & { labelKey: 
   },
   offline: {
     labelKey: 'account.sync.statuses.offline',
+    dotColor: 'bg-gray-400',
+    IconComponent: CloudOff,
+    isAnimating: false
+  },
+  // Free plan: main gates the sync runtime and reports `local_only`, a status
+  // outside the renderer SyncStatus union (see use-home-seed-gate.ts).
+  local_only: {
+    labelKey: 'account.sync.statuses.localOnly',
     dotColor: 'bg-gray-400',
     IconComponent: CloudOff,
     isAnimating: false
