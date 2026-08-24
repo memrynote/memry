@@ -145,12 +145,12 @@ describe('account-handlers', () => {
 
     await expect(invokeHandler(AccountChannels.invoke.START_CHECKOUT)).resolves.toEqual({
       success: true,
-      checkoutUrl: 'https://memrynote.com/checkout#token=checkout-token-1'
+      checkoutUrl: 'https://memrynote.com/account/sync#token=checkout-token-1'
     })
 
     expect(mocks.postToServer).toHaveBeenCalledWith('/auth/checkout-token', {}, 'token-1')
     expect(mocks.shellOpenExternal).toHaveBeenCalledWith(
-      'https://memrynote.com/checkout#token=checkout-token-1'
+      'https://memrynote.com/account/sync#token=checkout-token-1'
     )
   })
 

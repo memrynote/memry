@@ -266,6 +266,9 @@ export function AccountSettings() {
   const initial = (email ?? 'U').charAt(0).toUpperCase()
   const isSyncActive = syncStatus.status !== 'paused'
   const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
+  // Free plan (or any unpaid account main gated into `local_only`): sync never
+  // connects, so the status row would sit on "Connecting..." forever.
+  const isSyncLocked = billing?.plan === 'free' || syncStatus.status === 'local_only'
   const storageCategoryLabels: Record<string, string> = {
     notes: t('account.storage.categories.notes'),
     attachments: t('account.storage.categories.attachments'),
@@ -312,29 +315,57 @@ export function AccountSettings() {
       </div>
 
       <SettingsGroup label={t('account.groups.sync')}>
-        <div className="flex items-center justify-between h-11 px-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <div
-              className={`size-2 shrink-0 rounded-full ${syncStatus.dotColor} ${
-                syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
-              }`}
-            />
-            <div className="flex flex-col gap-px">
-              <span className="font-medium text-[13px]/4 text-foreground">{syncStatus.label}</span>
+        {isSyncLocked ? (
+          <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="font-medium text-[13px]/4 text-foreground">
+                {t('account.sync.upsell.title')}
+              </span>
               <span className="text-xs/4 text-muted-foreground">
-                {t('account.sync.lastSynced', { time: syncStatus.lastSyncLabel })}
-                {syncStatus.pendingCount > 0 &&
-                  ` · ${t('account.sync.pending', { count: syncStatus.pendingCount })}`}
+                {t('account.sync.upsell.description')}
               </span>
             </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => void handleStartCheckout()}
+              disabled={isCheckoutStarting}
+              className="h-7 shrink-0 px-3 text-xs/4"
+            >
+              {isCheckoutStarting
+                ? t('account.billing.actions.opening')
+                : t('account.billing.actions.unlockSync')}
+            </Button>
           </div>
-          <Switch
-            checked={isSyncActive}
-            disabled={isToggleDisabled}
-            onCheckedChange={(checked) => void (checked ? syncStatus.resume() : syncStatus.pause())}
-            className={ACCENT_SWITCH}
-          />
-        </div>
+        ) : (
+          <div className="flex items-center justify-between h-11 px-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <div
+                className={`size-2 shrink-0 rounded-full ${syncStatus.dotColor} ${
+                  syncStatus.isAnimating ? 'motion-safe:animate-pulse' : ''
+                }`}
+              />
+              <div className="flex flex-col gap-px">
+                <span className="font-medium text-[13px]/4 text-foreground">
+                  {syncStatus.label}
+                </span>
+                <span className="text-xs/4 text-muted-foreground">
+                  {t('account.sync.lastSynced', { time: syncStatus.lastSyncLabel })}
+                  {syncStatus.pendingCount > 0 &&
+                    ` · ${t('account.sync.pending', { count: syncStatus.pendingCount })}`}
+                </span>
+              </div>
+            </div>
+            <Switch
+              checked={isSyncActive}
+              disabled={isToggleDisabled}
+              onCheckedChange={(checked) =>
+                void (checked ? syncStatus.resume() : syncStatus.pause())
+              }
+              className={ACCENT_SWITCH}
+            />
+          </div>
+        )}
       </SettingsGroup>
 
       <SettingsGroup label={t('account.groups.billing')}>
@@ -464,7 +495,9 @@ export function AccountSettings() {
             >
               {isCheckoutStarting
                 ? t('account.billing.actions.opening')
-                : t('account.billing.actions.upgrade')}
+                : isSyncLocked
+                  ? t('account.billing.actions.unlockSync')
+                  : t('account.billing.actions.upgrade')}
             </Button>
             <Button
               variant="outline"

@@ -12,7 +12,9 @@ import {
 } from './entitlement-cache'
 
 const log = createLogger('Billing')
-const DEFAULT_CHECKOUT_PAGE_URL = 'https://memrynote.com/checkout'
+// The account-area plan picker; it accepts the desktop-minted checkout token
+// in the hash so the user lands signed-in-like, with no separate web login.
+const DEFAULT_CHECKOUT_PAGE_URL = 'https://memrynote.com/account/sync'
 
 export type BillingPlanId = 'plus' | 'pro' | 'believer'
 export type BillingCadence = 'monthly' | 'annual' | 'lifetime'

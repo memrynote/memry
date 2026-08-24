@@ -626,12 +626,17 @@
         "syncError": "Sync Error",
         "offline": "Offline",
         "connecting": "Connecting...",
+        "localOnly": "Local only",
         "pushed": "{count, plural, one {# pushed} other {# pushed}}",
         "pulled": "{count, plural, one {# pulled} other {# pulled}}",
         "pushedPulled": "{parts}",
         "changesPending": "{count, plural, one {# change pending} other {# changes pending}}",
         "offlinePending": "Offline ({count, plural, one {# change pending} other {# changes pending}})",
         "never": "Never"
+      },
+      "upsell": {
+        "title": "Your notes live only on this device",
+        "description": "Upgrade to sync across all your devices — end-to-end encrypted, so only you can read them."
       }
     },
     "billing": {
@@ -661,6 +666,7 @@
       "activationPendingPrefix": "Activation pending. Paddle can take a moment to confirm checkout. Refresh status or email",
       "actions": {
         "upgrade": "Upgrade",
+        "unlockSync": "Unlock Sync",
         "opening": "Opening...",
         "refresh": "Refresh status",
         "manage": "Manage billing"

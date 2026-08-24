@@ -526,8 +526,9 @@ describe('settings section coverage', () => {
       'https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+'
     )
 
-    fireEvent.click(screen.getByRole('switch'))
-    expect(mocks.syncStatus.pause).toHaveBeenCalled()
+    // Free plan: the sync toggle is replaced by the upgrade upsell.
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.getByText('account.sync.upsell.title')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('link device'))
     expect(screen.getByText('qr linking')).toBeInTheDocument()
@@ -541,7 +542,8 @@ describe('settings section coverage', () => {
     render(<AccountSettings />)
     expect((await screen.findAllByText('account.billing.plans.free')).length).toBeGreaterThan(0)
 
-    fireEvent.click(screen.getByText('account.billing.actions.upgrade'))
+    // Free plan renders the marketing CTA in both the sync upsell and billing.
+    fireEvent.click(screen.getAllByText('account.billing.actions.unlockSync')[0])
     await waitFor(() => expect(window.api.account.startCheckout).toHaveBeenCalledWith())
 
     fireEvent.click(screen.getByText('account.billing.actions.refresh'))
@@ -552,6 +554,29 @@ describe('settings section coverage', () => {
 
     fireEvent.click(screen.getByText('account.billing.actions.manage'))
     await waitFor(() => expect(window.api.account.openBillingPortal).toHaveBeenCalled())
+  })
+
+  it('shows the sync toggle for a paid plan and pauses sync on toggle', async () => {
+    ;(window.api.account.getBillingStatus as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      plan: 'pro',
+      status: 'active',
+      source: 'paddle',
+      limits: {
+        storageLimit: 10 * 1024 * 1024 * 1024,
+        maxFileSize: 200 * 1024 * 1024,
+        maxVaults: 10,
+        versionHistoryDays: 365
+      },
+      usage: { storageUsed: 1536 },
+      expiresAt: null,
+      canManageBilling: true
+    })
+    render(<AccountSettings />)
+    expect((await screen.findAllByText('account.billing.plans.pro')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('account.sync.upsell.title')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('switch'))
+    expect(mocks.syncStatus.pause).toHaveBeenCalled()
   })
 
   it('renders setup while recovery confirmation is still pending', () => {

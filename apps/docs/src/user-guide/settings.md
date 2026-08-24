@@ -25,12 +25,17 @@ The signed-in email and current subscription plan. Read-only — sign in or out 
 
 A toggle to enable or pause cloud sync, plus a status indicator and the time of the last successful sync.
 
+On the free plan sync stays local-only, so the status shows **Local only** and this group swaps the
+toggle for an upgrade card with an **Unlock Sync** button that opens the plan picker in your
+browser.
+
 ### Billing
 
 Shows the current sync plan, activation state, storage limit, max file size, synced vault limit, and
-version-history window. **Upgrade** opens the plan page in your browser, where you choose a plan
-(Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing to Paddle
-checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
+version-history window. **Upgrade** (labelled **Unlock Sync** on the free plan) opens the plan
+picker at `memrynote.com/account/sync` in your browser — no separate web login needed — where you
+choose a plan (Plus, Pro, or Believer) and billing frequency (monthly or yearly) before continuing
+to Paddle checkout. **Refresh status** asks the sync server to reconcile the latest Paddle transaction, and
 **Manage billing** opens Paddle's hosted customer portal when the account has a Paddle customer id.
 
 If checkout succeeds before the webhook finishes, Billing shows **Activation pending**. Use
