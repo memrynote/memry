@@ -117,7 +117,10 @@ export async function runMobileConformance(): Promise<HarnessResult> {
  * into the real vault DB, then a NoteContentStore round-trip on the same DB.
  * Requires a signed-in session and an unlocked vault.
  */
-export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
+export async function runPullPipelineRoundTrip(
+  onStep?: (step: string) => void
+): Promise<HarnessResult> {
+  const step = (label: string) => onStep?.(label)
   const result: HarnessResult = { passed: 0, failed: 0, failures: [] }
   const check = (name: string, ok: boolean, detail?: string) => {
     if (ok) result.passed++
@@ -127,16 +130,19 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
     }
   }
 
+  step('loading vault id')
   const vaultId = await loadCurrentVaultId()
   if (!vaultId) {
     check('session', false, 'no current vault — sign in and unlock first')
     return result
   }
 
+  step('engine.sync()')
   const engine = getSyncEngine(vaultId)
   const summary = await engine.sync()
   check('pull ran without refusal', summary.ok, summary.reason ?? undefined)
 
+  step('db counts')
   const db = await openVaultDb(vaultId)
   const itemCount = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM sync_items')
   check('sync_items has rows', (itemCount?.n ?? 0) > 0)
@@ -146,6 +152,7 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
   )
   check('at least one note body materialized', noteWithBody !== null)
 
+  step('note content store round-trip')
   const store = createMobileNoteContentStore(db, { vaultId, journalFolder: 'Journal' })
   const probePath = `__harness__/roundtrip-${Date.now().toString(36)}.md`
   const probeContent = '# seam probe\n\nround-trip body\n'
@@ -175,6 +182,7 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
     ...corrupt.map((row) => `${row.key.slice(8, 20)}…: ${row.value.slice(0, 80)}`)
   ]
 
+  step('stuck probe')
   // Stuck-item deep probe: which types are stuck, and does the SERVER return
   // them when asked directly? Decides server-omission vs client-not-asking.
   const stuckByType = await db.getAllAsync<{ type: string; n: number }>(
@@ -218,6 +226,7 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
         `engine.pullBlobs on those ids → applied ${blobResult.applied}, still stuck ${after?.n ?? '?'} (types: ${stuckSample.map((s) => s.type).join(', ')})`
       )
 
+      step('size ladder')
       // Size ladder: small pulls work, the first-sync 100-id chunks do not.
       // Find the breaking size and surface the thrown error verbatim.
       for (const size of [10, 50, 100]) {

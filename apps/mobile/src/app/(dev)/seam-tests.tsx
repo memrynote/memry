@@ -15,15 +15,22 @@ export default function SeamTestsScreen() {
   const [conformance, setConformance] = useState<HarnessResult | null>(null)
   const [roundTrip, setRoundTrip] = useState<HarnessResult | null>(null)
   const [busy, setBusy] = useState(false)
+  const [step, setStep] = useState<string | null>(null)
+  const [crash, setCrash] = useState<string | null>(null)
 
   const runAll = useCallback(() => {
     setBusy(true)
     setTimeout(async () => {
       try {
+        setCrash(null)
+        setStep('conformance')
         const c = await runMobileConformance()
         setConformance(c)
-        const r = await runPullPipelineRoundTrip()
+        const r = await runPullPipelineRoundTrip((s) => setStep(s))
         setRoundTrip(r)
+        setStep(null)
+      } catch (err) {
+        setCrash(err instanceof Error ? `${err.name}: ${err.message.slice(0, 160)}` : String(err))
       } finally {
         setBusy(false)
       }
@@ -65,6 +72,8 @@ export default function SeamTestsScreen() {
               {busy ? 'Running…' : 'Run conformance + pull round-trip'}
             </ThemedText>
           </Pressable>
+          {step ? <ThemedText type="small">⏳ {step}</ThemedText> : null}
+          {crash ? <ThemedText type="smallBold">💥 round-trip threw: {crash}</ThemedText> : null}
           {render('Conformance', conformance)}
           {render('Pull round-trip', roundTrip)}
         </ScrollView>
