@@ -28,6 +28,13 @@
     "showLess": "表示を少なくする",
     "undo": "元に戻す"
   },
+  "fileActions": {
+    "revealInFinder": "Finder で表示",
+    "showInExplorer": "エクスプローラーで表示",
+    "showInFileManager": "ファイルマネージャーで表示",
+    "openInDefaultApp": "デフォルトのアプリで開く",
+    "revealFailed": "フォルダで表示できませんでした"
+  },
   "tabs": {
     "pin": "ピンタブ",
     "unpin": "タブの固定を解除する",

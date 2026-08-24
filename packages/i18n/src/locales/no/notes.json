@@ -54,7 +54,6 @@
       "newFolder": "Ny mappe",
       "rename": "Gi nytt navn",
       "openExternal": "Åpne i External Editor",
-      "revealInFinder": "Avslør i Finder",
       "setDefaultTemplate": "Angi standardmal",
       "clearDefaultTemplate": "Fjern standardmal",
       "setIcon": "Sett ikon",
@@ -109,9 +108,7 @@
       "find": "Finn…",
       "moreActions": "Flere handlinger",
       "moveToFolder": "Flytt til mappe…",
-      "openInDefaultApp": "Åpne i standardappen",
       "rename": "Gi nytt navn…",
-      "revealInFinder": "Vis i Finder",
       "revealInSidebar": "Vis i navigasjonen"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Notater",
       "open": "Åpne",
       "openInExternalEditor": "Åpne i External Editor",
-      "revealInFinder": "Avslør i Finder",
       "revealInSidebar": "Avslør i sidepanelet",
       "copyLink": "Kopier lenke",
       "delete2": "Slett"
@@ -672,9 +668,7 @@
       "noFileSelected": "Ingen fil er valgt",
       "selectAFileFromTheSidebarToViewIt": "Velg en fil fra sidefeltet for å vise den",
       "loadingFile": "Laster inn fil ...",
-      "openInDefaultApp": "Åpne i standardappen",
       "open": "Åpne",
-      "revealInFinder": "Avslør i Finder",
       "reveal": "Avsløre",
       "unsupportedFileType": "Ustøttet filtype",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Kunne ikke lagre formelen",
       "failedToOpenInExternalEditor": "Kunne ikke åpne i eksternt redigeringsprogram",
-      "failedToRevealInFinder": "Kunne ikke avsløre i Finder",
       "failedToCopyLink": "Kunne ikke kopiere linken",
       "failedToCreateView": "Kunne ikke opprette visning",
       "failedToRenameFolder": "Kunne ikke gi nytt navn til mappen",

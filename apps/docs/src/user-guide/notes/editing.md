@@ -175,7 +175,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Rename…** — moves focus to the title so you can rename in place
 - **Move to folder…** — move the note into another folder
 - **Copy path** — copy the note's vault-relative path
-- **Reveal in Finder** — show the `.md` file in your operating system's file manager (Finder on macOS, File Explorer on Windows, your file manager on Linux)
+- **Reveal in Finder** — show the `.md` file in your operating system's file manager. The item is named for the one you have: **Reveal in Finder** on macOS, **Show in Explorer** on Windows, **Show in file manager** on Linux
 - **Reveal in navigation** — highlight the note in the sidebar
 - **Open in default app** — open the `.md` file in your system's default editor
 

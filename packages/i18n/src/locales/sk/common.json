@@ -28,6 +28,13 @@
     "showLess": "Zobraziť menej",
     "undo": "Späť"
   },
+  "fileActions": {
+    "revealInFinder": "Zobraziť vo Finderi",
+    "showInExplorer": "Zobraziť v Prieskumníkovi",
+    "showInFileManager": "Zobraziť v správcovi súborov",
+    "openInDefaultApp": "Otvoriť v predvolenej aplikácii",
+    "revealFailed": "Nepodarilo sa zobraziť v priečinku"
+  },
   "tabs": {
     "pin": "Pripnúť kartu",
     "unpin": "Odpnúť kartu",

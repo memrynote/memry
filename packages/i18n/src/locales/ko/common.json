@@ -28,6 +28,13 @@
     "showLess": "간략히 보기",
     "undo": "실행 취소"
   },
+  "fileActions": {
+    "revealInFinder": "Finder에서 보기",
+    "showInExplorer": "파일 탐색기에서 보기",
+    "showInFileManager": "파일 관리자에서 보기",
+    "openInDefaultApp": "기본 앱에서 열기",
+    "revealFailed": "폴더에서 표시하지 못했습니다."
+  },
   "tabs": {
     "pin": "핀 탭",
     "unpin": "탭 고정 해제",

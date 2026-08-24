@@ -54,7 +54,6 @@
       "newFolder": "مجلد جديد",
       "rename": "إعادة تسمية",
       "openExternal": "فتح في المحرر الخارجي",
-      "revealInFinder": "كشف في الباحث",
       "setDefaultTemplate": "تعيين القالب الافتراضي",
       "clearDefaultTemplate": "مسح القالب الافتراضي",
       "setIcon": "تعيين أيقونة",
@@ -109,9 +108,7 @@
       "find": "بحث…",
       "moreActions": "المزيد من الإجراءات",
       "moveToFolder": "نقل إلى مجلد…",
-      "openInDefaultApp": "فتح في التطبيق الافتراضي",
       "rename": "إعادة تسمية…",
-      "revealInFinder": "إظهار في Finder",
       "revealInSidebar": "إظهار في شريط التنقل"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "ملاحظات",
       "open": "مفتوح",
       "openInExternalEditor": "فتح في المحرر الخارجي",
-      "revealInFinder": "كشف في الباحث",
       "revealInSidebar": "كشف في الشريط الجانبي",
       "copyLink": "نسخ الرابط",
       "delete2": "حذف"
@@ -672,9 +668,7 @@
       "noFileSelected": "لم يتم تحديد أي ملف",
       "selectAFileFromTheSidebarToViewIt": "حدد ملفًا من الشريط الجانبي لمشاهدته",
       "loadingFile": "جارٍ تحميل الملف...",
-      "openInDefaultApp": "فتح في التطبيق الافتراضي",
       "open": "مفتوح",
-      "revealInFinder": "كشف في الباحث",
       "reveal": "كشف",
       "unsupportedFileType": "نوع الملف غير معتمد",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "فشل حفظ الصيغة",
       "failedToOpenInExternalEditor": "فشل الفتح في المحرر الخارجي",
-      "failedToRevealInFinder": "فشل الكشف في Finder",
       "failedToCopyLink": "فشل نسخ الرابط",
       "failedToCreateView": "فشل إنشاء طريقة العرض",
       "failedToRenameFolder": "فشلت إعادة تسمية المجلد",

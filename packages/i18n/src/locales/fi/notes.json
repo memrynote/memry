@@ -54,7 +54,6 @@
       "newFolder": "Uusi kansio",
       "rename": "Nimeä uudelleen",
       "openExternal": "Avaa ulkoisessa editorissa",
-      "revealInFinder": "Paljasta Finderissa",
       "setDefaultTemplate": "Aseta oletusmalli",
       "clearDefaultTemplate": "Tyhjennä oletusmalli",
       "setIcon": "Aseta kuvake",
@@ -109,9 +108,7 @@
       "find": "Etsi…",
       "moreActions": "Lisää toimintoja",
       "moveToFolder": "Siirrä kansioon…",
-      "openInDefaultApp": "Avaa oletussovelluksessa",
       "rename": "Nimeä uudelleen…",
-      "revealInFinder": "Näytä Finderissa",
       "revealInSidebar": "Näytä sivupalkissa"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Huomautuksia",
       "open": "Avaa",
       "openInExternalEditor": "Avaa ulkoisessa editorissa",
-      "revealInFinder": "Paljasta Finderissa",
       "revealInSidebar": "Näytä sivupalkissa",
       "copyLink": "Kopioi linkki",
       "delete2": "Poista"
@@ -672,9 +668,7 @@
       "noFileSelected": "Tiedostoa ei ole valittu",
       "selectAFileFromTheSidebarToViewIt": "Valitse tiedosto sivupalkista nähdäksesi sen",
       "loadingFile": "Ladataan tiedostoa...",
-      "openInDefaultApp": "Avaa oletussovelluksessa",
       "open": "Avaa",
-      "revealInFinder": "Paljasta Finderissa",
       "reveal": "Paljasta",
       "unsupportedFileType": "Tiedostotyyppiä ei tueta",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Kaavan tallentaminen epäonnistui",
       "failedToOpenInExternalEditor": "Avaaminen ulkoisessa editorissa epäonnistui",
-      "failedToRevealInFinder": "Paljastaminen Finderissa epäonnistui",
       "failedToCopyLink": "Linkin kopioiminen epäonnistui",
       "failedToCreateView": "Näkymän luominen epäonnistui",
       "failedToRenameFolder": "Kansion uudelleennimeäminen epäonnistui",

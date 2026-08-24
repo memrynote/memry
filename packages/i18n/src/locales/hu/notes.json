@@ -54,7 +54,6 @@
       "newFolder": "Új mappa",
       "rename": "Átnevezés",
       "openExternal": "Megnyitás a Külső szerkesztőben",
-      "revealInFinder": "Fedezd fel a Finderben",
       "setDefaultTemplate": "Állítsa be az alapértelmezett sablont",
       "clearDefaultTemplate": "Alapértelmezett sablon törlése",
       "setIcon": "Állítsa be az ikont",
@@ -109,9 +108,7 @@
       "find": "Keresés…",
       "moreActions": "További műveletek",
       "moveToFolder": "Áthelyezés mappába…",
-      "openInDefaultApp": "Megnyitás az alapértelmezett alkalmazásban",
       "rename": "Átnevezés…",
-      "revealInFinder": "Megjelenítés a Finderben",
       "revealInSidebar": "Megjelenítés a navigációban"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Megjegyzések",
       "open": "Nyissa meg",
       "openInExternalEditor": "Megnyitás a Külső szerkesztőben",
-      "revealInFinder": "Fedezd fel a Finderben",
       "revealInSidebar": "Felfedés az oldalsávban",
       "copyLink": "Link másolása",
       "delete2": "Törölje"
@@ -672,9 +668,7 @@
       "noFileSelected": "Nincs kiválasztva fájl",
       "selectAFileFromTheSidebarToViewIt": "A megtekintéséhez válasszon egy fájlt az oldalsávról",
       "loadingFile": "Fájl betöltése...",
-      "openInDefaultApp": "Megnyitás az alapértelmezett alkalmazásban",
       "open": "Nyissa meg",
-      "revealInFinder": "Fedezd fel a Finderben",
       "reveal": "Felfedni",
       "unsupportedFileType": "Nem támogatott fájltípus",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Nem sikerült menteni a képletet",
       "failedToOpenInExternalEditor": "Nem sikerült megnyitni a külső szerkesztőben",
-      "failedToRevealInFinder": "Nem sikerült felfedni a Finderben",
       "failedToCopyLink": "Nem sikerült a link másolása",
       "failedToCreateView": "Nem sikerült létrehozni a nézetet",
       "failedToRenameFolder": "Nem sikerült átnevezni a mappát",

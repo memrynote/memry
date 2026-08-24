@@ -28,6 +28,13 @@
     "showLess": "Afficher moins",
     "undo": "Annuler"
   },
+  "fileActions": {
+    "revealInFinder": "Révéler dans le Finder",
+    "showInExplorer": "Afficher dans l'Explorateur",
+    "showInFileManager": "Afficher dans le gestionnaire de fichiers",
+    "openInDefaultApp": "Ouvrir dans l'application par défaut",
+    "revealFailed": "Impossible d'afficher dans le dossier"
+  },
   "tabs": {
     "pin": "Onglet Épingler",
     "unpin": "Désépingler l'onglet",

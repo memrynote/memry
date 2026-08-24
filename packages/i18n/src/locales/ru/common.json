@@ -28,6 +28,13 @@
     "showLess": "Показать меньше",
     "undo": "Отменить"
   },
+  "fileActions": {
+    "revealInFinder": "Показать в Finder",
+    "showInExplorer": "Показать в Проводнике",
+    "showInFileManager": "Показать в файловом менеджере",
+    "openInDefaultApp": "Открыть в приложении по умолчанию",
+    "revealFailed": "Не удалось показать в папке"
+  },
   "tabs": {
     "pin": "Вкладка «Закрепить»",
     "unpin": "Открепить вкладку",

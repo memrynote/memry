@@ -28,6 +28,13 @@
     "showLess": "Mostra meno",
     "undo": "Annulla"
   },
+  "fileActions": {
+    "revealInFinder": "Mostra nel Finder",
+    "showInExplorer": "Mostra in Esplora file",
+    "showInFileManager": "Mostra nel file manager",
+    "openInDefaultApp": "Apri nell'app predefinita",
+    "revealFailed": "Impossibile mostrare nella cartella"
+  },
   "tabs": {
     "pin": "Scheda Perno",
     "unpin": "Sblocca scheda",

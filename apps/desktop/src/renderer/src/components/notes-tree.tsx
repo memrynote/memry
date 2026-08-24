@@ -73,6 +73,7 @@ import {
   type VirtualizedTreeActions
 } from '@/components/virtualized-notes-tree'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 
 const LEADING_SPACER = <div className="h-4 w-4" />
 
@@ -104,6 +105,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 ) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
   const data = useNoteTreeData()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
@@ -376,7 +378,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => void actions.handleRevealInFinder(note)}>
                     <FolderOpen className="me-2 h-4 w-4" />
-                    {t('tree.actions.revealInFinder')}
+                    {fileActions.revealInFolder}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                   <BookmarkMenuItem itemType="note" itemId={note.id} />

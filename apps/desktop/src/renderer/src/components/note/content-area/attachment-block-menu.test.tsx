@@ -18,6 +18,16 @@ import {
   useImageHoverMenu
 } from './attachment-block-menu'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const NOTE_ID = 'note-1'
 const URL = '../attachments/note-1/k3f9x2-report.pdf'
 const RESOLVED: AttachmentResolveResult = {

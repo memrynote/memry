@@ -28,6 +28,13 @@
     "showLess": "Laat minder zien",
     "undo": "Ongedaan maken"
   },
+  "fileActions": {
+    "revealInFinder": "Toon in Finder",
+    "showInExplorer": "Tonen in Verkenner",
+    "showInFileManager": "Tonen in bestandsbeheer",
+    "openInDefaultApp": "Openen in standaardapp",
+    "revealFailed": "Kan niet in map tonen"
+  },
   "tabs": {
     "pin": "Tabblad vastzetten",
     "unpin": "Tabblad losmaken",

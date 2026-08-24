@@ -17,6 +17,7 @@ import { Copy, ExternalLink, FolderOpen, MoreHorizontal } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -128,6 +129,7 @@ function AttachmentMenuBody({
 }) {
   const { t } = useT('notes')
   const { Item, Label, Separator } = components
+  const fileActions = useFileActionLabels()
   const { info, actionsDisabled, reveal, openExternal, copyPath } = state
 
   return (
@@ -151,11 +153,11 @@ function AttachmentMenuBody({
       <Separator />
       <Item disabled={actionsDisabled} onClick={reveal}>
         <FolderOpen className="h-4 w-4" />
-        {t('editor.toolbar.revealInFinder')}
+        {fileActions.revealInFolder}
       </Item>
       <Item disabled={actionsDisabled} onClick={openExternal}>
         <ExternalLink className="h-4 w-4" />
-        {t('editor.toolbar.openInDefaultApp')}
+        {fileActions.openInDefaultApp}
       </Item>
       <Item disabled={actionsDisabled || !info} onClick={copyPath}>
         <Copy className="h-4 w-4" />

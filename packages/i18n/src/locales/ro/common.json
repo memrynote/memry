@@ -28,6 +28,13 @@
     "showLess": "Arată mai puțin",
     "undo": "Anulează"
   },
+  "fileActions": {
+    "revealInFinder": "Afișează în Finder",
+    "showInExplorer": "Afișează în Explorer",
+    "showInFileManager": "Afișează în managerul de fișiere",
+    "openInDefaultApp": "Deschide în aplicația implicită",
+    "revealFailed": "Nu s-a putut afișa în folder"
+  },
   "tabs": {
     "pin": "Fila Pin",
     "unpin": "Anulați fixarea filei",

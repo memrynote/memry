@@ -54,7 +54,6 @@
       "newFolder": "תיקיה חדשה",
       "rename": "שנה שם",
       "openExternal": "פתח בעורך חיצוני",
-      "revealInFinder": "חשוף ב-Finder",
       "setDefaultTemplate": "הגדר תבנית ברירת מחדל",
       "clearDefaultTemplate": "נקה תבנית ברירת מחדל",
       "setIcon": "הגדר אייקון",
@@ -109,9 +108,7 @@
       "find": "מצא…",
       "moreActions": "פעולות נוספות",
       "moveToFolder": "העבר לתיקייה…",
-      "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
       "rename": "שנה שם…",
-      "revealInFinder": "הצג ב-Finder",
       "revealInSidebar": "הצג בסרגל הניווט"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "הערות",
       "open": "פתוח",
       "openInExternalEditor": "פתח בעורך חיצוני",
-      "revealInFinder": "חשוף ב-Finder",
       "revealInSidebar": "חשוף בסרגל הצד",
       "copyLink": "העתק קישור",
       "delete2": "מחק"
@@ -672,9 +668,7 @@
       "noFileSelected": "לא נבחר קובץ",
       "selectAFileFromTheSidebarToViewIt": "בחר קובץ מהסרגל הצידי כדי להציג אותו",
       "loadingFile": "טוען קובץ...",
-      "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
       "open": "פתוח",
-      "revealInFinder": "חשוף ב-Finder",
       "reveal": "לחשוף",
       "unsupportedFileType": "סוג קובץ לא נתמך",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "שמירת הנוסחה נכשלה",
       "failedToOpenInExternalEditor": "הפתיחה בעורך חיצוני נכשלה",
-      "failedToRevealInFinder": "החשיפה ב-Finder נכשלה",
       "failedToCopyLink": "העתקת הקישור נכשלה",
       "failedToCreateView": "יצירת התצוגה נכשלה",
       "failedToRenameFolder": "שינוי שם התיקיה נכשל",

@@ -65,6 +65,7 @@ import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
 import { isTreeNavKey, resolveTreeNavIntent, type TreeNavRow } from '@/lib/tree-keyboard-nav'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { handleInlineRenameBlur } from '@/lib/inline-rename-focus'
 
 // ============================================================================
@@ -685,6 +686,7 @@ function NoteRow({
 }: NoteRowProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
   const { openInNewTab } = useOpenTarget()
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
@@ -889,7 +891,7 @@ function NoteRow({
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
               <FolderOpen className="me-2 h-4 w-4" />
-              {t('tree.actions.revealInFinder')}
+              {fileActions.revealInFolder}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <BookmarkMenuItem itemType="note" itemId={item.note.id} />

@@ -28,6 +28,13 @@
     "showLess": "Mostrar menos",
     "undo": "Desfazer"
   },
+  "fileActions": {
+    "revealInFinder": "Mostrar no Finder",
+    "showInExplorer": "Mostrar no Explorador de Ficheiros",
+    "showInFileManager": "Mostrar no gestor de ficheiros",
+    "openInDefaultApp": "Abrir na aplicação predefinida",
+    "revealFailed": "Falha ao mostrar na pasta"
+  },
   "tabs": {
     "pin": "Guia Fixar",
     "unpin": "Liberar guia",

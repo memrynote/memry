@@ -37,6 +37,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/component
 import { IconPickerButton } from '@/components/icon-picker-button'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import type { CanvasSummary } from '@/services/canvas-service'
 import { CANVAS_ROW_INDENT_PX, isSameCanvasFolder, type CanvasFolderOption } from './folder-options'
 import {
@@ -101,6 +102,7 @@ export function CanvasRow({
   onDragEnd
 }: CanvasRowProps): React.JSX.Element {
   const { t } = useT('common')
+  const fileActions = useFileActionLabels()
   const menus = useRowMenuState()
 
   const title = canvas.title || t('canvas.untitled')
@@ -109,7 +111,7 @@ export function CanvasRow({
   const revealEntry: CanvasMenuEntry = {
     kind: 'item',
     id: 'reveal',
-    label: t('canvas.actions.revealInFinder'),
+    label: fileActions.revealInFolder,
     icon: FolderOpen,
     onSelect: () => onRevealInFinder(canvas)
   }

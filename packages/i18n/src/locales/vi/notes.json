@@ -54,7 +54,6 @@
       "newFolder": "Thư mục Mới",
       "rename": "Đổi tên",
       "openExternal": "Mở bằng Trình soạn thảo Bên ngoài",
-      "revealInFinder": "Hiển thị trong Finder",
       "setDefaultTemplate": "Đặt Mẫu Mặc định",
       "clearDefaultTemplate": "Xóa Mẫu Mặc định",
       "setIcon": "Đặt biểu tượng",
@@ -109,9 +108,7 @@
       "find": "Tìm…",
       "moreActions": "Thao tác khác",
       "moveToFolder": "Di chuyển tới thư mục…",
-      "openInDefaultApp": "Mở bằng ứng dụng mặc định",
       "rename": "Đổi tên…",
-      "revealInFinder": "Hiển thị trong Finder",
       "revealInSidebar": "Hiển thị trong thanh điều hướng"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Các ghi chú",
       "open": "Mở",
       "openInExternalEditor": "Mở bằng Trình soạn thảo Bên ngoài",
-      "revealInFinder": "Hiển thị trong Finder",
       "revealInSidebar": "Hiển thị trong Thanh bên",
       "copyLink": "Sao chép liên kết",
       "delete2": "Xóa"
@@ -672,9 +668,7 @@
       "noFileSelected": "Chưa chọn tệp",
       "selectAFileFromTheSidebarToViewIt": "Chọn một tệp từ thanh bên để xem",
       "loadingFile": "Đang tải tệp...",
-      "openInDefaultApp": "Mở trong ứng dụng mặc định",
       "open": "Mở",
-      "revealInFinder": "Hiển thị trong Finder",
       "reveal": "Hiện ra",
       "unsupportedFileType": "Loại tệp không được hỗ trợ",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Không lưu được công thức",
       "failedToOpenInExternalEditor": "Không mở được trong trình chỉnh sửa bên ngoài",
-      "failedToRevealInFinder": "Không thể hiển thị trong Finder",
       "failedToCopyLink": "Không thể sao chép liên kết",
       "failedToCreateView": "Không thể tạo chế độ xem",
       "failedToRenameFolder": "Không thể đổi tên thư mục",

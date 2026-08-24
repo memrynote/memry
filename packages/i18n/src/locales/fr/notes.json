@@ -54,7 +54,6 @@
       "newFolder": "Nouveau dossier",
       "rename": "Renommer",
       "openExternal": "Ouvrir dans un éditeur externe",
-      "revealInFinder": "Révéler dans le Finder",
       "setDefaultTemplate": "Définir le modèle par défaut",
       "clearDefaultTemplate": "Effacer le modèle par défaut",
       "setIcon": "Définir l'icône",
@@ -109,9 +108,7 @@
       "find": "Rechercher…",
       "moreActions": "Plus d'actions",
       "moveToFolder": "Déplacer vers un dossier…",
-      "openInDefaultApp": "Ouvrir dans l'application par défaut",
       "rename": "Renommer…",
-      "revealInFinder": "Révéler dans le Finder",
       "revealInSidebar": "Révéler dans la navigation"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Remarques",
       "open": "Ouvert",
       "openInExternalEditor": "Ouvrir dans un éditeur externe",
-      "revealInFinder": "Révéler dans le Finder",
       "revealInSidebar": "Révéler dans la barre latérale",
       "copyLink": "Copier le lien",
       "delete2": "Supprimer"
@@ -672,9 +668,7 @@
       "noFileSelected": "Aucun fichier sélectionné",
       "selectAFileFromTheSidebarToViewIt": "Sélectionnez un fichier dans la barre latérale pour l'afficher",
       "loadingFile": "Chargement du fichier...",
-      "openInDefaultApp": "Ouvrir dans l'application par défaut",
       "open": "Ouvert",
-      "revealInFinder": "Révéler dans le Finder",
       "reveal": "Révéler",
       "unsupportedFileType": "Type de fichier non pris en charge",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Échec de l'enregistrement de la formule",
       "failedToOpenInExternalEditor": "Échec de l'ouverture dans un éditeur externe",
-      "failedToRevealInFinder": "Échec de la révélation dans le Finder",
       "failedToCopyLink": "Échec de la copie du lien",
       "failedToCreateView": "Échec de la création de la vue",
       "failedToRenameFolder": "Échec du renommage du dossier",

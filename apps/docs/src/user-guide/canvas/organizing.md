@@ -115,7 +115,8 @@ says so, and offers a **New canvas here** link.
 Two items in a canvas row's menu leave the app:
 
 - **Reveal in Finder** opens your file manager with the `.excalidraw` file
-  selected.
+  selected. On Windows the item reads **Show in Explorer**, on Linux **Show in
+  file manager** — same action, named for the file manager you have.
 - **Open in external editor** hands the file to whatever your system opens
   `.excalidraw` files with.
 

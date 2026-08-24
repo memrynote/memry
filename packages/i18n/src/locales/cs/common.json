@@ -28,6 +28,13 @@
     "showLess": "Ukažte méně",
     "undo": "Vrátit zpět"
   },
+  "fileActions": {
+    "revealInFinder": "Zobrazit ve Finderu",
+    "showInExplorer": "Zobrazit v Průzkumníku",
+    "showInFileManager": "Zobrazit ve správci souborů",
+    "openInDefaultApp": "Otevřít ve výchozí aplikaci",
+    "revealFailed": "Nepodařilo se zobrazit ve složce"
+  },
   "tabs": {
     "pin": "Připnout kartu",
     "unpin": "Odepnout kartu",

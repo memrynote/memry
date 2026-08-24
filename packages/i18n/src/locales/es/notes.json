@@ -54,7 +54,6 @@
       "newFolder": "Nueva carpeta",
       "rename": "Cambiar nombre",
       "openExternal": "Abrir en editor externo",
-      "revealInFinder": "Revelar en Finder",
       "setDefaultTemplate": "Establecer plantilla predeterminada",
       "clearDefaultTemplate": "Borrar plantilla predeterminada",
       "setIcon": "Establecer icono",
@@ -109,9 +108,7 @@
       "find": "Buscar…",
       "moreActions": "Más acciones",
       "moveToFolder": "Mover a una carpeta…",
-      "openInDefaultApp": "Abrir en la app predeterminada",
       "rename": "Cambiar nombre…",
-      "revealInFinder": "Mostrar en el Finder",
       "revealInSidebar": "Mostrar en la barra lateral"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Notas",
       "open": "Abierto",
       "openInExternalEditor": "Abrir en editor externo",
-      "revealInFinder": "Revelar en Finder",
       "revealInSidebar": "Revelar en la barra lateral",
       "copyLink": "Copiar enlace",
       "delete2": "Eliminar"
@@ -672,9 +668,7 @@
       "noFileSelected": "Ningún archivo seleccionado",
       "selectAFileFromTheSidebarToViewIt": "Seleccione un archivo de la barra lateral para verlo",
       "loadingFile": "Cargando archivo...",
-      "openInDefaultApp": "Abrir en la aplicación predeterminada",
       "open": "Abierto",
-      "revealInFinder": "Revelar en Finder",
       "reveal": "revelar",
       "unsupportedFileType": "Tipo de archivo no compatible",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "No se pudo guardar la fórmula",
       "failedToOpenInExternalEditor": "No se pudo abrir en el editor externo",
-      "failedToRevealInFinder": "No se pudo revelar en Finder",
       "failedToCopyLink": "No se pudo copiar el enlace",
       "failedToCreateView": "No se pudo crear la vista",
       "failedToRenameFolder": "No se pudo cambiar el nombre de la carpeta",

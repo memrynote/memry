@@ -2,10 +2,10 @@
  * Note-view menu file actions E2E
  *
  * Covers the file actions added to the note-view "more" menu:
- * Find, Rename, Move to folder, Copy path, Reveal in Finder,
+ * Find, Rename, Move to folder, Copy path, the reveal-in-folder item,
  * Reveal in navigation, Open in default app, Delete note.
  *
- * Side-effecting OS items (Reveal in Finder / Open in default app) are only
+ * Side-effecting OS items (the reveal item / Open in default app) are only
  * asserted present + enabled — they are never clicked, so no Finder/Explorer
  * window is spawned on the CI machine. All handlers are cross-platform Electron
  * shell APIs (showItemInFolder / openPath), verified at the unit level.
@@ -15,12 +15,21 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady, seedNote, SELECTORS } from './utils/electron-helpers'
 
+// The reveal item is labelled for the host's file manager: Finder on macOS,
+// Explorer on Windows, a generic file manager everywhere else.
+const REVEAL_LABEL =
+  process.platform === 'darwin'
+    ? 'Reveal in Finder'
+    : process.platform === 'win32'
+      ? 'Show in Explorer'
+      : 'Show in file manager'
+
 const MENU_ITEMS = [
   'Find…',
   'Rename…',
   'Move to folder…',
   'Copy path',
-  'Reveal in Finder',
+  REVEAL_LABEL,
   'Reveal in navigation',
   'Open in default app',
   'Delete note'
@@ -128,7 +137,7 @@ test.describe('Note-view menu file actions', () => {
     await seedAndOpen(page, `OS Items ${Date.now()}`)
     await openMoreMenu(page)
 
-    for (const label of ['Reveal in Finder', 'Reveal in navigation', 'Open in default app']) {
+    for (const label of [REVEAL_LABEL, 'Reveal in navigation', 'Open in default app']) {
       const item = page.getByRole('option', { name: label })
       await expect(item).toBeVisible()
       await expect(item).toBeEnabled()

@@ -28,6 +28,13 @@
     "showLess": "Tampilkan lebih sedikit",
     "undo": "Urungkan"
   },
+  "fileActions": {
+    "revealInFinder": "Buka di Finder",
+    "showInExplorer": "Tampilkan di File Explorer",
+    "showInFileManager": "Tampilkan di pengelola berkas",
+    "openInDefaultApp": "Buka di aplikasi default",
+    "revealFailed": "Gagal menampilkan di folder"
+  },
   "tabs": {
     "pin": "Sematkan Tab",
     "unpin": "Lepas sematan Tab",

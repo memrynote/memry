@@ -28,6 +28,13 @@
     "showLess": "Magpakita ng mas kaunti",
     "undo": "I-undo"
   },
+  "fileActions": {
+    "revealInFinder": "Ibunyag sa Finder",
+    "showInExplorer": "Ipakita sa Explorer",
+    "showInFileManager": "Ipakita sa file manager",
+    "openInDefaultApp": "Buksan sa default na app",
+    "revealFailed": "Nabigong ipakita sa folder"
+  },
   "tabs": {
     "pin": "I-pin ang Tab",
     "unpin": "I-unpin ang Tab",

@@ -18,6 +18,16 @@ import { SubtaskDots } from '@/components/tasks/subtask-dots'
 import { SubtaskProgressBadge } from '@/components/tasks/subtask-progress-badge'
 import type { SidebarItem } from '@/contexts/tabs/types'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const storageState = vi.hoisted(() => ({
   data: null as null | {
     used: number
@@ -354,9 +364,7 @@ describe('medium UI coverage surfaces', () => {
     await user.click(
       within(menu).getByText('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')
     )
-    await user.click(
-      within(menu).getByText('phaseF.componentsFolderViewRowContextMenu.revealInFinder')
-    )
+    await user.click(within(menu).getByText('fileActions.revealInFinder'))
     await user.click(
       within(menu).getByText('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')
     )

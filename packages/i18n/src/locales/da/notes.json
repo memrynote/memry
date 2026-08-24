@@ -54,7 +54,6 @@
       "newFolder": "Ny mappe",
       "rename": "Omdøb",
       "openExternal": "Åbn i ekstern editor",
-      "revealInFinder": "Afsløre i Finder",
       "setDefaultTemplate": "Indstil standardskabelon",
       "clearDefaultTemplate": "Ryd standardskabelon",
       "setIcon": "Indstil ikon",
@@ -109,9 +108,7 @@
       "find": "Find…",
       "moreActions": "Flere handlinger",
       "moveToFolder": "Flyt til mappe…",
-      "openInDefaultApp": "Åbn i standardapp",
       "rename": "Omdøb…",
-      "revealInFinder": "Vis i Finder",
       "revealInSidebar": "Vis i navigationen"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Noter",
       "open": "Åbn",
       "openInExternalEditor": "Åbn i ekstern editor",
-      "revealInFinder": "Afsløre i Finder",
       "revealInSidebar": "Afsløre i Sidebar",
       "copyLink": "Kopiér link",
       "delete2": "Slet"
@@ -672,9 +668,7 @@
       "noFileSelected": "Ingen fil valgt",
       "selectAFileFromTheSidebarToViewIt": "Vælg en fil fra sidebjælken for at se den",
       "loadingFile": "Indlæser fil...",
-      "openInDefaultApp": "Åbn i standardapp",
       "open": "Åbn",
-      "revealInFinder": "Afsløre i Finder",
       "reveal": "Afsløre",
       "unsupportedFileType": "Ikke-understøttet filtype",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Formlen kunne ikke gemmes",
       "failedToOpenInExternalEditor": "Kunne ikke åbne i ekstern editor",
-      "failedToRevealInFinder": "Kunne ikke afsløre i Finder",
       "failedToCopyLink": "Linket kunne ikke kopieres",
       "failedToCreateView": "Kunne ikke oprette visning",
       "failedToRenameFolder": "Mappen kunne ikke omdøbes",

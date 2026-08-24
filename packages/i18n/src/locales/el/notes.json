@@ -54,7 +54,6 @@
       "newFolder": "Νέος φάκελος",
       "rename": "Μετονομασία",
       "openExternal": "Άνοιγμα στον Εξωτερικό Επεξεργαστή",
-      "revealInFinder": "Αποκάλυψη στο Finder",
       "setDefaultTemplate": "Ορισμός προεπιλεγμένου προτύπου",
       "clearDefaultTemplate": "Διαγραφή προεπιλεγμένου προτύπου",
       "setIcon": "Σετ εικονίδιο",
@@ -109,9 +108,7 @@
       "find": "Εύρεση…",
       "moreActions": "Περισσότερες ενέργειες",
       "moveToFolder": "Μετακίνηση σε φάκελο…",
-      "openInDefaultApp": "Άνοιγμα στην προεπιλεγμένη εφαρμογή",
       "rename": "Μετονομασία…",
-      "revealInFinder": "Εμφάνιση στο Finder",
       "revealInSidebar": "Εμφάνιση στην πλοήγηση"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Σημειώσεις",
       "open": "Ανοίξτε",
       "openInExternalEditor": "Άνοιγμα στον Εξωτερικό Επεξεργαστή",
-      "revealInFinder": "Αποκάλυψη στο Finder",
       "revealInSidebar": "Αποκάλυψη στο Sidebar",
       "copyLink": "Αντιγραφή συνδέσμου",
       "delete2": "Διαγραφή"
@@ -672,9 +668,7 @@
       "noFileSelected": "Δεν έχει επιλεγεί αρχείο",
       "selectAFileFromTheSidebarToViewIt": "Επιλέξτε ένα αρχείο από την πλαϊνή γραμμή για να το προβάλετε",
       "loadingFile": "Φόρτωση αρχείου...",
-      "openInDefaultApp": "Άνοιγμα στην προεπιλεγμένη εφαρμογή",
       "open": "Ανοίξτε",
-      "revealInFinder": "Αποκάλυψη στο Finder",
       "reveal": "Αποκάλυψη",
       "unsupportedFileType": "Μη υποστηριζόμενος τύπος αρχείου",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Αποτυχία αποθήκευσης του τύπου",
       "failedToOpenInExternalEditor": "Απέτυχε το άνοιγμα σε εξωτερικό πρόγραμμα επεξεργασίας",
-      "failedToRevealInFinder": "Αποτυχία αποκάλυψης στο Finder",
       "failedToCopyLink": "Αποτυχία αντιγραφής συνδέσμου",
       "failedToCreateView": "Αποτυχία δημιουργίας προβολής",
       "failedToRenameFolder": "Η μετονομασία του φακέλου απέτυχε",

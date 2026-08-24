@@ -54,7 +54,6 @@
       "newFolder": "Нова папка",
       "rename": "Перейменувати",
       "openExternal": "Відкрити у зовнішньому редакторі",
-      "revealInFinder": "Показати у Finder",
       "setDefaultTemplate": "Встановити шаблон за замовчуванням",
       "clearDefaultTemplate": "Очистити шаблон за замовчуванням",
       "setIcon": "Встановити значок",
@@ -109,9 +108,7 @@
       "find": "Знайти…",
       "moreActions": "Більше дій",
       "moveToFolder": "Перемістити до папки…",
-      "openInDefaultApp": "Відкрити у стандартному додатку",
       "rename": "Перейменувати…",
-      "revealInFinder": "Показати у Finder",
       "revealInSidebar": "Показати в навігації"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Примітки",
       "open": "Відкрити",
       "openInExternalEditor": "Відкрити у зовнішньому редакторі",
-      "revealInFinder": "Показати у Finder",
       "revealInSidebar": "Показати в боковій панелі",
       "copyLink": "Скопіювати посилання",
       "delete2": "Видалити"
@@ -672,9 +668,7 @@
       "noFileSelected": "Файл не обрано",
       "selectAFileFromTheSidebarToViewIt": "Виберіть файл з бічної панелі, щоб переглянути його",
       "loadingFile": "Завантаження файлу...",
-      "openInDefaultApp": "Відкрити у стандартному додатку",
       "open": "Відкрити",
-      "revealInFinder": "Показати у Finder",
       "reveal": "Показати",
       "unsupportedFileType": "Тип файлу не підтримується",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Не вдалося зберегти формулу",
       "failedToOpenInExternalEditor": "Не вдалося відкрити у зовнішньому редакторі",
-      "failedToRevealInFinder": "Не вдалося відкрити у Finder",
       "failedToCopyLink": "Не вдалося скопіювати посилання",
       "failedToCreateView": "Не вдалося створити перегляд",
       "failedToRenameFolder": "Не вдалося перейменувати папку",

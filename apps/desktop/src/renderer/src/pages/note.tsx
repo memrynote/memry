@@ -113,6 +113,7 @@ import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { getTabIconForFileType } from '@memry/shared/file-types'
 
 const log = createLogger('Page:Note')
@@ -171,6 +172,7 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
+  const fileActions = useFileActionLabels()
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote, moveNote } = useNoteMutations()
@@ -1505,7 +1507,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <Picker.Separator />
             <Picker.Item
               value="reveal-in-finder"
-              label={t('editor.toolbar.revealInFinder')}
+              label={fileActions.revealInFolder}
               icon={<FolderOpen className="size-4" />}
             />
             <Picker.Item
@@ -1515,7 +1517,7 @@ export function NotePage({ noteId }: NotePageProps) {
             />
             <Picker.Item
               value="open-external"
-              label={t('editor.toolbar.openInDefaultApp')}
+              label={fileActions.openInDefaultApp}
               icon={<ExternalLink className="size-4" />}
             />
             <Picker.Item

@@ -28,6 +28,13 @@
     "showLess": "عرض أقل",
     "undo": "تراجع"
   },
+  "fileActions": {
+    "revealInFinder": "إظهار في Finder",
+    "showInExplorer": "إظهار في مستكشف الملفات",
+    "showInFileManager": "إظهار في مدير الملفات",
+    "openInDefaultApp": "فتح في التطبيق الافتراضي",
+    "revealFailed": "تعذّر الإظهار في المجلد"
+  },
   "tabs": {
     "pin": "تثبيت علامة التبويب",
     "unpin": "إلغاء تثبيت علامة التبويب",

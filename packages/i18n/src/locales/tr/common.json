@@ -28,6 +28,13 @@
     "showLess": "Daha az göster",
     "undo": "Geri al"
   },
+  "fileActions": {
+    "revealInFinder": "Finder'da Göster",
+    "showInExplorer": "Dosya Gezgini'nde Göster",
+    "showInFileManager": "Dosya yöneticisinde göster",
+    "openInDefaultApp": "Varsayılan uygulamada aç",
+    "revealFailed": "Klasörde gösterilemedi"
+  },
   "tabs": {
     "pin": "Sekmeyi sabitle",
     "unpin": "Sekme sabitlemesini kaldır",

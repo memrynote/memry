@@ -28,6 +28,13 @@
     "showLess": "Prikaži manje",
     "undo": "Poništi"
   },
+  "fileActions": {
+    "revealInFinder": "Otkrij u Finderu",
+    "showInExplorer": "Prikaži u Exploreru",
+    "showInFileManager": "Prikaži u upravitelju datoteka",
+    "openInDefaultApp": "Otvori u zadanoj aplikaciji",
+    "revealFailed": "Nije uspjelo prikazivanje u mapi"
+  },
   "tabs": {
     "pin": "Prikvači karticu",
     "unpin": "Otkvači karticu",

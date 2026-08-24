@@ -54,6 +54,13 @@
     "showLess": "Show less",
     "undo": "Undo"
   },
+  "fileActions": {
+    "revealInFinder": "Reveal in Finder",
+    "showInExplorer": "Show in Explorer",
+    "showInFileManager": "Show in file manager",
+    "openInDefaultApp": "Open in default app",
+    "revealFailed": "Failed to show in folder"
+  },
   "tabs": {
     "pin": "Pin Tab",
     "unpin": "Unpin Tab",
@@ -359,7 +366,6 @@
       "moveToFolder": "Move to folder",
       "moveToRoot": "Root",
       "openExternal": "Open in external editor",
-      "revealInFinder": "Reveal in Finder",
       "newCanvasHere": "New canvas here",
       "newFolder": "New folder",
       "canvasMenu": "Canvas actions",

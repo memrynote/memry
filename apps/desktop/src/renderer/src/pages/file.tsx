@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { FileMetadata } from '@memry/rpc/notes'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { ItemProjectChips } from '@/components/tasks/projects/item-project-chips'
 import { AddFileToProjectDialog } from '@/components/tasks/projects/add-file-to-project-dialog'
 
@@ -129,6 +130,7 @@ function FileActionsMenu({
 }) {
   const { t: tPhaseF } = useT('notes')
   const { t: tTasks } = useT('tasks')
+  const fileActions = useFileActionLabels()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -148,11 +150,11 @@ function FileActionsMenu({
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => void window.api.notes.openExternal(file.id)}>
           <ExternalLink className="me-2 h-4 w-4" />
-          {tPhaseF('phaseF.pagesFile.openInDefaultApp')}
+          {fileActions.openInDefaultApp}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => void window.api.notes.revealInFinder(file.id)}>
           <Download className="me-2 h-4 w-4" />
-          {tPhaseF('phaseF.pagesFile.revealInFinder')}
+          {fileActions.revealInFolder}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -166,6 +168,7 @@ function FileActionsMenu({
 function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProject: () => void }) {
   const { t: tPhaseF } = useT('notes')
   const { t: tTasks } = useT('tasks')
+  const fileActions = useFileActionLabels()
   return (
     <div className="flex flex-col gap-1 border-b border-border bg-muted/30 shrink-0">
       <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2">
@@ -194,7 +197,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
             size="sm"
             onClick={() => void window.api.notes.openExternal(file.id)}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-            title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
+            title={fileActions.openInDefaultApp}
           >
             <ExternalLink className="h-4 w-4 sm:me-1" />
             <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.open')}</span>
@@ -204,7 +207,7 @@ function FileInfoBar({ file, onAddToProject }: { file: FileMetadata; onAddToProj
             size="sm"
             onClick={() => void window.api.notes.revealInFinder(file.id)}
             className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-            title={tPhaseF('phaseF.pagesFile.revealInFinder')}
+            title={fileActions.revealInFolder}
           >
             <Download className="h-4 w-4 sm:me-1" />
             <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.reveal')}</span>

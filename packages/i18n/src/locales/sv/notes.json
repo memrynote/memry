@@ -54,7 +54,6 @@
       "newFolder": "Ny mapp",
       "rename": "Byt namn",
       "openExternal": "Öppna i extern redigerare",
-      "revealInFinder": "Visa i Finder",
       "setDefaultTemplate": "Sätt standardmall",
       "clearDefaultTemplate": "Rensa standardmall",
       "setIcon": "Ställ in ikon",
@@ -109,9 +108,7 @@
       "find": "Sök…",
       "moreActions": "Fler åtgärder",
       "moveToFolder": "Flytta till mapp…",
-      "openInDefaultApp": "Öppna i standardappen",
       "rename": "Byt namn…",
-      "revealInFinder": "Visa i Finder",
       "revealInSidebar": "Visa i navigeringen"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Anteckningar",
       "open": "Öppna",
       "openInExternalEditor": "Öppna i extern redigerare",
-      "revealInFinder": "Visa i Finder",
       "revealInSidebar": "Visa i sidofält",
       "copyLink": "Kopiera länk",
       "delete2": "Ta bort"
@@ -672,9 +668,7 @@
       "noFileSelected": "Ingen fil valdes",
       "selectAFileFromTheSidebarToViewIt": "Välj en fil från sidofältet för att visa den",
       "loadingFile": "Laddar fil...",
-      "openInDefaultApp": "Öppna i standardapp",
       "open": "Öppna",
-      "revealInFinder": "Visa i Finder",
       "reveal": "Visa",
       "unsupportedFileType": "Otillåten filtyp",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Kunde inte spara formel",
       "failedToOpenInExternalEditor": "Kunde inte öppna i extern redigerare",
-      "failedToRevealInFinder": "Det gick inte att visa i Finder",
       "failedToCopyLink": "Det gick inte att kopiera länk",
       "failedToCreateView": "Det gick inte att skapa vy",
       "failedToRenameFolder": "Det gick inte att byta namn på mapp",

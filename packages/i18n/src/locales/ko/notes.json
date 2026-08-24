@@ -54,7 +54,6 @@
       "newFolder": "새 폴더",
       "rename": "이름 바꾸기",
       "openExternal": "외부 편집기에서 열기",
-      "revealInFinder": "Finder에 공개",
       "setDefaultTemplate": "기본 템플릿 설정",
       "clearDefaultTemplate": "기본 템플릿 지우기",
       "setIcon": "아이콘 설정",
@@ -109,9 +108,7 @@
       "find": "찾기…",
       "moreActions": "더 보기",
       "moveToFolder": "폴더로 이동…",
-      "openInDefaultApp": "기본 앱에서 열기",
       "rename": "이름 바꾸기…",
-      "revealInFinder": "Finder에서 보기",
       "revealInSidebar": "사이드바에서 보기"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "메모",
       "open": "열기",
       "openInExternalEditor": "외부 편집기에서 열기",
-      "revealInFinder": "Finder에 공개",
       "revealInSidebar": "사이드바에 공개",
       "copyLink": "링크 복사",
       "delete2": "삭제"
@@ -672,9 +668,7 @@
       "noFileSelected": "선택한 파일이 없습니다.",
       "selectAFileFromTheSidebarToViewIt": "사이드바에서 파일을 선택하여 확인하세요.",
       "loadingFile": "파일 로드 중...",
-      "openInDefaultApp": "기본 앱에서 열기",
       "open": "열기",
-      "revealInFinder": "Finder에 공개",
       "reveal": "공개",
       "unsupportedFileType": "지원되지 않는 파일 형식",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "수식을 저장하지 못했습니다.",
       "failedToOpenInExternalEditor": "외부 편집기에서 열지 못했습니다.",
-      "failedToRevealInFinder": "Finder에서 공개하지 못했습니다.",
       "failedToCopyLink": "링크를 복사하지 못했습니다.",
       "failedToCreateView": "뷰를 생성하지 못했습니다.",
       "failedToRenameFolder": "폴더 이름을 바꾸지 못했습니다.",

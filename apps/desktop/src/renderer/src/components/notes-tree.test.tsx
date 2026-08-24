@@ -11,6 +11,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRef, type RefObject } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
+
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { NotesTree, type NotesTreeActions } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
