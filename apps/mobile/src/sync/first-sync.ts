@@ -49,27 +49,44 @@ export async function runFirstSyncIfNeeded(
   const recentNoteIds = new Set<string>()
   const windowStart = Date.now() - BODY_WINDOW_DAYS * 24 * 60 * 60 * 1000
 
-  // Metadata phase: everything, newest first, in protocol-sized chunks.
+  // Metadata phase: everything, newest first, in protocol-sized chunks. On a
+  // resumed run totalRefs is 0 (cursor already at the end) while rows from
+  // the interrupted attempt still sit metadata-only — count those in.
+  const missingAtStart = await db.getFirstAsync<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM sync_items WHERE payload_state = 'metadata-only' AND deleted_at IS NULL`
+  )
+  const totalToPull = Math.max(totalRefs, missingAtStart?.n ?? 0)
+
+  // Ids the server would not return or that failed decrypt: skipped, never
+  // looped on — an unpullable chunk must not wedge the whole first sync.
+  const unpullable = new Set<string>()
   for (;;) {
-    const ids = await store.listItemIdsMissingPayload(allTypes, BLOB_CHUNK)
+    const candidates = await store.listItemIdsMissingPayload(allTypes, BLOB_CHUNK + unpullable.size)
+    const ids = candidates.filter((id) => !unpullable.has(id)).slice(0, BLOB_CHUNK)
     if (ids.length === 0) break
     const result = await engine.pullBlobs(ids)
-    pulled += ids.length
+    pulled += result.applied
     for (const noteId of result.changedNoteIds) recentNoteIds.add(noteId)
+
+    // Whatever this chunk left metadata-only is unpullable for this run.
+    const placeholders = ids.map(() => '?').join(',')
+    const stillMissing = await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM sync_items WHERE payload_state = 'metadata-only' AND id IN (${placeholders})`,
+      ids
+    )
+    for (const row of stillMissing) unpullable.add(row.id)
+
     onProgress({
       phase: 'metadata',
-      fraction: totalRefs === 0 ? 1 : Math.min(0.8, (pulled / Math.max(totalRefs, 1)) * 0.8),
-      itemsTotal: totalRefs,
+      fraction: Math.min(0.8, (pulled / Math.max(totalToPull, 1)) * 0.8),
+      itemsTotal: totalToPull,
       itemsPulled: pulled
     })
-    if (result.applied === 0) {
-      // Every id in this chunk failed (corrupt/unpullable) — the store rows
-      // still say metadata-only, so looping again would spin forever.
-      log.warn('First sync chunk applied nothing; stopping metadata phase', {
-        chunk: ids.length
-      })
-      break
-    }
+  }
+  if (unpullable.size > 0) {
+    log.warn('First sync finished with unpullable items; on-demand fetch retries them', {
+      count: unpullable.size
+    })
   }
 
   // Recent-bodies phase: only the 30-day window pays the CRDT cost up front.

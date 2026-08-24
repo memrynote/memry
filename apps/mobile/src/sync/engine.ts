@@ -42,15 +42,41 @@ export class MobileSyncEngine {
   private deviceKeys = new Map<string, Uint8Array | null>()
   private deviceKeysFetched = false
   private listeners = new Set<(summary: SyncSummary) => void>()
+  private chain: Promise<unknown> = Promise.resolve()
 
   constructor(readonly vaultId: string) {
     this.http = createMobileHttpClient(syncBaseUrl())
+    // NetInfo emits the CURRENT state immediately on subscribe; syncing on
+    // that first emission raced the windowed first sync (two transactions on
+    // one SQLite connection, and a shared record cursor — the 83-items-stuck
+    // wedge). Only genuine offline→online transitions trigger a pass.
+    let initialEmission = true
     this.http.onOnlineChanged((online) => {
       this.online = online
+      if (initialEmission) {
+        initialEmission = false
+        return
+      }
       if (online) {
         void this.sync().catch(() => {})
       }
     })
+  }
+
+  /**
+   * Every pipeline that touches the vault DB or the record cursor runs
+   * through this queue. sync(), the first-sync phases and on-demand fetches
+   * used to interleave — expo-sqlite shares one connection per DB, so two
+   * concurrent withTransactionAsync calls throw, and two concurrent pulls
+   * race the cursor.
+   */
+  private exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(task, task)
+    this.chain = run.then(
+      () => undefined,
+      () => undefined
+    )
+    return run
   }
 
   onSynced(listener: (summary: SyncSummary) => void): () => void {
@@ -125,7 +151,7 @@ export class MobileSyncEngine {
   /** Incremental sync pass. Coalesces concurrent callers into one run. */
   sync(): Promise<SyncSummary> {
     if (this.syncing) return this.syncing
-    this.syncing = this.runSync().finally(() => {
+    this.syncing = this.exclusive(() => this.runSync()).finally(() => {
       this.syncing = null
     })
     return this.syncing
@@ -147,7 +173,7 @@ export class MobileSyncEngine {
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0 }
     }
 
-    const bodies = await this.pullBodiesFor(store, record.changedNoteIds)
+    const bodies = await this.pullBodiesForUnlocked(store, record.changedNoteIds)
     await this.pollStatus(engine)
 
     const summary: SyncSummary = {
@@ -160,7 +186,11 @@ export class MobileSyncEngine {
     return summary
   }
 
-  async pullBodiesFor(store: MobilePullStore, noteIds: string[]): Promise<number> {
+  pullBodiesFor(store: MobilePullStore, noteIds: string[]): Promise<number> {
+    return this.exclusive(() => this.pullBodiesForUnlocked(store, noteIds))
+  }
+
+  private async pullBodiesForUnlocked(store: MobilePullStore, noteIds: string[]): Promise<number> {
     if (noteIds.length === 0 || !this.vaultKeyCache) return 0
     const db = await openVaultDb(this.vaultId)
     const puller = new CrdtBodyPuller({
@@ -180,20 +210,24 @@ export class MobileSyncEngine {
   }
 
   /** Pull specific record blobs (windowed first sync / on-demand). */
-  async pullBlobs(itemIds: string[]): Promise<{ applied: number; changedNoteIds: string[] }> {
-    const prepared = await this.prepare()
-    if (!prepared) return { applied: 0, changedNoteIds: [] }
-    const engine = this.makeEngine(prepared.store)
-    const result = await engine.pullBlobsByIds(itemIds)
-    return { applied: result.applied, changedNoteIds: result.changedNoteIds }
+  pullBlobs(itemIds: string[]): Promise<{ applied: number; changedNoteIds: string[] }> {
+    return this.exclusive(async () => {
+      const prepared = await this.prepare()
+      if (!prepared) return { applied: 0, changedNoteIds: [] }
+      const engine = this.makeEngine(prepared.store)
+      const result = await engine.pullBlobsByIds(itemIds)
+      return { applied: result.applied, changedNoteIds: result.changedNoteIds }
+    })
   }
 
-  async pullRefsToEnd(): Promise<number> {
-    const prepared = await this.prepare()
-    if (!prepared) return 0
-    const engine = this.makeEngine(prepared.store)
-    const { refs } = await engine.pullRefsToEnd()
-    return refs
+  pullRefsToEnd(): Promise<number> {
+    return this.exclusive(async () => {
+      const prepared = await this.prepare()
+      if (!prepared) return 0
+      const engine = this.makeEngine(prepared.store)
+      const { refs } = await engine.pullRefsToEnd()
+      return refs
+    })
   }
 
   async getStore(): Promise<MobilePullStore | null> {
