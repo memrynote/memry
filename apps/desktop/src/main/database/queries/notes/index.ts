@@ -53,7 +53,7 @@ export {
   deleteLinksToNote,
   resolveNoteByTitle,
   resolveNotesByTitles,
-  updateLinkTargets,
+  getInboundLinkSourceIds,
   type IncomingReference
 } from './link-queries'
 

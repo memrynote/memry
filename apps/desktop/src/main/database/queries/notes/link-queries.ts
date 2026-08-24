@@ -1,4 +1,4 @@
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and, isNull, or, sql } from 'drizzle-orm'
 import {
   noteCache,
   noteLinks,
@@ -121,18 +121,34 @@ export function resolveNotesByTitles(
   return resultMap
 }
 
-export function updateLinkTargets(db: IndexDb, sourceId: string): void {
-  const links = getOutgoingLinks(db, sourceId)
-
-  for (const link of links) {
-    if (!link.targetId) {
-      const target = resolveNoteByTitle(db, link.targetTitle)
-      if (target) {
-        db.update(noteLinks)
-          .set({ targetId: target.id })
-          .where(and(eq(noteLinks.sourceId, sourceId), eq(noteLinks.targetTitle, link.targetTitle)))
-          .run()
-      }
-    }
-  }
+/**
+ * Distinct sources whose wiki-links reach a note about to be renamed.
+ *
+ * Resolved rows are matched by target id. Unresolved rows (`target_id` null)
+ * are matched by the indexed title — the SPLIT note-half a link was stored
+ * under (`extractWikiLinks`), so pass `splitWikiTarget(oldTitle).note`, not
+ * the raw title — because a link written before its target was re-indexed
+ * still deserves the rename-time rewrite. The rewrite itself re-checks every
+ * occurrence, so an over-broad candidate here costs a file read, never a
+ * wrong edit.
+ */
+export function getInboundLinkSourceIds(
+  db: IndexDb,
+  targetId: string,
+  indexedTitle: string
+): string[] {
+  return db
+    .selectDistinct({ sourceId: noteLinks.sourceId })
+    .from(noteLinks)
+    .where(
+      or(
+        eq(noteLinks.targetId, targetId),
+        and(
+          isNull(noteLinks.targetId),
+          sql`lower(${noteLinks.targetTitle}) = lower(${indexedTitle})`
+        )
+      )
+    )
+    .all()
+    .map((row) => row.sourceId)
 }
