@@ -1,13 +1,13 @@
 import { app } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
-import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type { AppUpdateState, WhatsNewPayload } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
 import { broadcastToAllWindows } from './lib/window-broadcast'
 import { getMainI18n } from './lib/main-i18n'
 import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
-import { getUpdaterPrefs, setAutoCheckPref, setAutoDownloadPref, setSkippedVersion } from './store'
+import { getUpdaterPrefs, setAutoCheckPref, setPendingWhatsNew } from './store'
 import { trackMainError, trackMainWarning } from './telemetry/diagnostics'
 import { trackMainEvent } from './telemetry/track'
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
@@ -60,7 +60,6 @@ export type UpdaterErrorPhase =
   | 'startup-check'
   | 'scheduled-check'
   | 'auto-check-enable'
-  | 'auto-download-enable'
   | 'check'
   | 'download'
   | 'downloaded'
@@ -224,7 +223,6 @@ let state: AppUpdateState = {
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
-  autoDownloadEnabled: false,
   autoCheckEnabled: true,
   installFailed: null
 }
@@ -252,11 +250,12 @@ export function initializeUpdater(): void {
   resetUpdaterCheckHealth()
   autoUpdater.logger = updaterLibraryLogger
   const prefs = getUpdaterPrefs()
-  const autoDownloadEnabled = prefs.autoDownload ?? false
   const autoCheckEnabled = prefs.autoCheck ?? true
-  autoUpdater.autoDownload = autoDownloadEnabled
+  // Updates always download silently — no opt-in, no prompt. The user only ever
+  // sees the "restart to apply" phase; the legacy `autoDownload` pref is ignored.
+  autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
-  setState({ autoDownloadEnabled, autoCheckEnabled })
+  setState({ autoCheckEnabled })
 
   autoUpdater.on('checking-for-update', () => {
     logger.info('checking for updates')
@@ -272,23 +271,6 @@ export function initializeUpdater(): void {
     recordUpdaterCheckSuccess()
     const displayVersion = formatUpdateVersion(info)
 
-    // Honor "Skip This Version": suppress the prompt for a version the user
-    // dismissed. A manual check from Settings clears the skip (see checkForUpdates).
-    if (getUpdaterPrefs().skippedVersion === displayVersion) {
-      logger.info('update available but skipped by user', { version: info.version })
-      setState({
-        status: 'up-to-date',
-        availableVersion: null,
-        releaseName: null,
-        releaseDate: null,
-        releaseNotes: null,
-        releaseNotesHtml: null,
-        downloadProgressPercent: null,
-        error: null
-      })
-      return
-    }
-
     logger.info('update available', { version: info.version })
     setState({
       status: 'available',
@@ -300,9 +282,9 @@ export function initializeUpdater(): void {
       downloadProgressPercent: null,
       error: null
     })
-    // No native dialog here: the renderer surfaces an in-app modal from this state.
-    // When auto-download is on, electron-updater downloads automatically (autoDownload=true),
-    // so the state flows straight to 'downloading' without prompting.
+    // Nothing is surfaced from this state: electron-updater starts the download
+    // automatically (autoDownload=true) and the user first hears about the
+    // update at the 'downloaded' phase, as a restart prompt.
   })
 
   autoUpdater.on('update-not-available', () => {
@@ -330,6 +312,14 @@ export function initializeUpdater(): void {
   autoUpdater.on('update-downloaded', (info) => {
     logger.info('update downloaded', { version: info.version })
     const displayVersion = formatUpdateVersion(info)
+    // The feed data dies with this process; persist the notes now so the FIRST
+    // launch of the installed version can open the "what's new" tab (see
+    // consumeWhatsNew). A newer download simply overwrites a pending one.
+    setPendingWhatsNew({
+      version: displayVersion,
+      ...(rawReleaseNotesHtml(info) ? { notesHtml: rawReleaseNotesHtml(info) ?? undefined } : {}),
+      ...(normalizeReleaseNotes(info) ? { notes: normalizeReleaseNotes(info) ?? undefined } : {})
+    })
     setState({
       status: 'downloaded',
       availableVersion: displayVersion,
@@ -420,16 +410,9 @@ export function getUpdateState(): AppUpdateState {
   return { ...state }
 }
 
-export async function checkForUpdates(options?: {
-  /** Clear a previously skipped version so it can surface again (manual checks). */
-  clearSkip?: boolean
-}): Promise<AppUpdateState> {
+export async function checkForUpdates(): Promise<AppUpdateState> {
   if (!state.updateSupported) {
     return getUpdateState()
-  }
-
-  if (options?.clearSkip) {
-    setSkippedVersion(null)
   }
 
   if (activeCheck) {
@@ -502,59 +485,26 @@ export async function downloadUpdate(): Promise<AppUpdateState> {
 }
 
 /**
- * Persist the current available version as skipped and clear the available state
- * so neither the modal nor the sidebar button re-surface it. Automatic checks stay
- * suppressed for this version; a manual "Check for updates" clears the skip.
+ * Hand the renderer the release notes for the version it is running, exactly
+ * once — the post-restart "what's new" tab. Returns null on every ordinary
+ * launch: no pending notes, or the pending version has not been installed yet
+ * (the update downloaded but the user has not restarted — keep it for the
+ * launch that IS that version). Never surfaces stale notes: a newer download
+ * overwrites the pending entry, and consuming clears it.
  */
-export function skipVersion(version: string): AppUpdateState {
-  logger.info('skipping update version', { version })
-  setSkippedVersion(version)
-  trackMainEvent('setting_changed', {
-    surface: 'updater',
-    action: 'changed',
-    dimensions: { setting: 'skip_version' }
-  })
-  setState({
-    status: 'up-to-date',
-    availableVersion: null,
-    releaseName: null,
-    releaseDate: null,
-    releaseNotes: null,
-    releaseNotesHtml: null,
-    downloadProgressPercent: null,
-    error: null
-  })
-  return getUpdateState()
-}
+export function consumeWhatsNew(): WhatsNewPayload | null {
+  const pending = getUpdaterPrefs().pendingWhatsNew
+  if (!pending) return null
+  if (pending.version !== getCurrentDisplayVersion()) return null
 
-/**
- * Toggle automatic download + install. Persists the choice, applies it to the
- * running updater, and — if enabling while an update already waits — starts the
- * download immediately.
- */
-export function setAutoDownloadEnabled(enabled: boolean): AppUpdateState {
-  logger.info('setting auto-download preference', { enabled })
-  setAutoDownloadPref(enabled)
-  trackMainEvent('setting_changed', {
-    surface: 'updater',
-    action: 'changed',
-    dimensions: { setting: 'auto_download' }
-  })
-  // electron-updater reads autoDownload only when the NEXT update-available fires.
-  autoUpdater.autoDownload = enabled
-  setState({ autoDownloadEnabled: enabled })
-  // Close the gap where an update is already waiting: opting in should not leave that
-  // update stuck behind the manual Download button, so start its download now.
-  if (enabled && state.status === 'available') {
-    void downloadUpdate().catch((error) => {
-      logger.warn(
-        'auto-download on-enable download failed',
-        error,
-        describeUpdaterError(error, 'auto-download-enable')
-      )
-    })
+  setPendingWhatsNew(null)
+  if (pending.notesHtml) {
+    return { version: pending.version, content: pending.notesHtml, contentType: 'html' }
   }
-  return getUpdateState()
+  if (pending.notes) {
+    return { version: pending.version, content: pending.notes, contentType: 'markdown' }
+  }
+  return null
 }
 
 /**

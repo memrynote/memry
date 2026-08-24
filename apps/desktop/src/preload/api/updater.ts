@@ -1,4 +1,8 @@
-import { UpdaterChannels, type AppUpdateState } from '@memry/contracts/ipc-updater'
+import {
+  UpdaterChannels,
+  type AppUpdateState,
+  type WhatsNewPayload
+} from '@memry/contracts/ipc-updater'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const updaterApi = {
@@ -8,12 +12,10 @@ export const updaterApi = {
   downloadUpdate: (): Promise<AppUpdateState> =>
     invoke<AppUpdateState>(UpdaterChannels.invoke.DOWNLOAD_UPDATE),
   quitAndInstall: (): Promise<void> => invoke<void>(UpdaterChannels.invoke.QUIT_AND_INSTALL),
-  skipVersion: (version: string): Promise<AppUpdateState> =>
-    invoke<AppUpdateState>(UpdaterChannels.invoke.SKIP_VERSION, version),
-  setAutoDownload: (enabled: boolean): Promise<AppUpdateState> =>
-    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_DOWNLOAD, enabled),
   setAutoCheck: (enabled: boolean): Promise<AppUpdateState> =>
-    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_CHECK, enabled)
+    invoke<AppUpdateState>(UpdaterChannels.invoke.SET_AUTO_CHECK, enabled),
+  consumeWhatsNew: (): Promise<WhatsNewPayload | null> =>
+    invoke<WhatsNewPayload | null>(UpdaterChannels.invoke.CONSUME_WHATS_NEW)
 }
 
 export const updaterEvents = {

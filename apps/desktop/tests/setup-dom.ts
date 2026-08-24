@@ -90,7 +90,8 @@ const createMockApi = () => ({
     }),
     checkForUpdates: vi.fn().mockResolvedValue({ status: 'up-to-date' }),
     downloadUpdate: vi.fn().mockResolvedValue({ status: 'downloaded' }),
-    quitAndInstall: vi.fn().mockResolvedValue(undefined)
+    quitAndInstall: vi.fn().mockResolvedValue(undefined),
+    consumeWhatsNew: vi.fn().mockResolvedValue(null)
   },
 
   // Vault API

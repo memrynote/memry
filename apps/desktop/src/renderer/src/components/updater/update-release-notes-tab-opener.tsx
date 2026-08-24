@@ -1,42 +1,63 @@
 import { useEffect, useRef } from 'react'
-import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useTabs } from '@/contexts/tabs'
+import { createLogger } from '@/lib/logger'
 import { planReleaseNotesTab } from './release-notes-tab'
 
+const log = createLogger('Component:UpdateReleaseNotesTabOpener')
+
 /**
- * Part of the update flow: when a new release surfaces — whether the prompt is shown
- * or a silent auto-download begins — open a read-only "release notes" tab rendering
- * the humanized notes (with clickable PR links). The tab is ephemeral (never written
- * to the vault, never synced, excluded from tab persistence); closing removes it, and
+ * Post-restart "what's new": on the first launch of a freshly installed version,
+ * open a read-only "release notes" tab rendering the humanized notes (with
+ * clickable PR links). Updates download and install silently, so this tab is the
+ * moment the user learns anything changed — after the restart, never during the
+ * background download. The tab is ephemeral (never written to the vault, never
+ * synced, excluded from tab persistence); closing removes it, and
  * Cmd/Ctrl+Shift+T reopens it from the in-memory closed-tab stack.
  *
- * Opens once per surfaced version so short-interval polling never re-opens it.
+ * `consumeWhatsNew` clears the pending notes in main, so the tab opens exactly
+ * once per installed version even across window reloads.
  * Renders nothing; must live inside TabProvider.
  */
 export function UpdateReleaseNotesTabOpener(): null {
-  const { state } = useAppUpdater()
   const { openTab } = useTabs()
-  const surfacedVersionRef = useRef<string | null>(null)
+  const consumedRef = useRef(false)
 
   useEffect(() => {
-    const plan = planReleaseNotesTab(state, surfacedVersionRef.current)
-    if (!plan) return
+    // StrictMode double-invokes effects; the consume is destructive, so run once.
+    if (consumedRef.current) return
+    consumedRef.current = true
 
-    surfacedVersionRef.current = plan.version
-    openTab({
-      type: 'virtual-note',
-      title: plan.title,
-      icon: 'file-text',
-      // Unique per version so distinct release-notes tabs never collapse into one
-      // another via the no-entityId open/reopen dedup.
-      path: `/virtual/release-notes/${plan.version}`,
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false,
-      viewState: { content: plan.content, contentType: plan.contentType }
-    })
-  }, [state, openTab])
+    let cancelled = false
+    void window.api.updater
+      .consumeWhatsNew()
+      .then((payload) => {
+        if (cancelled) return
+        const plan = planReleaseNotesTab(payload)
+        if (!plan) return
+
+        openTab({
+          type: 'virtual-note',
+          title: plan.title,
+          icon: 'file-text',
+          // Unique per version so distinct release-notes tabs never collapse into
+          // one another via the no-entityId open/reopen dedup.
+          path: `/virtual/release-notes/${plan.version}`,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { content: plan.content, contentType: plan.contentType }
+        })
+      })
+      .catch((err) => {
+        // Losing the what's-new tab is cosmetic; never let it break app mount.
+        log.warn("failed to consume what's-new payload", err)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [openTab])
 
   return null
 }

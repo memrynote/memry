@@ -447,12 +447,11 @@ export interface MainIpcInvokeHandlers {
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "url" | "checkbox" | "multiselect" | "project" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
   "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
+  "updater:consume-whats-new": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").WhatsNewPayload | null>
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "updater:quit-and-install": (...args: []) => Awaited<void>
   "updater:set-auto-check": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
-  "updater:set-auto-download": (...args: [boolean]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
-  "updater:skip-version": (...args: [string]) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
   "vault:close": (...args: []) => Awaited<Promise<void>>
   "vault:delete-from-account": (...args: [string]) => Awaited<Promise<void>>
   "vault:download-remote": (...args: [{ vaultUuid: string; parentPath?: string | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/vault-api").SelectVaultResponse>>

@@ -5,7 +5,7 @@ import { shouldShowUpdatePrompt } from './update-prompt-dialog'
 function state(overrides: Partial<AppUpdateState> = {}): AppUpdateState {
   return {
     currentVersion: '2026.700.1',
-    status: 'available',
+    status: 'downloaded',
     updateSupported: true,
     availableVersion: '2026.708.1',
     releaseName: null,
@@ -15,32 +15,25 @@ function state(overrides: Partial<AppUpdateState> = {}): AppUpdateState {
     downloadProgressPercent: null,
     lastCheckedAt: null,
     error: null,
-    autoDownloadEnabled: false,
     autoCheckEnabled: true,
     ...overrides
   }
 }
 
 describe('shouldShowUpdatePrompt', () => {
-  it('shows the available prompt when auto-download is off', () => {
-    expect(shouldShowUpdatePrompt(state({ status: 'available' }), null)).toBe(true)
+  it('shows the restart prompt once an update finished downloading', () => {
+    expect(shouldShowUpdatePrompt(state(), null)).toBe(true)
   })
 
-  it('shows the downloaded prompt when auto-download is off', () => {
-    expect(shouldShowUpdatePrompt(state({ status: 'downloaded' }), null)).toBe(true)
+  // Downloads are silent by design: the user first hears about an update when a
+  // restart can apply it, never while it is found or downloading.
+  it('stays silent through the available and downloading phases', () => {
+    expect(shouldShowUpdatePrompt(state({ status: 'available' }), null)).toBe(false)
+    expect(shouldShowUpdatePrompt(state({ status: 'downloading' }), null)).toBe(false)
   })
 
-  it('stays silent for BOTH phases when auto-download is on (no popup)', () => {
-    expect(
-      shouldShowUpdatePrompt(state({ status: 'available', autoDownloadEnabled: true }), null)
-    ).toBe(false)
-    expect(
-      shouldShowUpdatePrompt(state({ status: 'downloaded', autoDownloadEnabled: true }), null)
-    ).toBe(false)
-  })
-
-  it('hides a phase the user dismissed', () => {
-    expect(shouldShowUpdatePrompt(state({ status: 'available' }), 'available')).toBe(false)
+  it('hides the prompt the user dismissed this session', () => {
+    expect(shouldShowUpdatePrompt(state(), 'downloaded')).toBe(false)
   })
 
   it('never shows when updates are unsupported or there is nothing to prompt', () => {
@@ -48,8 +41,8 @@ describe('shouldShowUpdatePrompt', () => {
     for (const status of [
       'idle',
       'checking',
-      'downloading',
       'up-to-date',
+      'installing',
       'error'
     ] as UpdaterStatus[]) {
       expect(shouldShowUpdatePrompt(state({ status }), null)).toBe(false)

@@ -1,14 +1,7 @@
-import type { AppUpdateState, UpdaterStatus } from '@memry/contracts/ipc-updater'
-
-/** Statuses for which a real update has surfaced and its notes are worth showing. */
-const SURFACING_STATUSES: ReadonlySet<UpdaterStatus> = new Set<UpdaterStatus>([
-  'available',
-  'downloading',
-  'downloaded'
-])
+import type { WhatsNewPayload } from '@memry/contracts/ipc-updater'
 
 export interface ReleaseNotesTabPlan {
-  /** Display version this tab is for (used for dedup + a unique tab path). */
+  /** Display version this tab is for (used for a unique tab path). */
   version: string
   /** Tab title, e.g. "MemryNote 2026.708.1". */
   title: string
@@ -19,41 +12,18 @@ export interface ReleaseNotesTabPlan {
 }
 
 /**
- * Decide whether the update flow should open a read-only "release notes" tab, and
- * with what content. Pure so it can be unit-tested and reused by the opener effect.
- *
- * Fires once per surfaced version (the caller tracks `surfacedVersion`), covering
- * both the prompt path and the silent auto-download path. Prefers the full HTML body
- * (keeps clickable PR references); falls back to the stripped plain-text notes.
+ * Shape the post-restart "what's new" payload into the read-only release-notes
+ * tab. Pure so it can be unit-tested and reused by the opener effect. The
+ * WHEN is decided in the main process (`consumeWhatsNew`): the payload only
+ * exists on the first launch of a freshly installed version, so the tab opens
+ * after the restart that applied the update — never while one is downloading.
  */
-export function planReleaseNotesTab(
-  state: AppUpdateState,
-  surfacedVersion: string | null
-): ReleaseNotesTabPlan | null {
-  if (!state.updateSupported) return null
-
-  const version = state.availableVersion
-  if (!version) return null
-  if (!SURFACING_STATUSES.has(state.status)) return null
-  if (version === surfacedVersion) return null
-
-  if (state.releaseNotesHtml) {
-    return {
-      version,
-      title: `MemryNote ${version}`,
-      content: state.releaseNotesHtml,
-      contentType: 'html'
-    }
+export function planReleaseNotesTab(payload: WhatsNewPayload | null): ReleaseNotesTabPlan | null {
+  if (!payload?.content) return null
+  return {
+    version: payload.version,
+    title: `MemryNote ${payload.version}`,
+    content: payload.content,
+    contentType: payload.contentType
   }
-
-  if (state.releaseNotes) {
-    return {
-      version,
-      title: `MemryNote ${version}`,
-      content: state.releaseNotes,
-      contentType: 'markdown'
-    }
-  }
-
-  return null
 }

@@ -26,7 +26,7 @@ import type {
   Conversation,
   Message
 } from '@memry/contracts/ipc-agent'
-import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type { AppUpdateState, WhatsNewPayload } from '@memry/contracts/ipc-updater'
 import type {
   ImportStartInput,
   ImportStartResponse,
@@ -1809,9 +1809,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
     checkForUpdates: () => Promise<AppUpdateState>
     downloadUpdate: () => Promise<AppUpdateState>
     quitAndInstall: () => Promise<void>
-    skipVersion: (version: string) => Promise<AppUpdateState>
-    setAutoDownload: (enabled: boolean) => Promise<AppUpdateState>
     setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
+    consumeWhatsNew: () => Promise<WhatsNewPayload | null>
   }
   syncCrdt: {
     openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>

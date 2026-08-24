@@ -29,7 +29,6 @@ function state(overrides: Partial<AppUpdateState> = {}): AppUpdateState {
     downloadProgressPercent: null,
     lastCheckedAt: null,
     error: null,
-    autoDownloadEnabled: false,
     autoCheckEnabled: true,
     installFailed: null,
     ...overrides

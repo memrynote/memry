@@ -25,21 +25,23 @@ const mocks = vi.hoisted(() => {
   }
 
   const emitter = new MockEmitter()
+  interface PendingWhatsNew {
+    version: string
+    notesHtml?: string
+    notes?: string
+  }
   const storeState: {
-    prefs: { skippedVersion?: string; autoDownload?: boolean; autoCheck?: boolean }
+    prefs: { autoCheck?: boolean; pendingWhatsNew?: PendingWhatsNew }
   } = { prefs: {} }
   return {
     storeState,
     store: {
       getUpdaterPrefs: vi.fn(() => storeState.prefs),
-      setSkippedVersion: vi.fn((version: string | null) => {
-        storeState.prefs = { ...storeState.prefs, skippedVersion: version ?? undefined }
-      }),
-      setAutoDownloadPref: vi.fn((enabled: boolean) => {
-        storeState.prefs = { ...storeState.prefs, autoDownload: enabled }
-      }),
       setAutoCheckPref: vi.fn((enabled: boolean) => {
         storeState.prefs = { ...storeState.prefs, autoCheck: enabled }
+      }),
+      setPendingWhatsNew: vi.fn((pending: PendingWhatsNew | null) => {
+        storeState.prefs = { ...storeState.prefs, pendingWhatsNew: pending ?? undefined }
       })
     },
     app: {
@@ -91,9 +93,8 @@ vi.mock('electron-updater', () => ({
 
 vi.mock('./store', () => ({
   getUpdaterPrefs: mocks.store.getUpdaterPrefs,
-  setSkippedVersion: mocks.store.setSkippedVersion,
-  setAutoDownloadPref: mocks.store.setAutoDownloadPref,
-  setAutoCheckPref: mocks.store.setAutoCheckPref
+  setAutoCheckPref: mocks.store.setAutoCheckPref,
+  setPendingWhatsNew: mocks.store.setPendingWhatsNew
 }))
 
 vi.mock('./lib/logger', () => ({
@@ -202,11 +203,12 @@ describe('updater', () => {
       error: 'network failed'
     })
     expect(mocks.windows[0].webContents.send).toHaveBeenCalled()
-    expect(mocks.autoUpdater.autoDownload).toBe(false)
+    // Updates always download silently; the legacy opt-in pref is ignored.
+    expect(mocks.autoUpdater.autoDownload).toBe(true)
     expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(true)
   })
 
-  it('exposes available-update state without a native prompt or auto-download', async () => {
+  it('exposes available-update state without any native prompt', async () => {
     const updater = await loadUpdater()
 
     updater.initializeUpdater()
@@ -218,8 +220,8 @@ describe('updater', () => {
     })
     await flushAsyncWork()
 
-    // The in-app modal renders from this state — no native OS dialog, and the
-    // download waits for the user (auto-download off by default).
+    // The phase is silent: no native OS dialog, and the download is started by
+    // electron-updater itself (autoDownload=true), never by an explicit call here.
     expect(mocks.dialog.showMessageBox).not.toHaveBeenCalled()
     expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled()
     expect(updater.getUpdateState()).toMatchObject({
@@ -227,7 +229,6 @@ describe('updater', () => {
       availableVersion: 'v1.2.4',
       releaseName: 'MemryNote 1.2.4',
       releaseDate: '2026-05-10',
-      autoDownloadEnabled: false,
       error: null
     })
     expect(updater.getUpdateState().releaseNotes).toContain('Desktop sync fixes')
@@ -319,90 +320,76 @@ describe('updater', () => {
     expect(html).toContain('v1.2.4')
   })
 
-  it('clears release-notes html when no update is available or the version is skipped', async () => {
+  it('clears release-notes html when no update is available', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
     mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: '<p>notes</p>' })
     expect(updater.getUpdateState().releaseNotesHtml).toBe('<p>notes</p>')
 
-    updater.skipVersion('v1.2.4')
-    expect(updater.getUpdateState().releaseNotesHtml).toBeNull()
-
     mocks.autoUpdater.emit('update-not-available')
     expect(updater.getUpdateState().releaseNotesHtml).toBeNull()
   })
 
-  it('starts the download immediately when auto-download is enabled while an update already waits', async () => {
+  it('forces auto-download on even when a legacy pref opted out', async () => {
+    mocks.storeState.prefs = { ...mocks.storeState.prefs, autoDownload: false } as never
     const updater = await loadUpdater()
     updater.initializeUpdater()
-    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: 'notes' })
-    expect(updater.getUpdateState().status).toBe('available')
-    expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled()
 
-    updater.setAutoDownloadEnabled(true)
-    await flushAsyncWork()
-    expect(mocks.autoUpdater.downloadUpdate).toHaveBeenCalledTimes(1)
+    expect(mocks.autoUpdater.autoDownload).toBe(true)
   })
 
-  it('does not start a download when auto-download is enabled with no update available', async () => {
+  it('persists the downloaded release notes for the post-restart whats-new tab', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
 
-    updater.setAutoDownloadEnabled(true)
-    await flushAsyncWork()
-    expect(mocks.autoUpdater.downloadUpdate).not.toHaveBeenCalled()
-  })
+    mocks.autoUpdater.emit('update-downloaded', {
+      version: '1.2.4',
+      releaseNotes: '<h2>New</h2><p>notes</p>'
+    })
 
-  it('skips a version: clears the current prompt and suppresses it on re-check', async () => {
-    const updater = await loadUpdater()
-    updater.initializeUpdater()
-
-    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: 'notes' })
-    expect(updater.getUpdateState().status).toBe('available')
-
-    const next = updater.skipVersion('v1.2.4')
-    expect(mocks.store.setSkippedVersion).toHaveBeenCalledWith('v1.2.4')
-    expect(next.status).toBe('up-to-date')
-    expect(next.availableVersion).toBeNull()
-
-    // The same version re-emitted stays suppressed (no 'available').
-    mocks.autoUpdater.emit('update-available', { version: '1.2.4', releaseNotes: 'notes' })
-    expect(updater.getUpdateState().status).toBe('up-to-date')
-
-    // A different version still surfaces.
-    mocks.autoUpdater.emit('update-available', { version: '1.2.5', releaseNotes: 'notes' })
-    expect(updater.getUpdateState()).toMatchObject({
-      status: 'available',
-      availableVersion: 'v1.2.5'
+    expect(mocks.store.setPendingWhatsNew).toHaveBeenCalledWith({
+      version: 'v1.2.4',
+      notesHtml: '<h2>New</h2><p>notes</p>',
+      notes: expect.stringContaining('notes')
     })
   })
 
-  it('clears a skipped version on a manual (clearSkip) check', async () => {
+  it('consumes the whats-new payload only on the launch that runs the installed version', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
-    updater.skipVersion('v1.2.4')
+    mocks.autoUpdater.emit('update-downloaded', {
+      version: '1.2.4',
+      releaseNotes: '<p>notes</p>'
+    })
 
-    await updater.checkForUpdates({ clearSkip: true })
-    expect(mocks.store.setSkippedVersion).toHaveBeenCalledWith(null)
+    // Still running the old version: the update downloaded but was not applied.
+    expect(updater.consumeWhatsNew()).toBeNull()
+    expect(mocks.storeState.prefs.pendingWhatsNew).toBeDefined()
+
+    // Relaunched as the installed version: surface once, then clear.
+    mocks.app.getVersion.mockReturnValue('1.2.4')
+    expect(updater.consumeWhatsNew()).toEqual({
+      version: 'v1.2.4',
+      content: '<p>notes</p>',
+      contentType: 'html'
+    })
+    expect(mocks.storeState.prefs.pendingWhatsNew).toBeUndefined()
+    expect(updater.consumeWhatsNew()).toBeNull()
   })
 
-  it('persists and applies the auto-download preference', async () => {
+  it('falls back to markdown notes when the feed had no html body', async () => {
     const updater = await loadUpdater()
     updater.initializeUpdater()
+    mocks.app.getVersion.mockReturnValue('1.2.4')
+    mocks.storeState.prefs = {
+      pendingWhatsNew: { version: 'v1.2.4', notes: 'plain notes' }
+    }
 
-    const next = updater.setAutoDownloadEnabled(true)
-    expect(mocks.store.setAutoDownloadPref).toHaveBeenCalledWith(true)
-    expect(mocks.autoUpdater.autoDownload).toBe(true)
-    expect(next.autoDownloadEnabled).toBe(true)
-  })
-
-  it('honors a persisted auto-download preference at startup', async () => {
-    mocks.storeState.prefs = { autoDownload: true }
-    const updater = await loadUpdater()
-    updater.initializeUpdater()
-
-    expect(mocks.autoUpdater.autoDownload).toBe(true)
-    expect(updater.getUpdateState().autoDownloadEnabled).toBe(true)
+    expect(updater.consumeWhatsNew()).toEqual({
+      version: 'v1.2.4',
+      content: 'plain notes',
+      contentType: 'markdown'
+    })
   })
 
   it('auto-checks at startup and re-checks on a short (~10 min) interval by default', async () => {

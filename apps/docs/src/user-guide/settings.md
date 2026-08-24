@@ -64,16 +64,11 @@ project or sending product feedback.
 
 ### Updates
 
-Shows the installed version. If a newer version is available, a button lets you check, download, and install.
+Shows the installed version. If a newer version is available, a button lets you check and install.
 
-When memrynote finds an update it opens an in-app **update prompt** showing the new version, what you have now, and the release notes. From there you can:
+Updates download automatically and silently in the background — there is no prompt to approve a download and nothing to configure. The first thing you see is the **restart prompt** once an update is ready: **Restart Now** applies it immediately, **Later** dismisses it for the session (a **Restart** button stays in the sidebar, and the update still installs on the next normal quit). After the restart, a read-only **release notes** tab opens showing what changed in the version you are now running.
 
-- **Download** — fetch the update; progress shows on the sidebar update button, and once ready the prompt returns to offer **Restart Now** (or **Later**).
-- **Remind Me Later** — dismiss for now; the prompt reappears on the next launch or update check.
-- **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
-- **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
-
-You can also run the same check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, an available or ready-to-install version, or the error — and an available update still opens the update prompt unless automatic downloads are on. In a development build the toast says updates are packaged-release only.
+**Check for updates automatically** controls only the background _check_ (at launch and every few minutes). You can also run a manual check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, a ready-to-install version, or the error. In a development build the toast says updates are packaged-release only.
 
 ### Language & Region
 

@@ -57,8 +57,7 @@ export function GeneralSettings() {
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
-    setAutoCheck,
-    setAutoDownload
+    setAutoCheck
   } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
   const { config, updateConfig } = useVault()
@@ -214,17 +213,6 @@ export function GeneralSettings() {
     [setAutoCheck, t]
   )
 
-  const handleAutoDownloadChange = useCallback(
-    async (enabled: boolean) => {
-      try {
-        await setAutoDownload(enabled)
-      } catch {
-        toast.error(t('general.updates.autoDownload.error'))
-      }
-    },
-    [setAutoDownload, t]
-  )
-
   const updateDescription = getUpdateDescription(updateState, updaterError, t)
   const updateActionLabel = getUpdateActionLabel(updateState, t)
   const isUpdateActionDisabled =
@@ -264,17 +252,6 @@ export function GeneralSettings() {
             checked={updateState.autoCheckEnabled}
             disabled={!updateState.updateSupported}
             onCheckedChange={(...args) => void handleAutoCheckChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-        <SettingRow
-          label={t('general.updates.autoDownload.label')}
-          description={t('general.updates.autoDownload.description')}
-        >
-          <Switch
-            checked={updateState.autoDownloadEnabled}
-            disabled={!updateState.updateSupported}
-            onCheckedChange={(...args) => void handleAutoDownloadChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

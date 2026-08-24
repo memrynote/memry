@@ -4,14 +4,27 @@ export const UpdaterChannels = {
     CHECK_FOR_UPDATES: 'updater:check-for-updates',
     DOWNLOAD_UPDATE: 'updater:download-update',
     QUIT_AND_INSTALL: 'updater:quit-and-install',
-    SKIP_VERSION: 'updater:skip-version',
-    SET_AUTO_DOWNLOAD: 'updater:set-auto-download',
-    SET_AUTO_CHECK: 'updater:set-auto-check'
+    SET_AUTO_CHECK: 'updater:set-auto-check',
+    CONSUME_WHATS_NEW: 'updater:consume-whats-new'
   },
   events: {
     STATE_CHANGED: 'updater:state-changed'
   }
 } as const
+
+/**
+ * Release notes persisted when an update finished downloading, surfaced as the
+ * read-only "what's new" tab on the FIRST launch of the installed version —
+ * after the restart, never before it. Consumed (read + cleared) exactly once.
+ */
+export interface WhatsNewPayload {
+  /** Display version the notes belong to (matches the running version at consume time). */
+  version: string
+  /** Release-notes body to render read-only. */
+  content: string
+  /** How `content` should be parsed by the note renderer. */
+  contentType: 'html' | 'markdown'
+}
 
 export type UpdaterStatus =
   | 'unavailable'
@@ -42,8 +55,6 @@ export interface AppUpdateState {
   downloadProgressPercent: number | null
   lastCheckedAt: number | null
   error: string | null
-  /** Whether updates download & install automatically without prompting (persisted). */
-  autoDownloadEnabled: boolean
   /** Whether the app checks for updates automatically at launch and on an interval (persisted). */
   autoCheckEnabled: boolean
   /**

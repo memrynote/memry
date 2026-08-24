@@ -533,7 +533,6 @@ describe('App', () => {
       downloadProgressPercent: 0,
       lastCheckedAt: null,
       error: null,
-      autoDownloadEnabled: true,
       autoCheckEnabled: true
     }
 

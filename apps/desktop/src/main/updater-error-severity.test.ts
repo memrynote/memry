@@ -174,13 +174,7 @@ describe('classifyUpdaterError', () => {
     'scheduled-check',
     'auto-check-enable'
   ]
-  const otherPhases: UpdaterErrorPhase[] = [
-    'download',
-    'downloaded',
-    'install',
-    'auto-download-enable',
-    'idle'
-  ]
+  const otherPhases: UpdaterErrorPhase[] = ['download', 'downloaded', 'install', 'idle']
 
   it.each(checkPhases)('demotes a transient failure in the %s phase', (phase) => {
     expect(isUpdaterCheckPhase(phase)).toBe(true)

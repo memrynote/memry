@@ -23,7 +23,6 @@ const baseState: AppUpdateState = {
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
-  autoDownloadEnabled: false,
   autoCheckEnabled: true
 }
 
@@ -40,8 +39,6 @@ let updaterApi: {
   checkForUpdates: ReturnType<typeof vi.fn>
   downloadUpdate: ReturnType<typeof vi.fn>
   quitAndInstall: ReturnType<typeof vi.fn>
-  skipVersion: ReturnType<typeof vi.fn>
-  setAutoDownload: ReturnType<typeof vi.fn>
   setAutoCheck: ReturnType<typeof vi.fn>
 }
 
@@ -100,8 +97,6 @@ beforeEach(async () => {
     checkForUpdates: vi.fn().mockResolvedValue(makeState({ status: 'up-to-date' })),
     downloadUpdate: vi.fn().mockResolvedValue(makeState({ status: 'downloading' })),
     quitAndInstall: vi.fn().mockResolvedValue(undefined),
-    skipVersion: vi.fn().mockResolvedValue(makeState({ status: 'up-to-date' })),
-    setAutoDownload: vi.fn().mockResolvedValue(makeState({ autoDownloadEnabled: true })),
     setAutoCheck: vi.fn().mockResolvedValue(makeState({ autoCheckEnabled: false }))
   }
   ;(window as unknown as { api: unknown }).api = { updater: updaterApi, onUpdaterStateChanged }
@@ -355,16 +350,6 @@ describe('useAppUpdater shared store', () => {
     expect(log.at(-1)).toMatchObject({ status: 'downloading' })
 
     await act(async () => {
-      await api!.skipVersion('2.0.0')
-    })
-    expect(updaterApi.skipVersion).toHaveBeenCalledWith('2.0.0')
-
-    await act(async () => {
-      await api!.setAutoDownload(true)
-    })
-    expect(updaterApi.setAutoDownload).toHaveBeenCalledWith(true)
-
-    await act(async () => {
       await api!.setAutoCheck(false)
     })
     expect(updaterApi.setAutoCheck).toHaveBeenCalledWith(false)
@@ -418,18 +403,6 @@ describe('useAppUpdater shared store', () => {
       await expect(api!.quitAndInstall()).rejects.toThrow('install failed')
     })
     expect(log.at(-1)?.error).toBe('install failed')
-
-    updaterApi.skipVersion.mockRejectedValue(new Error('skip failed'))
-    await act(async () => {
-      await expect(api!.skipVersion('2.0.0')).rejects.toThrow('skip failed')
-    })
-    expect(log.at(-1)?.error).toBe('skip failed')
-
-    updaterApi.setAutoDownload.mockRejectedValue(new Error('auto-download failed'))
-    await act(async () => {
-      await expect(api!.setAutoDownload(true)).rejects.toThrow('auto-download failed')
-    })
-    expect(log.at(-1)?.error).toBe('auto-download failed')
 
     updaterApi.setAutoCheck.mockRejectedValue(new Error('auto-check failed'))
     await act(async () => {

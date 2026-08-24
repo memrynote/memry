@@ -28,7 +28,6 @@ const baseState: AppUpdateState = {
   downloadProgressPercent: null,
   lastCheckedAt: null,
   error: null,
-  autoDownloadEnabled: false,
   autoCheckEnabled: true
 }
 
@@ -68,7 +67,7 @@ describe('runMenuUpdateCheck', () => {
   it('reports an available update even when the in-app prompt stays silent', async () => {
     // Auto-download suppresses UpdatePromptDialog, so the toast is the only
     // feedback an explicit menu click gets.
-    mockUpdaterResult({ status: 'available', availableVersion: '1.1.0', autoDownloadEnabled: true })
+    mockUpdaterResult({ status: 'available', availableVersion: '1.1.0' })
 
     await runMenuUpdateCheck()
 

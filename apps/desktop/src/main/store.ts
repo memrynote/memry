@@ -175,12 +175,26 @@ export interface StoredWindowBounds {
  * main process before any renderer loads (so the startup update check honors them).
  */
 export interface UpdaterStoreData {
-  /** Display version the user chose to skip; suppresses automatic prompts for it. */
+  /** Legacy (pre always-auto-download): skipped display version. Read-tolerated, never written. */
   skippedVersion?: string
-  /** When true, updates download + install without prompting. */
+  /** Legacy (pre always-auto-download): opt-in flag. Read-tolerated, never written. */
   autoDownload?: boolean
   /** When true (default), the app checks for updates at launch and on an interval. */
   autoCheck?: boolean
+  /**
+   * Release notes captured when an update finished downloading, so the first
+   * launch of the INSTALLED version can open the "what's new" tab — the feed
+   * data is gone by then. Cleared when consumed (running version matches) and
+   * overwritten by any newer download.
+   */
+  pendingWhatsNew?: {
+    /** Display version the notes belong to. */
+    version: string
+    /** Full HTML notes (clickable PR links); preferred by the tab. */
+    notesHtml?: string
+    /** Stripped plain-text notes; fallback when the feed had no HTML body. */
+    notes?: string
+  }
 }
 
 /**
@@ -578,17 +592,11 @@ export function getUpdaterPrefs(): UpdaterStoreData {
 }
 
 /**
- * Persist the display version the user skipped (or clear it with null).
+ * Persist (or clear with null) the release notes waiting for their version's
+ * first post-install launch. See UpdaterStoreData.pendingWhatsNew.
  */
-export function setSkippedVersion(version: string | null): void {
-  store.set('updater', { ...store.get('updater'), skippedVersion: version ?? undefined })
-}
-
-/**
- * Persist whether updates download + install automatically.
- */
-export function setAutoDownloadPref(enabled: boolean): void {
-  store.set('updater', { ...store.get('updater'), autoDownload: enabled })
+export function setPendingWhatsNew(pending: UpdaterStoreData['pendingWhatsNew'] | null): void {
+  store.set('updater', { ...store.get('updater'), pendingWhatsNew: pending ?? undefined })
 }
 
 /**

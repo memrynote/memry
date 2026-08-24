@@ -1,14 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
-import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import { render, waitFor } from '@testing-library/react'
+import type { WhatsNewPayload } from '@memry/contracts/ipc-updater'
 
 const mocks = vi.hoisted(() => ({
-  state: {} as AppUpdateState,
+  consumeWhatsNew: vi.fn<() => Promise<WhatsNewPayload | null>>(),
   openTab: vi.fn()
-}))
-
-vi.mock('@/hooks/use-app-updater', () => ({
-  useAppUpdater: () => ({ state: mocks.state })
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -17,34 +13,23 @@ vi.mock('@/contexts/tabs', () => ({
 
 import { UpdateReleaseNotesTabOpener } from './update-release-notes-tab-opener'
 
-function available(version: string): AppUpdateState {
-  return {
-    currentVersion: '2026.700.1',
-    status: 'available',
-    updateSupported: true,
-    availableVersion: version,
-    releaseName: null,
-    releaseDate: null,
-    releaseNotes: 'notes',
-    releaseNotesHtml: `<p>${version}</p>`,
-    downloadProgressPercent: null,
-    lastCheckedAt: null,
-    error: null,
-    autoDownloadEnabled: false,
-    autoCheckEnabled: true
-  }
-}
-
 describe('UpdateReleaseNotesTabOpener', () => {
   beforeEach(() => {
     mocks.openTab.mockReset()
+    mocks.consumeWhatsNew.mockReset()
+    // setup-dom already installed window.api; only the consume call is swapped.
+    ;(window.api.updater as { consumeWhatsNew: unknown }).consumeWhatsNew = mocks.consumeWhatsNew
   })
 
-  it('opens a read-only release-notes tab once when an update surfaces', () => {
-    mocks.state = available('2026.708.1')
+  it('opens the whats-new tab when the first post-install launch has a payload', async () => {
+    mocks.consumeWhatsNew.mockResolvedValue({
+      version: '2026.708.1',
+      content: '<p>2026.708.1</p>',
+      contentType: 'html'
+    })
     render(<UpdateReleaseNotesTabOpener />)
 
-    expect(mocks.openTab).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mocks.openTab).toHaveBeenCalledTimes(1))
     const tab = mocks.openTab.mock.calls[0][0]
     expect(tab).toMatchObject({
       type: 'virtual-note',
@@ -55,27 +40,28 @@ describe('UpdateReleaseNotesTabOpener', () => {
     })
   })
 
-  it('does not re-open the same version on a re-render', () => {
-    mocks.state = available('2026.708.1')
+  it('consumes only once even across re-renders', async () => {
+    mocks.consumeWhatsNew.mockResolvedValue(null)
     const { rerender } = render(<UpdateReleaseNotesTabOpener />)
-    expect(mocks.openTab).toHaveBeenCalledTimes(1)
-
-    mocks.state = { ...available('2026.708.1'), status: 'downloading' }
     rerender(<UpdateReleaseNotesTabOpener />)
-    expect(mocks.openTab).toHaveBeenCalledTimes(1)
+
+    await waitFor(() => expect(mocks.consumeWhatsNew).toHaveBeenCalledTimes(1))
+    expect(mocks.openTab).not.toHaveBeenCalled()
   })
 
-  it('opens again for a newer version', () => {
-    mocks.state = available('2026.708.1')
-    const { rerender } = render(<UpdateReleaseNotesTabOpener />)
-    mocks.state = available('2026.709.1')
-    rerender(<UpdateReleaseNotesTabOpener />)
-    expect(mocks.openTab).toHaveBeenCalledTimes(2)
-  })
-
-  it('stays quiet when there is no update to surface', () => {
-    mocks.state = { ...available('2026.708.1'), status: 'up-to-date', availableVersion: null }
+  it('stays quiet on an ordinary launch with no pending notes', async () => {
+    mocks.consumeWhatsNew.mockResolvedValue(null)
     render(<UpdateReleaseNotesTabOpener />)
+
+    await waitFor(() => expect(mocks.consumeWhatsNew).toHaveBeenCalled())
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('never lets a consume failure break mounting', async () => {
+    mocks.consumeWhatsNew.mockRejectedValue(new Error('ipc down'))
+    render(<UpdateReleaseNotesTabOpener />)
+
+    await waitFor(() => expect(mocks.consumeWhatsNew).toHaveBeenCalled())
     expect(mocks.openTab).not.toHaveBeenCalled()
   })
 })
