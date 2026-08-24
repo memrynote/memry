@@ -23,6 +23,9 @@ import { syncBaseUrl } from './server-config'
 
 const log = createLogger('MobileSyncEngine')
 
+/** Same window as first-sync phase C — bodies outside it are on-demand (T048). */
+const RECENT_BODY_WINDOW_DAYS = 30
+
 /**
  * T045: the `@memry/sync-client` pull pipeline wired to the mobile adapters.
  * One engine per vault; `sync()` is the incremental pass (record feed → CRDT
@@ -173,7 +176,16 @@ export class MobileSyncEngine {
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0 }
     }
 
-    const bodies = await this.pullBodiesForUnlocked(store, record.changedNoteIds)
+    // Desktop peers see body-only edits because desktop's pull PROBES every
+    // note's CRDT sequence each pass — the record feed never carries body
+    // changes (update pushes send content: null, and body saves do not touch
+    // the record row at all). Mirror that here: probe the recent window (same
+    // 30-day rule as first-sync phase C) on every pass, not just the ids the
+    // record feed named. Unchanged notes cost one cursor echo in the shared
+    // batch call; older bodies stay on-demand (T048).
+    const probeIds = await this.recentBodyProbeIds()
+    for (const id of record.changedNoteIds) probeIds.add(id)
+    const bodies = await this.pullBodiesForUnlocked(store, [...probeIds])
     await this.pollStatus(engine)
 
     const summary: SyncSummary = {
@@ -188,6 +200,18 @@ export class MobileSyncEngine {
 
   pullBodiesFor(store: MobilePullStore, noteIds: string[]): Promise<number> {
     return this.exclusive(() => this.pullBodiesForUnlocked(store, noteIds))
+  }
+
+  /** Note/journal ids inside the recent-body window (first-sync's 30-day rule). */
+  private async recentBodyProbeIds(): Promise<Set<string>> {
+    const db = await openVaultDb(this.vaultId)
+    const windowStart = Date.now() - RECENT_BODY_WINDOW_DAYS * 24 * 60 * 60 * 1000
+    const rows = await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM sync_items
+       WHERE type IN ('note', 'journal') AND deleted_at IS NULL AND updated_at >= ?`,
+      [windowStart]
+    )
+    return new Set(rows.map((r) => r.id))
   }
 
   private async pullBodiesForUnlocked(store: MobilePullStore, noteIds: string[]): Promise<number> {
