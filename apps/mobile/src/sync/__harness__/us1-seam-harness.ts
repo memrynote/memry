@@ -217,7 +217,15 @@ export async function runPullPipelineRoundTrip(
         )
       }
 
-      const blobResult = await engine.pullBlobs(stuckSample.map((s) => s.id))
+      let blobResult: { applied: number; changedNoteIds: string[] }
+      try {
+        blobResult = await engine.pullBlobs(stuckSample.map((s) => s.id))
+      } catch (err) {
+        result.notes.push(
+          `probe pullBlobs THREW: ${err instanceof Error ? err.message.slice(0, 300) : String(err)}`
+        )
+        blobResult = { applied: -1, changedNoteIds: [] }
+      }
       const after = await db.getFirstAsync<{ n: number }>(
         `SELECT COUNT(*) AS n FROM sync_items WHERE payload_state = 'metadata-only' AND deleted_at IS NULL AND id IN (${stuckSample.map(() => '?').join(',')})`,
         stuckSample.map((s) => s.id)
