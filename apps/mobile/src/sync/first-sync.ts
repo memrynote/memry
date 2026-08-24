@@ -58,30 +58,56 @@ export async function runFirstSyncIfNeeded(
   const totalToPull = Math.max(totalRefs, missingAtStart?.n ?? 0)
 
   // Ids the server would not return or that failed decrypt: skipped, never
-  // looped on — an unpullable chunk must not wedge the whole first sync.
+  // looped on — an unpullable chunk must not wedge the whole first sync. A
+  // chunk that THROWS is bisected instead of aborting the run, so one bad
+  // batch (or a native hiccup at a given batch size) costs at most its own
+  // ids, logged loudly.
   const unpullable = new Set<string>()
   for (;;) {
     const candidates = await store.listItemIdsMissingPayload(allTypes, BLOB_CHUNK + unpullable.size)
-    const ids = candidates.filter((id) => !unpullable.has(id)).slice(0, BLOB_CHUNK)
-    if (ids.length === 0) break
-    const result = await engine.pullBlobs(ids)
-    pulled += result.applied
-    for (const noteId of result.changedNoteIds) recentNoteIds.add(noteId)
+    const first = candidates.filter((id) => !unpullable.has(id)).slice(0, BLOB_CHUNK)
+    if (first.length === 0) break
 
-    // Whatever this chunk left metadata-only is unpullable for this run.
-    const placeholders = ids.map(() => '?').join(',')
-    const stillMissing = await db.getAllAsync<{ id: string }>(
-      `SELECT id FROM sync_items WHERE payload_state = 'metadata-only' AND id IN (${placeholders})`,
-      ids
-    )
-    for (const row of stillMissing) unpullable.add(row.id)
+    const queue: string[][] = [first]
+    while (queue.length > 0) {
+      const ids = queue.shift() as string[]
+      try {
+        const result = await engine.pullBlobs(ids)
+        pulled += result.applied
+        for (const noteId of result.changedNoteIds) recentNoteIds.add(noteId)
+      } catch (err) {
+        if (ids.length > 5) {
+          const mid = Math.ceil(ids.length / 2)
+          queue.push(ids.slice(0, mid), ids.slice(mid))
+          log.warn('First sync chunk threw; bisecting', {
+            size: ids.length,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        } else {
+          for (const id of ids) unpullable.add(id)
+          log.warn('First sync mini-chunk threw; ids skipped this run', {
+            ids: ids.length,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
+        continue
+      }
 
-    onProgress({
-      phase: 'metadata',
-      fraction: Math.min(0.8, (pulled / Math.max(totalToPull, 1)) * 0.8),
-      itemsTotal: totalToPull,
-      itemsPulled: pulled
-    })
+      // Whatever this chunk left metadata-only is unpullable for this run.
+      const placeholders = ids.map(() => '?').join(',')
+      const stillMissing = await db.getAllAsync<{ id: string }>(
+        `SELECT id FROM sync_items WHERE payload_state = 'metadata-only' AND id IN (${placeholders})`,
+        ids
+      )
+      for (const row of stillMissing) unpullable.add(row.id)
+
+      onProgress({
+        phase: 'metadata',
+        fraction: Math.min(0.8, (pulled / Math.max(totalToPull, 1)) * 0.8),
+        itemsTotal: totalToPull,
+        itemsPulled: pulled
+      })
+    }
   }
   if (unpullable.size > 0) {
     log.warn('First sync finished with unpullable items; on-demand fetch retries them', {
