@@ -1,8 +1,10 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { marked } from 'marked'
 import { saveCanonicalNote } from '@memry/domain-notes'
 import { getNoteMetadataByPath } from '@memry/storage-data'
+import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import type { FileType } from '@memry/shared/file-types'
 import { replaceWikiLinks } from '@memry/shared/wiki-target'
 import { createId } from '@memry/app-core/ids'
@@ -20,6 +22,8 @@ export interface AttachmentResult {
   size?: number
   mimeType?: string
   type?: 'image' | 'file'
+  /** Note-relative reference written into the note body. */
+  ref?: string
   error?: string
 }
 
@@ -135,12 +139,53 @@ function mimeType(filename: string): string {
 
 function cleanFilename(filename: string): string {
   const parsed = path.parse(path.basename(filename))
-  const base = safeFilename(parsed.name)
+  // Mirrors desktop's generateUniqueFilename: spaces and parens survive
+  // safeFilename but break markdown embeds (`![](a b.png)` stops parsing at the
+  // space), and braces would end the `<!-- file:{...} -->` marker early — so
+  // they are kept out of the filename itself, not just percent-encoded.
+  const base =
+    safeFilename(parsed.name)
+      .replace(/[\s(){}]+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-|-$/g, '') || 'file'
   return `${base}${parsed.ext}`
 }
 
 function uniqueAttachmentFilename(filename: string): string {
   return `${createId('file')}-${cleanFilename(filename)}`
+}
+
+// Mirror of desktop's `noteRelativeRef` (main/lib/paths.ts): how a note body
+// references a file that lives elsewhere in the vault. Note-relative is the
+// only shape that survives reaching a second device (#1606).
+function noteRelativeRef(notePath: string, targetPath: string): string {
+  const noteDir = path.posix.dirname(normalizePath(notePath))
+  const from = noteDir === '.' ? '' : noteDir
+  return path.posix.relative(from, normalizePath(targetPath))
+}
+
+// Mirror of desktop's `encodeAttachmentUrl` (import/_shared/attachment-markdown.ts).
+function encodeAttachmentUrl(url: string): string {
+  return url.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')
+}
+
+/**
+ * Markdown for a saved attachment, matching desktop's `attachmentMarkdown`:
+ * images embed inline, everything else renders as the file-block marker the
+ * desktop renderer turns into a clickable card.
+ */
+function attachmentEmbed(ref: string, result: AttachmentResult): string {
+  if (result.type === 'image') {
+    const alt = (result.name ?? '').replace(/[[\]]/g, '')
+    return `![${alt}](${encodeAttachmentUrl(ref)})`
+  }
+  const props = {
+    url: ref,
+    name: (result.name ?? '').replace(/[{}]/g, ''),
+    size: result.size ?? 0,
+    mimeType: result.mimeType ?? 'application/octet-stream'
+  }
+  return `<!-- file:${JSON.stringify(props)} -->`
 }
 
 async function uniqueDestination(
@@ -379,11 +424,13 @@ function indexImportedMarkdown(
 export function createAttachmentsService({
   vaultPath,
   config,
-  notes
+  notes,
+  dataDb
 }: {
   vaultPath: string
   config: VaultConfig
   notes: NotesService
+  dataDb: DataDb
 }): AttachmentsService {
   return {
     async add(noteId, sourcePath) {
@@ -406,7 +453,7 @@ export function createAttachmentsService({
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
       await fs.copyFile(sourcePath, absolutePath)
 
-      return {
+      const result: AttachmentResult = {
         success: true,
         path: relativePath,
         absolutePath,
@@ -416,6 +463,36 @@ export function createAttachmentsService({
         mimeType: mimeType(originalName),
         type: attachmentType(originalName)
       }
+
+      // Embed the file the way desktop does, so the note shows it and a second
+      // device can resolve it (#1606).
+      const ref = noteRelativeRef(note.path, relativePath)
+      await notes.update({ id: note.id, append: attachmentEmbed(ref, result) })
+
+      // Sync cannot be done here: attachment ids are minted by the upload path,
+      // so writing `attachmentReferences` directly would hand peers an id the
+      // server never saw. Instead persist upload intent in the same durable
+      // outbox desktop uses — its sync runtime drains the row on next start,
+      // uploads the bytes, and records the real reference on the note.
+      if (!note.localOnly) {
+        const now = Date.now()
+        dataDb
+          .insert(attachmentUploadQueue)
+          .values({
+            id: randomUUID(),
+            noteId: note.id,
+            diskPath: absolutePath,
+            createdAt: now,
+            updatedAt: now
+          })
+          .onConflictDoUpdate({
+            target: [attachmentUploadQueue.noteId, attachmentUploadQueue.diskPath],
+            set: { updatedAt: now }
+          })
+          .run()
+      }
+
+      return { ...result, ref }
     },
 
     async list(noteId) {

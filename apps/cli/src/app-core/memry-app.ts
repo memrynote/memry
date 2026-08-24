@@ -190,7 +190,12 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
   const sync = createSyncService({ dataDb: databases.dataDb, vaultPath, config })
   const agent = createAgentService(settings)
   const versions = createVersionsService({ vaultPath, indexDb: databases.indexDb, notes })
-  const attachments = createAttachmentsService({ vaultPath, config, notes })
+  const attachments = createAttachmentsService({
+    vaultPath,
+    config,
+    notes,
+    dataDb: databases.dataDb
+  })
   const importFiles = createImportFilesService({ vaultPath, config, dataDb: databases.dataDb })
   const exportHtml = createExportHtmlService({ notes })
   const exportPdf = createExportPdfService({ notes })
