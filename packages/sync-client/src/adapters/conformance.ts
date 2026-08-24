@@ -3,7 +3,7 @@ import {
   type CrdtTransport,
   type SyncAdapterSeam,
   type SyncPlatformAdapters
-} from '../index.ts'
+} from './index.ts'
 
 /**
  * One shared conformance suite, run against every adapter implementation:
