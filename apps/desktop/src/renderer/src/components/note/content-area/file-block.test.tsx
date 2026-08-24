@@ -448,3 +448,60 @@ describe('FileBlock url resolution', () => {
     expect(screen.getByTestId('pdf-document')).toHaveAttribute('data-file', RELATIVE)
   })
 })
+
+describe('FileBlock missing attachment card (#1713)', () => {
+  // The file is gone from disk and main's self-heal found no unique match:
+  // the block must say which filename it expected instead of silently failing.
+  const RELATIVE = '../attachments/note1/abc123-manual.pdf'
+
+  let savedNotesApi: unknown
+
+  function renderWithNoteId(resolveAttachment: ReturnType<typeof vi.fn>) {
+    // The global test setup owns `window.api`; overlay the notes surface.
+    const api = window.api as unknown as Record<string, unknown>
+    savedNotesApi = api.notes
+    api.notes = { ...((api.notes as Record<string, unknown>) ?? {}), resolveAttachment }
+    const Render = (createFileBlock as any).render
+    const block = {
+      props: { url: RELATIVE, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
+    }
+    return render(
+      <NoteFileUrlProvider resolveFileUrl={async (url) => url} noteId="note1">
+        <Render contentRef={vi.fn()} editor={{ updateBlock: vi.fn() }} block={block} />
+      </NoteFileUrlProvider>
+    )
+  }
+
+  afterEach(() => {
+    ;(window.api as unknown as Record<string, unknown>).notes = savedNotesApi
+  })
+
+  it('names the expected file when the attachment is gone and unhealable', async () => {
+    const resolveAttachment = vi.fn().mockResolvedValue({
+      absolutePath: '/vault/attachments/note1/abc123-manual.pdf',
+      storedFilename: 'abc123-manual.pdf',
+      exists: false
+    })
+    renderWithNoteId(resolveAttachment)
+
+    expect(await screen.findByTestId('attachment-missing-card')).toBeInTheDocument()
+    expect(resolveAttachment).toHaveBeenCalledWith('note1', RELATIVE)
+    // The i18n mock returns raw keys; the expected-filename line is the
+    // missingExpected key rendered next to the title.
+    expect(screen.getByText(/missingExpected/)).toBeInTheDocument()
+    expect(screen.queryByTestId('pdf-document')).not.toBeInTheDocument()
+  })
+
+  it('renders normally when the file exists (or was healed by main)', async () => {
+    const resolveAttachment = vi.fn().mockResolvedValue({
+      absolutePath: '/vault/attachments/note1/abc123-manual-v2.pdf',
+      storedFilename: 'abc123-manual-v2.pdf',
+      exists: true
+    })
+    renderWithNoteId(resolveAttachment)
+
+    expect(await screen.findByTestId('pdf-document')).toBeInTheDocument()
+    expect(resolveAttachment).toHaveBeenCalled()
+    expect(screen.queryByTestId('attachment-missing-card')).not.toBeInTheDocument()
+  })
+})

@@ -39,6 +39,20 @@ If the file hasn't synced to this device yet, the menu still shows both names, b
 
 Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
 
+### The Attachments Panel
+
+The note menu (`⋯` in the note toolbar) has an **Attachments…** entry that lists every file stored under the note's own attachments folder in one place — no hunting block by block. Each row shows the **original filename** (when a block in the note still references the file), the name it is **stored as** on disk, and its size, with **Reveal in Finder** and **Open in default app** buttons per row.
+
+A row without an original name is a file no block references anymore — still safe in the folder, just not embedded in the note.
+
+### Renamed on Disk? It Heals Itself
+
+The attachments folder is yours to look at, and files in it sometimes get renamed from outside the app — a cleanup in Finder, another tool touching the vault. That used to break the block forever, since nothing watches that folder.
+
+Now a missing file **heals at load time**: MemryNote looks for the renamed file inside the same note's attachments folder — a file that kept its 6-character prefix, or kept its name and lost the prefix — and serves it when the match is unambiguous. The note itself is never rewritten, so the repair is safe across synced devices; each device resolves against its own disk.
+
+If there is no safe match (the file is gone, or two candidates look equally likely), the block shows a card naming **the exact filename it expected**, so you can restore the name by hand. Renaming the file back — or to anything that keeps its prefix — fixes the block on the next load.
+
 ## PDF Inline Preview
 
 PDFs render inline as a clean scrolling preview — no viewer chrome — so a note reads as a document with its source embedded. The embed opens one page tall and **scrolls through the whole document**: keep scrolling inside it to read past the first page. A small `3 / 12` page indicator appears while you hover, so you can tell where you are. Only the pages near the embed's viewport are drawn, so a long PDF in a note stays as light as a short one.

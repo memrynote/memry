@@ -18,6 +18,7 @@ import { getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { fromMemryFileUrl, isPathInVault } from '../lib/paths'
 import { remapCrossDeviceAttachmentPath } from '../lib/attachment-path-remap'
+import { healAttachmentPath } from './attachment-heal'
 import { getVaultRoot } from './notes-io'
 
 const MEMRY_FILE_PREFIX = 'memry-file://local/'
@@ -104,6 +105,14 @@ export function resolveAttachment(noteId: string, url: string): AttachmentResolv
       throw new NoteError('Attachment path escapes the vault', NoteErrorCode.INVALID_PATH, noteId)
     }
     absolutePath = path.join(vaultPath, resolved)
+  }
+
+  if (!existsSync(absolutePath)) {
+    // Self-heal (#1713): the file may have been renamed on disk outside the
+    // app. Serve the unique prefix/suffix match from the same note's folder;
+    // the block's url stays as written (see attachment-heal.ts for why).
+    const healed = healAttachmentPath(absolutePath, [vaultPath])
+    if (healed) absolutePath = healed
   }
 
   return {

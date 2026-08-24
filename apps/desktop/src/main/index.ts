@@ -93,6 +93,7 @@ import { applyMemrynoteIdentity, flipIdentityPin, getIdentityDecision } from './
 import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { remapCrossDeviceAttachmentPath } from './lib/attachment-path-remap'
+import { healAttachmentPath } from './vault/attachment-heal'
 import { decideFrameNavigation } from './lib/frame-navigation'
 import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
@@ -1340,9 +1341,21 @@ const appReady = app.whenReady().then(async () => {
     }
 
     if (!existsSync(filePath)) {
-      // Return empty 1x1 transparent PNG for missing image files (null thumbnails)
-      // This avoids console errors and broken image icons
-      if (
+      // Self-heal (#1713): an attachment renamed on disk outside the app is
+      // served from its unique prefix/suffix match in the same note's folder.
+      // The note is never rewritten — each device heals against its own disk
+      // (see vault/attachment-heal.ts). Runs before the transparent-PNG
+      // fallback so renamed images heal instead of rendering as 1x1 blanks.
+      const healed = healAttachmentPath(filePath, vaultPaths)
+      if (healed) {
+        mainLog.debug('memry-file: healed renamed attachment', {
+          requested: filePath,
+          healed
+        })
+        filePath = healed
+      } else if (
+        // Return empty 1x1 transparent PNG for missing image files (null
+        // thumbnails). This avoids console errors and broken image icons
         filePath.endsWith('.png') ||
         filePath.endsWith('.jpg') ||
         filePath.endsWith('.jpeg') ||
@@ -1358,9 +1371,10 @@ const appReady = app.whenReady().then(async () => {
           status: 200,
           headers: { 'Content-Type': 'image/png' }
         })
+      } else {
+        // Return 404 for other missing files
+        return new Response(null, { status: 404, statusText: 'Not Found' })
       }
-      // Return 404 for other missing files
-      return new Response(null, { status: 404, statusText: 'Not Found' })
     }
 
     try {
