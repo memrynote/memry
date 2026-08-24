@@ -30,7 +30,7 @@ export default function SeamTestsScreen() {
         setRoundTrip(r)
         setStep(null)
       } catch (err) {
-        setCrash(err instanceof Error ? `${err.name}: ${err.message.slice(0, 160)}` : String(err))
+        setCrash(err instanceof Error ? `${err.name}: ${err.message.slice(0, 500)}` : String(err))
       } finally {
         setBusy(false)
       }
