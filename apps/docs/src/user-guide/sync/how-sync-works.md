@@ -29,7 +29,8 @@ All record sync, CRDT sync, WebSocket sync notifications, and encrypted blob upl
 the active plan on the sync server. The server still stores only ciphertext.
 
 Start a paid plan from **Settings -> Account -> Billing** or **Upgrade to Pro** in the sidebar
-account menu. memrynote opens checkout on `memrynote.com/pricing`; after Paddle completes payment,
+account menu. memrynote opens the plan picker on `memrynote.com/account/sync`, carrying a checkout
+token so you land there without a separate web login; after Paddle completes payment,
 return to the app from the success page so the desktop can reconcile the transaction and refresh
 sync. If the webhook is still processing, Billing shows **Activation pending** with a refresh button
 and the billing support email.
