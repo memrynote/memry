@@ -32,37 +32,22 @@ interface LaunchedGroup {
 
 const ACTIVE_ITEMS: RoadmapItem[] = [
   {
-    title: 'Safari web clipper',
+    title: 'Mobile apps — iPhone, iPad, and Android',
     caption:
-      'Extend page, highlight, and snippet clipping to Safari alongside Chrome, Firefox, and Edge.'
+      'Quick capture on phones plus an iPad-optimized writing and reading surface, backed by the same encrypted vault and offline-first sync as desktop.'
   },
   {
-    title: 'Edge Add-ons store listing',
+    title: 'Calendars beyond Google — ICS, CalDAV, Outlook, and Apple',
     caption:
-      'Publish the clipper to the Edge Add-ons store — Chrome Web Store and Firefox Add-ons are already live.'
-  },
-  {
-    title: 'Optional AI Agent public release polish',
-    caption:
-      'Stable on/off controls, provider settings, smoother streaming, and approval-gated writes for everyday use.'
+      'Subscribe to any ICS feed (Proton, Notion, holiday calendars), connect CalDAV servers like Fastmail, Nextcloud, and iCloud, and sync Outlook / Microsoft 365.'
   }
 ]
 
 const PLANNED_ITEMS: RoadmapItem[] = [
   {
-    title: 'Mobile apps — iPhone, iPad, and Android',
-    caption:
-      'Quick capture on phones plus an iPad-optimized writing and reading surface. Targeting late 2026.'
-  },
-  {
     title: 'iPad handwriting and PDF annotation',
     caption:
       'Apple Pencil writing, searchable handwritten notes, and markup for PDFs inside the vault.'
-  },
-  {
-    title: 'Offline mobile vault with conflict-safe sync',
-    caption:
-      'Keep writing without internet, then merge mobile changes safely when the vault reconnects.'
   },
   {
     title: 'Mobile share sheet, widgets, and quick capture',
