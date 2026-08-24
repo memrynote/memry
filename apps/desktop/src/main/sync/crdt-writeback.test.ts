@@ -32,6 +32,8 @@ const mocks = vi.hoisted(() => ({
   closeDoc: vi.fn(),
   getDoc: vi.fn(),
   syncNoteDateReminders: vi.fn(),
+  getVaultRoot: vi.fn(),
+  reconcileRenamedAttachments: vi.fn(),
   clearNoteDateReminders: vi.fn(),
   createRemindersService: vi.fn(),
   sent: [] as Array<{ channel: string; payload: unknown }>,
@@ -95,7 +97,12 @@ vi.mock('../vault/frontmatter', () => ({
   generateContentHash: (...args: unknown[]) => mocks.generateContentHash(...args)
 }))
 
+vi.mock('../vault/attachment-rename-reconcile', () => ({
+  reconcileRenamedAttachments: (...args: unknown[]) => mocks.reconcileRenamedAttachments(...args)
+}))
+
 vi.mock('../vault/notes', () => ({
+  getVaultRoot: (...args: unknown[]) => mocks.getVaultRoot(...args),
   getDefaultNoteDir: (...args: unknown[]) => mocks.getDefaultNoteDir(...args),
   toRelativePath: (...args: unknown[]) => mocks.toRelativePath(...args),
   toAbsolutePath: (...args: unknown[]) => mocks.toAbsolutePath(...args),
@@ -213,6 +220,8 @@ describe('crdt writeback', () => {
     // captured — the behaviour every case below except the reopen ones wants.
     mocks.getDoc.mockReturnValue(undefined)
     mocks.maybeCreateSignificantSnapshot.mockReturnValue({ id: 'snap-1' })
+    mocks.getVaultRoot.mockReturnValue('/vault')
+    mocks.reconcileRenamedAttachments.mockReset().mockReturnValue([])
   })
 
   afterEach(() => {
@@ -828,6 +837,47 @@ describe('crdt writeback', () => {
       expect(vaultFile).toBe('paragraph one\n\nparagraph two from another device')
       expect(mocks.atomicWrite).not.toHaveBeenCalled()
     })
+  })
+
+  // ==========================================================================
+  // An attachment rename arriving in the body (#1714)
+  // ==========================================================================
+
+  it('hands the old and new body to the attachment rename reconcile', async () => {
+    // #given a body whose attachment ref changed — the shape a rename made on
+    // another device arrives in, since the blob itself is never re-uploaded
+    mocks.safeRead.mockResolvedValue(
+      '---\ntitle: Existing\n---\n<!-- file:{"url":"../attachments/note-1/k3f9x2-scan.pdf"} -->'
+    )
+    mocks.yDocToMarkdown.mockResolvedValue(
+      '<!-- file:{"url":"../attachments/note-1/k3f9x2-invoice.pdf"} -->'
+    )
+
+    // #when
+    scheduleWriteback('note-1', makeDoc('Existing'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #then this device's own copy of the file gets renamed from the body diff
+    expect(mocks.reconcileRenamedAttachments).toHaveBeenCalledWith(
+      'note-1',
+      expect.stringContaining('k3f9x2-scan.pdf'),
+      expect.stringContaining('k3f9x2-invoice.pdf'),
+      '/vault'
+    )
+  })
+
+  it('keeps the write-back successful when the reconcile throws', async () => {
+    mocks.reconcileRenamedAttachments.mockImplementation(() => {
+      throw new Error('attachments folder is read-only')
+    })
+
+    scheduleWriteback('note-1', makeDoc('Existing'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    // The note's bytes are already on disk when the reconcile runs; a folder
+    // that cannot be touched must not make a successful write-back look failed.
+    expect(mocks.atomicWrite).toHaveBeenCalled()
+    expect(mocks.sent.some((s) => s.channel === 'sync:write-back-failed')).toBe(false)
   })
 
   // ==========================================================================

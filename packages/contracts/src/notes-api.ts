@@ -168,6 +168,23 @@ export const AttachmentActionSchema = z.object({
   url: z.string().min(1)
 })
 
+export const AttachmentRenameSchema = z.object({
+  noteId: z.string(),
+  /** Raw `props.url` from a file/image block — note-relative or legacy `memry-file://local/…` */
+  url: z.string().min(1),
+  /** What the user typed. Sanitized in main; the nanoid prefix and extension are kept. */
+  newName: z.string().min(1).max(200)
+})
+
+export interface AttachmentRenameResult {
+  /** New basename on disk, e.g. `k3f9x2-invoice.pdf` */
+  storedFilename: string
+  /** New note-relative ref for the block's `url` prop */
+  url: string
+  /** New display name for the block's `name` prop */
+  name: string
+}
+
 export interface AttachmentResolveResult {
   /** Absolute on-disk path, remapped to this device's vault for cross-device notes */
   absolutePath: string
@@ -510,5 +527,6 @@ export interface NotesClientAPI {
   resolveAttachment(noteId: string, url: string): Promise<AttachmentResolveResult>
   revealAttachmentInFinder(noteId: string, url: string): Promise<void>
   openAttachmentExternal(noteId: string, url: string): Promise<void>
+  renameAttachment(noteId: string, url: string, newName: string): Promise<AttachmentRenameResult>
   applyTemplate(input: z.infer<typeof ApplyTemplateSchema>): Promise<NoteUpdateResponse>
 }

@@ -1288,7 +1288,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // From a DOM element inside an image block to the block's raw stored props.
   const resolveImageFromElement = useCallback(
-    (element: HTMLElement): { url: string; name: string } | null => {
+    (element: HTMLElement): { url: string; name: string; blockId: string } | null => {
       const blockId = element.closest('[data-id]')?.getAttribute('data-id')
       if (!blockId) return null
 
@@ -1297,8 +1297,20 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       const { url, name } = block.props as { url?: string; name?: string }
       if (!url) return null
 
-      return { url, name: name || url.split('/').pop() || url }
+      return { url, name: name || url.split('/').pop() || url, blockId }
     },
+    [editor]
+  )
+
+  // An attachment rename (#1714) has already renamed the file on disk; the
+  // block's url has to follow, or the note keeps pointing at the old name.
+  const applyImageRename = useCallback(
+    (blockId: string) =>
+      (next: { url: string; name: string }): void => {
+        const block = editor.getBlock(blockId)
+        if (!block || block.type !== 'image') return
+        editor.updateBlock(block, { props: { url: next.url, name: next.name } })
+      },
     [editor]
   )
 
@@ -1461,12 +1473,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             <ImageAttachmentMenu
               target={imageMenuTarget}
               onClose={() => setImageMenuTarget(null)}
+              onRenamed={applyImageRename(imageMenuTarget.blockId)}
             />
           )}
           {imageHoverTarget && !imageMenuTarget && (
             <ImageHoverMenuButton
               target={imageHoverTarget}
               onOpenChange={handleImageHoverMenuOpenChange}
+              onRenamed={applyImageRename(imageHoverTarget.blockId)}
             />
           )}
           <BlockNoteView

@@ -40,6 +40,7 @@ const mocks = vi.hoisted(() => ({
   resolveAttachment: vi.fn(),
   revealAttachmentInFinder: vi.fn(),
   openAttachmentExternal: vi.fn(),
+  renameAttachment: vi.fn(),
   clipboardWriteText: vi.fn()
 }))
 
@@ -55,6 +56,11 @@ beforeEach(() => {
   mocks.resolveAttachment.mockReset().mockResolvedValue(RESOLVED)
   mocks.revealAttachmentInFinder.mockReset().mockResolvedValue(undefined)
   mocks.openAttachmentExternal.mockReset().mockResolvedValue(undefined)
+  mocks.renameAttachment.mockReset().mockResolvedValue({
+    storedFilename: 'k3f9x2-invoice.pdf',
+    url: '../attachments/note-1/k3f9x2-invoice.pdf',
+    name: 'invoice.pdf'
+  })
   mocks.clipboardWriteText.mockReset().mockResolvedValue(undefined)
 
   const api = window.api as unknown as Record<string, unknown>
@@ -62,7 +68,8 @@ beforeEach(() => {
     ...((api.notes as Record<string, unknown>) ?? {}),
     resolveAttachment: mocks.resolveAttachment,
     revealAttachmentInFinder: mocks.revealAttachmentInFinder,
-    openAttachmentExternal: mocks.openAttachmentExternal
+    openAttachmentExternal: mocks.openAttachmentExternal,
+    renameAttachment: mocks.renameAttachment
   }
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: mocks.clipboardWriteText },
@@ -127,10 +134,63 @@ describe('AttachmentMenuButton', () => {
   })
 })
 
+describe('renaming from the menu (#1714)', () => {
+  it('offers Rename only when the surface can write the result back', async () => {
+    const user = userEvent.setup()
+    renderWithProvider(<AttachmentMenuButton url={URL} name="report.pdf" />)
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+
+    await screen.findByRole('menuitem', { name: 'Reveal in Finder' })
+    expect(screen.queryByRole('menuitem', { name: 'Rename…' })).not.toBeInTheDocument()
+  })
+
+  it('renames the file and hands the new url + name back to the block', async () => {
+    const onRenamed = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(<AttachmentMenuButton url={URL} name="report.pdf" onRenamed={onRenamed} />)
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+
+    const field = await screen.findByLabelText('Attachment name')
+    // The extension is not editable — it is the one part the rename keeps.
+    expect(field).toHaveValue('report')
+    await user.clear(field)
+    await user.type(field, 'invoice')
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => {
+      expect(mocks.renameAttachment).toHaveBeenCalledWith(NOTE_ID, URL, 'invoice.pdf')
+    })
+    await waitFor(() => {
+      expect(onRenamed).toHaveBeenCalledWith({
+        url: '../attachments/note-1/k3f9x2-invoice.pdf',
+        name: 'invoice.pdf'
+      })
+    })
+  })
+
+  it('keeps the dialog open and does not touch the block when the rename fails', async () => {
+    mocks.renameAttachment.mockRejectedValue(new Error('nope'))
+    const onRenamed = vi.fn()
+    const user = userEvent.setup()
+    renderWithProvider(<AttachmentMenuButton url={URL} name="report.pdf" onRenamed={onRenamed} />)
+
+    await user.click(screen.getByRole('button', { name: 'File actions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+    await user.click(await screen.findByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => expect(mocks.renameAttachment).toHaveBeenCalled())
+    expect(onRenamed).not.toHaveBeenCalled()
+    expect(screen.getByTestId('attachment-rename-dialog')).toBeInTheDocument()
+  })
+})
+
 function ImageHoverHarness({
   resolveImage
 }: {
-  resolveImage: (el: HTMLElement) => { url: string; name: string } | null
+  resolveImage: (el: HTMLElement) => { url: string; name: string; blockId: string } | null
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { hoverTarget, handleMenuOpenChange } = useImageHoverMenu(containerRef, resolveImage)
@@ -149,7 +209,7 @@ function ImageHoverHarness({
 }
 
 describe('useImageHoverMenu + ImageHoverMenuButton', () => {
-  const resolveImage = () => ({ url: URL, name: 'report.pdf' })
+  const resolveImage = () => ({ url: URL, name: 'report.pdf', blockId: 'b1' })
 
   it('shows the floating button while hovering an image and opens the menu from it', async () => {
     const user = userEvent.setup()

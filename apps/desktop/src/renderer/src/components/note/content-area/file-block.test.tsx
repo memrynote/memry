@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createFileBlock,
@@ -503,5 +504,64 @@ describe('FileBlock missing attachment card (#1713)', () => {
     expect(await screen.findByTestId('pdf-document')).toBeInTheDocument()
     expect(resolveAttachment).toHaveBeenCalled()
     expect(screen.queryByTestId('attachment-missing-card')).not.toBeInTheDocument()
+  })
+})
+
+describe('FileBlock rename (#1714)', () => {
+  // A plain file card rather than a PDF: the menu button is in the card itself,
+  // with no react-pdf load step in the way.
+  const RELATIVE = '../attachments/note1/abc123-manual.txt'
+  let savedNotesApi: unknown
+
+  afterEach(() => {
+    ;(window.api as unknown as Record<string, unknown>).notes = savedNotesApi
+  })
+
+  it('records the renamed url and name on the block', async () => {
+    const api = window.api as unknown as Record<string, unknown>
+    savedNotesApi = api.notes
+    api.notes = {
+      ...((api.notes as Record<string, unknown>) ?? {}),
+      resolveAttachment: vi.fn().mockResolvedValue({
+        absolutePath: '/vault/attachments/note1/abc123-manual.txt',
+        storedFilename: 'abc123-manual.txt',
+        exists: true
+      }),
+      renameAttachment: vi.fn().mockResolvedValue({
+        storedFilename: 'abc123-invoice.txt',
+        url: '../attachments/note1/abc123-invoice.txt',
+        name: 'invoice.txt'
+      })
+    }
+
+    const updateBlock = vi.fn()
+    const block = {
+      props: { url: RELATIVE, name: 'manual.txt', size: 2048, mimeType: 'text/plain' }
+    }
+    const Render = (createFileBlock as any).render
+    render(
+      <NoteFileUrlProvider resolveFileUrl={async (url) => url} noteId="note1">
+        <Render contentRef={vi.fn()} editor={{ updateBlock }} block={block} />
+      </NoteFileUrlProvider>
+    )
+
+    const user = userEvent.setup()
+    const menuButtons = await screen.findAllByTestId('attachment-menu-button')
+    await user.click(menuButtons[0])
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'editor.attachmentRename.menuItem' })
+    )
+    await user.click(screen.getByRole('button', { name: 'editor.attachmentRename.confirm' }))
+
+    // Main renamed the file already; the block recording it is what carries the
+    // rename into the note — and from there to the other devices.
+    await waitFor(() => {
+      expect(updateBlock).toHaveBeenCalledWith(block, {
+        props: expect.objectContaining({
+          url: '../attachments/note1/abc123-invoice.txt',
+          name: 'invoice.txt'
+        })
+      })
+    })
   })
 })

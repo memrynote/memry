@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { AttachmentResolveResult } from '@memry/contracts/notes-api'
-import { Copy, ExternalLink, FolderOpen, MoreHorizontal } from '@/lib/icons'
+import { Copy, ExternalLink, FolderOpen, MoreHorizontal, Pencil } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -35,6 +35,15 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { useAttachmentNoteId } from './note-file-url-context'
+import { AttachmentRenameDialog } from './attachment-rename-dialog'
+
+/**
+ * What a surface does with a completed rename: write the new `url`/`name` back
+ * into the block. Without it the menu still renames the file on disk, so the
+ * item is hidden rather than offered — a rename the note never records would
+ * leave the block pointing at the old name (self-heal territory, not intent).
+ */
+export type AttachmentRenamedHandler = (next: { url: string; name: string }) => void
 
 interface AttachmentMenuState {
   info: AttachmentResolveResult | null
@@ -44,13 +53,22 @@ interface AttachmentMenuState {
   reveal: () => void
   openExternal: () => void
   copyPath: () => void
+  /** Absent when the surface cannot write the result back into the block. */
+  startRename?: () => void
+  renameOpen: boolean
 }
 
-function useAttachmentMenu(url: string): AttachmentMenuState {
+function useAttachmentMenu(
+  url: string,
+  name: string,
+  onRenamed?: AttachmentRenamedHandler
+): AttachmentMenuState & { renameDialog: React.ReactNode } {
   const noteId = useAttachmentNoteId()
   const { t } = useT('notes')
   const [info, setInfo] = useState<AttachmentResolveResult | null>(null)
   const [resolveFailed, setResolveFailed] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renaming, setRenaming] = useState(false)
 
   // Resolved lazily on menu open, not on block mount — a note can hold dozens
   // of attachment blocks and the answer can change when sync lands the file.
@@ -93,6 +111,39 @@ function useAttachmentMenu(url: string): AttachmentMenuState {
       })
   }, [info, t])
 
+  const submitRename = useCallback(
+    (nextName: string) => {
+      if (!noteId) return
+      setRenaming(true)
+      window.api.notes
+        .renameAttachment(noteId, url, nextName)
+        .then((result) => {
+          // Disk first, block second: main has already renamed the file, so the
+          // block MUST take the result even if the user has moved on — a block
+          // left on the old ref only survives through self-heal.
+          onRenamed?.({ url: result.url, name: result.name })
+          setRenameOpen(false)
+          toast.success(t('editor.attachmentRename.renamed', { name: result.name }))
+        })
+        .catch((err: unknown) => {
+          toast.error(extractErrorMessage(err, t('editor.attachmentRename.failed')))
+        })
+        .finally(() => setRenaming(false))
+    },
+    [noteId, url, onRenamed, t]
+  )
+
+  const renameDialog =
+    onRenamed && renameOpen ? (
+      <AttachmentRenameDialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        currentName={info?.storedFilename && !name ? info.storedFilename : name}
+        busy={renaming}
+        onSubmit={submitRename}
+      />
+    ) : null
+
   return {
     info,
     resolveFailed,
@@ -100,7 +151,10 @@ function useAttachmentMenu(url: string): AttachmentMenuState {
     handleOpenChange,
     reveal,
     openExternal,
-    copyPath
+    copyPath,
+    startRename: onRenamed ? () => setRenameOpen(true) : undefined,
+    renameOpen,
+    renameDialog
   }
 }
 
@@ -130,7 +184,7 @@ function AttachmentMenuBody({
   const { t } = useT('notes')
   const { Item, Label, Separator } = components
   const fileActions = useFileActionLabels()
-  const { info, actionsDisabled, reveal, openExternal, copyPath } = state
+  const { info, actionsDisabled, reveal, openExternal, copyPath, startRename } = state
 
   return (
     <>
@@ -163,6 +217,12 @@ function AttachmentMenuBody({
         <Copy className="h-4 w-4" />
         {t('editor.toolbar.copyPath')}
       </Item>
+      {startRename && (
+        <Item disabled={actionsDisabled} onClick={startRename}>
+          <Pencil className="h-4 w-4" />
+          {t('editor.attachmentRename.menuItem')}
+        </Item>
+      )}
     </>
   )
 }
@@ -183,21 +243,35 @@ const CONTEXT_COMPONENTS: MenuComponents = {
 export function AttachmentBlockContextMenu({
   url,
   name,
+  onRenamed,
   children
 }: {
   url: string
   name: string
+  onRenamed?: AttachmentRenamedHandler
   children: React.ReactNode
 }) {
-  const state = useAttachmentMenu(url)
+  const state = useAttachmentMenu(url, name, onRenamed)
 
   return (
-    <ContextMenu onOpenChange={state.handleOpenChange}>
-      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent data-testid="attachment-context-menu">
-        <AttachmentMenuBody name={name} state={state} components={CONTEXT_COMPONENTS} />
-      </ContextMenuContent>
-    </ContextMenu>
+    <>
+      <ContextMenu onOpenChange={state.handleOpenChange}>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent
+          data-testid="attachment-context-menu"
+          // The menu unmounts as the dialog mounts, and Radix restores focus to
+          // the trigger on unmount — which pulls it straight back out of the
+          // rename field. Declining the restore while renaming is the same guard
+          // the sidebar's inline rename needs.
+          onCloseAutoFocus={(event) => {
+            if (state.renameOpen) event.preventDefault()
+          }}
+        >
+          <AttachmentMenuBody name={name} state={state} components={CONTEXT_COMPONENTS} />
+        </ContextMenuContent>
+      </ContextMenu>
+      {state.renameDialog}
+    </>
   )
 }
 
@@ -206,44 +280,56 @@ export function AttachmentMenuButton({
   url,
   name,
   className,
-  onOpenChange
+  onOpenChange,
+  onRenamed
 }: {
   url: string
   name: string
   className?: string
   /** Extra open-state observer, chained after the resolve-on-open handler. */
   onOpenChange?: (open: boolean) => void
+  onRenamed?: AttachmentRenamedHandler
 }) {
-  const state = useAttachmentMenu(url)
+  const state = useAttachmentMenu(url, name, onRenamed)
   const { t } = useT('notes')
 
   return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        state.handleOpenChange(open)
-        onOpenChange?.(open)
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('editor.attachmentMenu.menuLabel')}
-          data-testid="attachment-menu-button"
-          // Keep the editor from treating the press as a selection change
-          // before the menu opens (same guard as the PDF alignment buttons).
-          onPointerDown={(e) => e.stopPropagation()}
-          className={cn(
-            'flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50',
-            className
-          )}
+    <>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          state.handleOpenChange(open)
+          onOpenChange?.(open)
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t('editor.attachmentMenu.menuLabel')}
+            data-testid="attachment-menu-button"
+            // Keep the editor from treating the press as a selection change
+            // before the menu opens (same guard as the PDF alignment buttons).
+            onPointerDown={(e) => e.stopPropagation()}
+            className={cn(
+              'flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent/50',
+              className
+            )}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          sideOffset={8}
+          data-testid="attachment-dropdown-menu"
+          onCloseAutoFocus={(event) => {
+            if (state.renameOpen) event.preventDefault()
+          }}
         >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} data-testid="attachment-dropdown-menu">
-        <AttachmentMenuBody name={name} state={state} components={DROPDOWN_COMPONENTS} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <AttachmentMenuBody name={name} state={state} components={DROPDOWN_COMPONENTS} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {state.renameDialog}
+    </>
   )
 }
 
@@ -256,6 +342,8 @@ export interface ImageMenuTarget {
   y: number
   url: string
   name: string
+  /** The image block this menu acts on, so a rename can write back to it. */
+  blockId: string
 }
 
 /**
@@ -264,12 +352,14 @@ export interface ImageMenuTarget {
  */
 export function ImageAttachmentMenu({
   target,
-  onClose
+  onClose,
+  onRenamed
 }: {
   target: ImageMenuTarget
   onClose: () => void
+  onRenamed?: AttachmentRenamedHandler
 }) {
-  const state = useAttachmentMenu(target.url)
+  const state = useAttachmentMenu(target.url, target.name, onRenamed)
   const { handleOpenChange } = state
 
   // Controlled-open: resolve immediately, since there is no opening gesture
@@ -279,14 +369,26 @@ export function ImageAttachmentMenu({
   }, [handleOpenChange])
 
   return (
-    <DropdownMenu open onOpenChange={(open) => !open && onClose()}>
-      <DropdownMenuTrigger asChild>
-        <span style={{ position: 'fixed', top: target.y, left: target.x, width: 0, height: 0 }} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" data-testid="attachment-image-menu">
-        <AttachmentMenuBody name={target.name} state={state} components={DROPDOWN_COMPONENTS} />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu
+        open={!state.renameOpen}
+        onOpenChange={(open) => !open && !state.renameOpen && onClose()}
+      >
+        <DropdownMenuTrigger asChild>
+          <span style={{ position: 'fixed', top: target.y, left: target.x, width: 0, height: 0 }} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          data-testid="attachment-image-menu"
+          onCloseAutoFocus={(event) => {
+            if (state.renameOpen) event.preventDefault()
+          }}
+        >
+          <AttachmentMenuBody name={target.name} state={state} components={DROPDOWN_COMPONENTS} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {state.renameDialog}
+    </>
   )
 }
 
@@ -297,6 +399,8 @@ export function ImageAttachmentMenu({
 export interface HoverImageTarget {
   url: string
   name: string
+  /** The image block this menu acts on, so a rename can write back to it. */
+  blockId: string
   /** Viewport coordinates for the button, from the image's bounding rect. */
   x: number
   y: number
@@ -313,10 +417,12 @@ export interface HoverImageTarget {
  */
 export function ImageHoverMenuButton({
   target,
-  onOpenChange
+  onOpenChange,
+  onRenamed
 }: {
   target: HoverImageTarget
   onOpenChange?: (open: boolean) => void
+  onRenamed?: AttachmentRenamedHandler
 }) {
   return (
     <div
@@ -327,6 +433,7 @@ export function ImageHoverMenuButton({
         url={target.url}
         name={target.name}
         onOpenChange={onOpenChange}
+        onRenamed={onRenamed}
         className="h-6 w-6 rounded-md border border-border bg-background/90 shadow-sm"
       />
     </div>
@@ -342,7 +449,7 @@ export function ImageHoverMenuButton({
  */
 export function useImageHoverMenu(
   containerRef: React.RefObject<HTMLElement | null>,
-  resolveImage: (el: HTMLElement) => { url: string; name: string } | null
+  resolveImage: (el: HTMLElement) => { url: string; name: string; blockId: string } | null
 ): {
   hoverTarget: HoverImageTarget | null
   handleMenuOpenChange: (open: boolean) => void

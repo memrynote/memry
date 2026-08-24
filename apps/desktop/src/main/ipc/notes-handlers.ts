@@ -21,13 +21,15 @@ import {
   ApplyTemplateSchema,
   LargeFileReadLinesSchema,
   LargeFileSearchSchema,
-  AttachmentActionSchema
+  AttachmentActionSchema,
+  AttachmentRenameSchema
 } from '@memry/contracts/notes-api'
 import {
   resolveAttachment,
   revealAttachmentInFinder,
   openAttachmentExternal
 } from '../vault/attachment-actions'
+import { renameAttachment } from '../vault/attachment-rename'
 import {
   openLargeFileSession,
   readLargeFileLines,
@@ -510,6 +512,15 @@ export function registerNotesHandlers(): void {
     createValidatedHandler(AttachmentActionSchema, async (input) => {
       await openAttachmentExternal(input.noteId, input.url)
     })
+  )
+
+  // notes:attachment-rename - Rename an attachment on disk (#1714). The block's
+  // url/name are rewritten by the caller; the body change is what reaches peers.
+  ipcMain.handle(
+    NotesChannels.invoke.ATTACHMENT_RENAME,
+    createValidatedHandler(AttachmentRenameSchema, (input) =>
+      renameAttachment(input.noteId, input.url, input.newName)
+    )
   )
 
   // =========================================================================

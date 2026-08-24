@@ -118,6 +118,11 @@ vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn()
 }))
 
+const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+vi.mock('../vault/attachment-rename', () => ({
+  applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
+}))
+
 vi.mock('../vault/index', () => ({
   getStatus: vi.fn().mockReturnValue({ path: null })
 }))
@@ -687,6 +692,56 @@ describe('sync-attachment-handlers', () => {
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')
     await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalledWith('note-1', 1234))
+  })
+
+  it('renames a downloaded embedded attachment to the name the note body carries', async () => {
+    // #given a device materializing a file whose in-app rename (#1714) already
+    // synced: the manifest still names it as it was at upload
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    mockApplyDownloadedAttachmentName.mockClear()
+    registerAttachmentHandlers()
+
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+      intoDir?: boolean
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-1',
+      diskPath: '/vault/attachments/note-1',
+      intoDir: true
+    })
+
+    // #then the file on THIS device ends up under the body's current name
+    await vi.waitFor(() =>
+      expect(mockApplyDownloadedAttachmentName).toHaveBeenCalledWith('note-1', '/tmp/file.pdf')
+    )
+  })
+
+  it('leaves a binary note download out of the attachment rename reconcile', async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValue('token-1')
+    vi.mocked(isDatabaseInitialized).mockReturnValue(true)
+    mockApplyDownloadedAttachmentName.mockClear()
+    registerAttachmentHandlers()
+
+    const onDownloadNeeded = mockOnDownloadNeeded.mock.calls[0][0] as (event: {
+      noteId: string
+      attachmentId: string
+      diskPath: string
+    }) => void
+    onDownloadNeeded({
+      noteId: 'note-1',
+      attachmentId: 'attachment-1',
+      diskPath: '/vault/attachments/file.pdf'
+    })
+
+    // A binary note IS the file — its name comes from the note, not from a
+    // block ref, so the attachments-folder reconcile has no business here.
+    await vi.waitFor(() => expect(recordDownloadedFileSize).toHaveBeenCalled())
+    expect(mockApplyDownloadedAttachmentName).not.toHaveBeenCalled()
   })
 
   it('broadcasts failures from async attachment event callbacks', async () => {

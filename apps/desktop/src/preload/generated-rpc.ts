@@ -95,6 +95,7 @@ export function createGeneratedRpcApi({
       "resolveAttachment": ((noteId, url) => invoke("notes:attachment-resolve", { noteId, url })) as GeneratedRpcApi["notes"]["resolveAttachment"],
       "revealAttachmentInFinder": ((noteId, url) => invoke("notes:attachment-reveal-in-finder", { noteId, url })) as GeneratedRpcApi["notes"]["revealAttachmentInFinder"],
       "openAttachmentExternal": ((noteId, url) => invoke("notes:attachment-open-external", { noteId, url })) as GeneratedRpcApi["notes"]["openAttachmentExternal"],
+      "renameAttachment": ((noteId, url, newName) => invoke("notes:attachment-rename", { noteId, url, newName })) as GeneratedRpcApi["notes"]["renameAttachment"],
       "getPropertyDefinitions": (() => invoke("notes:get-property-definitions")) as GeneratedRpcApi["notes"]["getPropertyDefinitions"],
       "createPropertyDefinition": ((input) => invoke("notes:create-property-definition", input)) as GeneratedRpcApi["notes"]["createPropertyDefinition"],
       "updatePropertyDefinition": ((input) => invoke("notes:update-property-definition", input)) as GeneratedRpcApi["notes"]["updatePropertyDefinition"],

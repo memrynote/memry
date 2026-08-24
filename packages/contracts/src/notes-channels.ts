@@ -83,6 +83,8 @@ export const NotesChannels = {
     ATTACHMENT_REVEAL_IN_FINDER: 'notes:attachment-reveal-in-finder',
     /** Open an attachment with the OS default app */
     ATTACHMENT_OPEN_EXTERNAL: 'notes:attachment-open-external',
+    /** Rename an attachment on disk, keeping its nanoid prefix and extension */
+    ATTACHMENT_RENAME: 'notes:attachment-rename',
     /** Get folder config (template settings) */
     GET_FOLDER_CONFIG: 'notes:get-folder-config',
     /** Set folder config (template settings) */
