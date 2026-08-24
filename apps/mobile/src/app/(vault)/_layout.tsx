@@ -43,6 +43,8 @@ export default function VaultLayout() {
         log.warn('Initial sync pass failed', {
           error: err instanceof Error ? err.message : String(err)
         })
+        // A dead run must not leave a frozen 0% bar on screen forever.
+        if (!cancelled) setProgress(null)
       } finally {
         if (!cancelled) setSyncing(false)
       }
