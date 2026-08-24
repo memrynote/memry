@@ -112,6 +112,16 @@ CREATE TABLE attachments (
 ) WITHOUT ROWID;
 `
 
+export const PATH_NONUNIQUE_SQL = `-- The derived note path is informational (title collisions are real data:
+-- journals without titles all derive "Untitled.md"), so it cannot be UNIQUE —
+-- the constraint made one colliding note kill its whole apply batch
+-- (SQLite error 19 inside the transaction).
+
+DROP INDEX IF EXISTS idx_note_bodies_path;
+CREATE INDEX idx_note_bodies_path ON note_bodies(path);
+`
+
 export const MOBILE_MIGRATIONS: MobileMigration[] = [
-  { version: 1, name: '0001_baseline', sql: BASELINE_SQL }
+  { version: 1, name: '0001_baseline', sql: BASELINE_SQL },
+  { version: 2, name: '0002_note_body_path_nonunique', sql: PATH_NONUNIQUE_SQL }
 ]
