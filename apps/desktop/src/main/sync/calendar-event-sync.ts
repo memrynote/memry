@@ -1,14 +1,12 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
-import type * as schema from '@memry/db-schema/data-schema'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
-import { initAllFieldClocks } from './field-merge'
+import { initAllFieldClocks } from '@memry/sync-client/field-merge'
 import { CALENDAR_EVENT_SYNCABLE_FIELDS } from '../calendar/field-merge-calendar'
-import type { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 interface CalendarEventSyncDeps {
   queue: SyncQueueManager

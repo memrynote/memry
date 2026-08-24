@@ -1,0 +1,91 @@
+import { RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
+import { createLogger } from '../lib/logger'
+import { getMeta, setMeta, openVaultDb } from '../db/index'
+import { getSyncEngine } from './engine'
+
+const log = createLogger('FirstSync')
+
+const FIRST_SYNC_DONE_KEY = 'first_sync.completed'
+const BODY_WINDOW_DAYS = 30
+const BLOB_CHUNK = 100
+
+export interface FirstSyncProgress {
+  phase: 'refs' | 'metadata' | 'recent-bodies' | 'done'
+  /** 0..1, determinate (FR-008). */
+  fraction: number
+  itemsTotal: number
+  itemsPulled: number
+}
+
+/**
+ * Windowed first sync (T047): the app is usable while it runs and progress is
+ * determinate.
+ *
+ * Phase A (`refs`): walk the whole change feed storing refs only — cheap, and
+ * durable before the cursor moves, so a kill mid-run resumes without loss.
+ * Phase B (`metadata`): pull every non-note blob plus every note/journal blob
+ * (titles and folders live in the encrypted payload — the notes list needs
+ * them all), most-recently-modified first.
+ * Phase C (`recent-bodies`): CRDT bodies for notes touched in the last 30
+ * days. Older bodies stay `metadata-only` and arrive on demand (T048).
+ */
+export async function runFirstSyncIfNeeded(
+  vaultId: string,
+  onProgress: (progress: FirstSyncProgress) => void
+): Promise<boolean> {
+  const db = await openVaultDb(vaultId)
+  if ((await getMeta(db, FIRST_SYNC_DONE_KEY)) === '1') return false
+
+  const engine = getSyncEngine(vaultId)
+  const store = await engine.getStore()
+  if (!store) throw new Error('Vault is locked; unlock before first sync')
+
+  onProgress({ phase: 'refs', fraction: 0, itemsTotal: 0, itemsPulled: 0 })
+  const totalRefs = await engine.pullRefsToEnd()
+  log.info('First sync refs recorded', { totalRefs })
+
+  const allTypes = [...RECORD_SYNC_ITEM_TYPES]
+  let pulled = 0
+  const recentNoteIds = new Set<string>()
+  const windowStart = Date.now() - BODY_WINDOW_DAYS * 24 * 60 * 60 * 1000
+
+  // Metadata phase: everything, newest first, in protocol-sized chunks.
+  for (;;) {
+    const ids = await store.listItemIdsMissingPayload(allTypes, BLOB_CHUNK)
+    if (ids.length === 0) break
+    const result = await engine.pullBlobs(ids)
+    pulled += ids.length
+    for (const noteId of result.changedNoteIds) recentNoteIds.add(noteId)
+    onProgress({
+      phase: 'metadata',
+      fraction: totalRefs === 0 ? 1 : Math.min(0.8, (pulled / Math.max(totalRefs, 1)) * 0.8),
+      itemsTotal: totalRefs,
+      itemsPulled: pulled
+    })
+    if (result.applied === 0) {
+      // Every id in this chunk failed (corrupt/unpullable) — the store rows
+      // still say metadata-only, so looping again would spin forever.
+      log.warn('First sync chunk applied nothing; stopping metadata phase', {
+        chunk: ids.length
+      })
+      break
+    }
+  }
+
+  // Recent-bodies phase: only the 30-day window pays the CRDT cost up front.
+  const recentRows = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM sync_items
+     WHERE type IN ('note', 'journal') AND deleted_at IS NULL AND updated_at >= ?
+     ORDER BY updated_at DESC`,
+    [windowStart]
+  )
+  const bodyIds = recentRows.map((r) => r.id)
+  onProgress({ phase: 'recent-bodies', fraction: 0.8, itemsTotal: totalRefs, itemsPulled: pulled })
+  const bodies = await engine.pullBodiesFor(store, bodyIds)
+  log.info('First sync recent bodies pulled', { requested: bodyIds.length, updated: bodies })
+
+  await setMeta(db, FIRST_SYNC_DONE_KEY, '1')
+  await setMeta(db, 'first_sync.window_start', String(windowStart))
+  onProgress({ phase: 'done', fraction: 1, itemsTotal: totalRefs, itemsPulled: pulled })
+  return true
+}

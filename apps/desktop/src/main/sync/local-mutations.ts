@@ -1,11 +1,11 @@
 import type { SyncItemType } from '@memry/contracts/sync-api'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { getDatabase } from '../database'
-import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
-import { isSyncEligible } from './sync-eligibility'
+import { isSyncEligible } from '@memry/sync-client/sync-eligibility'
 import {
   buildContentDeletePayload,
   clearPendingDelete,
@@ -26,29 +26,29 @@ import {
   incrementReminderClockOffline,
   incrementTaskActivityClockOffline,
   incrementTaskClocksOffline
-} from './offline-clock'
-import { getBookmarkSyncService } from './bookmark-sync'
-import { getTemplateSyncService } from './template-sync'
-import { getHomePageSyncService } from './home-page-sync'
-import { getCustomIconSyncService } from './custom-icon-sync'
-import { getCanvasSyncService } from './canvas-sync'
-import { getCanvasFolderSyncService } from './canvas-folder-sync'
-import { getFilterSyncService } from './filter-sync'
-import { getInboxSyncService } from './inbox-sync'
+} from '@memry/sync-client/offline-clock'
+import { getBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
+import { getTemplateSyncService } from '@memry/sync-client/template-sync'
+import { getHomePageSyncService } from '@memry/sync-client/home-page-sync'
+import { getCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
+import { getCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
+import { getFilterSyncService } from '@memry/sync-client/filter-sync'
+import { getInboxSyncService } from '@memry/sync-client/inbox-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
-import { getProjectSyncService } from './project-sync'
-import { getReminderSyncService } from './reminder-sync'
-import { getSettingsSyncManager } from './settings-sync'
-import { getTagDefinitionSyncService } from './tag-definition-sync'
-import { getTagCategorySyncService } from './tag-category-sync'
-import { getTaskSyncService } from './task-sync'
-import { getTaskActivitySyncService } from './task-activity-sync'
-import { getFolderConfigSyncService } from './folder-config-sync'
+import { getProjectSyncService } from '@memry/sync-client/project-sync'
+import { getReminderSyncService } from '@memry/sync-client/reminder-sync'
+import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
+import { getTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
+import { getTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
+import { getTaskSyncService } from '@memry/sync-client/task-sync'
+import { getTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
+import { getFolderConfigSyncService } from '@memry/sync-client/folder-config-sync'
 import { getCalendarEventSyncService } from './calendar-event-sync'
-import { getCalendarSourceSyncService } from './calendar-source-sync'
-import { getCalendarBindingSyncService } from './calendar-binding-sync'
-import { getCalendarExternalEventSyncService } from './calendar-external-event-sync'
+import { getCalendarSourceSyncService } from '@memry/sync-client/calendar-source-sync'
+import { getCalendarBindingSyncService } from '@memry/sync-client/calendar-binding-sync'
+import { getCalendarExternalEventSyncService } from '@memry/sync-client/calendar-external-event-sync'
 
 const log = createLogger('LocalSync')
 
@@ -183,7 +183,7 @@ function deferDelete(type: LocalSyncType, itemId: string, snapshotPayload?: stri
  * missing re-records itself through `deferDelete`, and a content type is left
  * untouched until its service exists.
  */
-export function flushPendingLocalDeletes(db: DataDb): number {
+export function flushPendingLocalDeletes(db: DrizzleDb): number {
   const pending = listPendingDeletes(db)
   if (pending.length === 0) return 0
 

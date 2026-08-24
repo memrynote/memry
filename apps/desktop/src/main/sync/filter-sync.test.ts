@@ -7,13 +7,13 @@ import {
 } from '@tests/utils/test-db'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   FilterSyncService,
   initFilterSyncService,
   getFilterSyncService,
   resetFilterSyncService
-} from './filter-sync'
+} from '@memry/sync-client/filter-sync'
 
 const TEST_FILTER = {
   id: 'filter-1',

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'events'
-import type { WorkerToMainMessage } from './worker-protocol'
+import type { WorkerToMainMessage } from '@memry/sync-client/worker-protocol'
 
 class MockWorker extends EventEmitter {
   postMessage = vi.fn()

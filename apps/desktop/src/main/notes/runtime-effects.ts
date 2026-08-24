@@ -2,7 +2,7 @@ import { updateNoteMetadata } from '@memry/storage-data'
 import type { MarkdownSizeClass } from '@memry/shared/markdown-class'
 import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
-import { attachmentEvents } from '../sync/attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { getCrdtProvider } from '../sync/crdt-provider'
 import { clearPendingCrdtNotes, recordPendingCrdtNotes } from '../sync/crdt-pending-notes'
 import {

@@ -17,7 +17,7 @@ const logMocks = vi.hoisted(() => ({
   error: vi.fn()
 }))
 
-vi.mock('../lib/logger', () => ({
+vi.mock('@memry/sync-client/logging', () => ({
   createLogger: () => ({
     debug: (...args: unknown[]) => logMocks.debug(...args),
     info: (...args: unknown[]) => logMocks.info(...args),
@@ -34,7 +34,7 @@ import {
   incrementTaskClocksOffline,
   incrementTemplateClockOffline,
   incrementHomePageClockOffline
-} from './offline-clock'
+} from '@memry/sync-client/offline-clock'
 
 const TEST_BOOKMARK = {
   id: 'bm-1',

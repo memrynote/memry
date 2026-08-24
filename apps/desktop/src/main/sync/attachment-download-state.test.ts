@@ -10,7 +10,7 @@ vi.mock('electron', () => ({ net: { fetch: vi.fn() } }))
 
 import { runMigrations } from '../database/migrate'
 import { SyncServerError } from './http-client'
-import { DeadLetterError } from './retry'
+import { DeadLetterError } from '@memry/sync-client/retry'
 import { enqueueUpload } from './attachment-outbox'
 import {
   MISSING_PROBE_LIMIT,
@@ -22,8 +22,8 @@ import {
   releaseDownloadAttempt,
   resetAttachmentDownloadSession,
   shouldAttemptDownload
-} from './attachment-download-state'
-import type { DrizzleDb } from './item-handlers/types'
+} from '@memry/sync-client/attachment-download-state'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const notFound = (): SyncServerError => new SyncServerError('Failed to fetch manifest', 404)

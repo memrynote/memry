@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import * as path from 'path'
-import type { ApplyContext } from './types'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { makeCtx, makeNotePayload } from '@tests/utils/fixtures/sync-item-handlers'
 
 const VAULT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-note-handler-'))
@@ -110,7 +110,7 @@ vi.mock('../crdt-writeback', () => ({
 }))
 
 const mockApplyPinnedTags = vi.fn()
-vi.mock('./note-pin-helpers', () => ({
+vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   applyPinnedTags: (...args: unknown[]) => mockApplyPinnedTags(...args)
 }))
 
@@ -145,7 +145,7 @@ import {
   MISSING_PROBE_LIMIT,
   markDownloadFailed,
   resetAttachmentDownloadSession
-} from '../attachment-download-state'
+} from '@memry/sync-client/attachment-download-state'
 import { createTestDatabase, type TestDatabaseResult } from '@tests/utils/test-db'
 import { deleteFile } from '../../vault/file-ops'
 import { parseNote, serializeParsedNote } from '../../vault/frontmatter'
@@ -157,7 +157,7 @@ import {
   updateNoteCache
 } from '@main/database/queries/notes'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
-import { attachmentEvents } from '../attachment-events'
+import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import { extractFolderFromPath } from '../note-sync'
 import {
   buildNotePushPayload,

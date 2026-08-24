@@ -126,7 +126,7 @@ vi.mock('libsodium-wrappers-sumo', () => ({
 }))
 
 const mockGetSettingsSyncManager = vi.fn().mockReturnValue(null)
-vi.mock('../sync/settings-sync', () => ({
+vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: () => mockGetSettingsSyncManager()
 }))
 

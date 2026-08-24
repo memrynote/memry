@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { SyncQueueManager } from '../queue'
-import { calendarBindingHandler } from './calendar-binding-handler'
-import { calendarSourceHandler } from './calendar-source-handler'
-import type { ApplyContext, DrizzleDb } from './types'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { calendarBindingHandler } from '@memry/sync-client/item-handlers/calendar-binding-handler'
+import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({

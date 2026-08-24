@@ -10,7 +10,7 @@ import type {
   PullItemForDecrypt,
   DecryptedPullItem,
   DecryptionFailure
-} from './worker-protocol'
+} from '@memry/sync-client/worker-protocol'
 
 const log = createLogger('SyncWorkerBridge')
 

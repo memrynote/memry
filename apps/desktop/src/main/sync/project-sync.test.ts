@@ -3,13 +3,13 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   ProjectSyncService,
   initProjectSyncService,
   getProjectSyncService,
   resetProjectSyncService
-} from './project-sync'
+} from '@memry/sync-client/project-sync'
 import type { VectorClock } from '@memry/contracts/sync-api'
 
 const TEST_PROJECT = {

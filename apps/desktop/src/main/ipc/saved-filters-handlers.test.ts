@@ -59,7 +59,7 @@ vi.mock('../settings/saved-filters-store', () => ({
   getSavedFilterById: vi.fn()
 }))
 
-vi.mock('../sync/filter-sync', () => ({
+vi.mock('@memry/sync-client/filter-sync', () => ({
   getFilterSyncService: vi.fn().mockReturnValue(null)
 }))
 

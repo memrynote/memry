@@ -5,8 +5,8 @@ import { JournalSyncPayloadSchema, type JournalSyncPayload } from '@memry/contra
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
-import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { increment } from '@memry/sync-client/vector-clock'
 import { getIndexDatabase } from '../../database/client'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { saveCanonicalNote } from '@memry/domain-notes'
@@ -20,8 +20,8 @@ import {
 import { syncNoteToCache, deleteNoteFromCache } from '../../vault/note-sync'
 import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('JournalHandler')
 

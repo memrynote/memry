@@ -38,7 +38,7 @@ vi.mock('../http-client', () => ({
 }))
 
 vi.mock('../../crypto/index', () => ({ secureCleanup: vi.fn() }))
-vi.mock('../retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: async (fn: () => Promise<unknown>) => ({ value: await fn() })
 }))
 vi.mock('../crdt-encrypt', () => ({ decryptCrdtUpdate: () => new Uint8Array([9, 9, 9]) }))

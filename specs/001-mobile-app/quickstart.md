@@ -10,11 +10,11 @@ contract: a gate is green when its commands/measurements pass, not before
 
 - macOS with Xcode (iOS 17+ SDK), a **physical mid-tier iPhone** as the pinned
   reference device, Apple Developer account for dev-client signing.
-  - **Reference device: `______` — fill in the exact model here before G0**
-    (target class: iPhone SE 3 / iPhone 13 tier). Every performance gate
-    (G0-d, G2, G3, T127) is measured on this exact model, release build;
-    simulator numbers never count. Changing the device invalidates prior
-    measurements — re-run them.
+  - **Reference device: iPhone 12 Pro (iPhone13,3), iOS 27.0 — pinned
+    2026-08-23** (target class: iPhone SE 3 / iPhone 13 tier). Every
+    performance gate (G0-d, G2, G3, T127) is measured on this exact model,
+    release build; simulator numbers never count. Changing the device
+    invalidates prior measurements — re-run them.
 - `pnpm install` at repo root; desktop dev environment already working.
 - A **staging** sync account + a desktop-created staging vault seeded with:
   ≥ 1 note per block type, a 50 KB note, all 12 item types, ≥ 1 attachment.

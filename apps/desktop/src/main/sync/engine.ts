@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events'
+import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { createSyncAdapterRegistry } from '@memry/sync-core'
 import { createLogger } from '../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
@@ -9,7 +9,7 @@ import type {
   ResumeSyncResult,
   SyncStatusValue
 } from '@memry/contracts/ipc-sync-ops'
-import type { QueueStats } from './queue'
+import type { QueueStats } from '@memry/sync-client/queue'
 import type { WebSocketMessage } from './websocket'
 import { secureCleanup } from '../crypto/index'
 import { getFromServer } from './http-client'
@@ -90,7 +90,7 @@ export const INACTIVE_CRDT_SWEEP_MIN_INTERVAL_MS = 5 * 60 * 1000
 // restores the every-tick pull, and the reconnect itself already pulls.
 export const PERIODIC_PULL_MAX_QUIET_MS = 5 * 60 * 1000
 
-export class SyncEngine extends EventEmitter {
+export class SyncEngine extends SyncEventEmitter {
   private static activeInstance: SyncEngine | null = null
 
   private ctx: SyncContext

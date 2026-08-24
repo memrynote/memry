@@ -8,7 +8,7 @@ import { upsertNoteMetadata } from '@memry/storage-data'
 import { runMigrations } from '../database/migrate'
 import { backfillUnsyncedAttachmentsWith } from './attachment-backfill'
 import { listPendingUploads } from './attachment-outbox'
-import type { DrizzleDb } from './item-handlers/types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 describe('attachment backfill', () => {
   let tempDir: string

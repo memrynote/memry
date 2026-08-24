@@ -8,13 +8,13 @@ import {
 import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   InboxSyncService,
   initInboxSyncService,
   getInboxSyncService,
   resetInboxSyncService
-} from './inbox-sync'
+} from '@memry/sync-client/inbox-sync'
 
 const TEST_INBOX_ITEM = {
   id: 'inbox-1',

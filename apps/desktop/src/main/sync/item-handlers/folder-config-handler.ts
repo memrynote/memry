@@ -7,12 +7,12 @@ import {
 } from '@memry/contracts/sync-payloads'
 import { NotesChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../../lib/logger'
 import { VaultError, VaultErrorCode } from '../../lib/errors'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { readFolderConfig, writeFolderConfig } from '../../vault/folders'
 
 const log = createLogger('FolderConfigHandler')

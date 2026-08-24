@@ -22,7 +22,7 @@ import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 
 vi.mock('../database/client', () => ({
   getIndexDatabase: vi.fn()
@@ -807,7 +807,7 @@ describe('checkManifestIntegrity', () => {
       })
 
       const { checkManifestIntegrity } = await import('./manifest-check')
-      const { toOutboundReminderPayload } = await import('./reminder-outbound')
+      const { toOutboundReminderPayload } = await import('@memry/sync-client/reminder-outbound')
 
       // #when
       await checkManifestIntegrity({

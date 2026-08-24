@@ -9,7 +9,7 @@ import { trackMainError } from '../../telemetry/diagnostics'
 import {
   AGENT_CONVERSATION_SYNCABLE_FIELDS,
   type AgentConversationField
-} from '../../sync/agent-conversation-fields'
+} from '@memry/sync-client/agent-conversation-fields'
 import { decryptAgentJsonForVault, encryptAgentJsonForVault } from './encryption'
 import type { AgentBackendId } from '@memry/contracts/ipc-agent'
 

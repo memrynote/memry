@@ -1,5 +1,6 @@
 import { generateCrdtKey, getBlob, putBlob } from './blob'
 import { adjustStorageUsed, reserveStorage } from './quota'
+import type { ClientIdentity } from '../lib/client-identity'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('CrdtService')
@@ -113,7 +114,8 @@ export const storeUpdates = async (
   vaultId: string,
   noteId: string,
   signerDeviceId: string,
-  updates: ArrayBuffer[]
+  updates: ArrayBuffer[],
+  client: ClientIdentity | null = null
 ): Promise<number[]> => {
   const sequences: number[] = []
   const totalBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
@@ -128,8 +130,8 @@ export const storeUpdates = async (
 
       const row = await db
         .prepare(
-          `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at)
-           SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?
+          `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version)
+           SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?
            FROM (
              SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
              UNION ALL
@@ -145,6 +147,8 @@ export const storeUpdates = async (
           update,
           signerDeviceId,
           now,
+          client?.platform ?? null,
+          client?.version ?? null,
           userId,
           vaultId,
           noteId,
@@ -302,7 +306,8 @@ export const storeSnapshot = async (
   vaultId: string,
   noteId: string,
   signerDeviceId: string,
-  snapshotData: ArrayBuffer
+  snapshotData: ArrayBuffer,
+  client: ClientIdentity | null = null
 ): Promise<{ sequenceNum: number }> => {
   const id = crypto.randomUUID()
   // Fresh on EVERY write, insert and conflict alike, and never conditional on
@@ -338,10 +343,10 @@ export const storeSnapshot = async (
 
     await db
       .prepare(
-        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision, client_platform, client_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (user_id, vault_id, note_id)
-         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision`
+         DO UPDATE SET blob_key = excluded.blob_key, sequence_num = excluded.sequence_num, size_bytes = excluded.size_bytes, signer_device_id = excluded.signer_device_id, created_at = excluded.created_at, revision = excluded.revision, client_platform = excluded.client_platform, client_version = excluded.client_version`
       )
       .bind(
         id,
@@ -353,7 +358,9 @@ export const storeSnapshot = async (
         snapshotData.byteLength,
         signerDeviceId,
         now,
-        revision
+        revision,
+        client?.platform ?? null,
+        client?.version ?? null
       )
       .run()
   } catch (error) {

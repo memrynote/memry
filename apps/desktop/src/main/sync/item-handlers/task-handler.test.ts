@@ -5,9 +5,9 @@ import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
-import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from '../field-merge'
+import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from '@memry/sync-client/field-merge'
 import { taskHandler } from './task-handler'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import {
   TEST_PROJECT,
   TEST_STATUSES,

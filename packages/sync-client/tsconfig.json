@@ -1,0 +1,12 @@
+{
+  "extends": "@memry/typescript-config/base.json",
+  "compilerOptions": {
+    "moduleResolution": "bundler",
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ESNext", "DOM"],
+    "types": []
+  },
+  "include": ["src/**/*"]
+}

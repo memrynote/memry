@@ -4,7 +4,7 @@ import * as os from 'os'
 import * as path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { CrdtPreflightStage } from './crdt-preflight-protocol'
+import type { CrdtPreflightStage } from '@memry/sync-client/crdt-preflight-protocol'
 
 type PreflightVerdict = {
   ok: boolean
@@ -199,7 +199,7 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
   removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
 }))
-vi.mock('./attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
+vi.mock('@memry/sync-client/attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
 vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
@@ -224,7 +224,7 @@ vi.mock('./blocknote-converter', () => ({
   repairEmptyBlockIds: (...args: unknown[]) => mocks.repairEmptyBlockIds(...args)
 }))
 
-vi.mock('./crdt-compact-utils', () => ({
+vi.mock('@memry/sync-client/crdt-compact-utils', () => ({
   compactYDoc: (...args: unknown[]) => mocks.compactYDoc(...args)
 }))
 
@@ -235,7 +235,7 @@ vi.mock('./crdt-writeback', () => ({
   resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args)
 }))
 
-vi.mock('./microtask-batch-broadcaster', () => ({
+vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
     private queued = new Map<string, Uint8Array>()
 

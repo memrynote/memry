@@ -10,7 +10,7 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
-import { reminderHandler } from '../sync/item-handlers/reminder-handler'
+import { reminderHandler } from '@memry/sync-client/item-handlers/reminder-handler'
 
 function fakeService(existing: any[] = []) {
   const rows = [...existing]

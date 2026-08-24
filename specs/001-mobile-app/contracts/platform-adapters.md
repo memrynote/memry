@@ -22,15 +22,15 @@ Replaces desktop's `http-client.ts` (+ the electron parts of `network.ts`).
 ```ts
 interface SyncHttpClient {
   request(req: {
-    method: 'GET'|'POST'|'PUT'|'DELETE'
-    path: string                      // relative to sync base URL
-    headers?: Record<string, string>  // engine adds x-memry-client here (Phase 2)
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE'
+    path: string // relative to sync base URL
+    headers?: Record<string, string> // engine adds x-memry-client here (Phase 2)
     body?: Uint8Array | string
     signal?: AbortSignal
-  }): Promise<{ status: number; headers: Record<string,string>; body: Uint8Array }>
+  }): Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>
   /** connectivity signal for outbox pacing; push-based */
   onOnlineChanged(cb: (online: boolean) => void): () => void
-  isMetered(): Promise<boolean>       // attachments Wi-Fi-only policy
+  isMetered(): Promise<boolean> // attachments Wi-Fi-only policy
 }
 ```
 
@@ -63,7 +63,7 @@ interface CrdtPersistenceAdapter {
   saveSnapshot(docId: string, snapshot: Uint8Array, upToSeq: number): Promise<void>
   compact(docId: string): Promise<void>
   listDocs(): Promise<string[]>
-  deleteDoc(docId: string): Promise<void>   // tombstone flow
+  deleteDoc(docId: string): Promise<void> // tombstone flow
 }
 ```
 
@@ -98,23 +98,68 @@ interface AttachmentStoreAdapter {
 Bytes are always files (both shells). Lazy/Wi-Fi-only download **policy** lives
 in the shared engine using `HttpClient.isMetered()`; the adapter only stores.
 
-## 6. `VaultDirectory`
+## 6. `VaultFileSystem` (widened from `VaultDirectory`)
+
+**Amended 2026-08-23 (owner decision).** The record's `VaultDirectory` owned
+vault _roots_ only. The T015 seam inventory found ~20 files — note handlers,
+journal handlers, CRDT write-back, `NoteContentStore`, most of `app-core`'s file
+layer — that read and write vault _contents_ through `node:fs` and had no legal
+platform-free expression: `AttachmentStore` is keyed by attachment id, and
+`CrdtStorePath` is the CRDT store's location. Roots and contents are the same
+concern at the same boundary, so seam 6 was widened rather than an eleventh seam
+added. The seam count is still ten.
+
+The content half is deliberately the shape of the existing `NoteContentStore`
+(`packages/storage-vault/src/note-content-store.ts`), which desktop already
+implements over `node:fs` and which T034 already commits mobile to implementing.
 
 ```ts
-interface VaultDirectoryAdapter {
+interface VaultFileSystemAdapter {
+  // roots (the original VaultDirectory surface)
   resolveVaultRoot(vaultId: string): Promise<string>
   listLocalVaults(): Promise<Array<{ vaultId: string; root: string }>>
-  provision(vaultId: string): Promise<string>   // new-device path; must not dead-end
+  provision(vaultId: string): Promise<string> // new-device path; must not dead-end
+
+  // contents — every path RELATIVE to the vault root, '/' separated
+  readFile(vaultId: string, relPath: string): Promise<string | null>
+  readBytes(vaultId: string, relPath: string): Promise<Uint8Array | null>
+  writeFile(vaultId: string, relPath: string, content: string): Promise<void> // atomic
+  writeBytes(vaultId: string, relPath: string, bytes: Uint8Array): Promise<void> // atomic
+  exists(vaultId: string, relPath: string): Promise<boolean>
+  remove(vaultId: string, relPath: string): Promise<boolean>
+  rename(vaultId: string, fromRelPath: string, toRelPath: string): Promise<void>
+  list(
+    vaultId: string,
+    relDir: string
+  ): Promise<Array<{ path: string; kind: 'file' | 'directory' }>>
+  removeDirIfEmpty(
+    vaultId: string,
+    relDir: string,
+    ignoring: ReadonlyArray<string>
+  ): Promise<boolean>
 }
 ```
+
+Absolute paths never cross this interface — they are the one thing that cannot
+mean the same thing on both shells. There is no `mkdir`: writes create their own
+parents, because a write that must be preceded by a `mkdir` is a write that can
+be interrupted between the two. `removeDirIfEmpty` takes an explicit ignore list
+(`.DS_Store` and friends) instead of deleting recursively; the recursive version
+of that call is a data-loss bug.
 
 ## 7. `DeviceRegistration`
 
 ```ts
 interface DeviceRegistrationAdapter {
   deviceId(): Promise<string>
-  deviceInfo(): Promise<{ platform: 'desktop'|'ios'|'android'; model: string; appVersion: string }>
-  signingKeypair(vaultId: string): Promise<{ publicKey: Uint8Array; sign(msg: Uint8Array): Promise<Uint8Array> }>
+  deviceInfo(): Promise<{
+    platform: 'desktop' | 'ios' | 'android'
+    model: string
+    appVersion: string
+  }>
+  signingKeypair(
+    vaultId: string
+  ): Promise<{ publicKey: Uint8Array; sign(msg: Uint8Array): Promise<Uint8Array> }>
 }
 ```
 
@@ -132,7 +177,7 @@ interface CrdtProviderHost {
   attach(docId: string, transport: CrdtTransport): () => void
 }
 interface CrdtTransport {
-  sendToUi(frames: Uint8Array[]): void          // batched
+  sendToUi(frames: Uint8Array[]): void // batched
   onFromUi(cb: (frames: Uint8Array[]) => void): () => void
   /** origin tagging so echoes don't loop (desktop: sourceWindowId; mobile: bridge session id) */
   originTag: string
@@ -149,7 +194,8 @@ interface CrdtPreflightAdapter {
 
 Desktop: current preflight (note the Windows 0xC0000005 incident — behaviour
 unchanged by extraction). Mobile: SQLite integrity check (`PRAGMA quick_check`)
-+ schema-version assert.
+
+- schema-version assert.
 
 ## 10. `Runtime`
 
@@ -158,11 +204,11 @@ Replaces `runtime.ts` electron surface (`app.getVersion()`, paths, lifecycle).
 ```ts
 interface RuntimeAdapter {
   appVersion(): string
-  platform(): 'desktop'|'ios'|'android'
-  onForeground(cb: () => void): () => void      // triggers foreground sync
-  onBackground(cb: () => void): () => void      // flush outbox, persist state
-  scheduleBackgroundSync?(minIntervalSec: number): void   // BGAppRefreshTask on iOS; absent on desktop
-  log: SyncLogger                                // project logger seam (no console.*)
+  platform(): 'desktop' | 'ios' | 'android'
+  onForeground(cb: () => void): () => void // triggers foreground sync
+  onBackground(cb: () => void): () => void // flush outbox, persist state
+  scheduleBackgroundSync?(minIntervalSec: number): void // BGAppRefreshTask on iOS; absent on desktop
+  log: SyncLogger // project logger seam (no console.*)
 }
 ```
 

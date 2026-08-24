@@ -4,7 +4,7 @@ import { syncDevices } from '@memry/db-schema/schema/sync-devices'
 import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
 import { createLogger } from '../lib/logger'
 import { getFromServer } from './http-client'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 import type { DrizzleDb } from './item-handlers'
 
 const log = createLogger('DeviceKeys')

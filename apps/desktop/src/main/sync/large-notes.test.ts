@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { selectLargeNotes, type LargeNoteRow } from './large-notes'
-import { NOTE_SYNC_MAX_BYTES, NOTE_SYNC_WARN_BYTES } from './note-size'
+import { NOTE_SYNC_MAX_BYTES, NOTE_SYNC_WARN_BYTES } from '@memry/sync-client/note-size'
 
 function row(overrides: Partial<LargeNoteRow> & { id: string }): LargeNoteRow {
   return {

@@ -31,8 +31,25 @@ Server consults `client_policies` (data-model.md §3b) on every **write**:
 | No header | Allow (legacy desktop) |
 | `platform` row absent or `min_write_version` NULL | Allow |
 | client version ≥ floor and `writes_enabled=1` | Allow |
-| client version < floor | Reject write: HTTP `426`, body `{ code: 'CLIENT_UPGRADE_REQUIRED', minVersion }` |
-| `writes_enabled=0` (kill switch) | Reject write: HTTP `403`, body `{ code: 'PLATFORM_WRITES_DISABLED' }` |
+| client version < floor | Reject write: HTTP `426`, code `CLIENT_UPGRADE_REQUIRED` + `minVersion` |
+| `writes_enabled=0` (kill switch) | Reject write: HTTP `403`, code `PLATFORM_WRITES_DISABLED` |
+
+**As implemented** (T028): the rejection body keeps the server's existing
+envelope rather than the flat shape sketched above, because every shipped client
+already reads `error.code`:
+
+```json
+{ "error": { "code": "CLIENT_UPGRADE_REQUIRED", "message": "...", "minVersion": "1.2.0" } }
+{ "error": { "code": "PLATFORM_WRITES_DISABLED", "message": "..." } }
+```
+
+Kill switch is evaluated **before** the version floor: when writes are off for a
+platform, `CLIENT_UPGRADE_REQUIRED` would send users chasing an update that
+cannot help them. A policy row that cannot be interpreted (absent row, NULL or
+unparseable floor) resolves to ALLOW — an unreadable policy table degrades to
+today's behaviour, never to a lockout. A pre-release version string
+(`1.0.0-beta.1`) is *malformed*, hence treated as absent, hence allowed: it must
+never sort as its release and satisfy a floor the release does not.
 
 - **Reads are never gated** by either mechanism — read-only mode keeps working
   (FR-010).
@@ -57,6 +74,15 @@ Server stamps `client_platform` / `client_version` (from the header;
 NULL = legacy) on every item write (data-model.md §3c). Purpose: incident
 tracing and targeted rollback of mobile-originated writes (FR-011). No client
 behaviour change; no read path depends on it.
+
+**Tables stamped** (T027/T029, fixed against the current D1 schema):
+`sync_items`, `crdt_updates`, `crdt_snapshots`. The CRDT pair is included
+deliberately — a note's BODY lands there, and that is precisely the payload most
+likely to need a targeted mobile rollback. Attribution records the **latest**
+writer, not the creator: after a desktop rewrite of a row an iOS device first
+created, the row is no longer a mobile-originated value. Only the semver triple
+is stored; the `+build` suffix is parsed but never persisted, since build
+numbers are not orderable across release branches.
 
 ## 5. Apple billing (Phase 5)
 

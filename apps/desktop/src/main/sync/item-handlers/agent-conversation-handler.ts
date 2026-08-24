@@ -4,19 +4,19 @@ import type { AgentConversationSyncPayload } from '@memry/contracts/sync-payload
 import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   AGENT_CONVERSATION_SYNCABLE_FIELDS,
   type AgentConversationField
-} from '../agent-conversation-fields'
-import { initAllFieldClocks, mergeFields } from '../field-merge'
+} from '@memry/sync-client/agent-conversation-fields'
+import { initAllFieldClocks, mergeFields } from '@memry/sync-client/field-merge'
 import {
   agentConversationRowToModel,
   encryptConversationTitle
 } from '../../agent/storage/conversation-store'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AgentConversationHandler')
 

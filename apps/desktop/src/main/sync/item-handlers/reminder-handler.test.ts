@@ -3,9 +3,9 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import type { ReminderSyncPayload } from '@memry/contracts/sync-payloads'
-import { SyncQueueManager } from '../queue'
-import { reminderHandler } from './reminder-handler'
-import type { ApplyContext } from './types'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { reminderHandler } from '@memry/sync-client/item-handlers/reminder-handler'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
 
 describe('reminderHandler', () => {

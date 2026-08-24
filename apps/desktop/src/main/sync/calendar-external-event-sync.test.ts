@@ -21,15 +21,15 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
-import { MissingSyncParentError } from './item-handlers/types'
-import { calendarExternalEventHandler } from './item-handlers/calendar-external-event-handler'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import { calendarExternalEventHandler } from '@memry/sync-client/item-handlers/calendar-external-event-handler'
 import {
   CalendarExternalEventSyncService,
   initCalendarExternalEventSyncService,
   getCalendarExternalEventSyncService,
   resetCalendarExternalEventSyncService
-} from './calendar-external-event-sync'
+} from '@memry/sync-client/calendar-external-event-sync'
 
 const TEST_SOURCE = {
   id: 'src-1',

@@ -12,8 +12,8 @@ vi.mock('../../lib/logger', () => ({
   })
 }))
 
-import { homePageHandler } from './home-page-handler'
-import { SyncQueueManager } from '../queue'
+import { homePageHandler } from '@memry/sync-client/item-handlers/home-page-handler'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 
 let db: TestDataDb
 const emit = vi.fn()

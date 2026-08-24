@@ -1,5 +1,5 @@
 import WebSocket from 'ws'
-import { EventEmitter } from 'events'
+import { SyncEventEmitter } from '@memry/sync-client/emitter'
 import { z } from 'zod'
 import { createLogger } from '../lib/logger'
 import { getSharedPinnedAgent, CertificatePinningError } from './certificate-pinning'
@@ -48,7 +48,7 @@ export interface WebSocketManagerDeps {
   serverUrl: string
 }
 
-export class WebSocketManager extends EventEmitter {
+export class WebSocketManager extends SyncEventEmitter {
   private ws: WebSocket | null = null
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null

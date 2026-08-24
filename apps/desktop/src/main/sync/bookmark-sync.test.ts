@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   BookmarkSyncService,
   initBookmarkSyncService,
   getBookmarkSyncService,
   resetBookmarkSyncService
-} from './bookmark-sync'
+} from '@memry/sync-client/bookmark-sync'
 
 const TEST_BOOKMARK = {
   id: 'bm-1',

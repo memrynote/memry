@@ -20,14 +20,14 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
-import { calendarBindingHandler } from './item-handlers/calendar-binding-handler'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { calendarBindingHandler } from '@memry/sync-client/item-handlers/calendar-binding-handler'
 import {
   CalendarBindingSyncService,
   initCalendarBindingSyncService,
   getCalendarBindingSyncService,
   resetCalendarBindingSyncService
-} from './calendar-binding-sync'
+} from '@memry/sync-client/calendar-binding-sync'
 
 const TEST_BINDING = {
   id: 'bind-1',

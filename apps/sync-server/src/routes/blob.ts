@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { authMiddleware } from '../middleware/auth'
+import { clientGateMiddleware } from '../middleware/client-gate'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
 import {
@@ -56,6 +57,7 @@ const refundReservation = async (
 export const blob = new Hono<AppContext>()
 
 blob.use('*', authMiddleware)
+blob.use('*', clientGateMiddleware)
 blob.use('*', paidSyncMiddleware)
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024

@@ -186,11 +186,11 @@ vi.mock('../inbox/snooze', () => ({
   bulkSnoozeItems: vi.fn()
 }))
 
-vi.mock('../sync/inbox-sync', () => ({
+vi.mock('@memry/sync-client/inbox-sync', () => ({
   getInboxSyncService: vi.fn(() => null)
 }))
 
-vi.mock('../sync/offline-clock', () => ({
+vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementInboxClockOffline: vi.fn()
 }))
 

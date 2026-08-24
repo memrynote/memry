@@ -29,7 +29,7 @@ import {
   decodeSnapshotWatermark,
   readSnapshotWatermark,
   writeSnapshotWatermark
-} from './crdt-snapshot-watermark'
+} from '@memry/sync-client/crdt-snapshot-watermark'
 
 let root: string
 let storeDir: string

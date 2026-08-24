@@ -22,7 +22,7 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { calendarEventHandler } from './item-handlers/calendar-event-handler'
 import {
   CalendarEventSyncService,

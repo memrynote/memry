@@ -45,7 +45,7 @@ import {
   RateLimitError,
   parseRetryAfterHeader
 } from './http-client'
-import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from './crdt-payload'
+import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { resetVaultUuidCache } from '../agent/storage/vault-id'
 
 /** A real data.db handle carrying the vault_metadata singleton. */

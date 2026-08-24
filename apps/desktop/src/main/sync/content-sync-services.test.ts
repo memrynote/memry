@@ -5,7 +5,7 @@ import {
   getFolderConfigSyncService,
   initFolderConfigSyncService,
   resetFolderConfigSyncService
-} from './folder-config-sync'
+} from '@memry/sync-client/folder-config-sync'
 import {
   JournalSyncService,
   getJournalSyncService,
@@ -146,7 +146,7 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteProperties: (...args: unknown[]) => mocks.getNoteProperties(...args)
 }))
 
-vi.mock('./item-handlers/note-pin-helpers', () => ({
+vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   getPinnedTagsForNote: (...args: unknown[]) => mocks.getPinnedTagsForNote(...args)
 }))
 

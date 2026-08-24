@@ -3,9 +3,10 @@ import { syncPendingDeletes } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById } from '@memry/storage-data'
 import { incrementClock } from '@memry/sync-core'
 import type { SyncItemType } from '@memry/contracts/sync-api'
-import { getCurrentDeviceId } from './current-device-id'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { createLogger } from '../lib/logger'
 import type { DataDb } from '../database/client'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 
 const log = createLogger('PendingDeletes')
 
@@ -73,7 +74,7 @@ export function recordPendingDelete(
   log.debug('Recorded a delete raised while the sync runtime was down', { type, itemId })
 }
 
-export function listPendingDeletes(db: DataDb): PendingDelete[] {
+export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {
   return db
     .select({
       type: syncPendingDeletes.type,
@@ -85,7 +86,7 @@ export function listPendingDeletes(db: DataDb): PendingDelete[] {
     .map((row) => ({ ...row, type: row.type as SyncItemType }))
 }
 
-export function clearPendingDelete(db: DataDb, type: SyncItemType, itemId: string): void {
+export function clearPendingDelete(db: DrizzleDb, type: SyncItemType, itemId: string): void {
   db.delete(syncPendingDeletes)
     .where(and(eq(syncPendingDeletes.type, type), eq(syncPendingDeletes.itemId, itemId)))
     .run()

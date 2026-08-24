@@ -4,6 +4,7 @@ import type { ViewConfig } from '@memry/contracts/folder-view-api'
 import { createLogger } from '../../lib/logger'
 import { trackMainEvent } from '../../telemetry/track'
 import type { DataDb } from '../types'
+import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 
 const logger = createLogger('TagDefinitions')
 
@@ -196,7 +197,7 @@ export function deleteTagDefinition(
  * Corrupt JSON reads as "no saved views" rather than throwing — a bad blob
  * must not make the tag unopenable.
  */
-export function readTagViews(db: DataDb, tag: string): ViewConfig[] | null {
+export function readTagViews(db: DrizzleDb, tag: string): ViewConfig[] | null {
   const row = db
     .select({ views: tagDefinitions.views })
     .from(tagDefinitions)
@@ -213,7 +214,7 @@ export function readTagViews(db: DataDb, tag: string): ViewConfig[] | null {
   }
 }
 
-export function writeTagViews(db: DataDb, tag: string, views: ViewConfig[] | null): void {
+export function writeTagViews(db: DrizzleDb, tag: string, views: ViewConfig[] | null): void {
   db.update(tagDefinitions)
     .set({ views: views && views.length > 0 ? JSON.stringify(views) : null })
     .where(eq(tagDefinitions.name, tag))

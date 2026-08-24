@@ -2,7 +2,7 @@ import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import { updateNoteCache } from '@main/database/queries/notes'
 import { getDatabase, getIndexDatabase } from '../database'
 import { createLogger } from '../lib/logger'
-import { clearAttachmentDownloadFailure } from './attachment-download-state'
+import { clearAttachmentDownloadFailure } from '@memry/sync-client/attachment-download-state'
 import { enqueueLocalSyncUpdate } from './local-mutations'
 
 const log = createLogger('NoteAttachmentMetadata')

@@ -1,6 +1,5 @@
 import * as Y from 'yjs'
 import fsp from 'fs/promises'
-import { randomUUID } from 'crypto'
 import { BrowserWindow } from 'electron'
 import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
@@ -8,7 +7,7 @@ import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
-import { MicrotaskBatchBroadcaster } from './microtask-batch-broadcaster'
+import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import {
   scheduleWriteback,
   flushPendingWritebacks,
@@ -20,7 +19,7 @@ import {
   readSnapshotWatermark,
   writeSnapshotWatermark,
   type CrdtSnapshotWatermark
-} from './crdt-snapshot-watermark'
+} from '@memry/sync-client/crdt-snapshot-watermark'
 import { recordCrdtPersistenceOutcome } from '../store'
 import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
@@ -28,7 +27,7 @@ import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
 import { parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
-import { compactYDoc } from './crdt-compact-utils'
+import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { classifyMarkdownContent, classifyMarkdownStat } from '@memry/shared/markdown-class'
 import { CRITIC_MARKUP_MARKS_ARRAY } from '@memry/shared'
@@ -200,7 +199,7 @@ export class CrdtProvider {
     // that describes the first one must not carry it into the second. A store
     // that could not be opened leaves this null, which is what makes in-memory
     // mode read as "no store" rather than as "an empty one".
-    this.storeIdentity = this.persistence ? randomUUID() : null
+    this.storeIdentity = this.persistence ? crypto.randomUUID() : null
     this.persistenceReady = true
     recordSessionPersistenceOutcome(this.persistence !== null)
 

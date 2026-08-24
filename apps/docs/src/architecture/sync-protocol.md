@@ -57,6 +57,54 @@ Portal URLs are temporary authenticated links from Paddle and are never cached. 
 chargeback automation is intentionally out of scope; support handles those from email and the Paddle
 dashboard.
 
+## Client Identification and the Per-Platform Write Gate
+
+A client may identify itself with a `x-memry-client: <platform>/<semver>[+<build>]`
+header (`ios`, `android`, or `desktop`). The header is **optional**: a request
+without it is a legacy desktop client and keeps full access, unchanged. A
+malformed header is treated as absent and logged rather than rejected — a
+parser bug must never be able to lock a user out of their own vault. Pre-release
+versions (`1.0.0-beta.1`) count as malformed, so a beta can never satisfy a
+floor its release does not.
+
+The server keeps one `client_policies` row per platform, holding a semver write
+floor and a kill switch. It is consulted on **writes only**; reads are never
+gated, so a device dropped to read-only can still open every note it owns.
+
+| Condition                                | Server behaviour                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| No header                                | Allow (legacy desktop)                                              |
+| No row, or `min_write_version` is NULL   | Allow                                                               |
+| Version at or above the floor, writes on | Allow                                                               |
+| Version below the floor                  | `426` with `CLIENT_UPGRADE_REQUIRED` and the required `minVersion`  |
+| `writes_enabled = 0`                     | `403` with `PLATFORM_WRITES_DISABLED`                               |
+
+The kill switch is evaluated before the floor: when writes are off for a
+platform, telling users to upgrade would send them chasing a release that cannot
+help. Every uninterpretable policy — absent row, NULL floor, unparseable floor —
+resolves to allow, so an unreadable policy table degrades to today's behaviour
+rather than to an outage.
+
+`GET /sync/status` echoes the caller's own policy as an optional `clientPolicy`
+field whenever the request identified itself, so a device learns about a flipped
+switch on its next foreground poll instead of by attempting a write and being
+rejected. Header-less clients get byte-identical status responses.
+
+On receiving either rejection a client enters explicit read-only mode, **parks**
+its outbox (queued writes preserved, attempts stopped), polls the policy on
+foreground, and resumes automatically once clear.
+
+### Write attribution
+
+Item writes are stamped with the calling platform and version on `sync_items`,
+`crdt_updates`, and `crdt_snapshots`. `NULL` means the row was written by a
+client that predates the header — which is every desktop build shipped so far;
+there is no backfill. The CRDT tables are included because a note's body lives
+there, and that is the payload most likely to need a targeted rollback after a
+mobile incident. Attribution records the *latest* writer, not the creator, so a
+desktop rewrite clears an earlier mobile stamp. No read path depends on these
+columns.
+
 ## Sync Items
 
 Every domain object syncs as a `sync_item`. The server sees:
@@ -807,6 +855,8 @@ phrase can restore the correct key. See
 | Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
 | Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                     |
 | Payment required    | Sync stays local-only until a paid plan is active                                          |
+| Client below floor (426) | Read-only mode; outbox parked; resume after update                                    |
+| Platform writes off (403) | Read-only mode; outbox parked; resume when the switch is flipped back               |
 | Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
 | Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
 | Server unavailable  | Exponential backoff; status indicator turns yellow                                         |

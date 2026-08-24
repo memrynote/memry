@@ -1,20 +1,18 @@
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { and, gt, isNull, isNotNull, or, sql } from 'drizzle-orm'
-import type * as schema from '@memry/db-schema/data-schema'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { SyncAdapterRegistry } from '@memry/sync-core'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
-import { getInboxSyncService } from './inbox-sync'
+import { getInboxSyncService } from '@memry/sync-client/inbox-sync'
 import { getJournalSyncService } from './journal-sync'
 import { getNoteSyncService } from './note-sync'
-import { getProjectSyncService } from './project-sync'
-import { getTaskSyncService } from './task-sync'
+import { getProjectSyncService } from '@memry/sync-client/project-sync'
+import { getTaskSyncService } from '@memry/sync-client/task-sync'
 import { flushPendingLocalDeletes } from './local-mutations'
 import { createLogger } from '../lib/logger'
 
-type DrizzleDb = BetterSQLite3Database<typeof schema>
 
 const log = createLogger('DirtyRecovery')
 

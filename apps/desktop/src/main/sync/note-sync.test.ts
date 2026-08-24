@@ -44,7 +44,7 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteProperties: () => h.properties
 }))
 
-vi.mock('./item-handlers/note-pin-helpers', () => ({
+vi.mock('@memry/sync-client/item-handlers/note-pin-helpers', () => ({
   getPinnedTagsForNote: () => h.pinnedTags
 }))
 
@@ -65,7 +65,7 @@ vi.mock('../vault/rename-tracker', () => ({
   }
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   NoteSyncService,
   extractFolderFromPath,

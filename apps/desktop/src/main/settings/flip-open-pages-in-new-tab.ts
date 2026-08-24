@@ -35,7 +35,7 @@
 
 import type { DataDb } from '../database/types'
 import { getSetting, setSetting } from '../database/queries/settings'
-import { SETTINGS_SYNC_CLOCKS_KEY } from '../sync/settings-sync-keys'
+import { SETTINGS_SYNC_CLOCKS_KEY } from '@memry/sync-client/settings-sync-keys'
 import { readPreferences, writePreferences } from '../vault/vault-preferences'
 import { writeCacheFromPreferences } from '../vault/settings-cache'
 import { createLogger } from '../lib/logger'

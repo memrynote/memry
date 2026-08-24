@@ -6,8 +6,8 @@ import {
   asSyncDb,
   type TestDatabaseResult
 } from '@tests/utils/test-db'
-import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
-import { SyncQueueManager } from './queue'
+import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 
 describe('settings sync — inbox group', () => {
   let testDb: TestDatabaseResult

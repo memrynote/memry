@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { reminders } from '@memry/db-schema/schema/reminders'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   ReminderSyncService,
   initReminderSyncService,
   getReminderSyncService,
   resetReminderSyncService
-} from './reminder-sync'
+} from '@memry/sync-client/reminder-sync'
 
 const TEST_REMINDER = {
   id: 'rem-1',

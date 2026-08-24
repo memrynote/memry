@@ -14,7 +14,7 @@ import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
 import { store } from '../store'
 import { postToServer } from '../sync/http-client'
-import { resolveSyncServerUrl } from '../sync/sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
 import { teardownSession } from '../sync/session-teardown'

@@ -39,8 +39,8 @@ steady states at `debug`:
   only downgraded when every line in it matches a known-benign pattern, so a real failure
   interleaved with progress output still reaches `error`.
 - Vector-clock bumps the `increment*ClockOffline` helpers make while the sync runtime is down
-  (`main/sync/offline-clock.ts`) — the normal offline-edit path, one call per edited row (per
-  changed field for tasks and projects).
+  (`packages/sync-client/src/offline-clock.ts`) — the normal offline-edit path, one call per edited
+  row (per changed field for tasks and projects).
 - An index rebuild triggered by a **missing** index DB (`emitIndexRecovered` in
   `main/vault/index.ts`) — `checkIndexHealth` reports `missing` when `index.db` is not on disk,
   which is the expected first open of a vault: fresh install, newly linked device, or a deleted

@@ -20,13 +20,13 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   FolderConfigSyncService,
   getFolderConfigSyncService,
   initFolderConfigSyncService,
   resetFolderConfigSyncService
-} from './folder-config-sync'
+} from '@memry/sync-client/folder-config-sync'
 
 let db: TestDataDb
 let queue: SyncQueueManager

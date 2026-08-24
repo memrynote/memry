@@ -3,9 +3,9 @@ import fs from 'fs'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { journalHandler } from './journal-handler'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const {
   journalFilePath,

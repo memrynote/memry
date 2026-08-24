@@ -4,9 +4,9 @@ import { TemplatesChannels } from '@memry/contracts/ipc-channels'
 import { templates } from '@memry/db-schema/schema/templates'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { templateHandler } from './template-handler'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 vi.mock('../../lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })

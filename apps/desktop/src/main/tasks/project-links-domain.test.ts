@@ -11,10 +11,10 @@ vi.mock('../database', () => ({
   getDatabase: vi.fn(),
   requireDatabase: vi.fn()
 }))
-vi.mock('../sync/project-sync', () => ({
+vi.mock('@memry/sync-client/project-sync', () => ({
   getProjectSyncService: vi.fn(() => null)
 }))
-vi.mock('../sync/offline-clock', () => ({
+vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementProjectClocksOffline: vi.fn()
 }))
 

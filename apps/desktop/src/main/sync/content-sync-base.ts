@@ -4,7 +4,7 @@ import { RecordSyncController, incrementClock } from '@memry/sync-core'
 import { getNoteMetadataById, updateNoteMetadata } from '@memry/storage-data'
 import type Logger from 'electron-log'
 import { getDatabase } from '../database/client'
-import type { SyncQueueManager } from './queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 
 export interface ContentSyncDeps {
   queue: SyncQueueManager

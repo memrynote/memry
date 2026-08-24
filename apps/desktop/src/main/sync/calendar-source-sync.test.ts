@@ -19,14 +19,14 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
-import { calendarSourceHandler } from './item-handlers/calendar-source-handler'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { calendarSourceHandler } from '@memry/sync-client/item-handlers/calendar-source-handler'
 import {
   CalendarSourceSyncService,
   initCalendarSourceSyncService,
   getCalendarSourceSyncService,
   resetCalendarSourceSyncService
-} from './calendar-source-sync'
+} from '@memry/sync-client/calendar-source-sync'
 
 const TEST_SOURCE = {
   id: 'src-1',

@@ -1,10 +1,9 @@
 import fs from 'fs'
-import { randomUUID } from 'crypto'
 import { asc, and, eq, sql } from 'drizzle-orm'
 import { attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
-import type { DrizzleDb } from './item-handlers/types'
+import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AttachmentOutbox')
 
@@ -27,7 +26,7 @@ const STUCK_UPLOAD_ATTEMPTS = 5
 export function enqueueUpload(db: DrizzleDb, noteId: string, diskPath: string): void {
   const now = Date.now()
   db.insert(attachmentUploadQueue)
-    .values({ id: randomUUID(), noteId, diskPath, createdAt: now, updatedAt: now })
+    .values({ id: crypto.randomUUID(), noteId, diskPath, createdAt: now, updatedAt: now })
     .onConflictDoUpdate({
       target: [attachmentUploadQueue.noteId, attachmentUploadQueue.diskPath],
       set: { updatedAt: now }
@@ -52,7 +51,7 @@ export function markUploadFailed(
   const now = Date.now()
   db.insert(attachmentUploadQueue)
     .values({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       noteId,
       diskPath,
       attempts: 1,

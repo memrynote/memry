@@ -30,7 +30,7 @@ const syncMock = vi.hoisted(() => ({
 }))
 vi.mock('../sync/local-mutations', () => syncMock)
 
-import { incrementCanvasFolderClockOffline } from '../sync/offline-clock'
+import { incrementCanvasFolderClockOffline } from '@memry/sync-client/offline-clock'
 import { createCanvas, deleteCanvas, listCanvases, updateCanvas } from './store'
 import { createCanvasFolder, deleteCanvasFolder, listCanvasFolders } from './folder-store'
 import { reconcileCanvasFiles } from './reconcile'

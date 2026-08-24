@@ -11,7 +11,7 @@ import {
   StorageBreakdownResult,
   UpdateSyncedSettingSchema
 } from '@memry/contracts/ipc-sync-ops'
-import { getSettingsSyncManager } from '../sync/settings-sync'
+import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { listLargeNotes } from '../sync/large-notes'
 import { syncHistory } from '@memry/db-schema/schema/sync-history'
 

@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto'
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js'
 import { eq } from 'drizzle-orm'
 import { AgentMessageSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { AgentMessageSyncPayload } from '@memry/contracts/sync-payloads'
@@ -6,7 +7,7 @@ import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { agentMessages } from '@memry/db-schema/schema/agent-messages'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
-import type { SyncQueueManager } from '../queue'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   agentMessageRowToModel,
   encryptMessageAttachments,
@@ -15,9 +16,9 @@ import {
 import { TERMINAL_STATUSES } from '../../agent/storage/types'
 import type { MessageStatus } from '../../agent/storage/types'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import { MissingSyncParentError } from './types'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('AgentMessageHandler')
 
@@ -34,18 +35,22 @@ function requireVaultKey(ctx: ApplyContext | undefined, deps: HandlerDeps): Uint
 }
 
 function hashPayload(payload: AgentMessageSyncPayload): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        conversationId: payload.conversationId,
-        role: payload.role,
-        content: payload.content,
-        attachments: payload.attachments,
-        toolCallId: payload.toolCallId,
-        status: payload.status
-      })
+  // Synchronous on purpose: applyUpsert is sync in the handler interface, so
+  // WebCrypto's async subtle.digest is not an option on either shell.
+  return bytesToHex(
+    sha256(
+      utf8ToBytes(
+        JSON.stringify({
+          conversationId: payload.conversationId,
+          role: payload.role,
+          content: payload.content,
+          attachments: payload.attachments,
+          toolCallId: payload.toolCallId,
+          status: payload.status
+        })
+      )
     )
-    .digest('hex')
+  )
 }
 
 function plainLocalPayload(

@@ -15,9 +15,15 @@ unsynced writes (decision record §4).
   Binary (Yjs updates) is **base64-framed** inside it.
 - **Batched on both ends.** Per-keystroke or per-update crossings are a defect
   regardless of measured comfort (Constitution V). Each side accumulates frames
-  and flushes on: (a) a flush interval `T_flush` (tuned in R4, initial 16–32 ms),
-  (b) a byte ceiling `B_max` per envelope (initial 256 KiB pre-base64), or
-  (c) an explicit `flush` (blur, save, background transition) — whichever first.
+  and flushes on: (a) a flush interval `T_flush` (tuned in R4: **24 ms**
+  adopted from the G0-d device run), (b) a byte ceiling `B_max` per envelope
+  (**256 KiB** pre-base64, confirmed), or (c) an explicit `flush` (blur, save,
+  background transition) — whichever first.
+  _G0-d measurements (iPhone 12 Pro, release, 2026-08-23): delivery p95
+  2.0 ms, apply p95 0.08 ms, seq gaps 0, 5 MB doc-load 116 ms. Note: at
+  10 keystrokes/s the 24 ms window never coalesces (msgs/envelope 1.0 is
+  expected arithmetic, not a defect); the coalescing requirement is judged at
+  G3 against real Yjs update clusters, which do arrive faster than `T_flush`._
 - **Typed + versioned + generated.** Envelope and message types live in
   `packages/contracts` (or a bridge sub-package) and are generated into both
   sides, same discipline as `ipc:check`. Hand-written `any` at this boundary is
@@ -27,10 +33,10 @@ unsynced writes (decision record §4).
 
 ```ts
 interface BridgeEnvelope {
-  v: 1                      // protocol version; bump = both sides regenerate
-  sid: string               // bridge session id (origin tag; prevents echo loops)
-  seq: number               // per-sender monotonic; receiver detects gaps
-  msgs: BridgeMsg[]         // the batch
+  v: 1 // protocol version; bump = both sides regenerate
+  sid: string // bridge session id (origin tag; prevents echo loops)
+  seq: number // per-sender monotonic; receiver detects gaps
+  msgs: BridgeMsg[] // the batch
 }
 ```
 
@@ -41,26 +47,26 @@ Messages after `ready` and before `doc-load` are dropped by design.
 
 ### RN → WebView
 
-| type | payload | notes |
-|---|---|---|
-| `doc-load` | `{ docId, stateB64 }` | full Yjs state (encoded update) at open/resync |
-| `y-update` | `{ docId, updatesB64: string[] }` | batched engine-side updates (remote sync, other-surface edits) |
-| `cfg` | `{ theme, locale, rtl, reducedMotion, readOnly }` | readOnly also driven by kill-switch/entitlement state |
-| `wiki-candidates` | `{ reqId, items }` | autocomplete answers |
-| `asset` | `{ reqId, url \| b64, mime }` | attachment/image resolution result |
-| `exec` | `{ cmd: 'undo'\|'redo'\|'focus'\|'blur'\|'flush' }` | |
+| type              | payload                                             | notes                                                          |
+| ----------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `doc-load`        | `{ docId, stateB64 }`                               | full Yjs state (encoded update) at open/resync                 |
+| `y-update`        | `{ docId, updatesB64: string[] }`                   | batched engine-side updates (remote sync, other-surface edits) |
+| `cfg`             | `{ theme, locale, rtl, reducedMotion, readOnly }`   | readOnly also driven by kill-switch/entitlement state          |
+| `wiki-candidates` | `{ reqId, items }`                                  | autocomplete answers                                           |
+| `asset`           | `{ reqId, url \| b64, mime }`                       | attachment/image resolution result                             |
+| `exec`            | `{ cmd: 'undo'\|'redo'\|'focus'\|'blur'\|'flush' }` |                                                                |
 
 ### WebView → RN
 
-| type | payload | notes |
-|---|---|---|
-| `ready` | `{ protocolV, schemaV }` | handshake; RN verifies versions, then `doc-load` |
-| `y-update` | `{ docId, updatesB64: string[] }` | batched local edits; RN applies to owned Y.Doc → CrdtPersistence + outbox |
-| `wiki-query` | `{ reqId, query }` | autocomplete request |
-| `asset-req` | `{ reqId, ref }` | resolve image/attachment ref |
-| `nav` | `{ target }` | wiki-link tap → RN navigates |
-| `metrics` | `{ h, selAnchor }` | content height / selection for native chrome |
-| `err` | `{ code, detail }` | surfaced via shared error extractor |
+| type         | payload                           | notes                                                                     |
+| ------------ | --------------------------------- | ------------------------------------------------------------------------- |
+| `ready`      | `{ protocolV, schemaV }`          | handshake; RN verifies versions, then `doc-load`                          |
+| `y-update`   | `{ docId, updatesB64: string[] }` | batched local edits; RN applies to owned Y.Doc → CrdtPersistence + outbox |
+| `wiki-query` | `{ reqId, query }`                | autocomplete request                                                      |
+| `asset-req`  | `{ reqId, ref }`                  | resolve image/attachment ref                                              |
+| `nav`        | `{ target }`                      | wiki-link tap → RN navigates                                              |
+| `metrics`    | `{ h, selAnchor }`                | content height / selection for native chrome                              |
+| `err`        | `{ code, detail }`                | surfaced via shared error extractor                                       |
 
 ## Ownership & durability rules
 
@@ -85,7 +91,7 @@ Messages after `ready` and before `doc-load` are dropped by design.
 - Budget: < 50 ms keystroke-to-visible-character p95 on a 50 KB note on the
   reference mid-tier device. The WebView renders its own keystroke locally, so
   the bridge is off the critical render path by design; the budget therefore
-  gates *end-to-end echo* (keystroke → RN doc → ack) and render stalls caused by
+  gates _end-to-end echo_ (keystroke → RN doc → ack) and render stalls caused by
   bridge back-pressure.
 - `editor-web` bundle is a self-contained local asset (no network at editor
   open; startup never network-gated).

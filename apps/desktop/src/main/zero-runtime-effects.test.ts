@@ -88,7 +88,7 @@ vi.mock('./lib/logger', () => ({
   })
 }))
 
-vi.mock('./sync/attachment-events', () => ({
+vi.mock('@memry/sync-client/attachment-events', () => ({
   attachmentEvents: {
     emitSaved: mocks.attachmentEmitSaved
   }
@@ -373,10 +373,10 @@ describe('main zero-covered runtime surfaces', () => {
   })
 
   it('initializes record sync controllers for tag and calendar sync services', async () => {
-    const tagSync = await import('./sync/tag-definition-sync')
-    const sourceSync = await import('./sync/calendar-source-sync')
-    const bindingSync = await import('./sync/calendar-binding-sync')
-    const externalSync = await import('./sync/calendar-external-event-sync')
+    const tagSync = await import('@memry/sync-client/tag-definition-sync')
+    const sourceSync = await import('@memry/sync-client/calendar-source-sync')
+    const bindingSync = await import('@memry/sync-client/calendar-binding-sync')
+    const externalSync = await import('@memry/sync-client/calendar-external-event-sync')
 
     const deps = { queue: { enqueue: vi.fn() }, db: mocks.db, getDeviceId: () => 'device-1' }
     const services = [

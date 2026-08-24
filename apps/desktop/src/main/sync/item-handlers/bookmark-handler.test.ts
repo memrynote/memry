@@ -3,9 +3,9 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
 import type { BookmarkSyncPayload } from '@memry/contracts/sync-payloads'
-import { SyncQueueManager } from '../queue'
-import { bookmarkHandler } from './bookmark-handler'
-import type { ApplyContext } from './types'
+import { SyncQueueManager } from '@memry/sync-client/queue'
+import { bookmarkHandler } from '@memry/sync-client/item-handlers/bookmark-handler'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
 
 describe('bookmarkHandler', () => {

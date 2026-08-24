@@ -11,7 +11,7 @@ import path from 'path'
 import * as schema from '@memry/db-schema/schema'
 import { registerDataDbFunctions } from '../../src/main/database/sqlite-functions'
 import type { DataDb } from '../../src/main/database/client'
-import type { DrizzleDb as SyncDrizzleDb } from '../../src/main/sync/item-handlers/types'
+import type { DrizzleDb as SyncDrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 // Migration paths
 const DATA_MIGRATIONS = path.resolve(__dirname, '../../src/main/database/drizzle-data')

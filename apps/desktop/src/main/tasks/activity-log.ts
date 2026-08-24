@@ -32,7 +32,7 @@ import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { enqueueLocalSyncCreate } from '../sync/local-mutations'
-import { getCurrentDeviceId } from '../sync/current-device-id'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 
 const log = createLogger('TaskActivity')
 

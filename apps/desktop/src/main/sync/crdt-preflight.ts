@@ -10,7 +10,7 @@ import {
   PREFLIGHT_STORE_OP_ORDER,
   type CrdtPreflightStage,
   type CrdtPreflightStoreOp
-} from './crdt-preflight-protocol'
+} from '@memry/sync-client/crdt-preflight-protocol'
 
 const log = createLogger('CrdtPreflight')
 

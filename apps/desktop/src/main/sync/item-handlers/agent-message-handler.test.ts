@@ -17,7 +17,7 @@ vi.mock('../../lib/logger', () => ({
 }))
 
 import { agentMessageHandler } from './agent-message-handler'
-import { MissingSyncParentError } from './types'
+import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { encryptConversationTitle } from '../../agent/storage/conversation-store'
 
 const CHANGED = AgentChannels.events.MESSAGES_CHANGED

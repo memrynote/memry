@@ -8,7 +8,7 @@ import { savedFilters } from '@memry/db-schema/schema/settings'
 import { tagCategories } from '@memry/db-schema/schema/tag-categories'
 import { syncState } from '@memry/db-schema/schema/sync-state'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { runInitialSeed, type InitialSeedDeps } from './initial-seed'
 
 const DEVICE_ID = 'device-A'

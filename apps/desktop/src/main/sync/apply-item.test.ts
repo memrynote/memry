@@ -12,7 +12,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { savedFilters } from '@memry/db-schema/schema/settings'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { ItemApplier, type ApplyItemInput, type EmitToWindows } from './apply-item'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 
 const TEST_PROJECT = {
   id: 'proj-1',
@@ -552,7 +552,7 @@ describe('ItemApplier', () => {
 
   describe('#given settings manager initialized #when settings applied', () => {
     it('#then delegates to mergeRemote', async () => {
-      const { initSettingsSyncManager, resetSettingsSyncManager } = await import('./settings-sync')
+      const { initSettingsSyncManager, resetSettingsSyncManager } = await import('@memry/sync-client/settings-sync')
       initSettingsSyncManager({
         db: asSyncDb(testDb.db),
         getDeviceId: () => 'device-1',
@@ -579,7 +579,7 @@ describe('ItemApplier', () => {
 
   describe('#given settings manager NOT initialized #when settings applied', () => {
     it('#then returns skipped', async () => {
-      const { resetSettingsSyncManager } = await import('./settings-sync')
+      const { resetSettingsSyncManager } = await import('@memry/sync-client/settings-sync')
       resetSettingsSyncManager()
 
       const result = applier.apply({

@@ -1,5 +1,4 @@
 import { and, asc, count, desc, eq, like, notLike, type SQL } from 'drizzle-orm'
-import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   noteMetadata,
   propertyDefinitions,
@@ -8,9 +7,9 @@ import {
   type PropertyDefinition,
   type NewPropertyDefinition
 } from '@memry/db-schema/data-schema'
-import type * as dataSchema from '@memry/db-schema/data-schema'
+import type { DrizzleDb } from '@memry/db-schema/drizzle-db'
 
-export type NoteMetadataDb = BetterSQLite3Database<typeof dataSchema>
+export type NoteMetadataDb = DrizzleDb
 
 export interface ListCanonicalNoteMetadataOptions {
   folder?: string

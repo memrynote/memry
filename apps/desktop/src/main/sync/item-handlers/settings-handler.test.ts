@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { SettingsSyncPayload } from '@memry/contracts/settings-sync'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const mockMergeRemote = vi.fn()
 const mockGetSettings = vi.fn(() => ({}))
@@ -12,7 +12,7 @@ const mockUpdateField = vi.fn()
 const mockEnqueueCreate = vi.fn()
 const mockEnqueueUpdate = vi.fn()
 const mockEnqueueDelete = vi.fn()
-vi.mock('../settings-sync', () => ({
+vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn(() => ({
     mergeRemote: mockMergeRemote,
     getSettings: mockGetSettings,

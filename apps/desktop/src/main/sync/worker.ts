@@ -2,7 +2,7 @@ import { parentPort } from 'worker_threads'
 import sodium from 'libsodium-wrappers-sumo'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
-import { ItemTooLargeError } from './note-size'
+import { ItemTooLargeError } from '@memry/sync-client/note-size'
 import { secureCleanup } from '../crypto/primitives'
 import { createLogger } from '../lib/logger'
 import type {
@@ -11,7 +11,7 @@ import type {
   EncryptedPushResult,
   DecryptedPullItem,
   DecryptionFailure
-} from './worker-protocol'
+} from '@memry/sync-client/worker-protocol'
 if (!parentPort) {
   throw new Error('worker.ts must be run as a worker_threads Worker')
 }

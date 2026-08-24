@@ -11,25 +11,25 @@ and its pass/fail gate (plan non-negotiable #4).
 
 ## A. Settled by the decision record (carried unchanged)
 
-| Decision | Rationale (from the record) |
-|---|---|
-| Expo (managed + dev client, prebuild), `apps/mobile` in this monorepo | record §2–3 |
-| Vault parity, not feature parity; Agent Chat / importers / semantic search / canvas editing out; FTS stays; canvas read-only | record §1 |
-| Native RN UI; note body only in a WebView hosting BlockNote; `@memry/editor-schema` single source of truth | record §4 |
-| **RN side owns the Y.Doc**; WebView gets a bridge provider; string-only base64-framed bridge, batched both ends (launch requirement) | record §4; WebView-owned Y.Doc + IndexedDB rejected — iOS evicts WKWebView storage |
-| SQLite is the note store (no files); bodies raw markdown incl. frontmatter, byte-identical to desktop; attachments as sandbox files with NSFileProtection, never blobs | record §5 |
-| JSI libsodium (WASM `libsodium-wrappers-sumo` will not run under Hermes); byte parity with desktop vectors is a hard gate | record §6 |
-| Yjs persistence: SQLite-backed adapter replaces `y-leveldb`; outbox persisted in SQLite | record §6–7 |
-| `@memry/sync-client` extracted **before** mobile code; 10 adapter seams; desktop stays green | record §7 |
-| Foreground sync + `BGAppRefreshTask`; silent push v2; reminders via local notifications from synced data | record §7 |
-| First sync: metadata + last 30 days of bodies, rest on demand; attachments lazy + Wi-Fi-only default | record §7 |
-| **No cert pinning on mobile** (App Store review latency makes a bad pin unfixable); desktop placeholder pins = separate pre-existing issue | record §7, open risk 5 |
-| Keys in `expo-secure-store`, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`; no Face ID gate v1; password + recovery-phrase unlock paths | record §8 |
-| StoreKit 2 IAP in v1; entitlement `source` gains `'apple'`; either-active entitles, later expiry wins; ASSN V2 + `originalTransactionId→account`; double subscription detected and surfaced | record §9 |
-| Production safety kit in Phase 2 (header, min-version table, kill switch, write attribution) | record §10 |
-| 8-phase release train, serial gates; slip cuts canvas viewer then reminders; Phases 0–1 unskippable | record §11 |
-| Store compliance (export declaration, privacy manifest, accurate labels, in-app account deletion) in Phase 5 | record §12 |
-| TestFlight internal ring (5–10, real vaults) only after G3 + live kill switch | record §13 |
+| Decision                                                                                                                                                                                    | Rationale (from the record)                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Expo (managed + dev client, prebuild), `apps/mobile` in this monorepo                                                                                                                       | record §2–3                                                                        |
+| Vault parity, not feature parity; Agent Chat / importers / semantic search / canvas editing out; FTS stays; canvas read-only                                                                | record §1                                                                          |
+| Native RN UI; note body only in a WebView hosting BlockNote; `@memry/editor-schema` single source of truth                                                                                  | record §4                                                                          |
+| **RN side owns the Y.Doc**; WebView gets a bridge provider; string-only base64-framed bridge, batched both ends (launch requirement)                                                        | record §4; WebView-owned Y.Doc + IndexedDB rejected — iOS evicts WKWebView storage |
+| SQLite is the note store (no files); bodies raw markdown incl. frontmatter, byte-identical to desktop; attachments as sandbox files with NSFileProtection, never blobs                      | record §5                                                                          |
+| JSI libsodium (WASM `libsodium-wrappers-sumo` will not run under Hermes); byte parity with desktop vectors is a hard gate                                                                   | record §6                                                                          |
+| Yjs persistence: SQLite-backed adapter replaces `y-leveldb`; outbox persisted in SQLite                                                                                                     | record §6–7                                                                        |
+| `@memry/sync-client` extracted **before** mobile code; 10 adapter seams; desktop stays green                                                                                                | record §7                                                                          |
+| Foreground sync + `BGAppRefreshTask`; silent push v2; reminders via local notifications from synced data                                                                                    | record §7                                                                          |
+| First sync: metadata + last 30 days of bodies, rest on demand; attachments lazy + Wi-Fi-only default                                                                                        | record §7                                                                          |
+| **No cert pinning on mobile** (App Store review latency makes a bad pin unfixable); desktop placeholder pins = separate pre-existing issue                                                  | record §7, open risk 5                                                             |
+| Keys in `expo-secure-store`, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`; no Face ID gate v1; password + recovery-phrase unlock paths                                                                  | record §8                                                                          |
+| StoreKit 2 IAP in v1; entitlement `source` gains `'apple'`; either-active entitles, later expiry wins; ASSN V2 + `originalTransactionId→account`; double subscription detected and surfaced | record §9                                                                          |
+| Production safety kit in Phase 2 (header, min-version table, kill switch, write attribution)                                                                                                | record §10                                                                         |
+| 8-phase release train, serial gates; slip cuts canvas viewer then reminders; Phases 0–1 unskippable                                                                                         | record §11                                                                         |
+| Store compliance (export declaration, privacy manifest, accurate labels, in-app account deletion) in Phase 5                                                                                | record §12                                                                         |
+| TestFlight internal ring (5–10, real vaults) only after G3 + live kill switch                                                                                                               | record §13                                                                         |
 
 ## B. Resolved in this research pass
 
@@ -107,14 +107,14 @@ Hermes V1 + reanimated memory regression). Sources: expo.dev/changelog/sdk-55…
 
 ### B5. Candidate facts feeding the spikes (versions verified 2026-08-22)
 
-| Topic | Current state | Feeds |
-|---|---|---|
-| `react-native-libsodium` (serenity-kit) v1.7.0, active, Expo config plugin, New Arch | Covers crypto_pwhash (custom ops/mem ⇒ Argon2id 64 MiB/3), XChaCha20-Poly1305 AEAD, sign incl. `seed_keypair` + detached, `kdf_derive_from_key`, `generichash` (keyed, custom length), `auth`, `box_keypair`. **Only gap: `crypto_scalarmult`** — binding links **full libsodium**, so exposing it is a small C++/TS patch (upstream PR or `patch-package`), not a new native lib | R1 |
-| `expo-sqlite` (SDK 57) | sync+async, prepared statements, Uint8Array BLOBs, **FTS5 on by default**, SQLCipher/libsql options, kv-store; SDK 56 added native ArrayBuffer blobs + session changesets | R2 |
-| `@op-engineering/op-sqlite` | JSI, `executeBatch`/`executeSync`/raw, prepared statements, ArrayBuffer, **update/commit/rollback hooks + reactive queries** (no expo-sqlite equivalent), FTS5 + custom tokenizers, `performanceMode`; prebuild-compatible, no plugin. Gotchas: config must live in **root** package.json under pnpm (podspec walks up); duplicate-SQLite-symbol clash with expo-updates/expo-sqlite (`useThirdPartySQLitePod` / `iosSqlite` workarounds). Perf claims are vendor-run — hence our own benchmark | R2 |
-| Metro/pnpm | Isolated node_modules **first-class since SDK 54** (`node-linker=hoisted` now the fallback, not the requirement); monorepo Metro config automatic since SDK 52 (no manual watchFolders); **package exports stable + default** since Metro 0.82/RN 0.79; raw `./src/*.ts` workspace exports work (Metro transpiles workspace sources) but are a **community pattern, not a documented contract** — known failure modes: `exports` maps pointing at `.ts` breaking node/tsc consumers, `react-native` condition mismatches, duplicate react/expo-module versions | R3 |
-| `react-native-webview` v16.0.0 (2026-07-11) | **Requires New Architecture** (fine on SDK 57). Single-string postMessage; 20 MB base64 shown passing on iOS **in release mode** (debug is drastically slower — never benchmark in debug). **No modern published throughput benchmark** (the classic slowness issue is 2018-stale; batching guidance is 2021) — exactly why R4 is a spike | R4 |
-| Yjs under Hermes | No known blockers: lib0 feature-detects encoders with JS fallbacks; **Hermes V1 ships TextDecoder natively** (+FinalizationRegistry, faster JSON, >4 GB heaps). Polyfills only if pre-V1 Hermes. Precedent: Serenity Notes (same authors) = E2E-encrypted Yjs on Expo | R4, Phase 3 |
+| Topic                                                                                | Current state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Feeds       |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `react-native-libsodium` (serenity-kit) v1.7.0, active, Expo config plugin, New Arch | Covers crypto_pwhash (custom ops/mem ⇒ Argon2id 64 MiB/3), XChaCha20-Poly1305 AEAD, sign incl. `seed_keypair` + detached, `kdf_derive_from_key`, `generichash` (keyed, custom length), `auth`, `box_keypair`. **Only gap: `crypto_scalarmult`** — binding links **full libsodium**, so exposing it is a small C++/TS patch (upstream PR or `patch-package`), not a new native lib                                                                                                                                                                              | R1          |
+| `expo-sqlite` (SDK 57)                                                               | sync+async, prepared statements, Uint8Array BLOBs, **FTS5 on by default**, SQLCipher/libsql options, kv-store; SDK 56 added native ArrayBuffer blobs + session changesets                                                                                                                                                                                                                                                                                                                                                                                      | R2          |
+| `@op-engineering/op-sqlite`                                                          | JSI, `executeBatch`/`executeSync`/raw, prepared statements, ArrayBuffer, **update/commit/rollback hooks + reactive queries** (no expo-sqlite equivalent), FTS5 + custom tokenizers, `performanceMode`; prebuild-compatible, no plugin. Gotchas: config must live in **root** package.json under pnpm (podspec walks up); duplicate-SQLite-symbol clash with expo-updates/expo-sqlite (`useThirdPartySQLitePod` / `iosSqlite` workarounds). Perf claims are vendor-run — hence our own benchmark                                                                | R2          |
+| Metro/pnpm                                                                           | Isolated node_modules **first-class since SDK 54** (`node-linker=hoisted` now the fallback, not the requirement); monorepo Metro config automatic since SDK 52 (no manual watchFolders); **package exports stable + default** since Metro 0.82/RN 0.79; raw `./src/*.ts` workspace exports work (Metro transpiles workspace sources) but are a **community pattern, not a documented contract** — known failure modes: `exports` maps pointing at `.ts` breaking node/tsc consumers, `react-native` condition mismatches, duplicate react/expo-module versions | R3          |
+| `react-native-webview` v16.0.0 (2026-07-11)                                          | **Requires New Architecture** (fine on SDK 57). Single-string postMessage; 20 MB base64 shown passing on iOS **in release mode** (debug is drastically slower — never benchmark in debug). **No modern published throughput benchmark** (the classic slowness issue is 2018-stale; batching guidance is 2021) — exactly why R4 is a spike                                                                                                                                                                                                                      | R4          |
+| Yjs under Hermes                                                                     | No known blockers: lib0 feature-detects encoders with JS fallbacks; **Hermes V1 ships TextDecoder natively** (+FinalizationRegistry, faster JSON, >4 GB heaps). Polyfills only if pre-V1 Hermes. Precedent: Serenity Notes (same authors) = E2E-encrypted Yjs on Expo                                                                                                                                                                                                                                                                                          | R4, Phase 3 |
 
 ## C. Phase 0 spikes — the four open risks (each with a pass/fail gate)
 
@@ -137,6 +137,35 @@ Hermes V1 + reanimated memory regression). Sources: expo.dev/changelog/sdk-55…
   XChaCha only), WASM wrappers (won't run under Hermes — record §6).
 
 ### R2 — SQLite driver benchmark (record: "decide in research.md with a benchmark")
+
+> **DECIDED 2026-08-23 — expo-sqlite** (owner decision, Kaan). The
+> driver _choice_ no longer waits on the comparative benchmark: first-party
+> maintenance, zero config-plugin friction, FTS5 on by default, and one fewer
+> native module (drops the op-sqlite duplicate-SQLite-symbol risk entirely).
+> The T009 rig is retained in reduced scope: it validates the §R2 workload
+> **thresholds** below against expo-sqlite on the reference device (release
+> build) — G0-c passes when all five thresholds hold. If a threshold fails,
+> re-examine schema/indexing first; re-opening the driver question requires a
+> new written decision.
+>
+> **G0-c RESULT (2026-08-23, iPhone 12 Pro, release build): ALL PASS 7/7.**
+>
+> | workload                | total   | p95     | threshold   | result |
+> | ----------------------- | ------- | ------- | ----------- | ------ |
+> | bulk insert 10k+10k     | 1299 ms | —       | ≤ 10 s      | PASS   |
+> | 1k point reads          | 256 ms  | 0.30 ms | p95 ≤ 5 ms  | PASS   |
+> | FTS5 build 10k          | 214 ms  | —       | ≤ 15 s      | PASS   |
+> | 100 ranked FTS queries  | 898 ms  | 9.30 ms | p95 ≤ 30 ms | PASS   |
+> | 5k blob appends         | 3120 ms | 0.74 ms | p95 ≤ 5 ms  | PASS   |
+> | full log replay         | 15 ms   | —       | ≤ 2 s       | PASS   |
+> | cold open → first query | 3 ms    | —       | ≤ 300 ms    | PASS   |
+>
+> Findings baked into the rig and binding for the real implementation:
+> (1) bulk inserts MUST use prepared statements inside a transaction —
+> per-row async round-trips measured 11.65 s vs 1.30 s prepared (9×);
+> (2) expo-sqlite segfaults in `sqlite3Fts5IndexClose` when a connection
+> holding an FTS5 vtab is closed — drop/detach FTS tables before deliberate
+> closes (workaround in the rig; upstream report pending).
 
 - **Spike** (T0.6): same benchmark app, both drivers, physical reference
   device, release build. Workload mirrors our real shapes: (a) bulk insert
@@ -216,16 +245,16 @@ Hermes V1 + reanimated memory regression). Sources: expo.dev/changelog/sdk-55…
 
 ## Resolution status
 
-| Unknown | Status |
-|---|---|
-| R1 libsodium binding | Candidate fixed (react-native-libsodium + scalarmult patch); **open until T0.5 passes** — by design |
-| R2 SQLite driver | Benchmark protocol + decision rule fixed; **open until T0.6 runs** — by design ("decide with a benchmark") |
-| R3 Metro/pnpm | Spike + mitigation ladder fixed; **open until T0.7 passes** — by design |
-| R4 bridge throughput | Rig + thresholds fixed; **open until T0.8 passes** — by design |
-| R5 E2E framework | **Closed: Maestro** (B1) |
-| R6 Apple double-subscription review | Desk spike fixed (T0.10); residual risk owned in Phase 7 |
-| R7 background API | **Closed: expo-background-task** (B4) |
-| R8 IAP client + ASSN V2 on Workers | **Closed: expo-iap + Apple's official library on Workers** (B2, B3); offer-code flag tracked to Phase 5 |
+| Unknown                             | Status                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| R1 libsodium binding                | Candidate fixed (react-native-libsodium + scalarmult patch); **open until T0.5 passes** — by design        |
+| R2 SQLite driver                    | Benchmark protocol + decision rule fixed; **open until T0.6 runs** — by design ("decide with a benchmark") |
+| R3 Metro/pnpm                       | Spike + mitigation ladder fixed; **open until T0.7 passes** — by design                                    |
+| R4 bridge throughput                | Rig + thresholds fixed; **open until T0.8 passes** — by design                                             |
+| R5 E2E framework                    | **Closed: Maestro** (B1)                                                                                   |
+| R6 Apple double-subscription review | Desk spike fixed (T0.10); residual risk owned in Phase 7                                                   |
+| R7 background API                   | **Closed: expo-background-task** (B4)                                                                      |
+| R8 IAP client + ASSN V2 on Workers  | **Closed: expo-iap + Apple's official library on Workers** (B2, B3); offer-code flag tracked to Phase 5    |
 
 No NEEDS CLARIFICATION remains in plan.md's Technical Context: every unknown is
 either closed above or is a decision-record open risk deliberately held open

@@ -255,11 +255,31 @@ export interface ChangesResponse {
   nextCursor: number
 }
 
+/** Platforms the server can hold a write policy for (sync protocol §1). */
+export const CLIENT_PLATFORMS = ['ios', 'android', 'desktop'] as const
+export type ClientPlatform = (typeof CLIENT_PLATFORMS)[number]
+
+/**
+ * The calling platform's current write policy, echoed on sync status so a
+ * client learns about a flipped kill switch or a raised version floor WITHOUT
+ * having to attempt a write and be rejected.
+ *
+ * Optional and only present when the request identified itself with
+ * `x-memry-client`; a legacy desktop client sees the exact response it always
+ * has.
+ */
+export interface ClientPolicy {
+  platform: ClientPlatform
+  writesEnabled: boolean
+  minWriteVersion?: string
+}
+
 export interface SyncStatus {
   connected: boolean
   lastSyncAt?: number
   pendingItems: number
   serverTime: number
+  clientPolicy?: ClientPolicy
 }
 
 export interface ConflictResponse {
@@ -421,11 +441,20 @@ export const RecordChangesResponseSchema = z.object({
   nextCursor: z.number().int().min(0)
 })
 
+export const ClientPlatformSchema = z.enum(CLIENT_PLATFORMS)
+
+export const ClientPolicySchema = z.object({
+  platform: ClientPlatformSchema,
+  writesEnabled: z.boolean(),
+  minWriteVersion: z.string().min(1).optional()
+})
+
 export const SyncStatusSchema = z.object({
   connected: z.boolean(),
   lastSyncAt: z.number().int().min(0).optional(),
   pendingItems: z.number().int().min(0),
-  serverTime: z.number().int().min(0)
+  serverTime: z.number().int().min(0),
+  clientPolicy: ClientPolicySchema.optional()
 })
 
 export const ConflictResponseSchema = z.object({

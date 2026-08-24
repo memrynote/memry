@@ -1,5 +1,5 @@
 import type { FieldClocks } from '@memry/contracts/sync-api'
-import { mergeFields, type MergeResult } from '../sync/field-merge'
+import { mergeFields, type MergeResult } from '@memry/sync-client/field-merge'
 
 export const CALENDAR_EVENT_SYNCABLE_FIELDS = [
   'title',

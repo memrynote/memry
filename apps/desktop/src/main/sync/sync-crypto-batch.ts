@@ -2,15 +2,15 @@ import sodium from 'libsodium-wrappers-sumo'
 import { createLogger } from '../lib/logger'
 import { encryptItemForPush } from './encrypt'
 import { decryptSingleItem } from './decrypt-item'
-import { ItemTooLargeError } from './note-size'
-import type { SyncQueueManager } from './queue'
+import { ItemTooLargeError } from '@memry/sync-client/note-size'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
 import type { SyncWorkerBridge } from './worker-bridge'
 import type {
   RawPushItem,
   PullItemForDecrypt,
   DecryptedPullItem,
   DecryptionFailure
-} from './worker-protocol'
+} from '@memry/sync-client/worker-protocol'
 import type {
   PullItemResponse,
   PushItem,

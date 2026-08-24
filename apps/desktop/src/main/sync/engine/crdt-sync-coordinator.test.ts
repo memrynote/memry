@@ -29,7 +29,7 @@ vi.mock('../../crypto/index', () => ({
 
 const withRetryMock = vi.fn(async (fn: () => Promise<unknown>) => ({ value: await fn() }))
 
-vi.mock('../retry', () => ({
+vi.mock('@memry/sync-client/retry', () => ({
   withRetry: (fn: () => Promise<unknown>, options?: unknown) => withRetryMock(fn, options)
 }))
 

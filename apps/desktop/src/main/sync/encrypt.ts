@@ -7,12 +7,12 @@ import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@memry/
 // Compression before encryption: compression oracle risk accepted because CRDT updates
 // have low entropy variance (attacker can't adaptively probe content) and all crypto
 // operations use constant-time primitives (no timing side-channel)
-import { compressPayload } from './compress'
+import { compressPayload } from '@memry/sync-client/compress'
 import {
   ItemTooLargeError,
   SYNC_ITEM_ENCRYPT_OVERHEAD,
   SYNC_ITEM_MAX_ENCRYPT_BYTES
-} from './note-size'
+} from '@memry/sync-client/note-size'
 
 export interface EncryptItemInput {
   id: string

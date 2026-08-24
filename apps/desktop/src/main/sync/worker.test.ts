@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { EventEmitter } from 'events'
-import type { MainToWorkerMessage, WorkerToMainMessage } from './worker-protocol'
+import type { MainToWorkerMessage, WorkerToMainMessage } from '@memry/sync-client/worker-protocol'
 
 const mockPort = Object.assign(new EventEmitter(), {
   postMessage: vi.fn()

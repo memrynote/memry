@@ -22,13 +22,13 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   TagDefinitionSyncService,
   getTagDefinitionSyncService,
   initTagDefinitionSyncService,
   resetTagDefinitionSyncService
-} from './tag-definition-sync'
+} from '@memry/sync-client/tag-definition-sync'
 
 let db: TestDataDb
 let queue: SyncQueueManager

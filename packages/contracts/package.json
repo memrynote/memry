@@ -61,7 +61,8 @@
     "./ai-inline-channels": "./src/ai-inline-channels.ts",
     "./agent-mcp-channels": "./src/agent-mcp-channels.ts",
     "./vault-api": "./src/vault-api.ts",
-    "./capture-api": "./src/capture-api.ts"
+    "./capture-api": "./src/capture-api.ts",
+    "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -69,7 +70,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@memry/typescript-config": "workspace:*",
+    "libsodium-wrappers-sumo": "^0.8.2",
+    "@types/libsodium-wrappers-sumo": "^0.8.2"
   },
   "dependencies": {
     "@memry/domain-tasks": "workspace:*",

@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events'
+import { SyncEventEmitter } from '@memry/sync-client/emitter'
 
 export interface NetworkMonitorDeps {
   getIsOnline: () => boolean
@@ -52,7 +52,7 @@ const DEFAULT_DEBOUNCE_MS = 2000
 // silent budget. See src/main/sync/emitter-budget.test.ts.
 const MAX_NETWORK_MONITOR_LISTENERS = 10
 
-export class NetworkMonitor extends EventEmitter {
+export class NetworkMonitor extends SyncEventEmitter {
   private _online: boolean
   private onlineOverrideForTests: boolean | null = null
   private pollTimer: ReturnType<typeof setTimeout> | null = null

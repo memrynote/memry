@@ -6,16 +6,16 @@ import {
   type CalendarEventSyncPayload
 } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import type { SyncQueueManager } from '../queue'
-import { increment } from '../vector-clock'
-import { initAllFieldClocks } from '../field-merge'
+import type { SyncQueueManager } from '@memry/sync-client/queue'
+import { increment } from '@memry/sync-client/vector-clock'
+import { initAllFieldClocks } from '@memry/sync-client/field-merge'
 import {
   CALENDAR_EVENT_SYNCABLE_FIELDS,
   mergeCalendarEventFields
 } from '../../calendar/field-merge-calendar'
 import { createLogger } from '../../lib/logger'
-import { BaseItemHandler } from './base-handler'
-import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
+import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
+import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('CalendarEventHandler')
 const CALENDAR_CHANGED = 'calendar:changed'

@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { templates } from '@memry/db-schema/schema/templates'
 import { createTestDataDb, asSyncDb, type TestDatabaseResult } from '@tests/utils/test-db'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   initTemplateSyncService,
   getTemplateSyncService,
   resetTemplateSyncService
-} from './template-sync'
+} from '@memry/sync-client/template-sync'
 
 describe('TemplateSyncService', () => {
   let testDb: TestDatabaseResult

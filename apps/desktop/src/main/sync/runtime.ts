@@ -17,47 +17,47 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
-import { resolveSyncServerUrl } from './sync-server-url'
+import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
 import { toErrorCode } from '@memry/contracts/telemetry-api'
 import { trackMainEvent } from '../telemetry/track'
-import { SyncQueueManager } from './queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { NetworkMonitor } from './network'
 import { WebSocketManager } from './websocket'
-import { initTaskSyncService, resetTaskSyncService } from './task-sync'
-import { initInboxSyncService, resetInboxSyncService } from './inbox-sync'
-import { initFilterSyncService, resetFilterSyncService } from './filter-sync'
-import { initTaskActivitySyncService, resetTaskActivitySyncService } from './task-activity-sync'
-import { getCurrentDeviceId } from './current-device-id'
-import { initBookmarkSyncService, resetBookmarkSyncService } from './bookmark-sync'
-import { initTemplateSyncService, resetTemplateSyncService } from './template-sync'
-import { initHomePageSyncService, resetHomePageSyncService } from './home-page-sync'
-import { initCustomIconSyncService, resetCustomIconSyncService } from './custom-icon-sync'
-import { initReminderSyncService, resetReminderSyncService } from './reminder-sync'
-import { initCanvasSyncService, resetCanvasSyncService } from './canvas-sync'
-import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from './canvas-folder-sync'
-import { initProjectSyncService, resetProjectSyncService } from './project-sync'
-import { initSettingsSyncManager, resetSettingsSyncManager } from './settings-sync'
+import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
+import { initInboxSyncService, resetInboxSyncService } from '@memry/sync-client/inbox-sync'
+import { initFilterSyncService, resetFilterSyncService } from '@memry/sync-client/filter-sync'
+import { initTaskActivitySyncService, resetTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
+import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
+import { initBookmarkSyncService, resetBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
+import { initTemplateSyncService, resetTemplateSyncService } from '@memry/sync-client/template-sync'
+import { initHomePageSyncService, resetHomePageSyncService } from '@memry/sync-client/home-page-sync'
+import { initCustomIconSyncService, resetCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
+import { initCanvasSyncService, resetCanvasSyncService } from '@memry/sync-client/canvas-sync'
+import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
+import { initProjectSyncService, resetProjectSyncService } from '@memry/sync-client/project-sync'
+import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
-import { resetAttachmentDownloadSession } from './attachment-download-state'
+import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
-import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from './tag-definition-sync'
-import { initTagCategorySyncService, resetTagCategorySyncService } from './tag-category-sync'
-import { initFolderConfigSyncService, resetFolderConfigSyncService } from './folder-config-sync'
+import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
+import { initTagCategorySyncService, resetTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
+import { initFolderConfigSyncService, resetFolderConfigSyncService } from '@memry/sync-client/folder-config-sync'
 import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
 import {
   initCalendarSourceSyncService,
   resetCalendarSourceSyncService
-} from './calendar-source-sync'
+} from '@memry/sync-client/calendar-source-sync'
 import {
   initCalendarBindingSyncService,
   resetCalendarBindingSyncService
-} from './calendar-binding-sync'
+} from '@memry/sync-client/calendar-binding-sync'
 import {
   initCalendarExternalEventSyncService,
   resetCalendarExternalEventSyncService
-} from './calendar-external-event-sync'
+} from '@memry/sync-client/calendar-external-event-sync'
 import { getRemoteSyncAdapter } from './item-handlers'
 import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
@@ -65,11 +65,11 @@ import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
 import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
 import { CrdtUpdateQueue } from './crdt-queue'
-import { CrdtSnapshotScheduler } from './crdt-snapshot-scheduler'
-import { planCrdtUpdatePush } from './crdt-payload'
+import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
+import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-notes'
 import { recoverDirtyItems } from './dirty-recovery'
-import { markSyncEligible, markSyncIneligible } from './sync-eligibility'
+import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
 import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
@@ -84,7 +84,7 @@ import {
   isKeyMaterialActivityRecent,
   keyMaterialActivityRemainingMs
 } from './key-verification'
-import { withRetry } from './retry'
+import { withRetry } from '@memry/sync-client/retry'
 import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
@@ -390,7 +390,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       }
 
       const queue = new SyncQueueManager(db)
-      type RuntimeSyncDb = SyncEngineDeps['db'] & Parameters<typeof initTaskSyncService>[0]['db']
+      // Both halves widened to the same DrizzleDb during the sync-client
+      // extraction, so the old intersection is a single type now.
+      type RuntimeSyncDb = SyncEngineDeps['db']
       const runtimeSyncDb = db as unknown as RuntimeSyncDb
 
       const getDeviceId = (): string | null => getCurrentDeviceId(db)
@@ -845,7 +847,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         workerBridge,
         refreshAccessToken: () => refreshAccessToken(),
         calendarSyncOneSource: (sourceId) => {
-          void syncGoogleCalendarSource(runtimeSyncDb, sourceId).catch((err) => {
+          void syncGoogleCalendarSource(db, sourceId).catch((err) => {
             log.warn('calendarSyncOneSource failed', { sourceId, err })
           })
         },

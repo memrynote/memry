@@ -6,7 +6,7 @@ import type { LargeNoteEntry, LargeNotesResult } from '@memry/contracts/ipc-sync
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { toAbsolutePath } from '../vault/notes-io'
-import { classifyNoteSyncSize, NOTE_SYNC_MAX_BYTES } from './note-size'
+import { classifyNoteSyncSize, NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 
 const log = createLogger('LargeNotes')
 

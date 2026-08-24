@@ -11,9 +11,9 @@ import {
   enqueueLocalSyncDelete,
   enqueueLocalSyncUpdate
 } from '../local-mutations'
-import { SyncQueueManager } from '../queue'
+import { SyncQueueManager } from '@memry/sync-client/queue'
 import { getHandler, getRemoteSyncAdapter } from './index'
-import type { ApplyContext, DrizzleDb } from './types'
+import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 
 function makeCtx(testDb: TestDatabaseResult): ApplyContext {
   return {
@@ -37,13 +37,13 @@ describe('calendar sync handlers', () => {
     const eventSync = await import('../calendar-event-sync').catch(() => null)
     eventSync?.resetCalendarEventSyncService()
 
-    const sourceSync = await import('../calendar-source-sync').catch(() => null)
+    const sourceSync = await import('@memry/sync-client/calendar-source-sync').catch(() => null)
     sourceSync?.resetCalendarSourceSyncService()
 
-    const bindingSync = await import('../calendar-binding-sync').catch(() => null)
+    const bindingSync = await import('@memry/sync-client/calendar-binding-sync').catch(() => null)
     bindingSync?.resetCalendarBindingSyncService()
 
-    const externalSync = await import('../calendar-external-event-sync').catch(() => null)
+    const externalSync = await import('@memry/sync-client/calendar-external-event-sync').catch(() => null)
     externalSync?.resetCalendarExternalEventSyncService()
 
     testDb.close()
@@ -380,9 +380,9 @@ describe('calendar sync handlers', () => {
   })
 
   it('preserves synced provider metadata, bindings, and imported cache rows across handler upserts', async () => {
-    const { initCalendarSourceSyncService } = await import('../calendar-source-sync')
-    const { initCalendarBindingSyncService } = await import('../calendar-binding-sync')
-    const { initCalendarExternalEventSyncService } = await import('../calendar-external-event-sync')
+    const { initCalendarSourceSyncService } = await import('@memry/sync-client/calendar-source-sync')
+    const { initCalendarBindingSyncService } = await import('@memry/sync-client/calendar-binding-sync')
+    const { initCalendarExternalEventSyncService } = await import('@memry/sync-client/calendar-external-event-sync')
 
     initCalendarSourceSyncService({
       queue,

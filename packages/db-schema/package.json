@@ -9,7 +9,8 @@
     "./data-schema": "./src/data-schema.ts",
     "./index-schema": "./src/index-schema.ts",
     "./schema": "./src/schema/index.ts",
-    "./schema/*": "./src/schema/*.ts"
+    "./schema/*": "./src/schema/*.ts",
+    "./drizzle-db": "./src/drizzle-db.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

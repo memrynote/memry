@@ -6,6 +6,8 @@ import { PullRequestSchema, RecordPushRequestSchema } from '@memry/contracts/syn
 import { safeBase64Decode } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
+import { clientGateMiddleware } from '../middleware/client-gate'
+import { getClientPolicy, toPolicySnapshot } from '../services/client-policies'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { syncTypesMiddleware } from '../middleware/sync-types'
@@ -48,6 +50,7 @@ import type { AppContext } from '../types'
 export const sync = new Hono<AppContext>()
 
 sync.use('*', authMiddleware)
+sync.use('*', clientGateMiddleware)
 
 // Auth-only, NOT single-vault-gated: a joining device must enumerate every vault
 // on the account, so this route is registered before paidSyncMiddleware (which
@@ -268,7 +271,18 @@ const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => 
   const deviceId = c.get('deviceId')!
   const vaultId = c.get('vaultId')!
   const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
-  return c.json(status)
+
+  // Status is what a client polls on startup and on foreground, so it is where
+  // a flipped kill switch reaches a device WITHOUT the device first attempting
+  // a write and eating a 403 (contract §2, last bullet). Only clients that
+  // identified themselves get the field: a header-less desktop build receives
+  // byte-for-byte the response it received before this shipped, and pays no
+  // extra query for it.
+  const client = c.get('client')
+  if (!client) return c.json(status)
+
+  const policy = await getClientPolicy(c.env.DB, client.platform)
+  return c.json({ ...status, clientPolicy: toPolicySnapshot(client.platform, policy) })
 }
 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
@@ -340,7 +354,8 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
       userId,
       deviceId,
       parsed.items,
-      vaultId
+      vaultId,
+      c.get('client') ?? null
     )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
@@ -547,7 +562,15 @@ const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> =
   const totalBytes = buffers.reduce((sum, buf) => sum + buf.byteLength, 0)
   let sequences: number[]
   try {
-    sequences = await storeUpdates(c.env.DB, userId, vaultId, parsed.noteId, deviceId, buffers)
+    sequences = await storeUpdates(
+      c.env.DB,
+      userId,
+      vaultId,
+      parsed.noteId,
+      deviceId,
+      buffers,
+      c.get('client') ?? null
+    )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
       logCrdtTraffic({
@@ -722,7 +745,8 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
       vaultId,
       parsed.noteId,
       deviceId,
-      snapshotBytes
+      snapshotBytes,
+      c.get('client') ?? null
     )
   } catch (error) {
     if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {

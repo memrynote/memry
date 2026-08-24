@@ -4,7 +4,7 @@ import { verifySignature } from '../crypto/signatures'
 import { secureCleanup } from '../crypto/primitives'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import type { VectorClock } from '@memry/contracts/sync-api'
-import { decompressPayload } from './compress'
+import { decompressPayload } from '@memry/sync-client/compress'
 
 export class SignatureVerificationError extends Error {
   constructor(

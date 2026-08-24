@@ -41,5 +41,6 @@ export type AppContext = {
     vaultId?: string
     syncEntitlement?: import('./services/entitlements').SyncEntitlement
     syncTypes?: import('@memry/contracts/sync-api').RecordSyncItemType[]
+    client?: import('./lib/client-identity').ClientIdentity
   }
 }

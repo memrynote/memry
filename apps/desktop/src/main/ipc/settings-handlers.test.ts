@@ -114,7 +114,7 @@ vi.mock('../inbox/voice-transcription-keychain', () => ({
 }))
 
 const mockUpdateField = vi.fn()
-vi.mock('../sync/settings-sync', () => ({
+vi.mock('@memry/sync-client/settings-sync', () => ({
   getSettingsSyncManager: vi.fn(() => ({
     updateField: mockUpdateField
   }))
@@ -160,7 +160,7 @@ import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
 import * as projections from '../projections'
-import { getSettingsSyncManager } from '../sync/settings-sync'
+import { getSettingsSyncManager } from '@memry/sync-client/settings-sync'
 
 const originalPlatform = process.platform
 

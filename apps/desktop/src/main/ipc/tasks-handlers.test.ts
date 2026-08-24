@@ -78,15 +78,15 @@ vi.mock('@main/database/queries/tasks', () => ({
 }))
 
 // Mock sync modules
-vi.mock('../sync/task-sync', () => ({
+vi.mock('@memry/sync-client/task-sync', () => ({
   getTaskSyncService: vi.fn()
 }))
 
-vi.mock('../sync/project-sync', () => ({
+vi.mock('@memry/sync-client/project-sync', () => ({
   getProjectSyncService: vi.fn()
 }))
 
-vi.mock('../sync/offline-clock', () => ({
+vi.mock('@memry/sync-client/offline-clock', () => ({
   incrementTaskClocksOffline: vi.fn(),
   incrementProjectClocksOffline: vi.fn()
 }))
@@ -134,8 +134,8 @@ import { getDatabase, requireDatabase } from '../database'
 import { generateId } from '../lib/id'
 import * as taskQueries from '@main/database/queries/tasks'
 import * as projectQueries from '@main/database/queries/projects'
-import { getTaskSyncService } from '../sync/task-sync'
-import { incrementTaskClocksOffline } from '../sync/offline-clock'
+import { getTaskSyncService } from '@memry/sync-client/task-sync'
+import { incrementTaskClocksOffline } from '@memry/sync-client/offline-clock'
 import { propagateProjectRename, propagateProjectDelete } from '../tasks/project-name-propagation'
 
 describe('tasks-handlers', () => {

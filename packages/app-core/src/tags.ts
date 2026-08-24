@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm'
 import { inboxItemTags, tagDefinitions, taskTags } from '@memry/db-schema/data-schema'
-import type { DataDb } from './database.ts'
+import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
-import type { NotesService } from './notes.ts'
+import type { NotesService } from './service-types.ts'
 
 export interface TagRecord {
   name: string
