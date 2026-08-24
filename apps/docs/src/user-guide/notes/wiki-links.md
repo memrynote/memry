@@ -28,11 +28,16 @@ sentence reads exactly as it did before; the words are now a link.
 
 Pick nothing and click away, and the text goes back to being ordinary text.
 
-The link displays the target's current title, but the underlying reference uses a stable ID — renaming the target doesn't break the link.
+The link stores the target's **title** — `[[Meeting]]` in the file means "the note titled
+Meeting", matched case-insensitively. Renaming the target therefore leaves existing links
+pointing at the old title; see [Broken Links](#broken-links) for how such a link looks and
+what clicking it does.
 
 ## Following a Link
 
-Click any wiki link to open the target in a new tab. <kbd>⌘</kbd>+click to open in the background; <kbd>⌥</kbd>+click to open in a split pane.
+Click any wiki link to open the target in a new tab — or in this tab, if you have turned "clicking a page opens a new tab" off in settings.
+
+A click on the link itself always follows it, however long you hold the button down, and the link never flashes its markdown on the way. One consequence: a drag that begins on a link does not select text — begin it in the words beside the link instead. Placing the cursor beside a link is a separate gesture — see “Seeing a link’s markdown” below — and clicking on the link never does that instead of opening the note.
 
 ## Linking to a Heading
 
@@ -65,8 +70,9 @@ offered.
 
 ### Seeing a link's markdown
 
-Put the cursor immediately before or after a link — by arrow key or by clicking there —
-and that link shows its markdown for as long as the cursor stays beside it:
+Put the cursor immediately before or after a link — by arrow key, or by clicking in the
+text beside it rather than on the link itself — and that link shows its markdown for as long
+as the cursor stays beside it:
 `[[Continent#North America|North America]]`, exactly what the vault file holds. Move the
 cursor away and it goes back to reading as a link.
 
@@ -237,21 +243,42 @@ Turn the motion off with **Live motion** under the gear icon → **Display** if 
 still graph — the same forces then run once and stop, which is also the lighter option on
 very large vaults.
 
-## Renaming Targets
+## Renaming a Linked Note
 
-Renaming a note:
+Renaming a note updates every wiki link that points at it, across the whole vault: each
+inbound `[[Old Title]]` becomes `[[New Title]]` in the source note itself, so the link
+keeps opening the same note and backlinks, mention counts, and the graph carry on
+unchanged. This covers every link form — `[[Old Title#Heading]]` keeps its heading,
+`[[Old Title|label]]` keeps its label (the visible text you chose never changes) — and it
+applies to attached files too: rename a PDF inside Memry and notes linking to it by name
+follow along.
 
-- Updates the **display text** in inbound links
-- Preserves the **link target** (stable ID)
-- Updates search and the backlinks panel immediately
+The rewrite is an ordinary edit to each source note, so it appears in open editors right
+away and syncs to your other devices like any other change. Links written in another app
+before the rename (or renames done outside Memry, in Finder or Explorer) are not covered —
+those show up as broken links below.
 
-You don't need to find-and-replace `[[Old title]]` references — memrynote rewires display text everywhere.
+## Broken Links
 
-## Deleting a Linked Note
+A wiki link whose target does not exist — a typo, a note renamed outside Memry, or a
+deleted one — is
+shown with a **dashed underline and a muted tint** instead of the usual link colour, in
+both the note editor and the journal. Hovering it shows a small card reading
+**"Not found — click to create"** instead of the usual preview.
 
-Deleting a target leaves "broken" wiki links rendered with a strikethrough. Recreating a note with the same title doesn't automatically restore the link — wiki links bind to IDs, not titles.
+Clicking a broken link asks before doing anything: a dialog offers to **create** a note
+with that title, or **cancel** and leave everything as it was. (Earlier builds created the
+note silently, which could mint an unwanted duplicate when the link was merely stale.)
+Confirming creates the note in your default folder and opens it — exactly what the old
+one-click behaviour did.
 
-If you need to repair broken links, use the inline link menu: it lets you re-target to an existing note or create a new one with the displayed title.
+The styling stays current without a reload: creating, renaming, or deleting a note — on
+this device or another — restyles the links in every open editor. Recreating a note with a
+broken link's title makes that link live again, because links match by title.
+
+Only the note half is checked: `[[Meeting#Decisions]]` is broken when there is no note
+titled "Meeting", not when the heading is missing — a link to a renamed or deleted heading
+still opens the note at the top, as before.
 
 ## Practical Patterns
 

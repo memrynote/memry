@@ -15,6 +15,12 @@ import {
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { BlockNoteView } from '@blocknote/shadcn'
+import {
+  ImageAttachmentMenu,
+  ImageHoverMenuButton,
+  useImageHoverMenu,
+  type ImageMenuTarget
+} from './attachment-block-menu'
 import { useTheme } from 'next-themes'
 import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
 import { CustomAIMenu } from './ai-menu'
@@ -79,6 +85,7 @@ import {
   useEditorFileUpload,
   useEditorSync,
   useTagSuggestions,
+  useWikiLinkBroken,
   useWikiLinkSuggestions,
   usePasteLinkMenu,
   useTableCellImage
@@ -98,6 +105,8 @@ import {
   dateMentionHasGhostFill
 } from './date-mention-ghost-plugin'
 import { createWikiLinkEditPlugin } from './wiki-link-edit-plugin'
+import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
+import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
 import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
 import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
 import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
@@ -387,6 +396,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     notePathRef.current = notePath
   }, [notePath])
 
+  // Read through a ref by the wiki-link plugin below. Re-registering a
+  // ProseMirror plugin tears its view down and takes collaborative undo with it
+  // (see `registerEditorPlugin`), so that effect must not depend on a callback
+  // whose identity changes on every render of the page above.
+  const onInternalLinkClickRef = useRef(onInternalLinkClick)
+  useEffect(() => {
+    onInternalLinkClickRef.current = onInternalLinkClick
+  }, [onInternalLinkClick])
+
   // Only `pages/note.tsx` passes `notePath`; the journal, canvas cards and a
   // project's home note mount this editor knowing only the note's id. Since
   // attachments are now written relative to their note wherever they are saved,
@@ -463,7 +481,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     focusAtEndRef,
     editorContainerRef,
     onLinkClick,
-    onInternalLinkClick,
     initialHighlight,
     initialAnchorId
   })
@@ -551,6 +568,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
   // Hook #3: Wiki link suggestions
   const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(editor)
+
+  // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
+  // live by note created/renamed/deleted events (#1716).
+  useWikiLinkBroken(editor)
 
   // Hook #4: Tag suggestions + inline plugin
   const { handleTagSuggestionSelect } = useTagSuggestions({
@@ -854,9 +875,29 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       openMenu: () =>
         editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
           deleteTriggerCharacter: false
-        })
+        }),
+      // Following a link lives in the plugin rather than in a DOM click
+      // listener — `handleDOMEvents` there says why, and why it fires at
+      // mousedown. Both halves of what the listener did, in the same order, so
+      // nothing downstream can tell the difference: the callback opens the note,
+      // and the window event is kept because it was broadcast before (nothing in
+      // the renderer subscribes to it today, so dropping it would be a silent
+      // contract change for anything outside).
+      onNavigate: (target) => {
+        window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target } }))
+        onInternalLinkClickRef.current?.(target)
+      }
     })
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
+
+  // `[ ] ` typed at the head of a table cell becomes an inline checkbox.
+  // BlockNote's own input rules own that gesture everywhere else and cannot
+  // fire inside a cell, so this never competes with them — see the plugin.
+  // Appended rather than prepended: it is an `appendTransaction`, so nothing
+  // about key handling order applies to it.
+  useEffect(() => {
+    return registerEditorPlugin(editor, createInlineCheckboxPlugin())
   }, [editor])
 
   // `@` quick-insert menu: a Date group (date + remind) when the query parses
@@ -1239,22 +1280,56 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, noteId, tasksCtx]
   )
 
+  // A context-menu click on an image block opens the attachment menu (reveal /
+  // open / copy path — issue #1709). The built-in image block has no custom
+  // render to mount a trigger in, so the menu is a controlled dropdown anchored
+  // at the click point, and a hover "⋯" button floats over the image.
+  const [imageMenuTarget, setImageMenuTarget] = useState<ImageMenuTarget | null>(null)
+
+  // From a DOM element inside an image block to the block's raw stored props.
+  const resolveImageFromElement = useCallback(
+    (element: HTMLElement): { url: string; name: string } | null => {
+      const blockId = element.closest('[data-id]')?.getAttribute('data-id')
+      if (!blockId) return null
+
+      const block = editor.getBlock(blockId)
+      if (!block || block.type !== 'image') return null
+      const { url, name } = block.props as { url?: string; name?: string }
+      if (!url) return null
+
+      return { url, name: name || url.split('/').pop() || url }
+    },
+    [editor]
+  )
+
+  const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
+    useImageHoverMenu(containerRef, resolveImageFromElement)
+
   const handleEditorContextMenu = useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement
+
       const checkListBlock = target.closest('[data-content-type="checkListItem"]')
-      if (!checkListBlock) return
+      if (checkListBlock) {
+        const blockId = checkListBlock.getAttribute('data-id')
+        if (!blockId) return
 
-      const blockId = checkListBlock.getAttribute('data-id')
-      if (!blockId) return
+        const block = editor.getBlock(blockId)
+        if (!block || block.type !== 'checkListItem') return
 
-      const block = editor.getBlock(blockId)
-      if (!block || block.type !== 'checkListItem') return
+        e.preventDefault()
+        convertCheckboxToTask(blockId)
+        return
+      }
+
+      if (!target.closest('img')) return
+      const image = resolveImageFromElement(target)
+      if (!image) return
 
       e.preventDefault()
-      convertCheckboxToTask(blockId)
+      setImageMenuTarget({ x: e.clientX, y: e.clientY, ...image })
     },
-    [editor, convertCheckboxToTask]
+    [editor, convertCheckboxToTask, resolveImageFromElement]
   )
 
   // Backspace-at-start guard for taskBlock neighbours.
@@ -1382,6 +1457,18 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           {!marqueeZoneEl && (
             <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
           )}
+          {imageMenuTarget && (
+            <ImageAttachmentMenu
+              target={imageMenuTarget}
+              onClose={() => setImageMenuTarget(null)}
+            />
+          )}
+          {imageHoverTarget && !imageMenuTarget && (
+            <ImageHoverMenuButton
+              target={imageHoverTarget}
+              onOpenChange={handleImageHoverMenuOpenChange}
+            />
+          )}
           <BlockNoteView
             editor={editor}
             editable={editable}
@@ -1491,6 +1578,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 const inCell = isSelectionInTableCell(editor)
                 const defaults = withTableHeaderRow(
                   getDefaultReactSlashMenuItems(editor).map((item) => {
+                    // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                    // so inside a cell BlockNote puts the checklist after the
+                    // whole table. Inside a cell the item inserts the inline
+                    // node at the caret instead — same row, same label.
+                    if ((item as { key?: string }).key === 'check_list') {
+                      return inCell
+                        ? {
+                            ...item,
+                            onItemClick: () =>
+                              editor.insertInlineContent([createInlineCheckboxContent(false)])
+                          }
+                        : item
+                    }
                     if ((item as { key?: string }).key !== 'image') return item
                     // `img` and `picture` already ship as image aliases; `photo`
                     // did not, and is what people actually type.
@@ -1625,24 +1725,27 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
           )}
 
-          {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
-            <WikiLinkPreviewCard
-              preview={wikiLinkHover.preview}
-              position={wikiLinkHover.position}
-              onMouseEnter={wikiLinkHover.handleCardMouseEnter}
-              onMouseLeave={wikiLinkHover.handleCardMouseLeave}
-              onTagClick={(tag, color) =>
-                openSidebarItem({
-                  type: 'tag',
-                  title: tag,
-                  path: '/tags/' + tag,
-                  entityId: tag,
-                  color
-                })
-              }
-              onNoteClick={onInternalLinkClick}
-            />
-          )}
+          {wikiLinkHover.isVisible &&
+            (wikiLinkHover.preview || wikiLinkHover.missingTarget) &&
+            wikiLinkHover.position && (
+              <WikiLinkPreviewCard
+                preview={wikiLinkHover.preview}
+                missingTarget={wikiLinkHover.missingTarget}
+                position={wikiLinkHover.position}
+                onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+                onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+                onTagClick={(tag, color) =>
+                  openSidebarItem({
+                    type: 'tag',
+                    title: tag,
+                    path: '/tags/' + tag,
+                    entityId: tag,
+                    color
+                  })
+                }
+                onNoteClick={onInternalLinkClick}
+              />
+            )}
 
           {linkMentionHover.isVisible &&
             linkMentionHover.url &&

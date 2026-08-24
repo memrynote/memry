@@ -1,4 +1,12 @@
 {
+  "wikiLinkCreateDialog": {
+    "title": "Create note?",
+    "body": "No note titled \"{title}\". Create it?",
+    "create": "Create"
+  },
+  "wikiLinkPreview": {
+    "notFound": "Not found — click to create \"{title}\""
+  },
   "page": {
     "empty": {
       "title": "No note selected",
@@ -160,9 +168,25 @@
       "revealInFinder": "Reveal in Finder",
       "revealInSidebar": "Reveal in navigation",
       "openInDefaultApp": "Open in default app",
+      "attachments": "Attachments…",
       "disableLocalOnly": "Disable local only",
       "setLocalOnly": "Set local only",
       "delete": "Delete note"
+    },
+    "attachmentMenu": {
+      "menuLabel": "File actions",
+      "storedAs": "Stored as {name}",
+      "notSynced": "Not synced to this device yet",
+      "revealFailed": "Failed to reveal file",
+      "openFailed": "Failed to open file",
+      "missingTitle": "Attachment file missing",
+      "missingExpected": "Expected file: {name}"
+    },
+    "attachmentsDialog": {
+      "title": "Attachments",
+      "description": "Files stored with this note",
+      "empty": "This note has no attachments.",
+      "loadFailed": "Failed to load attachments"
     },
     "breadcrumb": {
       "locationAria": "Note location",

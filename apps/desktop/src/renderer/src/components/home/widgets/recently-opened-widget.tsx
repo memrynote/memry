@@ -4,17 +4,19 @@ import { useTabActions } from '@/contexts/tabs/context'
 import type { WidgetComponentProps } from '@/lib/home/widget-registry'
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { FileImage, FileText } from '@/lib/icons'
+import { FileImage, FileText, PenTool } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { canvasTabData } from '@/lib/sidebar-tab-data'
 import { formatRelative } from '@/components/folder-view/note-card-pieces'
 import { extractFolderFromPath } from '@/components/notes-tree-utils'
 import { WidgetRow, WidgetEmptyState } from './widget-list'
 import { useT } from '@memry/i18n/renderer'
 
 /**
- * Sibling of the "Recently edited" widget, for the notes you looked at but did
- * not change — those never surface anywhere else. A note you opened *and*
- * edited appears in both lists; the row meta ("opened …" vs "edited …") is
- * what tells the two apart.
+ * Sibling of the "Recently edited" widget, for the notes and canvases you
+ * looked at but did not change — those never surface anywhere else. An item you
+ * opened *and* edited appears in both lists; the row meta ("opened …" vs
+ * "edited …") is what tells the two apart.
  */
 export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.Element {
   const { t } = useT('common')
@@ -49,29 +51,44 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
         const meta = folder
           ? t('home.widget.openedMetaWithFolder', { folder, time })
           : t('home.widget.openedMeta', { time })
+        const isCanvas = item.itemType === 'canvas'
+        // A canvas may genuinely have no title; the sidebar labels those the
+        // same way, so the two surfaces read alike.
+        const title = isCanvas ? item.title || t('canvas.untitled') : item.title
         return (
-          <WidgetRow key={item.itemId}>
+          // Keyed by type as well as id: the trail's unique index is
+          // (item_type, item_id), so a note and a canvas can share an id.
+          <WidgetRow key={`${item.itemType}:${item.itemId}`}>
             <button
               type="button"
-              data-testid="recently-opened-note"
+              data-testid={isCanvas ? 'recently-opened-canvas' : 'recently-opened-note'}
               data-note-id={item.itemId}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted/60 active:bg-muted focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)]"
               onClick={() =>
-                openTab({
-                  type: 'note',
-                  title: item.title,
-                  icon: 'file-text',
-                  path: `/notes/${item.itemId}`,
-                  entityId: item.itemId,
-                  isPinned: false,
-                  isModified: false,
-                  isDeleted: false,
-                  isPreview: true
-                })
+                openTab(
+                  isCanvas
+                    ? canvasTabData({ id: item.itemId, title: item.title }, t('canvas.untitled'))
+                    : {
+                        type: 'note',
+                        title: item.title,
+                        icon: 'file-text',
+                        path: `/notes/${item.itemId}`,
+                        entityId: item.itemId,
+                        isPinned: false,
+                        isModified: false,
+                        isDeleted: false,
+                        isPreview: true
+                      }
+                )
               }
             >
               {item.emoji ? (
-                <span className="shrink-0 text-sm leading-none">{item.emoji}</span>
+                // Icons are not always bare emoji: a note or canvas can carry an
+                // `icon:`/`custom:` reference, which reads as literal text if
+                // rendered raw.
+                <NoteIconDisplay value={item.emoji} className="shrink-0 text-sm leading-none" />
+              ) : isCanvas ? (
+                <PenTool className="size-4 shrink-0 text-muted-foreground/70" />
               ) : item.fileType === 'image' ? (
                 <FileImage className="size-4 shrink-0 text-muted-foreground/70" />
               ) : (
@@ -79,7 +96,7 @@ export function RecentlyOpenedWidget({ size }: WidgetComponentProps): React.JSX.
               )}
               <span className="flex min-w-0 grow flex-col">
                 <span className="truncate text-[13px] font-medium leading-tight text-foreground/90">
-                  {item.title}
+                  {title}
                 </span>
                 <span className="truncate text-[11px] leading-tight text-text-tertiary">
                   {meta}

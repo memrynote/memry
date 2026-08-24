@@ -33,6 +33,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { CanvasLinkDialog } from './canvas-link-dialog'
+import { claimTooLargeNotice, rearmTooLargeNotice } from './canvas-too-large-notice'
 import {
   elementLinkTarget,
   truncateLabel,
@@ -42,7 +43,11 @@ import {
 } from './canvas-link-label'
 import { lookupCardTitle } from './canvas-link-target-title'
 import { resolveCanvasLink } from './canvas-link-open'
-import { computeSceneSignature, createScenePersister } from './canvas-persistence'
+import {
+  computeSceneSignature,
+  createScenePersister,
+  normalizeStoredScene
+} from './canvas-persistence'
 import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
@@ -279,17 +284,23 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
   // canvas stops syncing, re-armed only after a save syncs again. The stable
   // toast id is the second line of defence — sonner replaces rather than
   // stacks, so even a repeat announcement can never pile up.
-  const tooLargeAnnouncedRef = useRef(false)
+  //
+  // That edge is remembered OUTSIDE this component (#1643): only the active tab
+  // is mounted, so leaving the canvas destroys this editor and returning builds
+  // a fresh one — a per-instance ref re-armed itself on every tab switch, and
+  // the first save after mount is not the user's doing (a stored scene with
+  // externalized images carries a `memryAssets` sidecar that serializeAsJSON
+  // never writes back, so it always differs from what is on disk and always
+  // saves). See canvas-too-large-notice for the exact scope.
   const announceSyncability = useCallback(
     (tooLarge: boolean): void => {
       if (!tooLarge) {
-        tooLargeAnnouncedRef.current = false
+        rearmTooLargeNotice(canvasId)
         return
       }
-      if (tooLargeAnnouncedRef.current) {
+      if (!claimTooLargeNotice(canvasId)) {
         return
       }
-      tooLargeAnnouncedRef.current = true
       toast.error(t('canvas.tooLargeToSync'), { id: `canvas-too-large-${canvasId}` })
     },
     [canvasId, t]
@@ -418,7 +429,12 @@ export const CanvasEditor = ({ canvasId, initialScene }: CanvasEditorProps): Rea
         announceSyncabilityRef.current(saved.tooLarge)
       },
       debounceMs: SCENE_SAVE_DEBOUNCE_MS,
-      lastSavedScene: initialScene,
+      // The stored scene, restated as this renderer would have serialized it.
+      // Main injects the `memryAssets` sidecar and re-emits the document
+      // canonically on the way to disk, so the raw string never equals a fresh
+      // serializeAsJSON output — and the first persist after every mount saved
+      // a scene nobody had touched (see normalizeStoredScene).
+      lastSavedScene: normalizeStoredScene(initialScene),
       onError: (err) => {
         log.error('Failed to save canvas scene', err)
         // The persister keeps the change pending and retries, but a failing

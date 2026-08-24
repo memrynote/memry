@@ -461,6 +461,16 @@ describe('attachment operations', () => {
       expect(attachments).toEqual([])
     })
 
+    it('skips OS droppings like .DS_Store (#1713)', async () => {
+      await saveAttachment('note123', Buffer.from('data'), 'doc.pdf')
+      fs.writeFileSync(path.join(tempVault.path, 'attachments', 'note123', '.DS_Store'), 'junk')
+
+      const attachments = await listNoteAttachments('note123')
+
+      expect(attachments.length).toBe(1)
+      expect(attachments[0].filename.endsWith('doc.pdf')).toBe(true)
+    })
+
     it('T394: includes size and mimeType', async () => {
       const data = Buffer.from('test data')
       await saveAttachment('note123', data, 'test.png')

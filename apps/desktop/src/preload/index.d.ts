@@ -896,7 +896,7 @@ import type {
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
 
-import type { RecentlyOpenedItem } from '@memry/contracts/recents-api'
+import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 
 export interface SearchClientAPI {
   query(params: {
@@ -926,7 +926,7 @@ export interface SearchClientAPI {
 
 // Recents API (device-local "recently opened" trail)
 export interface RecentsClientAPI {
-  record(input: { itemId: string; itemType: 'note' }): Promise<{ recorded: boolean }>
+  record(input: RecordRecentlyOpenedInput): Promise<{ recorded: boolean }>
   list(limit?: number): Promise<RecentlyOpenedItem[]>
 }
 

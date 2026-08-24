@@ -149,6 +149,14 @@ If **Restore Session** is on, the entire tab and split layout restores on app la
 
 The layout is written only when one of those things actually changes. Activity that leaves the layout alone — a note picking up and losing its modified dot, moving back and forward inside a tab — no longer triggers a rewrite. Quitting still writes the current layout either way, so nothing is lost by the skipped writes.
 
+### Every vault keeps its own tabs
+
+Tabs belong to the vault they were opened in. Switch vaults and you get that vault's own set back — the tabs you had open in it last time, in their order, with their pinned tabs; a vault you have never opened starts on a single Home tab. Switching back returns the first vault's tabs untouched.
+
+Until now a switch left you on a bare Home tab in either direction: every vault shared one stored layout, and changing vaults cleared it, so the vault you arrived in had nothing to restore and the vault you left had already been wiped on the way out. Closing and reopening the app was unaffected, which is why the tabs looked like they only disappeared when you switched.
+
+Nothing needs to be moved by hand after updating. The tabs stored by earlier versions are adopted by the first vault you open, which is the vault they were left in, and each vault takes on its own set from there. Removing a vault from the app forgets its tabs as well.
+
 ### The restore goes first
 
 Saving is held until the stored session has been read back. Before that, a slow launch could let the first automatic save run while the window was still showing its opening Home tab, which wrote that single tab over the session waiting in storage — the restore then had nothing left to bring back, and you arrived at a Home tab even if you had closed Home before quitting. Pinned tabs went the same way, since they live in the same stored layout.
@@ -217,6 +225,12 @@ A toast is no use while the window is going away, so memrynote records the failu
 ## Modified Indicator
 
 A small dot appears on a tab title when there are unsaved changes (rare — memrynote auto-saves). On a compressed tab the dot takes the close button's place, so unsaved work stays visible. Closing a modified tab triggers a flush before close.
+
+## The Home Tab
+
+The Home tab is named after the board it is showing, not after the word "Home". Switch to another board and the tab follows; rename the board you are on and the tab picks the new name up straight away. A rename that arrives from another device counts too, and so does one that lands while Home is sitting in a background tab — the tab is retitled either way.
+
+A fresh vault seeds its first board as **Home**, so an untouched install reads exactly as it always did; the tab only changes once you rename that board or make another one. If the board you were on is deleted, the tab falls back to the first board that is left.
 
 ## Canvases in Tabs
 

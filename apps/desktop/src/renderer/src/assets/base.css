@@ -2735,6 +2735,21 @@ del.bn-inline-content {
   color: rgb(251, 191, 36) !important;
 }
 
+/* A wiki link whose target note does not exist. Applied from outside the chip
+   by a decoration plugin (the inline spec's render() is synchronous and has no
+   IPC access). Calm, not red: a dashed underline plus a muted tint — and
+   !important because the base .wiki-link color above is. */
+.wiki-link-broken {
+  color: rgb(146, 124, 96) !important;
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.dark .wiki-link-broken {
+  color: rgb(168, 152, 128) !important;
+}
+
 /* A wiki link opened for editing: the `[[` and `]]` are real characters the
    user can delete, so they are dimmed rather than hidden — the text still reads
    as a link without the brackets shouting. */
@@ -2809,6 +2824,27 @@ del.bn-inline-content {
   .inline-image-grip {
     transition: none;
   }
+}
+
+/* Inline checkbox — a tickable box inside a table cell, where `checkListItem`
+   (a BLOCK) cannot go. The node's own DOM ends in a space, and that space is
+   REAL CONTENT: it is what makes `| [ ] task |` serialize with a gap rather
+   than `| [ ]task |`. So nothing here may collapse or hide it. */
+.inline-checkbox {
+  display: inline;
+  white-space: nowrap;
+}
+
+.inline-checkbox input[type='checkbox'] {
+  /* Logical properties only: this flips to the right-hand side in RTL. */
+  margin-inline-end: 0.1em;
+  vertical-align: -0.1em;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.inline-checkbox input[type='checkbox']:disabled {
+  cursor: default;
 }
 
 /* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */

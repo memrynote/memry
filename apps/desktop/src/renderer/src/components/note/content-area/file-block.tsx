@@ -6,7 +6,14 @@ import { getI18n } from 'react-i18next'
  * @module components/note/content-area/file-block
  */
 
-import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  useSyncExternalStore
+} from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { PDFDocumentProxy as PdfDocumentProxy } from 'pdfjs-dist'
@@ -30,7 +37,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
-import { useResolvedFileUrl } from './note-file-url-context'
+import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/attachment-revision'
+import { HAS_SCHEME, useAttachmentNoteId, useResolvedFileUrl } from './note-file-url-context'
+import { AttachmentBlockContextMenu, AttachmentMenuButton } from './attachment-block-menu'
 import type { FileBlockProps } from './file-block-markers'
 
 export { parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
@@ -126,9 +135,11 @@ interface PdfPreviewProps {
   onResize: (width: number, height: number) => void
   /** Commit a new alignment to the block props. */
   onAlign: (align: PdfAlign) => void
+  /** The attachment "⋯" menu button, rendered in the hover control cluster. */
+  menu?: React.ReactNode
 }
 
-function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfPreviewProps) {
+function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }: PdfPreviewProps) {
   const { t: tPhaseF } = useT('notes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -366,7 +377,8 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
       <div className="pdf-preview-error rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
         <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
           <FileText className="h-5 w-5" />
-          <span className="font-medium">{name}</span>
+          <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+          {menu}
         </div>
         <p className="mt-2 text-sm text-red-500">
           {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.failedToLoadPdf')}
@@ -470,6 +482,12 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign }: PdfP
                 </button>
               )
             })}
+            {menu && (
+              <>
+                <div className="mx-0.5 h-4 w-px bg-border" />
+                {menu}
+              </>
+            )}
           </div>
         )}
 
@@ -568,9 +586,11 @@ interface FilePreviewProps {
   name: string
   size: number
   mimeType: string
+  /** The attachment "⋯" menu button. */
+  menu?: React.ReactNode
 }
 
-function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
+function FilePreview({ url, name, size, mimeType, menu }: FilePreviewProps) {
   const { t: tPhaseF } = useT('notes')
   const { state } = useSync()
 
@@ -599,6 +619,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
           {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download2')}
         </a>
       </Button>
+      {menu}
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay
           progress={activeTransfer.progress}
@@ -610,7 +631,7 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
   )
 }
 
-function AudioPreview({ url, name }: FilePreviewProps) {
+function AudioPreview({ url, name, menu }: FilePreviewProps) {
   const { state } = useSync()
 
   const uploadEntry = state.uploadProgress
@@ -642,6 +663,7 @@ function AudioPreview({ url, name }: FilePreviewProps) {
         >
           <track kind="captions" />
         </audio>
+        {menu}
       </div>
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay
@@ -650,6 +672,93 @@ function AudioPreview({ url, name }: FilePreviewProps) {
           direction={transferDirection}
         />
       )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Missing Attachment Card (#1713)
+// ============================================================================
+
+interface AttachmentPresence {
+  missing: boolean
+  /** The on-disk filename the ref expects, for the card's repair hint. */
+  expectedFilename: string | null
+}
+
+const ATTACHMENT_PRESENT: AttachmentPresence = { missing: false, expectedFilename: null }
+
+/**
+ * Whether the block's attachment is actually on disk (after main's self-heal
+ * pass had its chance). Re-checked when an attachment for this note lands, so
+ * a file that syncs in later clears the card without a remount.
+ */
+function useAttachmentPresence(url: string): AttachmentPresence {
+  const noteId = useAttachmentNoteId()
+  const revision = useSyncExternalStore(subscribeToAttachmentRevisions, () =>
+    getAttachmentRevision(noteId)
+  )
+  const [presence, setPresence] = useState<AttachmentPresence>(ATTACHMENT_PRESENT)
+
+  useEffect(() => {
+    // Only vault refs (note-relative or legacy memry-file) are checkable;
+    // http/data urls are not attachments. Surfaces without a note id (and
+    // tests without the IPC surface) just never show the card.
+    const isVaultRef = Boolean(url) && (!HAS_SCHEME.test(url) || url.startsWith('memry-file:'))
+    if (!noteId || !isVaultRef || !window.api?.notes?.resolveAttachment) {
+      setPresence(ATTACHMENT_PRESENT)
+      return
+    }
+    let cancelled = false
+    window.api.notes
+      .resolveAttachment(noteId, url)
+      .then((info) => {
+        if (cancelled) return
+        setPresence(
+          info.exists
+            ? ATTACHMENT_PRESENT
+            : { missing: true, expectedFilename: info.storedFilename }
+        )
+      })
+      .catch(() => {
+        // An unresolvable url (invalid path shape) is not "missing on disk" —
+        // leave the block to its normal rendering.
+        if (!cancelled) setPresence(ATTACHMENT_PRESENT)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [noteId, url, revision])
+
+  return presence
+}
+
+function MissingAttachmentCard({
+  name,
+  expectedFilename,
+  menu
+}: {
+  name: string
+  expectedFilename: string | null
+  menu?: React.ReactNode
+}) {
+  const { t: tPhaseF } = useT('notes')
+  return (
+    <div
+      data-testid="attachment-missing-card"
+      className="file-attachment-missing relative flex items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 p-3"
+    >
+      <File className="h-5 w-5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{name}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {tPhaseF('editor.attachmentMenu.missingTitle')}
+          {expectedFilename
+            ? ` — ${tPhaseF('editor.attachmentMenu.missingExpected', { name: expectedFilename })}`
+            : ''}
+        </p>
+      </div>
+      {menu}
     </div>
   )
 }
@@ -696,6 +805,7 @@ function FileBlockRender({
   // result is for rendering only — writing it back to `block.props` would put
   // this machine's vault path into the note's markdown.
   const resolvedUrl = useResolvedFileUrl(url)
+  const presence = useAttachmentPresence(url)
 
   // Persist the user-chosen PDF width + crop height to the block props
   // (round-trips to the vault marker via serializeFileBlock). Declared before
@@ -734,31 +844,66 @@ function FileBlockRender({
     return <div ref={contentRef} className="file-block my-2" contentEditable={false} />
   }
 
+  // The raw stored url goes to the menu, never `resolvedUrl` — main re-resolves
+  // and validates it against the vault itself.
+  const menuButton = <AttachmentMenuButton url={url} name={name} />
+
+  // The file is gone from disk and self-heal found no unique match: name the
+  // expected file so the user can repair the rename by hand (#1713).
+  if (presence.missing) {
+    return (
+      <AttachmentBlockContextMenu url={url} name={name}>
+        <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+          <MissingAttachmentCard
+            name={name}
+            expectedFilename={presence.expectedFilename}
+            menu={menuButton}
+          />
+        </div>
+      </AttachmentBlockContextMenu>
+    )
+  }
+
   return (
-    <div ref={contentRef} className="file-block my-2" contentEditable={false}>
-      {isPdf ? (
-        <PdfPreview
-          // Keyed by URL so a changed one rebuilds the preview from scratch. A
-          // load error is otherwise terminal — the red card survives for as long
-          // as the block is mounted, and the editor does not unmount when the
-          // note is closed, so an attachment that synced in a moment later
-          // stayed invisible until the app was restarted. The URL is what
-          // changes when this note's attachments land (see `attachment-revision`).
-          key={resolvedUrl}
-          url={resolvedUrl}
-          name={name}
-          width={width ?? 0}
-          height={height ?? 0}
-          align={align ?? 'left'}
-          onResize={handleResize}
-          onAlign={handleAlign}
-        />
-      ) : isAudio ? (
-        <AudioPreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
-      ) : (
-        <FilePreview url={resolvedUrl} name={name} size={size} mimeType={mimeType} />
-      )}
-    </div>
+    <AttachmentBlockContextMenu url={url} name={name}>
+      <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+        {isPdf ? (
+          <PdfPreview
+            // Keyed by URL so a changed one rebuilds the preview from scratch. A
+            // load error is otherwise terminal — the red card survives for as long
+            // as the block is mounted, and the editor does not unmount when the
+            // note is closed, so an attachment that synced in a moment later
+            // stayed invisible until the app was restarted. The URL is what
+            // changes when this note's attachments land (see `attachment-revision`).
+            key={resolvedUrl}
+            url={resolvedUrl}
+            name={name}
+            width={width ?? 0}
+            height={height ?? 0}
+            align={align ?? 'left'}
+            onResize={handleResize}
+            onAlign={handleAlign}
+            menu={menuButton}
+          />
+        ) : isAudio ? (
+          <AudioPreview
+            url={resolvedUrl}
+            name={name}
+            size={size}
+            mimeType={mimeType}
+            menu={menuButton}
+          />
+        ) : (
+          <FilePreview
+            url={resolvedUrl}
+            name={name}
+            size={size}
+            mimeType={mimeType}
+            menu={menuButton}
+          />
+        )}
+      </div>
+    </AttachmentBlockContextMenu>
   )
 }
 

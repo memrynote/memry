@@ -44,8 +44,13 @@ export function NoteFileUrlProvider({
   )
 }
 
+/** The note id the surrounding editor belongs to, for attachment IPC calls. */
+export function useAttachmentNoteId(): string | undefined {
+  return useContext(NoteIdContext)
+}
+
 /** `https:`, `data:`, `memry-file:` — and `C:` on Windows. Mirrors the resolver. */
-const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
+export const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
 
 /**
  * The URL to actually render, or `null` while a note-relative one is still being

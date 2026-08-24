@@ -255,6 +255,44 @@ export const parseStackFrames = (stack: string): RawFrame[] => {
   return frames.slice(0, MAX_FRAMES).reverse()
 }
 
+// Desktop versions are calendar-shaped ("2026.821.2"). Numeric segment compare;
+// an unparseable version is treated as current so a future format change fails
+// open (forward the event) rather than silently dropping telemetry.
+const parseVersion = (value: string): number[] | null => {
+  const parts = value.split('.').map((part) => Number(part))
+  if (parts.length === 0 || parts.some((part) => !Number.isFinite(part) || part < 0)) return null
+  return parts
+}
+
+const isVersionBefore = (value: string, reference: readonly number[]): boolean => {
+  const parts = parseVersion(value)
+  if (!parts) return false
+  for (let i = 0; i < reference.length; i += 1) {
+    const own = parts[i] ?? 0
+    if (own !== reference[i]) return own < reference[i]
+  }
+  return false
+}
+
+// First desktop release carrying the #1579 tripwire fix (`4e58ba112`): the
+// eligibility gate plus the 30-minute per-type throttle on
+// `local_mutation_dropped`.
+const DROP_TRIPWIRE_FIX_VERSION = [2026, 821, 0] as const
+
+/**
+ * The pre-fix desktop shipped the `local_mutation_dropped` tripwire once per
+ * polled row with no throttle and no eligibility gate — at peak 45% of the
+ * project's ENTIRE PostHog event volume, triple-billed as product event +
+ * `$exception` + log line (#1579). Those installs exist until their users
+ * update; this server-side filter is the only place they can be silenced.
+ * Fixed clients throttle the same signal to a diagnostic trickle, which is why
+ * the gate is version-scoped rather than dropping the signal outright.
+ */
+export const isLegacyMutationDropNoise = (batch: TelemetryBatch, event: TelemetryEvent): boolean =>
+  event.name === 'app_log_recorded' &&
+  event.dimensions?.log_action === 'local_mutation_dropped' &&
+  isVersionBefore(batch.appVersion, DROP_TRIPWIRE_FIX_VERSION)
+
 // Error Tracking requires the event name to be exactly `$exception`; a plain
 // `exception` lands in Events and never reaches the Error Tracking product.
 //
@@ -267,6 +305,14 @@ export const exceptionEvent = (
   ctx: TransformContext
 ): PostHogEvent | null => {
   if (!event.errorCode && !event.error) return null
+
+  // The desktop demotes expected failures to warn-level `app_log_recorded`
+  // lines precisely so they stay OUT of Error Tracking (#1587) — but this
+  // transform used to promote any errorCode back into a `$exception`, which is
+  // how log-derived tripwires (`local_mutation_dropped` → fingerprint
+  // `calendar_source`) became stackless Error Tracking issues. Only error-level
+  // log lines carry a defect; the rest stay queryable as events and logs.
+  if (event.name === 'app_log_recorded' && event.action !== 'error') return null
 
   // type only needs a label, so falling back to the event name is harmless here.
   const type = event.errorCode ?? event.name

@@ -31,7 +31,7 @@ import {
   getIncomingLinks,
   deleteLinksToNote,
   resolveNoteByTitle,
-  updateLinkTargets,
+  getInboundLinkSourceIds,
   bulkInsertNotes,
   clearNoteCache,
   setNoteProperties,
@@ -354,11 +354,10 @@ describe('notes cache queries', () => {
 
     expect(resolveNoteByTitle(db, 'Target')?.id).toBe('note-17')
 
-    updateLinkTargets(db, 'note-16')
-    const updated = db.get<{ target_id: string | null }>(sql`
-      SELECT target_id FROM note_links WHERE target_title = 'Unresolved'
-    `)
-    expect(updated?.target_id).toBeNull()
+    // Resolved rows match by id; unresolved rows match by title, case-insensitively.
+    expect(getInboundLinkSourceIds(db, 'note-17', 'anything')).toEqual(['note-16'])
+    expect(getInboundLinkSourceIds(db, 'no-such-note', 'UNRESOLVED')).toEqual(['note-16'])
+    expect(getInboundLinkSourceIds(db, 'no-such-note', 'Target')).toEqual([])
 
     deleteLinksToNote(db, 'note-17')
     expect(getIncomingLinks(db, 'note-17')).toHaveLength(0)

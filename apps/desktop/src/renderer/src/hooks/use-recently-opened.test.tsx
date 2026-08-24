@@ -106,8 +106,42 @@ describe('useRecordRecentlyOpened', () => {
     expect(record).toHaveBeenCalledTimes(2)
   })
 
-  it('ignores tabs that are not notes', () => {
+  // Canvases open in the same tab bar as notes and are just as much "something
+  // you looked at", so the trail has to carry them too (Aurelie, 22 Aug 2026).
+  it('records a canvas that stays in front past the dwell', () => {
     activeTab.current = { type: 'canvas', entityId: 'c1' }
+    renderHook(() => useRecordRecentlyOpened(), { wrapper })
+
+    expect(record).not.toHaveBeenCalled()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(record).toHaveBeenCalledWith({ itemId: 'c1', itemType: 'canvas' })
+  })
+
+  // The throttle is keyed per item, so a canvas that happens to share an id
+  // with a just-opened note must still be written.
+  it('throttles per item type, not per bare id', () => {
+    activeTab.current = { type: 'note', entityId: 'x1' }
+    const { rerender } = renderHook(() => useRecordRecentlyOpened(), { wrapper })
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    activeTab.current = { type: 'canvas', entityId: 'x1' }
+    rerender()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+
+    expect(record.mock.calls.map((c) => c[0])).toEqual([
+      { itemId: 'x1', itemType: 'note' },
+      { itemId: 'x1', itemType: 'canvas' }
+    ])
+  })
+
+  it('ignores tabs that carry no recordable entity', () => {
+    activeTab.current = { type: 'home' }
     renderHook(() => useRecordRecentlyOpened(), { wrapper })
     act(() => {
       vi.advanceTimersByTime(5000)

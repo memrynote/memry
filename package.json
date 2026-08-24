@@ -40,7 +40,7 @@
     "typecheck:emails": "pnpm --filter @memry/marketing-emails typecheck",
     "test": "pnpm repair:links && node scripts/run-turbo.js run test --filter=@memry/contracts --filter=@memry/sync-client --filter=@memry/app-core --filter=@memry/cli --filter=@memry/desktop --filter=@memry/editor-schema --filter=@memry/sync-server --filter=@memry/landing --filter=@memry/mobile",
     "test:cli": "pnpm --filter @memry/app-core test && pnpm --filter @memry/cli test",
-    "test:release": "node --test scripts/release-utils.test.mjs scripts/release-notes-utils.test.mjs scripts/reddit-release-utils.test.mjs scripts/pre-push-policy.test.mjs scripts/docs-impact.test.mjs scripts/package-scripts.test.mjs apps/desktop/scripts/build-packaged-app-utils.test.cjs apps/desktop/scripts/check-packaged-runtime-deps-utils.test.cjs",
+    "test:release": "node --test scripts/release-utils.test.mjs scripts/release-notes-utils.test.mjs scripts/reddit-release-utils.test.mjs scripts/pre-push-policy.test.mjs scripts/docs-impact.test.mjs scripts/package-scripts.test.mjs scripts/link-env.test.mjs apps/desktop/scripts/build-packaged-app-utils.test.cjs apps/desktop/scripts/check-packaged-runtime-deps-utils.test.cjs",
     "test:desktop": "pnpm --filter @memry/desktop test",
     "test:sync-server": "pnpm --filter @memry/sync-server test",
     "test:sync-harness": "pnpm --filter @memry/sync-harness build:worker && pnpm --filter @memry/sync-harness test",
@@ -68,7 +68,10 @@
     "sync:reset": "pnpm sync:clean && pnpm sync:init-db",
     "sync:reset:staging": "pnpm --filter @memry/sync-server reset:staging",
     "check:lockfile": "node scripts/check-lockfile.js",
-    "prepare": "husky || true",
+    "env:link": "node scripts/link-env.mjs",
+    "env:link:copy": "node scripts/link-env.mjs --copy",
+    "env:check": "node scripts/link-env.mjs --check",
+    "prepare": "husky || true && node scripts/link-env.mjs || true",
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {

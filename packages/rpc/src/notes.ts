@@ -5,6 +5,7 @@ import type {
   StatusCategoryKey
 } from '../../contracts/src/property-types.ts'
 import type {
+  AttachmentResolveResult,
   NoteSizeClass,
   NoteLargeFileInfo,
   LargeFileOpenResult,
@@ -103,6 +104,13 @@ export interface WikiLinkTargetResolution extends WikiLinkResolution {
   /** The heading to scroll to, or `null` when the link names none. */
   heading: string | null
 }
+
+/**
+ * `resolveTitles` result: each requested title mapped to the note it resolves
+ * to (exact first, case-insensitive fallback — same rule as `resolveByTitle`),
+ * or `null` for a miss. Broken-link detection reads only the null-ness.
+ */
+export type WikiLinkTitleResolutions = Record<string, { id: string; path: string } | null>
 
 export interface WikiLinkPreview {
   id: string
@@ -443,6 +451,14 @@ export const notesRpc = defineDomain({
       params: ['title']
     }),
     /**
+     * Resolve a whole document's wiki targets in one call. An editor mount
+     * dedupes its `[[…]]` titles and asks once, instead of one IPC per link.
+     */
+    resolveTitles: defineMethod<(titles: string[]) => Promise<WikiLinkTitleResolutions>>({
+      channel: NotesChannels.invoke.RESOLVE_TITLES,
+      params: ['titles']
+    }),
+    /**
      * Resolve `Note`, `Note#Heading` or `Note#^block-id` to the note it names.
      * Agents follow links with this; `resolveByTitle` answers title questions.
      */
@@ -517,6 +533,23 @@ export const notesRpc = defineDomain({
     revealInFinder: defineMethod<(id: string) => Promise<void>>({
       channel: NotesChannels.invoke.REVEAL_IN_FINDER,
       params: ['id']
+    }),
+    resolveAttachment: defineMethod<
+      (noteId: string, url: string) => Promise<AttachmentResolveResult>
+    >({
+      channel: NotesChannels.invoke.ATTACHMENT_RESOLVE,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
+    }),
+    revealAttachmentInFinder: defineMethod<(noteId: string, url: string) => Promise<void>>({
+      channel: NotesChannels.invoke.ATTACHMENT_REVEAL_IN_FINDER,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
+    }),
+    openAttachmentExternal: defineMethod<(noteId: string, url: string) => Promise<void>>({
+      channel: NotesChannels.invoke.ATTACHMENT_OPEN_EXTERNAL,
+      params: ['noteId', 'url'],
+      invokeArgs: ['{ noteId, url }']
     }),
     getPropertyDefinitions: defineMethod<() => Promise<PropertyDefinition[]>>({
       channel: NotesChannels.invoke.GET_PROPERTY_DEFINITIONS

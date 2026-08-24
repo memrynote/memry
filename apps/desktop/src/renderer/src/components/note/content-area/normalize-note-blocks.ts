@@ -18,11 +18,18 @@ import type { Block } from '@blocknote/core'
 import { normalizeWikiLinks } from './wiki-link-utils'
 import { normalizeLinkMentions } from './link-mention-utils'
 import { normalizeDateMentions } from './date-mention-utils'
+import { normalizeInlineCheckboxes } from './inline-checkbox-utils'
 import { normalizeTaskBlocks } from './task-block/task-block-utils'
 
 export function normalizeNoteBlocks(blocks: Block[]): Block[] {
   let normalized = normalizeWikiLinks(blocks).blocks
   normalized = normalizeLinkMentions(normalized).blocks
   normalized = normalizeDateMentions(normalized).blocks
+  // Table cells only, and last of the inline passes: `[ ]` at the head of a
+  // cell is literal text on disk (GFM's task-list syntax is list-item only), so
+  // nothing upstream can have claimed it — and running after the others means a
+  // cell whose token is followed by a wiki link or a mention has already had
+  // that half promoted, so this only ever looks at the leading text run.
+  normalized = normalizeInlineCheckboxes(normalized).blocks
   return normalizeTaskBlocks(normalized as any[]).blocks as Block[]
 }

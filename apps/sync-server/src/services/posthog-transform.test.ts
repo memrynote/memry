@@ -9,6 +9,7 @@ import type {
 import {
   exceptionEvent,
   identifyEvent,
+  isLegacyMutationDropNoise,
   personProperties,
   productEvent,
   resolveDistinctId
@@ -393,6 +394,38 @@ describe('exceptionEvent', () => {
     expect(exceptionEvent(batchFixture(), eventFixture(), ctx)).toBeNull()
   })
 
+  // The desktop demotes expected failures to warn-level app_log_recorded lines
+  // so they stay OUT of Error Tracking (#1587). Promoting them back is how the
+  // local_mutation_dropped tripwire became the stackless `calendar_source`
+  // issue that at peak was 45% of the project's PostHog volume.
+  it('never promotes a warn-level log line into Error Tracking', () => {
+    expect(
+      exceptionEvent(
+        batchFixture(),
+        eventFixture({
+          name: 'app_log_recorded',
+          action: 'warn',
+          errorCode: 'calendar_source'
+        }),
+        ctx
+      )
+    ).toBeNull()
+  })
+
+  it('still promotes an error-level log line', () => {
+    const result = exceptionEvent(
+      batchFixture(),
+      eventFixture({
+        name: 'app_log_recorded',
+        action: 'error',
+        errorCode: 'Utility_crashed_CrdtPreflight'
+      }),
+      ctx
+    )
+    expect(result?.event).toBe('$exception')
+    expect(result?.properties.$exception_fingerprint).toBe('Utility_crashed_CrdtPreflight')
+  })
+
   it('builds a $exception with the error code as type and fingerprint', () => {
     const result = exceptionEvent(
       batchFixture(),
@@ -654,5 +687,40 @@ describe('exceptionEvent', () => {
       ctx
     )
     expect(result?.properties.$exception_fingerprint).toBe('SYNC_TIMEOUT')
+  })
+})
+
+describe('isLegacyMutationDropNoise', () => {
+  const dropEvent = (overrides = {}) =>
+    eventFixture({
+      name: 'app_log_recorded',
+      action: 'warn',
+      errorCode: 'calendar_source',
+      dimensions: { log_action: 'local_mutation_dropped' },
+      ...overrides
+    })
+
+  it('flags the tripwire from a pre-fix desktop version', () => {
+    expect(isLegacyMutationDropNoise(batchFixture({ appVersion: '2026.817.1' }), dropEvent())).toBe(
+      true
+    )
+  })
+
+  it('lets the throttled tripwire from a fixed version through', () => {
+    for (const appVersion of ['2026.821.1', '2026.823.2', '2027.101.1']) {
+      expect(isLegacyMutationDropNoise(batchFixture({ appVersion }), dropEvent())).toBe(false)
+    }
+  })
+
+  it('ignores other log actions and other event names on old versions', () => {
+    const batch = batchFixture({ appVersion: '2026.817.1' })
+    expect(
+      isLegacyMutationDropNoise(batch, dropEvent({ dimensions: { log_action: 'other' } }))
+    ).toBe(false)
+    expect(isLegacyMutationDropNoise(batch, dropEvent({ name: 'app_error_seen' }))).toBe(false)
+  })
+
+  it('fails open on an unparseable version', () => {
+    expect(isLegacyMutationDropNoise(batchFixture({ appVersion: 'dev' }), dropEvent())).toBe(false)
   })
 })

@@ -39,6 +39,7 @@ import {
   createMemryInlineContentSpecs,
   dateMentionConfig,
   hashTagConfig,
+  inlineCheckboxConfig,
   inlineImageConfig,
   linkMentionConfig,
   wikiLinkConfig,
@@ -75,7 +76,8 @@ const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object
   linkMention: linkMentionConfig,
   hashTag: hashTagConfig,
   dateMention: dateMentionConfig,
-  inlineImage: inlineImageConfig
+  inlineImage: inlineImageConfig,
+  inlineCheckbox: inlineCheckboxConfig
 }
 
 /** One block per custom type, as the renderer authors it. */
@@ -161,7 +163,10 @@ const INLINE_FIXTURES: Record<MemryInlineType, unknown> = {
   inlineImage: {
     type: 'inlineImage',
     props: { src: '../attachments/n1/photo.png', alt: 'photo.png', width: 240 }
-  }
+  },
+  // Ticked, not defaulted: an unticked box and a ticked one differ by exactly
+  // one attribute, and that attribute is the whole point of the node.
+  inlineCheckbox: { type: 'inlineCheckbox', props: { checked: true } }
 }
 
 /** The shape `createBlockSpec` / `createInlineContentSpec` return. */

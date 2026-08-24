@@ -88,6 +88,7 @@ Run `pnpm ipc:generate` before `pnpm ipc:check` when editing contracts, preload 
 - Do not mention Codex, Claude, T3Code, Cursor, or other agent/tool branding in PR descriptions.
 - Draft PR is the safe default when the user asks to create/push a PR and does not specify ready vs draft.
 - For Memry worktrees, prefer repo-local `.worktrees/<name>`: `git worktree add .worktrees/<name> -b <name> origin/main`, then `pnpm install --frozen-lockfile`.
+- Gitignored env files (`apps/desktop/.env.staging`, `apps/sync-server/.dev.vars`, `apps/landing/.env.local`, ...) do not travel with a worktree. `pnpm install` links them from the main worktree via `scripts/link-env.mjs`; run `pnpm env:link` by hand if a tree predates that, `pnpm env:check` to verify, `pnpm env:link:copy` for real copies instead of symlinks. They stay gitignored at the new paths. Without them `resolveSyncServerUrl()` silently falls back to `http://localhost:8787` and `dev:staging` never reaches staging.
 - Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not treat that as a hang without evidence.
 
 ## Database

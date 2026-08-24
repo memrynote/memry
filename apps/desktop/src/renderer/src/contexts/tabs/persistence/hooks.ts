@@ -18,6 +18,7 @@ import {
 } from './storage'
 import { serializeTabState, deserializeTabState, extractPinnedTabs } from './serialization'
 import type { TabStorage } from './types'
+import { tabStateStorageKey } from './types'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
@@ -34,6 +35,11 @@ const LAST_SESSION_TOAST_ID = 'tab-state-last-session-not-saved'
 interface UseTabPersistenceOptions {
   /** Storage adapter to use */
   storage?: TabStorage
+  /**
+   * Path of the open vault. Decides which key the tabs are written under, so
+   * one vault's session never lands on another's.
+   */
+  vaultPath?: string | null
   /** Debounce delay in ms (default: 1000) */
   debounceMs?: number
   /** Enable auto-save (default: true) */
@@ -44,7 +50,13 @@ interface UseTabPersistenceOptions {
  * Hook to auto-save tab state changes
  */
 export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void => {
-  const { storage = getDefaultStorage(), debounceMs = 1000, enabled = true } = options
+  const {
+    vaultPath = null,
+    storage = getDefaultStorage(vaultPath),
+    debounceMs = 1000,
+    enabled = true
+  } = options
+  const storageKey = tabStateStorageKey(vaultPath)
   const { state } = useTabs()
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
@@ -62,7 +74,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     registerPendingSave(FLUSH_REGISTRY_KEY, () => {
       const serialized = serializeTabState(stateRef.current)
-      const result = saveSync(serialized)
+      const result = saveSync(serialized, storageKey)
       if (!result.ok) {
         // Claiming a flush that never happened is what made this invisible:
         // whoever diagnoses "my tabs came back wrong after quitting" needs the
@@ -74,7 +86,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
     })
 
     return () => unregisterPendingSave(FLUSH_REGISTRY_KEY)
-  }, [enabled])
+  }, [enabled, storageKey])
 
   // Debounced save
   useEffect(() => {
@@ -149,7 +161,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     const handleBeforeUnload = (): void => {
       const serialized = serializeTabState(stateRef.current)
-      const result = saveSync(serialized)
+      const result = saveSync(serialized, storageKey)
       if (!result.ok) {
         log.error('failed to save tab state on unload', { reason: result.reason })
       }
@@ -157,7 +169,35 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [enabled])
+  }, [enabled, storageKey])
+
+  // Flush what is in hand when this subtree goes away.
+  //
+  // Switching vaults unmounts the whole tab tree, and the pending debounce goes
+  // with it: without this, the tabs opened in the last second before the switch
+  // are simply gone, because the timer that would have written them was cleared
+  // instead of fired.
+  //
+  // `enabled` is the guard that makes this safe. `useTabSessionPersistence`
+  // holds it false until the session restore has settled, so no cleanup is even
+  // registered while a restore is in flight — an unmount that interrupts one
+  // cannot write the provider's default Home tab over the session the restore
+  // had not read yet.
+  useEffect(() => {
+    if (!enabled) return
+
+    return () => {
+      // The next key starts from a clean slate: the fingerprint that just
+      // reached the outgoing key must not suppress the first write to another.
+      lastSavedRef.current = ''
+
+      const serialized = serializeTabState(stateRef.current)
+      const result = saveSync(serialized, storageKey)
+      if (!result.ok) {
+        log.error('failed to flush tab state on teardown', { reason: result.reason })
+      }
+    }
+  }, [enabled, storageKey])
 }
 
 // =============================================================================
@@ -178,6 +218,8 @@ interface UseSessionRestoreResult {
 interface UseSessionRestoreOptions {
   /** Storage adapter to use */
   storage?: TabStorage
+  /** Path of the open vault, deciding whose tabs are read back. */
+  vaultPath?: string | null
   /** Auto-restore on mount (default: true) */
   autoRestore?: boolean
 }
@@ -188,7 +230,7 @@ interface UseSessionRestoreOptions {
 export const useSessionRestore = (
   options: UseSessionRestoreOptions = {}
 ): UseSessionRestoreResult => {
-  const { storage = getDefaultStorage(), autoRestore = true } = options
+  const { vaultPath = null, storage = getDefaultStorage(vaultPath), autoRestore = true } = options
   const { dispatch, state } = useTabs()
   const { flags, isLoading: flagsLoading } = useFeatureFlags()
   const hasRestoredRef = useRef(false)
@@ -343,12 +385,13 @@ interface UseTabSessionPersistenceOptions extends UseTabPersistenceOptions {
 export const useTabSessionPersistence = (
   options: UseTabSessionPersistenceOptions = {}
 ): UseSessionRestoreResult => {
-  const { storage, debounceMs, enabled = true, autoRestore } = options
+  const { storage, vaultPath = null, debounceMs, enabled = true, autoRestore } = options
 
-  const restore = useSessionRestore({ storage, autoRestore })
+  const restore = useSessionRestore({ storage, vaultPath, autoRestore })
 
   useTabPersistence({
     storage,
+    vaultPath,
     debounceMs,
     enabled: enabled && !restore.isRestoring
   })

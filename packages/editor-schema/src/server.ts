@@ -20,6 +20,8 @@ import {
   createHashTagSpec,
   createDateMentionSpec,
   createInlineImageSpec,
+  createInlineCheckboxSpec,
+  inlineCheckboxSerialization,
   inlineImageSerialization,
   dateMentionSerialization,
   hashTagSerialization,
@@ -42,6 +44,9 @@ export function createServerInlineSpecs(): MemryInlineSpecs {
     ),
     inlineImage: createInlineImageSpec((inlineContent) =>
       inlineImageSerialization.toExternalHTML(inlineContent)
+    ),
+    inlineCheckbox: createInlineCheckboxSpec((inlineContent) =>
+      inlineCheckboxSerialization.toExternalHTML(inlineContent)
     )
   }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   computeSceneSignature,
+  normalizeStoredScene,
   createScenePersister,
   type SceneSignatureInput,
   type ScenePersisterOptions
@@ -302,5 +303,29 @@ describe('computeSceneSignature', () => {
 
   it('tolerates elements without version counters', () => {
     expect(() => computeSceneSignature({ ...base, elements: [{ id: 'a' }] })).not.toThrow()
+  })
+})
+
+describe('normalizeStoredScene', () => {
+  const scene = { type: 'excalidraw', elements: [{ id: 'a' }], appState: {}, files: {} }
+
+  it('restates a stored scene the way serializeAsJSON emits it', () => {
+    // Main re-emits the document compactly and appends the asset sidecar; the
+    // renderer's serializeAsJSON pretty-prints and never writes memryAssets.
+    const stored = JSON.stringify({ ...scene, memryAssets: [{ fileId: 'f1' }] })
+
+    expect(normalizeStoredScene(stored)).toBe(JSON.stringify(scene, null, 2))
+  })
+
+  it('drops the memry file sidecar too', () => {
+    const stored = JSON.stringify({ ...scene, memry: { id: 'c1', createdAt: 1, updatedAt: 2 } })
+
+    expect(normalizeStoredScene(stored)).toBe(JSON.stringify(scene, null, 2))
+  })
+
+  it('returns an empty or unparseable scene untouched', () => {
+    expect(normalizeStoredScene('')).toBe('')
+    expect(normalizeStoredScene('{not json')).toBe('{not json')
+    expect(normalizeStoredScene('[1,2]')).toBe('[1,2]')
   })
 })

@@ -23,7 +23,35 @@ Each attachment renders as a block with:
 - File size
 - Type icon
 - A download button
-- A "Reveal in Finder" action (macOS)
+- A `⋯` menu with the file's actions (below)
+
+### Finding the Original File
+
+Every attachment block — the file card, the audio player, and the inline PDF preview — carries the same menu. Open it from the `⋯` button that appears on hover, or by right-clicking the block:
+
+- **Reveal in Finder** — show the stored file in your OS file manager
+- **Open in default app** — hand the file to whatever your OS opens that type with
+- **Copy path** — put the file's absolute on-disk path on the clipboard
+
+The menu's header shows the **original filename** and the name the file is **stored as** on disk. Attachments are saved under `<vault>/attachments/<note-id>/` with a short random prefix (`k3f9x2-report.pdf`), so this menu is the way to find or forward the original file without hunting through the vault by hand.
+
+If the file hasn't synced to this device yet, the menu still shows both names, but the actions stay disabled until the download lands.
+
+Image blocks get the same menu too: hovering the image floats the `⋯` button over its top corner, and a right-click on the image opens the menu directly.
+
+### The Attachments Panel
+
+The note menu (`⋯` in the note toolbar) has an **Attachments…** entry that lists every file stored under the note's own attachments folder in one place — no hunting block by block. Each row shows the **original filename** (when a block in the note still references the file), the name it is **stored as** on disk, and its size, with **Reveal in Finder** and **Open in default app** buttons per row.
+
+A row without an original name is a file no block references anymore — still safe in the folder, just not embedded in the note.
+
+### Renamed on Disk? It Heals Itself
+
+The attachments folder is yours to look at, and files in it sometimes get renamed from outside the app — a cleanup in Finder, another tool touching the vault. That used to break the block forever, since nothing watches that folder.
+
+Now a missing file **heals at load time**: MemryNote looks for the renamed file inside the same note's attachments folder — a file that kept its 6-character prefix, or kept its name and lost the prefix — and serves it when the match is unambiguous. The note itself is never rewritten, so the repair is safe across synced devices; each device resolves against its own disk.
+
+If there is no safe match (the file is gone, or two candidates look equally likely), the block shows a card naming **the exact filename it expected**, so you can restore the name by hand. Renaming the file back — or to anything that keeps its prefix — fixes the block on the next load.
 
 ## PDF Inline Preview
 

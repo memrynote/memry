@@ -1081,6 +1081,14 @@ const INLINE_CASES = [
     // left bare in a paragraph. Both are asserted, against the same node.
     text: '![photo.png|300](../attachments/n1/photo.png)',
     tableText: '![photo.png\\|300](../attachments/n1/photo.png)'
+  },
+  {
+    nodeName: 'inlineCheckbox',
+    // Seeded as the STRING a synced Y.Doc actually delivers. `Boolean("false")`
+    // is `true`, so a node read naively here ticks itself on every device —
+    // which is what `toChecked` exists to stop, and what this case measures.
+    attrs: { checked: 'true' },
+    text: '[x]'
   }
 ] as const
 
@@ -1506,7 +1514,12 @@ const INLINE_TEXT_FORMS: Record<(typeof MEMRY_INLINE_CONTENT_TYPES)[number], str
   // opposite reason to the others: `inlineImage` parses `<img>`, so this gate is
   // what says the images every existing note is full of still behave exactly as
   // they did in a list item, a quote, a heading and a code fence.
-  inlineImage: '![p.png](p.png)'
+  inlineImage: '![p.png](p.png)',
+  // Four literal characters. GFM's task-list syntax is LIST-ITEM only, so `[ ]`
+  // in a table cell is not a checkbox to any markdown parser — which is exactly
+  // why the node can use it: nothing else claims it, and every other tool keeps
+  // it verbatim.
+  inlineCheckbox: '[ ]'
 }
 
 /** The block shapes a marker's own text can be sitting inside of. */
@@ -2740,5 +2753,191 @@ describe('blocknote-converter table cell images', () => {
     // #then
     expect(blocks!.some((b) => b.type === 'image')).toBe(true)
     expect(JSON.stringify(blocks)).not.toContain('inlineImage')
+  })
+})
+
+/**
+ * Checkboxes inside table cells — the vault-bytes half of the tables report.
+ *
+ * The gate that matters is this one, not a spec unit test: `checkListItem` is a
+ * BLOCK and a `tableCell` is `content: "tableContent+"` over `tableParagraph`
+ * (`inline*`), so there is no position in a cell a checklist could occupy. The
+ * node has to exist in THIS process specifically, since y-prosemirror answers a
+ * node name its schema cannot build by deleting the element out of the shared
+ * Y.Doc.
+ *
+ * The direction each half runs in is not symmetric, and that is by design:
+ *
+ *   - node → markdown is main's, and asserted here to the byte
+ *   - markdown → node is the RENDERER's, via the promoter in
+ *     `normalize-note-blocks.ts`. `[ ]` in a cell is literal text to every
+ *     markdown parser, so main deliberately reads it back as text — main is the
+ *     importer, and a text-matching promotion there is the class of change that
+ *     destroyed 13 fixtures when `wikiLink`'s editor `parse` was shared into it.
+ */
+describe('blocknote-converter table cell checkboxes', () => {
+  /** One row, one cell, holding exactly `cellContent`. */
+  async function cellMarkdown(cellContent: unknown[]): Promise<string | null> {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'tbl',
+          type: 'table',
+          props: {},
+          children: [],
+          content: {
+            type: 'tableContent',
+            columnWidths: [null],
+            rows: [{ cells: [{ type: 'tableCell', content: cellContent, props: {} }] }]
+          }
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    return await yDocToMarkdown(doc)
+  }
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return yDocToMarkdown(doc)
+  }
+
+  it('writes an unticked cell checkbox as `[ ] task`', async () => {
+    // #given the cell the typing plugin produces from `[ ] task`
+    const markdown = await cellMarkdown([
+      { type: 'inlineCheckbox', props: { checked: false } },
+      { type: 'text', text: 'task', styles: {} }
+    ])
+
+    // #then the space between the box and the label is the load-bearing part:
+    // a bare `<input>` serializes to `[ ]task`, because BlockNote's
+    // `addSpacesToCheckboxes` only fires when the next sibling is a `<p>`.
+    expect(markdown).toContain('| [ ] task |')
+  })
+
+  it('writes a ticked cell checkbox as `[x] task`', async () => {
+    const markdown = await cellMarkdown([
+      { type: 'inlineCheckbox', props: { checked: true } },
+      { type: 'text', text: 'task', styles: {} }
+    ])
+    expect(markdown).toContain('| [x] task |')
+  })
+
+  it('writes a checkbox with no label as `[ ]`', async () => {
+    // #given a box the user ticked before typing anything. The node's trailing
+    // space is trimmed by remark at the cell edge, which is what makes the
+    // no-label form settle rather than drifting a space per save.
+    const markdown = await cellMarkdown([{ type: 'inlineCheckbox', props: { checked: true } }])
+    expect(markdown).toContain('| [x] |')
+  })
+
+  it('does not tick a box whose `checked` arrived as the string "false"', async () => {
+    // #given exactly what a synced Y.Doc delivers — attributes are STRINGS, and
+    // `Boolean("false")` is `true`. Read naively, an unticked box would tick
+    // itself on the second device and replicate that back.
+    const doc = new Y.Doc()
+    const group = new Y.XmlElement('blockGroup')
+    const block = new Y.XmlElement('blockContainer')
+    block.setAttribute('id', 'b1')
+    const para = new Y.XmlElement('paragraph')
+    const node = new Y.XmlElement('inlineCheckbox')
+    node.setAttribute('checked', 'false')
+    para.insert(0, [node])
+    block.insert(0, [para])
+    group.insert(0, [block])
+    doc.getXmlFragment(CRDT_FRAGMENT_NAME).insert(0, [group])
+
+    // #when / #then
+    expect(await yDocToMarkdown(doc)).toContain('[ ]')
+  })
+
+  it('keeps `[ ] task` in a cell through markdown → Yjs → markdown', async () => {
+    // #given a hand-written vault row. The brackets have to survive as LITERAL
+    // text: BlockNote's markdown exporter overrides remark's `text` handler, so
+    // `[` is not escaped and `\[ ]` never appears on disk.
+    const markdown = '| a |\n| --- |\n| [ ] task |\n'
+
+    // #when — remark re-pads the column once (its own normalization, applied on
+    // both sides of any change), so the settled form is what is compared
+    const first = await roundTrip(markdown)
+
+    // #then
+    expect(first).toBe('| a        |\n| -------- |\n| [ ] task |')
+    // #and it settles: write-back byte-compares, so a form that keeps moving
+    // rewrites every note holding a cell checkbox on every open
+    expect(await roundTrip(first!)).toBe(first)
+  })
+
+  it('keeps `[x] done` in a cell too', async () => {
+    const first = await roundTrip('| a |\n| --- |\n| [x] done |\n')
+    expect(first).toBe('| a        |\n| -------- |\n| [x] done |')
+    expect(await roundTrip(first!)).toBe(first)
+  })
+
+  it('settles: node → markdown → markdown is stable on the second pass', async () => {
+    // #given the bytes the node itself produced
+    const first = await cellMarkdown([
+      { type: 'inlineCheckbox', props: { checked: true } },
+      { type: 'text', text: 'task', styles: {} }
+    ])
+    expect(first).not.toBeNull()
+
+    // #when / #then re-reading and re-writing moves nothing
+    expect(await roundTrip(first!)).toBe(first)
+  })
+
+  it('survives the y-prosemirror round trip with nothing unrepresentable', async () => {
+    // #given a doc holding the node y-prosemirror would delete if main lacked
+    // the spec — the failure mode this whole schema package exists to stop
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'tbl',
+          type: 'table',
+          props: {},
+          children: [],
+          content: {
+            type: 'tableContent',
+            columnWidths: [null],
+            rows: [
+              {
+                cells: [
+                  {
+                    type: 'tableCell',
+                    content: [{ type: 'inlineCheckbox', props: { checked: true } }],
+                    props: {}
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #when / #then
+    expect(findUnrepresentableNodes(doc)).toEqual([])
+  })
+
+  it('leaves a checklist OUTSIDE a table as a checkListItem block', async () => {
+    // #given the regression that matters: `inlineCheckbox` also parses
+    // `<input type=checkbox>`, and `runsBefore: ['checkListItem']` puts it
+    // ahead of the block rule. Claiming one outside a cell would convert every
+    // existing note's checklists into inline boxes ProseMirror then drops.
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment('- [x] a task\n', fragment)
+
+    // #when
+    const blocks = await yFragmentToBlocks(fragment)
+
+    // #then
+    expect(blocks!.some((b) => b.type === 'checkListItem')).toBe(true)
+    expect(JSON.stringify(blocks)).not.toContain('inlineCheckbox')
+    expect(await yDocToMarkdown(doc)).toBe('- [x] a task')
   })
 })

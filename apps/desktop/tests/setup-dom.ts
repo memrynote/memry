@@ -108,6 +108,15 @@ const createMockApi = () => ({
     deleteFromAccount: vi.fn().mockResolvedValue(undefined)
   },
 
+  // Home boards API (mounted app-wide by HomeTabTitleSync, not only by the Home page)
+  homePages: {
+    list: vi.fn().mockResolvedValue([]),
+    create: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
+    update: vi.fn().mockResolvedValue({ id: 'home-board', name: 'Home', position: 0, widgets: [] }),
+    delete: vi.fn().mockResolvedValue({ success: true }),
+    reorder: vi.fn().mockResolvedValue({ success: true })
+  },
+
   // Notes API
   notes: {
     create: vi.fn().mockResolvedValue({ success: true, note: null }),
@@ -130,6 +139,7 @@ const createMockApi = () => ({
     renameFolder: vi.fn().mockResolvedValue({ success: true }),
     deleteFolder: vi.fn().mockResolvedValue({ success: true }),
     resolveByTitle: vi.fn().mockResolvedValue(null),
+    resolveTitles: vi.fn().mockResolvedValue({}),
     resolveWikiTarget: vi.fn().mockResolvedValue(null),
     previewByTitle: vi.fn().mockResolvedValue(null),
     exists: vi.fn().mockResolvedValue(false),
@@ -525,6 +535,9 @@ const createMockApi = () => ({
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
   onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
+  onHomePageCreated: vi.fn().mockReturnValue(() => {}),
+  onHomePageUpdated: vi.fn().mockReturnValue(() => {}),
+  onHomePageDeleted: vi.fn().mockReturnValue(() => {}),
   onCanvasDeleted: vi.fn().mockReturnValue(() => {}),
   onLargeFileIndex: vi.fn().mockReturnValue(() => {}),
   onLargeFileSearchProgress: vi.fn().mockReturnValue(() => {}),

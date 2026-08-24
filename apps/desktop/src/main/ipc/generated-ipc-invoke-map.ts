@@ -197,6 +197,9 @@ export interface MainIpcInvokeHandlers {
   "notes:add-property-option": (...args: [{ propertyName: string; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:apply-template": (...args: [{ noteId: string; templateId: string; mode: "full" | "body"; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
+  "notes:attachment-open-external": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
+  "notes:attachment-resolve": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/notes-api").AttachmentResolveResult>>
+  "notes:attachment-reveal-in-finder": (...args: [{ noteId: string; url: string; }]) => Awaited<Promise<void>>
   "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
   "notes:create-folder": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "notes:create-property-definition": (...args: [{ name: string; type: "number" | "date" | "text" | "select" | "url" | "status" | "checkbox" | "multiselect"; options?: { value: string; color: string; default?: boolean | undefined; }[] | undefined; defaultValue?: unknown; color?: string | undefined; }]) => Awaited<Promise<{ success: true; definition: import("../../../../../packages/contracts/src/property-types").PropertyDefinition | undefined; } | { success: true; definition: { type: string; name: string; createdAt: string; color: string | null; options: string | null; defaultValue: string | null; }; }> | { success: false; error: string }>
@@ -240,6 +243,7 @@ export interface MainIpcInvokeHandlers {
   "notes:rename-property-option": (...args: [{ propertyName: string; oldValue: string; newValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:reorder": (...args: [{ folderPath: string; notePaths: string[]; }]) => Awaited<{ success: true; } | { success: false; error: string }>
   "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; } | null>>
+  "notes:resolve-titles": (...args: [string[]]) => Awaited<Promise<{ [k: string]: { id: string; path: string; } | null; }>>
   "notes:resolve-wiki-target": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: import("../../../../../packages/shared/src/file-types").FileType; heading: string | null; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: import("../vault/notes-crud").Note; }>>
   "notes:reveal-in-finder": (...args: [string]) => Awaited<Promise<void>>
@@ -257,7 +261,7 @@ export interface MainIpcInvokeHandlers {
   "properties:set": (...args: [{ entityId: string; properties: Record<string, unknown>; }]) => Awaited<Promise<{ success: false; error: string; } | import("../../../../../packages/contracts/src/properties-api").SetPropertiesResponse>>
   "quick-capture:get-clipboard": (...args: []) => Awaited<string>
   "recents:list": (...args: [{ limit?: number | undefined; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/recents-api").RecentlyOpenedItem[]>>
-  "recents:record": (...args: [{ itemId: string; itemType: "note"; }]) => Awaited<Promise<{ recorded: true; } | { recorded: false; }>>
+  "recents:record": (...args: [{ itemId: string; itemType: "note" | "canvas"; }]) => Awaited<Promise<{ recorded: true; } | { recorded: false; }>>
   "reminder:bulk-dismiss": (...args: [{ reminderIds: string[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; dismissedCount: number; }>>
   "reminder:count-pending": (...args: []) => Awaited<Promise<number>>
   "reminder:create": (...args: [{ targetType: "note"; targetId: string; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "journal"; targetId: string; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "highlight"; targetId: string; highlightText: string; highlightStart: number; highlightEnd: number; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "task"; targetId: string; remindAt: string; title?: string | undefined; note?: string | undefined; } | { targetType: "note_date"; targetId: string; anchorId: string; remindAt: string; title?: string | undefined; note?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; reminder: import("../../../../../packages/contracts/src/reminders-api").Reminder; }>>

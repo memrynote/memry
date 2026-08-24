@@ -77,6 +77,12 @@ export const NotesChannels = {
     LIST_ATTACHMENTS: 'notes:list-attachments',
     /** Delete an attachment */
     DELETE_ATTACHMENT: 'notes:delete-attachment',
+    /** Resolve an attachment block's url to its on-disk path + stored filename */
+    ATTACHMENT_RESOLVE: 'notes:attachment-resolve',
+    /** Reveal an attachment in the OS file manager */
+    ATTACHMENT_REVEAL_IN_FINDER: 'notes:attachment-reveal-in-finder',
+    /** Open an attachment with the OS default app */
+    ATTACHMENT_OPEN_EXTERNAL: 'notes:attachment-open-external',
     /** Get folder config (template settings) */
     GET_FOLDER_CONFIG: 'notes:get-folder-config',
     /** Set folder config (template settings) */
@@ -105,6 +111,8 @@ export const NotesChannels = {
     GET_FILE: 'notes:get-file',
     /** Resolve a WikiLink target by title (returns note or file metadata) */
     RESOLVE_BY_TITLE: 'notes:resolve-by-title',
+    /** Resolve a batch of WikiLink titles in one call (broken-link detection) */
+    RESOLVE_TITLES: 'notes:resolve-titles',
     /** Resolve a WikiLink target, heading half and all (`Note#Heading`) */
     RESOLVE_WIKI_TARGET: 'notes:resolve-wiki-target',
     /** Get preview data for a WikiLink hover card */

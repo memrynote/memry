@@ -7,11 +7,13 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import { createRateLimiter } from '../middleware/rate-limit'
 import { safeWaitUntil } from '../services/analytics'
+import { claimExceptionBudget } from '../services/exception-budget'
 import { capturePostHogEvents } from '../services/posthog'
 import { desktopErrorRecord, desktopLogRecord, pushPostHogLogs } from '../services/posthog-logs'
 import {
   exceptionEvent,
   identifyEvent,
+  isLegacyMutationDropNoise,
   productEvent,
   resolveDistinctId
 } from '../services/posthog-transform'
@@ -63,10 +65,23 @@ telemetry.post('/batch', async (c) => {
   }
   const distinctId = resolveDistinctId(ctx)
 
-  const events = batch.events.map((event) => productEvent(batch, event, ctx))
-  const exceptions = batch.events
+  // Pre-fix desktops (< 2026.821) ship the per-mutation drop tripwire
+  // unthrottled; those events are dropped before ALL THREE sinks below, not
+  // demoted — see isLegacyMutationDropNoise. The 202 still reports the raw
+  // count so old clients keep flushing normally.
+  const forwardable = batch.events.filter((event) => !isLegacyMutationDropNoise(batch, event))
+
+  const events = forwardable.map((event) => productEvent(batch, event, ctx))
+  let exceptions = forwardable
     .map((event) => exceptionEvent(batch, event, ctx))
     .filter((event): event is NonNullable<typeof event> => event !== null)
+  if (exceptions.length > 0) {
+    // Per-install hourly cap on the `$exception` stream only — the product
+    // events and log lines for the same failures still forward, so a capped
+    // install stays diagnosable while Error Tracking stays affordable.
+    const granted = await claimExceptionBudget(c.env.DB, installHash, exceptions.length)
+    if (granted < exceptions.length) exceptions = exceptions.slice(0, granted)
+  }
 
   // $identify merges the anonymous install person into the account person
   // PERMANENTLY, and the desktop flushes roughly every 30s. claimIdentifySession
@@ -86,7 +101,7 @@ telemetry.post('/batch', async (c) => {
 
   // Desktop error events also become PostHog log lines (redacted stack frames
   // only — see TelemetryErrorDetailSchema) so they are searchable in the Logs tab.
-  const errorEvents = batch.events.filter((event) => event.errorCode || event.error)
+  const errorEvents = forwardable.filter((event) => event.errorCode || event.error)
   if (errorEvents.length > 0) {
     safeWaitUntil(
       c,

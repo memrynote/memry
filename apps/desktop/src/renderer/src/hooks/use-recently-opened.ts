@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { RecentlyOpenedItem } from '@memry/contracts/recents-api'
+import type { RecentlyOpenedItem, RecentlyOpenedItemType } from '@memry/contracts/recents-api'
 // Via the barrel, not '@/contexts/tabs/context': App-level suites mock the
 // barrel, and reaching past it makes this hook demand a real TabProvider they
 // do not build.
@@ -23,9 +23,9 @@ export const recentlyOpenedKeys = {
   list: (limit: number) => ['recently-opened', limit] as const
 }
 
-/** Time a note must stay in front before it counts as opened. */
+/** Time an item must stay in front before it counts as opened. */
 const DWELL_MS = 2000
-/** Re-opening the same note inside this window does not write again. */
+/** Re-opening the same item inside this window does not write again. */
 const THROTTLE_MS = 60_000
 
 export function useRecentlyOpened(limit: number): {
@@ -47,32 +47,39 @@ export function useRecentlyOpened(limit: number): {
 }
 
 /**
- * Records the active note tab once it has been in front for {@link DWELL_MS}.
- * Mount once, high in the tree, inside TabProvider.
+ * Records the active note or canvas tab once it has been in front for
+ * {@link DWELL_MS}. Mount once, high in the tree, inside TabProvider.
  */
 export function useRecordRecentlyOpened(): void {
   const activeTab = useActiveTab()
   const queryClient = useQueryClient()
   const lastWriteRef = useRef<Map<string, number>>(new Map())
 
-  const noteId = activeTab?.type === 'note' ? (activeTab.entityId ?? null) : null
+  // Canvases live in the same tab bar and are just as much "something you
+  // opened"; a tab type the trail cannot resolve is skipped instead.
+  const itemType: RecentlyOpenedItemType | null =
+    activeTab?.type === 'note' || activeTab?.type === 'canvas' ? activeTab.type : null
+  const itemId = itemType ? (activeTab?.entityId ?? null) : null
 
   useEffect(() => {
-    if (!noteId) return
+    if (!itemType || !itemId) return
 
-    // Tab-switching past a note should not enter the trail, so wait out the
+    // Tab-switching past an item should not enter the trail, so wait out the
     // dwell before writing; unmounting the effect cancels it.
     const timer = setTimeout(() => {
+      // Keyed by type as well as id: the trail's unique index is
+      // (item_type, item_id), so a note and a canvas throttle separately.
+      const key = `${itemType}:${itemId}`
       const now = Date.now()
-      const last = lastWriteRef.current.get(noteId)
+      const last = lastWriteRef.current.get(key)
       if (last !== undefined && now - last < THROTTLE_MS) return
-      lastWriteRef.current.set(noteId, now)
+      lastWriteRef.current.set(key, now)
 
-      void Promise.resolve(window.api.recents.record({ itemId: noteId, itemType: 'note' })).then(
-        () => queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all })
+      void Promise.resolve(window.api.recents.record({ itemId, itemType })).then(() =>
+        queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all })
       )
     }, DWELL_MS)
 
     return () => clearTimeout(timer)
-  }, [noteId, queryClient])
+  }, [itemType, itemId, queryClient])
 }

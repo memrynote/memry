@@ -38,13 +38,14 @@ import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useReviewRailShift } from '@/hooks/use-review-rail-shift'
-import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
+import { useNoteTagsQuery, useNoteLinksQuery, useNoteMutations } from '@/hooks/use-notes-query'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useToday } from '@/hooks/use-today'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { ExportDialog } from '@/components/note/export-dialog'
+import { WikiLinkCreateDialog } from '@/components/note/wiki-link-create-dialog'
 import { VersionHistory } from '@/components/note/version-history'
 import { toast } from 'sonner'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
@@ -163,6 +164,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
+  // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
+  const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
+  const { createNote } = useNoteMutations()
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false)
 
   // Headings state for outline panel
@@ -710,7 +714,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             })
             break
           case 'create':
-            toast.info(t('toast.noteNotFound', { target }))
+            // Same confirm dialog as the note editor (#1716) instead of the
+            // old dead-end "not found" toast.
+            setPendingWikiLinkCreate(resolution.title)
             break
           case 'not-found':
             toast.error(t('toast.fileNotFound', { target }))
@@ -722,6 +728,35 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       }
     },
     [openTab, t, scrollToHeadingText, prefersReducedMotion]
+  )
+
+  // The confirmed half of the wiki-link create dialog: create in the default
+  // folder, then open the new note the way the resolved-note branch does.
+  const handleWikiLinkCreateConfirm = useCallback(
+    async (title: string) => {
+      try {
+        const result = await createNote.mutateAsync({ title })
+        if (!result.success || !result.note) {
+          toast.error(t('toast.createLinkedFailed'))
+          return
+        }
+        openTab({
+          type: 'note',
+          title: result.note.title,
+          icon: 'file-text',
+          path: `/notes/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      } catch (err) {
+        log.error('Failed to create linked note:', err)
+        toast.error(t('toast.createLinkedFailed'))
+      }
+    },
+    [createNote, openTab, t]
   )
 
   const handleHeadingClick = useCallback(
@@ -1163,6 +1198,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         </main>
 
         {/* Dialogs */}
+        <WikiLinkCreateDialog
+          targetTitle={pendingWikiLinkCreate}
+          onClose={() => setPendingWikiLinkCreate(null)}
+          onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
+        />
         {entry && (
           <ExportDialog
             open={isExportDialogOpen}

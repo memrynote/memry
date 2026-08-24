@@ -170,6 +170,83 @@ test.describe('Wiki links on open', () => {
   })
 
   /**
+   * The regression 52c6cd07f shipped, and the reason the spec above missed it.
+   *
+   * Playwright's `.click()` presses and releases with no delay, so the chip is
+   * still under the mouse when the `click` event fires. A person holds the
+   * button for 80-150ms — and in that window Chromium flushes the
+   * `selectionchange` that mousedown queued, ProseMirror syncs the caret to the
+   * position beside the `contenteditable="false"` chip, and the wiki-link edit
+   * plugin paints the raw `[[Target]]` in the chip's place with the chip itself
+   * set to `display: none`. The click then has no chip to land on: the browser
+   * retargets it to the paragraph, the old DOM listener's
+   * `closest('[data-wiki-link]')` found nothing, and the user was left staring
+   * at `[[Target]]` — which reads as the note having dropped into "edit mode"
+   * rather than navigating.
+   *
+   * So the hold is the test. Anything that presses and releases in one tick
+   * passes on the broken build.
+   *
+   * The hold is also the only place the SECOND report is visible. Moving
+   * navigation to a mouseup handler made the click work but not the flash: the
+   * caret is parked at mousedown, so the markdown is already painted by the
+   * time any mouseup handler runs, and the user watches `[[…]]` sit where their
+   * link was until the target opens. Hence the assertions BELOW the press and
+   * above the release — they read the editor at the exact moment the user is
+   * complaining about.
+   */
+  test('a click held like a human click still follows the link', async ({ page }) => {
+    await ready(page)
+
+    // #given
+    const { sourceTitle, targets } = await seedLinkList(page)
+    await openWithoutTyping(page, sourceTitle)
+
+    const chip = page.locator(`[data-wiki-link][data-target="${targets[1]}"]`)
+    await expect(chip).toBeVisible()
+
+    // #when the user presses on the link and lets go a moment later, the way a
+    // hand does rather than the way an automation does.
+    //
+    // `hover()` rather than a `boundingBox()` read: it puts the pointer on the
+    // chip's centre only once Playwright has seen the box hold still, and by
+    // this point in the file several notes are open, so the layout above the
+    // editor is still settling. A raw box read landed a line low and followed
+    // the NEXT link — a green-looking pass on the wrong note is worse than the
+    // bug.
+    await chip.hover()
+    await page.mouse.down()
+    await page.waitForTimeout(150)
+
+    // #then, while the button is STILL DOWN, the link is still a link.
+    //
+    // This is the second half of the report and the half a navigation
+    // assertion cannot see: with navigation moved to a mouseup handler the
+    // note does open, but the caret was already parked beside the chip at
+    // mousedown, so from the press until the target replaces the view the user
+    // is looking at `[[Alpha-1234]]` where their link used to be. Reading the
+    // editor here rather than after the release is the whole point — release
+    // first and the evidence is gone.
+    //
+    // Snapshots, then release, then assert: a failing assertion must not leave
+    // the mouse button held down for the rest of the file.
+    const editor = page.locator(SELECTORS.noteEditor).first()
+    const heldText = await editor.innerText()
+    const paintedRuns = await page.locator('[data-wiki-link-source]').count()
+    const chipStillRendered = await chip.isVisible()
+
+    await page.mouse.up()
+
+    expect(paintedRuns).toBe(0)
+    expect(heldText).not.toContain('[[')
+    expect(chipStillRendered).toBe(true)
+
+    // #and it navigates. On the unfixed build this fails above rather than
+    // here: the note opens, but only after the flash.
+    await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(targets[1])
+  })
+
+  /**
    * The case the report is actually made of, and the one `handleChange` cannot
    * reach. `handleChange` promotes on a change EVENT, and it gets one on a
    * first open only because the content arrives after the editor is listening.
