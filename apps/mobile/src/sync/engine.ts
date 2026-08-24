@@ -26,6 +26,9 @@ const log = createLogger('MobileSyncEngine')
 /** Same window as first-sync phase C — bodies outside it are on-demand (T048). */
 const RECENT_BODY_WINDOW_DAYS = 30
 
+/** Desktop pushes CRDT state on a 30 s scheduler; probing faster is waste. */
+const BODY_SWEEP_MIN_INTERVAL_MS = 30_000
+
 /**
  * T045: the `@memry/sync-client` pull pipeline wired to the mobile adapters.
  * One engine per vault; `sync()` is the incremental pass (record feed → CRDT
@@ -46,6 +49,7 @@ export class MobileSyncEngine {
   private deviceKeysFetched = false
   private listeners = new Set<(summary: SyncSummary) => void>()
   private chain: Promise<unknown> = Promise.resolve()
+  private lastBodySweepAt = 0
 
   constructor(readonly vaultId: string) {
     this.http = createMobileHttpClient(syncBaseUrl())
@@ -180,11 +184,18 @@ export class MobileSyncEngine {
     // note's CRDT sequence each pass — the record feed never carries body
     // changes (update pushes send content: null, and body saves do not touch
     // the record row at all). Mirror that here: probe the recent window (same
-    // 30-day rule as first-sync phase C) on every pass, not just the ids the
-    // record feed named. Unchanged notes cost one cursor echo in the shared
-    // batch call; older bodies stay on-demand (T048).
-    const probeIds = await this.recentBodyProbeIds()
-    for (const id of record.changedNoteIds) probeIds.add(id)
+    // 30-day rule as first-sync phase C), not just the ids the record feed
+    // named. Unchanged notes cost one cursor echo in the shared batch call;
+    // older bodies stay on-demand (T048). The sweep runs at most every 30 s —
+    // desktop only pushes CRDT state on its 30 s snapshot scheduler, so a
+    // faster probe cannot observe anything new, and the 5 s foreground poll
+    // must not multiply it.
+    const probeIds = new Set(record.changedNoteIds)
+    const now = Date.now()
+    if (now - this.lastBodySweepAt >= BODY_SWEEP_MIN_INTERVAL_MS) {
+      this.lastBodySweepAt = now
+      for (const id of await this.recentBodyProbeIds()) probeIds.add(id)
+    }
     const bodies = await this.pullBodiesForUnlocked(store, [...probeIds])
     await this.pollStatus(engine)
 

@@ -51,18 +51,45 @@ export async function registerBackgroundSync(minIntervalMinutes = 15): Promise<v
 }
 
 let foregroundWired = false
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
-/** Foreground transitions trigger an incremental sync pass. */
+/** While the app is open, poll every 5 s so desktop edits show without a
+ * background/foreground cycle (G2 <5 s visibility). The engine's exclusive
+ * queue coalesces overlapping passes, and a pass with nothing new is one
+ * cursor-echo request. */
+const FOREGROUND_POLL_MS = 5_000
+
+function startForegroundPoll(): void {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    if (!activeVaultId) return
+    void getSyncEngine(activeVaultId)
+      .sync()
+      .catch(() => {})
+  }, FOREGROUND_POLL_MS)
+}
+
+function stopForegroundPoll(): void {
+  if (!pollTimer) return
+  clearInterval(pollTimer)
+  pollTimer = null
+}
+
+/** Foreground transitions trigger an incremental sync pass, and while the
+ * app stays active a 5 s poll keeps it current. */
 export function wireForegroundSync(): void {
   if (foregroundWired) return
   foregroundWired = true
   let previous = AppState.currentState
+  if (previous === 'active') startForegroundPoll()
   AppState.addEventListener('change', (next) => {
     if (next === 'active' && previous !== 'active' && activeVaultId) {
       void getSyncEngine(activeVaultId)
         .sync()
         .catch(() => {})
     }
+    if (next === 'active') startForegroundPoll()
+    else stopForegroundPoll()
     previous = next
   })
 }
