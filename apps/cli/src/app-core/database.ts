@@ -7,7 +7,8 @@ import * as dataSchema from '@memry/db-schema/data-schema'
 import * as indexSchema from '@memry/db-schema/index-schema'
 import { projects, statuses } from '@memry/db-schema/data-schema'
 import { eq } from 'drizzle-orm'
-import { findWorkspaceRoot, getDataDbPath, getIndexDbPath, getMemryDir } from './paths.ts'
+import { resolveMigrationsDir } from './migrations-path.ts'
+import { getDataDbPath, getIndexDbPath, getMemryDir } from './paths.ts'
 
 export type DataDb = BetterSQLite3Database<typeof dataSchema>
 export type IndexDb = BetterSQLite3Database<typeof indexSchema>
@@ -157,19 +158,14 @@ function ensureDefaultTaskProject(db: DataDb): void {
 }
 
 export function openDatabases(vaultPath: string): OpenedDatabases {
-  const workspaceRoot = findWorkspaceRoot()
+  const dataMigrations = resolveMigrationsDir('data')
+  const indexMigrations = resolveMigrationsDir('index')
   const dataDbPath = getDataDbPath(vaultPath)
   const indexDbPath = getIndexDbPath(vaultPath)
 
   withDatabaseInitLock(vaultPath, () => {
-    runMigrations(
-      dataDbPath,
-      path.join(workspaceRoot, 'apps/desktop/src/main/database/drizzle-data')
-    )
-    runMigrations(
-      indexDbPath,
-      path.join(workspaceRoot, 'apps/desktop/src/main/database/drizzle-index')
-    )
+    runMigrations(dataDbPath, dataMigrations)
+    runMigrations(indexDbPath, indexMigrations)
 
     const seedSqlite = new Database(dataDbPath)
     configure(seedSqlite, -dataCacheKiB)

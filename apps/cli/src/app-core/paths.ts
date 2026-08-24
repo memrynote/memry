@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 export interface VaultConfig {
   excludePatterns: string[]
@@ -78,13 +77,4 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
   await writeVaultConfig(vaultPath, config)
 
   return config
-}
-
-export function findWorkspaceRoot(start = fileURLToPath(new URL('.', import.meta.url))): string {
-  let current = start
-  while (current !== path.dirname(current)) {
-    if (current.endsWith(`${path.sep}memry`)) return current
-    current = path.dirname(current)
-  }
-  return process.cwd()
 }

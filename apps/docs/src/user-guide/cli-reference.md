@@ -1765,3 +1765,15 @@ The most common error messages are:
 - `Pass --yes to delete a <thing>` — a destructive command needs the safety flag.
 - `Multiple vaults found. Choose one with memrynote vault use ... or run with --vault <path>.`
 - `No default vault configured. Open memrynote and choose Settings > Command Line > Default vault, or run with --vault <path>.`
+
+---
+
+## Environment variables
+
+| Variable               | Meaning                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MEMRY_MIGRATIONS_DIR` | Directory holding `drizzle-data/` and `drizzle-index/`. An escape hatch — the CLI finds them on its own, both from a packaged install and from a source checkout. Set it only if it ever reports that it could not. |
+
+If a command fails with `Could not find the drizzle-data migrations folder`, the
+error lists every path that was checked; point `MEMRY_MIGRATIONS_DIR` at the
+right one and please open an issue, since finding them should not need help.
