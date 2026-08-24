@@ -4,7 +4,7 @@
  * Copy path and the original + stored filename for a file block.
  */
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { fireEvent } from '@testing-library/react'
@@ -14,9 +14,11 @@ import { NoteFileUrlProvider } from './note-file-url-context'
 import {
   AttachmentBlockContextMenu,
   AttachmentMenuButton,
+  ImageAttachmentMenu,
   ImageHoverMenuButton,
   useImageHoverMenu
 } from './attachment-block-menu'
+import { AttachmentRenameFlow, renameFieldValue } from './attachment-rename-dialog'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.
@@ -184,6 +186,79 @@ describe('renaming from the menu (#1714)', () => {
     await waitFor(() => expect(mocks.renameAttachment).toHaveBeenCalled())
     expect(onRenamed).not.toHaveBeenCalled()
     expect(screen.getByTestId('attachment-rename-dialog')).toBeInTheDocument()
+  })
+})
+
+/**
+ * What the editor does: the image menu lives only while it is open, and the
+ * floating button only while the pointer is on the image. A dialog parented to
+ * either was unmounted by the very click that opened it, so Rename on an image
+ * did nothing at all — the host has to own the dialog.
+ */
+const hostRenamed = vi.fn()
+
+function ImageMenuHostHarness() {
+  const [menuOpen, setMenuOpen] = useState(true)
+  const [renameTarget, setRenameTarget] = useState<{ url: string; name: string } | null>(null)
+
+  return (
+    <>
+      {menuOpen && (
+        <ImageAttachmentMenu
+          target={{ x: 0, y: 0, url: URL, name: 'report.pdf', blockId: 'b1' }}
+          onClose={() => setMenuOpen(false)}
+          onRequestRename={() => {
+            setRenameTarget({ url: URL, name: 'report.pdf' })
+            setMenuOpen(false)
+          }}
+        />
+      )}
+      {renameTarget && (
+        <AttachmentRenameFlow
+          url={renameTarget.url}
+          name={renameTarget.name}
+          open
+          onOpenChange={(open) => !open && setRenameTarget(null)}
+          onRenamed={hostRenamed}
+        />
+      )}
+    </>
+  )
+}
+
+describe('image blocks — host-owned rename (#1714)', () => {
+  it('keeps the dialog when the menu that asked for it unmounts', async () => {
+    hostRenamed.mockClear()
+    const user = userEvent.setup()
+    renderWithProvider(<ImageMenuHostHarness />)
+
+    await user.click(await screen.findByRole('menuitem', { name: 'Rename…' }))
+
+    // The menu is gone, the dialog is not.
+    expect(screen.queryByTestId('attachment-image-menu')).not.toBeInTheDocument()
+    const field = await screen.findByLabelText('Attachment name')
+    expect(field).toHaveValue('report')
+
+    await user.clear(field)
+    await user.type(field, 'invoice')
+    await user.click(screen.getByRole('button', { name: 'Rename' }))
+
+    await waitFor(() => {
+      expect(mocks.renameAttachment).toHaveBeenCalledWith(NOTE_ID, URL, 'invoice.pdf')
+    })
+    await waitFor(() => {
+      expect(hostRenamed).toHaveBeenCalledWith({
+        url: '../attachments/note-1/k3f9x2-invoice.pdf',
+        name: 'invoice.pdf'
+      })
+    })
+  })
+
+  it('drops the stored nanoid prefix from the field an image falls back to', () => {
+    // An image block with no name of its own falls back to the stored filename;
+    // main puts the prefix back, so offering it would double it.
+    expect(renameFieldValue('k3f9x2-photo.png')).toBe('photo.png')
+    expect(renameFieldValue('holiday-photo.png')).toBe('holiday-photo.png')
   })
 })
 
