@@ -1,11 +1,15 @@
 import { runAdapterConformance } from '@memry/sync-client/adapters/conformance'
+import { buildClientHeaderValue, seamJsonRequest } from '@memry/sync-client/pull'
 import { createMobileAdapters } from '@/adapters/index'
+import { createMobileHttpClient } from '@/adapters/http-client'
+import { mobileAppVersion } from '@/adapters/runtime'
 import { createMobileNoteContentStore } from '@/db/note-content-store'
 import { MobilePullStore } from '@/db/pull-store'
 import { closeVaultDb, openVaultDb } from '@/db/index'
 import { createLogger } from '@/lib/logger'
 import { getSyncEngine } from '@/sync/engine'
-import { loadCurrentVaultId } from '@/sync/auth-client'
+import { loadCurrentVaultId, loadSession } from '@/sync/auth-client'
+import { syncBaseUrl } from '@/sync/server-config'
 
 const log = createLogger('Us1SeamHarness')
 
@@ -170,6 +174,51 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
     `corrupt-marked items: ${corruptCount?.n ?? 0}`,
     ...corrupt.map((row) => `${row.key.slice(8, 20)}…: ${row.value.slice(0, 80)}`)
   ]
+
+  // Stuck-item deep probe: which types are stuck, and does the SERVER return
+  // them when asked directly? Decides server-omission vs client-not-asking.
+  const stuckByType = await db.getAllAsync<{ type: string; n: number }>(
+    `SELECT type, COUNT(*) AS n FROM sync_items
+     WHERE payload_state = 'metadata-only' AND deleted_at IS NULL GROUP BY type ORDER BY n DESC`
+  )
+  result.notes.push(...stuckByType.map((r) => `stuck ${r.type}: ${r.n}`))
+
+  const stuckSample = await db.getAllAsync<{ id: string; type: string }>(
+    `SELECT id, type FROM sync_items
+     WHERE payload_state = 'metadata-only' AND deleted_at IS NULL LIMIT 2`
+  )
+  if (stuckSample.length > 0) {
+    const session = await loadSession()
+    if (session) {
+      try {
+        const raw = await seamJsonRequest<{ items?: unknown[] }>(
+          {
+            http: createMobileHttpClient(syncBaseUrl()),
+            accessToken: () => session.accessToken,
+            vaultId,
+            clientHeaderValue: buildClientHeaderValue('ios', mobileAppVersion())
+          },
+          { method: 'POST', path: '/sync/pull', body: { itemIds: stuckSample.map((s) => s.id) } }
+        )
+        result.notes.push(
+          `raw /sync/pull for ${stuckSample.length} stuck ids → server returned ${raw.items?.length ?? 'NO'} items`
+        )
+      } catch (err) {
+        result.notes.push(
+          `raw /sync/pull for stuck ids THREW: ${err instanceof Error ? err.message.slice(0, 90) : String(err)}`
+        )
+      }
+
+      const blobResult = await engine.pullBlobs(stuckSample.map((s) => s.id))
+      const after = await db.getFirstAsync<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM sync_items WHERE payload_state = 'metadata-only' AND deleted_at IS NULL AND id IN (${stuckSample.map(() => '?').join(',')})`,
+        stuckSample.map((s) => s.id)
+      )
+      result.notes.push(
+        `engine.pullBlobs on those ids → applied ${blobResult.applied}, still stuck ${after?.n ?? '?'} (types: ${stuckSample.map((s) => s.type).join(', ')})`
+      )
+    }
+  }
 
   log.info('Pull round-trip finished', { passed: result.passed, failed: result.failed })
   return result
