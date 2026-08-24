@@ -1,5 +1,15 @@
 import type { NoteRecord, NotesService } from '@memry/app-core/service-types'
-export type { NoteRecord, CreateNoteInput, UpdateNoteInput, NoteLinkRecord, NoteLinksResponse, NotePreviewRecord, ResolvedNoteRecord, ResolvedWikiTargetRecord, NotesService } from '@memry/app-core/service-types'
+export type {
+  NoteRecord,
+  CreateNoteInput,
+  UpdateNoteInput,
+  NoteLinkRecord,
+  NoteLinksResponse,
+  NotePreviewRecord,
+  ResolvedNoteRecord,
+  ResolvedWikiTargetRecord,
+  NotesService
+} from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
@@ -24,6 +34,7 @@ import {
 } from '@memry/app-core/markdown'
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import { resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
+import { rewriteWikiLinksForRename } from '@memry/shared/rewrite-wiki-links'
 
 interface NoteMetadataRow {
   id: string
@@ -37,10 +48,20 @@ interface NoteMetadataRow {
   journalDate: string | null
 }
 
+// Tags keep their typed case but identity is case-insensitive; on a duplicate
+// the first casing wins — same as desktop's `extractTags`.
 function tagsFromFrontmatter(frontmatter: Record<string, unknown>): string[] {
   const tags = frontmatter.tags
   if (!Array.isArray(tags)) return []
-  return tags.map((tag) => String(tag).trim()).filter(Boolean)
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const tag of tags) {
+    const trimmed = String(tag).trim()
+    if (!trimmed || seen.has(trimmed.toLowerCase())) continue
+    seen.add(trimmed.toLowerCase())
+    result.push(trimmed)
+  }
+  return result
 }
 
 function propertiesFromFrontmatter(frontmatter: Record<string, unknown>): Record<string, unknown> {
@@ -54,20 +75,19 @@ function wikilinks(content: string): string[] {
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)
 }
 
+// `folder` is vault-relative, same contract as desktop's `createNote` since
+// #1204: a note created inside a folder lands in that folder. Only an unplaced
+// note falls back to `defaultNoteFolder` — it is a destination, not a notes
+// root.
 function notePath(config: VaultConfig, title: string, folder?: string): string {
-  const folderPart = folder ? `${normalizePath(folder)}/` : ''
-  return normalizePath(`${config.defaultNoteFolder}/${folderPart}${safeFilename(title)}.md`)
+  const dir = folder ? normalizePath(folder) : normalizePath(config.defaultNoteFolder)
+  return normalizePath(`${dir}/${safeFilename(title)}.md`)
 }
 
-// Folder of a note relative to defaultNoteFolder ('' = vault root). Tolerant of
-// both the flat model (no prefix) and a legacy notes/ prefix; preserves nested
-// folders (a plain string replace would mangle multi-level paths).
-function noteFolderFromPath(notePathValue: string, defaultNoteFolder: string): string {
+// The vault-relative folder a note currently sits in ('' = vault root).
+function noteFolderOf(notePathValue: string): string {
   const dir = path.dirname(notePathValue)
-  const base = dir === '.' ? '' : dir
-  if (!defaultNoteFolder) return base
-  if (base === defaultNoteFolder) return ''
-  return base.startsWith(`${defaultNoteFolder}/`) ? base.slice(defaultNoteFolder.length + 1) : base
+  return dir === '.' ? '' : normalizePath(dir)
 }
 
 function journalPath(config: VaultConfig, date: string): string {
@@ -158,6 +178,63 @@ function saveMetadata(
   })
 }
 
+// Rename-time vault-wide wiki-link repair (#1711/#1720), mirroring the
+// desktop's rename-link-rewrite: wiki-links address notes by TITLE, so a
+// rename silently disconnects every inbound `[[Old Title]]` unless the stale
+// title is rewritten in every source body — the renamed note's own self-links
+// included. A source that fails to read is skipped: the rename itself already
+// happened, and repairing nine of ten links beats unwinding it over one
+// unreadable file.
+async function rewriteInboundLinksForRename(input: {
+  vaultPath: string
+  dataDb: DataDb
+  renamedId: string
+  oldTitle: string
+  newTitle: string
+}): Promise<void> {
+  const rows = [
+    ...listNoteMetadata(input.dataDb, { limit: 10000 }),
+    ...listNoteMetadata(input.dataDb, { journalOnly: true, limit: 10000 })
+  ]
+  const otherNoteWithTitleExists = (title: string) =>
+    rows.some(
+      (row) => row.id !== input.renamedId && row.title.toLowerCase() === title.toLowerCase()
+    )
+
+  const now = new Date().toISOString()
+  for (const row of rows) {
+    let raw: string
+    try {
+      raw = await fs.readFile(path.join(input.vaultPath, row.path), 'utf-8')
+    } catch {
+      continue
+    }
+    const parsed = parseMarkdownNote(raw)
+    const rewritten = rewriteWikiLinksForRename(
+      parsed.content,
+      input.oldTitle,
+      input.newTitle,
+      otherNoteWithTitleExists
+    )
+    if (rewritten === null) continue
+    await fs.writeFile(
+      path.join(input.vaultPath, row.path),
+      serializeParsedMarkdownNote(parsed, rewritten, { frontmatterEdited: false }),
+      'utf-8'
+    )
+    saveMetadata(input.dataDb, {
+      id: row.id,
+      path: row.path,
+      title: row.title,
+      properties: propertiesFromFrontmatter(parsed.frontmatter),
+      localOnly: row.localOnly ?? false,
+      createdAt: row.createdAt,
+      modifiedAt: now,
+      journalDate: row.journalDate
+    })
+  }
+}
+
 function metadataByTitle(db: DataDb, title: string): NoteMetadataRow | undefined {
   const rows = listNoteMetadata(db, { limit: 10000 })
   return (
@@ -223,11 +300,9 @@ export function createNotesService({
     },
 
     async list(options = {}) {
-      // listNoteMetadata filters on the full vault-relative path, so prepend the
-      // configured note root (e.g. 'notes'); for a flat vault root it stays as-is.
-      const folder = options.folder
-        ? [config.defaultNoteFolder, options.folder].filter(Boolean).join('/')
-        : undefined
+      // `folder` is vault-relative (#1204): filter on it as-is, never re-root
+      // it through `defaultNoteFolder`.
+      const folder = options.folder ? normalizePath(options.folder) : undefined
       const rows = listNoteMetadata(dataDb, {
         folder,
         journalOnly: options.journalOnly ?? false,
@@ -265,10 +340,18 @@ export function createNotesService({
       }
       if (Object.keys(nextProperties).length === 0) delete nextFrontmatter.properties
       let nextPath = row.path
+      const renamedFromTitle =
+        input.title && input.title !== row.title && !row.journalDate ? row.title : null
 
-      if (input.title && input.title !== row.title && !row.journalDate) {
-        const folder = noteFolderFromPath(row.path, config.defaultNoteFolder)
-        nextPath = await ensureUniquePath(vaultPath, notePath(config, input.title, folder))
+      if (renamedFromTitle) {
+        // A rename stays in the note's current folder — including the vault
+        // root, which the `notePath` fallback would re-root under
+        // `defaultNoteFolder`.
+        const folder = noteFolderOf(row.path)
+        nextPath = await ensureUniquePath(
+          vaultPath,
+          normalizePath(`${folder ? `${folder}/` : ''}${safeFilename(nextTitle)}.md`)
+        )
         await fs.mkdir(path.dirname(path.join(vaultPath, nextPath)), { recursive: true })
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))
       }
@@ -293,6 +376,15 @@ export function createNotesService({
         modifiedAt: now,
         journalDate: row.journalDate
       })
+      if (renamedFromTitle) {
+        await rewriteInboundLinksForRename({
+          vaultPath,
+          dataDb,
+          renamedId: row.id,
+          oldTitle: renamedFromTitle,
+          newTitle: nextTitle
+        })
+      }
       return readNote(vaultPath, {
         ...row,
         path: nextPath,
@@ -313,11 +405,13 @@ export function createNotesService({
       const row = getMetadata(dataDb, idOrPath)
       if (!row) throw new Error(`Note not found: ${idOrPath}`)
       const note = await readNote(vaultPath, row)
+      // `newFolder` is vault-relative and '' means the vault root — never
+      // re-root it through `defaultNoteFolder` (desktop `moveNote` contract).
       const normalizedFolder = normalizePath(newFolder)
       const relativePath = normalizePath(
         normalizedFolder
-          ? `${config.defaultNoteFolder}/${normalizedFolder}/${path.basename(row.path)}`
-          : `${config.defaultNoteFolder}/${path.basename(row.path)}`
+          ? `${normalizedFolder}/${path.basename(row.path)}`
+          : path.basename(row.path)
       )
       const nextPath =
         relativePath === row.path ? relativePath : await ensureUniquePath(vaultPath, relativePath)

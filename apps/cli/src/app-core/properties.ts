@@ -40,7 +40,11 @@ export interface PropertiesService {
   deleteDefinition(name: string): Promise<boolean>
 }
 
-const selectLikeTypes = new Set(['select', 'multiselect', 'status'])
+// The types desktop's PropertyDefinitionsFileSchema accepts in
+// `.memry/properties.md`. `relation` is deliberately absent — desktop types a
+// relation from its value every time, and an unknown entry in the file fails
+// the schema's safeParse, which discards every definition at once.
+const portableDefinitionTypes = new Set(['select', 'multiselect', 'status', 'date', 'project'])
 
 function parseJson(value: string | null | undefined): unknown {
   if (!value) return null
@@ -84,19 +88,32 @@ function propertiesFileEntry(definition: PropertyDefinition): unknown {
     }
   }
 
+  if (definition.type === 'date') {
+    const parsed = parseJson(definition.options)
+    const showOnCalendar =
+      parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as { showOnCalendar?: unknown }).showOnCalendar
+        : undefined
+    return typeof showOnCalendar === 'boolean' ? { type: 'date', showOnCalendar } : { type: 'date' }
+  }
+
+  if (definition.type === 'project') {
+    return { type: 'project' }
+  }
+
   return {
     type: definition.type,
     options: Array.isArray(parseJson(definition.options)) ? parseJson(definition.options) : []
   }
 }
 
-async function persistSelectLikeDefinitions(
+async function persistPortableDefinitions(
   vaultPath: string,
   definitions: PropertyDefinition[]
 ): Promise<void> {
   const properties: Record<string, unknown> = {}
   for (const definition of definitions) {
-    if (!selectLikeTypes.has(definition.type)) continue
+    if (!portableDefinitionTypes.has(definition.type)) continue
     properties[definition.name] = propertiesFileEntry(definition)
   }
 
@@ -140,7 +157,7 @@ export function createPropertiesService({
         defaultValue: input.defaultValue ?? null,
         color: input.color ?? null
       } satisfies NewPropertyDefinition)
-      await persistSelectLikeDefinitions(vaultPath, listPropertyDefinitions(dataDb))
+      await persistPortableDefinitions(vaultPath, listPropertyDefinitions(dataDb))
       return definition
     },
 
@@ -156,13 +173,13 @@ export function createPropertiesService({
           'defaultValue' in updates ? (updates.defaultValue ?? null) : existing.defaultValue,
         color: 'color' in updates ? (updates.color ?? null) : existing.color
       } satisfies NewPropertyDefinition)
-      await persistSelectLikeDefinitions(vaultPath, listPropertyDefinitions(dataDb))
+      await persistPortableDefinitions(vaultPath, listPropertyDefinitions(dataDb))
       return definition
     },
 
     async deleteDefinition(name) {
       deletePropertyDefinition(dataDb, name)
-      await persistSelectLikeDefinitions(vaultPath, listPropertyDefinitions(dataDb))
+      await persistPortableDefinitions(vaultPath, listPropertyDefinitions(dataDb))
       return true
     },
 

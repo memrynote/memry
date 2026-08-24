@@ -30,6 +30,7 @@ export interface FolderViewRecord {
 
 export interface FolderViewConfig {
   path?: string
+  icon?: string
   template?: string
   inherit?: boolean
   views?: FolderViewRecord[]
@@ -103,18 +104,19 @@ const BUILT_IN = [
   { id: 'wordCount', displayName: 'WordCount', type: 'number' }
 ]
 
-function notesDir(vaultPath: string, config: VaultConfig): string {
-  return path.join(vaultPath, config.defaultNoteFolder)
-}
-
-function configPath(vaultPath: string, config: VaultConfig, folderPath: string): string {
+// Folder paths are vault-relative (#1204), matching desktop's
+// `getFolderConfigPath`: `.folder.md` sits directly under `<vault>/<folder>`.
+function configPath(vaultPath: string, folderPath: string): string {
   const normalized = normalizePath(folderPath)
-  return path.join(notesDir(vaultPath, config), normalized, '.folder.md')
+  return path.join(vaultPath, normalized, '.folder.md')
 }
 
 function normalizeConfig(value: Record<string, unknown>, folderPath: string): FolderViewConfig {
   return {
     path: folderPath,
+    // Folder icon (emoji or `custom:<id>`, #1698 icon set): parsed and
+    // re-emitted so a CLI view edit does not wipe the desktop-set icon.
+    icon: typeof value.icon === 'string' ? value.icon : undefined,
     template: typeof value.template === 'string' ? value.template : undefined,
     inherit: value.inherit === undefined ? undefined : value.inherit !== false,
     views: Array.isArray(value.views) ? (value.views as FolderViewRecord[]) : undefined,
@@ -133,13 +135,9 @@ function normalizeConfig(value: Record<string, unknown>, folderPath: string): Fo
   }
 }
 
-async function readConfig(
-  vaultPath: string,
-  config: VaultConfig,
-  folderPath: string
-): Promise<FolderViewConfig | null> {
+async function readConfig(vaultPath: string, folderPath: string): Promise<FolderViewConfig | null> {
   try {
-    const raw = await fs.readFile(configPath(vaultPath, config, folderPath), 'utf-8')
+    const raw = await fs.readFile(configPath(vaultPath, folderPath), 'utf-8')
     return normalizeConfig(parseMarkdownNote(raw).frontmatter, folderPath)
   } catch {
     return null
@@ -148,11 +146,11 @@ async function readConfig(
 
 async function writeConfig(
   vaultPath: string,
-  vaultConfig: VaultConfig,
   folderPath: string,
   config: FolderViewConfig
 ): Promise<void> {
   const frontmatter: Record<string, unknown> = {}
+  if (config.icon) frontmatter.icon = config.icon
   if (config.template) frontmatter.template = config.template
   if (config.inherit === false) frontmatter.inherit = false
   if (config.views?.length) frontmatter.views = config.views
@@ -165,7 +163,7 @@ async function writeConfig(
     frontmatter.summaries = config.summaries
   }
 
-  const target = configPath(vaultPath, vaultConfig, folderPath)
+  const target = configPath(vaultPath, folderPath)
   await fs.mkdir(path.dirname(target), { recursive: true })
   await fs.writeFile(target, writeMarkdownNote(frontmatter, ''), 'utf-8')
 }
@@ -179,9 +177,9 @@ function relativeFolder(note: NoteRecord, folderPath: string): string {
   return noteFolder.startsWith(`${folder}/`) ? `/${noteFolder.slice(folder.length + 1)}` : '/'
 }
 
-function noteFolder(note: NoteRecord, config: VaultConfig): string {
-  const withoutRoot = note.path.replace(new RegExp(`^${config.defaultNoteFolder}/?`), '')
-  const folder = path.posix.dirname(withoutRoot)
+// The vault-relative folder a note currently sits in ('' = vault root).
+function noteFolder(note: NoteRecord): string {
+  const folder = path.posix.dirname(note.path)
   return folder === '.' ? '' : normalizePath(folder)
 }
 
@@ -225,7 +223,7 @@ export function createFolderViewService({
 }): FolderViewService {
   return {
     async getConfig(folderPath) {
-      const existing = await readConfig(vaultPath, config, folderPath)
+      const existing = await readConfig(vaultPath, folderPath)
       if (!existing?.views?.length) {
         return { config: { path: folderPath, views: [DEFAULT_VIEW] }, isDefault: true }
       }
@@ -233,13 +231,13 @@ export function createFolderViewService({
     },
 
     async setConfig(folderPath, nextConfig) {
-      const existing = (await readConfig(vaultPath, config, folderPath)) ?? {}
-      await writeConfig(vaultPath, config, folderPath, { ...existing, ...nextConfig })
+      const existing = (await readConfig(vaultPath, folderPath)) ?? {}
+      await writeConfig(vaultPath, folderPath, { ...existing, ...nextConfig })
       return { success: true }
     },
 
     async getViews(folderPath) {
-      const existing = await readConfig(vaultPath, config, folderPath)
+      const existing = await readConfig(vaultPath, folderPath)
       const views = existing?.views?.length ? existing.views : [DEFAULT_VIEW]
       const defaultIndex = Math.max(
         0,
@@ -250,7 +248,7 @@ export function createFolderViewService({
 
     async setView(folderPath, view) {
       if (!view.name.trim()) throw new Error('Folder view name is required')
-      const existing = (await readConfig(vaultPath, config, folderPath)) ?? {}
+      const existing = (await readConfig(vaultPath, folderPath)) ?? {}
       const views = [...(existing.views ?? [])]
       const index = views.findIndex((candidate) => candidate.name === view.name)
       if (index >= 0) views[index] = view
@@ -260,15 +258,15 @@ export function createFolderViewService({
           candidate.default = candidate.name === view.name
         })
       }
-      await writeConfig(vaultPath, config, folderPath, { ...existing, views })
+      await writeConfig(vaultPath, folderPath, { ...existing, views })
       return { success: true }
     },
 
     async deleteView(folderPath, viewName) {
-      const existing = (await readConfig(vaultPath, config, folderPath)) ?? {}
+      const existing = (await readConfig(vaultPath, folderPath)) ?? {}
       const views = (existing.views ?? []).filter((view) => view.name !== viewName)
       if (views.length > 0 && !views.some((view) => view.default)) views[0].default = true
-      await writeConfig(vaultPath, config, folderPath, { ...existing, views })
+      await writeConfig(vaultPath, folderPath, { ...existing, views })
       return { success: true }
     },
 
@@ -306,7 +304,7 @@ export function createFolderViewService({
           })
         }
       }
-      const existing = await readConfig(vaultPath, config, folderPath)
+      const existing = await readConfig(vaultPath, folderPath)
       return {
         builtIn: BUILT_IN,
         properties: [...counts.entries()]
@@ -323,8 +321,8 @@ export function createFolderViewService({
       const note = await notes.get(noteId)
       if (!note) return { suggestions: [] }
 
-      const currentFolder = noteFolder(note, config)
-      const root = notesDir(vaultPath, config)
+      const currentFolder = noteFolder(note)
+      const root = vaultPath
       const hiddenTopLevel = new Set(
         [config.journalFolder, config.attachmentsFolder, ...config.excludePatterns]
           .filter(Boolean)
@@ -357,9 +355,7 @@ export function createFolderViewService({
 
     async exists(folderPath) {
       try {
-        const stat = await fs.stat(
-          path.join(notesDir(vaultPath, config), normalizePath(folderPath))
-        )
+        const stat = await fs.stat(path.join(vaultPath, normalizePath(folderPath)))
         return stat.isDirectory()
       } catch {
         return false

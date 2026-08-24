@@ -753,7 +753,8 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     content: 'Template body',
     tags: ['templates']
   })
-  assert.equal((await app.templates.get(template.id))?.content, 'Template body\n')
+  // DB-backed templates store the body verbatim — no file-round-trip newline.
+  assert.equal((await app.templates.get(template.id))?.content, 'Template body')
   assert.equal((await app.templates.list()).length, 1)
 
   const bookmark = await app.bookmarks.add({ itemType: 'note', itemId: note.id })

@@ -40,7 +40,7 @@ import {
 import { getIndexDatabase, type IndexDb } from '../database'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
-import { rewriteWikiLinksForRename } from './rewrite-wiki-links'
+import { rewriteWikiLinksForRename } from '@memry/shared/rewrite-wiki-links'
 import { parseNote } from './frontmatter'
 import { syncNoteToCache } from './note-sync'
 import { safeRead, atomicWrite } from './file-ops'
