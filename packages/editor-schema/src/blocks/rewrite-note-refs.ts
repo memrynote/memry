@@ -2,18 +2,27 @@
  * Re-point a note's relative refs when the note itself moves.
  *
  * Attachments are written into a note as a path relative to *the note*
- * (`../attachments/<noteId>/x.pdf` — see `noteRelativeRef` in `main/lib/paths.ts`
- * and `saveAttachment`), while the bytes live at `attachments/<noteId>/` and stay
- * there forever. So the ref is only correct for the folder the note was in when it
- * was written: move `notes/Foo.md` to `notes/archive/2026/Foo.md` and every
- * `../attachments/...` in its body is now one level short, the embed goes blank,
- * and the file is still sitting on disk. The same is true of any plain relative ref
- * at another vault file — a sidebar drop of `notes/images/photo.png`, or an
- * Obsidian-authored `../Images/photo.png` — which moves with neither side.
+ * (`../attachments/<noteId>/x.pdf` — see desktop `noteRelativeRef` in
+ * `main/lib/paths.ts` and `saveAttachment`), while the bytes live at
+ * `attachments/<noteId>/` and stay there forever. So the ref is only correct
+ * for the folder the note was in when it was written: move `notes/Foo.md` to
+ * `notes/archive/2026/Foo.md` and every `../attachments/...` in its body is now
+ * one level short, the embed goes blank, and the file is still sitting on disk.
+ * The same is true of any plain relative ref at another vault file — a sidebar
+ * drop of `notes/images/photo.png`, or an Obsidian-authored
+ * `../Images/photo.png` — which moves with neither side.
  *
- * The fix is arithmetic, not bookkeeping: resolve each ref against the *old* note
- * directory to get the vault-relative target it always meant, then express that
- * same target relative to the *new* directory.
+ * The fix is arithmetic, not bookkeeping: resolve each ref against the *old*
+ * note directory to get the vault-relative target it always meant, then express
+ * that same target relative to the *new* directory.
+ *
+ * It lives here — not in desktop main — because every mover of a note file
+ * needs it: desktop `moveNote` (`vault/notes-rename.ts`) and the CLI's
+ * `notes move`. This module is raw-node safe (the CLI runs under
+ * `--experimental-strip-types`): sibling imports carry the `.ts` extension and
+ * nothing here touches `blocks/index.ts`, whose config exports pull
+ * `@blocknote/core`. The `./note-refs` package export exists for exactly that
+ * reason — import from it, not from `./blocks`.
  *
  * Two things this deliberately does not do:
  *
@@ -29,12 +38,33 @@
  *    note's folder alone returns null before reading a single line.
  */
 
-import path from 'path'
-import { FILE_BLOCK_LINE_REGEX, parseFileBlockMarker } from '@memry/editor-schema/blocks'
-import { noteRelativeRef } from '../lib/paths'
-// The same encoding the importers and `resolve-embed` apply: the ref goes back
-// into markdown as `![alt](ref)`, where a raw space or paren truncates the link.
-import { encodeAttachmentUrl } from '../import/_shared/attachment-markdown'
+import path from 'node:path'
+import { FILE_BLOCK_LINE_REGEX, parseFileBlockMarker } from './markdown.ts'
+
+/**
+ * Percent-encode the markdown-breaking characters in an attachment URL without
+ * touching the scheme/path separators. Spaces and parentheses are the ones that
+ * break `![](...)` / `[...](...)`; the protocol handler decodes them back.
+ *
+ * Single source: desktop's importers and `resolve-embed` consume this via
+ * `import/_shared/attachment-markdown.ts`, which re-exports it.
+ */
+export function encodeAttachmentUrl(url: string): string {
+  return url.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')
+}
+
+/**
+ * A vault-relative target expressed relative to the note that references it.
+ * Both arguments are vault-relative; the result always uses forward slashes,
+ * because it goes into markdown rather than onto a Windows command line.
+ * (Restated from desktop `main/lib/paths.ts`, which main-process callers keep
+ * using; this module cannot reach into desktop.)
+ */
+function noteRelativeRef(notePath: string, targetPath: string): string {
+  const noteDir = path.posix.dirname(notePath.replace(/\\/g, '/'))
+  const from = noteDir === '.' ? '' : noteDir
+  return path.posix.relative(from, targetPath.replace(/\\/g, '/'))
+}
 
 /** `https:`, `data:`, `memry-file:` — and `C:` on Windows, which we also skip. */
 const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
@@ -98,6 +128,8 @@ function rewriteRef(ref: string, oldNoteDir: string, newNotePath: string): strin
   const next = noteRelativeRef(newNotePath, target)
   if (!next || next === decoded) return null
 
+  // The same encoding the importers and `resolve-embed` apply: the ref goes back
+  // into markdown as `![alt](ref)`, where a raw space or paren truncates the link.
   return encodeAttachmentUrl(next)
 }
 

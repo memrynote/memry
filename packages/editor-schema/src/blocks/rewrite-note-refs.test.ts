@@ -3,11 +3,11 @@
  * to keep naming the same file after the note lands somewhere else, and a move
  * that changes nothing has to change no bytes.
  *
- * @module vault/rewrite-note-refs.test
+ * @module blocks/rewrite-note-refs.test
  */
 
 import { describe, it, expect } from 'vitest'
-import { rewriteNoteRefsForMove } from './rewrite-note-refs'
+import { rewriteNoteRefsForMove } from './rewrite-note-refs.ts'
 
 describe('rewriteNoteRefsForMove', () => {
   it('returns null for a move that keeps the note in the same folder', () => {

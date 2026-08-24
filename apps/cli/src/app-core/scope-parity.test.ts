@@ -335,3 +335,38 @@ test('frontmatter tags dedupe case-insensitively with the first casing winning',
     app.close()
   }
 })
+
+test('moving a note re-points relative attachment refs, matching desktop moveNote', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    const note = await app.notes.create({ title: 'Specs', content: '', folder: 'notes' })
+    assert.equal(note.path, 'notes/Specs.md')
+    const body = [
+      '![photo](../attachments/n1/photo.png)',
+      '',
+      '<!-- file:{"url":"../attachments/n1/plan.pdf","name":"plan.pdf","size":2,' +
+        '"mimeType":"application/pdf"} -->',
+      '',
+      'A [[Wiki Link]] and a [remote](https://example.com/a.png) stay put.'
+    ].join('\n')
+    await app.notes.update({ id: note.id, content: body })
+
+    const moved = await app.notes.move(note.id, 'notes/archive/2026')
+    assert.equal(moved.path, 'notes/archive/2026/Specs.md')
+    assert.ok(moved.content.includes('![photo](../../../attachments/n1/photo.png)'))
+    assert.ok(moved.content.includes('"url":"../../../attachments/n1/plan.pdf"'))
+    // Refs it does not own keep their bytes.
+    assert.ok(moved.content.includes('[[Wiki Link]]'))
+    assert.ok(moved.content.includes('(https://example.com/a.png)'))
+
+    // Same depth from the vault root: every ref still resolves, so the body is
+    // byte-identical (the null-return no-write path).
+    const before = await fs.readFile(path.join(vaultPath, moved.path), 'utf-8')
+    const sideways = await app.notes.move(note.id, 'boxes/old/2026')
+    assert.equal(sideways.path, 'boxes/old/2026/Specs.md')
+    assert.equal(await fs.readFile(path.join(vaultPath, sideways.path), 'utf-8'), before)
+  } finally {
+    app.close()
+  }
+})

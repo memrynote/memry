@@ -20,6 +20,7 @@
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
     "@memry/domain-notes": "workspace:*",
+    "@memry/editor-schema": "workspace:*",
     "@memry/shared": "workspace:*",
     "@memry/storage-data": "workspace:*",
     "@memry/storage-vault": "workspace:*",

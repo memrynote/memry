@@ -3,7 +3,8 @@
  *
  * A rename leaves the bytes alone: the title lives in the DBs, not in the file.
  * A move to a different folder cannot, because the note's body carries refs that
- * are relative to the folder the note was in — see `rewrite-note-refs.ts`.
+ * are relative to the folder the note was in — see `rewriteNoteRefsForMove` in
+ * `@memry/editor-schema/note-refs` (shared with the CLI's `notes move`).
  *
  * Pulled from notes.ts during the Phase 3.1 split
  * (.claude/plans/tech-debt-remediation.md).
@@ -22,7 +23,7 @@ import {
   safeRead,
   atomicWrite
 } from './file-ops'
-import { rewriteNoteRefsForMove } from './rewrite-note-refs'
+import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import { rewriteInboundWikiLinksForRename } from './rename-link-rewrite'
 import { replaceNoteBodyInCrdt } from '../sync/crdt-feed'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
