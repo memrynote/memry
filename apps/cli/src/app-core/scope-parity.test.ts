@@ -268,10 +268,12 @@ test('notes attach embeds the file desktop-style and queues the upload for sync'
         .from(attachmentUploadQueue)
         .where(eq(attachmentUploadQueue.noteId, note.id))
         .all()
-      assert.deepEqual(queued.map((row) => row.diskPath).sort(), [
-        image.absolutePath,
-        pdf.absolutePath
-      ])
+      // Both sides sorted: the paths embed random attachment ids, so the
+      // insertion order is not a stable expectation.
+      assert.deepEqual(
+        queued.map((row) => row.diskPath).sort(),
+        [image.absolutePath, pdf.absolutePath].sort()
+      )
       // Attachment ids are minted by the upload path — the CLI must never
       // invent one, or peers request a blob the server does not have.
       const metadata = databases.dataDb
