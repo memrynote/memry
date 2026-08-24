@@ -26,4 +26,19 @@ config.resolver.nodeModulesPaths = [
 // Raw-TS workspace exports depend on package-exports resolution (R3).
 config.resolver.unstable_enablePackageExports = true
 
+// yjs → lib0 resolves `lib0/webcrypto` to its react-native build, which
+// requires the unmaintained `isomorphic-webcrypto` (native deps, prebuild
+// churn). The surface lib0 uses is three members, served by the app's
+// libsodium-backed crypto polyfill instead (src/lib/isomorphic-webcrypto-shim.js).
+const defaultResolveRequest = config.resolver.resolveRequest
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'isomorphic-webcrypto/src/react-native') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(projectRoot, 'src/lib/isomorphic-webcrypto-shim.js')
+    }
+  }
+  return (defaultResolveRequest ?? context.resolveRequest)(context, moduleName, platform)
+}
+
 module.exports = config
