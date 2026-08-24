@@ -5,7 +5,7 @@ import path from 'node:path'
 import test from 'node:test'
 
 import { eq } from 'drizzle-orm'
-import { templates } from '@memry/db-schema/data-schema'
+import { attachmentUploadQueue, noteMetadata, templates } from '@memry/db-schema/data-schema'
 
 import { openDatabases } from './database.ts'
 import { createMemryApp } from './memry-app.ts'
@@ -223,6 +223,97 @@ test('opening a vault preserves the preferences block desktop keeps in config.js
       preferences?: Record<string, unknown>
     }
     assert.deepEqual(raw.preferences, { theme: 'dark', language: 'tr' })
+  } finally {
+    app.close()
+  }
+})
+
+test('notes attach embeds the file desktop-style and queues the upload for sync', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    await app.vault.updateConfig({ defaultNoteFolder: 'notes' })
+    const note = await app.notes.create({ title: 'Attach Target', content: 'Existing body' })
+
+    // Image: markdown-breaking chars leave the filename itself (desktop
+    // generateUniqueFilename parity), and the embed is note-relative (#1606).
+    const imageSource = path.join(vaultPath, 'screen shot (final).png')
+    await fs.writeFile(imageSource, 'png bytes', 'utf-8')
+    const image = await app.attachments.add(note.id, imageSource)
+    assert.equal(image.success, true)
+    assert.match(image.filename ?? '', /^file_.{12}-screen-shot-final\.png$/)
+    assert.equal(image.ref, `../attachments/${note.id}/${image.filename}`)
+
+    // Non-image: the renderer's clickable file-block marker, not a bare link.
+    const pdfSource = path.join(vaultPath, 'report.pdf')
+    await fs.writeFile(pdfSource, 'pdf bytes', 'utf-8')
+    const pdf = await app.attachments.add(note.id, pdfSource)
+    assert.equal(pdf.success, true)
+
+    const after = await app.notes.get(note.id)
+    assert.ok(after?.content.startsWith('Existing body'))
+    assert.ok(after?.content.includes(`![screen shot (final).png](${image.ref})`))
+    assert.ok(
+      after?.content.includes(
+        `<!-- file:${JSON.stringify({ url: pdf.ref, name: 'report.pdf', size: 9, mimeType: 'application/pdf' })} -->`
+      )
+    )
+
+    const databases = openDatabases(vaultPath)
+    try {
+      // Upload intent lands in the shared outbox; desktop's sync runtime drains
+      // it, uploads the bytes, and only then records the server-minted id.
+      const queued = databases.dataDb
+        .select()
+        .from(attachmentUploadQueue)
+        .where(eq(attachmentUploadQueue.noteId, note.id))
+        .all()
+      assert.deepEqual(queued.map((row) => row.diskPath).sort(), [
+        image.absolutePath,
+        pdf.absolutePath
+      ])
+      // Attachment ids are minted by the upload path — the CLI must never
+      // invent one, or peers request a blob the server does not have.
+      const metadata = databases.dataDb
+        .select()
+        .from(noteMetadata)
+        .where(eq(noteMetadata.id, note.id))
+        .get()
+      assert.ok(!metadata?.attachmentReferences?.length)
+    } finally {
+      databases.close()
+    }
+  } finally {
+    app.close()
+  }
+})
+
+test('attaching to a local-only note embeds but never queues an upload', async () => {
+  const vaultPath = await makeVault()
+  const app = await createMemryApp({ vaultPath })
+  try {
+    const note = await app.notes.create({ title: 'Private', content: '' })
+    await app.notes.setLocalOnly(note.id, true)
+
+    const source = path.join(vaultPath, 'secret.png')
+    await fs.writeFile(source, 'png bytes', 'utf-8')
+    const attachment = await app.attachments.add(note.id, source)
+    assert.equal(attachment.success, true)
+
+    const after = await app.notes.get(note.id)
+    assert.ok(after?.content.includes(`![secret.png](${attachment.ref})`))
+
+    const databases = openDatabases(vaultPath)
+    try {
+      const queued = databases.dataDb
+        .select()
+        .from(attachmentUploadQueue)
+        .where(eq(attachmentUploadQueue.noteId, note.id))
+        .all()
+      assert.equal(queued.length, 0)
+    } finally {
+      databases.close()
+    }
   } finally {
     app.close()
   }

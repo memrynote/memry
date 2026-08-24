@@ -254,6 +254,8 @@ memrynote notes delete note_abc123 --yes
 
 ### attach
 
+Copies the file into the vault, appends a desktop-style embed to the note body (inline image or clickable file block), and queues the upload for sync.
+
 | Positional    | Description                                |
 | ------------- | ------------------------------------------ |
 | `<note-id>`   | Note.                                      |
