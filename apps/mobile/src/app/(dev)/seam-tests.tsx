@@ -41,6 +41,11 @@ export default function SeamTestsScreen() {
             ✗ {f}
           </ThemedText>
         ))}
+        {(r.notes ?? []).map((n) => (
+          <ThemedText key={n} type="small">
+            ℹ {n}
+          </ThemedText>
+        ))}
       </>
     )
 
