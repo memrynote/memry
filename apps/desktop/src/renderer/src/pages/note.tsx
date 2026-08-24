@@ -77,6 +77,7 @@ import {
   FolderOpen,
   PanelLeft,
   ExternalLink,
+  Paperclip,
   Trash2
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
@@ -84,6 +85,10 @@ import { Picker } from '@/components/ui/picker'
 import { Switch } from '@/components/ui/switch'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { WikiLinkCreateDialog } from '@/components/note/wiki-link-create-dialog'
+import {
+  NoteAttachmentsDialog,
+  collectOriginalNames
+} from '@/components/note/note-attachments-dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -226,6 +231,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
+  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false)
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   // External ref to the inline title textarea so the "Rename" menu item can focus it
@@ -796,7 +802,22 @@ export function NotePage({ noteId }: NotePageProps) {
     noteTitle: note?.title ?? '',
     onEditorReady: review.handleEditorReady
   })
-  const { refresh: refreshMindMap } = mindMap
+  const { refresh: refreshMindMap, handleEditorReady: mindMapEditorReady } = mindMap
+  // The attachments dialog reads original filenames off the live block tree;
+  // the editor is captured here (composed, not replacing the mind map's hook)
+  // so the dialog needs no new prop on the content area.
+  const attachmentsEditorRef = useRef<unknown>(null)
+  const handleEditorReadyWithAttachments = useCallback(
+    (editor: unknown) => {
+      attachmentsEditorRef.current = editor
+      mindMapEditorReady(editor)
+    },
+    [mindMapEditorReady]
+  )
+  const getAttachmentOriginalNames = useCallback(
+    () => collectOriginalNames(attachmentsEditorRef.current),
+    []
+  )
   const getEditorContainer = useCallback(() => editorContainerRef.current, [])
   const getNoteBody = useCallback(() => noteBodyRef.current, [])
   // The map is built when it opens, but a restored tab reopens it before the
@@ -1402,6 +1423,7 @@ export function NotePage({ noteId }: NotePageProps) {
           if (action === 'reveal-in-finder') void handleRevealInFinder()
           if (action === 'reveal-in-sidebar') handleRevealInSidebar()
           if (action === 'open-external') void handleOpenExternal()
+          if (action === 'attachments') setIsAttachmentsOpen(true)
           if (action === 'delete') setIsDeleteConfirmOpen(true)
           if (action === 'local-only')
             void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
@@ -1495,6 +1517,11 @@ export function NotePage({ noteId }: NotePageProps) {
               value="open-external"
               label={t('editor.toolbar.openInDefaultApp')}
               icon={<ExternalLink className="size-4" />}
+            />
+            <Picker.Item
+              value="attachments"
+              label={t('editor.toolbar.attachments')}
+              icon={<Paperclip className="size-4" />}
             />
             <Picker.Separator />
             <Picker.Item
@@ -1699,7 +1726,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   plainMarkdown: review.plainMarkdown,
                   marks: review.marks,
                   hoveredMarkId: review.hoveredMarkId,
-                  onEditorReady: mindMap.handleEditorReady,
+                  onEditorReady: handleEditorReadyWithAttachments,
                   onAddComment: review.openCommentComposer,
                   getMarkdownSourceOffsetForEditorOffset:
                     review.getMarkdownSourceOffsetForEditorOffset,
@@ -1769,6 +1796,14 @@ export function NotePage({ noteId }: NotePageProps) {
         onOpenChange={setIsExportDialogOpen}
         noteId={noteId}
         noteTitle={note.title}
+      />
+
+      {/* Attachments panel (#1713) */}
+      <NoteAttachmentsDialog
+        open={isAttachmentsOpen}
+        onOpenChange={setIsAttachmentsOpen}
+        noteId={noteId}
+        getOriginalNames={getAttachmentOriginalNames}
       />
 
       {/* Apply Template Dialog */}

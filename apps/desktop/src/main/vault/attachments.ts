@@ -496,6 +496,8 @@ export async function listNoteAttachments(noteId: string): Promise<AttachmentInf
 
     for (const entry of entries) {
       if (!entry.isFile()) continue
+      // OS droppings (.DS_Store and friends) are not attachments.
+      if (entry.name.startsWith('.')) continue
 
       const filePath = path.join(attachmentsDir, entry.name)
       const stats = await stat(filePath)
