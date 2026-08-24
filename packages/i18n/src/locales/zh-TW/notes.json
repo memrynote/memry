@@ -54,7 +54,6 @@
       "newFolder": "新資料夾",
       "rename": "重命名",
       "openExternal": "在外部編輯器中打開",
-      "revealInFinder": "在 Finder 中顯示",
       "setDefaultTemplate": "設置默認範本",
       "clearDefaultTemplate": "清除默認範本",
       "setIcon": "設置圖示",
@@ -109,9 +108,7 @@
       "find": "尋找…",
       "moreActions": "更多操作",
       "moveToFolder": "移動到資料夾…",
-      "openInDefaultApp": "在預設程式中開啟",
       "rename": "重新命名…",
-      "revealInFinder": "在 Finder 中顯示",
       "revealInSidebar": "在導覽中顯示"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "備註們",
       "open": "打開",
       "openInExternalEditor": "在外部編輯器中打開",
-      "revealInFinder": "在 Finder 中顯示",
       "revealInSidebar": "在側邊欄顯示",
       "copyLink": "複製連結",
       "delete2": "刪除"
@@ -672,9 +668,7 @@
       "noFileSelected": "未選擇檔案",
       "selectAFileFromTheSidebarToViewIt": "從側邊欄選擇檔案以檢視",
       "loadingFile": "載入檔案中...",
-      "openInDefaultApp": "在預設程式中開啟",
       "open": "打開",
-      "revealInFinder": "在 Finder 中顯示",
       "reveal": "顯示",
       "unsupportedFileType": "不支援的檔案類型",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "儲存公式失敗",
       "failedToOpenInExternalEditor": "無法在外部編輯器中打開",
-      "failedToRevealInFinder": "無法在 Finder 中顯示",
       "failedToCopyLink": "無法複製連結",
       "failedToCreateView": "無法建立檢視",
       "failedToRenameFolder": "無法重新命名資料夾",

@@ -54,7 +54,6 @@
       "newFolder": "Yeni Klasör",
       "rename": "Yeniden adlandır",
       "openExternal": "Harici Düzenleyicide Aç",
-      "revealInFinder": "Finder'da Göster",
       "setDefaultTemplate": "Varsayılan Şablonu Ayarla",
       "clearDefaultTemplate": "Varsayılan Şablonu Temizle",
       "setIcon": "Simgeyi Ayarla",
@@ -109,9 +108,7 @@
       "find": "Bul…",
       "moreActions": "Daha fazla işlem",
       "moveToFolder": "Klasöre taşı…",
-      "openInDefaultApp": "Varsayılan uygulamada aç",
       "rename": "Yeniden adlandır…",
-      "revealInFinder": "Finder'da Göster",
       "revealInSidebar": "Kenar çubuğunda göster"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Notlar",
       "open": "Açık",
       "openInExternalEditor": "Harici Düzenleyicide Aç",
-      "revealInFinder": "Finder'da Göster",
       "revealInSidebar": "Kenar Çubuğunda Göster",
       "copyLink": "Bağlantıyı Kopyala",
       "delete2": "Sil"
@@ -672,9 +668,7 @@
       "noFileSelected": "Hiçbir dosya seçilmedi",
       "selectAFileFromTheSidebarToViewIt": "Görüntülemek için kenar çubuğundan bir dosya seçin",
       "loadingFile": "Dosya yükleniyor...",
-      "openInDefaultApp": "Varsayılan uygulamada aç",
       "open": "Açık",
-      "revealInFinder": "Finder'da Göster",
       "reveal": "Açıkla",
       "unsupportedFileType": "Desteklenmeyen dosya türü",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Formül kaydedilemedi",
       "failedToOpenInExternalEditor": "Harici düzenleyicide açılamadı",
-      "failedToRevealInFinder": "Finder'da gösterilemedi",
       "failedToCopyLink": "Bağlantı kopyalanamadı",
       "failedToCreateView": "Görünüm oluşturulamadı",
       "failedToRenameFolder": "Klasör yeniden adlandırılamadı",

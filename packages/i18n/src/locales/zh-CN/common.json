@@ -28,6 +28,13 @@
     "showLess": "显示较少",
     "undo": "撤销"
   },
+  "fileActions": {
+    "revealInFinder": "在 Finder 中显示",
+    "showInExplorer": "在文件资源管理器中显示",
+    "showInFileManager": "在文件管理器中显示",
+    "openInDefaultApp": "在默认应用程序中打开",
+    "revealFailed": "无法在文件夹中显示"
+  },
   "tabs": {
     "pin": "固定标签页",
     "unpin": "取消固定标签页",

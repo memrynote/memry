@@ -28,6 +28,13 @@
     "showLess": "Hiển thị ít hơn",
     "undo": "Hoàn tác"
   },
+  "fileActions": {
+    "revealInFinder": "Hiển thị trong Finder",
+    "showInExplorer": "Hiển thị trong File Explorer",
+    "showInFileManager": "Hiển thị trong trình quản lý tệp",
+    "openInDefaultApp": "Mở bằng ứng dụng mặc định",
+    "revealFailed": "Không thể hiển thị trong thư mục"
+  },
   "tabs": {
     "pin": "Ghim Tab",
     "unpin": "Bỏ ghim Tab",

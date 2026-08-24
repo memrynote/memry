@@ -28,6 +28,13 @@
     "showLess": "Mutass kevesebbet",
     "undo": "Visszavonás"
   },
+  "fileActions": {
+    "revealInFinder": "Megjelenítés a Finderben",
+    "showInExplorer": "Megjelenítés az Intézőben",
+    "showInFileManager": "Megjelenítés a fájlkezelőben",
+    "openInDefaultApp": "Megnyitás az alapértelmezett alkalmazásban",
+    "revealFailed": "Nem sikerült megjeleníteni a mappában"
+  },
   "tabs": {
     "pin": "Lap rögzítése",
     "unpin": "Lap rögzítésének feloldása",

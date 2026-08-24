@@ -28,6 +28,13 @@
     "showLess": "Mostrar menos",
     "undo": "Deshacer"
   },
+  "fileActions": {
+    "revealInFinder": "Mostrar en el Finder",
+    "showInExplorer": "Mostrar en el Explorador",
+    "showInFileManager": "Mostrar en el gestor de archivos",
+    "openInDefaultApp": "Abrir en la app predeterminada",
+    "revealFailed": "No se pudo mostrar en la carpeta"
+  },
   "tabs": {
     "pin": "Pestaña Fijar",
     "unpin": "Desanclar pestaña",

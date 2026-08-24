@@ -6,7 +6,7 @@
  * filename header, and Copy path landing the absolute on-disk path on the
  * clipboard.
  *
- * Side-effecting OS items (Reveal in Finder / Open in default app) are only
+ * Side-effecting OS items (the reveal item / Open in default app) are only
  * asserted present + enabled — they are never clicked, so no Finder/Explorer
  * window is spawned on the CI machine (same policy as note-menu-actions).
  * The shell calls and path validation are verified at the unit level in
@@ -18,6 +18,15 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
+
+// The reveal item is labelled for the host's file manager: Finder on macOS,
+// Explorer on Windows, a generic file manager everywhere else.
+const REVEAL_LABEL =
+  process.platform === 'darwin'
+    ? 'Reveal in Finder'
+    : process.platform === 'win32'
+      ? 'Show in Explorer'
+      : 'Show in file manager'
 
 const ORIGINAL_NAME = 'original-report.txt'
 
@@ -142,7 +151,7 @@ test.describe('Attachment block menu', () => {
     await expect(menu.getByText(`Stored as ${storedFilename}`)).toBeVisible()
 
     // OS-touching items: present + enabled, never clicked (no Finder on CI).
-    for (const label of ['Reveal in Finder', 'Open in default app']) {
+    for (const label of [REVEAL_LABEL, 'Open in default app']) {
       const item = menu.getByRole('menuitem', { name: label })
       await expect(item).toBeVisible()
       await expect(item).not.toHaveAttribute('data-disabled')
@@ -170,7 +179,7 @@ test.describe('Attachment block menu', () => {
     const menu = page.locator('[data-testid="attachment-context-menu"]')
     await expect(menu).toBeVisible()
     await expect(menu.getByText(`Stored as ${storedFilename}`)).toBeVisible()
-    for (const label of ['Reveal in Finder', 'Open in default app', 'Copy path']) {
+    for (const label of [REVEAL_LABEL, 'Open in default app', 'Copy path']) {
       await expect(menu.getByRole('menuitem', { name: label })).toBeVisible()
     }
     // Close without invoking anything.

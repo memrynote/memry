@@ -54,7 +54,6 @@
       "newFolder": "Neuer Ordner",
       "rename": "Umbenennen",
       "openExternal": "Im externen Editor öffnen",
-      "revealInFinder": "Im Finder anzeigen",
       "setDefaultTemplate": "Standardvorlage festlegen",
       "clearDefaultTemplate": "Standardvorlage löschen",
       "setIcon": "Symbol festlegen",
@@ -109,9 +108,7 @@
       "find": "Suchen…",
       "moreActions": "Weitere Aktionen",
       "moveToFolder": "In Ordner verschieben…",
-      "openInDefaultApp": "In der Standard-App öffnen",
       "rename": "Umbenennen…",
-      "revealInFinder": "Im Finder anzeigen",
       "revealInSidebar": "In der Navigation anzeigen"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Notizen",
       "open": "Offen",
       "openInExternalEditor": "Im externen Editor öffnen",
-      "revealInFinder": "Im Finder anzeigen",
       "revealInSidebar": "In der Seitenleiste anzeigen",
       "copyLink": "Link kopieren",
       "delete2": "Löschen"
@@ -672,9 +668,7 @@
       "noFileSelected": "Keine Datei ausgewählt",
       "selectAFileFromTheSidebarToViewIt": "Wählen Sie in der Seitenleiste eine Datei aus, um sie anzuzeigen",
       "loadingFile": "Datei wird geladen...",
-      "openInDefaultApp": "In der Standard-App öffnen",
       "open": "Offen",
-      "revealInFinder": "Im Finder anzeigen",
       "reveal": "Enthüllen",
       "unsupportedFileType": "Nicht unterstützter Dateityp",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Formel konnte nicht gespeichert werden",
       "failedToOpenInExternalEditor": "Öffnen im externen Editor fehlgeschlagen",
-      "failedToRevealInFinder": "Im Finder konnte es nicht angezeigt werden",
       "failedToCopyLink": "Link konnte nicht kopiert werden",
       "failedToCreateView": "Ansicht konnte nicht erstellt werden",
       "failedToRenameFolder": "Ordner konnte nicht umbenannt werden",

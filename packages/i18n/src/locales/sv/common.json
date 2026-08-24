@@ -28,6 +28,13 @@
     "showLess": "Visa mindre",
     "undo": "Ångra"
   },
+  "fileActions": {
+    "revealInFinder": "Visa i Finder",
+    "showInExplorer": "Visa i Utforskaren",
+    "showInFileManager": "Visa i filhanteraren",
+    "openInDefaultApp": "Öppna i standardappen",
+    "revealFailed": "Det gick inte att visa i mappen"
+  },
   "tabs": {
     "pin": "Fäst flik",
     "unpin": "Ta bort fäst flik",

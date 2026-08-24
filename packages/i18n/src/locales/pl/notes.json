@@ -54,7 +54,6 @@
       "newFolder": "Nowy folder",
       "rename": "Zmień nazwę",
       "openExternal": "Otwórz w edytorze zewnętrznym",
-      "revealInFinder": "Pokaż w Finderze",
       "setDefaultTemplate": "Ustaw szablon domyślny",
       "clearDefaultTemplate": "Wyczyść szablon domyślny",
       "setIcon": "Ustaw ikonę",
@@ -109,9 +108,7 @@
       "find": "Znajdź…",
       "moreActions": "Więcej akcji",
       "moveToFolder": "Przenieś do folderu…",
-      "openInDefaultApp": "Otwórz w domyślnej aplikacji",
       "rename": "Zmień nazwę…",
-      "revealInFinder": "Pokaż w Finderze",
       "revealInSidebar": "Pokaż w nawigacji"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Notatki",
       "open": "Otwórz",
       "openInExternalEditor": "Otwórz w edytorze zewnętrznym",
-      "revealInFinder": "Pokaż w Finderze",
       "revealInSidebar": "Pokaż na pasku bocznym",
       "copyLink": "Skopiuj link",
       "delete2": "Usuń"
@@ -672,9 +668,7 @@
       "noFileSelected": "Nie wybrano pliku",
       "selectAFileFromTheSidebarToViewIt": "Wybierz plik z paska bocznego, aby go wyświetlić",
       "loadingFile": "Ładowanie pliku...",
-      "openInDefaultApp": "Otwórz w domyślnej aplikacji",
       "open": "Otwórz",
-      "revealInFinder": "Pokaż w Finderze",
       "reveal": "Ujawnij",
       "unsupportedFileType": "Nieobsługiwany typ pliku",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Nie udało się zapisać formuły",
       "failedToOpenInExternalEditor": "Nie udało się otworzyć w edytorze zewnętrznym",
-      "failedToRevealInFinder": "Nie udało się ujawnić w Finderze",
       "failedToCopyLink": "Nie udało się skopiować linku",
       "failedToCreateView": "Nie udało się utworzyć widoku",
       "failedToRenameFolder": "Nie udało się zmienić nazwy folderu",

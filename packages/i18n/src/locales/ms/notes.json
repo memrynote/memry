@@ -54,7 +54,6 @@
       "newFolder": "Folder Baharu",
       "rename": "Namakan semula",
       "openExternal": "Buka dalam Editor Luaran",
-      "revealInFinder": "Dedahkan dalam Finder",
       "setDefaultTemplate": "Tetapkan Templat Lalai",
       "clearDefaultTemplate": "Kosongkan Templat Lalai",
       "setIcon": "Set Ikon",
@@ -109,9 +108,7 @@
       "find": "Cari…",
       "moreActions": "Tindakan lain",
       "moveToFolder": "Alihkan ke folder…",
-      "openInDefaultApp": "Buka dalam apl lalai",
       "rename": "Namakan semula…",
-      "revealInFinder": "Dedahkan dalam Finder",
       "revealInSidebar": "Dedahkan dalam navigasi"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Nota",
       "open": "Buka",
       "openInExternalEditor": "Buka dalam Editor Luaran",
-      "revealInFinder": "Dedahkan dalam Finder",
       "revealInSidebar": "Dedahkan dalam Sidebar",
       "copyLink": "Salin Pautan",
       "delete2": "Padam"
@@ -672,9 +668,7 @@
       "noFileSelected": "Tiada fail dipilih",
       "selectAFileFromTheSidebarToViewIt": "Pilih fail dari bar sisi untuk melihatnya",
       "loadingFile": "Memuatkan fail...",
-      "openInDefaultApp": "Buka dalam apl lalai",
       "open": "Buka",
-      "revealInFinder": "Dedahkan dalam Finder",
       "reveal": "Dedahkan",
       "unsupportedFileType": "Jenis fail tidak disokong",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Gagal menyimpan formula",
       "failedToOpenInExternalEditor": "Gagal dibuka dalam editor luaran",
-      "failedToRevealInFinder": "Gagal didedahkan dalam Finder",
       "failedToCopyLink": "Gagal menyalin pautan",
       "failedToCreateView": "Gagal membuat paparan",
       "failedToRenameFolder": "Gagal menamakan semula folder",

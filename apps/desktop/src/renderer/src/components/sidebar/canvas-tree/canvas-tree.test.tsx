@@ -8,6 +8,16 @@ import type { CanvasSummary } from '@/services/canvas-service'
 import type { CanvasFolder } from '@/services/canvas-folder-service'
 import { isRevealed } from '@tests/utils/reveal'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const mocks = vi.hoisted(() => ({
   canvas: {
     list: vi.fn(),

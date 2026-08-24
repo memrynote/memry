@@ -12,6 +12,16 @@ import {
   lookupOriginalName
 } from './note-attachments-dialog'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, opts?: { name?: string }) => (opts?.name ? `${key}:${opts.name}` : key)
@@ -85,8 +95,8 @@ describe('NoteAttachmentsDialog', () => {
     renderDialog()
     await screen.findByTestId('note-attachment-row')
 
-    fireEvent.click(screen.getByLabelText('editor.toolbar.revealInFinder'))
-    fireEvent.click(screen.getByLabelText('editor.toolbar.openInDefaultApp'))
+    fireEvent.click(screen.getByLabelText('fileActions.revealInFinder'))
+    fireEvent.click(screen.getByLabelText('fileActions.openInDefaultApp'))
 
     expect(revealAttachmentInFinder).toHaveBeenCalledWith('n1', ROW.path)
     expect(openAttachmentExternal).toHaveBeenCalledWith('n1', ROW.path)

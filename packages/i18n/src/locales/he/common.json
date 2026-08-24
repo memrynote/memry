@@ -28,6 +28,13 @@
     "showLess": "הצג פחות",
     "undo": "בטל"
   },
+  "fileActions": {
+    "revealInFinder": "הצג ב-Finder",
+    "showInExplorer": "הצג בסייר הקבצים",
+    "showInFileManager": "הצג במנהל הקבצים",
+    "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
+    "revealFailed": "לא ניתן להציג בתיקייה"
+  },
   "tabs": {
     "pin": "הצמד כרטיסייה",
     "unpin": "בטל את הצמדת הכרטיסייה",

@@ -28,6 +28,13 @@
     "showLess": "Vis mindre",
     "undo": "Fortryd"
   },
+  "fileActions": {
+    "revealInFinder": "Vis i Finder",
+    "showInExplorer": "Vis i Stifinder",
+    "showInFileManager": "Vis i filhåndtering",
+    "openInDefaultApp": "Åbn i standardapp",
+    "revealFailed": "Kunne ikke vises i mappen"
+  },
   "tabs": {
     "pin": "Pin fane",
     "unpin": "Frigør fanen",

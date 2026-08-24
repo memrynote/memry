@@ -54,7 +54,6 @@
       "newFolder": "Bagong Folder",
       "rename": "Palitan ang pangalan",
       "openExternal": "Buksan sa Panlabas na Editor",
-      "revealInFinder": "Ibunyag sa Finder",
       "setDefaultTemplate": "Itakda ang Default na Template",
       "clearDefaultTemplate": "I-clear ang Default na Template",
       "setIcon": "Itakda ang Icon",
@@ -109,9 +108,7 @@
       "find": "Hanapin…",
       "moreActions": "Higit pang pagkilos",
       "moveToFolder": "Ilipat sa folder…",
-      "openInDefaultApp": "Buksan sa default na app",
       "rename": "Palitan ang pangalan…",
-      "revealInFinder": "Ibunyag sa Finder",
       "revealInSidebar": "Ibunyag sa nabigasyon"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Mga Tala",
       "open": "Bukas",
       "openInExternalEditor": "Buksan sa Panlabas na Editor",
-      "revealInFinder": "Ibunyag sa Finder",
       "revealInSidebar": "Ibunyag sa Sidebar",
       "copyLink": "Kopyahin ang Link",
       "delete2": "Tanggalin"
@@ -672,9 +668,7 @@
       "noFileSelected": "Walang napiling file",
       "selectAFileFromTheSidebarToViewIt": "Pumili ng file mula sa sidebar upang tingnan ito",
       "loadingFile": "Nilo-load ang file...",
-      "openInDefaultApp": "Buksan sa default na app",
       "open": "Bukas",
-      "revealInFinder": "Ibunyag sa Finder",
       "reveal": "Ibunyag",
       "unsupportedFileType": "Hindi sinusuportahang uri ng file",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Nabigong i-save ang formula",
       "failedToOpenInExternalEditor": "Nabigong buksan sa panlabas na editor",
-      "failedToRevealInFinder": "Nabigong ihayag sa Finder",
       "failedToCopyLink": "Nabigong kopyahin ang link",
       "failedToCreateView": "Nabigong lumikha ng view",
       "failedToRenameFolder": "Nabigong palitan ang pangalan ng folder",

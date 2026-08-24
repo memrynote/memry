@@ -54,7 +54,6 @@
       "newFolder": "新建文件夹",
       "rename": "重命名",
       "openExternal": "在外部编辑器中打开",
-      "revealInFinder": "在 Finder 中显示",
       "setDefaultTemplate": "设置默认模板",
       "clearDefaultTemplate": "清除默认模板",
       "setIcon": "设置图标",
@@ -109,9 +108,7 @@
       "find": "查找…",
       "moreActions": "更多操作",
       "moveToFolder": "移动到文件夹…",
-      "openInDefaultApp": "在默认应用程序中打开",
       "rename": "重命名…",
-      "revealInFinder": "在 Finder 中显示",
       "revealInSidebar": "在导航中显示"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "笔记",
       "open": "打开",
       "openInExternalEditor": "在外部编辑器中打开",
-      "revealInFinder": "在 Finder 中显示",
       "revealInSidebar": "在侧边栏中显示",
       "copyLink": "复制链接",
       "delete2": "删除"
@@ -672,9 +668,7 @@
       "noFileSelected": "未选择文件",
       "selectAFileFromTheSidebarToViewIt": "从侧边栏选择文件以查看",
       "loadingFile": "正在加载文件...",
-      "openInDefaultApp": "在默认应用程序中打开",
       "open": "打开",
-      "revealInFinder": "在 Finder 中显示",
       "reveal": "显示",
       "unsupportedFileType": "不支持的文件类型",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "保存公式失败",
       "failedToOpenInExternalEditor": "无法在外部编辑器中打开",
-      "failedToRevealInFinder": "在 Finder 中显示失败",
       "failedToCopyLink": "复制链接失败",
       "failedToCreateView": "创建视图失败",
       "failedToRenameFolder": "重命名文件夹失败",

@@ -6,6 +6,16 @@ import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import type React from 'react'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const mocks = vi.hoisted(() => ({
   noteState: {
     note: null as Record<string, unknown> | null,
@@ -1316,15 +1326,13 @@ describe('NotePage', () => {
 
     it('reveals the note in the OS file manager', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'fileActions.revealInFinder' }))
       await waitFor(() => expect(mocks.revealInFinder).toHaveBeenCalledWith('note-1'))
     })
 
     it('opens the note in the default app', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'editor.toolbar.openInDefaultApp' })
-      )
+      fireEvent.click(await screen.findByRole('button', { name: 'fileActions.openInDefaultApp' }))
       await waitFor(() => expect(mocks.openExternal).toHaveBeenCalledWith('note-1'))
     })
 
@@ -1401,7 +1409,7 @@ describe('NotePage', () => {
       mocks.revealInFinder.mockRejectedValueOnce(new Error('reveal failed'))
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(await screen.findByRole('button', { name: 'editor.toolbar.revealInFinder' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'fileActions.revealInFinder' }))
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('reveal failed'))
     })
 
@@ -1409,9 +1417,7 @@ describe('NotePage', () => {
       mocks.openExternal.mockRejectedValueOnce(new Error('open failed'))
       renderWithProviders(<NotePage noteId="note-1" />)
 
-      fireEvent.click(
-        await screen.findByRole('button', { name: 'editor.toolbar.openInDefaultApp' })
-      )
+      fireEvent.click(await screen.findByRole('button', { name: 'fileActions.openInDefaultApp' }))
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('open failed'))
     })
 

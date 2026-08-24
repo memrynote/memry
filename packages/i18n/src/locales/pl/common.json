@@ -28,6 +28,13 @@
     "showLess": "Pokaż mniej",
     "undo": "Cofnij"
   },
+  "fileActions": {
+    "revealInFinder": "Pokaż w Finderze",
+    "showInExplorer": "Pokaż w Eksploratorze",
+    "showInFileManager": "Pokaż w menedżerze plików",
+    "openInDefaultApp": "Otwórz w domyślnej aplikacji",
+    "revealFailed": "Nie udało się pokazać w folderze"
+  },
   "tabs": {
     "pin": "Zakładka Przypnij",
     "unpin": "Odepnij kartę",

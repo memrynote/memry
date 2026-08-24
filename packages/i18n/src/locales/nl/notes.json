@@ -54,7 +54,6 @@
       "newFolder": "Nieuwe map",
       "rename": "Hernoemen",
       "openExternal": "Openen in externe editor",
-      "revealInFinder": "Onthul in Finder",
       "setDefaultTemplate": "Stel standaardsjabloon in",
       "clearDefaultTemplate": "Wis standaardsjabloon",
       "setIcon": "Pictogram instellen",
@@ -109,9 +108,7 @@
       "find": "Zoeken…",
       "moreActions": "Meer acties",
       "moveToFolder": "Verplaatsen naar map…",
-      "openInDefaultApp": "Openen in standaardapp",
       "rename": "Hernoemen…",
-      "revealInFinder": "Toon in Finder",
       "revealInSidebar": "Toon in navigatie"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Opmerkingen",
       "open": "Openen",
       "openInExternalEditor": "Openen in externe editor",
-      "revealInFinder": "Onthul in Finder",
       "revealInSidebar": "Onthullen in zijbalk",
       "copyLink": "Kopieer link",
       "delete2": "Verwijderen"
@@ -672,9 +668,7 @@
       "noFileSelected": "Geen bestand geselecteerd",
       "selectAFileFromTheSidebarToViewIt": "Selecteer een bestand in de zijbalk om het te bekijken",
       "loadingFile": "Bestand laden...",
-      "openInDefaultApp": "Openen in standaardapp",
       "open": "Openen",
-      "revealInFinder": "Onthul in Finder",
       "reveal": "Onthullen",
       "unsupportedFileType": "Niet-ondersteund bestandstype",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Kan de formule niet opslaan",
       "failedToOpenInExternalEditor": "Kan niet openen in externe editor",
-      "failedToRevealInFinder": "Kan niet onthullen in Finder",
       "failedToCopyLink": "Kan de link niet kopiëren",
       "failedToCreateView": "Kan weergave niet maken",
       "failedToRenameFolder": "Kan de naam van de map niet wijzigen",

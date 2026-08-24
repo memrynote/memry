@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ExternalLink, File, FileAudio, FileText, FolderOpen, Image } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 
 interface AttachmentRow {
   /** On-disk stored name (`{prefix}-{name}` scheme). */
@@ -85,6 +86,7 @@ export function NoteAttachmentsDialog({
   getOriginalNames
 }: NoteAttachmentsDialogProps) {
   const { t } = useT('notes')
+  const fileActions = useFileActionLabels()
   const [rows, setRows] = useState<AttachmentRow[]>([])
   const [names, setNames] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(false)
@@ -167,8 +169,8 @@ export function NoteAttachmentsDialog({
                     variant="ghost"
                     size="icon"
                     className="size-7"
-                    title={t('editor.toolbar.revealInFinder')}
-                    aria-label={t('editor.toolbar.revealInFinder')}
+                    title={fileActions.revealInFolder}
+                    aria-label={fileActions.revealInFolder}
                     onClick={() => reveal(row)}
                   >
                     <FolderOpen className="h-4 w-4" />
@@ -177,8 +179,8 @@ export function NoteAttachmentsDialog({
                     variant="ghost"
                     size="icon"
                     className="size-7"
-                    title={t('editor.toolbar.openInDefaultApp')}
-                    aria-label={t('editor.toolbar.openInDefaultApp')}
+                    title={fileActions.openInDefaultApp}
+                    aria-label={fileActions.openInDefaultApp}
                     onClick={() => openExternal(row)}
                   >
                     <ExternalLink className="h-4 w-4" />

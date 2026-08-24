@@ -28,6 +28,13 @@
     "showLess": "แสดงน้อยลง",
     "undo": "เลิกทำ"
   },
+  "fileActions": {
+    "revealInFinder": "แสดงใน Finder",
+    "showInExplorer": "แสดงใน File Explorer",
+    "showInFileManager": "แสดงในตัวจัดการไฟล์",
+    "openInDefaultApp": "เปิดในแอปพลิเคชันเริ่มต้น",
+    "revealFailed": "ไม่สามารถแสดงในโฟลเดอร์ได้"
+  },
   "tabs": {
     "pin": "ปักหมุดแท็บ",
     "unpin": "เลิกปักหมุดแท็บ",

@@ -6,6 +6,16 @@ import { NotesTree, type NotesTreeActions } from './notes-tree'
 import { TabProvider } from '@/contexts/tabs'
 import { isRevealed } from '@tests/utils/reveal'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const mocks = vi.hoisted(() => ({
   data: null as any,
   actions: null as any,
@@ -369,7 +379,7 @@ describe('NotesTree isolated coverage', () => {
 
     clickAll(/tree.actions.rename/)
     clickAll(/tree.actions.openExternal/)
-    clickAll(/tree.actions.revealInFinder/)
+    clickAll(/fileActions.revealInFinder/)
     clickAll(/button.delete/)
     expect(mocks.actions.handleRenameClick).toHaveBeenCalledWith(rootNote)
     expect(mocks.actions.handleOpenExternal).toHaveBeenCalledWith(rootNote)

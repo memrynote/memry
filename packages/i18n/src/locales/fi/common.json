@@ -28,6 +28,13 @@
     "showLess": "Näytä vähemmän",
     "undo": "Kumoa"
   },
+  "fileActions": {
+    "revealInFinder": "Näytä Finderissa",
+    "showInExplorer": "Näytä Resurssienhallinnassa",
+    "showInFileManager": "Näytä tiedostonhallinnassa",
+    "openInDefaultApp": "Avaa oletussovelluksessa",
+    "revealFailed": "Näyttäminen kansiossa epäonnistui"
+  },
   "tabs": {
     "pin": "Kiinnitä välilehti",
     "unpin": "Irrota välilehti",

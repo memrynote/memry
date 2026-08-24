@@ -54,7 +54,6 @@
       "newFolder": "Nová složka",
       "rename": "Přejmenovat",
       "openExternal": "Otevřete v externím editoru",
-      "revealInFinder": "Odhalit ve Finderu",
       "setDefaultTemplate": "Nastavit výchozí šablonu",
       "clearDefaultTemplate": "Vymazat výchozí šablonu",
       "setIcon": "Nastavit ikonu",
@@ -109,9 +108,7 @@
       "find": "Najít…",
       "moreActions": "Další akce",
       "moveToFolder": "Přesunout do složky…",
-      "openInDefaultApp": "Otevřít ve výchozí aplikaci",
       "rename": "Přejmenovat…",
-      "revealInFinder": "Zobrazit ve Finderu",
       "revealInSidebar": "Zobrazit v navigaci"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Poznámky",
       "open": "Otevřít",
       "openInExternalEditor": "Otevřete v externím editoru",
-      "revealInFinder": "Odhalit ve Finderu",
       "revealInSidebar": "Odhalit v postranním panelu",
       "copyLink": "Kopírovat odkaz",
       "delete2": "Smazat"
@@ -672,9 +668,7 @@
       "noFileSelected": "Nebyl vybrán žádný soubor",
       "selectAFileFromTheSidebarToViewIt": "Vyberte soubor z postranního panelu a zobrazte jej",
       "loadingFile": "Načítání souboru...",
-      "openInDefaultApp": "Otevřít ve výchozí aplikaci",
       "open": "Otevřít",
-      "revealInFinder": "Odhalit ve Finderu",
       "reveal": "Odhalit",
       "unsupportedFileType": "Nepodporovaný typ souboru",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Vzorec se nepodařilo uložit",
       "failedToOpenInExternalEditor": "Nepodařilo se otevřít v externím editoru",
-      "failedToRevealInFinder": "Odhalení ve Finderu se nezdařilo",
       "failedToCopyLink": "Odkaz se nepodařilo zkopírovat",
       "failedToCreateView": "Zobrazení se nepodařilo vytvořit",
       "failedToRenameFolder": "Přejmenování složky se nezdařilo",

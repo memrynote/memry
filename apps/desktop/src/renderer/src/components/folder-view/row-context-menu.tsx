@@ -33,6 +33,7 @@ import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 
 const log = createLogger('Component:RowContextMenu')
 
@@ -72,6 +73,7 @@ export function RowContextMenu({
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const fileActions = useFileActionLabels()
 
   // Delete and Move to Folder are notes-only IPCs (notesService.delete /
   // notesService.move). Folder view rows are always notes (kind absent),
@@ -117,10 +119,7 @@ export function RowContextMenu({
     } catch (err) {
       log.error('Failed to reveal in Finder', err)
       toast.error(
-        extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRevealInFinder')
-        )
+        extractErrorMessage(err, getI18n().getFixedT(null, 'common')('fileActions.revealFailed'))
       )
     }
   }
@@ -217,7 +216,7 @@ export function RowContextMenu({
             <ContextMenuItem onClick={() => void handleRevealInFinder()}>
               <FolderOpen className="me-2 h-4 w-4" />
 
-              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInFinder')}
+              {fileActions.revealInFolder}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInSidebar}>
               <PanelLeft className="me-2 h-4 w-4" />

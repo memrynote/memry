@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState, type RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { cn } from '@/lib/utils'
 import { formatBytes } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -84,6 +85,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   className
 }: LargeFileViewerProps) {
   const { t } = useT('notes')
+  const fileActions = useFileActionLabels()
   const { state, sessionId, getLine, isTruncated, ensureRange } = useLargeFileSession(noteId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const search = useLargeFileSearch(sessionId)
@@ -195,14 +197,14 @@ export const LargeFileViewer = memo(function LargeFileViewer({
                 size="sm"
                 onClick={() => void window.api.notes.openExternal(noteId)}
               >
-                {t('page.largeFile.openExternally')}
+                {fileActions.openInDefaultApp}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => void window.api.notes.revealInFinder(noteId)}
               >
-                {t('page.largeFile.revealInFolder')}
+                {fileActions.revealInFolder}
               </Button>
             </>
           }

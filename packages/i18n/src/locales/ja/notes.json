@@ -54,7 +54,6 @@
       "newFolder": "新しいフォルダー",
       "rename": "名前の変更",
       "openExternal": "外部エディタで開く",
-      "revealInFinder": "ファインダーで表示",
       "setDefaultTemplate": "デフォルトのテンプレートを設定する",
       "clearDefaultTemplate": "デフォルトのテンプレートをクリア",
       "setIcon": "アイコンを設定",
@@ -109,9 +108,7 @@
       "find": "検索…",
       "moreActions": "その他の操作",
       "moveToFolder": "フォルダーに移動…",
-      "openInDefaultApp": "デフォルトのアプリで開く",
       "rename": "名前を変更…",
-      "revealInFinder": "Finder で表示",
       "revealInSidebar": "サイドバーに表示"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "注意事項",
       "open": "開く",
       "openInExternalEditor": "外部エディタで開く",
-      "revealInFinder": "ファインダーで表示",
       "revealInSidebar": "サイドバーに表示",
       "copyLink": "リンクをコピー",
       "delete2": "削除"
@@ -672,9 +668,7 @@
       "noFileSelected": "ファイルが選択されていません",
       "selectAFileFromTheSidebarToViewIt": "サイドバーからファイルを選択して表示します",
       "loadingFile": "ファイルをロード中...",
-      "openInDefaultApp": "デフォルトのアプリで開く",
       "open": "開く",
-      "revealInFinder": "ファインダーで表示",
       "reveal": "明らかにする",
       "unsupportedFileType": "サポートされていないファイル形式です",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "数式の保存に失敗しました",
       "failedToOpenInExternalEditor": "外部エディタで開けませんでした",
-      "failedToRevealInFinder": "Finder で表示できませんでした",
       "failedToCopyLink": "リンクのコピーに失敗しました",
       "failedToCreateView": "ビューの作成に失敗しました",
       "failedToRenameFolder": "フォルダー名の変更に失敗しました",

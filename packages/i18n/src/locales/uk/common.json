@@ -28,6 +28,13 @@
     "showLess": "Показати менше",
     "undo": "Скасувати"
   },
+  "fileActions": {
+    "revealInFinder": "Показати у Finder",
+    "showInExplorer": "Показати в Провіднику",
+    "showInFileManager": "Показати у файловому менеджері",
+    "openInDefaultApp": "Відкрити у стандартному додатку",
+    "revealFailed": "Не вдалося показати в папці"
+  },
   "tabs": {
     "pin": "Закріпити вкладку",
     "unpin": "Відкріпити вкладку",

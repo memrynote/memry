@@ -54,7 +54,6 @@
       "newFolder": "Nova mapa",
       "rename": "Preimenuj",
       "openExternal": "Otvorite u vanjskom uređivaču",
-      "revealInFinder": "Otkrij u Finderu",
       "setDefaultTemplate": "Postavi zadani predložak",
       "clearDefaultTemplate": "Obriši zadani predložak",
       "setIcon": "Postavi ikonu",
@@ -109,9 +108,7 @@
       "find": "Pronađi…",
       "moreActions": "Više radnji",
       "moveToFolder": "Premjesti u mapu…",
-      "openInDefaultApp": "Otvori u zadanoj aplikaciji",
       "rename": "Preimenuj…",
-      "revealInFinder": "Otkrij u Finderu",
       "revealInSidebar": "Otkrij u navigaciji"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Bilješke",
       "open": "Otvoreno",
       "openInExternalEditor": "Otvorite u vanjskom uređivaču",
-      "revealInFinder": "Otkrij u Finderu",
       "revealInSidebar": "Otkrij na bočnoj traci",
       "copyLink": "Kopiraj vezu",
       "delete2": "Izbriši"
@@ -672,9 +668,7 @@
       "noFileSelected": "Nije odabrana datoteka",
       "selectAFileFromTheSidebarToViewIt": "Odaberite datoteku na bočnoj traci da biste je pogledali",
       "loadingFile": "Učitavanje datoteke...",
-      "openInDefaultApp": "Otvori u zadanoj aplikaciji",
       "open": "Otvoreno",
-      "revealInFinder": "Otkrij u Finderu",
       "reveal": "otkriti",
       "unsupportedFileType": "Nepodržana vrsta datoteke",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Spremanje formule nije uspjelo",
       "failedToOpenInExternalEditor": "Otvaranje u vanjskom uređivaču nije uspjelo",
-      "failedToRevealInFinder": "Nije uspjelo otkrivanje u Finderu",
       "failedToCopyLink": "Kopiranje veze nije uspjelo",
       "failedToCreateView": "Izrada prikaza nije uspjela",
       "failedToRenameFolder": "Nije uspjelo preimenovanje mape",

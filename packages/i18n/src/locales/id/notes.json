@@ -54,7 +54,6 @@
       "newFolder": "Folder Baru",
       "rename": "Ganti nama",
       "openExternal": "Buka di Editor Eksternal",
-      "revealInFinder": "Buka di Finder",
       "setDefaultTemplate": "Tetapkan Templat Default",
       "clearDefaultTemplate": "Hapus Templat Default",
       "setIcon": "Atur Ikon",
@@ -109,9 +108,7 @@
       "find": "Cari…",
       "moreActions": "Tindakan lainnya",
       "moveToFolder": "Pindahkan ke folder…",
-      "openInDefaultApp": "Buka di aplikasi default",
       "rename": "Ganti nama…",
-      "revealInFinder": "Buka di Finder",
       "revealInSidebar": "Tampilkan di navigasi"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Catatan",
       "open": "Buka",
       "openInExternalEditor": "Buka di Editor Eksternal",
-      "revealInFinder": "Buka di Finder",
       "revealInSidebar": "Buka di Sidebar",
       "copyLink": "Salin Tautan",
       "delete2": "Hapus"
@@ -672,9 +668,7 @@
       "noFileSelected": "Tidak ada berkas yang dipilih",
       "selectAFileFromTheSidebarToViewIt": "Pilih file dari sidebar untuk melihatnya",
       "loadingFile": "Memuat berkas...",
-      "openInDefaultApp": "Buka di aplikasi default",
       "open": "Buka",
-      "revealInFinder": "Buka di Finder",
       "reveal": "Mengungkapkan",
       "unsupportedFileType": "Jenis file tidak didukung",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Gagal menyimpan rumus",
       "failedToOpenInExternalEditor": "Gagal dibuka di editor eksternal",
-      "failedToRevealInFinder": "Gagal mengungkapkan di Finder",
       "failedToCopyLink": "Gagal menyalin tautan",
       "failedToCreateView": "Gagal membuat tampilan",
       "failedToRenameFolder": "Gagal mengganti nama folder",

@@ -29,7 +29,7 @@ Each attachment renders as a block with:
 
 Every attachment block — the file card, the audio player, and the inline PDF preview — carries the same menu. Open it from the `⋯` button that appears on hover, or by right-clicking the block:
 
-- **Reveal in Finder** — show the stored file in your OS file manager
+- **Reveal in Finder** — show the stored file in your OS file manager. On Windows the item reads **Show in Explorer**, on Linux **Show in file manager**; this guide calls it **Reveal in Finder** throughout.
 - **Open in default app** — hand the file to whatever your OS opens that type with
 - **Copy path** — put the file's absolute on-disk path on the clipboard
 

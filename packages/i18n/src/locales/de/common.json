@@ -28,6 +28,13 @@
     "showLess": "Weniger anzeigen",
     "undo": "Rückgängig"
   },
+  "fileActions": {
+    "revealInFinder": "Im Finder anzeigen",
+    "showInExplorer": "Im Explorer anzeigen",
+    "showInFileManager": "Im Dateimanager anzeigen",
+    "openInDefaultApp": "In der Standard-App öffnen",
+    "revealFailed": "Anzeigen im Ordner fehlgeschlagen"
+  },
   "tabs": {
     "pin": "Pin-Registerkarte",
     "unpin": "Tab lösen",

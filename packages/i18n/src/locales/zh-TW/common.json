@@ -28,6 +28,13 @@
     "showLess": "顯示較少",
     "undo": "復原"
   },
+  "fileActions": {
+    "revealInFinder": "在 Finder 中顯示",
+    "showInExplorer": "在檔案總管中顯示",
+    "showInFileManager": "在檔案管理員中顯示",
+    "openInDefaultApp": "在預設程式中開啟",
+    "revealFailed": "無法在資料夾中顯示"
+  },
   "tabs": {
     "pin": "固定標籤",
     "unpin": "取消固定標籤",

@@ -3,6 +3,16 @@ import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { FilePage } from './file'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const mocks = vi.hoisted(() => ({
   getFile: vi.fn(),
   openExternal: vi.fn(),
@@ -119,10 +129,10 @@ describe('FilePage', () => {
     expect(await screen.findByText('File title')).toBeInTheDocument()
     expect(screen.getByText('2.0 KB')).toBeInTheDocument()
 
-    await user.click(screen.getByTitle('phaseF.pagesFile.openInDefaultApp'))
+    await user.click(screen.getByTitle('fileActions.openInDefaultApp'))
     expect(mocks.openExternal).toHaveBeenCalledWith('file-1')
 
-    await user.click(screen.getByTitle('phaseF.pagesFile.revealInFinder'))
+    await user.click(screen.getByTitle('fileActions.revealInFinder'))
     expect(mocks.revealInFinder).toHaveBeenCalledWith('file-1')
   })
 
@@ -137,10 +147,10 @@ describe('FilePage', () => {
     expect(viewer).toContainElement(screen.getByTestId('chips'))
     // Nothing left over from the info bar: no size readout, no labelled buttons.
     expect(screen.queryByText('2.0 KB')).not.toBeInTheDocument()
-    expect(screen.queryByTitle('phaseF.pagesFile.openInDefaultApp')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('fileActions.openInDefaultApp')).not.toBeInTheDocument()
 
     await user.click(screen.getByTitle('phaseF.pagesFile.fileActions'))
-    await user.click(await screen.findByText('phaseF.pagesFile.revealInFinder'))
+    await user.click(await screen.findByText('fileActions.revealInFinder'))
     expect(mocks.revealInFinder).toHaveBeenCalledWith('file-1')
   })
 

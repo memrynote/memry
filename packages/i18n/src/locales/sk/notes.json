@@ -54,7 +54,6 @@
       "newFolder": "Nový priečinok",
       "rename": "Premenovať",
       "openExternal": "Otvoriť v externom editore",
-      "revealInFinder": "Zobraziť vo Finderi",
       "setDefaultTemplate": "Nastaviť predvolenú šablónu",
       "clearDefaultTemplate": "Vymazať predvolenú šablónu",
       "setIcon": "Nastaviť ikonu",
@@ -109,9 +108,7 @@
       "find": "Hľadať…",
       "moreActions": "Ďalšie akcie",
       "moveToFolder": "Presunúť do priečinka…",
-      "openInDefaultApp": "Otvoriť v predvolenej aplikácii",
       "rename": "Premenovať…",
-      "revealInFinder": "Zobraziť vo Finderi",
       "revealInSidebar": "Zobraziť v navigácii"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Poznámky",
       "open": "Otvorené",
       "openInExternalEditor": "Otvoriť v externom editore",
-      "revealInFinder": "Zobraziť vo Finderi",
       "revealInSidebar": "Zobraziť v bočnom paneli",
       "copyLink": "Kopírovať odkaz",
       "delete2": "Vymazať"
@@ -672,9 +668,7 @@
       "noFileSelected": "Žiadny súbor nebol vybraný",
       "selectAFileFromTheSidebarToViewIt": "Vyberte súbor zo bočného panela, aby ste ho zobrazili",
       "loadingFile": "Načítava sa súbor...",
-      "openInDefaultApp": "Otvoriť v predvolenej aplikácii",
       "open": "Otvorené",
-      "revealInFinder": "Zobraziť vo Finderi",
       "reveal": "Zobraziť",
       "unsupportedFileType": "Nepodporovaný typ súboru",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Nepodarilo sa uložiť vzorec",
       "failedToOpenInExternalEditor": "Nepodarilo sa otvoriť v externom editore",
-      "failedToRevealInFinder": "Nepodarilo sa zobraziť vo Finderi",
       "failedToCopyLink": "Nepodarilo sa skopírovať odkaz",
       "failedToCreateView": "Nepodarilo sa vytvoriť zobrazenie",
       "failedToRenameFolder": "Nepodarilo sa premenovať priečinok",

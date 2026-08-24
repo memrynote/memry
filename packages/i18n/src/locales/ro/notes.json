@@ -54,7 +54,6 @@
       "newFolder": "Dosar nou",
       "rename": "Redenumiți",
       "openExternal": "Deschideți în Editor extern",
-      "revealInFinder": "Dezvăluie în Finder",
       "setDefaultTemplate": "Setați șablonul implicit",
       "clearDefaultTemplate": "Ștergeți șablonul implicit",
       "setIcon": "Set icon",
@@ -109,9 +108,7 @@
       "find": "Caută…",
       "moreActions": "Mai multe acțiuni",
       "moveToFolder": "Mută în dosar…",
-      "openInDefaultApp": "Deschide în aplicația implicită",
       "rename": "Redenumește…",
-      "revealInFinder": "Afișează în Finder",
       "revealInSidebar": "Afișează în bara laterală"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Note",
       "open": "Deschide",
       "openInExternalEditor": "Deschideți în Editor extern",
-      "revealInFinder": "Dezvăluie în Finder",
       "revealInSidebar": "Dezvăluie în bara laterală",
       "copyLink": "Copiați linkul",
       "delete2": "Ștergeți"
@@ -672,9 +668,7 @@
       "noFileSelected": "Niciun fișier selectat",
       "selectAFileFromTheSidebarToViewIt": "Selectați un fișier din bara laterală pentru a-l vizualiza",
       "loadingFile": "Se încarcă fișierul...",
-      "openInDefaultApp": "Deschideți în aplicația implicită",
       "open": "Deschide",
-      "revealInFinder": "Dezvăluie în Finder",
       "reveal": "Dezvăluie",
       "unsupportedFileType": "Tip de fișier neacceptat",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Nu s-a salvat formula",
       "failedToOpenInExternalEditor": "Deschiderea eșuată în editorul extern",
-      "failedToRevealInFinder": "Nu s-a putut dezvălui în Finder",
       "failedToCopyLink": "Nu s-a copiat linkul",
       "failedToCreateView": "Nu s-a putut crea vizualizarea",
       "failedToRenameFolder": "Nu s-a putut redenumi folderul",

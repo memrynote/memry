@@ -54,7 +54,6 @@
       "newFolder": "โฟลเดอร์ใหม่",
       "rename": "เปลี่ยนชื่อ",
       "openExternal": "เปิดในโปรแกรมแก้ไขภายนอก",
-      "revealInFinder": "แสดงใน Finder",
       "setDefaultTemplate": "ตั้งค่าเทมเพลตเริ่มต้น",
       "clearDefaultTemplate": "ลบเทมเพลตเริ่มต้น",
       "setIcon": "  \nตั้งค่าไอคอน  ",
@@ -109,9 +108,7 @@
       "find": "ค้นหา…",
       "moreActions": "การดำเนินการเพิ่มเติม",
       "moveToFolder": "ย้ายไปยังโฟลเดอร์…",
-      "openInDefaultApp": "เปิดในแอปพลิเคชันเริ่มต้น",
       "rename": "เปลี่ยนชื่อ…",
-      "revealInFinder": "แสดงใน Finder",
       "revealInSidebar": "แสดงในแถบนำทาง"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "บันทึก",
       "open": "เปิด",
       "openInExternalEditor": "เปิดในโปรแกรมแก้ไขภายนอก",
-      "revealInFinder": "แสดงใน Finder",
       "revealInSidebar": "แสดงในแถบด้านข้าง",
       "copyLink": "คัดลอกลิงก์",
       "delete2": "ลบ"
@@ -672,9 +668,7 @@
       "noFileSelected": "ยังไม่ได้เลือกไฟล์",
       "selectAFileFromTheSidebarToViewIt": "เลือกไฟล์จากแถบด้านข้างเพื่อดู",
       "loadingFile": "กำลังโหลดไฟล์...",
-      "openInDefaultApp": "เปิดในแอปพลิเคชันเริ่มต้น",
       "open": "เปิด",
-      "revealInFinder": "แสดงใน Finder",
       "reveal": "เปิดเผย",
       "unsupportedFileType": "ประเภทไฟล์ไม่รองรับ",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "การบันทึกสูตรล้มเหลว",
       "failedToOpenInExternalEditor": "ไม่สามารถเปิดในตัวแก้ไขภายนอก",
-      "failedToRevealInFinder": "ไม่สามารถเปิดใน Finder ได้",
       "failedToCopyLink": "ไม่สามารถคัดลอกลิงก์ได้",
       "failedToCreateView": "ไม่สามารถสร้างมุมมองได้",
       "failedToRenameFolder": "ไม่สามารถเปลี่ยนชื่อโฟลเดอร์ได้",

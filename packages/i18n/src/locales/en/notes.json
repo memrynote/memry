@@ -54,8 +54,6 @@
         "blockBytes": "It has a {size} run with no blank line in it. Notes stay editable up to {limit} per block."
       },
       "explanation": "Editing it would mean parsing the whole thing at once, which would freeze the app. The file is untouched on disk.",
-      "openExternally": "Open in default app",
-      "revealInFolder": "Show in folder",
       "viewer": {
         "preparing": "Preparing {size} for reading…",
         "preparingHint": "Indexing the lines so it can be scrolled without loading it all at once.",
@@ -100,7 +98,6 @@
       "rename": "Rename",
       "applyTemplate": "Apply Template",
       "openExternal": "Open in External Editor",
-      "revealInFinder": "Reveal in Finder",
       "setDefaultTemplate": "Set Default Template",
       "clearDefaultTemplate": "Clear Default Template",
       "setIcon": "Set Icon",
@@ -165,9 +162,7 @@
       "rename": "Rename…",
       "moveToFolder": "Move to folder…",
       "copyPath": "Copy path",
-      "revealInFinder": "Reveal in Finder",
       "revealInSidebar": "Reveal in navigation",
-      "openInDefaultApp": "Open in default app",
       "attachments": "Attachments…",
       "disableLocalOnly": "Disable local only",
       "setLocalOnly": "Set local only",
@@ -646,7 +641,6 @@
       "notes": "Notes",
       "open": "Open",
       "openInExternalEditor": "Open in External Editor",
-      "revealInFinder": "Reveal in Finder",
       "revealInSidebar": "Reveal in Sidebar",
       "copyLink": "Copy Link",
       "delete2": "Delete"
@@ -846,9 +840,7 @@
       "noFileSelected": "No file selected",
       "selectAFileFromTheSidebarToViewIt": "Select a file from the sidebar to view it",
       "loadingFile": "Loading file...",
-      "openInDefaultApp": "Open in default app",
       "open": "Open",
-      "revealInFinder": "Reveal in Finder",
       "reveal": "Reveal",
       "unsupportedFileType": "Unsupported file type",
       "fileActions": "File actions"
@@ -876,7 +868,6 @@
     "errors": {
       "failedToSaveFormula": "Failed to save formula",
       "failedToOpenInExternalEditor": "Failed to open in external editor",
-      "failedToRevealInFinder": "Failed to reveal in Finder",
       "failedToCopyLink": "Failed to copy link",
       "failedToCreateView": "Failed to create view",
       "failedToRenameFolder": "Failed to rename folder",
@@ -1010,7 +1001,7 @@
     "emptyHint": "Add a heading to this note and the map will branch.",
     "linkHint": "link to another page",
     "chain": {
-      "separator": "\u2192"
+      "separator": "→"
     },
     "more": "{count, plural, one {+# more} other {+# more}}",
     "nodeCapNotice": "This map is at its limit of {count, plural, one {# node} other {# nodes}}; the rest is folded into the nearest node above it.",
@@ -1032,9 +1023,9 @@
       "vectorCopied": "Map copied as vector artwork",
       "copyFailed": "Failed to copy the map",
       "saveCanvas": "Save as canvas",
-      "saved": "Saved as the canvas \u201c{title}\u201d",
+      "saved": "Saved as the canvas “{title}”",
       "saveFailed": "Failed to save the map as a canvas",
-      "snapshotOn": "Snapshot \u00b7 {date}"
+      "snapshotOn": "Snapshot · {date}"
     }
   }
 }

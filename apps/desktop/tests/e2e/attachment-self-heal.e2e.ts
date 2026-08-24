@@ -8,7 +8,7 @@
  *  - the note menu's "Attachments…" panel lists the folder with original +
  *    stored names and per-row OS actions.
  *
- * Side-effecting OS items (Reveal in Finder / Open in default app) are only
+ * Side-effecting OS items (the reveal item / Open in default app) are only
  * asserted present + enabled — never clicked (same policy as
  * attachment-block-menu / note-menu-actions).
  */
@@ -19,6 +19,15 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
 import { SELECTORS } from './utils/electron-helpers'
+
+// The reveal item is labelled for the host's file manager: Finder on macOS,
+// Explorer on Windows, a generic file manager everywhere else.
+const REVEAL_LABEL =
+  process.platform === 'darwin'
+    ? 'Reveal in Finder'
+    : process.platform === 'win32'
+      ? 'Show in Explorer'
+      : 'Show in file manager'
 
 const ORIGINAL_NAME = 'original-report.txt'
 
@@ -203,7 +212,7 @@ test.describe('Note attachments panel', () => {
     await expect(row).toContainText(seeded.storedFilename)
 
     // OS items present + enabled, never clicked.
-    for (const label of ['Reveal in Finder', 'Open in default app']) {
+    for (const label of [REVEAL_LABEL, 'Open in default app']) {
       const button = row.getByRole('button', { name: label })
       await expect(button).toBeVisible()
       await expect(button).toBeEnabled()

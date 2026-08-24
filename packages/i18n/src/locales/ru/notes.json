@@ -54,7 +54,6 @@
       "newFolder": "Новая папка",
       "rename": "Переименовать",
       "openExternal": "Открыть во внешнем редакторе",
-      "revealInFinder": "Показать в Finder",
       "setDefaultTemplate": "Установить шаблон по умолчанию",
       "clearDefaultTemplate": "Очистить шаблон по умолчанию",
       "setIcon": "Установить значок",
@@ -109,9 +108,7 @@
       "find": "Найти…",
       "moreActions": "Другие действия",
       "moveToFolder": "Переместить в папку…",
-      "openInDefaultApp": "Открыть в приложении по умолчанию",
       "rename": "Переименовать…",
-      "revealInFinder": "Показать в Finder",
       "revealInSidebar": "Показать на боковой панели"
     },
     "breadcrumb": {
@@ -472,7 +469,6 @@
       "notes": "Примечания",
       "open": "Открыть",
       "openInExternalEditor": "Открыть во внешнем редакторе",
-      "revealInFinder": "Показать в Finder",
       "revealInSidebar": "Показать на боковой панели",
       "copyLink": "Копировать ссылку",
       "delete2": "Удалить"
@@ -672,9 +668,7 @@
       "noFileSelected": "Файл не выбран",
       "selectAFileFromTheSidebarToViewIt": "Выберите файл на боковой панели, чтобы просмотреть его.",
       "loadingFile": "Загрузка файла...",
-      "openInDefaultApp": "Открыть в приложении по умолчанию",
       "open": "Открыть",
-      "revealInFinder": "Показать в Finder",
       "reveal": "Раскрыть",
       "unsupportedFileType": "Неподдерживаемый тип файла",
       "fileActions": "File actions"
@@ -702,7 +696,6 @@
     "errors": {
       "failedToSaveFormula": "Не удалось сохранить формулу.",
       "failedToOpenInExternalEditor": "Не удалось открыть во внешнем редакторе.",
-      "failedToRevealInFinder": "Не удалось обнаружить в Finder",
       "failedToCopyLink": "Не удалось скопировать ссылку",
       "failedToCreateView": "Не удалось создать представление.",
       "failedToRenameFolder": "Не удалось переименовать папку",

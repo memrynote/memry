@@ -28,6 +28,13 @@
     "showLess": "Tunjukkan lebih sedikit",
     "undo": "Buat asal"
   },
+  "fileActions": {
+    "revealInFinder": "Dedahkan dalam Finder",
+    "showInExplorer": "Tunjukkan dalam File Explorer",
+    "showInFileManager": "Tunjukkan dalam pengurus fail",
+    "openInDefaultApp": "Buka dalam apl lalai",
+    "revealFailed": "Gagal menunjukkan dalam folder"
+  },
   "tabs": {
     "pin": "Tab Semat",
     "unpin": "Nyahsemat Tab",

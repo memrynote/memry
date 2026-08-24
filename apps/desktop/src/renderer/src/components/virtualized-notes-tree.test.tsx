@@ -12,6 +12,16 @@ import {
 import type { TreeStructure } from '@/lib/virtualized-tree-utils'
 import { isRevealed } from '@tests/utils/reveal'
 
+// The reveal action's label branches on platform. Pin macOS so these
+// assertions read the Finder wording whatever host the suite runs on.
+Object.defineProperty(navigator, 'platform', {
+  value: 'MacIntel',
+  configurable: true,
+  // Enumerable so it survives the `{ ...navigator }` spreads some suites
+  // use to stub the clipboard.
+  enumerable: true
+})
+
 const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   scrollToIndex: vi.fn(),
