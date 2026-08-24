@@ -14,13 +14,15 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.memry.mobile',
     appleTeamId: 'TV343Q4W8A',
-    supportsTablet: false,
-    // Vault DB + attachments must be readable when a BGAppRefreshTask runs
-    // before first unlock after reboot (data-model.md §1, verified in R7).
-    entitlements: {
-      'com.apple.developer.default-data-protection':
-        'NSFileProtectionCompleteUntilFirstUserAuthentication'
-    }
+    supportsTablet: false
+    // Data-protection entitlement deliberately absent for now: iOS already
+    // defaults third-party app files to
+    // NSFileProtectionCompleteUntilFirstUserAuthentication — exactly the class
+    // data-model.md §1 requires (DB readable when a BGAppRefreshTask runs
+    // before first unlock) — and Xcode's wildcard dev provisioning profile
+    // rejects the explicit entitlement. It returns with the real App Store
+    // provisioning profile (Phase 6 signing work), where the capability is
+    // registered on the App ID.
   },
   android: {
     package: 'com.memry.mobile',
