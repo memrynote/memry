@@ -163,11 +163,20 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
           ])
 
           if ((item.type === 'note' || item.type === 'journal') && item.payloadJson) {
-            await this.projectNoteWithStatements(item, existingBodies, seenFolders, {
-              folderStmt,
-              bodyUpsertStmt,
-              bodyPathStmt
-            })
+            try {
+              await this.projectNoteWithStatements(item, existingBodies, seenFolders, {
+                folderStmt,
+                bodyUpsertStmt,
+                bodyPathStmt
+              })
+            } catch (err) {
+              // A projection is rebuildable; it must never kill the batch —
+              // the sync_items row is already applied and stays the truth.
+              log.warn('Note projection failed; item applied without projection', {
+                itemId: item.id,
+                error: err instanceof Error ? err.message : String(err)
+              })
+            }
           }
         }
       } finally {
