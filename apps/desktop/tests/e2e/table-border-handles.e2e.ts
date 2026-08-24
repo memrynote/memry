@@ -796,6 +796,25 @@ test.describe('Table border handles', () => {
     const editor = page.locator(SELECTORS.noteEditor).first()
     const rows = editor.locator('table tr')
     await expect(rows).toHaveCount(3, { timeout: 15_000 })
+
+    // The CRDT provider rebinds the fresh note a beat after it opens, replacing
+    // the editor state wholesale (`view.updateState`, no transaction) — and a
+    // caret placed before that lands degrades to its CELL'S START, which is
+    // exactly the position this test is about. Wait for the doc identity to
+    // hold still across two polls before placing the caret.
+    await page.waitForFunction(
+      () => {
+        const w = window as any
+        const doc = w.__memryEditor?.prosemirrorView?.state.doc
+        if (!doc) return false
+        const settled = w.__docProbe === doc
+        w.__docProbe = doc
+        return settled
+      },
+      undefined,
+      { timeout: 15_000, polling: 500 }
+    )
+
     await rows.nth(0).locator('th, td').nth(0).click({ position: IN_CELL })
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('End')
@@ -804,10 +823,38 @@ test.describe('Table border handles', () => {
     await expect(anchor).toHaveAttribute('data-row-index', '1', { timeout: 10_000 })
     await expect(anchor).toHaveAttribute('data-col-index', '0')
 
+    // And prove the caret truly stands at the END of A1 before the menu opens —
+    // the whole point of the journey that follows.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const state = (window as any).__memryEditor.prosemirrorView?.state
+            if (!state) return null
+            const $from = state.selection.$from
+            return { text: $from.parent.textContent, offset: $from.parentOffset }
+          }),
+        { timeout: 10_000 }
+      )
+      .toEqual({ text: 'A1', offset: 2 })
+
     // #when the menu is opened and then dismissed with Escape
     const menu = page.locator('.memry-table-keyboard-menu')
     await page.keyboard.press('ControlOrMeta+Shift+Enter')
     await expect(menu).toBeVisible({ timeout: 10_000 })
+    // Visible is paint, not readiness: Radix wires its dismiss/focus scope a
+    // beat after the content mounts, and an Escape in that gap dies unheard.
+    // Focus arriving inside the menu is the signal the scope is live — the
+    // same signal every runByKeyboard walk already waits on.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() =>
+            Boolean(document.activeElement?.closest('.memry-table-keyboard-menu'))
+          ),
+        { timeout: 10_000 }
+      )
+      .toBe(true)
     await page.keyboard.press('Escape')
     await expect(menu).toHaveCount(0, { timeout: 10_000 })
 
@@ -825,6 +872,31 @@ test.describe('Table border handles', () => {
         { timeout: 10_000 }
       )
       .toBe('editor')
+
+    // Focus in the editor is not yet the caret: ProseMirror syncs the DOM
+    // selection from its state a beat after the view regains focus, and typing
+    // in that gap lands at the cell's start ("zzA1"). Wait for the caret to
+    // stand where the menu found it — the end of A1 — before typing.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const sel = window.getSelection()
+            if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return 'no-caret'
+            const range = sel.getRangeAt(0)
+            const node = range.startContainer
+            const el = node instanceof Element ? node : node.parentElement
+            const cell = el?.closest('td, th')
+            if (!cell || cell.textContent !== 'A1') return 'outside-cell'
+            const atEnd =
+              node.nodeType === Node.TEXT_NODE
+                ? range.startOffset === (node.textContent?.length ?? 0)
+                : range.startOffset >= node.childNodes.length
+            return atEnd ? 'end-of-A1' : 'in-A1'
+          }),
+        { timeout: 10_000 }
+      )
+      .toBe('end-of-A1')
 
     // #and typing lands back in the cell the menu was opened from, at the caret
     // it was opened with — nothing else in the table moved

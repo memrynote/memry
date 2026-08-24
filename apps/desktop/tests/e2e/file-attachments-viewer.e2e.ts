@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import { test, expect } from './fixtures'
 import { PNG_BYTES, minimalPdfBytes, ready, uniqueLabel } from './utils/desktop-test-helpers'
+import { tabSessionStorageKey } from './utils/electron-helpers'
 import { toMemryFileUrl } from '../../src/renderer/src/lib/memry-file-url'
 
 test.describe('File attachments and viewer E2E', () => {
@@ -123,10 +124,11 @@ test.describe('File attachments and viewer E2E', () => {
       })
 
       const fileId = importedFile!.id
+      const storageKey = await tabSessionStorageKey(page)
       await page.addInitScript(
-        ({ fileId, importTitle }) => {
+        ({ fileId, importTitle, storageKey }) => {
           localStorage.setItem(
-            'memry_tab_state',
+            storageKey,
             JSON.stringify({
               version: 2,
               tabGroups: {
@@ -156,7 +158,7 @@ test.describe('File attachments and viewer E2E', () => {
             })
           )
         },
-        { fileId, importTitle }
+        { fileId, importTitle, storageKey }
       )
       await page.reload()
       await page.waitForLoadState('domcontentloaded')
@@ -213,10 +215,11 @@ test.describe('File attachments and viewer E2E', () => {
         )
         .not.toBeNull()
 
+      const storageKey = await tabSessionStorageKey(page)
       await page.addInitScript(
-        ({ fileId, pdfTitle }) => {
+        ({ fileId, pdfTitle, storageKey }) => {
           localStorage.setItem(
-            'memry_tab_state',
+            storageKey,
             JSON.stringify({
               version: 2,
               tabGroups: {
@@ -243,7 +246,7 @@ test.describe('File attachments and viewer E2E', () => {
             })
           )
         },
-        { fileId, pdfTitle }
+        { fileId, pdfTitle, storageKey }
       )
       await page.reload()
       await page.waitForLoadState('domcontentloaded')

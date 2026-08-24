@@ -4,7 +4,7 @@ import path from 'path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ready, uniqueLabel } from './utils/desktop-test-helpers'
-import { SELECTORS, seedNote } from './utils/electron-helpers'
+import { SELECTORS, seedNote, tabSessionStorageKey } from './utils/electron-helpers'
 
 // Keep in sync with src/renderer/src/lib/drag-mime.ts. Duplicated as a literal
 // so the test asserts the exact wire contract the sidebar and editor share.
@@ -74,10 +74,11 @@ async function importPdf(page: Page): Promise<string> {
 
 /** Open a seeded markdown note in the editor deterministically via restored tab state. */
 async function openNoteInEditor(page: Page, noteId: string, title: string): Promise<void> {
+  const storageKey = await tabSessionStorageKey(page)
   await page.addInitScript(
-    ({ id, t }) => {
+    ({ id, t, storageKey }) => {
       localStorage.setItem(
-        'memry_tab_state',
+        storageKey,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -104,7 +105,7 @@ async function openNoteInEditor(page: Page, noteId: string, title: string): Prom
         })
       )
     },
-    { id: noteId, t: title }
+    { id: noteId, t: title, storageKey }
   )
   await page.reload()
   await page.waitForLoadState('domcontentloaded')

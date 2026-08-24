@@ -15,7 +15,7 @@ import type { Page } from '@playwright/test'
 
 import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
-import { SELECTORS } from './utils/electron-helpers'
+import { SELECTORS, tabSessionStorageKey } from './utils/electron-helpers'
 
 const tabs = (page: Page) => page.locator(SELECTORS.tab)
 const treeRow = (page: Page, nodeId: string) => page.locator(`[data-tree-node-id="${nodeId}"]`)
@@ -119,10 +119,11 @@ test.describe('Clicking a page reuses the current tab (#1644)', () => {
     // The tab context menu is a native OS menu, which Playwright cannot drive,
     // so the pinned tab is seeded through the session Memry restores on start —
     // the same shape persistence writes.
+    const storageKey = await tabSessionStorageKey(page)
     await page.addInitScript(
-      ({ noteId, title }) => {
+      ({ noteId, title, storageKey }) => {
         localStorage.setItem(
-          'memry_tab_state',
+          storageKey,
           JSON.stringify({
             version: 2,
             tabGroups: {
@@ -149,7 +150,7 @@ test.describe('Clicking a page reuses the current tab (#1644)', () => {
           })
         )
       },
-      { noteId: ids[0], title: titles[0] }
+      { noteId: ids[0], title: titles[0], storageKey }
     )
     await page.reload()
     await ready(page)

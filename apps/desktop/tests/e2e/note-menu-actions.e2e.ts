@@ -13,7 +13,13 @@
 
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { waitForAppReady, waitForVaultReady, seedNote, SELECTORS } from './utils/electron-helpers'
+import {
+  waitForAppReady,
+  waitForVaultReady,
+  seedNote,
+  tabSessionStorageKey,
+  SELECTORS
+} from './utils/electron-helpers'
 
 // The reveal item is labelled for the host's file manager: Finder on macOS,
 // Explorer on Windows, a generic file manager everywhere else.
@@ -45,10 +51,11 @@ test.describe('Note-view menu file actions', () => {
   // the robust open pattern used by pdf-embed-resize.e2e.ts (no tab-strip race).
   async function seedAndOpen(page: Page, title: string): Promise<string> {
     const id = await seedNote(page, title, 'Body for menu actions')
+    const storageKey = await tabSessionStorageKey(page)
     await page.addInitScript(
-      ({ noteId, t }) => {
+      ({ noteId, t, storageKey }) => {
         localStorage.setItem(
-          'memry_tab_state',
+          storageKey,
           JSON.stringify({
             version: 2,
             tabGroups: {
@@ -75,7 +82,7 @@ test.describe('Note-view menu file actions', () => {
           })
         )
       },
-      { noteId: id, t: title }
+      { noteId: id, t: title, storageKey }
     )
     await page.reload()
     await waitForAppReady(page)

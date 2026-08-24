@@ -157,6 +157,22 @@ export async function waitForVaultReady(page: Page, timeout = 45000): Promise<vo
 }
 
 /**
+ * The localStorage key the app persists its tab session under.
+ *
+ * Tab state is scoped per vault since #1702 (`memry_tab_state:<vaultPath>`),
+ * and the app's own state at that key wins over the legacy bare key — a
+ * session seeded onto `memry_tab_state` alone is silently ignored the moment
+ * the app has saved anything of its own. The vault path is asked from the app
+ * itself rather than rebuilt from the fixture's temp dir, which can differ by
+ * symlink resolution (macOS `/var` → `/private/var`).
+ */
+export async function tabSessionStorageKey(page: Page): Promise<string> {
+  const vaultPath = await page.evaluate(async () => (await window.api.vault.getStatus())?.path)
+  if (!vaultPath) throw new Error('vault not open: cannot compute the tab-state storage key')
+  return `memry_tab_state:${vaultPath}`
+}
+
+/**
  * Ensure the right-hand Day Panel is open. The panel now defaults to open
  * (onboarding tour, #625), so blindly clicking the "Day Panel" toggle would
  * close an already-open panel. Only toggle when it is actually closed.
