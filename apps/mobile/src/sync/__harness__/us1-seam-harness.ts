@@ -21,6 +21,8 @@ export interface HarnessResult {
   passed: number
   failed: number
   failures: string[]
+  /** Informational lines (not failures) — e.g. corrupt-item reasons. */
+  notes?: string[]
 }
 
 interface Frame {
@@ -152,6 +154,22 @@ export async function runPullPipelineRoundTrip(): Promise<HarnessResult> {
   const pullStore = new MobilePullStore(db, vaultId)
   const cursor = await pullStore.getRecordCursor()
   check('record cursor advanced', cursor !== null && cursor !== '0')
+
+  // Surface WHY items are stuck, on screen — release builds have no console.
+  const corrupt = await db.getAllAsync<{ key: string; value: string }>(
+    "SELECT key, value FROM meta WHERE key LIKE 'corrupt.%' LIMIT 6"
+  )
+  const corruptCount = await db.getFirstAsync<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM meta WHERE key LIKE 'corrupt.%'"
+  )
+  const missing = await db.getFirstAsync<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM sync_items WHERE payload_state = 'metadata-only' AND deleted_at IS NULL"
+  )
+  result.notes = [
+    `metadata-only items: ${missing?.n ?? 0}`,
+    `corrupt-marked items: ${corruptCount?.n ?? 0}`,
+    ...corrupt.map((row) => `${row.key.slice(8, 20)}…: ${row.value.slice(0, 80)}`)
+  ]
 
   log.info('Pull round-trip finished', { passed: result.passed, failed: result.failed })
   return result

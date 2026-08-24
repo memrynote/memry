@@ -203,7 +203,52 @@ describe('RecordPullEngine.pullIncremental', () => {
     expect(result.itemsApplied).toBe(3)
   })
 
-  it('drops a page whose /sync/pull response fails validation but still advances the cursor', async () => {
+  it('skips a malformed item without poisoning its page-mates', async () => {
+    const store = memoryStore()
+    const http = fakeHttp([
+      devicesRoute,
+      {
+        match: (req) => req.path.startsWith('/sync/changes'),
+        respond: (req) =>
+          req.path.includes('cursor=5')
+            ? { json: { items: [], deleted: [], hasMore: false, nextCursor: 5 } }
+            : {
+                json: {
+                  items: [
+                    { id: 'bad1', type: 'note', version: 1, modifiedAt: 1, size: 1 },
+                    { id: 'ok1', type: 'note', version: 1, modifiedAt: 2, size: 1 }
+                  ],
+                  deleted: [],
+                  hasMore: true,
+                  nextCursor: 5
+                }
+              }
+      },
+      {
+        match: (req) => req.path === '/sync/pull',
+        respond: () => ({
+          json: {
+            items: [
+              { id: 'bad1', nonsense: true },
+              pullItem('ok1', 'note', { title: 'survives', fileType: 'markdown' })
+            ]
+          }
+        })
+      }
+    ])
+
+    const engine = makeEngine(http, store)
+    const result = await engine.pullIncremental()
+
+    expect(result.ok).toBe(true)
+    expect(store.applied.flat().map((i) => i.id)).toEqual(['ok1'])
+    expect(store.corrupt).toHaveLength(1)
+    expect(store.corrupt[0].id).toBe('bad1')
+    expect(store.corrupt[0].reason).toContain('schema')
+    expect(store.cursor).toBe('5')
+  })
+
+  it('drops a page whose response is not a pull envelope but still advances the cursor', async () => {
     const store = memoryStore()
     const http = fakeHttp([
       devicesRoute,
@@ -223,7 +268,7 @@ describe('RecordPullEngine.pullIncremental', () => {
       },
       {
         match: (req) => req.path === '/sync/pull',
-        respond: () => ({ json: { items: [{ nonsense: true }] } })
+        respond: () => ({ json: { error: 'not an envelope' } })
       }
     ])
 

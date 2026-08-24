@@ -1,6 +1,6 @@
 import {
   RecordChangesResponseSchema,
-  RecordPullResponseSchema,
+  RecordPullItemResponseSchema,
   DeviceKeysResponseSchema,
   SyncStatusSchema,
   type RecordChangesResponse,
@@ -170,9 +170,12 @@ export class RecordPullEngine {
   }
 
   /**
-   * Pull one page's blobs, decrypt, verify, decode. Returns null when the
-   * whole /sync/pull response failed schema validation — the caller drops the
-   * page (cursor still advances; desktop pull_page_dropped semantics).
+   * Pull one page's blobs, decrypt, verify, decode. Items are validated ONE
+   * BY ONE — a single malformed item is recorded corrupt and skipped, never
+   * allowed to poison its 99 page-mates (desktop's whole-page safeParse drops
+   * the page; on a first sync that wedges every item sharing a chunk with one
+   * bad row). Returns null only when the envelope itself is not a pull
+   * response (the caller drops the page; pull_page_dropped semantics).
    */
   private async pullAndDecode(
     itemIds: string[],
@@ -193,16 +196,36 @@ export class RecordPullEngine {
         this.retryOpts()
       ).then((r) => r.value)
 
-      const parsed = RecordPullResponseSchema.safeParse(raw)
-      if (!parsed.success) {
-        this.deps.log.error('Pull page failed schema validation; page dropped', {
-          itemCount: chunk.length,
-          issue: parsed.error.issues[0]?.message
+      const envelope = raw as { items?: unknown[] }
+      if (!envelope || !Array.isArray(envelope.items)) {
+        this.deps.log.error('Pull response is not a pull envelope; page dropped', {
+          itemCount: chunk.length
         })
         return null
       }
 
-      for (const item of parsed.data.items) {
+      const validItems = []
+      for (const [index, rawItem] of envelope.items.entries()) {
+        const itemParse = RecordPullItemResponseSchema.safeParse(rawItem)
+        if (itemParse.success) {
+          validItems.push(itemParse.data)
+          continue
+        }
+        counters.corrupt++
+        const issue = itemParse.error.issues[0]
+        const reason = `schema: ${issue?.path.join('.') ?? '?'} ${issue?.message ?? 'invalid'}`
+        const rawId = (rawItem as { id?: unknown } | null)?.id
+        if (typeof rawId === 'string' && rawId.length > 0) {
+          await this.deps.store.markItemCorrupt(rawId, reason)
+        }
+        this.deps.log.warn('Pull item failed schema validation; item skipped', {
+          index,
+          itemId: typeof rawId === 'string' ? rawId : 'unknown',
+          reason
+        })
+      }
+
+      for (const item of validItems) {
         const itemOp = item.deletedAt !== undefined ? 'delete' : item.operation
         if (itemOp === 'delete') {
           // Tombstone bodies are never decoded (desktop apply-item.ts rule).
