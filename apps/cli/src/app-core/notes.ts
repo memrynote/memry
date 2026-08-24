@@ -15,6 +15,7 @@ import path from 'node:path'
 import { eq } from 'drizzle-orm'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { saveCanonicalNote, deleteCanonicalNote, setCanonicalLocalOnly } from '@memry/domain-notes'
+import { rewriteNoteRefsForMove } from '@memry/editor-schema/note-refs'
 import {
   getJournalNoteMetadataByDate,
   getNoteMetadataById,
@@ -418,6 +419,14 @@ export function createNotesService({
       if (nextPath !== row.path) {
         await fs.mkdir(path.dirname(path.join(vaultPath, nextPath)), { recursive: true })
         await fs.rename(path.join(vaultPath, row.path), path.join(vaultPath, nextPath))
+        // Relative attachment/file refs in the body were written against the old
+        // folder; re-point them the way desktop `moveNote` does. Null means no
+        // ref moved — skip the write so the file keeps its bytes and mtime.
+        const raw = await fs.readFile(path.join(vaultPath, nextPath), 'utf-8')
+        const rewritten = rewriteNoteRefsForMove(raw, row.path, nextPath)
+        if (rewritten !== null) {
+          await fs.writeFile(path.join(vaultPath, nextPath), rewritten, 'utf-8')
+        }
       }
       const now = new Date().toISOString()
       saveMetadata(dataDb, {

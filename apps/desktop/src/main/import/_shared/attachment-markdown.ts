@@ -14,15 +14,11 @@
  */
 
 import type { AttachmentResult } from '../../vault/attachments'
+// Single source in `@memry/editor-schema` since the move-time ref rewrite (which
+// must apply the identical encoding) went shared for the CLI's `notes move`.
+import { encodeAttachmentUrl } from '@memry/editor-schema/note-refs'
 
-/**
- * Percent-encode the markdown-breaking characters in an attachment URL without
- * touching the scheme/path separators. Spaces and parentheses are the ones that
- * break `![](...)` / `[...](...)`; the protocol handler decodes them back.
- */
-export function encodeAttachmentUrl(url: string): string {
-  return url.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29')
-}
+export { encodeAttachmentUrl }
 
 /**
  * Renderer file-block marker (kept in sync with renderer

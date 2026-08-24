@@ -106,6 +106,9 @@ importers:
       '@memry/domain-notes':
         specifier: workspace:*
         version: link:../../packages/domain-notes
+      '@memry/editor-schema':
+        specifier: workspace:*
+        version: link:../../packages/editor-schema
       '@memry/shared':
         specifier: workspace:*
         version: link:../../packages/shared

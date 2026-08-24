@@ -51,7 +51,10 @@ vi.mock('./note-sync', () => ({ syncNoteToCache: vi.fn(), syncFileToCache: vi.fn
 vi.mock('./frontmatter', () => ({
   parseNote: vi.fn(() => ({ frontmatter: {}, content: '' }))
 }))
-vi.mock('./rewrite-note-refs', () => ({ rewriteNoteRefsForMove: vi.fn(() => null) }))
+vi.mock('@memry/editor-schema/note-refs', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  rewriteNoteRefsForMove: vi.fn(() => null)
+}))
 vi.mock('../sync/crdt-feed', () => ({ replaceNoteBodyInCrdt: vi.fn() }))
 vi.mock('../sync/crdt-writeback', () => ({ markWritebackIgnored: vi.fn() }))
 vi.mock('@memry/storage-data', () => ({ updateNoteMetadata: vi.fn() }))
