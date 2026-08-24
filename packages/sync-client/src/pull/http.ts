@@ -25,6 +25,37 @@ export interface SeamHttpContext {
   /** `<platform>/<semver>[+build]` — attached to every request. */
   clientHeaderValue: string
   signal?: AbortSignal
+  /** Per-request ceiling; defaults to 60s (desktop's SYNC_REQUEST_TIMEOUT_MS). */
+  timeoutMs?: number
+}
+
+/**
+ * Every request gets a hard timeout. Without one, a single stalled socket
+ * (iOS freezes sockets when the app backgrounds mid-request) never resolves,
+ * which latches the engine's in-flight-sync guard and jams the exclusive
+ * queue forever — observed on the simulator as a permanent silent hang.
+ * Implemented with AbortController (Hermes has no AbortSignal.timeout).
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 60_000
+
+function withTimeoutSignal(
+  outer: AbortSignal | undefined,
+  timeoutMs: number
+): { signal: AbortSignal; cancel: () => void } {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(new Error('sync request timed out')), timeoutMs)
+  const onOuterAbort = () => controller.abort(outer?.reason)
+  if (outer) {
+    if (outer.aborted) controller.abort(outer.reason)
+    else outer.addEventListener('abort', onOuterAbort, { once: true })
+  }
+  return {
+    signal: controller.signal,
+    cancel: () => {
+      clearTimeout(timer)
+      outer?.removeEventListener('abort', onOuterAbort)
+    }
+  }
 }
 
 interface JsonRequest {
@@ -45,6 +76,7 @@ export async function seamJsonRequest<T>(ctx: SeamHttpContext, req: JsonRequest)
   }
   if (ctx.vaultId) headers[VAULT_ID_HEADER] = ctx.vaultId
 
+  const timeout = withTimeoutSignal(ctx.signal, ctx.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS)
   let response
   try {
     response = await ctx.http.request({
@@ -52,11 +84,15 @@ export async function seamJsonRequest<T>(ctx: SeamHttpContext, req: JsonRequest)
       path: req.path,
       headers,
       body: req.body === undefined ? undefined : JSON.stringify(req.body),
-      signal: ctx.signal
+      signal: timeout.signal
     })
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') throw err
+    // An outer-caller abort stays an abort; a timeout becomes a NetworkError
+    // so withRetry treats it like any other transient transport failure.
+    if (err instanceof Error && err.name === 'AbortError' && ctx.signal?.aborted) throw err
     throw new NetworkError(err instanceof Error ? err.message : String(err))
+  } finally {
+    timeout.cancel()
   }
 
   if (response.status === 429) {
