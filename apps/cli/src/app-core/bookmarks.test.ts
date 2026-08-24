@@ -9,12 +9,9 @@ import { createBookmarksService } from '@memry/app-core/bookmarks'
 import type { DataDb } from './database.ts'
 
 // Builds the bookmarks table directly instead of going through
-// openDatabases()/runMigrations(): findWorkspaceRoot() walks up from the
-// current file looking for a directory literally named "memry", which in a
-// git worktree checkout (<repo>/.worktrees/<branch>/...) overshoots the
-// worktree and lands on the outer main-checkout repo root — a pre-existing,
-// unrelated environment issue, not something this fix touches. Building the
-// table in-memory keeps this test independent of that.
+// openDatabases()/runMigrations(): this suite is about bookmark id minting, not
+// about migrations, and an in-memory table keeps it independent of where the
+// drizzle folders resolve from (see migrations-path.test.ts for that).
 function createInMemoryDataDb(): DataDb {
   const sqlite = new Database(':memory:')
   sqlite.exec(`
