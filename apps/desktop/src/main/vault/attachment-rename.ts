@@ -134,7 +134,11 @@ export async function renameAttachment(
   }
 
   const currentStored = resolved.storedFilename
-  const target = resolveCollision(attachmentsDir, buildRenamedFilename(currentStored, trimmed))
+  const candidate = buildRenamedFilename(currentStored, trimmed)
+  // Submitting the name it already has must not walk the collision suffix: the
+  // file holding that name IS this file, so `-2` would be pure churn.
+  const target =
+    candidate === currentStored ? candidate : resolveCollision(attachmentsDir, candidate)
 
   if (target !== currentStored) {
     await rename(resolved.absolutePath, path.join(attachmentsDir, target))

@@ -160,6 +160,22 @@ describe('renameAttachment', () => {
     ).toBe('pdf-bytes')
   })
 
+  it('is a no-op when the submitted name is the one it already has', async () => {
+    writeAttachment(`attachments/${NOTE_ID}/k3f9x2-invoice.pdf`)
+
+    const result = await renameAttachment(
+      NOTE_ID,
+      `../attachments/${NOTE_ID}/k3f9x2-invoice.pdf`,
+      'invoice.pdf'
+    )
+
+    // The file holding that name is this file — suffixing it would be churn.
+    expect(result.storedFilename).toBe('k3f9x2-invoice.pdf')
+    expect(fs.readdirSync(path.join(vaultPath, 'attachments', NOTE_ID))).toEqual([
+      'k3f9x2-invoice.pdf'
+    ])
+  })
+
   it('rejects a file outside this note’s attachments folder', async () => {
     writeAttachment('attachments/other/k3f9x2-report.pdf')
 
