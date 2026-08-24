@@ -146,7 +146,13 @@ function serializeTable(table: Y.XmlElement, lines: string[]): void {
     const cells: string[] = []
     for (let j = 0; j < row.length; j++) {
       const cell = row.get(j)
-      if (cell instanceof Y.XmlElement) cells.push(inlineText(cell).replace(/\|/g, '\\|'))
+      if (cell instanceof Y.XmlElement) {
+        // Escape backslashes BEFORE pipes so cell text can never reconstruct
+        // an unescaped `|`, and flatten newlines that would break the row.
+        cells.push(
+          inlineText(cell).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')
+        )
+      }
     }
     if (cells.length === 0) continue
     lines.push(`| ${cells.join(' | ')} |`)

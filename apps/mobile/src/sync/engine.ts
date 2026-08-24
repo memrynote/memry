@@ -76,15 +76,17 @@ export class MobileSyncEngine {
       vaultId: this.vaultId,
       clientHeaderValue: this.clientHeaderValue,
       getAccessToken: () => this.accessToken,
-      refreshAccessToken: async () => {
-        const fresh = await refreshSession()
-        if (fresh) this.accessToken = fresh
-        return fresh
-      },
+      refreshAccessToken: () => this.refreshAndCacheToken(),
       getVaultKey: () => this.vaultKeyCache,
       log,
       isOnline: () => this.online
     })
+  }
+
+  private async refreshAndCacheToken(): Promise<string | null> {
+    const fresh = await refreshSession()
+    if (fresh) this.accessToken = fresh
+    return fresh
   }
 
   private httpCtx(): SeamHttpContext {
