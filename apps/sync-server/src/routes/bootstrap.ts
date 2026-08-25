@@ -19,10 +19,11 @@ import type { AppContext } from '../types'
 /**
  * Bootstrap session endpoints (#1837).
  *
- * Mounted alongside /sync/blob as a second router on `/sync` because these
- * routes must carry their own middleware stack (Hono's `use('*')` inside one
- * router does not leak into another) and because they sit behind the same
- * paid-sync gate as everything else in the vault pull path.
+ * Mounted on `/sync/bootstrap` as its own router (paths below are relative to
+ * that prefix) because these routes must carry their own middleware stack
+ * (Hono's `use('*')` inside one router does not leak into another) and because
+ * they sit behind the same paid-sync gate as everything else in the vault pull
+ * path.
  *
  * Compat: old servers never mount these routes (404); new clients treat any
  * open failure as "no bootstrap" and fall back silently to steady-state
