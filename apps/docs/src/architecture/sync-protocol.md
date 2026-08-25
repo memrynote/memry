@@ -71,13 +71,13 @@ The server keeps one `client_policies` row per platform, holding a semver write
 floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
 
-| Condition                                | Server behaviour                                                    |
-| ---------------------------------------- | ------------------------------------------------------------------- |
-| No header                                | Allow (legacy desktop)                                              |
-| No row, or `min_write_version` is NULL   | Allow                                                               |
-| Version at or above the floor, writes on | Allow                                                               |
-| Version below the floor                  | `426` with `CLIENT_UPGRADE_REQUIRED` and the required `minVersion`  |
-| `writes_enabled = 0`                     | `403` with `PLATFORM_WRITES_DISABLED`                               |
+| Condition                                | Server behaviour                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| No header                                | Allow (legacy desktop)                                             |
+| No row, or `min_write_version` is NULL   | Allow                                                              |
+| Version at or above the floor, writes on | Allow                                                              |
+| Version below the floor                  | `426` with `CLIENT_UPGRADE_REQUIRED` and the required `minVersion` |
+| `writes_enabled = 0`                     | `403` with `PLATFORM_WRITES_DISABLED`                              |
 
 The kill switch is evaluated before the floor: when writes are off for a
 platform, telling users to upgrade would send them chasing a release that cannot
@@ -101,7 +101,7 @@ Item writes are stamped with the calling platform and version on `sync_items`,
 client that predates the header — which is every desktop build shipped so far;
 there is no backfill. The CRDT tables are included because a note's body lives
 there, and that is the payload most likely to need a targeted rollback after a
-mobile incident. Attribution records the *latest* writer, not the creator, so a
+mobile incident. Attribution records the _latest_ writer, not the creator, so a
 desktop rewrite clears an earlier mobile stamp. No read path depends on these
 columns.
 
@@ -755,6 +755,27 @@ removed. Delivery is best-effort on both paths: the write has already succeeded,
 broadcast is captured in the background rather than returned to the client, which would otherwise
 retry a write that already landed.
 
+### Rate limiter mechanism
+
+Every rate-limited endpoint shares one fixed-window middleware (`createRateLimiter`), and its
+counter lives in a `RateLimiter` Durable Object — one instance per `bucket:identifier` key — not in
+D1. The previous implementation paid a 2-statement `db.batch` against a single `rate_limits` row per
+bucket on every request, which meant write contention exactly when a fresh device hammered the API.
+The DO keeps identical semantics: a request older than the bucket's window starts a fresh window at
+count 1, anything else increments, and the middleware compares the count against the bucket ceiling.
+Nothing client-visible changed — same bucket names, ceilings, and windows, the same 429 body, and
+`Retry-After` still reports the exact seconds left in the window.
+
+Two properties of the split matter. The DO only counts; the ceiling comparison stays in the
+middleware, which is what lets a request-scoped elevation hook (`getElevatedLimits`, the seam for
+bootstrap-session elevation) widen the effective ceiling without touching the counter. And failure
+stays fail-closed: a missing binding or DO error blocks the request with a 500, exactly as a D1
+error did before.
+
+The `rate_limits` table still exists: previously-deployed code writes it during a deploy window,
+and the OTP per-email limiter plus the telemetry exception budget still use it. It is dropped only
+after those two migrate.
+
 ### CRDT rate limits
 
 The three CRDT limiters (`crdt_push`, `crdt_pull`, `crdt_batch_pull`) key their buckets by
@@ -848,20 +869,20 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-| Failure             | Behavior                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Offline             | Outbox queues; retry with backoff                                                          |
-| Server unreachable  | Machine still has a link, so requests are retried with exponential backoff, not instantly  |
-| Auth expired (401)  | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Refresh rejected    | Stop refreshing entirely (see below); prompt the user to sign in again                     |
-| Payment required    | Sync stays local-only until a paid plan is active                                          |
-| Client below floor (426) | Read-only mode; outbox parked; resume after update                                    |
-| Platform writes off (403) | Read-only mode; outbox parked; resume when the switch is flipped back               |
-| Quota exceeded      | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
-| Socket token expiry | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
-| Server unavailable  | Exponential backoff; status indicator turns yellow                                         |
-| Blob hash mismatch  | Reject the item; log; alert health view                                                    |
-| Vault-key mismatch  | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+| Failure                   | Behavior                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| Offline                   | Outbox queues; retry with backoff                                                          |
+| Server unreachable        | Machine still has a link, so requests are retried with exponential backoff, not instantly  |
+| Auth expired (401)        | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Refresh rejected          | Stop refreshing entirely (see below); prompt the user to sign in again                     |
+| Payment required          | Sync stays local-only until a paid plan is active                                          |
+| Client below floor (426)  | Read-only mode; outbox parked; resume after update                                         |
+| Platform writes off (403) | Read-only mode; outbox parked; resume when the switch is flipped back                      |
+| Quota exceeded            | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
+| Socket token expiry       | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
+| Server unavailable        | Exponential backoff; status indicator turns yellow                                         |
+| Blob hash mismatch        | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch        | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
 
 ### Rejected Refresh Tokens
 
