@@ -84,6 +84,7 @@ import {
   createApp,
   createEnv,
   createSession as baseSession,
+  findBinding,
   type MockDbState
 } from '../__mocks__/blob-route-harness'
 import { presignR2Url } from '../services/r2-presign'
@@ -305,6 +306,34 @@ describe('presigned direct transfers (#1836)', () => {
       )
       expect(res.status).toBe(400)
     })
+
+    // Every armed URL unlocks a write to a key the Worker will never see. The
+    // session row is the only place that can remember which keys were armed —
+    // without it those objects are invisible to every sweep.
+    it('records the armed hashes on the session row so the keys stay reclaimable', async () => {
+      const res = await app.request(
+        '/attachments/upload/initiate',
+        { method: 'POST', body: JSON.stringify(initBody({ chunkHashes: [HASH_A, HASH_B] })) },
+        env
+      )
+      expect(res.status).toBe(201)
+
+      const insert = findBinding(state, 'INSERT INTO upload_sessions')
+      expect(insert?.sql).toContain('presigned_chunks')
+      expect(insert?.bindings).toContain(JSON.stringify([HASH_A, HASH_B]))
+    })
+
+    it('records NULL when no URLs were armed — nothing to reclaim on the proxied path', async () => {
+      const res = await app.request(
+        '/attachments/upload/initiate',
+        { method: 'POST', body: JSON.stringify(initBody()) },
+        env
+      )
+      expect(res.status).toBe(201)
+
+      const insert = findBinding(state, 'INSERT INTO upload_sessions')
+      expect(insert?.bindings).toContain(null)
+    })
   })
 
   describe('complete-time reconciliation of direct chunks', () => {
@@ -463,6 +492,163 @@ describe('presigned direct transfers (#1836)', () => {
       )
       expect(res.status).toBe(200)
       expect(state.statements.some((s) => s.sql.includes('INSERT INTO blob_chunks'))).toBe(false)
+    })
+  })
+
+  // A presigned PUT bypasses the Worker entirely — no hash check, no size cap,
+  // no D1 row. Whenever an upload session row goes away (complete, abort, or the
+  // expiry sweep) the keys it armed but never registered are the last chance to
+  // reclaim those bytes: after the row is gone nothing records that they exist.
+  describe('reclaiming armed-but-unregistered presigned keys', () => {
+    const ARMED = hexHash('9')
+    const PROXIED = hexHash('7')
+
+    const chunkKey = (hash: string): string => `user-1/vaults/vault-1/chunks/${hash}`
+
+    const headByKey = (sizes: Record<string, number | null>): void => {
+      vi.mocked(env.STORAGE.head).mockImplementation((async (key: string) => {
+        for (const [fragment, size] of Object.entries(sizes)) {
+          if (key.includes(fragment)) {
+            return (size === null ? null : { size }) as unknown as R2Object
+          }
+        }
+        return null
+      }) as unknown as (key: string) => Promise<R2Object | null>)
+    }
+
+    it('deletes armed keys the client never registered when the session is aborted', async () => {
+      // The abort path erases the row immediately, so it must reclaim too —
+      // otherwise the 24h expiry sweep never gets to see the session at all.
+      state.session = baseSession({
+        uploaded_chunks: '[]',
+        presigned_chunks: JSON.stringify([ARMED, PROXIED])
+      })
+      // PROXIED has a live blob_chunks row; ARMED has none.
+      state.chunksByHash = {
+        [PROXIED]: {
+          id: 'chunk-p',
+          hash: PROXIED,
+          r2_key: chunkKey(PROXIED),
+          size_bytes: 45,
+          ref_count: 1
+        }
+      }
+
+      const res = await app.request('/attachments/upload/session-1', { method: 'DELETE' }, env)
+      expect(res.status).toBe(204)
+      expect(vi.mocked(env.STORAGE.delete)).toHaveBeenCalledWith(chunkKey(ARMED))
+      // Never touch a hash that has a live row: it is another attachment's data.
+      expect(vi.mocked(env.STORAGE.delete)).not.toHaveBeenCalledWith(chunkKey(PROXIED))
+    })
+
+    it('deletes armed keys the client abandoned when the session completes', async () => {
+      // Declared 1 chunk's hash at initiate (getting a PUT URL for it), then
+      // uploaded the real chunk through the proxy under a different hash. The
+      // session completes and its row is deleted — the armed key is orphaned.
+      state.session = baseSession({
+        total_size: 10,
+        chunk_count: 1,
+        encrypted_size: 10 + CHUNK_CRYPTO_OVERHEAD,
+        uploaded_chunks: JSON.stringify([{ i: 0, h: PROXIED, b: 10 + CHUNK_CRYPTO_OVERHEAD }]),
+        presigned_chunks: JSON.stringify([ARMED])
+      })
+      state.chunksByHash = {}
+      headByKey({})
+
+      const res = await app.request(
+        '/attachments/upload/session-1/complete',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            encryptedManifest: 'enc',
+            manifestNonce: 'n',
+            encryptedFileKey: 'k',
+            keyNonce: 'kn',
+            manifestSignature: 'sig',
+            signerDeviceId: 'device-1'
+          })
+        },
+        env
+      )
+      expect(res.status).toBe(200)
+      expect(vi.mocked(env.STORAGE.delete)).toHaveBeenCalledWith(chunkKey(ARMED))
+    })
+
+    it('rejects and deletes a direct chunk larger than the whole session ciphertext budget', async () => {
+      // Content-Length is not covered by the SigV4 signature, so an armed URL
+      // accepts any number of bytes. A single chunk can never legitimately
+      // exceed the ciphertext total the session reserved.
+      state.session = baseSession({
+        total_size: 10,
+        chunk_count: 1,
+        encrypted_size: 10 + CHUNK_CRYPTO_OVERHEAD,
+        uploaded_chunks: '[]',
+        presigned_chunks: JSON.stringify([ARMED])
+      })
+      state.chunksByHash = {}
+      headByKey({ [ARMED]: 1_000_000 })
+
+      const res = await app.request(
+        '/attachments/upload/session-1/complete',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            encryptedManifest: 'enc',
+            manifestNonce: 'n',
+            encryptedFileKey: 'k',
+            keyNonce: 'kn',
+            manifestSignature: 'sig',
+            signerDeviceId: 'device-1',
+            directChunks: [{ i: 0, h: ARMED, b: 1_000_000 }]
+          })
+        },
+        env
+      )
+      expect(res.status).toBe(400)
+      expect(await res.json()).toMatchObject({ error: { code: ErrorCodes.UPLOAD_INCOMPLETE } })
+      expect(vi.mocked(env.STORAGE.delete)).toHaveBeenCalledWith(chunkKey(ARMED))
+      expect(state.statements.some((s) => s.sql.includes('INSERT INTO blob_chunks'))).toBe(false)
+    })
+
+    it('refuses to delete an oversized claim that already has a live blob_chunks row', async () => {
+      // A client may declare the hash of a chunk that already exists. Rejecting
+      // is right; deleting the object would destroy another attachment's data.
+      state.session = baseSession({
+        total_size: 10,
+        chunk_count: 1,
+        encrypted_size: 10 + CHUNK_CRYPTO_OVERHEAD,
+        uploaded_chunks: '[]',
+        presigned_chunks: JSON.stringify([ARMED])
+      })
+      state.chunksByHash = {
+        [ARMED]: {
+          id: 'chunk-armed',
+          hash: ARMED,
+          r2_key: chunkKey(ARMED),
+          size_bytes: 1_000_000,
+          ref_count: 1
+        }
+      }
+      headByKey({ [ARMED]: 1_000_000 })
+
+      const res = await app.request(
+        '/attachments/upload/session-1/complete',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            encryptedManifest: 'enc',
+            manifestNonce: 'n',
+            encryptedFileKey: 'k',
+            keyNonce: 'kn',
+            manifestSignature: 'sig',
+            signerDeviceId: 'device-1',
+            directChunks: [{ i: 0, h: ARMED, b: 1_000_000 }]
+          })
+        },
+        env
+      )
+      expect(res.status).toBe(400)
+      expect(vi.mocked(env.STORAGE.delete)).not.toHaveBeenCalled()
     })
   })
 

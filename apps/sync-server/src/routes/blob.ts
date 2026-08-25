@@ -16,6 +16,7 @@ import {
   putBlob
 } from '../services/blob'
 import { assertFileSizeAllowed } from '../services/entitlements'
+import { reclaimUnusedPresignedChunks } from '../services/presigned-chunk-reclaim'
 import { adjustStorageUsed, reserveStorage } from '../services/quota'
 import {
   DEFAULT_PRESIGN_TTL_SECONDS,
@@ -266,6 +267,10 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
   // (and deployments without the R2 secrets) get exactly the legacy response
   // shape — no chunkUrls key at all.
   let chunkUrls: Record<string, string> | null = null
+  // Persisted alongside the session: an armed URL writes bytes the Worker never
+  // sees, so without this record an abandoned session leaves those objects
+  // invisible to every reclaim path (see migrations/0008).
+  let presignedChunks: string | null = null
   if (chunkHashes && chunkHashes.length > 0) {
     if (chunkHashes.length !== chunkCount || new Set(chunkHashes).size !== chunkHashes.length) {
       await refundReservation(c.env.DB, userId, expectedEncrypted, {
@@ -288,6 +293,7 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
         assertPresignKeyInVault(chunkKey, userId, vaultId)
         chunkUrls[hash] = await presignR2Url(presignConfig, { method: 'PUT', key: chunkKey })
       }
+      presignedChunks = JSON.stringify(chunkHashes)
     }
     // No credentials → fall through silently: the session is still valid, the
     // client sees no chunkUrls and uploads through the proxied path.
@@ -299,8 +305,8 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
 
   try {
     await c.env.DB.prepare(
-      `INSERT INTO upload_sessions (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, encrypted_size, uploaded_chunks, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)`
+      `INSERT INTO upload_sessions (id, user_id, vault_id, attachment_id, filename, total_size, chunk_count, encrypted_size, uploaded_chunks, presigned_chunks, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)`
     )
       .bind(
         sessionId,
@@ -311,6 +317,7 @@ blob.post('/attachments/upload/initiate', uploadSessionLimit, async (c) => {
         totalSize,
         chunkCount,
         expectedEncrypted,
+        presignedChunks,
         expiresAt,
         now
       )
@@ -533,6 +540,13 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
     await adjustStorageUsed(c.env.DB, userId, manifestDeltaBytes)
   }
 
+  // Last chance: a client can arm presigned PUTs at initiate and then upload the
+  // real chunks through the proxy under different hashes. Those armed objects
+  // are registered nowhere, and deleting the row below erases the only record
+  // that they were ever armed. Runs while blob_chunks still reflects every
+  // registration, so anything genuinely in use is skipped.
+  await reclaimUnusedPresignedChunks(c.env.DB, c.env.STORAGE, session)
+
   await c.env.DB.prepare(
     'DELETE FROM upload_sessions WHERE id = ? AND user_id = ? AND vault_id = ?'
   )
@@ -589,6 +603,12 @@ blob.delete('/attachments/upload/:session_id', uploadSessionLimit, async (c) => 
     })
   }
   const sessionHashes = new Set(abortRead.entries.map((e) => e.h))
+
+  // Abort erases the row immediately, so it has to reclaim what the expiry
+  // sweep otherwise would: armed presigned keys the client never registered.
+  // Runs before the ref_count loop below, while blob_chunks still holds a row
+  // for every registered hash.
+  await reclaimUnusedPresignedChunks(c.env.DB, c.env.STORAGE, session)
 
   for (const hash of sessionHashes) {
     const chunk = await c.env.DB.prepare(
@@ -855,6 +875,8 @@ interface UploadSessionRow {
   /** NULL for sessions opened before this column existed, or by clients that omit it. */
   encrypted_size: number | null
   uploaded_chunks: string
+  /** JSON array of hashes armed with presigned PUT URLs; NULL when none were. */
+  presigned_chunks: string | null
   expires_at: number
   created_at: number
 }
@@ -987,6 +1009,11 @@ async function reconcileDirectChunks(
   }
 
   const now = Math.floor(Date.now() / 1000)
+  const budget = expectedEncryptedTotal(
+    session.total_size,
+    session.chunk_count,
+    session.encrypted_size
+  )
   const verified: Array<{ entry: DirectChunkEntry; key: string }> = []
   for (const entry of pending) {
     const key = generateAttachmentChunkKey(userId, vaultId, entry.h)
@@ -996,6 +1023,24 @@ async function reconcileDirectChunks(
       throw new AppError(
         ErrorCodes.UPLOAD_INCOMPLETE,
         `Direct-uploaded chunk ${entry.h} is missing from storage`,
+        400
+      )
+    }
+    // Content-Length is not covered by the presigned signature, so an armed URL
+    // accepts any number of bytes. Checked BEFORE the reported-size comparison
+    // so an over-sized object is reclaimed immediately whatever `b` claims: one
+    // chunk can never legitimately exceed the whole session's ciphertext total.
+    // The reclaim skips a hash that already has a blob_chunks row, so declaring
+    // an existing chunk's hash cannot turn this into a delete of live data.
+    if (obj.size > budget) {
+      await reclaimUnusedPresignedChunks(env.DB, env.STORAGE, {
+        user_id: userId,
+        vault_id: vaultId,
+        presigned_chunks: JSON.stringify([entry.h])
+      })
+      throw new AppError(
+        ErrorCodes.UPLOAD_INCOMPLETE,
+        `Direct-uploaded chunk ${entry.h} is ${obj.size} bytes, over this session's ${budget}-byte ciphertext budget`,
         400
       )
     }
