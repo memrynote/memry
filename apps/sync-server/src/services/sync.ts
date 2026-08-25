@@ -19,14 +19,20 @@ import { encodeSignaturePayload } from '../lib/cbor'
 import type { ClientIdentity } from '../lib/client-identity'
 import { safeBase64Decode, verifyEd25519 } from '../lib/encoding'
 import { AppError, ErrorCodes } from '../lib/errors'
-import { deleteBlob, generateItemBlobKey, getBlob, putBlob } from './blob'
-import { getNextCursor } from './cursor'
-import { getDevice } from './device'
+import { createLogger } from '../lib/logger'
+import { deleteBlobs, generateItemBlobKey, getBlob, putBlob } from './blob'
+import { allocateCursorRange } from './cursor'
+import { getDevice, type Device } from './device'
 import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
+
+const logger = createLogger('SyncService')
 
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
+// D1 hard ceiling is 100 bound parameters per statement; 95 leaves headroom
+// for the fixed user_id/vault_id/type columns that ride along with IN lists.
+const D1_MAX_BIND_PARAMS = 95
 const RECORD_SYNC_ITEM_TYPE_SET = new Set<RecordSyncItemType>(RECORD_SYNC_ITEM_TYPES)
 const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
 
@@ -34,6 +40,8 @@ const placeholdersFor = (types: readonly RecordSyncItemType[]): string =>
   types.map(() => '?').join(', ')
 
 interface ExistingSyncItemRow {
+  item_type: string
+  item_id: string
   version: number
   clock: string | VectorClock | null
   blob_key?: string | null
@@ -116,12 +124,10 @@ export const validateEncryptedFields = (item: PushItemInput): void => {
   }
 }
 
-export const verifyItemSignature = async (
-  db: D1Database,
-  item: PushItemInput,
-  userId: string
+const verifySignatureWithDevice = async (
+  device: Device | null,
+  item: PushItemInput
 ): Promise<void> => {
-  const device = await getDevice(db, item.signerDeviceId, userId)
   if (!device) {
     throw new AppError(ErrorCodes.AUTH_DEVICE_NOT_FOUND, 'Signer device not found', 404)
   }
@@ -157,6 +163,15 @@ export const verifyItemSignature = async (
   if (!valid) {
     throw new AppError(ErrorCodes.SYNC_INVALID_SIGNATURE, 'Item signature verification failed', 403)
   }
+}
+
+export const verifyItemSignature = async (
+  db: D1Database,
+  item: PushItemInput,
+  userId: string
+): Promise<void> => {
+  const device = await getDevice(db, item.signerDeviceId, userId)
+  await verifySignatureWithDevice(device, item)
 }
 
 export const detectReplay = (incoming?: VectorClock, existing?: VectorClock): boolean => {
@@ -297,6 +312,413 @@ const toPullItemResponse = async (
   }
 }
 
+// Upper bound on simultaneous R2 writes from one push batch.
+//
+// Subrequest arithmetic (paid plan: 1000 subrequests per invocation): a
+// max-size push spends ≈100 R2 puts + ≈105 batched D1 statements (lookup ≤2,
+// cursor range 2, upserts+shrinks ≤101... each statement in a db.batch counts)
+// + device reads + the broadcast DO fetch ⇒ ~215 total, comfortably under the
+// ceiling; the old serial code spent ~8 D1 round trips PER ITEM (~800) — this
+// rewrite is what buys the headroom. Free plan (50) cannot fit any large push
+// and could not before either. The window bounds simultaneous open writes so a
+// full batch streams through in ~13 short waves instead of holding 100 R2
+// connections at once.
+const R2_PUSH_PUT_CONCURRENCY = 8
+
+type PushItemOutcome = { accepted: boolean; reason?: string; serverCursor?: number }
+
+const itemIdentity = (item: { type: string; id: string }): string => `${item.type}\u0000${item.id}`
+
+/**
+ * Splits a push batch into "waves" so the batched pipeline never processes two
+ * pushes of the SAME (type, id) side by side: the old serial loop let a second
+ * occurrence observe the row the first one wrote (version bump, replay check,
+ * blob replacement). Occurrence N of an identity lands in wave N, and waves run
+ * sequentially. Real batches have unique identities, so this is one wave.
+ */
+const splitIntoWaves = (
+  items: PushItemInput[]
+): Array<Array<{ item: PushItemInput; index: number }>> => {
+  const occurrences = new Map<string, number>()
+  const waves: Array<Array<{ item: PushItemInput; index: number }>> = []
+
+  items.forEach((item, index) => {
+    const key = itemIdentity(item)
+    const wave = occurrences.get(key) ?? 0
+    occurrences.set(key, wave + 1)
+    ;(waves[wave] ??= []).push({ item, index })
+  })
+
+  return waves
+}
+
+interface PreparedPushItem {
+  index: number
+  item: PushItemInput
+  existing: ExistingSyncItemRow | undefined
+  payloadBytes: Uint8Array
+  contentHash: string
+  blobKey: string
+  version: number
+  sizeDelta: number
+  reservedBytes: number
+  serverCursor?: number
+}
+
+/**
+ * The batched push pipeline for one wave of unique-identity items.
+ *
+ * Per-item error semantics are those of the old serial loop: every failure is
+ * captured as that item's outcome (AppError code, or INTERNAL_ERROR for
+ * anything untyped) and never aborts its neighbours — except the Stage 8
+ * commit, which is all-or-nothing per wave (see its comment). What changed is
+ * the I/O shape only — per-stage batching instead of per-item round trips:
+ *
+ *   1. shape + crypto-format validation            (CPU only)
+ *   2. signature verification, one device fetch per unique signer
+ *   3. existing-row lookup                         (one db.batch, 95-bind split)
+ *   4. replay check + payload/hash derivation      (CPU only)
+ *   5. storage reservation                         (one summed reserve; on
+ *      failure, the old per-item reserve loop so quota outcomes match exactly)
+ *   6. R2 puts with bounded concurrency
+ *   7. one cursor range for the whole wave         (single atomic db.batch)
+ *   8. upserts + storage shrinks                   (one transactional db.batch)
+ *   9. replaced-blob cleanup                       (one bulk R2 delete, best-effort)
+ */
+const processPushWave = async (
+  db: D1Database,
+  storage: R2Bucket,
+  userId: string,
+  items: PushItemInput[],
+  vaultId: string,
+  client: ClientIdentity | null
+): Promise<PushItemOutcome[]> => {
+  const outcomes: PushItemOutcome[] = new Array<PushItemOutcome>(items.length)
+  const reject = (index: number, reason: string): void => {
+    outcomes[index] = { accepted: false, reason }
+  }
+  const rejectWithError = (index: number, error: unknown): void => {
+    reject(index, error instanceof AppError ? error.code : 'INTERNAL_ERROR')
+  }
+  const alive = (): number[] =>
+    items.map((_, index) => index).filter((index) => outcomes[index] === undefined)
+
+  // Stage 1: request-shape and crypto-format validation.
+  items.forEach((item, index) => {
+    if (
+      !isSupportedRecordSyncItemType(item.type) ||
+      (requiresRecordClock(item.type) && item.clock === undefined) ||
+      item.stateVector !== undefined
+    ) {
+      reject(index, ErrorCodes.VALIDATION_ERROR)
+      return
+    }
+    try {
+      validateEncryptedFields(item)
+    } catch (error) {
+      rejectWithError(index, error)
+    }
+  })
+
+  // Stage 2: signature verification. A batch is normally signed by ONE device,
+  // so the device row is fetched once per unique signer instead of per item.
+  const devices = new Map<string, Device | null>()
+  try {
+    for (const index of alive()) {
+      const signerDeviceId = items[index].signerDeviceId
+      if (!devices.has(signerDeviceId)) {
+        devices.set(signerDeviceId, await getDevice(db, signerDeviceId, userId))
+      }
+    }
+  } catch (error) {
+    // The serial loop caught every failure per item, so a device-row read
+    // outage surfaced as one INTERNAL_ERROR rejection per item, not as a
+    // thrown 500. Keep that contract: reject every still-alive item and stop.
+    for (const index of alive()) {
+      rejectWithError(index, error)
+    }
+    return outcomes
+  }
+  await Promise.all(
+    alive().map(async (index) => {
+      try {
+        await verifySignatureWithDevice(
+          devices.get(items[index].signerDeviceId) ?? null,
+          items[index]
+        )
+      } catch (error) {
+        rejectWithError(index, error)
+      }
+    })
+  )
+
+  // Stage 3: existing-row lookup, one db.batch. Ids are queried without the
+  // type (a 100-item wave would need 200 bind params for (type, id) pairs) and
+  // matched back on (type, id) here; a same-id row of another type is fetched
+  // and ignored. Chunked at the D1 bind-param ceiling like pullItems.
+  const existingByIdentity = new Map<string, ExistingSyncItemRow>()
+  const lookupIndexes = alive()
+  if (lookupIndexes.length > 0) {
+    const ids = [...new Set(lookupIndexes.map((index) => items[index].id))]
+    const perStatement = D1_MAX_BIND_PARAMS - 2
+    const statements: D1PreparedStatement[] = []
+    for (let i = 0; i < ids.length; i += perStatement) {
+      const chunk = ids.slice(i, i + perStatement)
+      statements.push(
+        db
+          .prepare(
+            `SELECT item_type, item_id, version, clock, blob_key, size_bytes, created_at
+             FROM sync_items
+             WHERE user_id = ? AND vault_id = ? AND item_id IN (${chunk.map(() => '?').join(', ')})`
+          )
+          .bind(userId, vaultId, ...chunk)
+      )
+    }
+
+    try {
+      const results = await db.batch<ExistingSyncItemRow>(statements)
+      for (const result of results) {
+        for (const row of result.results ?? []) {
+          existingByIdentity.set(itemIdentity({ type: row.item_type, id: row.item_id }), row)
+        }
+      }
+    } catch (error) {
+      for (const index of lookupIndexes) {
+        rejectWithError(index, error)
+      }
+      return outcomes
+    }
+  }
+
+  // Stage 4: replay checks and payload derivation.
+  let prepared: PreparedPushItem[] = []
+  for (const index of alive()) {
+    const item = items[index]
+    try {
+      const existing = existingByIdentity.get(itemIdentity(item))
+      if (existing) {
+        const existingClock =
+          typeof existing.clock === 'string'
+            ? (JSON.parse(existing.clock) as VectorClock)
+            : (existing.clock ?? undefined)
+        if (shouldRejectRecordReplay(item.type, item.clock, existingClock)) {
+          reject(index, 'SYNC_REPLAY_DETECTED')
+          continue
+        }
+      }
+
+      const payloadBytes = new TextEncoder().encode(serializePayload(item))
+      const contentHash = await computeContentHash({
+        dataNonce: item.dataNonce,
+        encryptedData: item.encryptedData,
+        encryptedKey: item.encryptedKey,
+        keyNonce: item.keyNonce
+      })
+      const existingSize = existing ? (existing.size_bytes ?? 0) : 0
+
+      prepared.push({
+        index,
+        item,
+        existing,
+        payloadBytes,
+        contentHash,
+        blobKey: generateItemBlobKey(userId, item.type, item.id, vaultId, contentHash),
+        version: existing ? existing.version + 1 : 1,
+        sizeDelta: payloadBytes.byteLength - existingSize,
+        reservedBytes: 0
+      })
+    } catch (error) {
+      rejectWithError(index, error)
+    }
+  }
+
+  // Stage 5: storage reservation. Fast path is ONE atomic reserve for the sum
+  // of all growth. If it fails (quota, entitlement), fall back to the old
+  // per-item reservation loop so each item gets exactly the accept/reject the
+  // serial code gave it: items that fit are accepted in order, the ones that
+  // do not are rejected with the reservation error.
+  const totalGrowth = prepared.reduce((sum, entry) => sum + Math.max(0, entry.sizeDelta), 0)
+  if (totalGrowth > 0) {
+    try {
+      await reserveStorage(db, userId, totalGrowth)
+      for (const entry of prepared) {
+        entry.reservedBytes = Math.max(0, entry.sizeDelta)
+      }
+    } catch {
+      for (const entry of prepared) {
+        if (entry.sizeDelta <= 0) continue
+        try {
+          await reserveStorage(db, userId, entry.sizeDelta)
+          entry.reservedBytes = entry.sizeDelta
+        } catch (error) {
+          rejectWithError(entry.index, error)
+        }
+      }
+      prepared = prepared.filter((entry) => outcomes[entry.index] === undefined)
+    }
+  }
+
+  // Bytes reserved for items that fail beyond this point; refunded in one
+  // adjustment at the end instead of one UPDATE per failed item.
+  let refundBytes = 0
+
+  // Stage 6: R2 puts, bounded concurrency.
+  for (let i = 0; i < prepared.length; i += R2_PUSH_PUT_CONCURRENCY) {
+    const window = prepared.slice(i, i + R2_PUSH_PUT_CONCURRENCY)
+    await Promise.all(
+      window.map(async (entry) => {
+        try {
+          await putBlob(storage, entry.blobKey, entry.payloadBytes.slice().buffer, userId)
+        } catch (error) {
+          refundBytes += entry.reservedBytes
+          rejectWithError(entry.index, error)
+        }
+      })
+    )
+  }
+  let stored = prepared.filter((entry) => outcomes[entry.index] === undefined)
+
+  // Stage 7: one cursor range for the wave, assigned in item order so cursor
+  // order matches request order exactly as the serial loop produced it.
+  if (stored.length > 0) {
+    try {
+      const range = await allocateCursorRange(db, userId, stored.length)
+      stored.forEach((entry, offset) => {
+        entry.serverCursor = range.first + offset
+      })
+    } catch (error) {
+      for (const entry of stored) {
+        refundBytes += entry.reservedBytes
+        rejectWithError(entry.index, error)
+      }
+      stored = []
+    }
+  }
+
+  // Stage 8: upserts and storage shrinks, one transactional db.batch. This is
+  // the one deliberate semantic delta vs the serial loop: the old code caught a
+  // failed item commit per item and went on, so a transient D1 write error on
+  // item k rejected only k while k+1..n still landed. Now the batch either
+  // lands whole or rejects every item in the wave (a client retries rejected
+  // items either way), and a row never lands without its shrink adjustment.
+  if (stored.length > 0) {
+    const now = Math.floor(Date.now() / 1000)
+    const statements: D1PreparedStatement[] = []
+    for (const entry of stored) {
+      const { item, existing } = entry
+      const deletedAt = item.operation === 'delete' ? (item.deletedAt ?? now) : null
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO sync_items (
+              id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
+              version, crypto_version, operation, server_cursor, signer_device_id, signature,
+              state_vector, clock, created_at, updated_at, deleted_at,
+              client_platform, client_version
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
+              blob_key = excluded.blob_key,
+              size_bytes = excluded.size_bytes,
+              content_hash = excluded.content_hash,
+              version = excluded.version,
+              crypto_version = excluded.crypto_version,
+              operation = excluded.operation,
+              server_cursor = excluded.server_cursor,
+              signer_device_id = excluded.signer_device_id,
+              signature = excluded.signature,
+              state_vector = excluded.state_vector,
+              clock = excluded.clock,
+              updated_at = excluded.updated_at,
+              deleted_at = excluded.deleted_at,
+              -- Attribution tracks the LATEST writer, not the creator: an incident
+              -- query asks "what did iOS write", and a desktop rewrite of the same
+              -- row is no longer a mobile-originated value.
+              client_platform = excluded.client_platform,
+              client_version = excluded.client_version`
+          )
+          .bind(
+            crypto.randomUUID(),
+            userId,
+            vaultId,
+            item.type,
+            item.id,
+            entry.blobKey,
+            entry.payloadBytes.byteLength,
+            entry.contentHash,
+            entry.version,
+            CRYPTO_VERSION,
+            item.operation,
+            entry.serverCursor,
+            item.signerDeviceId,
+            item.signature,
+            item.stateVector ?? null,
+            item.clock ? JSON.stringify(item.clock) : null,
+            existing?.created_at ?? existing?.createdAt ?? now,
+            now,
+            deletedAt,
+            client?.platform ?? null,
+            client?.version ?? null
+          )
+      )
+      if (entry.sizeDelta < 0) {
+        statements.push(
+          db
+            .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?) WHERE id = ?')
+            .bind(entry.sizeDelta, userId)
+        )
+      }
+    }
+
+    try {
+      await db.batch(statements)
+      for (const entry of stored) {
+        outcomes[entry.index] = { accepted: true, serverCursor: entry.serverCursor }
+      }
+    } catch (error) {
+      for (const entry of stored) {
+        refundBytes += entry.reservedBytes
+        rejectWithError(entry.index, error)
+      }
+      stored = []
+    }
+  }
+
+  // Stage 9: replaced-blob cleanup. The rows now point at the new
+  // content-addressed objects, so every previous version's blob is unreachable
+  // through any row and can go — in ONE bulk delete. Best-effort: a failed
+  // delete leaks bounded orphan objects, never a dangling row. An in-flight
+  // pull that read an old row before the upsert may 404 on the old key; the
+  // pull path tolerates that per item, and the replacement row re-arrives at a
+  // later cursor.
+  const replacedBlobKeys = stored
+    .filter((entry) => entry.existing?.blob_key && entry.existing.blob_key !== entry.blobKey)
+    .map((entry) => entry.existing?.blob_key as string)
+  if (replacedBlobKeys.length > 0) {
+    try {
+      await deleteBlobs(storage, replacedBlobKeys, userId)
+    } catch {
+      // Orphans are invisible to readers; acceptable until a sweep job exists.
+    }
+  }
+
+  // The refund must never surface as an item outcome: the items it covers are
+  // already rejected for their real reason (crdt.ts documents the same rule).
+  if (refundBytes > 0) {
+    try {
+      await adjustStorageUsed(db, userId, -refundBytes)
+    } catch (refundError) {
+      logger.error('storage refund failed', {
+        operation: 'processPushWave',
+        vaultId,
+        refundBytes,
+        error: refundError instanceof Error ? refundError.message : String(refundError)
+      })
+    }
+  }
+
+  return outcomes
+}
+
 export const processRecordPushBatch = async (
   db: D1Database,
   storage: R2Bucket,
@@ -308,13 +730,28 @@ export const processRecordPushBatch = async (
 ): Promise<RecordPushBatchResult> => {
   await checkQuota(db, userId, estimatePushBatchBytes(items))
 
+  const itemOutcomes = new Array<PushItemOutcome>(items.length)
+  for (const wave of splitIntoWaves(items)) {
+    const waveOutcomes = await processPushWave(
+      db,
+      storage,
+      userId,
+      wave.map((entry) => entry.item),
+      vaultId,
+      client
+    )
+    wave.forEach((entry, position) => {
+      itemOutcomes[entry.index] = waveOutcomes[position]
+    })
+  }
+
   const accepted: string[] = []
   const rejected: Array<{ id: string; reason: string }> = []
   const outcomes: RecordPushBatchOutcome[] = []
   let maxCursor = 0
 
-  for (const item of items) {
-    const result = await processPushItem(db, storage, userId, deviceId, item, vaultId, client)
+  items.forEach((item, index) => {
+    const result = itemOutcomes[index]
     outcomes.push({
       id: item.id,
       type: item.type,
@@ -328,11 +765,11 @@ export const processRecordPushBatch = async (
       if (result.serverCursor && result.serverCursor > maxCursor) {
         maxCursor = result.serverCursor
       }
-      continue
+      return
     }
 
     rejected.push({ id: item.id, reason: result.reason ?? 'UNKNOWN' })
-  }
+  })
 
   return {
     accepted,
@@ -347,169 +784,13 @@ export const processPushItem = async (
   db: D1Database,
   storage: R2Bucket,
   userId: string,
-  deviceId: string,
+  _deviceId: string,
   item: PushItemInput,
   vaultId = 'default',
   client: ClientIdentity | null = null
-): Promise<{ accepted: boolean; reason?: string; serverCursor?: number }> => {
-  try {
-    if (!isSupportedRecordSyncItemType(item.type)) {
-      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
-    }
-    if (requiresRecordClock(item.type) && item.clock === undefined) {
-      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
-    }
-    if (item.stateVector !== undefined) {
-      return { accepted: false, reason: ErrorCodes.VALIDATION_ERROR }
-    }
-
-    validateEncryptedFields(item)
-    await verifyItemSignature(db, item, userId)
-
-    const existing = await db
-      .prepare(
-        'SELECT * FROM sync_items WHERE user_id = ? AND vault_id = ? AND item_type = ? AND item_id = ?'
-      )
-      .bind(userId, vaultId, item.type, item.id)
-      .first<ExistingSyncItemRow>()
-
-    if (existing) {
-      const existingClock =
-        typeof existing.clock === 'string'
-          ? (JSON.parse(existing.clock) as VectorClock)
-          : (existing.clock ?? undefined)
-      if (shouldRejectRecordReplay(item.type, item.clock, existingClock)) {
-        return { accepted: false, reason: 'SYNC_REPLAY_DETECTED' }
-      }
-    }
-
-    const version = existing ? existing.version + 1 : 1
-    const payloadString = serializePayload(item)
-    const payloadBytes = new TextEncoder().encode(payloadString)
-    const contentHash = await computeContentHash({
-      dataNonce: item.dataNonce,
-      encryptedData: item.encryptedData,
-      encryptedKey: item.encryptedKey,
-      keyNonce: item.keyNonce
-    })
-
-    const newSize = payloadBytes.byteLength
-    const existingSize = existing ? (existing.size_bytes ?? 0) : 0
-    const sizeDelta = newSize - existingSize
-
-    let reservedBytes = 0
-    if (sizeDelta > 0) {
-      await reserveStorage(db, userId, sizeDelta)
-      reservedBytes = sizeDelta
-    }
-
-    const blobKey = generateItemBlobKey(userId, item.type, item.id, vaultId, contentHash)
-    try {
-      await putBlob(storage, blobKey, payloadBytes.slice().buffer, userId)
-    } catch (error) {
-      if (reservedBytes > 0) {
-        await adjustStorageUsed(db, userId, -reservedBytes)
-      }
-      throw error
-    }
-
-    const serverCursor = await getNextCursor(db, userId)
-    const now = Math.floor(Date.now() / 1000)
-    const deletedAt = item.operation === 'delete' ? (item.deletedAt ?? now) : null
-    const clockJson = item.clock ? JSON.stringify(item.clock) : null
-
-    const existingCreatedAt = existing?.created_at ?? existing?.createdAt ?? now
-
-    const upsertSyncItemStmt = db
-      .prepare(
-        `INSERT INTO sync_items (
-          id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash,
-          version, crypto_version, operation, server_cursor, signer_device_id, signature,
-          state_vector, clock, created_at, updated_at, deleted_at,
-          client_platform, client_version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (user_id, vault_id, item_type, item_id) DO UPDATE SET
-          blob_key = excluded.blob_key,
-          size_bytes = excluded.size_bytes,
-          content_hash = excluded.content_hash,
-          version = excluded.version,
-          crypto_version = excluded.crypto_version,
-          operation = excluded.operation,
-          server_cursor = excluded.server_cursor,
-          signer_device_id = excluded.signer_device_id,
-          signature = excluded.signature,
-          state_vector = excluded.state_vector,
-          clock = excluded.clock,
-          updated_at = excluded.updated_at,
-          deleted_at = excluded.deleted_at,
-          -- Attribution tracks the LATEST writer, not the creator: an incident
-          -- query asks "what did iOS write", and a desktop rewrite of the same
-          -- row is no longer a mobile-originated value.
-          client_platform = excluded.client_platform,
-          client_version = excluded.client_version`
-      )
-      .bind(
-        crypto.randomUUID(),
-        userId,
-        vaultId,
-        item.type,
-        item.id,
-        blobKey,
-        payloadBytes.byteLength,
-        contentHash,
-        version,
-        CRYPTO_VERSION,
-        item.operation,
-        serverCursor,
-        item.signerDeviceId,
-        item.signature,
-        item.stateVector ?? null,
-        clockJson,
-        existingCreatedAt,
-        now,
-        deletedAt,
-        client?.platform ?? null,
-        client?.version ?? null
-      )
-
-    const transactionalStatements = [upsertSyncItemStmt]
-    if (sizeDelta < 0) {
-      const updateStorageStmt = db
-        .prepare('UPDATE users SET storage_used = MAX(0, storage_used + ?) WHERE id = ?')
-        .bind(sizeDelta, userId)
-      transactionalStatements.push(updateStorageStmt)
-    }
-
-    try {
-      await db.batch(transactionalStatements)
-    } catch (error) {
-      if (reservedBytes > 0) {
-        await adjustStorageUsed(db, userId, -reservedBytes)
-      }
-      throw error
-    }
-
-    // The row now points at the new content-addressed object, so the previous
-    // version's blob is unreachable through any row and can go. Best-effort: a
-    // failed delete leaks one bounded orphan object, never a dangling row. An
-    // in-flight pull that read the old row before this upsert may 404 on the
-    // old key; the pull path tolerates that per item, and the replacement row
-    // re-arrives at a later cursor.
-    if (existing?.blob_key && existing.blob_key !== blobKey) {
-      try {
-        await deleteBlob(storage, existing.blob_key, userId)
-      } catch {
-        // Orphans are invisible to readers; acceptable until a sweep job exists.
-      }
-    }
-
-    return { accepted: true, serverCursor }
-  } catch (error) {
-    if (error instanceof AppError) {
-      return { accepted: false, reason: error.code }
-    }
-    return { accepted: false, reason: 'INTERNAL_ERROR' }
-  }
+): Promise<PushItemOutcome> => {
+  const [outcome] = await processPushWave(db, storage, userId, [item], vaultId, client)
+  return outcome
 }
 
 export const updateDeviceCursor = async (
@@ -720,8 +1001,6 @@ export const setVaultName = async (
     .bind(encryptedName, nameNonce, Math.floor(Date.now() / 1000), userId, vaultId)
     .run()
 }
-
-const D1_MAX_BIND_PARAMS = 95
 
 // Upper bound on simultaneous R2 reads from pullItems. Conservative for a
 // Worker (avoids firing hundreds of subrequests at once); tune here if needed.

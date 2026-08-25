@@ -117,49 +117,55 @@ export const storeUpdates = async (
   updates: ArrayBuffer[],
   client: ClientIdentity | null = null
 ): Promise<number[]> => {
-  const sequences: number[] = []
+  if (updates.length === 0) return []
+
   const totalBytes = updates.reduce((sum, update) => sum + update.byteLength, 0)
   if (totalBytes > 0) {
     await reserveStorage(db, userId, totalBytes)
   }
 
+  const now = Math.floor(Date.now() / 1000)
+  // One INSERT-with-MAX-subselect per update, exactly as the old serial loop
+  // wrote them, but sent as ONE db.batch: D1 runs the batch sequentially inside
+  // a single transaction, so each statement's MAX sees the row the previous
+  // statement inserted (sequence numbers stay strictly increasing and gapless)
+  // while the batch as a whole is atomic against a concurrent device writing
+  // the same note — the property the per-statement loop relied on, at one
+  // round trip instead of one per update.
+  const statements = updates.map((update) =>
+    db
+      .prepare(
+        `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version)
+         SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?
+         FROM (
+           SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
+           UNION ALL
+           SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
+         )
+         RETURNING sequence_num`
+      )
+      .bind(
+        crypto.randomUUID(),
+        userId,
+        vaultId,
+        noteId,
+        update,
+        signerDeviceId,
+        now,
+        client?.platform ?? null,
+        client?.version ?? null,
+        userId,
+        vaultId,
+        noteId,
+        userId,
+        vaultId,
+        noteId
+      )
+  )
+
+  let results: Array<D1Result<{ sequence_num: number }>>
   try {
-    for (const update of updates) {
-      const id = crypto.randomUUID()
-      const now = Math.floor(Date.now() / 1000)
-
-      const row = await db
-        .prepare(
-          `INSERT INTO crdt_updates (id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at, client_platform, client_version)
-           SELECT ?, ?, ?, ?, ?, COALESCE(MAX(sequence_num), 0) + 1, ?, ?, ?, ?
-           FROM (
-             SELECT sequence_num FROM crdt_updates WHERE user_id = ? AND vault_id = ? AND note_id = ?
-             UNION ALL
-             SELECT sequence_num FROM crdt_snapshots WHERE user_id = ? AND vault_id = ? AND note_id = ?
-           )
-           RETURNING sequence_num`
-        )
-        .bind(
-          id,
-          userId,
-          vaultId,
-          noteId,
-          update,
-          signerDeviceId,
-          now,
-          client?.platform ?? null,
-          client?.version ?? null,
-          userId,
-          vaultId,
-          noteId,
-          userId,
-          vaultId,
-          noteId
-        )
-        .first<{ sequence_num: number }>()
-
-      sequences.push(row!.sequence_num)
-    }
+    results = await db.batch<{ sequence_num: number }>(statements)
   } catch (error) {
     await refundReservation(db, userId, totalBytes, {
       operation: 'storeUpdates',
@@ -169,7 +175,7 @@ export const storeUpdates = async (
     throw error
   }
 
-  return sequences
+  return results.map((result) => result.results[0].sequence_num)
 }
 
 export const getUpdates = async (

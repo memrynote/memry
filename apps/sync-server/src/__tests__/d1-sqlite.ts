@@ -33,6 +33,14 @@ const toBinding = (value: unknown): unknown => {
   return value
 }
 
+/**
+ * Real D1 rejects any statement with more than 100 bound parameters
+ * (SQLITE_MAX_VARIABLE_NUMBER = 100 on workerd). The shim enforces the same
+ * ceiling so an unchunked IN(...) or spread-bind fails in CI exactly as it
+ * would against production D1 instead of passing locally and 500-ing there.
+ */
+const D1_MAX_BIND_PARAMS = 100
+
 /** The D1 statement surface plus a synchronous escape hatch for `batch()`. */
 type SyncStatement = D1PreparedStatement & { runSync(): D1Result }
 
@@ -52,7 +60,7 @@ export const createSqliteD1 = (): SqliteD1 => {
 
     // `reader` is true for SELECT *and* for `INSERT/UPDATE ... RETURNING`, so
     // it is also the test for "this statement produces rows" -- which matters:
-    // getNextCursor reads its new value out of a batched UPDATE ... RETURNING.
+    // allocateCursorRange reads its range top out of a batched UPDATE ... RETURNING.
     const runSync = (): D1Result => {
       const rows = statement.reader ? (statement.all(...bindings) as Row[]) : []
       const changes = statement.reader ? rows.length : Number(statement.run(...bindings).changes)
@@ -65,6 +73,11 @@ export const createSqliteD1 = (): SqliteD1 => {
 
     const self = {
       bind: (...args: unknown[]) => {
+        if (args.length > D1_MAX_BIND_PARAMS) {
+          throw new Error(
+            `D1_ERROR: too many SQL variables (${args.length} bound; D1 allows at most ${D1_MAX_BIND_PARAMS})`
+          )
+        }
         bindings = args.map(toBinding)
         return self
       },

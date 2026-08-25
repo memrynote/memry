@@ -11,7 +11,7 @@ vi.mock('./blob', async (importOriginal) => ({
 }))
 
 vi.mock('./cursor', () => ({
-  getNextCursor: vi.fn().mockResolvedValue(42)
+  allocateCursorRange: vi.fn()
 }))
 
 vi.mock('./quota', () => ({
@@ -57,8 +57,8 @@ import {
 } from './sync'
 import { getDevice } from './device'
 import { getBlob, putBlob } from './blob'
-import { reserveStorage, checkQuota } from './quota'
-import { getNextCursor } from './cursor'
+import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
+import { allocateCursorRange } from './cursor'
 
 const mockedSafeBase64Decode = vi.mocked(safeBase64Decode)
 const mockedVerifyEd25519 = vi.mocked(verifyEd25519)
@@ -66,7 +66,21 @@ const mockedGetDevice = vi.mocked(getDevice)
 const mockedEncodeSignaturePayload = vi.mocked(encodeSignaturePayload)
 const mockedCheckQuota = vi.mocked(checkQuota)
 const mockedReserveStorage = vi.mocked(reserveStorage)
-const mockedGetNextCursor = vi.mocked(getNextCursor)
+const mockedAdjustStorageUsed = vi.mocked(adjustStorageUsed)
+const mockedAllocateCursorRange = vi.mocked(allocateCursorRange)
+
+/**
+ * Arms the cursor mock as an incrementing sequence: each allocation hands out
+ * the next contiguous range, like the real per-user sequence row does.
+ */
+const armCursorSequence = (start = 42): void => {
+  let next = start
+  mockedAllocateCursorRange.mockImplementation(async (_db, _userId, count: number) => {
+    const first = next
+    next += count
+    return { first, last: next - 1 }
+  })
+}
 
 // ============================================================================
 // D1 mock helpers
@@ -94,6 +108,76 @@ const createMockDb = () => ({
   prepare: vi.fn().mockReturnValue(createMockStatement()),
   batch: vi.fn().mockResolvedValue([])
 })
+
+// ============================================================================
+// Batched push pipeline mock helpers
+// ============================================================================
+
+interface RecordedPushStatement {
+  sql: string
+  binds: unknown[]
+}
+
+/**
+ * D1 double for the batched push pipeline. `prepare` hands back statements
+ * that record their SQL and binds; `batch` answers SELECT statements (the
+ * existing-row lookup) from `options.existing` and treats everything else as a
+ * write. Mirrors the crdt double's guard: more than 100 bound parameters on
+ * ONE statement is a hard error, exactly as D1 answers it — the reason a
+ * 100-item batch could ship green here and 500 against a real database.
+ */
+const createPushDb = (
+  options: {
+    existing?:
+      Array<Record<string, unknown>> | ((binds: unknown[]) => Array<Record<string, unknown>>)
+    lookupError?: unknown
+    writeError?: unknown
+  } = {}
+) => {
+  const batches: RecordedPushStatement[][] = []
+
+  const prepare = vi.fn((sql: string) => {
+    const stmt = {
+      sql,
+      binds: [] as unknown[],
+      bind: (...args: unknown[]) => {
+        if (args.length > 100) {
+          throw new Error('D1_ERROR: too many SQL variables')
+        }
+        stmt.binds = args
+        return stmt
+      },
+      first: vi.fn().mockResolvedValue(null),
+      run: vi.fn().mockResolvedValue({ success: true }),
+      all: vi.fn().mockResolvedValue({ results: [] })
+    }
+    return stmt
+  })
+
+  const batch = vi.fn(async (statements: Array<{ sql: string; binds: unknown[] }>) => {
+    batches.push(statements.map((stmt) => ({ sql: stmt.sql, binds: stmt.binds })))
+    return statements.map((stmt) => {
+      if (stmt.sql.trimStart().startsWith('SELECT')) {
+        if (options.lookupError) throw options.lookupError
+        const rows =
+          typeof options.existing === 'function'
+            ? options.existing(stmt.binds)
+            : (options.existing ?? [])
+        return { success: true, results: rows }
+      }
+      if (options.writeError) throw options.writeError
+      return { success: true, results: [] }
+    })
+  })
+
+  return { db: { prepare, batch }, prepare, batch, batches }
+}
+
+const upsertStatements = (batches: RecordedPushStatement[][]): RecordedPushStatement[] =>
+  batches.flat().filter((stmt) => stmt.sql.includes('INSERT INTO sync_items'))
+
+const payloadBytesOf = (item: PushItemInput): number =>
+  new TextEncoder().encode(serializePayload(item)).byteLength
 
 // ============================================================================
 // Test data helpers
@@ -1514,8 +1598,12 @@ describe('getItem', () => {
 describe('processRecordPushBatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    armCursorSequence(42)
     mockedCheckQuota.mockResolvedValue(undefined)
     mockedReserveStorage.mockResolvedValue(undefined)
+    mockedAdjustStorageUsed.mockResolvedValue(undefined)
+    mockedVerifyEd25519.mockResolvedValue(true)
+    vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as unknown as R2Object)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
       user_id: 'user-1',
@@ -1534,22 +1622,18 @@ describe('processRecordPushBatch', () => {
 
   it('should aggregate accepted and rejected item outcomes', async () => {
     // #given
-    const acceptedSelect = createMockStatement()
-    acceptedSelect.first.mockResolvedValue(null)
-    const acceptedUpsert = createMockStatement()
-    const rejectedSelect = createMockStatement()
-    rejectedSelect.first.mockResolvedValue({
-      version: 1,
-      clock: '{"device-1":3}',
-      size_bytes: 100,
-      created_at: 1000
+    const { db } = createPushDb({
+      existing: [
+        {
+          item_type: 'note',
+          item_id: 'item-b',
+          version: 1,
+          clock: '{"device-1":3}',
+          size_bytes: 100,
+          created_at: 1000
+        }
+      ]
     })
-
-    const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(acceptedSelect)
-      .mockReturnValueOnce(acceptedUpsert)
-      .mockReturnValueOnce(rejectedSelect)
 
     // #when
     const result = await processRecordPushBatch(
@@ -1588,12 +1672,8 @@ describe('processRecordPushBatch', () => {
 
   it('should keep maxCursor at zero when accepted items do not return cursors', async () => {
     // #given
-    mockedGetNextCursor.mockResolvedValueOnce(undefined as unknown as number)
-    const acceptedSelect = createMockStatement()
-    acceptedSelect.first.mockResolvedValue(null)
-    const acceptedUpsert = createMockStatement()
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(acceptedSelect).mockReturnValueOnce(acceptedUpsert)
+    mockedAllocateCursorRange.mockResolvedValueOnce({ first: 0, last: 0 })
+    const { db } = createPushDb()
 
     // #when
     const result = await processRecordPushBatch(
@@ -1607,6 +1687,281 @@ describe('processRecordPushBatch', () => {
     // #then
     expect(result.accepted).toEqual(['item-a'])
     expect(result.maxCursor).toBe(0)
+  })
+
+  it('should allocate ONE contiguous cursor range and assign it in item order', async () => {
+    // #given
+    const { db } = createPushDb()
+    const items = [
+      createValidPushItem({ id: 'item-a' }),
+      createValidPushItem({ id: 'item-b' }),
+      createValidPushItem({ id: 'item-c' })
+    ]
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then — one allocation for the whole batch, not one per item
+    expect(mockedAllocateCursorRange).toHaveBeenCalledTimes(1)
+    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 3)
+    expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual([42, 43, 44])
+    expect(result.maxCursor).toBe(44)
+  })
+
+  it('should split the existing-row lookup at the D1 bind-param ceiling for a 100-item batch', async () => {
+    // #given
+    const { db, batches } = createPushDb()
+    const items = Array.from({ length: 100 }, (_, i) =>
+      createValidPushItem({ id: `item-${String(i).padStart(3, '0')}` })
+    )
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then — every item lands, cursors stay contiguous in item order
+    expect(result.accepted).toHaveLength(100)
+    expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual(
+      Array.from({ length: 100 }, (_, i) => 42 + i)
+    )
+
+    // #and the lookup went out as ONE db.batch of ceiling-sized SELECT chunks
+    const lookupBatch = batches[0]
+    expect(lookupBatch.every((stmt) => stmt.sql.trimStart().startsWith('SELECT'))).toBe(true)
+    expect(lookupBatch.map((stmt) => stmt.binds.length)).toEqual([95, 9])
+
+    // #and all 100 upserts went out as one write batch
+    expect(upsertStatements(batches)).toHaveLength(100)
+    expect(db.batch).toHaveBeenCalledTimes(2)
+  })
+
+  it('should fetch the signer device once per unique signer, not once per item', async () => {
+    // #given
+    mockedGetDevice.mockImplementation(async (_db, deviceId: string) => ({
+      id: deviceId,
+      user_id: 'user-1',
+      name: 'test',
+      platform: 'desktop',
+      os_version: null,
+      app_version: '1.0.0',
+      auth_public_key: btoa(String.fromCharCode(...new Array(32).fill(0))),
+      push_token: null,
+      revoked_at: null,
+      last_sync_at: null,
+      created_at: 1000,
+      updated_at: 1000
+    }))
+    const { db } = createPushDb()
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [
+        createValidPushItem({ id: 'item-a' }),
+        createValidPushItem({ id: 'item-b' }),
+        createValidPushItem({ id: 'item-c', signerDeviceId: 'device-2', clock: { 'device-2': 1 } })
+      ]
+    )
+
+    // #then
+    expect(result.accepted).toHaveLength(3)
+    expect(mockedGetDevice).toHaveBeenCalledTimes(2)
+    expect(mockedGetDevice).toHaveBeenCalledWith(db, 'device-1', 'user-1')
+    expect(mockedGetDevice).toHaveBeenCalledWith(db, 'device-2', 'user-1')
+  })
+
+  it('should reject every item with INTERNAL_ERROR when the device lookup itself fails', async () => {
+    // #given — an infrastructure error from the device read, not a "not found"
+    mockedGetDevice.mockRejectedValueOnce(new Error('D1 unavailable'))
+    const { db } = createPushDb()
+    const items = [createValidPushItem({ id: 'item-a' }), createValidPushItem({ id: 'item-b' })]
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then — one INTERNAL_ERROR rejection per item, exactly what the serial
+    // loop's per-item catch produced; the batch never throws
+    expect(result.accepted).toEqual([])
+    expect(result.rejected).toEqual([
+      { id: 'item-a', reason: 'INTERNAL_ERROR' },
+      { id: 'item-b', reason: 'INTERNAL_ERROR' }
+    ])
+    expect(mockedAllocateCursorRange).not.toHaveBeenCalled()
+  })
+
+  it('should reserve storage ONCE with the summed growth of the batch', async () => {
+    // #given
+    const { db } = createPushDb()
+    const items = [
+      createValidPushItem({ id: 'item-a' }),
+      createValidPushItem({ id: 'item-b' }),
+      createValidPushItem({ id: 'item-c' })
+    ]
+    const totalBytes = items.reduce((sum, item) => sum + payloadBytesOf(item), 0)
+
+    // #when
+    await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then
+    expect(mockedReserveStorage).toHaveBeenCalledTimes(1)
+    expect(mockedReserveStorage).toHaveBeenCalledWith(db, 'user-1', totalBytes)
+  })
+
+  it('should fall back to per-item reservation on quota breach so outcomes match the serial code', async () => {
+    // #given — the summed reservation fails, then per item: a fits, b does not, c fits
+    const quotaError = new AppError(
+      ErrorCodes.STORAGE_QUOTA_EXCEEDED,
+      'Storage quota exceeded',
+      413
+    )
+    mockedReserveStorage
+      .mockRejectedValueOnce(quotaError)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(quotaError)
+      .mockResolvedValueOnce(undefined)
+    const { db } = createPushDb()
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [
+        createValidPushItem({ id: 'item-a' }),
+        createValidPushItem({ id: 'item-b' }),
+        createValidPushItem({ id: 'item-c' })
+      ]
+    )
+
+    // #then — exactly the per-item outcomes the old serial loop produced
+    expect(result.accepted).toEqual(['item-a', 'item-c'])
+    expect(result.rejected).toEqual([{ id: 'item-b', reason: 'STORAGE_QUOTA_EXCEEDED' }])
+    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 2)
+    expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual([42, undefined, 43])
+  })
+
+  it('should reject only the item whose R2 put failed and refund its reservation', async () => {
+    // #given
+    vi.mocked(putBlob).mockImplementation(async (_storage, key: string) => {
+      if (key.includes('item-b')) {
+        throw new AppError(ErrorCodes.STORAGE_UPLOAD_FAILED, 'Blob upload failed', 500)
+      }
+      return { etag: 'etag-1' } as unknown as R2Object
+    })
+    const { db } = createPushDb()
+    const items = [
+      createValidPushItem({ id: 'item-a' }),
+      createValidPushItem({ id: 'item-b' }),
+      createValidPushItem({ id: 'item-c' })
+    ]
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then
+    expect(result.accepted).toEqual(['item-a', 'item-c'])
+    expect(result.rejected).toEqual([{ id: 'item-b', reason: 'STORAGE_UPLOAD_FAILED' }])
+    expect(mockedAllocateCursorRange).toHaveBeenCalledWith(db, 'user-1', 2)
+    expect(mockedAdjustStorageUsed).toHaveBeenCalledWith(db, 'user-1', -payloadBytesOf(items[1]))
+  })
+
+  it('should reject every item of a failed write batch and refund the whole reservation', async () => {
+    // #given
+    const { db } = createPushDb({ writeError: new Error('D1_ERROR: Network connection lost.') })
+    const items = [createValidPushItem({ id: 'item-a' }), createValidPushItem({ id: 'item-b' })]
+    const totalBytes = items.reduce((sum, item) => sum + payloadBytesOf(item), 0)
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      items
+    )
+
+    // #then
+    expect(result.accepted).toEqual([])
+    expect(result.rejected).toEqual([
+      { id: 'item-a', reason: 'INTERNAL_ERROR' },
+      { id: 'item-b', reason: 'INTERNAL_ERROR' }
+    ])
+    expect(mockedAdjustStorageUsed).toHaveBeenCalledWith(db, 'user-1', -totalBytes)
+  })
+
+  it('should process duplicate (type, id) pushes in waves that see each other, like the serial loop', async () => {
+    // #given — the second lookup observes the row the first wave wrote
+    const itemId = '550e8400-e29b-41d4-a716-446655440000'
+    let lookupCalls = 0
+    const { db, batches } = createPushDb({
+      existing: () =>
+        lookupCalls++ === 0
+          ? []
+          : [
+              {
+                item_type: 'note',
+                item_id: itemId,
+                version: 1,
+                clock: '{"device-1":1}',
+                size_bytes: 10,
+                created_at: 111
+              }
+            ]
+    })
+
+    // #when
+    const result = await processRecordPushBatch(
+      db as unknown as D1Database,
+      {} as R2Bucket,
+      'user-1',
+      'device-1',
+      [
+        createValidPushItem({ clock: { 'device-1': 1 } }),
+        createValidPushItem({ clock: { 'device-1': 2 } })
+      ]
+    )
+
+    // #then — both land, the second as version 2 with the later cursor
+    expect(result.accepted).toEqual([itemId, itemId])
+    expect(result.outcomes.map((outcome) => outcome.serverCursor)).toEqual([42, 43])
+    const upserts = upsertStatements(batches)
+    expect(upserts).toHaveLength(2)
+    expect(upserts.map((stmt) => stmt.binds[8])).toEqual([1, 2])
+    // The second wave preserves the created_at the first wave's row carries.
+    expect(upserts[1].binds[16]).toBe(111)
   })
 })
 
@@ -1643,8 +1998,11 @@ describe('processPushItem', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockedGetNextCursor.mockResolvedValue(42)
+    armCursorSequence(42)
     mockedReserveStorage.mockResolvedValue(undefined)
+    mockedAdjustStorageUsed.mockResolvedValue(undefined)
+    mockedVerifyEd25519.mockResolvedValue(true)
+    vi.mocked(putBlob).mockResolvedValue({ etag: 'etag-1' } as unknown as R2Object)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
       user_id: 'user-1',
@@ -1666,18 +2024,12 @@ describe('processPushItem', () => {
       new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
     )
 
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(null)
-
-    const db = createMockDb()
-    db.prepare.mockReturnValue(selectStmt)
-
-    const storage = {} as R2Bucket
+    const { db } = createPushDb()
 
     // #when
     const result = await processPushItem(
       db as unknown as D1Database,
-      storage,
+      {} as R2Bucket,
       'user-1',
       'device-1',
       createValidPushItem()
@@ -1689,32 +2041,24 @@ describe('processPushItem', () => {
   })
 
   it('should skip quota check when replacing item with smaller payload', async () => {
-    // #given — existing item is 5000 bytes, new is smaller → sizeDelta ≤ 0
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({
-      version: 1,
-      clock: '{"device-1":1}',
-      created_at: 1000,
-      size_bytes: 50000
+    // #given — existing item is 50000 bytes, new is smaller → sizeDelta ≤ 0
+    const { db } = createPushDb({
+      existing: [
+        {
+          item_type: 'note',
+          item_id: '550e8400-e29b-41d4-a716-446655440000',
+          version: 1,
+          clock: '{"device-1":1}',
+          created_at: 1000,
+          size_bytes: 50000
+        }
+      ]
     })
-
-    const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
-
-    const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
-
-    const storage = {
-      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
-    } as unknown as R2Bucket
 
     // #when
     const result = await processPushItem(
       db as unknown as D1Database,
-      storage,
+      {} as R2Bucket,
       'user-1',
       'device-1',
       createValidPushItem({ clock: { 'device-1': 2 } })
@@ -1726,34 +2070,31 @@ describe('processPushItem', () => {
   })
 
   it('should preserve existing created_at when upserting an existing row', async () => {
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({
-      version: 3,
-      clock: '{"device-1":3}',
-      created_at: 123456,
-      size_bytes: 50000
+    const { db, batches } = createPushDb({
+      existing: [
+        {
+          item_type: 'note',
+          item_id: '550e8400-e29b-41d4-a716-446655440000',
+          version: 3,
+          clock: '{"device-1":3}',
+          created_at: 123456,
+          size_bytes: 50000
+        }
+      ]
     })
-
-    const upsertStmt = createMockStatement()
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
-
-    const storage = {
-      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
-    } as unknown as R2Bucket
 
     const result = await processPushItem(
       db as unknown as D1Database,
-      storage,
+      {} as R2Bucket,
       'user-1',
       'device-1',
       createValidPushItem({ clock: { 'device-1': 4 } })
     )
 
     expect(result.accepted).toBe(true)
-    expect(upsertStmt.bind).toHaveBeenCalled()
-    const bindArgs = upsertStmt.bind.mock.calls[0]
-    expect(bindArgs[16]).toBe(123456)
+    const [upsert] = upsertStatements(batches)
+    expect(upsert.binds[16]).toBe(123456)
+    expect(upsert.binds[8]).toBe(4)
   })
 
   it('should write the payload to a type-scoped blob key so same-id items of different types never clobber each other', async () => {
@@ -1762,21 +2103,10 @@ describe('processPushItem', () => {
     // silently destroyed the other type's ciphertext and its signature could
     // never verify again.
     const runPush = async (type: PushItemInput['type']) => {
-      const selectStmt = createMockStatement()
-      selectStmt.first.mockResolvedValue(null)
-      const upsertStmt = createMockStatement()
-      const updateStmt = createMockStatement()
-      const db = createMockDb()
-      db.prepare
-        .mockReturnValueOnce(selectStmt)
-        .mockReturnValueOnce(upsertStmt)
-        .mockReturnValueOnce(updateStmt)
-      const storage = {
-        put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
-      } as unknown as R2Bucket
+      const { db, batches } = createPushDb()
       const result = await processPushItem(
         db as unknown as D1Database,
-        storage,
+        {} as R2Bucket,
         'user-1',
         'device-1',
         createValidPushItem({ id: 'inbox', type, clock: { 'device-1': 1 } }),
@@ -1784,7 +2114,8 @@ describe('processPushItem', () => {
       )
       expect(result.accepted).toBe(true)
       const putKey = vi.mocked(putBlob).mock.lastCall?.[1] as string
-      const boundBlobKey = upsertStmt.bind.mock.calls[0][5] as string
+      const [upsert] = upsertStatements(batches)
+      const boundBlobKey = upsert.binds[5] as string
       expect(boundBlobKey).toBe(putKey)
       return putKey
     }
@@ -1802,61 +2133,52 @@ describe('processPushItem', () => {
   })
 
   it('should batch sync item upsert and storage usage update atomically', async () => {
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({
+    const existingRow = {
+      item_type: 'note',
+      item_id: '550e8400-e29b-41d4-a716-446655440000',
       version: 3,
       clock: '{"device-1":3}',
       created_at: 123456,
       size_bytes: 50000
-    })
+    }
+    const { db, batches } = createPushDb({ existing: [existingRow] })
 
-    const upsertStmt = createMockStatement()
-    const updateStmt = createMockStatement()
-    const db = createMockDb()
-    db.prepare
-      .mockReturnValueOnce(selectStmt)
-      .mockReturnValueOnce(upsertStmt)
-      .mockReturnValueOnce(updateStmt)
-
-    const storage = {
-      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
-    } as unknown as R2Bucket
-
+    const item = createValidPushItem({ clock: { 'device-1': 4 } })
     const result = await processPushItem(
       db as unknown as D1Database,
-      storage,
+      {} as R2Bucket,
       'user-1',
       'device-1',
-      createValidPushItem({ clock: { 'device-1': 4 } })
+      item
     )
 
     expect(result.accepted).toBe(true)
-    expect(db.batch).toHaveBeenCalledTimes(1)
-    expect(db.batch).toHaveBeenCalledWith([upsertStmt, updateStmt])
-    expect(upsertStmt.run).not.toHaveBeenCalled()
-    expect(updateStmt.run).not.toHaveBeenCalled()
+    // db.batch call 1 = existing lookup, call 2 = the transactional write.
+    expect(db.batch).toHaveBeenCalledTimes(2)
+    const writeBatch = batches[1]
+    expect(writeBatch).toHaveLength(2)
+    expect(writeBatch[0].sql).toContain('INSERT INTO sync_items')
+    expect(writeBatch[1].sql).toContain('MAX(0, storage_used + ?)')
+    expect(writeBatch[1].binds).toEqual([payloadBytesOf(item) - 50000, 'user-1'])
   })
 
   it('should accept settings updates without top-level clock even if legacy rows have a stored clock', async () => {
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({
-      version: 1,
-      clock: '{"device-old":2}',
-      created_at: 1000,
-      size_bytes: 10
+    const { db } = createPushDb({
+      existing: [
+        {
+          item_type: 'settings',
+          item_id: '550e8400-e29b-41d4-a716-446655440000',
+          version: 1,
+          clock: '{"device-old":2}',
+          created_at: 1000,
+          size_bytes: 10
+        }
+      ]
     })
-
-    const upsertStmt = createMockStatement()
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
-
-    const storage = {
-      put: vi.fn().mockResolvedValue({ etag: 'etag-1' })
-    } as unknown as R2Bucket
 
     const result = await processPushItem(
       db as unknown as D1Database,
-      storage,
+      {} as R2Bucket,
       'user-1',
       'device-1',
       createValidPushItem({ type: 'settings', clock: undefined })
@@ -1921,15 +2243,17 @@ describe('processPushItem', () => {
   })
 
   it('should accept existing object clocks and existing rows without size metadata', async () => {
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue({
-      version: 1,
-      clock: { 'device-1': 1 },
-      createdAt: 987
+    const { db, batches } = createPushDb({
+      existing: [
+        {
+          item_type: 'note',
+          item_id: '550e8400-e29b-41d4-a716-446655440000',
+          version: 1,
+          clock: { 'device-1': 1 },
+          createdAt: 987
+        }
+      ]
     })
-    const upsertStmt = createMockStatement()
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
 
     const result = await processPushItem(
       db as unknown as D1Database,
@@ -1940,15 +2264,13 @@ describe('processPushItem', () => {
     )
 
     expect(result.accepted).toBe(true)
-    expect(upsertStmt.bind.mock.calls[0][16]).toBe(987)
+    const [upsert] = upsertStatements(batches)
+    expect(upsert.binds[16]).toBe(987)
+    expect(upsert.binds[8]).toBe(2)
   })
 
   it('should write tombstones for delete operations', async () => {
-    const selectStmt = createMockStatement()
-    selectStmt.first.mockResolvedValue(null)
-    const upsertStmt = createMockStatement()
-    const db = createMockDb()
-    db.prepare.mockReturnValueOnce(selectStmt).mockReturnValueOnce(upsertStmt)
+    const { db, batches } = createPushDb()
 
     const result = await processPushItem(
       db as unknown as D1Database,
@@ -1959,7 +2281,8 @@ describe('processPushItem', () => {
     )
 
     expect(result.accepted).toBe(true)
-    expect(upsertStmt.bind.mock.calls[0][18]).toEqual(expect.any(Number))
+    const [upsert] = upsertStatements(batches)
+    expect(upsert.binds[18]).toEqual(expect.any(Number))
   })
 
   it('should return AppError and unknown error codes from failed processing', async () => {
@@ -2117,7 +2440,8 @@ describe('sync-type negotiation', () => {
 describe('concurrent same-item pushes (torn blob regression)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockedGetNextCursor.mockResolvedValue(42)
+    armCursorSequence(42)
+    mockedReserveStorage.mockResolvedValue(undefined)
     mockedVerifyEd25519.mockResolvedValue(true)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
@@ -2152,21 +2476,36 @@ describe('concurrent same-item pushes (torn blob regression)', () => {
     const gates: Array<() => void> = []
 
     const makeGatedDb = () => {
-      const stmt = createMockStatement()
-      stmt.first.mockResolvedValue(null)
-      const db = createMockDb()
-      db.prepare.mockReturnValue(stmt)
-      db.batch.mockImplementation(async () => {
+      const prepare = vi.fn((sql: string) => {
+        const stmt = {
+          sql,
+          binds: [] as unknown[],
+          bind: (...args: unknown[]) => {
+            stmt.binds = args
+            return stmt
+          },
+          first: vi.fn().mockResolvedValue(null),
+          run: vi.fn().mockResolvedValue({ success: true }),
+          all: vi.fn().mockResolvedValue({ results: [] })
+        }
+        return stmt
+      })
+      const batch = vi.fn(async (statements: Array<{ sql: string; binds: unknown[] }>) => {
+        // The existing-row lookup runs ungated; only the row WRITE stalls, so
+        // the interleaving below is putBlob(A), putBlob(B), upsert(B), upsert(A).
+        if (statements[0]?.sql.trimStart().startsWith('SELECT')) {
+          return statements.map(() => ({ success: true, results: [] }))
+        }
         await new Promise<void>((resolve) => gates.push(resolve))
         // 21 binds = the sync_items upsert (19 columns, plus the two
         // attribution columns). Identifying it by arity keeps this double from
         // matching the storage-adjustment statement in the same batch.
-        const upsertArgs = stmt.bind.mock.calls.find((call) => call.length === 21)
-        finalRow.blobKey = upsertArgs?.[5] as string
-        finalRow.signature = upsertArgs?.[13] as string
-        return []
+        const upsert = statements.find((stmt) => stmt.binds.length === 21)
+        finalRow.blobKey = upsert?.binds[5] as string
+        finalRow.signature = upsert?.binds[13] as string
+        return statements.map(() => ({ success: true, results: [] }))
       })
-      return db
+      return { prepare, batch }
     }
 
     const sigA = btoa(String.fromCharCode(...new Array(64).fill(1)))
@@ -2226,6 +2565,8 @@ describe('processPushItem replaced blob cleanup', () => {
   const oldBlobKey = 'user-1/vaults/default/items-v2/note/550e8400-e29b-41d4-a716-446655440000'
 
   const existingRow = {
+    item_type: 'note',
+    item_id: '550e8400-e29b-41d4-a716-446655440000',
     version: 1,
     clock: '{"device-1":1}',
     created_at: 1000,
@@ -2235,7 +2576,8 @@ describe('processPushItem replaced blob cleanup', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockedGetNextCursor.mockResolvedValue(42)
+    armCursorSequence(42)
+    mockedReserveStorage.mockResolvedValue(undefined)
     mockedVerifyEd25519.mockResolvedValue(true)
     mockedGetDevice.mockResolvedValue({
       id: 'device-1',
@@ -2255,10 +2597,7 @@ describe('processPushItem replaced blob cleanup', () => {
   })
 
   it('deletes the replaced blob only after the row points at the new one', async () => {
-    const stmt = createMockStatement()
-    stmt.first.mockResolvedValue(existingRow)
-    const db = createMockDb()
-    db.prepare.mockReturnValue(stmt)
+    const { db } = createPushDb({ existing: [existingRow] })
     const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
     const result = await processPushItem(
@@ -2271,18 +2610,17 @@ describe('processPushItem replaced blob cleanup', () => {
 
     expect(result.accepted).toBe(true)
     const deleteMock = vi.mocked(storage.delete)
-    expect(deleteMock).toHaveBeenCalledWith(oldBlobKey)
-    // Ordering: the D1 row must point at the new blob before the old one goes.
-    expect(db.batch.mock.invocationCallOrder[0]).toBeLessThan(
+    // Replaced blobs go out as ONE bulk delete call.
+    expect(deleteMock).toHaveBeenCalledWith([oldBlobKey])
+    // Ordering: the D1 rows must point at the new blobs (db.batch call 2, after
+    // the lookup batch) before the old objects go.
+    expect(db.batch.mock.invocationCallOrder[1]).toBeLessThan(
       deleteMock.mock.invocationCallOrder[0]
     )
   })
 
   it('does not delete anything for a first-time item', async () => {
-    const stmt = createMockStatement()
-    stmt.first.mockResolvedValue(null)
-    const db = createMockDb()
-    db.prepare.mockReturnValue(stmt)
+    const { db } = createPushDb()
     const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
 
     const result = await processPushItem(
@@ -2298,10 +2636,7 @@ describe('processPushItem replaced blob cleanup', () => {
   })
 
   it('still accepts the push when the old blob delete fails', async () => {
-    const stmt = createMockStatement()
-    stmt.first.mockResolvedValue(existingRow)
-    const db = createMockDb()
-    db.prepare.mockReturnValue(stmt)
+    const { db } = createPushDb({ existing: [existingRow] })
     const storage = {
       delete: vi.fn().mockRejectedValue(new Error('R2 hiccup'))
     } as unknown as R2Bucket

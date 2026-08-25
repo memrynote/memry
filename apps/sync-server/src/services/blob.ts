@@ -134,6 +134,23 @@ export const deleteBlob = async (storage: R2Bucket, key: string, userId: string)
 }
 
 /**
+ * Delete many objects in ONE R2 call. R2 accepts up to 1000 keys per delete;
+ * callers here pass at most one key per pushed item (batch ceiling 100), so no
+ * chunking is needed.
+ */
+export const deleteBlobs = async (
+  storage: R2Bucket,
+  keys: string[],
+  userId: string
+): Promise<void> => {
+  if (keys.length === 0) return
+  for (const key of keys) {
+    assertKeyBelongsToUser(key, userId)
+  }
+  await storage.delete(keys)
+}
+
+/**
  * Delete every object under a prefix, honoring R2 list pagination.
  * The prefix must be inside the caller's own namespace.
  */
