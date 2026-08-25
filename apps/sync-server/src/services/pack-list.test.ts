@@ -136,6 +136,30 @@ describe('listPacks', () => {
     expect(page3.nextCursor).toBeUndefined() // final page
   })
 
+  it('ends without a cursor when the row count is an exact multiple of the limit', async () => {
+    // The 5-pack case above always leaves a 1-row final page, so the
+    // rows.length === effectiveLimit boundary of the LIMIT+1 over-fetch is
+    // never exercised there. An off-by-one here costs every bootstrap an extra
+    // rate-limited round trip that returns zero packs.
+    for (let i = 0; i < 4; i++) {
+      seedPack({ id: `p-${i}`, minCursor: i * 100 + 1, maxCursor: (i + 1) * 100 })
+    }
+
+    const page1 = await listPacks(harness.db, USER, VAULT, { limit: 2 }, PRESIGN_CONFIG)
+    expect(page1.packs.map((p) => p.id)).toEqual(['p-3', 'p-2'])
+    expect(page1.nextCursor).toBeDefined()
+
+    const page2 = await listPacks(
+      harness.db,
+      USER,
+      VAULT,
+      { cursor: page1.nextCursor!, limit: 2 },
+      PRESIGN_CONFIG
+    )
+    expect(page2.packs.map((p) => p.id)).toEqual(['p-1', 'p-0'])
+    expect(page2.nextCursor).toBeUndefined()
+  })
+
   it("never leaks other users' or other vaults' packs", async () => {
     seedPack({ id: 'mine' })
     harness.raw

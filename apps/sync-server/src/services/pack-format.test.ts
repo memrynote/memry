@@ -173,6 +173,33 @@ describe('openPack streaming assembly', () => {
   })
 })
 
+/**
+ * Byte positions of the FIRST index record's `offset` and `sha256` fields.
+ *
+ * The index block sits OUTSIDE the payload region the footer digest covers, so
+ * editing it leaves that digest valid: the per-entry sha256 is the only guard
+ * against a desynced index record (writer offset bug, R2 bit flip in the index).
+ */
+const indexRecordFields = (bytes: Uint8Array, first: PackEntryInput) => {
+  const utf8 = new TextEncoder()
+  const metaJson = first.meta ? JSON.stringify(first.meta) : ''
+  const offsetAt =
+    readFooter(bytes).indexOffset +
+    1 /* kind */ +
+    2 +
+    utf8.encode(first.id).byteLength +
+    2 +
+    utf8.encode(first.sourceKey).byteLength +
+    8 /* sortKey */ +
+    2 +
+    utf8.encode(metaJson).byteLength
+  return { offsetAt, digestAt: offsetAt + 8 /* offset */ + 8 /* length */ }
+}
+
+const writeU64 = (bytes: Uint8Array, at: number, value: number): void => {
+  new DataView(bytes.buffer, bytes.byteOffset).setBigUint64(at, BigInt(value))
+}
+
 describe('corruption detection', () => {
   it('rejects a tampered payload via the footer checksum', async () => {
     const built = await buildPack([entry()])
@@ -182,19 +209,31 @@ describe('corruption detection', () => {
     await expect(parsePack(corrupt)).rejects.toThrow(/payload checksum mismatch/)
   })
 
-  it('rejects a tampered single entry via its per-entry digest', async () => {
-    const first = entry()
-    const second = entry({ sortKey: 2 })
+  it('rejects an index record whose offset field points at another entry', async () => {
+    const first = entry({ id: 'task:a', bytes: new Uint8Array(8).fill(0xaa) })
+    const second = entry({ id: 'task:b', sortKey: 2, bytes: new Uint8Array(8).fill(0xbb) })
     const built = await buildPack([first, second])
+    expect((await parsePack(built.bytes)).entries[0].offset).toBe(0)
+
+    // Repoint entry 0 at entry 1's payload region. The payload bytes are
+    // untouched, so the footer's whole-payload digest still matches — without
+    // the per-entry digest this parses clean and serves task:b's ciphertext
+    // under task:a's identity.
     const corrupt = new Uint8Array(built.bytes)
-    // Corrupt INSIDE the second entry's region; the whole-payload digest also
-    // fails then, so assert on the entry-level check by rebuilding only that
-    // digest scenario: parse order checks payload first, so instead verify
-    // extractEntry bounds + rely on the payload test above. Here we assert
-    // the second entry's region differs from the first's.
-    const parsed = await parsePack(built.bytes)
-    const region = extractEntry(corrupt, parsed.entries[1])
-    expect(region).toEqual(second.bytes)
+    writeU64(corrupt, indexRecordFields(corrupt, first).offsetAt, first.bytes.length)
+
+    await expect(parsePack(corrupt)).rejects.toThrow(/pack entry checksum mismatch: task:a/)
+  })
+
+  it('rejects an index record whose recorded entry digest is corrupt', async () => {
+    const first = entry({ id: 'task:a' })
+    const built = await buildPack([first, entry({ id: 'task:b', sortKey: 2 })])
+
+    const corrupt = new Uint8Array(built.bytes)
+    const { digestAt } = indexRecordFields(corrupt, first)
+    corrupt[digestAt] = corrupt[digestAt] ^ 0xff
+
+    await expect(parsePack(corrupt)).rejects.toThrow(/pack entry checksum mismatch: task:a/)
   })
 
   it('rejects wrong magic and unknown versions', async () => {

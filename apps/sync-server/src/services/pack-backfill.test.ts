@@ -14,7 +14,12 @@ const nowSec = () => Math.floor(Date.now() / 1000)
 let harness: SqliteD1
 let storage: R2Bucket
 
-const seedVaultWithRecords = (userId: string, vaultId: string, count: number): void => {
+const seedVaultWithRecords = (
+  userId: string,
+  vaultId: string,
+  count: number,
+  cursorBase = 0
+): void => {
   harness.raw
     .prepare(
       `INSERT INTO users (id, email, auth_method, created_at, updated_at)
@@ -39,7 +44,7 @@ const seedVaultWithRecords = (userId: string, vaultId: string, count: number): v
         blobKey,
         bytes.byteLength,
         `h${i}`,
-        i
+        cursorBase + i
       )
   }
 }
@@ -73,8 +78,8 @@ describe('runPackBackfill', () => {
     seedVaultWithRecords('u-new', 'default', 2) // own cursor space
 
     const result = await runPackBackfill(harness.db, storage, 4)
-    expect(result.packsBuilt).toBeGreaterThanOrEqual(2)
-    expect(result.scopesVisited).toBeGreaterThanOrEqual(2)
+    expect(result.packsBuilt).toBe(2)
+    expect(result.scopesVisited).toBe(2)
     expect(
       (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
     ).toBe(result.packsBuilt)
@@ -117,6 +122,26 @@ describe('runPackBackfill', () => {
     ).toBe(0)
     expect(nowSec()).toBeGreaterThan(0)
     void result
+  })
+
+  it('stops at the per-tick budget instead of draining the whole backlog', async () => {
+    // Distinct oldest cursors so ORDER BY oldest_pending is a total order.
+    for (let i = 1; i <= 6; i++) seedVaultWithRecords(`u-b${i}`, 'default', 1, i * 100)
+
+    const result = await runPackBackfill(harness.db, storage, 2)
+
+    // This stop condition is the ONLY bound on a cron invocation shared with
+    // every other cleanup task: 6 scopes x ~269 subrequests would blow the
+    // paid-plan 1000-per-invocation ceiling and kill the whole sweep.
+    expect(result.packsBuilt).toBe(2)
+    expect(result.scopesVisited).toBe(2)
+    expect(result.budgetRemaining).toBe(0)
+
+    // The four unvisited vaults are untouched — they drain on later ticks.
+    const packed = harness.raw
+      .prepare('SELECT DISTINCT user_id FROM pack_index ORDER BY user_id')
+      .all() as Array<{ user_id: string }>
+    expect(packed.map((row) => row.user_id)).toEqual(['u-b1', 'u-b2'])
   })
 
   it('exposes the tick budget constant used by the cron wiring', () => {

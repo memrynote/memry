@@ -400,3 +400,23 @@ describe('scheduled cleanup', () => {
     expect(actions).toHaveLength(12)
   })
 })
+
+describe('production route table', () => {
+  // Route-shape facts pinned against the REAL app, not a test-local rebuild:
+  // routes/bootstrap.test.ts mounts its own Hono at '/sync/bootstrap', so it
+  // cannot catch a wrong mount point here (#1837).
+  const hasPost = (path: string): boolean =>
+    app.routes.some((route) => route.method === 'POST' && route.path === path)
+
+  it('mounts the bootstrap session router under /sync/bootstrap', () => {
+    expect(hasPost('/sync/bootstrap')).toBe(true)
+    expect(hasPost('/sync/bootstrap/renew')).toBe(true)
+    expect(hasPost('/sync/bootstrap/close')).toBe(true)
+  })
+
+  it('does not publish the bootstrap routes at the bare /sync prefix', () => {
+    expect(hasPost('/sync')).toBe(false)
+    expect(hasPost('/sync/renew')).toBe(false)
+    expect(hasPost('/sync/close')).toBe(false)
+  })
+})

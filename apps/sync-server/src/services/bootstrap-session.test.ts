@@ -303,6 +303,7 @@ describe('open/renew/close over real SQLite', () => {
          VALUES ('old-1', 'u1', 'd2', 'v1', ?, ?), ('old-2', 'u1', 'd3', 'v1', ?, ?)`
       )
       .bind(past, past - 100, past, past - 100)
+      .run()
 
     // #when — a third device opens; the two dead rows must not count
     seedDevice(harness, { deviceId: 'd4', lastCursor: null, vaultId: 'v1' })
@@ -312,8 +313,12 @@ describe('open/renew/close over real SQLite', () => {
       vaultId: 'v1'
     })
 
-    // #then
-    expect(result.session.jti).toBeTruthy()
+    // #then — the dead rows are gone and only the fresh session survives, so
+    // stale rows can never wedge a user at the cap until cron cleanup.
+    const rows = harness.raw
+      .prepare("SELECT jti FROM bootstrap_sessions WHERE user_id = 'u1' ORDER BY jti")
+      .all() as Array<{ jti: string }>
+    expect(rows.map((row) => row.jti)).toEqual([result.session.jti])
   })
 
   it('renews in place under the same jti and extends the ledger', async () => {
