@@ -49,6 +49,9 @@ export const ErrorCodes = {
   STORAGE_UNAUTHORIZED: 'STORAGE_UNAUTHORIZED',
   STORAGE_VERSION_CONFLICT: 'STORAGE_VERSION_CONFLICT',
   STORAGE_HASH_MISMATCH: 'STORAGE_HASH_MISMATCH',
+  // Presigned R2 URLs are not configured on this deployment (secrets absent) —
+  // a typed, permanent signal so clients fall back to the proxied blob paths.
+  STORAGE_PRESIGN_UNAVAILABLE: 'STORAGE_PRESIGN_UNAVAILABLE',
 
   UPLOAD_SESSION_NOT_FOUND: 'UPLOAD_SESSION_NOT_FOUND',
   UPLOAD_SESSION_EXPIRED: 'UPLOAD_SESSION_EXPIRED',

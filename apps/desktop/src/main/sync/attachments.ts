@@ -22,10 +22,18 @@ import {
   getSyncVaultHeaders,
   type FetchFn
 } from './http-client'
+import {
+  AttachmentPresigner,
+  PRESIGN_EXPIRY_SAFETY_MS,
+  fetchChunkFromPresignedUrl,
+  putChunkToPresignedUrl,
+  type PresignedUrlWindow
+} from './attachment-presign'
 import { withRetry, DeadLetterError } from '@memry/sync-client/retry'
 import { recordBootstrapBytes } from './bootstrap-metrics'
 
 import type {
+  DirectChunkEntry,
   UploadInitRequest,
   UploadInitResponse,
   UploadStatusResponse
@@ -165,6 +173,19 @@ interface UploadState {
   completedChunks: Set<number>
   totalChunks: number
   totalBytes: number
+}
+
+/**
+ * Per-transfer state of the direct-to-R2 download path (#1836). The window is
+ * a batch of presigned GETs armed over the remaining chunks; one refresh is
+ * allowed on an expired/rejected URL before the transfer drops to the proxied
+ * path for good — that keeps a broken presign deployment from doubling every
+ * chunk's latency forever.
+ */
+interface DirectDownloadState {
+  window: PresignedUrlWindow | null
+  refreshUsed: boolean
+  fallbackToProxied: boolean
 }
 
 export interface AttachmentSyncDeps {
@@ -337,9 +358,19 @@ export class AttachmentSyncService {
   private activeUploads = new Map<string, UploadState>()
   private activeDownloads = new Map<string, TransferProgress>()
   private onProgress: ProgressCallback | null = null
+  /**
+   * Presigned-URL collaborator (#1836). One per service so a definitive
+   * "unavailable" answer from the server is remembered across transfers
+   * instead of being re-probed on every download.
+   */
+  private readonly presigner: AttachmentPresigner
 
   constructor(deps: AttachmentSyncDeps) {
     this.deps = deps
+    this.presigner = new AttachmentPresigner({
+      getSyncServerUrl: deps.getSyncServerUrl,
+      ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+    })
   }
 
   setProgressCallback(cb: ProgressCallback | null): void {
@@ -479,15 +510,30 @@ export class AttachmentSyncService {
       // finished, so this is exact.
       const encryptedSize = encryptedChunks.reduce((sum, c) => sum + c.data.byteLength, 0)
 
-      const sessionId = await this.initiateUploadSession(
+      const sessionInfo = await this.initiateUploadSession(
         token,
         attachmentId,
         filename,
         fileStat.size,
         totalChunks,
         encryptedSize,
-        netOpts
+        {
+          ...netOpts,
+          chunkHashes: encryptedChunks.map((c) => c.ref.encryptedHash)
+        }
       )
+      const sessionId = sessionInfo.sessionId
+
+      // Direct-to-R2 opt-in (#1836): encryption finished above, so every
+      // ciphertext hash is already known and initiate could hand back presigned
+      // PUTs. Absent URLs (old server, or a deployment without R2 presign
+      // credentials) leave the legacy proxied flow byte-identical.
+      const putUrls = new Map(Object.entries(sessionInfo.chunkUrls ?? {}))
+      const putUrlExpiresAtMs = sessionInfo.urlExpiresAt
+        ? sessionInfo.urlExpiresAt * 1000 - PRESIGN_EXPIRY_SAFETY_MS
+        : 0
+      const directEntries: DirectChunkEntry[] = []
+      const directPutFailed = new Set<string>()
 
       const uploadState: UploadState = {
         sessionId,
@@ -535,10 +581,43 @@ export class AttachmentSyncService {
           })
         }
 
-        await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data, {
-          ...netOpts,
-          onWaitingNetwork
-        })
+        // Presigned PUT first (#1836): one raw attempt, no auth headers — the
+        // URL signature is the authorization. Any failure (403 past expiry
+        // included) drops THIS chunk to the proxied path, which carries its
+        // own retry budget; the direct path never retries so a dead URL costs
+        // at most one round trip per transfer.
+        let uploadedDirect = false
+        if (Date.now() < putUrlExpiresAtMs && !directPutFailed.has(chunk.ref.encryptedHash)) {
+          const directUrl = putUrls.get(chunk.ref.encryptedHash)
+          if (directUrl) {
+            try {
+              await putChunkToPresignedUrl(
+                directUrl,
+                chunk.data,
+                { fetchFn: this.deps.fetchFn },
+                netOpts.signal ? { signal: netOpts.signal } : undefined
+              )
+              directEntries.push({
+                i: chunk.ref.index,
+                h: chunk.ref.encryptedHash,
+                b: chunk.data.byteLength
+              })
+              uploadedDirect = true
+            } catch (err) {
+              directPutFailed.add(chunk.ref.encryptedHash)
+              log.warn('presigned chunk PUT failed; using worker proxy for it', {
+                index: chunk.ref.index,
+                err
+              })
+            }
+          }
+        }
+        if (!uploadedDirect) {
+          await this.uploadChunk(token, sessionId, chunk.ref.index, chunk.data, {
+            ...netOpts,
+            onWaitingNetwork
+          })
+        }
 
         uploadState.completedChunks.add(chunk.ref.index)
         bytesUploaded += chunk.ref.size
@@ -554,7 +633,13 @@ export class AttachmentSyncService {
       })
 
       const encryptedManifest = this.encryptManifest(manifest, fileKey, vaultKey, signingKeys)
-      await this.completeUploadSession(token, sessionId, encryptedManifest, netOpts)
+      await this.completeUploadSession(
+        token,
+        sessionId,
+        encryptedManifest,
+        directEntries.length > 0 ? directEntries : null,
+        netOpts
+      )
 
       log.info('upload complete', { attachmentId, sessionId })
       emitTerminal('completed')
@@ -695,15 +780,30 @@ export class AttachmentSyncService {
 
       let bytesDownloaded = resumeFrom.bytesWritten
       let handle: Awaited<ReturnType<typeof open>> | null = null
+      // Direct-to-R2 state for THIS transfer (#1836): URLs arm lazily over the
+      // remaining chunks and degrade to the proxied path on any presign
+      // trouble (server unavailable, expired URL past its one refresh).
+      const directState: DirectDownloadState = {
+        window: null,
+        refreshUsed: false,
+        fallbackToProxied: false
+      }
       try {
         handle = await open(partialPath, resumeFrom.chunksDone > 0 ? 'a' : 'w', 0o600)
 
         for (let i = resumeFrom.chunksDone; i < totalChunks; i++) {
           const chunkRef = orderedChunks[i]
-          const encryptedData = await this.downloadChunk(token, chunkRef.encryptedHash, {
-            ...netOpts,
-            onWaitingNetwork: () => emit({ ...downloadProgress, phase: 'waiting_network' })
-          })
+          const pendingHashes = orderedChunks.slice(i).map((c) => c.encryptedHash)
+          const encryptedData = await this.downloadChunkDirectOrProxied(
+            token,
+            chunkRef.encryptedHash,
+            pendingHashes,
+            directState,
+            {
+              ...netOpts,
+              onWaitingNetwork: () => emit({ ...downloadProgress, phase: 'waiting_network' })
+            }
+          )
 
           const nonce = encryptedData.subarray(0, 24)
           const ciphertext = encryptedData.subarray(24)
@@ -856,15 +956,21 @@ export class AttachmentSyncService {
     totalSize: number,
     chunkCount: number,
     encryptedSize: number,
-    options?: { signal?: AbortSignal; isOnline?: () => boolean }
-  ): Promise<string> {
+    options?: { signal?: AbortSignal; isOnline?: () => boolean } & {
+      /** Ciphertext hashes enabling presigned PUTs (#1836); omit → proxied. */
+      chunkHashes?: string[]
+    }
+  ): Promise<UploadInitResponse> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/initiate`
     const body: UploadInitRequest = {
       attachmentId,
       filename,
       totalSize,
       chunkCount,
-      encryptedSize
+      encryptedSize,
+      ...(options?.chunkHashes && options.chunkHashes.length > 0
+        ? { chunkHashes: options.chunkHashes }
+        : {})
     }
 
     const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
@@ -885,8 +991,9 @@ export class AttachmentSyncService {
       throw new SyncServerError(`Failed to initiate upload: ${errBody}`, resp.status, errBody)
     }
 
-    const data = (await resp.json()) as UploadInitResponse
-    return data.sessionId
+    // chunkUrls/urlExpiresAt are optional contract fields: absent from an old
+    // server or one without presign credentials → proxied upload flow.
+    return (await resp.json()) as UploadInitResponse
   }
 
   private async checkResumableSession(
@@ -956,10 +1063,18 @@ export class AttachmentSyncService {
     token: string,
     sessionId: string,
     encryptedManifest: EncryptedAttachmentManifest,
+    directChunks: DirectChunkEntry[] | null,
     options?: { signal?: AbortSignal; isOnline?: () => boolean }
   ): Promise<void> {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
-    const body = JSON.stringify(encryptedManifest)
+    // directChunks is additive (#1836): only chunks actually PUT straight to
+    // R2 are reported; the server head-verifies them before crediting quota.
+    // Omitted entirely when the transfer was fully proxied (old-server safe).
+    const body = JSON.stringify(
+      directChunks && directChunks.length > 0
+        ? { ...encryptedManifest, directChunks }
+        : encryptedManifest
+    )
 
     const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
       maxRetries: 3,
@@ -1073,6 +1188,107 @@ export class AttachmentSyncService {
       },
       { maxRetries: 5, baseDelayMs: 2000, ...netOpts }
     )
+  }
+
+  /**
+   * One chunk, presigned-first (#1836): GET it straight from R2 when a valid
+   * URL is at hand, otherwise (or after failure) through the Worker proxy.
+   *
+   * Both paths spend the SAME pacing tokens — retryingRequest awaits `pace`
+   * before every attempt, direct ones included — because R2's own limits are
+   * invisible to us while the client-side pacer remains the only throughput
+   * knob. Resume stays chunk-level: chunks are separate R2 objects, so the
+   * sidecar semantics from #1829 are untouched.
+   */
+  private async downloadChunkDirectOrProxied(
+    token: string,
+    encryptedHash: string,
+    pendingHashes: string[],
+    state: DirectDownloadState,
+    netOpts?: DownloadNetOptions & { onWaitingNetwork?: () => void }
+  ): Promise<Uint8Array> {
+    const url = await this.nextPresignedDownloadUrl(
+      token,
+      encryptedHash,
+      pendingHashes,
+      state,
+      netOpts
+    )
+    if (!url) {
+      return this.downloadChunk(token, encryptedHash, netOpts)
+    }
+
+    try {
+      return await this.fetchPresignedChunk(url, netOpts)
+    } catch (err) {
+      const refreshable = err instanceof SyncServerError && err.statusCode === 403
+      if (refreshable && !state.refreshUsed) {
+        // Expired/rejected signature: re-request the batch exactly once, then
+        // accept the proxy as the answer.
+        state.refreshUsed = true
+        log.info('presigned chunk URL rejected; refreshing batch once', {
+          hash: encryptedHash.slice(0, 12)
+        })
+        const refreshed = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
+        state.window = refreshed
+        const retryUrl = refreshed?.urls.get(encryptedHash)
+        if (retryUrl) {
+          try {
+            return await this.fetchPresignedChunk(retryUrl, netOpts)
+          } catch (retryErr) {
+            log.warn('refreshed presigned URL also failed; falling back to proxy', {
+              hash: encryptedHash.slice(0, 12),
+              err: retryErr
+            })
+          }
+        }
+      } else if (!refreshable) {
+        log.warn('direct chunk download failed; falling back to proxy for this transfer', {
+          hash: encryptedHash.slice(0, 12),
+          err
+        })
+      }
+      state.fallbackToProxied = true
+      return this.downloadChunk(token, encryptedHash, netOpts)
+    }
+  }
+
+  /** Presigned GET under the shared retry/pacing wrapper. */
+  private fetchPresignedChunk(
+    url: string,
+    netOpts?: DownloadNetOptions & { onWaitingNetwork?: () => void }
+  ): Promise<Uint8Array> {
+    return this.retryingRequest(
+      () =>
+        fetchChunkFromPresignedUrl(
+          url,
+          { fetchFn: this.deps.fetchFn },
+          netOpts?.signal ? { signal: netOpts.signal } : undefined
+        ),
+      { maxRetries: 3, baseDelayMs: 2000, ...netOpts }
+    )
+  }
+
+  /**
+   * Return the still-valid URL for `hash`, arming a fresh batch window over
+   * `pendingHashes` when absent or expired. Null means "use the proxied path"
+   * without flipping any fallback state — the NEXT chunk may legitimately get
+   * URLs again (e.g. this one was simply outside the batch).
+   */
+  private async nextPresignedDownloadUrl(
+    token: string,
+    hash: string,
+    pendingHashes: string[],
+    state: DirectDownloadState,
+    netOpts?: DownloadNetOptions
+  ): Promise<string | null> {
+    if (state.fallbackToProxied || !this.presigner.available) return null
+    if (state.window && Date.now() < state.window.expiresAtMs) {
+      return state.window.urls.get(hash) ?? null
+    }
+    const window = await this.presigner.fetchBatch(token, pendingHashes, netOpts)
+    state.window = window
+    return window?.urls.get(hash) ?? null
   }
 
   /**
