@@ -19,6 +19,10 @@ vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: mockOpenTab })
 }))
 
+vi.mock('@/hooks/use-vault', () => ({
+  useVault: () => ({ isIndexing: false, indexBuilt: undefined, indexTotal: undefined })
+}))
+
 vi.mock('@/services/search-service', () => ({
   searchService: {
     query: vi.fn().mockResolvedValue({ groups: [], totalCount: 0, queryTimeMs: 0 }),

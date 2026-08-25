@@ -212,7 +212,9 @@
       "noResultsFor": "لا توجد نتائج ل \"\"",
       "result": "نتيجة",
       "noResultsForQuery": "لا توجد نتائج لـ “{query}”",
-      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}"
+      "resultCount": "{count, plural, zero {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
+      "indexBuilding": "جارٍ إنشاء فهرس البحث {done}/{total} — قد تكون النتائج غير مكتملة",
+      "indexBuildingUnknown": "جارٍ إنشاء فهرس البحث — قد تكون النتائج غير مكتملة"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",

@@ -212,7 +212,9 @@
       "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
       "result": "αποτέλεσμα",
       "noResultsForQuery": "Δεν υπάρχουν αποτελέσματα για «{query}»",
-      "resultCount": "{count, plural, one {# αποτέλεσμα} other {# αποτελέσματα}}"
+      "resultCount": "{count, plural, one {# αποτέλεσμα} other {# αποτελέσματα}}",
+      "indexBuilding": "Δημιουργία ευρετηρίου αναζήτησης {done}/{total} — τα αποτελέσματα μπορεί να είναι ελλιπή",
+      "indexBuildingUnknown": "Δημιουργία ευρετηρίου αναζήτησης — τα αποτελέσματα μπορεί να είναι ελλιπή"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Αναζητήστε και κάντε κλικ σε στοιχεία για να δημιουργήσετε το μονοπάτι σας",

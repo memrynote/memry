@@ -10,6 +10,7 @@ import type {
 import { getTabIconForFileType } from '@memry/shared/file-types'
 import { useTabs } from '@/contexts/tabs'
 import { useSearch } from '@/hooks/use-search'
+import { useVault } from '@/hooks/use-vault'
 import { searchService } from '@/services/search-service'
 import { trackTelemetry } from '@/lib/telemetry'
 import { createLogger } from '@/lib/logger'
@@ -273,6 +274,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
   const hasQuery = query.trim().length > 0
   const hasResults = results.length > 0
+  const { isIndexing, indexBuilt, indexTotal } = useVault()
 
   return (
     <Command.Dialog
@@ -331,6 +333,24 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             onSetDateRange={handleSetDateRange}
             onClear={handleClearFilters}
           />
+
+          {isIndexing && (
+            <div
+              role="status"
+              className="flex items-center gap-2 px-4 py-1.5 text-xs text-text-tertiary
+                border-b border-border"
+            >
+              <Loader2 className="size-3 shrink-0 animate-spin" />
+              <span className="tabular-nums">
+                {indexBuilt !== undefined && indexTotal !== undefined
+                  ? tPhaseF('phaseF.componentsSearchCommandPalette.indexBuilding', {
+                      done: indexBuilt,
+                      total: indexTotal
+                    })
+                  : tPhaseF('phaseF.componentsSearchCommandPalette.indexBuildingUnknown')}
+              </span>
+            </div>
+          )}
 
           <Command.List
             className="max-h-[50vh] overflow-y-auto overscroll-contain p-2

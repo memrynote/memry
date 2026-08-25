@@ -212,7 +212,9 @@
       "noResultsFor": "Ei tuloksia haulle \"",
       "result": "tulos",
       "noResultsForQuery": "Ei tuloksia haulle ”{query}”",
-      "resultCount": "{count, plural, one {# tulos} other {# tulosta}}"
+      "resultCount": "{count, plural, one {# tulos} other {# tulosta}}",
+      "indexBuilding": "Luodaan hakuhakemistoa {done}/{total} — tulokset voivat olla puutteellisia",
+      "indexBuildingUnknown": "Luodaan hakuhakemistoa — tulokset voivat olla puutteellisia"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hae ja napsauta kohteita rakentaaksesi polkusi",

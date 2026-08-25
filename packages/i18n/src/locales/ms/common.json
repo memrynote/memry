@@ -212,7 +212,9 @@
       "noResultsFor": "Tiada hasil untuk “",
       "result": "hasil",
       "noResultsForQuery": "Tiada hasil untuk “{query}”",
-      "resultCount": "{count, plural, other {# hasil}}"
+      "resultCount": "{count, plural, other {# hasil}}",
+      "indexBuilding": "Membina indeks carian {done}/{total} — hasil mungkin tidak lengkap",
+      "indexBuildingUnknown": "Membina indeks carian — hasil mungkin tidak lengkap"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",

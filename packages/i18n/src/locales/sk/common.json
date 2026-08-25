@@ -212,7 +212,9 @@
       "noResultsFor": "Žiadne výsledky pre “",
       "result": "výsledok",
       "noResultsForQuery": "Žiadne výsledky pre „{query}“",
-      "resultCount": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}}"
+      "resultCount": "{count, plural, one {# výsledok} few {# výsledky} many {# výsledku} other {# výsledkov}}",
+      "indexBuilding": "Vytvára sa vyhľadávací index {done}/{total} — výsledky nemusia byť úplné",
+      "indexBuildingUnknown": "Vytvára sa vyhľadávací index — výsledky nemusia byť úplné"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Hľadajte a klikajte na položky, aby ste vytvorili svoju stopu",

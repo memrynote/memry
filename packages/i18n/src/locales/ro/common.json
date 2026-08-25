@@ -212,7 +212,9 @@
       "noResultsFor": "Nu există rezultate pentru „",
       "result": "rezultat",
       "noResultsForQuery": "Niciun rezultat pentru „{query}”",
-      "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}"
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultate} other {# de rezultate}}",
+      "indexBuilding": "Se construiește indexul de căutare {done}/{total} — rezultatele pot fi incomplete",
+      "indexBuildingUnknown": "Se construiește indexul de căutare — rezultatele pot fi incomplete"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",

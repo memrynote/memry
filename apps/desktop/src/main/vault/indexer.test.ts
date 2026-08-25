@@ -28,19 +28,19 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
 // Track emitIndexProgress calls
 const progressCalls: number[] = []
+const progressCounts: Array<{ indexed: number; total: number } | undefined> = []
 
 // Mock the vault/index module
 vi.mock('./index', () => ({
-  getConfig: vi.fn(
-    (): VaultConfig => ({
-      excludePatterns: ['.git', 'node_modules', '.trash'],
-      defaultNoteFolder: 'notes',
-      journalFolder: 'journal',
-      attachmentsFolder: 'attachments'
-    })
-  ),
-  emitIndexProgress: vi.fn((progress: number) => {
+  getConfig: vi.fn((): VaultConfig => ({
+    excludePatterns: ['.git', 'node_modules', '.trash'],
+    defaultNoteFolder: 'notes',
+    journalFolder: 'journal',
+    attachmentsFolder: 'attachments'
+  })),
+  emitIndexProgress: vi.fn((progress: number, counts?: { indexed: number; total: number }) => {
     progressCalls.push(progress)
+    progressCounts.push(counts)
   })
 }))
 
@@ -91,6 +91,7 @@ describe('indexer', () => {
   beforeEach(async () => {
     // Clear progress tracking
     progressCalls.length = 0
+    progressCounts.length = 0
     unreadablePaths.clear()
     for (const fn of Object.values(loggerMock)) fn.mockClear()
 
@@ -245,6 +246,42 @@ describe('indexer', () => {
       expect(progressCalls.length).toBeGreaterThan(0)
       // Final progress should be 100
       expect(progressCalls[progressCalls.length - 1]).toBe(100)
+    })
+
+    it('#1832: rides built/total counts on progress events', async () => {
+      for (let i = 0; i < 12; i++) {
+        createTestNote(tempVault, { title: `Note ${i}`, content: `Content ${i}` })
+      }
+
+      await indexer.indexVault(tempVault.path)
+
+      const lastCounts = progressCounts[progressCounts.length - 1]
+      expect(lastCounts).toEqual({ indexed: 12, total: 12 })
+    })
+
+    it('#1832: stops the walk when shouldStop fires and resumes cleanly', async () => {
+      createTestNote(tempVault, { title: 'Note 1', content: 'Content 1' })
+      createTestNote(tempVault, { title: 'Note 2', content: 'Content 2' })
+      createTestNote(tempVault, { title: 'Note 3', content: 'Content 3' })
+
+      let checks = 0
+      const result = await indexer.indexVault(tempVault.path, {
+        // First task proceeds; every later task sees the stop signal.
+        shouldStop: () => ++checks > 1
+      })
+
+      expect(result.cancelled).toBe(true)
+      expect(result.indexed).toBeLessThan(3)
+      // A cancelled build emits no further progress beats.
+      expect(progressCounts.length).toBe(0)
+
+      // Resumable by construction: the next pass skips what landed and
+      // finishes the rest.
+      const resumed = await indexer.indexVault(tempVault.path)
+
+      expect(resumed.cancelled).toBe(false)
+      expect(resumed.indexed + resumed.skipped + resumed.errors).toBe(3)
+      expect(progressCounts[progressCounts.length - 1]).toEqual({ indexed: 3, total: 3 })
     })
 
     it('T374: extracts tags from frontmatter', async () => {

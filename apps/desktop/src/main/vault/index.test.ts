@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   countMarkdownFiles: vi.fn(),
   checkIndexHealth: vi.fn(),
   rebuildIndex: vi.fn(),
+  resetIndexDatabase: vi.fn(),
   indexVault: vi.fn(),
   startWatcher: vi.fn(),
   stopWatcher: vi.fn(),
@@ -151,7 +152,8 @@ vi.mock('./watcher', () => ({
 
 vi.mock('./indexer', () => ({
   indexVault: (...args: unknown[]) => mocks.indexVault(...args),
-  rebuildIndex: (...args: unknown[]) => mocks.rebuildIndex(...args)
+  rebuildIndex: (...args: unknown[]) => mocks.rebuildIndex(...args),
+  resetIndexDatabase: (...args: unknown[]) => mocks.resetIndexDatabase(...args)
 }))
 
 vi.mock('../lib/embeddings', () => ({
@@ -303,7 +305,7 @@ describe('vault lifecycle', () => {
     mocks.countMarkdownFiles.mockReturnValue(7)
     mocks.checkIndexHealth.mockReturnValue('healthy')
     mocks.rebuildIndex.mockResolvedValue({ filesIndexed: 3, duration: 42 })
-    mocks.indexVault.mockResolvedValue(undefined)
+    mocks.indexVault.mockResolvedValue({ indexed: 3, skipped: 0, errors: 0, cancelled: false })
     mocks.startWatcher.mockResolvedValue(undefined)
     mocks.stopWatcher.mockResolvedValue(undefined)
     mocks.reloadPropertyDefinitions.mockResolvedValue(undefined)
@@ -354,7 +356,9 @@ describe('vault lifecycle', () => {
     // Existing installs only get canvas turned on if this runs on open.
     expect(mocks.promoteSpatialCanvas).toHaveBeenCalledWith({ kind: 'data-db' })
     expect(mocks.reloadPropertyDefinitions).toHaveBeenCalled()
-    expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work')
+    expect(mocks.indexVault).toHaveBeenCalledWith('/vault/work', {
+      shouldStop: expect.any(Function)
+    })
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startSyncRuntime).toHaveBeenCalled()
     expect(mocks.initEmbeddingModel).not.toHaveBeenCalled()
@@ -390,12 +394,14 @@ describe('vault lifecycle', () => {
     expect(mocks.snapshotProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.startProjectionRuntime.mock.invocationCallOrder[0]
     )
+    // The backfill runs at the tail of the background index build.
+    await vi.waitFor(() => expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled())
     expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
       mocks.indexVault.mock.invocationCallOrder[0]
     )
   })
 
-  it('applies the backfill after an index rebuild and opens the vault even if it throws', async () => {
+  it('applies the backfill after an index reset and opens the vault even if it throws', async () => {
     mocks.checkIndexHealth.mockReturnValue('missing')
     mocks.applyProjectFrontmatterBackfill.mockRejectedValue(new Error('backfill exploded'))
 
@@ -403,9 +409,12 @@ describe('vault lifecycle', () => {
 
     expect(result.success).toBe(true)
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/rebuild' }))
+    await vi.waitFor(() => expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled())
     expect(mocks.applyProjectFrontmatterBackfill.mock.invocationCallOrder[0]).toBeGreaterThan(
-      mocks.rebuildIndex.mock.invocationCallOrder[0]
+      mocks.indexVault.mock.invocationCallOrder[0]
     )
+    // The open survives the backfill throw: the indexing window still closes.
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
   })
 
   it('starts vault-scoped agent services only when lazy startup is requested', async () => {
@@ -435,17 +444,104 @@ describe('vault lifecycle', () => {
     expect(getStatus().error).toBe('Selected path is not a valid directory')
   })
 
-  it('rebuilds unhealthy indexes and emits recovery events', async () => {
+  it('resets unhealthy indexes synchronously and emits recovery once the background build lands', async () => {
     mocks.checkIndexHealth.mockReturnValue('missing')
 
     await selectVault({ path: '/vault/rebuild' })
 
-    expect(mocks.rebuildIndex).toHaveBeenCalledWith('/vault/rebuild')
-    expect(mocks.runIndexMigrations).not.toHaveBeenCalled()
-    expect(mocks.sent).toContainEqual({
-      channel: 'vault:index-recovered',
-      payload: { reason: 'missing', filesIndexed: 3, duration: 42 }
+    // The reset (close + delete + migrate + init) happens on the open path so
+    // every consumer sees a healthy empty index; the file walk does not.
+    expect(mocks.resetIndexDatabase).toHaveBeenCalledWith('/vault/rebuild/index.db')
+    expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+    expect(mocks.indexVault).toHaveBeenCalledWith('/vault/rebuild', {
+      shouldStop: expect.any(Function)
     })
+    await vi.waitFor(() =>
+      expect(mocks.sent).toContainEqual({
+        channel: 'vault:index-recovered',
+        payload: { reason: 'missing', filesIndexed: 3, duration: expect.any(Number) }
+      })
+    )
+  })
+
+  it('opens without awaiting the index walk and finishes it in the background', async () => {
+    let resolveIndex!: (value: {
+      indexed: number
+      skipped: number
+      errors: number
+      cancelled: boolean
+    }) => void
+    mocks.indexVault.mockReturnValue(
+      new Promise((resolve) => {
+        resolveIndex = resolve
+      })
+    )
+
+    const result = await selectVault({ path: '/vault/big' })
+
+    // The open resolved while the walk is still running: the renderer gets the
+    // vault with whatever index exists.
+    expect(result.success).toBe(true)
+    expect(getStatus()).toEqual(
+      expect.objectContaining({ isOpen: true, path: '/vault/big', isIndexing: true })
+    )
+    expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/big')
+    expect(mocks.startSyncRuntime).toHaveBeenCalled()
+    expect(mocks.applyProjectFrontmatterBackfill).not.toHaveBeenCalled()
+    expect(mocks.reconcileProjections).not.toHaveBeenCalled()
+
+    resolveIndex({ indexed: 10, skipped: 0, errors: 0, cancelled: false })
+
+    // The indexing window closes in order: walk -> backfill -> status -> reconcile.
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    expect(getStatus().indexProgress).toBe(100)
+    expect(mocks.applyProjectFrontmatterBackfill).toHaveBeenCalled()
+    await vi.waitFor(() => expect(mocks.reconcileProjections).toHaveBeenCalled())
+  })
+
+  it('does not reset a current index and reports no recovery on a fast open', async () => {
+    const result = await selectVault({ path: '/vault/fast' })
+
+    expect(result.success).toBe(true)
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+    expect(mocks.resetIndexDatabase).not.toHaveBeenCalled()
+    expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+    expect(mocks.sent.some((event) => event.channel === 'vault:index-recovered')).toBe(false)
+  })
+
+  it('closeVault stops the background walk and waits it out before closing databases', async () => {
+    let resolveIndex!: (value: {
+      indexed: number
+      skipped: number
+      errors: number
+      cancelled: boolean
+    }) => void
+    let stopSignal: (() => boolean) | undefined
+    mocks.indexVault.mockImplementation(
+      (_path: string, options?: { shouldStop?: () => boolean }) => {
+        stopSignal = options?.shouldStop
+        return new Promise((resolve) => {
+          resolveIndex = resolve
+        })
+      }
+    )
+
+    await selectVault({ path: '/vault/closing' })
+    expect(stopSignal?.()).toBe(false)
+
+    const closing = closeVault()
+    await Promise.resolve()
+
+    // The walk is asked to stop, and teardown waits for it: the databases must
+    // not be closed underneath an in-flight indexFile.
+    expect(stopSignal?.()).toBe(true)
+    expect(mocks.closeAllDatabases).not.toHaveBeenCalled()
+
+    resolveIndex({ indexed: 1, skipped: 0, errors: 0, cancelled: true })
+    await closing
+
+    expect(mocks.closeAllDatabases).toHaveBeenCalled()
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: false, isIndexing: false }))
   })
 
   it('repairs a corrupt search index in place instead of deleting the index database', async () => {
@@ -457,8 +553,10 @@ describe('vault lifecycle', () => {
     // #then the index DB file survives: only the fts5 tables are rebuilt, so
     // every note embedding in it is kept
     expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+    expect(mocks.resetIndexDatabase).not.toHaveBeenCalled()
     expect(mocks.runIndexMigrations).toHaveBeenCalledWith('/vault/fts/index.db')
-    expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search'])
+    // The repair runs in the background build, after the walk.
+    await vi.waitFor(() => expect(mocks.rebuildProjections).toHaveBeenCalledWith(['search']))
 
     // #then the user is told the repair happened
     expect(mocks.sent).toContainEqual({
@@ -472,6 +570,8 @@ describe('vault lifecycle', () => {
     mocks.detectCorruption.mockReturnValue([])
 
     await selectVault({ path: '/vault/fts-ok' })
+    // Let the background build (which owns the repair decision) settle.
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
 
     // A transient read failure must not cost the user a rebuild.
     expect(mocks.rebuildProjections).not.toHaveBeenCalled()

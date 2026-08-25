@@ -47,6 +47,19 @@ interface IndexResult {
   indexed: number
   skipped: number
   errors: number
+  /** True when `shouldStop` ended the walk before every file was visited. */
+  cancelled: boolean
+}
+
+export interface IndexVaultOptions {
+  /**
+   * Cooperative cancellation, checked before each file. Used by the background
+   * open-time build so a vault close (or switch) stops the walk within one
+   * file's work instead of racing the database teardown. A cancelled pass is
+   * resumable by design: the next `indexVault` run skips the paths already in
+   * cache and indexes the rest.
+   */
+  shouldStop?: () => boolean
 }
 
 // ============================================================================
@@ -315,15 +328,20 @@ const INDEX_CONCURRENCY = 8
  * @param vaultPath - Absolute path to the vault
  * @returns Index result with counts
  */
-export async function indexVault(vaultPath: string): Promise<IndexResult> {
+export async function indexVault(
+  vaultPath: string,
+  options: IndexVaultOptions = {}
+): Promise<IndexResult> {
   logger.debug('Starting vault indexing:', vaultPath)
 
+  const shouldStop = options.shouldStop ?? ((): boolean => false)
   const config = getConfig()
   const excludePatterns = config.excludePatterns ?? []
   const result: IndexResult = {
     indexed: 0,
     skipped: 0,
-    errors: 0
+    errors: 0,
+    cancelled: false
   }
 
   // Scan the entire vault root. findVaultFiles skips dotfolders (.memry,
@@ -356,15 +374,22 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
 
   // Track completed count for progress reporting (thread-safe increment via closure)
   let completed = 0
+  let cancelled = false
 
   const tasks = allFiles.map((file, i) => async () => {
+    if (cancelled || shouldStop()) {
+      cancelled = true
+      return { i, status: 'cancelled' as const }
+    }
+
     const status = await indexFile(vaultPath, file)
     completed++
 
-    // Emit progress every 10 completions to reduce IPC overhead
-    if (completed % 10 === 0 || completed === allFiles.length) {
+    // Emit progress every 10 completions to reduce IPC overhead. Suppressed once
+    // cancelled so a stale build never clobbers the next vault's progress.
+    if (!cancelled && (completed % 10 === 0 || completed === allFiles.length)) {
       const progress = Math.round((completed / allFiles.length) * 100)
-      emitIndexProgress(progress)
+      emitIndexProgress(progress, { indexed: completed, total: allFiles.length })
     }
 
     return { i, status }
@@ -383,7 +408,22 @@ export async function indexVault(vaultPath: string): Promise<IndexResult> {
       case 'error':
         result.errors++
         break
+      case 'cancelled':
+        break
     }
+  }
+
+  result.cancelled = cancelled
+
+  if (cancelled) {
+    // Stopped mid-walk (vault close/switch): the databases may be about to go
+    // away, so skip the verification queries. The pass is resumable — the next
+    // indexVault run skips what this one finished and indexes the rest.
+    logger.info(
+      `Indexing cancelled: ${result.indexed} indexed, ${result.skipped} skipped, ` +
+        `${result.errors} errors, ${allFiles.length - completed} remaining`
+    )
+    return result
   }
 
   const indexingMessage = `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
@@ -439,19 +479,12 @@ export interface RebuildResult {
 }
 
 /**
- * Rebuild the index database from scratch.
- * Deletes the existing index.db, recreates it, and re-indexes all markdown files.
- * Used for recovery from corruption or to force a fresh index.
- *
- * @param vaultPath - Absolute path to the vault
- * @returns Rebuild result with count and duration
+ * Reset the index database file: close, delete, re-run migrations, re-init the
+ * connection and FTS5. Cheap (no file walk) — the open path uses it to get a
+ * usable empty index synchronously and leaves repopulation to the background
+ * build; `rebuildIndex` follows it with a full awaited walk.
  */
-export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
-  const startTime = Date.now()
-  const indexDbPath = getIndexDbPath(vaultPath)
-
-  logger.info('Starting index rebuild:', vaultPath)
-
+export function resetIndexDatabase(indexDbPath: string): void {
   // Close existing index database connection if open
   try {
     closeIndexDatabase()
@@ -476,6 +509,23 @@ export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
   // Initialize FTS5
   logger.debug('Initializing FTS')
   initializeFts(getIndexDatabase())
+}
+
+/**
+ * Rebuild the index database from scratch.
+ * Deletes the existing index.db, recreates it, and re-indexes all markdown files.
+ * Used for recovery from corruption or to force a fresh index.
+ *
+ * @param vaultPath - Absolute path to the vault
+ * @returns Rebuild result with count and duration
+ */
+export async function rebuildIndex(vaultPath: string): Promise<RebuildResult> {
+  const startTime = Date.now()
+  const indexDbPath = getIndexDbPath(vaultPath)
+
+  logger.info('Starting index rebuild:', vaultPath)
+
+  resetIndexDatabase(indexDbPath)
 
   // Re-index all files
   logger.debug('Re-indexing all files')
