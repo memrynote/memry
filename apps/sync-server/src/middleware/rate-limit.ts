@@ -19,7 +19,10 @@ export interface RateLimitBucket {
  * window count against the bucket's `maxRequests`. Returning `null` means "no
  * elevation, use the bucket ceiling as-is"; returning a multiplier > 1 widens
  * the effective ceiling to `ceil(maxRequests * multiplier)` for this request
- * only. Nothing else in the middleware needs to change for P1.2: a bootstrap
+ * only. Elevation may only widen: multipliers < 1 are clamped up to 1 and
+ * non-finite values (NaN/±Infinity) are treated as no elevation, so a buggy
+ * hook can never shrink a ceiling below its bucket base or disable it. Nothing
+ * else in the middleware needs to change for P1.2: a bootstrap
  * session implementation plugs in via `RateLimitOptions.getElevatedLimits`
  * (per bucket) and decides from request context (e.g. a validated bootstrap
  * session on the Hono context) whether this request deserves a wider window.
@@ -79,7 +82,13 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
     const now = Math.floor(Date.now() / 1000)
 
     const multiplier = (await getElevatedLimits(c, bucket)) ?? null
-    const effectiveMax = multiplier === null ? maxRequests : Math.ceil(maxRequests * multiplier)
+    // Seam boundary: clamp before use — see GetElevatedLimits above. NaN would
+    // otherwise poison `effectiveMax` and silently disable the limit, because
+    // every `count > NaN` comparison is false.
+    const safeMultiplier =
+      multiplier !== null && Number.isFinite(multiplier) ? Math.max(multiplier, 1) : null
+    const effectiveMax =
+      safeMultiplier === null ? maxRequests : Math.ceil(maxRequests * safeMultiplier)
 
     const namespace = c.env.RATE_LIMITER
     const stub = namespace.get(namespace.idFromName(key))
@@ -93,6 +102,11 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
     const { count, windowStart } = (await response.json()) as ConsumeResponse
 
     if (count > effectiveMax) {
+      // Retry-After spans two clocks: `windowStart` is stamped inside the DO
+      // while `now` is read in this worker. Both come from the same runtime
+      // clock, so skew is bounded to the isolate handoff of one stub fetch
+      // (milliseconds); worst case a client retries a second early, which the
+      // Math.max(..., 1) floor already absorbs.
       const retryAfter = windowStart + windowSeconds - now
       c.header('Retry-After', String(Math.max(retryAfter, 1)))
       throw new AppError(ErrorCodes.RATE_LIMITED, 'Too many requests', 429)

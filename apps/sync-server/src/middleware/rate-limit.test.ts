@@ -350,6 +350,58 @@ describe('getElevatedLimits seam', () => {
     await expect(middleware(ninth.c as never, ninth.next)).rejects.toThrow(AppError)
   })
 
+  it('should ceil fractional multipliers — 5 × 1.5 widens to 8, not 7', async () => {
+    // #given — an odd multiplier whose product lands off the integer grid,
+    // where ceil and floor disagree (7.5)
+    const { namespace } = createNamespace()
+    const middleware = createRateLimiter({
+      maxRequests: 5,
+      windowSeconds: 60,
+      keyPrefix: 'seam',
+      getElevatedLimits: () => 1.5
+    })
+
+    // #when — exactly ceil(7.5) = 8 requests
+    let last: Awaited<ReturnType<typeof run>> | undefined
+    for (let i = 0; i < 8; i++) {
+      last = await run(middleware, namespace, { userId: 'user-1' })
+    }
+
+    // #then — the 8th passes under a ceiling of 8 (a floor mutant allows only
+    // 7 and 429s here); the 9th is blocked
+    expect(last?.c._headers['X-RateLimit-Limit']).toBe('8')
+    expect(last?.c._headers['X-RateLimit-Remaining']).toBe('0')
+    const ninth = createContext(namespace, { userId: 'user-1' })
+    await expect(middleware(ninth.c as never, ninth.next)).rejects.toThrow(AppError)
+  })
+
+  it.each([
+    ['a sub-1 fraction', 0.5],
+    ['a negative value', -2],
+    ['NaN', Number.NaN]
+  ])('should treat %s from the elevation hook as no elevation', async (_label, multiplier) => {
+    // #given — a buggy P1.2 hook that would shrink or poison the ceiling
+    const { namespace } = createNamespace()
+    const middleware = createRateLimiter({
+      maxRequests: 5,
+      windowSeconds: 60,
+      keyPrefix: 'seam',
+      getElevatedLimits: () => multiplier
+    })
+
+    // #when — the full base budget, then one past it
+    let last: Awaited<ReturnType<typeof run>> | undefined
+    for (let i = 0; i < 5; i++) {
+      last = await run(middleware, namespace, { userId: 'user-1' })
+    }
+
+    // #then — ceiling stays at the bucket base of 5; the 6th request is
+    // blocked instead of sailing through an unlimited/NaN comparison
+    expect(last?.c._headers['X-RateLimit-Limit']).toBe('5')
+    const sixth = createContext(namespace, { userId: 'user-1' })
+    await expect(middleware(sixth.c as never, sixth.next)).rejects.toThrow(AppError)
+  })
+
   it('should keep the base ceiling when elevation returns null', async () => {
     // #given
     const { namespace } = createNamespace()

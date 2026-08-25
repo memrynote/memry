@@ -96,6 +96,29 @@ describe('RateLimiter', () => {
     expect(rolled.windowStart).toBe(first.windowStart + 61)
   })
 
+  it('keeps incrementing the stale window at exactly windowSeconds', async () => {
+    // #given
+    vi.useFakeTimers()
+    const { doObj } = createDO()
+    const first = (await (await consume(doObj)).json()) as { count: number; windowStart: number }
+    await consume(doObj)
+
+    // #when — advance EXACTLY windowSeconds, not one second past: at t ===
+    // windowStart + windowSeconds the strict `<` in
+    // `existing.windowStart < now - windowSeconds` is still false, so the
+    // stored window stays live and keeps counting
+    vi.advanceTimersByTime(60_000)
+    const boundary = (await (await consume(doObj)).json()) as {
+      count: number
+      windowStart: number
+    }
+
+    // #then — count continues in the stale window (a `<=` mutant would reset
+    // to a fresh window here); only strictly older windows roll over
+    expect(boundary.count).toBe(3)
+    expect(boundary.windowStart).toBe(first.windowStart)
+  })
+
   it('keeps counting past any ceiling — the middleware owns the comparison', async () => {
     // #given
     const { doObj } = createDO()
