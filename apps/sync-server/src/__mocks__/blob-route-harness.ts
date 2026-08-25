@@ -53,6 +53,19 @@ const createStatement = (sql: string, state: MockDbState) => {
       }
       return null
     }),
+    // Batched hash lookups (presign-batch scopes by user/vault and filters by
+    // `hash IN (...)`); membership in chunksByHash encodes the scoping — a
+    // foreign vault's or user's hash is simply absent from the map.
+    all: vi.fn(async () => {
+      if (sql.includes('FROM blob_chunks') && sql.includes('hash IN (')) {
+        const hashes = stmt.bindings.slice(2) as string[]
+        const results = hashes
+          .map((hash) => state.chunksByHash?.[hash])
+          .filter((row): row is Record<string, unknown> => !!row)
+        return { results }
+      }
+      return { results: [] }
+    }),
     run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
   }
   return stmt

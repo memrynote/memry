@@ -29,6 +29,13 @@ export type Bindings = {
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string
   GITHUB_TOKEN?: string
+  // R2 presign (direct-to-R2 attachment transfers, #1836). All four optional:
+  // absent/incomplete → presign endpoints degrade to a typed "unavailable" and
+  // clients fall back to the proxied blob paths. Never commit real values.
+  R2_ACCESS_KEY_ID?: string
+  R2_SECRET_ACCESS_KEY?: string
+  R2_S3_ENDPOINT?: string
+  R2_S3_BUCKET?: string
   fetch?: typeof fetch
 }
 

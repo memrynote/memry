@@ -13,6 +13,17 @@ WEBHOOK_HMAC_KEY=replace-me
 PADDLE_WEBHOOK_SECRET=replace-me
 PADDLE_CHECKOUT_TOKEN_SECRET=replace-me
 TELEMETRY_HMAC_KEY=replace-me
+# Optional: presigned R2 transfers (#1836). Set all four to let attachments
+# upload/download direct to R2 with short-TTL signed URLs; leave unset to keep
+# everything on the proxied blob paths (the client falls back automatically).
+#   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY: an R2 API token scoped to the
+#     bucket with Object Read & Write only.
+#   R2_S3_ENDPOINT: https://<account-id>.r2.cloudflarestorage.com
+#   R2_S3_BUCKET: the bucket bound as STORAGE in wrangler.toml
+# R2_ACCESS_KEY_ID=replace-me
+# R2_SECRET_ACCESS_KEY=replace-me
+# R2_S3_ENDPOINT=replace-with-account-endpoint.r2.cloudflarestorage.com
+# R2_S3_BUCKET=replace-me
 # Optional PostHog mirroring:
 # POSTHOG_KEY=replace-with-posthog-project-token
 # Optional: raises the GitHub Releases API rate limit for the daily download-count cron.
