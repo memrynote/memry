@@ -37,7 +37,12 @@ export class SimulatedServer {
 
       durableObjects: {
         USER_SYNC_STATE: 'UserSyncState',
-        LINKING_SESSION: 'LinkingSession'
+        LINKING_SESSION: 'LinkingSession',
+        // Rate limiting moved off D1 onto this DO (#1838) and the middleware
+        // has no fail-open path: an absent binding throws and blocks every
+        // rate-limited route. Miniflare must bind it or the whole E2E sync
+        // surface answers 500.
+        RATE_LIMITER: 'RateLimiter'
       },
 
       bindings: {
