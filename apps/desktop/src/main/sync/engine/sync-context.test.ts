@@ -82,7 +82,11 @@ describe('SYNC_STATE_KEYS', () => {
         // Additive too: absent reads as '0' — "the last session ended with
         // every note merged" — which is both what an older build's install
         // means and the answer that changes nothing.
-        CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
+        CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+        // Additive again (#1840): absent reads as 0 — "no pack coverage" —
+        // which is what every install written before packs existed means, and
+        // the answer that leaves the item-granular bootstrap untouched.
+        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
       })
     })
 

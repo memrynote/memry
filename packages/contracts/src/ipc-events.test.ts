@@ -127,7 +127,14 @@ describe('event payload types (compile-time shape locks)', () => {
   })
 
   it('InitialSyncProgressEvent locks phase union', () => {
-    const phases: InitialSyncPhase[] = ['manifest', 'notes', 'tasks', 'attachments', 'complete']
+    const phases: InitialSyncPhase[] = [
+      'manifest',
+      'packs',
+      'notes',
+      'tasks',
+      'attachments',
+      'complete'
+    ]
     for (const phase of phases) {
       const event: InitialSyncProgressEvent = {
         phase,
