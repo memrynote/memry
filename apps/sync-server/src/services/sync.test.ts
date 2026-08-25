@@ -40,6 +40,7 @@ import { encodeSignaturePayload } from '../lib/cbor'
 
 import {
   MAX_ENCRYPTED_DATA_BYTES,
+  MAX_MANIFEST_PAGE_LIMIT,
   validateEncryptedFields,
   verifyItemSignature,
   detectReplay,
@@ -804,6 +805,94 @@ describe('getManifest', () => {
 
     // #then
     expect(result.items).toEqual([])
+  })
+
+  const manifestRow = (id: string, cursor: number) => ({
+    item_id: id,
+    item_type: 'note',
+    version: 1,
+    updated_at: 1000,
+    size_bytes: 512,
+    state_vector: null,
+    server_cursor: cursor
+  })
+
+  it('should keep the param-less query unpaged with no nextCursor', async () => {
+    // #given
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: [manifestRow('item-1', 7)] })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when — the call every already-shipped client makes
+    const result = await getManifest(db as unknown as D1Database, 'user-1')
+
+    // #then — no cursor predicate, no LIMIT, no nextCursor field at all
+    const sql = db.prepare.mock.calls[0][0] as string
+    expect(sql).not.toContain('server_cursor >')
+    expect(sql).not.toContain('LIMIT')
+    expect('nextCursor' in result).toBe(false)
+  })
+
+  it('should page with a cursor predicate and report nextCursor while rows remain', async () => {
+    // #given — limit 2, and D1 returns the probe row (limit + 1)
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({
+      results: [manifestRow('item-1', 5), manifestRow('item-2', 9), manifestRow('item-3', 12)]
+    })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    const result = await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', undefined, {
+      cursor: 3,
+      limit: 2
+    })
+
+    // #then — the SQL pages on server_cursor and binds cursor + limit + 1
+    const sql = db.prepare.mock.calls[0][0] as string
+    expect(sql).toContain('AND server_cursor > ?')
+    expect(sql).toContain('ORDER BY server_cursor ASC')
+    expect(sql).toContain('LIMIT ?')
+    const bindings = stmt.bind.mock.calls[0]
+    expect(bindings[bindings.length - 2]).toBe(3)
+    expect(bindings[bindings.length - 1]).toBe(3) // limit 2 + 1 probe row
+
+    // #then — the probe row is trimmed and nextCursor points at the last KEPT row
+    expect(result.items.map((i) => i.id)).toEqual(['item-1', 'item-2'])
+    expect(result.nextCursor).toBe(9)
+  })
+
+  it('should omit nextCursor on the final page', async () => {
+    // #given — fewer rows than the limit
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: [manifestRow('item-9', 20)] })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when
+    const result = await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', undefined, {
+      cursor: 12,
+      limit: 2
+    })
+
+    // #then
+    expect(result.items.map((i) => i.id)).toEqual(['item-9'])
+    expect('nextCursor' in result).toBe(false)
+  })
+
+  it('should clamp the page limit to the server maximum', async () => {
+    // #given
+    const stmt = createMockStatement()
+    stmt.all.mockResolvedValue({ results: [] })
+    db.prepare.mockReturnValue(stmt)
+
+    // #when — a client asking for more than MAX_MANIFEST_PAGE_LIMIT
+    await getManifest(db as unknown as D1Database, 'user-1', 'vault-1', undefined, {
+      cursor: 0,
+      limit: 999999
+    })
+
+    // #then — bound is the clamp + 1 probe row, never the raw request
+    const bindings = stmt.bind.mock.calls[0]
+    expect(bindings[bindings.length - 1]).toBe(MAX_MANIFEST_PAGE_LIMIT + 1)
   })
 })
 

@@ -20,7 +20,8 @@ import {
   processRecordPushBatch,
   pullItems,
   setVaultName,
-  updateDeviceCursor
+  updateDeviceCursor,
+  type ManifestPage
 } from '../services/sync'
 import {
   ensureSyncVaultAllowed,
@@ -219,9 +220,13 @@ const pullRateLimit = createRateLimiter({
   windowSeconds: 60
 })
 
+// 30/min (was 10): a paginated client spends ceil(rows / page) requests per
+// integrity check instead of 1, so the old ceiling would have stalled any vault
+// past 10 pages. Each paged request is a bounded indexed scan — strictly
+// cheaper than the single unbounded full scan the old ceiling was budgeted for.
 const manifestRateLimit = createRateLimiter({
   keyPrefix: 'sync_manifest',
-  maxRequests: 10,
+  maxRequests: 30,
   windowSeconds: 60
 })
 
@@ -288,7 +293,32 @@ const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
-  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!)
+  const endpoint = getRequestPath(c)
+
+  // Pagination is OPT-IN via `limit` (+ optional `cursor`). A param-less
+  // request — every already-shipped client — keeps the original complete
+  // single-response behavior, nextCursor field and all absent.
+  const limitParam = c.req.query('limit')
+  const cursorParam = c.req.query('cursor')
+
+  let page: ManifestPage | undefined
+  if (limitParam !== undefined) {
+    const limit = parseInt(limitParam, 10)
+    if (isNaN(limit) || limit < 1) {
+      logQueryValidationFailure('record', endpoint, 'Invalid limit value')
+    }
+    const cursor = cursorParam ? parseInt(cursorParam, 10) : 0
+    if (isNaN(cursor) || cursor < 0) {
+      logQueryValidationFailure('record', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+    }
+    page = { cursor, limit }
+  } else if (cursorParam !== undefined) {
+    // A cursor without a limit is a malformed pagination attempt; answering it
+    // with the full manifest would silently duplicate the pages already served.
+    logQueryValidationFailure('record', endpoint, 'cursor requires limit')
+  }
+
+  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!, page)
   return c.json(manifest)
 }
 

@@ -424,7 +424,13 @@ export const SyncManifestSchema = z.object({
 
 export const RecordSyncManifestSchema = z.object({
   items: z.array(RecordSyncItemRefSchema),
-  serverTime: z.number().int().min(0)
+  serverTime: z.number().int().min(0),
+  /**
+   * Present only on a paginated response (`GET /sync/manifest?limit=N`) that
+   * has more rows: pass it back as `cursor` to fetch the next page. Absent on
+   * the final page and on every param-less (legacy, everything-at-once) call.
+   */
+  nextCursor: z.number().int().min(0).optional()
 })
 
 export const ChangesResponseSchema = z.object({

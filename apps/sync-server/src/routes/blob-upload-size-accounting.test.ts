@@ -112,7 +112,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     vi.mocked(reserveStorage).mockResolvedValue(undefined)
     vi.mocked(adjustStorageUsed).mockResolvedValue(undefined)
     app = createApp()
-    state = { plan: 'pro', session: createSession(), existingChunk: null, statements: [] }
+    state = { plan: 'pro', session: createSession(), statements: [] }
     state.entitlementRow = () => entitlementRow(state.plan)
     env = createEnv(state)
   })

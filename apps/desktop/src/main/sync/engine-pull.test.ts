@@ -30,6 +30,46 @@ describe('SyncEngine', () => {
       )
       vi.restoreAllMocks()
     })
+
+    it('#then requests 500-ref changes pages and slices the pull into 100-id POSTs', async () => {
+      // The server's PullRequestSchema rejects more than 100 itemIds per POST
+      // with a 400 that drops the whole page — so a full 500-ref changes page
+      // MUST arrive as 100-id slices, every id exactly once, in page order.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      const getSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+      const postSpy = vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: []
+      })
+
+      await engine.pull()
+
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/sync/changes?limit=500'),
+        'test-token'
+      )
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      const allIds = pullCalls.flatMap(([, body]) => (body as { itemIds: string[] }).itemIds)
+      expect(allIds).toEqual(refs.map((r) => r.id))
+      vi.restoreAllMocks()
+    })
   })
 
   describe('#given applier returns conflict #when pull receives item', () => {
@@ -499,6 +539,73 @@ describe('SyncEngine', () => {
 
       const q2 = engine.getQuarantinedItems()
       expect(q2[0].attemptCount).toBe(3)
+    })
+  })
+
+  describe('#given a >100-ref page #when the breaker trips on slice 2', () => {
+    it('#then every remaining slice still runs before the page stops as breaker', async () => {
+      // pullChangesPage must run EVERY slice even when an early one trips the
+      // circuit breaker: the caller advances the cursor past the WHOLE page, so
+      // a slice skipped on breaker would neither be re-pulled nor marked
+      // corrupt — silent loss. 250 refs arrive as slices [100, 100, 50]; only
+      // slice 2 is poisoned, and all three POSTs must still happen.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+
+      const postSpy = vi
+        .spyOn(await import('./http-client'), 'postToServer')
+        .mockImplementation(async (_path, body) => {
+          const itemIds = (body as { itemIds: string[] }).itemIds
+          if (!itemIds.includes('task-100')) return { items: [] }
+          return {
+            items: itemIds.map((id) => ({
+              id,
+              type: 'task',
+              operation: 'update',
+              cryptoVersion: 1,
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+              signature: 'sig',
+              signerDeviceId: 'device-1'
+            }))
+          }
+        })
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockImplementation((input) => {
+        throw new Error(`decryption failed for ${input.id}`)
+      })
+
+      await engine.pull()
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      expect((pullCalls[2]?.[1] as { itemIds: string[] }).itemIds[0]).toBe('task-200')
+
+      // Breaker reported for the page: run refused (error state), and exactly
+      // the poisoned slice's items surfaced as corrupt.
+      expect(engine.currentState).toBe('error')
+      const corruptCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:item-corrupt'
+      )
+      expect(corruptCalls.map((call) => call[1]?.itemId)).toEqual(
+        refs.slice(100, 200).map((r) => r.id)
+      )
+      vi.restoreAllMocks()
     })
   })
 
