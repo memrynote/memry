@@ -212,7 +212,9 @@
       "noResultsFor": "Nema rezultata za \"",
       "result": "rezultat",
       "noResultsForQuery": "Nema rezultata za „{query}”",
-      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}"
+      "resultCount": "{count, plural, one {# rezultat} few {# rezultata} other {# rezultata}}",
+      "indexBuilding": "Izgradnja indeksa pretraživanja {done}/{total} — rezultati možda nisu potpuni",
+      "indexBuildingUnknown": "Izgradnja indeksa pretraživanja — rezultati možda nisu potpuni"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",

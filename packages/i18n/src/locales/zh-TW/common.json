@@ -212,7 +212,9 @@
       "noResultsFor": "未找到“",
       "result": "結果",
       "noResultsForQuery": "找不到「{query}」的結果",
-      "resultCount": "{count, plural, other {# 個結果}}"
+      "resultCount": "{count, plural, other {# 個結果}}",
+      "indexBuilding": "正在建立搜尋索引 {done}/{total} —— 結果可能不完整",
+      "indexBuildingUnknown": "正在建立搜尋索引 —— 結果可能不完整"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "搜尋並點擊項目以建立你的足跡",

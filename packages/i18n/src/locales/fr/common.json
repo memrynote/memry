@@ -212,7 +212,9 @@
       "noResultsFor": "Aucun résultat pour “",
       "result": "résultat",
       "noResultsForQuery": "Aucun résultat pour « {query} »",
-      "resultCount": "{count, plural, one {# résultat} many {# résultats} other {# résultats}}"
+      "resultCount": "{count, plural, one {# résultat} many {# résultats} other {# résultats}}",
+      "indexBuilding": "Création de l'index de recherche {done}/{total} — les résultats peuvent être incomplets",
+      "indexBuildingUnknown": "Création de l'index de recherche — les résultats peuvent être incomplets"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Recherchez et cliquez sur des éléments pour créer votre parcours",

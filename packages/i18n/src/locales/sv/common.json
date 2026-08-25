@@ -212,7 +212,9 @@
       "noResultsFor": "Inga resultat för “",
       "result": "resultat",
       "noResultsForQuery": "Inga resultat för ”{query}”",
-      "resultCount": "{count, plural, one {# resultat} other {# resultat}}"
+      "resultCount": "{count, plural, one {# resultat} other {# resultat}}",
+      "indexBuilding": "Bygger sökindex {done}/{total} — resultatet kan vara ofullständigt",
+      "indexBuildingUnknown": "Bygger sökindex — resultatet kan vara ofullständigt"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga din spårning",

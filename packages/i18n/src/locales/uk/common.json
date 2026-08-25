@@ -212,7 +212,9 @@
       "noResultsFor": "Немає результатів для “",
       "result": "результат",
       "noResultsForQuery": "Немає результатів для «{query}»",
-      "resultCount": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}}"
+      "resultCount": "{count, plural, one {# результат} few {# результати} many {# результатів} other {# результату}}",
+      "indexBuilding": "Створення пошукового індексу {done}/{total} — результати можуть бути неповними",
+      "indexBuildingUnknown": "Створення пошукового індексу — результати можуть бути неповними"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Шукайте та натискайте елементи, щоб будувати свій шлях",

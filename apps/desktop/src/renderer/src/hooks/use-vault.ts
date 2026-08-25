@@ -256,6 +256,8 @@ export function useVault() {
     isOpen: status?.isOpen ?? false,
     isIndexing: status?.isIndexing ?? false,
     indexProgress: status?.indexProgress ?? 0,
+    indexBuilt: status?.indexBuilt,
+    indexTotal: status?.indexTotal,
     vaultPath: status?.path ?? null,
 
     // Actions

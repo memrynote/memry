@@ -212,7 +212,9 @@
       "noResultsFor": "Keine Ergebnisse für „",
       "result": "Ergebnis",
       "noResultsForQuery": "Keine Ergebnisse für „{query}“",
-      "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}"
+      "resultCount": "{count, plural, one {# Ergebnis} other {# Ergebnisse}}",
+      "indexBuilding": "Suchindex wird erstellt {done}/{total} — Ergebnisse sind möglicherweise unvollständig",
+      "indexBuildingUnknown": "Suchindex wird erstellt — Ergebnisse sind möglicherweise unvollständig"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Suchen und klicken Sie auf Elemente, um Ihren Weg zu erstellen",

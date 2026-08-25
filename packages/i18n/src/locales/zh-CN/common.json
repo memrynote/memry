@@ -212,7 +212,9 @@
       "noResultsFor": "“ 未找到结果",
       "result": "结果",
       "noResultsForQuery": "未找到“{query}”的结果",
-      "resultCount": "{count, plural, other {# 条结果}}"
+      "resultCount": "{count, plural, other {# 条结果}}",
+      "indexBuilding": "正在构建搜索索引 {done}/{total} —— 结果可能不完整",
+      "indexBuildingUnknown": "正在构建搜索索引 —— 结果可能不完整"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "搜索并点击项目以建立你的轨迹",

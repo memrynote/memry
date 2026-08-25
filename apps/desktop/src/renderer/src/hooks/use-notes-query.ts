@@ -28,7 +28,15 @@ import {
   onTagsChanged,
   onFolderConfigUpdated
 } from '@/services/notes-service'
+import { onVaultIndexProgress } from '@/services/vault-service'
 import { tagsService } from '@/services/tags-service'
+
+/**
+ * Minimum spacing between notes-list refetches driven by background index-build
+ * progress. The build emits every 10 files; refetching the whole list that
+ * often on a large vault would drown the renderer.
+ */
+const INDEX_PROGRESS_INVALIDATE_MS = 2000
 
 // =============================================================================
 // Query Keys
@@ -248,12 +256,25 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
+    // The background index build (vault open on a not-yet-indexed vault) writes
+    // notes straight into the cache without per-note events, so the list would
+    // sit stale until something else touched it. Refresh on its progress beats,
+    // throttled — and always on the final 100% so the finished tree lands.
+    let lastIndexInvalidateAt = 0
+    const unsubIndexProgress = onVaultIndexProgress((progress) => {
+      const now = Date.now()
+      if (progress < 100 && now - lastIndexInvalidateAt < INDEX_PROGRESS_INVALIDATE_MS) return
+      lastIndexInvalidateAt = now
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    })
+
     return () => {
       unsubCreated()
       unsubUpdated()
       unsubDeleted()
       unsubRenamed()
       unsubMoved()
+      unsubIndexProgress()
     }
   }, [queryClient])
 

@@ -51,7 +51,7 @@ import { isSqliteCorruptError } from '../database/sqlite-errors'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
-import { indexVault, rebuildIndex } from './indexer'
+import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { trackMainEvent } from '../telemetry/track'
@@ -243,10 +243,20 @@ function emitStatusChanged(): void {
 }
 
 /**
- * Emit indexing progress event to all windows
+ * Emit indexing progress event to all windows.
+ *
+ * `counts` rides along on the status broadcast so the renderer can show
+ * "building x/y" while the background index build runs; the dedicated
+ * `vault:index-progress` channel keeps its plain percentage payload.
  */
-export function emitIndexProgress(progress: number): void {
-  updateStatus({ indexProgress: progress })
+export function emitIndexProgress(
+  progress: number,
+  counts?: { indexed: number; total: number }
+): void {
+  updateStatus({
+    indexProgress: progress,
+    ...(counts ? { indexBuilt: counts.indexed, indexTotal: counts.total } : {})
+  })
   broadcastToAllWindows('vault:index-progress', progress)
 }
 
@@ -369,6 +379,117 @@ async function reportAndRepairReconcileFailures(
 }
 
 /**
+ * The in-flight open-time index build, so closeVault() can stop it and wait it
+ * out before tearing down the databases it reads and writes.
+ */
+let backgroundIndexBuild: Promise<void> | null = null
+let backgroundIndexBuildCancelled = false
+
+/**
+ * Stop the in-flight open-time index build and wait it out.
+ *
+ * Two callers need this before they touch the index database: closeVault(),
+ * because teardown must not close better-sqlite3 handles under a running walk,
+ * and manual/structural rebuilds, because resetIndexDatabase() closes and
+ * recreates that same DB mid-walk — two concurrent passes interleave status
+ * writes and spam unique-constraint errors. A cancelled build is resumable by
+ * construction: the next open re-runs the walk and skips cached paths.
+ */
+async function stopBackgroundIndexBuild(): Promise<void> {
+  backgroundIndexBuildCancelled = true
+  if (backgroundIndexBuild) {
+    await backgroundIndexBuild
+    backgroundIndexBuild = null
+  }
+}
+
+interface BackgroundIndexBuildInput {
+  vaultPath: string
+  dataDb: ReturnType<typeof getDatabase>
+  indexHealth: IndexHealth
+  /** Non-null when openVault reset the index DB and a recovery event is owed. */
+  recoveredReason: IndexHealth | 'migration_failed' | null
+}
+
+/**
+ * The open-time index pass, off the blocking path (#1832).
+ *
+ * Walks the vault and indexes every file not already in the cache — fast on an
+ * existing vault whose index is current (every path is skipped), the full build
+ * after a reset. Runs with `isIndexing` still set, so the embedding projector
+ * keeps deferring, and ends the indexing window exactly where the old awaited
+ * code did: after the walk and the project-frontmatter backfill.
+ *
+ * Never throws. Cooperatively cancelled via `backgroundIndexBuildCancelled`
+ * (checked per file inside indexVault, and between phases here): closeVault()
+ * flips the flag and awaits the promise, so the walk stops within one file's
+ * work and never races the database teardown. A cancelled or crashed build is
+ * resumable by construction — the next open runs the same walk and skips the
+ * paths already cached.
+ */
+async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
+  const { vaultPath, dataDb, indexHealth, recoveredReason } = input
+  const startedAt = Date.now()
+  // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
+  // it only after awaiting this promise, and a vault switch closes first.
+  const isStale = (): boolean =>
+    backgroundIndexBuildCancelled || isShuttingDown || currentStatus.path !== vaultPath
+
+  try {
+    // Indexes every new/missing note; skips files already in cache, so this is
+    // fast for subsequent opens of an up-to-date vault.
+    const result = await indexVault(vaultPath, { shouldStop: isStale })
+    if (result.cancelled || isStale()) return
+
+    if (recoveredReason) {
+      // Notify renderer about recovery
+      emitIndexRecovered({
+        reason: recoveredReason,
+        filesIndexed: result.indexed,
+        duration: Date.now() - startedAt
+      })
+    } else if (indexHealth === 'fts_corrupt') {
+      // After indexVault, so the rebuild reads a populated note_cache.
+      await repairCorruptFtsIndexes(vaultPath)
+    }
+  } catch (error) {
+    logger.error('Indexing failed:', error)
+    trackMainError('vault', 'index_on_open', error)
+    // Continue anyway - watcher will pick up files
+  }
+
+  if (isStale()) return
+
+  // Write the snapshotted project links into note frontmatter. Here because
+  // this is the first point the index cache `setEntityProperties` resolves
+  // entities through is populated, and still inside the indexing window, so
+  // the embedding projector defers the notes it rewrites instead of embedding
+  // each one inline (#803).
+  try {
+    await applyProjectFrontmatterBackfill(dataDb)
+  } catch (error) {
+    logger.error('Project frontmatter backfill failed:', error)
+    trackMainError('vault', 'project_frontmatter_backfill', error)
+  }
+
+  if (isStale()) return
+
+  updateStatus({
+    isIndexing: false,
+    indexProgress: 100,
+    indexBuilt: undefined,
+    indexTotal: undefined
+  })
+
+  void reconcileProjections()
+    .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
+    .catch((error) => {
+      logger.error('Background projection reconcile failed:', error)
+      trackMainError('vault', 'projection_reconcile', error)
+    })
+}
+
+/**
  * Open a vault: initialize structure, run migrations, start database, index notes
  */
 async function openVault(vaultPath: string): Promise<void> {
@@ -467,71 +588,48 @@ async function openVault(vaultPath: string): Promise<void> {
   // otherwise the initial index uses default journal config + empty excludes.
   updateStatus({ isIndexing: true, indexProgress: 0, path: vaultPath })
 
+  // The file walk must not block the open (#1832: measured ~72.5s per 1,000
+  // notes, fully blocking first open). The awaited work below only guarantees
+  // an initialized index DB — cheap, no file walk — so the vault opens against
+  // whatever index exists; runBackgroundIndexBuild() repopulates it after
+  // isOpen, with progress on the existing index-progress plumbing.
+  let recoveredReason: IndexHealth | 'migration_failed' | null = null
   try {
     if (needsFullIndexRebuild) {
-      // Index is corrupt or missing - rebuild from source files
-      logger.warn(`Index ${indexHealth}, triggering rebuild...`)
-      const rebuildResult = await rebuildIndex(vaultPath)
-
-      // Notify renderer about recovery
-      emitIndexRecovered({
-        reason: indexHealth,
-        filesIndexed: rebuildResult.filesIndexed,
-        duration: rebuildResult.duration
-      })
+      // Index is corrupt or missing — reset the DB file now so every consumer
+      // sees a healthy (empty) index, and let the background build repopulate
+      // it from the source files.
+      logger.warn(`Index ${indexHealth}, resetting index database for rebuild...`)
+      resetIndexDatabase(indexDbPath)
+      recoveredReason = indexHealth
     } else {
       // Index is healthy - try to run migrations
       try {
         runIndexMigrations(indexDbPath)
         initIndexDatabase(indexDbPath)
         initializeFts(getIndexDatabase())
-
-        // Reload property definitions into DB cache before indexing
-        await propDefService.reload()
-
-        // Run indexing to pick up any new/missing notes
-        // This will skip files already in cache, so it's fast for subsequent opens
-        await indexVault(vaultPath)
-
-        // Repair before the renderer can run its first search. After
-        // indexVault, so the rebuild reads a populated note_cache.
-        if (indexHealth === 'fts_corrupt') {
-          await repairCorruptFtsIndexes(vaultPath)
-        }
       } catch (migrationError) {
         // Migration failed (e.g., table already exists) - rebuild index from scratch
-        logger.error('Migration failed, rebuilding index:', migrationError)
-        const rebuildResult = await rebuildIndex(vaultPath)
-
-        // Notify renderer about recovery
-        emitIndexRecovered({
-          reason: 'migration_failed',
-          filesIndexed: rebuildResult.filesIndexed,
-          duration: rebuildResult.duration
-        })
+        logger.error('Migration failed, resetting index database:', migrationError)
+        resetIndexDatabase(indexDbPath)
+        recoveredReason = 'migration_failed'
       }
     }
+
+    // Reload property definitions into DB cache before indexing
+    // so getPropertyType() finds correct types during note sync
+    await propDefService.reload()
   } catch (error) {
-    logger.error('Indexing failed:', error)
+    logger.error('Index database init failed:', error)
     trackMainError('vault', 'index_on_open', error)
     // Continue anyway - watcher will pick up files
   }
 
-  // Write the snapshotted project links into note frontmatter. Here because
-  // this is the first point the index cache `setEntityProperties` resolves
-  // entities through is populated on both branches above, and still inside the
-  // indexing window, so the embedding projector defers the notes it rewrites
-  // instead of embedding each one inline (#803).
-  try {
-    await applyProjectFrontmatterBackfill(dataDb)
-  } catch (error) {
-    logger.error('Project frontmatter backfill failed:', error)
-    trackMainError('vault', 'project_frontmatter_backfill', error)
-  }
-
-  updateStatus({ isIndexing: false, indexProgress: 100 })
-
-  // Start file watcher for external changes
+  // Start file watcher for external changes. Ahead of the background build:
+  // ignoreInitial keeps startup quiet, and edits made while the build walks the
+  // vault must not be missed. Watcher, sync apply and the walker all upsert the
+  // cache keyed by path (the walker skips paths already cached), so the three
+  // can interleave without duplicating entries.
   await startWatcher(vaultPath)
 
   // Mark the vault open BEFORE the sync runtime starts: the engine's first
@@ -540,24 +638,29 @@ async function openVault(vaultPath: string): Promise<void> {
   // is currently open" if the status isn't set yet.
   //
   // Vault-open must NOT wait on embeddings: the renderer only needs the index
-  // (built above) to render. Embedding is deferred out of the indexing pass —
-  // the embedding projector no-ops while isIndexing and records the note ids —
-  // so the ~23MB model load + per-note CPU inference never runs on the blocking
-  // path (this stranded imported vaults on the picker for minutes; #803). The
-  // backgrounded reconcileProjections() below embeds those deferred/missing
-  // notes after isOpen; a slow or failed model load can no longer block open.
+  // to render. Embedding is deferred out of the indexing pass — the embedding
+  // projector no-ops while isIndexing and records the note ids — so the ~23MB
+  // model load + per-note CPU inference never runs on the blocking path (this
+  // stranded imported vaults on the picker for minutes; #803). The background
+  // index build's tail runs reconcileProjections() to embed those
+  // deferred/missing notes; a slow or failed model load can no longer block open.
   updateStatus({
     isOpen: true,
     path: vaultPath,
     error: null
   })
 
-  void reconcileProjections()
-    .then((results) => reportAndRepairReconcileFailures(vaultPath, results))
-    .catch((error) => {
-      logger.error('Background projection reconcile failed:', error)
-      trackMainError('vault', 'projection_reconcile', error)
-    })
+  // Kick the file walk after isOpen so its tail (backfill, reconcile) runs
+  // against an open vault, exactly like the old post-open reconcile call did.
+  // The handle lets closeVault() stop the walk and wait it out before it tears
+  // the databases down underneath it.
+  backgroundIndexBuildCancelled = false
+  backgroundIndexBuild = runBackgroundIndexBuild({
+    vaultPath,
+    dataDb,
+    indexHealth,
+    recoveredReason
+  })
 
   // Register the agent IPC handlers before the sync runtime starts: agent chat
   // does not depend on sync, and if startSyncRuntime throws or stalls the agent
@@ -751,6 +854,9 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
 
   if (structuralChanged) {
     logger.info('Structural vault config changed, rebuilding index...')
+    // Same race as reindex(): the structural rebuild resets the index database,
+    // which must not land mid-walk of the open-time background build.
+    await stopBackgroundIndexBuild()
     updateStatus({ isIndexing: true, indexProgress: 0 })
     try {
       // Full rebuild, not incremental reindex: indexFile skips paths already in
@@ -774,6 +880,11 @@ export async function closeVault(): Promise<void> {
     return
   }
 
+  // Stop the background index build first: it holds the index DB handle and
+  // feeds the projection queue this teardown is about to drain and close. The
+  // flag stops the walk within one file's work, so the await is short.
+  await stopBackgroundIndexBuild()
+
   await stopVaultAgentServices()
 
   // Stop file watcher
@@ -796,6 +907,8 @@ export async function closeVault(): Promise<void> {
     path: null,
     isIndexing: false,
     indexProgress: 0,
+    indexBuilt: undefined,
+    indexTotal: undefined,
     error: null
   })
 }
@@ -921,6 +1034,11 @@ export async function reindex(): Promise<void> {
   if (!currentStatus.path) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
+
+  // Pre-#1832 the open-time walk always finished before isOpen, so a manual
+  // reindex could never overlap it. Backgrounded, it can: cancel+await the
+  // active build first so the two passes never share the index database.
+  await stopBackgroundIndexBuild()
 
   updateStatus({ isIndexing: true, indexProgress: 0 })
 

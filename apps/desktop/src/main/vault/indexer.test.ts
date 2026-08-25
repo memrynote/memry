@@ -28,19 +28,19 @@ import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 
 // Track emitIndexProgress calls
 const progressCalls: number[] = []
+const progressCounts: Array<{ indexed: number; total: number } | undefined> = []
 
 // Mock the vault/index module
 vi.mock('./index', () => ({
-  getConfig: vi.fn(
-    (): VaultConfig => ({
-      excludePatterns: ['.git', 'node_modules', '.trash'],
-      defaultNoteFolder: 'notes',
-      journalFolder: 'journal',
-      attachmentsFolder: 'attachments'
-    })
-  ),
-  emitIndexProgress: vi.fn((progress: number) => {
+  getConfig: vi.fn((): VaultConfig => ({
+    excludePatterns: ['.git', 'node_modules', '.trash'],
+    defaultNoteFolder: 'notes',
+    journalFolder: 'journal',
+    attachmentsFolder: 'attachments'
+  })),
+  emitIndexProgress: vi.fn((progress: number, counts?: { indexed: number; total: number }) => {
     progressCalls.push(progress)
+    progressCounts.push(counts)
   })
 }))
 
@@ -91,6 +91,7 @@ describe('indexer', () => {
   beforeEach(async () => {
     // Clear progress tracking
     progressCalls.length = 0
+    progressCounts.length = 0
     unreadablePaths.clear()
     for (const fn of Object.values(loggerMock)) fn.mockClear()
 
@@ -233,6 +234,32 @@ describe('indexer', () => {
       expect(result2.errors).toBe(0)
     })
 
+    // #1832: the background build's fast path claims a re-open of an unchanged
+    // vault is nearly free because every path is already cached. Pin that: the
+    // skip decision must come before any parse work, so the resumed walk reads
+    // zero file contents and skips exactly what the previous pass indexed.
+    it('#1832: fast-path re-walk over an unchanged vault reads nothing', async () => {
+      createTestNote(tempVault, { title: 'Note 1', content: 'Content 1' })
+      createTestNote(tempVault, { title: 'Note 2', content: 'Content 2' })
+      createTestNote(tempVault, { title: 'Note 3', content: 'Content 3' })
+
+      const first = await indexer.indexVault(tempVault.path)
+      expect(first.indexed).toBe(3)
+
+      const { readFile } = await import('fs/promises')
+      vi.mocked(readFile).mockClear()
+
+      const second = await indexer.indexVault(tempVault.path)
+
+      expect(second.cancelled).toBe(false)
+      expect(second.errors).toBe(0)
+      // Skipped count equals what the previous walk indexed...
+      expect(second.skipped).toBe(first.indexed)
+      expect(second.indexed).toBe(0)
+      // ...and no file was read or parsed to decide that.
+      expect(vi.mocked(readFile).mock.calls).toHaveLength(0)
+    })
+
     it('T374: emits progress events', async () => {
       // Create several notes
       for (let i = 0; i < 15; i++) {
@@ -245,6 +272,42 @@ describe('indexer', () => {
       expect(progressCalls.length).toBeGreaterThan(0)
       // Final progress should be 100
       expect(progressCalls[progressCalls.length - 1]).toBe(100)
+    })
+
+    it('#1832: rides built/total counts on progress events', async () => {
+      for (let i = 0; i < 12; i++) {
+        createTestNote(tempVault, { title: `Note ${i}`, content: `Content ${i}` })
+      }
+
+      await indexer.indexVault(tempVault.path)
+
+      const lastCounts = progressCounts[progressCounts.length - 1]
+      expect(lastCounts).toEqual({ indexed: 12, total: 12 })
+    })
+
+    it('#1832: stops the walk when shouldStop fires and resumes cleanly', async () => {
+      createTestNote(tempVault, { title: 'Note 1', content: 'Content 1' })
+      createTestNote(tempVault, { title: 'Note 2', content: 'Content 2' })
+      createTestNote(tempVault, { title: 'Note 3', content: 'Content 3' })
+
+      let checks = 0
+      const result = await indexer.indexVault(tempVault.path, {
+        // First task proceeds; every later task sees the stop signal.
+        shouldStop: () => ++checks > 1
+      })
+
+      expect(result.cancelled).toBe(true)
+      expect(result.indexed).toBeLessThan(3)
+      // A cancelled build emits no further progress beats.
+      expect(progressCounts.length).toBe(0)
+
+      // Resumable by construction: the next pass skips what landed and
+      // finishes the rest.
+      const resumed = await indexer.indexVault(tempVault.path)
+
+      expect(resumed.cancelled).toBe(false)
+      expect(resumed.indexed + resumed.skipped + resumed.errors).toBe(3)
+      expect(progressCounts[progressCounts.length - 1]).toEqual({ indexed: 3, total: 3 })
     })
 
     it('T374: extracts tags from frontmatter', async () => {

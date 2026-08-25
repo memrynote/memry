@@ -212,7 +212,9 @@
       "noResultsFor": "Walang mga resulta para sa \"",
       "result": "resulta",
       "noResultsForQuery": "Walang resulta para sa “{query}”",
-      "resultCount": "{count, plural, one {# resulta} other {# resulta}}"
+      "resultCount": "{count, plural, one {# resulta} other {# resulta}}",
+      "indexBuilding": "Binubuo ang index ng paghahanap {done}/{total} — maaaring hindi kumpleto ang mga resulta",
+      "indexBuildingUnknown": "Binubuo ang index ng paghahanap — maaaring hindi kumpleto ang mga resulta"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para buuin ang iyong trail",

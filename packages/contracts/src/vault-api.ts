@@ -43,6 +43,10 @@ export interface VaultStatus {
   path: string | null
   isIndexing: boolean
   indexProgress: number // 0-100
+  /** Files already visited by the in-flight background index build. Absent outside a build. */
+  indexBuilt?: number
+  /** Total files the in-flight background index build will visit. Absent outside a build. */
+  indexTotal?: number
   error: string | null
 }
 

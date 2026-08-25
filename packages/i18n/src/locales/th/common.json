@@ -212,7 +212,9 @@
       "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
       "result": "ผลลัพธ์",
       "noResultsForQuery": "ไม่พบผลลัพธ์สำหรับ “{query}”",
-      "resultCount": "{count, plural, other {ผลลัพธ์ # รายการ}}"
+      "resultCount": "{count, plural, other {ผลลัพธ์ # รายการ}}",
+      "indexBuilding": "กำลังสร้างดัชนีการค้นหา {done}/{total} — ผลลัพธ์อาจไม่ครบถ้วน",
+      "indexBuildingUnknown": "กำลังสร้างดัชนีการค้นหา — ผลลัพธ์อาจไม่ครบถ้วน"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "ค้นหาและคลิกที่รายการเพื่อสร้างเส้นทางของคุณ",
