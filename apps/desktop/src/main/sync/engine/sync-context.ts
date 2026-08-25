@@ -112,7 +112,15 @@ export const itemRefKey = (itemType: string, itemId: string): string => `${itemT
 export const PUSH_BATCH_SIZE = 100
 export const MAX_PUSH_ITERATIONS = 50
 export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
-export const PULL_PAGE_LIMIT = 100
+// The server's MAX_CHANGES_LIMIT for GET /sync/changes. Pinning 100 here made
+// a full sync spend 5x the requests on the 60/min `sync_changes` bucket for no
+// benefit — a changes page is refs only (no payloads), so a bigger page costs
+// almost nothing client-side. Payload fetching stays bounded regardless: the
+// page's ids are pulled in POST /sync/pull slices of PULL_REQUEST_MAX_IDS.
+export const PULL_PAGE_LIMIT = 500
+// The server's PullRequestSchema caps `itemIds` at 100 per POST /sync/pull —
+// exceeding it is a 400, so a changes page is always pulled in slices of this.
+export const PULL_REQUEST_MAX_IDS = 100
 export const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
 /**
  * Hard cap on live corrupt-item cooldown entries.

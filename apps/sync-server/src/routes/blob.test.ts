@@ -53,12 +53,25 @@ vi.mock('../middleware/paid-sync', () => ({
   })
 }))
 
+const { blobRateLimiterOptions } = vi.hoisted(() => ({
+  blobRateLimiterOptions: [] as Array<{
+    keyPrefix: string
+    maxRequests: number
+    windowSeconds: number
+  }>
+}))
+
 vi.mock('../middleware/rate-limit', () => ({
-  createRateLimiter: vi.fn().mockReturnValue(
-    vi.fn().mockImplementation(async (_c: any, next: any) => {
-      await next()
-    })
-  )
+  createRateLimiter: vi
+    .fn()
+    .mockImplementation(
+      (options: { keyPrefix: string; maxRequests: number; windowSeconds: number }) => {
+        blobRateLimiterOptions.push(options)
+        return vi.fn().mockImplementation(async (_c: any, next: any) => {
+          await next()
+        })
+      }
+    )
 }))
 
 import {
@@ -121,36 +134,20 @@ describe('blob routes', () => {
         size_bytes: 5,
         ref_count: 1
       },
-      existingChunk: null,
       statements: []
     }
     env = createEnv(state)
   })
 
-  it('uploads a simple blob and records storage usage', async () => {
-    vi.mocked(env.STORAGE.head).mockResolvedValueOnce(null)
-
+  it('rejects the removed simple-blob PUT path', async () => {
+    // The simple-blob PUT was dead as written (its 500MB check sat behind the
+    // 10MB body-limit middleware) and no client ever called it — it must stay
+    // gone. GET/DELETE for item blobs remain.
     const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hello' }, env)
 
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ blob_key: 'blob-1', size: 5, etag: 'etag-1' })
-    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 5)
-    expect(reserveStorage).toHaveBeenCalledWith(env.DB, 'user-1', 5)
-    expect(putBlob).toHaveBeenCalledWith(
-      env.STORAGE,
-      'user-1/vaults/vault-1/items/blob-1',
-      expect.any(ArrayBuffer),
-      'user-1'
-    )
-  })
-
-  it('accounts for only the overwrite delta when uploading a simple blob', async () => {
-    const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hi' }, env)
-
-    expect(res.status).toBe(200)
-    expect(assertFileSizeAllowed).toHaveBeenCalledWith(env.DB, 'user-1', 2)
+    expect(res.status).toBe(404)
+    expect(putBlob).not.toHaveBeenCalled()
     expect(reserveStorage).not.toHaveBeenCalled()
-    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -3)
   })
 
   it('surfaces the original storage error when the quota refund also fails', async () => {
@@ -164,7 +161,11 @@ describe('blob routes', () => {
       new Error('D1_ERROR: Network connection lost.')
     )
 
-    const res = await app.request('/blob/blob-1', { method: 'PUT', body: 'hello' }, env)
+    const res = await app.request(
+      '/attachments/att-1/manifest',
+      { method: 'PUT', body: 'manifest' },
+      env
+    )
 
     // #then the refund failure must not replace the real cause: the client sees
     // the typed storage error, not an UNHANDLED_ERROR leaked from the refund.
@@ -173,7 +174,7 @@ describe('blob routes', () => {
       error: { code: ErrorCodes.STORAGE_UPLOAD_FAILED }
     })
     // the refund was still attempted (its failure is swallowed + logged)
-    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -5)
+    expect(adjustStorageUsed).toHaveBeenCalledWith(env.DB, 'user-1', -8)
   })
 
   it('downloads a simple blob with content length headers', async () => {
@@ -316,7 +317,6 @@ describe('blob routes', () => {
 
   it('uploads a new chunk and records its hash in the session', async () => {
     state.session = createSession({ uploaded_chunks: '[]' })
-    state.existingChunk = null
 
     const res = await app.request(
       '/attachments/upload/session-1/chunk/0',
@@ -359,9 +359,14 @@ describe('blob routes', () => {
     )
   })
 
-  it('increments ref_count instead of storing an already-known chunk', async () => {
+  it('stores a chunk with a single upsert and no dedup lookup', async () => {
+    // Dedup keyed on the hash of the ENCRYPTED chunk, which a fresh random
+    // nonce makes unique per encryption — the pre-flight SELECT could never
+    // hit and was a wasted D1 round trip per chunk. The write is one upsert:
+    // its ON CONFLICT arm still increments ref_count for the rare
+    // same-bytes retry, keeping the UNIQUE (user_id, vault_id, hash)
+    // constraint from turning that retry into a 500.
     state.session = createSession({ uploaded_chunks: '[]' })
-    state.existingChunk = { id: 'existing-chunk', r2_key: 'user-1/vaults/vault-1/chunks/hash' }
 
     const res = await app.request(
       '/attachments/upload/session-1/chunk/0',
@@ -373,9 +378,14 @@ describe('blob routes', () => {
     )
 
     expect(res.status).toBe(200)
-    expect(putBlob).not.toHaveBeenCalled()
-    expect(state.statements.some((entry) => entry.sql.includes('ref_count = ref_count + 1'))).toBe(
-      true
+    expect(await res.json()).toEqual({ success: true, uploadedChunks: 1 })
+    expect(putBlob).toHaveBeenCalledTimes(1)
+    expect(
+      state.statements.some((entry) => entry.sql.includes('SELECT id, r2_key FROM blob_chunks'))
+    ).toBe(false)
+    const insert = state.statements.find((entry) => entry.sql.includes('INSERT INTO blob_chunks'))
+    expect(insert?.sql).toContain(
+      'ON CONFLICT (user_id, vault_id, hash) DO UPDATE SET ref_count = ref_count + 1'
     )
   })
 
@@ -716,5 +726,21 @@ describe('blob routes', () => {
     state.session = createSession({ expires_at: Math.floor(Date.now() / 1000) - 1 })
     res = await app.request('/attachments/upload/expired', { method: 'GET' }, env)
     expect(res.status).toBe(410)
+  })
+
+  describe('rate limit wiring', () => {
+    const optionsFor = (keyPrefix: string) =>
+      blobRateLimiterOptions.find((o) => o.keyPrefix === keyPrefix)
+
+    it('gives blob_download attachment-bootstrap throughput without renaming the bucket', () => {
+      // #then — the #1829 download queue paces against this exact bucket key
+      // and window; only the numeric ceiling is allowed to move.
+      expect(optionsFor('blob_download')).toMatchObject({ maxRequests: 600, windowSeconds: 60 })
+    })
+
+    it('gives chunk_upload room for concurrent large-file uploads', () => {
+      // #then — ~1MB chunks, so 300/min ≈ 300MB/min per user instead of 100.
+      expect(optionsFor('chunk_upload')).toMatchObject({ maxRequests: 300, windowSeconds: 60 })
+    })
   })
 })

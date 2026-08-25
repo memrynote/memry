@@ -32,7 +32,13 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
-import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop, itemRefKey } from './sync-context'
+import {
+  SYNC_STATE_KEYS,
+  PULL_REQUEST_MAX_IDS,
+  YIELD_EVERY_N_ITEMS,
+  yieldToEventLoop,
+  itemRefKey
+} from './sync-context'
 
 const log = createLogger('PullCoordinator')
 
@@ -318,12 +324,31 @@ export class PullCoordinator {
     )
     if (itemIds.length === 0) return 'none'
 
-    const pageResult = await this.processPage(itemIds, runState)
-    runState.pulledCount += pageResult.applied
-    runState.totalConflictsResolved += pageResult.conflicts
-    await this.applyCrdtBatch(runState)
+    // A changes page holds up to PULL_PAGE_LIMIT (500) refs, but POST
+    // /sync/pull accepts at most PULL_REQUEST_MAX_IDS (100) ids, so the page is
+    // pulled in slices — which also keeps decrypt/apply memory at the profile
+    // it had when the page size WAS 100. Stop semantics per slice:
+    // - 'transition'/'mismatch' return immediately: the caller does not
+    //   advance the cursor, so unpulled slices re-arrive next cycle.
+    // - 'breaker' must NOT abort the remaining slices: the caller advances the
+    //   cursor past the WHOLE page, so a slice skipped here would neither be
+    //   re-pulled nor marked corrupt — silent loss. Every slice runs (each
+    //   marks its own failures), then the breaker is reported.
+    let breakerTripped = false
+    for (let i = 0; i < itemIds.length; i += PULL_REQUEST_MAX_IDS) {
+      const slice = itemIds.slice(i, i + PULL_REQUEST_MAX_IDS)
+      const pageResult = await this.processPage(slice, runState)
+      runState.pulledCount += pageResult.applied
+      runState.totalConflictsResolved += pageResult.conflicts
+      await this.applyCrdtBatch(runState)
 
-    return pageResult.stop
+      if (pageResult.stop === 'transition' || pageResult.stop === 'mismatch') {
+        return pageResult.stop
+      }
+      if (pageResult.stop === 'breaker') breakerTripped = true
+    }
+
+    return breakerTripped ? 'breaker' : 'none'
   }
 
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {

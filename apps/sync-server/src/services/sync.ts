@@ -27,6 +27,7 @@ import { adjustStorageUsed, checkQuota, reserveStorage } from './quota'
 const MAX_ENCRYPTED_DATA_BYTES = 5 * 1024 * 1024
 const DEFAULT_CHANGES_LIMIT = 100
 const MAX_CHANGES_LIMIT = 500
+const MAX_MANIFEST_PAGE_LIMIT = 1000
 const RECORD_SYNC_ITEM_TYPE_SET = new Set<RecordSyncItemType>(RECORD_SYNC_ITEM_TYPES)
 const RECORD_CLOCK_REQUIRED_TYPE_SET = new Set<RecordSyncItemType>(RECORD_CLOCK_REQUIRED_ITEM_TYPES)
 
@@ -561,24 +562,49 @@ export const getSyncStatus = async (
   }
 }
 
+/** Opt-in manifest pagination window. Absent = the original everything-at-once response. */
+export interface ManifestPage {
+  /** Return rows with server_cursor strictly greater than this. 0 starts from the beginning. */
+  cursor: number
+  /** Page size; capped at MAX_MANIFEST_PAGE_LIMIT. */
+  limit: number
+}
+
 export const getManifest = async (
   db: D1Database,
   userId: string,
   vaultId = 'default',
-  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES
+  types: readonly RecordSyncItemType[] = LEGACY_RECORD_SYNC_ITEM_TYPES,
+  page?: ManifestPage
 ): Promise<RecordSyncManifest> => {
   if (types.length === 0) {
     return { items: [], serverTime: Math.floor(Date.now() / 1000) }
   }
 
+  // Pagination keys on server_cursor: it is unique per user and only ever
+  // grows, so pages can neither skip nor split rows. A row updated BETWEEN
+  // pages gets a new cursor greater than any page already served — it may
+  // appear twice across the run (once at its old cursor, again at its new one),
+  // never zero times; the client's (type, id) map dedups the repeat. Old
+  // clients pass no page and get the complete single response they always did.
+  const effectiveLimit = page ? Math.min(page.limit, MAX_MANIFEST_PAGE_LIMIT) : null
+
   const rows = await db
     .prepare(
-      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector
+      `SELECT item_id, item_type, version, updated_at, size_bytes, state_vector, server_cursor
        FROM sync_items
        WHERE user_id = ? AND vault_id = ? AND deleted_at IS NULL AND item_type IN (${placeholdersFor(types)})
-       ORDER BY server_cursor ASC`
+       ${page ? 'AND server_cursor > ?' : ''}
+       ORDER BY server_cursor ASC
+       ${effectiveLimit !== null ? 'LIMIT ?' : ''}`
     )
-    .bind(userId, vaultId, ...types)
+    .bind(
+      userId,
+      vaultId,
+      ...types,
+      // +1 row probes for another page without a COUNT query.
+      ...(page && effectiveLimit !== null ? [page.cursor, effectiveLimit + 1] : [])
+    )
     .all<{
       item_id: string
       item_type: string
@@ -586,9 +612,14 @@ export const getManifest = async (
       updated_at: number
       size_bytes: number
       state_vector: string | null
+      server_cursor: number
     }>()
 
-  const items = (rows.results ?? [])
+  const allRows = rows.results ?? []
+  const hasMore = effectiveLimit !== null && allRows.length > effectiveLimit
+  const pageRows = hasMore ? allRows.slice(0, effectiveLimit) : allRows
+
+  const items = pageRows
     .filter((row) => isSupportedRecordSyncItemType(row.item_type))
     .map((row) => ({
       id: row.item_id,
@@ -598,7 +629,15 @@ export const getManifest = async (
       size: row.size_bytes
     }))
 
-  return { items, serverTime: Math.floor(Date.now() / 1000) }
+  // nextCursor comes from the last row KEPT, unsupported types included — the
+  // filter above must not create a gap the next page would then skip over.
+  const lastRow = pageRows[pageRows.length - 1]
+
+  return {
+    items,
+    serverTime: Math.floor(Date.now() / 1000),
+    ...(hasMore && lastRow ? { nextCursor: lastRow.server_cursor } : {})
+  }
 }
 
 export const getChanges = async (
@@ -822,4 +861,9 @@ export const getItem = async (
   }
 }
 
-export { DEFAULT_CHANGES_LIMIT, MAX_CHANGES_LIMIT, MAX_ENCRYPTED_DATA_BYTES }
+export {
+  DEFAULT_CHANGES_LIMIT,
+  MAX_CHANGES_LIMIT,
+  MAX_ENCRYPTED_DATA_BYTES,
+  MAX_MANIFEST_PAGE_LIMIT
+}

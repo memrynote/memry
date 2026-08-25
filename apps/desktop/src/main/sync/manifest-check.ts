@@ -25,10 +25,16 @@ import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { getIndexDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 
-
 const log = createLogger('ManifestCheck')
 
 const MIN_INTERVAL_MS = 30 * 60 * 1000
+
+// Page size for GET /sync/manifest — the server caps pages at its
+// MAX_MANIFEST_PAGE_LIMIT (1000), so asking for more is just clamped. An old
+// server ignores the pagination params entirely and answers with the complete
+// manifest and no nextCursor, which the paging loop below reads as "single
+// page, done" — both deploy orders stay correct.
+const MANIFEST_PAGE_LIMIT = 1000
 
 interface ManifestCheckDeps {
   db: DrizzleDb
@@ -67,20 +73,42 @@ export async function checkManifestIntegrity(
   if (!token) return { checkedAt: now, rePullNeeded: false, serverOnlyCount: 0, performed: false }
 
   try {
-    const result = await withRetry(
-      () => getFromServer<RecordSyncManifest>('/sync/manifest', token),
-      {
-        isOnline: deps.isOnline
+    // The diff below needs the COMPLETE server inventory, so every page must
+    // land before any comparison. A row updated mid-pagination re-appears at a
+    // later cursor rather than vanishing (the server pages over the
+    // monotonically-growing server_cursor), so the only cross-page artifact is
+    // a duplicate ref — and the (type, id) map dedups those by construction.
+    const serverItems: RecordSyncManifest['items'] = []
+    let cursor = 0
+    for (;;) {
+      const result = await withRetry(
+        () =>
+          getFromServer<RecordSyncManifest>(
+            `/sync/manifest?limit=${MANIFEST_PAGE_LIMIT}&cursor=${cursor}`,
+            token
+          ),
+        {
+          isOnline: deps.isOnline
+        }
+      )
+      serverItems.push(...result.value.items)
+
+      const next = result.value.nextCursor
+      if (next === undefined) break
+      if (next <= cursor) {
+        // A cursor that fails to advance would loop forever; treat the pages
+        // gathered so far as the manifest rather than spinning.
+        log.warn('Manifest pagination cursor did not advance — stopping early', { cursor, next })
+        break
       }
-    )
+      cursor = next
+    }
 
     // Ids repeat across item types (project 'inbox' vs tag 'inbox'), so both
     // diff directions must compare (type, id) pairs — an id-only diff hides a
     // missing item behind its same-id sibling of another type, and counts a
     // quarantined sibling as "server-only" forever (endless re-pull loop).
-    const serverItemMap = new Map(
-      result.value.items.map((item) => [itemRefKey(item.type, item.id), item])
-    )
+    const serverItemMap = new Map(serverItems.map((item) => [itemRefKey(item.type, item.id), item]))
 
     const localRefs = getLocalSyncableRefs(deps.db)
     // A note held locally counts as present whether the server row calls it
@@ -126,7 +154,9 @@ export async function checkManifestIntegrity(
       }
     }
 
-    const serverOnlyIds = result.value.items.filter(
+    // Values of the dedup map, not the raw page concatenation — a ref repeated
+    // across pages must not double-count as two missing items.
+    const serverOnlyIds = Array.from(serverItemMap.values()).filter(
       (item) =>
         // `task_activity` is exempt in this direction only. Rows past the
         // retention cutoff are skipped on apply and pruned locally by design, so

@@ -69,15 +69,27 @@ const blobUploadLimit = createRateLimiter({
   windowSeconds: 60
 })
 
+// 600/min (was 200): a bootstrap of an attachment-heavy vault downloads one GET
+// per chunk plus manifest reads, and the #1829 download queue paces itself
+// against THIS bucket — the ceiling is the throughput knob, and 200/min made a
+// 200-chunk vault take a full minute per device pair sharing the per-user
+// bucket. 600 matches the crdt_pull ceiling and is still trivial load per
+// request (one indexed D1 row + one R2 read). Only the number may change here:
+// the key prefix and 60s window are a contract with the client's pacing.
 const blobDownloadLimit = createRateLimiter({
   keyPrefix: 'blob_download',
-  maxRequests: 200,
+  maxRequests: 600,
   windowSeconds: 60
 })
 
+// 300/min (was 100): chunks are ~1MB, so 100/min capped uploads at ~100MB/min
+// per user — a single large file saturated the bucket for everything else.
+// Each request is one R2 put plus one D1 upsert, so 300/min is still cheap
+// server-side while allowing ~3 concurrent large-file uploads. Same contract
+// note as blob_download: only the numeric ceiling may change.
 const chunkUploadLimit = createRateLimiter({
   keyPrefix: 'chunk_upload',
-  maxRequests: 100,
+  maxRequests: 300,
   windowSeconds: 60
 })
 
@@ -97,42 +109,13 @@ const dereferenceLimit = createRateLimiter({
 // Simple Blob Operations
 // ============================================================================
 
-blob.put('/blob/:blob_key', blobUploadLimit, async (c) => {
-  const userId = c.get('userId')!
-  const vaultId = c.get('vaultId')!
-  const blobKey = c.req.param('blob_key')
-  const key = generateBlobKey(userId, blobKey, vaultId)
-
-  const body = await c.req.arrayBuffer()
-  if (body.byteLength > MAX_FILE_SIZE) {
-    throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Blob exceeds 500MB limit', 413)
-  }
-
-  await assertFileSizeAllowed(c.env.DB, userId, body.byteLength)
-  const existing = await c.env.STORAGE.head(key)
-  const deltaBytes = body.byteLength - (existing?.size ?? 0)
-  if (deltaBytes > 0) {
-    await reserveStorage(c.env.DB, userId, deltaBytes)
-  }
-
-  let result: R2Object
-  try {
-    result = await putBlob(c.env.STORAGE, key, body, userId)
-  } catch (error) {
-    await refundReservation(c.env.DB, userId, deltaBytes, { operation: 'putBlob', userId, key })
-    throw error
-  }
-
-  if (deltaBytes < 0) {
-    await adjustStorageUsed(c.env.DB, userId, deltaBytes)
-  }
-
-  return c.json({
-    blob_key: blobKey,
-    size: body.byteLength,
-    etag: result.etag
-  })
-})
+// There is deliberately no PUT here. The old simple-blob PUT advertised a 500MB
+// ceiling that was unreachable — the body-limit middleware (index.ts) caps blob
+// routes at 10MB, so the route's own size check could never fire — and no
+// client, current or historical, has ever called it (all attachment uploads go
+// through the chunked /attachments/upload sessions below). Removed rather than
+// fixed; GET/DELETE stay because item blobs written server-side remain
+// addressable.
 
 blob.get('/blob/:blob_key', blobDownloadLimit, async (c) => {
   const userId = c.get('userId')!
@@ -330,27 +313,25 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
 
   const chunkR2Key = generateAttachmentChunkKey(userId, vaultId, chunkHash)
 
-  const existingChunk = await c.env.DB.prepare(
-    'SELECT id, r2_key FROM blob_chunks WHERE user_id = ? AND vault_id = ? AND hash = ?'
+  // No dedup lookup: the hash is of the ENCRYPTED chunk, and every encryption
+  // uses a fresh random nonce, so the same plaintext never reproduces a hash —
+  // a pre-flight SELECT was a guaranteed-miss D1 round trip on every chunk.
+  // The write must still be an upsert, not a plain INSERT: blob_chunks has
+  // UNIQUE (user_id, vault_id, hash), and a client retrying the SAME encrypted
+  // bytes (chunk landed but the session append below failed mid-request) would
+  // otherwise 500 on the constraint. On that rare conflict the ref_count
+  // increment and the idempotent R2 overwrite of the identical bytes reproduce
+  // exactly what the old lookup-then-branch path did.
+  await putBlob(c.env.STORAGE, chunkR2Key, chunkData, userId)
+
+  const now = Math.floor(Date.now() / 1000)
+  await c.env.DB.prepare(
+    `INSERT INTO blob_chunks (id, hash, user_id, vault_id, r2_key, size_bytes, ref_count, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+     ON CONFLICT (user_id, vault_id, hash) DO UPDATE SET ref_count = ref_count + 1`
   )
-    .bind(userId, vaultId, chunkHash)
-    .first<{ id: string; r2_key: string }>()
-
-  if (existingChunk) {
-    await c.env.DB.prepare('UPDATE blob_chunks SET ref_count = ref_count + 1 WHERE id = ?')
-      .bind(existingChunk.id)
-      .run()
-  } else {
-    await putBlob(c.env.STORAGE, chunkR2Key, chunkData, userId)
-
-    const now = Math.floor(Date.now() / 1000)
-    await c.env.DB.prepare(
-      `INSERT INTO blob_chunks (id, hash, user_id, vault_id, r2_key, size_bytes, ref_count, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
-    )
-      .bind(crypto.randomUUID(), chunkHash, userId, vaultId, chunkR2Key, chunkData.byteLength, now)
-      .run()
-  }
+    .bind(crypto.randomUUID(), chunkHash, userId, vaultId, chunkR2Key, chunkData.byteLength, now)
+    .run()
 
   // Append atomically in one statement. Clients upload up to MAX_CONCURRENT_CHUNKS
   // chunks in parallel, so a read-modify-write of the whole array here loses

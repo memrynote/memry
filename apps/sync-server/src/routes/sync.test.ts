@@ -515,14 +515,66 @@ describe('sync routes', () => {
       expect(json).toEqual({ items: [], serverTime: 1000 })
     })
 
-    it('should pass userId and negotiated types to getManifest', async () => {
-      // #when
+    it('should pass userId and negotiated types to getManifest, with NO page for a param-less call', async () => {
+      // #when — the legacy call every shipped client makes
       await app.request('/sync/manifest', { method: 'GET' }, env, executionCtx)
 
+      // #then — page stays undefined so the service serves the complete manifest
+      expect(getManifest).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        undefined
+      )
+    })
+
+    it('should pass an opt-in page through to getManifest', async () => {
+      // #when
+      await app.request('/sync/manifest?limit=200&cursor=42', { method: 'GET' }, env, executionCtx)
+
       // #then
-      expect(getManifest).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', [
-        ...LEGACY_RECORD_SYNC_ITEM_TYPES
-      ])
+      expect(getManifest).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        { cursor: 42, limit: 200 }
+      )
+    })
+
+    it('should default the page cursor to 0 when only limit is given', async () => {
+      // #when
+      await app.request('/sync/manifest?limit=200', { method: 'GET' }, env, executionCtx)
+
+      // #then
+      expect(getManifest).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        [...LEGACY_RECORD_SYNC_ITEM_TYPES],
+        { cursor: 0, limit: 200 }
+      )
+    })
+
+    it('should reject invalid pagination params', async () => {
+      // #then — bad limit
+      let res = await app.request('/sync/manifest?limit=abc', { method: 'GET' }, env, executionCtx)
+      expect(res.status).toBe(400)
+
+      // #then — bad cursor
+      res = await app.request(
+        '/sync/manifest?limit=10&cursor=-1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
+
+      // #then — a cursor without a limit would silently re-serve already-paged
+      // rows as a full manifest, so it is a malformed request
+      res = await app.request('/sync/manifest?cursor=5', { method: 'GET' }, env, executionCtx)
+      expect(res.status).toBe(400)
     })
   })
 
@@ -1645,5 +1697,11 @@ describe('CRDT rate limit wiring', () => {
     // #then — out of scope for this change
     expect(optionsFor('sync_pull')?.identifier).toBeUndefined()
     expect(optionsFor('sync_push')?.identifier).toBeUndefined()
+  })
+
+  it('gives the manifest bucket room for a paginated integrity check', () => {
+    // #then — a paginated client spends ceil(rows / 1000) requests per check
+    // instead of 1; 30/min keeps a 30k-row vault inside a single window.
+    expect(optionsFor('sync_manifest')).toMatchObject({ maxRequests: 30, windowSeconds: 60 })
   })
 })

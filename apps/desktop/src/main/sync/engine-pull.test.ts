@@ -30,6 +30,46 @@ describe('SyncEngine', () => {
       )
       vi.restoreAllMocks()
     })
+
+    it('#then requests 500-ref changes pages and slices the pull into 100-id POSTs', async () => {
+      // The server's PullRequestSchema rejects more than 100 itemIds per POST
+      // with a 400 that drops the whole page — so a full 500-ref changes page
+      // MUST arrive as 100-id slices, every id exactly once, in page order.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      const getSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+      const postSpy = vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: []
+      })
+
+      await engine.pull()
+
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/sync/changes?limit=500'),
+        'test-token'
+      )
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      const allIds = pullCalls.flatMap(([, body]) => (body as { itemIds: string[] }).itemIds)
+      expect(allIds).toEqual(refs.map((r) => r.id))
+      vi.restoreAllMocks()
+    })
   })
 
   describe('#given applier returns conflict #when pull receives item', () => {
