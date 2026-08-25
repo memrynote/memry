@@ -16,6 +16,7 @@ import {
   setAccountVaultsCache,
   upsertVault
 } from '../store'
+import { abandonBootstrap, beginBootstrap, markBootstrapInteractive } from './bootstrap-metrics'
 import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
@@ -180,28 +181,48 @@ export async function downloadRemoteVault(input: {
   const existing = getVaults().find((v) => v.vaultUuid === input.vaultUuid)
   if (existing) return selectVault({ path: existing.path })
 
-  const cached = getAccountVaultsCache()?.vaults.find((v) => v.vaultUuid === input.vaultUuid)
-  const parent = input.parentPath ?? defaultParentDir()
-  fs.mkdirSync(parent, { recursive: true })
-  const folder = suggestVaultFolder(
-    { vaultUuid: input.vaultUuid, name: cached?.name ?? null },
-    parent
-  )
+  // A cloud-only vault materializing locally IS the fresh-device bootstrap:
+  // open the measurement window before any provisioning work happens (#1835).
+  beginBootstrap('vault_download')
 
-  const { createDormantVault } = await import('./vault-provisioning')
-  createDormantVault(folder, input.vaultUuid)
-  // createDormantVault repoints the data.db singleton — open the new vault now
-  // so the singleton ends on the vault the user is actually in.
-  const result = await selectVault({ path: folder })
+  // Everything past this point can fail (mkdir, provisioning, opening the
+  // vault). The window is module-global and one-shot: a download that dies
+  // here must close it, or steady-state bytes pollute a window whose t0
+  // describes a download that never happened.
+  try {
+    const cached = getAccountVaultsCache()?.vaults.find((v) => v.vaultUuid === input.vaultUuid)
+    const parent = input.parentPath ?? defaultParentDir()
+    fs.mkdirSync(parent, { recursive: true })
+    const folder = suggestVaultFolder(
+      { vaultUuid: input.vaultUuid, name: cached?.name ?? null },
+      parent
+    )
 
-  // selectVault stamps the uuid best-effort from the data.db; here the uuid is
-  // known authoritatively, and losing (or keeping a stale foreign) uuid means
-  // the next Download of this vault mints yet another empty folder. Enforce it
-  // on the registry row.
-  const row = getVaults().find((v) => v.path === folder)
-  if (row && row.vaultUuid !== input.vaultUuid) {
-    upsertVault({ ...row, vaultUuid: input.vaultUuid })
+    const { createDormantVault } = await import('./vault-provisioning')
+    createDormantVault(folder, input.vaultUuid)
+    // createDormantVault repoints the data.db singleton — open the new vault now
+    // so the singleton ends on the vault the user is actually in.
+    const result = await selectVault({ path: folder })
+    if (!result.success) {
+      // The vault did not open — there is no bootstrap to measure and no
+      // interactive mark to fire.
+      abandonBootstrap()
+      return result
+    }
+    markBootstrapInteractive()
+
+    // selectVault stamps the uuid best-effort from the data.db; here the uuid is
+    // known authoritatively, and losing (or keeping a stale foreign) uuid means
+    // the next Download of this vault mints yet another empty folder. Enforce it
+    // on the registry row.
+    const row = getVaults().find((v) => v.path === folder)
+    if (row && row.vaultUuid !== input.vaultUuid) {
+      upsertVault({ ...row, vaultUuid: input.vaultUuid })
+    }
+
+    return result
+  } catch (error) {
+    abandonBootstrap()
+    throw error
   }
-
-  return result
 }

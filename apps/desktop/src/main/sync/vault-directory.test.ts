@@ -48,8 +48,15 @@ vi.mock('./vault-provisioning', () => ({
   createDormantVault: vi.fn()
 }))
 
+vi.mock('./bootstrap-metrics', () => ({
+  beginBootstrap: vi.fn(),
+  markBootstrapInteractive: vi.fn(),
+  abandonBootstrap: vi.fn()
+}))
+
 import { getFromServer, postToServer, deleteFromServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
+import { beginBootstrap, markBootstrapInteractive, abandonBootstrap } from './bootstrap-metrics'
 import {
   getAccountVaultsCache,
   getCurrentVaultPath,
@@ -343,6 +350,49 @@ describe('vault-directory', () => {
       expect(upsertVault).toHaveBeenCalledWith(
         expect.objectContaining({ path: `${parent}/beta`, vaultUuid: 'uuid-b' })
       )
+    })
+
+    // #1835 review finding: beginBootstrap opens a module-global window before
+    // provisioning. If provisioning throws, the window used to stay open and
+    // steady-state bytes polluted it at the next drainable fullSync (stale t0,
+    // foreign channels).
+    it('abandons the bootstrap window when provisioning throws', async () => {
+      const parent = '/tmp/__memry-vd-test__'
+      vi.mocked(getVaults).mockReturnValue([])
+      // Sync throw, like the real fs-backed implementation — a rejected
+      // promise would go unobserved because the call site does not await.
+      // Once-only: the implementation would otherwise leak into later tests,
+      // which only clear calls, not implementations.
+      vi.mocked(createDormantVault).mockImplementationOnce(() => {
+        throw new Error('disk full')
+      })
+
+      await expect(
+        downloadRemoteVault({ vaultUuid: 'uuid-b', parentPath: parent })
+      ).rejects.toThrow('disk full')
+
+      // The window was opened (the download seam is the truer t0)...
+      expect(beginBootstrap).toHaveBeenCalledWith('vault_download')
+      // ...and closed without emitting, so no later drain can fire with the
+      // stale start time.
+      expect(abandonBootstrap).toHaveBeenCalled()
+      expect(markBootstrapInteractive).not.toHaveBeenCalled()
+    })
+
+    it('abandons the bootstrap window when the vault fails to open', async () => {
+      const parent = '/tmp/__memry-vd-test__'
+      vi.mocked(getVaults).mockReturnValue([])
+      vi.mocked(selectVault).mockResolvedValueOnce({
+        success: false,
+        vault: undefined as never,
+        error: 'open failed'
+      })
+
+      const result = await downloadRemoteVault({ vaultUuid: 'uuid-c', parentPath: parent })
+
+      expect(result.success).toBe(false)
+      expect(abandonBootstrap).toHaveBeenCalled()
+      expect(markBootstrapInteractive).not.toHaveBeenCalled()
     })
   })
 

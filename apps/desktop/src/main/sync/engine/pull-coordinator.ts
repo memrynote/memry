@@ -23,6 +23,7 @@ import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
+import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainEvent } from '../../telemetry/track'
 import { trackMainLog } from '../../telemetry/diagnostics'
 import type { SyncContext } from './sync-context'
@@ -619,6 +620,20 @@ export class PullCoordinator {
       requestedCount: itemIds.length,
       receivedCount: parsed.data.items.length
     })
+
+    // Bootstrap throughput (#1835), UNITS: this channel counts base64
+    // CHARACTERS (`String.length` of `encryptedData` + `encryptedKey`), which
+    // are ~0.75x the actual octets on the wire. The crdt snapshot site and the
+    // attachments channel count real byteLength/octet totals instead — do not
+    // compare per-second rates across channels naively. Aggregated in memory;
+    // no-op outside a fresh-device bootstrap window.
+    recordBootstrapBytes(
+      'records',
+      parsed.data.items.reduce(
+        (sum, item) => sum + item.blob.encryptedData.length + item.blob.encryptedKey.length,
+        0
+      )
+    )
 
     const signerIds = new Set(parsed.data.items.map((i) => i.signerDeviceId))
     await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))

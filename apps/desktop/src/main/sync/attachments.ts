@@ -24,6 +24,7 @@ import {
   type FetchFn
 } from './http-client'
 import { withRetry } from '@memry/sync-client/retry'
+import { recordBootstrapBytes } from './bootstrap-metrics'
 
 import type {
   UploadInitRequest,
@@ -613,6 +614,8 @@ export class AttachmentSyncService {
 
       log.info('download complete', { attachmentId, path: destPath })
       emitTerminal('completed')
+      // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
+      recordBootstrapBytes('attachments', bytesDownloaded)
 
       return { filePath: destPath, manifest }
     } catch (err) {
@@ -695,7 +698,10 @@ export class AttachmentSyncService {
       encryptedSize
     }
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      maxRetries: 3,
+      baseDelayMs: 2000
+    }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
@@ -786,7 +792,10 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
     const body = JSON.stringify(encryptedManifest)
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      maxRetries: 3,
+      baseDelayMs: 2000
+    }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
