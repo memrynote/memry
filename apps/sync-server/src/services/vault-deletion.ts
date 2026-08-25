@@ -129,6 +129,12 @@ export async function deleteVaultData(
     scoped('DELETE FROM blob_chunks WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM device_sync_state WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM sync_items WHERE user_id = ? AND vault_id = ?'),
+    // Pack bookkeeping (#1839). The pack OBJECTS die with the R2 prefix purge
+    // above (pack keys live under the vault prefix); these rows are the D1
+    // shadow. Packs are derived cache and never quota-counted, so no storage
+    // adjustment accompanies this.
+    scoped('DELETE FROM pack_index WHERE user_id = ? AND vault_id = ?'),
+    scoped('DELETE FROM pack_watermarks WHERE user_id = ? AND vault_id = ?'),
     scoped('UPDATE devices SET vault_id = NULL WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM sync_vaults WHERE user_id = ? AND vault_id = ?'),
     // Inlined rather than calling adjustStorageUsed(): that helper runs its own

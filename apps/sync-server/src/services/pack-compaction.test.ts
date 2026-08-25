@@ -1,0 +1,259 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
+import { compactOneRange, packObjectKey, selectCandidates } from './pack-compaction'
+import { extractEntry, parsePack } from './pack-format'
+
+/**
+ * Compaction core against the REAL migration ledger (0001..0007): selection
+ * correctness incl. already-packed exclusion, idempotent reruns, immutability,
+ * checksum-verified contents, hole tolerance, and snapshot metadata capture.
+ */
+
+const USER = 'user-pack'
+const VAULT = 'default'
+
+let harness: SqliteD1
+let storage: R2Bucket
+const nowSec = () => Math.floor(Date.now() / 1000)
+
+const seedUser = (): void => {
+  harness.raw
+    .prepare(
+      `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+       VALUES (?, ?, 'otp', 1, 1)`
+    )
+    .run(USER, 'pack@example.com')
+}
+
+interface RecordSeedOptions {
+  cursor: number
+  type?: string
+  id?: string
+  bytes?: Uint8Array
+  deleted?: boolean
+}
+
+const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8Array } => {
+  const type = options.type ?? 'task'
+  const itemId = options.id ?? `item-${options.cursor}`
+  // Mirror the push path's payload shape: JSON text of base64 fields. The pack
+  // must carry these EXACT bytes.
+  const bytes =
+    options.bytes ??
+    new TextEncoder().encode(JSON.stringify({ encryptedData: 'payload-' + options.cursor }))
+  const contentHash = 'hash' + options.cursor
+  const blobKey = `${USER}/vaults/${VAULT}/items-v3/${type}/${itemId}/${contentHash}`
+  harness.raw
+    .prepare(
+      `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, 'update', ?, NULL, 'sig', NULL, 1, 1, ?)`
+    )
+    .run(
+      `row-${options.cursor}`,
+      USER,
+      VAULT,
+      type,
+      itemId,
+      blobKey,
+      bytes.byteLength,
+      contentHash,
+      options.cursor,
+      options.deleted ? nowSec() : null
+    )
+  // The source object must exist exactly as a push would have left it.
+  storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+  return { blobKey, bytes }
+}
+
+const seedSnapshot = (noteId: string, createdAt: number, sequenceNum = 1): Uint8Array => {
+  const bytes = new Uint8Array(24).map((_, i) => (i + noteId.length) % 251)
+  const blobKey = `${USER}/vaults/${VAULT}/crdt/${noteId}/snapshot`
+  harness.raw
+    .prepare(
+      `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'device-1', ?, ?)`
+    )
+    .run(
+      `snap-${noteId}`,
+      USER,
+      VAULT,
+      noteId,
+      blobKey,
+      sequenceNum,
+      bytes.byteLength,
+      createdAt,
+      `rev-${noteId}-${sequenceNum}`
+    )
+  storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+  return bytes
+}
+
+const watermarkOf = (kind: string): { last_sort_value: number; last_sort_tiebreak: string } | null =>
+  (harness.raw
+    .prepare(
+      'SELECT last_sort_value, last_sort_tiebreak FROM pack_watermarks WHERE user_id = ? AND item_kind = ?'
+    )
+    .get(USER, kind) as { last_sort_value: number; last_sort_tiebreak: string } | undefined) ?? null
+
+/** Fetch a stored pack as bytes; fails loudly if the object is missing. */
+const packOf = async (key: string | null): Promise<Uint8Array> => {
+  const obj = await storage.get(key!)
+  if (!obj) throw new Error(`pack object missing: ${key}`)
+  return new Uint8Array(await obj.arrayBuffer())
+}
+
+beforeEach(() => {
+  harness = createSqliteD1()
+  storage = createMemoryR2()
+  seedUser()
+})
+
+afterEach(() => {
+  harness.close()
+})
+
+describe('selection', () => {
+  it('selects records in cursor order and excludes nothing un-packed', async () => {
+    for (let cursor = 3; cursor <= 6; cursor++) seedRecord({ cursor })
+    const selection = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
+    expect(selection.candidates.map((c) => c.sortKey)).toEqual([3, 4, 5, 6])
+  })
+
+  it('excludes already-packed rows via the composite watermark', async () => {
+    for (let cursor = 1; cursor <= 5; cursor++) seedRecord({ cursor })
+    await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const after = await selectCandidates(
+      harness.db,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+    expect(after.candidates).toHaveLength(0)
+
+    // New pushes land above the watermark and become eligible only there.
+    seedRecord({ cursor: 6 })
+    const next = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
+    expect(next.candidates.map((c) => c.sortKey)).toEqual([6])
+  })
+
+  it('skips oversized items but still advances the watermark past them', async () => {
+    // 9MB: above MAX_PACKED_ITEM_BYTES (8MB) but allocated without
+    // crypto.getRandomValues' 64KiB cap.
+    seedRecord({ cursor: 1, bytes: new Uint8Array(9 * 1024 * 1024).fill(7) })
+    seedRecord({ cursor: 2 })
+
+    const first = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    expect(first.built).toBe(true)
+    expect(first.itemCount).toBe(1) // only the small one
+
+    // The oversized row is a permanent tail hole: never selected again...
+    const again = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
+    expect(again.candidates).toHaveLength(0)
+    // ...and the window does not loop on it forever.
+    expect(watermarkOf('record')?.last_sort_value).toBe(2)
+  })
+
+  it('breaks created_at ties for snapshots with the note_id tiebreak', async () => {
+    seedSnapshot('note-a', 1000)
+    seedSnapshot('note-b', 1000)
+    const selection = await selectCandidates(
+      harness.db,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(selection.candidates.map((c) => c.tiebreak)).toEqual(['note-a', 'note-b'])
+    expect(selection.nextTiebreak).toBe('note-b')
+  })
+})
+
+describe('pack build', () => {
+  it('writes an immutable verifiable pack and the D1 range row', async () => {
+    const seeds = [seedRecord({ cursor: 1 }), seedRecord({ cursor: 2 })]
+    const result = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+
+    expect(result.built).toBe(true)
+    expect(result.packKey).toBe(packObjectKey({ userId: USER, vaultId: VAULT }, 'record', 1, 2))
+
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes)
+    expect(parsed.entries.map((e) => e.sortKey)).toEqual([1, 2])
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-1', 'task:item-2'])
+    // Byte fidelity: pack bytes equal exactly what the source objects held.
+    for (const [i, seed] of seeds.entries()) {
+      expect(extractEntry(packBytes, parsed.entries[i])).toEqual(seed.bytes)
+    }
+
+    const row = harness.raw.prepare('SELECT * FROM pack_index').get() as {
+      min_cursor: number
+      max_cursor: number
+      item_count: number
+      byte_size: number
+      item_kind: string
+    }
+    expect(row.min_cursor).toBe(1)
+    expect(row.max_cursor).toBe(2)
+    expect(row.item_count).toBe(2)
+    expect(row.item_kind).toBe('record')
+  })
+
+  it('is idempotent on rerun: no duplicate rows, no rewrite, stable bytes', async () => {
+    seedRecord({ cursor: 1 })
+    const first = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const before = await packOf(first.packKey)
+
+    const second = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    expect(second.built).toBe(false)
+    const after = await packOf(first.packKey)
+    expect(after).toEqual(before) // immutability: rerun never rewrites
+    expect((harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c).toBe(1)
+  })
+
+  it('tolerates holes where source blobs vanished mid-flight', async () => {
+    const kept = seedRecord({ cursor: 1 })
+    const dangling = seedRecord({ cursor: 2 })
+    // Simulate replaced-and-cleaned-up blob: row exists, object gone.
+    await storage.delete(dangling.blobKey)
+
+    const result = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    expect(result.built).toBe(true)
+    expect(result.holes).toEqual(['task:item-2'])
+
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes)
+    // The hole is simply absent from the index block; the survivor is intact.
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-1'])
+    expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept.bytes)
+  })
+
+  it('packs snapshots with freshness metadata in the index block', async () => {
+    const snapA = seedSnapshot('note-a', 1700000001, 4)
+    const snapB = seedSnapshot('note-b', 1700000002, 9)
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(result.built).toBe(true)
+
+    const bytes = await packOf(result.packKey)
+    const parsed = await parsePack(bytes)
+    expect(parsed.entries[0].meta).toEqual({ sequenceNum: 4, revision: 'rev-note-a-4' })
+    expect(parsed.entries[1].meta).toEqual({ sequenceNum: 9, revision: 'rev-note-b-9' })
+    expect(extractEntry(bytes, parsed.entries[0])).toEqual(snapA)
+    expect(extractEntry(bytes, parsed.entries[1])).toEqual(snapB)
+  })
+
+  it('advances watermarks per kind without cross-kind interference', async () => {
+    seedRecord({ cursor: 10 })
+    seedSnapshot('note-z', 5000)
+    await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'crdt_snapshot')
+    expect(watermarkOf('record')?.last_sort_value).toBe(10)
+    expect(watermarkOf('crdt_snapshot')?.last_sort_value).toBe(5000)
+    expect(
+      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index WHERE item_kind = ?').get('crdt_snapshot') as { c: number }).c
+    ).toBe(1)
+  })
+})

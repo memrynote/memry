@@ -36,6 +36,10 @@ export type Bindings = {
   R2_SECRET_ACCESS_KEY?: string
   R2_S3_ENDPOINT?: string
   R2_S3_BUCKET?: string
+  // Pack compaction queue (#1839). Optional so local dev without Queues keeps
+  // working: an absent binding makes enqueuePackCompaction a no-op and the
+  // cron backfill still drains packs over time.
+  PACK_QUEUE?: Queue<import('./services/pack-compaction').PackCompactionMessageBody>
   fetch?: typeof fetch
 }
 
