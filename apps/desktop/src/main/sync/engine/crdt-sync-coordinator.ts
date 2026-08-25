@@ -679,6 +679,20 @@ export class CrdtSyncCoordinator {
     }
     if (syncable.length === 0) return cost
 
+    // Every note in this batch is here because the server named it — a record
+    // page pull, or the paced sweep. Until a pass has walked a note end to end
+    // its server CRDT state is by definition not in the local doc, and the flag
+    // is what routes a snapshot push (which prunes peer rows) to the
+    // non-pruning /sync/crdt/updates endpoint for the whole window. The sweep
+    // path already raised it per note via addPendingPull; the record-page path
+    // did not, which left a user-reachable gap once vault open stopped blocking
+    // on the first fullSync (#1830): open a just-listed note mid-initial-sync,
+    // type, and the 30s snapshot could prune updates this device never pulled.
+    // Idempotent for already-flagged notes; a clean walk below clears each one
+    // (clearUnmergedIfClean), and an aborted or failed chunk conservatively
+    // leaves the rest flagged and owed.
+    for (const noteId of syncable) this.markRemoteStateUnmerged(noteId)
+
     // Chunked at the PROBE's ceiling, which is the server's 100-note cap on
     // /sync/crdt/updates/batch and nothing else. The probe opens no document,
     // so the doc cache does not bound it — the apply phase inside each chunk

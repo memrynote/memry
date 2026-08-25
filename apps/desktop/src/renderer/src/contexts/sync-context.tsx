@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import { useAuth } from './auth-context'
+import { onVaultStatusChanged } from '@/services/vault-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import { VaultRecoveryDialog } from '@/components/sync/vault-recovery-dialog'
@@ -161,6 +162,16 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED': {
       const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
+      // A pull that dies in a rethrowing failure category (offline, rate-limit,
+      // auth) never reaches phase:'complete', so the last INITIAL_SYNC_PROGRESS
+      // event would outlive its transfer and keep the skeleton and the
+      // pending-body hint pinned over a dead one. These statuses are
+      // terminal-for-now, so they retire the progress. 'idle' is deliberately
+      // NOT included: releaseLock emits a transient idle blip between the
+      // pull→push phases mid-fullSync, and clearing on it would flicker the
+      // progress UI on every healthy cycle.
+      const transferEnded =
+        action.status === 'error' || action.status === 'offline' || action.status === 'paused'
       return {
         ...state,
         status: action.status,
@@ -168,11 +179,17 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         pendingCount: action.pendingCount,
         error: action.error ?? null,
         offlineSince: action.offlineSince ?? null,
+        initialSyncProgress: transferEnded ? null : state.initialSyncProgress,
         syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
     case 'PAUSED':
-      return { ...state, status: 'paused', pendingCount: action.pendingCount }
+      return {
+        ...state,
+        status: 'paused',
+        pendingCount: action.pendingCount,
+        initialSyncProgress: null
+      }
     case 'RESUMED':
       return { ...state, status: 'idle', pendingCount: action.pendingCount }
     case 'SET_ERROR':
@@ -295,6 +312,17 @@ export function useSync(): SyncContextValue {
     throw new Error('useSync must be used within a SyncProvider')
   }
   return context
+}
+
+/**
+ * Tolerant variant for components that merely ENHANCE their rendering with
+ * sync state (initial-sync skeletons, pending-body hints) and must not couple
+ * their mountability to the provider — canvas embeds and unit tests render
+ * them without one. `null` means "no sync information", which every caller
+ * treats exactly like "no sync in progress".
+ */
+export function useSyncOptional(): SyncContextValue | null {
+  return useContext(SyncContext)
 }
 
 interface SyncProviderProps {
@@ -557,6 +585,24 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       void window.api.syncOps.triggerSync().catch(() => {})
     }
   }, [authState.status, state.sessionExpired])
+
+  // A vault switch keeps this window alive but swaps every note, cursor and
+  // sync counter under it — including any initial-sync progress the previous
+  // vault left behind (its transfer died below 100% or is simply no longer
+  // THIS transfer). Main re-emits vault status on open and close; a change of
+  // path resets the whole sync panel so stale progress is never shown for
+  // vault B. The first event only sets the baseline: at mount the state was
+  // just fetched fresh, and remounts must not clear a live transfer. Events
+  // that keep the same path (indexing ticks, error flags) reset nothing.
+  useEffect(() => {
+    let lastPath: string | null | undefined
+    return onVaultStatusChanged((status) => {
+      if (lastPath !== undefined && lastPath !== status.path) {
+        dispatch({ type: 'RESET' })
+      }
+      lastPath = status.path
+    })
+  }, [])
 
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return

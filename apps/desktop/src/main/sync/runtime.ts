@@ -1029,6 +1029,16 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   }
 
   if (startPromise) {
+    // Prompt cancel BEFORE awaiting the start: startPromise includes the
+    // engine's entire first fullSync, so a close or vault switch seconds into a
+    // fresh-vault pull used to stall this IPC for the whole minutes-long pull.
+    // The engine is reachable mid-start — `runtime` is assigned before
+    // `engine.start()` is awaited — and requestCancel aborts its active cycle
+    // and latches off every later one, so the await below only covers safe
+    // teardown of work already unwinding. With no runtime yet there is no sync
+    // cycle to cancel; the start is still inside policy gates or provider init
+    // and settles on its own.
+    runtime?.engine.requestCancel()
     await startPromise.catch(() => {})
   }
 

@@ -85,6 +85,9 @@
       "body": "Create a note to get started",
       "newNote": "New Note"
     },
+    "syncing": {
+      "body": "Syncing your notes — they will appear here as they arrive"
+    },
     "loadingError": "Failed to load notes",
     "truncated": {
       "hidden": "{count, plural, one {# older note not shown} other {# older notes not shown}}",
@@ -122,6 +125,7 @@
     }
   },
   "editor": {
+    "bodySyncPending": "Syncing — this note's contents may still be on their way",
     "title": {
       "untitled": "Untitled",
       "aria": "Note title"

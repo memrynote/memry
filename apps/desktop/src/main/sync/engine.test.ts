@@ -835,4 +835,79 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  describe('#given requestCancel (close during initial sync, #1830 follow-up)', () => {
+    it('#then aborts the active cycle and later cycles cannot restart pulls', async () => {
+      const getSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValue({ items: [], deleted: [], hasMore: false, nextCursor: 0 })
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      // A cycle is running and holds a fresh controller.
+      const abortController = new AbortController()
+      engine['ctx'].syncing = true
+      engine['ctx'].abortController = abortController
+
+      engine.requestCancel()
+
+      expect(abortController.signal.aborted).toBe(true)
+
+      // The latch is the point: every later cycle opens a FRESH controller, so
+      // aborting alone would let the manifest re-pull and follow-up pushes
+      // restart pulls against a runtime teardown is trying to stop.
+      engine['ctx'].syncing = false
+      engine['ctx'].abortController = null
+      deps.queue.enqueue({ type: 'task', itemId: 'task-1', operation: 'create', payload: '{}' })
+      await engine.pull()
+      await engine.push()
+
+      expect(getSpy).not.toHaveBeenCalled()
+      expect(deps.queue.getPendingCount()).toBe(1)
+
+      await engine.stop()
+      vi.restoreAllMocks()
+    })
+
+    it('#then a close mid-initial-pull stops between pages instead of running the pull out', async () => {
+      vi.useFakeTimers()
+      let changePages = 0
+      const getSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockImplementation(async (path: string) => {
+          // One page per timer slice: the vault streams in slowly, like a real
+          // fresh-vault pull. Only the change feed counts as pull progress;
+          // the device-status probe and the manifest check share this transport.
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          if (path.startsWith('/sync/changes')) {
+            changePages++
+            return { items: [], deleted: [], hasMore: true, nextCursor: changePages }
+          }
+          return { items: [], deleted: [], hasMore: false, nextCursor: 0 }
+        })
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const startPromise = engine.start()
+      await vi.advanceTimersByTimeAsync(60)
+      expect(changePages).toBeGreaterThanOrEqual(2)
+
+      // The user closes the vault here — seconds into a minutes-long pull.
+      engine.requestCancel()
+
+      await vi.advanceTimersByTimeAsync(200)
+      await startPromise
+
+      // The pull stopped at the first boundary after the abort (the one page
+      // already in flight may land), and nothing restarted it afterwards —
+      // neither the manifest re-pull path nor the periodic tick.
+      const pagesAfterCancel = changePages
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(changePages).toBe(pagesAfterCancel)
+
+      await engine.stop()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    })
+  })
 })

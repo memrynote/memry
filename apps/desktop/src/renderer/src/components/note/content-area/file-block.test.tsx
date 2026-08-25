@@ -38,7 +38,8 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/contexts/sync-context', () => ({
-  useSync: () => ({ state: mocks.syncState })
+  useSync: () => ({ state: mocks.syncState }),
+  useSyncOptional: () => null
 }))
 
 vi.mock('@blocknote/react', () => ({

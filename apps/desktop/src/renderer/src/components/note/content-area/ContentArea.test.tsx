@@ -187,7 +187,10 @@ vi.mock('@/sync/use-yjs-collaboration', () => ({
 }))
 
 vi.mock('@/contexts/sync-context', () => ({
-  useSync: vi.fn(() => ({ state: contentAreaMocks.useSyncState }))
+  useSync: vi.fn(() => ({ state: contentAreaMocks.useSyncState })),
+  // Tolerant by contract: null must read as "no sync information", which keeps
+  // the body-sync pending hint out of every test that is not about it.
+  useSyncOptional: vi.fn(() => null)
 }))
 
 vi.mock('@/hooks/use-wiki-link-hover', () => ({

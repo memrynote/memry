@@ -534,10 +534,10 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
-  // Mark the vault open BEFORE the sync runtime starts: startSyncRuntime awaits
-  // the engine's first fullSync, and on a freshly provisioned (downloaded or
-  // linked) vault that pull writes notes/journals to disk via the current vault
-  // path — which throws "No vault is currently open" if the status isn't set yet.
+  // Mark the vault open BEFORE the sync runtime starts: the engine's first
+  // fullSync on a freshly provisioned (downloaded or linked) vault writes
+  // notes/journals to disk via the current vault path — which throws "No vault
+  // is currently open" if the status isn't set yet.
   //
   // Vault-open must NOT wait on embeddings: the renderer only needs the index
   // (built above) to render. Embedding is deferred out of the indexing pass —
@@ -566,7 +566,23 @@ async function openVault(vaultPath: string): Promise<void> {
   configureLazyAgentServices(startVaultAgentServices)
   registerLazyAgentHandlers()
 
-  await startSyncRuntime()
+  // Detached on purpose (#1830): startSyncRuntime awaits the engine's first
+  // fullSync, and on a fresh device with a big vault that is every record page
+  // and every cold CRDT batch — minutes on the open/select IPC promise. The
+  // vault is usable the moment the index is up; notes stream in behind it and
+  // the renderer follows along via note events + INITIAL_SYNC_PROGRESS.
+  //
+  // Failure handling is NOT weakened by the detach: startSyncRuntime resolves
+  // null on every failure it knows about (policy skips, vault-key recovery
+  // prompts, sync_error telemetry, engine.start's own initial-sync catch), so
+  // this promise rejecting means a bug upstream of those guards — surface it
+  // rather than let it become an unhandled rejection. A close/switch during
+  // the detached start is safe: stopSyncRuntime awaits the in-flight start
+  // before tearing anything down.
+  void startSyncRuntime().catch((error) => {
+    logger.error('Sync runtime start failed after vault open:', error)
+    trackMainError('vault', 'sync_runtime_start', error)
+  })
 }
 
 /**

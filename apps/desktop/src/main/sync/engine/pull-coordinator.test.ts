@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { SyncEngine } from '../engine'
 import { createLogger } from '../../lib/logger'
+import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
 vi.mock('../../lib/logger', () => {
@@ -36,6 +37,49 @@ describe('PullCoordinator', () => {
         reason: 'invalid_pull_response',
         droppedCount: 2
       })
+
+      vi.restoreAllMocks()
+    })
+  })
+
+  describe('#given a one-page pull #when INITIAL_SYNC_PROGRESS could be emitted', () => {
+    // The emission is gated on ctx.fullSyncActive so socket reconnects and
+    // periodic ticks never masquerade as initial-sync progress. Nothing pinned
+    // the gate: removing it broke zero tests, and a stray event would resurrect
+    // the renderer's skeleton long after the first sync finished.
+    it('#then progress streams only while a full sync is active', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      })
+      const progressEvent = (channel: string, data: unknown): boolean =>
+        channel === EVENT_CHANNELS.INITIAL_SYNC_PROGRESS &&
+        (data as { phase?: string }).phase === 'notes'
+
+      // Gate OFF — a plain pull (periodic tick, reconnect, broadcast) must
+      // stay silent.
+      await engine.pull()
+      const progressCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => progressEvent(call[0], call[1])
+      )
+      expect(progressCalls).toHaveLength(0)
+
+      // Gate ON — the same page inside an active fullSync streams progress.
+      engine['ctx'].fullSyncActive = true
+      try {
+        await engine.pull()
+        expect(deps.emitToRenderer).toHaveBeenCalledWith(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+          phase: 'notes',
+          processedItems: 0,
+          totalItems: 0
+        })
+      } finally {
+        engine['ctx'].fullSyncActive = false
+      }
 
       vi.restoreAllMocks()
     })

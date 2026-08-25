@@ -63,6 +63,21 @@ const renderWithProviders = (ui: React.ReactElement, i18n = i18nEn) => {
 // Mocks
 // ============================================================================
 
+// Default null = "no initial sync running": every pre-existing test keeps the
+// exact states it always asserted. Only the progressive-open test flips it.
+const syncContextMocks = vi.hoisted(() => ({
+  initialSyncProgress: null as null | { phase: string; current: number; total: number }
+}))
+
+vi.mock('@/contexts/sync-context', () => ({
+  useSyncOptional: () => ({
+    state: { initialSyncProgress: syncContextMocks.initialSyncProgress }
+  }),
+  useSync: () => ({
+    state: { initialSyncProgress: syncContextMocks.initialSyncProgress }
+  })
+}))
+
 vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (err: unknown, fallback: string) => fallback
 }))
@@ -282,6 +297,25 @@ describe('T521: NotesTree - folder tree display', () => {
 
     // Empty state shows when no notes exist
     expect(screen.getByText(/no notes yet/i)).toBeInTheDocument()
+  })
+
+  // Progressive open (#1830): vault open no longer waits for the first full
+  // sync, so a fresh device shows an empty tree while pages still apply.
+  it('shows the sync progress instead of the empty call to action mid-initial-sync', () => {
+    syncContextMocks.initialSyncProgress = { phase: 'notes', current: 40, total: 200 }
+    try {
+      setupMocks([], [])
+      renderWithProviders(<NotesTree />)
+
+      // The syncing state replaces "create a note to get started" — which on a
+      // vault about to receive hundreds of notes reads as data loss.
+      expect(screen.getByText(/syncing your notes/i)).toBeInTheDocument()
+      expect(screen.getByText('40/200')).toBeInTheDocument()
+      expect(screen.queryByText(/no notes yet/i)).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /new note/i })).not.toBeInTheDocument()
+    } finally {
+      syncContextMocks.initialSyncProgress = null
+    }
   })
 
   it('renders Turkish notes copy for Turkish', () => {
