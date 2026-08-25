@@ -596,9 +596,12 @@ export class PullCoordinator {
       receivedCount: parsed.data.items.length
     })
 
-    // Bootstrap throughput (#1835): the encrypted payload chars approximate the
-    // record bytes this page moved. Aggregated in memory; no-op outside a
-    // fresh-device bootstrap window.
+    // Bootstrap throughput (#1835), UNITS: this channel counts base64
+    // CHARACTERS (`String.length` of `encryptedData` + `encryptedKey`), which
+    // are ~0.75x the actual octets on the wire. The crdt snapshot site and the
+    // attachments channel count real byteLength/octet totals instead — do not
+    // compare per-second rates across channels naively. Aggregated in memory;
+    // no-op outside a fresh-device bootstrap window.
     recordBootstrapBytes(
       'records',
       parsed.data.items.reduce(

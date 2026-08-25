@@ -33,7 +33,8 @@ const mocks = vi.hoisted(() => ({
   isIndexDatabaseInitialized: vi.fn(),
   getIndexDatabase: vi.fn(),
   beginBootstrap: vi.fn(),
-  markBootstrapFullText: vi.fn()
+  markBootstrapFullText: vi.fn(),
+  abandonBootstrap: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -46,7 +47,8 @@ vi.mock('../manifest-check', () => ({
 
 vi.mock('../bootstrap-metrics', () => ({
   beginBootstrap: (...args: unknown[]) => mocks.beginBootstrap(...args),
-  markBootstrapFullText: (...args: unknown[]) => mocks.markBootstrapFullText(...args)
+  markBootstrapFullText: (...args: unknown[]) => mocks.markBootstrapFullText(...args),
+  abandonBootstrap: (...args: unknown[]) => mocks.abandonBootstrap(...args)
 }))
 
 vi.mock('../initial-seed', () => ({
@@ -1541,6 +1543,38 @@ describe('FullSyncRunner', () => {
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 3)
 
       expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+    })
+
+    // #1835 review finding: on a fresh device the index DB is empty, so a sweep
+    // that runs after a FAILED first pull queues nothing and drains trivially.
+    // The "sweep ran" gate alone proved a sweep ran, never that a pull
+    // delivered — full text must wait for pull evidence.
+    it('#then a failed first pull on an empty vault neither marks full text nor keeps the window', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      // Empty index DB: the fresh-device case. A sweep here is trivially drained.
+      mocks.getAllCrdtNoteIds.mockReturnValue([])
+      h.actions.pull.mockRejectedValue(new Error('pull refused'))
+
+      await expect(h.runner.run()).rejects.toThrow('pull refused')
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+      // And the one-shot window is not left open counting steady-state bytes
+      // against a t0 nothing legitimate measured.
+      expect(mocks.abandonBootstrap).toHaveBeenCalled()
+    })
+
+    it('#then a later successful cycle after that failed attempt still marks full text', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+      h.actions.pull.mockRejectedValueOnce(new Error('pull refused'))
+
+      await expect(h.runner.run()).rejects.toThrow('pull refused')
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
     })
   })
 })

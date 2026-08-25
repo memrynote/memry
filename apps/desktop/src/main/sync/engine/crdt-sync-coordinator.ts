@@ -572,7 +572,10 @@ export class CrdtSyncCoordinator {
           hasMore: result.hasMore
         })
 
-        // Bootstrap throughput (#1835): base64 chars approximate wire bytes.
+        // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
+        // (`u.data.length`), ~0.75x the wire octets — unlike the snapshot site
+        // below, which counts real `byteLength`. Do not compare rates across
+        // channels naively.
         recordBootstrapBytes(
           'crdt',
           result.updates.reduce((sum, u) => sum + u.data.length, 0)
@@ -1068,7 +1071,11 @@ export class CrdtSyncCoordinator {
             batchUpdateChars += u.data.length
           }
         }
-        // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
+        // Bootstrap throughput (#1835), UNITS: base64 CHARACTERS
+        // (`u.data.length`), ~0.75x the wire octets — unlike the snapshot site
+        // and the attachments channel, which count real byte totals. Do not
+        // compare rates across channels naively. No-op outside a fresh-device
+        // bootstrap window.
         recordBootstrapBytes('crdt', batchUpdateChars)
         await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
 

@@ -2,7 +2,7 @@ import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
 import { ERROR_RETENTION_DAYS } from '@memry/sync-client/queue'
-import { beginBootstrap, markBootstrapFullText } from '../bootstrap-metrics'
+import { abandonBootstrap, beginBootstrap, markBootstrapFullText } from '../bootstrap-metrics'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import type { SyncContext } from './sync-context'
@@ -320,6 +320,15 @@ export class FullSyncRunner {
    */
   private sweptOnThisEngine = false
 
+  /**
+   * Has a pull actually RESOLVED on this engine? Gates the bootstrap
+   * full-text mark alongside `sweptOnThisEngine`: a sweep proves it ran,
+   * never that the pull delivered — and on a fresh device an empty index DB
+   * makes every sweep drain trivially, so only pull success is evidence that
+   * any body was fetched at all.
+   */
+  private bootstrapPullSucceeded = false
+
   private sweepAllCrdtNotes(): void {
     this.sweptOnThisEngine = true
     // Read before the generation is re-stamped below: only a sweep that closes
@@ -372,6 +381,9 @@ export class FullSyncRunner {
     let forceCrdtSweep = options.forceCrdtSweep === true
     try {
       await this.actions.pull()
+      // Evidence for the full-text mark: this pull resolved, so whatever the
+      // sweeps drain from here on was actually delivered by the server.
+      this.bootstrapPullSucceeded = true
       log.debug('fullSync: pull complete')
 
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
@@ -471,6 +483,15 @@ export class FullSyncRunner {
         processedItems: 0,
         totalItems: 0
       } satisfies InitialSyncProgressEvent)
+    } catch (error) {
+      // A first attempt that never completed a pull measured nothing
+      // legitimate: abandon the window so it cannot sit open across retries
+      // counting steady-state bytes against a stale t0. Once a pull HAS
+      // resolved the window stays — its bytes are real, and the mark fires
+      // once the sweep drains. The cursor is only persisted after a successful
+      // pull, so the next cycle re-arms a clean window here.
+      if (!this.bootstrapPullSucceeded) abandonBootstrap()
+      throw error
     } finally {
       this.ctx.fullSyncActive = false
       if (
@@ -572,6 +593,10 @@ export class FullSyncRunner {
    */
   private maybeMarkBootstrapFullText(): void {
     if (!this.sweptOnThisEngine) return
+    // The sweep gate proves a sweep RAN; on a fresh device an empty index DB
+    // makes every sweep drain trivially, failed pull or not. Only a pull that
+    // actually resolved turns "queue empty" into "bodies delivered".
+    if (!this.bootstrapPullSucceeded) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
     markBootstrapFullText()
