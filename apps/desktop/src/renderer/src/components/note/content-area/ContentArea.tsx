@@ -51,6 +51,7 @@ import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { LinkMentionPreviewCard } from './link-mention-preview-card'
 import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
+import { BodySyncPendingHint } from './body-sync-pending-hint'
 import { getCalloutSlashMenuItem } from './callout-block'
 import {
   orderSlashMenuItemsByGroup,
@@ -1456,6 +1457,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
         )}
         {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
+
+        {yjsFragment && <BodySyncPendingHint fragment={yjsFragment} />}
 
         {aiEnabled && aiError && (
           <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">

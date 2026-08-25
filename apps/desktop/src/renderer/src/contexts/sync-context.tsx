@@ -297,6 +297,17 @@ export function useSync(): SyncContextValue {
   return context
 }
 
+/**
+ * Tolerant variant for components that merely ENHANCE their rendering with
+ * sync state (initial-sync skeletons, pending-body hints) and must not couple
+ * their mountability to the provider — canvas embeds and unit tests render
+ * them without one. `null` means "no sync information", which every caller
+ * treats exactly like "no sync in progress".
+ */
+export function useSyncOptional(): SyncContextValue | null {
+  return useContext(SyncContext)
+}
+
 interface SyncProviderProps {
   children: ReactNode
 }

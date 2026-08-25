@@ -367,6 +367,53 @@ describe('vault lifecycle', () => {
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
   })
 
+  // The open/select IPC promise used to resolve only after startSyncRuntime →
+  // engine.start() → the ENTIRE first fullSync — minutes of blocking on a
+  // fresh device with a big vault (#1830). The runtime start is detached: the
+  // vault is usable the moment the index is up, and sync fills it in behind.
+  it('resolves vault open without waiting for the sync runtime start', async () => {
+    // #given a sync runtime whose start (i.e. the first fullSync) never settles
+    let releaseSyncStart!: () => void
+    mocks.startSyncRuntime.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseSyncStart = resolve
+        })
+    )
+
+    // #when — this await would previously have hung with the fullSync
+    const result = await selectVault({ path: '/vault/big' })
+
+    // #then the open settled with sync still in flight
+    expect(result.success).toBe(true)
+    expect(getStatus()).toEqual(
+      expect.objectContaining({ isOpen: true, path: '/vault/big', error: null })
+    )
+    expect(mocks.startSyncRuntime).toHaveBeenCalled()
+    releaseSyncStart()
+  })
+
+  it('surfaces a sync runtime start failure without failing the open', async () => {
+    // #given startSyncRuntime rejecting — a bug upstream of its own guards,
+    // since every failure it knows about resolves null instead
+    mocks.startSyncRuntime.mockRejectedValue(new Error('runtime exploded'))
+
+    // #when
+    const result = await selectVault({ path: '/vault/flaky' })
+
+    // #then the vault still opens, and the failure does not vanish into an
+    // unhandled rejection — it is reported through main-error telemetry
+    expect(result.success).toBe(true)
+    await vi.waitFor(() => {
+      expect(mocks.trackMainError).toHaveBeenCalledWith(
+        'vault',
+        'sync_runtime_start',
+        expect.any(Error)
+      )
+    })
+    expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, error: null }))
+  })
+
   // The CRDT store is scoped to this vault's uuid, which lives in the data DB.
   // main cannot open it at bootstrap — there is no vault then — so if this call
   // is not made here, nothing else makes it and every note in the vault loses

@@ -27,8 +27,11 @@ import {
   NotesTreeSkeleton,
   NotesTreeEmpty,
   NotesTreeError,
+  NotesTreeSyncing,
   NotesTreeTruncationNotice
 } from '@/components/note-tree-states'
+import { InitialSyncProgress } from '@/components/sync/initial-sync-progress'
+import { useSyncOptional } from '@/contexts/sync-context'
 import {
   TreeFolderIcon,
   RevealHandler,
@@ -107,6 +110,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   const { t: tCommon } = useT('common')
   const fileActions = useFileActionLabels()
   const data = useNoteTreeData()
+  // Optional on purpose: canvas embeds and unit tests mount the tree without a
+  // SyncProvider, and "no provider" must read as "no initial sync running".
+  const initialSyncInProgress = useSyncOptional()?.state.initialSyncProgress != null
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const treeContainerRef = useRef<HTMLDivElement>(null)
@@ -314,6 +320,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   }
 
   if (data.notes.length === 0 && data.folders.length === 0) {
+    // Progressive open (#1830): vault open no longer waits for the first full
+    // sync, so a fresh device lands here with an empty tree while pages are
+    // still applying. Show the sync progress instead of the "create your first
+    // note" call to action — the tree fills in live as note events invalidate
+    // the list query.
+    if (initialSyncInProgress) {
+      return (
+        <NotesTreeSyncing>
+          <InitialSyncProgress className="px-1" />
+        </NotesTreeSyncing>
+      )
+    }
     return (
       <NotesTreeEmpty
         onCreateNote={(...args) => void actions.handleCreateNote(...args)}

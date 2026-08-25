@@ -228,6 +228,14 @@ export class PullCoordinator {
     }
   }
 
+  // Oldest-first on purpose, even though the progressive open (#1830) would
+  // rather show recent notes first: /sync/changes is a strictly ascending
+  // `server_cursor > ?` feed, and the cursor persisted after each page below
+  // is the crash-resume watermark. Applying newest-first would need either a
+  // descending server feed with a two-ended resume contract (that is P2.2 pack
+  // ordering) or buffering every page before applying — which kills the
+  // page-by-page fill and makes an interrupted first sync silently skip the
+  // older pages the advanced cursor now claims were applied.
   private async pullChanges(runState: PullRunState): Promise<void> {
     let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
     let hasMore = true
