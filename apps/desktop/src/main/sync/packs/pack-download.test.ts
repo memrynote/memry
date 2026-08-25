@@ -49,6 +49,29 @@ describe('downloadPackToFile', () => {
     await fs.rm(dir, { recursive: true, force: true })
   })
 
+  it('#given a fetch failure quoting the url #then the presigned url is not in the error', async () => {
+    // A presigned R2 URL carries its own authorization in the query string:
+    // it is a bearer credential, and `fetch` failures routinely quote the
+    // request URL. The caller logs these messages verbatim.
+    const url = 'https://r2.example/p.pack?X-Amz-Signature=deadbeefsecret'
+    const fetchFn = vi.fn(async () => {
+      throw new Error(`connect ECONNREFUSED for ${url}`)
+    })
+
+    const failure = await downloadPackToFile({
+      url,
+      destPath: dest,
+      fetchFn: fetchFn as unknown as typeof globalThis.fetch,
+      maxAttempts: 1,
+      sleep: async () => {}
+    }).catch((err: Error) => err)
+
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).not.toContain('deadbeefsecret')
+    expect((failure as Error).message).not.toContain('r2.example')
+    expect((failure as Error).message).toContain('pack fetch failed')
+  })
+
   it('streams a fresh transfer to disk without a Range header', async () => {
     const seen: RequestInit[] = []
     const fetchFn = vi.fn(async (_url: string, init: RequestInit) => {

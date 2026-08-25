@@ -63,6 +63,15 @@ const fileSize = async (filePath: string): Promise<number> => {
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms))
 
+/**
+ * A presigned R2 URL carries its own authorization in the query string, so it
+ * is a bearer credential and must never reach a log file. `fetch` failures
+ * routinely quote the request URL in their message, and these errors are
+ * logged verbatim by the bootstrap caller — so the URL is stripped at the
+ * point the message is built, not at every log site.
+ */
+const redactUrls = (message: string): string => message.replace(/https?:\/\/\S+/gi, '<url>')
+
 /** Node's web ReadableStream is async-iterable; undici bodies are too. */
 async function* iterateBody(body: unknown): AsyncGenerator<Uint8Array> {
   if (!body) throw new NetworkError('pack response had no body')
@@ -114,7 +123,7 @@ export const downloadPackToFile = async (
         ...(options.signal ? { signal: options.signal } : {})
       })
     } catch (err) {
-      lastNetworkError = new NetworkError(`pack fetch failed: ${String(err)}`)
+      lastNetworkError = new NetworkError(`pack fetch failed: ${redactUrls(String(err))}`)
       if (attempt === maxAttempts) throw lastNetworkError
       await sleep(BASE_RETRY_DELAY_MS * 2 ** (attempt - 1))
       continue
@@ -153,7 +162,7 @@ export const downloadPackToFile = async (
       if (err instanceof NetworkError && options.signal?.aborted) throw err
       lastNetworkError = err instanceof Error ? err : new Error(String(err))
       if (attempt === maxAttempts) {
-        throw new NetworkError(`pack transfer interrupted: ${lastNetworkError.message}`)
+        throw new NetworkError(`pack transfer interrupted: ${redactUrls(lastNetworkError.message)}`)
       }
       log.info('pack transfer interrupted — resuming from byte offset', {
         attempt,

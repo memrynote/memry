@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import sodium from 'libsodium-wrappers-sumo'
 
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { encryptCrdtUpdate } from '../crdt-encrypt'
+import type { PackBootstrapDeps } from '../packs/pack-bootstrap'
 import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
 import { SYNC_STATE_KEYS, type SyncContext } from './sync-context'
 import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
@@ -23,7 +27,8 @@ const mocks = vi.hoisted(() => ({
   closeBootstrapSession: vi.fn(),
   isIndexDatabaseInitialized: vi.fn(() => false),
   getIndexDatabase: vi.fn(),
-  getAllCrdtNoteIds: vi.fn(() => [])
+  getAllCrdtNoteIds: vi.fn(() => []),
+  fetchAndCacheDeviceKeys: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({ createLogger: () => mocks.log }))
@@ -52,6 +57,9 @@ vi.mock('../../database/queries/notes', () => ({
 vi.mock('../packs/pack-bootstrap', () => ({
   runPackBootstrap: (...args: unknown[]) => mocks.runPackBootstrap(...args)
 }))
+vi.mock('../device-keys', () => ({
+  fetchAndCacheDeviceKeys: (...args: unknown[]) => mocks.fetchAndCacheDeviceKeys(...args)
+}))
 vi.mock('electron', () => ({ app: { getPath: () => '/tmp/memry-test-userdata' } }))
 vi.mock('../bulk-apply', () => ({ beginPageApply: vi.fn() }))
 
@@ -64,31 +72,52 @@ const okResult = {
   appliedThroughCursor: 200
 }
 
+type ProviderMock = {
+  storeId: string | null
+  getSnapshotWatermark: ReturnType<typeof vi.fn>
+  putSnapshotWatermark: ReturnType<typeof vi.fn>
+  open: ReturnType<typeof vi.fn>
+  applyRemoteUpdate: ReturnType<typeof vi.fn>
+  getStateVector: ReturnType<typeof vi.fn>
+  closeIfInactive: ReturnType<typeof vi.fn>
+  getOpenNoteIds: ReturnType<typeof vi.fn>
+  inactiveDocCapacity: number
+}
+
 interface Harness {
   runner: FullSyncRunner
   order: string[]
   setStateValue: ReturnType<typeof vi.fn>
+  provider: ProviderMock | undefined
+  deviceKeys: string[]
 }
 
-const createHarness = (options: { lastCursor?: string; storeId?: string | null } = {}): Harness => {
+const createHarness = (
+  options: { lastCursor?: string; storeId?: string | null; omitProvider?: boolean } = {}
+): Harness => {
   const order: string[] = []
   const setStateValue = vi.fn()
-  const provider =
-    options.storeId === null
-      ? undefined
-      : {
-          storeId: options.storeId ?? 'store-1',
-          getSnapshotWatermark: vi.fn(async () => null),
-          putSnapshotWatermark: vi.fn(async () => {}),
-          applyRemoteUpdate: vi.fn(),
-          getOpenNoteIds: vi.fn(() => []),
-          inactiveDocCapacity: 32
-        }
+  const deviceKeys: string[] = []
+  const provider: ProviderMock | undefined = options.omitProvider
+    ? undefined
+    : {
+        storeId: options.storeId === undefined ? 'store-1' : options.storeId,
+        getSnapshotWatermark: vi.fn(async () => null),
+        putSnapshotWatermark: vi.fn(async () => {}),
+        open: vi.fn(async () => ({})),
+        applyRemoteUpdate: vi.fn(),
+        // Non-empty: the applier refuses to record a watermark for a doc that
+        // is still empty after the seed.
+        getStateVector: vi.fn(() => new Uint8Array([1, 220, 148, 3, 1])),
+        closeIfInactive: vi.fn(async () => true),
+        getOpenNoteIds: vi.fn(() => []),
+        inactiveDocCapacity: 32
+      }
 
   const ctx = {
     deps: {
       db: {
-        select: () => ({ from: () => ({ all: () => [] as Array<{ key: string }> }) })
+        select: () => ({ from: () => ({ all: () => deviceKeys.map((key) => ({ key })) }) })
       },
       queue: { getPendingCount: vi.fn(() => 0), purgeOldErrors: vi.fn() },
       network: { online: true },
@@ -138,7 +167,7 @@ const createHarness = (options: { lastCursor?: string; storeId?: string | null }
     actions
   )
 
-  return { runner, order, setStateValue }
+  return { runner, order, setStateValue, provider, deviceKeys }
 }
 
 describe('FullSyncRunner pack bootstrap seam', () => {
@@ -177,7 +206,18 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     expect(harness.order[0]).toBe('pull')
   })
 
-  it('#given no CRDT store #then packs are skipped (nothing to seed)', async () => {
+  it('#given no crdt provider at all #then packs are skipped', async () => {
+    const harness = createHarness({ omitProvider: true })
+
+    await harness.runner.run()
+
+    expect(mocks.runPackBootstrap).not.toHaveBeenCalled()
+    expect(harness.order[0]).toBe('pull')
+  })
+
+  it('#given a provider with no store #then packs are skipped (nothing to seed)', async () => {
+    // An in-memory provider: it holds docs but persists no watermark, so a
+    // packed baseline it "applied" would be forgotten and re-fetched anyway.
     const harness = createHarness({ storeId: null })
 
     await harness.runner.run()
@@ -198,6 +238,104 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     ).toEqual([])
   })
 
+  describe('the seed store handed to the pack runner', () => {
+    let vaultKey: Uint8Array
+    let peer: { publicKey: Uint8Array; privateKey: Uint8Array }
+
+    beforeAll(async () => {
+      await sodium.ready
+      vaultKey = new Uint8Array(32)
+      peer = sodium.crypto_sign_keypair('uint8array')
+    })
+
+    const capture = async (harness: Harness): Promise<PackBootstrapDeps> => {
+      let captured: PackBootstrapDeps | null = null
+      mocks.runPackBootstrap.mockImplementation(async (deps: PackBootstrapDeps) => {
+        captured = deps
+        return okResult
+      })
+      await harness.runner.run()
+      if (!captured) throw new Error('pack bootstrap was never invoked')
+      return captured
+    }
+
+    it('opens the doc without a markdown seed, and releases it after', async () => {
+      const harness = createHarness()
+      harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+      const deps = await capture(harness)
+
+      const packed = encryptCrdtUpdate(
+        new TextEncoder().encode('a yjs update'),
+        vaultKey,
+        'note-1',
+        peer.privateKey
+      )
+      await expect(
+        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
+      ).resolves.toBe(true)
+
+      // `applyRemoteUpdate` routes through the provider's live doc map and
+      // DROPS anything for a doc it is not holding, so the open is what makes
+      // pack seeding real. `skipSeed` because seeding from local markdown
+      // first would give the doc a client id the packed baseline never saw.
+      expect(harness.provider!.open).toHaveBeenCalledWith('note-1', undefined, { skipSeed: true })
+      expect(harness.provider!.applyRemoteUpdate).toHaveBeenCalled()
+      expect(harness.provider!.open.mock.invocationCallOrder[0]).toBeLessThan(
+        harness.provider!.applyRemoteUpdate.mock.invocationCallOrder[0]
+      )
+      // Released again: hundreds of packed notes must not pin hundreds of docs.
+      expect(harness.provider!.closeIfInactive).toHaveBeenCalledWith('note-1')
+      expect(harness.provider!.putSnapshotWatermark).toHaveBeenCalledWith('note-1', {
+        appliedSequence: 4,
+        snapshotRevision: 'r4'
+      })
+    })
+
+    it('#given only this device in the key cache #then peer keys are fetched first', async () => {
+      // The only devices pack bootstrap runs on are fresh ones, where
+      // `sync_devices` holds this device's own row and nothing else — peer rows
+      // arrive through the device-key cache, filled by the item-granular pull
+      // that runs after this. Every packed snapshot is peer-signed.
+      const harness = createHarness()
+      const own = sodium.crypto_sign_keypair('uint8array')
+      harness.deviceKeys.push(sodium.to_base64(own.publicKey, sodium.base64_variants.ORIGINAL))
+      mocks.fetchAndCacheDeviceKeys.mockImplementation(async () => {
+        harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+      })
+      const deps = await capture(harness)
+
+      const packed = encryptCrdtUpdate(
+        new TextEncoder().encode('a yjs update'),
+        vaultKey,
+        'note-1',
+        peer.privateKey
+      )
+
+      await expect(
+        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
+      ).resolves.toBe(true)
+      expect(mocks.fetchAndCacheDeviceKeys).toHaveBeenCalled()
+    })
+
+    it('#given the key refresh fails #then the cached keys are still tried', async () => {
+      const harness = createHarness()
+      harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+      mocks.fetchAndCacheDeviceKeys.mockRejectedValue(new Error('offline'))
+      const deps = await capture(harness)
+
+      const packed = encryptCrdtUpdate(
+        new TextEncoder().encode('a yjs update'),
+        vaultKey,
+        'note-1',
+        peer.privateKey
+      )
+
+      await expect(
+        deps.snapshots.apply('note-1', packed, { sequenceNum: 4, revision: 'r4' })
+      ).resolves.toBe(true)
+    })
+  })
+
   it('#given packs are unusable #then the run is byte-for-byte the pre-pack path', async () => {
     const withPacks = createHarness()
     mocks.runPackBootstrap.mockResolvedValue({
@@ -210,7 +348,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     })
     await withPacks.runner.run()
 
-    const withoutPacks = createHarness({ storeId: null })
+    const withoutPacks = createHarness({ omitProvider: true })
     await withoutPacks.runner.run()
 
     expect(withPacks.order).toEqual(withoutPacks.order)

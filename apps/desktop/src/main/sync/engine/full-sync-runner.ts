@@ -555,7 +555,8 @@ export class FullSyncRunner {
         { createCrdtSnapshotApplier, decodeSignerPublicKeys },
         { beginPageApply },
         { DownloadPacer },
-        { syncDevices }
+        { syncDevices },
+        { fetchAndCacheDeviceKeys }
       ] = await Promise.all([
         import('node:path'),
         import('electron'),
@@ -563,7 +564,8 @@ export class FullSyncRunner {
         import('../packs/crdt-snapshot-applier'),
         import('../bulk-apply'),
         import('../download-queue'),
-        import('@memry/db-schema/schema/sync-devices')
+        import('@memry/db-schema/schema/sync-devices'),
+        import('../device-keys')
       ])
 
       // The attachment transfer pacer, not a second one: same fixed window,
@@ -580,17 +582,49 @@ export class FullSyncRunner {
             getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
             putSnapshotWatermark: (noteId, watermark) =>
               provider.putSnapshotWatermark(noteId, watermark),
-            applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update)
+            // `skipSeed`, exactly as the CRDT sweep opens a doc it is about to
+            // apply server state into: seeding from local markdown first would
+            // give the doc a fresh client id and a history the packed baseline
+            // never saw. Without an open doc the provider drops the update.
+            openDoc: async (noteId) => {
+              await provider.open(noteId, undefined, { skipSeed: true })
+            },
+            applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
+            getStateVector: (noteId) => provider.getStateVector(noteId),
+            closeDoc: async (noteId) => {
+              await provider.closeIfInactive(noteId)
+            }
           },
           getVaultKey: this.ctx.deps.getVaultKey,
-          getSignerPublicKeys: async () =>
-            decodeSignerPublicKeys(
+          getSignerPublicKeys: async () => {
+            // `sync_devices` holds ONLY this device's own row on a fresh
+            // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
+            // whose single caller is the item-granular CRDT pull that runs
+            // AFTER this. Every packed snapshot was signed by some other
+            // device, so without this refresh not one packed blob verifies and
+            // the whole feature is a no-op on exactly the devices it exists
+            // for. Resolved lazily by the applier — once per bootstrap, and
+            // only once an entry is actually up for apply — so a vault with no
+            // usable packs pays nothing, and a failed refresh just leaves the
+            // cache as the candidate list.
+            const token = await this.ctx.deps.getAccessToken().catch(() => null)
+            if (token) {
+              try {
+                await fetchAndCacheDeviceKeys(this.ctx.deps.db, token)
+              } catch (error) {
+                log.debug('Could not refresh device signing keys for pack bootstrap', {
+                  error: error instanceof Error ? error.message : String(error)
+                })
+              }
+            }
+            return decodeSignerPublicKeys(
               this.ctx.deps.db
                 .select({ key: syncDevices.signingPublicKey })
                 .from(syncDevices)
                 .all()
                 .map((row) => row.key)
             )
+          }
         }),
         beginPage: () => beginPageApply(this.ctx.deps.db),
         getStateValue: (key) => this.stateManager.getStateValue(key),

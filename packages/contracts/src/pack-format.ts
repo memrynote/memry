@@ -69,6 +69,28 @@ export const PACK_FOOTER_SIZE =
 /** magic(4) + version(1) + reserved(1) + flags(2). Payload region starts here. */
 export const PACK_HEADER_SIZE = 8
 
+/**
+ * READER MEMORY BOUNDS.
+ *
+ * A streaming reader sizes two allocations from fields it read out of the
+ * pack itself — the index block from the footer's `indexOffset`, and one
+ * entry's slice from that entry's `length`. Both are attacker- or
+ * corruption-controlled: a single flipped byte in an 8-byte `indexOffset`
+ * still points inside the file, so the "read the index block" call becomes
+ * "read the whole pack into one buffer", which is exactly the property the
+ * streaming reader exists to guarantee it never does. These caps are what make
+ * the bound structural rather than a comment.
+ *
+ * Sized against the format, not against a deployment: a realistic index record
+ * (`type:uuid` identity + an R2 key + a freshness token) is ~230 bytes, and the
+ * server packs at most 256 items per pack.
+ */
+export const PACK_MAX_INDEX_ENTRY_BYTES = 4096
+/** Hard ceiling on `entryCount`, whatever the footer claims. */
+export const PACK_MAX_ENTRIES = 4096
+/** Absolute ceiling on the index block; the per-pack cap is also entry-count scaled. */
+export const PACK_MAX_INDEX_BYTES = PACK_MAX_ENTRIES * PACK_MAX_INDEX_ENTRY_BYTES
+
 export const PackKindCode = {
   record: 0,
   crdt_snapshot: 1,

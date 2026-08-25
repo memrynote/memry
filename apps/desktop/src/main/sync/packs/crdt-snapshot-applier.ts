@@ -7,6 +7,13 @@ import type { PackSnapshotApplier, PackSnapshotMeta } from './pack-bootstrap'
 const log = createLogger('PackSnapshotApply')
 
 /**
+ * A Y.Doc holding nothing encodes its state vector as a single varint 0. Two
+ * bytes is the same "still empty" threshold `applyCrdtBatch` uses before it
+ * falls back to a markdown seed.
+ */
+const EMPTY_STATE_VECTOR_BYTES = 2
+
+/**
  * Seeds Y.Docs from `crdt_snapshot` pack entries (#1840).
  *
  * SIGNER IDENTITY. The pack index carries a snapshot's freshness token
@@ -30,7 +37,18 @@ export interface SnapshotSeedStore {
     noteId: string,
     watermark: { appliedSequence: number; snapshotRevision?: string }
   ): Promise<void>
+  /**
+   * Bring the note's Y.Doc into the provider's live map, WITHOUT the markdown
+   * seed. Mandatory before `applyRemoteUpdate`: the provider routes updates
+   * through that map and silently drops (`log.warn` + `return`) anything for a
+   * doc it does not hold. Throwing here means the note stays item-granular.
+   */
+  openDoc(noteId: string): Promise<void>
   applyRemoteUpdate(noteId: string, update: Uint8Array): void
+  /** Live state vector, or null when the provider is not holding this doc. */
+  getStateVector(noteId: string): Uint8Array | null
+  /** Release the doc again unless an editor window is holding it. */
+  closeDoc(noteId: string): Promise<void>
 }
 
 export interface CrdtSnapshotApplierDeps {
@@ -92,15 +110,46 @@ export const createCrdtSnapshotApplier = (deps: CrdtSnapshotApplierDeps): PackSn
         return false
       }
 
-      store.applyRemoteUpdate(noteId, plaintext)
-      // Written only after the bytes reached the doc: a watermark for a
-      // baseline that was never applied is a permanent skip of the download
-      // that would have fixed it.
-      await store.putSnapshotWatermark(noteId, {
-        appliedSequence: meta.sequenceNum,
-        snapshotRevision: meta.revision
-      })
-      return true
+      // Pack bootstrap runs before the first pull, so nothing has opened any of
+      // these docs — no editor window, no note row, no CRDT sweep yet. Seeding
+      // an unopened doc is a silent no-op in the provider, so the open is what
+      // makes the whole feature real.
+      try {
+        await store.openDoc(noteId)
+      } catch (error) {
+        log.debug('Could not open the doc for a packed snapshot — item GET instead', {
+          noteId,
+          error: error instanceof Error ? error.message : String(error)
+        })
+        return false
+      }
+
+      try {
+        store.applyRemoteUpdate(noteId, plaintext)
+        // Proof the bytes actually landed, not an assumption that they did.
+        // `applyRemoteUpdate` returns void and drops the update for a doc the
+        // provider is not holding (or one mid-close), and a watermark for a
+        // baseline that was never applied is a PERMANENT skip of the
+        // `GET /sync/crdt/snapshot/:noteId` that would have fixed it — the
+        // sweep reads that watermark as "this doc already holds its baseline".
+        // Same emptiness test the coordinator uses after a baseline apply.
+        const vector = store.getStateVector(noteId)
+        if (!vector || vector.length <= EMPTY_STATE_VECTOR_BYTES) {
+          log.warn('Packed snapshot did not reach the doc — leaving it item-granular', { noteId })
+          return false
+        }
+        await store.putSnapshotWatermark(noteId, {
+          appliedSequence: meta.sequenceNum,
+          snapshotRevision: meta.revision
+        })
+        return true
+      } finally {
+        // Hundreds of packed notes must not pin hundreds of Y.Docs in the main
+        // process; the provider's own LRU only sheds what it is told to.
+        await store.closeDoc(noteId).catch(() => {
+          /* the doc is flushed either way; a stuck close is not a failed seed */
+        })
+      }
     }
   }
 }

@@ -59,6 +59,9 @@ export const MAX_PARALLEL_PACK_DOWNLOADS = 3
 /** Clock-skew margin subtracted from a presigned URL's claimed expiry. */
 const PRESIGN_EXPIRY_SAFETY_SECONDS = 30
 
+/** Floor between two re-lists for fresh presigned URLs, shared by all workers. */
+const PACK_RELIST_MIN_INTERVAL_SECONDS = 60
+
 /** Freshness token a packed snapshot must carry before its bytes are trusted. */
 export interface PackSnapshotMeta {
   sequenceNum: number
@@ -131,6 +134,16 @@ const defaultFetchPackPage = async (token: string, cursor: string | null): Promi
   return getFromServer<unknown>(`/sync/packs?${query.toString()}`, token)
 }
 
+interface PackListing {
+  packs: PackSummary[]
+  /**
+   * True when the page walk hit `MAX_PACK_LIST_PAGES` with a cursor still
+   * pending, so packs OLDER than everything listed exist and were never seen.
+   * Contiguity is meaningless across that hole — see `commitPage`.
+   */
+  truncated: boolean
+}
+
 /**
  * Walk `GET /sync/packs` newest-first and return the packs this client can
  * actually use. Resolves an EMPTY list for every "no packs here" answer — an
@@ -142,10 +155,11 @@ const listUsablePacks = async (
   deps: PackBootstrapDeps,
   token: string,
   nowSeconds: number
-): Promise<PackSummary[]> => {
+): Promise<PackListing> => {
   const fetchPage = deps.fetchPackPage ?? defaultFetchPackPage
   const usable: PackSummary[] = []
   let cursor: string | null = null
+  let truncated = false
 
   for (let page = 0; page < MAX_PACK_LIST_PAGES; page++) {
     let raw: unknown
@@ -156,13 +170,13 @@ const listUsablePacks = async (
       log.debug('Pack list unavailable — using the item-granular bootstrap', {
         error: error instanceof Error ? error.message : String(error)
       })
-      return []
+      return { packs: [], truncated: false }
     }
 
     const parsed = PackListResponseSchema.safeParse(raw)
     if (!parsed.success) {
       log.info('Pack list failed validation — using the item-granular bootstrap')
-      return []
+      return { packs: [], truncated: false }
     }
 
     for (const pack of parsed.data.packs) {
@@ -178,9 +192,10 @@ const listUsablePacks = async (
 
     cursor = parsed.data.nextCursor ?? null
     if (!cursor) break
+    truncated = page === MAX_PACK_LIST_PAGES - 1
   }
 
-  return usable
+  return { packs: usable, truncated }
 }
 
 /**
@@ -194,6 +209,15 @@ const listUsablePacks = async (
  * run from the bottom keeps the claim true, at the cost of re-opening at most
  * one interrupted pack on resume. Re-opening is cheap and idempotent: every
  * note that already landed fails its freshness gate and is skipped.
+ *
+ * TIES ARE ADVANCED AS A GROUP, never one pack at a time. `crdt_snapshot`
+ * packs sort on `created_at` epoch seconds, which the compaction pipeline
+ * documents as tying heavily, and a same-second group that exceeds the byte
+ * target is split across packs — so two packs can share a `maxCursor`. The
+ * resume filter is `maxCursor > watermark`, so recording a value another,
+ * uncompleted pack also carries would exclude that pack from this run and from
+ * every run after it, permanently. A tie group therefore advances the
+ * watermark only when EVERY pack in it completed.
  */
 export const contiguousAppliedCursor = (
   packs: PackSummary[],
@@ -201,9 +225,15 @@ export const contiguousAppliedCursor = (
 ): number | null => {
   const ascending = [...packs].sort((a, b) => a.maxCursor - b.maxCursor)
   let watermark: number | null = null
-  for (const pack of ascending) {
-    if (!completed.has(pack.id)) break
-    watermark = pack.maxCursor
+  for (let i = 0; i < ascending.length;) {
+    const cursor = ascending[i].maxCursor
+    let groupComplete = true
+    while (i < ascending.length && ascending[i].maxCursor === cursor) {
+      if (!completed.has(ascending[i].id)) groupComplete = false
+      i++
+    }
+    if (!groupComplete) break
+    watermark = cursor
   }
   return watermark
 }
@@ -231,7 +261,8 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const accessToken = await deps.getAccessToken().catch(() => null)
   if (!accessToken) return emptyResult()
 
-  const allPacks = await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
+  const listing = await listUsablePacks(deps, accessToken, Math.floor(now() / 1000))
+  const allPacks = listing.packs
   if (allPacks.length === 0) return emptyResult()
 
   const resumeFrom = Number(deps.getStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR) ?? '')
@@ -252,6 +283,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   const totalEntries = packs.reduce((sum, pack) => sum + pack.itemCount, 0)
   const counters: ApplyCounters = { applied: 0, skipped: 0, failed: 0 }
   const completed = new Set<string>()
+  let relist: { at: number; pending: Promise<Map<string, PackSummary>> } | null = null
   let packsApplied = 0
   let openedAnyPack = false
   let appliedThroughCursor: number | null = null
@@ -275,7 +307,11 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     const handle = deps.beginPage()
     let committed = false
     try {
-      const watermark = contiguousAppliedCursor(packs, completed)
+      // A truncated listing means older packs exist that were never listed, so
+      // the oldest pack in hand is not the bottom of the run and "contiguous
+      // from the oldest" claims coverage of a range nothing walked. Apply the
+      // packs, record nothing: the next run re-lists from the top.
+      const watermark = listing.truncated ? null : contiguousAppliedCursor(packs, completed)
       if (watermark !== null && watermark !== appliedThroughCursor) {
         deps.setStateValue(SYNC_STATE_KEYS.PACKS_APPLIED_THROUGH_CURSOR, String(watermark))
         appliedThroughCursor = watermark
@@ -361,11 +397,50 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
     emitProgress()
   }
 
+  /**
+   * The presigned URL for a pack that is ABOUT to transfer, re-minted when the
+   * one from the list has aged out.
+   *
+   * Every URL in a `GET /sync/packs` page is signed once, at list time, with a
+   * TTL measured in minutes. A vault big enough to need packs routinely
+   * out-runs it: 24MiB packs, three in flight, on a slow or suspended link, and
+   * every pack still queued when the TTL lapses gets a 403 from R2 and drops
+   * out of the run. Re-listing mints fresh signatures for the remainder. One
+   * re-list is shared by all workers and reused for a minute, so a whole queue
+   * of aged-out packs costs one extra request, not one per pack.
+   */
+  const freshUrl = async (pack: PackSummary): Promise<string | null> => {
+    const nowSeconds = Math.floor(now() / 1000)
+    const live = (candidate: PackSummary): boolean =>
+      candidate.url !== undefined &&
+      candidate.expiresAt !== undefined &&
+      candidate.expiresAt - PRESIGN_EXPIRY_SAFETY_SECONDS > nowSeconds
+    if (live(pack)) return pack.url!
+
+    if (!relist || nowSeconds - relist.at >= PACK_RELIST_MIN_INTERVAL_SECONDS) {
+      relist = {
+        at: nowSeconds,
+        pending: listUsablePacks(deps, accessToken, nowSeconds).then(
+          (result) => new Map(result.packs.map((entry) => [entry.id, entry]))
+        )
+      }
+    }
+    const refreshed = (await relist.pending).get(pack.id)
+    if (refreshed && live(refreshed)) return refreshed.url!
+
+    log.info('Pack URL expired and could not be re-signed — items fall back to item GETs', {
+      packId: pack.id
+    })
+    return null
+  }
+
   const runOne = async (pack: PackSummary): Promise<void> => {
     const filePath = path.join(deps.tempDir, `${sanitizeId(pack.id)}.pack`)
+    const url = await freshUrl(pack)
+    if (!url) return
     try {
       await download({
-        url: pack.url!,
+        url,
         destPath: filePath,
         ...(deps.signal ? { signal: deps.signal } : {}),
         ...(deps.pace ? { pace: deps.pace } : {})

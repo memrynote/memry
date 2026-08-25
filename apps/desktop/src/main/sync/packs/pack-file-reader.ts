@@ -4,6 +4,9 @@ import { promises as fs } from 'node:fs'
 import {
   PACK_FOOTER_SIZE,
   PACK_HEADER_SIZE,
+  PACK_MAX_ENTRIES,
+  PACK_MAX_INDEX_BYTES,
+  PACK_MAX_INDEX_ENTRY_BYTES,
   decodePackIndex,
   packBytesEqual,
   readFooter,
@@ -108,8 +111,21 @@ export const openPack = async (
   if (footer.indexOffset < PACK_HEADER_SIZE || footer.indexOffset > indexEnd) {
     throw new Error('pack index offset out of bounds')
   }
+  if (footer.entryCount < 0 || footer.entryCount > PACK_MAX_ENTRIES) {
+    throw new Error('pack entry count out of bounds')
+  }
 
-  const indexBytes = await source.read(footer.indexOffset, indexEnd - footer.indexOffset)
+  // The index block is the ONE allocation sized by a field read out of the
+  // pack, so it is bounded before the read rather than after it. Without this,
+  // a single corrupt byte in the footer's 8-byte indexOffset still points
+  // inside the file and turns this call into "buffer the whole pack" — three
+  // of those concurrently is an OOM of the main process instead of the
+  // graceful discard the format promises.
+  const indexLength = indexEnd - footer.indexOffset
+  const indexCap = Math.min(PACK_MAX_INDEX_BYTES, footer.entryCount * PACK_MAX_INDEX_ENTRY_BYTES)
+  if (indexLength > indexCap) throw new Error('pack index block too large')
+
+  const indexBytes = await source.read(footer.indexOffset, indexLength)
   const entries = decodePackIndex(indexBytes, footer.entryCount)
 
   const payloadEnd = footer.indexOffset

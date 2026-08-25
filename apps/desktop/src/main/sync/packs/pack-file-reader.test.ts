@@ -4,8 +4,28 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import {
+  PACK_FOOTER_SIZE,
+  PACK_MAX_ENTRIES,
+  PACK_MAX_INDEX_ENTRY_BYTES
+} from '@memry/contracts/pack-format'
+
 import { openPack, openPackFile, type PackByteSource } from './pack-file-reader'
 import { buildTestPack } from './test-pack-builder'
+
+/** Overwrite one of the footer's two uint64 fields in place. */
+const rewriteFooterU64 = (
+  bytes: Uint8Array,
+  field: 'entryCount' | 'indexOffset',
+  value: number
+): void => {
+  const at = bytes.length - PACK_FOOTER_SIZE + 32 + (field === 'entryCount' ? 0 : 8)
+  let remaining = value
+  for (let i = 7; i >= 0; i--) {
+    bytes[at + i] = remaining % 256
+    remaining = Math.floor(remaining / 256)
+  }
+}
 
 const bodyOf = (id: string, size: number): Uint8Array =>
   Uint8Array.from({ length: size }, (_, i) => (id.charCodeAt(0) + i) % 251)
@@ -107,6 +127,41 @@ describe('pack file reader', () => {
     await expect(handle.readEntry(handle.entries[0])).resolves.toBeInstanceOf(Uint8Array)
     await expect(handle.readEntry(handle.entries[1])).rejects.toThrow(/entry checksum mismatch/)
     await handle.close()
+  })
+
+  it('rejects a footer version echo that drifts from the header', async () => {
+    // Header and footer both carry the version precisely so a reader can
+    // refuse a file whose two halves disagree — a truncated or spliced object.
+    const pack = buildTestPack([{ id: 'note-a', bytes: bodyOf('a', 32) }], { footerVersion: 99 })
+    await expect(openPack(recordingSource(pack.bytes))).rejects.toThrow(/unsupported pack version/)
+  })
+
+  it('#given a corrupt index offset #then it is refused without buffering the file', async () => {
+    // One flipped byte in the footer's 8-byte indexOffset still points inside
+    // the file, and "read the index block" then means "read the whole pack
+    // into one buffer" — three of those concurrently is an OOM of the main
+    // process instead of the graceful discard the format promises.
+    const pack = buildTestPack(
+      Array.from({ length: 4 }, (_, i) => ({ id: `note-${i}`, bytes: bodyOf(String(i), 65_536) }))
+    )
+    rewriteFooterU64(pack.bytes, 'indexOffset', 8)
+    const source = recordingSource(pack.bytes)
+
+    await expect(openPack(source)).rejects.toThrow(/index block too large/)
+
+    // Nothing bigger than the footer probe was ever asked for.
+    const cap = 4 * PACK_MAX_INDEX_ENTRY_BYTES
+    expect(Math.max(...source.reads.map((read) => read.length))).toBeLessThanOrEqual(cap)
+    expect(Math.max(...source.reads.map((read) => read.length))).toBeLessThan(pack.bytes.length)
+  })
+
+  it('#given a corrupt entry count #then it is refused before any index read', async () => {
+    const pack = buildTestPack([{ id: 'note-a', bytes: bodyOf('a', 32) }])
+    rewriteFooterU64(pack.bytes, 'entryCount', PACK_MAX_ENTRIES + 1)
+    const source = recordingSource(pack.bytes)
+
+    await expect(openPack(source)).rejects.toThrow(/entry count out of bounds/)
+    expect(source.reads.every((read) => read.length <= PACK_FOOTER_SIZE)).toBe(true)
   })
 
   it('rejects a truncated file before decoding anything', async () => {

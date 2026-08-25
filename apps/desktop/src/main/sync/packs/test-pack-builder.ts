@@ -51,6 +51,8 @@ const sha256 = (bytes: Uint8Array): Uint8Array =>
 export interface BuildTestPackOptions {
   magic?: string
   version?: number
+  /** Footer version echo, when it must differ from the header's. */
+  footerVersion?: number
   /** Corrupt the whole-payload digest recorded in the footer. */
   breakPayloadDigest?: boolean
   /** Ids whose per-entry digest is recorded wrong. */
@@ -103,7 +105,7 @@ export const buildTestPack = (
     ...u64(entries.length),
     ...u64(indexOffset),
     ...encoder.encode(PACK_MAGIC),
-    options.version ?? PACK_VERSION
+    options.footerVersion ?? options.version ?? PACK_VERSION
   ]
 
   const bytes = new Uint8Array([...header, ...payloadBytes, ...index, ...footer])
