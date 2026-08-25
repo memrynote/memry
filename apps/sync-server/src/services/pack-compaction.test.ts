@@ -344,6 +344,32 @@ describe('pack build', () => {
     expect(watermarkOf('record')?.last_sort_value).toBe(2)
   })
 
+  it('degrades a zero-length source blob to a hole instead of throwing', async () => {
+    // size_bytes 0 slips past the drift guard (0 === 0) and reaches
+    // writeEntry, which rejects an empty entry. That throw escapes before the
+    // watermark moves, so the queue drops the message and the cron re-selects
+    // the identical range forever — the same permanent stall a non-final hole
+    // used to cause. Slot 0 again, so the writer must also be advanced past it.
+    seedRecord({ cursor: 1, bytes: new Uint8Array(0) })
+    const kept = seedRecord({ cursor: 2 })
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+    expect(result.built).toBe(true)
+    expect(result.holes).toEqual(['task:item-1'])
+    expect(result.itemCount).toBe(1)
+
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes)
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-2'])
+    expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept.bytes)
+    expect(watermarkOf('record')?.last_sort_value).toBe(2)
+  })
+
   it('degrades declared-vs-actual size drift to a hole instead of throwing', async () => {
     // Snapshot blob keys are STABLE per note and overwritten in place on every
     // push, so a push landing between selection (which sized the pack buffer

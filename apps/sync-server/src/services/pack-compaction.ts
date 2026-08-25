@@ -364,6 +364,17 @@ export const compactOneRange = async (
         continue
       }
       const bytes = new Uint8Array(await body.arrayBuffer())
+      // A zero-length blob is a hole for the same reason a vanished one is:
+      // openPack rejects an empty entry, and that throw would escape before
+      // the watermark moves, so the range re-selects and re-throws forever.
+      // Real ciphertext is never empty (XChaCha20 always carries a MAC), but
+      // an aborted or truncated write can leave a 0-byte object behind, and a
+      // row declaring size_bytes 0 slips past the drift guard below (0 === 0).
+      if (bytes.byteLength === 0) {
+        pack.skipEntry(plan)
+        holes.push(plan.id)
+        continue
+      }
       if (bytes.byteLength !== plan.sizeBytes) {
         // Declared-vs-actual drift: the blob was replaced under a stable key
         // after selection sized this pack's buffer. Copying it would overrun
