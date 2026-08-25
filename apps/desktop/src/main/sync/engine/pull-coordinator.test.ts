@@ -3,7 +3,9 @@ import { SyncEngine, type SyncEngineDeps } from '../engine'
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
-import { BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT } from './sync-context'
+import { BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT, SYNC_STATE_KEYS } from './sync-context'
+import { ItemApplier } from '../apply-item'
+import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
 vi.mock('../../lib/logger', () => {
@@ -216,6 +218,79 @@ describe('#given a pull page ending in a CRDT batch #when the batch applies', ()
       BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT
     )
     expect(provider.restore as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1)
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * `stopSyncRuntime` calls `engine.requestCancel()` — which aborts the active
+ * cycle's controller — before awaiting the start promise, so closing or
+ * switching a vault mid-bootstrap is now a routine way for an abort to land
+ * INSIDE a page's item loop. `processPage` breaks out of that loop with part of
+ * the slice applied and still commits the page, reporting stop: 'none'. If the
+ * persisted cursor then advances past the whole page, the unapplied items are
+ * stranded: /sync/changes is a strictly ascending `server_cursor > ?` feed, so
+ * it never offers them again until the item is updated server-side or the
+ * 30-minute-gated manifest check resets the cursor to '0'.
+ */
+describe('#given an abort landing inside a page apply #when the page has only partly applied', () => {
+  const { getDb } = setupTestDb()
+
+  const decryptedTask = (id: string): DecryptedPullItem => ({
+    id,
+    type: 'task',
+    operation: 'update',
+    content: JSON.stringify({ title: id }),
+    clock: { 'device-1': 1 },
+    signerDeviceId: 'device-1'
+  })
+
+  it('#then the pull cursor does not advance past the page and the run is not a success', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      ctx: { abortController: AbortController | null }
+      stateManager: {
+        getStateValue: (key: string) => string | undefined
+        recordHistory: (...args: unknown[]) => void
+      }
+    }
+
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [
+        { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+        { id: 'task-2', type: 'task', version: 1, modifiedAt: 1000, size: 10 }
+      ],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 42
+    })
+    vi.spyOn(http, 'postToServer').mockResolvedValue({ items: [] })
+    vi.spyOn(await import('../sync-crypto-batch'), 'decryptPullBatch').mockResolvedValue({
+      decrypted: [decryptedTask('task-1'), decryptedTask('task-2')],
+      failures: []
+    })
+
+    const applied: string[] = []
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
+      applied.push(input.itemId)
+      // Teardown lands here: requestCancel() aborts the cycle's controller
+      // while the page is half applied.
+      eng.ctx.abortController!.abort()
+      return 'applied'
+    })
+    const historySpy = vi.spyOn(eng.stateManager, 'recordHistory')
+
+    await engine.pull()
+
+    // The abort stopped the item loop after the first item, as designed.
+    expect(applied).toEqual(['task-1'])
+    // task-2 was never applied, so the watermark must not claim the page.
+    expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    // ...and an interrupted run is not a clean sync.
+    expect(historySpy).not.toHaveBeenCalled()
+
     vi.restoreAllMocks()
   })
 })
