@@ -27,6 +27,7 @@ import {
   _resetBulkApplyForTests
 } from './bulk-apply'
 import { getRawIndexDatabase, isIndexDatabaseInitialized } from '../database/client'
+import { createLogger } from '../lib/logger'
 
 function makeDb(): { db: DrizzleDb; raw: Database.Database } {
   const raw = new Database(':memory:')
@@ -444,6 +445,58 @@ describe('bulk apply page session', () => {
       raw.exec('ROLLBACK')
       // The journaled writes covered rows that no longer exist; they must go.
       expect(readJournal()).toBeNull()
+    })
+  })
+  /**
+   * better-sqlite3 shares ONE connection across the main process, so an IPC
+   * handler, a timer, or an in-flight drizzle transaction can already hold the
+   * data DB open when a pull page starts. Without the `inTransaction` guard the
+   * raw `BEGIN IMMEDIATE` throws 'cannot start a transaction within a
+   * transaction' straight out of beginPageApply and takes the whole pull page
+   * with it — the exact failure the guard exists to prevent.
+   */
+  describe("#given the data connection already holds someone else's transaction", () => {
+    const logger = createLogger('test') as unknown as { warn: ReturnType<typeof vi.fn> }
+
+    it('#then the page applies untransacted instead of nesting a raw BEGIN', () => {
+      const { db, raw } = makeDb()
+      raw.exec('BEGIN')
+      logger.warn.mockClear()
+      try {
+        // #when — must not throw, and must hand back a usable handle
+        const page = beginPageApply(db)
+        page.db.transaction(() => {
+          ;(page.db as unknown as { $client: Database.Database }).$client
+            .prepare("INSERT INTO t (id, v) VALUES ('a', 'x')")
+            .run()
+        })
+        page.commit()
+
+        // #then
+        expect(logger.warn).toHaveBeenCalledWith(
+          'Data DB already in a transaction — page apply runs untransacted'
+        )
+        expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
+        // The page never opened the transaction, so it must not close it either.
+        expect(raw.inTransaction).toBe(true)
+      } finally {
+        if (raw.inTransaction) raw.exec('ROLLBACK')
+      }
+    })
+
+    it('#then rollback leaves the outer transaction and its rows alone', () => {
+      const { db, raw } = makeDb()
+      raw.exec('BEGIN')
+      try {
+        const page = beginPageApply(db)
+        raw.prepare("INSERT INTO t (id, v) VALUES ('a', 'x')").run()
+        page.rollback()
+
+        expect(raw.inTransaction).toBe(true)
+        expect(raw.prepare('SELECT COUNT(*) AS n FROM t').get()).toEqual({ n: 1 })
+      } finally {
+        if (raw.inTransaction) raw.exec('ROLLBACK')
+      }
     })
   })
 })

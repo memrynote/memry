@@ -1006,4 +1006,123 @@ describe('SyncWorkerBridge', () => {
       expect(bridge.isRunning).toBe(false)
     })
   })
+  /**
+   * decryptCrdtBatch is the off-thread CRDT decrypt entry point. Nothing pinned
+   * it: worker.test.ts covers the worker's side of `decrypt-crdt-batch`, and
+   * the CRDT coordinator tests mock the bridge object wholesale — so an empty
+   * body here, or a lost `WorkerProtocolError` latch exemption, passed the
+   * whole main suite.
+   */
+  describe('#given a running bridge #when decryptCrdtBatch round-trips', () => {
+    const startReady = async (): Promise<void> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+    }
+
+    /** requestId of the newest posted `decrypt-crdt-batch`. */
+    const lastCrdtRequestId = (): string =>
+      mockWorkerInstance.postMessage.mock.calls
+        .filter(([m]) => m.type === 'decrypt-crdt-batch')
+        .at(-1)![0].requestId
+
+    const callDecryptCrdt = (): ReturnType<SyncWorkerBridge['decryptCrdtBatch']> =>
+      bridge.decryptCrdtBatch(
+        [{ index: 0, noteId: 'note-1', dataB64: 'ZA==', signerDeviceId: 'device-1' }],
+        new Uint8Array(32),
+        { 'device-1': 'cGs=' }
+      )
+
+    it('#then the worker reply is handed back verbatim, results and failures alike', async () => {
+      // #given
+      await startReady()
+      const request = callDecryptCrdt()
+
+      // #when
+      mockWorkerInstance.simulateMessage({
+        type: 'decrypt-crdt-batch-result',
+        requestId: lastCrdtRequestId(),
+        results: [{ index: 0, update: new Uint8Array([1, 2, 3]) }],
+        failures: [{ index: 1, noteId: 'note-2', error: 'bad signature', isSignatureError: true }]
+      })
+
+      // #then — the caller re-indexes results by `index`, so a dropped result
+      // that is not also listed in `failures` becomes an undefined CRDT update.
+      await expect(request).resolves.toEqual({
+        results: [{ index: 0, update: new Uint8Array([1, 2, 3]) }],
+        failures: [{ index: 1, noteId: 'note-2', error: 'bad signature', isSignatureError: true }]
+      })
+    })
+
+    it('#then a reply of the wrong kind rejects instead of being read as a result', async () => {
+      // #given
+      await startReady()
+      const request = callDecryptCrdt()
+
+      // #when — a record-decrypt result answering a CRDT-decrypt request
+      mockWorkerInstance.simulateMessage({
+        type: 'decrypt-batch-result',
+        requestId: lastCrdtRequestId(),
+        results: [],
+        failures: []
+      })
+
+      // #then
+      await expect(request).rejects.toThrow(/Unexpected response type/)
+    })
+
+    it('#then a mixed-build worker rejecting the kind never latches the bridge off', async () => {
+      // #given — a worker bundle that predates `decrypt-crdt-batch`
+      await startReady()
+      logger.warn.mockClear()
+
+      // #when — more consecutive protocol-error replies than the latch threshold
+      for (let i = 0; i <= MAX_CONSECUTIVE_FAILURES; i++) {
+        const request = callDecryptCrdt()
+        mockWorkerInstance.simulateMessage({
+          type: 'error',
+          requestId: lastCrdtRequestId(),
+          error: 'Unsupported worker message kind: decrypt-crdt-batch'
+        })
+        await expect(request).rejects.toThrow('Unsupported worker message kind')
+      }
+
+      // #then — the transport was never failing; latching here would demote ALL
+      // push encryption and pull decryption to the main thread for the session.
+      expect(bridge.isRunning).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Sync worker latched off after repeated failures — using main-thread crypto',
+        expect.anything()
+      )
+    })
+
+    it('#then a successful reply clears the consecutive-failure count', async () => {
+      // #given — two real transport failures, one short of the latch
+      await startReady()
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES - 1; i++) {
+        const silent = callDecryptCrdt()
+        vi.advanceTimersByTime(60_001)
+        await expect(silent).rejects.toThrow('Worker request timed out')
+      }
+
+      // #when — the worker answers one batch cleanly
+      const ok = callDecryptCrdt()
+      mockWorkerInstance.simulateMessage({
+        type: 'decrypt-crdt-batch-result',
+        requestId: lastCrdtRequestId(),
+        results: [],
+        failures: []
+      })
+      await ok
+
+      // #then — the streak restarts, so the same count of later timeouts is
+      // still below the threshold and the bridge stays on.
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES - 1; i++) {
+        const silent = callDecryptCrdt()
+        vi.advanceTimersByTime(60_001)
+        await expect(silent).rejects.toThrow('Worker request timed out')
+      }
+      expect(bridge.isRunning).toBe(true)
+    })
+  })
 })
