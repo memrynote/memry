@@ -942,4 +942,68 @@ describe('SyncWorkerBridge', () => {
       await expect(encryptPromise).rejects.toThrow('OOM')
     })
   })
+
+  describe('#given a mixed-build worker replying protocol-known errors #when batches keep failing', () => {
+    const startReady = async (): Promise<void> => {
+      const p = bridge.start()
+      mockWorkerInstance.simulateMessage({ type: 'ready' })
+      await p
+    }
+
+    /** Answer the newest in-flight batch the way an old worker build does. */
+    const replyUnknownKindError = (): void => {
+      const posted = mockWorkerInstance.postMessage.mock.calls
+        .filter(([m]) => m.type === 'encrypt-batch')
+        .at(-1)![0]
+      mockWorkerInstance.simulateMessage({
+        type: 'error',
+        requestId: posted.requestId,
+        error: `Unsupported worker message kind: ${String(posted.type)}`
+      })
+    }
+
+    it('#then every call still routes to the worker and the bridge is never latched', async () => {
+      // #given
+      await startReady()
+      logger.warn.mockClear()
+
+      // #when — more consecutive protocol-error replies than the latch threshold
+      for (let i = 0; i <= MAX_CONSECUTIVE_FAILURES; i++) {
+        const request = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        replyUnknownKindError()
+        // #then — each CALL rejects so the caller falls back to main-thread crypto…
+        await expect(request).rejects.toThrow('Unsupported worker message kind')
+      }
+
+      // #and — …but the transport was never actually failing: a latch here would
+      // demote push encryption session-wide over replies the worker made in time.
+      expect(bridge.isRunning).toBe(true)
+      expect(
+        mockWorkerInstance.postMessage.mock.calls.filter(([m]) => m.type === 'encrypt-batch')
+      ).toHaveLength(MAX_CONSECUTIVE_FAILURES + 1)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'Sync worker latched off after repeated failures — using main-thread crypto',
+        expect.anything()
+      )
+    })
+
+    it('#then a genuine timeout still engages the latch alongside them', async () => {
+      // #given — a protocol-error reply, which must not advance the failure count
+      await startReady()
+      const errored = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+      replyUnknownKindError()
+      await expect(errored).rejects.toThrow('Unsupported worker message kind')
+      expect(bridge.isRunning).toBe(true)
+
+      // #when — real transport failures: a live-but-silent worker timing out
+      for (let i = 0; i < MAX_CONSECUTIVE_FAILURES; i++) {
+        const silent = bridge.encryptBatch([], new Uint8Array(32), new Uint8Array(64), 'device-1')
+        vi.advanceTimersByTime(60_001)
+        await expect(silent).rejects.toThrow('Worker request timed out')
+      }
+
+      // #then
+      expect(bridge.isRunning).toBe(false)
+    })
+  })
 })

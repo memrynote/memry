@@ -52,6 +52,41 @@ export interface DecryptionFailure {
   isSignatureError: boolean
 }
 
+/**
+ * One CRDT payload (a snapshot blob or an incremental update) to decrypt off
+ * the main thread. Exactly one of `data` / `dataB64` is set: snapshots arrive
+ * from the HTTP layer already byte-decoded, batch/incremental updates arrive
+ * as the server's base64 strings and are decoded in the worker — that decode
+ * loop is part of what this offloads.
+ */
+export interface CrdtPayloadForDecrypt {
+  /** Position in the request array; results and failures refer back to it. */
+  index: number
+  noteId: string
+  data?: Uint8Array
+  dataB64?: string
+  signerDeviceId: string
+}
+
+export interface CrdtDecryptFailure {
+  index: number
+  noteId: string
+  error: string
+  isSignatureError: boolean
+}
+
+/**
+ * The exact bytes the main-thread path derives from a server base64 payload
+ * (`atob` + charCode loop). Shared by the worker and every fallback so the two
+ * paths cannot drift.
+ */
+export function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
+}
+
 export type MainToWorkerMessage =
   | {
       type: 'encrypt-batch'
@@ -65,6 +100,13 @@ export type MainToWorkerMessage =
       type: 'decrypt-batch'
       requestId: string
       items: PullItemForDecrypt[]
+      vaultKey: Uint8Array
+      signerKeys: Record<string, string>
+    }
+  | {
+      type: 'decrypt-crdt-batch'
+      requestId: string
+      items: CrdtPayloadForDecrypt[]
       vaultKey: Uint8Array
       signerKeys: Record<string, string>
     }
@@ -100,6 +142,12 @@ export type WorkerToMainMessage =
       requestId: string
       results: DecryptedPullItem[]
       failures: DecryptionFailure[]
+    }
+  | {
+      type: 'decrypt-crdt-batch-result'
+      requestId: string
+      results: Array<{ index: number; update: Uint8Array }>
+      failures: CrdtDecryptFailure[]
     }
   | {
       type: 'error'

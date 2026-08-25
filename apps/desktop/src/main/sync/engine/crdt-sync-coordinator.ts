@@ -1,5 +1,8 @@
 import { createLogger } from '../../lib/logger'
+import sodium from 'libsodium-wrappers-sumo'
 import { secureCleanup } from '../../crypto/index'
+import { base64ToBytes } from '@memry/sync-client/worker-protocol'
+import type { CrdtPayloadForDecrypt } from '@memry/sync-client/worker-protocol'
 import { withRetry } from '@memry/sync-client/retry'
 import {
   getFromServer,
@@ -144,6 +147,74 @@ export class CrdtSyncCoordinator {
   constructor(ctx: SyncContext, resolveDeviceKey: ResolveDeviceKey) {
     this.ctx = ctx
     this.resolveDeviceKey = resolveDeviceKey
+  }
+
+  /**
+   * Decrypt a set of CRDT payloads (snapshot blobs, or the server's base64
+   * update strings — that decode is part of what moves off-thread), preferring
+   * the crypto worker and falling back to the byte-identical `decryptCrdtUpdate`
+   * on this thread when the bridge is not running or rejects. Signer keys are
+   * ORIGINAL-base64 strings keyed by device id, the same shape the record-pull
+   * request uses.
+   *
+   * Results are aligned with `payloads`. Any payload failure throws, preserving
+   * the pre-worker semantics: one undecryptable update aborts the pass, and a
+   * re-applied CRDT update is a no-op, so nothing is lost by dropping the rest
+   * of the round.
+   */
+  private async decryptCrdtPayloads(
+    payloads: CrdtPayloadForDecrypt[],
+    vaultKey: Uint8Array,
+    signerKeys: Record<string, string>
+  ): Promise<Uint8Array[]> {
+    if (payloads.length === 0) return []
+
+    const bridge = this.ctx.deps.workerBridge
+    if (bridge?.isRunning) {
+      let workerResult: Awaited<ReturnType<typeof bridge.decryptCrdtBatch>> | null = null
+      try {
+        workerResult = await bridge.decryptCrdtBatch(payloads, vaultKey, signerKeys)
+      } catch (err) {
+        // Transport/lifecycle only — per-item verdicts arrive in-band below.
+        log.warn('CRDT worker decrypt unavailable — falling back to main thread', {
+          error: err instanceof Error ? err.message : String(err)
+        })
+      }
+      if (workerResult) {
+        if (workerResult.failures.length > 0) throw new Error(workerResult.failures[0].error)
+        // Results are tagged with the ORIGINAL entry index (`r.index`), not
+        // their position in the results array: unresolvable signers are
+        // filtered out before the request, so the payload indexes arrive with
+        // gaps. Mapping by array position here handed later entries another
+        // entry's bytes — or `undefined` — and turned a skip-able signer into a
+        // whole-pass abort.
+        const byIndex = new Map(workerResult.results.map((r) => [r.index, r.update]))
+        return payloads.map((p) => byIndex.get(p.index)!)
+      }
+    }
+
+    return payloads.map((p) => {
+      const pubKey = sodium.from_base64(
+        signerKeys[p.signerDeviceId],
+        sodium.base64_variants.ORIGINAL
+      )
+      const packed = p.data ?? base64ToBytes(p.dataB64 as string)
+      return decryptCrdtUpdate(packed, vaultKey, p.noteId, pubKey)
+    })
+  }
+
+  private signerKeysFor(
+    entries: Array<{ data?: string; signerDeviceId: string }>,
+    keyOf: (signerDeviceId: string) => Uint8Array | null | undefined
+  ): Record<string, string> {
+    const signerKeys: Record<string, string> = {}
+    for (const entry of entries) {
+      const pubKey = keyOf(entry.signerDeviceId)
+      if (pubKey && !signerKeys[entry.signerDeviceId]) {
+        signerKeys[entry.signerDeviceId] = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
+      }
+    }
+    return signerKeys
   }
 
   addPendingPull(noteId: string): void {
@@ -430,7 +501,21 @@ export class CrdtSyncCoordinator {
       return { since: 0, verified: false }
     }
 
-    const decrypted = decryptCrdtUpdate(snapshotResult.snapshot, vaultKey, noteId, signerPubKey)
+    // Off-thread decrypt (worker when available); a failure throws here just
+    // as the inline call always did, so every caller's error handling is
+    // unchanged.
+    const [decrypted] = await this.decryptCrdtPayloads(
+      [
+        {
+          index: 0,
+          noteId,
+          data: snapshotResult.snapshot,
+          signerDeviceId: snapshotResult.signerDeviceId
+        }
+      ],
+      vaultKey,
+      this.signerKeysFor([snapshotResult], () => signerPubKey)
+    )
     this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
     const baselineSequence = this.rememberAppliedSequence(noteId, snapshotResult.sequenceNum)
     // Recorded here and nowhere else, after the bytes are in the doc: every
@@ -582,14 +667,33 @@ export class CrdtSyncCoordinator {
         )
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
-        await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
+        const signersById = new Map<string, Uint8Array | null>(
+          await Promise.all(
+            Array.from(signerIds).map(
+              async (sid) => [sid, await this.resolveDeviceKey(sid)] as const
+            )
+          )
+        )
+        const signerKeys = this.signerKeysFor(result.updates, (sid) => signersById.get(sid))
 
+        // One off-thread decrypt for the whole round, then apply in arrival
+        // order — the order `applyRemoteUpdate` saw before. A failure throws
+        // out of the round exactly as an inline decrypt always did.
+        const payloads: CrdtPayloadForDecrypt[] = []
+        for (const [i, entry] of result.updates.entries()) {
+          if (!signersById.get(entry.signerDeviceId)) continue
+          payloads.push({
+            index: i,
+            noteId,
+            dataB64: entry.data,
+            signerDeviceId: entry.signerDeviceId
+          })
+        }
+        const decryptedUpdates = await this.decryptCrdtPayloads(payloads, vaultKey, signerKeys)
+
+        let next = 0
         for (const entry of result.updates) {
-          const bin = atob(entry.data)
-          const packed = new Uint8Array(bin.length)
-          for (let i = 0; i < bin.length; i++) packed[i] = bin.charCodeAt(i)
-
-          const signerPubKey = await this.resolveDeviceKey(entry.signerDeviceId)
+          const signerPubKey = signersById.get(entry.signerDeviceId)
           if (!signerPubKey) {
             log.warn('Skipping CRDT update from unresolvable signer', {
               noteId,
@@ -605,8 +709,7 @@ export class CrdtSyncCoordinator {
             continue
           }
 
-          const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, signerPubKey)
-          crdtProvider.applyRemoteUpdate(noteId, decrypted)
+          crdtProvider.applyRemoteUpdate(noteId, decryptedUpdates[next++])
           since = this.rememberAppliedSequence(noteId, entry.sequenceNum)
         }
 
@@ -1093,13 +1196,40 @@ export class CrdtSyncCoordinator {
         recordBootstrapBytes('crdt', batchUpdateChars)
         await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
 
+        const signersById = new Map<string, Uint8Array | null>(
+          await Promise.all(
+            Array.from(signerIds).map(
+              async (sid) => [sid, await this.resolveDeviceKey(sid)] as const
+            )
+          )
+        )
+
+        const roundEntries: Array<{ noteId: string; data: string; signerDeviceId: string }> = []
+        for (const [noteId, noteData] of Object.entries(result.notes)) {
+          for (const u of noteData.updates) {
+            roundEntries.push({ noteId, data: u.data, signerDeviceId: u.signerDeviceId })
+          }
+        }
+        const signerKeys = this.signerKeysFor(roundEntries, (sid) => signersById.get(sid))
+        const payloads: CrdtPayloadForDecrypt[] = roundEntries.flatMap((entry, i) => {
+          if (!signersById.get(entry.signerDeviceId)) return []
+          return [
+            {
+              index: i,
+              noteId: entry.noteId,
+              dataB64: entry.data,
+              signerDeviceId: entry.signerDeviceId
+            }
+          ]
+        })
+        // One off-thread decrypt for the whole batch round; a failure throws
+        // and aborts the pass exactly as an inline decrypt always did.
+        const decryptedUpdates = await this.decryptCrdtPayloads(payloads, vaultKey, signerKeys)
+
+        let next = 0
         for (const [noteId, noteData] of Object.entries(result.notes)) {
           for (const entry of noteData.updates) {
-            const bin = atob(entry.data)
-            const packed = new Uint8Array(bin.length)
-            for (let i = 0; i < bin.length; i++) packed[i] = bin.charCodeAt(i)
-
-            const pubKey = await this.resolveDeviceKey(entry.signerDeviceId)
+            const pubKey = signersById.get(entry.signerDeviceId)
             if (!pubKey) {
               log.warn('Skipping CRDT batch update from unresolvable signer', {
                 noteId,
@@ -1114,8 +1244,7 @@ export class CrdtSyncCoordinator {
               activeSince.set(noteId, entry.sequenceNum)
               continue
             }
-            const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, pubKey)
-            crdtProvider.applyRemoteUpdate(noteId, decrypted)
+            crdtProvider.applyRemoteUpdate(noteId, decryptedUpdates[next++])
             activeSince.set(noteId, this.rememberAppliedSequence(noteId, entry.sequenceNum))
           }
 

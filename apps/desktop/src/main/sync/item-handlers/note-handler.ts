@@ -14,6 +14,7 @@ import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { extractFolderFromPath } from '../note-sync'
 import { markWritebackIgnored } from '../crdt-writeback'
+import { writeSyncedNoteFile } from '../bulk-apply'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -652,12 +653,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       applyPinnedTags(indexDb, itemId, data.pinnedTags)
     }
 
-    markWritebackIgnored(absolutePath)
-    const dir = path.dirname(absolutePath)
-    fs.mkdirSync(dir, { recursive: true })
-    const tmpPath = absolutePath + '.tmp'
-    fs.writeFileSync(tmpPath, fileContent, 'utf-8')
-    fs.renameSync(tmpPath, absolutePath)
+    // During a bulk page apply this defers the write until after the page's DB
+    // commit (see bulk-apply.ts for the crash-safety contract); outside one it
+    // is the same synchronous tmp-write + rename as always.
+    writeSyncedNoteFile(absolutePath, fileContent)
 
     requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 

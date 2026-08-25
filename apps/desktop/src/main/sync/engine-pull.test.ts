@@ -169,7 +169,9 @@ describe('SyncEngine', () => {
 
       await engine.pull()
 
-      expect(applySpy).toHaveBeenCalledWith(
+      // apply() now takes an optional page-transaction db override as its
+      // second argument; assert on the input object itself.
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
           itemId: 'task-1',
           type: 'task',
@@ -274,7 +276,7 @@ describe('SyncEngine', () => {
         expect.objectContaining({ id: 'task-1', type: 'task' })
       )
 
-      expect(applySpy).toHaveBeenCalledWith(
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
           itemId: 'task-1',
           type: 'task',
@@ -349,7 +351,7 @@ describe('SyncEngine', () => {
       await engine.pull()
 
       expect(applySpy).toHaveBeenCalledTimes(1)
-      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ itemId: 'task-2' }))
 
       vi.restoreAllMocks()
     })
@@ -410,7 +412,7 @@ describe('SyncEngine', () => {
       await engine.pull()
 
       expect(applySpy).toHaveBeenCalledTimes(1)
-      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ itemId: 'task-2' }))
       expect(engine.currentState).not.toBe('error')
 
       vi.restoreAllMocks()

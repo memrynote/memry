@@ -116,6 +116,8 @@ export class CrdtProvider {
    */
   private recordedUnqueuedNotes = new Set<string>()
   private readonly inactiveDocLimit: number
+  /** Bootstrap-only raise over `inactiveDocLimit`; see raiseInactiveDocCapacity. */
+  private inactiveDocCapacityOverride: number | null = null
   private readonly now: () => number
   private compactingDocs = new Set<string>()
   private compactionBuffers = new Map<string, Uint8Array[]>()
@@ -136,7 +138,33 @@ export class CrdtProvider {
    * the docs it opened first are closed underneath it. See applyCrdtBatch.
    */
   get inactiveDocCapacity(): number {
-    return this.inactiveDocLimit
+    return this.inactiveDocCapacityOverride ?? this.inactiveDocLimit
+  }
+
+  /**
+   * Temporarily hold more editor-less docs than the steady-state limit —
+   * bootstrap bulk apply raises this so a cold CRDT batch is not forced into
+   * limit-sized sub-chunks. Returns the restore function; calling it drops the
+   * override and immediately evicts back down to the steady-state limit
+   * through the normal close path, so every doc shed by the revert is flushed
+   * to the store (and pushes its pending snapshot) exactly as an ordinary
+   * eviction would.
+   *
+   * Never lowers the effective capacity: a second concurrent raise keeps the
+   * larger of the two, and restore is idempotent. Callers must not hold more
+   * docs open across an await than the capacity in force once they restore —
+   * the same contract `inactiveDocCapacity` documents.
+   */
+  raiseInactiveDocCapacity(limit: number): () => Promise<void> {
+    const requested = Math.max(this.inactiveDocLimit, Math.floor(limit))
+    this.inactiveDocCapacityOverride = Math.max(requested, this.inactiveDocCapacityOverride ?? 0)
+    let restored = false
+    return async () => {
+      if (restored) return
+      restored = true
+      this.inactiveDocCapacityOverride = null
+      await this.evictInactiveDocsIfNeeded()
+    }
   }
 
   async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
@@ -1146,7 +1174,7 @@ export class CrdtProvider {
     const inactiveDocs = Array.from(this.docs.entries()).filter(
       ([, entry]) => entry.windowIds.size === 0 && !entry.closing
     )
-    const overflow = inactiveDocs.length - this.inactiveDocLimit
+    const overflow = inactiveDocs.length - this.inactiveDocCapacity
     if (overflow <= 0) return
 
     inactiveDocs.sort(([, left], [, right]) => left.lastTouchedAt - right.lastTouchedAt)
