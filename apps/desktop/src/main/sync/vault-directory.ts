@@ -16,6 +16,7 @@ import {
   setAccountVaultsCache,
   upsertVault
 } from '../store'
+import { beginBootstrap, markBootstrapInteractive } from './bootstrap-metrics'
 import { deleteFromServer, getFromServer, postToServer } from './http-client'
 import { getValidAccessToken } from './token-manager'
 import { decryptVaultName, encryptVaultName } from './vault-name-crypto'
@@ -180,6 +181,10 @@ export async function downloadRemoteVault(input: {
   const existing = getVaults().find((v) => v.vaultUuid === input.vaultUuid)
   if (existing) return selectVault({ path: existing.path })
 
+  // A cloud-only vault materializing locally IS the fresh-device bootstrap:
+  // open the measurement window before any provisioning work happens (#1835).
+  beginBootstrap('vault_download')
+
   const cached = getAccountVaultsCache()?.vaults.find((v) => v.vaultUuid === input.vaultUuid)
   const parent = input.parentPath ?? defaultParentDir()
   fs.mkdirSync(parent, { recursive: true })
@@ -193,6 +198,7 @@ export async function downloadRemoteVault(input: {
   // createDormantVault repoints the data.db singleton — open the new vault now
   // so the singleton ends on the vault the user is actually in.
   const result = await selectVault({ path: folder })
+  if (result.success) markBootstrapInteractive()
 
   // selectVault stamps the uuid best-effort from the data.db; here the uuid is
   // known authoritatively, and losing (or keeping a stale foreign) uuid means

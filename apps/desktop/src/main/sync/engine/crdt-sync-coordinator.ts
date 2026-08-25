@@ -9,6 +9,7 @@ import {
   type CrdtSnapshotMeta
 } from '../http-client'
 import { decryptCrdtUpdate } from '../crdt-encrypt'
+import { recordBootstrapBytes } from '../bootstrap-metrics'
 import { trackMainError } from '../../telemetry/diagnostics'
 import type { CrdtPullCost, SyncContext } from './sync-context'
 import type { CrdtProvider } from '../crdt-provider'
@@ -417,6 +418,8 @@ export class CrdtSyncCoordinator {
     if (!snapshotResult || !this.ctx.deps.crdtProvider) {
       return { since: 0, verified: true }
     }
+    // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
+    recordBootstrapBytes('crdt', snapshotResult.snapshot.byteLength)
 
     const signerPubKey = await this.resolveDeviceKey(snapshotResult.signerDeviceId)
     if (!signerPubKey) {
@@ -568,6 +571,12 @@ export class CrdtSyncCoordinator {
           updateCount: result.updates.length,
           hasMore: result.hasMore
         })
+
+        // Bootstrap throughput (#1835): base64 chars approximate wire bytes.
+        recordBootstrapBytes(
+          'crdt',
+          result.updates.reduce((sum, u) => sum + u.data.length, 0)
+        )
 
         const signerIds = new Set(result.updates.map((u) => u.signerDeviceId))
         await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
@@ -1052,9 +1061,15 @@ export class CrdtSyncCoordinator {
         ).then((r) => r.value)
 
         const signerIds = new Set<string>()
+        let batchUpdateChars = 0
         for (const noteData of Object.values(result.notes)) {
-          for (const u of noteData.updates) signerIds.add(u.signerDeviceId)
+          for (const u of noteData.updates) {
+            signerIds.add(u.signerDeviceId)
+            batchUpdateChars += u.data.length
+          }
         }
+        // Bootstrap throughput (#1835); no-op outside a fresh-device bootstrap.
+        recordBootstrapBytes('crdt', batchUpdateChars)
         await Promise.all(Array.from(signerIds).map((sid) => this.resolveDeviceKey(sid)))
 
         for (const [noteId, noteData] of Object.entries(result.notes)) {

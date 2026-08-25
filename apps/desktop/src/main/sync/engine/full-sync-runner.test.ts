@@ -31,7 +31,9 @@ const mocks = vi.hoisted(() => ({
   runInitialSeed: vi.fn(),
   getAllCrdtNoteIds: vi.fn(),
   isIndexDatabaseInitialized: vi.fn(),
-  getIndexDatabase: vi.fn()
+  getIndexDatabase: vi.fn(),
+  beginBootstrap: vi.fn(),
+  markBootstrapFullText: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -40,6 +42,11 @@ vi.mock('../../lib/logger', () => ({
 
 vi.mock('../manifest-check', () => ({
   checkManifestIntegrity: (...args: unknown[]) => mocks.checkManifestIntegrity(...args)
+}))
+
+vi.mock('../bootstrap-metrics', () => ({
+  beginBootstrap: (...args: unknown[]) => mocks.beginBootstrap(...args),
+  markBootstrapFullText: (...args: unknown[]) => mocks.markBootstrapFullText(...args)
 }))
 
 vi.mock('../initial-seed', () => ({
@@ -1454,6 +1461,86 @@ describe('FullSyncRunner', () => {
 
       const [, latest] = h.crdtSync.pullCrdtForNotes.mock.calls.at(-1) as [string[], AbortSignal]
       expect(latest.aborted).toBe(false)
+    })
+  })
+
+  // #1835 — bootstrap telemetry seams. The runner owns two of them: arming the
+  // window when a fullSync starts with no persisted cursor (a device that has
+  // never pulled this vault), and marking full text when the sweep's paced
+  // queue has fully drained with nothing owed back.
+  describe('#given the bootstrap telemetry seams', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function sweepingHarness(count: number): Harness {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider() })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(
+        Array.from({ length: count }, (_, index) => `note-${index}`)
+      )
+      return h
+    }
+
+    it('#then a run with no persisted cursor arms a first_full_sync bootstrap', async () => {
+      const h = createHarness()
+      h.getStateValue.mockReturnValue(undefined)
+
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a run with a persisted cursor arms nothing — steady state stays silent', async () => {
+      const h = createHarness()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CURSOR ? '42' : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+    })
+
+    it('#then full text is marked only once the paced sweep queue fully drains', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+
+      await h.runner.run()
+      // First chunk in flight or just finished; a second chunk is still queued,
+      // so every body is NOT yet current.
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+    })
+
+    it('#then a cycle that never swept cannot claim full text (offline first sync)', async () => {
+      // No crdtProvider -> the finally never sweeps. An empty paced queue here
+      // means "nothing was ever queued", not "every body is current".
+      const h = createHarness()
+
+      await h.runner.run()
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+    })
+
+    it('#then notes a failed chunk owed back to the pending set block the mark', async () => {
+      const h = sweepingHarness(3)
+      h.crdtSync.pullCrdtForNotes.mockImplementation(async (ids: string[]) => {
+        // The real coordinator re-owes every note of a failed chunk.
+        for (const id of ids) h.crdtSync.addPendingPull(id)
+        throw new Error('rate limited')
+      })
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 3)
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
     })
   })
 })

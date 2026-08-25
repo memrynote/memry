@@ -2,6 +2,7 @@ import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
 import { ERROR_RETENTION_DAYS } from '@memry/sync-client/queue'
+import { beginBootstrap, markBootstrapFullText } from '../bootstrap-metrics'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import type { SyncContext } from './sync-context'
@@ -311,7 +312,16 @@ export class FullSyncRunner {
     return this.pacedCrdtPullAbort.signal
   }
 
+  /**
+   * Has any vault-wide sweep run on this engine? Gates the bootstrap
+   * full-text mark: before the first sweep, an empty paced queue means
+   * "nothing queued yet" (an offline first sync, a refused pull), not
+   * "every body is current".
+   */
+  private sweptOnThisEngine = false
+
   private sweepAllCrdtNotes(): void {
+    this.sweptOnThisEngine = true
     // Read before the generation is re-stamped below: only a sweep that closes
     // a real drop/reconnect gap starts the floor for the next one.
     if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
@@ -344,6 +354,17 @@ export class FullSyncRunner {
    */
   async run(options: { forceCrdtSweep?: boolean } = {}): Promise<void> {
     log.debug('fullSync started')
+    // No persisted cursor = this device has never completed a pull for this
+    // vault: a genuine fresh-device bootstrap (#1835). beginBootstrap no-ops
+    // while a window is already open (the vault-download seam fires earlier
+    // and keeps the truer start time), and telemetry must never break sync.
+    try {
+      if (this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null) {
+        beginBootstrap('first_full_sync')
+      }
+    } catch {
+      /* telemetry only — sync proceeds */
+    }
     this.ctx.fullSyncActive = true
     // A manifest re-pull means the server holds items this device has never
     // seen (fresh install, restored vault, rebuilt index): local CRDT state
@@ -539,6 +560,21 @@ export class FullSyncRunner {
     }
 
     this.pumpPacedCrdtPulls()
+    this.maybeMarkBootstrapFullText()
+  }
+
+  /**
+   * Bootstrap seam (#1835): the sweep queue draining to empty — with a sweep
+   * actually run and nothing owed back to the pending set — is the moment
+   * every note body the server holds is current on this device. The metrics
+   * module makes this a no-op outside an active fresh-device bootstrap, so
+   * steady-state cycles pay one boolean check.
+   */
+  private maybeMarkBootstrapFullText(): void {
+    if (!this.sweptOnThisEngine) return
+    if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
+    if (this.crdtSync.pendingPullCount > 0) return
+    markBootstrapFullText()
   }
 
   /**
@@ -609,6 +645,7 @@ export class FullSyncRunner {
         // them here would just re-run into whatever refused them.
         this.pacedCrdtChunkInFlight = false
         this.armPacedCrdtPullTimer(delayMs)
+        this.maybeMarkBootstrapFullText()
       }
     })
   }
