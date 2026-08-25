@@ -504,10 +504,13 @@ export const PackKindSchema = z.enum(PACK_KINDS)
  * present only when the deployment opted into presigned transfers (#1836);
  * absent means "use the item-granular endpoints".
  *
- * Tail semantics: packs cover the cursor ranges they advertise. Everything
- * above the highest covered point stays item-granular, and holes inside a
- * range (replaced/deleted items are dead bytes) fall back to item GETs —
- * membership is verified against the pack's own index block, never assumed.
+ * Tail semantics: packs cover the cursor ranges they advertise. Records tile
+ * their axis completely; snapshot coverage can under-cover same-second writes
+ * (a note written the same second as an already-packed tie group with a
+ * smaller note_id sorts below the watermark and stays item-granular forever).
+ * Holes inside a range (replaced/deleted items are dead bytes) also fall back
+ * to item GETs — membership is verified against the pack's own index block,
+ * never assumed, and individual blobs remain the source of truth throughout.
  */
 export const PackSummarySchema = z.object({
   id: z.string().min(1),
@@ -516,6 +519,11 @@ export const PackSummarySchema = z.object({
   minCursor: z.number().int().min(0),
   maxCursor: z.number().int().min(0),
   itemCount: z.number().int().min(0),
+  /**
+   * Payload-region bytes only — header, index block and footer are excluded.
+   * NOT a file length: do not Range-request against it; read the pack's
+   * footer/index for real offsets.
+   */
   byteSize: z.number().int().min(1),
   createdAt: z.number().int().min(0),
   url: z.string().url().optional(),

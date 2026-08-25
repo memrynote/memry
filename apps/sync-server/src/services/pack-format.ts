@@ -54,7 +54,11 @@ export const PACK_MAGIC = 'MPAK'
 export const PACK_VERSION = 1
 
 export const PACK_FOOTER_SIZE =
-  32 /* payloadSha256 */ + 8 /* entryCount */ + 8 /* indexOffset */ + 4 /* magic */ + 1 /* version */
+  32 /* payloadSha256 */ +
+  8 /* entryCount */ +
+  8 /* indexOffset */ +
+  4 /* magic */ +
+  1 /* version */
 
 export const PackKindCode = {
   record: 0,
@@ -139,7 +143,12 @@ class ByteWriter {
 
   u32(value: number): void {
     this.push(
-      new Uint8Array([(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff])
+      new Uint8Array([
+        (value >>> 24) & 0xff,
+        (value >>> 16) & 0xff,
+        (value >>> 8) & 0xff,
+        value & 0xff
+      ])
     )
   }
 
@@ -225,74 +234,195 @@ const equalBytes = (a: Uint8Array, b: Uint8Array): boolean => {
 }
 
 /**
- * Build one complete pack file. Deterministic: the same inputs always produce
- * the same bytes, which is what makes retried compactions of one range land
- * on an identical file instead of diverging copies.
+ * Everything an entry's index record needs BEFORE its bytes are fetched:
+ * identities, ordering key and freshness meta come from D1 selection rows,
+ * and `sizeBytes` is the D1-declared blob size the writer enforces on write.
  */
-export const buildPack = async (entries: PackEntryInput[]): Promise<BuiltPack> => {
-  // Pass 1: lay out the payload region and per-entry digests.
-  const payloadChunks: Array<{ entry: PackEntryInput; digest: Uint8Array }> = []
-  let payloadBytes = 0
-  for (const entry of entries) {
-    if (entry.bytes.length === 0) throw new Error(`empty pack entry: ${entry.id}`)
-    payloadChunks.push({ entry, digest: await sha256(entry.bytes) })
-    payloadBytes += entry.bytes.length
-  }
+export interface PackEntryPlan {
+  kind: PackKindName
+  id: string
+  sourceKey: string
+  sortKey: number
+  /** Declared payload size; writeEntry rejects a mismatch. */
+  sizeBytes: number
+  meta?: PackEntryMeta
+}
 
-  // Pass 2: serialize the index block so its exact size is known.
-  const index = new ByteWriter()
-  const packed: PackedEntry[] = []
-  let cursor = 0
-  for (const { entry, digest } of payloadChunks) {
-    const metaJson = entry.meta ? JSON.stringify(entry.meta) : ''
-    index.u8(PackKindCode[entry.kind])
-    index.lenPrefixed(encoder.encode(entry.id))
-    index.lenPrefixed(encoder.encode(entry.sourceKey))
-    index.i64(entry.sortKey)
-    index.lenPrefixed(encoder.encode(metaJson))
-    index.u64(cursor)
-    index.u64(entry.bytes.length)
-    index.push(digest)
-    const packedEntry: PackedEntry = {
-      kind: entry.kind,
-      id: entry.id,
-      sourceKey: entry.sourceKey,
-      sortKey: entry.sortKey,
-      offset: cursor,
-      length: entry.bytes.length
-    }
-    if (entry.meta) packedEntry.meta = entry.meta
-    packed.push(packedEntry)
-    cursor += entry.bytes.length
-  }
-  const indexBlock = index.finish()
+export interface OpenPack {
+  /**
+   * Copy one entry's EXACT bytes into the pack buffer at the next slot,
+   * recording its digest. Must be called in plan order. The caller drops its
+   * `bytes` reference right after — the pack buffer then holds the only copy,
+   * which is what keeps peak memory at buffer + one transient entry.
+   */
+  writeEntry: (plan: PackEntryPlan, bytes: Uint8Array) => Promise<void>
+  /** Advance past a slot whose blob vanished or drifted (hole). */
+  skipEntry: (plan: PackEntryPlan) => void
+  /** Write index block + footer; returns the trimmed file bytes. */
+  finish: () => Promise<BuiltPack>
+}
 
-  // Pass 3: assemble header + payload + index + footer in ONE buffer.
-  const total = HEADER_SIZE + payloadBytes + indexBlock.length + PACK_FOOTER_SIZE
+/**
+ * Open a pack for STREAMING assembly into ONE pre-allocated buffer (#1839).
+ *
+ * Memory contract: every plan field except the bytes themselves is known up
+ * front (D1 size_bytes + snapshot metadata read before fetch), so the buffer
+ * is sized exactly once — header + declared payload + index + footer — and no
+ * second full-size allocation ever exists. Holes leave their capacity unused;
+ * finish() trims it off with a subarray view rather than copying. Peak memory
+ * ≈ PACK_TARGET_BYTES + one transient source blob, never payload + assembled
+ * copy simultaneously. Production compaction MUST use this path; buildPack is
+ * only for callers that already hold every entry in hand (tests).
+ */
+export const openPack = (plans: PackEntryPlan[]): OpenPack => {
+  if (plans.length === 0) throw new Error('cannot open a pack with no entries')
+
+  // Exact per-entry index record sizes are computable pre-fetch: id/sourceKey/
+  // metaJson byte lengths plus fixed-width fields. That makes the single
+  // allocation below exact, not estimated.
+  interface Slot {
+    plan: PackEntryPlan
+    metaJson: string
+    written: boolean
+    skipped: boolean
+    offset: number | null
+    digest: Uint8Array | null
+  }
+  const slots: Slot[] = plans.map((plan) => ({
+    plan,
+    metaJson: plan.meta ? JSON.stringify(plan.meta) : '',
+    written: false,
+    skipped: false,
+    offset: null,
+    digest: null
+  }))
+  const indexRecordSize = (slot: Slot): number =>
+    1 /* kind */ +
+    2 +
+    encoder.encode(slot.plan.id).byteLength +
+    2 +
+    encoder.encode(slot.plan.sourceKey).byteLength +
+    8 /* sortKey i64 */ +
+    2 +
+    encoder.encode(slot.metaJson).byteLength +
+    8 /* offset u64 */ +
+    8 /* length u64 */ +
+    32 /* sha256 */
+
+  const declaredPayloadBytes = slots.reduce((sum, slot) => sum + slot.plan.sizeBytes, 0)
+  const indexBytes = slots.reduce((sum, slot) => sum + indexRecordSize(slot), 0)
+  const total = HEADER_SIZE + declaredPayloadBytes + indexBytes + PACK_FOOTER_SIZE
+
+  // THE single payload-sized allocation of a pack build. Written in file
+  // order: header now, entries streamed as they are fetched, index block and
+  // footer at finish().
   const out = new Uint8Array(total)
   out.set(encoder.encode(PACK_MAGIC), 0)
   out[4] = PACK_VERSION
   out[5] = 0
   out[6] = 0
   out[7] = 0
-  let at = HEADER_SIZE
-  for (const { entry } of payloadChunks) {
-    out.set(entry.bytes, at)
-    at += entry.bytes.length
+  let writeAt = HEADER_SIZE // absolute position of the next payload byte
+  let nextSlot = 0 // strict plan order for both write and skip
+
+  const claimNextSlot = (plan: PackEntryPlan): Slot => {
+    const slot = slots[nextSlot]
+    if (!slot || slot.plan !== plan) throw new Error('pack entries must be written in plan order')
+    if (slot.written || slot.skipped) throw new Error(`pack entry already consumed: ${plan.id}`)
+    nextSlot++
+    return slot
   }
-  out.set(indexBlock, at)
-  const indexOffset = at
-  at += indexBlock.length
 
-  const footer = new ByteWriter()
-  footer.push(await sha256(out.subarray(HEADER_SIZE, HEADER_SIZE + payloadBytes)))
-  footer.u64(payloadChunks.length)
-  footer.u64(indexOffset)
-  footer.push(encoder.encode(PACK_MAGIC))
-  footer.u8(PACK_VERSION)
-  out.set(footer.finish(), at)
+  return {
+    writeEntry: async (plan, bytes) => {
+      if (bytes.length === 0) throw new Error(`empty pack entry: ${plan.id}`)
+      if (bytes.length !== plan.sizeBytes) {
+        throw new Error(
+          `pack entry size mismatch: ${plan.id} declared ${plan.sizeBytes}, got ${bytes.length}`
+        )
+      }
+      const slot = claimNextSlot(plan)
+      slot.digest = await sha256(bytes)
+      slot.offset = writeAt - HEADER_SIZE
+      out.set(bytes, writeAt)
+      writeAt += bytes.length
+      slot.written = true
+    },
+    skipEntry: (plan) => {
+      claimNextSlot(plan).skipped = true
+    },
+    finish: async (): Promise<BuiltPack> => {
+      const writtenSlots = slots.filter((slot) => slot.written)
+      if (writtenSlots.length === 0) throw new Error('pack has no entries')
+      const payloadBytes = writeAt - HEADER_SIZE
 
-  return { bytes: out, entries: packed, payloadBytes }
+      // Index block directly after the payload region, plan order, written
+      // entries only — holes simply do not appear.
+      let cursor = 0
+      const packed: PackedEntry[] = []
+      for (const slot of writtenSlots) {
+        const index = new ByteWriter()
+        index.u8(PackKindCode[slot.plan.kind])
+        index.lenPrefixed(encoder.encode(slot.plan.id))
+        index.lenPrefixed(encoder.encode(slot.plan.sourceKey))
+        index.i64(slot.plan.sortKey)
+        index.lenPrefixed(encoder.encode(slot.metaJson))
+        index.u64(slot.offset!)
+        index.u64(slot.plan.sizeBytes)
+        index.push(slot.digest!)
+        out.set(index.finish(), writeAt + cursor)
+        cursor += indexRecordSize(slot)
+        const packedEntry: PackedEntry = {
+          kind: slot.plan.kind,
+          id: slot.plan.id,
+          sourceKey: slot.plan.sourceKey,
+          sortKey: slot.plan.sortKey,
+          offset: slot.offset!,
+          length: slot.plan.sizeBytes
+        }
+        if (slot.plan.meta) packedEntry.meta = slot.plan.meta
+        packed.push(packedEntry)
+      }
+      const indexOffset = writeAt
+
+      const footer = new ByteWriter()
+      footer.push(await sha256(out.subarray(HEADER_SIZE, HEADER_SIZE + payloadBytes)))
+      footer.u64(writtenSlots.length)
+      footer.u64(indexOffset)
+      footer.push(encoder.encode(PACK_MAGIC))
+      footer.u8(PACK_VERSION)
+      out.set(footer.finish(), writeAt + cursor)
+
+      // Trim the unused hole capacity with a view — no copy, so the returned
+      // file is exactly what gets PUT.
+      return {
+        bytes: out.subarray(0, writeAt + cursor + PACK_FOOTER_SIZE),
+        entries: packed,
+        payloadBytes
+      }
+    }
+  }
+}
+
+/**
+ * Build one complete pack from fully-materialized entries.
+ *
+ * Deterministic: the same inputs always produce the same bytes, which is what
+ * makes retried compactions of one range land on an identical file instead of
+ * diverging copies.
+ *
+ * MEMORY NOTE: this wrapper holds every entry AND the finished file at once
+ * (~2× payload). Fine for tests; the production compaction path streams
+ * through openPack() precisely to avoid that doubling inside a 128MB isolate.
+ */
+export const buildPack = async (entries: PackEntryInput[]): Promise<BuiltPack> => {
+  const plans: PackEntryPlan[] = entries.map(({ bytes, ...rest }) => ({
+    ...rest,
+    sizeBytes: bytes.length
+  }))
+  const pack = openPack(plans)
+  for (const [i, entry] of entries.entries()) await pack.writeEntry(plans[i], entry.bytes)
+  return pack.finish()
 }
 
 export interface FooterInfo {
@@ -360,7 +490,9 @@ export const parsePack = async (bytes: Uint8Array): Promise<VerifiedPack> => {
     const offset = indexView.u64()
     const length = indexView.u64()
     const expectedDigest = indexView.take(32)
-    const actualDigest = await sha256(bytes.subarray(HEADER_SIZE + offset, HEADER_SIZE + offset + length))
+    const actualDigest = await sha256(
+      bytes.subarray(HEADER_SIZE + offset, HEADER_SIZE + offset + length)
+    )
     if (!equalBytes(actualDigest, expectedDigest)) {
       throw new Error(`pack entry checksum mismatch: ${id}`)
     }

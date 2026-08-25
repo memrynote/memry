@@ -16,12 +16,17 @@ const logger = createLogger('PackConsumer')
  * harness, never a real `Message`.
  *
  * RETRY SEMANTICS (documented contract):
+ * - Message bodies are unversioned `{userId, vaultId}`: there is no version
+ *   field to branch on, only the zod shape check below, so any future message
+ *   evolution must stay backward-compatible with this parser.
  * - Malformed body (wrong shape) -> ACK. The message can never succeed; a
  *   throw would burn max_retries on a poison message.
- * - Core failure (R2/D1 error, byte-cap abort) -> THROW. Cloudflare Queues
- *   redelivers up to `max_retries` (wrangler.toml: 3). Delivery is
+ * - Core failure (R2/D1 error) -> THROW. Cloudflare Queues redelivers up to
+ *   `max_retries` (wrangler.toml: 3), then DROPS the message. Delivery is
  *   at-least-once and the core is idempotent (deterministic pack key +
- *   range-level unique row), so a redelivery re-runs at most one no-op pass.
+ *   range-level unique row), so a redelivery re-runs at most one no-op pass,
+ *   and a dropped message only delays packing until the next nudge or the
+ *   6-hourly backfill cron re-drives the vault (nothing is lost).
  */
 
 const PackCompactionMessageSchema = z.object({
@@ -29,9 +34,7 @@ const PackCompactionMessageSchema = z.object({
   vaultId: z.string().min(1)
 })
 
-export const parsePackCompactionBody = (
-  body: unknown
-): PackCompactionMessageBody | null => {
+export const parsePackCompactionBody = (body: unknown): PackCompactionMessageBody | null => {
   const parsed = PackCompactionMessageSchema.safeParse(body)
   return parsed.success ? parsed.data : null
 }

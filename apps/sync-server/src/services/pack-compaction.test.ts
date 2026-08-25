@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
-import { compactOneRange, packObjectKey, selectCandidates } from './pack-compaction'
+import {
+  PACK_TARGET_BYTES,
+  compactOneRange,
+  insertPackIndexRow,
+  packObjectKey,
+  selectCandidates
+} from './pack-compaction'
 import { extractEntry, parsePack } from './pack-format'
 
 /**
@@ -66,8 +72,12 @@ const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8
   return { blobKey, bytes }
 }
 
-const seedSnapshot = (noteId: string, createdAt: number, sequenceNum = 1): Uint8Array => {
-  const bytes = new Uint8Array(24).map((_, i) => (i + noteId.length) % 251)
+const seedSnapshot = (
+  noteId: string,
+  createdAt: number,
+  sequenceNum = 1,
+  bytes = new Uint8Array(24).map((_, i) => (i + noteId.length) % 251)
+): Uint8Array => {
   const blobKey = `${USER}/vaults/${VAULT}/crdt/${noteId}/snapshot`
   harness.raw
     .prepare(
@@ -89,7 +99,9 @@ const seedSnapshot = (noteId: string, createdAt: number, sequenceNum = 1): Uint8
   return bytes
 }
 
-const watermarkOf = (kind: string): { last_sort_value: number; last_sort_tiebreak: string } | null =>
+const watermarkOf = (
+  kind: string
+): { last_sort_value: number; last_sort_tiebreak: string } | null =>
   (harness.raw
     .prepare(
       'SELECT last_sort_value, last_sort_tiebreak FROM pack_watermarks WHERE user_id = ? AND item_kind = ?'
@@ -123,11 +135,7 @@ describe('selection', () => {
   it('excludes already-packed rows via the composite watermark', async () => {
     for (let cursor = 1; cursor <= 5; cursor++) seedRecord({ cursor })
     await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
-    const after = await selectCandidates(
-      harness.db,
-      { userId: USER, vaultId: VAULT },
-      'record'
-    )
+    const after = await selectCandidates(harness.db, { userId: USER, vaultId: VAULT }, 'record')
     expect(after.candidates).toHaveLength(0)
 
     // New pushes land above the watermark and become eligible only there.
@@ -142,7 +150,12 @@ describe('selection', () => {
     seedRecord({ cursor: 1, bytes: new Uint8Array(9 * 1024 * 1024).fill(7) })
     seedRecord({ cursor: 2 })
 
-    const first = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const first = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
     expect(first.built).toBe(true)
     expect(first.itemCount).toBe(1) // only the small one
 
@@ -164,12 +177,73 @@ describe('selection', () => {
     expect(selection.candidates.map((c) => c.tiebreak)).toEqual(['note-a', 'note-b'])
     expect(selection.nextTiebreak).toBe('note-b')
   })
+
+  it('excludes already-packed ties when a window ends inside a tie group', async () => {
+    // Four snapshots share created_at=1000; three 8MB bodies fill the window
+    // to exactly PACK_TARGET_BYTES, so the cap breaks the tie group after
+    // note-c and the watermark lands MID-GROUP at (1000, 'note-c').
+    const MB = 1024 * 1024
+    const sizeCapped = (n: number) => new Uint8Array(8 * MB).fill(n)
+    seedSnapshot('note-a', 1000, 1, sizeCapped(1))
+    seedSnapshot('note-b', 1000, 1, sizeCapped(2))
+    seedSnapshot('note-c', 1000, 1, sizeCapped(3))
+    seedSnapshot('note-d', 1000, 1) // tiny: overflows the capped window
+
+    const first = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(first.built).toBe(true)
+    expect(first.byteSize).toBe(PACK_TARGET_BYTES)
+    const parsedFirst = await parsePack(await packOf(first.packKey))
+    expect(parsedFirst.entries.map((e) => e.id)).toEqual(['note-a', 'note-b', 'note-c'])
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 1000,
+      last_sort_tiebreak: 'note-c'
+    })
+
+    // The row-value predicate must exclude note-a/b/c (ties AT or BELOW the
+    // watermark's note_id) while note-d remains eligible — dropping the
+    // `note_id > ?` half would exclude d too and stall the pipeline.
+    const next = await selectCandidates(
+      harness.db,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(next.candidates.map((c) => c.tiebreak)).toEqual(['note-d'])
+
+    // Rerunning compaction does NOT rebuild note-d: the range-level
+    // idempotency gate (pack_index UNIQUE on min_cursor) sees min_cursor=1000
+    // as already published and refuses further writes for it, advancing the
+    // watermark instead. note-d therefore stays an item-granular-tail blob —
+    // exactly the snapshot under-coverage documented in pack-list.ts
+    // (missed optimization, never lost data).
+    const second = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(second.built).toBe(false)
+    expect(second.holes).toEqual([])
+    expect(watermarkOf('crdt_snapshot')).toEqual({
+      last_sort_value: 1000,
+      last_sort_tiebreak: 'note-d'
+    })
+  })
 })
 
 describe('pack build', () => {
   it('writes an immutable verifiable pack and the D1 range row', async () => {
     const seeds = [seedRecord({ cursor: 1 }), seedRecord({ cursor: 2 })]
-    const result = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
 
     expect(result.built).toBe(true)
     expect(result.packKey).toBe(packObjectKey({ userId: USER, vaultId: VAULT }, 'record', 1, 2))
@@ -198,14 +272,26 @@ describe('pack build', () => {
 
   it('is idempotent on rerun: no duplicate rows, no rewrite, stable bytes', async () => {
     seedRecord({ cursor: 1 })
-    const first = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const first = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
     const before = await packOf(first.packKey)
 
-    const second = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const second = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
     expect(second.built).toBe(false)
     const after = await packOf(first.packKey)
     expect(after).toEqual(before) // immutability: rerun never rewrites
-    expect((harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c).toBe(1)
+    expect(
+      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
+    ).toBe(1)
   })
 
   it('tolerates holes where source blobs vanished mid-flight', async () => {
@@ -214,7 +300,12 @@ describe('pack build', () => {
     // Simulate replaced-and-cleaned-up blob: row exists, object gone.
     await storage.delete(dangling.blobKey)
 
-    const result = await compactOneRange(harness.db, storage, { userId: USER, vaultId: VAULT }, 'record')
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
     expect(result.built).toBe(true)
     expect(result.holes).toEqual(['task:item-2'])
 
@@ -253,7 +344,98 @@ describe('pack build', () => {
     expect(watermarkOf('record')?.last_sort_value).toBe(10)
     expect(watermarkOf('crdt_snapshot')?.last_sort_value).toBe(5000)
     expect(
-      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index WHERE item_kind = ?').get('crdt_snapshot') as { c: number }).c
+      (
+        harness.raw
+          .prepare('SELECT COUNT(*) c FROM pack_index WHERE item_kind = ?')
+          .get('crdt_snapshot') as { c: number }
+      ).c
     ).toBe(1)
+  })
+
+  it('makes a raw duplicate range insert a no-op with a stable row id', async () => {
+    // compactOneRange's pre-read gate normally shields the INSERT from ever
+    // seeing a duplicate; drive the conflict path directly instead.
+    seedRecord({ cursor: 1 })
+    seedRecord({ cursor: 2 })
+    const built = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+    const before = harness.raw.prepare('SELECT id FROM pack_index').get() as { id: string }
+
+    await insertPackIndexRow(
+      harness.db,
+      { userId: USER, vaultId: VAULT },
+      'record',
+      built.packKey!,
+      built.minSortValue,
+      built.maxSortValue,
+      built.itemCount,
+      built.byteSize
+    )
+
+    const rows = harness.raw
+      .prepare('SELECT id, min_cursor, max_cursor FROM pack_index')
+      .all() as Array<{
+      id: string
+      min_cursor: number
+      max_cursor: number
+    }>
+    // DO NOTHING keeps the ORIGINAL row: exactly one row, same id — so the
+    // listPacks pagination cursor (`maxCursor:id`) cannot churn on retries.
+    expect(rows).toHaveLength(1)
+    expect(rows[0].id).toBe(before.id)
+    expect(rows[0].min_cursor).toBe(built.minSortValue)
+    expect(rows[0].max_cursor).toBe(built.maxSortValue)
+  })
+
+  it('assembles a target-size window in one buffer without doubling allocation', async () => {
+    // Three 8MB records sum to exactly PACK_TARGET_BYTES (24MB): the largest
+    // window selection can produce.
+    const MB = 1024 * 1024
+    for (let cursor = 1; cursor <= 3; cursor++) {
+      seedRecord({ cursor, bytes: new Uint8Array(8 * MB).fill(cursor) })
+    }
+
+    const RealUint8Array = globalThis.Uint8Array
+    const largeAllocations: number[] = []
+    class CountingUint8Array extends RealUint8Array {
+      // Pass-through constructor: all real overloads collapse here and are
+      // re-spread verbatim (the one-element tuple type satisfies tsc; the
+      // runtime array still carries every argument through). Only numeric
+      // lengths are size-trackable.
+      constructor(a?: number | ArrayLike<number> | ArrayBufferLike, b?: number, c?: number) {
+        super(...([a, b, c] as unknown as [number]))
+        if (typeof a === 'number' && a >= MB) largeAllocations.push(a)
+      }
+    }
+    globalThis.Uint8Array = CountingUint8Array as unknown as typeof Uint8Array
+    try {
+      const result = await compactOneRange(
+        harness.db,
+        storage,
+        { userId: USER, vaultId: VAULT },
+        'record'
+      )
+      expect(result.built).toBe(true)
+      expect(result.itemCount).toBe(3)
+      expect(result.byteSize).toBe(PACK_TARGET_BYTES)
+
+      // Single-buffer invariant: EXACTLY ONE megabyte-scale allocation happens
+      // during the build — the pack buffer itself, sized once from D1-declared
+      // sizes before any fetch. Source blobs arrive as ArrayBuffers (unseen by
+      // this spy) but are copied in and released one transient entry at a
+      // time, so they never compound into a second payload-scale allocation.
+      expect(largeAllocations).toHaveLength(1)
+      expect(largeAllocations[0]).toBeGreaterThanOrEqual(result.byteSize)
+
+      // The assembled file still parses with intact contents.
+      const parsed = await parsePack(await packOf(result.packKey))
+      expect(parsed.entries.map((e) => e.sortKey)).toEqual([1, 2, 3])
+    } finally {
+      globalThis.Uint8Array = RealUint8Array
+    }
   })
 })

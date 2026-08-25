@@ -84,7 +84,7 @@ describe('wrangler config', () => {
   it('declares a bounded pack compaction consumer for dev, staging, and production', () => {
     const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
 
-    // One pack build ≈ 265 subrequests; batch size must stay 1 so an
+    // One pack build ≈ 269 subrequests; batch size must stay 1 so an
     // invocation's budget stays predictable (see services/pack-compaction.ts).
     const consumers = toml.match(/\[\[queues\.consumers\]\]/g) ?? []
     const stagingConsumers = toml.match(/\[\[env\.staging\.queues\.consumers\]\]/g) ?? []

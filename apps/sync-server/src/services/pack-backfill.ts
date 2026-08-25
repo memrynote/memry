@@ -22,7 +22,7 @@ const logger = createLogger('PackBackfill')
 
 // Packs targeted per cron invocation, across ALL vaults combined.
 //
-// SUBREQUEST ARITHMETIC (see pack-compaction.ts): one pack costs ~265
+// SUBREQUEST ARITHMETIC (see pack-compaction.ts): one pack costs ~269
 // subrequests (budgeted at 300 below). The tick shares its invocation's
 // paid-plan ceiling of 1000 with the sweep's other cleanup tasks, so
 //   3 packs x 300 = 900  leaves ~100 for the rest of the sweep;
@@ -31,7 +31,7 @@ const logger = createLogger('PackBackfill')
 // first (tick count or subrequest estimate).
 export const PACKS_PER_BACKFILL_TICK = 3
 
-// Conservative per-pack subrequest estimate matching pack-compaction.ts.
+// Conservative per-pack subrequest estimate matching pack-compaction.ts (~269).
 const SUBREQUESTS_PER_PACK = 300
 const SUBREQUEST_CEILING_PER_TICK = 900
 
@@ -86,10 +86,7 @@ export const runPackBackfill = async (
   storage: R2Bucket,
   packsPerTick = PACKS_PER_BACKFILL_TICK
 ): Promise<BackfillTickResult> => {
-  let budget = Math.min(
-    packsPerTick * SUBREQUESTS_PER_PACK,
-    SUBREQUEST_CEILING_PER_TICK
-  )
+  let budget = Math.min(packsPerTick * SUBREQUESTS_PER_PACK, SUBREQUEST_CEILING_PER_TICK)
   let packsBuilt = 0
   let scopesVisited = 0
 
@@ -101,7 +98,12 @@ export const runPackBackfill = async (
     for (const row of vaults) {
       if (budget < SUBREQUESTS_PER_PACK || packsBuilt >= packsPerTick) break outer
       try {
-        const result = await compactOneRange(db, storage, { userId: row.user_id, vaultId: row.vault_id }, kind)
+        const result = await compactOneRange(
+          db,
+          storage,
+          { userId: row.user_id, vaultId: row.vault_id },
+          kind
+        )
         if (result.built) packsBuilt++
         budget -= SUBREQUESTS_PER_PACK
         scopesVisited++

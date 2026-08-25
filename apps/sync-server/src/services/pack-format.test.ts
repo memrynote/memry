@@ -5,9 +5,11 @@ import {
   PackKindCode,
   buildPack,
   extractEntry,
+  openPack,
   parsePack,
   readFooter,
-  type PackEntryInput
+  type PackEntryInput,
+  type PackEntryPlan
 } from './pack-format'
 
 /**
@@ -87,6 +89,90 @@ describe('buildPack / parsePack round trip', () => {
   })
 })
 
+describe('openPack streaming assembly', () => {
+  const planOf = (entry: PackEntryInput): PackEntryPlan => ({
+    kind: entry.kind,
+    id: entry.id,
+    sourceKey: entry.sourceKey,
+    sortKey: entry.sortKey,
+    sizeBytes: entry.bytes.length,
+    ...(entry.meta ? { meta: entry.meta } : {})
+  })
+
+  it('produces byte-identical files to buildPack for the same entries', async () => {
+    const entries = [entry(), snapshotEntry('note-a', 3), entry({ sortKey: 11 })]
+    const plans = entries.map(planOf)
+    const buffered = await buildPack(entries)
+
+    const pack = openPack(plans)
+    for (const [i, e] of entries.entries()) await pack.writeEntry(plans[i], e.bytes)
+    const streamed = await pack.finish()
+
+    expect(streamed.bytes).toEqual(buffered.bytes)
+    expect(streamed.payloadBytes).toBe(buffered.payloadBytes)
+    expect(await parsePack(streamed.bytes).then((p) => p.integrityVerified)).toBe(true)
+  })
+
+  it('leaves skipped slots out of the file and keeps remaining entries intact', async () => {
+    const first = entry({ sortKey: 1 })
+    const hole = snapshotEntry('gone', 2)
+    const third = entry({ id: 'task:22222222-2222-4222-8222-222222222222', sortKey: 3 })
+    const plans = [first, hole, third].map(planOf)
+
+    const pack = openPack(plans)
+    await pack.writeEntry(plans[0], first.bytes)
+    pack.skipEntry(plans[1])
+    await pack.writeEntry(plans[2], third.bytes)
+    const built = await pack.finish()
+
+    // Exact file length: the hole's reserved payload AND index record are
+    // absent — no zero-filled slack survives into the PUT.
+    const textEncoder = new TextEncoder()
+    const recordSize = (e: PackEntryInput, metaJson: string): number =>
+      1 +
+      2 +
+      textEncoder.encode(e.id).byteLength +
+      2 +
+      textEncoder.encode(e.sourceKey).byteLength +
+      8 +
+      2 +
+      textEncoder.encode(metaJson).byteLength +
+      8 +
+      8 +
+      32
+    const expectedLength =
+      8 +
+      first.bytes.length +
+      third.bytes.length +
+      recordSize(first, '') +
+      recordSize(third, '') +
+      PACK_FOOTER_SIZE
+    expect(built.bytes.length).toBe(expectedLength)
+    expect(built.entries.map((e) => e.id)).toEqual([first.id, third.id])
+
+    const parsed = await parsePack(built.bytes)
+    expect(parsed.entries[0].offset).toBe(0)
+    // Contiguity survives the skip: the survivor lands where the hole was.
+    expect(parsed.entries[1].offset).toBe(first.bytes.length)
+    expect(extractEntry(built.bytes, parsed.entries[1])).toEqual(third.bytes)
+  })
+
+  it('rejects a write whose bytes contradict the declared plan size', async () => {
+    const plan = planOf(entry())
+    const pack = openPack([plan])
+    await expect(pack.writeEntry(plan, new Uint8Array(plan.sizeBytes + 1))).rejects.toThrow(
+      /size mismatch/
+    )
+  })
+
+  it('enforces strict plan order so offsets can never desync', async () => {
+    const plans = [planOf(entry({ sortKey: 1 })), planOf(entry({ sortKey: 2 }))]
+    const pack = openPack(plans)
+    expect(() => pack.skipEntry(plans[1])).toThrow(/plan order/)
+    await expect(pack.finish()).rejects.toThrow(/no entries/)
+  })
+})
+
 describe('corruption detection', () => {
   it('rejects a tampered payload via the footer checksum', async () => {
     const built = await buildPack([entry()])
@@ -128,11 +214,11 @@ describe('corruption detection', () => {
 
   it('rejects truncated files and empty entries', async () => {
     const built = await buildPack([entry()])
-    await expect(
-      parsePack(built.bytes.subarray(0, built.bytes.length - 10))
-    ).rejects.toThrow()
+    await expect(parsePack(built.bytes.subarray(0, built.bytes.length - 10))).rejects.toThrow()
 
-    await expect(buildPack([entry({ bytes: new Uint8Array(0) })])).rejects.toThrow(/empty pack entry/)
+    await expect(buildPack([entry({ bytes: new Uint8Array(0) })])).rejects.toThrow(
+      /empty pack entry/
+    )
     expect(PackKindCode.record).toBe(0)
   })
 })

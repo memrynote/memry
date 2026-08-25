@@ -1,10 +1,5 @@
 import { createLogger } from '../lib/logger'
-import {
-  buildPack,
-  type PackEntryInput,
-  type PackEntryMeta,
-  type PackKindName
-} from './pack-format'
+import { openPack, type PackEntryMeta, type PackEntryPlan, type PackKindName } from './pack-format'
 
 const logger = createLogger('PackCompaction')
 
@@ -26,33 +21,48 @@ const logger = createLogger('PackCompaction')
  *   4. order is pack PUT first, then D1 row, then watermark -> an orphan pack
  *      object (crash between 2 and 3) is harmless invisible bytes; a missing
  *      watermark row only causes an idempotent rebuild
+ *
+ * ORPHAN DOCTRINE, hole-only windows: a window whose every source blob
+ * vanished mid-flight still advances its watermark WITHOUT writing a
+ * pack_index row. If an earlier attempt of that same range crashed after its
+ * PUT but before its D1 row, the object it left at the deterministic key now
+ * has no row pointing at it and can never be listed — permanent dead bytes.
+ * Harmless today (derived cache; the key gets rewritten if the range is ever
+ * rebuilt), but it is the concrete case a future cleanup sweep should cover:
+ * list packs/<kind>/ objects with no matching pack_index row and delete them.
  */
 
 // ---------------------------------------------------------------------------
 // Tuning constants — see the subrequest arithmetic below before touching
 // ---------------------------------------------------------------------------
 
-// Target payload size per pack. The issue targets ~64–256MB; staying at the
-// low end keeps peak Worker memory (one whole pack buffered for its single
-// PUT) far under the 128MB isolate limit even with base64-inflated payloads.
-export const PACK_TARGET_BYTES = 64 * 1024 * 1024
+// Target payload size per pack. Workers isolates hard-cap at 128MB of memory,
+// and assembly needs one contiguous buffer for the whole file plus one
+// transient source blob while it is being copied in. A 64MB target left no
+// safe headroom even after the single-buffer rewrite (buffer + an 8MB item +
+// isolate baseline); 24MB keeps peak ≈ 24MB + ≤8MB + slack, comfortably under
+// the cap. Smaller packs just mean more packs per vault — packs are cheap
+// (one PUT + one row each), so coverage granularity is the only trade.
+export const PACK_TARGET_BYTES = 24 * 1024 * 1024
 
 // Absolute ceiling on one pack's payload bytes. Selection stops BEFORE
-// crossing this; a single oversized item cannot push past it because such
-// items are excluded from packs entirely (see MAX_PACKED_ITEM_BYTES).
-export const PACK_HARD_MAX_BYTES = 128 * 1024 * 1024
+// crossing PACK_TARGET_BYTES, which is structurally far below this bound;
+// PACK_HARD_MAX_BYTES remains as a documented tuning guard so nobody can
+// raise the target back into isolate-unsafe territory without confronting it.
+// A single oversized item cannot push past either because such items are
+// excluded from packs entirely (see MAX_PACKED_ITEM_BYTES).
+export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 
 // Max items per pack build.
 //
 // SUBREQUEST ARITHMETIC (paid plan: 1000 subrequests per invocation):
-//   N R2 GETs (one per item blob)
+//   N R2 GETs (one per item blob, N ≤ 256)
 // + 1 R2 PUT  (the pack itself)
-// + ~6 D1 round trips (selection, watermark read, watermark upsert,
-//   pack_index insert — each may be multi-statement batches but each counts
-//   as one call per statement; budgeted generously at 6)
-// + head() existence probe (1) + queue overhead (~1)
-// => with N = 256: ~265 subrequests per pack, ~35% of the ceiling. Two kinds
-// compacted back-to-back in one invocation still fit (~530), and a full retry
+// + 5 D1 round trips (watermark read, candidate select, duplicate check,
+//   pack_index insert, watermark upsert)
+// + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
+// => ~269 subrequests per full 256-item pack (~27% of the ceiling). Two kinds
+// compacted back-to-back in one invocation still fit (~540), and a full retry
 // doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
 // compaction has always been a paid-plan background job by construction.
 export const PACK_MAX_ITEMS = 256
@@ -84,7 +94,13 @@ interface WatermarkRow {
 }
 
 export interface PackSelection {
-  candidates: Array<{ sortKey: number; tiebreak: string; id: string; sourceKey: string; sizeBytes: number }>
+  candidates: Array<{
+    sortKey: number
+    tiebreak: string
+    id: string
+    sourceKey: string
+    sizeBytes: number
+  }>
   /** Progress marker AFTER the last candidate (composite, exclusive). */
   nextSortValue: number
   nextTiebreak: string
@@ -111,7 +127,8 @@ export const readWatermark = async (
 
 /**
  * Select up to PACK_MAX_ITEMS un-packed rows ordered ascending, capped so the
- * projected payload stays within [PACK_TARGET_BYTES, PACK_HARD_MAX_BYTES).
+ * projected payload stays within PACK_TARGET_BYTES (itself far below
+ * PACK_HARD_MAX_BYTES).
  *
  * Ordering keys: records use server_cursor (strictly monotonic per user, so
  * no ties); crdt kinds use created_at epoch seconds, which TIE heavily — the
@@ -213,8 +230,13 @@ const rowList = <T>(result: { results?: T[] }): T[] => result.results ?? []
 const maxScannedSortKey = (rows: Array<{ sort_key: number }>): number =>
   rows.reduce((max, row) => Math.max(max, row.sort_key), 0)
 
-const maxScannedTiebreakAt = (rows: Array<{ sort_key: number; tiebreak: string }>, sortKey: number): string =>
-  rows.filter((row) => row.sort_key === sortKey).reduce((max, row) => (row.tiebreak > max ? row.tiebreak : max), '')
+const maxScannedTiebreakAt = (
+  rows: Array<{ sort_key: number; tiebreak: string }>,
+  sortKey: number
+): string =>
+  rows
+    .filter((row) => row.sort_key === sortKey)
+    .reduce((max, row) => (row.tiebreak > max ? row.tiebreak : max), '')
 
 /** Deterministic, collision-free pack object key for one range. */
 export const packObjectKey = (
@@ -281,87 +303,108 @@ export const compactOneRange = async (
     return { ...noop, built: false, packKey }
   }
 
-  // Fetch source bytes verbatim, bounded concurrency, preserving order.
-  const entries: PackEntryInput[] = []
+  // Snapshot freshness metadata is read BEFORE any byte fetch. Order matters:
+  // if a push lands mid-build it can now only make the fetched BYTES newer
+  // than the advertised meta — a client comparing revisions under-trusts the
+  // pack and falls back to the item GET (safe direction). The old bytes-first
+  // order could advertise NEWER meta than the packed bytes, defeating the
+  // client's freshness check entirely. Looked up in one batched pass,
+  // best-effort: a missed lookup leaves meta empty and the client falls back
+  // to the item GET.
+  let metaBySourceKey: Map<string, PackEntryMeta> | null = null
+  if (kind === 'crdt_snapshot') {
+    metaBySourceKey = await loadSnapshotMeta(
+      db,
+      scope,
+      selection.candidates.map((candidate) => candidate.sourceKey)
+    )
+  }
+
+  // Plans carry everything known pre-fetch. Declared sizes come from D1 rows,
+  // so openPack sizes its ONE buffer exactly here — before a single byte is
+  // fetched — making peak memory knowable: buffer + one transient entry.
+  const plans: PackEntryPlan[] = selection.candidates.map((candidate) => {
+    const plan: PackEntryPlan = {
+      kind,
+      id: candidate.id,
+      sourceKey: candidate.sourceKey,
+      sortKey: candidate.sortKey,
+      sizeBytes: candidate.sizeBytes
+    }
+    const meta = metaBySourceKey?.get(candidate.sourceKey)
+    if (meta) plan.meta = meta
+    return plan
+  })
+
+  const pack = openPack(plans)
+
+  // Fetch source bytes verbatim, bounded concurrency, preserving order, and
+  // stream each straight into the pack buffer. Every iteration releases its
+  // source references (`body`, `bytes` go out of scope) after the copy —
+  // payload bytes are never retained twice, so peak stays at the pack buffer
+  // plus ONE transient blob rather than payload + assembled copy.
   const holes: string[] = []
-  let fetchedBytes = 0
-  for (let i = 0; i < selection.candidates.length; i += PACK_FETCH_CONCURRENCY) {
-    const window = selection.candidates.slice(i, i + PACK_FETCH_CONCURRENCY)
-    const bodies = await Promise.all(window.map((c) => storage.get(c.sourceKey)))
+  let writtenCount = 0
+  for (let i = 0; i < plans.length; i += PACK_FETCH_CONCURRENCY) {
+    const window = plans.slice(i, i + PACK_FETCH_CONCURRENCY)
+    const bodies = await Promise.all(window.map((plan) => storage.get(plan.sourceKey)))
     for (let j = 0; j < window.length; j++) {
-      const candidate = window[j]
+      const plan = window[j]
       const body = bodies[j]
       // A null body is a HOLE, not a failure: the blob was replaced/deleted
       // between selection and fetch (or is a dangling row). Membership is
       // verified against the index block client-side; dead ranges fall back
-      // to item GETs. Abort only if the pack would exceed the hard cap.
+      // to item GETs.
       if (!body) {
-        holes.push(candidate.id)
+        holes.push(plan.id)
         continue
       }
-      const bytes = await body.arrayBuffer()
-      fetchedBytes += bytes.byteLength
-      if (fetchedBytes > PACK_HARD_MAX_BYTES) {
-        throw new Error(`pack ${packKey} exceeded hard byte cap`)
+      const bytes = new Uint8Array(await body.arrayBuffer())
+      if (bytes.byteLength !== plan.sizeBytes) {
+        // Declared-vs-actual drift: the blob was replaced under a stable key
+        // after selection sized this pack's buffer. Copying it would overrun
+        // or misalign the layout, so treat it exactly like a vanished blob —
+        // skip, let the client fall back to the item GET (individual blobs
+        // remain the source of truth). Nothing has been persisted yet, so
+        // skipping is side-effect-free.
+        logger.warn('pack entry drifted from declared size; skipping', {
+          userId: scope.userId,
+          vaultId: scope.vaultId,
+          kind,
+          id: plan.id,
+          declared: plan.sizeBytes,
+          actual: bytes.byteLength
+        })
+        holes.push(plan.id)
+        continue
       }
-      entries.push({
-        kind,
-        id: candidate.id,
-        sourceKey: candidate.sourceKey,
-        sortKey: candidate.sortKey,
-        bytes: new Uint8Array(bytes)
-      })
+      await pack.writeEntry(plan, bytes)
+      writtenCount++
     }
   }
 
-  if (entries.length === 0) {
+  if (writtenCount === 0) {
     await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
     return { ...noop, holes }
   }
 
-  // Snapshot freshness metadata rides in each entry's index-block meta so a
-  // client can compare against snapshotMeta (sequenceNum/revision) before
-  // trusting pack bytes. Looked up in one batched pass, best-effort: a missed
-  // lookup leaves meta empty and the client falls back to the item GET.
-  let metaBySourceKey: Map<string, PackEntryMeta> | null = null
-  if (kind === 'crdt_snapshot') {
-    metaBySourceKey = await loadSnapshotMeta(db, scope, entries.map((e) => e.sourceKey))
-  }
-
-  const built = await buildPack(
-    entries.map((entry) => {
-      const withMeta: PackEntryInput = { ...entry }
-      if (metaBySourceKey) withMeta.meta = metaBySourceKey.get(entry.sourceKey) ?? {}
-      return withMeta
-    })
-  )
+  const built = await pack.finish()
 
   // Order matters: OBJECT FIRST, then D1 row, then watermark (module doc).
-  // Uint8Array is an ArrayBufferView — accepted by R2 put without a copy, so
-  // peak memory stays at one pack rather than two.
+  // built.bytes is the single assembly buffer trimmed to file length — there
+  // is no second full-size allocation anywhere in this flow.
   await storage.put(packKey, built.bytes)
 
-  // Range-level row; INSERT OR IGNORE makes a concurrent/retried duplicate a
-  // no-op rather than a constraint error that would poison queue retries.
-  await db
-    .prepare(
-      `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (user_id, vault_id, item_kind, min_cursor) DO NOTHING`
-    )
-    .bind(
-      crypto.randomUUID(),
-      scope.userId,
-      scope.vaultId,
-      packKey,
-      kind,
-      minSortValue,
-      maxSortValue,
-      built.entries.length,
-      built.payloadBytes,
-      Math.floor(Date.now() / 1000)
-    )
-    .run()
+  await insertPackIndexRow(
+    db,
+    scope,
+    kind,
+    packKey,
+    minSortValue,
+    maxSortValue,
+    built.entries.length,
+    built.payloadBytes
+  )
 
   await advanceWatermark(db, scope, kind, selection.nextSortValue, selection.nextTiebreak)
 
@@ -383,6 +426,43 @@ export const compactOneRange = async (
     maxSortValue,
     holes
   }
+}
+
+/**
+ * Range-level pack_index row; the composite conflict target makes a
+ * concurrent/retried duplicate a no-op rather than a constraint error that
+ * would poison queue retries. Exported so tests can drive the INSERT path
+ * directly (compactOneRange's pre-read gate would otherwise shield it).
+ */
+export const insertPackIndexRow = async (
+  db: D1Database,
+  scope: VaultScope,
+  kind: PackKindName,
+  packKey: string,
+  minSortValue: number,
+  maxSortValue: number,
+  itemCount: number,
+  byteSize: number
+): Promise<void> => {
+  await db
+    .prepare(
+      `INSERT INTO pack_index (id, user_id, vault_id, pack_key, item_kind, min_cursor, max_cursor, item_count, byte_size, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (user_id, vault_id, item_kind, min_cursor) DO NOTHING`
+    )
+    .bind(
+      crypto.randomUUID(),
+      scope.userId,
+      scope.vaultId,
+      packKey,
+      kind,
+      minSortValue,
+      maxSortValue,
+      itemCount,
+      byteSize,
+      Math.floor(Date.now() / 1000)
+    )
+    .run()
 }
 
 const advanceWatermark = async (

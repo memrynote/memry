@@ -1,6 +1,11 @@
 import { PackKindSchema, type PackListResponse } from '@memry/contracts/sync-api'
 
-import { DEFAULT_PRESIGN_TTL_SECONDS, assertPresignKeyInVault, presignR2Url, type R2PresignConfig } from './r2-presign'
+import {
+  DEFAULT_PRESIGN_TTL_SECONDS,
+  assertPresignKeyInVault,
+  presignR2Url,
+  type R2PresignConfig
+} from './r2-presign'
 
 /**
  * Bootstrap-facing pack discovery (#1839): paginated pack list for one vault,
@@ -10,13 +15,18 @@ import { DEFAULT_PRESIGN_TTL_SECONDS, assertPresignKeyInVault, presignR2Url, typ
  * TAIL SEMANTICS (the contract #1840 builds on):
  * - Each pack covers exactly the advertised range of its kind's ordering key
  *   (server_cursor for `record`, created_at seconds for `crdt_snapshot`).
- * - Everything ABOVE the highest covered point is the item-granular tail:
- *   fetch it through the existing per-item endpoints as always.
+ * - Records tile their cursor axis completely. SNAPSHOT COVERAGE CAN
+ *   UNDER-COVER SAME-SECOND WRITES: the watermark is a composite
+ *   (created_at, note_id) marker, so a note written the same second as an
+ *   already-packed tie group but with a smaller note_id sorts BELOW the
+ *   watermark and is permanently excluded from packing. It stays in the
+ *   item-granular tail forever.
+ * - Individual blobs remain the source of truth at every ordering value, so
+ *   under-coverage is a missed optimization, never lost data.
  * - Coverage is never assumed from ranges alone. The client verifies an item
  *   against a pack's index block (ids + freshness metadata inside the file);
  *   anything not found there — replaced/deleted items are dead bytes in old
- *   packs — falls back to its individual GET, which remains the source of
- *   truth at every cursor value.
+ *   packs — falls back to its individual GET.
  */
 
 // Page size ceiling. Packs are large objects; even 50 rows is far more than a
@@ -44,9 +54,7 @@ export interface ListPacksOptions {
 const CURSOR_SEPARATOR = ':'
 const encodePageCursor = (row: PackIndexRow): string =>
   `${row.max_cursor}${CURSOR_SEPARATOR}${row.id}`
-const decodePageCursor = (
-  raw: string
-): { maxCursor: number; id: string } | null => {
+const decodePageCursor = (raw: string): { maxCursor: number; id: string } | null => {
   const separatorAt = raw.indexOf(CURSOR_SEPARATOR)
   if (separatorAt <= 0) return null
   const maxCursor = Number.parseInt(raw.slice(0, separatorAt), 10)
@@ -80,7 +88,14 @@ export const listPacks = async (
            ORDER BY max_cursor DESC, id DESC
            LIMIT ?`
         )
-        .bind(userId, vaultId, pageToken.maxCursor, pageToken.maxCursor, pageToken.id, effectiveLimit + 1)
+        .bind(
+          userId,
+          vaultId,
+          pageToken.maxCursor,
+          pageToken.maxCursor,
+          pageToken.id,
+          effectiveLimit + 1
+        )
     : db
         .prepare(
           `SELECT id, item_kind, pack_key, min_cursor, max_cursor, item_count, byte_size, created_at

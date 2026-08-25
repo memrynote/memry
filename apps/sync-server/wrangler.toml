@@ -46,7 +46,7 @@ queue = "memry-pack-compaction-dev"
 
 [[queues.consumers]]
 queue = "memry-pack-compaction-dev"
-# One pack build ≈ 265 subrequests (see pack-compaction.ts arithmetic), so a
+# One pack build ≈ 269 subrequests (see pack-compaction.ts arithmetic), so a
 # single message per invocation keeps the 1000-subrequest budget predictable.
 max_batch_size = 1
 max_batch_timeout = 5

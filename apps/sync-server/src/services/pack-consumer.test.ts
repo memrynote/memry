@@ -26,16 +26,22 @@ beforeEach(() => {
 
 describe('handlePackQueueMessage', () => {
   it('compacts the vault for a well-formed message', async () => {
+    // size_bytes must equal the real payload: selection sizes the pack buffer
+    // from D1 rows, and a fetched-size mismatch is treated as a hole.
+    const bytes = new TextEncoder().encode('{"encryptedData":"x"}')
     const blobKey = `${USER}/vaults/default/items-v3/task/i-1/h1`
-    storage.put(blobKey, new TextEncoder().encode('{"encryptedData":"x"}').buffer as ArrayBuffer)
+    storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
     harness.raw
       .prepare(
         `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-         VALUES ('r1', ?, 'default', 'task', 'i-1', ?, 24, 'h1', 1, 1, 'update', 5, NULL, 'sig', NULL, 1, 1, NULL)`
+         VALUES ('r1', ?, 'default', 'task', 'i-1', ?, ?, 'h1', 1, 1, 'update', 5, NULL, 'sig', NULL, 1, 1, NULL)`
       )
-      .run(USER, blobKey)
+      .run(USER, blobKey, bytes.byteLength)
 
-    await handlePackQueueMessage({ DB: harness.db, STORAGE: storage }, { userId: USER, vaultId: 'default' })
+    await handlePackQueueMessage(
+      { DB: harness.db, STORAGE: storage },
+      { userId: USER, vaultId: 'default' }
+    )
 
     expect(
       (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
@@ -69,7 +75,10 @@ describe('handlePackQueueMessage', () => {
       .run(USER)
 
     await expect(
-      handlePackQueueMessage({ DB: harness.db, STORAGE: failingStorage }, { userId: USER, vaultId: 'default' })
+      handlePackQueueMessage(
+        { DB: harness.db, STORAGE: failingStorage },
+        { userId: USER, vaultId: 'default' }
+      )
     ).rejects.toThrow('r2 unavailable')
   })
 })
