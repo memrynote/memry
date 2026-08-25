@@ -356,6 +356,10 @@ export const compactOneRange = async (
       // verified against the index block client-side; dead ranges fall back
       // to item GETs.
       if (!body) {
+        // skipEntry, not a bare `continue`: the writer claims slots in strict
+        // plan order, so an unclaimed slot makes the NEXT writeEntry throw and
+        // abort the whole range before the watermark moves.
+        pack.skipEntry(plan)
         holes.push(plan.id)
         continue
       }
@@ -375,6 +379,7 @@ export const compactOneRange = async (
           declared: plan.sizeBytes,
           actual: bytes.byteLength
         })
+        pack.skipEntry(plan)
         holes.push(plan.id)
         continue
       }
