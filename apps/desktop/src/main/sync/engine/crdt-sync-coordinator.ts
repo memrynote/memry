@@ -181,8 +181,14 @@ export class CrdtSyncCoordinator {
       }
       if (workerResult) {
         if (workerResult.failures.length > 0) throw new Error(workerResult.failures[0].error)
+        // Results are tagged with the ORIGINAL entry index (`r.index`), not
+        // their position in the results array: unresolvable signers are
+        // filtered out before the request, so the payload indexes arrive with
+        // gaps. Mapping by array position here handed later entries another
+        // entry's bytes — or `undefined` — and turned a skip-able signer into a
+        // whole-pass abort.
         const byIndex = new Map(workerResult.results.map((r) => [r.index, r.update]))
-        return payloads.map((_, i) => byIndex.get(i)!)
+        return payloads.map((p) => byIndex.get(p.index)!)
       }
     }
 

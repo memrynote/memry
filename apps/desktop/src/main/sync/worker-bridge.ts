@@ -67,6 +67,19 @@ const PENDING_STALE_AFTER_MS = REQUEST_TIMEOUT_MS + 5_000
  */
 export const MAX_CONSECUTIVE_FAILURES = 3
 
+/**
+ * A protocol-known error reply (`{ type: 'error', requestId }` — e.g. a
+ * mixed-build worker answering an unknown message kind).
+ *
+ * The thread received the request, understood it well enough to reply, and
+ * answered inside the timeout: the transport works. So this rejects the CALL —
+ * sending it to the main-thread fallback like any other failure — without
+ * counting toward the latch, which stays reserved for genuine transport
+ * failures (timeouts, crashes, postMessage throws). Counting these replies
+ * latched the whole session's push encryption off after three of them.
+ */
+class WorkerProtocolError extends Error {}
+
 export class SyncWorkerBridge {
   private worker: Worker | null = null
   private pendingRequests = new Map<string, PendingRequest>()
@@ -275,9 +288,12 @@ export class SyncWorkerBridge {
    * The worker returns per-item outcomes in-band — `encrypt-batch-result.errors`
    * and `decrypt-batch-result.failures`, including signature mismatches — and
    * never rejects the request for them. A rejection therefore always means the
-   * worker was unreachable: not started, timed out, crashed/exited, protocol
-   * drift (`{ type: 'error' }`), or an unexpected response type. Latching on
-   * these cannot hide a bad item; the main-thread path re-runs the same crypto.
+   * worker was unreachable: not started, timed out, crashed/exited, or an
+   * unexpected response type. Latching on these cannot hide a bad item; the
+   * main-thread path re-runs the same crypto. The one exception is
+   * `WorkerProtocolError` (see its doc): the worker answered with a protocol-
+   * known error, which is a routing decision, not a transport failure — it
+   * rejects the call without advancing the latch.
    *
    * The thread is left alive rather than terminated. Terminating buys nothing
    * once the bridge stops routing to it, and it would remove the stop()/start()
@@ -354,7 +370,7 @@ export class SyncWorkerBridge {
       })
 
       if (response.type === 'error') {
-        throw new Error(response.error)
+        throw new WorkerProtocolError(response.error)
       }
       if (response.type !== 'encrypt-batch-result') {
         throw new Error(`Unexpected response type: ${response.type}`)
@@ -363,7 +379,7 @@ export class SyncWorkerBridge {
       this.consecutiveFailures = 0
       return { results: response.results, errors: response.errors }
     } catch (err) {
-      this.recordRequestFailure(err)
+      if (!(err instanceof WorkerProtocolError)) this.recordRequestFailure(err)
       throw err
     }
   }
@@ -387,7 +403,7 @@ export class SyncWorkerBridge {
       })
 
       if (response.type === 'error') {
-        throw new Error(response.error)
+        throw new WorkerProtocolError(response.error)
       }
       if (response.type !== 'decrypt-batch-result') {
         throw new Error(`Unexpected response type: ${response.type}`)
@@ -396,7 +412,7 @@ export class SyncWorkerBridge {
       this.consecutiveFailures = 0
       return { results: response.results, failures: response.failures }
     } catch (err) {
-      this.recordRequestFailure(err)
+      if (!(err instanceof WorkerProtocolError)) this.recordRequestFailure(err)
       throw err
     }
   }
@@ -426,7 +442,7 @@ export class SyncWorkerBridge {
       })
 
       if (response.type === 'error') {
-        throw new Error(response.error)
+        throw new WorkerProtocolError(response.error)
       }
       if (response.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`Unexpected response type: ${response.type}`)
@@ -435,7 +451,7 @@ export class SyncWorkerBridge {
       this.consecutiveFailures = 0
       return { results: response.results, failures: response.failures }
     } catch (err) {
-      this.recordRequestFailure(err)
+      if (!(err instanceof WorkerProtocolError)) this.recordRequestFailure(err)
       throw err
     }
   }

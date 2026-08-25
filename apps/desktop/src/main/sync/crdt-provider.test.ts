@@ -2440,4 +2440,8 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
     expect(provider.inactiveDocCapacity).toBe(2)
     return restore()
   })
+
+  it('defaults to the steady-state 32-doc limit when no override is configured', () => {
+    expect(new CrdtProvider().inactiveDocCapacity).toBe(32)
+  })
 })
