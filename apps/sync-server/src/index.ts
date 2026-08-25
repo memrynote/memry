@@ -30,6 +30,7 @@ import {
 } from './services/cleanup'
 import { createLogger } from './lib/logger'
 import { captureServerError } from './services/analytics'
+import { logPresignConfigAtBoot } from './services/r2-presign'
 import { syncReleaseDownloadCounts } from './services/release-downloads'
 import { logCrdtTraffic } from './services/sync-telemetry'
 import type { Bindings, AppContext } from './types'
@@ -201,6 +202,12 @@ app.use('*', async (c, next) => {
       logger.warn('Missing secret binding', { key })
     }
   }
+
+  // Presign credentials are optional by design, but when present they must not
+  // silently disagree with the STORAGE binding (R2_S3_BUCKET drift → wrong-
+  // bucket presigned URLs). Logged once per isolate, here where every other
+  // binding is validated; internals in r2-presign.ts.
+  logPresignConfigAtBoot(c.env)
 
   await next()
 })

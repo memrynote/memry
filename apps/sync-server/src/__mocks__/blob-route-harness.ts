@@ -19,9 +19,13 @@ export interface MockDbState {
   /** Row for chunk metadata reads (ref_count / size_bytes / r2_key lookups). */
   chunk?: Record<string, unknown> | null
   /**
-   * Per-hash chunk rows for the dereference route, which looks up each hash in
-   * a request independently (unlike the other single-row-at-a-time lookups
-   * above). Keyed by hash; a missing key means "no such chunk" (route skips it).
+   * Per-hash chunk rows for the multi-hash lookups (dereference reads each
+   * hash one statement at a time; presign-batch filters with `hash IN (...)`).
+   * Rows must carry the columns the route projects — `user_id`/`vault_id` at
+   * minimum, plus `hash` wherever the route re-reads it: both fakes apply the
+   * SQL's scope predicates exactly like D1 would, so a row owned by another
+   * user or vault is invisible even though its hash is present. Map membership
+   * encodes existence only, never ownership.
    */
   chunksByHash?: Record<string, Record<string, unknown> | null>
   /**
@@ -31,6 +35,33 @@ export interface MockDbState {
    */
   entitlementRow?: () => Record<string, unknown> | null
   statements: Array<{ sql: string; bindings: unknown[] }>
+}
+
+/**
+ * Reads the scope bindings off a blob_chunks statement the way D1 pairs
+ * placeholders to predicates: BY NAME, from the SQL text. If a query stops
+ * carrying `user_id = ?` / `vault_id = ?`, ownership filtering disappears
+ * outright (which is what makes the ownership suites detect that mutation) —
+ * it never silently slides onto the hash bindings as a positional offset.
+ */
+const scopedBindings = (
+  sql: string,
+  bindings: unknown[]
+): { userId?: unknown; vaultId?: unknown; rest: unknown[] } => {
+  let cursor = 0
+  const userId = sql.includes('user_id = ?') ? bindings[cursor++] : undefined
+  const vaultId = sql.includes('vault_id = ?') ? bindings[cursor++] : undefined
+  return { userId, vaultId, rest: bindings.slice(cursor) }
+}
+
+/** True when a chunk row survives the query's actual scope predicates. */
+const rowMatchesScope = (
+  row: Record<string, unknown>,
+  scope: { userId?: unknown; vaultId?: unknown }
+): boolean => {
+  if (scope.userId !== undefined && row.user_id !== scope.userId) return false
+  if (scope.vaultId !== undefined && row.vault_id !== scope.vaultId) return false
+  return true
 }
 
 const createStatement = (sql: string, state: MockDbState) => {
@@ -45,8 +76,11 @@ const createStatement = (sql: string, state: MockDbState) => {
       if (sql.includes('FROM users u')) return state.entitlementRow?.() ?? null
       if (sql.includes('FROM upload_sessions')) return state.session ?? null
       if (sql.includes('SELECT id, ref_count FROM blob_chunks')) {
-        const hash = stmt.bindings[2] as string | undefined
-        return (hash === undefined ? undefined : state.chunksByHash?.[hash]) ?? null
+        const scope = scopedBindings(sql, stmt.bindings)
+        const hash = scope.rest[0] as string | undefined
+        const row = hash === undefined ? undefined : state.chunksByHash?.[hash]
+        if (!row || !rowMatchesScope(row, scope)) return null
+        return row
       }
       if (sql.includes('FROM blob_chunks') && sql.includes('hash = ?')) {
         return state.chunk ?? null
@@ -54,14 +88,17 @@ const createStatement = (sql: string, state: MockDbState) => {
       return null
     }),
     // Batched hash lookups (presign-batch scopes by user/vault and filters by
-    // `hash IN (...)`); membership in chunksByHash encodes the scoping — a
-    // foreign vault's or user's hash is simply absent from the map.
+    // `hash IN (...)`). Like real D1, results are filtered by whichever scope
+    // predicates the SQL carries — a fixture row owned by another user or
+    // vault stays invisible even though its hash is in the map, so dropping
+    // the scoping predicates from the route's SQL turns the ownership tests
+    // red instead of widening the result set.
     all: vi.fn(async () => {
       if (sql.includes('FROM blob_chunks') && sql.includes('hash IN (')) {
-        const hashes = stmt.bindings.slice(2) as string[]
-        const results = hashes
+        const scope = scopedBindings(sql, stmt.bindings)
+        const results = (scope.rest as string[])
           .map((hash) => state.chunksByHash?.[hash])
-          .filter((row): row is Record<string, unknown> => !!row)
+          .filter((row): row is Record<string, unknown> => !!row && rowMatchesScope(row, scope))
         return { results }
       }
       return { results: [] }

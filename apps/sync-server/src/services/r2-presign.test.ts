@@ -1,13 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import {
   DEFAULT_PRESIGN_TTL_SECONDS,
   MAX_PRESIGN_TTL_SECONDS,
   assertPresignKeyInVault,
   presignR2Url,
-  presignS3Url,
   resolveR2PresignConfig
 } from './r2-presign'
+// The raw protocol signer lives in sigv4.ts precisely so r2-presign's module
+// surface cannot bypass policy; the published-vector pin follows it here.
+import { presignS3Url } from './sigv4'
 
 // AWS's OFFICIAL published example credentials from the SigV4 docs — public
 // documentation fixtures, not secrets. The access key id is split so the
@@ -156,5 +158,87 @@ describe('assertPresignKeyInVault', () => {
 
   it('rejects lookalike prefixes (no partial segment matches)', () => {
     expect(() => assertPresignKeyInVault('u1/vaults/v11/chunks/hash', 'u1', 'v1')).toThrow()
+  })
+})
+
+describe('logPresignConfigAtBoot', () => {
+  const CONFIGURED = {
+    R2_ACCESS_KEY_ID: 'key-id',
+    R2_SECRET_ACCESS_KEY: 'secret',
+    R2_S3_ENDPOINT: 'https://abc123.r2.cloudflarestorage.com',
+    R2_S3_BUCKET: 'blobs'
+  }
+  const STORAGE = {} as unknown as R2Bucket
+
+  // The once-per-isolate flag is module state; a fresh module instance per
+  // test keeps the tests order-independent.
+  let logPresignConfigAtBoot: typeof import('./r2-presign').logPresignConfigAtBoot
+  let infoSpy: ReturnType<typeof vi.spyOn>
+  let warnSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(async () => {
+    vi.resetModules()
+    ;({ logPresignConfigAtBoot } = await import('./r2-presign'))
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const lastInfo = () => JSON.parse(String(infoSpy.mock.lastCall?.[0]) ?? '{}')
+  const lastWarn = () => JSON.parse(String(warnSpy.mock.lastCall?.[0]) ?? '{}')
+
+  it('logs one info line with the resolved bucket + endpoint when names are unreadable', () => {
+    // The Workers R2Bucket API exposes no bucket name, so this is the steady
+    // state: resolved values + the stated coupling requirement.
+    logPresignConfigAtBoot({ ...CONFIGURED, STORAGE })
+
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(infoSpy).toHaveBeenCalledTimes(1)
+    const line = lastInfo()
+    expect(line.level).toBe('info')
+    expect(line.bucket).toBe('blobs')
+    expect(line.endpoint).toBe('https://abc123.r2.cloudflarestorage.com')
+    expect(line.message).toContain('STORAGE binding bucket')
+  })
+
+  it('warns loudly when a readable STORAGE bucket name differs', () => {
+    logPresignConfigAtBoot({
+      ...CONFIGURED,
+      STORAGE: { name: 'other-bucket' } as unknown as R2Bucket
+    })
+
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    const warning = lastWarn()
+    expect(warning.level).toBe('warn')
+    expect(warning.configuredBucket).toBe('blobs')
+    expect(warning.storageBindingBucket).toBe('other-bucket')
+  })
+
+  it('logs a plain match when a readable STORAGE bucket name agrees', () => {
+    logPresignConfigAtBoot({ ...CONFIGURED, STORAGE: { name: 'blobs' } as unknown as R2Bucket })
+
+    expect(warnSpy).not.toHaveBeenCalled()
+    expect(lastInfo().bucket).toBe('blobs')
+  })
+
+  it('stays silent for unconfigured deployments — graceful degradation by contract', () => {
+    logPresignConfigAtBoot({
+      R2_ACCESS_KEY_ID: undefined,
+      R2_SECRET_ACCESS_KEY: undefined,
+      R2_S3_ENDPOINT: undefined,
+      R2_S3_BUCKET: undefined,
+      STORAGE
+    })
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(warnSpy).not.toHaveBeenCalled()
+  })
+
+  it('emits at most once per isolate even across repeated calls', () => {
+    logPresignConfigAtBoot({ ...CONFIGURED, STORAGE })
+    logPresignConfigAtBoot({ ...CONFIGURED, STORAGE })
+    expect(infoSpy).toHaveBeenCalledTimes(1)
   })
 })

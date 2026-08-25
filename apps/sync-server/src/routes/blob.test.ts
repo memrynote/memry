@@ -600,8 +600,8 @@ describe('blob routes', () => {
 
   it('dereferences chunks by decrementing ref_count per hash', async () => {
     state.chunksByHash = {
-      h1: { id: 'chunk-h1', ref_count: 2 },
-      h2: { id: 'chunk-h2', ref_count: 1 }
+      h1: { id: 'chunk-h1', hash: 'h1', user_id: 'user-1', vault_id: 'vault-1', ref_count: 2 },
+      h2: { id: 'chunk-h2', hash: 'h2', user_id: 'user-1', vault_id: 'vault-1', ref_count: 1 }
     }
 
     const res = await app.request(
@@ -637,6 +637,39 @@ describe('blob routes', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chunkHashes: ['already-gone'] })
+      },
+      env
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ dereferenced: 0 })
+
+    const decrements = state.statements.filter((entry) =>
+      entry.sql.includes('UPDATE blob_chunks SET ref_count = ref_count - 1')
+    )
+    expect(decrements).toHaveLength(0)
+  })
+
+  it('skips dereferencing another vault’s row even though its hash resolves', async () => {
+    // The row exists but under user-9/vault-9; the SQL's `user_id AND vault_id`
+    // predicates (mirrored by the harness filter) must make it read as absent —
+    // hash presence alone never grants ownership.
+    state.chunksByHash = {
+      foreign: {
+        id: 'chunk-foreign',
+        hash: 'foreign',
+        user_id: 'user-9',
+        vault_id: 'vault-9',
+        ref_count: 3
+      }
+    }
+
+    const res = await app.request(
+      '/attachments/dereference',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chunkHashes: ['foreign'] })
       },
       env
     )

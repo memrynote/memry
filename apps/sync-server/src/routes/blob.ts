@@ -1005,6 +1005,16 @@ async function reconcileDirectChunks(
   }
 
   for (const { entry, key } of verified) {
+    // The ref_count increment here is NOT atomic with the session append below
+    // — the same bounded window the proxied chunk PUT already documents (see
+    // the dedup/upsert comment on that route): a crash between the upsert and
+    // its json_insert leaves ref_count charged with no session entry, and the
+    // client's complete retry upserts the same bytes again, incrementing a
+    // second time. This mirrors documented legacy proxied-path semantics
+    // rather than regressing them: consistency-not-regression, orphan
+    // retention bounded by the cleanup cron reaping ref_count <= 0 rows, and
+    // no quota overcharge (storage was reserved once at initiate; ref_count
+    // never drives quota).
     await env.DB.prepare(
       `INSERT INTO blob_chunks (id, hash, user_id, vault_id, r2_key, size_bytes, ref_count, created_at)
          VALUES (?, ?, ?, ?, ?, ?, 1, ?)

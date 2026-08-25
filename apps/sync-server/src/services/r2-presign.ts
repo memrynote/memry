@@ -1,35 +1,32 @@
 import type { Bindings } from '../types'
+import { createLogger } from '../lib/logger'
+import { encodeObjectKey, presignS3Url } from './sigv4'
+
+const logger = createLogger('R2Presign')
 
 /**
- * Zero-dependency AWS SigV4 query-string presigner for the R2 S3 API.
+ * Presigned R2 URLs, deployment policy layer (#1836).
  *
  * R2 speaks the S3 protocol on `https://<account>.r2.cloudflarestorage.com`,
  * so a presigned URL is a plain SigV4 presign with region `auto`, service
- * `s3` and payload hash `UNSIGNED-PAYLOAD`. Hand-rolling this (~100 lines on
- * Web Crypto, which Workers and Node 18+ both provide) beats pulling
- * aws4fetch/aws-sdk: no dependency to audit for one HMAC chain, and the
- * signature path is fully unit-testable against AWS's published known-answer
- * vector (see r2-presign.test.ts).
- *
- * Two layers on purpose:
- * - `presignS3Url` is the pure protocol (no policy), pinned byte-for-byte by
- *   the AWS published vector.
- * - `presignR2Url` is the deployment policy wrapper: it derives the path-style
- *   R2 address, clamps TTLs to minutes-scale, and defaults region `auto`.
+ * `s3` and payload hash `UNSIGNED-PAYLOAD`. The pure SigV4 chain lives in
+ * sigv4.ts (Web Crypto, no dependency to audit) and is pinned byte-for-byte
+ * against AWS's published known-answer vector; THIS module owns every policy
+ * decision and is the only surface callers may import:
+ * - `presignR2Url` derives the path-style R2 address and clamps TTLs to
+ *   minutes-scale (MAX_PRESIGN_TTL_SECONDS).
+ * - `resolveR2PresignConfig` makes unconfigured deployments degrade
+ *   gracefully instead of failing.
+ * - `assertPresignKeyInVault` runs before signing as defense in depth.
  *
  * Security posture: a leaked URL exposes only E2E-encrypted ciphertext, but
- * TTLs are still clamped (MAX_PRESIGN_TTL_SECONDS) and keys are derived
- * SERVER-SIDE from D1 rows scoped by user + vault — clients only ever send
- * chunk hashes, never key material, so cross-vault scope escapes are
- * structurally impossible (see assertPresignKeyInVault, applied before signing).
+ * TTLs are still clamped and keys are derived SERVER-SIDE from D1 rows scoped
+ * by user + vault — clients only ever send chunk hashes, never key material,
+ * so cross-vault scope escapes are structurally impossible.
  */
 
 export const DEFAULT_PRESIGN_TTL_SECONDS = 300
 export const MAX_PRESIGN_TTL_SECONDS = 300
-
-const SERVICE = 's3'
-const ALGORITHM = 'AWS4-HMAC-SHA256'
-const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD'
 
 export interface R2PresignConfig {
   accessKeyId: string
@@ -83,129 +80,68 @@ export const assertPresignKeyInVault = (key: string, userId: string, vaultId: st
   }
 }
 
-// ---------------------------------------------------------------------------
-// SigV4 primitives (Web Crypto — available in Workers and Node >= 18)
-// ---------------------------------------------------------------------------
-
-const encoder = new TextEncoder()
-
-const toHex = (bytes: Uint8Array): string =>
-  Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-
-const sha256Hex = async (data: string): Promise<string> => {
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(data))
-  return toHex(new Uint8Array(digest))
-}
-
-const hmac = async (key: Uint8Array, data: string): Promise<Uint8Array> => {
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key as BufferSource,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  return new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data)))
-}
-
-/** RFC 3986 strict encoding: unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~". */
-const uriEncode = (value: string, encodeSlash: boolean): string => {
-  const bytes = encoder.encode(value)
-  let out = ''
-  for (const byte of bytes) {
-    const ch = String.fromCharCode(byte)
-    if (/[A-Za-z0-9_.~-]/.test(ch)) {
-      out += ch
-    } else if (ch === '/' && !encodeSlash) {
-      out += '/'
-    } else {
-      out += `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
-    }
-  }
-  return out
-}
-
-/** Path-encode an object key, preserving `/` separators. */
-const encodeObjectKey = (key: string): string => uriEncode(key, false)
-
-const amzDateFormat = (date: Date): string =>
-  date
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}/, '')
-
-// ---------------------------------------------------------------------------
-// Protocol layer — pure SigV4 presign, no deployment policy
-// ---------------------------------------------------------------------------
-
-export interface S3PresignInput {
-  host: string
-  method: 'GET' | 'PUT'
-  /**
-   * Canonical object path INCLUDING any bucket prefix, e.g. `/bucket/key`
-   * (path-style) or `/key` (virtual-hosted). Slashes stay literal; everything
-   * else must already be RFC 3986-encoded.
-   */
-  objectPath: string
-  accessKeyId: string
-  secretAccessKey: string
-  region: string
-  expiresInSeconds: number
-  now?: Date
-}
+// One-shot per Worker isolate: Workers have no constructor-time "boot", so the
+// first request through the server's binding validation plays that role. The
+// flag keeps this at one line per isolate instead of one per request.
+let presignBootLogged = false
 
 /**
- * Presign one S3 object URL. Pure protocol: no TTL ceiling, no scope checks —
- * callers own the policy (that separation is what lets the AWS published
- * known-answer vector pin this function byte-for-byte).
+ * Boot-time visibility for the resolved presign credential set (#1836 review).
+ *
+ * R2_S3_BUCKET must name THE SAME bucket as the STORAGE binding: URLs are
+ * signed against the secret while every proxied read/write goes through the
+ * binding, so silent drift between the two produces signatures for a bucket
+ * the binding never touches — surfacing downstream as confusing wrong-bucket
+ * completes instead of anything that points back at configuration.
+ *
+ * The Workers R2Bucket API exposes no bucket name at runtime, so equality
+ * usually cannot be asserted here; when the name happens to be readable a
+ * mismatch warns loudly, and otherwise the resolved values are still logged
+ * with that coupling requirement stated, so drift is diffable in deployed
+ * logs rather than invisible.
  */
-export const presignS3Url = async (input: S3PresignInput): Promise<string> => {
-  const now = input.now ?? new Date()
-  const amzDate = amzDateFormat(now)
-  const dateStamp = amzDate.slice(0, 8)
-  const credentialScope = `${dateStamp}/${input.region}/${SERVICE}/aws4_request`
+export const logPresignConfigAtBoot = (
+  env: Pick<
+    Bindings,
+    'STORAGE' | 'R2_ACCESS_KEY_ID' | 'R2_SECRET_ACCESS_KEY' | 'R2_S3_ENDPOINT' | 'R2_S3_BUCKET'
+  >
+): void => {
+  if (presignBootLogged) return
+  presignBootLogged = true
 
-  const query: Array<[string, string]> = [
-    ['X-Amz-Algorithm', ALGORITHM],
-    ['X-Amz-Credential', `${input.accessKeyId}/${credentialScope}`],
-    ['X-Amz-Date', amzDate],
-    ['X-Amz-Expires', String(input.expiresInSeconds)],
-    ['X-Amz-SignedHeaders', 'host']
-  ]
-  // Canonical query string: sorted by key name, fully URI-encoded values.
-  const canonicalQuery = query
-    .map(([k, v]) => [uriEncode(k, true), uriEncode(v, true)] as const)
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('&')
+  const config = resolveR2PresignConfig(env)
+  if (!config) {
+    // Unconfigured deployments degrade to the proxied paths by contract;
+    // nothing to compare and nothing to warn about.
+    return
+  }
 
-  const canonicalRequest = [
-    input.method,
-    input.objectPath,
-    canonicalQuery,
-    `host:${input.host}`,
-    '',
-    'host',
-    UNSIGNED_PAYLOAD
-  ].join('\n')
+  // Defensive read: not part of the typed R2Bucket surface, but if a runtime
+  // ever exposes it we get a real match/mismatch verdict for free.
+  const boundBucket = (env.STORAGE as unknown as { name?: unknown } | undefined)?.name
+  if (typeof boundBucket === 'string') {
+    if (boundBucket === config.bucket) {
+      logger.info('presign config matches the STORAGE binding bucket', {
+        bucket: config.bucket,
+        endpoint: config.endpoint
+      })
+    } else {
+      logger.warn(
+        'R2_S3_BUCKET differs from the STORAGE binding bucket — presigned URLs will target a bucket the binding never reads or writes',
+        {
+          configuredBucket: config.bucket,
+          storageBindingBucket: boundBucket,
+          endpoint: config.endpoint
+        }
+      )
+    }
+    return
+  }
 
-  const stringToSign = [
-    ALGORITHM,
-    amzDate,
-    credentialScope,
-    await sha256Hex(canonicalRequest)
-  ].join('\n')
-
-  // kSigning = HMAC(HMAC(HMAC(HMAC(kSecret="AWS4"+secret, date), region), service), "aws4_request")
-  const kDate = await hmac(encoder.encode(`AWS4${input.secretAccessKey}`), dateStamp)
-  const kRegion = await hmac(kDate, input.region)
-  const kService = await hmac(kRegion, SERVICE)
-  const kSigning = await hmac(kService, 'aws4_request')
-  const signature = toHex(await hmac(kSigning, stringToSign))
-
-  return `https://${input.host}${input.objectPath}?${canonicalQuery}&X-Amz-Signature=${signature}`
+  logger.info('presign config resolved; R2_S3_BUCKET must equal the STORAGE binding bucket', {
+    bucket: config.bucket,
+    endpoint: config.endpoint
+  })
 }
 
 // ---------------------------------------------------------------------------

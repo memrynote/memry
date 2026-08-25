@@ -194,25 +194,52 @@ describe('presigned direct transfers (#1836)', () => {
       expect(body.expiresAt).toBeLessThanOrEqual(Math.floor(Date.now() / 1000) + 300)
     })
 
-    it('rejects a foreign vault/user hash with 404 — same ownership outcome as the proxied path', async () => {
-      // Only HASH_A belongs to this user's vault; HASH_B exists for nobody.
+    it('rejects a hash owned by another user/vault with 404 — SQL scoping, not just absence', async () => {
+      // HASH_B EXISTS in the fixture table, but under user-9/vault-9. The
+      // presign-batch query's `user_id = ? AND vault_id = ?` predicates must
+      // make it read as absent for this caller; if those predicates ever
+      // regress, this row comes back and gets signed — this test goes red on
+      // exactly that mutation (verified by dropping the predicates).
       state.chunksByHash = {
         [HASH_A]: {
           id: 'chunk-a',
+          hash: HASH_A,
+          user_id: 'user-1',
+          vault_id: 'vault-1',
           r2_key: 'user-1/vaults/vault-1/chunks/' + HASH_A,
+          size_bytes: 45,
+          ref_count: 1
+        },
+        [HASH_B]: {
+          id: 'chunk-b',
+          hash: HASH_B,
+          user_id: 'user-9',
+          vault_id: 'vault-9',
+          r2_key: 'user-9/vaults/vault-9/chunks/' + HASH_B,
           size_bytes: 45,
           ref_count: 1
         }
       }
       const res = await app.request(
         '/attachments/presign-batch',
-        { method: 'POST', body: JSON.stringify({ chunkHashes: [HASH_A, hexHash('c')] }) },
+        { method: 'POST', body: JSON.stringify({ chunkHashes: [HASH_A, HASH_B] }) },
         env
       )
       expect(res.status).toBe(404)
       expect(await res.json()).toMatchObject({
         error: { code: ErrorCodes.STORAGE_BLOB_NOT_FOUND }
       })
+      expect(presignCalls).toHaveLength(0)
+    })
+
+    it('rejects unknown hashes even when other chunks in the batch resolve', async () => {
+      seedChunkRows()
+      const res = await app.request(
+        '/attachments/presign-batch',
+        { method: 'POST', body: JSON.stringify({ chunkHashes: [HASH_A, hexHash('c')] }) },
+        env
+      )
+      expect(res.status).toBe(404)
       expect(presignCalls).toHaveLength(0)
     })
 
