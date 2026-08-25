@@ -36,6 +36,11 @@ export type Bindings = {
   R2_SECRET_ACCESS_KEY?: string
   R2_S3_ENDPOINT?: string
   R2_S3_BUCKET?: string
+  // Bootstrap session signing key (#1837). Optional like the presign set:
+  // absent → the bootstrap endpoints answer a typed 501 and rate-limit
+  // elevation returns null everywhere, so unconfigured deployments behave
+  // exactly as before. Never commit real values.
+  BOOTSTRAP_SESSION_HMAC_KEY?: string
   fetch?: typeof fetch
 }
 

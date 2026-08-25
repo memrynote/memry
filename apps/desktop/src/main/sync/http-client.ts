@@ -4,6 +4,7 @@ import { getMainI18n } from '../lib/main-i18n'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
+import { getBootstrapTokenHeaders } from './bootstrap-session-state'
 
 // Declared to the server so it never sends this build an item type our
 // RecordPullResponseSchema would reject — one unknown type fails the whole-page
@@ -19,7 +20,12 @@ export {
   RateLimitError,
   parseRetryAfterHeader
 } from '@memry/sync-client/http-errors'
-import { SyncServerError, NetworkError, RateLimitError, parseRetryAfterHeader } from '@memry/sync-client/http-errors'
+import {
+  SyncServerError,
+  NetworkError,
+  RateLimitError,
+  parseRetryAfterHeader
+} from '@memry/sync-client/http-errors'
 
 export async function getSyncVaultHeaders(): Promise<Record<string, string>> {
   try {
@@ -59,7 +65,10 @@ export const syncFetch = async <T>(
   body?: unknown,
   token?: string,
   fetchFn?: FetchFn,
-  timeoutMs: number = SYNC_REQUEST_TIMEOUT_MS
+  timeoutMs: number = SYNC_REQUEST_TIMEOUT_MS,
+  /** Extra headers merged last (e.g. a bootstrap token already captured
+   * before local session teardown — see bootstrap-session.ts close). */
+  extraHeaders?: Record<string, string>
 ): Promise<T> => {
   // Resolved per call, never hoisted to a module-level const: dotenv runs in
   // index.ts *after* this module is imported, so capturing at import time
@@ -80,6 +89,13 @@ export const syncFetch = async <T>(
     headers['Authorization'] = `Bearer ${token}`
     headers['X-Memry-Sync-Types'] = SYNC_TYPES_HEADER_VALUE
     Object.assign(headers, await getSyncVaultHeaders())
+    // Bootstrap elevation (#1837): an active fresh-device session rides along
+    // on every authenticated request. Old servers ignore the unknown header;
+    // no session → no header → byte-for-byte today's request.
+    Object.assign(headers, getBootstrapTokenHeaders())
+  }
+  if (extraHeaders) {
+    Object.assign(headers, extraHeaders)
   }
 
   let response: Response
@@ -130,9 +146,10 @@ export const postToServer = async <T>(
   path: string,
   body?: unknown,
   token?: string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
+  extraHeaders?: Record<string, string>
 ): Promise<T> => {
-  return syncFetch<T>('POST', path, body, token, fetchFn)
+  return syncFetch<T>('POST', path, body, token, fetchFn, SYNC_REQUEST_TIMEOUT_MS, extraHeaders)
 }
 
 export const getFromServer = async <T>(

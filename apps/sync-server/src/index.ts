@@ -8,6 +8,7 @@ import { cors } from 'hono/cors'
 import { AppError, ErrorCodes, errorHandler } from './lib/errors'
 import { auth } from './routes/auth'
 import { blob } from './routes/blob'
+import { bootstrap } from './routes/bootstrap'
 import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
 import { diagnostics } from './routes/diagnostics'
@@ -19,6 +20,7 @@ import { webhooks } from './routes/webhooks'
 import { securityHeaders } from './middleware/security'
 import {
   cleanupConsumedSetupTokens,
+  cleanupExpiredBootstrapSessions,
   cleanupExpiredGoogleCalendarChannels,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
@@ -214,6 +216,7 @@ app.route('/auth/linking', linking)
 app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
+app.route('/sync', bootstrap)
 app.route('/telemetry', telemetry)
 app.route('/diagnostics', diagnostics)
 app.route('/feedback', feedback)
@@ -237,7 +240,8 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_expired_tombstones', cleanupExpiredTombstones(env.DB, env.STORAGE)],
     ['cleanup_orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
     ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
-    ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)]
+    ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)],
+    ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)]
   ]
 
   if (event.cron === DAILY_CRON) {

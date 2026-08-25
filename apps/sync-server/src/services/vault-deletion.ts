@@ -127,6 +127,10 @@ export async function deleteVaultData(
     scoped('DELETE FROM crdt_snapshots WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM upload_sessions WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM blob_chunks WHERE user_id = ? AND vault_id = ?'),
+    // Bootstrap sessions are vault-scoped claims on elevated throughput
+    // (#1837); the vault going away revokes them. The signed tokens also die
+    // on their own TTL — this is hygiene, plus the immediate cap release.
+    scoped('DELETE FROM bootstrap_sessions WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM device_sync_state WHERE user_id = ? AND vault_id = ?'),
     scoped('DELETE FROM sync_items WHERE user_id = ? AND vault_id = ?'),
     scoped('UPDATE devices SET vault_id = NULL WHERE user_id = ? AND vault_id = ?'),

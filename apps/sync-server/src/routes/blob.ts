@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/auth'
 import { clientGateMiddleware } from '../middleware/client-gate'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter } from '../middleware/rate-limit'
+import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import {
   deleteBlob,
   generateAttachmentChunkKey,
@@ -91,7 +92,11 @@ const blobUploadLimit = createRateLimiter({
 const blobDownloadLimit = createRateLimiter({
   keyPrefix: 'blob_download',
   maxRequests: 600,
-  windowSeconds: 60
+  windowSeconds: 60,
+  // P1.2 (#1837): attachment-heavy bootstraps ride the same elevation seam.
+  // The client pacer multiplies its own 150/min by the granted factor, so the
+  // widened ceiling stays a safety margin rather than the shaping force.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 // 300/min (was 100): chunks are ~1MB, so 100/min capped uploads at ~100MB/min

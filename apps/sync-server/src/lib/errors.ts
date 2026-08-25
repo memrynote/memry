@@ -38,6 +38,16 @@ export const ErrorCodes = {
   SYNC_VAULT_LIMIT_EXCEEDED: 'SYNC_VAULT_LIMIT_EXCEEDED',
   SYNC_VAULT_NOT_FOUND: 'SYNC_VAULT_NOT_FOUND',
 
+  // Bootstrap sessions (#1837): a fresh-device pull window. NOT_ELIGIBLE is a
+  // typed 409 (the device already synced this vault) so the client can fall
+  // back to steady-state pacing without guessing; SESSION_LIMIT is the
+  // per-user concurrent cap answering 429; INVALID covers expired, forged or
+  // revoked tokens on the dedicated bootstrap endpoints.
+  BOOTSTRAP_NOT_ELIGIBLE: 'BOOTSTRAP_NOT_ELIGIBLE',
+  BOOTSTRAP_SESSION_LIMIT: 'BOOTSTRAP_SESSION_LIMIT',
+  BOOTSTRAP_SESSION_INVALID: 'BOOTSTRAP_SESSION_INVALID',
+  BOOTSTRAP_UNAVAILABLE: 'BOOTSTRAP_UNAVAILABLE',
+
   CRYPTO_INVALID_PAYLOAD: 'CRYPTO_INVALID_PAYLOAD',
   CRYPTO_DECRYPTION_FAILED: 'CRYPTO_DECRYPTION_FAILED',
   CRYPTO_INVALID_VERSION: 'CRYPTO_INVALID_VERSION',
