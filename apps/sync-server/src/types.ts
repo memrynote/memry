@@ -41,6 +41,10 @@ export type Bindings = {
   // elevation returns null everywhere, so unconfigured deployments behave
   // exactly as before. Never commit real values.
   BOOTSTRAP_SESSION_HMAC_KEY?: string
+  // Pack compaction queue (#1839). Optional so local dev without Queues keeps
+  // working: an absent binding makes enqueuePackCompaction a no-op and the
+  // cron backfill still drains packs over time.
+  PACK_QUEUE?: Queue<import('./services/pack-compaction').PackCompactionMessageBody>
   fetch?: typeof fetch
 }
 

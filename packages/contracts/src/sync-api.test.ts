@@ -39,6 +39,9 @@ import {
   SyncQueueItemSchema,
   SyncStatusSchema,
   VectorClockSchema,
+  PackKindSchema,
+  PackListResponseSchema,
+  PACK_KINDS,
   SYNC_ITEM_TYPES,
   RECORD_SYNC_ITEM_TYPES,
   RECORD_CLOCK_REQUIRED_ITEM_TYPES,
@@ -835,5 +838,46 @@ describe('tag_category sync registration', () => {
       sortOrder: 3
     })
     expect(parsed.success && parsed.data.sortOrder).toBe(3)
+  })
+})
+
+describe('PackListResponseSchema (#1839)', () => {
+  const validPack = {
+    id: 'pack-1',
+    itemKind: 'record',
+    packKey: 'user-1/vaults/default/packs/record/1_100.pack',
+    minCursor: 1,
+    maxCursor: 100,
+    itemCount: 42,
+    byteSize: 1024,
+    createdAt: 1700000000
+  }
+
+  it('accepts a minimal pack summary without presigned url', () => {
+    const parsed = PackListResponseSchema.safeParse({
+      packs: [validPack],
+      serverTime: 1700000001
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('accepts presigned url + expiry and an opaque nextCursor', () => {
+    const parsed = PackListResponseSchema.safeParse({
+      packs: [
+        { ...validPack, url: 'https://r2.example.com/pack.pack?sig=1', expiresAt: 1700000300 }
+      ],
+      serverTime: 1700000001,
+      nextCursor: '100_pack-1'
+    })
+    expect(parsed.success).toBe(true)
+  })
+
+  it('rejects unknown kinds and non-positive byte sizes', () => {
+    expect(PackKindSchema.safeParse('attachments').success).toBe(false)
+    expect(new Set(PACK_KINDS)).toEqual(new Set(['record', 'crdt_snapshot', 'crdt_update']))
+    expect(
+      PackListResponseSchema.safeParse({ packs: [{ ...validPack, byteSize: 0 }], serverTime: 1 })
+        .success
+    ).toBe(false)
   })
 })

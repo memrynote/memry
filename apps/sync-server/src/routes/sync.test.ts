@@ -82,6 +82,10 @@ vi.mock('../services/device', () => ({
   updateDevice: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/pack-list', () => ({
+  listPacks: vi.fn().mockResolvedValue({ packs: [], serverTime: 1000 })
+}))
+
 vi.mock('../middleware/auth', () => ({
   authMiddleware: vi.fn().mockImplementation(async (c: any, next: any) => {
     c.set('userId', 'user-1')
@@ -151,6 +155,7 @@ import {
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
+import { listPacks } from '../services/pack-list'
 
 // ============================================================================
 // Helpers
@@ -702,6 +707,70 @@ describe('sync routes', () => {
   // ==========================================================================
   // POST /sync/push
   // ==========================================================================
+
+  // ==========================================================================
+  // GET /sync/packs (#1839)
+  // ==========================================================================
+
+  describe('GET /sync/packs', () => {
+    it('returns the pack list for the authenticated vault', async () => {
+      vi.mocked(listPacks).mockResolvedValueOnce({
+        packs: [
+          {
+            id: 'pack-1',
+            itemKind: 'record',
+            packKey: 'user-1/vaults/vault-1/packs/record/1_100.pack',
+            minCursor: 1,
+            maxCursor: 100,
+            itemCount: 42,
+            byteSize: 65536,
+            createdAt: 1700000000,
+            url: 'https://r2.example.com/pack.pack?sig=1',
+            expiresAt: 1700000300
+          }
+        ],
+        serverTime: 1700000001
+      })
+
+      const res = await app.request('/sync/packs', { method: 'GET' }, env, executionCtx)
+
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as { packs: unknown[]; serverTime: number }
+      expect(json.packs).toHaveLength(1)
+      // Scoped to the authenticated user + vault, never client-supplied keys;
+      // presign config resolves to null without R2 env vars (graceful
+      // degradation → no urls in the response).
+      expect(listPacks).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        {
+          cursor: null,
+          limit: undefined
+        },
+        null
+      )
+    })
+
+    it('forwards pagination params and rejects malformed cursors', async () => {
+      await app.request('/sync/packs?limit=5&cursor=100:abc', { method: 'GET' }, env, executionCtx)
+      expect(listPacks).toHaveBeenLastCalledWith(
+        env.DB,
+        'user-1',
+        'vault-1',
+        { cursor: '100:abc', limit: 5 },
+        null
+      )
+
+      const bad = await app.request(
+        '/sync/packs?cursor=nonsense',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(bad.status).toBe(400)
+    })
+  })
 
   describe('POST /sync/push', () => {
     it('should return 200 with accepted and rejected arrays', async () => {

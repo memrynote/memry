@@ -34,6 +34,8 @@ import { createLogger } from './lib/logger'
 import { captureServerError } from './services/analytics'
 import { syncReleaseDownloadCounts } from './services/release-downloads'
 import { logCrdtTraffic } from './services/sync-telemetry'
+import { runPackBackfill } from './services/pack-backfill'
+import { handlePackQueueMessage } from './services/pack-consumer'
 import type { Bindings, AppContext } from './types'
 
 const logger = createLogger('Server')
@@ -241,7 +243,11 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
     ['cleanup_orphaned_blob_chunks', cleanupOrphanedBlobChunks(env.DB, env.STORAGE)],
     ['cleanup_expired_gcal_channels', cleanupExpiredGoogleCalendarChannels(env.DB)],
     ['cleanup_stale_identify_sessions', cleanupStaleIdentifySessions(env.DB)],
-    ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)]
+    ['cleanup_expired_bootstrap_sessions', cleanupExpiredBootstrapSessions(env.DB)],
+    // Pack backfill (#1839) rides the 6-hourly trigger: a bounded number of
+    // packs per tick (see pack-backfill.ts for the pacing model), resumed via
+    // watermarks until every vault's historical items are packed.
+    ['pack_backfill', runPackBackfill(env.DB, env.STORAGE)]
   ]
 
   if (event.cron === DAILY_CRON) {
@@ -268,4 +274,32 @@ const scheduled: ExportedHandlerScheduledHandler<Bindings> = async (event, env, 
 }
 
 export { app }
-export default { fetch: app.fetch, scheduled }
+
+// Queue consumer for pack compaction (#1839). Thin on purpose — message
+// validation, retry semantics, and all compaction logic live in
+// services/pack-consumer.ts / services/pack-compaction.ts so they stay
+// testable without real Queues.
+const queue: ExportedHandlerQueueHandler<Bindings> = async (batch, env, _ctx) => {
+  // Messages are processed SEQUENTIALLY even if the platform delivers a
+  // batch: each message can build packs (hundreds of subrequests), and
+  // concurrent builds would make the invocation's subrequest budget
+  // unpredictable. wrangler.toml pins max_batch_size = 1; this loop is the
+  // belt to that suspenders.
+  for (const message of batch.messages) {
+    try {
+      await handlePackQueueMessage(env, message.body)
+    } catch (error) {
+      logger.error('pack compaction failed; retrying delivery', {
+        messageId: message.id,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      // Throwing inside the queue handler makes the platform retry every
+      // message of the batch (at-least-once); the core is idempotent, so a
+      // redelivery is at worst one no-op pass. markAllFailed vs retry per
+      // message: with batch size 1 they are equivalent.
+      throw error
+    }
+  }
+}
+
+export default { fetch: app.fetch, scheduled, queue }

@@ -47,6 +47,9 @@ import {
   getSnapshot,
   pruneUpdatesBeforeSnapshot
 } from '../services/crdt'
+import { enqueuePackCompaction } from '../services/pack-compaction'
+import { listPacks } from '../services/pack-list'
+import { resolveR2PresignConfig } from '../services/r2-presign'
 import type { AppContext } from '../types'
 
 export const sync = new Hono<AppContext>()
@@ -417,6 +420,14 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
+    // Pack compaction nudge (#1839): AFTER the commit above (a failed enqueue
+    // must never fail an already-committed push). Best-effort via waitUntil —
+    // at-least-once delivery + idempotent core make duplicates harmless, and
+    // a lost message only delays packing until the next nudge or backfill.
+    waitUntilCaptured(c, enqueuePackCompaction(c.env, { userId, vaultId }), {
+      source: 'PackQueue',
+      action: 'pack_enqueue_failed'
+    })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
     waitUntilCaptured(
@@ -491,6 +502,45 @@ const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   return c.json(item)
 }
 
+// Pack discovery for bootstrap (#1839). Paginated newest-first; presigned GET
+// per pack when the deployment opted into direct R2 transfers. Additive and
+// unused by old clients — the item-granular endpoints remain the source of
+// truth, packs are a derived cache on top.
+const packsRateLimit = createRateLimiter({
+  keyPrefix: 'sync_packs',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
+  const endpoint = getRequestPath(c)
+
+  const limitParam = c.req.query('limit')
+  const cursorParam = c.req.query('cursor')
+
+  let limit: number | undefined
+  if (limitParam !== undefined) {
+    limit = parseInt(limitParam, 10)
+    if (isNaN(limit) || limit < 1) {
+      logQueryValidationFailure('record', endpoint, 'Invalid limit value')
+    }
+  }
+  if (cursorParam !== undefined && !/^\d+:\S+$/.test(cursorParam)) {
+    logQueryValidationFailure('record', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+  }
+
+  const result = await listPacks(
+    c.env.DB,
+    userId,
+    vaultId,
+    { cursor: cursorParam ?? null, limit },
+    resolveR2PresignConfig(c.env)
+  )
+  return c.json(result)
+}
+
 const recordSync = new Hono<AppContext>()
 
 recordSync.get('/status', statusRateLimit, handleRecordStatus)
@@ -499,6 +549,7 @@ recordSync.get('/changes', changesRateLimit, handleRecordChanges)
 recordSync.post('/push', pushRateLimit, handleRecordPush)
 recordSync.post('/pull', pullRateLimit, handleRecordPull)
 recordSync.get('/items/:id', handleRecordItem)
+recordSync.get('/packs', packsRateLimit, handleListPacks)
 
 sync.route('/records', recordSync)
 
@@ -508,6 +559,7 @@ sync.get('/changes', changesRateLimit, handleRecordChanges)
 sync.post('/push', pushRateLimit, handleRecordPush)
 sync.post('/pull', pullRateLimit, handleRecordPull)
 sync.get('/items/:id', handleRecordItem)
+sync.get('/packs', packsRateLimit, handleListPacks)
 
 // ============================================================================
 // CRDT Endpoints
@@ -804,6 +856,13 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   }
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
+
+  // Snapshot pushes are pack candidates too (#1839): nudge after the store +
+  // prune settle, best-effort, same reasoning as the record push path.
+  waitUntilCaptured(c, enqueuePackCompaction(c.env, { userId, vaultId }), {
+    source: 'PackQueue',
+    action: 'pack_enqueue_failed'
+  })
 
   // A snapshot is a body write like any other and has to wake the peers the way
   // an incremental does. It is not a duplicate of the update path: a device that
