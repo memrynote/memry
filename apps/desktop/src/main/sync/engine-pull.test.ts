@@ -542,6 +542,73 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given a >100-ref page #when the breaker trips on slice 2', () => {
+    it('#then every remaining slice still runs before the page stops as breaker', async () => {
+      // pullChangesPage must run EVERY slice even when an early one trips the
+      // circuit breaker: the caller advances the cursor past the WHOLE page, so
+      // a slice skipped on breaker would neither be re-pulled nor marked
+      // corrupt — silent loss. 250 refs arrive as slices [100, 100, 50]; only
+      // slice 2 is poisoned, and all three POSTs must still happen.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+
+      const postSpy = vi
+        .spyOn(await import('./http-client'), 'postToServer')
+        .mockImplementation(async (_path, body) => {
+          const itemIds = (body as { itemIds: string[] }).itemIds
+          if (!itemIds.includes('task-100')) return { items: [] }
+          return {
+            items: itemIds.map((id) => ({
+              id,
+              type: 'task',
+              operation: 'update',
+              cryptoVersion: 1,
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+              signature: 'sig',
+              signerDeviceId: 'device-1'
+            }))
+          }
+        })
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockImplementation((input) => {
+        throw new Error(`decryption failed for ${input.id}`)
+      })
+
+      await engine.pull()
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      expect((pullCalls[2]?.[1] as { itemIds: string[] }).itemIds[0]).toBe('task-200')
+
+      // Breaker reported for the page: run refused (error state), and exactly
+      // the poisoned slice's items surfaced as corrupt.
+      expect(engine.currentState).toBe('error')
+      const corruptCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:item-corrupt'
+      )
+      expect(corruptCalls.map((call) => call[1]?.itemId)).toEqual(
+        refs.slice(100, 200).map((r) => r.id)
+      )
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given pull fails with 403 AUTH_DEVICE_REVOKED', () => {
     it('#then handles device revocation instead of generic error', async () => {
       const { SyncServerError } = await import('./http-client')

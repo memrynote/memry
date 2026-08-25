@@ -387,6 +387,13 @@ describe('blob routes', () => {
     expect(insert?.sql).toContain(
       'ON CONFLICT (user_id, vault_id, hash) DO UPDATE SET ref_count = ref_count + 1'
     )
+    // Pin the FULL conflict-arm column set: only ref_count may mutate. Today
+    // r2_key/size_bytes derive deterministically from the hash so a stray
+    // `r2_key = excluded.r2_key` would be a silent no-op — but if key
+    // derivation ever gains a nonce component, rewriting those columns would
+    // repoint the surviving row while other references still expect the
+    // original object. Exact match, not contains.
+    expect(insert?.sql.split('DO UPDATE SET')[1]?.trim()).toBe('ref_count = ref_count + 1')
   })
 
   it('rejects duplicate and out-of-range chunks', async () => {
