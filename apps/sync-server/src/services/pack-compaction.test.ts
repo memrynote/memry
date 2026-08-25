@@ -316,6 +316,65 @@ describe('pack build', () => {
     expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept.bytes)
   })
 
+  it('tolerates a vanished blob in a NON-FINAL slot of the range', async () => {
+    const dangling = seedRecord({ cursor: 1 })
+    const kept = seedRecord({ cursor: 2 })
+    // The hole is slot 0, not the trailing slot: the writer must be advanced
+    // past it explicitly. Leaving it unclaimed makes the NEXT entry violate
+    // the plan-order invariant, and that throw escapes before the watermark
+    // moves — the queue drops the message, the cron backfill re-selects the
+    // identical range forever, and the vault never packs again.
+    await storage.delete(dangling.blobKey)
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'record'
+    )
+    expect(result.built).toBe(true)
+    expect(result.holes).toEqual(['task:item-1'])
+    expect(result.itemCount).toBe(1)
+
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes)
+    expect(parsed.entries.map((e) => e.id)).toEqual(['task:item-2'])
+    expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept.bytes)
+    // Progress is the point: the range must never be re-driven.
+    expect(watermarkOf('record')?.last_sort_value).toBe(2)
+  })
+
+  it('degrades declared-vs-actual size drift to a hole instead of throwing', async () => {
+    // Snapshot blob keys are STABLE per note and overwritten in place on every
+    // push, so a push landing between selection (which sized the pack buffer
+    // from D1 size_bytes) and the R2 GET returns bytes of a different length
+    // than declared. Copying them would misalign the layout, so drift degrades
+    // to a hole exactly like a vanished blob — and, sitting in slot 0 here, it
+    // must also advance the writer past its slot.
+    seedSnapshot('note-a', 1000) // 24 declared bytes
+    const kept = seedSnapshot('note-b', 1001)
+    await storage.put(
+      `${USER}/vaults/${VAULT}/crdt/note-a/snapshot`,
+      new Uint8Array(25).fill(9).buffer as ArrayBuffer
+    )
+
+    const result = await compactOneRange(
+      harness.db,
+      storage,
+      { userId: USER, vaultId: VAULT },
+      'crdt_snapshot'
+    )
+    expect(result.built).toBe(true)
+    expect(result.holes).toEqual(['note-a'])
+    expect(result.itemCount).toBe(1)
+
+    const packBytes = await packOf(result.packKey)
+    const parsed = await parsePack(packBytes) // checksums still verify
+    expect(parsed.entries.map((e) => e.id)).toEqual(['note-b'])
+    expect(extractEntry(packBytes, parsed.entries[0])).toEqual(kept)
+    expect(watermarkOf('crdt_snapshot')?.last_sort_value).toBe(1001)
+  })
+
   it('packs snapshots with freshness metadata in the index block', async () => {
     const snapA = seedSnapshot('note-a', 1700000001, 4)
     const snapB = seedSnapshot('note-b', 1700000002, 9)
