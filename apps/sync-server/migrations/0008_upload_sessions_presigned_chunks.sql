@@ -1,0 +1,23 @@
+-- Chunk hashes an upload session handed out presigned PUT URLs for (#1836).
+--
+-- A presigned PUT never transits the Worker: the bytes land in R2 with no hash
+-- check, no size cap, and no D1 row. Until a client posts /complete with a
+-- directChunks report, NOTHING records that those objects exist -- the expiry
+-- sweep only walks uploaded_chunks (appended by the proxied path) and the
+-- orphan sweep only sees blob_chunks rows with ref_count <= 0. An abandoned
+-- session therefore left every armed key sitting in the bucket forever,
+-- uncharged against storage_used and invisible to every reclaim path.
+--
+-- This column is that missing record: the JSON array of hashes armed at
+-- initiate. Whenever the session row is about to disappear (complete, abort, or
+-- the expiry sweep) each armed hash WITHOUT a live blob_chunks row is deleted
+-- from R2. The blob_chunks check is load-bearing -- a client may legitimately
+-- declare the hash of a chunk that already exists, and deleting that object
+-- would destroy another attachment's data.
+--
+-- Nullable and additive, deliberately NOT backfilled. NULL means "no presigned
+-- URLs were ever armed for this session": rows written by the old server, by a
+-- client on the proxied path, or on a deployment without the R2 presign
+-- secrets. Readers skip the reclaim entirely for those rows, so old rows and an
+-- old Worker running against the migrated schema both behave exactly as before.
+ALTER TABLE upload_sessions ADD COLUMN presigned_chunks TEXT;

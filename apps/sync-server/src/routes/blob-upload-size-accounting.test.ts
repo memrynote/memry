@@ -210,6 +210,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
       1024, // total_size stays plaintext
       1, // chunk_count
       1024 + CHUNK_CRYPTO_OVERHEAD, // encrypted_size persisted
+      null, // presigned_chunks: proxied path arms no URLs
       expect.any(Number), // expires_at
       expect.any(Number) // created_at
     ])

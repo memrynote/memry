@@ -26,6 +26,52 @@ function createDbWithChanges(changes: number) {
   }
 }
 
+/**
+ * SQL-routed D1 fake for the upload-session sweep.
+ *
+ * Unlike `createDbWithChanges` it dispatches on the statement text instead of
+ * call order, so a test can exercise a query the sweep only runs for some rows
+ * without re-numbering every `mockReturnValueOnce` in the file.
+ */
+function createUploadSweepDb(options: {
+  sessions: Array<Record<string, unknown>>
+  registeredHashes: string[]
+}): D1Database {
+  const registered = new Set(options.registeredHashes)
+  const prepare = vi.fn((sql: string) => {
+    let bindings: unknown[] = []
+    const stmt = {
+      bind: (...args: unknown[]) => {
+        bindings = args
+        return stmt
+      },
+      all: async () => {
+        if (sql.includes('FROM upload_sessions')) return { results: options.sessions }
+        if (sql.includes('SELECT hash FROM blob_chunks')) {
+          const hashes = bindings.slice(2) as string[]
+          return { results: hashes.filter((h) => registered.has(h)).map((hash) => ({ hash })) }
+        }
+        return { results: [] }
+      },
+      first: async () => {
+        if (sql.includes('FROM blob_chunks')) {
+          const hash = bindings[2] as string
+          if (!registered.has(hash)) return null
+          return {
+            id: `chunk-${hash}`,
+            ref_count: 1,
+            r2_key: `user-1/vaults/vault-1/chunks/${hash}`
+          }
+        }
+        return null
+      },
+      run: async () => ({ meta: { changes: 1 } })
+    }
+    return stmt
+  })
+  return { prepare } as unknown as D1Database
+}
+
 describe('cleanup services', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -195,6 +241,88 @@ describe('cleanup services', () => {
     expect(deleteRun).toHaveBeenCalledOnce()
     // refunds what was reserved (plaintext), not total_size + 40 * chunk_count
     expect(releaseBind).toHaveBeenCalledWith(-5_000, expect.any(Number), 'user-1')
+  })
+
+  // A presigned PUT never transits the Worker: the bytes land in R2 with nothing
+  // in D1 recording them. When such a session is abandoned, `uploaded_chunks` is
+  // still empty and `blob_chunks` has no row, so neither the per-hash refcount
+  // loop nor `cleanupOrphanedBlobChunks` (ref_count <= 0) can ever see those
+  // objects. `presigned_chunks` is the only record that they were armed.
+  it('deletes presigned chunk objects an expired session never registered', async () => {
+    // #given a session handed two presigned PUT URLs, then abandoned
+    const storage = {
+      delete: vi.fn().mockResolvedValue(undefined),
+      resumeMultipartUpload: vi.fn()
+    } as unknown as R2Bucket
+
+    const orphanHash = 'a'.repeat(64)
+    const registeredHash = 'b'.repeat(64)
+
+    const db = createUploadSweepDb({
+      sessions: [
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 1024,
+          chunk_count: 2,
+          encrypted_size: 1104,
+          uploaded_chunks: '[]',
+          presigned_chunks: JSON.stringify([orphanHash, registeredHash]),
+          r2_upload_id: null,
+          r2_key: null
+        }
+      ],
+      // registeredHash has a live blob_chunks row (it was reconciled by some
+      // other session), so it is real data the sweep must not touch.
+      registeredHashes: [registeredHash]
+    })
+
+    // #when
+    const result = await cleanupExpiredUploadSessions(db, storage)
+
+    // #then
+    expect(result).toBe(1)
+    expect(storage.delete).toHaveBeenCalledWith(`user-1/vaults/vault-1/chunks/${orphanHash}`)
+    expect(storage.delete).not.toHaveBeenCalledWith(
+      `user-1/vaults/vault-1/chunks/${registeredHash}`
+    )
+  })
+
+  it('does no presigned reclaim work for sessions that were never presigned', async () => {
+    // #given a row with presigned_chunks NULL: written by the old server, by a
+    // client on the proxied path, or on a deployment without R2 presign secrets.
+    const storage = {
+      delete: vi.fn().mockResolvedValue(undefined),
+      resumeMultipartUpload: vi.fn()
+    } as unknown as R2Bucket
+
+    const db = createUploadSweepDb({
+      sessions: [
+        {
+          id: 's1',
+          user_id: 'user-1',
+          vault_id: 'vault-1',
+          total_size: 1024,
+          chunk_count: 1,
+          encrypted_size: null,
+          uploaded_chunks: '[]',
+          presigned_chunks: null,
+          r2_upload_id: null,
+          r2_key: null
+        }
+      ],
+      registeredHashes: []
+    })
+
+    // #when
+    await cleanupExpiredUploadSessions(db, storage)
+
+    // #then
+    expect(storage.delete).not.toHaveBeenCalled()
+    expect(db.prepare).not.toHaveBeenCalledWith(
+      expect.stringContaining('SELECT hash FROM blob_chunks')
+    )
   })
 
   it('cleans up expired Google Calendar push channels', async () => {
