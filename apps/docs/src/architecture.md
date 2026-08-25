@@ -32,7 +32,9 @@ Two SQLite databases via better-sqlite3 + Drizzle:
 - **R2**: encrypted payload blobs (avoids the 1 MB D1 row limit).
 - **Hybrid sync**: bulk snapshots through `SyncItemHandler` plus incremental Yjs updates through `/sync/crdt/updates`.
 
-→ [Sync Protocol](/architecture/sync-protocol) · [CRDT & Notes Sync](/architecture/crdt) · [Sync Item Handlers](/architecture/sync-handlers)
+- **Bootstrap**: a fresh device opens a time-boxed elevated window, then seeds note bodies from immutable compaction packs before the item-granular pull.
+
+→ [Sync Protocol](/architecture/sync-protocol) · [CRDT & Notes Sync](/architecture/crdt) · [Sync Item Handlers](/architecture/sync-handlers) · [Vault Packs](/architecture/vault-packs)
 
 ## Cryptography
 
