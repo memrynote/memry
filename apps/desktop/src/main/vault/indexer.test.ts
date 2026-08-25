@@ -234,6 +234,32 @@ describe('indexer', () => {
       expect(result2.errors).toBe(0)
     })
 
+    // #1832: the background build's fast path claims a re-open of an unchanged
+    // vault is nearly free because every path is already cached. Pin that: the
+    // skip decision must come before any parse work, so the resumed walk reads
+    // zero file contents and skips exactly what the previous pass indexed.
+    it('#1832: fast-path re-walk over an unchanged vault reads nothing', async () => {
+      createTestNote(tempVault, { title: 'Note 1', content: 'Content 1' })
+      createTestNote(tempVault, { title: 'Note 2', content: 'Content 2' })
+      createTestNote(tempVault, { title: 'Note 3', content: 'Content 3' })
+
+      const first = await indexer.indexVault(tempVault.path)
+      expect(first.indexed).toBe(3)
+
+      const { readFile } = await import('fs/promises')
+      vi.mocked(readFile).mockClear()
+
+      const second = await indexer.indexVault(tempVault.path)
+
+      expect(second.cancelled).toBe(false)
+      expect(second.errors).toBe(0)
+      // Skipped count equals what the previous walk indexed...
+      expect(second.skipped).toBe(first.indexed)
+      expect(second.indexed).toBe(0)
+      // ...and no file was read or parsed to decide that.
+      expect(vi.mocked(readFile).mock.calls).toHaveLength(0)
+    })
+
     it('T374: emits progress events', async () => {
       // Create several notes
       for (let i = 0; i < 15; i++) {

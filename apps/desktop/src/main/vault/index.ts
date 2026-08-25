@@ -385,6 +385,24 @@ async function reportAndRepairReconcileFailures(
 let backgroundIndexBuild: Promise<void> | null = null
 let backgroundIndexBuildCancelled = false
 
+/**
+ * Stop the in-flight open-time index build and wait it out.
+ *
+ * Two callers need this before they touch the index database: closeVault(),
+ * because teardown must not close better-sqlite3 handles under a running walk,
+ * and manual/structural rebuilds, because resetIndexDatabase() closes and
+ * recreates that same DB mid-walk — two concurrent passes interleave status
+ * writes and spam unique-constraint errors. A cancelled build is resumable by
+ * construction: the next open re-runs the walk and skips cached paths.
+ */
+async function stopBackgroundIndexBuild(): Promise<void> {
+  backgroundIndexBuildCancelled = true
+  if (backgroundIndexBuild) {
+    await backgroundIndexBuild
+    backgroundIndexBuild = null
+  }
+}
+
 interface BackgroundIndexBuildInput {
   vaultPath: string
   dataDb: ReturnType<typeof getDatabase>
@@ -820,6 +838,9 @@ export async function updateConfig(updates: Partial<VaultConfig>): Promise<Vault
 
   if (structuralChanged) {
     logger.info('Structural vault config changed, rebuilding index...')
+    // Same race as reindex(): the structural rebuild resets the index database,
+    // which must not land mid-walk of the open-time background build.
+    await stopBackgroundIndexBuild()
     updateStatus({ isIndexing: true, indexProgress: 0 })
     try {
       // Full rebuild, not incremental reindex: indexFile skips paths already in
@@ -846,11 +867,7 @@ export async function closeVault(): Promise<void> {
   // Stop the background index build first: it holds the index DB handle and
   // feeds the projection queue this teardown is about to drain and close. The
   // flag stops the walk within one file's work, so the await is short.
-  backgroundIndexBuildCancelled = true
-  if (backgroundIndexBuild) {
-    await backgroundIndexBuild
-    backgroundIndexBuild = null
-  }
+  await stopBackgroundIndexBuild()
 
   await stopVaultAgentServices()
 
@@ -1001,6 +1018,11 @@ export async function reindex(): Promise<void> {
   if (!currentStatus.path) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
+
+  // Pre-#1832 the open-time walk always finished before isOpen, so a manual
+  // reindex could never overlap it. Backgrounded, it can: cancel+await the
+  // active build first so the two passes never share the index database.
+  await stopBackgroundIndexBuild()
 
   updateStatus({ isIndexing: true, indexProgress: 0 })
 

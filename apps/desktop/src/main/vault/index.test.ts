@@ -68,7 +68,8 @@ const mocks = vi.hoisted(() => ({
   unregisterLazyAgentHandlers: vi.fn(),
   startAgent: vi.fn(),
   agentShutdown: vi.fn(),
-  trackMainLog: vi.fn()
+  trackMainLog: vi.fn(),
+  embeddingProjectorWiring: [] as Array<{ getPath: () => unknown; gate: () => boolean }>
 }))
 
 vi.mock('electron', () => ({
@@ -216,7 +217,13 @@ vi.mock('../projections/projectors/search-projector', () => ({
 }))
 
 vi.mock('../projections/projectors/embedding-projector', () => ({
-  createEmbeddingProjector: () => ({ kind: 'embedding' })
+  // Capture the wiring so tests can assert the deferral gate closure reads
+  // live status rather than a hard-coded value (#803).
+  createEmbeddingProjector: (...args: unknown[]) => {
+    const [getPath, gate] = args as [() => unknown, () => boolean]
+    mocks.embeddingProjectorWiring.push({ getPath, gate })
+    return { kind: 'embedding' }
+  }
 }))
 
 vi.mock('../projections/projectors/inbox-stats-projector', () => ({
@@ -288,6 +295,7 @@ describe('vault lifecycle', () => {
     mocks.sent = []
     mocks.vaults = []
     mocks.currentVaultPath = null
+    mocks.embeddingProjectorWiring.length = 0
     mocks.dialogResult = { canceled: false, filePaths: ['/vault/picked'] }
     mocks.config = {
       excludePatterns: ['.git'],
@@ -530,7 +538,12 @@ describe('vault lifecycle', () => {
     expect(stopSignal?.()).toBe(false)
 
     const closing = closeVault()
-    await Promise.resolve()
+    // Drain past every teardown step: each mocked step settles instantly, so
+    // only the await on the still-parked build keeps them from all running now.
+    // A macrotask boundary plus spare microtask ticks guarantee the mutant
+    // (dropping the await) has fully reached closeAllDatabases by this point.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    for (let i = 0; i < 10; i++) await Promise.resolve()
 
     // The walk is asked to stop, and teardown waits for it: the databases must
     // not be closed underneath an in-flight indexFile.
@@ -542,6 +555,128 @@ describe('vault lifecycle', () => {
 
     expect(mocks.closeAllDatabases).toHaveBeenCalled()
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: false, isIndexing: false }))
+  })
+
+  // #803: the embedding projector's deferral gate must read live indexing
+  // status through its closure. Hard-coding it false silently reloads the
+  // ~23MB model inline on the open path; hard-coding true strands embeddings.
+  it('wires the embedding deferral gate to live indexing status', async () => {
+    let resolveIndex!: (value: {
+      indexed: number
+      skipped: number
+      errors: number
+      cancelled: boolean
+    }) => void
+    mocks.indexVault.mockReturnValue(
+      new Promise((resolve) => {
+        resolveIndex = resolve
+      })
+    )
+
+    await selectVault({ path: '/vault/deferral' })
+
+    const wiring = mocks.embeddingProjectorWiring.at(-1)
+    expect(wiring).toBeDefined()
+    expect(wiring?.getPath()).toBe('/vault/deferral')
+
+    // Mid-walk the indexing window is open: defer, never embed inline.
+    expect(wiring?.gate()).toBe(true)
+
+    resolveIndex({ indexed: 0, skipped: 5, errors: 0, cancelled: false })
+    await vi.waitFor(() => expect(getStatus().isIndexing).toBe(false))
+
+    // Same closure, window closed: embeddings flow again.
+    expect(wiring?.gate()).toBe(false)
+  })
+
+  it('cancels and waits out the active background build before a manual reindex walks', async () => {
+    let resolveOpenWalk!: (value: {
+      indexed: number
+      skipped: number
+      errors: number
+      cancelled: boolean
+    }) => void
+    let openStopSignal: (() => boolean) | undefined
+    const events: string[] = []
+    mocks.indexVault.mockImplementation(
+      (_path: string, options?: { shouldStop?: () => boolean }) => {
+        if (!openStopSignal) {
+          // First call: the parked open-time background build.
+          openStopSignal = options?.shouldStop
+          return new Promise((resolve) => {
+            resolveOpenWalk = (value) => {
+              events.push('open-walk-settled')
+              resolve(value)
+            }
+          })
+        }
+        events.push('reindex-walk-started')
+        return Promise.resolve({ indexed: 2, skipped: 0, errors: 0, cancelled: false })
+      }
+    )
+
+    await selectVault({ path: '/vault/reindex-race' })
+    expect(events).toEqual([])
+
+    const manual = reindex()
+
+    // The manual pass must not start while the background build runs. Flush
+    // generously to prove it is parked on the build, not merely slow.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    for (let i = 0; i < 10; i++) await Promise.resolve()
+    expect(events).toEqual([])
+    expect(openStopSignal?.()).toBe(true)
+
+    resolveOpenWalk({ indexed: 1, skipped: 0, errors: 0, cancelled: true })
+    await manual
+
+    // Order: the background walk settled before the manual walk began, and the
+    // manual walk is an unconditional full pass (no cancellation plumbing).
+    expect(events).toEqual(['open-walk-settled', 'reindex-walk-started'])
+    expect(mocks.indexVault).toHaveBeenLastCalledWith('/vault/reindex-race')
+    expect(getStatus()).toEqual(expect.objectContaining({ isIndexing: false, indexProgress: 100 }))
+  })
+
+  it('cancels and waits out the active background build before a structural config rebuild', async () => {
+    let resolveOpenWalk!: (value: {
+      indexed: number
+      skipped: number
+      errors: number
+      cancelled: boolean
+    }) => void
+    let openStopSignal: (() => boolean) | undefined
+    mocks.indexVault.mockImplementation(
+      (_path: string, options?: { shouldStop?: () => boolean }) => {
+        openStopSignal = options?.shouldStop
+        return new Promise((resolve) => {
+          resolveOpenWalk = resolve
+        })
+      }
+    )
+
+    await selectVault({ path: '/vault/config-race' })
+
+    const rebuild = updateConfig({ journalFolder: 'diary' })
+
+    // The reset behind rebuildIndex must not land mid-walk of the background
+    // build: flush past every instant-settling step first.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    for (let i = 0; i < 10; i++) await Promise.resolve()
+    expect(openStopSignal?.()).toBe(true)
+    expect(mocks.rebuildIndex).not.toHaveBeenCalled()
+
+    resolveOpenWalk({ indexed: 1, skipped: 0, errors: 0, cancelled: true })
+    await rebuild
+
+    expect(mocks.rebuildIndex).toHaveBeenCalledWith('/vault/config-race')
+    expect(getStatus()).toEqual(
+      expect.objectContaining({
+        isOpen: true,
+        path: '/vault/config-race',
+        isIndexing: false,
+        indexProgress: 100
+      })
+    )
   })
 
   it('repairs a corrupt search index in place instead of deleting the index database', async () => {
