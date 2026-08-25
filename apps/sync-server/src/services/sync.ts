@@ -370,8 +370,9 @@ interface PreparedPushItem {
  *
  * Per-item error semantics are those of the old serial loop: every failure is
  * captured as that item's outcome (AppError code, or INTERNAL_ERROR for
- * anything untyped) and never aborts its neighbours. What changed is the I/O
- * shape only — per-stage batching instead of per-item round trips:
+ * anything untyped) and never aborts its neighbours — except the Stage 8
+ * commit, which is all-or-nothing per wave (see its comment). What changed is
+ * the I/O shape only — per-stage batching instead of per-item round trips:
  *
  *   1. shape + crypto-format validation            (CPU only)
  *   2. signature verification, one device fetch per unique signer
@@ -594,10 +595,12 @@ const processPushWave = async (
     }
   }
 
-  // Stage 8: upserts and storage shrinks, one transactional db.batch. Item
-  // atomicity is preserved upward: the batch either lands whole or rejects
-  // every item in it (a client retries rejected items either way), and a row
-  // never lands without its shrink adjustment.
+  // Stage 8: upserts and storage shrinks, one transactional db.batch. This is
+  // the one deliberate semantic delta vs the serial loop: the old code caught a
+  // failed item commit per item and went on, so a transient D1 write error on
+  // item k rejected only k while k+1..n still landed. Now the batch either
+  // lands whole or rejects every item in the wave (a client retries rejected
+  // items either way), and a row never lands without its shrink adjustment.
   if (stored.length > 0) {
     const now = Math.floor(Date.now() / 1000)
     const statements: D1PreparedStatement[] = []
