@@ -14,7 +14,20 @@ describe('wrangler config', () => {
 
     expect(toml).toContain('{ name = "USER_SYNC_STATE", class_name = "UserSyncState" }')
     expect(toml).toContain('{ name = "LINKING_SESSION", class_name = "LinkingSession" }')
+    expect(toml).toContain('{ name = "RATE_LIMITER", class_name = "RateLimiter" }')
     expect(toml).toContain('new_sqlite_classes = ["UserSyncState", "LinkingSession"]')
+    expect(toml).toContain('new_sqlite_classes = ["RateLimiter"]')
+  })
+
+  it('binds the RateLimiter durable object in every environment', () => {
+    const toml = readFileSync(resolve(__dirname, 'wrangler.toml'), 'utf8')
+
+    // Deploys go through GitHub Actions with --env staging / --env production;
+    // env durable_objects blocks are NOT inherited from the top level, so a
+    // missing entry here means the limiter 500s every request in that env.
+    const bindingLine = '{ name = "RATE_LIMITER", class_name = "RateLimiter" }'
+    const occurrences = toml.split(bindingLine).length - 1
+    expect(occurrences).toBe(3)
   })
 
   it('schedules both the cleanup sweep and the daily release download pull', () => {

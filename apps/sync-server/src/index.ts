@@ -1,5 +1,6 @@
 export { UserSyncState } from './durable-objects/user-sync-state'
 export { LinkingSession } from './durable-objects/linking-session'
+export { RateLimiter } from './durable-objects/rate-limiter'
 
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'

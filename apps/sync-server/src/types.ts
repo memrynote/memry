@@ -3,6 +3,7 @@ export type Bindings = {
   STORAGE: R2Bucket
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
+  RATE_LIMITER: DurableObjectNamespace
   ENVIRONMENT: string
   LOCAL_ADMIN_SYNC_EMAILS?: string
   ALLOWED_ORIGIN?: string
