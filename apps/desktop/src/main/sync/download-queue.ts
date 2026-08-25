@@ -9,6 +9,12 @@ const log = createLogger('DownloadQueue')
 const MAX_CONCURRENT_DOWNLOADS = 3
 // Mirrors UploadQueue: a NetworkError is transient by definition, so the item
 // is never dropped, only slowed down. 1s, 2s, ... capped at 60s.
+//
+// This backoff is GLOBAL across the whole queue, not per item: every network
+// error pushes `networkBackoffUntil` forward for ALL items, exactly like
+// UploadQueue's shared backoff. A transport blip usually affects every
+// transfer equally, so letting the other items keep firing during an outage
+// only burns the shared blob_download budget for guaranteed failures.
 const NETWORK_BASE_BACKOFF_MS = 1000
 const NETWORK_MAX_BACKOFF_MS = 60_000
 
@@ -130,16 +136,18 @@ function compareItems(a: QueueItem, b: QueueItem): number {
  * Global attachment download manager (#1829). The download side used to spawn
  * one unbounded transfer per emit; this bounds concurrency, paces requests
  * against the server's blob_download bucket, pauses globally on 429 honouring
- * Retry-After (mirroring UploadQueue), backs off per item on network errors,
- * dedupes concurrent requests for the same attachment, and orders background
- * work by the hybrid priority strategy.
+ * Retry-After (mirroring UploadQueue), backs the whole queue off globally on
+ * network errors (see NETWORK_BASE_BACKOFF_MS), dedupes concurrent requests
+ * for the same attachment + destination, and orders background work by the
+ * hybrid priority strategy.
  */
 export class DownloadQueue {
   private queue: QueueItem[] = []
-  /** ownerId::attachmentId -> unsettled item, for dedupe (queued or running). */
+  /** keyOf(request) -> unsettled item, for dedupe (queued or running). */
   private byKey = new Map<string, QueueItem>()
   private running = 0
   private backoffUntil = 0
+  /** Global network-error backoff deadline — one blip pauses ALL items. */
   private networkBackoffUntil = 0
   private wakeBackoff: (() => void) | null = null
   private draining = false
@@ -170,7 +178,15 @@ export class DownloadQueue {
   }
 
   private keyOf(request: DownloadRequest): string {
-    return `${request.ownerId}::${request.attachmentId}`
+    // The destination is part of a transfer's identity. The same attachment can
+    // legitimately be materialized at two paths concurrently (a canvas asset
+    // and an on-demand open both key as ownerId === attachmentId), and the
+    // per-destination partial files in AttachmentSyncService exist precisely so
+    // those two transfers never share bytes. Deduping them into one transfer
+    // would resolve BOTH callers with the winner's filePath while the loser's
+    // destination was never written — so fold targetPath (and whether it is a
+    // directory, which changes the final file name) into the key.
+    return `${request.ownerId}::${request.attachmentId}::${request.targetIsDir ? 'dir' : 'file'}::${request.targetPath}`
   }
 
   enqueue(request: DownloadRequest): Promise<DownloadResult> {

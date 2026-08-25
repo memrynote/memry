@@ -15,6 +15,37 @@ import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 
 let tmpDir: string
 
+/**
+ * Passthrough mock of fs/promises whose `open` can be told to start failing
+ * writes with ENOSPC mid-transfer (`failWritesAfter` successful writes), so
+ * disk-full behaviour is exercised against a REAL partial file on disk.
+ */
+const fsMockState = vi.hoisted(() => ({
+  failWritesAfter: Number.POSITIVE_INFINITY,
+  writeCount: 0
+}))
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...actual,
+    open: (async (...args: Parameters<typeof actual.open>) => {
+      const handle = await actual.open(...args)
+      const write = handle.write.bind(handle)
+      handle.write = (async (...writeArgs: Parameters<typeof write>) => {
+        if (fsMockState.writeCount >= fsMockState.failWritesAfter) {
+          throw Object.assign(new Error('write failed: no space left on device'), {
+            code: 'ENOSPC'
+          })
+        }
+        fsMockState.writeCount++
+        return write(...writeArgs)
+      }) as typeof handle.write
+      return handle
+    }) as typeof actual.open
+  }
+})
+
 function createMockFetch(
   responses: Map<string, { status: number; body?: unknown; binary?: Uint8Array }>
 ) {
@@ -165,6 +196,8 @@ function createDownloadDeps(
 beforeEach(async () => {
   await sodium.ready
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'memry-attach-test-'))
+  fsMockState.failWritesAfter = Number.POSITIVE_INFINITY
+  fsMockState.writeCount = 0
 })
 
 afterEach(async () => {
@@ -1352,7 +1385,12 @@ describe('terminal transfer phases', () => {
 
 describe('AttachmentSyncService — streaming downloads with resume', () => {
   /** A three-chunk attachment ('A'|'B'|'C' blocks) under one manifest fileKey. */
-  function buildThreeChunkFixture(attachmentId: string): {
+  function buildThreeChunkFixture(
+    attachmentId: string,
+    opts: {
+      /** Forge a WRONG whole-file checksum in the manifest. */ manifestChecksum?: string
+    } = {}
+  ): {
     encManifest: Record<string, string>
     chunksByEncryptedHash: Map<string, { index: number; encryptedWithNonce: Uint8Array }>
     wholeFileChecksum: string
@@ -1404,7 +1442,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
       filename: 'resumable.bin',
       mimeType: 'application/octet-stream',
       size: 768,
-      checksum: wholeFileChecksum,
+      checksum: opts.manifestChecksum ?? wholeFileChecksum,
       chunks: chunks.map(({ index, encryptedHash, hash, size }) => ({
         index,
         encryptedHash,
@@ -1687,5 +1725,103 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     const leftovers = await import('node:fs/promises').then((m) => m.readdir(tmpDir))
     expect(leftovers.filter((f) => f.startsWith('.att-integrity'))).toEqual([])
     await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+  })
+
+  it('chunks each verify but a mismatching whole-file hash fails the download and wipes the partial', async () => {
+    // Pins the FINAL assembly check: every chunk passes its own integrity
+    // check, so only the whole-file verification stands between a corrupted
+    // assembly and being renamed into place as if it were good.
+    const fixture = buildThreeChunkFixture('att-whole-hash', {
+      manifestChecksum: 'e'.repeat(64)
+    })
+    const fetchFn = makeResumableFetchFn(fixture)
+    const targetPath = path.join(tmpDir, 'whole-hash.bin')
+
+    // #when — all three chunks decrypt + hash-verify; the assembled file then
+    // does not match the manifest checksum.
+    await expect(
+      new AttachmentSyncService(
+        createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+      ).downloadAttachment('att-whole-hash', targetPath)
+    ).rejects.toThrow(/File integrity failure/)
+
+    // #then — no file at the destination, and the partial is gone.
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+    const leftovers = await import('node:fs/promises').then((m) => m.readdir(tmpDir))
+    expect(leftovers.filter((f) => f.startsWith('.att-whole-hash'))).toEqual([])
+  })
+
+  it('a sidecar with a stale checksum but consistent sizes is discarded; the retry restarts chunk 0', async () => {
+    const fixture = buildThreeChunkFixture('att-sidecar')
+    const fetchFn = makeResumableFetchFn(fixture)
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+    )
+    const targetPath = path.join(tmpDir, 'sidecar.bin')
+    const partialPath = path.join(tmpDir, '.att-sidecar.sidecar.bin.mrypart')
+
+    // #given — sizes agree perfectly with THIS manifest (256 bytes = 1 chunk),
+    // but the checksum names a different manifest: stale bytes that must never
+    // be resumed on size alone.
+    await import('node:fs/promises').then(async (m) => {
+      await m.writeFile(partialPath, Buffer.alloc(256, 'Z'), { mode: 0o600 })
+      await m.writeFile(
+        `${partialPath}.json`,
+        JSON.stringify({
+          version: 1,
+          attachmentId: 'att-sidecar',
+          checksum: 'c'.repeat(64),
+          chunkCount: 3,
+          chunksDone: 1,
+          bytesWritten: 256
+        }),
+        { mode: 0o600 }
+      )
+    })
+
+    // #when
+    const result = await service.downloadAttachment('att-sidecar', targetPath)
+
+    // #then — nothing was resumed: every chunk came from the network.
+    expect(fetchFn.chunkFetchCounts).toEqual([1, 1, 1])
+    const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+    expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
+  })
+
+  it('a disk-full failure keeps the verified prefix and reports an actionable error', async () => {
+    const fixture = buildThreeChunkFixture('att-enospc')
+    const fetchFn = makeResumableFetchFn(fixture)
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+    )
+    const targetPath = path.join(tmpDir, 'enospc.bin')
+    const partialPath = path.join(tmpDir, '.att-enospc.enospc.bin.mrypart')
+
+    // #given — the disk fills up as the SECOND chunk is written.
+    fsMockState.failWritesAfter = 1
+
+    // #when — ENOSPC mid-write surfaces a localized, actionable message...
+    await expect(service.downloadAttachment('att-enospc', targetPath)).rejects.toThrow(
+      /disk space/i
+    )
+
+    // #then — ...the verified prefix and its sidecar survive for resume...
+    const partial = await import('node:fs/promises').then((m) => m.readFile(partialPath))
+    expect(partial.equals(fixture.plaintexts[0])).toBe(true)
+    const sidecar = JSON.parse(
+      await import('node:fs/promises').then((m) => m.readFile(`${partialPath}.json`, 'utf-8'))
+    )
+    expect(sidecar).toMatchObject({ chunksDone: 1, bytesWritten: 256 })
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+
+    // #when space returns — the retry resumes at chunk 1 instead of starting
+    // over. Chunk 0 is NOT re-fetched (prefix reused); chunk 1 IS, because its
+    // bytes never landed — the write failed after a successful fetch.
+    fsMockState.failWritesAfter = Number.POSITIVE_INFINITY
+    const result = await service.downloadAttachment('att-enospc', targetPath)
+
+    expect(fetchFn.chunkFetchCounts).toEqual([1, 2, 1])
+    const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+    expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
   })
 })

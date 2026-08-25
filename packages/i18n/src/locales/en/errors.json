@@ -53,6 +53,7 @@
     "fileTooLarge": "This file is too large to attach.",
     "unsupportedType": "This file type is not supported.",
     "writeFailed": "Failed to save the attachment. Check disk space.",
+    "diskFull": "Not enough disk space to save this attachment. Free up space and it will finish downloading.",
     "deleteFailed": "Failed to delete the attachment.",
     "uploadFailed": "Attachment upload failed",
     "uploadProgressFailed": "Failed to fetch upload progress",

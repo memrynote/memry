@@ -356,6 +356,45 @@ describe('DownloadQueue', () => {
     expect(r1.filePath).toBe(r2.filePath)
   })
 
+  it('same attachment at two destinations runs two transfers, each resolving its own path', async () => {
+    // Canvas asset fetches key as ownerId === attachmentId, and so does an
+    // on-demand IPC download — without targetPath in the dedupe key both
+    // collapse onto one transfer and one caller gets a filePath that was
+    // never written for ITS destination.
+    const pending = new Map<string, () => void>()
+    let transfers = 0
+    const fn = vi.fn((_id: string, targetPath: string) => {
+      transfers++
+      return new Promise<DownloadResult>((resolve) => {
+        pending.set(targetPath, () =>
+          resolve({ filePath: targetPath, manifest: { id: _id } as DownloadResult['manifest'] })
+        )
+      })
+    })
+    const q = new DownloadQueue(fn as unknown as ConstructorParameters<typeof DownloadQueue>[0])
+
+    const canvas = q.enqueue({
+      ownerId: 'att-x',
+      attachmentId: 'att-x',
+      targetPath: '/vault/.canvas/att-x.png',
+      source: 'eager'
+    })
+    const userOpen = q.enqueue({
+      ownerId: 'att-x',
+      attachmentId: 'att-x',
+      targetPath: '/vault/attachments/note-1/att-x.bin',
+      source: 'interactive'
+    })
+
+    await waitFor(() => pending.size === 2)
+    expect(transfers).toBe(2)
+
+    for (const settle of pending.values()) settle()
+    const [canvasResult, openResult] = await Promise.all([canvas, userOpen])
+    expect(canvasResult.filePath).toBe('/vault/.canvas/att-x.png')
+    expect(openResult.filePath).toBe('/vault/attachments/note-1/att-x.bin')
+  })
+
   it('an interactive re-request upgrades the queued item and rides it', async () => {
     const manual = makeManualDownload()
     const q = new DownloadQueue(

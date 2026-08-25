@@ -119,6 +119,18 @@ function isResumableDownloadError(err: unknown): boolean {
 }
 
 /**
+ * Disk-space exhaustion (ENOSPC, EDQUOT, ...) is not an ordinary fs error:
+ * every chunk that landed before the write failed is decrypted and verified,
+ * and only the NEXT append ran out of room. The partial stays valid, so it
+ * must survive (the transfer resumes at the missing chunk once space returns)
+ * instead of being wiped into a from-zero loop that fails identically.
+ */
+function isDiskSpaceError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException | null)?.code
+  return code === 'ENOSPC' || code === 'EDQUOT'
+}
+
+/**
  * 'completed' and 'failed' are terminal: exactly one of them is emitted for
  * every transfer that reported any progress at all, and nothing follows it for
  * that attachmentId. The renderer keys its transfer overlay by attachmentId and
@@ -736,16 +748,34 @@ export class AttachmentSyncService {
           await rename(partialPath, destPath)
         } catch (renameErr) {
           log.error('failed to write attachment', { filePath: destPath, err: renameErr })
+          if (isDiskSpaceError(renameErr)) {
+            throw new Error(getMainI18n().t('errors:attachment.diskFull'))
+          }
           throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
         }
         await unlink(statePath).catch(() => {})
       } catch (err) {
         if (handle) await handle.close().catch(() => {})
-        if (!isResumableDownloadError(err)) {
+        if (!isResumableDownloadError(err) && !isDiskSpaceError(err)) {
           // Integrity/decrypt/fs failures poison the partial; 4xx means the
           // blob is gone and the partial would be an orphan. Start clean.
+          // Disk-space errors are the exception: the verified prefix and its
+          // sidecar stay put so a later attempt resumes instead of re-asking
+          // the server for bytes it already has.
           await secureDeleteFile(partialPath).catch(() => {})
           await unlink(statePath).catch(() => {})
+        }
+        if (isDiskSpaceError(err)) {
+          // Raw errno strings are useless in the UI; surface the localized,
+          // actionable message. The plain Error classifies as transient
+          // downstream (markDownloadFailed), so the redriver's exponential
+          // backoff — not an immediate retry loop — decides when to resume.
+          log.warn('download hit a full disk; keeping validated prefix for resume', {
+            attachmentId,
+            path: destPath,
+            chunksDone: downloadProgress.chunksCompleted
+          })
+          throw new Error(getMainI18n().t('errors:attachment.diskFull'))
         }
         throw err
       }

@@ -18,6 +18,17 @@ const mocks = vi.hoisted(() => {
     shouldAttemptDownload: vi.fn((..._args: unknown[]) => true),
     markDownloadRequested: vi.fn(),
     releaseDownloadAttempt: vi.fn(),
+    clearAttachmentDownloadFailure: (_db: unknown, ownerId: string, attachmentId: string) => {
+      mocks.purgedRows.push({ ownerId, attachmentId })
+      // Mirror the real DB delete: the row leaves the table, so a re-list in
+      // the same walk no longer returns it.
+      mocks.redrivableRows = mocks.redrivableRows.filter(
+        (r) => !(r.ownerId === ownerId && r.attachmentId === attachmentId)
+      )
+    },
+    purgedRows: [] as Array<{ ownerId: string; attachmentId: string }>,
+    listRedrivableDownloadFailures: (_db: unknown, _now: number, limit: number) =>
+      mocks.redrivableRows.slice(0, limit),
     autoDownloadEnabled: true,
     emitted: [] as Array<Record<string, unknown>>,
     delivered: true
@@ -64,10 +75,13 @@ vi.mock('@memry/sync-client/attachment-events', () => ({
 }))
 
 vi.mock('@memry/sync-client/attachment-download-state', () => ({
-  listRedrivableDownloadFailures: () => mocks.redrivableRows,
+  listRedrivableDownloadFailures: (db: unknown, now: number, limit: number) =>
+    mocks.listRedrivableDownloadFailures(db, now, limit),
   shouldAttemptDownload: (...args: unknown[]) => mocks.shouldAttemptDownload(...args),
   markDownloadRequested: (...args: unknown[]) => mocks.markDownloadRequested(...args),
-  releaseDownloadAttempt: (...args: unknown[]) => mocks.releaseDownloadAttempt(...args)
+  releaseDownloadAttempt: (...args: unknown[]) => mocks.releaseDownloadAttempt(...args),
+  clearAttachmentDownloadFailure: (db: unknown, ownerId: string, attachmentId: string) =>
+    mocks.clearAttachmentDownloadFailure(db, ownerId, attachmentId)
 }))
 
 vi.mock('./attachment-download-settings', () => ({
@@ -87,6 +101,7 @@ describe('attachment download re-driver', () => {
     mocks.delivered = true
     mocks.emitted.length = 0
     mocks.redrivableRows = []
+    mocks.purgedRows.length = 0
     mocks.shouldAttemptDownload.mockReset().mockReturnValue(true)
     mocks.markDownloadRequested.mockReset()
     mocks.releaseDownloadAttempt.mockReset()
@@ -153,7 +168,7 @@ describe('attachment download re-driver', () => {
     expect(mocks.markDownloadRequested).toHaveBeenCalledTimes(2)
   })
 
-  it('skips rows whose note vanished or no longer references the attachment', async () => {
+  it('skips rows whose note vanished or no longer references the attachment, purging them', async () => {
     mocks.redrivableRows = [
       { ownerId: 'note-gone', attachmentId: 'att-a', reason: 'transient', attempts: 1 },
       { ownerId: 'note-x', attachmentId: 'att-dropped', reason: 'transient', attempts: 1 }
@@ -175,11 +190,51 @@ describe('attachment download re-driver', () => {
     expect(summary).toEqual({ requested: 0, skipped: 2 })
     expect(mocks.emitted).toHaveLength(0)
     expect(mocks.markDownloadRequested).not.toHaveBeenCalled()
+    // Dead rows are deleted, not just skipped — they would otherwise occupy
+    // the oldest-first batch window forever and starve live failures.
+    expect(mocks.purgedRows).toEqual([
+      { ownerId: 'note-gone', attachmentId: 'att-a' },
+      { ownerId: 'note-x', attachmentId: 'att-dropped' }
+    ])
+    expect(mocks.redrivableRows).toHaveLength(0)
+  })
+
+  it('drives a live failure parked behind a full window of dead rows in the same cycle', async () => {
+    // The batch is oldest-25. A wall of 25 dead rows used to consume every
+    // round; the purge-and-relist walk must reach the live row behind them.
+    mocks.redrivableRows = [
+      ...Array.from({ length: 25 }, (_, i) => ({
+        ownerId: `gone-${i}`,
+        attachmentId: `att-${i}`,
+        reason: 'transient' as const,
+        attempts: 1
+      })),
+      { ownerId: 'note-live', attachmentId: 'att-live', reason: 'transient', attempts: 1 }
+    ]
+    mocks.getNoteMetadataById.mockImplementation((_db: unknown, id: string) => {
+      if (id.startsWith('gone-')) return undefined
+      return {
+        id,
+        path: `${id}.md`,
+        modifiedAt: '2026-01-02T00:00:00.000Z',
+        attachmentReferences: ['att-live'],
+        attachmentId: undefined
+      }
+    })
+
+    const summary = await redriveAttachmentDownloads()
+
+    expect(summary).toEqual({ requested: 1, skipped: 25 })
+    expect(mocks.emitted).toEqual([
+      expect.objectContaining({ noteId: 'note-live', attachmentId: 'att-live' })
+    ])
   })
 
   it('does not double-request items that are in flight or otherwise guarded', async () => {
+    // Must be an id the mocked note actually references, so the walk reaches
+    // the claim guard instead of exiting earlier at the reference check.
     mocks.redrivableRows = [
-      { ownerId: 'note-1', attachmentId: 'att-busy', reason: 'transient', attempts: 1 }
+      { ownerId: 'note-1', attachmentId: 'att-a', reason: 'transient', attempts: 1 }
     ]
     mocks.shouldAttemptDownload.mockReturnValue(false)
 
