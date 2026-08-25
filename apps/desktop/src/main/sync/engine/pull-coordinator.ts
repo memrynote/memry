@@ -28,7 +28,7 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
-import { reportConflictAndRequeue, fetchLocalItemSnapshot } from './conflict-report'
+import { reportConflict } from './conflict-report'
 import {
   SYNC_STATE_KEYS,
   PULL_REQUEST_MAX_IDS,
@@ -236,14 +236,14 @@ export class PullCoordinator {
     }
   }
 
-  // Oldest-first on purpose, even though the progressive open (#1830) would
-  // rather show recent notes first: /sync/changes is a strictly ascending
-  // `server_cursor > ?` feed, and the cursor persisted after each page below
-  // is the crash-resume watermark. Applying newest-first would need either a
-  // descending server feed with a two-ended resume contract (that is P2.2 pack
-  // ordering) or buffering every page before applying — which kills the
-  // page-by-page fill and makes an interrupted first sync silently skip the
-  // older pages the advanced cursor now claims were applied.
+  // Oldest-first on purpose, even though progressive open (#1830) would rather
+  // show recent notes first: /sync/changes is a strictly ascending
+  // `server_cursor > ?` feed and each page's persisted cursor below is the
+  // crash-resume watermark. Newest-first would need a descending server feed
+  // with a two-ended resume contract (that is P2.2 pack ordering) or buffering
+  // every page before applying — which kills the page-by-page fill and makes
+  // an interrupted first sync silently skip older pages the advanced cursor
+  // now claims were applied.
   private async pullChanges(runState: PullRunState): Promise<void> {
     let cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)
     let hasMore = true
@@ -520,7 +520,7 @@ export class PullCoordinator {
           continue
         }
         if (result === 'conflict') {
-          this.handleConflict(dec)
+          reportConflict(this.ctx.deps, dec)
           runState.totalConflictsResolved++
         }
 
@@ -816,7 +816,7 @@ export class PullCoordinator {
             }
 
             if (result === 'conflict') {
-              this.handleConflict(dec)
+              reportConflict(this.ctx.deps, dec)
               pageConflicts++
             }
 
@@ -988,24 +988,5 @@ export class PullCoordinator {
     }
 
     return { applied: pageApplied, conflicts: pageConflicts, stop }
-  }
-
-  private handleConflict(dec: {
-    id: string
-    type: string
-    content: string
-    clock?: Record<string, number>
-  }): void {
-    reportConflictAndRequeue({
-      dec,
-      emitToRenderer: this.ctx.deps.emitToRenderer,
-      queue: this.ctx.deps.queue,
-      localVersion: fetchLocalItemSnapshot(
-        this.ctx.deps.adapters,
-        this.ctx.deps.db,
-        dec.id,
-        dec.type
-      )
-    })
   }
 }

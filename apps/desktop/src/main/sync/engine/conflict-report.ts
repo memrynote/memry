@@ -93,3 +93,28 @@ export function fetchLocalItemSnapshot(
     return {}
   }
 }
+
+/** PullCoordinator convenience adapter: resolve the local snapshot from deps. */
+export function reportConflict(
+  deps: {
+    emitToRenderer: (channel: string, payload: ConflictDetectedEvent) => void
+    queue: {
+      enqueue: (item: {
+        type: SyncItemType
+        itemId: string
+        operation: 'update'
+        payload: string
+      }) => void
+    }
+    adapters?: Parameters<typeof fetchLocalItemSnapshot>[0]
+    db: DrizzleDb
+  },
+  dec: { id: string; type: string; content: string; clock?: Record<string, number> }
+): void {
+  reportConflictAndRequeue({
+    dec,
+    emitToRenderer: deps.emitToRenderer,
+    queue: deps.queue,
+    localVersion: fetchLocalItemSnapshot(deps.adapters, deps.db, dec.id, dec.type)
+  })
+}
