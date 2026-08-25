@@ -99,7 +99,21 @@ export const SYNC_STATE_KEYS = {
    * A missing row reads as `'0'`, which is what every install written before
    * this key existed has and what a vault with nothing outstanding means.
    */
-  CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
+  CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+  /**
+   * Highest pack cursor covered by an unbroken run of fully-applied bootstrap
+   * packs (#1840), counting from the oldest pack upward.
+   *
+   * Written INSIDE the page transaction that commits the entries it covers, so
+   * an interrupted bootstrap resumes from a watermark that can never claim
+   * coverage over a page that did not commit. It gates nothing but pack work:
+   * `LAST_CURSOR` and the item-granular pull are untouched by it, so a device
+   * that never sees a pack behaves exactly as it does today.
+   *
+   * A missing row reads as 0 — no pack coverage — which is what every install
+   * written before this key existed has.
+   */
+  PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag
@@ -341,6 +355,22 @@ export const crdtSweepChunkDelayMs = (cost: CrdtPullCost, elevationFactor = 1): 
     Math.ceil((cost.snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET) / f)
   )
 }
+
+/**
+ * Requests per minute a fresh device may spend on pack transfers (#1840),
+ * before bootstrap elevation.
+ *
+ * Fed to the existing `DownloadPacer` rather than a second pacing mechanism, so
+ * pack transfers back off through the same fixed-window machinery attachments
+ * use, and the bootstrap session's factor widens the ceiling through the same
+ * `setMultiplier` seam.
+ *
+ * A pack is one large object, not one small item: a bootstrap fetches tens of
+ * files, not thousands, and each Range resume costs one more request. 60/min is
+ * far more than a bootstrap can consume and still an actual ceiling if a
+ * pathological resume loop ever develops.
+ */
+export const PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE = 60
 
 export const PUSH_DEBOUNCE_MS = 2000
 

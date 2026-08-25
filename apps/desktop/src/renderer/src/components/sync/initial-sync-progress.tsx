@@ -3,6 +3,9 @@ import { useSync } from '@/contexts/sync-context'
 
 const PHASE_LABELS: Partial<Record<InitialSyncPhase, string>> = {
   notes: 'Downloading items',
+  // Fresh devices only (#1840): note bodies arriving in bulk before the
+  // item-granular pull. Says what the user sees, not how it is fetched.
+  packs: 'Downloading note bodies',
   tasks: 'Uploading local changes',
   manifest: 'Verifying integrity',
   attachments: 'Syncing attachments'

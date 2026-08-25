@@ -14,6 +14,7 @@ import {
   CRDT_SWEEP_CHUNK_INTERVAL_MS,
   CRDT_SWEEP_CHUNK_NOTES,
   crdtSweepChunkDelayMs,
+  PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE,
   SYNC_STATE_KEYS
 } from './sync-context'
 import type { SyncStateManager } from './sync-state-manager'
@@ -386,6 +387,17 @@ export class FullSyncRunner {
       /* telemetry only — sync proceeds */
     }
     this.ctx.fullSyncActive = true
+    if (isFreshDevice) {
+      // Compaction packs (#1840): seed note bodies from a handful of large
+      // transfers before the item-granular pull, so the CRDT sweep that
+      // follows finds them already merged and issues no snapshot GETs for
+      // them. Every failure mode inside — old server, no presign secrets, zero
+      // packs, a bad pack — returns quietly, and the pull below then runs
+      // byte-for-byte as it does on a deployment with no packs at all. It is
+      // awaited rather than fired off because it writes into the same Y.Docs
+      // and the same DBs the pull is about to touch.
+      await this.applyBootstrapPacks()
+    }
     // A manifest re-pull means the server holds items this device has never
     // seen (fresh install, restored vault, rebuilt index): local CRDT state
     // cannot be trusted, so the sweep runs regardless of the throttle.
@@ -516,6 +528,125 @@ export class FullSyncRunner {
         this.sweepAllCrdtNotes()
       }
       this.flushPendingCrdtPulls()
+    }
+  }
+
+  /**
+   * Fresh-device pack bootstrap (#1840).
+   *
+   * NEVER THROWS. Packs are a derived cache; the item-granular endpoints stay
+   * the source of truth, so an old server, a deployment without presign
+   * secrets, a vault with no packs yet, a corrupt pack or a dead transfer all
+   * end here quietly and the pull that follows behaves exactly as it does on a
+   * deployment where packs do not exist. The sync cursor is untouched either
+   * way — nothing in this path writes `LAST_CURSOR`.
+   */
+  private async applyBootstrapPacks(): Promise<void> {
+    try {
+      const provider = this.ctx.deps.crdtProvider
+      // No CRDT store means no document to seed and no watermark to record;
+      // an in-memory provider rebuilds bodies from vault markdown instead.
+      if (!provider?.storeId) return
+
+      const [
+        path,
+        { app },
+        { runPackBootstrap },
+        { createCrdtSnapshotApplier, decodeSignerPublicKeys },
+        { beginPageApply },
+        { DownloadPacer },
+        { syncDevices },
+        { fetchAndCacheDeviceKeys }
+      ] = await Promise.all([
+        import('node:path'),
+        import('electron'),
+        import('../packs/pack-bootstrap'),
+        import('../packs/crdt-snapshot-applier'),
+        import('../bulk-apply'),
+        import('../download-queue'),
+        import('@memry/db-schema/schema/sync-devices'),
+        import('../device-keys')
+      ])
+
+      // The attachment transfer pacer, not a second one: same fixed window,
+      // same elevation seam. Read once here because a bootstrap session that
+      // closes mid-run only ever narrows back toward the conservative base.
+      const pacer = new DownloadPacer(PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE)
+      pacer.setMultiplier(getBootstrapElevationFactor())
+
+      const result = await runPackBootstrap({
+        getAccessToken: this.ctx.deps.getAccessToken,
+        tempDir: path.join(app.getPath('userData'), 'sync-packs'),
+        snapshots: createCrdtSnapshotApplier({
+          store: {
+            getSnapshotWatermark: (noteId) => provider.getSnapshotWatermark(noteId),
+            putSnapshotWatermark: (noteId, watermark) =>
+              provider.putSnapshotWatermark(noteId, watermark),
+            // `skipSeed`, exactly as the CRDT sweep opens a doc it is about to
+            // apply server state into: seeding from local markdown first would
+            // give the doc a fresh client id and a history the packed baseline
+            // never saw. Without an open doc the provider drops the update.
+            openDoc: async (noteId) => {
+              await provider.open(noteId, undefined, { skipSeed: true })
+            },
+            applyRemoteUpdate: (noteId, update) => provider.applyRemoteUpdate(noteId, update),
+            getStateVector: (noteId) => provider.getStateVector(noteId),
+            closeDoc: async (noteId) => {
+              await provider.closeIfInactive(noteId)
+            }
+          },
+          getVaultKey: this.ctx.deps.getVaultKey,
+          getSignerPublicKeys: async () => {
+            // `sync_devices` holds ONLY this device's own row on a fresh
+            // install — peer rows arrive through `fetchAndCacheDeviceKeys`,
+            // whose single caller is the item-granular CRDT pull that runs
+            // AFTER this. Every packed snapshot was signed by some other
+            // device, so without this refresh not one packed blob verifies and
+            // the whole feature is a no-op on exactly the devices it exists
+            // for. Resolved lazily by the applier — once per bootstrap, and
+            // only once an entry is actually up for apply — so a vault with no
+            // usable packs pays nothing, and a failed refresh just leaves the
+            // cache as the candidate list.
+            const token = await this.ctx.deps.getAccessToken().catch(() => null)
+            if (token) {
+              try {
+                await fetchAndCacheDeviceKeys(this.ctx.deps.db, token)
+              } catch (error) {
+                log.debug('Could not refresh device signing keys for pack bootstrap', {
+                  error: error instanceof Error ? error.message : String(error)
+                })
+              }
+            }
+            return decodeSignerPublicKeys(
+              this.ctx.deps.db
+                .select({ key: syncDevices.signingPublicKey })
+                .from(syncDevices)
+                .all()
+                .map((row) => row.key)
+            )
+          }
+        }),
+        beginPage: () => beginPageApply(this.ctx.deps.db),
+        getStateValue: (key) => this.stateManager.getStateValue(key),
+        setStateValue: (key, value) => this.stateManager.setStateValue(key, value),
+        emit: (channel, data) => this.ctx.deps.emitToRenderer(channel, data),
+        ...(this.ctx.abortController ? { signal: this.ctx.abortController.signal } : {}),
+        pace: () => pacer.acquire()
+      })
+
+      if (result.usedPacks) {
+        log.info('fullSync: bootstrap packs applied', {
+          packsApplied: result.packsApplied,
+          entriesApplied: result.entriesApplied,
+          entriesSkipped: result.entriesSkipped,
+          entriesFailed: result.entriesFailed,
+          appliedThroughCursor: result.appliedThroughCursor
+        })
+      }
+    } catch (error) {
+      log.info('fullSync: pack bootstrap unavailable — item-granular bootstrap', {
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 

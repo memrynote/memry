@@ -101,7 +101,14 @@ export interface DownloadProgressEvent {
   status: string
 }
 
-export type InitialSyncPhase = 'manifest' | 'notes' | 'tasks' | 'attachments' | 'complete'
+/**
+ * Additive: `'packs'` (#1840) is emitted only while a fresh device is applying
+ * compaction packs, between the bootstrap session opening and the first
+ * item-granular pull. Every other phase is unchanged, and a renderer that does
+ * not know this value renders it exactly as it renders any other phase — the
+ * payload shape did not move.
+ */
+export type InitialSyncPhase = 'manifest' | 'packs' | 'notes' | 'tasks' | 'attachments' | 'complete'
 
 export interface InitialSyncProgressEvent {
   phase: InitialSyncPhase
