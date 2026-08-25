@@ -1,20 +1,15 @@
 import { createLogger } from '../../lib/logger'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type {
-  ConflictDetectedEvent,
   InitialSyncProgressEvent,
   ItemRecoveredEvent,
   ItemCorruptEvent
 } from '@memry/contracts/ipc-events'
-import type {
-  RecordChangesResponse,
-  RecordPullItemResponse,
-  SyncItemType
-} from '@memry/contracts/sync-api'
+import type { RecordChangesResponse, RecordPullItemResponse } from '@memry/contracts/sync-api'
 import { RecordPullResponseSchema } from '@memry/contracts/sync-api'
 import { secureCleanup } from '../../crypto/index'
 import { decryptPullBatch } from '../sync-crypto-batch'
-import { getRemoteSyncAdapter } from '../item-handlers'
+import { beginPageApply, replayBulkApplyJournal } from '../bulk-apply'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
 import { withRetry } from '@memry/sync-client/retry'
 import { engineAuthRetryDeps, withAuthRetry } from '../auth-retry'
@@ -32,7 +27,14 @@ import type { CrdtSyncCoordinator } from './crdt-sync-coordinator'
 import type { PushCoordinator } from './push-coordinator'
 import { CorruptItemTracker } from './corrupt-item-tracker'
 import { repairOrphans, type OrphanRef } from './orphan-repair'
-import { SYNC_STATE_KEYS, YIELD_EVERY_N_ITEMS, yieldToEventLoop, itemRefKey } from './sync-context'
+import { reportConflictAndRequeue, fetchLocalItemSnapshot } from './conflict-report'
+import {
+  SYNC_STATE_KEYS,
+  YIELD_EVERY_N_ITEMS,
+  yieldToEventLoop,
+  itemRefKey,
+  BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT
+} from './sync-context'
 
 const log = createLogger('PullCoordinator')
 
@@ -138,6 +140,10 @@ export class PullCoordinator {
       this.pendingApplyRetries = []
       this.orphanedItems = []
       try {
+        // Heal note files a previous run journaled but never flushed (crash
+        // between a page's DB commit and its file writes) before any new page
+        // can apply on top of them.
+        replayBulkApplyJournal()
         await this.pullChanges(runState)
         await this.applyDeferredRetries(runState)
         await this.repairOrphanedItems(runState)
@@ -247,6 +253,18 @@ export class PullCoordinator {
       }
 
       const changes = changesResult.value
+      const nextCursor = String(changes.nextCursor)
+
+      // Fetch page N+1 WHILE page N is applied, not after: starting the
+      // prefetch below the apply meant it was awaited on the very next
+      // iteration and overlapped nothing. /sync/changes is a read, so fetching
+      // ahead of the stop decision costs at most one wasted GET on a run that
+      // stops — the abandoned promise's rejection is swallowed either way.
+      if (changes.hasMore && !this.ctx.abortController?.signal.aborted) {
+        prefetchedNext = this.fetchChangesPage(runState, nextCursor)
+        prefetchedNext.catch(() => {})
+      }
+
       const stop = await this.pullChangesPage(changes, runState)
       this.emitInitialSyncProgress(changes, runState.pulledCount)
 
@@ -260,8 +278,8 @@ export class PullCoordinator {
         break
       }
 
-      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, String(changes.nextCursor))
-      cursor = String(changes.nextCursor)
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
+      cursor = nextCursor
       hasMore = changes.hasMore
 
       // Circuit breaker (key matches the account but the page's payloads are
@@ -273,11 +291,6 @@ export class PullCoordinator {
       if (stop === 'breaker') {
         runState.refused = true
         break
-      }
-
-      if (hasMore && !this.ctx.abortController?.signal.aborted) {
-        prefetchedNext = this.fetchChangesPage(runState, cursor)
-        prefetchedNext.catch(() => {})
       }
     }
   }
@@ -329,10 +342,29 @@ export class PullCoordinator {
   private async applyCrdtBatch(runState: PullRunState): Promise<void> {
     if (runState.crdtNoteIds.length === 0 || !this.ctx.deps.crdtProvider) return
 
+    // Bootstrap only: let the CRDT doc cache hold a whole batch-endpoint page
+    // worth of docs, so the cold apply runs in 100-doc sub-chunks instead of
+    // 32-doc ones (applyCrdtBatch sub-chunks at inactiveDocCapacity). The
+    // paced vault sweep is blocked while fullSyncActive, so no concurrent
+    // batch pass sizes itself against the raised capacity and then loses docs
+    // when it reverts. Reverted in the finally — the revert itself evicts back
+    // down to the steady-state limit, flushing each doc on the way out.
+    const restoreCapacity = this.ctx.fullSyncActive
+      ? this.ctx.deps.crdtProvider.raiseInactiveDocCapacity(BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT)
+      : null
+
     runState.timer.startPhase('crdt-batch')
-    await this.crdtSync.applyCrdtBatch(runState.crdtNoteIds, runState.accessJwt, runState.vaultKey)
-    runState.timer.endPhase(runState.crdtNoteIds.length)
-    runState.crdtNoteIds.length = 0
+    try {
+      await this.crdtSync.applyCrdtBatch(
+        runState.crdtNoteIds,
+        runState.accessJwt,
+        runState.vaultKey
+      )
+    } finally {
+      runState.timer.endPhase(runState.crdtNoteIds.length)
+      runState.crdtNoteIds.length = 0
+      if (restoreCapacity) await restoreCapacity()
+    }
   }
 
   private emitInitialSyncProgress(changes: RecordChangesResponse, pulledCount: number): void {
@@ -704,70 +736,91 @@ export class PullCoordinator {
     timer.startPhase('apply')
     this.pushCoordinator.suppressPushDuringPull = true
     const orderedDecrypted = sortByApplyOrder(decrypted)
+    // One SQLite transaction per page on both DBs, with note file writes
+    // deferred until after the commit (crash-safety contract in bulk-apply.ts).
+    // The loop below is deliberately synchronous while the transaction is open
+    // — no event-loop yields — so nothing else in the main process can slip
+    // statements into the page transaction. Per-item failures stay caught and
+    // deferred exactly as before; only a throw that escapes the whole loop
+    // rolls the page back, and that same throw stops the cursor from
+    // advancing, so the page is re-pulled intact.
+    const pageApply = beginPageApply(this.ctx.deps.db)
     try {
-      for (let i = 0; i < orderedDecrypted.length; i++) {
-        if (this.ctx.abortController?.signal.aborted) break
-        if (i > 0 && i % YIELD_EVERY_N_ITEMS === 0) await yieldToEventLoop()
-        const dec = orderedDecrypted[i]
-        try {
-          const contentBytes = new TextEncoder().encode(dec.content)
-          const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
-          const result = this.ctx.applier.apply({
-            itemId: dec.id,
-            type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
-            operation: itemOp,
-            content: contentBytes,
-            clock: dec.clock,
-            deletedAt: dec.deletedAt,
-            vaultKey
-          })
+      try {
+        for (let i = 0; i < orderedDecrypted.length; i++) {
+          if (this.ctx.abortController?.signal.aborted) break
+          const dec = orderedDecrypted[i]
+          try {
+            const contentBytes = new TextEncoder().encode(dec.content)
+            const itemOp = dec.deletedAt ? 'delete' : (dec.operation as 'create' | 'update')
+            const result = this.ctx.applier.apply(
+              {
+                itemId: dec.id,
+                type: dec.type as Parameters<typeof this.ctx.applier.apply>[0]['type'],
+                operation: itemOp,
+                content: contentBytes,
+                clock: dec.clock,
+                deletedAt: dec.deletedAt,
+                vaultKey
+              },
+              pageApply.db
+            )
 
-          if (result === 'parse_error') {
-            parseErrorIds.push({ id: dec.id, type: dec.type })
-            pageFailed++
-            continue
-          }
-
-          if (result === 'conflict') {
-            this.handleConflict(dec)
-            pageConflicts++
-          }
-
-          if (
-            (dec.type === 'note' || dec.type === 'journal') &&
-            this.ctx.deps.crdtProvider &&
-            itemOp !== 'delete'
-          ) {
-            let isBinary = false
-            try {
-              const p = JSON.parse(dec.content) as { fileType?: string }
-              if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
-            } catch {
-              /* safe to skip CRDT on parse failure */
+            if (result === 'parse_error') {
+              parseErrorIds.push({ id: dec.id, type: dec.type })
+              pageFailed++
+              continue
             }
-            if (!isBinary) crdtNoteIds.push(dec.id)
-          }
 
-          processedIds.add(itemRefKey(dec.type, dec.id))
-          pageApplied++
-          this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
-        } catch (applyError) {
-          log.error('Pull: failed to apply decrypted item — deferring for retry', {
-            itemId: dec.id,
-            type: dec.type,
-            error: applyError instanceof Error ? applyError.message : String(applyError),
-            ...(applyError instanceof MissingSyncParentError
-              ? { parentType: applyError.parentType, parentId: applyError.parentId }
-              : {})
-          })
-          this.pendingApplyRetries.push(dec)
-          pageFailed++
+            if (result === 'conflict') {
+              this.handleConflict(dec)
+              pageConflicts++
+            }
+
+            if (
+              (dec.type === 'note' || dec.type === 'journal') &&
+              this.ctx.deps.crdtProvider &&
+              itemOp !== 'delete'
+            ) {
+              let isBinary = false
+              try {
+                const p = JSON.parse(dec.content) as { fileType?: string }
+                if (p.fileType && isBinaryFileType(p.fileType)) isBinary = true
+              } catch {
+                /* safe to skip CRDT on parse failure */
+              }
+              if (!isBinary) crdtNoteIds.push(dec.id)
+            }
+
+            processedIds.add(itemRefKey(dec.type, dec.id))
+            pageApplied++
+            this.stateManager.emitItemSynced(dec.id, dec.type, 'pull', itemOp)
+          } catch (applyError) {
+            log.error('Pull: failed to apply decrypted item — deferring for retry', {
+              itemId: dec.id,
+              type: dec.type,
+              error: applyError instanceof Error ? applyError.message : String(applyError),
+              ...(applyError instanceof MissingSyncParentError
+                ? { parentType: applyError.parentType, parentId: applyError.parentId }
+                : {})
+            })
+            this.pendingApplyRetries.push(dec)
+            pageFailed++
+          }
         }
+        pageApply.commit()
+      } catch (pageError) {
+        pageApply.rollback()
+        throw pageError
       }
     } finally {
       this.pushCoordinator.suppressPushDuringPull = false
     }
     timer.endPhase(decrypted.length)
+    // After the commit, before the CRDT batch and the corrupt re-fetch: the
+    // CRDT apply that follows this page seeds absent docs from markdown, so the
+    // page's deferred note files must be on disk before it runs.
+    await pageApply.flushFiles()
 
     const cryptoRefetchRefs = failures
       .filter((f) => f.isCryptoError)
@@ -900,53 +953,16 @@ export class PullCoordinator {
     content: string
     clock?: Record<string, number>
   }): void {
-    let remoteVersion: Record<string, unknown> = {}
-    try {
-      const parsedRemote = JSON.parse(dec.content) as unknown
-      if (parsedRemote && typeof parsedRemote === 'object' && !Array.isArray(parsedRemote)) {
-        remoteVersion = parsedRemote as Record<string, unknown>
-      }
-      if (dec.clock) remoteVersion.clock = dec.clock
-    } catch {
-      log.warn('Failed to parse remote content for conflict event', { itemId: dec.id })
-    }
-
-    const localVersion = this.fetchLocalItem(dec.id, dec.type)
-
-    this.ctx.deps.emitToRenderer(EVENT_CHANNELS.CONFLICT_DETECTED, {
-      itemId: dec.id,
-      type: dec.type,
-      localVersion,
-      remoteVersion,
-      localClock: (localVersion.clock as Record<string, number>) ?? undefined,
-      remoteClock: dec.clock ?? undefined
-    } satisfies ConflictDetectedEvent)
-
-    this.ctx.deps.queue.enqueue({
-      type: dec.type as SyncItemType,
-      itemId: dec.id,
-      operation: 'update',
-      payload: '{}'
+    reportConflictAndRequeue({
+      dec,
+      emitToRenderer: this.ctx.deps.emitToRenderer,
+      queue: this.ctx.deps.queue,
+      localVersion: fetchLocalItemSnapshot(
+        this.ctx.deps.adapters,
+        this.ctx.deps.db,
+        dec.id,
+        dec.type
+      )
     })
-
-    // Conflict rate per item type is the core health metric for the
-    // field-merge strategy; only canvas had a conflict event before.
-    trackMainLog('info', {
-      scope: 'PullCoordinator',
-      action: 'conflict_resolved',
-      errorCode: dec.type
-    })
-  }
-
-  private fetchLocalItem(itemId: string, type: string): Record<string, unknown> {
-    try {
-      const adapter =
-        this.ctx.deps.adapters?.getRemote(type as SyncItemType) ??
-        getRemoteSyncAdapter(type as SyncItemType)
-      return adapter?.fetchLocal?.(this.ctx.deps.db, itemId) ?? {}
-    } catch {
-      log.warn('Failed to fetch local item for conflict', { itemId, type })
-      return {}
-    }
   }
 }

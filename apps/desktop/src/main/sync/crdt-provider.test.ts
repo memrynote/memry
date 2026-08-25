@@ -199,7 +199,9 @@ vi.mock('./local-mutations', () => ({
   enqueueLocalSyncUpdate: (...args: unknown[]) => mocks.enqueueLocalSyncUpdate(...args),
   removePendingNoteSyncItems: (...args: unknown[]) => mocks.removePendingNoteSyncItems(...args)
 }))
-vi.mock('@memry/sync-client/attachment-events', () => ({ attachmentEvents: { emitSaved: vi.fn() } }))
+vi.mock('@memry/sync-client/attachment-events', () => ({
+  attachmentEvents: { emitSaved: vi.fn() }
+}))
 vi.mock('../tasks/domain', () => ({ createDesktopTasksDomain: vi.fn() }))
 vi.mock('../tasks/publisher', () => ({ createTasksPublisher: vi.fn() }))
 vi.mock('../lib/id', () => ({ generateId: vi.fn(() => 'generated-id') }))
@@ -2347,5 +2349,95 @@ describe('CrdtProvider persistence resilience', () => {
 
     await provider.destroy()
     expect(provider.isInitialized()).toBe(false)
+  })
+})
+
+describe('CrdtProvider bootstrap doc-capacity raise', () => {
+  let provider: CrdtProvider
+  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    mocks.sent = []
+    mocks.windows.clear()
+    mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.preflightCalls.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.getNoteCacheById.mockImplementation((id: string) => ({
+      id,
+      path: `notes/${id}.md`,
+      title: id,
+      fileType: 'markdown'
+    }))
+    mocks.toAbsolutePath.mockImplementation((p: string) => `/vault/${p}`)
+    mocks.safeRead.mockResolvedValue('# Note\n\nBody')
+    mocks.parseNote.mockReturnValue({ content: 'Body' })
+    mocks.markdownToYFragment.mockImplementation(
+      async (_content: string, fragment: Y.XmlFragment) => {
+        fragment.insert(0, [new Y.XmlText('Body')])
+        return true
+      }
+    )
+    mocks.compactYDoc.mockReturnValue(null)
+    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+    // Steady state of 2, the smallest size that can prove a raise above it.
+    provider = new CrdtProvider({ inactiveDocLimit: 2 })
+    await provider.init(queue as any, pushSnapshot)
+  })
+
+  afterEach(() => {
+    resetCrdtProvider()
+  })
+
+  const openSyncDocs = async (count: number): Promise<string[]> => {
+    const ids = Array.from({ length: count }, (_, i) => `note-${i + 1}`)
+    for (const id of ids) await provider.open(id)
+    return ids
+  }
+
+  it('raises capacity during bootstrap and evicts back to steady-state on restore', async () => {
+    expect(provider.inactiveDocCapacity).toBe(2)
+
+    const restore = provider.raiseInactiveDocCapacity(4)
+    expect(provider.inactiveDocCapacity).toBe(4)
+
+    // A whole bootstrap sub-chunk fits without splitting at the old limit.
+    await openSyncDocs(4)
+    for (const id of ['note-1', 'note-2', 'note-3', 'note-4']) {
+      expect(provider.getDoc(id)).toBeDefined()
+    }
+
+    // The revert sheds back down through the ordinary close/flush path.
+    await restore()
+    expect(provider.inactiveDocCapacity).toBe(2)
+    expect(provider.getDoc('note-1')).toBeUndefined()
+    expect(provider.getDoc('note-2')).toBeUndefined()
+    expect(provider.getDoc('note-3')).toBeDefined()
+    expect(provider.getDoc('note-4')).toBeDefined()
+
+    // Idempotent: a second call must not re-close anything or throw.
+    await restore()
+    expect(provider.getDoc('note-4')).toBeDefined()
+  })
+
+  it('never lowers capacity below the raise already in force', () => {
+    const restoreOne = provider.raiseInactiveDocCapacity(5)
+    const restoreTwo = provider.raiseInactiveDocCapacity(3)
+
+    expect(provider.inactiveDocCapacity).toBe(5)
+
+    return restoreOne().then(restoreTwo)
+  })
+
+  it('refuses a raise below the steady-state limit', () => {
+    const restore = provider.raiseInactiveDocCapacity(1)
+    expect(provider.inactiveDocCapacity).toBe(2)
+    return restore()
   })
 })

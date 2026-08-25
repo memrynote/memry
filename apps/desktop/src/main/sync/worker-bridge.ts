@@ -9,7 +9,9 @@ import type {
   EncryptedPushResult,
   PullItemForDecrypt,
   DecryptedPullItem,
-  DecryptionFailure
+  DecryptionFailure,
+  CrdtPayloadForDecrypt,
+  CrdtDecryptFailure
 } from '@memry/sync-client/worker-protocol'
 
 const log = createLogger('SyncWorkerBridge')
@@ -399,9 +401,47 @@ export class SyncWorkerBridge {
     }
   }
 
+  /**
+   * CRDT snapshot/update decryption off the main thread. Per-item crypto
+   * verdicts (signature mismatch, undecryptable payload) come back in-band in
+   * `failures`; a reject is a transport/lifecycle failure, same split as
+   * `decryptBatch`.
+   */
+  async decryptCrdtBatch(
+    items: CrdtPayloadForDecrypt[],
+    vaultKey: Uint8Array,
+    signerKeys: Record<string, string>
+  ): Promise<{
+    results: Array<{ index: number; update: Uint8Array }>
+    failures: CrdtDecryptFailure[]
+  }> {
+    const requestId = this.nextRequestId()
+    try {
+      const response = await this.sendRequest({
+        type: 'decrypt-crdt-batch',
+        requestId,
+        items,
+        vaultKey: new Uint8Array(vaultKey),
+        signerKeys
+      })
+
+      if (response.type === 'error') {
+        throw new Error(response.error)
+      }
+      if (response.type !== 'decrypt-crdt-batch-result') {
+        throw new Error(`Unexpected response type: ${response.type}`)
+      }
+
+      this.consecutiveFailures = 0
+      return { results: response.results, failures: response.failures }
+    } catch (err) {
+      this.recordRequestFailure(err)
+      throw err
+    }
+  }
+
   // sync-crypto-batch gates every batch on this, so a latched bridge sends it
-  // straight to main-thread crypto without a round trip. stop() deliberately
-  // checks `this.worker` instead, so a latched-but-alive thread is still shut
+  // straight to main-thread crypto without a round trip. stop() deliberately  // checks `this.worker` instead, so a latched-but-alive thread is still shut
   // down cleanly.
   //
   // A thread already told to shut down is not running either: it may never

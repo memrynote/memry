@@ -277,6 +277,20 @@ export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 // only channel by which a body-only remote edit reaches a device that missed the
 // broadcast, and a note filtered out here would go stale with no second chance.
 
+/**
+ * Inactive-doc cache capacity while a bootstrap pull page's CRDT batch is
+ * applied. The steady-state 32 splits every cold apply into 32-doc sub-chunks
+ * (applyCrdtBatch sub-chunks at `inactiveDocCapacity`, because a sub-chunk
+ * holds all of its docs open across the batch POST); at 128 the sub-chunk hits
+ * the server's own 100-note batch ceiling instead, with headroom left over so
+ * an editor doc opened mid-bootstrap does not push the cache over the limit
+ * and evict docs the batch pass is still holding — the eviction that used to
+ * clobber note bodies. ~128 open Y.Docs of ordinary notes is a few tens of MB;
+ * the raise lives only for the duration of one page's CRDT batch and the
+ * revert evicts (and flushes) back down to the steady-state limit.
+ */
+export const BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT = 128
+
 /** Notes per paced sweep chunk = the server's cap on the probe POST's `notes` array. */
 export const CRDT_SWEEP_CHUNK_NOTES = 100
 /** Floor between chunks, and the poll interval while the drain is blocked (offline, fullSync active). */
