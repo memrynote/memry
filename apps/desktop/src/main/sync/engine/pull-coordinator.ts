@@ -288,6 +288,18 @@ export class PullCoordinator {
         break
       }
 
+      // An abort can land INSIDE the page's item loop (vault close/switch now
+      // calls engine.requestCancel() routinely): processPage breaks out with
+      // part of the slice applied, commits that partial page and still reports
+      // 'none'. Advancing the watermark past the whole page would strand the
+      // items it never reached — the feed is `server_cursor > ?`, so it never
+      // offers them again. Re-check here, before the cursor moves, and refuse
+      // the run so an interrupted pull is not recorded as a clean sync.
+      if (this.ctx.abortController!.signal.aborted) {
+        runState.refused = true
+        break
+      }
+
       this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, nextCursor)
       cursor = nextCursor
       hasMore = changes.hasMore
