@@ -34,11 +34,13 @@ export type BootstrapSession = z.infer<typeof BootstrapSessionSchema>
  * `manifest` is the FIRST page of the opt-in paginated manifest service
  * (MAX_MANIFEST_PAGE_LIMIT), never the whole vault. `tailCursor` is the
  * current MAX(server_cursor) so the client knows when its pull has caught up.
- * `attachments.chunkHashes` is the first keyset page of the vault's ciphertext
- * chunk hashes (absent entirely when the deployment cannot presign); the
- * client batch-presigns them through the existing presign-batch endpoint.
  * `packs` is RESERVED for #1839/#1840: always present, always empty until the
  * pack pipeline lands, so #1840 plugs in without a protocol change.
+ * `attachments` is likewise RESERVED-for-future: an INFORMATIONAL first keyset
+ * page of the vault's ciphertext chunk hashes (absent entirely when the
+ * deployment cannot presign) — no continuation endpoint ships yet, so clients
+ * must not treat it as a complete inventory; real pagination arrives together
+ * with the pack pipeline's consumption of chunk hashes (#1840).
  */
 export const BootstrapOpenResponseSchema = z.object({
   session: BootstrapSessionSchema,
@@ -59,7 +61,12 @@ export const BootstrapOpenResponseSchema = z.object({
   attachments: z
     .object({
       chunkHashes: z.array(z.string()),
-      /** Pass as `cursor` to fetch the next hash page; absent on the last page. */
+      /**
+       * RESERVED-for-future (#1840 pack pipeline). Names where a continuation
+       * page WOULD start; no continuation endpoint exists yet, so this page is
+       * informational only and clients must not rely on its completeness for
+       * vaults with more chunks than the server's page limit.
+       */
       nextChunkCursor: z.string().optional()
     })
     .optional(),

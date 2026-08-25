@@ -4,6 +4,7 @@ import {
   BOOTSTRAP_ELEVATION_MULTIPLIERS,
   BOOTSTRAP_RENEW_LEAD_SECONDS,
   BOOTSTRAP_SESSION_TTL_SECONDS,
+  MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS,
   bootstrapRateLimitElevation,
   closeBootstrapSession,
   isFreshDeviceForVault,
@@ -87,7 +88,13 @@ describe('bootstrap session tokens', () => {
       await harness.db.prepare('DELETE FROM bootstrap_sessions WHERE jti = ?').bind('j-live').run()
 
       // #then
-      await expect(renewBootstrapSession(harness.db, SECRET, token)).rejects.toMatchObject({
+      await expect(
+        renewBootstrapSession(harness.db, SECRET, token, {
+          userId: 'u1',
+          deviceId: 'd1',
+          vaultId: 'v1'
+        })
+      ).rejects.toMatchObject({
         statusCode: 401
       })
     } finally {
@@ -319,7 +326,11 @@ describe('open/renew/close over real SQLite', () => {
     })
 
     // #when
-    const renewed = await renewBootstrapSession(harness.db, SECRET, opened.token)
+    const renewed = await renewBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
 
     // #then — new expiry beyond the old one, same identity, still ONE row
     expect(renewed.session.jti).toBe(opened.session.jti)
@@ -343,14 +354,223 @@ describe('open/renew/close over real SQLite', () => {
     })
 
     // #when
-    await closeBootstrapSession(harness.db, SECRET, opened.token)
-    await closeBootstrapSession(harness.db, SECRET, opened.token) // idempotent
+    await closeBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+    await closeBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    }) // idempotent
 
     // #then
     const count = harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get() as {
       c: number
     }
     expect(count.c).toBe(0)
+  })
+
+  it('refuses renewal from any other authenticated context — cross-device, cross-user, cross-vault', async () => {
+    // #given — d1 of u1/v1 holds a live session
+    seedDevice(harness, { lastCursor: null })
+    const opened = await openBootstrapSession(harness.db, SECRET, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+
+    const mismatches = [
+      { userId: 'u1', deviceId: 'd-other', vaultId: 'v1' }, // stolen token, other device
+      { userId: 'u-other', deviceId: 'd1', vaultId: 'v1' }, // other user
+      { userId: 'u1', deviceId: 'd1', vaultId: 'v-other' } // other vault
+    ]
+
+    // #when / #then — bearer possession alone never renews anything (403),
+    // and the ledger row is untouched in every case.
+    for (const identity of mismatches) {
+      await expect(
+        renewBootstrapSession(harness.db, SECRET, opened.token, identity)
+      ).rejects.toMatchObject({
+        code: 'BOOTSTRAP_IDENTITY_MISMATCH',
+        statusCode: 403
+      })
+    }
+    const row = harness.raw
+      .prepare('SELECT jti FROM bootstrap_sessions WHERE jti = ?')
+      .get(opened.session.jti)
+    expect(row).toBeTruthy()
+  })
+
+  it('applies the same identity rules to close', async () => {
+    // #given
+    seedDevice(harness, { lastCursor: null })
+    const opened = await openBootstrapSession(harness.db, SECRET, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+
+    // #when / #then — a mismatched close is refused and closes NOTHING…
+    await expect(
+      closeBootstrapSession(harness.db, SECRET, opened.token, {
+        userId: 'u1',
+        deviceId: 'd-other',
+        vaultId: 'v1'
+      })
+    ).rejects.toMatchObject({ code: 'BOOTSTRAP_IDENTITY_MISMATCH', statusCode: 403 })
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 1 }
+    )
+
+    // …and the owner's own close still tears it down idempotently.
+    await closeBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+    await closeBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 0 }
+    )
+  })
+
+  it('refuses renewal past the absolute max lifetime and frees the cap slot', async () => {
+    // #given — a session whose ledger row was created MAX_LIFETIME ago; the
+    // token itself was re-signed "recently" so only the created_at bound can
+    // catch it.
+    seedDevice(harness, { lastCursor: null })
+    const oldCreated = Math.floor(Date.now() / 1000) - MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS - 5
+    harness.raw
+      .prepare(
+        `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
+         VALUES ('j-old', 'u1', 'd1', 'v1', ?, ?)`
+      )
+      .bind(Math.floor(Date.now() / 1000) + 3600, oldCreated)
+      .run()
+    const { token } = await signBootstrapSession(
+      SECRET,
+      { userId: 'u1', deviceId: 'd1', vaultId: 'v1', jti: 'j-old' },
+      Math.floor(Date.now() / 1000)
+    )
+
+    // #when / #then — typed expiry, NOT the generic invalid-token 401
+    await expect(
+      renewBootstrapSession(harness.db, SECRET, token, {
+        userId: 'u1',
+        deviceId: 'd1',
+        vaultId: 'v1'
+      })
+    ).rejects.toMatchObject({ code: 'BOOTSTRAP_SESSION_EXPIRED', statusCode: 403 })
+
+    // #and the dead row is dropped so it cannot pin a concurrency slot
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 0 }
+    )
+  })
+
+  it('renews within the max lifetime', async () => {
+    // #given — a session created just now
+    seedDevice(harness, { lastCursor: null })
+    const opened = await openBootstrapSession(harness.db, SECRET, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+
+    // #when / #then — well inside the ceiling, so sliding renewal still works
+    expect(MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS).toBeGreaterThan(
+      BOOTSTRAP_SESSION_TTL_SECONDS + BOOTSTRAP_RENEW_LEAD_SECONDS
+    )
+    const renewed = await renewBootstrapSession(harness.db, SECRET, opened.token, {
+      userId: 'u1',
+      deviceId: 'd1',
+      vaultId: 'v1'
+    })
+    expect(renewed.session.jti).toBe(opened.session.jti)
+  })
+
+  it('holds the per-user cap when a competitor completes mid-admission', async () => {
+    // #given — one live slot held; a second open (d3) will be PARKED at its
+    // ledger INSERT while a third device (d4) completes a full open around it.
+    // This is exactly the TOCTOU window the old COUNT-then-INSERT had: by the
+    // time the parked open resumes, its earlier count is stale. Admission must
+    // therefore be decided INSIDE the INSERT statement itself.
+    seedDevice(harness, { deviceId: 'd2', lastCursor: null })
+    await openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd2', vaultId: 'v1' })
+    seedDevice(harness, { deviceId: 'd3', lastCursor: null })
+    seedDevice(harness, { deviceId: 'd4', lastCursor: null })
+
+    const realPrepare = harness.db.prepare.bind(harness.db)
+    let gatedCallsLeft = 1
+    let released = false
+    let parkedAtInsert = false
+    let releasePark!: () => void
+    const parkGate = new Promise<void>((resolve) => {
+      releasePark = resolve
+    })
+    ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = (sql: string) => {
+      const inner = realPrepare(sql)
+      if (!sql.includes('INSERT INTO bootstrap_sessions')) return inner
+      const wrapped = {
+        bind: (...args: unknown[]) => {
+          inner.bind(...args)
+          return wrapped
+        },
+        first: inner.first.bind(inner),
+        all: inner.all.bind(inner),
+        raw: inner.raw.bind(inner),
+        run: async () => {
+          const shouldPark = !released && gatedCallsLeft > 0
+          if (gatedCallsLeft > 0) gatedCallsLeft--
+          if (shouldPark) {
+            parkedAtInsert = true
+            await parkGate
+          }
+          return inner.run()
+        }
+      }
+      return wrapped as unknown as D1PreparedStatement
+    }
+
+    try {
+      // #when — d3 parks at its INSERT…
+      const third = openBootstrapSession(harness.db, SECRET, {
+        userId: 'u1',
+        deviceId: 'd3',
+        vaultId: 'v1'
+      })
+      while (!parkedAtInsert) await new Promise((r) => setTimeout(r, 0))
+
+      // …d4 slips a complete open through the gap…
+      await openBootstrapSession(harness.db, SECRET, {
+        userId: 'u1',
+        deviceId: 'd4',
+        vaultId: 'v1'
+      })
+      releasePark()
+
+      // #then — resumed d3 re-evaluates the cap at INSERT time and is refused;
+      // exactly the cap's worth of LIVE rows exist, both attributable.
+      await expect(third).rejects.toMatchObject({
+        code: 'BOOTSTRAP_SESSION_LIMIT',
+        statusCode: 429
+      })
+      const holders = harness.raw
+        .prepare(
+          `SELECT device_id FROM bootstrap_sessions WHERE user_id = 'u1' AND expires_at > ?
+           ORDER BY device_id`
+        )
+        .all(Math.floor(Date.now() / 1000)) as { device_id: string }[]
+      expect(holders.map((r) => r.device_id)).toEqual(['d2', 'd4'])
+    } finally {
+      ;(harness.db as unknown as { prepare: typeof realPrepare }).prepare = realPrepare
+    }
   })
 
   it('isFreshDeviceForVault reads the same signal the client cursor gate uses', async () => {

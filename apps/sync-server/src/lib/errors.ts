@@ -42,10 +42,16 @@ export const ErrorCodes = {
   // typed 409 (the device already synced this vault) so the client can fall
   // back to steady-state pacing without guessing; SESSION_LIMIT is the
   // per-user concurrent cap answering 429; INVALID covers expired, forged or
-  // revoked tokens on the dedicated bootstrap endpoints.
+  // revoked tokens on the dedicated bootstrap endpoints. IDENTITY_MISMATCH is
+  // the 403 for a valid token presented by any other authenticated context —
+  // renewal/close require the session's own identity. SESSION_EXPIRED is the
+  // typed end-of-life once the absolute max session lifetime is spent; the
+  // client falls back to steady-state pacing exactly as it does for INVALID.
   BOOTSTRAP_NOT_ELIGIBLE: 'BOOTSTRAP_NOT_ELIGIBLE',
   BOOTSTRAP_SESSION_LIMIT: 'BOOTSTRAP_SESSION_LIMIT',
   BOOTSTRAP_SESSION_INVALID: 'BOOTSTRAP_SESSION_INVALID',
+  BOOTSTRAP_IDENTITY_MISMATCH: 'BOOTSTRAP_IDENTITY_MISMATCH',
+  BOOTSTRAP_SESSION_EXPIRED: 'BOOTSTRAP_SESSION_EXPIRED',
   BOOTSTRAP_UNAVAILABLE: 'BOOTSTRAP_UNAVAILABLE',
 
   CRYPTO_INVALID_PAYLOAD: 'CRYPTO_INVALID_PAYLOAD',

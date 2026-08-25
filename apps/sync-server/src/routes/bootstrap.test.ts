@@ -292,6 +292,77 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     expect(wrongSecret.status).toBe(401)
   })
 
+  it('rejects renewal presented by another device — identity-bound (403)', async () => {
+    // #given — device-1 holds a live session
+    seedDevice({ lastCursor: null })
+    const opened = (await (await openSession()).json()) as Record<string, any>
+
+    // #when — device-2 replays the stolen-but-valid token
+    const stolen = await requestWithToken('/sync/bootstrap/renew', opened.session.token, 'device-2')
+    const body = (await stolen.json()) as { error: { code: string } }
+
+    // #then — typed 403, ledger row untouched
+    expect(stolen.status).toBe(403)
+    expect(body.error.code).toBe('BOOTSTRAP_IDENTITY_MISMATCH')
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 1 }
+    )
+  })
+
+  it('rejects close presented by another device', async () => {
+    // #given
+    seedDevice({ lastCursor: null })
+    const opened = (await (await openSession()).json()) as Record<string, any>
+
+    // #when / #then — mismatched close refused, session survives
+    const stolenClose = await requestWithToken(
+      '/sync/bootstrap/close',
+      opened.session.token,
+      'device-2'
+    )
+    expect(stolenClose.status).toBe(403)
+    expect(((await stolenClose.json()) as { error: { code: string } }).error.code).toBe(
+      'BOOTSTRAP_IDENTITY_MISMATCH'
+    )
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 1 }
+    )
+
+    // #and the owner's own close still succeeds
+    const ownClose = await requestWithToken('/sync/bootstrap/close', opened.session.token)
+    expect(ownClose.status).toBe(200)
+  })
+
+  it('answers a typed expiry once the absolute max lifetime is spent', async () => {
+    // #given — a live-looking token whose ledger row was created MAX_LIFETIME ago
+    seedDevice({ lastCursor: null })
+    const past = now() - 6 * 60 * 60 - 10
+    harness.raw
+      .prepare(
+        `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
+         VALUES ('j-max', 'user-1', 'device-1', 'vault-1', ?, ?)`
+      )
+      .bind(now() + 3600, past)
+      .run()
+    const { token } = await signBootstrapSession(
+      SECRET,
+      { userId: 'user-1', deviceId: 'device-1', vaultId: 'vault-1', jti: 'j-max' },
+      now()
+    )
+
+    // #when
+    const res = await requestWithToken('/sync/bootstrap/renew', token)
+    const body = (await res.json()) as { error: { code: string } }
+
+    // #then — 403 SESSION_EXPIRED (the client's normal close→fallback signal),
+    // and the dead row is gone so it cannot pin a concurrency slot.
+    expect(res.status).toBe(403)
+    expect(body.error.code).toBe('BOOTSTRAP_SESSION_EXPIRED')
+    expect(harness.raw.prepare('SELECT COUNT(*) AS c FROM bootstrap_sessions').get()).toMatchObject(
+      { c: 0 }
+    )
+  })
+
   it('closes idempotently and frees the concurrent-session slot', async () => {
     // #given — device A opens and closes; device B must then be able to open
     seedDevice({ lastCursor: null })

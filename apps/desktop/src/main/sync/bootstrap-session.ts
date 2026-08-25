@@ -116,6 +116,10 @@ export async function openBootstrapSession(
     armRenewal(session.expiresAt * 1000 - Date.now())
     notifyFactor()
 
+    // RESERVED-for-future (#1840): attachments.chunkHashes is the FIRST keyset
+    // page only and purely informational today — there is no continuation
+    // endpoint yet, so this must never be treated as a complete chunk
+    // inventory. We log the count for observability and nothing else.
     log.info('Bootstrap session opened', {
       expiresAt: session.expiresAt,
       manifestItems: (body as Partial<BootstrapOpenResponse>).manifest?.items?.length ?? 0,
@@ -154,11 +158,11 @@ async function renew(): Promise<void> {
     }
 
     // The header rides automatically via the state module; the body is empty.
-    const res = (await postToServer<Partial<BootstrapRenewResponse>>(
+    const res = await postToServer<Partial<BootstrapRenewResponse>>(
       '/sync/bootstrap/renew',
       {},
       accessToken
-    )) as Partial<BootstrapRenewResponse>
+    )
     if (!res.session || typeof res.session.token !== 'string') {
       throw new Error('malformed renew response')
     }

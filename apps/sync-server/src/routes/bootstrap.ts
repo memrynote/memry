@@ -73,6 +73,15 @@ const readSessionToken = (token: string | undefined): string => {
   return token
 }
 
+/** The authenticated caller context every ledger mutation must match. */
+const requestIdentity = (c: {
+  get: (key: 'userId' | 'deviceId' | 'vaultId') => string | undefined
+}) => ({
+  userId: c.get('userId')!,
+  deviceId: c.get('deviceId')!,
+  vaultId: c.get('vaultId')!
+})
+
 bootstrap.post('/', bootstrapSessionLimit, async (c) => {
   const userId = c.get('userId')!
   const deviceId = c.get('deviceId')!
@@ -101,6 +110,12 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
   // presign-batch endpoint (≤1024 per call), which keeps THIS response bounded
   // no matter how attachment-heavy the vault is. Absent entirely on
   // deployments without R2 presign credentials (#1836 graceful degradation).
+  //
+  // RESERVED-for-future, same spirit as `packs`: this is the FIRST keyset page
+  // only. No continuation endpoint ships in #1837, so a vault with more than
+  // CHUNK_HASH_PAGE_LIMIT chunks gets an informational overview whose
+  // `nextChunkCursor` names where continuation WILL start once the pack
+  // pipeline (#1840) consumes chunk hashes and brings real pagination.
   let attachments: { chunkHashes: string[]; nextChunkCursor?: string } | undefined
   if (resolveR2PresignConfig(c.env)) {
     const page = await c.env.DB.prepare(
@@ -137,10 +152,13 @@ bootstrap.post('/', bootstrapSessionLimit, async (c) => {
 
 bootstrap.post('/renew', bootstrapSessionLimit, async (c) => {
   const secret = requireSecret(c.env.BOOTSTRAP_SESSION_HMAC_KEY)
+  // Identity-bound: the authenticated caller must be the session's own
+  // user/device/vault — a stolen token replayed elsewhere is refused (403).
   const { session, token } = await renewBootstrapSession(
     c.env.DB,
     secret,
-    readSessionToken(c.req.header(BOOTSTRAP_TOKEN_HEADER))
+    readSessionToken(c.req.header(BOOTSTRAP_TOKEN_HEADER)),
+    requestIdentity(c)
   )
   return c.json({
     session: {
@@ -156,7 +174,8 @@ bootstrap.post('/close', bootstrapSessionLimit, async (c) => {
   await closeBootstrapSession(
     c.env.DB,
     secret,
-    readSessionToken(c.req.header(BOOTSTRAP_TOKEN_HEADER))
+    readSessionToken(c.req.header(BOOTSTRAP_TOKEN_HEADER)),
+    requestIdentity(c)
   )
   return c.json({ success: true })
 })

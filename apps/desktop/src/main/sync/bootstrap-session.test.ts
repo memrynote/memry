@@ -164,6 +164,30 @@ describe('bootstrap session manager', () => {
       vi.useRealTimers()
     }
   })
+
+  it('treats a max-lifetime expiry (typed 403) as a normal close→fallback', async () => {
+    // #given — server refuses renewal once the absolute session lifetime is
+    // spent; the wire answer is just another failure to this client.
+    vi.useFakeTimers()
+    try {
+      const expires = Math.floor(Date.now() / 1000) + 3600
+      postMock
+        .mockResolvedValueOnce(
+          OPEN_RESPONSE({ session: { token: 'tok-1', expiresAt: expires, ttlSeconds: 3600 } })
+        )
+        .mockRejectedValueOnce(new Error('403 BOOTSTRAP_SESSION_EXPIRED'))
+      await openBootstrapSession(getAccessToken)
+
+      // #when — the next scheduled renew hits the lifetime ceiling
+      await vi.advanceTimersByTimeAsync((3600 - 300) * 1000)
+
+      // #then — pacing reverts, header clears, sync continues unelevated
+      expect(getBootstrapElevationFactor()).toBe(1)
+      expect(getBootstrapTokenHeaders()).toEqual({})
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 // ============================================================================

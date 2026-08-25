@@ -2,7 +2,10 @@ import type { Context } from 'hono'
 
 import { BOOTSTRAP_TOKEN_HEADER } from '@memry/contracts/bootstrap-api'
 import { AppError, ErrorCodes } from '../lib/errors'
+import { createLogger } from '../lib/logger'
 import type { GetElevatedLimits } from '../middleware/rate-limit'
+
+const logger = createLogger('BootstrapSession')
 
 /**
  * Bootstrap sessions (#1837) — stateless signed tokens + the rate-limit
@@ -36,6 +39,25 @@ export const BOOTSTRAP_SESSION_TTL_SECONDS = 60 * 60
 export const MAX_CONCURRENT_BOOTSTRAP_SESSIONS = 2
 /** Renewal is requested this long before expiry (client-side scheduling hint too). */
 export const BOOTSTRAP_RENEW_LEAD_SECONDS = 5 * 60
+/**
+ * Absolute session lifetime, measured from the ledger row's created_at.
+ *
+ * Rationale: the per-token TTL slides on renewal, so without a hard ceiling a
+ * client that never finishes its initial pull (or never fires its close sweep)
+ * could hold an elevated window open indefinitely. Six hours comfortably
+ * covers any real full-vault pull (the pacing budgets assume hours, not days)
+ * while guaranteeing every elevation window ends even if the client never
+ * does. Past the ceiling /renew answers a typed expiry and the client falls
+ * back to steady-state pacing like any other renewal failure.
+ */
+export const MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS = 6 * 60 * 60
+
+/** The authenticated caller context every ledger mutation must match. */
+export interface BootstrapIdentity {
+  userId: string
+  deviceId: string
+  vaultId: string
+}
 
 interface BootstrapTokenPayload {
   /** Token shape version, in case the payload ever grows. */
@@ -244,6 +266,14 @@ const matchesRequestIdentity = (
  * send compat guarantee). Any error inside verification collapses to null.
  * Identity is re-bound to THIS request's authenticated context, so a token
  * replayed from another device (or another vault) elevates nothing.
+ *
+ * RESIDUAL (accepted, reviewed #1837): elevation is stateless — it reads only
+ * the signature and exp, never the ledger — so a token whose session was
+ * CLOSED via /sync/bootstrap/close keeps elevating from its own device until
+ * its exp (≤60 min). Accepted because the residual is hard-bounded by the
+ * TTL and cannot be extended or moved: every elevated bucket is pull-only,
+ * and since renewal/close became identity-bound, no other user/device/vault
+ * can renew or even close it — only wait it out.
  */
 export const bootstrapRateLimitElevation: GetElevatedLimits = async (c, bucket) => {
   const secret = c.env.BOOTSTRAP_SESSION_HMAC_KEY
@@ -290,9 +320,13 @@ export interface OpenBootstrapSessionResult {
 export const openBootstrapSession = async (
   db: D1Database,
   secret: string,
-  identity: { userId: string; deviceId: string; vaultId: string }
+  identity: BootstrapIdentity
 ): Promise<OpenBootstrapSessionResult> => {
   if (!(await isFreshDeviceForVault(db, identity.userId, identity.deviceId, identity.vaultId))) {
+    logger.warn('Bootstrap open denied — device already synced', {
+      userId: identity.userId,
+      deviceId: identity.deviceId
+    })
     throw new AppError(
       ErrorCodes.BOOTSTRAP_NOT_ELIGIBLE,
       'This device has already synced this vault',
@@ -301,18 +335,52 @@ export const openBootstrapSession = async (
   }
 
   const now = Math.floor(Date.now() / 1000)
-  // Lazy prune keeps the count honest without waiting for cron, scoped to this
-  // user so the statement stays on the (user_id, expires_at) index.
+  // Lazy prune keeps the table small without waiting for cron, scoped to this
+  // user so the statement stays on the (user_id, expires_at) index. Pure
+  // hygiene since F3: the cap condition below counts only unexpired rows, so
+  // correctness no longer depends on this running first.
   await db
     .prepare('DELETE FROM bootstrap_sessions WHERE user_id = ? AND expires_at < ?')
     .bind(identity.userId, now)
     .run()
 
-  const counted = await db
-    .prepare('SELECT COUNT(*) AS count FROM bootstrap_sessions WHERE user_id = ?')
-    .bind(identity.userId)
-    .first<{ count: number }>()
-  if ((counted?.count ?? 0) >= MAX_CONCURRENT_BOOTSTRAP_SESSIONS) {
+  const { token, session } = await signBootstrapSession(
+    secret,
+    { ...identity, jti: crypto.randomUUID() },
+    now
+  )
+
+  // CAP, ATOMICALLY. The old prune→COUNT→INSERT sequence had a TOCTOU window:
+  // two concurrent opens could both count one free slot and both insert. The
+  // whole decision now lives inside ONE statement — the COUNT subquery is
+  // evaluated as part of the INSERT's own execution, and D1 serializes write
+  // statements, so there is no interleaving point left between "check" and
+  // "take". changes === 0 means the WHERE refused us → the user is at cap.
+  const inserted = await db
+    .prepare(
+      `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
+       SELECT ?, ?, ?, ?, ?, ?
+       WHERE (
+         SELECT COUNT(*) FROM bootstrap_sessions
+         WHERE user_id = ? AND expires_at > ?
+       ) < ${MAX_CONCURRENT_BOOTSTRAP_SESSIONS}`
+    )
+    .bind(
+      session.jti,
+      identity.userId,
+      identity.deviceId,
+      identity.vaultId,
+      session.expiresAt,
+      now,
+      identity.userId,
+      now
+    )
+    .run()
+  if ((inserted.meta.changes ?? 0) === 0) {
+    logger.warn('Bootstrap open denied — session limit', {
+      userId: identity.userId,
+      deviceId: identity.deviceId
+    })
     throw new AppError(
       ErrorCodes.BOOTSTRAP_SESSION_LIMIT,
       'Too many concurrent bootstrap sessions',
@@ -320,19 +388,11 @@ export const openBootstrapSession = async (
     )
   }
 
-  const { token, session } = await signBootstrapSession(
-    secret,
-    { ...identity, jti: crypto.randomUUID() },
-    now
-  )
-  await db
-    .prepare(
-      `INSERT INTO bootstrap_sessions (jti, user_id, device_id, vault_id, expires_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-    .bind(session.jti, identity.userId, identity.deviceId, identity.vaultId, session.expiresAt, now)
-    .run()
-
+  logger.info('Bootstrap session opened', {
+    userId: identity.userId,
+    deviceId: identity.deviceId,
+    vaultId: identity.vaultId
+  })
   return { session, token }
 }
 
@@ -340,27 +400,54 @@ export const openBootstrapSession = async (
  * Sliding renewal: a still-valid token exchanges for a fresh TTL under the
  * SAME jti, so the ledger row simply extends (no insert/delete churn). An
  * expired or revoked token is refused — renewal is not resurrection.
+ *
+ * IDENTITY-BOUND: the caller must present the authenticated context the
+ * session was opened under. A stolen live token replayed from any other
+ * user/device/vault is refused (403) instead of extended — bearer possession
+ * alone never renews anything.
+ *
+ * ABSOLUTE LIFETIME: renewal past MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS from
+ * the ledger row's created_at answers a typed expiry and drops the ledger row
+ * (the session can never come back, so keeping it would only pin a cap slot
+ * until its TTL passes). The client treats this like any other failed renew:
+ * close locally, revert to steady-state pacing.
  */
 export const renewBootstrapSession = async (
   db: D1Database,
   secret: string,
-  token: string
+  token: string,
+  identity: BootstrapIdentity
 ): Promise<OpenBootstrapSessionResult> => {
   const now = Math.floor(Date.now() / 1000)
   const existing = await verifyBootstrapSession(secret, token, now)
   if (!existing) {
     throw new AppError(ErrorCodes.BOOTSTRAP_SESSION_INVALID, 'Invalid bootstrap session', 401)
   }
+  assertSessionIdentity(existing, identity)
 
   const row = await db
-    .prepare('SELECT jti FROM bootstrap_sessions WHERE jti = ?')
+    .prepare('SELECT jti, created_at FROM bootstrap_sessions WHERE jti = ?')
     .bind(existing.jti)
-    .first<{ jti: string }>()
+    .first<{ jti: string; created_at: number }>()
   if (!row) {
     throw new AppError(
       ErrorCodes.BOOTSTRAP_SESSION_INVALID,
       'Bootstrap session was closed or revoked',
       401
+    )
+  }
+
+  if (now - row.created_at >= MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS) {
+    await db.prepare('DELETE FROM bootstrap_sessions WHERE jti = ?').bind(existing.jti).run()
+    logger.warn('Bootstrap renewal refused — max lifetime reached', {
+      userId: existing.userId,
+      deviceId: existing.deviceId,
+      vaultId: existing.vaultId
+    })
+    throw new AppError(
+      ErrorCodes.BOOTSTRAP_SESSION_EXPIRED,
+      'Bootstrap session reached its maximum lifetime',
+      403
     )
   }
 
@@ -373,12 +460,49 @@ export const renewBootstrapSession = async (
   return { session, token: await mintToken(secret, session, now) }
 }
 
+/**
+ * Identity-bound teardown, same rules as /renew: a valid token presented by
+ * its own authenticated context closes; a mismatched one is refused. Closing
+ * an already-expired/invalid token stays an idempotent no-op.
+ */
 export const closeBootstrapSession = async (
   db: D1Database,
   secret: string,
-  token: string
+  token: string,
+  identity: BootstrapIdentity
 ): Promise<void> => {
   const existing = await verifyBootstrapSession(secret, token)
   if (!existing) return // already expired/invalid — closing is idempotent
+  assertSessionIdentity(existing, identity)
   await db.prepare('DELETE FROM bootstrap_sessions WHERE jti = ?').bind(existing.jti).run()
+  logger.info('Bootstrap session closed', {
+    userId: identity.userId,
+    deviceId: identity.deviceId,
+    vaultId: identity.vaultId
+  })
+}
+
+/** Exact three-way match between token claims and the authenticated caller. */
+const assertSessionIdentity = (
+  session: Pick<BootstrapSession, 'userId' | 'deviceId' | 'vaultId'>,
+  identity: BootstrapIdentity
+): void => {
+  if (
+    session.userId !== identity.userId ||
+    session.deviceId !== identity.deviceId ||
+    session.vaultId !== identity.vaultId
+  ) {
+    // Log only the CALLER's ids — never the mismatched token's — so the line
+    // cannot be abused to enumerate other users' identifiers.
+    logger.warn('Bootstrap request denied — identity mismatch', {
+      userId: identity.userId,
+      deviceId: identity.deviceId,
+      vaultId: identity.vaultId
+    })
+    throw new AppError(
+      ErrorCodes.BOOTSTRAP_IDENTITY_MISMATCH,
+      'Bootstrap session does not belong to this device',
+      403
+    )
+  }
 }
