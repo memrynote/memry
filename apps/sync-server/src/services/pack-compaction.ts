@@ -81,7 +81,26 @@ export const MAX_PACKED_ITEM_BYTES = 8 * 1024 * 1024
 export const PACK_FETCH_CONCURRENCY = 16
 
 /** Kinds whose sources live in R2 and are packed today. */
-export const PACKED_KINDS: readonly PackKindName[] = ['record', 'crdt_snapshot']
+/**
+ * Kinds the vault sweep and the cron backfill actually build packs for.
+ *
+ * `record` is deliberately ABSENT even though `compactOneRange` supports it.
+ * A record pack entry is exactly the R2 payload blob
+ * (`{dataNonce, encryptedData, encryptedKey, keyNonce}`), while the Ed25519
+ * signature, signer device id, vector clock, operation and deleted_at live in
+ * the `sync_items` D1 row and reach a client only through `POST /sync/pull`.
+ * The index block carries none of them, so a client cannot verify a packed
+ * record without skipping signature verification — unacceptable in an E2E
+ * vault. Building them anyway would mint immutable R2 objects that no client
+ * can ever read, and packs are never rewritten, so those bytes would be dead
+ * forever. Records still bootstrap through the item-granular pull, which
+ * already pages them; the snapshot axis is where the per-note GET floor was.
+ *
+ * Re-enabling needs the signature/signer/clock/operation carried in the entry
+ * meta (the meta field is free-form JSON, so that is additive, not a format
+ * break) plus a client apply path that verifies them. Tracked separately.
+ */
+export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot']
 
 export interface VaultScope {
   userId: string

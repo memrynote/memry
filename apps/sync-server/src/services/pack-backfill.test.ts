@@ -14,11 +14,14 @@ const nowSec = () => Math.floor(Date.now() / 1000)
 let harness: SqliteD1
 let storage: R2Bucket
 
-const seedVaultWithRecords = (
+// Snapshots, not records: PACKED_KINDS builds crdt_snapshot packs only (a
+// packed record carries no signature, so no client can verify one). The
+// ordering key for this kind is created_at epoch seconds.
+const seedVaultWithSnapshots = (
   userId: string,
   vaultId: string,
   count: number,
-  cursorBase = 0
+  createdAtBase = 0
 ): void => {
   harness.raw
     .prepare(
@@ -28,23 +31,24 @@ const seedVaultWithRecords = (
     )
     .run(userId, userId)
   for (let i = 1; i <= count; i++) {
-    const blobKey = `${userId}/vaults/${vaultId}/items-v3/task/i-${i}/h${i}`
+    const noteId = `n-${i}`
+    const blobKey = `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
     const bytes = new TextEncoder().encode(JSON.stringify({ n: `${userId}-${i}` }))
     storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
     harness.raw
       .prepare(
-        `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, 'task', ?, ?, ?, ?, 1, 1, 'update', ?, NULL, 'sig', NULL, 1, 1, NULL)`
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES (?, ?, ?, ?, ?, 1, ?, 'device-1', ?, ?)`
       )
       .run(
-        `${userId}-${vaultId}-r${i}`,
+        `${userId}-${vaultId}-s${i}`,
         userId,
         vaultId,
-        `i-${i}`,
+        noteId,
         blobKey,
         bytes.byteLength,
-        `h${i}`,
-        cursorBase + i
+        createdAtBase + i,
+        `rev-${noteId}-1`
       )
   }
 }
@@ -56,7 +60,7 @@ beforeEach(() => {
 
 describe('runPackBackfill', () => {
   it('is resumable: each tick advances the watermark until drained', async () => {
-    seedVaultWithRecords('u-resume', 'default', 3)
+    seedVaultWithSnapshots('u-resume', 'default', 3)
 
     // One pack per tick (all three items fit in one range).
     const tick1 = await runPackBackfill(harness.db, storage, 1)
@@ -74,8 +78,8 @@ describe('runPackBackfill', () => {
   })
 
   it('spends its budget across multiple vaults, oldest backlog first', async () => {
-    seedVaultWithRecords('u-old', 'default', 2) // cursors 1..2 — oldest
-    seedVaultWithRecords('u-new', 'default', 2) // own cursor space
+    seedVaultWithSnapshots('u-old', 'default', 2) // cursors 1..2 — oldest
+    seedVaultWithSnapshots('u-new', 'default', 2) // own cursor space
 
     const result = await runPackBackfill(harness.db, storage, 4)
     expect(result.packsBuilt).toBe(2)
@@ -86,8 +90,8 @@ describe('runPackBackfill', () => {
   })
 
   it('continues past a broken vault and keeps its watermark untouched for retry', async () => {
-    seedVaultWithRecords('u-broken', 'default', 1)
-    seedVaultWithRecords('u-fine', 'default', 1)
+    seedVaultWithSnapshots('u-broken', 'default', 1)
+    seedVaultWithSnapshots('u-fine', 'default', 1)
     // Break u-broken's source object; selection succeeds but the fetch fails
     // only if get rejects — simulate via deleting the object AND corrupting
     // nothing else. A hole is tolerated, so force a hard failure with a
@@ -126,7 +130,7 @@ describe('runPackBackfill', () => {
 
   it('stops at the per-tick budget instead of draining the whole backlog', async () => {
     // Distinct oldest cursors so ORDER BY oldest_pending is a total order.
-    for (let i = 1; i <= 6; i++) seedVaultWithRecords(`u-b${i}`, 'default', 1, i * 100)
+    for (let i = 1; i <= 6; i++) seedVaultWithSnapshots(`u-b${i}`, 'default', 1, i * 100)
 
     const result = await runPackBackfill(harness.db, storage, 2)
 

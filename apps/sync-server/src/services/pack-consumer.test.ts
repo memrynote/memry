@@ -29,12 +29,12 @@ describe('handlePackQueueMessage', () => {
     // size_bytes must equal the real payload: selection sizes the pack buffer
     // from D1 rows, and a fetched-size mismatch is treated as a hole.
     const bytes = new TextEncoder().encode('{"encryptedData":"x"}')
-    const blobKey = `${USER}/vaults/default/items-v3/task/i-1/h1`
+    const blobKey = `${USER}/vaults/default/crdt/n-1/snapshot`
     storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
     harness.raw
       .prepare(
-        `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-         VALUES ('r1', ?, 'default', 'task', 'i-1', ?, ?, 'h1', 1, 1, 'update', 5, NULL, 'sig', NULL, 1, 1, NULL)`
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES ('s1', ?, 'default', 'n-1', ?, 1, ?, 'device-1', 5, 'rev-n-1-1')`
       )
       .run(USER, blobKey, bytes.byteLength)
 
@@ -69,8 +69,8 @@ describe('handlePackQueueMessage', () => {
     } as unknown as R2Bucket
     harness.raw
       .prepare(
-        `INSERT INTO sync_items (id, user_id, vault_id, item_type, item_id, blob_key, size_bytes, content_hash, version, crypto_version, operation, server_cursor, signer_device_id, signature, clock, created_at, updated_at, deleted_at)
-         VALUES ('r1', ?, 'default', 'task', 'i-1', 'k', 10, 'h1', 1, 1, 'update', 1, NULL, 'sig', NULL, 1, 1, NULL)`
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES ('s1', ?, 'default', 'n-1', 'k', 1, 10, 'device-1', 1, 'rev-n-1-1')`
       )
       .run(USER)
 

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
-import {
+import { PACKED_KINDS,
   PACK_TARGET_BYTES,
   compactOneRange,
   insertPackIndexRow,
@@ -292,6 +292,17 @@ describe('pack build', () => {
     expect(
       (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
     ).toBe(1)
+  })
+
+  it('builds packs for the snapshot axis only', () => {
+    // Records are deliberately excluded. A packed record entry is just the
+    // encrypted payload blob; its Ed25519 signature, signer device id, vector
+    // clock and operation live in the sync_items D1 row and reach a client
+    // only through POST /sync/pull. A client cannot verify a packed record, so
+    // building them would mint immutable R2 objects nothing can ever read.
+    // Re-enabling requires carrying that metadata in the entry meta (free-form
+    // JSON, so additive) plus a verifying client apply path.
+    expect(PACKED_KINDS).toEqual(['crdt_snapshot'])
   })
 
   it('tolerates holes where source blobs vanished mid-flight', async () => {
