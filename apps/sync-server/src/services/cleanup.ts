@@ -16,6 +16,18 @@ export const cleanupExpiredLinkingSessions = async (db: D1Database): Promise<num
   return result.meta.changes ?? 0
 }
 
+// Bootstrap session ledger rows (#1837) are bookkeeping only — the signed
+// tokens expire themselves — so this sweep reclaims rows that a client never
+// closed and issuance's per-user lazy prune did not reach.
+export const cleanupExpiredBootstrapSessions = async (db: D1Database): Promise<number> => {
+  const now = Math.floor(Date.now() / 1000)
+  const result = await db
+    .prepare('DELETE FROM bootstrap_sessions WHERE expires_at < ?')
+    .bind(now)
+    .run()
+  return result.meta.changes ?? 0
+}
+
 export const cleanupExpiredUploadSessions = async (
   db: D1Database,
   storage: R2Bucket

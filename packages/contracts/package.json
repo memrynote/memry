@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth-api": "./src/auth-api.ts",
+    "./bootstrap-api": "./src/bootstrap-api.ts",
     "./blob-api": "./src/blob-api.ts",
     "./bookmark-types": "./src/bookmark-types.ts",
     "./bookmarks-api": "./src/bookmarks-api.ts",

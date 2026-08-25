@@ -324,13 +324,23 @@ export interface CrdtPullCost {
  * mix of probe, baseline and apply rounds the chunk turned out to need. The
  * delay is measured from the chunk's COMPLETION, so the real period is the
  * chunk's own duration plus this — the rates below are ceilings, not targets.
+ *
+ * `elevationFactor` (#1837) divides every slice by the granted bootstrap
+ * multiplier: the same 50%-margin discipline, applied against the ELEVATED
+ * ceilings instead of the steady-state ones. It is read at charge time, so a
+ * session that closes or expires reverts the very next chunk automatically;
+ * clamped to >= 1 so a broken factor can only ever speed up toward — never
+ * past — the conservative base.
  */
-export const crdtSweepChunkDelayMs = (cost: CrdtPullCost): number =>
-  Math.max(
-    CRDT_SWEEP_CHUNK_INTERVAL_MS,
-    cost.batchPosts * CRDT_SWEEP_MS_PER_BATCH_POST,
-    cost.snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET
+export const crdtSweepChunkDelayMs = (cost: CrdtPullCost, elevationFactor = 1): number => {
+  const f =
+    Number.isFinite(elevationFactor) && elevationFactor >= 1 ? Math.floor(elevationFactor) : 1
+  return Math.max(
+    Math.ceil(CRDT_SWEEP_CHUNK_INTERVAL_MS / f),
+    Math.ceil((cost.batchPosts * CRDT_SWEEP_MS_PER_BATCH_POST) / f),
+    Math.ceil((cost.snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET) / f)
   )
+}
 
 export const PUSH_DEBOUNCE_MS = 2000
 

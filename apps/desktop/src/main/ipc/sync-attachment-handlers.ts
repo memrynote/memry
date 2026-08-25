@@ -30,6 +30,8 @@ import {
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
 import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
+import { onBootstrapElevationChange } from '../sync/bootstrap-session'
+import { getBootstrapElevationFactor } from '../sync/bootstrap-session-state'
 import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
@@ -94,6 +96,10 @@ const getOrCreateUploadQueue = (): UploadQueue | null => {
  * concurrency, paces requests under the server's blob_download bucket and
  * turns a 429 into a single global pause (#1829). Same NetworkMonitor-binding
  * lifetime rules as the upload queue: it must die with the runtime.
+ *
+ * A live bootstrap session (#1837) multiplies the pacer ceiling by the granted
+ * elevation factor; closing/expiring it reverts to the conservative base via
+ * the same subscription.
  */
 const getOrCreateDownloadQueue = (): DownloadQueue | null => {
   if (downloadQueue) return downloadQueue
@@ -103,6 +109,8 @@ const getOrCreateDownloadQueue = (): DownloadQueue | null => {
     service.downloadAttachment.bind(service),
     getNetworkMonitor() ?? undefined
   )
+  downloadQueue.setPaceMultiplier(getBootstrapElevationFactor())
+  onBootstrapElevationChange((factor) => downloadQueue?.setPaceMultiplier(factor))
   return downloadQueue
 }
 

@@ -33,14 +33,33 @@ const SMALL_FILE_BYTES = 5 * 1024 * 1024
 /**
  * Client-side pacing against a fixed-window rate bucket: `acquire()` resolves
  * once issuing one more request keeps the trailing window under `maxRequests`.
+ *
+ * The limit is READ per iteration, not captured: a bootstrap session (#1837)
+ * raises it mid-flight via `setMultiplier` (parked callers speed up as soon as
+ * the window slides) and closing the session lowers it again with no parked
+ * caller ever exceeding the reverted ceiling.
  */
 export class DownloadPacer {
   private stamps: number[] = []
+  private multiplier = 1
 
   constructor(
     private readonly maxRequests: number = PACER_MAX_REQUESTS,
     private readonly windowMs: number = PACER_WINDOW_MS
   ) {}
+
+  /**
+   * Multiply the effective ceiling (bootstrap elevation). Values are clamped
+   * so a broken factor can never SHRINK pacing below the conservative base —
+   * the same direction the server-side seam clamps in.
+   */
+  setMultiplier(multiplier: number): void {
+    this.multiplier = Number.isFinite(multiplier) && multiplier >= 1 ? Math.floor(multiplier) : 1
+  }
+
+  get effectiveMaxRequests(): number {
+    return Math.max(1, Math.floor(this.maxRequests * this.multiplier))
+  }
 
   async acquire(): Promise<void> {
     // Loop instead of a single wait: several callers can be parked on the same
@@ -50,7 +69,7 @@ export class DownloadPacer {
       while (this.stamps.length > 0 && this.stamps[0] <= now - this.windowMs) {
         this.stamps.shift()
       }
-      if (this.stamps.length < this.maxRequests) {
+      if (this.stamps.length < this.effectiveMaxRequests) {
         this.stamps.push(now)
         return
       }
@@ -239,6 +258,15 @@ export class DownloadQueue {
       item.reject(new DownloadQueueClearedError())
     }
     log.info('queue cleared', { rejected: pending.length })
+  }
+
+  /**
+   * Bootstrap elevation (#1837): raise (and later revert) the pacer ceiling.
+   * Delegated to the pacer so both queued and in-flight transfers pick it up
+   * on their next acquire.
+   */
+  setPaceMultiplier(multiplier: number): void {
+    this.pacer.setMultiplier(multiplier)
   }
 
   dispose(): void {

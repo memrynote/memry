@@ -10,6 +10,7 @@ import { clientGateMiddleware } from '../middleware/client-gate'
 import { getClientPolicy, toPolicySnapshot } from '../services/client-policies'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
+import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
@@ -211,13 +212,17 @@ const pushRateLimit = createRateLimiter({
 const changesRateLimit = createRateLimiter({
   keyPrefix: 'sync_changes',
   maxRequests: 60,
-  windowSeconds: 60
+  windowSeconds: 60,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const pullRateLimit = createRateLimiter({
   keyPrefix: 'sync_pull',
   maxRequests: 120,
-  windowSeconds: 60
+  windowSeconds: 60,
+  // P1.2 (#1837): a valid bootstrap session on THIS request widens the
+  // ceiling; no token changes nothing. See BOOTSTRAP_ELEVATION_MULTIPLIERS.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 // 30/min (was 10): a paginated client spends ceil(rows / page) requests per
@@ -227,7 +232,8 @@ const pullRateLimit = createRateLimiter({
 const manifestRateLimit = createRateLimiter({
   keyPrefix: 'sync_manifest',
   maxRequests: 30,
-  windowSeconds: 60
+  windowSeconds: 60,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const statusRateLimit = createRateLimiter({
@@ -535,14 +541,19 @@ const crdtPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_pull',
   maxRequests: 600,
   windowSeconds: 60,
-  identifier: deviceIdentifier
+  identifier: deviceIdentifier,
+  // P1.2 (#1837): the whole point of the seam — a fresh device sweeping a
+  // 10k-note vault is ~80x this bucket's design point. Elevation only ever
+  // widens; requests without a bootstrap token keep the exact ceiling above.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const crdtBatchPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_batch_pull',
   maxRequests: 30,
   windowSeconds: 60,
-  identifier: deviceIdentifier
+  identifier: deviceIdentifier,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const CrdtBatchPullSchema = z.object({

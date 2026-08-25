@@ -3,6 +3,8 @@ import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import type { InitialSyncProgressEvent } from '@memry/contracts/ipc-events'
 import { ERROR_RETENTION_DAYS } from '@memry/sync-client/queue'
 import { abandonBootstrap, beginBootstrap, markBootstrapFullText } from '../bootstrap-metrics'
+import { closeBootstrapSession, openBootstrapSession } from '../bootstrap-session'
+import { getBootstrapElevationFactor } from '../bootstrap-session-state'
 import { checkManifestIntegrity } from '../manifest-check'
 import { runInitialSeed } from '../initial-seed'
 import type { SyncContext } from './sync-context'
@@ -302,6 +304,10 @@ export class FullSyncRunner {
     this.pacedCrdtPullQueue.clear()
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
+    // A vault switch / runtime restart revokes the elevated session (#1837):
+    // local pacing reverts synchronously, the server close is best-effort and
+    // must not delay teardown.
+    void closeBootstrapSession('vault_switch')
   }
 
   /** Signal for sweep-issued pulls, live until `dispose()` cancels them. */
@@ -367,9 +373,14 @@ export class FullSyncRunner {
     // vault: a genuine fresh-device bootstrap (#1835). beginBootstrap no-ops
     // while a window is already open (the vault-download seam fires earlier
     // and keeps the truer start time), and telemetry must never break sync.
+    const isFreshDevice = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
     try {
-      if (this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null) {
+      if (isFreshDevice) {
         beginBootstrap('first_full_sync')
+        // Elevated limits + presigned sets for this pull (#1837). Any failure
+        // — old server, unconfigured, capped, offline — silently falls back to
+        // steady-state pacing; nothing downstream may depend on it succeeding.
+        await openBootstrapSession(this.ctx.deps.getAccessToken)
       }
     } catch {
       /* telemetry only — sync proceeds */
@@ -491,6 +502,9 @@ export class FullSyncRunner {
       // once the sweep drains. The cursor is only persisted after a successful
       // pull, so the next cycle re-arms a clean window here.
       if (!this.bootstrapPullSucceeded) abandonBootstrap()
+      // Same for the elevated session: a failed run releases it immediately,
+      // so pacing reverts before the next cycle starts (#1837).
+      await closeBootstrapSession('failed')
       throw error
     } finally {
       this.ctx.fullSyncActive = false
@@ -590,6 +604,10 @@ export class FullSyncRunner {
    * every note body the server holds is current on this device. The metrics
    * module makes this a no-op outside an active fresh-device bootstrap, so
    * steady-state cycles pay one boolean check.
+   *
+   * The elevated session (#1837) closes at the same moment: full-text is the
+   * definition of "bootstrap done", and closing releases the per-user session
+   * slot while reverting every pacing site in the same tick.
    */
   private maybeMarkBootstrapFullText(): void {
     if (!this.sweptOnThisEngine) return
@@ -600,6 +618,7 @@ export class FullSyncRunner {
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
     markBootstrapFullText()
+    void closeBootstrapSession('completed')
   }
 
   /**
@@ -658,9 +677,13 @@ export class FullSyncRunner {
         // GETs and four apply rounds and wait 20 s. One constant cannot be
         // right for both, and the client cannot know which it is in until the
         // chunk has run — that is what the probe is for. See
-        // `crdtSweepChunkDelayMs` for the full derivation.
+        // `crdtSweepChunkDelayMs` for the full derivation. The charge is
+        // divided by the bootstrap elevation factor when a session is live
+        // (#1837); reading it here (not caching it) means the very first chunk
+        // after close/expiry reverts to conservative pacing.
         delayMs = crdtSweepChunkDelayMs(
-          await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal())
+          await this.crdtSync.pullCrdtForNotes(chunk, this.sweepPullSignal()),
+          getBootstrapElevationFactor()
         )
       } finally {
         // Re-arm from the chunk's completion, not from when it was issued, so a

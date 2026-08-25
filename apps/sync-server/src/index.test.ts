@@ -321,12 +321,12 @@ describe('scheduled cleanup', () => {
       { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
     )
 
-    // all 9 cleanup tasks fail against the broken DB — each must reach PostHog
+    // all 10 cleanup tasks fail against the broken DB — each must reach PostHog
     // Logs (redacted detail) and PostHog events (server_error_seen), one of each per failure.
     const logCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/v1/logs'))
     const eventCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/batch/'))
-    expect(logCalls).toHaveLength(9)
-    expect(eventCalls).toHaveLength(9)
+    expect(logCalls).toHaveLength(10)
+    expect(eventCalls).toHaveLength(10)
     const body = JSON.parse((logCalls[0][1] as RequestInit).body as string)
     const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')
@@ -392,8 +392,8 @@ describe('scheduled cleanup', () => {
         return JSON.parse(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).action
       })
     expect(actions).toContain('release_download_counts')
-    // 9 cleanups + the release pull; the pull is the only one without the prefix
-    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(9)
-    expect(actions).toHaveLength(10)
+    // 10 cleanups + the release pull; the pull is the only one without a prefix
+    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(10)
+    expect(actions).toHaveLength(11)
   })
 })
