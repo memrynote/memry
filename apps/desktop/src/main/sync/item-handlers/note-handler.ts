@@ -142,12 +142,16 @@ function mergeAttachmentReferences(
 function requestEmbeddedAttachmentDownloads(
   db: DrizzleDb,
   itemId: string,
-  refs: string[] | null | undefined
+  refs: string[] | null | undefined,
+  noteModifiedAt?: string | null
 ): void {
   if (!refs?.length) return
   const vaultPath = getVaultStatus().path
   if (!vaultPath) return
   const attachmentsDir = getNoteAttachmentsDir(vaultPath, itemId)
+  // Priority hint for the download queue's hybrid ordering: attachments of
+  // recently-edited notes download ahead of colder backlog.
+  const recencyMs = noteModifiedAt ? Date.parse(noteModifiedAt) : NaN
   for (const attachmentId of refs) {
     // Skips what is already in flight, what already downloaded this session,
     // and what the server has answered 404 for — that last one persisted, so a
@@ -158,7 +162,8 @@ function requestEmbeddedAttachmentDownloads(
       noteId: itemId,
       attachmentId,
       diskPath: attachmentsDir,
-      intoDir: true
+      intoDir: true,
+      ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
     })
     // `unregisterAttachmentHandlers()` removes every 'download-needed' listener
     // on sync-runtime restart, sign-out/in and token churn, so a dropped emit
@@ -492,7 +497,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
             : undefined
       })
 
-      requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences)
+      requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
       // Frontmatter is the source of truth for a markdown note's project
       // membership, and this branch just rewrote it. The create path derives the
@@ -579,10 +584,12 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       })
 
       if (data.attachmentId) {
+        const recencyMs = data.modifiedAt ? Date.parse(data.modifiedAt) : NaN
         attachmentEvents.emitDownloadNeeded({
           noteId: itemId,
           attachmentId: data.attachmentId,
-          diskPath: absolutePath
+          diskPath: absolutePath,
+          ...(Number.isFinite(recencyMs) ? { recencyHint: recencyMs } : {})
         })
       }
 
@@ -652,7 +659,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     fs.writeFileSync(tmpPath, fileContent, 'utf-8')
     fs.renameSync(tmpPath, absolutePath)
 
-    requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences)
+    requestEmbeddedAttachmentDownloads(ctx.db, itemId, data.attachmentReferences, data.modifiedAt)
 
     ctx.emit(NotesChannels.events.CREATED, {
       note: { id: itemId, path: relPath, title },

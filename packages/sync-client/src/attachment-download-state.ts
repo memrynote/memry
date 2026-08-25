@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, lte } from 'drizzle-orm'
 import { attachmentDownloadFailures, attachmentUploadQueue } from '@memry/db-schema/data-schema'
 import { createLogger } from './logging'
 import type { DrizzleDb } from './item-handlers/types'
@@ -224,6 +224,49 @@ export function markDownloadFailed(
   }
 
   return reason
+}
+
+/**
+ * Recorded failures whose retry window has opened: `nextAttemptAt` is set (a
+ * NULL means "no automatic retry left") and has passed. The persistent
+ * re-driver walks these on reconnect and on an interval, so a failed download
+ * is retried even when its note is never re-applied from a pull.
+ *
+ * Fails closed to an empty batch: a table that cannot be read means no
+ * re-drive this round — the per-pull request path is unaffected.
+ */
+export function listRedrivableDownloadFailures(
+  db: DrizzleDb,
+  now: number,
+  limit: number
+): Array<{
+  ownerId: string
+  attachmentId: string
+  reason: 'missing' | 'transient'
+  attempts: number
+}> {
+  try {
+    return db
+      .select({
+        ownerId: attachmentDownloadFailures.ownerId,
+        attachmentId: attachmentDownloadFailures.attachmentId,
+        reason: attachmentDownloadFailures.reason,
+        attempts: attachmentDownloadFailures.attempts
+      })
+      .from(attachmentDownloadFailures)
+      .where(
+        and(
+          isNotNull(attachmentDownloadFailures.nextAttemptAt),
+          lte(attachmentDownloadFailures.nextAttemptAt, now)
+        )
+      )
+      .orderBy(asc(attachmentDownloadFailures.updatedAt))
+      .limit(limit)
+      .all()
+  } catch (err) {
+    log.warn('Could not list redrivable attachment download failures', { error: err })
+    return []
+  }
 }
 
 /**

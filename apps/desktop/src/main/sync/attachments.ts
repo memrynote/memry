@@ -1,6 +1,5 @@
 import { createReadStream } from 'node:fs'
-import { stat, open, rename } from 'node:fs/promises'
-import { randomBytes } from 'node:crypto'
+import { stat, open, rename, readFile, writeFile, unlink } from 'node:fs/promises'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
 import { net } from 'electron'
@@ -8,7 +7,7 @@ import { net } from 'electron'
 import { createLogger } from '../lib/logger'
 import { getMainI18n } from '../lib/main-i18n'
 import { secureDeleteFile } from '../lib/secure-fs'
-import { ensureDirectory, sanitizeFilename, withTransientFsRetry } from '../vault/file-ops'
+import { ensureDirectory, sanitizeFilename } from '../vault/file-ops'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
 import { generateFileKey } from '../crypto/keys'
 import { secureCleanup } from '../crypto/index'
@@ -23,7 +22,7 @@ import {
   getSyncVaultHeaders,
   type FetchFn
 } from './http-client'
-import { withRetry } from '@memry/sync-client/retry'
+import { withRetry, DeadLetterError } from '@memry/sync-client/retry'
 
 import type {
   UploadInitRequest,
@@ -77,6 +76,46 @@ export interface UploadResult {
 export interface DownloadResult {
   filePath: string
   manifest: AttachmentManifest
+}
+
+/**
+ * Network shaping for a download, injected by the DownloadQueue: `pace` is
+ * awaited before every manifest/chunk request (client-side pacing against the
+ * server's blob_download bucket), `isOnline` feeds withRetry's offline wait.
+ */
+export interface DownloadNetOptions {
+  pace?: () => Promise<void>
+  isOnline?: () => boolean
+  signal?: AbortSignal
+}
+
+/**
+ * Sidecar persisted next to a partial download after every landed chunk, so a
+ * failed or interrupted transfer resumes at the first missing chunk — across
+ * retries AND process restarts — instead of restarting at chunk 0.
+ */
+interface DownloadResumeState {
+  version: 1
+  attachmentId: string
+  /** Whole-file checksum from the manifest; a changed manifest voids the resume. */
+  checksum: string
+  chunkCount: number
+  /** Chunks 0..chunksDone-1 are decrypted, verified and on disk. */
+  chunksDone: number
+  bytesWritten: number
+}
+
+/**
+ * Errors worth resuming from: the landed chunks are fine, only the transport
+ * failed. Everything else (integrity mismatch, decrypt failure, 4xx, fs
+ * errors) discards the partial so the next attempt starts clean.
+ */
+function isResumableDownloadError(err: unknown): boolean {
+  const cause = err instanceof DeadLetterError ? err.lastError : err
+  if (cause instanceof NetworkError || cause instanceof RateLimitError) return true
+  if (cause instanceof SyncServerError) return cause.statusCode >= 500
+  if (cause instanceof DOMException && cause.name === 'AbortError') return true
+  return false
 }
 
 /**
@@ -246,6 +285,32 @@ async function parallelMap<T, R>(
   const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
   await Promise.all(workers)
   return results
+}
+
+// ============================================================================
+// Helpers — Download resume sidecar
+// ============================================================================
+
+/** Atomic-enough sidecar write: tmp + rename, so a crash never half-writes it. */
+async function persistResumeState(statePath: string, state: DownloadResumeState): Promise<void> {
+  const tmpPath = `${statePath}.tmp`
+  await writeFile(tmpPath, JSON.stringify(state), { mode: 0o600 })
+  await rename(tmpPath, statePath)
+}
+
+/** Stream a file through an incremental sha256 state without loading it whole. */
+function hashFileInto(
+  hashState: ReturnType<typeof sodium.crypto_hash_sha256_init>,
+  filePath: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const stream = createReadStream(filePath, { highWaterMark: CHUNK_SIZE })
+    stream.on('data', (data) => {
+      sodium.crypto_hash_sha256_update(hashState, data as Buffer)
+    })
+    stream.on('end', () => resolve())
+    stream.on('error', reject)
+  })
 }
 
 // ============================================================================
@@ -508,7 +573,7 @@ export class AttachmentSyncService {
   async downloadAttachment(
     attachmentId: string,
     targetPath: string,
-    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback }
+    opts?: { targetIsDir?: boolean; onProgress?: ProgressCallback } & DownloadNetOptions
   ): Promise<DownloadResult> {
     const [token, vaultKey] = await this.requireAuth()
     // Per-call callback wins over the shared slot, mirroring uploadAttachment:
@@ -527,7 +592,12 @@ export class AttachmentSyncService {
 
     log.info('starting download', { attachmentId })
 
-    const encryptedManifest = await this.fetchManifest(token, attachmentId)
+    const netOpts: DownloadNetOptions = {}
+    if (opts?.pace) netOpts.pace = opts.pace
+    if (opts?.isOnline) netOpts.isOnline = opts.isOnline
+    if (opts?.signal) netOpts.signal = opts.signal
+
+    const encryptedManifest = await this.fetchManifest(token, attachmentId, netOpts)
 
     const signerPublicKey = await this.deps.getDevicePublicKey(encryptedManifest.signerDeviceId)
     if (!signerPublicKey) {
@@ -565,51 +635,120 @@ export class AttachmentSyncService {
         }
       }
 
+      // Chunks are appended to this partial file in index order as they land —
+      // never held in RAM as a whole file — and survive transient failures and
+      // process restarts, so a retry resumes at the first missing chunk. The
+      // final file appears at destPath only through the atomic rename below.
+      // The partial is keyed by DESTINATION, not just attachment id: the same
+      // attachment can be materialized at two paths concurrently (binary note
+      // + canvas asset), and a failed transfer's cleanup must never delete the
+      // bytes its survivor is appending to. Same destination across restarts
+      // still maps to the same partial, which is what resume needs.
+      const destDir = path.dirname(destPath)
+      await ensureDirectory(destDir)
+      const partialPath = path.join(
+        destDir,
+        `.${sanitizeFilename(attachmentId)}.${sanitizeFilename(path.basename(destPath))}.mrypart`
+      )
+      const statePath = `${partialPath}.json`
+      const orderedChunks = [...manifest.chunks].sort((a, b) => a.index - b.index)
+
+      const resumeFrom = await this.loadResumableState(partialPath, statePath, manifest)
+
       const downloadProgress: TransferProgress = {
         attachmentId,
         phase: 'downloading',
-        chunksCompleted: 0,
+        chunksCompleted: resumeFrom.chunksDone,
         totalChunks,
-        bytesTransferred: 0,
+        bytesTransferred: resumeFrom.bytesWritten,
         totalBytes: manifest.size
       }
       this.activeDownloads.set(attachmentId, downloadProgress)
       trackedProgress = downloadProgress
-
-      const decryptedChunks: Buffer[] = new Array(totalChunks)
-      let bytesDownloaded = 0
-
-      await parallelMap(manifest.chunks, MAX_CONCURRENT_CHUNKS, async (chunkRef) => {
-        const encryptedData = await this.downloadChunk(token, chunkRef.encryptedHash)
-
-        const nonce = encryptedData.subarray(0, 24)
-        const ciphertext = encryptedData.subarray(24)
-        const plaintext = decrypt(ciphertext, nonce, fileKey)
-
-        const actualHash = sha256Hex(plaintext)
-        if (actualHash !== chunkRef.hash) {
-          throw new Error(
-            `Chunk integrity failure at index ${chunkRef.index}: expected ${chunkRef.hash}, got ${actualHash}`
-          )
-        }
-
-        decryptedChunks[chunkRef.index] = Buffer.from(plaintext)
-        bytesDownloaded += chunkRef.size
-
-        downloadProgress.chunksCompleted++
-        downloadProgress.bytesTransferred = bytesDownloaded
-        downloadProgress.phase = 'decrypting'
-        emit({ ...downloadProgress })
-      })
-
-      const reassembled = Buffer.concat(decryptedChunks)
-
-      const wholeHash = sha256Hex(reassembled)
-      if (wholeHash !== manifest.checksum) {
-        throw new Error(`File integrity failure: expected ${manifest.checksum}, got ${wholeHash}`)
+      if (resumeFrom.chunksDone > 0) {
+        log.info('resuming download', {
+          attachmentId,
+          chunksDone: resumeFrom.chunksDone,
+          totalChunks
+        })
       }
 
-      await this.atomicWriteBinary(destPath, reassembled)
+      // The whole-file checksum must cover the resumed bytes too, so rebuild
+      // the hash state from the partial on disk before continuing it.
+      const wholeFileHashState = sodium.crypto_hash_sha256_init()
+      if (resumeFrom.chunksDone > 0) {
+        await hashFileInto(wholeFileHashState, partialPath)
+      }
+
+      let bytesDownloaded = resumeFrom.bytesWritten
+      let handle: Awaited<ReturnType<typeof open>> | null = null
+      try {
+        handle = await open(partialPath, resumeFrom.chunksDone > 0 ? 'a' : 'w', 0o600)
+
+        for (let i = resumeFrom.chunksDone; i < totalChunks; i++) {
+          const chunkRef = orderedChunks[i]
+          const encryptedData = await this.downloadChunk(token, chunkRef.encryptedHash, {
+            ...netOpts,
+            onWaitingNetwork: () => emit({ ...downloadProgress, phase: 'waiting_network' })
+          })
+
+          const nonce = encryptedData.subarray(0, 24)
+          const ciphertext = encryptedData.subarray(24)
+          const plaintext = decrypt(ciphertext, nonce, fileKey)
+
+          const actualHash = sha256Hex(plaintext)
+          if (actualHash !== chunkRef.hash) {
+            throw new Error(
+              `Chunk integrity failure at index ${chunkRef.index}: expected ${chunkRef.hash}, got ${actualHash}`
+            )
+          }
+
+          sodium.crypto_hash_sha256_update(wholeFileHashState, plaintext)
+          await handle.write(Buffer.from(plaintext))
+          // fsync before the sidecar records the chunk as landed: the sidecar
+          // must never claim bytes the OS still holds only in its page cache.
+          await handle.sync()
+          bytesDownloaded += chunkRef.size
+          await persistResumeState(statePath, {
+            version: 1,
+            attachmentId,
+            checksum: manifest.checksum,
+            chunkCount: totalChunks,
+            chunksDone: i + 1,
+            bytesWritten: bytesDownloaded
+          })
+
+          downloadProgress.chunksCompleted = i + 1
+          downloadProgress.bytesTransferred = bytesDownloaded
+          downloadProgress.phase = 'decrypting'
+          emit({ ...downloadProgress })
+        }
+
+        await handle.close()
+        handle = null
+
+        const wholeHash = sodium.to_hex(sodium.crypto_hash_sha256_final(wholeFileHashState))
+        if (wholeHash !== manifest.checksum) {
+          throw new Error(`File integrity failure: expected ${manifest.checksum}, got ${wholeHash}`)
+        }
+
+        try {
+          await rename(partialPath, destPath)
+        } catch (renameErr) {
+          log.error('failed to write attachment', { filePath: destPath, err: renameErr })
+          throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
+        }
+        await unlink(statePath).catch(() => {})
+      } catch (err) {
+        if (handle) await handle.close().catch(() => {})
+        if (!isResumableDownloadError(err)) {
+          // Integrity/decrypt/fs failures poison the partial; 4xx means the
+          // blob is gone and the partial would be an orphan. Start clean.
+          await secureDeleteFile(partialPath).catch(() => {})
+          await unlink(statePath).catch(() => {})
+        }
+        throw err
+      }
 
       log.info('download complete', { attachmentId, path: destPath })
       emitTerminal('completed')
@@ -695,7 +834,10 @@ export class AttachmentSyncService {
       encryptedSize
     }
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      maxRetries: 3,
+      baseDelayMs: 2000
+    }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
@@ -786,7 +928,10 @@ export class AttachmentSyncService {
     const url = `${this.deps.getSyncServerUrl()}/sync/attachments/upload/${sessionId}/complete`
     const body = JSON.stringify(encryptedManifest)
 
-    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = { maxRetries: 3, baseDelayMs: 2000 }
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      maxRetries: 3,
+      baseDelayMs: 2000
+    }
     if (options?.signal) retryOpts.signal = options.signal
     if (options?.isOnline) retryOpts.isOnline = options.isOnline
 
@@ -801,30 +946,155 @@ export class AttachmentSyncService {
     }
   }
 
-  private async fetchManifest(
-    token: string,
-    attachmentId: string
-  ): Promise<EncryptedAttachmentManifest> {
-    const url = `${this.deps.getSyncServerUrl()}/sync/attachments/${attachmentId}/manifest`
-    const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
-
-    if (!resp.ok) {
-      throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
+  /**
+   * withRetry with two download-specific twists:
+   *
+   * - `pace` runs before every attempt, so retries spend pacing tokens too.
+   * - A 429 is NOT retried per item. binaryFetch surfaces it as RateLimitError,
+   *   which withRetry would sleep on locally — but a rate limit is global by
+   *   nature, so it must reach the DownloadQueue, which pauses EVERYTHING for
+   *   Retry-After instead of letting the other in-flight items keep hammering.
+   *   withRetry only aborts immediately on 4xx SyncServerErrors, so the 429 is
+   *   smuggled through as one and unwrapped back to the original on the way out.
+   */
+  private async retryingRequest<T>(
+    doRequest: () => Promise<T>,
+    opts: {
+      maxRetries: number
+      baseDelayMs: number
+      onWaitingNetwork?: () => void
+    } & DownloadNetOptions
+  ): Promise<T> {
+    let rateLimited: RateLimitError | null = null
+    const retryOpts: Partial<import('@memry/sync-client/retry').RetryOptions> = {
+      maxRetries: opts.maxRetries,
+      baseDelayMs: opts.baseDelayMs,
+      retryOn429: false,
+      onRetry: (_attempt, error) => {
+        if (error instanceof NetworkError) opts.onWaitingNetwork?.()
+      }
     }
+    if (opts.signal) retryOpts.signal = opts.signal
+    if (opts.isOnline) retryOpts.isOnline = opts.isOnline
 
-    return (await resp.json()) as EncryptedAttachmentManifest
+    try {
+      const { value } = await withRetry(async () => {
+        await opts.pace?.()
+        try {
+          return await doRequest()
+        } catch (err) {
+          if (err instanceof RateLimitError) {
+            rateLimited = err
+            throw new SyncServerError('Rate limited', 429)
+          }
+          throw err
+        }
+      }, retryOpts)
+      return value
+    } catch (err) {
+      const rateLimitedErr = rateLimited as RateLimitError | null
+      if (rateLimitedErr && err instanceof SyncServerError && err.statusCode === 429) {
+        throw rateLimitedErr
+      }
+      throw err
+    }
   }
 
-  private async downloadChunk(token: string, encryptedHash: string): Promise<Uint8Array> {
-    const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
-    const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+  private async fetchManifest(
+    token: string,
+    attachmentId: string,
+    netOpts?: DownloadNetOptions
+  ): Promise<EncryptedAttachmentManifest> {
+    const url = `${this.deps.getSyncServerUrl()}/sync/attachments/${attachmentId}/manifest`
+    // The ok-check lives INSIDE the retried request so a 5xx is retried while a
+    // 404/410 still aborts on the first answer (withRetry throws 4xx through),
+    // which is what keeps the permanent-failure classification exact.
+    return this.retryingRequest(
+      async () => {
+        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        if (!resp.ok) {
+          throw new SyncServerError(`Failed to fetch manifest for ${attachmentId}`, resp.status)
+        }
+        return (await resp.json()) as EncryptedAttachmentManifest
+      },
+      { maxRetries: 3, baseDelayMs: 2000, ...netOpts }
+    )
+  }
 
-    if (!resp.ok) {
-      throw new SyncServerError(`Failed to download chunk ${encryptedHash}`, resp.status)
+  private async downloadChunk(
+    token: string,
+    encryptedHash: string,
+    netOpts?: DownloadNetOptions & { onWaitingNetwork?: () => void }
+  ): Promise<Uint8Array> {
+    const url = `${this.deps.getSyncServerUrl()}/sync/attachments/chunks/${encryptedHash}`
+    return this.retryingRequest(
+      async () => {
+        const resp = await binaryFetch('GET', url, token, undefined, this.deps.fetchFn)
+        if (!resp.ok) {
+          throw new SyncServerError(`Failed to download chunk ${encryptedHash}`, resp.status)
+        }
+        // Read the body inside the retried attempt: a connection cut mid-body
+        // must burn this attempt, not escape the retry budget.
+        const arrayBuffer = await resp.arrayBuffer()
+        return new Uint8Array(arrayBuffer)
+      },
+      { maxRetries: 5, baseDelayMs: 2000, ...netOpts }
+    )
+  }
+
+  /**
+   * Decide where to restart a download. Returns chunk 0 unless a partial file
+   * and its sidecar both exist, agree with THIS manifest (id, checksum, chunk
+   * count), and the bytes on disk are exactly the chunks the sidecar claims.
+   * Anything inconsistent discards the pair — resuming must never be able to
+   * produce a file the final checksum would reject for stale-partial reasons.
+   */
+  private async loadResumableState(
+    partialPath: string,
+    statePath: string,
+    manifest: AttachmentManifest
+  ): Promise<{ chunksDone: number; bytesWritten: number }> {
+    const fresh = { chunksDone: 0, bytesWritten: 0 }
+    let state: DownloadResumeState
+    try {
+      state = JSON.parse(await readFile(statePath, 'utf-8')) as DownloadResumeState
+    } catch {
+      // No sidecar (or unreadable): any partial lying around is unaccounted for.
+      await unlink(partialPath).catch(() => {})
+      await unlink(statePath).catch(() => {})
+      return fresh
     }
 
-    const arrayBuffer = await resp.arrayBuffer()
-    return new Uint8Array(arrayBuffer)
+    const orderedChunks = [...manifest.chunks].sort((a, b) => a.index - b.index)
+    const expectedBytes = orderedChunks
+      .slice(0, state.chunksDone)
+      .reduce((sum, c) => sum + c.size, 0)
+
+    let onDiskSize = -1
+    try {
+      onDiskSize = (await stat(partialPath)).size
+    } catch {
+      // partial vanished — fall through to discard below
+    }
+
+    const valid =
+      state.version === 1 &&
+      state.attachmentId === manifest.id &&
+      state.checksum === manifest.checksum &&
+      state.chunkCount === manifest.chunks.length &&
+      Number.isInteger(state.chunksDone) &&
+      state.chunksDone > 0 &&
+      state.chunksDone <= manifest.chunks.length &&
+      onDiskSize === expectedBytes &&
+      state.bytesWritten === expectedBytes
+
+    if (!valid) {
+      await unlink(partialPath).catch(() => {})
+      await unlink(statePath).catch(() => {})
+      return fresh
+    }
+
+    return { chunksDone: state.chunksDone, bytesWritten: state.bytesWritten }
   }
 
   // ==========================================================================
@@ -925,42 +1195,6 @@ export class AttachmentSyncService {
     if (!signingKeys) throw new Error('Device keys not available')
 
     return [token, vaultKey, signingKeys]
-  }
-
-  private async atomicWriteBinary(filePath: string, data: Buffer): Promise<void> {
-    const dir = path.dirname(filePath)
-
-    await ensureDirectory(dir)
-
-    try {
-      await withTransientFsRetry(async () => {
-        const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
-
-        let handle: Awaited<ReturnType<typeof open>> | null = null
-        try {
-          handle = await open(tempPath, 'wx', 0o600)
-          await handle.writeFile(data)
-          await handle.close()
-          handle = null
-          await rename(tempPath, filePath)
-        } catch (error) {
-          if (handle) {
-            await handle.close().catch(() => {})
-          }
-          try {
-            await secureDeleteFile(tempPath)
-          } catch {
-            // ignore cleanup errors
-          }
-          throw error
-        }
-      })
-    } catch (err) {
-      // The path was part of the thrown message before it became user-facing
-      // copy; keep it in the log so the diagnostic is not lost.
-      log.error('failed to write attachment', { filePath, err })
-      throw new Error(getMainI18n().t('errors:attachment.writeFailed'))
-    }
   }
 }
 

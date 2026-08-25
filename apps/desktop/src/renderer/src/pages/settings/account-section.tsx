@@ -134,7 +134,30 @@ export function AccountSettings() {
   const [isBillingRefreshing, setIsBillingRefreshing] = useState(false)
   const [isCheckoutStarting, setIsCheckoutStarting] = useState(false)
   const [isPortalOpening, setIsPortalOpening] = useState(false)
+  const [attachmentAutoDownload, setAttachmentAutoDownload] = useState(true)
   const billingLoadFailed = t('account.billing.toasts.loadFailed')
+
+  useEffect(() => {
+    void window.api.settings
+      .getSyncSettings()
+      // Explicit !== false: blobs written by older versions have no key and
+      // must read as "on" (the shipped default).
+      .then((settings) => setAttachmentAutoDownload(settings.attachmentAutoDownload !== false))
+      .catch(() => {
+        /* keep the default-on optimistic value */
+      })
+  }, [])
+
+  const handleAttachmentAutoDownloadChange = useCallback(
+    (checked: boolean) => {
+      setAttachmentAutoDownload(checked)
+      void window.api.settings.setSyncSettings({ attachmentAutoDownload: checked }).catch(() => {
+        setAttachmentAutoDownload(!checked)
+        toast.error(t('account.sync.attachmentAutoDownload.saveFailed'))
+      })
+    },
+    [t]
+  )
 
   const loadStorage = useCallback(async () => {
     if (state.status !== 'authenticated') return
@@ -365,6 +388,18 @@ export function AccountSettings() {
               className={ACCENT_SWITCH}
             />
           </div>
+        )}
+        {!isSyncLocked && (
+          <SettingRow
+            label={t('account.sync.attachmentAutoDownload.label')}
+            description={t('account.sync.attachmentAutoDownload.description')}
+          >
+            <Switch
+              checked={attachmentAutoDownload}
+              onCheckedChange={handleAttachmentAutoDownloadChange}
+              className={ACCENT_SWITCH}
+            />
+          </SettingRow>
         )}
       </SettingsGroup>
 

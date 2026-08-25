@@ -1036,7 +1036,9 @@ describe('AttachmentSyncService', () => {
         }
         if (urlStr.includes('/chunks/')) {
           progressDuringDownload = service.getDownloadProgress('att-leak')
-          return new Response(null, { status: 500 })
+          // 404, not 5xx: chunk transport failures are retried with backoff
+          // now (#1829), and this test is about failure bookkeeping, not retry.
+          return new Response(null, { status: 404 })
         }
         return new Response(null, { status: 404 })
       })
@@ -1093,7 +1095,9 @@ describe('AttachmentSyncService', () => {
           if (chunkCalls === 1) {
             firstReachedChunk.resolve()
             await releaseFirst.promise
-            return new Response(null, { status: 500 })
+            // 404 aborts on the first answer; a 5xx would spend the full
+            // #1829 retry budget here and outlive the test's purpose.
+            return new Response(null, { status: 404 })
           }
           secondReachedChunk.resolve()
           await releaseSecond.promise
@@ -1339,5 +1343,349 @@ describe('terminal transfer phases', () => {
 
       expect(events.map((e) => e.phase)).toEqual(['decrypting', 'completed'])
     })
+  })
+})
+
+// ============================================================================
+// Streaming download with resume (#1829)
+// ============================================================================
+
+describe('AttachmentSyncService — streaming downloads with resume', () => {
+  /** A three-chunk attachment ('A'|'B'|'C' blocks) under one manifest fileKey. */
+  function buildThreeChunkFixture(attachmentId: string): {
+    encManifest: Record<string, string>
+    chunksByEncryptedHash: Map<string, { index: number; encryptedWithNonce: Uint8Array }>
+    wholeFileChecksum: string
+    plaintexts: Buffer[]
+    signerPublicKey: Uint8Array
+    vaultKey: Uint8Array
+  } {
+    const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+    const vaultKey = generateFileKey()
+    const fileKey = generateFileKey()
+
+    const chunks: Array<{
+      index: number
+      encryptedHash: string
+      hash: string
+      size: number
+      encryptedWithNonce: Uint8Array
+    }> = []
+    const plaintexts: Buffer[] = []
+
+    ;['A', 'B', 'C'].forEach((letter, index) => {
+      const plaintext = Buffer.alloc(256, letter)
+      plaintexts.push(plaintext)
+      const nonce = sodium.randombytes_buf(24)
+      const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+        plaintext,
+        null,
+        null,
+        nonce,
+        fileKey
+      )
+      const encryptedWithNonce = new Uint8Array(nonce.length + ciphertext.length)
+      encryptedWithNonce.set(nonce, 0)
+      encryptedWithNonce.set(ciphertext, nonce.length)
+      chunks.push({
+        index,
+        encryptedHash: sodium.to_hex(sodium.crypto_hash_sha256(encryptedWithNonce)),
+        hash: sodium.to_hex(sodium.crypto_hash_sha256(plaintext)),
+        size: 256,
+        encryptedWithNonce
+      })
+    })
+
+    const wholeFile = Buffer.concat(plaintexts)
+    const wholeFileChecksum = sodium.to_hex(sodium.crypto_hash_sha256(wholeFile))
+
+    const manifest = {
+      id: attachmentId,
+      filename: 'resumable.bin',
+      mimeType: 'application/octet-stream',
+      size: 768,
+      checksum: wholeFileChecksum,
+      chunks: chunks.map(({ index, encryptedHash, hash, size }) => ({
+        index,
+        encryptedHash,
+        hash,
+        size
+      })),
+      chunkSize: 8388608,
+      createdAt: Date.now()
+    }
+
+    const manifestNonce = sodium.randombytes_buf(24)
+    const manifestCiphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+      new TextEncoder().encode(JSON.stringify(manifest)),
+      null,
+      null,
+      manifestNonce,
+      fileKey
+    )
+    const keyNonce = sodium.randombytes_buf(24)
+    const wrappedKey = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+      fileKey,
+      null,
+      null,
+      keyNonce,
+      vaultKey
+    )
+    const signingKeypair = sodium.crypto_sign_keypair()
+    const signaturePayload: Record<string, unknown> = {
+      encryptedManifest: toB64(manifestCiphertext),
+      manifestNonce: toB64(manifestNonce),
+      encryptedFileKey: toB64(wrappedKey),
+      keyNonce: toB64(keyNonce)
+    }
+    const manifestSignature = signPayload(
+      signaturePayload,
+      CBOR_FIELD_ORDER.ATTACHMENT_MANIFEST,
+      signingKeypair.privateKey
+    )
+
+    return {
+      encManifest: {
+        ...(signaturePayload as Record<string, string>),
+        manifestSignature: toB64(manifestSignature),
+        signerDeviceId: 'device-1'
+      },
+      chunksByEncryptedHash: new Map(
+        chunks.map((c) => [
+          c.encryptedHash,
+          { index: c.index, encryptedWithNonce: c.encryptedWithNonce }
+        ])
+      ),
+      wholeFileChecksum,
+      plaintexts,
+      signerPublicKey: signingKeypair.publicKey,
+      vaultKey
+    }
+  }
+
+  function makeResumableFetchFn(
+    fixture: ReturnType<typeof buildThreeChunkFixture>,
+    opts: { failChunkIndexes?: Set<number>; status?: number } = {}
+  ): ReturnType<typeof vi.fn> & { chunkFetchCounts: number[] } {
+    const chunkFetchCounts = [0, 0, 0]
+    const fetchFn = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+
+      if (urlStr.includes('/manifest')) {
+        return new Response(JSON.stringify(fixture.encManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (urlStr.includes('/chunks/')) {
+        const encryptedHash = urlStr.split('/chunks/')[1]
+        const chunk = fixture.chunksByEncryptedHash.get(encryptedHash)
+        if (!chunk) return new Response(null, { status: 404 })
+        if (opts.failChunkIndexes?.has(chunk.index)) {
+          return new Response(null, {
+            status: opts.status ?? 500,
+            headers: opts.status === 429 ? { 'Retry-After': '1' } : undefined
+          })
+        }
+        chunkFetchCounts[chunk.index]++
+        return new Response(chunk.encryptedWithNonce, {
+          status: 200,
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+    return Object.assign(fetchFn, { chunkFetchCounts })
+  }
+
+  it('a mid-file transport failure keeps landed chunks; the retry fetches only the rest', async () => {
+    const fixture = buildThreeChunkFixture('att-resume')
+    // Chunk 1 answers 429 once — RateLimitError aborts the attempt instantly
+    // (no per-item retry sleep) and IS resumable, so the partial survives.
+    let failChunkOne = true
+    const fetchFn = makeResumableFetchFn(fixture)
+    const inner = fetchFn.getMockImplementation()!
+    fetchFn.mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+      if (failChunkOne && urlStr.includes('/chunks/')) {
+        const encryptedHash = urlStr.split('/chunks/')[1]
+        const chunk = fixture.chunksByEncryptedHash.get(encryptedHash)
+        if (chunk?.index === 1) {
+          return new Response(null, { status: 429, headers: { 'Retry-After': '1' } })
+        }
+      }
+      return inner(url)
+    })
+
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+    )
+    const targetPath = path.join(tmpDir, 'resumed.bin')
+
+    // #when — first attempt dies on chunk 1
+    await expect(service.downloadAttachment('att-resume', targetPath)).rejects.toMatchObject({
+      name: 'RateLimitError'
+    })
+
+    // #then — chunk 0 is safely on disk as the partial, sidecar agrees...
+    const partialPath = path.join(tmpDir, '.att-resume.resumed.bin.mrypart')
+    const partial = await import('node:fs/promises').then((m) => m.readFile(partialPath))
+    expect(partial.equals(fixture.plaintexts[0])).toBe(true)
+    const sidecar = JSON.parse(
+      await import('node:fs/promises').then((m) => m.readFile(`${partialPath}.json`, 'utf-8'))
+    )
+    expect(sidecar).toMatchObject({ chunksDone: 1, bytesWritten: 256, chunkCount: 3 })
+    // ...and the final file does not exist yet (atomic rename only at the end).
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+
+    // #when — retry with the transport healthy
+    failChunkOne = false
+    const result = await service.downloadAttachment('att-resume', targetPath)
+
+    // #then — chunk 0 was NOT re-fetched; only the missing two were.
+    expect(fetchFn.chunkFetchCounts).toEqual([1, 1, 1])
+    const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+    expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
+    // The sidecar is consumed on success.
+    await expect(import('node:fs/promises').then((m) => m.stat(partialPath))).rejects.toThrow()
+  })
+
+  it('an inconsistent partial+sidecar pair is discarded and the download restarts clean', async () => {
+    const fixture = buildThreeChunkFixture('att-stale')
+    const fetchFn = makeResumableFetchFn(fixture)
+
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+    )
+    const targetPath = path.join(tmpDir, 'stale.bin')
+    const partialPath = path.join(tmpDir, '.att-stale.stale.bin.mrypart')
+
+    // #given — a leftover partial whose SIZE disagrees with its sidecar claim
+    // (e.g. crash between chunk write and fsync/sidecar update).
+    await import('node:fs/promises').then((m) =>
+      m.writeFile(partialPath, Buffer.alloc(100, 'X'), { mode: 0o600 })
+    )
+    await import('node:fs/promises').then((m) =>
+      m.writeFile(
+        `${partialPath}.json`,
+        JSON.stringify({
+          version: 1,
+          attachmentId: 'att-stale',
+          checksum: fixture.wholeFileChecksum,
+          chunkCount: 3,
+          chunksDone: 1,
+          bytesWritten: 256
+        }),
+        { mode: 0o600 }
+      )
+    )
+
+    // #when
+    const result = await service.downloadAttachment('att-stale', targetPath)
+
+    // #then — every chunk came from the network; result is still exact.
+    expect(fetchFn.chunkFetchCounts).toEqual([1, 1, 1])
+    const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+    expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
+  })
+
+  it('writes each landed chunk straight to disk; nothing waits for a full-file buffer', async () => {
+    const fixture = buildThreeChunkFixture('att-stream')
+    const targetPath = path.join(tmpDir, 'streamed.bin')
+    const partialPath = path.join(tmpDir, '.att-stream.streamed.bin.mrypart')
+
+    // Hold chunk 2's response until we have inspected the disk state.
+    let chunkTwoRequested = false
+    let releaseChunkTwo: (() => void) | null = null
+    const chunkTwoGate = new Promise<void>((resolve) => {
+      releaseChunkTwo = resolve
+    })
+    const fetchFn = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+      if (urlStr.includes('/manifest')) {
+        return new Response(JSON.stringify(fixture.encManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (urlStr.includes('/chunks/')) {
+        const encryptedHash = urlStr.split('/chunks/')[1]
+        const entry = fixture.chunksByEncryptedHash.get(encryptedHash)
+        if (!entry) return new Response(null, { status: 404 })
+        if (entry.index === 2) {
+          chunkTwoRequested = true
+          await chunkTwoGate
+        }
+        return new Response(entry.encryptedWithNonce, {
+          status: 200,
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+
+    const service = new AttachmentSyncService(
+      createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+    )
+
+    const pending = service.downloadAttachment('att-stream', targetPath)
+    await vi.waitFor(() => expect(chunkTwoRequested).toBe(true))
+
+    // Mid-flight: chunks 0+1 are decrypted, verified and ALREADY on disk as the
+    // partial — they were never held for a whole-file reassembly — while the
+    // final destination does not exist yet.
+    const partialMidFlight = await import('node:fs/promises').then((m) => m.readFile(partialPath))
+    expect(partialMidFlight.equals(Buffer.concat(fixture.plaintexts.slice(0, 2)))).toBe(true)
+    const sidecarMidFlight = JSON.parse(
+      await import('node:fs/promises').then((m) => m.readFile(`${partialPath}.json`, 'utf-8'))
+    )
+    expect(sidecarMidFlight).toMatchObject({ chunksDone: 2, bytesWritten: 512 })
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
+
+    releaseChunkTwo!()
+    const result = await pending
+    const downloaded = await import('node:fs/promises').then((m) => m.readFile(result.filePath))
+    expect(downloaded.equals(Buffer.concat(fixture.plaintexts))).toBe(true)
+  })
+
+  it('a non-resumable failure wipes the partial so no poisoned bytes survive', async () => {
+    const fixture = buildThreeChunkFixture('att-integrity')
+    const targetPath = path.join(tmpDir, 'integrity.bin')
+
+    // Chunk 1's hash check fails (its fetch returns chunk 2's bytes) — an
+    // integrity failure, which must never be resumed from.
+    const entries = [...fixture.chunksByEncryptedHash.values()]
+    const chunkTwo = entries.find((c) => c.index === 2)!
+    const fetchFn = vi.fn(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
+      if (urlStr.includes('/manifest')) {
+        return new Response(JSON.stringify(fixture.encManifest), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      if (urlStr.includes('/chunks/')) {
+        const encryptedHash = urlStr.split('/chunks/')[1]
+        const entry = fixture.chunksByEncryptedHash.get(encryptedHash)
+        if (!entry) return new Response(null, { status: 404 })
+        const payload = entry.index === 1 ? chunkTwo.encryptedWithNonce : entry.encryptedWithNonce
+        return new Response(payload, {
+          status: 200,
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+      }
+      return new Response(null, { status: 404 })
+    })
+
+    await expect(
+      new AttachmentSyncService(
+        createDownloadDeps(fetchFn, fixture.vaultKey, fixture.signerPublicKey)
+      ).downloadAttachment('att-integrity', targetPath)
+    ).rejects.toThrow(/Chunk integrity failure/)
+
+    // Nothing was left behind for bytes that can never verify.
+    const leftovers = await import('node:fs/promises').then((m) => m.readdir(tmpDir))
+    expect(leftovers.filter((f) => f.startsWith('.att-integrity'))).toEqual([])
+    await expect(import('node:fs/promises').then((m) => m.stat(targetPath))).rejects.toThrow()
   })
 })

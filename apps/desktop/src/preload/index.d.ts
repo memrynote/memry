@@ -1303,6 +1303,7 @@ export interface KeyboardShortcutsDTO {
 export interface SyncSettingsDTO {
   enabled: boolean
   autoSync: boolean
+  attachmentAutoDownload: boolean
 }
 
 export interface BackupSettingsDTO {

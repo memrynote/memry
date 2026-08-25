@@ -118,6 +118,13 @@ vi.mock('../sync/crdt-writeback', () => ({
   markWritebackIgnored: vi.fn()
 }))
 
+// The eager download-needed gate reads this from the sync layer; flip it in
+// tests that exercise the on-demand-only mode.
+const autoDownloadSettings = vi.hoisted(() => ({ enabled: true }))
+vi.mock('../sync/attachment-download-settings', () => ({
+  isAttachmentAutoDownloadEnabled: vi.fn(() => autoDownloadSettings.enabled)
+}))
+
 const mockApplyDownloadedAttachmentName = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 vi.mock('../vault/attachment-rename', () => ({
   applyDownloadedAttachmentName: (...args: unknown[]) => mockApplyDownloadedAttachmentName(...args)
@@ -200,6 +207,7 @@ describe('sync-attachment-handlers', () => {
   beforeEach(() => {
     resetIpcMocks()
     storeData.sync = {}
+    autoDownloadSettings.enabled = true
     attachmentMocks.sent = []
     attachmentMocks.service.uploadAttachment.mockReset()
     attachmentMocks.service.downloadAttachment
@@ -394,10 +402,12 @@ describe('sync-attachment-handlers', () => {
       })
     ).resolves.toEqual({ success: true, filePath: '/tmp/file.pdf' })
 
+    // Interactive IPC downloads run inside the shared DownloadQueue, which
+    // injects its pacer alongside the per-transfer progress callback.
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
       '/vault/attachments/file.pdf',
-      { onProgress: expect.any(Function) }
+      { onProgress: expect.any(Function), pace: expect.any(Function) }
     )
     // The shared slot is never touched, so nothing can clear a concurrent
     // transfer's progress.
@@ -545,9 +555,12 @@ describe('sync-attachment-handlers', () => {
     expect(attachmentMocks.queue.enqueue.mock.calls[0][2]).not.toBe(
       attachmentMocks.queue.enqueue.mock.calls[1][2]
     )
+    // Canvas asset downloads ride the same DownloadQueue ('interactive'), so
+    // they count against the shared concurrency bound and blob_download pacing.
     expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
       'attachment-1',
-      '/vault/attachments/canvas-1.png'
+      '/vault/attachments/canvas-1.png',
+      { pace: expect.any(Function) }
     )
   })
 
@@ -687,7 +700,8 @@ describe('sync-attachment-handlers', () => {
     await vi.waitFor(() =>
       expect(attachmentMocks.service.downloadAttachment).toHaveBeenCalledWith(
         'attachment-1',
-        '/vault/attachments/file.pdf'
+        '/vault/attachments/file.pdf',
+        { pace: expect.any(Function) }
       )
     )
     expect(markWritebackIgnored).toHaveBeenCalledWith('/vault/attachments/file.pdf')

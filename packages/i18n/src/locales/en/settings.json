@@ -619,6 +619,11 @@
     "sync": {
       "lastSynced": "Last synced {time}",
       "pending": "{count, plural, one {# pending} other {# pending}}",
+      "attachmentAutoDownload": {
+        "label": "Auto-download attachments",
+        "description": "Fetch attachments from synced notes in the background. When off, files download only when you open them.",
+        "saveFailed": "Could not save the attachment download preference"
+      },
       "statuses": {
         "synced": "Synced",
         "syncing": "Syncing...",
