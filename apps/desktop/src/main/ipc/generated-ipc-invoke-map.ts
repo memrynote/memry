@@ -305,7 +305,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getNoteEditorSettings": (...args: []) => Awaited<import("./settings-handlers").NoteEditorSettings>
   "settings:getSidebarSectionOrder": (...args: []) => Awaited<string[]>
   "settings:getSidebarSortModes": (...args: []) => Awaited<Record<"collections" | "projects" | "bookmarks" | "canvases" | "tags", "manual" | "name-asc" | "name-desc" | "modified-desc" | "modified-asc" | "created-desc" | "created-asc" | "count-desc" | "count-asc">>
-  "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; }>
+  "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; attachmentAutoDownload: boolean; }>
   "settings:getTabSettings": (...args: []) => Awaited<import("./settings-handlers").TabSettings>
   "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today" | "tomorrow" | "next7"; staleInboxDays: number; }>
   "settings:getTerminalCommandStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandStatus>>
@@ -335,7 +335,7 @@ export interface MainIpcInvokeHandlers {
   "settings:setNoteEditorSettings": (...args: [Partial<import("./settings-handlers").NoteEditorSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setSidebarSectionOrder": (...args: [string[]]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setSidebarSortMode": (...args: [{ surface: "collections" | "projects" | "bookmarks" | "canvases" | "tags"; mode: "manual" | "name-asc" | "name-desc" | "modified-desc" | "modified-asc" | "created-desc" | "created-asc" | "count-desc" | "count-asc"; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
-  "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; attachmentAutoDownload: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTabSettings": (...args: [Partial<import("./settings-handlers").TabSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "manual" | "dueDate" | "priority"; defaultView: "all" | "today" | "tomorrow" | "next7"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTerminalCommandDefaultVault": (...args: [string]) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>

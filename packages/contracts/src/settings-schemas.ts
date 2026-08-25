@@ -152,14 +152,24 @@ export const KEYBOARD_SHORTCUTS_DEFAULTS: KeyboardShortcuts = {
 
 export const SyncSettingsSchema = z.object({
   enabled: z.boolean(),
-  autoSync: z.boolean()
+  autoSync: z.boolean(),
+  /**
+   * Whether attachments referenced by pulled notes are fetched in the
+   * background (the eager path and the failure re-driver). `false` means
+   * on-demand only: nothing downloads until something explicitly asks for the
+   * file. Additive — settings blobs written by older versions have no key, and
+   * every reader treats only an explicit `false` as opting out, so existing
+   * installs keep today's eager behaviour.
+   */
+  attachmentAutoDownload: z.boolean()
 })
 
 export type SyncSettings = z.infer<typeof SyncSettingsSchema>
 
 export const SYNC_SETTINGS_DEFAULTS: SyncSettings = {
   enabled: true,
-  autoSync: true
+  autoSync: true,
+  attachmentAutoDownload: true
 }
 
 // ============================================================================

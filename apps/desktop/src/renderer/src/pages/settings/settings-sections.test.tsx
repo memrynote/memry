@@ -381,6 +381,12 @@ function installWindowApi() {
     } as unknown as typeof window.api.account,
     settings: {
       ...window.api.settings,
+      getSyncSettings: vi.fn().mockResolvedValue({
+        enabled: true,
+        autoSync: true,
+        attachmentAutoDownload: true
+      }),
+      setSyncSettings: vi.fn().mockResolvedValue({ success: true }),
       getTerminalCommandStatus: vi.fn().mockResolvedValue({
         supported: true,
         installed: false,
@@ -575,7 +581,9 @@ describe('settings section coverage', () => {
     expect((await screen.findAllByText('account.billing.plans.pro')).length).toBeGreaterThan(0)
     expect(screen.queryByText('account.sync.upsell.title')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('switch'))
+    // The account section now has a second switch (attachment auto-download);
+    // the sync toggle is the first one in the group.
+    fireEvent.click(screen.getAllByRole('switch')[0])
     expect(mocks.syncStatus.pause).toHaveBeenCalled()
   })
 

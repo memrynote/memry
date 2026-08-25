@@ -29,6 +29,8 @@ import {
 } from '../billing/entitlement-cache'
 import { trackMainError } from '../telemetry/diagnostics'
 import { UploadQueue } from '../sync/upload-queue'
+import { DownloadQueue, DownloadQueueClearedError } from '../sync/download-queue'
+import { isAttachmentAutoDownloadEnabled } from '../sync/attachment-download-settings'
 import { attachmentEvents } from '@memry/sync-client/attachment-events'
 import {
   markDownloadFailed,
@@ -73,6 +75,7 @@ const logger = createLogger('IPC:Sync:Attachments')
 
 let attachmentService: AttachmentSyncService | null = null
 let uploadQueue: UploadQueue | null = null
+let downloadQueue: DownloadQueue | null = null
 
 const getOrCreateUploadQueue = (): UploadQueue | null => {
   if (uploadQueue) return uploadQueue
@@ -83,6 +86,24 @@ const getOrCreateUploadQueue = (): UploadQueue | null => {
     getNetworkMonitor() ?? undefined
   )
   return uploadQueue
+}
+
+/**
+ * Every download — eager pull fan-out, re-driven failures, on-demand IPC and
+ * canvas assets — funnels through this one queue, which is what bounds
+ * concurrency, paces requests under the server's blob_download bucket and
+ * turns a 429 into a single global pause (#1829). Same NetworkMonitor-binding
+ * lifetime rules as the upload queue: it must die with the runtime.
+ */
+const getOrCreateDownloadQueue = (): DownloadQueue | null => {
+  if (downloadQueue) return downloadQueue
+  const service = getOrCreateAttachmentService()
+  if (!service) return null
+  downloadQueue = new DownloadQueue(
+    service.downloadAttachment.bind(service),
+    getNetworkMonitor() ?? undefined
+  )
+  return downloadQueue
 }
 
 /**
@@ -186,8 +207,10 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
  * Bound upload/download IO over the SHARED attachment singletons, for the
  * canvas asset service to reuse (no second queue/service). Uploads go through
  * the upload queue (network gating + backoff) and return the full manifest;
- * downloads go straight through the service. Returns null only if the sync
- * singletons cannot be constructed.
+ * downloads go through the download queue as 'interactive' (an open canvas is
+ * waiting on the bytes), which jumps the background work while still counting
+ * against the shared concurrency bound and blob_download pacing. Returns null
+ * only if the sync singletons cannot be constructed.
  */
 export function getCanvasAssetIO(): {
   uploadAttachment: (canvasId: string, filePath: string) => Promise<UploadResult>
@@ -200,7 +223,14 @@ export function getCanvasAssetIO(): {
     uploadAttachment: (canvasId, filePath) =>
       queue.enqueue(canvasId, filePath, createUploadProgressBroadcaster()),
     downloadAttachment: async (attachmentId, targetPath) => {
-      await service.downloadAttachment(attachmentId, targetPath)
+      const dlQueue = getOrCreateDownloadQueue()
+      if (!dlQueue) throw new Error('Sync not initialized')
+      await dlQueue.enqueue({
+        ownerId: attachmentId,
+        attachmentId,
+        targetPath,
+        source: 'interactive'
+      })
     }
   }
 }
@@ -229,6 +259,13 @@ export function clearAttachmentState(): void {
   if (uploadQueue) {
     uploadQueue.dispose()
     uploadQueue = null
+  }
+  if (downloadQueue) {
+    // Rejects queued items with DownloadQueueClearedError; the download-needed
+    // callback releases their claims instead of recording failures, so the next
+    // pull or re-drive is free to request them again.
+    downloadQueue.dispose()
+    downloadQueue = null
   }
   attachmentService = null
 }
@@ -292,8 +329,8 @@ export function registerAttachmentHandlers(): void {
       const token = await getValidAccessToken()
       if (!token) return { success: false, error: getMainI18n().t('errors:auth.notAuthenticated') }
 
-      const service = getOrCreateAttachmentService()
-      if (!service)
+      const queue = getOrCreateDownloadQueue()
+      if (!queue)
         return { success: false, error: getMainI18n().t('errors:sync.engineNotInitialized') }
 
       try {
@@ -312,7 +349,15 @@ export function registerAttachmentHandlers(): void {
           }
         }
 
-        const result = await service.downloadAttachment(input.attachmentId, targetPath, {
+        // 'interactive': the renderer is waiting on this file, so it goes ahead
+        // of eager/re-driven work — but still inside the shared concurrency
+        // bound and pacing, and it always runs regardless of the on-demand-only
+        // toggle (this IS the on-demand path).
+        const result = await queue.enqueue({
+          ownerId: input.attachmentId,
+          attachmentId: input.attachmentId,
+          targetPath,
+          source: 'interactive',
           onProgress: createDownloadProgressBroadcaster()
         })
         return { success: true, filePath: result.filePath }
@@ -441,72 +486,101 @@ export function registerAttachmentHandlers(): void {
     })()
   })
 
-  attachmentEvents.onDownloadNeeded(({ noteId, attachmentId, diskPath, intoDir }) => {
-    void (async () => {
-      // Only the OUTCOME may settle the guard. The requester marks the attempt
-      // in flight before emitting, so every exit from here has to either record
-      // a result or release the claim — otherwise the attachment is never asked
-      // for again for the life of the process.
-      const token = await getValidAccessToken()
-      if (!token) return releaseDownloadAttempt(noteId, attachmentId)
+  attachmentEvents.onDownloadNeeded(
+    ({ noteId, attachmentId, diskPath, intoDir, sizeHint, recencyHint }) => {
+      void (async () => {
+        // Only the OUTCOME may settle the guard. The requester marks the attempt
+        // in flight before emitting, so every exit from here has to either record
+        // a result or release the claim — otherwise the attachment is never asked
+        // for again for the life of the process.
+        const token = await getValidAccessToken()
+        if (!token) return releaseDownloadAttempt(noteId, attachmentId)
 
-      const service = getOrCreateAttachmentService()
-      if (!service) return releaseDownloadAttempt(noteId, attachmentId)
-      try {
-        markWritebackIgnored(diskPath)
-        const result = intoDir
-          ? await service.downloadAttachment(attachmentId, diskPath, { targetIsDir: true })
-          : await service.downloadAttachment(attachmentId, diskPath)
-        markDownloadSucceeded(isDatabaseInitialized() ? getDatabase() : null, noteId, attachmentId)
-        // The manifest froze this file's name at upload, so a device that
-        // materializes it after an in-app rename (#1714) gets the OLD name.
-        // The note body is the authority — rename to what it asks for before
-        // anything is told the file exists.
-        if (intoDir && isDatabaseInitialized()) {
-          await applyDownloadedAttachmentName(noteId, result.filePath)
+        // On-demand-only mode: background downloads (pull fan-out and re-drive
+        // both arrive through this event) are suppressed. Releasing the claim —
+        // not recording an outcome — keeps the attachment requestable the moment
+        // the toggle flips back or an explicit IPC download asks for it.
+        if (isDatabaseInitialized() && !isAttachmentAutoDownloadEnabled(getDatabase())) {
+          return releaseDownloadAttempt(noteId, attachmentId)
         }
-        // The bytes are on disk now, but a note that is already open resolved
-        // its attachment URLs when its blocks were built and never asks again.
-        // Without this the file is invisible until the app is restarted —
-        // reopening the note does not help, the editor never unmounts.
-        broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, { noteId })
-        // Embedded attachments land inside attachments/<noteId>/ — the note's
-        // own fileSize (a binary-note concept) must not be overwritten by them.
-        if (!intoDir) {
-          const stats = await fs.promises.stat(result.filePath)
-          if (isDatabaseInitialized()) {
-            recordDownloadedFileSize(noteId, stats.size)
+
+        const queue = getOrCreateDownloadQueue()
+        if (!queue) return releaseDownloadAttempt(noteId, attachmentId)
+        try {
+          markWritebackIgnored(diskPath)
+          // The eager path FEEDS THE QUEUE instead of firing a download directly:
+          // the queue owns concurrency, pacing, the global 429 pause and the
+          // hybrid priority ordering (recently-used + small first).
+          const result = await queue.enqueue({
+            ownerId: noteId,
+            attachmentId,
+            targetPath: diskPath,
+            ...(intoDir ? { targetIsDir: true } : {}),
+            source: 'eager',
+            ...(sizeHint !== undefined ? { sizeHint } : {}),
+            ...(recencyHint !== undefined ? { recencyHint } : {})
+          })
+          markDownloadSucceeded(
+            isDatabaseInitialized() ? getDatabase() : null,
+            noteId,
+            attachmentId
+          )
+          // The manifest froze this file's name at upload, so a device that
+          // materializes it after an in-app rename (#1714) gets the OLD name.
+          // The note body is the authority — rename to what it asks for before
+          // anything is told the file exists.
+          if (intoDir && isDatabaseInitialized()) {
+            await applyDownloadedAttachmentName(noteId, result.filePath)
           }
+          // The bytes are on disk now, but a note that is already open resolved
+          // its attachment URLs when its blocks were built and never asks again.
+          // Without this the file is invisible until the app is restarted —
+          // reopening the note does not help, the editor never unmounts.
+          broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_MATERIALIZED, { noteId })
+          // Embedded attachments land inside attachments/<noteId>/ — the note's
+          // own fileSize (a binary-note concept) must not be overwritten by them.
+          if (!intoDir) {
+            const stats = await fs.promises.stat(result.filePath)
+            if (isDatabaseInitialized()) {
+              recordDownloadedFileSize(noteId, stats.size)
+            }
+          }
+        } catch (err) {
+          if (err instanceof DownloadQueueClearedError) {
+            // Queue torn down (vault switch / runtime restart) before the item
+            // ran. Not an outcome — release the claim so the next pull or
+            // re-drive can ask again, and record no failure.
+            return releaseDownloadAttempt(noteId, attachmentId)
+          }
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          // A 404 means the server does not have this attachment and never will:
+          // persist that so the request is not replayed on every launch. Anything
+          // else keeps its retry, on a backoff.
+          const reason = markDownloadFailed(
+            isDatabaseInitialized() ? getDatabase() : null,
+            noteId,
+            attachmentId,
+            err
+          )
+          logger.error('Attachment download failed', {
+            noteId,
+            attachmentId,
+            diskPath,
+            reason,
+            error: message
+          })
+          // Mirrors the upload path above — a download-side outage (auth, R2,
+          // decrypt) must not repeat the 58-day blindness the upload path had.
+          trackMainError('sync_attachments', 'attachment_download_failed', err)
+          broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+            noteId,
+            diskPath,
+            error: message
+          })
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        // A 404 means the server does not have this attachment and never will:
-        // persist that so the request is not replayed on every launch. Anything
-        // else keeps its retry, on a backoff.
-        const reason = markDownloadFailed(
-          isDatabaseInitialized() ? getDatabase() : null,
-          noteId,
-          attachmentId,
-          err
-        )
-        logger.error('Attachment download failed', {
-          noteId,
-          attachmentId,
-          diskPath,
-          reason,
-          error: message
-        })
-        // Mirrors the upload path above — a download-side outage (auth, R2,
-        // decrypt) must not repeat the 58-day blindness the upload path had.
-        trackMainError('sync_attachments', 'attachment_download_failed', err)
-        broadcastToAllWindows(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
-          noteId,
-          diskPath,
-          error: message
-        })
-      }
-    })()
-  })
+      })()
+    }
+  )
 }
 
 export function unregisterAttachmentHandlers(): void {
