@@ -27,24 +27,45 @@ import { WebSocketManager } from './websocket'
 import { initTaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { initInboxSyncService, resetInboxSyncService } from '@memry/sync-client/inbox-sync'
 import { initFilterSyncService, resetFilterSyncService } from '@memry/sync-client/filter-sync'
-import { initTaskActivitySyncService, resetTaskActivitySyncService } from '@memry/sync-client/task-activity-sync'
+import {
+  initTaskActivitySyncService,
+  resetTaskActivitySyncService
+} from '@memry/sync-client/task-activity-sync'
 import { getCurrentDeviceId } from '@memry/sync-client/current-device-id'
 import { initBookmarkSyncService, resetBookmarkSyncService } from '@memry/sync-client/bookmark-sync'
 import { initTemplateSyncService, resetTemplateSyncService } from '@memry/sync-client/template-sync'
-import { initHomePageSyncService, resetHomePageSyncService } from '@memry/sync-client/home-page-sync'
-import { initCustomIconSyncService, resetCustomIconSyncService } from '@memry/sync-client/custom-icon-sync'
+import {
+  initHomePageSyncService,
+  resetHomePageSyncService
+} from '@memry/sync-client/home-page-sync'
+import {
+  initCustomIconSyncService,
+  resetCustomIconSyncService
+} from '@memry/sync-client/custom-icon-sync'
 import { initReminderSyncService, resetReminderSyncService } from '@memry/sync-client/reminder-sync'
 import { initCanvasSyncService, resetCanvasSyncService } from '@memry/sync-client/canvas-sync'
-import { initCanvasFolderSyncService, resetCanvasFolderSyncService } from '@memry/sync-client/canvas-folder-sync'
+import {
+  initCanvasFolderSyncService,
+  resetCanvasFolderSyncService
+} from '@memry/sync-client/canvas-folder-sync'
 import { initProjectSyncService, resetProjectSyncService } from '@memry/sync-client/project-sync'
 import { initSettingsSyncManager, resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
 import { initNoteSyncService, resetNoteSyncService } from './note-sync'
 import { resetAttachmentDownloadSession } from '@memry/sync-client/attachment-download-state'
 import { resetAttachmentQueue } from './attachment-outbox'
 import { initJournalSyncService, resetJournalSyncService } from './journal-sync'
-import { initTagDefinitionSyncService, resetTagDefinitionSyncService } from '@memry/sync-client/tag-definition-sync'
-import { initTagCategorySyncService, resetTagCategorySyncService } from '@memry/sync-client/tag-category-sync'
-import { initFolderConfigSyncService, resetFolderConfigSyncService } from '@memry/sync-client/folder-config-sync'
+import {
+  initTagDefinitionSyncService,
+  resetTagDefinitionSyncService
+} from '@memry/sync-client/tag-definition-sync'
+import {
+  initTagCategorySyncService,
+  resetTagCategorySyncService
+} from '@memry/sync-client/tag-category-sync'
+import {
+  initFolderConfigSyncService,
+  resetFolderConfigSyncService
+} from '@memry/sync-client/folder-config-sync'
 import { initCalendarEventSyncService, resetCalendarEventSyncService } from './calendar-event-sync'
 import {
   initCalendarSourceSyncService,
@@ -990,6 +1011,16 @@ export async function stopSyncRuntime(options?: { skipFinalSync?: boolean }): Pr
   }
 
   if (startPromise) {
+    // Prompt cancel BEFORE awaiting the start: startPromise includes the
+    // engine's entire first fullSync, so a close or vault switch seconds into a
+    // fresh-vault pull used to stall this IPC for the whole minutes-long pull.
+    // The engine is reachable mid-start — `runtime` is assigned before
+    // `engine.start()` is awaited — and requestCancel aborts its active cycle
+    // and latches off every later one, so the await below only covers safe
+    // teardown of work already unwinding. With no runtime yet there is no sync
+    // cycle to cancel; the start is still inside policy gates or provider init
+    // and settles on its own.
+    runtime?.engine.requestCancel()
     await startPromise.catch(() => {})
   }
 

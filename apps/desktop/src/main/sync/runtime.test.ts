@@ -65,8 +65,17 @@ const runtimeMocks = vi.hoisted(() => {
     static instances: SyncEngine[] = []
     start = vi.fn(async () => {
       if (runtimeMocks.engineStartError) throw runtimeMocks.engineStartError
+      // Holds start open like a minutes-long first fullSync until a test
+      // releases it, so "stopSyncRuntime does not wait out the sync" is
+      // observable instead of assumed.
+      if (runtimeMocks.engineStartGate) {
+        await new Promise<void>((resolve) => {
+          runtimeMocks.engineStartGate!.resolve = resolve
+        })
+      }
     })
     stop = vi.fn(async () => undefined)
+    requestCancel = vi.fn()
     requestPush = vi.fn()
     mergeRemoteCrdtForNote = vi.fn(async (_noteId: string) => true)
     hasUnmergedRemoteCrdtState = vi.fn((noteId: string) =>
@@ -124,6 +133,8 @@ const runtimeMocks = vi.hoisted(() => {
     networkOnline: true,
     engineStartError: null as Error | null,
     workerStartError: null as Error | null,
+    /** When set, the mocked engine's start parks here until `resolve` fires. */
+    engineStartGate: null as null | { resolve: () => void },
     db: null as any,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
     currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
@@ -472,6 +483,7 @@ describe('sync runtime', () => {
     runtimeMocks.networkOnline = true
     runtimeMocks.engineStartError = null
     runtimeMocks.workerStartError = null
+    runtimeMocks.engineStartGate = null
     runtimeMocks.indexRows = [{ id: 'note-1', title: 'Note 1', date: null }]
     runtimeMocks.unverifiedCrdtNotes.clear()
     runtimeMocks.currentDevice = { id: 'device-1', signingPublicKey: null }
@@ -687,6 +699,38 @@ describe('sync runtime', () => {
     expect(runtimeMocks.WebSocketManager.instances[0].disconnect).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.NetworkMonitor.instances[0].stop).toHaveBeenCalledTimes(1)
     expect(runtimeMocks.resetCrdtProvider).toHaveBeenCalled()
+  })
+
+  it('prompts cancel on the in-flight start instead of waiting out the first full sync', async () => {
+    // #1830 follow-up: closeVault/quit used to await startPromise — which
+    // includes the engine's entire initial fullSync — before any abort fired,
+    // so closing seconds into a fresh-vault pull stalled teardown for minutes.
+    const runtime = await loadRuntime()
+    runtimeMocks.engineStartGate = {}
+    void runtime.startSyncRuntime()
+
+    // The engine is reachable while its start is still running: the runtime
+    // slot is filled before engine.start() is awaited.
+    await vi.waitFor(() => expect(runtime.getSyncEngine()).not.toBeNull())
+    const engine = runtimeMocks.SyncEngine.instances[0]!
+    await vi.waitFor(() => expect(engine.start).toHaveBeenCalled())
+
+    let stopSettled = false
+    const stopPromise = runtime.stopSyncRuntime().then(() => {
+      stopSettled = true
+    })
+
+    // Teardown must not wait out the parked start...
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(stopSettled).toBe(false)
+    // ...it prompts the engine to cancel instead, so the pull unwinds between
+    // pages and the await only covers the safe teardown of dead work.
+    expect(engine.requestCancel).toHaveBeenCalledTimes(1)
+
+    runtimeMocks.engineStartGate.resolve?.()
+    await stopPromise
+
+    expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
   })
 
   it('defers CRDT snapshot pushes instead of re-uploading after every batch', async () => {

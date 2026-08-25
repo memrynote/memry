@@ -26,6 +26,7 @@ let deviceRevokedListeners: EventCallback[] = []
 let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
 let vaultRecoveryNeededListeners: EventCallback[] = []
+let vaultStatusListeners: EventCallback[] = []
 let i18n: I18nInstance
 
 const toastMock = vi.hoisted(() => ({
@@ -115,6 +116,7 @@ beforeEach(async () => {
   securityWarningListeners = []
   certificatePinFailedListeners = []
   vaultRecoveryNeededListeners = []
+  vaultStatusListeners = []
   logoutMock.mockClear()
   vi.mocked(useAuth).mockReturnValue({
     state: { status: 'authenticated' },
@@ -229,6 +231,12 @@ beforeEach(async () => {
     vaultRecoveryNeededListeners.push(cb)
     return () => {
       vaultRecoveryNeededListeners = vaultRecoveryNeededListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onVaultStatusChanged = vi.fn((cb: EventCallback) => {
+    vaultStatusListeners.push(cb)
+    return () => {
+      vaultStatusListeners = vaultStatusListeners.filter((l) => l !== cb)
     }
   })
 })
@@ -717,6 +725,104 @@ describe('SyncProvider', () => {
         'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
         { duration: 15000 }
       )
+    })
+  })
+
+  describe('#given initial-sync progress on screen #when its transfer ends without a complete event', () => {
+    const mountWithProgress = async () => {
+      const rendered = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => {
+        expect(initialSyncProgressListeners.length).toBeGreaterThan(0)
+      })
+      act(() => {
+        for (const cb of initialSyncProgressListeners) {
+          cb({ phase: 'notes', processedItems: 12, totalItems: 200 })
+        }
+      })
+      expect(rendered.result.current.state.initialSyncProgress).toEqual({
+        phase: 'notes',
+        current: 12,
+        total: 200
+      })
+      return rendered
+    }
+
+    it('#then an offline-start failure retires the stale progress', async () => {
+      // A pull that dies in a rethrowing category never emits phase:'complete'
+      // — the skeleton would otherwise outlive the dead transfer.
+      const { result } = await mountWithProgress()
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'offline', pendingCount: 0 })
+      })
+
+      expect(result.current.state.initialSyncProgress).toBeNull()
+    })
+
+    it('#then an error status retires the stale progress, but the mid-fullSync idle blip does not', async () => {
+      const { result } = await mountWithProgress()
+
+      // releaseLock fires a transient idle blip between the pull→push phases
+      // of every healthy fullSync; clearing there would flicker the UI.
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
+      })
+      expect(result.current.state.initialSyncProgress).toEqual({
+        phase: 'notes',
+        current: 12,
+        total: 200
+      })
+
+      act(() => {
+        for (const cb of syncStatusListeners) {
+          cb({ status: 'error', pendingCount: 0, error: 'rate limited' })
+        }
+      })
+      expect(result.current.state.initialSyncProgress).toBeNull()
+    })
+
+    it('#then pausing retires the stale progress', async () => {
+      const { result } = await mountWithProgress()
+
+      act(() => {
+        for (const cb of pausedListeners) cb({ pendingCount: 4 })
+      })
+
+      expect(result.current.state.status).toBe('paused')
+      expect(result.current.state.initialSyncProgress).toBeNull()
+    })
+
+    it('#then a vault switch resets so stale progress is never shown for the next vault', async () => {
+      const { result } = await mountWithProgress()
+      await vi.waitFor(() => expect(vaultStatusListeners.length).toBeGreaterThan(0))
+      act(() => {
+        for (const cb of vaultStatusListeners) cb({ isOpen: true, path: '/vaults/a' })
+      })
+      act(() => {
+        for (const cb of vaultStatusListeners) cb({ isOpen: true, path: '/vaults/b' })
+      })
+
+      expect(result.current.state.initialSyncProgress).toBeNull()
+      expect(result.current.state.status).toBe('unknown')
+    })
+
+    it('#then vault status events that keep the same path reset nothing', async () => {
+      const { result } = await mountWithProgress()
+      await vi.waitFor(() => expect(vaultStatusListeners.length).toBeGreaterThan(0))
+      act(() => {
+        for (const cb of vaultStatusListeners) cb({ isOpen: true, path: '/vaults/a' })
+      })
+      act(() => {
+        for (const cb of vaultStatusListeners) {
+          cb({ isOpen: true, path: '/vaults/a', isIndexing: true, indexProgress: 40 })
+        }
+      })
+
+      expect(result.current.state.initialSyncProgress).toEqual({
+        phase: 'notes',
+        current: 12,
+        total: 200
+      })
     })
   })
 })
