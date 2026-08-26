@@ -320,16 +320,24 @@ export class FullSyncRunner {
   }
 
   /**
-   * Has any vault-wide sweep run on this engine? Gates the bootstrap
-   * full-text mark: before the first sweep, an empty paced queue means
-   * "nothing queued yet" (an offline first sync, a refused pull), not
-   * "every body is current".
+   * Is the vault-wide sweep QUESTION settled on this engine — either a sweep
+   * ran, or a run finished having decided none was needed or possible?
+   *
+   * Gates the bootstrap full-text mark. Before the question is settled an
+   * empty paced queue means "nothing queued yet" (an offline first sync, a
+   * refused pull), not "every body is current".
+   *
+   * It deliberately is NOT "a sweep literally ran". The sweep throttle reads a
+   * persisted timestamp while fresh-device detection reads `LAST_CURSOR`, so a
+   * real bootstrap can find the sweep throttled and never run one — and the
+   * mark would then never fire, leaving the bootstrap window and the elevated
+   * session open until the session TTL expires.
    */
-  private sweptOnThisEngine = false
+  private sweepSettledOnThisEngine = false
 
   /**
    * Has a pull actually RESOLVED on this engine? Gates the bootstrap
-   * full-text mark alongside `sweptOnThisEngine`: a sweep proves it ran,
+   * full-text mark alongside `sweepSettledOnThisEngine`: a sweep proves it ran,
    * never that the pull delivered — and on a fresh device an empty index DB
    * makes every sweep drain trivially, so only pull success is evidence that
    * any body was fetched at all.
@@ -337,7 +345,7 @@ export class FullSyncRunner {
   private bootstrapPullSucceeded = false
 
   private sweepAllCrdtNotes(): void {
-    this.sweptOnThisEngine = true
+    this.sweepSettledOnThisEngine = true
     // Read before the generation is re-stamped below: only a sweep that closes
     // a real drop/reconnect gap starts the floor for the next one.
     if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
@@ -520,13 +528,39 @@ export class FullSyncRunner {
       throw error
     } finally {
       this.ctx.fullSyncActive = false
-      if (
-        this.ctx.deps.crdtProvider &&
-        isIndexDatabaseInitialized() &&
-        this.shouldSweepAllCrdtNotes(forceCrdtSweep)
-      ) {
+      // "Could a sweep run at all?" and "should one run now?" are different
+      // questions, and only the second one settles anything. Without a CRDT
+      // provider or an initialized index DB nothing was ever queued, so an
+      // empty paced queue is not evidence that bodies are current — that case
+      // stays unsettled exactly as before.
+      const canSweep = this.ctx.deps.crdtProvider != null && isIndexDatabaseInitialized()
+      if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep)) {
         this.sweepAllCrdtNotes()
+      } else if (canSweep && this.ctx.deps.network.online) {
+        // ONLINE and the throttle declined: nothing is outstanding, because a
+        // sweep ran recently enough for the interval to still be closed.
+        //
+        // The online check is not redundant. `shouldSweepAllCrdtNotes` returns
+        // false for TWO very different reasons, and its FIRST line is
+        // `if (!network.online) return false`. Offline means "nothing is
+        // fetchable", not "nothing is outstanding" — settling there would let a
+        // device that has never swept and cannot reach the server claim every
+        // body is current. Nothing downstream will call
+        // `maybeMarkBootstrapFullText` again, so without settling here the
+        // bootstrap window and the elevated session both stay open for the life
+        // of the process, holding the per-user session slot until its TTL.
+        //
+        // This is reachable on a real bootstrap: the throttle reads a PERSISTED
+        // timestamp while fresh-device detection reads `LAST_CURSOR`. Reset the
+        // server while keeping local state and the two disagree, so a genuine
+        // first sync finds the sweep throttled and never runs one.
+        // `bootstrapPullSucceeded` still carries the "bodies were delivered"
+        // evidence independently.
+        this.sweepSettledOnThisEngine = true
       }
+      // flushPendingCrdtPulls() ends with pumpPacedCrdtPulls() +
+      // maybeMarkBootstrapFullText(), so the settle above is re-evaluated here
+      // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
   }
@@ -546,7 +580,19 @@ export class FullSyncRunner {
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
-      if (!provider?.storeId) return
+      //
+      // This used to `return` silently, which made a skipped pack bootstrap
+      // indistinguishable from one that ran and found no packs: a real
+      // fresh-device run produced ZERO pack log lines and never even created
+      // the temp dir, and nothing in the logs said why. A feature that can
+      // no-op itself has to say so.
+      if (!provider?.storeId) {
+        log.info('fullSync: pack bootstrap skipped — no CRDT store', {
+          hasProvider: provider != null,
+          storeId: provider?.storeId ?? null
+        })
+        return
+      }
 
       const [
         path,
@@ -741,7 +787,7 @@ export class FullSyncRunner {
    * slot while reverting every pacing site in the same tick.
    */
   private maybeMarkBootstrapFullText(): void {
-    if (!this.sweptOnThisEngine) return
+    if (!this.sweepSettledOnThisEngine) return
     // The sweep gate proves a sweep RAN; on a fresh device an empty index DB
     // makes every sweep drain trivially, failed pull or not. Only a pull that
     // actually resolved turns "queue empty" into "bodies delivered".

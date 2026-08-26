@@ -34,7 +34,9 @@ const mocks = vi.hoisted(() => ({
   getIndexDatabase: vi.fn(),
   beginBootstrap: vi.fn(),
   markBootstrapFullText: vi.fn(),
-  abandonBootstrap: vi.fn()
+  abandonBootstrap: vi.fn(),
+  openBootstrapSession: vi.fn(),
+  closeBootstrapSession: vi.fn()
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -49,6 +51,14 @@ vi.mock('../bootstrap-metrics', () => ({
   beginBootstrap: (...args: unknown[]) => mocks.beginBootstrap(...args),
   markBootstrapFullText: (...args: unknown[]) => mocks.markBootstrapFullText(...args),
   abandonBootstrap: (...args: unknown[]) => mocks.abandonBootstrap(...args)
+}))
+
+// Previously unmocked, so the real module ran in every test here and
+// `openBootstrapSession` genuinely reached `postToServer`. Session release is
+// the non-telemetry half of the bootstrap completion path and needs pinning.
+vi.mock('../bootstrap-session', () => ({
+  openBootstrapSession: (...args: unknown[]) => mocks.openBootstrapSession(...args),
+  closeBootstrapSession: (...args: unknown[]) => mocks.closeBootstrapSession(...args)
 }))
 
 vi.mock('../initial-seed', () => ({
@@ -1561,6 +1571,78 @@ describe('FullSyncRunner', () => {
       expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
       // And the one-shot window is not left open counting steady-state bytes
       // against a t0 nothing legitimate measured.
+      expect(mocks.abandonBootstrap).toHaveBeenCalled()
+    })
+
+    // Observed on a real bootstrap against a freshly reset server: the window
+    // opened, sync went fully idle, and neither the window nor the elevated
+    // session ever closed. The sweep throttle reads the PERSISTED
+    // LAST_CRDT_SWEEP_AT while fresh-device detection reads LAST_CURSOR, so
+    // resetting the server while keeping local state makes the two disagree —
+    // a genuine first sync finds the sweep throttled and never runs one, and
+    // nothing downstream ever calls maybeMarkBootstrapFullText again.
+    it('#then a bootstrap whose sweep is throttled still marks full text', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      // Fresh device (no cursor) but the sweep timestamp is recent: exactly the
+      // reset-the-server-keep-local-state shape.
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+    })
+
+    it('#then the settled path also releases the elevated bootstrap session', async () => {
+      // Closing the session is the only thing that frees the per-user slot and
+      // reverts pacing; leaving it open holds elevated limits until the TTL.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+
+      await h.runner.run()
+
+      expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('completed')
+    })
+
+    it('#then an offline cycle never settles the sweep question', async () => {
+      // `shouldSweepAllCrdtNotes` returns false for two different reasons and
+      // its FIRST line is the offline check. "Nothing is fetchable" is not
+      // "nothing is outstanding": a device that has never swept and cannot
+      // reach the server must not claim every body is current.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: false })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      // No sweep stamp at all — this device has never swept.
+      h.getStateValue.mockImplementation(() => undefined)
+
+      await h.runner.run()
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+      expect(mocks.closeBootstrapSession).not.toHaveBeenCalledWith('completed')
+    })
+
+    it('#then a throttled sweep does not rescue a run whose pull never resolved', async () => {
+      // Settling the sweep question must not become a back door around the
+      // pull-success evidence: no delivered bodies, no full-text mark.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT ? String(Date.now()) : undefined
+      )
+      h.actions.pull.mockRejectedValue(new Error('pull refused'))
+
+      await expect(h.runner.run()).rejects.toThrow('pull refused')
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
       expect(mocks.abandonBootstrap).toHaveBeenCalled()
     })
 
