@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
@@ -65,6 +65,25 @@ function NoteManageBody({
     await renameNote(ctx, noteId, draftTitle)
     onChanged()
   }, [ctx, draftTitle, noteId, onChanged, title])
+
+  /**
+   * Commit on UNMOUNT as well as on blur.
+   *
+   * Dismissing the sheet — the backdrop, the system back gesture — tears the
+   * field down without firing blur, so a typed rename was silently dropped.
+   * The ref carries the latest committer into the cleanup, which would
+   * otherwise capture the one from first render.
+   */
+  const latestRename = useRef(commitRename)
+  useEffect(() => {
+    latestRename.current = commitRename
+  }, [commitRename])
+  useEffect(
+    () => () => {
+      void latestRename.current()
+    },
+    []
+  )
 
   const commitMove = useCallback(
     async (next: string) => {

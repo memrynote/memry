@@ -35,7 +35,7 @@ export interface G3Measurement {
   /** The budgeted number: delivery + persist for the same edit. */
   endToEnd: LatencySummary
   counters: BridgeCounters
-  /** msgs-per-envelope, as a readable histogram; the batching proof (T075). */
+  /** msgs-per-RECEIVED-envelope, as a readable histogram; the proof (T075). */
   batching: { bucket: string; envelopes: number }[]
   /** Mean messages per envelope; must exceed 1 under a real typing burst. */
   msgsPerEnvelope: number
@@ -100,8 +100,11 @@ export class LatencyRecorder {
     const persist = summarize(this.persist)
     const endToEnd = summarize(this.endToEnd)
 
-    const envelopes = counters.msgsPerEnvelope.reduce((sum, n) => sum + n, 0)
-    const msgsPerEnvelope = envelopes === 0 ? 0 : counters.msgsSent / envelopes
+    // RECEIVED, not sent. The batching G3 gates is the WebView's coalescing of
+    // keystroke updates; the sent histogram counts RN→WebView traffic and
+    // would report ~1.00 forever, printing a permanent false FAIL.
+    const envelopes = counters.envelopesReceived
+    const msgsPerEnvelope = envelopes === 0 ? 0 : counters.msgsReceived / envelopes
 
     const failures: string[] = []
     if (endToEnd.samples === 0) {
@@ -139,7 +142,7 @@ export function histogram(counters: BridgeCounters): { bucket: string; envelopes
   const labels = ['1', '2', '3-4', '5-8', '9+']
   return MSGS_PER_ENVELOPE_BUCKETS.map((_, index) => ({
     bucket: labels[index] ?? `${index}`,
-    envelopes: counters.msgsPerEnvelope[index] ?? 0
+    envelopes: counters.msgsPerEnvelopeReceived[index] ?? 0
   }))
 }
 
@@ -154,6 +157,7 @@ export function formatG3Report(measurement: G3Measurement): string {
     line('persist', measurement.persist),
     line('end-to-end', measurement.endToEnd),
     '',
+    `envelopes received: ${measurement.counters.envelopesReceived}  msgs received: ${measurement.counters.msgsReceived}`,
     `envelopes sent: ${measurement.counters.envelopesSent}  msgs sent: ${measurement.counters.msgsSent}`,
     `msgs/envelope: ${measurement.msgsPerEnvelope.toFixed(2)} (must exceed 1.00)`,
     `seq gaps: ${measurement.counters.seqGaps}  resyncs: ${measurement.counters.resyncs}`,

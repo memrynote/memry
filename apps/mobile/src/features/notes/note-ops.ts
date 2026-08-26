@@ -1,4 +1,5 @@
 import type { VaultDb } from '@/db/index'
+import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
 import { deleteLocalCrdt } from '@/editor/session'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
@@ -93,7 +94,7 @@ async function writeAndEnqueue(
   write: () => Promise<void>,
   enqueue: () => Promise<void>
 ): Promise<void> {
-  await ctx.db.withTransactionAsync(async () => {
+  await withVaultTransaction(ctx.db, async () => {
     await write()
     await enqueue()
   })
@@ -183,7 +184,7 @@ export async function createNote(
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
 
   const serialized = JSON.stringify(payload)
-  await ctx.db.withTransactionAsync(async () => {
+  await withVaultTransaction(ctx.db, async () => {
     await ctx.db.runAsync(
       `INSERT INTO sync_items (id, type, vault_id, updated_at, payload_state, payload)
        VALUES (?, 'note', ?, ?, 'full', ?)`,
@@ -218,7 +219,7 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
   await ctx.outbox.dropForItem(noteId)
   await deleteLocalCrdt(ctx.db, noteId)
 
-  await ctx.db.withTransactionAsync(async () => {
+  await withVaultTransaction(ctx.db, async () => {
     // The bumped clock is written back with the tombstone. Without it a later
     // pull sees a clock that never advanced and can treat a remote update as
     // newer than the delete.

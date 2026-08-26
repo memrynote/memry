@@ -101,7 +101,11 @@ export class EditorBridgeProvider {
   }
 
   getCounters(): BridgeCounters {
-    return { ...this.counters, msgsPerEnvelope: [...this.counters.msgsPerEnvelope] }
+    return {
+      ...this.counters,
+      msgsPerEnvelope: [...this.counters.msgsPerEnvelope],
+      msgsPerEnvelopeReceived: [...this.counters.msgsPerEnvelopeReceived]
+    }
   }
 
   getDeliverySamples(): number[] {
@@ -204,6 +208,7 @@ export class EditorBridgeProvider {
     this.lastGuestSeq = seq
     this.counters.envelopesReceived += 1
     this.counters.msgsReceived += msgs.length
+    this.counters.msgsPerEnvelopeReceived[bucketForMsgCount(msgs.length)] += 1
     if (sentAt !== undefined) {
       this.lastDeliveryMs = receivedAt - sentAt
       this.deliverySamples.push(this.lastDeliveryMs)

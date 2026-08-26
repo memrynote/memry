@@ -30,10 +30,18 @@ a debug measurement is not evidence, it is a different number.
 ### 1. Offline matrix — ≥ 20 runs, 100 %
 
 ```bash
-pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 --udid <udid>
-# real hardware (prompts for the airplane-mode toggle at each transition):
-pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 --device
+# prompts at each transition:
+pnpm --filter @memry/mobile test:offline-matrix -- --runs 20
+# or script the cut (host firewall rule, network conditioner profile, …):
+pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 \
+  --offline-cmd '<take the device offline>' --online-cmd '<put it back>'
 ```
+
+The cut is **not** automated by default. `simctl status_bar --dataNetwork hide`
+only repaints the status bar; the simulator stays online, so a run driven by it
+would do all of its "offline" work with a working network. The offline flow
+asserts the app's own Offline banner for the same reason — a pass cannot
+quietly have run online.
 
 Attach: the driver's `20/20 passed` line, plus one screen recording of a single
 pass showing airplane mode → edit + create → force-quit → relaunch (edits present

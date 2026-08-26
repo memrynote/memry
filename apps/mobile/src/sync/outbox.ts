@@ -8,6 +8,7 @@ import {
 import { SyncServerError } from '@memry/sync-client/http-errors'
 import { seamJsonRequest, type SeamHttpContext } from '@memry/sync-client/pull'
 import { ItemTooLargeError } from '@memry/sync-client/note-size'
+import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
 import {
   encryptCrdtUpdatePacked,
   encryptRecordForPush,
@@ -207,7 +208,10 @@ const RECORD_BATCH_LIMIT = 100
  * The server's cap on `updates` in one `POST /sync/crdt/updates`.
  *
  * Exceeding it is a 400 that repeats on every drain, so a note edited heavily
- * offline would never sync its body again.
+ * offline would never sync its body again. The COUNT is only half of it — the
+ * request also has to fit the byte budgets `planCrdtUpdatePush` enforces (a D1
+ * row cap per update, an 8 MiB body cap per request), and a 250-update chunk
+ * of large pastes clears the count and still 413s.
  */
 const CRDT_UPDATES_PER_REQUEST = 100
 
@@ -232,6 +236,15 @@ export interface OutboxQueue {
 
 export interface OutboxDrainDeps {
   store: OutboxQueue
+  /**
+   * Full Y.Doc state for a note, used when a single update is too large to
+   * send incrementally.
+   *
+   * Without it such an update has nowhere to go: it cannot be split, and
+   * dropping it would lose the edit. A snapshot supersedes it and every update
+   * queued behind it, which is exactly what the desktop path does.
+   */
+  encodeDocSnapshot?: (docId: string) => Promise<Uint8Array | null>
   httpCtx: () => SeamHttpContext
   crypto: SyncPushCryptoProvider
   vaultKey: () => Uint8Array | null
@@ -332,42 +345,112 @@ export class OutboxDrain {
     if (empty.length > 0) await this.deps.store.complete(empty.map((r) => r.id))
     if (usable.length === 0) return { pushed: 0, failed: 0, stop: false }
 
-    let pushed = 0
-
-    // Chunked at the server's own cap. A note edited heavily offline easily
-    // accumulates more than this, and one over-sized request is a 400 that
-    // repeats forever — that note's body would never sync again.
-    for (let i = 0; i < usable.length; i += CRDT_UPDATES_PER_REQUEST) {
-      const chunk = usable.slice(i, i + CRDT_UPDATES_PER_REQUEST)
-      try {
-        const updates = chunk.map((row) =>
-          this.deps.crypto.toBase64(
-            encryptCrdtUpdatePacked(
-              this.deps.crypto,
-              row.payload!,
-              vaultKey,
-              noteId,
-              signingSecretKey
-            )
+    // Encrypt once, then let the shared planner decide what fits. It enforces
+    // both wire budgets the server has: the per-update D1 row cap and the
+    // per-request body cap. Anything it cannot place comes back as `oversized`
+    // rather than being silently dropped.
+    let encrypted: string[]
+    try {
+      encrypted = usable.map((row) =>
+        this.deps.crypto.toBase64(
+          encryptCrdtUpdatePacked(
+            this.deps.crypto,
+            row.payload!,
+            vaultKey,
+            noteId,
+            signingSecretKey
           )
         )
-        await seamJsonRequest<{ sequences: number[] }>(this.deps.httpCtx(), {
-          method: 'POST',
-          path: '/sync/crdt/updates',
-          body: { noteId, updates }
-        })
-        await this.deps.store.complete(chunk.map((r) => r.id))
-        pushed += chunk.length
-      } catch (err) {
-        // Only the rows that did NOT land are failed: the chunks before this
-        // one are already completed, and re-sending them would be a duplicate
-        // (harmless, but it also means their backoff is wrong).
-        const outcome = await this.handleFailure(usable.slice(i), err)
-        return { pushed, failed: outcome.failed, stop: outcome.stop }
+      )
+    } catch (err) {
+      return this.handleFailure(usable, err)
+    }
+
+    const plan = planCrdtUpdatePush(encrypted)
+    const oversizedSet = new Set(plan.oversized)
+    const incremental = usable.filter((_, index) => !oversizedSet.has(encrypted[index]))
+    const byPayload = new Map(encrypted.map((payload, index) => [payload, usable[index]]))
+
+    let pushed = 0
+
+    for (const request of plan.requests) {
+      // The planner bounds bytes; this bounds COUNT, which is a separate cap.
+      for (let i = 0; i < request.length; i += CRDT_UPDATES_PER_REQUEST) {
+        const updates = request.slice(i, i + CRDT_UPDATES_PER_REQUEST)
+        const rowsInChunk = updates.map((payload) => byPayload.get(payload)!).filter(Boolean)
+        try {
+          await seamJsonRequest<{ sequences: number[] }>(this.deps.httpCtx(), {
+            method: 'POST',
+            path: '/sync/crdt/updates',
+            body: { noteId, updates }
+          })
+          await this.deps.store.complete(rowsInChunk.map((r) => r.id))
+          pushed += rowsInChunk.length
+        } catch (err) {
+          // Only rows that did NOT land are failed: earlier chunks are already
+          // completed, and re-sending them would give them the wrong backoff.
+          const remaining = incremental.filter((row) => !rowsInChunk.includes(row))
+          const outcome = await this.handleFailure(remaining, err)
+          return { pushed, failed: outcome.failed, stop: outcome.stop }
+        }
       }
     }
 
+    if (plan.oversized.length > 0) {
+      const oversizedRows = plan.oversized.map((payload) => byPayload.get(payload)!).filter(Boolean)
+      const outcome = await this.pushSnapshot(noteId, oversizedRows, vaultKey, signingSecretKey)
+      return { pushed: pushed + outcome.pushed, failed: outcome.failed, stop: outcome.stop }
+    }
+
     return { pushed, failed: 0, stop: false }
+  }
+
+  /**
+   * Replace a note's server-side state with a full snapshot.
+   *
+   * The escape hatch for an update no incremental request can carry — a huge
+   * paste, typically. The snapshot contains everything those updates said, so
+   * their rows are completed with it; leaving them queued would retry a
+   * request that can only ever 413.
+   */
+  private async pushSnapshot(
+    noteId: string,
+    rows: OutboxRow[],
+    vaultKey: Uint8Array,
+    signingSecretKey: Uint8Array
+  ): Promise<{ pushed: number; failed: number; stop: boolean }> {
+    const encodeDocSnapshot = this.deps.encodeDocSnapshot
+    if (!encodeDocSnapshot) {
+      await this.deps.store.fail(
+        rows.map((r) => r.id),
+        'update too large and no snapshot source'
+      )
+      return { pushed: 0, failed: rows.length, stop: false }
+    }
+
+    try {
+      const state = await encodeDocSnapshot(noteId)
+      if (!state) {
+        await this.deps.store.fail(
+          rows.map((r) => r.id),
+          'update too large and doc unavailable'
+        )
+        return { pushed: 0, failed: rows.length, stop: false }
+      }
+      const snapshot = this.deps.crypto.toBase64(
+        encryptCrdtUpdatePacked(this.deps.crypto, state, vaultKey, noteId, signingSecretKey)
+      )
+      await seamJsonRequest<{ sequenceNum: number }>(this.deps.httpCtx(), {
+        method: 'POST',
+        path: '/sync/crdt/snapshot',
+        body: { noteId, snapshot }
+      })
+      await this.deps.store.complete(rows.map((r) => r.id))
+      log.info('Pushed a full snapshot for an oversized update', { noteId, rows: rows.length })
+      return { pushed: rows.length, failed: 0, stop: false }
+    } catch (err) {
+      return this.handleFailure(rows, err)
+    }
   }
 
   private async pushRecords(

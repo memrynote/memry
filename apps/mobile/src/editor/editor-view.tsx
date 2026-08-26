@@ -82,6 +82,15 @@ export function EditorView({
 }: EditorViewProps) {
   const webViewRef = useRef<WebView>(null)
   const [loaded, setLoaded] = useState(false)
+  /**
+   * Bumped to remount the WebView after iOS reclaims its content process.
+   *
+   * `reload()` re-fetches the current URL, and the source here is an inline
+   * HTML string served against `about:blank` — there is nothing to re-fetch,
+   * so the editor came back blank behind a permanent spinner with the bridge
+   * never re-attached. A new `key` rebuilds the view from the same source.
+   */
+  const [instance, setInstance] = useState(0)
   const html = useMemo(() => loadEditorWebHtml(), [])
 
   // One provider per mounted view. `sid` carries the doc id so a stray envelope
@@ -119,15 +128,28 @@ export function EditorView({
    * WebView had already been suspended.
    */
   const flushAndSettle = useCallback(async (): Promise<void> => {
+    // What the guest had sent us BEFORE the flush. An empty in-flight set right
+    // after `exec:flush` is the normal state — the reply has not crossed the
+    // bridge yet — so breaking on it means waiting for nothing, and the last
+    // keystrokes exist only in the WebView's non-durable replica if iOS
+    // suspends us a moment later.
+    const before = bridge.getCounters().msgsReceived
+
     bridge.send({ type: 'exec', cmd: 'flush' })
     bridge.flush()
 
     const deadline = Date.now() + 2_000
+    let sawReply = false
     while (Date.now() < deadline) {
-      // One turn for the guest's reply to arrive, then drain what it produced.
-      await new Promise((resolve) => setTimeout(resolve, 30))
-      if (inFlight.current.size === 0) break
-      await Promise.allSettled([...inFlight.current])
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      if (!sawReply && bridge.getCounters().msgsReceived > before) sawReply = true
+      if (inFlight.current.size > 0) {
+        await Promise.allSettled([...inFlight.current])
+        continue
+      }
+      // Nothing pending AND the guest has answered: everything it had is now
+      // durable. Without the reply check this exits on the first tick.
+      if (sawReply) return
     }
   }, [bridge])
 
@@ -318,7 +340,7 @@ export function EditorView({
     log.warn('WebView content process terminated; re-creating', { docId: doc.docId })
     setLoaded(false)
     bridge.detach()
-    webViewRef.current?.reload()
+    setInstance((value) => value + 1)
   }, [bridge, doc.docId])
 
   return (
@@ -327,6 +349,7 @@ export function EditorView({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <WebView
+        key={instance}
         ref={webViewRef}
         source={{ html, baseUrl: 'about:blank' }}
         onLoadEnd={onWebViewLoad}

@@ -3,6 +3,7 @@ import { AttachmentTransfer } from '../adapters/attachments'
 import { createMobileHttpClient } from '../adapters/http-client'
 import { mobileAppVersion } from '../adapters/runtime'
 import { openVaultDb, type VaultDb } from '../db/index'
+import { withVaultTransaction } from '../db/tx'
 import { getOrCreateDeviceId, getVaultKey } from '../lib/secure-store'
 import { loadPushSigningKeypair, loadSession, refreshSession } from '../sync/auth-client'
 import { DeviceKeyDirectory } from '../sync/device-keys'
@@ -83,18 +84,12 @@ export function createVaultDocStore(db: VaultDb): DocStore {
      * can leave both rows or neither, never an update that is saved locally
      * and that nothing will ever push.
      */
-    async withCommit<T>(fn: () => Promise<T>): Promise<T> {
-      // expo-sqlite's transaction wrapper discards the callback's value, so
-      // the result is carried out by hand rather than lost.
-      let result: T
-      await db.withTransactionAsync(async () => {
-        result = await fn()
-      })
-      return result!
+    withCommit<T>(fn: () => Promise<T>): Promise<T> {
+      return withVaultTransaction(db, fn)
     },
 
     async compactLocal(docId, snapshot) {
-      await db.withTransactionAsync(async () => {
+      await withVaultTransaction(db, async () => {
         // The fold point is read here, inside the transaction, rather than
         // taken from the caller: the caller only knows how many updates it has
         // seen, and a COUNT used as a SEQUENCE prunes nothing after the first
@@ -130,7 +125,7 @@ export function createVaultDocStore(db: VaultDb): DocStore {
  * locally-originated updates sit in the DB forever.
  */
 export async function deleteLocalCrdt(db: VaultDb, docId: string): Promise<void> {
-  await db.withTransactionAsync(async () => {
+  await withVaultTransaction(db, async () => {
     await db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [`${LOCAL_PREFIX}${docId}`])
     await db.runAsync('DELETE FROM yjs_snapshots WHERE doc_id = ?', [`${LOCAL_PREFIX}${docId}`])
   })
@@ -246,7 +241,17 @@ async function build(vaultId: string): Promise<EditorSession> {
     vaultKey: () => vaultKey,
     signingSecretKey: () => keypair?.privateKey ?? null,
     deviceId: () => deviceId,
-    isOnline: () => online
+    isOnline: () => online,
+    // The escape hatch for an update too large to send incrementally. The doc
+    // manager is the only thing that can produce a full state, and it is right
+    // here, so the drain never has to give up on a huge paste.
+    encodeDocSnapshot: async (docId) => {
+      try {
+        return (await docs.openDoc(docId)).encodeState()
+      } catch {
+        return null
+      }
+    }
   })
 
   // One directory for the whole session: the attachment manifest check and any

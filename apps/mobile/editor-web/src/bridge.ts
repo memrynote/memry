@@ -57,7 +57,11 @@ export class GuestBridge {
   }
 
   getCounters(): BridgeCounters {
-    return { ...this.counters, msgsPerEnvelope: [...this.counters.msgsPerEnvelope] }
+    return {
+      ...this.counters,
+      msgsPerEnvelope: [...this.counters.msgsPerEnvelope],
+      msgsPerEnvelopeReceived: [...this.counters.msgsPerEnvelopeReceived]
+    }
   }
 
   /** Handshake. Sent immediately, unbatched — nothing may precede it. */
@@ -151,6 +155,7 @@ export class GuestBridge {
     this.lastHostSeq = seq
     this.counters.envelopesReceived += 1
     this.counters.msgsReceived += msgs.length
+    this.counters.msgsPerEnvelopeReceived[bucketForMsgCount(msgs.length)] += 1
 
     for (const msg of msgs) {
       // Everything except the doc load itself is dropped until the doc exists;

@@ -255,8 +255,20 @@ export interface BridgeCounters {
   msgsSent: number
   envelopesReceived: number
   msgsReceived: number
-  /** Bucketed msgs-per-envelope: index 0 = 1 msg, 1 = 2, 2 = 3–4, 3 = 5–8, 4 = 9+. */
+  /**
+   * Bucketed msgs-per-envelope for what this end SENT.
+   * Index 0 = 1 msg, 1 = 2, 2 = 3–4, 3 = 5–8, 4 = 9+.
+   */
   msgsPerEnvelope: number[]
+  /**
+   * The same buckets for what this end RECEIVED.
+   *
+   * On the RN host this is the keystroke-coalescing measurement, and it is the
+   * one G3 asks for: the batching that matters is the WebView's, since that is
+   * where typing happens. Reading the sent histogram instead describes
+   * RN→WebView traffic and reports ~1.00 forever.
+   */
+  msgsPerEnvelopeReceived: number[]
   seqGaps: number
   resyncs: number
 }
@@ -277,6 +289,7 @@ export function emptyBridgeCounters(): BridgeCounters {
     envelopesReceived: 0,
     msgsReceived: 0,
     msgsPerEnvelope: new Array(MSGS_PER_ENVELOPE_BUCKETS.length).fill(0),
+    msgsPerEnvelopeReceived: new Array(MSGS_PER_ENVELOPE_BUCKETS.length).fill(0),
     seqGaps: 0,
     resyncs: 0
   }
