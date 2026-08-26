@@ -43,6 +43,13 @@ works around this on its own now, and it writes an `install.log` next to the app
 (typically `%LOCALAPPDATA%\Programs\memrynote`) that names the file it could not move.
 That log is the most useful thing you can send us if an update still fails.
 
+A failed Windows update can no longer remove the app. The installer keeps the old
+version in a backup folder next to the install folder until the new files are fully in
+place, and restores it automatically — at the next Windows sign-in at the latest — if
+anything interrupts the install, including shutting the PC down mid-update. For the same
+reason, an update is no longer installed while Windows itself is shutting down; it
+simply applies the next time you quit the app.
+
 One caveat if you are already affected. On Windows the step that removes the old files
 is run by the version you currently have installed, not by the one being installed — so
 these workarounds only take effect on updates _away from_ a build that contains them. If
