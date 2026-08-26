@@ -3,7 +3,14 @@ import { test as base, expect } from './sync-fixtures'
 import { waitForAppReady } from '../utils/electron-helpers'
 import { startSharedSyncBootstrap, type SharedSyncBootstrap } from '../utils/sync-backend'
 
-async function bootstrapSyncDevice(
+/**
+ * Bind one Electron profile to the shared sync account.
+ *
+ * Exported so a spec can stage devices one at a time — a FRESH-DEVICE test
+ * needs A seeded and pushed before B ever authenticates, which the
+ * `bootstrappedSyncPair` fixture (both devices at once) cannot express.
+ */
+export async function bootstrapSyncDevice(
   electronApp: ElectronApplication,
   input: SharedSyncBootstrap['deviceA']
 ): Promise<void> {
