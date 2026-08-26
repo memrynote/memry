@@ -44,8 +44,11 @@ import {
   getUpdates,
   getBatchUpdates,
   storeSnapshot,
+  storeSnapshotBatch,
   getSnapshot,
-  pruneUpdatesBeforeSnapshot
+  pruneUpdatesBeforeSnapshot,
+  pruneUpdatesBeforeSnapshotBatch,
+  type SnapshotBatchOutcome
 } from '../services/crdt'
 import { enqueuePackCompaction } from '../services/pack-compaction'
 import { listPacks } from '../services/pack-list'
@@ -580,7 +583,16 @@ const crdtPushRateLimit = createRateLimiter({
   keyPrefix: 'crdt_push',
   maxRequests: 300,
   windowSeconds: 60,
-  identifier: deviceIdentifier
+  identifier: deviceIdentifier,
+  // P1.2 (#1837) seam, wired for parity with the pull buckets. It is INERT
+  // today by design: elevation multiplies only for buckets listed in
+  // BOOTSTRAP_ELEVATION_MULTIPLIERS, and that map is deliberately pull-only —
+  // "pushes keep their abuse ceilings untouched". A bulk seed does not need it
+  // either: /snapshot/batch carries 50 notes per request, so a 1000-note vault
+  // costs 20 requests against a 300/min budget. Registering a `crdt_push`
+  // multiplier is the only change that would make this widen anything, and
+  // that is an abuse-posture decision, not a wiring one.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 // Sized for one device pulling an entire vault's bodies after a fresh sign-in.
@@ -633,6 +645,32 @@ const CrdtPushSchema = z.object({
 const CrdtSnapshotPushSchema = z.object({
   noteId: NoteIdSchema,
   snapshot: z.string()
+})
+
+/**
+ * #1857. 50 notes per request: a snapshot is up to 5MB decoded (~6.7MB of
+ * base64), so a full batch is the largest request the Worker body limit and the
+ * per-invocation subrequest budget comfortably take, and it already turns a
+ * 1000-note seed from 1000 requests into 20.
+ *
+ * `snapshot` is deliberately unbounded here. An oversized payload is a per-note
+ * failure reported in `results`, not a 400 that throws away the 49 good notes
+ * riding with it — decodeCrdtPayload enforces the 5MB ceiling per entry.
+ */
+const CrdtSnapshotBatchPushSchema = z.object({
+  snapshots: z
+    .array(
+      z.object({
+        noteId: NoteIdSchema,
+        snapshot: z.string()
+      })
+    )
+    .min(1)
+    .max(50)
+    .refine(
+      (arr) => new Set(arr.map((s) => s.noteId)).size === arr.length,
+      'Duplicate noteIds are not allowed'
+    )
 })
 
 const handleCrdtUpdatePush = async (c: Context<AppContext>): Promise<Response> => {
@@ -909,6 +947,149 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   return c.json({ sequenceNum: result.sequenceNum })
 }
 
+/**
+ * POST /sync/crdt/snapshot/batch (#1857).
+ *
+ * The amortised sibling of the single-note push: same writes, same invariants,
+ * six serial D1/R2 ops for FIFTY notes instead of for one. Answers 200 with a
+ * per-note `results` array in request order, so one bad payload or one failed R2
+ * put costs its own entry and nothing else. Whole-batch conditions — malformed
+ * request shape, storage quota — still surface as the status codes the
+ * single-note endpoint gives (400 / 413), because they are properties of the
+ * request rather than of any note in it.
+ *
+ * /sync/crdt/snapshot is untouched and stays the path every existing client uses.
+ */
+const handleCrdtSnapshotBatchPush = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
+  const endpoint = getRequestPath(c)
+  const startedAt = Date.now()
+  const body = await c.req.json()
+  const parsed = parseTransportRequest(CrdtSnapshotBatchPushSchema, body, {
+    transport: 'crdt',
+    endpoint,
+    label: 'CRDT snapshot batch request'
+  })
+
+  // Decode per note: an unusable payload is that note's result, not the batch's.
+  const results = new Array<SnapshotBatchOutcome | undefined>(parsed.snapshots.length)
+  const decoded: Array<{ index: number; noteId: string; snapshotData: ArrayBuffer }> = []
+  parsed.snapshots.forEach((entry, index) => {
+    try {
+      decoded.push({
+        index,
+        noteId: entry.noteId,
+        snapshotData: decodeCrdtPayload(entry.snapshot, endpoint, 'Snapshot exceeds 5MB limit')
+      })
+    } catch (error) {
+      results[index] = {
+        noteId: entry.noteId,
+        accepted: false,
+        reason: error instanceof AppError ? error.code : ErrorCodes.INTERNAL_ERROR
+      }
+    }
+  })
+
+  const totalBytes = decoded.reduce((sum, entry) => sum + entry.snapshotData.byteLength, 0)
+
+  let outcomes: SnapshotBatchOutcome[] = []
+  if (decoded.length > 0) {
+    try {
+      outcomes = await storeSnapshotBatch(
+        c.env.DB,
+        c.env.STORAGE,
+        userId,
+        vaultId,
+        deviceId,
+        decoded.map(({ noteId, snapshotData }) => ({ noteId, snapshotData })),
+        c.get('client') ?? null
+      )
+    } catch (error) {
+      if (error instanceof AppError && error.code === ErrorCodes.STORAGE_QUOTA_EXCEEDED) {
+        logCrdtTraffic({
+          endpoint,
+          event: 'snapshot_rejected',
+          noteCount: decoded.length,
+          totalBytes,
+          latencyMs: Date.now() - startedAt,
+          reason: error.code
+        })
+      }
+      throw error
+    }
+    decoded.forEach((entry, position) => {
+      results[entry.index] = outcomes[position]
+    })
+  }
+
+  const accepted = outcomes.filter((outcome) => outcome.accepted === true)
+
+  if (accepted.length > 0) {
+    await pruneUpdatesBeforeSnapshotBatch(
+      c.env.DB,
+      userId,
+      vaultId,
+      accepted.map((outcome) => ({ noteId: outcome.noteId, sequenceNum: outcome.sequenceNum }))
+    )
+
+    // One nudge for the whole batch — the queue message is per (user, vault),
+    // so fifty of them would be fifty copies of the same work.
+    waitUntilCaptured(c, enqueuePackCompaction(c.env, { userId, vaultId }), {
+      source: 'PackQueue',
+      action: 'pack_enqueue_failed'
+    })
+
+    // Same reasoning and same ordering as the single-note path: peers are told
+    // only after the stores AND the prune settle, one `crdt_updated` per note so
+    // the message shape older clients parse is unchanged. Best-effort — the
+    // writes are already durable, so a failed broadcast must not ask the client
+    // to push fifty snapshots again.
+    const doId = c.env.USER_SYNC_STATE.idFromName(userId)
+    const stub = c.env.USER_SYNC_STATE.get(doId)
+    waitUntilCaptured(
+      c,
+      Promise.all(
+        accepted.map((outcome) =>
+          stub.fetch(
+            new Request(new URL('/broadcast', c.req.url), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                excludeDeviceId: deviceId,
+                vaultId,
+                type: 'crdt_updated',
+                noteId: outcome.noteId
+              })
+            })
+          )
+        )
+      ),
+      { source: 'UserSyncState', action: 'crdt_snapshot_broadcast_failed' }
+    )
+  }
+
+  logCrdtTraffic({
+    endpoint,
+    event: 'snapshot_stored',
+    noteCount: accepted.length,
+    totalBytes,
+    latencyMs: Date.now() - startedAt
+  })
+
+  return c.json({
+    results: results.map(
+      (outcome, index) =>
+        outcome ?? {
+          noteId: parsed.snapshots[index].noteId,
+          accepted: false,
+          reason: ErrorCodes.INTERNAL_ERROR
+        }
+    )
+  })
+}
+
 const handleCrdtSnapshotPull = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
@@ -959,6 +1140,7 @@ crdtSync.post('/updates', crdtPushRateLimit, handleCrdtUpdatePush)
 crdtSync.get('/updates', crdtPullRateLimit, handleCrdtUpdatePull)
 crdtSync.post('/updates/batch', crdtBatchPullRateLimit, handleCrdtBatchPull)
 crdtSync.post('/snapshot', crdtPushRateLimit, handleCrdtSnapshotPush)
+crdtSync.post('/snapshot/batch', crdtPushRateLimit, handleCrdtSnapshotBatchPush)
 crdtSync.get('/snapshot/:noteId', crdtPullRateLimit, handleCrdtSnapshotPull)
 
 sync.route('/crdt', crdtSync)

@@ -15,6 +15,17 @@
 export const MAX_CRDT_UPDATE_PAYLOAD_CHARS = 1_200_000
 export const MAX_CRDT_REQUEST_PAYLOAD_CHARS = 6_000_000
 
+/**
+ * The server's cap on `POST /sync/crdt/snapshot/batch`'s `snapshots` array.
+ *
+ * Sending more is a 400, so every producer chunks at this number rather than
+ * discovering the ceiling on the wire. It lives here, next to the other CRDT
+ * wire budgets, because both the provider (which decides how many notes to
+ * prepare in one round) and the HTTP layer need it and neither should import
+ * the other.
+ */
+export const MAX_CRDT_SNAPSHOT_BATCH_ENTRIES = 50
+
 export interface CrdtUpdatePushPlan {
   /** Batches to POST in order. Every batch fits both budgets. */
   requests: string[][]

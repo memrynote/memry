@@ -93,6 +93,7 @@ import { drainPendingCrdtNotes, recordPendingCrdtNotes } from './crdt-pending-no
 import { recoverDirtyItems } from './dirty-recovery'
 import { markSyncEligible, markSyncIneligible } from '@memry/sync-client/sync-eligibility'
 import { encryptCrdtUpdate } from './crdt-encrypt'
+import { createCrdtSnapshotBatchPush } from './crdt-snapshot-batch'
 import { postToServer, pushCrdtSnapshot, pushCrdtFullUpdate, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
 import {
@@ -713,8 +714,39 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       }
 
+      // One request for up to MAX_CRDT_SNAPSHOT_BATCH_ENTRIES notes instead of
+      // one per note. It reuses `snapshotPushFn` for everything the batch is
+      // not allowed to carry — a note whose server state this device has not
+      // merged, and every note on a server too old to have the endpoint — so
+      // the destructive-endpoint reasoning above still has exactly one owner.
+      const snapshotBatchPushFn = createCrdtSnapshotBatchPush({
+        pushSingle: snapshotPushFn,
+        hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
+        getAccessToken: () => getValidAccessToken(),
+        getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt snapshot batch push'),
+        getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
+        authRetryDeps: crdtAuthRetryDeps,
+        onBatchError: (err) => {
+          // Same two conditions the single push handles, and for the same
+          // reasons — see the comments in snapshotPushFn. A body-limit 413
+          // never reaches here: the batch falls back to the per-note path so
+          // the note that is actually too large can be named.
+          if (err instanceof SyncServerError && err.statusCode === 401) {
+            crdtQueue.pause()
+          }
+          if (
+            err instanceof SyncServerError &&
+            err.statusCode === 413 &&
+            classifyError(err).category === 'storage_quota_exceeded'
+          ) {
+            crdtQueue.pause()
+            emitQuotaExceeded()
+          }
+        }
+      })
+
       const crdtProvider = getCrdtProvider()
-      await crdtProvider.init(crdtQueue, snapshotPushFn)
+      await crdtProvider.init(crdtQueue, snapshotPushFn, snapshotBatchPushFn)
 
       // Created here rather than beside `engine.start()`, where it used to be:
       // the replay below is also triggered by the network monitor, whose

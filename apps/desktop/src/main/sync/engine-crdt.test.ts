@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { SyncItemType } from '@memry/contracts/sync-api'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
@@ -10,9 +11,9 @@ describe('SyncEngine', () => {
       const callOrder: string[] = []
 
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockImplementation(async () => {
+        pushSnapshotsForNotes: vi.fn().mockImplementation(async (noteIds: string[]) => {
           callOrder.push('pushSnapshot')
-          return true
+          return new Map(noteIds.map((id) => [id, true]))
         })
       }
 
@@ -55,7 +56,10 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['note-1'],
+        expect.anything()
+      )
       expect(callOrder).toEqual(['pushSnapshot', 'postToServer'])
 
       vi.restoreAllMocks()
@@ -63,7 +67,9 @@ describe('SyncEngine', () => {
 
     it('#then pushes CRDT snapshot for journal CREATE items too', async () => {
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockResolvedValue(true)
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
       }
 
       const deps = createMockDeps(getDb(), {
@@ -102,7 +108,10 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('journal-1')
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['journal-1'],
+        expect.anything()
+      )
 
       vi.restoreAllMocks()
     })
@@ -111,7 +120,9 @@ describe('SyncEngine', () => {
   describe('#given engine with crdtProvider and UPDATE note queued #when push called', () => {
     it('#then does NOT push CRDT snapshot (only CREATEs trigger snapshot)', async () => {
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockResolvedValue(true)
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
       }
 
       const deps = createMockDeps(getDb(), {
@@ -150,7 +161,7 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
+      expect(mockCrdtProvider.pushSnapshotsForNotes).not.toHaveBeenCalled()
 
       vi.restoreAllMocks()
     })
@@ -159,7 +170,9 @@ describe('SyncEngine', () => {
   describe('#given engine with crdtProvider and CREATE task queued #when push called', () => {
     it('#then does NOT push CRDT snapshot (only note/journal types trigger snapshot)', async () => {
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockResolvedValue(true)
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
       }
 
       const deps = createMockDeps(getDb(), {
@@ -198,7 +211,7 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
+      expect(mockCrdtProvider.pushSnapshotsForNotes).not.toHaveBeenCalled()
 
       vi.restoreAllMocks()
     })
@@ -207,7 +220,7 @@ describe('SyncEngine', () => {
   describe('#given engine with crdtProvider where snapshot push fails #when push called', () => {
     it('#then still posts sync items to server (snapshot failure is non-blocking)', async () => {
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockRejectedValue(new Error('network timeout'))
+        pushSnapshotsForNotes: vi.fn().mockRejectedValue(new Error('network timeout'))
       }
 
       const deps = createMockDeps(getDb(), {
@@ -246,7 +259,10 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['note-1'],
+        expect.anything()
+      )
       expect(mockPost).toHaveBeenCalled()
       expect(deps.queue.getPendingCount()).toBe(0)
 
@@ -257,7 +273,9 @@ describe('SyncEngine', () => {
   describe('#given engine with crdtProvider and mixed batch #when push called', () => {
     it('#then only pushes CRDT snapshots for CREATE note/journal items in batch', async () => {
       const mockCrdtProvider = {
-        pushSnapshotForNote: vi.fn().mockResolvedValue(true)
+        pushSnapshotsForNotes: vi
+          .fn()
+          .mockImplementation(async (noteIds: string[]) => new Map(noteIds.map((id) => [id, true])))
       }
 
       const deps = createMockDeps(getDb(), {
@@ -292,13 +310,13 @@ describe('SyncEngine', () => {
 
       let encryptCallCount = 0
       vi.spyOn(await import('./encrypt'), 'encryptItemForPush').mockImplementation(
-        (args: { id: string; type: string; operation: string }) => {
+        (args: { id: string; type: SyncItemType; operation: string }) => {
           encryptCallCount++
           return {
             pushItem: {
               id: args.id,
               type: args.type,
-              operation: args.operation,
+              operation: args.operation as 'create' | 'update' | 'delete',
               encryptedKey: 'ek',
               keyNonce: 'kn',
               encryptedData: 'ed',
@@ -320,9 +338,13 @@ describe('SyncEngine', () => {
 
       await engine.push()
 
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledTimes(2)
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('note-1')
-      expect(mockCrdtProvider.pushSnapshotForNote).toHaveBeenCalledWith('journal-1')
+      // One call carrying both eligible ids, not one call per note: the whole
+      // batch is what reaches the server as a single request.
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledTimes(1)
+      expect(mockCrdtProvider.pushSnapshotsForNotes).toHaveBeenCalledWith(
+        ['note-1', 'journal-1'],
+        expect.anything()
+      )
 
       vi.restoreAllMocks()
     })

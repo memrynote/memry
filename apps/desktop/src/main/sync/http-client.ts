@@ -244,6 +244,50 @@ export async function pushCrdtSnapshot(
   )
 }
 
+/** One note's outcome inside a batched snapshot push. */
+export interface CrdtSnapshotBatchResult {
+  noteId: string
+  accepted: boolean
+  sequenceNum?: number
+  reason?: string
+}
+
+export interface CrdtSnapshotBatchResponse {
+  results: CrdtSnapshotBatchResult[]
+}
+
+/**
+ * Push several notes' snapshots in ONE request.
+ *
+ * Byte-for-byte the same encrypted payload `pushCrdtSnapshot` sends, and with
+ * the same destructive consequence per note (`storeSnapshot` +
+ * `pruneUpdatesBeforeSnapshot`) — so the caller owes every note in `snapshots`
+ * the same "this device contains everything the server has" guarantee that the
+ * single-note path documents. See `crdt-snapshot-batch.ts`, which is the only
+ * thing that should be calling this.
+ *
+ * The response is HTTP 200 even when entries fail: `results` carries one entry
+ * per requested note, in request order, and `accepted: false` is a per-note
+ * failure the caller must keep retryable. A server that predates the endpoint
+ * answers 404, which is the capability signal — this function does not handle
+ * it, the caller latches it.
+ *
+ * The caller must not exceed MAX_CRDT_SNAPSHOT_BATCH_ENTRIES entries, and must
+ * not repeat a noteId within one request; both are 400s.
+ */
+export async function pushCrdtSnapshotBatch(
+  snapshots: Array<{ noteId: string; snapshot: Uint8Array }>,
+  token: string
+): Promise<CrdtSnapshotBatchResponse> {
+  const body = {
+    snapshots: snapshots.map(({ noteId, snapshot }) => ({
+      noteId,
+      snapshot: Buffer.from(snapshot).toString('base64')
+    }))
+  }
+  return postToServer<CrdtSnapshotBatchResponse>('/sync/crdt/snapshot/batch', body, token)
+}
+
 /**
  * Push a full document state to the INCREMENTAL endpoint.
  *
