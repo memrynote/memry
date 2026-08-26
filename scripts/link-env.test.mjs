@@ -5,8 +5,10 @@ import path from 'node:path'
 import { describe, it } from 'node:test'
 
 import {
+  SHARED_DIRS,
   filterIgnored,
   findEnvFiles,
+  findSharedDirs,
   isEnvFileName,
   planAction,
   resolveSource
@@ -158,5 +160,44 @@ describe('resolveSource', () => {
 
   it('throws when git says nothing useful', () => {
     assert.throws(() => resolveSource('/anywhere', { env: {}, run: () => '' }))
+  })
+})
+
+describe('findSharedDirs', () => {
+  it('returns only the state directories that exist in the source', () => {
+    const root = tmp()
+    mkdirSync(path.join(root, 'apps/sync-server/.wrangler/state'), { recursive: true })
+    assert.deepEqual(findSharedDirs(root), ['apps/sync-server/.wrangler/state'])
+  })
+
+  it('returns nothing when the source has never run the dev server', () => {
+    assert.deepEqual(findSharedDirs(tmp()), [])
+  })
+
+  it('carries the sync server database, which is the point', () => {
+    assert.ok(SHARED_DIRS.includes('apps/sync-server/.wrangler/state'))
+  })
+})
+
+describe('planAction on a shared state directory', () => {
+  it('links a worktree that has no state of its own', () => {
+    const dest = path.join(tmp(), 'state')
+    assert.equal(planAction(dest, '/main/state', { mode: 'link', force: false }), 'link')
+  })
+
+  it('leaves a worktree that populated its own state alone', () => {
+    const dest = path.join(tmp(), 'state')
+    mkdirSync(dest)
+    assert.equal(planAction(dest, '/main/state', { mode: 'link', force: false }), 'blocked')
+    assert.equal(planAction(dest, '/main/state', { mode: 'link', force: true }), 'link')
+  })
+
+  it('reports an existing link to the same state as current', () => {
+    const root = tmp()
+    const main = path.join(root, 'main-state')
+    const dest = path.join(root, 'state')
+    mkdirSync(main)
+    symlinkSync(main, dest, 'dir')
+    assert.equal(planAction(dest, main, { mode: 'link', force: false }), 'current')
   })
 })

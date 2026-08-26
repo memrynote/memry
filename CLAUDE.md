@@ -89,6 +89,7 @@ Run `pnpm ipc:generate` before `pnpm ipc:check` when editing contracts, preload 
 - Draft PR is the safe default when the user asks to create/push a PR and does not specify ready vs draft.
 - For Memry worktrees, prefer repo-local `.worktrees/<name>`: `git worktree add .worktrees/<name> -b <name> origin/main`, then `pnpm install --frozen-lockfile`.
 - Gitignored env files (`apps/desktop/.env.staging`, `apps/sync-server/.dev.vars`, `apps/landing/.env.local`, ...) do not travel with a worktree. `pnpm install` links them from the main worktree via `scripts/link-env.mjs`; run `pnpm env:link` by hand if a tree predates that, `pnpm env:check` to verify, `pnpm env:link:copy` for real copies instead of symlinks. They stay gitignored at the new paths. Without them `resolveSyncServerUrl()` silently falls back to `http://localhost:8787` and `dev:staging` never reaches staging.
+- The same script links the sync server's local database, `apps/sync-server/.wrangler/state` (miniflare D1 + R2 + Durable Objects), so every worktree shares the main worktree's dev data instead of booting `dev:sync-server` against an empty one. Migrate or seed it once in main and every tree sees it. `.wrangler/tmp` stays per-worktree. A worktree that already has its own real `state/` is left alone -- pass `--force` to replace it.
 - Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not treat that as a hang without evidence.
 
 ## Database

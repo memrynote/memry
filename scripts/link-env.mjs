@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Give every git worktree the repo's gitignored environment files.
+ * Give every git worktree the repo's gitignored environment files and local
+ * dev state.
  *
  * Secrets (`apps/desktop/.env.staging`, `apps/sync-server/.dev.vars`,
  * `apps/landing/.env.local`, ...) are gitignored on purpose, so `git worktree
@@ -13,6 +14,10 @@
  * and every other worktree gets a symlink, so rotating a key in one place
  * rotates it everywhere. The files remain gitignored at their new paths --
  * identical repo, identical .gitignore -- so nothing becomes committable.
+ *
+ * The same treatment goes to the gitignored state directories in SHARED_DIRS,
+ * so a fresh worktree also inherits the sync server's local D1/R2 database
+ * instead of booting against an empty one.
  *
  * Usage:
  *   node scripts/link-env.mjs            # link (default)
@@ -27,8 +32,10 @@
 import { execFileSync } from 'node:child_process'
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   readdirSync,
   readlinkSync,
   rmSync,
@@ -64,6 +71,28 @@ const TEMPLATE_SUFFIX = /\.(example|sample|template)$/
 /** True for a basename that looks like an environment file rather than a template. */
 export function isEnvFileName(name) {
   return ENV_FILE.test(name) && !TEMPLATE_SUFFIX.test(name)
+}
+
+/**
+ * Gitignored *directories* of local state that a worktree needs but cannot
+ * regenerate cheaply.
+ *
+ * `apps/sync-server/.wrangler/state` is miniflare's local D1 + R2 + Durable
+ * Object storage: the sync server's dev database. A fresh worktree starts with
+ * an empty one, so `pnpm dev:sync-server` there serves a schema-less database
+ * and every device that syncs against it has to be re-linked and re-populated
+ * by hand. Sharing the main worktree's state means one local database for all
+ * worktrees -- migrate or seed it once and every tree sees the same rows.
+ *
+ * `.wrangler/tmp` is deliberately not shared: it is scratch space wrangler
+ * recreates per run, and per-worktree scratch keeps two dev servers from
+ * stepping on each other.
+ */
+export const SHARED_DIRS = ['apps/sync-server/.wrangler/state']
+
+/** Repo-relative paths from SHARED_DIRS that actually exist under `root`. */
+export function findSharedDirs(root, { exists = existsSync } = {}) {
+  return SHARED_DIRS.filter((rel) => exists(path.join(root, rel)))
 }
 
 /** Recursively collect repo-relative paths of env-looking files under `root`. */
@@ -187,14 +216,19 @@ function main() {
   }
 
   const files = filterIgnored(source, findEnvFiles(source))
-  if (files.length === 0) {
-    say('link-env: no gitignored env files found in the source worktree')
+  const dirs = filterIgnored(source, findSharedDirs(source))
+  const entries = [
+    ...files.map((rel) => ({ rel, isDir: false })),
+    ...dirs.map((rel) => ({ rel, isDir: true }))
+  ]
+  if (entries.length === 0) {
+    say('link-env: no gitignored env files or state found in the source worktree')
     return
   }
 
   const results = { linked: 0, copied: 0, current: 0, blocked: [], missing: [], skipped: [] }
 
-  for (const rel of files) {
+  for (const { rel, isDir } of entries) {
     const absoluteTarget = path.join(source, rel)
     const dest = path.join(target, rel)
     const action = planAction(dest, absoluteTarget, { mode, force })
@@ -207,24 +241,30 @@ function main() {
       results.blocked.push(rel)
       continue
     }
-    // Never conjure the parent directory. `apps/mobile/ios/.xcode.env` lives
-    // in `expo prebuild` output, and materialising an `ios/` folder just to
-    // hold a symlink makes prebuild think the project is already ejected.
+    // Never conjure the parent directory of an env file. `apps/mobile/ios/.xcode.env`
+    // lives in `expo prebuild` output, and materialising an `ios/` folder just to
+    // hold a symlink makes prebuild think the project is already ejected. A shared
+    // state directory has no such trap: its parent is wrangler's own gitignored
+    // `.wrangler`, which wrangler would create itself on the next dev run.
     if (!existsSync(path.dirname(dest))) {
-      results.skipped.push(rel)
-      continue
+      if (!isDir) {
+        results.skipped.push(rel)
+        continue
+      }
+      if (!check) mkdirSync(path.dirname(dest), { recursive: true })
     }
     if (check) {
       results.missing.push(rel)
       continue
     }
 
-    rmSync(dest, { force: true })
+    rmSync(dest, { force: true, recursive: isDir })
     if (action === 'copy') {
-      copyFileSync(absoluteTarget, dest)
+      if (isDir) cpSync(absoluteTarget, dest, { recursive: true })
+      else copyFileSync(absoluteTarget, dest)
       results.copied += 1
     } else {
-      symlinkSync(absoluteTarget, dest)
+      symlinkSync(absoluteTarget, dest, isDir ? 'dir' : 'file')
       results.linked += 1
     }
   }
@@ -234,22 +274,20 @@ function main() {
     for (const rel of results.missing) console.log(`link-env: missing ${rel}`)
     for (const rel of results.blocked) console.log(`link-env: not a link ${rel}`)
     if (results.missing.length > 0) {
-      console.error(
-        `link-env: ${results.missing.length} env file(s) missing -- run \`pnpm env:link\``
-      )
+      console.error(`link-env: ${results.missing.length} item(s) missing -- run \`pnpm env:link\``)
       process.exit(1)
     }
-    say(`link-env: ${results.current} env file(s) in place`)
+    say(`link-env: ${results.current} item(s) in place`)
     return
   }
 
   if (done > 0) {
     say(
-      `link-env: ${mode === 'copy' ? 'copied' : 'linked'} ${done} env file(s) from ${source}` +
+      `link-env: ${mode === 'copy' ? 'copied' : 'linked'} ${done} item(s) from ${source}` +
         (results.current > 0 ? ` (${results.current} already in place)` : '')
     )
   } else {
-    say(`link-env: ${results.current} env file(s) already in place`)
+    say(`link-env: ${results.current} item(s) already in place`)
   }
   for (const rel of results.blocked) {
     say(`link-env: kept the existing ${rel} (pass --force to replace it)`)
