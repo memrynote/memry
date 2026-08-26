@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { renderToString } from 'react-dom/server'
 import { StaticRouter } from 'react-router'
+import { MotionConfig } from 'motion/react'
 import { HelmetProvider, HelmetData, type HelmetServerState } from 'react-helmet-async'
 import { AuthProvider } from '@/contexts/auth-context'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
+import { SiteShell } from '@/components/layout/SiteShell'
 import { Home } from '@/pages/Home'
 import { FeaturesPage } from '@/pages/Features'
 import { NotesFeaturePage } from '@/pages/Notes'
@@ -125,11 +125,12 @@ export function render(url: string): { html: string; helmet: HelmetServerState |
     <HelmetProvider context={helmetData.context}>
       <StaticRouter location={url}>
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
-            {!standalone && <Header />}
-            <main className="flex-1">{Page ? <Page /> : null}</main>
-            {!standalone && <Footer />}
-          </div>
+          {/* Same reducedMotion mode as App: motion writes a component's initial style
+              into the markup, so a different config here would render different HTML
+              than the client hydrates with. */}
+          <MotionConfig reducedMotion="user">
+            <SiteShell standalone={standalone}>{Page ? <Page /> : null}</SiteShell>
+          </MotionConfig>
         </AuthProvider>
       </StaticRouter>
     </HelmetProvider>

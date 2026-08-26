@@ -48,12 +48,17 @@
       content="memrynote social preview with the headline Everything, in one private place."
     />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <!-- DM Sans is the body face on every page, and the @font-face that declares it
+         lives inside the bundled stylesheet — so without this the request cannot start
+         until that CSS has parsed. Self-hosted (see src/index.css); the Google Fonts
+         stylesheet this replaced was render-blocking and cost ~900ms. JetBrains Mono is
+         deliberately not preloaded: it is only used on code and terminal surfaces. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans-latin.woff2" crossorigin />
+
+    <!-- scripts/prerender.ts drops the first render's image preloads here, ahead of the
+         module scripts Vite appends below. -->
+    <!--image-preloads-->
+    <!--boot-modulepreloads-->
 
     <script
       defer

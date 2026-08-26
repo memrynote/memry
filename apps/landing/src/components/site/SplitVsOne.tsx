@@ -122,16 +122,16 @@ interface Satellite {
 }
 
 const SATELLITES: Satellite[] = [
-  { key: 'notes', label: 'Notes', desc: 'Where thinking lands', iconSrc: '/mascots/notes.png' },
-  { key: 'tasks', label: 'Tasks', desc: 'What actually gets done', iconSrc: '/mascots/tasks.png' },
+  { key: 'notes', label: 'Notes', desc: 'Where thinking lands', iconSrc: '/mascots/notes.webp' },
+  { key: 'tasks', label: 'Tasks', desc: 'What actually gets done', iconSrc: '/mascots/tasks.webp' },
   {
     key: 'calendar',
     label: 'Calendar',
     desc: 'Where the day fits',
-    iconSrc: '/mascots/calendar.png'
+    iconSrc: '/mascots/calendar.webp'
   },
-  { key: 'journal', label: 'Journal', desc: 'How it felt', iconSrc: '/mascots/journal.png' },
-  { key: 'inbox', label: 'Inbox', desc: 'Everything you saved', iconSrc: '/mascots/inbox.png' }
+  { key: 'journal', label: 'Journal', desc: 'How it felt', iconSrc: '/mascots/journal.webp' },
+  { key: 'inbox', label: 'Inbox', desc: 'Everything you saved', iconSrc: '/mascots/inbox.webp' }
 ]
 
 /**

@@ -1,5 +1,61 @@
 @import 'tailwindcss';
 
+/* Self-hosted fonts. They used to come from a render-blocking
+   fonts.googleapis.com stylesheet, which cost ~900ms on the critical path: two
+   fresh cross-origin connections (DNS + TCP + TLS to googleapis, then gstatic)
+   before a single glyph could be requested. Same files, same subsets, served
+   from our own origin behind the immutable /fonts cache header.
+
+   Both faces are variable fonts — Google ships one file per subset for the whole
+   weight range, so a single @font-face with a range replaces the four static
+   weight declarations the CSS2 API emits. The latin-ext copy is unicode-range
+   gated and never downloads on an English page. */
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url(/fonts/dm-sans-latin.woff2) format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url(/fonts/dm-sans-latin-ext.woff2) format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(/fonts/jetbrains-mono-latin.woff2) format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(/fonts/jetbrains-mono-latin-ext.woff2) format('woff2');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
 @theme {
   /* Single-font site: text tokens all resolve to DM Sans (token names kept so no
      component churn). --font-mono stays a REAL monospace — reserved for terminal
@@ -286,6 +342,22 @@ h6 {
 
 .page-rails::after {
   inset-inline-end: max(0px, calc(50% - var(--rail-half)));
+}
+
+/* Below-the-fold sections on the home page skip layout and paint until the scroll
+   gets near them. The page is ~1600 elements and nearly all of it starts off-screen;
+   styling and laying that out before the first paint was the largest single block of
+   main-thread work sitting in front of the hero.
+
+   `auto`, not `hidden`: a section renders normally the moment it comes near the
+   viewport, and stays searchable, focusable and linkable the whole time. The intrinsic
+   size is only the placeholder height used before a section has ever rendered — the
+   `auto` keyword makes the browser remember the real height once it has one, so the
+   guess only has to be in the right neighbourhood, and it affects scrollbar length,
+   never visible layout. */
+.home-sections > section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
 }
 
 /* The seam between two stacked sections — stops where the rails run, so the grid

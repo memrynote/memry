@@ -5,12 +5,12 @@ import { FeatureChip, HomeSection, SectionTitle } from '@/components/site/primit
 const EASE = [0.16, 1, 0.3, 1] as const
 
 const THINGS = [
-  { label: 'Notes', href: '/features/notes', iconSrc: '/mascots/notes.png' },
-  { label: 'Tasks', href: '/features/tasks', iconSrc: '/mascots/tasks.png' },
-  { label: 'Journal', href: '/features/journal', iconSrc: '/mascots/journal.png' },
-  { label: 'Calendar', href: '/features/calendar', iconSrc: '/mascots/calendar.png' },
-  { label: 'Inbox', href: '/features/inbox', iconSrc: '/mascots/inbox.png' },
-  { label: 'AI Agent', href: '/features/ai-agent', iconSrc: '/mascots/ai-agent.png' }
+  { label: 'Notes', href: '/features/notes', iconSrc: '/mascots/notes.webp' },
+  { label: 'Tasks', href: '/features/tasks', iconSrc: '/mascots/tasks.webp' },
+  { label: 'Journal', href: '/features/journal', iconSrc: '/mascots/journal.webp' },
+  { label: 'Calendar', href: '/features/calendar', iconSrc: '/mascots/calendar.webp' },
+  { label: 'Inbox', href: '/features/inbox', iconSrc: '/mascots/inbox.webp' },
+  { label: 'AI Agent', href: '/features/ai-agent', iconSrc: '/mascots/ai-agent.webp' }
 ] as const
 
 /**

@@ -85,16 +85,24 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? '')
     },
     build: {
+      // scripts/prerender.ts reads this to emit <link rel="modulepreload"> for the boot
+      // chunk and its dependencies. main.tsx imports boot dynamically, so Vite has no
+      // static entry graph to write those links from, and without them the whole app
+      // would only start downloading after the first paint.
+      manifest: true,
       rollupOptions: {
         output: {
-          // Split heavy vendors into separately-cacheable chunks. Static imports keep
-          // them in the initial graph, but immutable per-lib caching (see vercel.json)
-          // means a deploy that only touches app code reuses these from cache.
-          // ponytail: chunk grouping only; deferring these off first paint needs
-          // dynamic import() + a hydrateRoot() migration (createRoot replaces the
-          // prerendered DOM, so React.lazy would flash a fallback on direct loads).
+          // Split heavy vendors into separately-cacheable chunks, so a deploy that
+          // only touches app code reuses them from the immutable cache (see
+          // vercel.json). posthog, paddle and crypto are reached through dynamic
+          // import() at their call sites, so grouping them here keeps them as
+          // named chunks while leaving them out of the entry graph entirely.
+          // react-vendor, motion and icons stay static: they render first paint.
           manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router'],
+            // react-dom/client, not the react-dom entry, is what the app imports, and
+            // a bare 'react-dom' id here never matched it — the whole renderer was
+            // landing in the app chunk and being re-downloaded on every deploy.
+            'react-vendor': ['react', 'react-dom', 'react-dom/client', 'react-router'],
             motion: ['motion/react', 'lenis'],
             paddle: ['@paddle/paddle-js'],
             // Must stay the module.full.no-external subpath: the bare specifier

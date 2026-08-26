@@ -2,57 +2,17 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useEffect } from 'react'
 import { MotionConfig } from 'motion/react'
 import { HelmetProvider } from 'react-helmet-async'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 import { SmoothScroll } from '@/components/layout/SmoothScroll'
-import { PageGlow } from '@/components/shared/PageGlow'
-import { Home } from '@/pages/Home'
-import { FeaturesPage } from '@/pages/Features'
-import { NotesFeaturePage } from '@/pages/Notes'
-import { InboxFeaturePage } from '@/pages/Inbox'
-import { JournalFeaturePage } from '@/pages/Journal'
-import { TasksFeaturePage } from '@/pages/Tasks'
-import { CalendarFeaturePage } from '@/pages/Calendar'
-import { AIAgentFeaturePage } from '@/pages/AIAgent'
-import { WebClipperFeaturePage } from '@/pages/WebClipper'
-import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
-import { CliPage } from '@/pages/Cli'
-import { UseCasesPage } from '@/pages/UseCases'
-import { SecurityPage } from '@/pages/Security'
-import { PricingPage } from '@/pages/Pricing'
-import { CheckoutPage } from '@/pages/Checkout'
-import { ChangelogPage } from '@/pages/Changelog'
-import { RoadmapPage } from '@/pages/Roadmap'
-import { TermsPage } from '@/pages/Terms'
-import { PrivacyPage } from '@/pages/Privacy'
-import { RefundPage } from '@/pages/Refund'
-import { NotFound } from '@/pages/NotFound'
-import { LoginPage } from '@/pages/Login'
-import { AuthCallbackPage } from '@/pages/AuthCallback'
+import { SiteShell } from '@/components/layout/SiteShell'
 import {
-  ObsidianAlternativePage,
-  NotionAlternativePage,
-  NotePlanAlternativePage,
-  CapacitiesAlternativePage,
-  EvernoteAlternativePage,
-  LogseqAlternativePage,
-  AnytypeAlternativePage,
-  AppleNotesAlternativePage,
-  BearAlternativePage,
-  RoamAlternativePage,
-  OneNoteAlternativePage,
-  UpNoteAlternativePage,
-  JoplinAlternativePage,
-  GoogleKeepAlternativePage,
-  TanaAlternativePage,
-  HeptabaseAlternativePage
-} from '@/pages/AlternativePage'
-import { ComparePage } from '@/pages/ComparePage'
+  PAGE_ROUTES,
+  NotFoundPage,
+  AccountLayoutPage,
+  ProfileSectionPage,
+  BillingSectionPage,
+  SyncSectionPage
+} from '@/routes'
 import { RequireAuth } from '@/components/account/RequireAuth'
-import { AccountLayout } from '@/components/account/AccountLayout'
-import { ProfileSection } from '@/pages/account/ProfileSection'
-import { BillingSection } from '@/pages/account/BillingSection'
-import { SyncSection } from '@/pages/account/SyncSection'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent, trackLandingPageView, type LandingEventName } from '@/lib/analytics'
 import { AuthProvider } from '@/contexts/auth-context'
@@ -149,74 +109,37 @@ function AppContent() {
   // /login is a standalone surface: full-screen card, no site chrome.
   const standalone = useLocation().pathname === '/login'
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
+      {/* All four render null — they only install effects — so they contribute no
+          markup for hydration to match. */}
       <SmoothScroll />
       <ScrollToHash />
       <PageViewAnalytics />
       <ScrollDepthAnalytics />
-      {!standalone && <Header />}
-      <main className="relative isolate flex-1">
-        {!standalone && <PageGlow />}
+      <SiteShell standalone={standalone}>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/features" element={<FeaturesPage />} />
-          <Route path="/features/notes" element={<NotesFeaturePage />} />
-          <Route path="/features/inbox" element={<InboxFeaturePage />} />
-          <Route path="/features/journal" element={<JournalFeaturePage />} />
-          <Route path="/features/tasks" element={<TasksFeaturePage />} />
-          <Route path="/features/calendar" element={<CalendarFeaturePage />} />
-          <Route path="/features/ai-agent" element={<AIAgentFeaturePage />} />
-          <Route path="/features/web-clipper" element={<WebClipperFeaturePage />} />
-          <Route path="/download/desktop" element={<DownloadDesktopPage />} />
-          <Route path="/cli" element={<CliPage />} />
-          <Route path="/use-cases" element={<UseCasesPage />} />
-          <Route path="/security" element={<SecurityPage />} />
-          <Route path="/compare" element={<ComparePage />} />
+          {PAGE_ROUTES.map(({ path, Component }) => (
+            <Route key={path} path={path} element={<Component />} />
+          ))}
           <Route path="/alternatives" element={<Navigate to="/compare" replace />} />
-          <Route path="/obsidian-alternative" element={<ObsidianAlternativePage />} />
-          <Route path="/notion-alternative" element={<NotionAlternativePage />} />
-          <Route path="/noteplan-alternative" element={<NotePlanAlternativePage />} />
-          <Route path="/capacities-alternative" element={<CapacitiesAlternativePage />} />
-          <Route path="/evernote-alternative" element={<EvernoteAlternativePage />} />
-          <Route path="/logseq-alternative" element={<LogseqAlternativePage />} />
-          <Route path="/anytype-alternative" element={<AnytypeAlternativePage />} />
-          <Route path="/apple-notes-alternative" element={<AppleNotesAlternativePage />} />
-          <Route path="/bear-alternative" element={<BearAlternativePage />} />
-          <Route path="/roam-research-alternative" element={<RoamAlternativePage />} />
-          <Route path="/onenote-alternative" element={<OneNoteAlternativePage />} />
-          <Route path="/upnote-alternative" element={<UpNoteAlternativePage />} />
-          <Route path="/joplin-alternative" element={<JoplinAlternativePage />} />
-          <Route path="/google-keep-alternative" element={<GoogleKeepAlternativePage />} />
-          <Route path="/tana-alternative" element={<TanaAlternativePage />} />
-          <Route path="/heptabase-alternative" element={<HeptabaseAlternativePage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/changelog" element={<ChangelogPage />} />
-          <Route path="/roadmap" element={<RoadmapPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/refund" element={<RefundPage />} />
-          <Route path="/login" element={<LoginPage />} />
           <Route path="/auth" element={<LegacyAuthRedirect />} />
-          <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
           <Route
             path="/account"
             element={
               <RequireAuth>
-                <AccountLayout />
+                <AccountLayoutPage />
               </RequireAuth>
             }
           >
-            <Route index element={<ProfileSection />} />
-            <Route path="profile" element={<ProfileSection />} />
-            <Route path="billing" element={<BillingSection />} />
-            <Route path="sync" element={<SyncSection />} />
+            <Route index element={<ProfileSectionPage />} />
+            <Route path="profile" element={<ProfileSectionPage />} />
+            <Route path="billing" element={<BillingSectionPage />} />
+            <Route path="sync" element={<SyncSectionPage />} />
           </Route>
-          <Route path="*" element={<NotFound />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
-      </main>
-      {!standalone && <Footer />}
-    </div>
+      </SiteShell>
+    </>
   )
 }
 

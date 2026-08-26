@@ -24,7 +24,7 @@ export function ClipperStack({ flat, className }: ClipperStackProps) {
         )}
       >
         <img
-          src="/screenshots/webclipper-front_white.png"
+          src="/screenshots/webclipper-front_white.webp"
           alt="The clipped article, open as a note in MemryNote"
           width={812}
           height={764}
@@ -41,7 +41,7 @@ export function ClipperStack({ flat, className }: ClipperStackProps) {
         )}
       >
         <img
-          src="/screenshots/web-clipper.png"
+          src="/screenshots/web-clipper.webp"
           alt="The MemryNote web clipper capturing the article"
           width={400}
           height={602}

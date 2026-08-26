@@ -19,7 +19,7 @@ export function Home() {
 
       {/* Everything below the hero sits inside the page grid: two dashed rails run down
           the sides and carry on through the footer, with a dashed seam between sections. */}
-      <div className="page-rails">
+      <div className="page-rails home-sections">
         <EverythingRow />
         <SectionRule />
         <SplitVsOne />
