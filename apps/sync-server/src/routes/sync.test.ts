@@ -74,8 +74,10 @@ vi.mock('../services/crdt', () => ({
   getUpdates: vi.fn().mockResolvedValue({ updates: [], hasMore: false }),
   getBatchUpdates: vi.fn().mockResolvedValue({}),
   storeSnapshot: vi.fn().mockResolvedValue({ sequenceNum: 0 }),
+  storeSnapshotBatch: vi.fn().mockResolvedValue([]),
   getSnapshot: vi.fn().mockResolvedValue(null),
-  pruneUpdatesBeforeSnapshot: vi.fn().mockResolvedValue(0)
+  pruneUpdatesBeforeSnapshot: vi.fn().mockResolvedValue(0),
+  pruneUpdatesBeforeSnapshotBatch: vi.fn().mockResolvedValue(0)
 }))
 
 vi.mock('../services/device', () => ({
@@ -149,9 +151,12 @@ import {
   getUpdates,
   getBatchUpdates,
   storeSnapshot,
+  storeSnapshotBatch,
   getSnapshot,
-  pruneUpdatesBeforeSnapshot
+  pruneUpdatesBeforeSnapshot,
+  pruneUpdatesBeforeSnapshotBatch
 } from '../services/crdt'
+import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
 import { getStorageBreakdown } from '../services/storage'
@@ -1585,6 +1590,231 @@ describe('sync routes', () => {
       expect(point.properties.path).toBe('/sync/crdt/snapshot')
     })
 
+    // ========================================================================
+    // POST /sync/crdt/snapshot/batch (#1857)
+    //
+    // The single-note endpoint stays byte-for-byte what it was; these cover the
+    // batch sibling's wire contract. The writer's own invariants (watermark,
+    // revision, storage accounting, bind ceiling) are proven against the real
+    // schema in __tests__/crdt-snapshot-batch.test.ts.
+    // ========================================================================
+
+    const batchBody = (noteIds: string[]) => ({
+      snapshots: noteIds.map((noteId) => ({ noteId, snapshot: btoa(`body-${noteId}`) }))
+    })
+
+    it('stores a snapshot batch and answers one result per note in request order', async () => {
+      vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
+        { noteId: 'note_b', accepted: true, sequenceNum: 7 },
+        { noteId: 'note_a', accepted: true, sequenceNum: 0 }
+      ])
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(['note_b', 'note_a'])),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        results: [
+          { noteId: 'note_b', accepted: true, sequenceNum: 7 },
+          { noteId: 'note_a', accepted: true, sequenceNum: 0 }
+        ]
+      })
+      expect(storeSnapshotBatch).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'vault-1',
+        'device-1',
+        [
+          { noteId: 'note_b', snapshotData: expect.any(ArrayBuffer) },
+          { noteId: 'note_a', snapshotData: expect.any(ArrayBuffer) }
+        ],
+        null
+      )
+      // One prune round trip for the whole batch, at each note's own watermark.
+      expect(pruneUpdatesBeforeSnapshotBatch).toHaveBeenCalledTimes(1)
+      expect(pruneUpdatesBeforeSnapshotBatch).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', [
+        { noteId: 'note_b', sequenceNum: 7 },
+        { noteId: 'note_a', sequenceNum: 0 }
+      ])
+    })
+
+    // A snapshot is the only shape edits made while signed out can leave in, so
+    // an unannounced batch is invisible on every peer until the next sweep.
+    it('broadcasts crdt_updated once per accepted note, and never for a rejected one', async () => {
+      vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
+        { noteId: 'note_a', accepted: true, sequenceNum: 1 },
+        { noteId: 'note_b', accepted: false, reason: ErrorCodes.STORAGE_UPLOAD_FAILED },
+        { noteId: 'note_c', accepted: true, sequenceNum: 2 }
+      ])
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(['note_a', 'note_b', 'note_c'])),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockDoStub.fetch).toHaveBeenCalledTimes(2)
+      const broadcasts = await Promise.all(
+        mockDoStub.fetch.mock.calls.map(([request]) => (request as Request).json())
+      )
+      expect(broadcasts).toEqual([
+        { excludeDeviceId: 'device-1', vaultId: 'vault-1', type: 'crdt_updated', noteId: 'note_a' },
+        { excludeDeviceId: 'device-1', vaultId: 'vault-1', type: 'crdt_updated', noteId: 'note_c' }
+      ])
+      expect(pruneUpdatesBeforeSnapshotBatch).toHaveBeenCalledWith(env.DB, 'user-1', 'vault-1', [
+        { noteId: 'note_a', sequenceNum: 1 },
+        { noteId: 'note_c', sequenceNum: 2 }
+      ])
+    })
+
+    // Peers told early can pull while the pre-snapshot updates are still going.
+    it('broadcasts only after the batch is stored and prior updates are pruned', async () => {
+      const order: string[] = []
+      vi.mocked(storeSnapshotBatch).mockImplementationOnce(async () => {
+        order.push('store')
+        return [{ noteId: 'note_a', accepted: true, sequenceNum: 1 }]
+      })
+      vi.mocked(pruneUpdatesBeforeSnapshotBatch).mockImplementationOnce(async () => {
+        order.push('prune')
+        return 0
+      })
+      mockDoStub.fetch.mockImplementationOnce(async () => {
+        order.push('broadcast')
+        return Response.json({ sent: 1 })
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(['note_a'])),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(order).toEqual(['store', 'prune', 'broadcast'])
+    })
+
+    it('reports an undecodable payload against its own note and keeps the batch at 200', async () => {
+      vi.mocked(storeSnapshotBatch).mockResolvedValueOnce([
+        { noteId: 'note_a', accepted: true, sequenceNum: 1 }
+      ])
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', {
+          snapshots: [
+            { noteId: 'note_a', snapshot: btoa('body-a') },
+            { noteId: 'note_bad', snapshot: 'not base64 !!!' }
+          ]
+        }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      const json = (await res.json()) as { results: Array<Record<string, unknown>> }
+      expect(json.results[0]).toEqual({ noteId: 'note_a', accepted: true, sequenceNum: 1 })
+      expect(json.results[1]).toMatchObject({ noteId: 'note_bad', accepted: false })
+      expect(json.results[1].reason).toBe(ErrorCodes.VALIDATION_ERROR)
+      // The good note still reached the writer, alone.
+      expect(vi.mocked(storeSnapshotBatch).mock.calls[0][5]).toEqual([
+        { noteId: 'note_a', snapshotData: expect.any(ArrayBuffer) }
+      ])
+    })
+
+    it('rejects duplicate note ids in a snapshot batch', async () => {
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(['note_1', 'note_1'])),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      expect(storeSnapshotBatch).not.toHaveBeenCalled()
+    })
+
+    it('caps a snapshot batch at 50 notes', async () => {
+      const overCap = Array.from({ length: 51 }, (_, i) => `note_${i}`)
+
+      let res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(overCap)),
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
+      expect(storeSnapshotBatch).not.toHaveBeenCalled()
+
+      vi.mocked(storeSnapshotBatch).mockResolvedValueOnce(
+        overCap.slice(0, 50).map((noteId) => ({ noteId, accepted: true as const, sequenceNum: 0 }))
+      )
+      res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(overCap.slice(0, 50))),
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(200)
+      expect(storeSnapshotBatch).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects an empty snapshot batch', async () => {
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', { snapshots: [] }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      expect(storeSnapshotBatch).not.toHaveBeenCalled()
+    })
+
+    it('returns the quota status for a batch the account cannot afford', async () => {
+      vi.mocked(storeSnapshotBatch).mockRejectedValueOnce(
+        new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
+      )
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/batch',
+        jsonPost('/sync/crdt/snapshot/batch', batchBody(['note_a', 'note_b'])),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(413)
+      expect(pruneUpdatesBeforeSnapshotBatch).not.toHaveBeenCalled()
+      expect(mockDoStub.fetch).not.toHaveBeenCalled()
+    })
+
+    // Every shipped client posts to /sync/crdt/snapshot. Adding the batch route
+    // must not move that path onto the new writer.
+    it('leaves the single-note snapshot endpoint on the single-note writer', async () => {
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', { noteId: 'note_1', snapshot: btoa('snapshot') }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      expect(storeSnapshotBatch).not.toHaveBeenCalled()
+      expect(pruneUpdatesBeforeSnapshotBatch).not.toHaveBeenCalled()
+      expect(storeSnapshot).toHaveBeenCalledTimes(1)
+      expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledTimes(1)
+    })
+
     it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
       vi.mocked(storeUpdates).mockRejectedValueOnce(
         new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
@@ -1755,6 +1985,18 @@ describe('CRDT rate limit wiring', () => {
     for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull']) {
       expect(optionsFor(keyPrefix)?.identifier).toBe(deviceIdentifier)
     }
+  })
+
+  it('wires the bootstrap elevation seam into every CRDT bucket, push included', () => {
+    // #then — the seam is uniform across the CRDT buckets. On `crdt_push` it is
+    // inert on purpose: elevation multiplies only for key prefixes registered in
+    // BOOTSTRAP_ELEVATION_MULTIPLIERS, and that map is deliberately pull-only.
+    // Wiring it here is what lets a future policy change be a one-line map edit
+    // instead of a route edit; the ceiling itself must not move.
+    for (const keyPrefix of ['crdt_push', 'crdt_pull', 'crdt_batch_pull']) {
+      expect(optionsFor(keyPrefix)?.getElevatedLimits).toBe(bootstrapRateLimitElevation)
+    }
+    expect(optionsFor('crdt_push')).toMatchObject({ maxRequests: 300, windowSeconds: 60 })
   })
 
   it('gives the CRDT pull budget room for a whole-vault body sweep', () => {

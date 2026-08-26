@@ -133,7 +133,6 @@
     "src/main/sync/device-registration.test.ts",
     "src/main/sync/dirty-recovery.test.ts",
     "src/main/sync/embed-roundtrip.test.ts",
-    "src/main/sync/engine-crdt.test.ts",
     "src/main/sync/engine-push.test.ts",
     "src/main/sync/engine-retries.test.ts",
     "src/main/sync/engine.test.ts",

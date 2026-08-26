@@ -622,6 +622,7 @@ list.
 | `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
 | `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
 | `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes the note's stored updates at or below it                   |
+| `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note      |
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
 | `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
 | `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
@@ -731,6 +732,49 @@ Pushing a snapshot is an assertion, not just a write: once the snapshot is store
 snapshot's sequence number. A snapshot that does not already contain those updates does not merely
 fail to add them — it removes them from the server.
 
+### Batched snapshot uploads
+
+`POST /sync/crdt/snapshot` takes one note per request, and the server spends six serial D1/R2
+round trips on it: the note's current watermark, its existing snapshot row, a storage reservation,
+the R2 put, the upsert, and the prune. That is fine for the editing path, where snapshots trickle
+out behind a 30-second debounce, and expensive for seeding, where a fresh vault pushes a baseline
+for every note it owns. On a 1000-note vault each 100 bodies cost 15 seconds, essentially all of it
+server time.
+
+`POST /sync/crdt/snapshot/batch` carries up to 50 snapshots and pays those costs once per request
+instead of once per note — the metadata reads become one `db.batch` chunked at the bind-param
+ceiling, the reservations become one call for the batch's summed growth, the R2 puts run
+concurrently, and the upserts and prunes become one batch each. Semantics per note are identical to
+the single-note endpoint, including the rule that a note's snapshot watermark stays where it is once
+a snapshot exists.
+
+The response reports each note separately:
+
+```jsonc
+{
+  "results": [
+    { "noteId": "…", "accepted": true, "sequenceNum": 42 },
+    { "noteId": "…", "accepted": false, "reason": "…" }
+  ]
+}
+```
+
+Entries are returned in request order, and one note failing does not fail the others. A storage
+quota that the batch as a whole cannot satisfy still rejects the whole request, exactly as the
+single-note path does — nothing partial lands.
+
+Two notes never ride a batch:
+
+- **A note with unmerged remote state.** The batch endpoint prunes stored updates below the new
+  watermark, so a device that merged around server state it could not verify must not assert "I
+  contain everything up to here". Those notes take the non-pruning `POST /sync/crdt/updates` route,
+  the same way the single-note path already routes them.
+- **Anything pushed to a server that predates this endpoint.** Such a server answers 404 here and
+  200 for the single-note route. The first 404 latches for the session and every later chunk falls
+  back to one request per note, so an old server costs one wasted request rather than one per batch.
+  A 413 also falls back per note but does not latch: the aggregate body being too large says nothing
+  about which note is oversized, and only the per-note path can name it to the user.
+
 ### CRDT update sizing
 
 `POST /sync/crdt/updates` is bounded by two different server limits, and the client
@@ -810,6 +854,12 @@ does not already hold, so a second device on the same account is normal use rath
 Under the default per-user key the two devices split one budget, and a legitimate first sync on
 device B made device A's ordinary syncing start failing with 429s. A request that arrives without a
 deviceId keeps the existing userId → IP fallback, so nothing becomes less strict.
+
+`crdt_push` allows 300 requests per 60 seconds. Batched snapshot uploads changed what that budget
+buys: a push iteration dequeues at most 100 creates and a batch carries 50, so an iteration yields
+at most two snapshot requests, and iterations are serial. Seeding a 1000-note vault therefore costs
+roughly 20 requests rather than 1000, which is why `crdt_push` receives no bootstrap elevation —
+`BOOTSTRAP_ELEVATION_MULTIPLIERS` stays pull-only, and pushes keep their abuse ceilings.
 
 `crdt_pull` allows 600 requests per 60 seconds, which is sized for one device pulling an entire
 vault's bodies after a fresh sign-in. That sweep costs two GETs per note — snapshot plus

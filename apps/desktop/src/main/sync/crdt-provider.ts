@@ -8,6 +8,8 @@ import { getIndexDatabase } from '../database/client'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
+import { parallelWithLimit } from '@memry/sync-client/concurrency'
+import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
 import {
   scheduleWriteback,
   flushPendingWritebacks,
@@ -47,6 +49,39 @@ const ACCUMULATED_BYTES_RECHECK_THRESHOLD = 512 * 1024
 const DEFAULT_INACTIVE_DOC_LIMIT = 32
 
 export type SnapshotPushFn = (noteId: string, state: Uint8Array) => Promise<void>
+
+/** One note's full document state, ready to be encrypted and sent. */
+export interface SnapshotBatchEntry {
+  noteId: string
+  state: Uint8Array
+}
+
+/**
+ * Send several notes' full states in as few requests as the server allows.
+ *
+ * Total by contract: it never rejects, and the map it returns has an entry for
+ * every noteId it was handed. `false` means "not on the server" — a per-note
+ * rejection, a transport failure, an old server whose fallback also failed —
+ * and the provider treats every one of them exactly as it treats a failed
+ * single-note push: counters restored, note still pending.
+ */
+export type SnapshotBatchPushFn = (entries: SnapshotBatchEntry[]) => Promise<Map<string, boolean>>
+
+/**
+ * A note's snapshot bytes, captured and detached from the push that sends them.
+ *
+ * `pushSnapshotForNote` used to do both in one closure, which is what made
+ * batching impossible: the send was inside the per-note bookkeeping. Producing
+ * one of these performs every skip check and every "reset before push" step the
+ * single-note path documents; `settle` performs the "restore on failure" and
+ * "close a doc that was not already open" halves. Exactly one `settle` call per
+ * prepared snapshot, whatever happened in between.
+ */
+interface PreparedSnapshot {
+  noteId: string
+  state: Uint8Array
+  settle: (pushed: boolean) => Promise<void>
+}
 
 export interface CrdtProviderOptions {
   inactiveDocLimit?: number
@@ -109,6 +144,7 @@ export class CrdtProvider {
   private persistenceInitPromise: Promise<void> | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
+  private snapshotBatchPushFn: SnapshotBatchPushFn | null = null
   /**
    * Notes already written to the durable pending store during the current
    * queue-less stretch — see `recordUnqueuedUpdate`. Purely a write-dedupe: the
@@ -167,11 +203,21 @@ export class CrdtProvider {
     }
   }
 
-  async init(queue?: CrdtUpdateQueue, snapshotPush?: SnapshotPushFn): Promise<void> {
+  async init(
+    queue?: CrdtUpdateQueue,
+    snapshotPush?: SnapshotPushFn,
+    /**
+     * Optional on purpose: every caller that does not wire one keeps the
+     * per-note path exactly as it is, which is what the tests and the
+     * no-session provider rely on.
+     */
+    snapshotBatchPush?: SnapshotBatchPushFn
+  ): Promise<void> {
     await this.initPersistence()
 
     this.updateQueue = queue ?? null
     this.snapshotPushFn = snapshotPush ?? null
+    this.snapshotBatchPushFn = snapshotBatchPush ?? null
     // Start the next queue-less stretch from a clean slate. Whatever was
     // recorded during the previous one is on disk and is the drain's problem
     // now; keeping the ids here would suppress the re-record if this provider
@@ -703,6 +749,7 @@ export class CrdtProvider {
     this.openLocks.clear()
     this.updateQueue = null
     this.snapshotPushFn = null
+    this.snapshotBatchPushFn = null
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
@@ -762,9 +809,20 @@ export class CrdtProvider {
     return pushed
   }
 
-  async pushSnapshotForNote(noteId: string): Promise<boolean> {
-    if (!this.snapshotPushFn) return false
-
+  /**
+   * Everything `pushSnapshotForNote` does EXCEPT the send.
+   *
+   * `null` means "nothing to push" — and it means it for all three of the
+   * reasons the single-note path refuses: a binary note, a local-only note, and
+   * an empty document. It is also what an open that threw returns, in which
+   * case the counters are already back where they were.
+   *
+   * A prepared snapshot has already had its counters zeroed, so a `close()`
+   * racing the send — the LRU's eviction, an editor closing the tab — will not
+   * fire a second push for the same bytes. `settle` is what puts them back if
+   * the send did not land, and it is the caller's obligation.
+   */
+  private async prepareSnapshotForNote(noteId: string): Promise<PreparedSnapshot | null> {
     const indexDb = getIndexDatabase()
     const cached = getNoteCacheById(indexDb, noteId)
     if (cached?.fileType && isBinaryFileType(cached.fileType)) {
@@ -772,7 +830,7 @@ export class CrdtProvider {
         noteId,
         fileType: cached.fileType
       })
-      return false
+      return null
     }
 
     // The row is already in hand, so the authoritative read costs nothing here
@@ -785,20 +843,19 @@ export class CrdtProvider {
     // — a `true` here would be the provider claiming a push it refused to make.
     if (cached?.localOnly) {
       log.debug('Skipping CRDT snapshot push for a local-only note', { noteId })
-      return false
+      return null
     }
 
     const wasOpen = this.docs.has(noteId)
-    let entry: ActiveDoc | undefined
     let clearedAccumulated = 0
     let clearedPending = 0
     try {
       const doc = await this.open(noteId)
-      entry = this.docs.get(noteId)
+      const entry = this.docs.get(noteId)
       const state = Y.encodeStateAsUpdate(doc)
       if (state.length <= 4) {
         if (!wasOpen) await this.close(noteId)
-        return false
+        return null
       }
 
       // Reset accumulatedBytes BEFORE push so close() won't fire a duplicate push
@@ -809,21 +866,153 @@ export class CrdtProvider {
         entry.pendingSnapshotBytes = 0
       }
 
-      await this.snapshotPushFn(noteId, state)
-      log.info('Pushed snapshot for note', { noteId, size: state.byteLength })
+      return {
+        noteId,
+        state,
+        settle: async (pushed: boolean): Promise<void> => {
+          if (!pushed) {
+            // Restore the pre-push counters (additive: updates may have landed
+            // mid-push) so pushAllSnapshots and close() still retry this note.
+            // Re-read rather than closing over `entry`: a batch holds its
+            // prepared notes across one network round trip, long enough for the
+            // LRU to evict a doc or for doOpen to have put a replacement in the
+            // map, and the debt belongs to whatever entry is live now.
+            const live = this.docs.get(noteId)
+            if (live) {
+              live.accumulatedBytes += clearedAccumulated
+              live.pendingSnapshotBytes += clearedPending
+            }
+          }
+          if (!wasOpen) await this.close(noteId)
+        }
+      }
+    } catch (err) {
+      log.warn('Preparing a CRDT snapshot failed', { noteId, error: err })
+      const live = this.docs.get(noteId)
+      if (live) {
+        live.accumulatedBytes += clearedAccumulated
+        live.pendingSnapshotBytes += clearedPending
+      }
       if (!wasOpen) await this.close(noteId)
+      return null
+    }
+  }
+
+  async pushSnapshotForNote(noteId: string): Promise<boolean> {
+    const push = this.snapshotPushFn
+    if (!push) return false
+
+    const prepared = await this.prepareSnapshotForNote(noteId)
+    if (!prepared) return false
+
+    try {
+      await push(noteId, prepared.state)
+      log.info('Pushed snapshot for note', { noteId, size: prepared.state.byteLength })
+      await prepared.settle(true)
       return true
     } catch (err) {
       log.warn('pushSnapshotForNote failed', { noteId, error: err })
-      // Restore the pre-push counters (additive: updates may have landed
-      // mid-push) so pushAllSnapshots and close() still retry this note.
-      if (entry) {
-        entry.accumulatedBytes += clearedAccumulated
-        entry.pendingSnapshotBytes += clearedPending
-      }
-      if (!wasOpen) await this.close(noteId)
+      await prepared.settle(false)
       return false
     }
+  }
+
+  /**
+   * Push several notes' snapshots, in as few requests as the server allows.
+   *
+   * The whole point of the method: one seeded vault used to cost one
+   * `POST /sync/crdt/snapshot` per note (~750ms each, ~600ms of it server-side),
+   * so 100 bodies took 15 seconds. Every note is still prepared and settled
+   * individually — the skips, the counter reset, the restore-on-failure and the
+   * `close()` of a doc nothing else had open are per note and unchanged — only
+   * the send is shared.
+   *
+   * Returns one entry per DISTINCT id, so a caller can tell which notes reached
+   * the server. Duplicate ids are collapsed rather than prepared twice: the
+   * batch endpoint rejects a request that repeats a noteId, and preparing the
+   * same note twice would zero its counters, hand the second prepare nothing to
+   * restore, and lose the debt.
+   *
+   * With no batch fn wired this is exactly the old behaviour — N single pushes
+   * at the same concurrency — which is what keeps every non-runtime caller and
+   * the sign-out path working unchanged.
+   */
+  async pushSnapshotsForNotes(
+    noteIds: string[],
+    options: { concurrency?: number; signal?: AbortSignal } = {}
+  ): Promise<Map<string, boolean>> {
+    const results = new Map<string, boolean>()
+    const unique = [...new Set(noteIds)]
+    if (unique.length === 0) return results
+
+    const concurrency = Math.max(1, options.concurrency ?? 1)
+    const batchPush = this.snapshotBatchPushFn
+
+    if (!batchPush) {
+      const tasks = unique.map((noteId) => async () => {
+        results.set(noteId, await this.pushSnapshotForNote(noteId))
+      })
+      await parallelWithLimit(tasks, concurrency, options.signal)
+      // A task that threw left no entry; the caller reads a missing id the same
+      // way it reads `false`, but spelling it out keeps the "one entry per id"
+      // contract literally true.
+      for (const noteId of unique) if (!results.has(noteId)) results.set(noteId, false)
+      return results
+    }
+
+    const chunks: string[][] = []
+    for (let i = 0; i < unique.length; i += MAX_CRDT_SNAPSHOT_BATCH_ENTRIES) {
+      chunks.push(unique.slice(i, i + MAX_CRDT_SNAPSHOT_BATCH_ENTRIES))
+    }
+
+    const tasks = chunks.map((chunk) => async () => {
+      await this.pushSnapshotChunk(chunk, batchPush, results)
+    })
+    await parallelWithLimit(tasks, concurrency, options.signal)
+
+    for (const noteId of unique) if (!results.has(noteId)) results.set(noteId, false)
+    return results
+  }
+
+  private async pushSnapshotChunk(
+    noteIds: string[],
+    batchPush: SnapshotBatchPushFn,
+    results: Map<string, boolean>
+  ): Promise<void> {
+    const prepared: PreparedSnapshot[] = []
+    for (const noteId of noteIds) {
+      const entry = await this.prepareSnapshotForNote(noteId)
+      if (!entry) {
+        results.set(noteId, false)
+        continue
+      }
+      prepared.push(entry)
+    }
+    if (prepared.length === 0) return
+
+    let outcome: Map<string, boolean>
+    try {
+      outcome = await batchPush(prepared.map(({ noteId, state }) => ({ noteId, state })))
+    } catch (err) {
+      // SnapshotBatchPushFn is documented as total, so this is a bug rather
+      // than a transport failure — treat it as one anyway: a thrown batch means
+      // nothing landed, and every note has to stay retryable.
+      log.warn('Batched CRDT snapshot push threw', { count: prepared.length, error: err })
+      outcome = new Map()
+    }
+
+    let pushedCount = 0
+    for (const entry of prepared) {
+      const pushed = outcome.get(entry.noteId) === true
+      if (pushed) pushedCount++
+      results.set(entry.noteId, pushed)
+      await entry.settle(pushed)
+    }
+
+    log.info('Pushed snapshots in a batch', {
+      requested: prepared.length,
+      pushed: pushedCount
+    })
   }
 
   private initDocStructure(doc: Y.Doc): void {

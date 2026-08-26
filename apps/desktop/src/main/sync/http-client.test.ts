@@ -40,6 +40,7 @@ import {
   getFromServer,
   deleteFromServer,
   pushCrdtFullUpdate,
+  pushCrdtSnapshotBatch,
   SyncServerError,
   NetworkError,
   RateLimitError,
@@ -357,6 +358,63 @@ describe('http-client', () => {
         'CRDT state too large'
       )
       expect(mockFetch).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('pushCrdtSnapshotBatch', () => {
+    it('sends every note in one request, base64-encoded exactly as the single-note push does', async () => {
+      // #given several notes' encrypted snapshots. The batch endpoint is the
+      // same destructive store-and-prune as /sync/crdt/snapshot, one request
+      // per note collapsed into one request for all of them.
+      mockFetch.mockResolvedValue(
+        createJsonResponse({
+          results: [
+            { noteId: 'note-a', accepted: true, sequenceNum: 7 },
+            { noteId: 'note-b', accepted: false, reason: 'too_large' }
+          ]
+        })
+      )
+
+      // #when
+      const response = await pushCrdtSnapshotBatch(
+        [
+          { noteId: 'note-a', snapshot: new Uint8Array([1, 2, 3]) },
+          { noteId: 'note-b', snapshot: new Uint8Array([4, 5]) }
+        ],
+        'token-1'
+      )
+
+      // #then one request, and a body whose bytes match what pushCrdtSnapshot
+      // would have sent for each note on its own.
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      const [url, init] = mockFetch.mock.calls[0] as [string, { body: string }]
+      expect(url).toContain('/sync/crdt/snapshot/batch')
+      expect(JSON.parse(init.body)).toEqual({
+        snapshots: [
+          { noteId: 'note-a', snapshot: Buffer.from([1, 2, 3]).toString('base64') },
+          { noteId: 'note-b', snapshot: Buffer.from([4, 5]).toString('base64') }
+        ]
+      })
+      // #and the per-note verdicts come back in request order, HTTP 200 even
+      // though one of them failed.
+      expect(response.results.map((r) => r.accepted)).toEqual([true, false])
+    })
+
+    it('surfaces a 404 as a SyncServerError so the caller can detect an old server', async () => {
+      // #given a sync server that predates the endpoint. Hono answers a route
+      // it does not have with a non-JSON 404.
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        headers: new Headers(),
+        json: () => Promise.reject(new Error('not json'))
+      } as unknown as Response)
+
+      // #when / #then the status has to survive: it is the whole capability
+      // signal, and swallowing it would strand every body on old servers.
+      await expect(
+        pushCrdtSnapshotBatch([{ noteId: 'note-a', snapshot: new Uint8Array([1]) }], 'token-1')
+      ).rejects.toMatchObject({ statusCode: 404 })
     })
   })
 

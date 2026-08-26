@@ -13,7 +13,6 @@ import { postToServer, RateLimitError } from '../http-client'
 import { classifyError } from '../sync-errors'
 import { syncErrorTelemetry } from '../sync-error-telemetry'
 import { isBinaryFileType } from '@memry/shared/file-types'
-import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { SyncTimer } from '@memry/sync-client/sync-timer'
 import { trackMainEvent } from '../../telemetry/track'
 import type { SyncContext } from './sync-context'
@@ -145,7 +144,7 @@ export class PushCoordinator {
           const payloadAtDequeue = new Map(dedupedItems.map((item) => [item.id, item.payload]))
 
           if (this.ctx.deps.crdtProvider) {
-            const snapshotTasks = dedupedItems
+            const snapshotNoteIds = dedupedItems
               .filter((item) => {
                 if (item.operation !== 'create') return false
                 if (item.type !== 'note' && item.type !== 'journal') return false
@@ -157,16 +156,35 @@ export class PushCoordinator {
                 }
                 return true
               })
-              .map((item) => () => this.ctx.deps.crdtProvider!.pushSnapshotForNote(item.itemId))
-            if (snapshotTasks.length > 0) {
-              const snapshotResults = await parallelWithLimit(
-                snapshotTasks,
-                CRDT_SNAPSHOT_CONCURRENCY,
-                abortSignal
-              )
-              const failedSnapshots = snapshotResults.filter((r) => r.status === 'rejected')
-              if (failedSnapshots.length > 0) {
-                log.warn('Push: some CRDT snapshots failed', { count: failedSnapshots.length })
+              .map((item) => item.itemId)
+            if (snapshotNoteIds.length > 0) {
+              // One call, not one per note: the provider batches these onto
+              // `POST /sync/crdt/snapshot/batch` and only falls back to a
+              // request per note when the server has no such endpoint. A
+              // seeded vault used to spend ~750ms per body here.
+              //
+              // Wrapped because a snapshot failure must never block the record
+              // push — that used to fall out of `parallelWithLimit` swallowing
+              // rejections at this call site, and moving the fan-out into the
+              // provider would otherwise have moved that guarantee with it.
+              try {
+                const snapshotResults = await this.ctx.deps.crdtProvider.pushSnapshotsForNotes(
+                  snapshotNoteIds,
+                  { concurrency: CRDT_SNAPSHOT_CONCURRENCY, signal: abortSignal }
+                )
+                const failedSnapshots = [...snapshotResults.values()].filter((ok) => !ok).length
+                if (failedSnapshots > 0) {
+                  // Not a push failure: the record still goes to /sync/push
+                  // below, and the provider has already restored each failed
+                  // note's pending-snapshot debt so the scheduler, close() and
+                  // the pending-note replay retry it.
+                  log.warn('Push: some CRDT snapshots failed', { count: failedSnapshots })
+                }
+              } catch (err) {
+                log.warn('Push: the CRDT snapshot pass threw', {
+                  count: snapshotNoteIds.length,
+                  error: err
+                })
               }
             }
           }

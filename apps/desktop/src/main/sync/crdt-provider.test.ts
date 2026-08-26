@@ -2445,3 +2445,183 @@ describe('CrdtProvider bootstrap doc-capacity raise', () => {
     expect(new CrdtProvider().inactiveDocCapacity).toBe(32)
   })
 })
+
+/**
+ * Batched snapshot pushes.
+ *
+ * The bookkeeping `pushSnapshotForNote` owns — the three skips, zeroing the
+ * counters before the send, restoring them after a failure, closing a doc
+ * nothing else had open — is now shared with a path that sends 50 notes in one
+ * request. These pin that none of it was left behind in the split.
+ */
+describe('CrdtProvider batched snapshot pushes', () => {
+  let provider: CrdtProvider
+  let queue: { enqueue: ReturnType<typeof vi.fn>; dropNote: ReturnType<typeof vi.fn> }
+  let pushSnapshot: ReturnType<typeof vi.fn<SnapshotPushFn>>
+  let pushBatch: ReturnType<typeof vi.fn>
+  /** noteId -> accepted. Anything absent is accepted, like a healthy server. */
+  let rejected: Set<string>
+
+  const markdownRow = (id: string): Record<string, unknown> => ({
+    id,
+    path: `notes/${id}.md`,
+    title: id,
+    fileType: 'markdown'
+  })
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    mocks.sent = []
+    mocks.windows.clear()
+    mocks.persistenceInstances.length = 0
+    mocks.persistenceBehavior.mode = 'ok'
+    mocks.preflightResult = { ok: true }
+    mocks.preflightQueue.length = 0
+    mocks.dataDb = {}
+    mocks.vaultUuid = VAULT_UUID
+    mocks.getNoteCacheById.mockImplementation((_db: unknown, id: string) => markdownRow(id))
+    mocks.toAbsolutePath.mockImplementation((p: string) => `/vault/${p}`)
+    mocks.safeRead.mockResolvedValue('# Note\n\nBody')
+    mocks.parseNote.mockReturnValue({ content: 'Body' })
+    mocks.markdownToYFragment.mockImplementation(
+      async (_content: string, fragment: Y.XmlFragment) => {
+        fragment.insert(0, [new Y.XmlText('Body')])
+        return true
+      }
+    )
+    mocks.compactYDoc.mockReturnValue(null)
+
+    queue = { enqueue: vi.fn(), dropNote: vi.fn() }
+    pushSnapshot = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+    rejected = new Set<string>()
+    pushBatch = vi.fn(async (entries: Array<{ noteId: string }>) => {
+      return new Map(entries.map((e) => [e.noteId, !rejected.has(e.noteId)]))
+    })
+
+    provider = new CrdtProvider()
+    await provider.init(queue as any, pushSnapshot, pushBatch as any)
+  })
+
+  afterEach(() => {
+    resetCrdtProvider()
+  })
+
+  it('splits into requests at the server cap instead of one request per note', async () => {
+    // #given a seeded vault's worth of bodies. One request per note was
+    // ~750ms each, so 100 notes cost 15 seconds.
+    const noteIds = Array.from({ length: 120 }, (_, i) => `note-${i}`)
+
+    // #when
+    const results = await provider.pushSnapshotsForNotes(noteIds, { concurrency: 4 })
+
+    // #then 50 + 50 + 20, and the single-note endpoint is never touched.
+    const sizes = pushBatch.mock.calls.map((call) => (call[0] as unknown[]).length)
+    expect(sizes.reduce((a, b) => a + b, 0)).toBe(120)
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(50)
+    expect(pushBatch).toHaveBeenCalledTimes(3)
+    expect(pushSnapshot).not.toHaveBeenCalled()
+    expect(results.size).toBe(120)
+    expect([...results.values()].every(Boolean)).toBe(true)
+  })
+
+  it('prepares a repeated id once, because the endpoint rejects a duplicated note', async () => {
+    // #given the same note named twice. Preparing it twice would also zero its
+    // counters twice and lose the debt the second restore had nothing to put
+    // back.
+    const results = await provider.pushSnapshotsForNotes(['note-1', 'note-1'])
+
+    const batched = pushBatch.mock.calls[0][0] as Array<{ noteId: string }>
+    expect(batched.map((e) => e.noteId)).toEqual(['note-1'])
+    expect(results.size).toBe(1)
+  })
+
+  it('still refuses binary, local-only and empty notes before they reach the wire', async () => {
+    // #given one of each refusal the single-note path documents
+    mocks.getNoteCacheById.mockImplementation((_db: unknown, id: string) => {
+      if (id === 'pdf-note') return { id, path: 'notes/File.pdf', fileType: 'pdf' }
+      if (id === 'private-note') return { ...markdownRow(id), localOnly: true }
+      return markdownRow(id)
+    })
+    // An empty file seeds nothing, so the doc has no state worth pushing.
+    mocks.safeRead.mockImplementation(async (p: string) =>
+      p === '/vault/notes/empty-note.md' ? '' : '# Note\n\nBody'
+    )
+
+    // #when
+    const results = await provider.pushSnapshotsForNotes([
+      'note-ok',
+      'pdf-note',
+      'private-note',
+      'empty-note'
+    ])
+
+    // #then only the real markdown note is sent, and the other three read as
+    // "not pushed" rather than as silent successes.
+    const batched = pushBatch.mock.calls[0][0] as Array<{ noteId: string }>
+    expect(batched.map((e) => e.noteId)).toEqual(['note-ok'])
+    expect(results.get('pdf-note')).toBe(false)
+    expect(results.get('private-note')).toBe(false)
+    expect(results.get('empty-note')).toBe(false)
+    expect(results.get('note-ok')).toBe(true)
+  })
+
+  it('leaves a note the server rejected inside the batch pending and retryable', async () => {
+    // #given two notes with unpushed local edits, one of which the server will
+    // refuse. A 200 with `accepted: false` is the case that used to have no
+    // representation at all.
+    await provider.open('note-a', 1)
+    await provider.open('note-b', 1)
+    provider.updateMeta('note-a', { title: 'edited a' })
+    provider.updateMeta('note-b', { title: 'edited b' })
+    rejected.add('note-b')
+
+    // #when
+    const results = await provider.pushSnapshotsForNotes(['note-a', 'note-b'])
+
+    // #then
+    expect(results.get('note-a')).toBe(true)
+    expect(results.get('note-b')).toBe(false)
+
+    // #and the debt is the thing that makes it retryable: the accepted note
+    // owes nothing, the rejected one owes exactly what it owed before.
+    const metrics = new Map(
+      provider.getDocSizeMetrics().map((m) => [m.noteId, m.pendingSnapshotBytes])
+    )
+    expect(metrics.get('note-a')).toBe(0)
+    expect(metrics.get('note-b')).toBeGreaterThan(0)
+
+    // #and the existing retry paths pick it up unchanged.
+    await expect(provider.pushAllSnapshots()).resolves.toBe(1)
+    expect(pushSnapshot).toHaveBeenCalledTimes(1)
+    expect(pushSnapshot.mock.calls[0][0]).toBe('note-b')
+  })
+
+  it('closes the docs it opened itself and leaves the ones it did not', async () => {
+    // #given one note already open in an editor and one that is not
+    await provider.open('note-open', 3)
+
+    // #when
+    await provider.pushSnapshotsForNotes(['note-open', 'note-closed'])
+
+    // #then the editor's doc survives the push; the borrowed one does not.
+    expect(provider.getDoc('note-open')).toBeDefined()
+    expect(provider.getDoc('note-closed')).toBeUndefined()
+  })
+
+  it('falls back to one push per note when no batch fn is wired', async () => {
+    // #given a provider with only the single-note push — every caller that
+    // never wires a batch fn, which is most of them.
+    const single = new CrdtProvider()
+    const singlePush = vi.fn<SnapshotPushFn>().mockResolvedValue(undefined)
+    await single.init(queue as any, singlePush)
+
+    // #when
+    const results = await single.pushSnapshotsForNotes(['note-a', 'note-b'], { concurrency: 2 })
+
+    // #then
+    expect(singlePush.mock.calls.map((c) => c[0]).sort()).toEqual(['note-a', 'note-b'])
+    expect(results.get('note-a')).toBe(true)
+    expect(results.get('note-b')).toBe(true)
+    await single.destroy()
+  })
+})

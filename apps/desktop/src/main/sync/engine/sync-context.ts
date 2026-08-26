@@ -167,7 +167,45 @@ export const STALE_CURSOR_THRESHOLD_MS = 24 * 60 * 60 * 1000
 export const MAX_RATE_LIMIT_BACKOFF_MS = 5 * 60 * 1000
 export const BASE_RATE_LIMIT_BACKOFF_MS = 5_000
 export const YIELD_EVERY_N_ITEMS = 20
-export const CRDT_SNAPSHOT_CONCURRENCY = 5
+/**
+ * Concurrent snapshot-push REQUESTS while a push iteration flushes its creates.
+ *
+ * The unit changed. It used to be concurrent NOTES — `pushSnapshotForNote` per
+ * note, one `POST /sync/crdt/snapshot` each — so at 5 a seeded vault spent one
+ * ~750ms round trip per body and 100 bodies took 15 seconds. A request now
+ * carries up to MAX_CRDT_SNAPSHOT_BATCH_ENTRIES (50) notes, so the old
+ * arithmetic of "concurrency = notes in flight" no longer describes anything.
+ *
+ * What actually bounds the request rate now is the shape of the loop above,
+ * not this number:
+ *
+ *   - `dedupedItems` is at most `pushBatchSize` (100) per iteration, so an
+ *     iteration can produce at most ceil(100 / 50) = 2 snapshot requests;
+ *   - iterations are strictly serial, and each one also waits on its own
+ *     `POST /sync/push` round trip.
+ *
+ * So the ceiling is ~2 `crdt_push` requests per serial iteration. Even at an
+ * implausible one iteration per second that is 120 req/min against the
+ * server's 300/min `crdt_push` bucket (sync.ts, keyed per device) — 40%, inside
+ * the same 50% margin the sweep pacing below is derived against, with the
+ * remainder left for the traffic that still pushes one note at a time: the 30s
+ * snapshot scheduler, `close()`, `pushAllSnapshots`, `compactDoc` and the
+ * pending-note replay.
+ *
+ * 4 is therefore headroom rather than a target — it covers `pushBatchSize`
+ * growing to 200 without this becoming the limiter, and it is deliberately not
+ * larger: every in-flight chunk holds up to 50 Y.Docs open across the request,
+ * and the provider's inactive-doc LRU is 32, so a bigger number only buys more
+ * eviction churn. If `pushBatchSize` or the batch cap moves far enough that
+ * more than 4 chunks can exist at once, re-derive against the 300/min bucket
+ * before raising this.
+ *
+ * It also still bounds the OLD-server path: against a server with no batch
+ * endpoint each chunk falls back to one request per note, sent serially inside
+ * the chunk, which is 4 requests in flight — the same order as the 5 this
+ * replaced.
+ */
+export const CRDT_SNAPSHOT_CONCURRENCY = 4
 // Fallback cadence for the vault-wide CRDT sweep at the end of fullSync, used
 // ONLY when the socket cannot answer whether broadcasts were missed: no sweep
 // recorded against the current engine yet (process start, vault switch, engine
