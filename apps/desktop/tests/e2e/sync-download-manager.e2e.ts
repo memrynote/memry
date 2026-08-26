@@ -431,6 +431,10 @@ test.describe('Attachment download manager', () => {
    *
    * Marked `fail` rather than skipped: it runs on every suite run and turns red
    * the moment the classification is fixed.
+   *
+   * NOTE: wrapping the two `arrayBuffer()` reads in NetworkError is NECESSARY
+   * but NOT SUFFICIENT — tried, and the prefix is still discarded, so at least
+   * one more site drops it. Tracked as its own issue rather than half-fixed.
    */
   test.fail(
     'keeps the verified prefix when the socket is cut mid-body',
