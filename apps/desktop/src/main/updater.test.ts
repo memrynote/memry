@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   class MockEmitter {
@@ -42,19 +42,28 @@ const mocks = vi.hoisted(() => {
         storeState.prefs = { ...storeState.prefs, autoCheck: enabled }
       })
     },
-    app: {
+    app: Object.assign(new MockEmitter(), {
       isPackaged: true,
       getVersion: vi.fn(() => '1.2.3'),
       quit: vi.fn()
-    },
-    windows: [
-      {
+    }),
+    // Session-end guard listens on BrowserWindow instances, so windows are emitters.
+    createWindow: () =>
+      Object.assign(new MockEmitter(), {
         isDestroyed: () => false,
         webContents: {
           isDestroyed: () => false,
           send: vi.fn()
         }
-      }
+      }),
+    windows: [
+      Object.assign(new MockEmitter(), {
+        isDestroyed: () => false,
+        webContents: {
+          isDestroyed: () => false,
+          send: vi.fn()
+        }
+      })
     ],
     dialog: {
       showMessageBox: vi.fn()
@@ -145,6 +154,8 @@ describe('updater', () => {
     vi.clearAllMocks()
     mocks.storeState.prefs = {}
     mocks.autoUpdater.removeAllListeners()
+    mocks.app.removeAllListeners()
+    mocks.windows[0].removeAllListeners()
     mocks.autoUpdater.autoDownload = true
     mocks.autoUpdater.autoInstallOnAppQuit = false
     mocks.autoUpdater.checkForUpdates.mockResolvedValue(undefined)
@@ -887,5 +898,60 @@ describe('updater', () => {
     expect(mocks.autoUpdater.logger).toBeDefined()
     mocks.autoUpdater.logger.info('Cannot run installer: error code: EACCES')
     expect(mocks.logger.info).toHaveBeenCalledWith('Cannot run installer: error code: EACCES')
+  })
+})
+
+describe('session-end install guard (#1851)', () => {
+  const realPlatform = process.platform
+
+  function setPlatform(value: NodeJS.Platform): void {
+    Object.defineProperty(process, 'platform', { value, configurable: true })
+  }
+
+  beforeEach(() => {
+    mocks.app.removeAllListeners()
+    mocks.windows[0].removeAllListeners()
+    mocks.autoUpdater.removeAllListeners()
+    mocks.autoUpdater.autoInstallOnAppQuit = false
+    mocks.autoUpdater.checkForUpdates.mockResolvedValue(undefined)
+    mocks.storeState.prefs = {}
+    mocks.app.isPackaged = true
+  })
+
+  afterEach(() => {
+    setPlatform(realPlatform)
+  })
+
+  it('skips install-on-quit when the OS session ends on Windows', async () => {
+    setPlatform('win32')
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+    expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(true)
+
+    mocks.windows[0].emit('query-session-end')
+
+    expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(false)
+  })
+
+  it('guards windows created after updater init', async () => {
+    setPlatform('win32')
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    const lateWindow = mocks.createWindow()
+    mocks.app.emit('browser-window-created', {}, lateWindow)
+    lateWindow.emit('session-end')
+
+    expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(false)
+  })
+
+  it('does not touch install-on-quit off Windows', async () => {
+    setPlatform('darwin')
+    const updater = await loadUpdater()
+    updater.initializeUpdater()
+
+    mocks.windows[0].emit('query-session-end')
+
+    expect(mocks.autoUpdater.autoInstallOnAppQuit).toBe(true)
   })
 })

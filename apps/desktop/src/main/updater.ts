@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
@@ -243,6 +243,44 @@ export function noteFailedUpdateInstall(version: string | null): void {
   setState({ installFailed: { version } })
 }
 
+/**
+ * Windows kills the detached NSIS installer that autoInstallOnAppQuit spawns
+ * when the quit is part of an OS shutdown/restart/log-off — after the old
+ * install has already been removed. That is how a user ends up with an install
+ * directory holding only the uninstaller and a dead Start menu shortcut
+ * (#1851). When the OS session is ending, skip the install-on-quit entirely:
+ * the downloaded update applies on the next user-initiated quit or via the
+ * in-app Restart prompt instead. `query-session-end` can fire for a shutdown
+ * that another app then cancels — the cost of that false positive is one
+ * skipped silent install, which the next quit picks up.
+ */
+function disableInstallOnSessionEnd(): void {
+  if (!autoUpdater.autoInstallOnAppQuit) {
+    return
+  }
+  logger.warn(
+    'OS session ending — skipping install-on-quit so a killed installer cannot remove the existing install'
+  )
+  autoUpdater.autoInstallOnAppQuit = false
+}
+
+function watchWindowForSessionEnd(window: BrowserWindow): void {
+  window.on('query-session-end', disableInstallOnSessionEnd)
+  window.on('session-end', disableInstallOnSessionEnd)
+}
+
+function registerSessionEndInstallGuard(): void {
+  if (process.platform !== 'win32') {
+    return
+  }
+  for (const window of BrowserWindow.getAllWindows()) {
+    watchWindowForSessionEnd(window)
+  }
+  app.on('browser-window-created', (_event, window) => {
+    watchWindowForSessionEnd(window)
+  })
+}
+
 export function initializeUpdater(): void {
   if (initialized || !app.isPackaged) {
     return
@@ -256,6 +294,7 @@ export function initializeUpdater(): void {
   const autoCheckEnabled = prefs.autoCheck ?? true
   autoUpdater.autoDownload = autoDownloadEnabled
   autoUpdater.autoInstallOnAppQuit = true
+  registerSessionEndInstallGuard()
   setState({ autoDownloadEnabled, autoCheckEnabled })
 
   autoUpdater.on('checking-for-update', () => {
