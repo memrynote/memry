@@ -144,6 +144,7 @@ const createHarness = (
   const actions: FullSyncActions = {
     pull: vi.fn(async () => {
       order.push('pull')
+      return true
     }),
     push: vi.fn(async () => {
       order.push('push')

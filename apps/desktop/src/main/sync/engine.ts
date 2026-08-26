@@ -367,10 +367,16 @@ export class SyncEngine extends SyncEventEmitter {
     }
   }
 
-  async pull(): Promise<void> {
+  /**
+   * Resolves TRUE only when the pull actually delivered. Every failure below is
+   * swallowed exactly as it always has been — `handleCoordinatorError` returns
+   * from every branch — so the returned outcome is the only thing that
+   * separates a delivered pull from a silent one (#1835).
+   */
+  async pull(): Promise<boolean> {
     const start = Date.now()
     try {
-      await this.pullCoordinator.pull()
+      const delivered = await this.pullCoordinator.pull()
       trackMainEvent('sync_run_completed', {
         surface: 'sync',
         action: 'pull_completed',
@@ -382,6 +388,7 @@ export class SyncEngine extends SyncEventEmitter {
         source: 'pull',
         dimensions: { transport: 'record' }
       })
+      return delivered
     } catch (error) {
       trackMainEvent('sync_error', {
         surface: 'sync',
@@ -393,6 +400,7 @@ export class SyncEngine extends SyncEventEmitter {
         dimensions: { transport: 'record' }
       })
       await this.handleCoordinatorError(error)
+      return false
     }
   }
 
@@ -788,7 +796,9 @@ export class SyncEngine extends SyncEventEmitter {
     switch (message.type) {
       case 'changes_available':
         if (!this.stateManager.isPaused()) {
-          this.scheduleSync(() => this.pull())
+          this.scheduleSync(async () => {
+            await this.pull()
+          })
         }
         break
       case 'crdt_updated': {

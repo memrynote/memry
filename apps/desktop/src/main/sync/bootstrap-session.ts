@@ -182,12 +182,15 @@ async function renew(): Promise<void> {
 }
 
 /**
- * Close on completion/failure/vault switch. Clears local state FIRST (pacing
- * reverts immediately, before any network round trip), then tells the server
- * best-effort so the per-user concurrency slot frees up for other devices.
+ * Close on completion/failure/vault switch, or when the bootstrap has simply
+ * stopped making progress ('idle' — a drain that ended owing notes back, or one
+ * blocked offline). Clears local state FIRST (pacing reverts immediately,
+ * before any network round trip), then tells the server best-effort so the
+ * per-user concurrency slot frees up for other devices. The reason is local:
+ * it is logged, never sent.
  */
 export async function closeBootstrapSession(
-  reason: 'completed' | 'failed' | 'vault_switch' | 'expired'
+  reason: 'completed' | 'failed' | 'idle' | 'vault_switch' | 'expired'
 ): Promise<void> {
   // Capture the token BEFORE clearing local state: pacing must revert this
   // instant, but the server's /close still needs the header to identify the

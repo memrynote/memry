@@ -117,12 +117,25 @@ export class PullCoordinator {
     this.corruptTracker = new CorruptItemTracker(ctx, quarantine, (id) => this.resolveDeviceKey(id))
   }
 
-  async pull(): Promise<void> {
+  /**
+   * Resolves TRUE only when the run finished clean enough for
+   * `finalizePullSuccess` to record it. A busy lock, missing credentials, a
+   * page the run refused to apply and an error this coordinator swallowed all
+   * resolve FALSE (#1835).
+   *
+   * Nothing that used to be swallowed is rethrown here and nothing that used to
+   * be rethrown is swallowed — the outcome is only *reported* alongside the
+   * existing behaviour, because every error path out of a pull is silent and a
+   * caller that needs to know whether anything was actually delivered cannot
+   * infer it from the promise not rejecting.
+   */
+  async pull(): Promise<boolean> {
     const release = await this.ctx.acquireLock()
-    if (!release) return
+    if (!release) return false
 
     const cleanup = this.createPullCleanup(release)
     let vaultKey: Uint8Array | null = null
+    let delivered = false
     this.deviceKeyCache.clear()
 
     try {
@@ -131,7 +144,7 @@ export class PullCoordinator {
       this.ctx.abortController = new AbortController()
 
       const credentials = await this.getPullCredentials()
-      if (!credentials) return
+      if (!credentials) return false
       vaultKey = credentials.vaultKey
 
       const runState = this.createPullRunState(
@@ -158,6 +171,7 @@ export class PullCoordinator {
           })
         } else {
           this.finalizePullSuccess(runState)
+          delivered = true
         }
       } catch (error) {
         this.handlePullError(error, runState.startTime)
@@ -165,6 +179,7 @@ export class PullCoordinator {
     } finally {
       this.cleanupAfterPull(vaultKey, cleanup)
     }
+    return delivered
   }
 
   periodicPull(): void {
@@ -182,7 +197,9 @@ export class PullCoordinator {
       })
       return
     }
-    this.ctx.scheduleSync(() => this.pull())
+    this.ctx.scheduleSync(async () => {
+      await this.pull()
+    })
   }
 
   async resolveDeviceKey(deviceId: string): Promise<Uint8Array | null> {
@@ -253,7 +270,14 @@ export class PullCoordinator {
     let prefetchedNext: Promise<ChangesRetryResult> | null = null
 
     while (hasMore) {
-      if (this.ctx.abortController!.signal.aborted) break
+      // Same refusal as the post-apply check below, one iteration earlier: a
+      // cancel that lands before the first page is even fetched (vault
+      // close/switch calls `engine.requestCancel()` routinely) delivered
+      // nothing, so the run must not be recorded as a clean sync either.
+      if (this.ctx.abortController!.signal.aborted) {
+        runState.refused = true
+        break
+      }
 
       if (prefetchedNext) {
         changesResult = await prefetchedNext
