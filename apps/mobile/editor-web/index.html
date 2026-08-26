@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No `viewport-fit=cover` and no user scaling: the RN host owns the safe
+      area and the zoom gesture. `maximum-scale=1` also stops iOS auto-zooming
+      the page when a contenteditable takes focus, which otherwise shifts the
+      whole editor sideways on every tap.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <!--
+      No network at editor open (contract: self-contained local asset). The CSP
+      is the enforcement, not a comment: everything is inlined by the build, so
+      any remote fetch is a bug, and attachment bytes arrive over the bridge.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; connect-src 'none'"
+    />
+    <title>Memry editor</title>
+  </head>
+  <body>
+    <div id="root" role="textbox" aria-multiline="true" aria-label="Note content"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
