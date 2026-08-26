@@ -456,6 +456,27 @@ single row body — the cost of the check scales with the size of the disagreeme
 of the vault. The bytes a repair pushes are unchanged: the lazy build runs the same full-row select
 through the same serialization the eager pass used.
 
+### Manifest pagination
+
+`GET /sync/manifest` pages **opt-in** via `limit` (with an optional `cursor`). A param-less
+request — which is every client shipped before this — keeps the original complete single response,
+`nextCursor` field and all absent. A `cursor` without a `limit` is a malformed pagination attempt
+and is rejected rather than answered with the full manifest, which would silently duplicate the
+pages already served.
+
+Pagination keys on `server_cursor`: it is unique per user and only ever grows, so pages can neither
+skip nor split rows. A row updated _between_ pages gets a new cursor greater than any page already
+served, so it may appear twice across the run — once at its old cursor, again at its new one —
+never zero times, and the client's `(type, id)` map dedups the repeat. `nextCursor` is taken from
+the last row **kept**, unsupported types included, so the type filter cannot open a gap the next
+page skips over. `MAX_MANIFEST_PAGE_LIMIT` is 1000, and the +1 row the query fetches probes for
+another page without a `COUNT`.
+
+The `sync_manifest` ceiling moved from 10/min to 30/min alongside this: a paginated client spends
+`ceil(rows / page)` requests per integrity check instead of 1, so the old ceiling would have
+stalled any vault past 10 pages. Each paged request is a bounded indexed scan — strictly cheaper
+than the single unbounded full scan the old ceiling was budgeted for.
+
 ## Note Attachments
 
 Files embedded in a note (images, PDFs) live on disk under the vault's
@@ -593,21 +614,26 @@ list.
 
 ## Endpoints
 
-| Path                              | Direction | Purpose                                                                          |
-| --------------------------------- | --------- | -------------------------------------------------------------------------------- |
-| `POST /sync/push`                 | up        | Upload new sync items (metadata + blob refs)                                     |
-| `POST /sync/pull`                 | down      | Fetch updates since cursor                                                       |
-| `POST /sync/crdt/updates`         | up        | Incremental Yjs binary updates                                                   |
-| `GET /sync/crdt/updates`          | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)        |
-| `POST /sync/crdt/updates/batch`   | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`      |
-| `POST /sync/crdt/snapshot`        | up        | Full Yjs document baseline; prunes the note's stored updates at or below it      |
-| `GET /sync/crdt/snapshot/:noteId` | down      | The note's snapshot baseline and its `revision`, applied before its incrementals |
-| `GET /sync/vaults`                | down      | List the account's registered vaults                                             |
-| `POST /sync/vaults`               | up        | Register or update a vault's encrypted name                                      |
-| `POST /auth/*`                    | mixed     | OTP, sign-in, refresh, sign-out                                                  |
-| `GET /auth/key-verifier`          | down      | Account key verifier for an established session (vault-key mismatch detection)   |
-| `POST /devices/*`                 | mixed     | Linking, listing, revoking                                                       |
-| `POST /keys/*`                    | mixed     | Key sealing during link, rotation                                                |
+| Path                                   | Direction | Purpose                                                                                       |
+| -------------------------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `POST /sync/push`                      | up        | Upload new sync items (metadata + blob refs)                                                  |
+| `POST /sync/pull`                      | down      | Fetch updates since cursor                                                                    |
+| `POST /sync/crdt/updates`              | up        | Incremental Yjs binary updates                                                                |
+| `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
+| `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
+| `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes the note's stored updates at or below it                   |
+| `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
+| `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
+| `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
+| `POST /sync/bootstrap`                 | mixed     | Open an elevated bootstrap window; returns a token, the first manifest page and a tail cursor |
+| `POST /sync/bootstrap/renew`           | mixed     | Slide the window's TTL under the same session id                                              |
+| `POST /sync/bootstrap/close`           | up        | Release the window and its per-user session slot (idempotent)                                 |
+| `GET /sync/packs`                      | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
+| `POST /sync/attachments/presign-batch` | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
+| `POST /auth/*`                         | mixed     | OTP, sign-in, refresh, sign-out                                                               |
+| `GET /auth/key-verifier`               | down      | Account key verifier for an established session (vault-key mismatch detection)                |
+| `POST /devices/*`                      | mixed     | Linking, listing, revoking                                                                    |
+| `POST /keys/*`                         | mixed     | Key sealing during link, rotation                                                             |
 
 The five `/sync/crdt/*` routes are the only ones that carry a note body; the record feed above them
 moves metadata only. A device reads a body by applying the baseline from
@@ -818,6 +844,470 @@ a localhost port nothing is listening on. Packaging cannot legitimately omit the
 `scripts/build-packaged-app.js` refuses to build without `apps/desktop/.env.production` and asserts
 the value is a non-local HTTPS URL.
 
+## Bootstrap Sessions
+
+A device that has never pulled a vault has to move the whole thing. Every steady-state rate ceiling
+on this server is sized for a device that already has its data and is exchanging deltas, so a fresh
+device's first sync is the one workload those ceilings actively fight. A **bootstrap session** is a
+time-boxed, per-device window in which the pull-side ceilings are widened — and nothing else
+changes.
+
+| Route                        | Purpose                                                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /sync/bootstrap`       | Open a window. Returns the session token, the first manifest page, `tailCursor`, and (when the deployment can presign) a first page of attachment chunk hashes |
+| `POST /sync/bootstrap/renew` | Slide the TTL under the same session id                                                                                                                        |
+| `POST /sync/bootstrap/close` | Drop the ledger row and free the per-user slot; idempotent                                                                                                     |
+
+They are mounted as their own router under `/sync/bootstrap` because Hono's `use('*')` does not
+leak between routers and these routes need their own stack: `authMiddleware`,
+`clientGateMiddleware`, `paidSyncMiddleware`, `syncTypesMiddleware` — the same gates as the rest of
+the vault pull path. Their own limiter bucket, `bootstrap_session`, allows 30 requests per minute
+keyed by **device**, since eligibility is per device and open/renew/close are once-per-run
+operations rather than hot-path traffic.
+
+### The token
+
+An HMAC-SHA256 signature over a base64url JSON payload carrying
+`{v: 1, userId, deviceId, vaultId, jti, iat, exp}` — the same shape as the checkout token, keyed by
+its own secret binding. Per-purpose HMAC secrets are this codebase's pattern (`OTP_HMAC_KEY`,
+`WEBHOOK_HMAC_KEY`, `TELEMETRY_HMAC_KEY`): one shared key across token classes would let a leak in
+any of them forge all of them.
+
+Verification reads **no database**. `exp` is inside the signature, so an expired token fails
+verification with zero I/O on the hot path, and the token can be checked on every elevated request
+without a round trip. `verifyBootstrapSession` returns null on _any_ failure — wrong secret,
+tampered payload, expired, malformed — and never throws: an invalid bootstrap header must not be
+able to fail an unrelated sync request.
+
+`iat` is carried in the payload but never inspected. The only temporal check is
+`if (payload.exp <= nowSeconds) return null`, so a token whose `iat` is in the future verifies
+normally as long as its `exp` has not passed. That is harmless — `iat` is informational, only the
+signing key's holder can set either claim, and `exp` alone bounds the window — but a not-before
+check is not something this token has, and the function's own doc comment claiming "future-dated"
+among its rejections is wrong.
+
+The one thing statelessness cannot express is a cap on concurrent sessions, which is what the
+`bootstrap_sessions` ledger (migration `0007_bootstrap_sessions`) exists for. It is never on the
+verification path. It is written at issuance, renewal and close, deleted per `(user, vault)` by
+vault-deletion revocation, and pruned two more ways: issuance runs a lazy
+`DELETE FROM bootstrap_sessions WHERE user_id = ? AND expires_at < ?` for that user only before its
+insert, and the 6-hourly cron runs `cleanup_expired_bootstrap_sessions`, which deletes every
+expired row account-wide. An abandoned session therefore costs one row until its expiry passes,
+never a live cap slot.
+
+### What elevation actually does
+
+The limiter middleware asks a request-scoped hook (`getElevatedLimits`) for a multiplier and
+compares the count against `ceiling × multiplier`. The Durable Object still only counts; the
+comparison stays in the middleware, which is exactly what lets elevation widen a ceiling without
+touching the counter — see [Rate limiter mechanism](#rate-limiter-mechanism).
+
+| Bucket            | Steady state | Multiplier | Elevated | Cost per request                                                 |
+| ----------------- | ------------ | ---------- | -------- | ---------------------------------------------------------------- |
+| `crdt_pull`       | 600/min      | ×5         | 3000/min | One indexed D1 read, at most one R2 read                         |
+| `crdt_batch_pull` | 30/min       | ×5         | 150/min  | One indexed query                                                |
+| `blob_download`   | 600/min      | ×5         | 3000/min | One indexed D1 row + one R2 class-B read                         |
+| `sync_pull`       | 120/min      | ×3         | 360/min  | Up to 100 R2 reads per POST (`pullItems` caps concurrency at 25) |
+| `sync_changes`    | 60/min       | ×3         | 180/min  | One indexed scan per page of 500, refs only                      |
+| `sync_manifest`   | 30/min       | ×3         | 90/min   | Bounded indexed keyset scan per page                             |
+
+Everything else — every push, every upload, status, vaults, the socket, and presign issuance itself
+— stays at its steady-state ceiling whether or not a valid token is present. Bootstrap is a pull
+problem, and elevating a write path would only widen an abuse ceiling.
+
+`sync_pull` gets the smaller multiplier because it is the expensive one: 6 requests/second against
+bursts of 25 concurrent R2 reads is roughly 150 R2 operations/second worst case. That is bounded by
+the TTL and the two-session cap, and is still below what a single warm push batch spends.
+
+#### Nothing is granted — the client assumes ×5
+
+The multipliers above are the **server's** table and never travel. `POST /sync/bootstrap` returns
+no `elevationFactor`: the field is absent from `BootstrapOpenResponseSchema`
+(`packages/contracts/src/bootstrap-api.ts`) and the route never sets it. The client probes the open
+response for one anyway and, finding none, always falls through to
+`DEFAULT_ELEVATION_FACTOR = 5` (`src/main/sync/bootstrap-session.ts`). Every client-side pacing site
+therefore runs at a hard-coded ×5, including against `sync_pull`, `sync_changes` and
+`sync_manifest`, which the server only widens ×3.
+
+That is safe rather than tuned, because the client's pacing sites and the ×3 buckets barely
+overlap. The CRDT sweep — the one site that paces continuously — spends `crdt_batch_pull` and
+`crdt_pull`, both ×5 buckets, and `crdtSweepChunkDelayMs` divides each of its three slice terms by
+the factor, so its own derivation's "at most 50% of the bucket" property survives elevation exactly.
+The pull path is not client-paced by this factor at all: grep `getBootstrapElevationFactor` and
+every call site is one of the three rows in the table below, or the session module notifying its
+own listeners. The pull is bounded by page size and the server's own
+limiter, which is where a ×5 assumption against a ×3 ceiling would surface: as a 429, which
+`http-client` turns into a `RateLimitError` carrying `Retry-After`. The pull coordinator rethrows
+that rather than swallowing it, so the run ends and the next sync cycle retries — a delay, not a
+lost pull.
+
+The probe is worth keeping: it is the seam a future server-negotiated factor would arrive through
+without a protocol change. As shipped it does nothing, and the number in the client is not the
+number in the server.
+
+#### The factor is read at charge time in exactly one place
+
+| Pacing site                                            | How it takes the factor                                                                      | Reverts when the session ends                               |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| CRDT sweep per-chunk delay (`full-sync-runner`)        | `crdtSweepChunkDelayMs(cost, getBootstrapElevationFactor())`, called inside the chunk loop   | On the very next chunk                                      |
+| Attachment download queue (`sync-attachment-handlers`) | Seeded once, then push-updated through `onBootstrapElevationChange(...)`                     | On the next notification, before the next request           |
+| Pack download pacer (`full-sync-runner`)               | `pacer.setMultiplier(getBootstrapElevationFactor())` once per bootstrap run, no subscription | Not within the run — the multiplier is cached until it ends |
+
+Only the sweep reads it at charge time. The pack pacer's caching is deliberate and commented as
+such: a session that closes mid-run only narrows the factor, pack transfers are tens of large
+objects rather than thousands of small ones, and those transfers are presigned GETs direct to R2
+that spend no Worker bucket at all.
+
+Requests carry the token in `X-Memry-Bootstrap-Token`. Identity is re-bound to the authenticated
+context of the request it arrives on, so a token replayed from another device or another vault
+elevates nothing.
+
+### Eligibility, TTL and the lifetime cap
+
+`POST /sync/bootstrap` is only granted to a device that has never completed a pull for this vault:
+`device_sync_state.last_cursor_seen` is absent, NULL or 0. `updateDeviceCursor` only writes when a
+changes page actually delivered items, so that is a genuine never-pulled device — the same signal
+the client's own `LAST_CURSOR` gate uses. An already-synced device gets `BOOTSTRAP_NOT_ELIGIBLE`
+(409).
+
+| Constant                                 | Value      | Why                                                 |
+| ---------------------------------------- | ---------- | --------------------------------------------------- |
+| `BOOTSTRAP_SESSION_TTL_SECONDS`          | 60 minutes | Per-token lifetime; slides on renewal               |
+| `MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS` | 6 hours    | Absolute ceiling from the ledger row's `created_at` |
+| `BOOTSTRAP_RENEW_LEAD_SECONDS`           | 5 minutes  | How far before expiry the client renews             |
+| `MAX_CONCURRENT_BOOTSTRAP_SESSIONS`      | 2          | Per user, counted over unexpired rows only          |
+
+Renewal is sliding and identity-bound: a still-valid token exchanges for a fresh TTL under the
+**same `jti`**, so the ledger row simply extends rather than churning through insert/delete. An
+expired or revoked token is refused — renewal is not resurrection — and a token presented by any
+other user, device or vault is refused with `BOOTSTRAP_IDENTITY_MISMATCH` (403) instead of being
+extended. Bearer possession alone never renews anything.
+
+The absolute lifetime exists because the per-token TTL slides. Without a hard ceiling a client that
+never finishes its pull, and never fires its close sweep, could hold an elevated window open
+indefinitely. Six hours comfortably covers any real full-vault pull — the pacing budgets assume
+hours, not days. Past the ceiling, `/renew` answers `BOOTSTRAP_SESSION_EXPIRED` (403) **and drops
+the ledger row**: the session can never come back, so keeping it would only pin a cap slot until
+its TTL passed. The client treats this like any other failed renewal — close locally, revert to
+steady-state pacing.
+
+The concurrency cap is taken atomically. The whole decision lives in one statement — the `COUNT`
+subquery is evaluated as part of the `INSERT`'s own execution, and D1 serialises write statements,
+so there is no interleaving point left between check and take. `changes === 0` means the `WHERE`
+refused, i.e. the user is at cap, answered `BOOTSTRAP_SESSION_LIMIT` (429). The earlier
+prune-then-count-then-insert sequence had a TOCTOU window where two concurrent opens could both see
+one free slot.
+
+Errors are logged with the **caller's** identifiers only, never the mismatched token's, so the
+warning line cannot be used to enumerate other users' identifiers.
+
+### Documented limitation: a closed token still elevates for up to 60 minutes
+
+Elevation is stateless by design — it reads the signature and `exp`, never the ledger. A token
+whose session was closed through `/sync/bootstrap/close`, or one that was stolen, therefore keeps
+elevating **from its own device** until its `exp`, which is at most 60 minutes away.
+
+This is accepted rather than fixed, and the reasoning is what bounds it:
+
+- The residual is hard-capped by the TTL and cannot be extended or moved. Since renewal and close
+  became identity-bound, no other user, device or vault can renew it — or even close it. It can
+  only be waited out.
+- Every elevated bucket is pull-only. The worst case is a device reading its own vault's ciphertext
+  faster than steady state allows, for under an hour.
+- Making it stateful would put a D1 read on the hot path of every rate-limited request, which is
+  the cost the token was designed to avoid.
+
+Closing early is still worth doing, because `/close` frees the per-user session slot for the
+account's other devices.
+
+### The 501 degradation
+
+`BOOTSTRAP_SESSION_HMAC_KEY` is **optional**. When it is absent:
+
+- All three endpoints answer a typed `BOOTSTRAP_UNAVAILABLE` (501), mirroring
+  `STORAGE_PRESIGN_UNAVAILABLE`.
+- `bootstrapRateLimitElevation` returns null everywhere, so every bucket keeps its steady-state
+  ceiling.
+
+That is byte-for-byte today's behaviour. The client's failure discipline makes it invisible: a
+404 from an old server, a 501 from an unconfigured one, a 409 from an already-synced device, a 429
+at the cap, a malformed body, or a plain network error all resolve to "no bootstrap here" — the
+client clears local state and syncs exactly as it did before the feature existed. The token can
+only ever widen a ceiling, so losing it can never lose data.
+
+### Completing the bootstrap and releasing the session are two decisions
+
+They used to be one, and #1835/#1837 pulled them apart because every path where completion is
+legitimately impossible was leaking the per-user session slot.
+
+**Marking the bootstrap complete** is a claim that every note body the server holds is now current
+on this device. `maybeMarkBootstrapFullText()` fires only when four things hold at once:
+`sweepSettledOnThisEngine`, `bootstrapPullSucceeded`, no paced CRDT chunk in flight, and both the
+paced queue and the pending set empty.
+
+`sweepSettledOnThisEngine` deliberately does **not** mean "a sweep literally ran". The sweep
+throttle reads the persisted `LAST_CRDT_SWEEP_AT` stamp while fresh-device detection reads
+`LAST_CURSOR`, so a genuine first sync can find the sweep throttled and never run one — and a mark
+gated on a sweep having run would then never fire, holding the window and the elevated session open
+until the TTL expired. The flag is set when a sweep is queued **and** when the runner is online and
+the throttle declined, because that is the other way the question "is anything outstanding?" gets a
+real answer. Offline is not one of those ways: it means "nothing is fetchable", never "nothing is
+outstanding".
+
+`bootstrapPullSucceeded` is the other half, and is why `PullCoordinator.pull()` and
+`SyncEngine.pull()` return `Promise<boolean>` rather than `Promise<void>`. On a fresh device an
+empty index DB makes every sweep drain trivially whether or not the pull failed, so "queue empty"
+only becomes "bodies delivered" once a pull has reported that it actually delivered.
+
+`LAST_CRDT_SWEEP_AT` itself is written by `stampSweptVault()` when the paced drain has finished the
+vault — nothing in flight, nothing queued, nothing owed back to the pending set — not when the
+sweep enqueued it. `unstampedSweepAt` holds the throttle interval closed in between, so a process
+killed mid-drain does not leave a stamp claiming a drain that never completed.
+
+**Releasing the elevated session** is a resource concern, and takes any of these paths:
+
+| Path                           | Trigger                                                                                           | Reason logged  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- | -------------- |
+| Completion                     | `maybeMarkBootstrapFullText()` — all four gates hold                                              | `completed`    |
+| Stalled drain                  | Empty paced queue, nothing in flight — whether the drain finished or ended owing notes back       | `idle`         |
+| Blocked drain, terminal        | No `crdtProvider`; fixed for the engine's life, so the block cannot lift and the dwell is skipped | `idle`         |
+| Blocked drain, transient       | Blocked continuously for `BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS` = 2 minutes                           | `idle`         |
+| Run threw                      | The `catch` in `run()`, which also abandons the telemetry window if no pull had resolved yet      | `failed`       |
+| Vault switch / runtime restart | `dispose()`                                                                                       | `vault_switch` |
+
+The dwell is what separates the two blocked cases. A network block lifts by itself constantly, so
+cutting the session on a first blocked tick would revert pacing in the middle of a bootstrap that
+is about to resume; a missing CRDT provider never lifts, so waiting buys nothing. An active
+`fullSyncActive` is exempt from the blocked check entirely.
+
+`dispose()` also abandons the bootstrap telemetry window — but only one this runner owns
+(`bootstrapWindowOwned`). The window is a module global and `beginBootstrap` no-ops while one is
+set, so an unconditional abandon during a vault switch would delete the _incoming_ vault's window:
+`downloadRemoteVault` arms it before `selectVault` closes the outgoing engine.
+
+On every path, local state is cleared **first** — the token is captured, then
+`clearBootstrapSessionState()` runs and notifies the factor listeners, so pacing reverts in the same
+tick. The `POST /sync/bootstrap/close` call follows best-effort with the captured token, and its
+failure is logged at debug: the token dies on its own TTL, so a lost close request is harmless. The
+reason is local; it is logged and never sent.
+
+### What the open response carries
+
+Besides the session, `POST /sync/bootstrap` answers with:
+
+- `manifest` — the **first page** of the paginated manifest service (`MAX_MANIFEST_PAGE_LIMIT`),
+  never the whole vault.
+- `tailCursor` — the current `MAX(server_cursor)` for the vault, so the client knows when its pull
+  has caught up.
+- `attachments` — present only when the deployment can presign. Its `chunkHashes` is the first
+  keyset page of the vault's ciphertext chunk hashes, capped at 512, and is **informational
+  only**: no continuation endpoint ships, so `nextChunkCursor` names where continuation _would_
+  start and a client must not treat the page as a complete inventory. URLs come from
+  `POST /sync/attachments/presign-batch`, which keeps this response bounded no matter how
+  attachment-heavy the vault is.
+- `packs` — always an empty array, and now permanently so. The route returns `packs: []`
+  unconditionally. It was reserved so the pack pipeline could plug in without a protocol change,
+  but the pipeline did not use it: the client discovers packs through
+  [`GET /sync/packs`](#pack-discovery) instead, and reads this field only to log its length. It is
+  dead weight in `BootstrapOpenResponseSchema` — it cannot be removed without a contract change, so
+  it stays, but nothing should be built on it.
+
+## Presigned R2 Transfers
+
+R2 speaks the S3 protocol, so an object can be handed to a client as a plain SigV4 query-string
+presign with region `auto`, service `s3` and payload hash `UNSIGNED-PAYLOAD`. That turns a chunk or
+pack transfer from _client → Worker → R2_ into _client → R2_, taking the Worker out of the byte
+path entirely.
+
+The presigner is hand-rolled (`services/r2-presign.ts`) rather than pulled from `aws4fetch` or the
+AWS SDK: it is about a hundred lines on Web Crypto, there is no dependency to audit for one HMAC
+chain, and the signature path is pinned byte-for-byte against AWS's published known-answer vector.
+It is deliberately two layers — `presignS3Url` is pure protocol with no policy, which is what lets
+the vector pin it, and `presignR2Url` is the deployment policy wrapper that derives the path-style
+address and clamps the TTL.
+
+### Where URLs are issued
+
+| Site                                     | Method | Scope                                             |
+| ---------------------------------------- | ------ | ------------------------------------------------- |
+| `POST /sync/attachments/upload/initiate` | PUT    | One URL per chunk hash the client declares (≤128) |
+| `POST /sync/attachments/presign-batch`   | GET    | One URL per chunk hash the caller owns (1–1024)   |
+| `GET /sync/packs`                        | GET    | One URL per pack on the page (≤50)                |
+
+Issuance has its own bucket, `blob_presign`, at 120/min — an order of magnitude under the chunk
+ceilings it serves, and deliberately **not** elevated by a bootstrap session. Presigning is cheap
+(one HMAC chain plus one indexed D1 read per hash) but each issued URL unlocks a direct transfer
+that bypasses the proxied buckets entirely, and one batch already arms up to a full manifest's
+chunks per TTL window.
+
+### What a URL is scoped to
+
+One object, one method, one bucket, for five minutes. `DEFAULT_PRESIGN_TTL_SECONDS` and
+`MAX_PRESIGN_TTL_SECONDS` are both 300, and `presignR2Url` clamps whatever it is handed into
+`[1, 300]`. Only the `host` header is signed.
+
+Scope enforcement is **structural, not checked**. Clients send chunk _hashes_; the R2 key comes
+back from a `blob_chunks` row selected by `user_id AND vault_id`, which is exactly the ownership
+check the proxied chunk GET performs. A foreign vault's or another user's hash is simply "not
+found" (404). Clients never submit key material, so a cross-vault scope escape has nowhere to
+enter.
+
+`assertPresignKeyInVault` then runs immediately before signing, on the exact bytes about to enter
+the URL, requiring the key to start with `<userId>/vaults/<vaultId>/`. That is defence in depth: a
+presigned URL bypasses every other auth check the Worker performs, so the last thing before the
+signature is a prefix assertion.
+
+A leaked URL exposes only end-to-end encrypted ciphertext. It is still a credential and is treated
+as one — see [Presigned URLs are credentials](/architecture/vault-packs#presigned-urls-are-credentials).
+
+Two properties of the upload direction follow from the Worker not seeing the bytes:
+
+- **`Content-Length` is not covered by the signature**, so an armed PUT URL accepts any number of
+  bytes. At `/complete` every direct chunk is `head`-verified against R2 for existence _and_ exact
+  byte count before quota is credited, and an object larger than the whole session's ciphertext
+  budget is reclaimed immediately.
+- **An armed URL that is never registered leaves an invisible object.** The expiry sweep walks
+  `uploaded_chunks` and the orphan sweep walks `blob_chunks`, and a presigned PUT appears in
+  neither. Migration 0008 adds `upload_sessions.presigned_chunks` — the JSON array of hashes armed
+  at initiate — and complete, abort and the expiry sweep each delete every armed hash that has no
+  live `blob_chunks` row (`services/presigned-chunk-reclaim.ts`). The `blob_chunks` check is
+  load-bearing: a client may legitimately declare the hash of a chunk that already exists, and
+  deleting that object would destroy another attachment's data. The column is nullable and
+  deliberately not backfilled — NULL means no URLs were ever armed, which is what every row written
+  by the old server, by a proxied-path client, or on a deployment without the secrets holds.
+
+### Configuration and the graceful fallback
+
+| Binding                | Value                                                |
+| ---------------------- | ---------------------------------------------------- |
+| `R2_ACCESS_KEY_ID`     | R2 API token id                                      |
+| `R2_SECRET_ACCESS_KEY` | Its secret                                           |
+| `R2_S3_ENDPOINT`       | `https://<account-id>.r2.cloudflarestorage.com`      |
+| `R2_S3_BUCKET`         | **The bucket bound as `STORAGE` in `wrangler.toml`** |
+
+**None of the four is declared in `wrangler.toml`** — there is no `[vars]`, `[env.staging.vars]` or
+`[env.production.vars]` entry for any of them. They appear only in `.dev.vars.example` and in the
+`Bindings` type in `src/types.ts`. All four are therefore supplied per environment out of band, and
+the usual var-versus-secret split does not apply to any of them; the table above deliberately does
+not claim one. Scoping the API token narrowly — one bucket, Object Read & Write — is a sound
+deployment practice and nothing in the code checks it, so it is a recommendation, not an invariant
+the Worker can enforce.
+
+`resolveR2PresignConfig` returns null unless all four are present, the endpoint parses as a URL,
+its protocol is `https:`, and it has a host. A trailing slash on the endpoint is normalised away,
+because it would double up in the canonical path and break the signature.
+
+A null config is not an error anywhere. `presign-batch` answers a typed
+`STORAGE_PRESIGN_UNAVAILABLE` (501); `upload/initiate` simply omits `chunkUrls` and the session
+stays valid on the proxied path; `GET /sync/packs` omits `url` and `expiresAt`. Clients read all
+three as "use the proxied path". Old servers answer 404 to the presign route, which clients treat
+identically.
+
+**`R2_S3_BUCKET` must name the same bucket the `STORAGE` binding points at.** Nothing in the code
+cross-checks this — the Worker cannot read a binding's bucket name — so a mismatch fails at
+`/complete` instead: the presigned PUTs land in the _other_ bucket, the Worker's `head` against
+`STORAGE` finds nothing, and every affected chunk is rejected with `UPLOAD_INCOMPLETE` (400). That
+is fail-closed by construction, since quota is only ever credited for storage the Worker has
+verified exists, but it is also silent until an upload completes. Verify the pair on every
+environment before enabling the secrets.
+
+## Pack Discovery
+
+Lists the compaction packs available for the caller's vault. A pack is an immutable byte-concat of
+already-encrypted blobs plus a trailing index block — see [Vault Packs](/architecture/vault-packs)
+for the format, the compaction pipeline and the client's apply path. Everything here is additive:
+old clients never call it, and the item-granular endpoints remain the source of truth.
+
+**Auth and gating.** The route sits on the `sync` router after `paidSyncMiddleware`, so it carries
+the same stack as `/sync/pull`: authenticated, client-gated, paid-gated, and scoped to the
+`X-Memry-Vault-Id` header. Every query filters on `user_id AND vault_id`; there is no cross-vault
+read path. It is registered at both `/sync/packs` and `/sync/records/packs`, mirroring the other
+record routes. Its bucket is `sync_packs` at 60/min, not elevated by a bootstrap session — a
+bootstrap lists packs a handful of times, not continuously.
+
+**Pagination** is keyset on `(max_cursor DESC, id DESC)`, so packs arrive newest-first. `limit`
+defaults to 20 and is clamped to `MAX_PACK_PAGE_LIMIT` = 50. The `cursor` token is
+`"{max_cursor}:{id}"` and is validated at the route against `^\d+:\S+$`. The composite token is
+what keeps tie-grouped rows — two ranges sharing a `max_cursor` — stable across pages: a bare
+`max_cursor < ?` filter could skip a row or serve it twice as pages churn. `nextCursor` is present
+only when another page exists.
+
+**Response** is `{ packs: PackSummary[], serverTime, nextCursor? }`. Each summary carries:
+
+| Field                   | Meaning                                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                    | `pack_index` row id; also the second half of the page cursor                                                                                  |
+| `itemKind`              | `record` \| `crdt_snapshot` \| `crdt_update`                                                                                                  |
+| `packKey`               | R2 object key                                                                                                                                 |
+| `minCursor`/`maxCursor` | Range bounds on the kind's ordering axis                                                                                                      |
+| `itemCount`             | Entries written into the pack (holes are not counted)                                                                                         |
+| `byteSize`              | **Payload-region bytes only** — header, index block and footer are excluded, so it is not a file length and must not be used to Range-request |
+| `createdAt`             | Epoch seconds                                                                                                                                 |
+| `url` / `expiresAt`     | Presigned GET and its expiry, both present or both absent                                                                                     |
+
+A row whose `item_kind` fails schema validation is dropped from the page rather than served: an
+unknown kind must not silently reach a client that switches on it.
+
+**An absent `url` means the deployment cannot presign**, which is the same graceful degradation
+every other presign site takes. There is no proxied pack GET to fall back to — the client filters
+those packs out of its listing entirely and bootstraps through the item-granular endpoints. An
+`expiresAt` already in the past (a page held too long) has the same effect; the client applies a
+30-second clock-skew margin and re-lists to mint fresh signatures when a queued pack ages out
+mid-run.
+
+## Deploy Prerequisites and Ordering
+
+This epic adds bindings, queues and migrations that are individually optional, plus one ordering
+constraint that is not.
+
+**Per-environment Worker secrets** — `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Absent (or
+partially set) means no presigned transfers anywhere; everything stays on the proxied paths.
+
+**Per-environment vars** — `R2_S3_ENDPOINT`, `R2_S3_BUCKET`. Neither is declared in
+`wrangler.toml`, so both are set out of band per environment. `R2_S3_BUCKET` must match the
+`STORAGE` binding's bucket; see the fail-closed note above.
+
+**Optional secret** — `BOOTSTRAP_SESSION_HMAC_KEY`. Absent means typed 501s and zero elevation.
+
+**Queues** — `memry-pack-compaction-staging` and `memry-pack-compaction-production` must exist
+before deploying those environments. Queue bindings are **not** inherited from the top-level
+`wrangler.toml` block, so each environment wires its own producer and consumer; a missing producer
+makes every enqueue a silent no-op and a missing consumer leaves messages unconsumed. The same is
+true of the `RATE_LIMITER` Durable Object binding, which is fail-closed — an absent binding 500s
+every rate-limited request in that environment. `wrangler.test.ts` asserts all of this against the
+TOML.
+
+**Migrations** apply on deploy. There are two independent files numbered 0007 — `0007_pack_index`
+and `0007_bootstrap_sessions` — plus `0008_upload_sessions_presigned_chunks`. All three are
+additive:
+
+| File                                    | Adds                                                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `0007_pack_index`                       | Tables `pack_index`, `pack_watermarks`; indexes `idx_pack_user_vault_cursor`, `idx_pack_user_vault_min`, and `idx_crdt_snapshots_created` |
+| `0007_bootstrap_sessions`               | Table `bootstrap_sessions`; indexes `idx_bootstrap_sessions_user_expires`, `idx_bootstrap_sessions_vault`                                 |
+| `0008_upload_sessions_presigned_chunks` | Nullable column `upload_sessions.presigned_chunks`, deliberately not backfilled                                                           |
+
+Three new empty tables, five new indexes, one nullable column. Only `idx_crdt_snapshots_created`
+touches a pre-existing table — it indexes `crdt_snapshots(user_id, vault_id, created_at)` so pack
+selection can scan snapshots above the watermark. A server running the previous code against the
+migrated schema behaves exactly as it did.
+
+### Telemetry event schema first, then the desktop build
+
+**The sync-server carrying the new telemetry event schema must be deployed before any desktop build
+that emits `sync_bootstrap`.**
+
+The reason is batch-level, not event-level: telemetry events are validated as a batch, and one
+unrecognised event name rejects the entire batch with a 400. A desktop build ahead of the server
+therefore does not just lose its bootstrap metrics — it loses every other event that happened to
+travel with them. Deploying the server first costs nothing, since an event name nothing emits is
+inert.
+
+The `sync_bootstrap` event itself is consent-gated through the ordinary telemetry client, fires at
+most once per action per bootstrap (backed by a per-minute floor so even a begin/complete loop
+cannot spam), and carries three actions — `interactive`, `full_text`, `throughput`. It ships coarse
+buckets only (`note_bucket`, `size_bucket`) and never content, titles, paths, ids or keys.
+
 ## Realtime Socket Auth
 
 The change-notification WebSocket (`/sync/ws`) authenticates once at handshake with a Bearer access
@@ -869,20 +1359,24 @@ phrase can restore the correct key. See
 
 ## Error Modes
 
-| Failure                   | Behavior                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------ |
-| Offline                   | Outbox queues; retry with backoff                                                          |
-| Server unreachable        | Machine still has a link, so requests are retried with exponential backoff, not instantly  |
-| Auth expired (401)        | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
-| Refresh rejected          | Stop refreshing entirely (see below); prompt the user to sign in again                     |
-| Payment required          | Sync stays local-only until a paid plan is active                                          |
-| Client below floor (426)  | Read-only mode; outbox parked; resume after update                                         |
-| Platform writes off (403) | Read-only mode; outbox parked; resume when the switch is flipped back                      |
-| Quota exceeded            | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
-| Socket token expiry       | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
-| Server unavailable        | Exponential backoff; status indicator turns yellow                                         |
-| Blob hash mismatch        | Reject the item; log; alert health view                                                    |
-| Vault-key mismatch        | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+| Failure                                 | Behavior                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Offline                                 | Outbox queues; retry with backoff                                                          |
+| Server unreachable                      | Machine still has a link, so requests are retried with exponential backoff, not instantly  |
+| Auth expired (401)                      | Refresh the access token and retry the request once; only a failed refresh prompts sign-in |
+| Refresh rejected                        | Stop refreshing entirely (see below); prompt the user to sign in again                     |
+| Payment required                        | Sync stays local-only until a paid plan is active                                          |
+| Client below floor (426)                | Read-only mode; outbox parked; resume after update                                         |
+| Platform writes off (403)               | Read-only mode; outbox parked; resume when the switch is flipped back                      |
+| Quota exceeded                          | Surfaces in [Settings → Vault](/user-guide/settings#vault)                                 |
+| Socket token expiry                     | In-place renewal over the open socket; a rejected renewal falls back to close + reconnect  |
+| Server unavailable                      | Exponential backoff; status indicator turns yellow                                         |
+| Blob hash mismatch                      | Reject the item; log; alert health view                                                    |
+| Vault-key mismatch                      | Stop pulling without branding items; prompt recovery; sign out to restore the correct key  |
+| Bootstrap unavailable (404/501/409/429) | No elevated window; steady-state pacing, i.e. pre-#1837 behavior                           |
+| Bootstrap renewal refused               | Close locally; pacing reverts on the next chunk                                            |
+| Presign unavailable (501)               | Transfers stay on the proxied blob paths                                                   |
+| Pack unusable at any stage              | That pack or entry falls back to its item-granular GET; cursor untouched                   |
 
 ### Rejected Refresh Tokens
 

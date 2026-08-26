@@ -176,6 +176,7 @@ function unifiedSidebar() {
         { text: 'IPC Boundary', link: '/architecture/ipc' },
         { text: 'CRDT & Notes Sync', link: '/architecture/crdt' },
         { text: 'Sync Protocol', link: '/architecture/sync-protocol' },
+        { text: 'Vault Packs', link: '/architecture/vault-packs' },
         { text: 'Cryptography', link: '/architecture/cryptography' },
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
         { text: 'Observability & Telemetry', link: '/architecture/observability' }
