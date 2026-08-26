@@ -405,6 +405,15 @@ jobs:
         shell: bash
         run: pnpm --filter @memry/desktop exec electron-vite build
 
+      # `pnpm build` chains this after electron-vite, but CI invokes electron-vite
+      # directly, so the check has to be run explicitly. It catches a worker chunk
+      # that reaches require("electron") — which crashes the worker in packaged
+      # builds while leaving every vitest suite green.
+      - name: Check worker bundles
+        shell: bash
+        working-directory: apps/desktop
+        run: node scripts/check-worker-bundles.mjs
+
       - name: Run Electron smoke tests
         # No xvfb/dbus/gnome-keyring: Windows runners have an interactive desktop
         # session, and keytar uses the Windows Credential Manager directly.

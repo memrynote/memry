@@ -634,4 +634,70 @@ describe('SyncEngine', () => {
       vi.restoreAllMocks()
     })
   })
+
+  // #1835: every error inside a pull is swallowed — `handleCoordinatorError`
+  // returns from every branch and the coordinator returns early on a busy lock,
+  // missing credentials or a refused page. Callers that need to know whether
+  // anything was actually delivered cannot infer it from non-rejection, so the
+  // outcome is reported instead.
+  describe('#given a pull whose failure the engine swallows', () => {
+    it('#then pull() reports that nothing was delivered', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      // A 400 classifies as a non-retryable `server_error`, which is exactly
+      // the class `handleCoordinatorError` has no branch for: nothing is
+      // rethrown and nothing downstream can tell the run apart from a clean one.
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Bad request', 400, 'VALIDATION_ERROR')
+      )
+
+      await expect(engine.pull()).resolves.toBe(false)
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    // The 400 above never reaches `SyncEngine.pull`'s own catch — the
+    // coordinator swallows that class internally and returns false. The four
+    // classes it RETHROWS (device_revoked, auth_expired, network_offline,
+    // RateLimitError) are the only ones that get there, and that catch is a
+    // second, independent place a caller could be told a silent run delivered.
+    it('#then a rethrown device revocation reports nothing delivered too', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      await expect(engine.pull()).resolves.toBe(false)
+      // Proof the throw really travelled out of the coordinator and through the
+      // engine's catch, rather than being swallowed one layer down.
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    it('#then a clean pull reports that it delivered', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      })
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({ items: [] })
+
+      await expect(engine.pull()).resolves.toBe(true)
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
 })

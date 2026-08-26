@@ -25,8 +25,33 @@ import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/cli
 
 const log = createLogger('SyncEngine')
 
+/**
+ * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
+ * elevated bootstrap session is given up (#1837).
+ *
+ * Releasing on the first blocked tick was an unbounded regression. The session
+ * is opened exactly once per vault, gated on `LAST_CURSOR == null`, and the
+ * first pull page persists that cursor — so once it is released nothing
+ * re-opens it, and the rest of the bootstrap drains at base pacing for the
+ * whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
+ * therefore cost the entire remaining drain its elevation factor, which on a
+ * large vault turns minutes of chunk delay into tens of minutes — a permanent
+ * slowdown of exactly the workload the session exists to accelerate.
+ *
+ * Two minutes is longer than every one of those transient shapes and still
+ * ~3% of the session's <=60 minute server-side TTL, so a genuinely permanent
+ * disconnect leaks an already-bounded slot for two minutes more than before.
+ */
+export const BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS = 2 * 60 * 1000
+
 export interface FullSyncActions {
-  pull: () => Promise<void>
+  /**
+   * Resolves TRUE only when the pull actually delivered. Every error path out
+   * of a pull is swallowed (`SyncEngine.pull` catches everything,
+   * `PullCoordinator.pull` returns early on a busy lock, missing credentials or
+   * a refused page), so non-rejection is not evidence of anything (#1835).
+   */
+  pull: () => Promise<boolean>
   push: () => Promise<void>
   scheduleSync: (fn: () => Promise<void>) => void
 }
@@ -109,6 +134,59 @@ export class FullSyncRunner {
    * that needs it rather than to construction.
    */
   private carriedUnmergedDebt: boolean | null = null
+  /**
+   * When the sweep this engine ran queued the vault, while its paced drain is
+   * still outstanding. Null once the drain has been stamped (or before any
+   * sweep).
+   *
+   * `LAST_CRDT_SWEEP_AT` used to be written the moment the sweep ENQUEUED the
+   * vault, but the queue it fills is in-memory, drains ~100 notes every 4-20 s
+   * and is dropped by `dispose()`. A process killed mid-drain therefore left a
+   * FRESH stamp behind together with thousands of un-pulled bodies, and the
+   * next launch found the only discovery path for body-only remote edits
+   * throttled shut. The stamp now means "the vault was actually swept through",
+   * which is the only reading that survives a crash.
+   *
+   * This field is what keeps the throttle doing its other job in the meantime:
+   * with nothing persisted until the drain lands, an engine mid-drain would
+   * otherwise re-read the whole vault on every cycle and restart the pass.
+   * In-memory by design — a drain from a previous process is not outstanding,
+   * it is lost, and the un-advanced persisted stamp is exactly what says so.
+   */
+  private unstampedSweepAt: number | null = null
+  /**
+   * Does this runner own the open bootstrap telemetry window (#1835)?
+   *
+   * `bootstrap-metrics` keeps the window module-global and `beginBootstrap`
+   * no-ops while one is open, so a window left behind by a torn-down engine is
+   * silently inherited by the NEXT vault's bootstrap — which then reports that
+   * vault's `time_to_interactive` and `bootstrap_bytes_per_sec` against a dead
+   * window's t0 and byte counters. Teardown must abandon what it owns.
+   *
+   * It must NOT abandon what it does not: `downloadRemoteVault` arms a
+   * `vault_download` window BEFORE `selectVault` closes the current vault, so
+   * the outgoing engine's `dispose()` runs with the incoming vault's window
+   * already open.
+   */
+  private bootstrapWindowOwned = false
+  /**
+   * Does this runner hold an elevated bootstrap session (#1837)?
+   *
+   * Tracked separately from the window above because the two are different
+   * things: the window is a telemetry CLAIM about every body being current, the
+   * session is a per-user RESOURCE slot held until its TTL. Releasing the
+   * session must never require making the claim.
+   */
+  private bootstrapSessionOpen = false
+  /**
+   * When did the paced drain first become blocked, with nothing since then
+   * having unblocked it? Null whenever a pump actually proceeded.
+   *
+   * Feeds the dwell in `releaseBootstrapSessionIfBlocked` — see
+   * BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS for why a first blocked tick is not
+   * enough to give the session up.
+   */
+  private drainBlockedSince: number | null = null
 
   constructor(
     ctx: SyncContext,
@@ -244,7 +322,10 @@ export class FullSyncRunner {
     // until the wall clock catches up. Clamping to now would not help: the
     // elapsed time stays pinned at zero for exactly as long.
     const lastSweepAt = Number.isFinite(persistedRaw) && persistedRaw <= now ? persistedRaw : 0
-    return now - lastSweepAt
+    // A sweep this engine has run but not yet drained counts against the
+    // interval too. Nothing is persisted until the drain lands, so without this
+    // floor every cycle arriving mid-drain would re-queue the whole vault.
+    return now - Math.max(lastSweepAt, this.unstampedSweepAt ?? 0)
   }
 
   /** Did the socket drop and come back since the last sweep read its generation? */
@@ -305,9 +386,24 @@ export class FullSyncRunner {
     this.pacedCrdtPullQueue.clear()
     this.pacedCrdtPullAbort?.abort()
     this.pacedCrdtPullAbort = null
+    // The telemetry window dies with the engine that armed it (#1835). Without
+    // this the module-global window outlives the vault: `beginBootstrap` no-ops
+    // while one is set, so the NEXT vault's bootstrap inherits this one's t0 and
+    // byte counters and reports a `time_to_interactive` / `bytes_per_sec` that
+    // describes neither vault.
+    //
+    // Only a window this runner owns. `downloadRemoteVault` arms the incoming
+    // vault's `vault_download` window BEFORE `selectVault` closes the outgoing
+    // one, so an unconditional abandon here would delete the window of the vault
+    // being opened.
+    if (this.bootstrapWindowOwned) {
+      this.bootstrapWindowOwned = false
+      abandonBootstrap()
+    }
     // A vault switch / runtime restart revokes the elevated session (#1837):
     // local pacing reverts synchronously, the server close is best-effort and
     // must not delay teardown.
+    this.bootstrapSessionOpen = false
     void closeBootstrapSession('vault_switch')
   }
 
@@ -320,16 +416,24 @@ export class FullSyncRunner {
   }
 
   /**
-   * Has any vault-wide sweep run on this engine? Gates the bootstrap
-   * full-text mark: before the first sweep, an empty paced queue means
-   * "nothing queued yet" (an offline first sync, a refused pull), not
-   * "every body is current".
+   * Is the vault-wide sweep QUESTION settled on this engine — either a sweep
+   * ran, or a run finished having decided none was needed or possible?
+   *
+   * Gates the bootstrap full-text mark. Before the question is settled an
+   * empty paced queue means "nothing queued yet" (an offline first sync, a
+   * refused pull), not "every body is current".
+   *
+   * It deliberately is NOT "a sweep literally ran". The sweep throttle reads a
+   * persisted timestamp while fresh-device detection reads `LAST_CURSOR`, so a
+   * real bootstrap can find the sweep throttled and never run one — and the
+   * mark would then never fire, leaving the bootstrap window and the elevated
+   * session open until the session TTL expires.
    */
-  private sweptOnThisEngine = false
+  private sweepSettledOnThisEngine = false
 
   /**
    * Has a pull actually RESOLVED on this engine? Gates the bootstrap
-   * full-text mark alongside `sweptOnThisEngine`: a sweep proves it ran,
+   * full-text mark alongside `sweepSettledOnThisEngine`: a sweep proves it ran,
    * never that the pull delivered — and on a fresh device an empty index DB
    * makes every sweep drain trivially, so only pull success is evidence that
    * any body was fetched at all.
@@ -337,7 +441,7 @@ export class FullSyncRunner {
   private bootstrapPullSucceeded = false
 
   private sweepAllCrdtNotes(): void {
-    this.sweptOnThisEngine = true
+    this.sweepSettledOnThisEngine = true
     // Read before the generation is re-stamped below: only a sweep that closes
     // a real drop/reconnect gap starts the floor for the next one.
     if (this.hasReconnectGap()) this.lastReconnectSweepAt = Date.now()
@@ -356,6 +460,29 @@ export class FullSyncRunner {
     this.recordCrdtUnmergedDebt(this.crdtSync.hasUnmergedNotes)
     this.lastSweepConnectionGeneration = this.ctx.deps.ws?.connectionGeneration ?? null
     this.crdtSweepOwed = false
+    // Not stamped here: the vault is QUEUED, not swept. `stampSweptVault()`
+    // writes the persisted throttle once the paced drain has actually run it
+    // through, and `unstampedSweepAt` holds the interval closed in between.
+    this.unstampedSweepAt = Date.now()
+  }
+
+  /**
+   * Persist the sweep throttle once the drain this engine started has finished
+   * the vault: nothing in flight, nothing queued, and nothing owed back to the
+   * pending set by a chunk the server refused.
+   *
+   * An empty QUEUE is not a drained vault — a rate-limited chunk hands its notes
+   * back to the pending set, and those bodies are still stale. Stamping on the
+   * queue alone would throttle the next launch with exactly the work the throttle
+   * is supposed to make sure gets done.
+   */
+  private stampSweptVault(): void {
+    if (this.unstampedSweepAt === null) return
+    if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
+    if (this.crdtSync.pendingPullCount > 0) return
+    this.unstampedSweepAt = null
+    // The completion time, not the enqueue time: the vault is current as of
+    // now, and a drain that took minutes has earned the full interval from here.
     this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT, String(Date.now()))
   }
 
@@ -378,10 +505,15 @@ export class FullSyncRunner {
     try {
       if (isFreshDevice) {
         beginBootstrap('first_full_sync')
+        // Owned from here whether or not `beginBootstrap` armed it: a window
+        // the vault-download seam opened for THIS vault is one this runner is
+        // now responsible for closing or abandoning.
+        this.bootstrapWindowOwned = true
         // Elevated limits + presigned sets for this pull (#1837). Any failure
         // — old server, unconfigured, capped, offline — silently falls back to
         // steady-state pacing; nothing downstream may depend on it succeeding.
         await openBootstrapSession(this.ctx.deps.getAccessToken)
+        this.bootstrapSessionOpen = true
       }
     } catch {
       /* telemetry only — sync proceeds */
@@ -403,10 +535,12 @@ export class FullSyncRunner {
     // cannot be trusted, so the sweep runs regardless of the throttle.
     let forceCrdtSweep = options.forceCrdtSweep === true
     try {
-      await this.actions.pull()
-      // Evidence for the full-text mark: this pull resolved, so whatever the
-      // sweeps drain from here on was actually delivered by the server.
-      this.bootstrapPullSucceeded = true
+      // Evidence for the full-text mark: the pull REPORTED that it delivered.
+      // "The await did not reject" is true on every production run — the engine
+      // swallows every error and the coordinator returns early on a busy lock,
+      // missing credentials or a page it refused to apply — so it proved
+      // nothing outside a unit test whose `pull` was a bare mock.
+      if (await this.actions.pull()) this.bootstrapPullSucceeded = true
       log.debug('fullSync: pull complete')
 
       const queueBeforeSeed = this.ctx.deps.queue.getPendingCount()
@@ -486,7 +620,9 @@ export class FullSyncRunner {
           serverOnlyCount: manifestResult.serverOnlyCount
         })
         this.stateManager.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '0')
-        await this.actions.pull()
+        // Same evidence rule: the re-pull can deliver where the first one was
+        // refused, and that is a delivery like any other.
+        if (await this.actions.pull()) this.bootstrapPullSucceeded = true
       }
 
       this.pushCoordinator.clearPendingAfterFullSync()
@@ -513,20 +649,50 @@ export class FullSyncRunner {
       // resolved the window stays — its bytes are real, and the mark fires
       // once the sweep drains. The cursor is only persisted after a successful
       // pull, so the next cycle re-arms a clean window here.
-      if (!this.bootstrapPullSucceeded) abandonBootstrap()
+      if (!this.bootstrapPullSucceeded) {
+        this.bootstrapWindowOwned = false
+        abandonBootstrap()
+      }
       // Same for the elevated session: a failed run releases it immediately,
       // so pacing reverts before the next cycle starts (#1837).
+      this.bootstrapSessionOpen = false
       await closeBootstrapSession('failed')
       throw error
     } finally {
       this.ctx.fullSyncActive = false
-      if (
-        this.ctx.deps.crdtProvider &&
-        isIndexDatabaseInitialized() &&
-        this.shouldSweepAllCrdtNotes(forceCrdtSweep)
-      ) {
+      // "Could a sweep run at all?" and "should one run now?" are different
+      // questions, and only the second one settles anything. Without a CRDT
+      // provider or an initialized index DB nothing was ever queued, so an
+      // empty paced queue is not evidence that bodies are current — that case
+      // stays unsettled exactly as before.
+      const canSweep = this.ctx.deps.crdtProvider != null && isIndexDatabaseInitialized()
+      if (canSweep && this.shouldSweepAllCrdtNotes(forceCrdtSweep)) {
         this.sweepAllCrdtNotes()
+      } else if (canSweep && this.ctx.deps.network.online) {
+        // ONLINE and the throttle declined: nothing is outstanding, because a
+        // sweep ran recently enough for the interval to still be closed.
+        //
+        // The online check is not redundant. `shouldSweepAllCrdtNotes` returns
+        // false for TWO very different reasons, and its FIRST line is
+        // `if (!network.online) return false`. Offline means "nothing is
+        // fetchable", not "nothing is outstanding" — settling there would let a
+        // device that has never swept and cannot reach the server claim every
+        // body is current. Nothing downstream will call
+        // `maybeMarkBootstrapFullText` again, so without settling here the
+        // bootstrap window and the elevated session both stay open for the life
+        // of the process, holding the per-user session slot until its TTL.
+        //
+        // This is reachable on a real bootstrap: the throttle reads a PERSISTED
+        // timestamp while fresh-device detection reads `LAST_CURSOR`. Reset the
+        // server while keeping local state and the two disagree, so a genuine
+        // first sync finds the sweep throttled and never runs one.
+        // `bootstrapPullSucceeded` still carries the "bodies were delivered"
+        // evidence independently.
+        this.sweepSettledOnThisEngine = true
       }
+      // flushPendingCrdtPulls() ends with pumpPacedCrdtPulls() +
+      // maybeMarkBootstrapFullText(), so the settle above is re-evaluated here
+      // without a second call of our own.
       this.flushPendingCrdtPulls()
     }
   }
@@ -546,7 +712,19 @@ export class FullSyncRunner {
       const provider = this.ctx.deps.crdtProvider
       // No CRDT store means no document to seed and no watermark to record;
       // an in-memory provider rebuilds bodies from vault markdown instead.
-      if (!provider?.storeId) return
+      //
+      // This used to `return` silently, which made a skipped pack bootstrap
+      // indistinguishable from one that ran and found no packs: a real
+      // fresh-device run produced ZERO pack log lines and never even created
+      // the temp dir, and nothing in the logs said why. A feature that can
+      // no-op itself has to say so.
+      if (!provider?.storeId) {
+        log.info('fullSync: pack bootstrap skipped — no CRDT store', {
+          hasProvider: provider != null,
+          storeId: provider?.storeId ?? null
+        })
+        return
+      }
 
       const [
         path,
@@ -727,6 +905,8 @@ export class FullSyncRunner {
 
     this.pumpPacedCrdtPulls()
     this.maybeMarkBootstrapFullText()
+    this.stampSweptVault()
+    this.releaseBootstrapSessionIfStalled()
   }
 
   /**
@@ -741,15 +921,70 @@ export class FullSyncRunner {
    * slot while reverting every pacing site in the same tick.
    */
   private maybeMarkBootstrapFullText(): void {
-    if (!this.sweptOnThisEngine) return
+    if (!this.sweepSettledOnThisEngine) return
     // The sweep gate proves a sweep RAN; on a fresh device an empty index DB
     // makes every sweep drain trivially, failed pull or not. Only a pull that
     // actually resolved turns "queue empty" into "bodies delivered".
     if (!this.bootstrapPullSucceeded) return
     if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
     if (this.crdtSync.pendingPullCount > 0) return
+    this.bootstrapWindowOwned = false
     markBootstrapFullText()
-    void closeBootstrapSession('completed')
+    this.releaseBootstrapSession('completed')
+  }
+
+  /**
+   * Release the elevated session (#1837).
+   *
+   * Separate from the full-text mark on purpose. Releasing is a RESOURCE
+   * concern — the per-user session slot is held until its TTL, up to 60
+   * minutes — while marking full text is a CLAIM that every body on the server
+   * is current on this device. Reaching release only through the mark meant
+   * every path where the claim is legitimately impossible leaked the slot: an
+   * uninitialized index DB, notes a rate-limited chunk owed back to the pending
+   * set (which is what a large bootstrap produces), a drain that went offline
+   * and stayed there.
+   */
+  private releaseBootstrapSession(reason: 'completed' | 'idle'): void {
+    if (!this.bootstrapSessionOpen) return
+    this.bootstrapSessionOpen = false
+    void closeBootstrapSession(reason)
+  }
+
+  /**
+   * Release the session once the paced drain has stopped moving.
+   *
+   * The session legitimately spans the whole drain — the elevation factor is
+   * what paces it — so a chunk in flight or a queue with work left in it is not
+   * a stall and must not be cut short. What IS a stall: an empty queue with
+   * nothing in flight, whether the drain finished cleanly (the mark above has
+   * already released it by then) or ended owing its notes back to the pending
+   * set, where nothing on this engine will pick them up until the next cycle.
+   */
+  private releaseBootstrapSessionIfStalled(): void {
+    if (this.pacedCrdtChunkInFlight || this.pacedCrdtPullQueue.size > 0) return
+    this.releaseBootstrapSession('idle')
+  }
+
+  /**
+   * Release the session once the drain has been blocked for long enough that
+   * the block is no longer plausibly transient.
+   *
+   * `terminal` skips the dwell for a block that cannot lift on its own:
+   * `ctx.deps.crdtProvider` is fixed for the life of the engine, so without one
+   * there is never a document to merge into and waiting buys nothing. A network
+   * block is the opposite — it lifts by itself constantly — and is what the
+   * dwell exists for.
+   */
+  private releaseBootstrapSessionIfBlocked(terminal: boolean): void {
+    if (terminal) {
+      this.drainBlockedSince = null
+      this.releaseBootstrapSession('idle')
+      return
+    }
+    this.drainBlockedSince ??= Date.now()
+    if (Date.now() - this.drainBlockedSince < BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS) return
+    this.releaseBootstrapSession('idle')
   }
 
   /**
@@ -773,8 +1008,23 @@ export class FullSyncRunner {
     // rather than spending a chunk on a request that cannot land.
     if (this.ctx.fullSyncActive || !this.ctx.deps.network.online || !crdtProvider) {
       this.armPacedCrdtPullTimer()
+      // A drain that cannot run is not being paced by the elevated session, so
+      // a block that STAYS blocked held the slot until its TTL for a drain
+      // spending nothing (#1837). But the release is one-way — the session is
+      // opened once per vault and nothing re-opens it — so it waits out a dwell
+      // rather than firing on the first blocked tick; see
+      // BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS. `fullSyncActive` is exempt entirely:
+      // it lasts one cycle, whose own `finally` re-pumps, so it is a wait
+      // rather than a stall and must not even start the dwell. Elevation is
+      // re-read per chunk, so a drain that resumes without a session simply
+      // reverts to conservative pacing.
+      if (!this.ctx.fullSyncActive) this.releaseBootstrapSessionIfBlocked(!crdtProvider)
       return
     }
+
+    // The drain is moving again: whatever blocked it did not persist, so a
+    // later block starts its dwell from scratch instead of inheriting this one.
+    this.drainBlockedSince = null
 
     // The PROBE's size, not the apply phase's. One `POST /sync/crdt/updates/batch`
     // covers the whole chunk without opening a document, so the doc cache does
@@ -825,6 +1075,8 @@ export class FullSyncRunner {
         this.pacedCrdtChunkInFlight = false
         this.armPacedCrdtPullTimer(delayMs)
         this.maybeMarkBootstrapFullText()
+        this.stampSweptVault()
+        this.releaseBootstrapSessionIfStalled()
       }
     })
   }

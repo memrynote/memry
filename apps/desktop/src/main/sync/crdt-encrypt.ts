@@ -1,6 +1,10 @@
 import sodium from 'libsodium-wrappers-sumo'
 import { encrypt, decrypt, wrapFileKey, unwrapFileKey } from '../crypto/encryption'
-import { generateFileKey, secureCleanup } from '../crypto/index'
+// Deep import, NOT the crypto barrel: worker.ts imports this module, and the
+// barrel drags in keychain -> keytar and memory-lock -> electron-log ->
+// electron. check-worker-bundles fails the packaged build when a worker
+// chunk reaches require("electron").
+import { generateFileKey, secureCleanup } from '../crypto/primitives'
 import { compressPayload, decompressPayload } from '@memry/sync-client/compress'
 import { SignatureVerificationError } from './decrypt'
 
