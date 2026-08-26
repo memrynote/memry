@@ -10,6 +10,7 @@
     "./adapters/conformance": "./src/adapters/conformance.ts",
     "./vector-clock": "./src/vector-clock.ts",
     "./pull": "./src/pull/index.ts",
+    "./push": "./src/push/index.ts",
     "./*": "./src/*.ts"
   },
   "types": "./src/index.ts",
@@ -30,6 +31,8 @@
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
-    "@types/pako": "^2.0.4"
+    "@types/libsodium-wrappers-sumo": "^0.8.2",
+    "@types/pako": "^2.0.4",
+    "libsodium-wrappers-sumo": "^0.8.2"
   }
 }
