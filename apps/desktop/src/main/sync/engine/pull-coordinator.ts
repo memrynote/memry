@@ -270,7 +270,14 @@ export class PullCoordinator {
     let prefetchedNext: Promise<ChangesRetryResult> | null = null
 
     while (hasMore) {
-      if (this.ctx.abortController!.signal.aborted) break
+      // Same refusal as the post-apply check below, one iteration earlier: a
+      // cancel that lands before the first page is even fetched (vault
+      // close/switch calls `engine.requestCancel()` routinely) delivered
+      // nothing, so the run must not be recorded as a clean sync either.
+      if (this.ctx.abortController!.signal.aborted) {
+        runState.refused = true
+        break
+      }
 
       if (prefetchedNext) {
         changesResult = await prefetchedNext

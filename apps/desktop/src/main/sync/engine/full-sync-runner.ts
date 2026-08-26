@@ -25,6 +25,25 @@ import { getIndexDatabase, isIndexDatabaseInitialized } from '../../database/cli
 
 const log = createLogger('SyncEngine')
 
+/**
+ * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
+ * elevated bootstrap session is given up (#1837).
+ *
+ * Releasing on the first blocked tick was an unbounded regression. The session
+ * is opened exactly once per vault, gated on `LAST_CURSOR == null`, and the
+ * first pull page persists that cursor — so once it is released nothing
+ * re-opens it, and the rest of the bootstrap drains at base pacing for the
+ * whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
+ * therefore cost the entire remaining drain its elevation factor, which on a
+ * large vault turns minutes of chunk delay into tens of minutes — a permanent
+ * slowdown of exactly the workload the session exists to accelerate.
+ *
+ * Two minutes is longer than every one of those transient shapes and still
+ * ~3% of the session's <=60 minute server-side TTL, so a genuinely permanent
+ * disconnect leaks an already-bounded slot for two minutes more than before.
+ */
+export const BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS = 2 * 60 * 1000
+
 export interface FullSyncActions {
   /**
    * Resolves TRUE only when the pull actually delivered. Every error path out
@@ -159,6 +178,15 @@ export class FullSyncRunner {
    * session must never require making the claim.
    */
   private bootstrapSessionOpen = false
+  /**
+   * When did the paced drain first become blocked, with nothing since then
+   * having unblocked it? Null whenever a pump actually proceeded.
+   *
+   * Feeds the dwell in `releaseBootstrapSessionIfBlocked` — see
+   * BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS for why a first blocked tick is not
+   * enough to give the session up.
+   */
+  private drainBlockedSince: number | null = null
 
   constructor(
     ctx: SyncContext,
@@ -939,6 +967,27 @@ export class FullSyncRunner {
   }
 
   /**
+   * Release the session once the drain has been blocked for long enough that
+   * the block is no longer plausibly transient.
+   *
+   * `terminal` skips the dwell for a block that cannot lift on its own:
+   * `ctx.deps.crdtProvider` is fixed for the life of the engine, so without one
+   * there is never a document to merge into and waiting buys nothing. A network
+   * block is the opposite — it lifts by itself constantly — and is what the
+   * dwell exists for.
+   */
+  private releaseBootstrapSessionIfBlocked(terminal: boolean): void {
+    if (terminal) {
+      this.drainBlockedSince = null
+      this.releaseBootstrapSession('idle')
+      return
+    }
+    this.drainBlockedSince ??= Date.now()
+    if (Date.now() - this.drainBlockedSince < BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS) return
+    this.releaseBootstrapSession('idle')
+  }
+
+  /**
    * Start or continue the paced drain of the CRDT catch-up queue.
    *
    * At most one chunk is in flight and at most one timer is armed at any moment.
@@ -959,16 +1008,23 @@ export class FullSyncRunner {
     // rather than spending a chunk on a request that cannot land.
     if (this.ctx.fullSyncActive || !this.ctx.deps.network.online || !crdtProvider) {
       this.armPacedCrdtPullTimer()
-      // A drain that cannot run is not being paced by the elevated session, and
-      // offline or provider-less is open-ended — go offline mid-drain and stay
-      // offline and the slot was held until its TTL for a drain spending
-      // nothing (#1837). `fullSyncActive` is the exception: it lasts one cycle,
-      // whose own `finally` re-pumps, so it is a wait rather than a stall.
-      // Elevation is re-read per chunk, so a drain that resumes without a
-      // session simply reverts to conservative pacing.
-      if (!this.ctx.fullSyncActive) this.releaseBootstrapSession('idle')
+      // A drain that cannot run is not being paced by the elevated session, so
+      // a block that STAYS blocked held the slot until its TTL for a drain
+      // spending nothing (#1837). But the release is one-way — the session is
+      // opened once per vault and nothing re-opens it — so it waits out a dwell
+      // rather than firing on the first blocked tick; see
+      // BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS. `fullSyncActive` is exempt entirely:
+      // it lasts one cycle, whose own `finally` re-pumps, so it is a wait
+      // rather than a stall and must not even start the dwell. Elevation is
+      // re-read per chunk, so a drain that resumes without a session simply
+      // reverts to conservative pacing.
+      if (!this.ctx.fullSyncActive) this.releaseBootstrapSessionIfBlocked(!crdtProvider)
       return
     }
+
+    // The drain is moving again: whatever blocked it did not persist, so a
+    // later block starts its dwell from scratch instead of inheriting this one.
+    this.drainBlockedSince = null
 
     // The PROBE's size, not the apply phase's. One `POST /sync/crdt/updates/batch`
     // covers the whole chunk without opening a document, so the doc cache does

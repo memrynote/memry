@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
-import { FullSyncRunner, type FullSyncActions } from './full-sync-runner'
+import {
+  BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS,
+  FullSyncRunner,
+  type FullSyncActions
+} from './full-sync-runner'
 import {
   CRDT_FULL_SWEEP_MIN_INTERVAL_MS,
   CRDT_RECONNECT_SWEEP_FLOOR_MS,
@@ -1796,7 +1800,7 @@ describe('FullSyncRunner', () => {
       expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('idle')
     })
 
-    it('#then a drain blocked offline releases the session instead of holding the slot', async () => {
+    it('#then a drain blocked offline past the dwell releases the session instead of holding the slot', async () => {
       const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
 
       await h.runner.run()
@@ -1807,8 +1811,55 @@ describe('FullSyncRunner', () => {
 
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 2)
 
+      // Inside the dwell the block is still indistinguishable from a blip, and
+      // the elevation is this bootstrap's to spend.
+      expect(mocks.closeBootstrapSession).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS)
+
       expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
       expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('idle')
+    })
+
+    // The session is opened ONCE per vault (gated on a null LAST_CURSOR, which
+    // the first pull page then writes), so releasing it is irreversible for the
+    // rest of the bootstrap. Dropping it on the first blocked tick made a lid
+    // close, a wifi switch or a VPN reconnect permanently revert the whole
+    // remaining drain to base pacing.
+    it('#then a transient offline blip mid-drain keeps the elevated session', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES * 4)
+
+      await h.runner.run()
+      ;(h.ctx.deps.network as { online: boolean }).online = false
+
+      // Seconds, not minutes — the ordinary shape of a network change.
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 3)
+
+      expect(mocks.closeBootstrapSession).not.toHaveBeenCalled()
+      ;(h.ctx.deps.network as { online: boolean }).online = true
+
+      // Back online well inside the dwell: the drain resumes still elevated,
+      // and a later block starts its dwell from scratch rather than from the
+      // blip.
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 2)
+
+      expect(mocks.closeBootstrapSession).not.toHaveBeenCalled()
+    })
+
+    // The mirror of the dispose test above. `maybeMarkBootstrapFullText` hands
+    // the window back on a clean completion; without that, a runner that
+    // finished its bootstrap still counts as owning one at teardown and
+    // abandons the NEXT vault's just-armed window.
+    it('#then a runner that completed its bootstrap abandons nothing on dispose', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+      expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+
+      h.runner.dispose()
+
+      expect(mocks.abandonBootstrap).not.toHaveBeenCalled()
     })
   })
 })

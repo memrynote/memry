@@ -295,3 +295,105 @@ describe('#given an abort landing inside a page apply #when the page has only pa
     vi.restoreAllMocks()
   })
 })
+
+/**
+ * The same abort, one iteration earlier. `stopSyncRuntime` calls
+ * `engine.requestCancel()` BEFORE awaiting the start promise, so a cancel that
+ * lands while the cycle is still resolving credentials is the ordinary vault
+ * close/switch path, not an edge case — and the `while (hasMore)` guard broke
+ * out of the loop without marking the run refused. A pull that never issued a
+ * single GET then fell through to `finalizePullSuccess()` and reported that it
+ * had delivered, which is exactly the false "clean sync" the refused flag
+ * exists to prevent.
+ */
+describe('#given a cancel landing before the first page is fetched #when the pull runs', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then nothing is reported as delivered and no page is ever fetched', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      stateManager: { recordHistory: (...args: unknown[]) => void }
+    }
+
+    // The cycle's AbortController is armed before credentials resolve, so a
+    // cancel here is observed by the loop guard on its very first iteration.
+    ;(deps.getVaultKey as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      engine.requestCancel()
+      return new Uint8Array(32)
+    })
+
+    const getSpy = vi.spyOn(await import('../http-client'), 'getFromServer')
+    const historySpy = vi.spyOn(eng.stateManager, 'recordHistory')
+
+    await expect(engine.pull()).resolves.toBe(false)
+
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(historySpy).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * The headline shape of the 2026-07-18 incident: the run stopped on a page it
+ * refused to apply (here a confirmed vault-key mismatch), so no success history
+ * row and no fresh `lastSyncAt` may be recorded — and the outcome the caller
+ * reads must say so. `FullSyncRunner` gates the bootstrap full-text mark on
+ * this boolean, so a refused page reporting `true` re-creates the fake clean
+ * sync one layer up.
+ */
+describe('#given a pull whose page the run refused to apply #when the pull finishes', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then the run reports that nothing was delivered', async () => {
+    const deps = createMockDeps(getDb(), {
+      checkAccountKey: vi.fn().mockResolvedValue('mismatch')
+    })
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      stateManager: { getStateValue: (key: string) => string | undefined }
+    }
+
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 }],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 42
+    })
+    vi.spyOn(http, 'postToServer').mockResolvedValue({
+      items: [
+        {
+          id: 'task-1',
+          type: 'task',
+          operation: 'update',
+          signature: 'sig-task-1',
+          signerDeviceId: 'device-1',
+          blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+        }
+      ]
+    })
+    // Every item in the page fails, and the account verifier confirms the key
+    // itself is wrong — the page is refused and the cursor must not advance.
+    vi.spyOn(await import('../sync-crypto-batch'), 'decryptPullBatch').mockResolvedValue({
+      decrypted: [],
+      failures: [
+        {
+          id: 'task-1',
+          type: 'task',
+          signerDeviceId: 'device-1',
+          error: 'decryption failed',
+          isCryptoError: true,
+          isSignatureError: false
+        }
+      ]
+    })
+
+    await expect(engine.pull()).resolves.toBe(false)
+
+    expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+
+    vi.restoreAllMocks()
+  })
+})
