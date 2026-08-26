@@ -1,6 +1,11 @@
 name: Deploy sync-server (staging)
 
 on:
+  # Manual escape hatch. The push trigger below is the normal path, but a
+  # dropped workflow run leaves staging silently on older code than main —
+  # with no way to re-deploy short of pushing another sync-server commit.
+  # Mirrors the production workflow, which is dispatch-only.
+  workflow_dispatch:
   push:
     branches:
       - main
