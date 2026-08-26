@@ -64,6 +64,7 @@
     "./agent-mcp-channels": "./src/agent-mcp-channels.ts",
     "./vault-api": "./src/vault-api.ts",
     "./capture-api": "./src/capture-api.ts",
+    "./webview-bridge": "./src/webview-bridge.ts",
     "./test-vectors/crypto-vectors.json": "./test-vectors/crypto-vectors.json"
   },
   "types": "./src/index.ts",
