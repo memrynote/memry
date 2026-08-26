@@ -74,3 +74,5 @@ agents/
 !docs/agents/
 .env*.local
 .superpowers/
+
+.feedback/
