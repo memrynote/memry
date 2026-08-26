@@ -9,8 +9,22 @@ import { subscribeReadOnly, type ReadOnlyState } from '@/sync/read-only-mode'
  * Sync/degraded-state banner (T053) using desktop's vocabulary: offline,
  * syncing, locked, read-only. Renders nothing when everything is healthy.
  * Read-only carries the plain explanation + update path (FR-010).
+ *
+ * `unsyncedCount` is the outbox depth (US2). It is deliberately its own state
+ * rather than folded into "syncing": "we are pulling" and "your edits have not
+ * left this device yet" answer different questions, and the offline matrix
+ * asserts on the second one specifically — a run that only waited for the pull
+ * indicator would call a full outbox a success.
  */
-export function SyncStatusBanner({ syncing, locked }: { syncing?: boolean; locked?: boolean }) {
+export function SyncStatusBanner({
+  syncing,
+  locked,
+  unsyncedCount = 0
+}: {
+  syncing?: boolean
+  locked?: boolean
+  unsyncedCount?: number
+}) {
   const [online, setOnline] = useState(true)
   const [readOnly, setReadOnly] = useState<ReadOnlyState>({ readOnly: false, reason: null })
 
@@ -54,7 +68,21 @@ export function SyncStatusBanner({ syncing, locked }: { syncing?: boolean; locke
     return (
       <View style={styles.banner} accessibilityRole="text" accessibilityLabel="Offline">
         <ThemedText type="smallBold">Offline</ThemedText>
-        <ThemedText type="small">Showing what is already on this device.</ThemedText>
+        <ThemedText type="small">
+          {unsyncedCount > 0
+            ? `Showing what is already on this device. ${unsyncedCount} change${unsyncedCount === 1 ? '' : 's'} will send when you reconnect.`
+            : 'Showing what is already on this device.'}
+        </ThemedText>
+      </View>
+    )
+  }
+
+  if (unsyncedCount > 0) {
+    return (
+      <View style={styles.banner} accessibilityRole="text" accessibilityLabel="Unsynced changes">
+        <ThemedText type="small">
+          Sending {unsyncedCount} change{unsyncedCount === 1 ? '' : 's'}…
+        </ThemedText>
       </View>
     )
   }

@@ -9,6 +9,7 @@ import {
   setBackgroundSyncVault,
   wireForegroundSync
 } from '@/sync/background'
+import { getEditorSession } from '@/editor/session'
 import { getSyncEngine } from '@/sync/engine'
 import { runFirstSyncIfNeeded, type FirstSyncProgress } from '@/sync/first-sync'
 
@@ -21,6 +22,7 @@ const log = createLogger('VaultLayout')
 export default function VaultLayout() {
   const [progress, setProgress] = useState<FirstSyncProgress | null>(null)
   const [syncing, setSyncing] = useState(false)
+  const [unsyncedCount, setUnsyncedCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -54,9 +56,38 @@ export default function VaultLayout() {
     }
   }, [])
 
+  /**
+   * Outbox depth, polled rather than pushed.
+   *
+   * The queue is written from several places (editor persists, note ops, the
+   * drain worker), and a change notification from each of them would be four
+   * ways to forget one. A 2 s poll of a COUNT over a small table is cheap and
+   * cannot go stale.
+   */
+  useEffect(() => {
+    let cancelled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+    void (async () => {
+      const vaultId = await loadCurrentVaultId()
+      if (!vaultId || cancelled) return
+      const session = await getEditorSession(vaultId)
+      const tick = async (): Promise<void> => {
+        const depth = await session.outbox.pendingCount()
+        if (!cancelled) setUnsyncedCount(depth)
+      }
+      await tick()
+      if (cancelled) return
+      timer = setInterval(() => void tick().catch(() => {}), 2_000)
+    })()
+    return () => {
+      cancelled = true
+      if (timer) clearInterval(timer)
+    }
+  }, [])
+
   return (
     <>
-      <SyncStatusBanner syncing={syncing} />
+      <SyncStatusBanner syncing={syncing} unsyncedCount={unsyncedCount} />
       <FirstSyncProgressBar progress={progress} />
       <Stack screenOptions={{ headerShown: true }} />
     </>

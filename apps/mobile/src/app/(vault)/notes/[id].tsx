@@ -1,99 +1,312 @@
-import { useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { router, Stack, useLocalSearchParams } from 'expo-router'
+import type { BridgeCfg } from '@memry/contracts/webview-bridge'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
-import { openVaultDb } from '@/db/index'
+import { EditorView, type EditorControls } from '@/editor/editor-view'
+import { formatG3Report } from '@/editor/__rig__/latency'
+import type { OpenDoc } from '@/editor/doc-manager'
+import { getEditorSession, type EditorSession } from '@/editor/session'
+import { queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
+import { insertAttachment, pickDocument, pickImage } from '@/features/attachments/insert'
+import { resolveAsset } from '@/features/attachments/resolve'
+import { NoteManageSheet } from '@/features/notes/manage'
+import { readNotePayload, type NoteOpsContext, type NotePayload } from '@/features/notes/note-ops'
+import { NoteProperties } from '@/features/notes/properties'
+import { NoteTags } from '@/features/notes/tags'
+import { useColorScheme } from '@/hooks/use-color-scheme'
+import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
-import { ensureNoteBody } from '@/sync/body-fetch'
+import { getSyncEngine } from '@/sync/engine'
+import { subscribeReadOnly } from '@/sync/read-only-mode'
+
+const log = createLogger('NoteScreen')
 
 /**
- * Read-only note preview (T050): plain markdown text render — an explicit
- * placeholder until the Phase 4 WebView editor replaces it. Opening a note
- * outside the 30-day body window triggers the on-demand fetch (T048).
+ * The note editor (T064). Replaces the US1 read-only preview.
+ *
+ * The Y.Doc is opened by the doc manager and handed to the WebView; this screen
+ * owns only the things around it — the header actions, the metadata sheets, and
+ * the flush on background transition (T076).
  */
-export default function NotePreviewScreen() {
+export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const [title, setTitle] = useState('')
-  const [markdown, setMarkdown] = useState<string | null>(null)
-  const [fetching, setFetching] = useState(false)
+  const scheme = useColorScheme()
+
+  const [session, setSession] = useState<EditorSession | null>(null)
+  const [doc, setDoc] = useState<OpenDoc | null>(null)
+  const [payload, setPayload] = useState<NotePayload | null>(null)
+  const [readOnly, setReadOnly] = useState(false)
+  const [managing, setManaging] = useState(false)
+  const [showMeta, setShowMeta] = useState(false)
+  // Dev-build bridge counters + keystroke latency, read on demand (T075).
+  const [metrics, setMetrics] = useState<string | null>(null)
+  const controls = useRef<EditorControls | null>(null)
+
+  useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       if (!id) return
       const vaultId = await loadCurrentVaultId()
-      if (!vaultId) return
-      const db = await openVaultDb(vaultId)
+      if (!vaultId || cancelled) return
 
-      const meta = await db.getFirstAsync<{ payload: string | null }>(
-        'SELECT payload FROM sync_items WHERE id = ?',
-        [id]
-      )
-      try {
-        const payload = meta?.payload ? (JSON.parse(meta.payload) as { title?: string }) : {}
-        if (!cancelled) setTitle(payload.title ?? 'Untitled')
-      } catch {
-        if (!cancelled) setTitle('Untitled')
-      }
+      const editorSession = await getEditorSession(vaultId)
+      const openDoc = await editorSession.docs.openDoc(id)
+      const notePayload = await readNotePayload(editorSession.db, id)
 
-      const readBody = async () => {
-        const row = await db.getFirstAsync<{ markdown: string }>(
-          'SELECT markdown FROM note_bodies WHERE item_id = ?',
-          [id]
-        )
-        return row?.markdown ?? null
-      }
-
-      const local = await readBody()
-      if (!cancelled) setMarkdown(local)
-
-      // On-demand: pull the blob/body when missing, refresh when it lands.
-      if (!cancelled) setFetching(true)
-      const updated = await ensureNoteBody(vaultId, id)
-      if (!cancelled) {
-        if (updated || local === null) setMarkdown(await readBody())
-        setFetching(false)
-      }
+      if (cancelled) return
+      setSession(editorSession)
+      setDoc(openDoc)
+      setPayload(notePayload)
     })()
     return () => {
       cancelled = true
     }
   }, [id])
 
+  // Remote CRDT updates reach the open doc through the sync engine's pull; this
+  // is what makes a desktop edit appear in the open editor rather than only
+  // after a reopen.
+  useEffect(() => {
+    if (!session || !id) return
+    const engine = getSyncEngine(session.vaultId)
+    return engine.onSynced(() => {
+      void (async () => {
+        const refreshed = await readNotePayload(session.db, id)
+        if (refreshed) setPayload(refreshed)
+      })()
+    })
+  }, [id, session])
+
+  // Background transition: flush the bridge, then drain the outbox (T076). The
+  // order matters — flushing first is what puts the last keystrokes INTO the
+  // outbox before the drain reads it.
+  useEffect(() => {
+    if (!session) return
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') return
+      // Flush the bridge and WAIT for what it shook loose to be durable, then
+      // drain. Draining first would read the outbox before the last keystrokes
+      // had finished their round trip through the WebView.
+      void (async () => {
+        await controls.current?.flush()
+        await session.flush()
+      })().catch((err) => {
+        log.warn('Background drain failed', {
+          error: err instanceof Error ? err.message : String(err)
+        })
+      })
+    })
+    return () => subscription.remove()
+  }, [session])
+
+  const ctx: NoteOpsContext | null = useMemo(
+    () =>
+      session
+        ? {
+            db: session.db,
+            outbox: session.outbox,
+            vaultId: session.vaultId,
+            deviceId: session.deviceId
+          }
+        : null,
+    [session]
+  )
+
+  const cfg: BridgeCfg = useMemo(
+    () => ({
+      theme: scheme === 'dark' ? 'dark' : 'light',
+      locale: 'en',
+      // RTL follows the app's own layout direction, which is what the shared
+      // logical-property CSS is written against.
+      rtl: false,
+      reducedMotion: false,
+      readOnly
+    }),
+    [readOnly, scheme]
+  )
+
+  const onNavigate = useCallback(
+    (target: string) => {
+      if (!session) return
+      void (async () => {
+        const noteId = await resolveWikiTarget(session.db, target)
+        if (noteId) router.push(`/(vault)/notes/${noteId}`)
+        // A link with no target is a real state (the note has not been created
+        // yet), not an error — the desktop shows the same nothing-happens.
+      })()
+    },
+    [session]
+  )
+
+  const onWikiQuery = useCallback(
+    async (query: string) => (session ? queryWikiCandidates(session.db, query) : []),
+    [session]
+  )
+
+  const onAssetRequest = useCallback(
+    async (ref: string) => {
+      if (!session || !id) return { status: 'missing' as const }
+      return resolveAsset({ db: session.db, transfer: session.attachments }, id, ref)
+    },
+    [id, session]
+  )
+
+  const onInsert = useCallback(
+    async (kind: 'image' | 'file') => {
+      if (!ctx || !session || !id) return
+      const picked = kind === 'image' ? await pickImage() : await pickDocument()
+      if (!picked) return
+      const result = await insertAttachment(ctx, session.attachments, id, picked)
+      if (!result) return
+      setPayload(await readNotePayload(ctx.db, id))
+      // The editor owns the block structure; the host only names the reference.
+      controls.current?.insertImage(result.ref, result.filename)
+    },
+    [ctx, id, session]
+  )
+
+  if (!doc || !id) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ThemedView style={styles.center}>
+          <ActivityIndicator />
+        </ThemedView>
+      </SafeAreaView>
+    )
+  }
+
+  const title = payload?.title ?? 'Untitled'
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <Stack.Screen options={{ title }} />
-      <ThemedView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <ThemedText type="title">{title}</ThemedText>
-          {markdown === null ? (
-            fetching ? (
-              <>
-                <ActivityIndicator />
-                <ThemedText type="small">Fetching this note…</ThemedText>
-              </>
-            ) : (
-              <ThemedText type="small">
-                This note has not been downloaded yet. Connect and reopen it.
-              </ThemedText>
-            )
-          ) : (
-            <ThemedText style={styles.body} accessibilityLabel="Note content">
-              {markdown}
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <Stack.Screen
+        options={{
+          title,
+          headerRight: () => (
+            <View style={styles.headerActions}>
+              <HeaderButton label="Undo" onPress={() => controls.current?.undo()} />
+              <HeaderButton label="Redo" onPress={() => controls.current?.redo()} />
+              <HeaderButton label="Info" onPress={() => setShowMeta((value) => !value)} />
+              <HeaderButton label="More" onPress={() => setManaging(true)} />
+            </View>
+          )
+        }}
+      />
+
+      {readOnly ? (
+        <ThemedView style={styles.banner}>
+          <ThemedText type="small">
+            Read-only right now. Your edits stay on this device and sync when writing is available
+            again.
+          </ThemedText>
+        </ThemedView>
+      ) : null}
+
+      {showMeta ? (
+        <ScrollView style={styles.meta} contentContainerStyle={styles.metaContent}>
+          <NoteTags
+            ctx={ctx}
+            noteId={id}
+            tags={payload?.tags ?? []}
+            readOnly={readOnly}
+            onChanged={(tags) => setPayload((prev) => (prev ? { ...prev, tags } : prev))}
+          />
+          <NoteProperties
+            ctx={ctx}
+            noteId={id}
+            properties={payload?.properties ?? {}}
+            readOnly={readOnly}
+            onChanged={(properties) =>
+              setPayload((prev) => (prev ? { ...prev, properties } : prev))
+            }
+          />
+          <View style={styles.insertRow}>
+            <HeaderButton label="Insert image" onPress={() => void onInsert('image')} />
+            <HeaderButton label="Insert file" onPress={() => void onInsert('file')} />
+          </View>
+          {__DEV__ ? (
+            <View style={styles.insertRow}>
+              <HeaderButton
+                label="Bridge metrics"
+                onPress={() =>
+                  setMetrics(
+                    controls.current
+                      ? formatG3Report(controls.current.measure())
+                      : 'editor not ready'
+                  )
+                }
+              />
+              <HeaderButton
+                label="Reset metrics"
+                onPress={() => {
+                  controls.current?.resetMeasurement()
+                  setMetrics(null)
+                }}
+              />
+            </View>
+          ) : null}
+          {metrics ? (
+            <ThemedText type="small" style={styles.metrics} accessibilityLabel="Bridge metrics">
+              {metrics}
             </ThemedText>
-          )}
+          ) : null}
         </ScrollView>
-      </ThemedView>
+      ) : null}
+
+      <EditorView
+        doc={doc}
+        cfg={cfg}
+        onNavigate={onNavigate}
+        onWikiQuery={onWikiQuery}
+        onAssetRequest={onAssetRequest}
+        onReady={(next) => {
+          controls.current = next
+        }}
+      />
+
+      <NoteManageSheet
+        visible={managing}
+        ctx={ctx}
+        noteId={id}
+        title={title}
+        folderPath={payload?.folderPath ?? ''}
+        onClose={() => setManaging(false)}
+        onChanged={() => {
+          if (session) void readNotePayload(session.db, id).then(setPayload)
+        }}
+        onDeleted={() => router.back()}
+      />
     </SafeAreaView>
+  )
+}
+
+function HeaderButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.headerButton}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <ThemedText type="small">{label}</ThemedText>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: { flex: 1 },
-  scroll: { padding: Spacing.three, gap: Spacing.three },
-  body: { fontSize: 15, lineHeight: 22 }
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', gap: Spacing.two },
+  headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
+  banner: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
+  meta: { maxHeight: 260 },
+  metaContent: { padding: Spacing.three, gap: Spacing.two },
+  insertRow: { flexDirection: 'row', gap: Spacing.three },
+  metrics: { fontFamily: 'Menlo', fontSize: 11 }
 })
