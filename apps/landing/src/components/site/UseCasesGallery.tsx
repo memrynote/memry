@@ -19,37 +19,37 @@ const PERSONAS: Persona[] = [
     name: 'Writer',
     line: 'Drafts, research, and journals, all in one quiet place.',
     tint: 'sky',
-    mascot: '/mascots/journal.png'
+    mascot: '/mascots/journal.webp'
   },
   {
     name: 'Maker',
     line: 'Projects, tasks, and changelogs right beside the work.',
     tint: 'sage',
-    mascot: '/mascots/maker.png'
+    mascot: '/mascots/maker.webp'
   },
   {
     name: 'Student',
     line: 'Course notes and deadlines that stay in one place.',
     tint: 'sand',
-    mascot: '/mascots/student.png'
+    mascot: '/mascots/student.webp'
   },
   {
     name: 'ADHD brain',
     line: 'One inbox for everything. Zero app-switching.',
     tint: 'peach',
-    mascot: '/mascots/adhd-brain.png'
+    mascot: '/mascots/adhd-brain.webp'
   },
   {
     name: 'Researcher',
     line: 'Linked notes and a graph that connects the ideas.',
     tint: 'sky',
-    mascot: '/mascots/researchers.png'
+    mascot: '/mascots/researchers.webp'
   },
   {
     name: 'Privacy-first',
     line: 'End-to-end encrypted. Works offline. Yours.',
     tint: 'sage',
-    mascot: '/mascots/privacy-first.png'
+    mascot: '/mascots/privacy-first.webp'
   }
 ]
 

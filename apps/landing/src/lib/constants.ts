@@ -45,42 +45,42 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
     label: 'Inbox',
     description: 'Capture links, files, voice',
     href: '/features/inbox',
-    icon: '/mascots/inbox.png',
+    icon: '/mascots/inbox.webp',
     iconType: 'image'
   },
   {
     label: 'Journal',
     description: 'Daily writing with context',
     href: '/features/journal',
-    icon: '/mascots/journal.png',
+    icon: '/mascots/journal.webp',
     iconType: 'image'
   },
   {
     label: 'Notes',
     description: 'Markdown, backlinks, properties',
     href: '/features/notes',
-    icon: '/mascots/notes.png',
+    icon: '/mascots/notes.webp',
     iconType: 'image'
   },
   {
     label: 'Tasks',
     description: 'Projects, kanban, recurring work',
     href: '/features/tasks',
-    icon: '/mascots/tasks.png',
+    icon: '/mascots/tasks.webp',
     iconType: 'image'
   },
   {
     label: 'Calendar',
     description: 'Schedule, deadlines, day view',
     href: '/features/calendar',
-    icon: '/mascots/calendar.png',
+    icon: '/mascots/calendar.webp',
     iconType: 'image'
   },
   {
     label: 'AI Agent',
     description: 'Optional. Turn AI on or off anytime.',
     href: '/features/ai-agent',
-    icon: '/mascots/ai-agent.png',
+    icon: '/mascots/ai-agent.webp',
     iconType: 'image'
   }
 ] as const
@@ -90,14 +90,14 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
     label: 'Web Clipper',
     description: 'Clip and save any link',
     href: '/features/web-clipper',
-    icon: '/mascots/web-clipper.png',
+    icon: '/mascots/web-clipper.webp',
     iconType: 'image'
   },
   {
     label: 'memrynote for Mobile',
     description: 'iOS and Android apps',
     href: '#',
-    icon: '/mascots/mobile.png',
+    icon: '/mascots/mobile.webp',
     iconType: 'image',
     disabled: true
   },
@@ -105,14 +105,14 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
     label: 'memrynote for Desktop',
     description: 'macOS · Windows · Linux',
     href: '/download/desktop',
-    icon: '/mascots/desktop.png',
+    icon: '/mascots/desktop.webp',
     iconType: 'image'
   },
   {
     label: 'memrynote CLI',
     description: 'Terminal workflows',
     href: '/cli',
-    icon: '/mascots/cli.png',
+    icon: '/mascots/cli.webp',
     iconType: 'image'
   }
 ] as const

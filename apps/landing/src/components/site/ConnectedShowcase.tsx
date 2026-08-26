@@ -89,14 +89,14 @@ interface FeatureTile {
 const TILES: FeatureTile[] = [
   {
     id: 'folder-view',
-    mascot: '/mascots/folder-tags.png',
+    mascot: '/mascots/folder-tags.webp',
     title: 'Folder views',
     tint: 'peach',
     visual: 'folder'
   },
   {
     id: 'graph',
-    mascot: '/mascots/links-graph.png',
+    mascot: '/mascots/links-graph.webp',
     title: 'Graph view',
     tint: 'sky',
     visual: 'screenshot',
@@ -104,7 +104,7 @@ const TILES: FeatureTile[] = [
   },
   {
     id: 'home',
-    mascot: '/mascots/home.png',
+    mascot: '/mascots/home.webp',
     title: 'Home dashboard',
     tint: 'rose',
     visual: 'screenshot',
@@ -113,7 +113,7 @@ const TILES: FeatureTile[] = [
   },
   {
     id: 'web-clipper',
-    mascot: '/mascots/web-clipper.png',
+    mascot: '/mascots/web-clipper.webp',
     title: 'Web clipper',
     tint: 'lilac',
     visual: 'clipper',
@@ -121,7 +121,7 @@ const TILES: FeatureTile[] = [
   },
   {
     id: 'cli',
-    mascot: '/mascots/cli.png',
+    mascot: '/mascots/cli.webp',
     title: 'The MemryNote CLI',
     tint: 'sand',
     visual: 'cli',
@@ -129,7 +129,7 @@ const TILES: FeatureTile[] = [
   },
   {
     id: 'mcp',
-    mascot: '/mascots/ai-agent.png',
+    mascot: '/mascots/ai-agent.webp',
     title: 'MCP, both ways',
     tint: 'mint',
     visual: 'agent',
@@ -139,7 +139,7 @@ const TILES: FeatureTile[] = [
 
 /** Framed screenshot — /screenshots/<base>_white.png. */
 function ScreenshotFrame({ base, alt, scale }: { base: string; alt: string; scale?: number }) {
-  const src = `/screenshots/${base}_white.png`
+  const src = `/screenshots/${base}_white.webp`
   return (
     <div className="overflow-hidden rounded-2xl border border-ink/10 shadow-card">
       <img
@@ -173,7 +173,7 @@ function FolderShot() {
   return (
     <div className="overflow-hidden rounded-2xl border border-ink/10 shadow-card">
       <img
-        src="/screenshots/folder-view-white.png"
+        src="/screenshots/folder-view-white.webp"
         alt="A folder as a table: title, tags, director, year and genre columns, rows selected"
         width={876}
         height={612}

@@ -1,4 +1,4 @@
-import { initializePaddle, type Paddle, type PaddleEventData } from '@paddle/paddle-js'
+import type { Paddle, PaddleEventData } from '@paddle/paddle-js'
 
 import type { CheckoutPlanId, SyncPlanId } from './constants'
 
@@ -17,22 +17,27 @@ function getPaddleClient() {
   const token = import.meta.env.VITE_PADDLE_CLIENT_TOKEN
   if (!token) return null
 
-  paddlePromise ??= initializePaddle({
-    token,
-    environment:
-      import.meta.env.VITE_PADDLE_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
-    eventCallback: (event) => {
-      activeCheckoutEventHandler?.(event)
-    },
-    checkout: {
-      settings: {
-        displayMode: 'overlay',
-        variant: 'one-page',
-        theme: 'light',
-        locale: 'en'
+  // Loaded on demand. Only the pricing and checkout screens ever open a checkout,
+  // but a static import put the whole @paddle/paddle-js chunk in the entry graph
+  // for every visitor, including someone who only reads the homepage.
+  paddlePromise ??= import('@paddle/paddle-js').then(({ initializePaddle }) =>
+    initializePaddle({
+      token,
+      environment:
+        import.meta.env.VITE_PADDLE_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+      eventCallback: (event) => {
+        activeCheckoutEventHandler?.(event)
+      },
+      checkout: {
+        settings: {
+          displayMode: 'overlay',
+          variant: 'one-page',
+          theme: 'light',
+          locale: 'en'
+        }
       }
-    }
-  })
+    })
+  )
 
   return paddlePromise
 }

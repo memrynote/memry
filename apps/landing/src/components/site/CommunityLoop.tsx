@@ -37,7 +37,7 @@ const LOOP_CARDS: LoopCard[] = [
     title: 'Changelog',
     line: 'What shipped, release by release.',
     href: '/changelog',
-    icon: <Mascot src="/mascots/change-log.png" className="h-8 w-8" />,
+    icon: <Mascot src="/mascots/change-log.webp" className="h-8 w-8" />,
     mascot: true,
     target: 'home-community:changelog'
   },
@@ -45,7 +45,7 @@ const LOOP_CARDS: LoopCard[] = [
     title: 'Roadmap',
     line: 'What we are building next, in the open.',
     href: '/roadmap',
-    icon: <Mascot src="/mascots/roadmap.png" className="h-8 w-8" />,
+    icon: <Mascot src="/mascots/roadmap.webp" className="h-8 w-8" />,
     mascot: true,
     target: 'home-community:roadmap'
   },

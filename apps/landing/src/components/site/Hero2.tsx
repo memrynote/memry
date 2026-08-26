@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { ArrowRight, Check, Copy, Play } from 'lucide-react'
 import { Link } from 'react-router'
-import heroBg from '@/assets/hero-bg.png'
 import { Mascot } from '@/components/ui/mascot'
 import { HeroDemoDialog } from '@/components/site/HeroDemoDialog'
 import { DownloadPill } from '@/components/shared/DownloadCTA'
@@ -44,7 +43,29 @@ const HERO_IN = { duration: 0.7, delay: 0.1, ease: EASE }
 const HERO_SKY_WASH =
   'linear-gradient(to bottom, rgb(122 168 214 / 0.42) 0%, rgb(132 176 218 / 0.24) 40%, rgb(140 182 220 / 0.08) 62%, transparent 78%)'
 
-const HERO_SHOT = { src: '/screenshots/hero_white.png', width: 1448, height: 954 } as const
+/* The blurred sky backdrop, and the hero's LCP element.
+   Lives in /public, not src/assets: prerender renders through a Vite dev server, so a
+   bundled import serialises as /src/assets/hero-bg.png — a path that only exists in
+   dev. In production that 404'd, and the real hashed PNG was only fetched once React
+   had re-rendered, which put ~8s of render delay on LCP. A /public URL is identical in
+   both.
+
+   The blur is baked into the file (900px wide, sigma 2.2, WebP — 176KB of PNG down to
+   10KB) rather than applied as blur-[3px]. A CSS filter over a full-viewport image
+   makes the browser rasterise the blur before it can show anything, and that raster
+   was landing more than a second after the image itself had arrived. Regenerate with:
+   sharp('src/assets/hero-bg.png').resize(900).blur(2.2).webp({ quality: 76 }) */
+const HERO_BG = '/hero/hero-bg.webp'
+
+const HERO_SHOT = {
+  src: '/screenshots/hero_white.webp',
+  // 1100w is the variant a 2x-3x phone actually picks at 100vw; an 800w candidate
+  // was always too small for it, so the browser preloaded 800w and then fetched
+  // 1448w for the element — the shot downloaded twice.
+  srcSet: '/screenshots/hero_white-1100.webp 1100w, /screenshots/hero_white.webp 1448w',
+  width: 1448,
+  height: 954
+} as const
 const HERO_SHOT_CSS_WIDTH = '58rem'
 
 /**
@@ -224,10 +245,14 @@ export function Hero2() {
             window read as the foreground; scale-105 hides the soft edges the blur would
             otherwise fade at the panel border. */}
         <img
-          src={heroBg}
+          src={HERO_BG}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full scale-105 object-cover blur-[3px]"
+          width={900}
+          height={636}
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 h-full w-full scale-105 object-cover"
         />
 
         <div
@@ -256,7 +281,7 @@ export function Hero2() {
             {/* nowrap keeps the comma glued to the pill — atomic inlines invite a wrap right after */}
             <span className="whitespace-nowrap">
               <HeadlineChip
-                mascotSrc="/mascots/thoughts.png"
+                mascotSrc="/mascots/thoughts.webp"
                 pillClassName="-rotate-2 bg-tint-sky text-[#2e5a78]"
               >
                 thoughts
@@ -265,7 +290,7 @@ export function Hero2() {
             </span>
             <br className="hidden sm:block" /> beautifully{' '}
             <HeadlineChip
-              mascotSrc="/mascots/organized.png"
+              mascotSrc="/mascots/organized.webp"
               pillClassName="rotate-2 bg-tint-peach text-terracotta-dark"
             >
               organized
@@ -344,6 +369,8 @@ export function Hero2() {
             <div className="relative overflow-hidden rounded-xl bg-white">
               <img
                 src={shot.src}
+                srcSet={shot.srcSet}
+                sizes="(max-width: 768px) 100vw, 58rem"
                 alt="The MemryNote app showing a note with tags, a table, and tasks"
                 width={shot.width}
                 height={shot.height}

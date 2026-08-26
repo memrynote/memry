@@ -2,8 +2,10 @@
 // specifier resolves to the lean dist/module.js bundle, which has no rrweb
 // compiled in and lazy-loads /static/recorder.js as a <script> for replay.
 // disable_external_dependency_loading blocks that fetch, so session replay
-// silently never starts. This subpath bundles rrweb in directly.
-import posthog from 'posthog-js/dist/module.full.no-external'
+// silently never starts. This subpath bundles rrweb in directly — which is also
+// why it is ~165KB over the wire, and why `load()` below imports it dynamically
+// instead of at module scope. See the comment on `load`.
+type PostHog = typeof import('posthog-js/dist/module.full.no-external').default
 
 export type LandingEventName =
   | 'landing_scroll_25'
@@ -150,67 +152,85 @@ export function isSafeLinksScannerException(
 
 // Product analytics + session replay via posthog-js, direct to PostHog's
 // reverse-proxy subdomain. Session replay cannot be server-proxied, so this
-// replaces the old sendBeacon/fetch pipe into sync-server. `init` no-ops when
+// replaces the old sendBeacon/fetch pipe into sync-server. `load` no-ops when
 // there is no window (SSR/prerender) or no PostHog key configured, and only
-// runs once.
-let initialised = false
+// initialises once.
+//
+// The module is fetched on demand rather than at import time: bundled with rrweb
+// it is the single largest dependency on the site, and a static import made it a
+// modulepreload in the entry graph, competing for bandwidth with first paint. The
+// first track call starts the download; calls made before it lands are queued on
+// the same promise and replay in order once it resolves.
+let posthogPromise: Promise<PostHog | null> | null = null
 
-function init(): boolean {
-  if (initialised) return true
-  if (typeof window === 'undefined') return false
+function load(): Promise<PostHog | null> {
+  if (posthogPromise) return posthogPromise
+  if (typeof window === 'undefined') return Promise.resolve(null)
   const key = import.meta.env.VITE_POSTHOG_KEY
-  if (!key) return false
+  if (!key) return Promise.resolve(null)
 
-  posthog.init(key, {
-    api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://e.memrynote.com',
-    person_profiles: 'identified_only',
-    disable_external_dependency_loading: true,
-    capture_pageview: false,
-    // Returning null drops the event before it is queued. Everything else is
-    // passed through untouched.
-    before_send: (event) => (isSafeLinksScannerException(event) ? null : event),
-    session_recording: {
-      maskAllInputs: true,
-      // maskAllInputs only covers <input>/<textarea> values; account, login
-      // and checkout screens also render PII (email addresses, OTP-delivery
-      // confirmations) as plain text nodes, which rrweb captures verbatim by
-      // default. Elements tagged data-ph-mask have their text replaced with
-      // asterisks in the replay snapshot. See ProfileSection.tsx and
-      // Login.tsx for the tagged subtrees.
-      maskTextSelector: '[data-ph-mask]'
+  posthogPromise = import('posthog-js/dist/module.full.no-external').then(
+    ({ default: posthog }) => {
+      posthog.init(key, {
+        api_host: import.meta.env.VITE_POSTHOG_HOST ?? 'https://e.memrynote.com',
+        person_profiles: 'identified_only',
+        disable_external_dependency_loading: true,
+        capture_pageview: false,
+        // Returning null drops the event before it is queued. Everything else is
+        // passed through untouched.
+        before_send: (event) => (isSafeLinksScannerException(event) ? null : event),
+        session_recording: {
+          maskAllInputs: true,
+          // maskAllInputs only covers <input>/<textarea> values; account, login
+          // and checkout screens also render PII (email addresses, OTP-delivery
+          // confirmations) as plain text nodes, which rrweb captures verbatim by
+          // default. Elements tagged data-ph-mask have their text replaced with
+          // asterisks in the replay snapshot. See ProfileSection.tsx and
+          // Login.tsx for the tagged subtrees.
+          maskTextSelector: '[data-ph-mask]'
+        }
+      })
+      // vite build always runs in 'production' MODE, including Vercel preview
+      // deploys, so MODE alone can't separate them. VERCEL_ENV can ('production' |
+      // 'preview' | 'development'); vite.config.ts forwards it as
+      // VITE_VERCEL_ENV since Vite only exposes VITE_-prefixed vars. Fall back to
+      // the MODE check for local dev and any non-Vercel build, where
+      // VITE_VERCEL_ENV is unset.
+      const vercelEnv = import.meta.env.VITE_VERCEL_ENV
+      posthog.register({
+        environment:
+          vercelEnv || (import.meta.env.MODE === 'production' ? 'production' : 'development')
+      })
+      return posthog
     }
+  )
+
+  return posthogPromise
+}
+
+// Every property that depends on "when the call happened" is read here, eagerly,
+// and only the send is deferred — otherwise a capture queued during load would
+// report whatever route the visitor had reached by the time the chunk landed.
+function send(capture: (posthog: PostHog) => void): void {
+  void load().then((posthog) => {
+    if (posthog) capture(posthog)
   })
-  // vite build always runs in 'production' MODE, including Vercel preview
-  // deploys, so MODE alone can't separate them. VERCEL_ENV can ('production' |
-  // 'preview' | 'development'); vite.config.ts forwards it as
-  // VITE_VERCEL_ENV since Vite only exposes VITE_-prefixed vars. Fall back to
-  // the MODE check for local dev and any non-Vercel build, where
-  // VITE_VERCEL_ENV is unset.
-  const vercelEnv = import.meta.env.VITE_VERCEL_ENV
-  posthog.register({
-    environment: vercelEnv || (import.meta.env.MODE === 'production' ? 'production' : 'development')
-  })
-  initialised = true
-  return true
 }
 
 export function trackLandingPageView(pathname: string, search = ''): void {
-  if (!init()) return
-  posthog.capture('$pageview', createLandingPageViewData(pathname, search))
+  const data = createLandingPageViewData(pathname, search)
+  send((posthog) => posthog.capture('$pageview', data))
 }
 
 export function trackLandingEvent(name: LandingEventName, target: string): void {
-  if (!init()) return
-  posthog.capture(
-    name,
-    createLandingEventData(target, window.location.pathname, window.location.search)
-  )
+  if (typeof window === 'undefined') return
+  const data = createLandingEventData(target, window.location.pathname, window.location.search)
+  send((posthog) => posthog.capture(name, data))
 }
 
 // Autocapture only sees exceptions that reach the top. Anything we catch and
 // turn into a friendly message has to be reported by hand, or the failure goes
 // dark in Error Tracking.
 export function trackLandingException(error: unknown, context: string): void {
-  if (!init()) return
-  posthog.captureException(error, { context })
+  send((posthog) => posthog.captureException(error, { context }))
 }
