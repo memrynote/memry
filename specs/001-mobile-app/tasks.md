@@ -156,25 +156,30 @@ phrase, browse recent content. Standalone value: read-only companion.
 - [x] T051 [US1] Read-only mode client behaviour: react to 426/403/status policy — explicit banner + plain explanation + update path, outbox parked never dropped, auto-resume on clear (FR-010) — `apps/mobile/src/sync/read-only-mode.ts` _(IMPLEMENTED — `src/sync/read-only-mode.ts` state machine fed by clientPolicy on /sync/status (sent WITH the client header, so the switch is learned without a write) + banner in `status.tsx` with plain explanation and update path; outbox parking is structurally a no-op until Phase 4 writes exist, hooks in place. Kill-switch/version-gate DRILLS ride T056)_
 - [x] T052 [US1] Foreground sync triggers + `expo-background-task` registration (BGAppRefreshTask; resumable, interruptible) — `apps/mobile/src/sync/background.ts` _(IMPLEMENTED — `src/sync/background.ts`: expo-task-manager task + expo-background-task registration, foreground AppState trigger; resumable by construction (durable page-by-page pulls))_
 - [x] T053 [P] [US1] Sync/degraded-state UI using desktop's vocabulary (offline, syncing, locked, read-only) — `apps/mobile/src/features/sync/status.tsx` _(IMPLEMENTED — `src/features/sync/status.tsx` with desktop vocabulary: offline/syncing/locked/read-only; a11y roles + labels)_
-- [ ] T054 [US1] Seam tests on real adapters: pull pipeline → SQLite rows → NoteContentStore round-trip; conformance suite (T023) green against the mobile adapters — `apps/mobile/src/sync/__tests__/pull-pipeline.test.ts` _(code landed: on-device harness `src/sync/__harness__/us1-seam-harness.ts` runs the shared conformance suite against the REAL mobile adapters (injected describe/it/expect, fresh scratch vault per test) plus a live pull→SQLite→NoteContentStore round-trip; dev runner screen `(dev)/seam-tests.tsx`. OPEN: the on-device run itself — needs the reference device)_
-- [ ] T055 [P] [US1] Maestro smoke flow: sign-in → unlock → browse → open note — `apps/mobile/.maestro/us1-unlock-browse.yaml` _(flow authored, session-aware conditional blocks; OPEN: a green run on device/simulator with staging creds)_
-- [ ] T056 [US1] **G2 drills + evidence** (quickstart §Phase 2): 20-trial <5 s visibility (desktop→phone), kill-switch drill (staging flip → read-only without restart → drain on re-enable), version-gate drill, attribution query on staging D1, and SC-004 measurement — 10,000-item staging vault over Wi-Fi: recent content browsable within 2 min of unlocking on the reference device
+- [x] T054 [US1] Seam tests on real adapters: pull pipeline → SQLite rows → NoteContentStore round-trip; conformance suite (T023) green against the mobile adapters — `apps/mobile/src/sync/__tests__/pull-pipeline.test.ts` _(PROVEN 2026-08-24 — reference device (iPhone 12 Pro, release build, staging): conformance **26/26 PASS** + round-trip **6/6 PASS** (21:07 screenshot). Simulator closure run 22:50 after the full fix chain (#1817/#1822/#1823/#1826): bulk ladder all applied, "nothing left stuck", notes list complete, no banner. Final phone re-check after the 0002 migration (stuck items melt on launch) rides the G2 closing pass)_
+- [x] T055 [P] [US1] Maestro smoke flow: sign-in → unlock → browse → open note — `apps/mobile/.maestro/us1-unlock-browse.yaml` _(GREEN 2026-08-25 01:44 — iPhone 17 Pro simulator (B23CFB32), stored session: sign-in/vault-pick/unlock blocks SKIPPED as designed, browse→open-note asserted, all steps COMPLETED. One flow fix on record: the note body sets `accessibilityLabel="Note content"`, not testID, so the final assert matches the label, not `id:`)_
+- [ ] T056 [US1] **G2 drills + evidence** (quickstart §Phase 2): 20-trial <5 s visibility (desktop→phone), kill-switch drill (staging flip → read-only without restart → drain on re-enable), version-gate drill, attribution query on staging D1, and SC-004 measurement — 10,000-item staging vault over Wi-Fi: recent content browsable within 2 min of unlocking on the reference device _(3 of 5 PROVEN 2026-08-25 on staging + simulator: **kill-switch** ✓ (`client_policies.writes_enabled=0` → Read-only banner on next bg→fg pass, NO restart; re-enable → banner clears, screenshots on record) · **version-gate** ✓ (`min_write_version='99.0.0'` → "server requires 99.0.0… Update the app from the App Store" banner; NULL → clears) · **attribution** ✓ (staging D1: sync_items 572 + crdt_snapshots 128 rows ALL `client_platform=NULL` (legacy desktop), **zero `ios` rows** — US1 pull-only proven; legacy-client-compat tests pin that headerless writes stay NULL and mobile writes would stamp `ios`). OPEN: **<5 s visibility** — app has NO periodic foreground pull (triggers are foreground/online-transition/BG-task), so the drill needs either bg→fg cycling as the measured path or a small foreground 5 s poll-timer PR first, owner call; **SC-004** — needs the 10k-item staging vault seeded first (desktop dev profile → staging account → `pnpm seed` + push), owner call to seed now or defer)_
 
 **Checkpoint — G2**: all four drills green. This is the MVP: a trustworthy read-only companion on the developer's own device.
 
-> **Phase 3 code COMPLETE, G2 NOT YET GREEN — 2026-08-23.**
-> T033–T053 implemented and green on the code gates (lint ✓ · typecheck 20/20
-> incl. mobile app+test configs ✓ · root test battery 11/11 tasks — desktop
-> 17997 untouched-green, sync-client 179 (11 new pull-engine tests), mobile
-> migration parity 2/2 ✓ · check:architecture ✓ · check:contracts ✓ ·
-> ipc:check ✓ · docs:impact --strict clean ✓ · git diff --check ✓).
+> **Phase 3 code COMPLETE + shipped to main; G2 NEARLY GREEN — 2026-08-25.**
+> All US1 code and the device-hardening fix chain are on main and deployed to
+> staging: stack #1721, then #1727 (conformance out of `__tests__` — Metro),
+> #1810 (lib0 webcrypto shim), #1817 (exclusive pull queue + resumable
+> first-sync), #1819 (per-item pull validation), #1822 (prepared-statement
+> apply + chunk bisect), #1823 (60 s request deadline), #1826
+> (`note_bodies.path` non-unique — THE stuck-83 root cause; 0002 migration).
 > Owner decision recorded at T045: pull engine option (b) — clean pull-only
 > engine inside `@memry/sync-client` on the ten seams; desktop untouched.
-> **OPEN before G2 can be declared:** (1) T054's on-device run (harness +
-> dev screen are in the build — one tap on the reference device); (2) T055
-> Maestro run; (3) T056's four drills + SC-004 on a seeded STAGING vault
-> (staging is half-seeded — seed first or owner call); all on iPhone 12 Pro,
-> release build, `EXPO_PUBLIC_MEMRY_SERVER=staging`.
+> **G2 evidence so far:** T054 ✓ (device 26/26 + 6/6; sim closure run clean) ·
+> T055 ✓ (Maestro green on simulator) · T056 kill-switch ✓, version-gate ✓,
+> attribution ✓ (zero `ios` write rows on staging).
+> **OPEN before G2 can be declared:** (1) final phone pass after #1826
+> (`git pull` → release build to device → counter 0, bodies present,
+> seam-tests clean table screenshot); (2) <5 s visibility drill — owner call
+> on bg→fg cycling vs a foreground 5 s poll timer; (3) SC-004 — owner call
+> on seeding the 10k-item staging vault now vs a separate session. All on
+> iPhone 12 Pro, release build, `EXPO_PUBLIC_MEMRY_SERVER=staging`.
 
 ---
 

@@ -41,5 +41,5 @@ appId: com.memry.mobile
 - tapOn:
     below: 'Notes'
     index: 0
-- assertVisible:
-    id: 'Note content'
+# label match — the note body sets accessibilityLabel, not testID
+- assertVisible: 'Note content'
