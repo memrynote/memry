@@ -249,8 +249,12 @@ function createHarness(
   const crdtSync = new FakeCrdtSync()
 
   const actions = {
+    // Resolves TRUE: the real `SyncEngine.pull()` reports whether the pull
+    // actually delivered. Resolving without a value would model the old,
+    // vacuous contract in which "the await did not reject" was the evidence.
     pull: vi.fn(async () => {
       calls.push('pull')
+      return true
     }),
     push: vi.fn(async () => {
       calls.push('push')
@@ -1474,6 +1478,58 @@ describe('FullSyncRunner', () => {
       const [, latest] = h.crdtSync.pullCrdtForNotes.mock.calls.at(-1) as [string[], AbortSignal]
       expect(latest.aborted).toBe(false)
     })
+
+    // #1835 review finding: the throttle stamp used to be written when the
+    // sweep QUEUED the vault, before a paced drain that runs ~100 notes every
+    // 4-20 s out of an in-memory queue `dispose()` drops. A process killed
+    // mid-drain therefore left a FRESH stamp behind plus thousands of un-pulled
+    // bodies, and the next launch found the only discovery path for body-only
+    // remote edits throttled shut.
+    it('#then the throttle is stamped by the drain finishing, not by the enqueue', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+
+      await h.runner.run()
+
+      expect(h.calls).not.toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+
+      expect(h.calls).toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+    })
+
+    it('#then a chunk that owed its notes back leaves the throttle unstamped', async () => {
+      // Notes a rate-limited chunk hands back to the pending set were never
+      // pulled. An empty QUEUE is not a drained vault, and stamping on it would
+      // throttle the next launch with those bodies still stale.
+      const h = sweepingHarness(3)
+      h.crdtSync.pullCrdtForNotes.mockImplementation(async (ids: string[]) => {
+        for (const id of ids) h.crdtSync.addPendingPull(id)
+        throw new Error('rate limited')
+      })
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 3)
+
+      expect(h.calls).not.toContain(`setState:${SYNC_STATE_KEYS.LAST_CRDT_SWEEP_AT}`)
+    })
+
+    it('#then a cycle landing mid-drain does not re-queue the whole vault', async () => {
+      // While the drain runs there is deliberately no persisted stamp yet, so
+      // the interval throttle has nothing on disk to read — this engine has to
+      // hold the interval from its own memory, or every cycle re-reads the vault
+      // and restarts the pass. No `ws`, so the trigger is unknowable and the
+      // decision falls through to the interval.
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), ws: null })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(noteIds(CRDT_SWEEP_CHUNK_NOTES * 3))
+
+      await h.runner.run()
+      mocks.getAllCrdtNoteIds.mockClear()
+
+      await h.runner.run()
+
+      expect(mocks.getAllCrdtNoteIds).not.toHaveBeenCalled()
+    })
   })
 
   // #1835 — bootstrap telemetry seams. The runner owns two of them: arming the
@@ -1657,6 +1713,102 @@ describe('FullSyncRunner', () => {
       await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
 
       expect(mocks.markBootstrapFullText).toHaveBeenCalled()
+    })
+
+    // #1835 review finding: a pull that RESOLVED is not a pull that delivered.
+    // `SyncEngine.pull()` routes every error into `handleCoordinatorError`,
+    // which returns from every branch, and `PullCoordinator.pull()` returns
+    // early on a busy lock, missing credentials or a refused page — so the
+    // await could not reject in production and the flag it set was true on
+    // every run, unit tests included.
+    it('#then a pull that resolved without delivering cannot claim full text', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(true)
+      mocks.getAllCrdtNoteIds.mockReturnValue(['note-1'])
+      h.actions.pull.mockImplementation(async () => {
+        h.calls.push('pull')
+        return false
+      })
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS)
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+    })
+
+    // #1835 review finding: `bootstrap-metrics` keeps its window module-global
+    // and `beginBootstrap` no-ops while one is open, so a window left behind by
+    // a torn-down engine is inherited by the NEXT vault's bootstrap — which then
+    // reports that vault's time_to_interactive and bytes_per_sec against a dead
+    // window's t0 and byte counters.
+    it('#then disposing the runner abandons the bootstrap window it owns', async () => {
+      const h = createHarness()
+
+      await h.runner.run()
+      mocks.abandonBootstrap.mockClear()
+
+      h.runner.dispose()
+
+      expect(mocks.abandonBootstrap).toHaveBeenCalled()
+    })
+
+    it('#then disposing a steady-state runner leaves the next vault window alone', async () => {
+      // `downloadRemoteVault` arms a `vault_download` window BEFORE `selectVault`
+      // closes the current vault, so the outgoing engine's dispose runs with the
+      // incoming vault's window already open. Only a runner that owns a window
+      // may abandon one.
+      const h = createHarness()
+      h.getStateValue.mockImplementation((key: string) =>
+        key === SYNC_STATE_KEYS.LAST_CURSOR ? '42' : undefined
+      )
+
+      await h.runner.run()
+      h.runner.dispose()
+
+      expect(mocks.abandonBootstrap).not.toHaveBeenCalled()
+    })
+
+    // #1837 review finding: releasing the elevated session was reachable ONLY
+    // from inside the full-text mark, so every path where full text is
+    // legitimately unclaimable held the per-user session slot until its TTL —
+    // up to 60 minutes. The session is a resource; full text is a claim.
+    it('#then an uninitialized index DB releases the session without claiming full text', async () => {
+      const h = createHarness({ crdtProvider: fakeCrdtProvider(), online: true })
+      mocks.isIndexDatabaseInitialized.mockReturnValue(false)
+
+      await h.runner.run()
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+      expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('idle')
+    })
+
+    it('#then notes owed back by a failed chunk release the session, unclaimed', async () => {
+      const h = sweepingHarness(3)
+      h.crdtSync.pullCrdtForNotes.mockImplementation(async (ids: string[]) => {
+        for (const id of ids) h.crdtSync.addPendingPull(id)
+        throw new Error('rate limited')
+      })
+
+      await h.runner.run()
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 3)
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+      expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('idle')
+    })
+
+    it('#then a drain blocked offline releases the session instead of holding the slot', async () => {
+      const h = sweepingHarness(CRDT_SWEEP_CHUNK_NOTES + 5)
+
+      await h.runner.run()
+      // Still draining, and elevation is what paces that drain — the session
+      // must not be cut short here.
+      expect(mocks.closeBootstrapSession).not.toHaveBeenCalled()
+      ;(h.ctx.deps.network as { online: boolean }).online = false
+
+      await vi.advanceTimersByTimeAsync(CRDT_SWEEP_CHUNK_INTERVAL_MS * 2)
+
+      expect(mocks.markBootstrapFullText).not.toHaveBeenCalled()
+      expect(mocks.closeBootstrapSession).toHaveBeenCalledWith('idle')
     })
   })
 })

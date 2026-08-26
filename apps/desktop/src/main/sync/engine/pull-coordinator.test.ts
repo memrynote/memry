@@ -137,7 +137,8 @@ describe('#given a second changes page #when page one is still being applied', (
 
     releasePageOnePull()
     releasePageTwoFetch()
-    await expect(pullPromise).resolves.toBeUndefined()
+    // Both pages landed clean, so the run reports that it delivered (#1835).
+    await expect(pullPromise).resolves.toBe(true)
     expect(postSpy).toHaveBeenCalledTimes(1)
     vi.restoreAllMocks()
   })
