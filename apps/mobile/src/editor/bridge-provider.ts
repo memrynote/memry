@@ -73,6 +73,11 @@ export class EditorBridgeProvider {
 
   attach(transport: BridgeTransport): void {
     this.transport = transport
+    // The guest sends `ready` while its script is still evaluating, which can
+    // beat `onLoadEnd`. The `cfg` + `doc-load` answer to it therefore queues
+    // against no transport, and without this flush it is never delivered —
+    // a blank editor with no error anywhere.
+    this.flush()
   }
 
   /**
@@ -140,11 +145,15 @@ export class EditorBridgeProvider {
 
   /** Send now. Used for `doc-load`, `exec`, and background transitions. */
   flush(): void {
+    // Nothing to deliver it to yet: leave the batch AND its timer alone.
+    // Clearing the timer here would strand the queue until the next `send()`
+    // happened to re-arm it.
+    if (!this.transport) return
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer)
       this.flushTimer = null
     }
-    if (this.pending.length === 0 || !this.transport) return
+    if (this.pending.length === 0) return
     const msgs = this.pending
     this.pending = []
     this.pendingBytes = 0
@@ -186,12 +195,11 @@ export class EditorBridgeProvider {
     }
 
     const { seq, msgs, sentAt } = envelope.data
+    let gapped = false
     if (this.lastGuestSeq > 0 && seq !== this.lastGuestSeq + 1) {
       this.counters.seqGaps += 1
       log.warn('Bridge seq gap; forcing a full resync', { expected: this.lastGuestSeq + 1, seq })
-      this.lastGuestSeq = seq
-      this.requestResync(`guest seq gap at ${seq}`)
-      return
+      gapped = true
     }
     this.lastGuestSeq = seq
     this.counters.envelopesReceived += 1
@@ -204,6 +212,10 @@ export class EditorBridgeProvider {
       if (this.deliverySamples.length > 2000) this.deliverySamples.shift()
     }
 
+    // The envelope is still DELIVERED after a gap. Its messages are valid —
+    // Yjs updates are order-independent and idempotent — and dropping the batch
+    // would also drop a `ready`, which is exactly what arrives first after the
+    // WebView's content process is reclaimed and re-created.
     for (const msg of msgs) {
       if (msg.type === 'err' && msg.code === 'BRIDGE_SEQ_GAP') {
         this.requestResync(`guest reported ${msg.detail}`)
@@ -211,13 +223,20 @@ export class EditorBridgeProvider {
       }
       for (const listener of this.listeners) listener(msg)
     }
+
+    if (gapped) this.requestResync(`guest seq gap at ${seq}`)
   }
 
-  /** Reset the send sequence; the next envelope restarts the guest's counter. */
+  /**
+   * Ask for a full `doc-load`.
+   *
+   * The sequence counters are deliberately NOT reset. Restarting `seq` at 0
+   * makes every following envelope read as a fresh gap on the guest, whose
+   * `lastHostSeq` has not moved — an infinite resync loop that remounts the
+   * editor each round.
+   */
   private requestResync(reason: string): void {
     this.counters.resyncs += 1
-    this.seq = 0
-    this.lastGuestSeq = 0
     this.pending = []
     this.pendingBytes = 0
     this.resyncHandler(reason)

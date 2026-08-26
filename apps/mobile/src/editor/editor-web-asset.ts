@@ -1,4 +1,5 @@
 import pako from 'pako'
+import { base64ToBytes } from '../lib/base64'
 import {
   EDITOR_WEB_CONTRACT_HASH,
   EDITOR_WEB_HTML_BYTES,
@@ -19,11 +20,8 @@ let cached: string | null = null
 export function loadEditorWebHtml(): string {
   if (cached !== null) return cached
 
-  const binary = globalThis.atob(EDITOR_WEB_HTML_GZ_B64)
-  const packed = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) packed[i] = binary.charCodeAt(i)
-
-  cached = pako.ungzip(packed, { to: 'string' })
+  // `atob` does not exist on Hermes; `lib/base64` is the app-wide answer.
+  cached = pako.ungzip(base64ToBytes(EDITOR_WEB_HTML_GZ_B64), { to: 'string' })
   return cached
 }
 

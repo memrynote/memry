@@ -1,4 +1,5 @@
 import { createLogger } from './logger'
+import { closeEditorSession } from '@/editor/session'
 import { clearVaultKey, clearDeviceSigningKeypair, clearDeviceId } from './secure-store'
 import { clearSession, clearCurrentVaultId, loadCurrentVaultId } from '../sync/auth-client'
 import { closeVaultDb, vaultsRootDir } from '../db'
@@ -30,6 +31,8 @@ export async function wipeDeviceState(): Promise<void> {
   vaultIds.add('account')
 
   for (const vaultId of vaultIds) {
+    // Before the DB closes: the session owns open Y.Docs over it.
+    closeEditorSession(vaultId)
     await closeVaultDb(vaultId)
     await clearVaultKey(vaultId)
     await clearDeviceSigningKeypair(vaultId)

@@ -3,7 +3,8 @@ import { BlockNoteEditor } from '@blocknote/core'
 import { createWikiLinkInlineContent, wikiLinkConfig } from '@memry/editor-schema/inline'
 import { BRIDGE_FRAGMENT_NAME } from '@memry/contracts/webview-bridge'
 import { assertNoWebStorage, createGuestBridge, type GuestBridge } from './bridge.ts'
-import { bindAssetBridge, invalidateAsset, onAssetInvalidated } from './assets.ts'
+import { bindAssetBridge } from './assets.ts'
+import { installImageResolver } from './images.ts'
 import { createMobileEditorSchema } from './schema.ts'
 import { installWikiLinkAutocomplete, installWikiLinkNavigation } from './wiki-links.ts'
 import './styles.css'
@@ -84,13 +85,6 @@ bridge.onHostMsg((msg) => {
       applyCfg(msg)
       break
 
-    case 'asset':
-      // A late attachment: the request-side cache already resolved this reqId,
-      // so the only thing left is telling any element still showing the
-      // placeholder that a newer revision exists.
-      if (msg.status === 'ready' && msg.revision !== undefined) invalidateAsset(msg.reqId)
-      break
-
     case 'insert-image': {
       if (!mounted) return
       // Through the editor's own insert API rather than a hand-built Y node:
@@ -146,19 +140,11 @@ function mountDoc(docId: string, stateB64: string): void {
 
   const detachNav = installWikiLinkNavigation(root, bridge)
   const detachAutocomplete = installWikiLinkAutocomplete(
-    {
-      currentBlockText: () => blockTextAtCursor(editor),
-      insertWikiLink: (title) => editor.insertInlineContent([wikiLinkNode(title), ' '])
-    },
+    { insertWikiLink: (title) => editor.insertInlineContent([wikiLinkNode(title), ' ']) },
     bridge,
     root
   )
-  const detachAssets = onAssetInvalidated((ref) => {
-    for (const img of root.querySelectorAll(`img[data-asset-ref="${cssEscape(ref)}"]`)) {
-      img.classList.add('asset-pending')
-      img.removeAttribute('src')
-    }
-  })
+  const detachAssets = installImageResolver(root)
   const detachMetrics = installMetrics(root, bridge)
 
   mounted = {
@@ -312,23 +298,6 @@ function wikiLinkNode(title: string) {
   }
 }
 
-/** Plain text of the block holding the cursor; `''` when nothing is focused. */
-function blockTextAtCursor(editor: MobileEditor): string {
-  try {
-    const content = editor.getTextCursorPosition().block.content
-    if (!Array.isArray(content)) return ''
-    return content
-      .map((piece) =>
-        typeof piece === 'object' && piece !== null && 'text' in piece
-          ? String((piece as { text: unknown }).text ?? '')
-          : ''
-      )
-      .join('')
-  } catch {
-    return ''
-  }
-}
-
 function base64ToBytes(value: string): Uint8Array {
   const binary = atob(value)
   const out = new Uint8Array(binary.length)
@@ -345,8 +314,4 @@ function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
   }
   return btoa(binary)
-}
-
-function cssEscape(value: string): string {
-  return value.replace(/["\\]/g, '\\$&')
 }

@@ -7,6 +7,7 @@ import {
 } from '@memry/contracts/sync-api'
 import { SyncServerError } from '@memry/sync-client/http-errors'
 import { seamJsonRequest, type SeamHttpContext } from '@memry/sync-client/pull'
+import { ItemTooLargeError } from '@memry/sync-client/note-size'
 import {
   encryptCrdtUpdatePacked,
   encryptRecordForPush,
@@ -147,6 +148,17 @@ export class OutboxStore {
     }
   }
 
+  /**
+   * Clear the backoff on every queued row.
+   *
+   * Used after a token refresh: the rows that just failed are sitting on a
+   * ≥10 s `next_attempt_at`, so an immediate retry drain would claim nothing
+   * and the refresh would be a no-op the user experiences as lost work.
+   */
+  async clearBackoff(): Promise<void> {
+    await this.db.runAsync('UPDATE outbox SET next_attempt_at = NULL')
+  }
+
   async pendingCount(): Promise<number> {
     const row = await this.db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM outbox')
     return row?.n ?? 0
@@ -186,8 +198,23 @@ export function logOutboxDepth(depth: number): void {
 const RECORD_BATCH_LIMIT = 100
 const CLAIM_LIMIT = 200
 
+/**
+ * The queue operations the drain uses.
+ *
+ * Named separately from `OutboxStore` so the drain's failure handling can be
+ * tested without expo-sqlite — the paths that matter here are the ones where a
+ * row ends up neither completed nor failed, which is invisible in a DB and
+ * obvious in a call log.
+ */
+export interface OutboxQueue {
+  claimBatch(limit: number): Promise<OutboxRow[]>
+  complete(ids: number[]): Promise<void>
+  fail(ids: number[], error: string): Promise<void>
+  pendingCount(): Promise<number>
+}
+
 export interface OutboxDrainDeps {
-  store: OutboxStore
+  store: OutboxQueue
   httpCtx: () => SeamHttpContext
   crypto: SyncPushCryptoProvider
   vaultKey: () => Uint8Array | null
@@ -338,17 +365,41 @@ export class OutboxDrain {
       }
 
       const clock = (payload.clock as VectorClock | undefined) ?? {}
-      const { pushItem } = await encryptRecordForPush(this.deps.crypto, {
-        id: row.itemId,
-        type,
-        operation,
-        content: new TextEncoder().encode(JSON.stringify(payload)),
-        vaultKey,
-        signingSecretKey,
-        signerDeviceId: this.deps.deviceId(),
-        clock,
-        ...(operation === 'delete' ? { deletedAt: Date.now() } : {})
-      })
+      let pushItem: PushItem
+      try {
+        ;({ pushItem } = await encryptRecordForPush(this.deps.crypto, {
+          id: row.itemId,
+          type,
+          operation,
+          content: new TextEncoder().encode(JSON.stringify(payload)),
+          vaultKey,
+          signingSecretKey,
+          signerDeviceId: this.deps.deviceId(),
+          clock,
+          ...(operation === 'delete' ? { deletedAt: Date.now() } : {})
+        }))
+      } catch (err) {
+        // Encryption failing is a property of THIS row, not of the batch, and
+        // letting it escape here leaves the row neither failed nor completed —
+        // it is re-claimed on every pass and wedges every later record push
+        // behind it. Size is the one failure that can never succeed on retry,
+        // so it is retired loudly rather than retried forever.
+        const message = err instanceof Error ? err.message : String(err)
+        if (err instanceof ItemTooLargeError) {
+          log.error('Item is too large to sync; dropping its queue row', {
+            itemId: row.itemId,
+            error: message
+          })
+          await this.deps.store.complete([row.id])
+        } else {
+          log.warn('Encrypting a queued item failed; backing off', {
+            itemId: row.itemId,
+            error: message
+          })
+          await this.deps.store.fail([row.id], message)
+        }
+        continue
+      }
       items.push(pushItem)
       const list = idsById.get(row.itemId) ?? []
       list.push(row.id)

@@ -1,5 +1,6 @@
 import type { AttachmentTransfer } from '@/adapters/attachments'
 import type { VaultDb } from '@/db/index'
+import { bytesToBase64 } from '@/lib/base64'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('AttachmentResolve')
@@ -122,13 +123,4 @@ async function knownFilenames(
     out.push(...rows.map((row) => ({ itemId: row.item_id, filename: row.filename })))
   }
   return out
-}
-
-export function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  const CHUNK = 0x8000
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
-  }
-  return globalThis.btoa(binary)
 }

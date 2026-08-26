@@ -111,12 +111,19 @@ async function build(vaultId: string): Promise<EditorSession> {
   const clientHeaderValue = buildClientHeaderValue('ios', mobileAppVersion())
   const deviceId = await getOrCreateDeviceId()
 
-  // Cached because the drain runs per foreground edge and per background
-  // transition; a keychain read on each one is both slow and, on a locked
-  // device, a prompt the user did not ask for.
+  // Cached, but re-read whenever the cache is EMPTY. A session built by the
+  // background task while the device was still locked would otherwise hold
+  // `null` for the rest of the process and silently never push again — the
+  // failure mode is an outbox that fills up with no error anywhere.
   let accessToken = (await loadSession())?.accessToken ?? ''
-  const vaultKey = await getVaultKey(vaultId)
-  const keypair = await getDeviceSigningKeypair(vaultId)
+  let vaultKey = await getVaultKey(vaultId)
+  let keypair = await getDeviceSigningKeypair(vaultId)
+
+  const refreshSecrets = async (): Promise<void> => {
+    if (!vaultKey) vaultKey = await getVaultKey(vaultId)
+    if (!keypair) keypair = await getDeviceSigningKeypair(vaultId)
+    if (!accessToken) accessToken = (await loadSession())?.accessToken ?? ''
+  }
 
   let online = true
   http.onOnlineChanged((next) => {
@@ -169,6 +176,7 @@ async function build(vaultId: string): Promise<EditorSession> {
     drain,
     attachments,
     async flush() {
+      await refreshSecrets()
       const result = await drain.drain()
       // One retry after a token refresh: an expired access token is the single
       // most common reason a first drain of the day fails, and it is fixable
@@ -177,6 +185,9 @@ async function build(vaultId: string): Promise<EditorSession> {
         const fresh = await refreshSession()
         if (fresh) {
           accessToken = fresh
+          // The rows that just failed are on a backoff of at least ten
+          // seconds, so without this the retry claims nothing at all.
+          await outbox.clearBackoff()
           await drain.drain()
         }
       }

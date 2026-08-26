@@ -8,6 +8,7 @@ import {
   type GuestMsg,
   type WikiCandidate
 } from '@memry/contracts/webview-bridge'
+import { base64ToBytes, bytesToBase64 } from '../lib/base64'
 import { createLogger } from '../lib/logger'
 import { EDITOR_WEB_CONTRACT_HASH, loadEditorWebHtml } from './editor-web-asset'
 import { createInjectionTransport, EditorBridgeProvider } from './bridge-provider'
@@ -33,9 +34,7 @@ export interface EditorViewProps {
   /** Autocomplete backing store; returns at most a handful of candidates. */
   onWikiQuery: (query: string) => Promise<WikiCandidate[]>
   /** Resolve an image/attachment ref the WebView cannot read for itself. */
-  onAssetRequest: (
-    ref: string
-  ) => Promise<{
+  onAssetRequest: (ref: string) => Promise<{
     url?: string
     b64?: string
     mime?: string
@@ -342,19 +341,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   }
 })
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  const CHUNK = 0x8000
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
-  }
-  return globalThis.btoa(binary)
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  const binary = globalThis.atob(value)
-  const out = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i)
-  return out
-}

@@ -44,17 +44,20 @@ interface AutocompleteState {
 }
 
 /**
- * The two editor operations the menu needs, supplied by the caller.
+ * The one editor operation the menu needs, supplied by the caller.
  *
  * Not the editor itself: BlockNote's editor type is parameterised by the
- * custom schema, so a structural stand-in for it cannot be written without
- * restating the whole schema — and `insertInlineContent` in particular is
- * typed against the schema's own inline union. Handing over two closures keeps
- * the schema-typed calls at the one site that already knows the schema.
+ * custom schema, so a structural stand-in cannot be written without restating
+ * the whole schema — `insertInlineContent` is typed against the schema's own
+ * inline union. Handing over one closure keeps the schema-typed call at the
+ * site that already knows the schema.
+ *
+ * The QUERY is read from the DOM selection instead (see `textBeforeCaret`),
+ * not from the block's content: the deletion below runs backwards from the
+ * caret, so anything that reads past the caret makes the two disagree and a
+ * `[[` typed mid-paragraph eats the text that followed it.
  */
 export interface WikiLinkEditorSurface {
-  /** Text of the block the cursor is in; `''` when there is no cursor. */
-  currentBlockText(): string
   /** Insert a wiki link to `title` at the cursor, followed by a space. */
   insertWikiLink(title: string): void
 }
@@ -122,7 +125,7 @@ export function installWikiLinkAutocomplete(
   })
 
   const onInput = (): void => {
-    const text = editor.currentBlockText()
+    const text = textBeforeCaret()
     const openAt = text.lastIndexOf(OPEN_TOKEN)
     if (openAt === -1) {
       close()
@@ -156,4 +159,41 @@ export function installWikiLinkAutocomplete(
     root.removeEventListener('keydown', onKeyDown)
     menu.remove()
   }
+}
+
+/**
+ * Text of the current block up to (and not past) the caret.
+ *
+ * The caret position is the whole point: `insert` removes exactly
+ * `'[['.length + query.length` characters BACKWARDS from the caret, so a query
+ * that included text after the caret would delete that much of the following
+ * sentence instead.
+ */
+function textBeforeCaret(): string {
+  const selection = document.getSelection()
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return ''
+
+  const anchor = selection.anchorNode
+  if (!anchor) return ''
+
+  // A collapsed caret inside a text node: everything before the offset, plus
+  // the preceding text of the same block for a `[[` typed across a mark
+  // boundary (bold, a colour) that split the run into two nodes.
+  const block = (anchor instanceof Element ? anchor : anchor.parentElement)?.closest(
+    '[data-node-type], p, h1, h2, h3, li, blockquote'
+  )
+  if (!block) return ''
+
+  let out = ''
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let node = walker.nextNode()
+  while (node) {
+    if (node === anchor) {
+      out += (node.textContent ?? '').slice(0, selection.anchorOffset)
+      break
+    }
+    out += node.textContent ?? ''
+    node = walker.nextNode()
+  }
+  return out
 }

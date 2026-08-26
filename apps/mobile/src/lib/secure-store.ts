@@ -12,6 +12,7 @@
  *   memry.device.id                   stable device identifier
  */
 import * as SecureStore from 'expo-secure-store'
+import { base64ToBytes, bytesToBase64 } from './base64'
 
 const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
@@ -28,42 +29,9 @@ const vaultKeyKey = (vaultId: string) => `memry.vault.${safeIdSegment(vaultId)}.
 const deviceSigningKey = (vaultId: string) => `memry.device.${safeIdSegment(vaultId)}.signing`
 const DEVICE_ID_KEY = 'memry.device.id'
 
-// -- base64 (no deps; RN Hermes has no btoa/atob) ---------------------------
-
-const B64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-
-export function bytesToBase64(bytes: Uint8Array): string {
-  let out = ''
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i]
-    const b = i + 1 < bytes.length ? bytes[i + 1] : 0
-    const c = i + 2 < bytes.length ? bytes[i + 2] : 0
-    out += B64_ALPHABET[a >> 2]
-    out += B64_ALPHABET[((a & 3) << 4) | (b >> 4)]
-    out += i + 1 < bytes.length ? B64_ALPHABET[((b & 15) << 2) | (c >> 6)] : '='
-    out += i + 2 < bytes.length ? B64_ALPHABET[c & 63] : '='
-  }
-  return out
-}
-
-export function base64ToBytes(base64: string): Uint8Array {
-  const clean = base64.replace(/=+$/, '')
-  const out = new Uint8Array(Math.floor((clean.length * 3) / 4))
-  let outIndex = 0
-  let buffer = 0
-  let bits = 0
-  for (const char of clean) {
-    const value = B64_ALPHABET.indexOf(char)
-    if (value < 0) throw new Error('invalid base64 input')
-    buffer = (buffer << 6) | value
-    bits += 6
-    if (bits >= 8) {
-      bits -= 8
-      out[outIndex++] = (buffer >> bits) & 0xff
-    }
-  }
-  return out
-}
+// Base64 lives in `lib/base64` now — the editor bridge and the WebView asset
+// need the same helpers, and a 1 MB payload needs the table-based decoder.
+export { base64ToBytes, bytesToBase64 }
 
 // -- session token ----------------------------------------------------------
 

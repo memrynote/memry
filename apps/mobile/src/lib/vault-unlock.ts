@@ -2,6 +2,7 @@ import { mnemonicToSeed, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { deriveKey, deriveMasterKey, fromBase64 } from '../crypto/libsodium'
 import { fetchKeyVerifier } from '../sync/auth-client'
+import { closeEditorSession } from '@/editor/session'
 import { getVaultKey, setVaultKey, clearVaultKey } from './secure-store'
 
 /**
@@ -70,4 +71,8 @@ export async function isVaultUnlocked(vaultId: string): Promise<boolean> {
 
 export async function lockVault(vaultId: string): Promise<void> {
   await clearVaultKey(vaultId)
+  // The editor session holds the vault key and every open Y.Doc; leaving it
+  // alive would keep usable key material in memory after a lock, and the next
+  // unlock would reuse a session whose cached secrets are stale.
+  closeEditorSession(vaultId)
 }

@@ -12,13 +12,18 @@ const log = createLogger('DeviceKeys')
  * attachment manifest — which is why the lookup lives here rather than inside
  * the sync engine, where the attachment transfer could not reach it.
  *
- * A miss is refetched ONCE: a key that is still missing after a refresh means a
- * device the server has not told us about, and hammering `/auth/devices` per
- * chunk would turn one unknown signer into a request storm.
+ * A miss refetches, but no more often than the cooldown: a device the user
+ * adds later must not stay unknown for the rest of the process (its
+ * attachments would sit `pending` forever), while a genuinely unknown signer
+ * must not turn every chunk request into an `/auth/devices` call.
  */
+
+/** Shortest gap between two refetches provoked by a cache miss. */
+const MISS_REFETCH_COOLDOWN_MS = 60_000
+
 export class DeviceKeyDirectory {
   private keys = new Map<string, Uint8Array>()
-  private fetched = false
+  private lastFetchAt = 0
   private inFlight: Promise<void> | null = null
 
   constructor(private readonly httpCtx: () => SeamHttpContext) {}
@@ -26,7 +31,7 @@ export class DeviceKeyDirectory {
   async resolve(deviceId: string): Promise<Uint8Array | null> {
     const cached = this.keys.get(deviceId)
     if (cached) return cached
-    if (!this.fetched) await this.refresh()
+    if (Date.now() - this.lastFetchAt >= MISS_REFETCH_COOLDOWN_MS) await this.refresh()
     return this.keys.get(deviceId) ?? null
   }
 
@@ -49,10 +54,11 @@ export class DeviceKeyDirectory {
       for (const device of parsed.data.devices) {
         this.keys.set(device.id, fromBase64(device.signingPublicKey))
       }
-      this.fetched = true
+      this.lastFetchAt = Date.now()
     } catch (err) {
-      // Left unfetched so the next resolve retries: a transient failure here
-      // must not permanently mark every signer unknown.
+      // The timestamp is NOT advanced, so the next resolve retries straight
+      // away: a transient failure here must not mark every signer unknown for
+      // a whole cooldown.
       log.warn('Device key fetch failed', {
         error: err instanceof Error ? err.message : String(err)
       })

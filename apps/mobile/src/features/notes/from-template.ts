@@ -1,6 +1,6 @@
 import type { VaultDb } from '@/db/index'
 import { createLogger } from '@/lib/logger'
-import { createNote, type NoteOpsContext, type NotePayload } from './note-ops'
+import { createNote, updateNote, type NoteOpsContext } from './note-ops'
 
 const log = createLogger('NoteFromTemplate')
 
@@ -81,20 +81,16 @@ export async function createNoteFromTemplate(
     // A second write rather than a create-time one: `createNote` owns the
     // payload shape, and threading template fields through it would give every
     // caller a template-shaped parameter it does not use.
-    const current = await ctx.db.getFirstAsync<{ payload: string }>(
-      'SELECT payload FROM sync_items WHERE id = ?',
-      [noteId]
-    )
-    if (current?.payload) {
-      const payload = JSON.parse(current.payload) as NotePayload
+    //
+    // It goes through `updateNote` rather than a raw UPDATE so it advances the
+    // vector clock and `modifiedAt` like any other write. Without that, create
+    // and update can land in separate pushes and a peer merging field-by-field
+    // sees the seed at the SAME clock as the empty create — and is free to keep
+    // the empty side, silently dropping the template's tags and properties.
+    await updateNote(ctx, noteId, (payload) => {
       payload.tags = seeded.tags
       payload.properties = seeded.properties
-      await ctx.db.runAsync('UPDATE sync_items SET payload = ? WHERE id = ?', [
-        JSON.stringify(payload),
-        noteId
-      ])
-      await ctx.outbox.enqueueRecord('note', noteId, 'update', JSON.stringify(payload))
-    }
+    })
   }
 
   return noteId
