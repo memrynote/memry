@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, AppState, Platform, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native'
 import { KeyboardAvoidingView } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import {
@@ -138,18 +138,25 @@ export function EditorView({
     bridge.send({ type: 'exec', cmd: 'flush' })
     bridge.flush()
 
-    const deadline = Date.now() + 2_000
+    // Two deadlines, because they answer different questions. The first is
+    // "did the guest have anything to send?" — an idle editor never replies,
+    // and waiting the full window for that reply would spend the entire
+    // backgrounding budget before the outbox drain even starts. The second is
+    // "has everything it sent been persisted?".
+    const replyDeadline = Date.now() + 250
+    const settleDeadline = Date.now() + 2_000
     let sawReply = false
-    while (Date.now() < deadline) {
+
+    while (Date.now() < settleDeadline) {
       await new Promise((resolve) => setTimeout(resolve, 20))
       if (!sawReply && bridge.getCounters().msgsReceived > before) sawReply = true
+
       if (inFlight.current.size > 0) {
         await Promise.allSettled([...inFlight.current])
         continue
       }
-      // Nothing pending AND the guest has answered: everything it had is now
-      // durable. Without the reply check this exits on the first tick.
       if (sawReply) return
+      if (Date.now() >= replyDeadline) return
     }
   }, [bridge])
 
@@ -190,14 +197,6 @@ export function EditorView({
     bridge.send({ type: 'cfg', ...cfg })
     bridge.flush()
   }, [bridge, cfg, loaded])
-
-  // Background transition: flush what is batched before iOS suspends us (T076).
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') void flushAndSettle()
-    })
-    return () => subscription.remove()
-  }, [flushAndSettle])
 
   useEffect(() => {
     return () => bridge.detach()
@@ -259,10 +258,15 @@ export function EditorView({
               try {
                 await recorder.record(deliveryMs, () => doc.applyFromGuest(base64ToBytes(b64)))
               } catch (err) {
-                log.error('Failed to persist an editor update', {
+                log.error('Failed to persist an editor update; resyncing', {
                   docId: doc.docId,
                   error: err instanceof Error ? err.message : String(err)
                 })
+                // The doc did not move, so the WebView is now AHEAD of the
+                // authoritative state. Replaying `doc-load` puts them back in
+                // agreement — the failed edit is visibly gone rather than
+                // silently present-then-absent on the next open.
+                sendDocLoad()
               }
             }
           })

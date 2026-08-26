@@ -55,6 +55,7 @@ function NoteManageBody({
   const [draftTitle, setDraftTitle] = useState(title)
   const [folders, setFolders] = useState<string[]>([])
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const deleted = useRef(false)
 
   useEffect(() => {
     if (ctx) void listFolders(ctx.db).then(setFolders)
@@ -80,6 +81,7 @@ function NoteManageBody({
   }, [commitRename])
   useEffect(
     () => () => {
+      if (deleted.current) return
       void latestRename.current()
     },
     []
@@ -97,6 +99,10 @@ function NoteManageBody({
 
   const commitDelete = useCallback(async () => {
     if (!ctx) return
+    // Set BEFORE the await: the unmount that follows would otherwise fire the
+    // pending rename, whose `update` is newer than the tombstone — the note
+    // comes back on every other device.
+    deleted.current = true
     await deleteNote(ctx, noteId)
     onClose()
     onDeleted()

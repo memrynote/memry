@@ -129,8 +129,12 @@ export default function NotesScreen() {
         vaultId,
         deviceId: session.deviceId
       }
+      // No title for the template path: `createNoteFromTemplate` falls back to
+      // the TEMPLATE's name, and passing 'Untitled' defeats that — every note
+      // made from a template would be called Untitled and they would all
+      // derive the same path.
       const noteId = templateId
-        ? await createNoteFromTemplate(ctx, templateId, { title: 'Untitled' })
+        ? await createNoteFromTemplate(ctx, templateId)
         : await createNote(ctx, { title: 'Untitled' })
       setChoosingTemplate(false)
       if (noteId) {

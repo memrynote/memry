@@ -77,25 +77,24 @@ export async function resolveAsset(
   let match = candidates.find((row) => row.filename === wanted)?.itemId
 
   if (!match) {
-    // Nothing local names this file yet, so the blobs have to be identified by
-    // downloading their manifests. ONE AT A TIME, stopping at the first match:
-    // a note with twenty embeds would otherwise download all twenty to render
-    // its first picture — on a phone, on the user's data plan.
-    const unknown = ids.filter((id) => !candidates.some((row) => row.itemId === id))
-    let anyPending = false
-    for (const id of unknown) {
-      const availability = await deps.transfer.ensureLocal(id, options)
-      if (availability === 'pending') {
-        anyPending = true
-        continue
-      }
-      const record = await deps.transfer.getRecord(id)
-      if (record?.filename === wanted) {
+    // Nothing local names this file yet, so the blobs have to be identified.
+    // By MANIFEST, not by download: the manifest is one small object and it is
+    // the only thing carrying the name, while downloading a candidate to read
+    // its name would pull every attachment in the note to render one picture.
+    //
+    // Rows with a NULL filename count as unidentified too — `setWifiOnly`
+    // creates a row before anything has ever named it, and excluding those
+    // would make that attachment permanently unresolvable.
+    const unidentified = ids.filter(
+      (id) => !candidates.some((row) => row.itemId === id && row.filename !== null)
+    )
+    for (const id of unidentified) {
+      if ((await deps.transfer.peekFilename(id)) === wanted) {
         match = id
         break
       }
     }
-    if (!match) return anyPending ? { status: 'pending' } : { status: 'missing' }
+    if (!match) return { status: 'missing' }
   }
 
   const availability = await deps.transfer.ensureLocal(match, options)

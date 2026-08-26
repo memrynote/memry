@@ -239,14 +239,22 @@ export class EditorDocManager {
       isEmpty: () => doc.getXmlFragment('prosemirror').length === 0,
 
       async applyFromGuest(update) {
-        Y.applyUpdate(doc, update, ORIGIN_GUEST)
-        // ORDER IS THE CONTRACT: durable first, ack second — and atomically in
+        // ORDER IS THE CONTRACT: durable first, ack second — atomically in
         // production, so a kill between them cannot leave an update that is
         // saved locally and that nothing will ever push.
+        //
+        // And the owned doc is only advanced AFTER the commit. Applying first
+        // and committing second means a failed commit leaves an update that
+        // exists only in memory, with every later delta built on top of it:
+        // the whole tail of the editing session is lost on the next open, with
+        // no symptom until then. Failing before the doc moves keeps the doc
+        // and the disk in agreement, and the caller resyncs the WebView from
+        // that agreed state.
         await run(async () => {
           await store.appendLocalUpdate(docId, update)
           await outbox.enqueueCrdtUpdate(docId, update)
         })
+        Y.applyUpdate(doc, update, ORIGIN_GUEST)
         looseLocal += 1
         await maybeCompact()
       },

@@ -372,6 +372,10 @@ export class OutboxDrain {
     const byPayload = new Map(encrypted.map((payload, index) => [payload, usable[index]]))
 
     let pushed = 0
+    // Rows that have already landed. Failing them alongside the ones that did
+    // not would give completed rows a backoff they no longer have, and would
+    // report a `failed` count that includes work which actually succeeded.
+    const landed = new Set<number>()
 
     for (const request of plan.requests) {
       // The planner bounds bytes; this bounds COUNT, which is a separate cap.
@@ -385,11 +389,10 @@ export class OutboxDrain {
             body: { noteId, updates }
           })
           await this.deps.store.complete(rowsInChunk.map((r) => r.id))
+          for (const row of rowsInChunk) landed.add(row.id)
           pushed += rowsInChunk.length
         } catch (err) {
-          // Only rows that did NOT land are failed: earlier chunks are already
-          // completed, and re-sending them would give them the wrong backoff.
-          const remaining = incremental.filter((row) => !rowsInChunk.includes(row))
+          const remaining = incremental.filter((row) => !landed.has(row.id))
           const outcome = await this.handleFailure(remaining, err)
           return { pushed, failed: outcome.failed, stop: outcome.stop }
         }

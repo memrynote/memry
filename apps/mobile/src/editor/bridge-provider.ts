@@ -209,6 +209,15 @@ export class EditorBridgeProvider {
     this.counters.envelopesReceived += 1
     this.counters.msgsReceived += msgs.length
     this.counters.msgsPerEnvelopeReceived[bucketForMsgCount(msgs.length)] += 1
+
+    // Counted separately from the all-message totals: the batching proof is
+    // about keystroke coalescing, and `metrics`/`err` traffic in the same
+    // envelope would let it pass on noise.
+    const yUpdates = msgs.filter((msg) => msg.type === 'y-update').length
+    if (yUpdates > 0) {
+      this.counters.yUpdatesReceived += yUpdates
+      this.counters.yUpdateEnvelopesReceived += 1
+    }
     if (sentAt !== undefined) {
       this.lastDeliveryMs = receivedAt - sentAt
       this.deliverySamples.push(this.lastDeliveryMs)

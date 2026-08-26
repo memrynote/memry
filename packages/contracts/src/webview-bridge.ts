@@ -269,6 +269,15 @@ export interface BridgeCounters {
    * RN→WebView traffic and reports ~1.00 forever.
    */
   msgsPerEnvelopeReceived: number[]
+  /**
+   * `y-update` messages received, and the envelopes that carried at least one.
+   *
+   * The G3 batching proof is about KEYSTROKE coalescing, so it divides these
+   * two rather than the all-message counters: `metrics` and `err` traffic
+   * would otherwise inflate the ratio and let the proof pass on noise.
+   */
+  yUpdatesReceived: number
+  yUpdateEnvelopesReceived: number
   seqGaps: number
   resyncs: number
 }
@@ -290,6 +299,8 @@ export function emptyBridgeCounters(): BridgeCounters {
     msgsReceived: 0,
     msgsPerEnvelope: new Array(MSGS_PER_ENVELOPE_BUCKETS.length).fill(0),
     msgsPerEnvelopeReceived: new Array(MSGS_PER_ENVELOPE_BUCKETS.length).fill(0),
+    yUpdatesReceived: 0,
+    yUpdateEnvelopesReceived: 0,
     seqGaps: 0,
     resyncs: 0
   }

@@ -1,7 +1,6 @@
 import type { VaultDb } from '@/db/index'
 import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
-import { deleteLocalCrdt } from '@/editor/session'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
 
 const log = createLogger('NoteOps')
@@ -50,8 +49,12 @@ interface StoredNote {
  * the real entry never changes on any device.
  */
 async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote | null> {
+  // `deleted_at IS NULL` is the point: a write that lands after a delete
+  // queues an `update`, and an update is newer than the tombstone — the note
+  // comes back on every other device. Editing a deleted note is not an error
+  // worth surfacing, it is simply not a thing that can happen.
   const row = await db.getFirstAsync<{ type: string; payload: string | null }>(
-    'SELECT type, payload FROM sync_items WHERE id = ? AND type IN (?, ?)',
+    'SELECT type, payload FROM sync_items WHERE id = ? AND type IN (?, ?) AND deleted_at IS NULL',
     [noteId, 'note', 'journal']
   )
   if (!row?.payload) return null
@@ -212,13 +215,6 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
   const serialized = JSON.stringify(payload)
 
-  // Queued body updates describe a note that no longer exists; sending them
-  // after the tombstone resurrects content on the other devices. The local
-  // CRDT rows go with them — the pull applier only clears the SERVER
-  // namespace, so `local.<noteId>` would otherwise outlive the note forever.
-  await ctx.outbox.dropForItem(noteId)
-  await deleteLocalCrdt(ctx.db, noteId)
-
   await withVaultTransaction(ctx.db, async () => {
     // The bumped clock is written back with the tombstone. Without it a later
     // pull sees a clock that never advanced and can treat a remote update as
@@ -228,7 +224,16 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
       [now, now, serialized, noteId]
     )
     await ctx.db.runAsync('DELETE FROM note_bodies WHERE item_id = ?', [noteId])
+    // Queued body updates describe a note that no longer exists; sending them
+    // after the tombstone resurrects content on the other devices. This runs
+    // INSIDE the transaction — done beforehand, a bridge flush landing in the
+    // gap re-queues an update for the note being deleted.
+    await ctx.outbox.dropForItem(noteId)
     await ctx.outbox.enqueueRecord(type, noteId, 'delete', serialized)
+    // The pull applier only clears the SERVER namespace, so `local.<noteId>`
+    // would otherwise outlive the note forever.
+    await ctx.db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [`local.${noteId}`])
+    await ctx.db.runAsync('DELETE FROM yjs_snapshots WHERE doc_id = ?', [`local.${noteId}`])
   })
 }
 

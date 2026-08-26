@@ -98,6 +98,58 @@ export class AttachmentTransfer {
     }
   }
 
+  /**
+   * Learn an attachment's filename WITHOUT downloading it.
+   *
+   * A note's body references a file by PATH; sync addresses a blob by id, and
+   * only the manifest carries the name that links them. Downloading a
+   * candidate just to read its name means rendering one picture pulls every
+   * attachment in the note — on a phone, on the user's data plan. The manifest
+   * is a single small object, so identification costs one request per
+   * candidate and the bytes are fetched only for the one that matches.
+   *
+   * Cached in the same row `ensureLocal` writes, so it is learned once.
+   */
+  async peekFilename(attachmentId: string): Promise<string | null> {
+    const known = await this.getRecord(attachmentId)
+    if (known?.filename) return known.filename
+
+    const vaultKey = this.deps.vaultKey()
+    if (!vaultKey) return null
+
+    try {
+      const encrypted = await this.json<EncryptedAttachmentManifest>(
+        'GET',
+        `/sync/attachments/${attachmentId}/manifest`
+      )
+      const signerKey = await this.deps.resolveDeviceKey(encrypted.signerDeviceId)
+      if (!signerKey) return null
+
+      const { manifest } = await decryptAttachmentManifest(
+        this.deps.crypto,
+        encrypted,
+        vaultKey,
+        signerKey
+      )
+      await this.deps.db.runAsync(
+        `INSERT INTO attachments (item_id, remote_size, filename, mime_type)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(item_id) DO UPDATE SET
+           remote_size = excluded.remote_size,
+           filename = excluded.filename,
+           mime_type = excluded.mime_type`,
+        [attachmentId, manifest.size, manifest.filename, manifest.mimeType]
+      )
+      return manifest.filename
+    } catch (err) {
+      log.debug('Manifest peek failed', {
+        attachmentId,
+        error: err instanceof Error ? err.message : String(err)
+      })
+      return null
+    }
+  }
+
   /** Flip the per-item override; the next `ensureLocal` honours it. */
   async setWifiOnly(attachmentId: string, wifiOnly: boolean): Promise<void> {
     await this.deps.db.runAsync(

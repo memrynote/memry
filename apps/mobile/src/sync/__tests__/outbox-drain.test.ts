@@ -210,6 +210,35 @@ describe('OutboxDrain per-item coalescing', () => {
     expect(failed).toHaveLength(0)
   })
 
+  it('lets a delete win over an update queued before it', async () => {
+    // Rows are ordered by id, so the tombstone is last and supersedes the
+    // update. If the update won instead, the note would be deleted locally and
+    // resurrected on every other device — the worst outcome this queue has.
+    const rows = [
+      row({ id: 10, itemType: 'note:update', payload: encode({ title: 'Renamed' }) }),
+      row({ id: 11, itemType: 'note:delete', op: 'delete', payload: encode({ title: 'Renamed' }) })
+    ]
+    const { store, completed } = queue(rows)
+    const { http, seen } = transport(() => ({
+      accepted: ['note-1'],
+      rejected: [],
+      serverTime: 0,
+      maxCursor: 1
+    }))
+
+    await drain(store, http).drain()
+
+    const items = (
+      seen.find((r) => r.path === '/sync/push')?.body as {
+        items: { operation: string; deletedAt?: number }[]
+      }
+    ).items
+    expect(items).toHaveLength(1)
+    expect(items[0].operation).toBe('delete')
+    expect(items[0].deletedAt).toBeTypeOf('number')
+    expect(completed).toEqual(expect.arrayContaining([10, 11]))
+  })
+
   it('fails every row behind a rejected item, and completes none of them', async () => {
     const rows = [
       row({ id: 3, itemType: 'note:create', payload: encode({ title: 'Draft' }) }),

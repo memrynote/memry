@@ -100,11 +100,12 @@ export class LatencyRecorder {
     const persist = summarize(this.persist)
     const endToEnd = summarize(this.endToEnd)
 
-    // RECEIVED, not sent. The batching G3 gates is the WebView's coalescing of
-    // keystroke updates; the sent histogram counts RN→WebView traffic and
-    // would report ~1.00 forever, printing a permanent false FAIL.
-    const envelopes = counters.envelopesReceived
-    const msgsPerEnvelope = envelopes === 0 ? 0 : counters.msgsReceived / envelopes
+    // RECEIVED `y-update`s only. The batching G3 gates is the WebView's
+    // coalescing of keystroke updates: the SENT histogram counts RN→WebView
+    // traffic (a permanent ~1.00 and a false FAIL), and the all-message
+    // counters would let `metrics` and `err` traffic carry the ratio.
+    const envelopes = counters.yUpdateEnvelopesReceived
+    const msgsPerEnvelope = envelopes === 0 ? 0 : counters.yUpdatesReceived / envelopes
 
     const failures: string[] = []
     if (endToEnd.samples === 0) {
@@ -158,6 +159,7 @@ export function formatG3Report(measurement: G3Measurement): string {
     line('end-to-end', measurement.endToEnd),
     '',
     `envelopes received: ${measurement.counters.envelopesReceived}  msgs received: ${measurement.counters.msgsReceived}`,
+    `y-update envelopes: ${measurement.counters.yUpdateEnvelopesReceived}  y-updates: ${measurement.counters.yUpdatesReceived}`,
     `envelopes sent: ${measurement.counters.envelopesSent}  msgs sent: ${measurement.counters.msgsSent}`,
     `msgs/envelope: ${measurement.msgsPerEnvelope.toFixed(2)} (must exceed 1.00)`,
     `seq gaps: ${measurement.counters.seqGaps}  resyncs: ${measurement.counters.resyncs}`,

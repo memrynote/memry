@@ -18,6 +18,9 @@ import './styles.css'
  * never treated as a source of truth, only as what the user is looking at.
  */
 
+/** Height/selection reports are chrome hints, not edits — 200 ms is plenty. */
+const METRICS_THROTTLE_MS = 200
+
 /** Origin tag on locally-applied remote updates; stops the echo loop. */
 const REMOTE_ORIGIN = Symbol('memry-remote')
 
@@ -243,6 +246,9 @@ function runExec(cmd: 'undo' | 'redo' | 'focus' | 'blur' | 'flush'): void {
  */
 function installMetrics(element: HTMLElement, guest: GuestBridge): () => void {
   let lastHeight = -1
+  let lastAnchor = -1
+  let throttle: ReturnType<typeof setTimeout> | null = null
+
   const report = (): void => {
     const h = Math.ceil(element.scrollHeight)
     const selection = document.getSelection()
@@ -251,16 +257,34 @@ function installMetrics(element: HTMLElement, guest: GuestBridge): () => void {
       const rect = selection.getRangeAt(0).getBoundingClientRect()
       selAnchor = Math.round(rect.top + window.scrollY)
     }
-    if (h === lastHeight && selAnchor === 0) return
+    // Both values compared, and BOTH have to be unchanged to skip. The old
+    // guard let any live caret through, so `selectionchange` — which fires on
+    // every keystroke — put a message on the wire per character. That is the
+    // per-keystroke crossing the batching rule exists to prevent, and it also
+    // inflated the received-message count the G3 batching proof divides.
+    if (h === lastHeight && selAnchor === lastAnchor) return
     lastHeight = h
+    lastAnchor = selAnchor
     guest.send({ type: 'metrics', h, selAnchor })
   }
-  const observer = new ResizeObserver(report)
+
+  // Trailing-edge throttle: native chrome needs the SETTLED height, not every
+  // intermediate one during a burst of typing.
+  const schedule = (): void => {
+    if (throttle !== null) return
+    throttle = setTimeout(() => {
+      throttle = null
+      report()
+    }, METRICS_THROTTLE_MS)
+  }
+
+  const observer = new ResizeObserver(schedule)
   observer.observe(element)
-  document.addEventListener('selectionchange', report)
+  document.addEventListener('selectionchange', schedule)
   return () => {
+    if (throttle !== null) clearTimeout(throttle)
     observer.disconnect()
-    document.removeEventListener('selectionchange', report)
+    document.removeEventListener('selectionchange', schedule)
   }
 }
 
