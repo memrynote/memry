@@ -1,0 +1,35 @@
+# T066 — US2 offline matrix, RECONNECT half.
+#
+# Runs after the driver has restored the network. Split from the offline half
+# on purpose: with the two in one file the network could only be restored after
+# the flow exited, so the reconnect assertions ran offline and passed
+# vacuously — a false green on the one gate the matrix exists to prove.
+#
+# The order of assertions below is the whole design:
+#   1. the Offline banner is GONE, so the app agrees it is back on the network;
+#   2. only then does the outbox banner have to clear, which is what actually
+#      says "your edits left this device".
+# Waiting on step 2 alone is meaningless offline — the Offline banner pre-empts
+# that element, so `notVisible` is trivially true while nothing has synced.
+appId: com.memry.mobile
+---
+- launchApp:
+    clearState: false
+
+- extendedWaitUntil:
+    notVisible:
+      id: 'Offline'
+    timeout: 30000
+
+- assertVisible: 'Notes'
+
+- extendedWaitUntil:
+    notVisible:
+      id: 'Unsynced changes'
+    timeout: 60000
+
+# The note is still here after the drain, with its offline body intact.
+- assertVisible: 'offline note ${RUN_ID}'
+- tapOn: 'offline note ${RUN_ID}'
+- assertVisible: 'offline body ${RUN_ID}'
+- back

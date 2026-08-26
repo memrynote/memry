@@ -36,6 +36,11 @@ const mobileRoot = resolve(here, '..')
 const repoRoot = resolve(mobileRoot, '../..')
 const editorWebRoot = join(mobileRoot, 'editor-web')
 const contractFile = join(repoRoot, 'packages/contracts/src/webview-bridge.ts')
+// The schema is an input too, and a sharper one than the contract: a block or
+// inline spec this bundle cannot build is DELETED from the shared Y.Doc by
+// y-prosemirror, so a schema change shipping with a stale editor is data loss,
+// not a rendering gap.
+const schemaDir = join(repoRoot, 'packages/editor-schema/src')
 const outFile = join(mobileRoot, 'src/editor/generated/editor-web-asset.ts')
 
 const checkOnly = process.argv.includes('--check')
@@ -48,10 +53,13 @@ function sourceFiles() {
       if (entry.name === 'node_modules' || entry.name === 'dist') continue
       const full = join(dir, entry.name)
       if (entry.isDirectory()) walk(full)
-      else files.push(full)
+      // Test files do not reach the bundle; hashing them would make every
+      // unrelated test edit look like a stale asset.
+      else if (!/\.test\.tsx?$/.test(entry.name)) files.push(full)
     }
   }
   walk(join(editorWebRoot, 'src'))
+  walk(schemaDir)
   for (const name of ['index.html', 'vite.config.ts', 'package.json']) {
     files.push(join(editorWebRoot, name))
   }

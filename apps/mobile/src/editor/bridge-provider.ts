@@ -221,7 +221,19 @@ export class EditorBridgeProvider {
         this.requestResync(`guest reported ${msg.detail}`)
         continue
       }
-      for (const listener of this.listeners) listener(msg)
+      for (const listener of this.listeners) {
+        try {
+          listener(msg)
+        } catch (err) {
+          // Same rule as the guest half: one throwing handler must not take
+          // the rest of a contiguous envelope with it, because nothing would
+          // detect that loss.
+          log.error('Bridge message handler threw', {
+            type: msg.type,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
+      }
     }
 
     if (gapped) this.requestResync(`guest seq gap at ${seq}`)

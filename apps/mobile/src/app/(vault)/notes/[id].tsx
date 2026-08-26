@@ -39,6 +39,9 @@ export default function NoteScreen() {
   const [session, setSession] = useState<EditorSession | null>(null)
   const [doc, setDoc] = useState<OpenDoc | null>(null)
   const [payload, setPayload] = useState<NotePayload | null>(null)
+  // The markdown body as the pull path materialized it. Only ever used to seed
+  // a doc that has no CRDT state, so it cannot overwrite real content.
+  const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
   const [readOnly, setReadOnly] = useState(false)
   const [managing, setManaging] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
@@ -58,11 +61,18 @@ export default function NoteScreen() {
       const editorSession = await getEditorSession(vaultId)
       const openDoc = await editorSession.docs.openDoc(id)
       const notePayload = await readNotePayload(editorSession.db, id)
+      const body = openDoc.isEmpty()
+        ? await editorSession.db.getFirstAsync<{ markdown: string }>(
+            'SELECT markdown FROM note_bodies WHERE item_id = ?',
+            [id]
+          )
+        : null
 
       if (cancelled) return
       setSession(editorSession)
       setDoc(openDoc)
       setPayload(notePayload)
+      setSeedMarkdown(body?.markdown ?? undefined)
     })()
     return () => {
       cancelled = true
@@ -75,8 +85,14 @@ export default function NoteScreen() {
   useEffect(() => {
     if (!session || !id) return
     const engine = getSyncEngine(session.vaultId)
-    return engine.onSynced(() => {
+    return engine.onSynced((summary) => {
       void (async () => {
+        // Feed the pulled CRDT rows into whichever docs are open FIRST: the
+        // editor is showing one of them, and a payload refresh alone would
+        // update the title while the body silently stayed behind.
+        if (summary.changedNoteIds.length > 0) {
+          await session.docs.refreshOpenDocs(summary.changedNoteIds)
+        }
         const refreshed = await readNotePayload(session.db, id)
         if (refreshed) setPayload(refreshed)
       })()
@@ -165,8 +181,9 @@ export default function NoteScreen() {
       const result = await insertAttachment(ctx, session.attachments, id, picked)
       if (!result) return
       setPayload(await readNotePayload(ctx.db, id))
-      // The editor owns the block structure; the host only names the reference.
-      controls.current?.insertImage(result.ref, result.filename)
+      // The editor owns the block structure; the host only names the reference
+      // and its type, so a PDF becomes a file block rather than a broken image.
+      controls.current?.insertAttachment(result.ref, result.filename, result.mimeType)
     },
     [ctx, id, session]
   )
@@ -265,6 +282,7 @@ export default function NoteScreen() {
         onNavigate={onNavigate}
         onWikiQuery={onWikiQuery}
         onAssetRequest={onAssetRequest}
+        seedMarkdown={seedMarkdown}
         onReady={(next) => {
           controls.current = next
         }}

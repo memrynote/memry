@@ -3,12 +3,13 @@ import { AttachmentTransfer } from '../adapters/attachments'
 import { createMobileHttpClient } from '../adapters/http-client'
 import { mobileAppVersion } from '../adapters/runtime'
 import { openVaultDb, type VaultDb } from '../db/index'
-import { getDeviceSigningKeypair, getOrCreateDeviceId, getVaultKey } from '../lib/secure-store'
-import { loadSession, refreshSession } from '../sync/auth-client'
+import { getOrCreateDeviceId, getVaultKey } from '../lib/secure-store'
+import { loadPushSigningKeypair, loadSession, refreshSession } from '../sync/auth-client'
 import { DeviceKeyDirectory } from '../sync/device-keys'
 import { OutboxDrain, OutboxStore } from '../sync/outbox'
 import { createMobilePushCryptoProvider } from '../sync/push-crypto'
 import { syncBaseUrl } from '../sync/server-config'
+import { createLogger } from '../lib/logger'
 import { EditorDocManager, type DocHalves, type DocStore } from './doc-manager'
 
 /**
@@ -19,6 +20,8 @@ import { EditorDocManager, type DocHalves, type DocStore } from './doc-manager'
  * the outbox and the open docs. Keeping them apart is what lets an edit be
  * durable while a pull is mid-flight.
  */
+
+const log = createLogger('EditorSession')
 
 const LOCAL_PREFIX = 'local.'
 
@@ -34,17 +37,18 @@ export function createVaultDocStore(db: VaultDb): DocStore {
   const localId = (docId: string) => `${LOCAL_PREFIX}${docId}`
 
   const loadHalf = async (key: string): Promise<DocHalves> => {
-    const snap = await db.getFirstAsync<{ snapshot: Uint8Array }>(
-      'SELECT snapshot FROM yjs_snapshots WHERE doc_id = ?',
+    const snap = await db.getFirstAsync<{ snapshot: Uint8Array; last_seq: number }>(
+      'SELECT snapshot, last_seq FROM yjs_snapshots WHERE doc_id = ?',
       [key]
     )
-    const rows = await db.getAllAsync<{ update_blob: Uint8Array }>(
-      'SELECT update_blob FROM yjs_updates WHERE doc_id = ? ORDER BY seq ASC',
+    const rows = await db.getAllAsync<{ seq: number; update_blob: Uint8Array }>(
+      'SELECT seq, update_blob FROM yjs_updates WHERE doc_id = ? ORDER BY seq ASC',
       [key]
     )
     return {
       snapshot: snap ? new Uint8Array(snap.snapshot) : null,
-      updates: rows.map((r) => new Uint8Array(r.update_blob))
+      updates: rows.map((r) => new Uint8Array(r.update_blob)),
+      lastSeq: rows.length > 0 ? rows[rows.length - 1].seq : (snap?.last_seq ?? 0)
     }
   }
 
@@ -52,22 +56,99 @@ export function createVaultDocStore(db: VaultDb): DocStore {
     loadServerHalf: (docId) => loadHalf(docId),
     loadLocalHalf: (docId) => loadHalf(localId(docId)),
 
+    async loadServerUpdatesSince(docId, sinceSeq) {
+      const rows = await db.getAllAsync<{ seq: number; update_blob: Uint8Array }>(
+        'SELECT seq, update_blob FROM yjs_updates WHERE doc_id = ? AND seq > ? ORDER BY seq ASC',
+        [docId, sinceSeq]
+      )
+      return rows.map((r) => ({ seq: r.seq, update: new Uint8Array(r.update_blob) }))
+    },
+
     async appendLocalUpdate(docId, update) {
-      // One transaction, and it resolves only after commit — SQLite in WAL
-      // mode is durable at commit, which is the whole durability guarantee the
-      // outbox ack depends on.
+      const row = await db.getFirstAsync<{ max_seq: number | null }>(
+        'SELECT MAX(seq) AS max_seq FROM yjs_updates WHERE doc_id = ?',
+        [localId(docId)]
+      )
+      await db.runAsync(
+        'INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES (?, ?, ?, ?)',
+        [localId(docId), (row?.max_seq ?? 0) + 1, update, Date.now()]
+      )
+    },
+
+    /**
+     * The persist + ack pair, in ONE transaction.
+     *
+     * SQLite in WAL mode is durable at commit, so this is what makes the
+     * durability rule unbreakable rather than merely well-ordered: an app kill
+     * can leave both rows or neither, never an update that is saved locally
+     * and that nothing will ever push.
+     */
+    async withCommit<T>(fn: () => Promise<T>): Promise<T> {
+      // expo-sqlite's transaction wrapper discards the callback's value, so
+      // the result is carried out by hand rather than lost.
+      let result: T
+      await db.withTransactionAsync(async () => {
+        result = await fn()
+      })
+      return result!
+    },
+
+    async compactLocal(docId, snapshot, upToSeq) {
       await db.withTransactionAsync(async () => {
         const row = await db.getFirstAsync<{ max_seq: number | null }>(
           'SELECT MAX(seq) AS max_seq FROM yjs_updates WHERE doc_id = ?',
           [localId(docId)]
         )
+        const folded = Math.min(row?.max_seq ?? 0, upToSeq)
         await db.runAsync(
-          'INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES (?, ?, ?, ?)',
-          [localId(docId), (row?.max_seq ?? 0) + 1, update, Date.now()]
+          `INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES (?, ?, ?, ?)
+           ON CONFLICT(doc_id) DO UPDATE SET snapshot = excluded.snapshot, last_seq = excluded.last_seq, compacted_at = excluded.compacted_at`,
+          [localId(docId), snapshot, folded, Date.now()]
         )
+        // The snapshot is the whole doc state, so every folded row is now
+        // redundant; leaving them would make an actively-edited note open
+        // slower every day.
+        await db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ? AND seq <= ?', [
+          localId(docId),
+          folded
+        ])
       })
     }
   }
+}
+
+/**
+ * Drop a note's LOCAL CRDT rows.
+ *
+ * The pull path clears the bare-doc-id namespace when a tombstone arrives, but
+ * it has never heard of `local.<docId>` — so without this a deleted note's
+ * locally-originated updates sit in the DB forever.
+ */
+export async function deleteLocalCrdt(db: VaultDb, docId: string): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [`${LOCAL_PREFIX}${docId}`])
+    await db.runAsync('DELETE FROM yjs_snapshots WHERE doc_id = ?', [`${LOCAL_PREFIX}${docId}`])
+  })
+}
+
+/**
+ * Sweep local CRDT rows belonging to notes that are already tombstoned.
+ *
+ * A delete can arrive from another device while this one is offline, and the
+ * pull applier only knows about the server namespace — so the local half of a
+ * remotely-deleted note would otherwise never be reclaimed.
+ */
+export async function sweepDeletedLocalCrdt(db: VaultDb): Promise<number> {
+  const rows = await db.getAllAsync<{ doc_id: string }>(
+    `SELECT DISTINCT u.doc_id AS doc_id FROM yjs_updates u
+     JOIN sync_items s ON s.id = SUBSTR(u.doc_id, ${LOCAL_PREFIX.length + 1})
+     WHERE u.doc_id LIKE '${LOCAL_PREFIX}%' AND s.deleted_at IS NOT NULL`
+  )
+  for (const row of rows) {
+    await db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [row.doc_id])
+    await db.runAsync('DELETE FROM yjs_snapshots WHERE doc_id = ?', [row.doc_id])
+  }
+  return rows.length
 }
 
 export interface EditorSession {
@@ -104,6 +185,20 @@ export function closeEditorSession(vaultId: string): void {
 
 async function build(vaultId: string): Promise<EditorSession> {
   const db = await openVaultDb(vaultId)
+
+  // A delete can arrive from another device while this one is offline, and the
+  // pull applier only clears the SERVER namespace — so the local half of a
+  // remotely-deleted note is reclaimed here, once, on the way in.
+  try {
+    const swept = await sweepDeletedLocalCrdt(db)
+    if (swept > 0) log.info('Reclaimed local CRDT rows for deleted notes', { docs: swept })
+  } catch (err) {
+    // Housekeeping must never stop a session from opening.
+    log.warn('Local CRDT sweep failed', {
+      error: err instanceof Error ? err.message : String(err)
+    })
+  }
+
   const outbox = new OutboxStore(db)
   const docs = new EditorDocManager(createVaultDocStore(db), outbox)
 
@@ -117,11 +212,11 @@ async function build(vaultId: string): Promise<EditorSession> {
   // failure mode is an outbox that fills up with no error anywhere.
   let accessToken = (await loadSession())?.accessToken ?? ''
   let vaultKey = await getVaultKey(vaultId)
-  let keypair = await getDeviceSigningKeypair(vaultId)
+  let keypair = await loadPushSigningKeypair()
 
   const refreshSecrets = async (): Promise<void> => {
     if (!vaultKey) vaultKey = await getVaultKey(vaultId)
-    if (!keypair) keypair = await getDeviceSigningKeypair(vaultId)
+    if (!keypair) keypair = await loadPushSigningKeypair()
     if (!accessToken) accessToken = (await loadSession())?.accessToken ?? ''
   }
 

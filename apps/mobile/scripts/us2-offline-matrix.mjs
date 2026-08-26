@@ -2,18 +2,23 @@
 /**
  * US2 offline matrix driver (T066).
  *
- * Runs `.maestro/us2-offline-matrix.yaml` N times and reports N/N. The flow
- * itself cannot toggle the radio — neither the simulator nor a device exposes
- * airplane mode to the accessibility tree — so the network transitions live
- * here, around each pass:
+ * Runs the offline matrix N times and reports N/N. Maestro cannot toggle the
+ * radio — neither the simulator nor a device exposes airplane mode to the
+ * accessibility tree — so the network transitions live here, and the scenario
+ * is TWO flows with the transition between them:
  *
  *   1. cut the data network,
- *   2. run the flow up to the relaunch-while-offline assertions,
+ *   2. `us2-offline-matrix.yaml` — edit + create + force-quit + relaunch,
+ *      all offline (it asserts the Offline banner, so a pass cannot quietly
+ *      have run online),
  *   3. restore the network,
- *   4. let the flow's reconnect assertions run.
+ *   4. `us2-offline-reconnect.yaml` — wait for the Offline banner to clear,
+ *      THEN for the outbox to drain.
  *
- * The flow is one file rather than two because splitting it would let a pass
- * "succeed" having never gone offline at all.
+ * One file would mean restoring the network only after the flow exited, so the
+ * reconnect assertions would run offline and pass vacuously: the Offline
+ * banner pre-empts the outbox banner, making `notVisible` trivially true while
+ * nothing had synced. That is a false green on the gate the matrix exists for.
  *
  *   node scripts/us2-offline-matrix.mjs --runs 20 --udid <simulator-udid>
  *   node scripts/us2-offline-matrix.mjs --runs 20 --device   # real hardware
@@ -30,7 +35,8 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const mobileRoot = resolve(here, '..')
-const flow = join(mobileRoot, '.maestro/us2-offline-matrix.yaml')
+const offlineFlow = join(mobileRoot, '.maestro/us2-offline-matrix.yaml')
+const reconnectFlow = join(mobileRoot, '.maestro/us2-offline-reconnect.yaml')
 
 const args = process.argv.slice(2)
 const flag = (name, fallback) => {
@@ -64,7 +70,7 @@ async function setNetwork(online) {
   ])
 }
 
-function runFlow(runId) {
+function runFlow(flow, runId) {
   const result = spawnSync('maestro', ['test', flow, '-e', `RUN_ID=${runId}`], {
     cwd: mobileRoot,
     stdio: 'inherit',
@@ -76,11 +82,18 @@ function runFlow(runId) {
 const failures = []
 for (let run = 1; run <= RUNS; run++) {
   console.log(`\n=== offline matrix run ${run}/${RUNS} ===`)
+
   await setNetwork(false)
-  const passed = runFlow(run)
-  // Restored regardless of outcome: a failed run must not leave the next one
-  // starting from an unknown network state.
+  const offlinePassed = runFlow(offlineFlow, run)
+
+  // Restored regardless of the offline half's outcome: a failed run must not
+  // leave the next one starting from an unknown network state.
   await setNetwork(true)
+
+  // The reconnect half only runs if the offline half actually produced the
+  // edits it is meant to sync. Running it anyway would report a sync failure
+  // for a run that never wrote anything.
+  const passed = offlinePassed && runFlow(reconnectFlow, run)
   if (!passed) failures.push(run)
 }
 

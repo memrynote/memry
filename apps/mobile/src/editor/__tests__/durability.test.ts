@@ -20,8 +20,8 @@ interface Recorder {
 }
 
 function recorder(
-  server: DocHalves = { snapshot: null, updates: [] },
-  local: DocHalves = { snapshot: null, updates: [] },
+  server: DocHalves = { snapshot: null, updates: [], lastSeq: 0 },
+  local: DocHalves = { snapshot: null, updates: [], lastSeq: 0 },
   opts: { appendDelayMs?: number; appendThrows?: boolean } = {}
 ): Recorder {
   const calls: string[] = []
@@ -35,6 +35,7 @@ function recorder(
     store: {
       loadServerHalf: async () => server,
       loadLocalHalf: async () => local,
+      loadServerUpdatesSince: async () => [],
       appendLocalUpdate: async (_docId, update) => {
         if (opts.appendDelayMs) await new Promise((r) => setTimeout(r, opts.appendDelayMs))
         if (opts.appendThrows) {
@@ -92,8 +93,8 @@ describe('EditorDocManager durability', () => {
     localDoc.getText('body').insert(0, 'from-mobile ')
 
     const rec = recorder(
-      { snapshot: null, updates: [Y.encodeStateAsUpdate(serverDoc)] },
-      { snapshot: null, updates: [Y.encodeStateAsUpdate(localDoc)] }
+      { snapshot: null, updates: [Y.encodeStateAsUpdate(serverDoc)], lastSeq: 1 },
+      { snapshot: null, updates: [Y.encodeStateAsUpdate(localDoc)], lastSeq: 1 }
     )
     const manager = new EditorDocManager(rec.store, rec.outbox)
     const open = await manager.openDoc('note-1')
@@ -119,7 +120,14 @@ describe('EditorDocManager durability', () => {
     expect(manager.isOpen('note-1')).toBe(false)
 
     const reopened = new EditorDocManager(
-      { ...rec.store, loadLocalHalf: async () => ({ snapshot: null, updates: rec.local }) },
+      {
+        ...rec.store,
+        loadLocalHalf: async () => ({
+          snapshot: null,
+          updates: rec.local,
+          lastSeq: rec.local.length
+        })
+      },
       rec.outbox
     )
     const recovered = await reopened.openDoc('note-1')
@@ -158,6 +166,68 @@ describe('EditorDocManager durability', () => {
     open.applyFromRemote(makeUpdate('b'))
     expect(remote).toHaveBeenCalledTimes(1)
     expect(local).toHaveBeenCalledTimes(1)
+  })
+
+  it('pulls in server rows written after the doc was loaded', async () => {
+    const rec = recorder()
+    const arriving: { seq: number; update: Uint8Array }[] = []
+    const manager = new EditorDocManager(
+      {
+        ...rec.store,
+        loadServerUpdatesSince: async (_id, since) => arriving.filter((r) => r.seq > since)
+      },
+      rec.outbox
+    )
+    const open = await manager.openDoc('note-1')
+
+    // A desktop edit lands in SQLite between opens. Docs are cached for the
+    // process lifetime, so without an explicit refresh it stays invisible in
+    // the editor that is showing this note — and stays invisible after
+    // navigating away and back.
+    arriving.push({ seq: 1, update: makeUpdate('typed on the desktop') })
+    expect(await open.refreshFromServer()).toBe(1)
+
+    const check = new Y.Doc()
+    Y.applyUpdate(check, open.encodeState())
+    expect(check.getText('t').toString()).toBe('typed on the desktop')
+
+    // The watermark advanced, so a second refresh is not a re-apply.
+    expect(await open.refreshFromServer()).toBe(0)
+  })
+
+  it('refreshes a CACHED doc on re-open', async () => {
+    const rec = recorder()
+    const arriving: { seq: number; update: Uint8Array }[] = []
+    const manager = new EditorDocManager(
+      {
+        ...rec.store,
+        loadServerUpdatesSince: async (_id, since) => arriving.filter((r) => r.seq > since)
+      },
+      rec.outbox
+    )
+    await manager.openDoc('note-1')
+
+    arriving.push({ seq: 1, update: makeUpdate('arrived while away') })
+    const reopened = await manager.openDoc('note-1')
+
+    const check = new Y.Doc()
+    Y.applyUpdate(check, reopened.encodeState())
+    expect(check.getText('t').toString()).toBe('arrived while away')
+  })
+
+  it('reports emptiness from the editor fragment, not from the update count', async () => {
+    const rec = recorder()
+    const manager = new EditorDocManager(rec.store, rec.outbox)
+    const open = await manager.openDoc('note-1')
+
+    // `isEmpty` gates the markdown seed, so it has to mean "no editor content"
+    // rather than "no Yjs data" — a doc can hold metadata and still be blank.
+    expect(open.isEmpty()).toBe(true)
+
+    const seeded = new Y.Doc()
+    seeded.getXmlFragment('prosemirror').insert(0, [new Y.XmlElement('paragraph')])
+    open.applyFromRemote(Y.encodeStateAsUpdate(seeded))
+    expect(open.isEmpty()).toBe(false)
   })
 
   it('reuses an open doc rather than re-reading SQLite per WebView re-create', async () => {

@@ -42,7 +42,21 @@ export const HostDocLoadSchema = z.object({
   type: z.literal('doc-load'),
   docId: z.string().min(1),
   /** Full Yjs state as an encoded update, base64. */
-  stateB64: z.string()
+  stateB64: z.string(),
+  /**
+   * Markdown to seed an EMPTY doc with, parsed by the guest.
+   *
+   * A note's body can exist as markdown without any CRDT state yet: a note
+   * created on this device, or one pulled from a desktop whose create-time
+   * `content` never got a CRDT update. Without a seed those open blank, and
+   * the first keystroke replaces the real body for every device.
+   *
+   * The guest parses it, because turning markdown into blocks is the schema's
+   * business — building the nodes on the host is how a surface writes
+   * structures the other shells cannot read. Applied ONLY when the doc is
+   * genuinely empty, so it can never overwrite real content.
+   */
+  seedMarkdown: z.string().optional()
 })
 
 export const HostYUpdateSchema = z.object({
@@ -96,20 +110,26 @@ export const HostAssetSchema = z.object({
 })
 
 /**
- * Insert an image at the cursor. Additive within v1, and safe to add without a
- * version bump because the guest is a PREBUILT asset that ships with the app
- * that speaks to it — there is no older peer on this boundary, only a stale
- * asset, which the freshness hash already catches.
+ * Insert an attachment at the cursor. Additive within v1, and safe to add
+ * without a version bump because the guest is a PREBUILT asset that ships with
+ * the app that speaks to it — there is no older peer on this boundary, only a
+ * stale asset, which the freshness hash already catches.
  *
  * The payload is a vault-relative REFERENCE, not bytes: the reference is what
  * the note stores and what desktop resolves, and the guest fetches the bytes
  * back through the ordinary `asset-req` path so there is exactly one
  * resolution route.
  */
-export const HostInsertImageSchema = z.object({
-  type: z.literal('insert-image'),
+export const HostInsertAttachmentSchema = z.object({
+  type: z.literal('insert-attachment'),
   ref: z.string().min(1),
-  alt: z.string().default(''),
+  name: z.string().default(''),
+  /**
+   * Drives which block the guest inserts: an image block for `image/*`, a file
+   * block for everything else. Routing a PDF through the image path is how a
+   * document ends up as a permanently broken picture.
+   */
+  mime: z.string().default('application/octet-stream'),
   /** 0 means "natural size"; matches the inline-image prop's own convention. */
   width: z.number().int().min(0).default(0)
 })
@@ -129,7 +149,7 @@ export const HostMsgSchema = z.discriminatedUnion('type', [
   HostWikiCandidatesSchema,
   HostAssetSchema,
   HostExecSchema,
-  HostInsertImageSchema
+  HostInsertAttachmentSchema
 ])
 
 // ---------------------------------------------------------------------------

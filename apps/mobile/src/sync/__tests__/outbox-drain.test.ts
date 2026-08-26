@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
+import type { SyncHttpClient } from '@memry/sync-client/adapters'
 import type { SeamHttpContext } from '@memry/sync-client/pull'
 import { SyncServerError } from '@memry/sync-client/http-errors'
 import { backoffDelayMs, OutboxDrain, type OutboxQueue, type OutboxRow } from '../outbox'
@@ -24,6 +25,10 @@ beforeAll(async () => {
   vaultKey = sodium.randombytes_buf(32)
   signingSecretKey = sodium.crypto_sign_keypair('uint8array').privateKey
 })
+
+function encode(value: unknown): Uint8Array {
+  return new TextEncoder().encode(JSON.stringify(value))
+}
 
 function row(overrides: Partial<OutboxRow> = {}): OutboxRow {
   return {
@@ -60,15 +65,43 @@ function queue(rows: OutboxRow[]) {
 }
 
 /**
- * A drain whose HTTP context is deliberately incomplete.
+ * A fake transport at the seam the drain actually uses.
  *
- * Every case below settles its rows BEFORE any request would be made — that is
- * the property under test — so a context that would throw on use is the
- * strongest available assertion that the drain never got that far.
+ * `seamJsonRequest` goes through `SyncHttpClient`, so replacing that is enough
+ * to exercise the real request-building, the real response parsing and the
+ * real accept/reject attribution without a server.
  */
-function drain(store: OutboxQueue) {
+function transport(handler: (path: string, body: unknown) => unknown) {
+  const seen: { path: string; body: unknown }[] = []
+  const http: SyncHttpClient = {
+    async request(req) {
+      // `seamJsonRequest` sends a JSON STRING, not bytes.
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : null
+      seen.push({ path: req.path, body })
+      const payload = handler(req.path, body)
+      return {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+        body: new TextEncoder().encode(JSON.stringify(payload))
+      }
+    },
+    onOnlineChanged: () => () => {},
+    isMetered: async () => false
+  }
+  return { http, seen }
+}
+
+function drain(store: OutboxQueue, http?: SyncHttpClient) {
   const httpCtx = () =>
-    ({ accessToken: () => 't', vaultId: 'v', clientHeaderValue: 'ios/1.0.0' }) as SeamHttpContext
+    ({
+      // Cases that settle their rows BEFORE any request pass no transport at
+      // all: a context that would throw on use is the strongest available
+      // assertion that the drain never got that far.
+      http: http as SyncHttpClient,
+      accessToken: () => 't',
+      vaultId: 'v',
+      clientHeaderValue: 'ios/1.0.0'
+    }) as SeamHttpContext
   return new OutboxDrain({
     store,
     httpCtx,
@@ -137,6 +170,53 @@ describe('OutboxDrain oversized items', () => {
     await expect(drain(store).drain()).resolves.toBeDefined()
     expect(completed).toContain(9)
     expect(failed).toHaveLength(0)
+  })
+})
+
+describe('OutboxDrain per-item coalescing', () => {
+  it('sends one item per id and settles every row behind it', async () => {
+    // Create then rename, both offline: two rows, one item id. The newest
+    // row's payload already contains everything the earlier one said.
+    const rows = [
+      row({ id: 1, itemType: 'note:create', payload: encode({ title: 'Draft' }) }),
+      row({ id: 2, itemType: 'note:update', payload: encode({ title: 'Renamed' }) })
+    ]
+    const { store, completed, failed } = queue(rows)
+    const { http, seen } = transport(() => ({
+      accepted: ['note-1'],
+      rejected: [],
+      serverTime: 0,
+      maxCursor: 1
+    }))
+
+    await drain(store, http).drain()
+
+    const pushBody = seen.find((r) => r.path === '/sync/push')?.body as { items: { id: string }[] }
+    // Two items with the same id in one batch cannot be told apart in the
+    // per-ID response, which is exactly how a partial accept used to delete
+    // the rejected row too.
+    expect(pushBody.items).toHaveLength(1)
+    expect(completed).toEqual(expect.arrayContaining([1, 2]))
+    expect(failed).toHaveLength(0)
+  })
+
+  it('fails every row behind a rejected item, and completes none of them', async () => {
+    const rows = [
+      row({ id: 3, itemType: 'note:create', payload: encode({ title: 'Draft' }) }),
+      row({ id: 4, itemType: 'note:update', payload: encode({ title: 'Renamed' }) })
+    ]
+    const { store, completed, failed } = queue(rows)
+    const { http } = transport(() => ({
+      accepted: [],
+      rejected: [{ id: 'note-1', reason: 'conflict' }],
+      serverTime: 0,
+      maxCursor: 0
+    }))
+
+    await drain(store, http).drain()
+
+    expect(completed).toHaveLength(0)
+    expect(failed.flatMap((f) => f.ids)).toEqual(expect.arrayContaining([3, 4]))
   })
 })
 

@@ -157,7 +157,20 @@ export class GuestBridge {
       // applying a y-update to a doc that has no state is how a replica ends up
       // silently diverged from the owner.
       if (!this.loaded && msg.type !== 'doc-load' && msg.type !== 'cfg') continue
-      for (const listener of this.listeners) listener(msg)
+      for (const listener of this.listeners) {
+        try {
+          listener(msg)
+        } catch (err) {
+          // One throwing handler must not take the rest of the envelope with
+          // it. The seq is contiguous, so nothing would detect the loss and no
+          // resync would fire — the messages would simply never have happened.
+          this.send({
+            type: 'err',
+            code: 'HANDLER_THREW',
+            detail: `${msg.type}: ${err instanceof Error ? err.message : String(err)}`
+          })
+        }
+      }
     }
   }
 }

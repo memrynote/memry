@@ -65,7 +65,7 @@ let readOnly = false
 bridge.onHostMsg((msg) => {
   switch (msg.type) {
     case 'doc-load':
-      mountDoc(msg.docId, msg.stateB64)
+      mountDoc(msg.docId, msg.stateB64, msg.seedMarkdown)
       break
 
     case 'y-update': {
@@ -85,16 +85,9 @@ bridge.onHostMsg((msg) => {
       applyCfg(msg)
       break
 
-    case 'insert-image': {
+    case 'insert-attachment': {
       if (!mounted) return
-      // Through the editor's own insert API rather than a hand-built Y node:
-      // the block structure is the schema's business, and building it here is
-      // how a surface ends up writing nodes the other shells cannot parse.
-      mounted.editor.insertBlocks(
-        [{ type: 'image', props: { url: msg.ref, caption: msg.alt } }],
-        mounted.editor.getTextCursorPosition().block,
-        'after'
-      )
+      insertAttachmentBlock(mounted.editor, msg.ref, msg.name, msg.mime)
       break
     }
 
@@ -104,7 +97,7 @@ bridge.onHostMsg((msg) => {
   }
 })
 
-function mountDoc(docId: string, stateB64: string): void {
+function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void {
   mounted?.teardown()
 
   const doc = new Y.Doc()
@@ -147,6 +140,19 @@ function mountDoc(docId: string, stateB64: string): void {
   const detachAssets = installImageResolver(root)
   const detachMetrics = installMetrics(root, bridge)
 
+  // Seeding is deliberately AFTER the doc is wired up: the parsed blocks then
+  // travel the ordinary local-update path, so the seed is persisted and queued
+  // like anything the user typed rather than living only in this replica.
+  if (seedMarkdown && seedMarkdown.trim().length > 0 && isEditorEmpty(editor)) {
+    try {
+      const blocks = editor.tryParseMarkdownToBlocks(seedMarkdown)
+      if (blocks.length > 0) editor.replaceBlocks(editor.document, blocks)
+    } catch (err) {
+      bridge.send({ type: 'err', code: 'SEED_PARSE_FAILED', detail: String(err) })
+      bridge.flush()
+    }
+  }
+
   mounted = {
     docId,
     doc,
@@ -163,6 +169,43 @@ function mountDoc(docId: string, stateB64: string): void {
   }
 
   bridge.markLoaded()
+}
+
+/**
+ * Whether the document holds nothing but its trailing empty paragraph.
+ *
+ * BlockNote always keeps one block, so "no blocks" is never the answer; an
+ * empty doc is a single block with no content.
+ */
+function isEditorEmpty(editor: MobileEditor): boolean {
+  const blocks = editor.document
+  if (blocks.length > 1) return false
+  const only = blocks[0]
+  if (!only) return true
+  const content = only.content
+  return !Array.isArray(content) || content.length === 0
+}
+
+/**
+ * Insert an uploaded attachment at the cursor.
+ *
+ * An image block for `image/*`, a file block for everything else — routing a
+ * PDF through the image path leaves a permanently broken picture. Either way
+ * the block carries the vault-relative REFERENCE, which is what the note
+ * stores and what desktop resolves; `images.ts` swaps in renderable bytes at
+ * the DOM level without touching the document.
+ */
+function insertAttachmentBlock(
+  editor: MobileEditor,
+  ref: string,
+  name: string,
+  mime: string
+): void {
+  const at = editor.getTextCursorPosition().block
+  const block = mime.startsWith('image/')
+    ? { type: 'image' as const, props: { url: ref, caption: name } }
+    : { type: 'file' as const, props: { url: ref, name } }
+  editor.insertBlocks([block], at, 'after')
 }
 
 function applyCfg(cfg: {

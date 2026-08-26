@@ -1,5 +1,6 @@
 import type { VaultDb } from '@/db/index'
 import { createLogger } from '@/lib/logger'
+import { deleteLocalCrdt } from '@/editor/session'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
 
 const log = createLogger('NoteOps')
@@ -168,8 +169,11 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
   })
 
   // Queued body updates describe a note that no longer exists; sending them
-  // after the tombstone resurrects content on the other devices.
+  // after the tombstone resurrects content on the other devices. The local
+  // CRDT rows go with them — the pull applier only clears the SERVER
+  // namespace, so `local.<noteId>` would otherwise outlive the note forever.
   await ctx.outbox.dropForItem(noteId)
+  await deleteLocalCrdt(ctx.db, noteId)
   await ctx.outbox.enqueueRecord('note', noteId, 'delete', JSON.stringify(payload))
 }
 

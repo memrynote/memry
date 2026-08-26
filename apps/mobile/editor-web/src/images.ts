@@ -34,27 +34,38 @@ function isAlreadyRenderable(src: string): boolean {
 export function installImageResolver(root: HTMLElement): () => void {
   let disposed = false
   const timers = new Set<ReturnType<typeof setTimeout>>()
-  /** refs known to be unresolvable, so a doc full of them costs one ask each. */
+  /** Refs the host reported as gone; retrying those cannot change the answer. */
   const missing = new Set<string>()
 
   const resolve = (img: HTMLImageElement, ref: string, attempt: number): void => {
-    void requestAsset(ref).then((dataUri) => {
+    if (missing.has(ref)) {
+      // Another element already learned this reference resolves to nothing;
+      // a note full of the same dead ref costs one ask, not one per picture.
+      img.classList.add('asset-missing')
+      return
+    }
+
+    void requestAsset(ref).then((answer) => {
       if (disposed || !img.isConnected) return
-      if (dataUri) {
+
+      if (answer.status === 'ready') {
         img.classList.remove('asset-pending')
-        img.setAttribute('src', dataUri)
+        img.setAttribute('src', answer.dataUri)
         img.setAttribute(RESOLVED_ATTR, '')
         return
       }
-      if (missing.has(ref)) {
+
+      if (answer.status === 'missing') {
+        // The host looked and the blob is gone — retrying cannot change that.
+        missing.add(ref)
         img.classList.add('asset-missing')
         return
       }
+
       const delay = RETRY_DELAYS_MS[attempt]
       if (delay === undefined) {
-        // Out of retries: stop asking, but keep the placeholder rather than
-        // the broken-image glyph — the file may simply be on another device.
-        img.classList.add('asset-missing')
+        // Out of retries. The placeholder stays rather than the broken-image
+        // glyph: `pending` means the bytes exist somewhere, just not here yet.
         return
       }
       const timer = setTimeout(() => {

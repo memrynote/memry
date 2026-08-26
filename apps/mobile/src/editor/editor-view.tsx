@@ -40,6 +40,15 @@ export interface EditorViewProps {
     mime?: string
     status: 'ready' | 'pending' | 'missing'
   }>
+  /**
+   * Markdown to seed the doc with when it has no CRDT state at all.
+   *
+   * A note created here, or one pulled from a desktop whose create-time
+   * `content` never produced a CRDT update, has a body in `note_bodies` and an
+   * empty doc — it would open blank and the first keystroke would replace the
+   * real body everywhere.
+   */
+  seedMarkdown?: string
   /** Exposed so the screen can drive undo/redo and flush (T071/T076). */
   onReady?: (controls: EditorControls) => void
 }
@@ -55,8 +64,8 @@ export interface EditorControls {
    * keystrokes had finished their round trip through the WebView.
    */
   flush(): Promise<void>
-  /** Insert an image block for a vault-relative reference (T073). */
-  insertImage(ref: string, alt: string): void
+  /** Insert an uploaded attachment at the cursor (T073). */
+  insertAttachment(ref: string, name: string, mime: string): void
   /** G3 keystroke-latency + batching numbers, dev builds only (T074/T075). */
   measure(): G3Measurement
   resetMeasurement(): void
@@ -68,6 +77,7 @@ export function EditorView({
   onNavigate,
   onWikiQuery,
   onAssetRequest,
+  seedMarkdown,
   onReady
 }: EditorViewProps) {
   const webViewRef = useRef<WebView>(null)
@@ -112,10 +122,13 @@ export function EditorView({
     bridge.send({
       type: 'doc-load',
       docId: doc.docId,
-      stateB64: bytesToBase64(doc.encodeState())
+      stateB64: bytesToBase64(doc.encodeState()),
+      // Only when the doc is genuinely empty, so a seed can never overwrite
+      // content that already exists.
+      ...(doc.isEmpty() && seedMarkdown ? { seedMarkdown } : {})
     })
     bridge.flush()
-  }, [bridge, doc])
+  }, [bridge, doc, seedMarkdown])
 
   // A `seq` gap means an envelope was lost; the only correct response is a
   // full `doc-load`, because a dropped update leaves the two replicas diverged
@@ -191,8 +204,8 @@ export function EditorView({
               bridge.flush()
             },
             flush: () => flushAndSettle(),
-            insertImage: (ref, alt) => {
-              bridge.send({ type: 'insert-image', ref, alt, width: 0 })
+            insertAttachment: (ref, name, mime) => {
+              bridge.send({ type: 'insert-attachment', ref, name, mime, width: 0 })
               bridge.flush()
             },
             measure: () => recorder.summary(),

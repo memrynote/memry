@@ -1,27 +1,27 @@
-# T066 — US2 offline matrix: airplane-mode edit + create → force-quit →
-# relaunch → reconnect → complete sync.
+# T066 — US2 offline matrix, OFFLINE half: edit + create with no network,
+# force-quit, relaunch, and verify the work survived.
 #
-# This is the spec's own Independent Test for US2, written so a single run is
-# meaningful and 20 runs are conclusive. The driver
-# (`scripts/us2-offline-matrix.mjs`) repeats it and is the thing that reports
-# 20/20; a hand-run of this file exercises one pass.
+# The reconnect half is a SEPARATE flow (`us2-offline-reconnect.yaml`) because
+# the network transition happens between them and Maestro cannot make it:
+# neither the simulator nor a device exposes airplane mode to the accessibility
+# tree. `scripts/us2-offline-matrix.mjs` owns the toggle and runs the two flows
+# in order. Running this file alone proves persistence, not sync.
 #
-# The airplane-mode toggle is NOT scripted inside Maestro — neither the iOS
-# simulator nor a real device exposes it to the accessibility tree. The driver
-# owns it (`xcrun simctl status_bar ... --dataNetwork` plus the app's own dev
-# network switch) and hands this flow an already-offline device; `OFFLINE`
-# below is therefore an assertion about what the driver set up, not an action.
-#
-# Prereqs, same as the US1 smoke: a signed-in session and an unlocked vault.
 # `-e RUN_ID=<n>` makes each pass write a distinguishable note title, which is
 # what lets the reconnect assertion prove THIS run's edit arrived rather than a
 # previous one's.
+#
+# Prereqs, same as the US1 smoke: a signed-in session and an unlocked vault.
 appId: com.memry.mobile
 ---
 - launchApp:
     clearState: false
 
-# -- guard: the flow is only meaningful on an unlocked vault --
+# The driver cut the network before starting this flow. Asserting the banner
+# makes that a fact the run checked rather than a fact it assumed — a pass that
+# quietly ran online would prove nothing at all.
+- assertVisible:
+    id: 'Offline'
 - assertVisible: 'Notes'
 
 # -- create a note while offline --
@@ -59,9 +59,11 @@ appId: com.memry.mobile
 #    rule commits before acking, and backgrounding flushes the bridge first. --
 - stopApp
 
-# -- relaunch offline: the edits must be there with no network at all --
+# -- relaunch, still offline: the edits must be there with no network at all --
 - launchApp:
     clearState: false
+- assertVisible:
+    id: 'Offline'
 - assertVisible: 'offline note ${RUN_ID}'
 - tapOn: 'offline note ${RUN_ID}'
 - assertVisible:
@@ -69,17 +71,6 @@ appId: com.memry.mobile
 - assertVisible: 'offline body ${RUN_ID}'
 - back
 
-# -- the driver restores the network here, then the app drains on foreground --
+# Leave the app stopped: the driver restores the network next, and the
+# reconnect flow's assertions depend on a cold foreground transition.
 - stopApp
-- launchApp:
-    clearState: false
-- assertVisible: 'Notes'
-# Give the foreground drain a bounded window. A fixed sleep would be a flake
-# generator; the outbox-depth banner is the real signal, and it is deliberately
-# distinct from the pull indicator — a run that waited on "Syncing" would call a
-# still-full outbox a success.
-- extendedWaitUntil:
-    notVisible:
-      id: 'Unsynced changes'
-    timeout: 60000
-- assertVisible: 'offline note ${RUN_ID}'

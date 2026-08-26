@@ -346,9 +346,26 @@ export class OutboxDrain {
     signingSecretKey: Uint8Array
   ): Promise<{ pushed: number; failed: number; stop: boolean }> {
     const items: PushItem[] = []
-    const idsById = new Map<string, number[]>()
+    const rowsById = new Map<string, number[]>()
 
+    // Collapse to ONE push item per item id, using the NEWEST row.
+    //
+    // Rows carry the whole payload as it stood at enqueue time, so the latest
+    // row already contains everything the earlier ones said — and a delete,
+    // being last, correctly wins over a preceding update. Sending several
+    // items with the same id in one batch is also what made a mixed
+    // accept/reject response delete the rejected rows: the server answers per
+    // ID, so two rows sharing an id cannot be told apart afterwards.
+    const newestByItem = new Map<string, OutboxRow>()
     for (const row of rows) {
+      const list = rowsById.get(row.itemId) ?? []
+      list.push(row.id)
+      rowsById.set(row.itemId, list)
+      const seen = newestByItem.get(row.itemId)
+      if (!seen || row.id > seen.id) newestByItem.set(row.itemId, row)
+    }
+
+    for (const row of newestByItem.values()) {
       const [type, operation] = row.itemType.split(':') as [SyncItemType, SyncOperation]
       let payload: Record<string, unknown>
       try {
@@ -360,7 +377,8 @@ export class OutboxDrain {
         // A row we cannot parse can never succeed; retrying it forever would
         // block every later row behind it.
         log.warn('Dropping unparseable outbox row', { id: row.id, itemId: row.itemId })
-        await this.deps.store.complete([row.id])
+        await this.deps.store.complete(rowsById.get(row.itemId) ?? [row.id])
+        rowsById.delete(row.itemId)
         continue
       }
 
@@ -379,31 +397,30 @@ export class OutboxDrain {
           ...(operation === 'delete' ? { deletedAt: Date.now() } : {})
         }))
       } catch (err) {
-        // Encryption failing is a property of THIS row, not of the batch, and
-        // letting it escape here leaves the row neither failed nor completed —
-        // it is re-claimed on every pass and wedges every later record push
-        // behind it. Size is the one failure that can never succeed on retry,
-        // so it is retired loudly rather than retried forever.
+        // Encryption failing is a property of THIS item, not of the batch, and
+        // letting it escape leaves the rows neither failed nor completed — they
+        // are re-claimed on every pass and wedge every later record push behind
+        // them. Size is the one failure that can never succeed on retry, so it
+        // is retired loudly rather than retried forever.
         const message = err instanceof Error ? err.message : String(err)
+        const ids = rowsById.get(row.itemId) ?? [row.id]
         if (err instanceof ItemTooLargeError) {
-          log.error('Item is too large to sync; dropping its queue row', {
+          log.error('Item is too large to sync; dropping its queue rows', {
             itemId: row.itemId,
             error: message
           })
-          await this.deps.store.complete([row.id])
+          await this.deps.store.complete(ids)
         } else {
           log.warn('Encrypting a queued item failed; backing off', {
             itemId: row.itemId,
             error: message
           })
-          await this.deps.store.fail([row.id], message)
+          await this.deps.store.fail(ids, message)
         }
+        rowsById.delete(row.itemId)
         continue
       }
       items.push(pushItem)
-      const list = idsById.get(row.itemId) ?? []
-      list.push(row.id)
-      idsById.set(row.itemId, list)
     }
 
     if (items.length === 0) return { pushed: 0, failed: 0, stop: false }
@@ -418,20 +435,18 @@ export class OutboxDrain {
       if (!parsed.success) {
         // An unreadable response is not proof of acceptance; retry rather than
         // delete rows the server may never have stored.
-        await this.deps.store.fail(
-          rows.map((r) => r.id),
-          'unparseable push response'
-        )
-        return { pushed: 0, failed: rows.length, stop: false }
+        const ids = [...rowsById.values()].flat()
+        await this.deps.store.fail(ids, 'unparseable push response')
+        return { pushed: 0, failed: ids.length, stop: false }
       }
 
       const acceptedIds: number[] = []
-      for (const id of parsed.data.accepted) acceptedIds.push(...(idsById.get(id) ?? []))
+      for (const id of parsed.data.accepted) acceptedIds.push(...(rowsById.get(id) ?? []))
       await this.deps.store.complete(acceptedIds)
 
       const rejectedIds: number[] = []
       for (const rejection of parsed.data.rejected) {
-        rejectedIds.push(...(idsById.get(rejection.id) ?? []))
+        rejectedIds.push(...(rowsById.get(rejection.id) ?? []))
         log.warn('Push item rejected', { itemId: rejection.id, reason: rejection.reason })
       }
       if (rejectedIds.length > 0) await this.deps.store.fail(rejectedIds, 'server rejected item')

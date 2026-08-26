@@ -55,12 +55,18 @@ beforeAll(async () => {
 function memoryStore(): DocStore & { local: Uint8Array[]; server: Uint8Array[] } {
   const local: Uint8Array[] = []
   const server: Uint8Array[] = []
-  const half = (updates: Uint8Array[]): DocHalves => ({ snapshot: null, updates })
+  const half = (updates: Uint8Array[]): DocHalves => ({
+    snapshot: null,
+    updates,
+    lastSeq: updates.length
+  })
   return {
     local,
     server,
     loadServerHalf: async () => half(server),
     loadLocalHalf: async () => half(local),
+    loadServerUpdatesSince: async (_docId: string, sinceSeq: number) =>
+      server.slice(sinceSeq).map((update, index) => ({ seq: sinceSeq + index + 1, update })),
     appendLocalUpdate: async (_docId, update) => {
       local.push(update)
     }

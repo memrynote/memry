@@ -12,9 +12,23 @@ import type { GuestBridge } from './bridge.ts'
  * placeholder for the life of the page. `images.ts` owns the re-asking.
  */
 
+/** What the host said, not just whether bytes arrived. */
+export type AssetAnswer =
+  { status: 'ready'; dataUri: string } | { status: 'pending' } | { status: 'missing' }
+
 interface PendingAsset {
-  resolve: (value: string | null) => void
+  resolve: (answer: AssetAnswer) => void
+  timer: ReturnType<typeof setTimeout>
 }
+
+/**
+ * How long to wait for an `asset` reply.
+ *
+ * A reply can genuinely never come — a resync clears the host's pending batch
+ * — and without a deadline that image stays on its placeholder forever and the
+ * map entry leaks for the life of the page.
+ */
+const ASSET_REPLY_TIMEOUT_MS = 20_000
 
 let bridge: GuestBridge | null = null
 let nextReqId = 0
@@ -28,24 +42,38 @@ export function bindAssetBridge(instance: GuestBridge): void {
     const waiter = pending.get(msg.reqId)
     if (!waiter) return
     pending.delete(msg.reqId)
-    const value =
+    clearTimeout(waiter.timer)
+
+    if (msg.status !== 'ready') {
+      waiter.resolve({ status: msg.status === 'missing' ? 'missing' : 'pending' })
+      return
+    }
+    const dataUri =
       msg.url ??
       (msg.b64 ? `data:${msg.mime ?? 'application/octet-stream'};base64,${msg.b64}` : null)
-    waiter.resolve(msg.status === 'ready' ? value : null)
+    waiter.resolve(dataUri ? { status: 'ready', dataUri } : { status: 'missing' })
   })
 }
 
-export function requestAsset(ref: string): Promise<string | null> {
+export function requestAsset(ref: string): Promise<AssetAnswer> {
   const cached = cache.get(ref)
-  if (cached) return Promise.resolve(cached)
-  if (!bridge) return Promise.resolve(null)
+  if (cached) return Promise.resolve({ status: 'ready', dataUri: cached })
+  // No bridge means the page is not wired up yet, which is a transient state —
+  // reporting `missing` would retire the image permanently.
+  if (!bridge) return Promise.resolve({ status: 'pending' })
 
   const reqId = `a${++nextReqId}`
-  return new Promise<string | null>((resolve) => {
+  return new Promise<AssetAnswer>((resolve) => {
+    const timer = setTimeout(() => {
+      pending.delete(reqId)
+      resolve({ status: 'pending' })
+    }, ASSET_REPLY_TIMEOUT_MS)
+
     pending.set(reqId, {
-      resolve: (value) => {
-        if (value) cache.set(ref, value)
-        resolve(value)
+      timer,
+      resolve: (answer) => {
+        if (answer.status === 'ready') cache.set(ref, answer.dataUri)
+        resolve(answer)
       }
     })
     bridge!.send({ type: 'asset-req', reqId, ref })

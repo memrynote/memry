@@ -41,6 +41,11 @@ unsynced writes (decision record §4).
   older than its inputs (wired into mobile-ci), and the same hash rides in the
   `ready` handshake so a stale asset is also caught at runtime.
 
+  The hash covers `@memry/editor-schema` as well as this contract, and that is
+  the sharper of the two inputs: a block or inline spec the bundle cannot build
+  is DELETED from the shared Y.Doc by y-prosemirror, so a schema change shipping
+  against a stale editor is data loss rather than a rendering gap.
+
 ## Envelope
 
 ```ts
@@ -65,15 +70,15 @@ Messages after `ready` and before `doc-load` are dropped by design.
 
 ### RN → WebView
 
-| type              | payload                                             | notes                                                          |
-| ----------------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| `doc-load`        | `{ docId, stateB64 }`                               | full Yjs state (encoded update) at open/resync                 |
-| `y-update`        | `{ docId, updatesB64: string[] }`                   | batched engine-side updates (remote sync, other-surface edits) |
-| `cfg`             | `{ theme, locale, rtl, reducedMotion, readOnly }`   | readOnly also driven by kill-switch/entitlement state          |
-| `wiki-candidates` | `{ reqId, items }`                                  | autocomplete answers                                           |
-| `asset`           | `{ reqId, url \| b64, mime }`                       | attachment/image resolution result                             |
-| `exec`            | `{ cmd: 'undo'\|'redo'\|'focus'\|'blur'\|'flush' }` |                                                                |
-| `insert-image`    | `{ ref, alt, width }`                               | added in T073; see the note below                              |
+| type                | payload                                             | notes                                                          |
+| ------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `doc-load`          | `{ docId, stateB64 }`                               | full Yjs state (encoded update) at open/resync                 |
+| `y-update`          | `{ docId, updatesB64: string[] }`                   | batched engine-side updates (remote sync, other-surface edits) |
+| `cfg`               | `{ theme, locale, rtl, reducedMotion, readOnly }`   | readOnly also driven by kill-switch/entitlement state          |
+| `wiki-candidates`   | `{ reqId, items }`                                  | autocomplete answers                                           |
+| `asset`             | `{ reqId, url \| b64, mime }`                       | attachment/image resolution result                             |
+| `exec`              | `{ cmd: 'undo'\|'redo'\|'focus'\|'blur'\|'flush' }` |                                                                |
+| `insert-attachment` | `{ ref, name, mime, width }`                        | added in T073; see the note below                              |
 
 ### WebView → RN
 
@@ -94,7 +99,13 @@ mime }` had no way to say "not downloaded yet", which is a NORMAL state under
   the Wi-Fi-only default rather than an error — the guest needs it to render a
   placeholder with a fetch action instead of a broken image. `revision` is what
   lets a late-arriving attachment appear without recreating the note.
-- **`insert-image` (RN → WebView) was added.** Attachments are picked and
+- **`doc-load` carries an optional `seedMarkdown`.** A note's body can exist as
+  markdown with no CRDT state — a note created on the device, or one pulled from
+  a desktop whose create-time `content` never produced a CRDT update. Without a
+  seed those open blank and the first keystroke replaces the real body for every
+  device. The GUEST parses it, because markdown → blocks is the schema's
+  business, and it is applied only when the doc is genuinely empty.
+- **`insert-attachment` (RN → WebView) was added.** Attachments are picked and
   uploaded on the RN side, but the BLOCK STRUCTURE is the schema's business:
   hand-building a BlockNote node in the shared Y.Doc from the host is how a
   surface ends up writing nodes the other shells cannot parse. The host names

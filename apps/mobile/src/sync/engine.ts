@@ -160,7 +160,7 @@ export class MobileSyncEngine {
   private async runSync(): Promise<SyncSummary> {
     const prepared = await this.prepare()
     if (!prepared) {
-      return { ok: false, reason: 'locked', itemsApplied: 0, bodiesUpdated: 0 }
+      return { ok: false, reason: 'locked', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
     const { store } = prepared
 
@@ -170,7 +170,7 @@ export class MobileSyncEngine {
       record = await engine.pullIncremental()
     } catch (err) {
       log.warn('Record pull failed', { error: err instanceof Error ? err.message : String(err) })
-      return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0 }
+      return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
 
     const bodies = await this.pullBodiesForUnlocked(store, record.changedNoteIds)
@@ -180,7 +180,8 @@ export class MobileSyncEngine {
       ok: record.ok,
       reason: record.ok ? null : 'refused',
       itemsApplied: record.itemsApplied,
-      bodiesUpdated: bodies
+      bodiesUpdated: bodies,
+      changedNoteIds: record.changedNoteIds
     }
     for (const listener of this.listeners) listener(summary)
     return summary
@@ -251,6 +252,14 @@ export interface SyncSummary {
   reason: 'locked' | 'error' | 'refused' | null
   itemsApplied: number
   bodiesUpdated: number
+  /**
+   * Notes whose CRDT state this pass touched.
+   *
+   * Carried out of the engine so an OPEN editor can be fed the new rows; the
+   * doc manager caches docs for the process lifetime, so a pull that lands
+   * server updates is otherwise invisible until the app restarts.
+   */
+  changedNoteIds: string[]
 }
 
 const engines = new Map<string, MobileSyncEngine>()
