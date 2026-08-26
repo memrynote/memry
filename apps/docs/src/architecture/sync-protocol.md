@@ -875,13 +875,25 @@ any of them forge all of them.
 
 Verification reads **no database**. `exp` is inside the signature, so an expired token fails
 verification with zero I/O on the hot path, and the token can be checked on every elevated request
-without a round trip. Verification returns null on _any_ failure — wrong secret, tampered payload,
-expired, malformed, future-dated — and never throws: an invalid bootstrap header must not be able
-to fail an unrelated sync request.
+without a round trip. `verifyBootstrapSession` returns null on _any_ failure — wrong secret,
+tampered payload, expired, malformed — and never throws: an invalid bootstrap header must not be
+able to fail an unrelated sync request.
+
+`iat` is carried in the payload but never inspected. The only temporal check is
+`if (payload.exp <= nowSeconds) return null`, so a token whose `iat` is in the future verifies
+normally as long as its `exp` has not passed. That is harmless — `iat` is informational, only the
+signing key's holder can set either claim, and `exp` alone bounds the window — but a not-before
+check is not something this token has, and the function's own doc comment claiming "future-dated"
+among its rejections is wrong.
 
 The one thing statelessness cannot express is a cap on concurrent sessions, which is what the
-`bootstrap_sessions` ledger (migration 0007) exists for. It is touched only at issuance, renewal,
-close and vault-deletion revocation.
+`bootstrap_sessions` ledger (migration `0007_bootstrap_sessions`) exists for. It is never on the
+verification path. It is written at issuance, renewal and close, deleted per `(user, vault)` by
+vault-deletion revocation, and pruned two more ways: issuance runs a lazy
+`DELETE FROM bootstrap_sessions WHERE user_id = ? AND expires_at < ?` for that user only before its
+insert, and the 6-hourly cron runs `cleanup_expired_bootstrap_sessions`, which deletes every
+expired row account-wide. An abandoned session therefore costs one row until its expiry passes,
+never a live cap slot.
 
 ### What elevation actually does
 
@@ -907,11 +919,44 @@ problem, and elevating a write path would only widen an abuse ceiling.
 bursts of 25 concurrent R2 reads is roughly 150 R2 operations/second worst case. That is bounded by
 the TTL and the two-session cap, and is still below what a single warm push batch spends.
 
-The client mirrors the grant rather than merely riding it. Every pacing site — the download pacer,
-the CRDT sweep's per-chunk charge — divides its steady-state slice by the granted factor, and reads
-the factor at charge time rather than caching it, so a session that closes or expires reverts on
-the very next chunk. Real traffic therefore lands at roughly half the elevated ceiling, with the
-ceiling as safety margin rather than as the shaping force.
+#### Nothing is granted — the client assumes ×5
+
+The multipliers above are the **server's** table and never travel. `POST /sync/bootstrap` returns
+no `elevationFactor`: the field is absent from `BootstrapOpenResponseSchema`
+(`packages/contracts/src/bootstrap-api.ts`) and the route never sets it. The client probes the open
+response for one anyway and, finding none, always falls through to
+`DEFAULT_ELEVATION_FACTOR = 5` (`src/main/sync/bootstrap-session.ts`). Every client-side pacing site
+therefore runs at a hard-coded ×5, including against `sync_pull`, `sync_changes` and
+`sync_manifest`, which the server only widens ×3.
+
+That is safe rather than tuned, because the client's pacing sites and the ×3 buckets barely
+overlap. The CRDT sweep — the one site that paces continuously — spends `crdt_batch_pull` and
+`crdt_pull`, both ×5 buckets, and `crdtSweepChunkDelayMs` divides each of its three slice terms by
+the factor, so its own derivation's "at most 50% of the bucket" property survives elevation exactly.
+The pull path is not client-paced by this factor at all: grep `getBootstrapElevationFactor` and
+every call site is one of the three rows in the table below, or the session module notifying its
+own listeners. The pull is bounded by page size and the server's own
+limiter, which is where a ×5 assumption against a ×3 ceiling would surface: as a 429, which
+`http-client` turns into a `RateLimitError` carrying `Retry-After`. The pull coordinator rethrows
+that rather than swallowing it, so the run ends and the next sync cycle retries — a delay, not a
+lost pull.
+
+The probe is worth keeping: it is the seam a future server-negotiated factor would arrive through
+without a protocol change. As shipped it does nothing, and the number in the client is not the
+number in the server.
+
+#### The factor is read at charge time in exactly one place
+
+| Pacing site                                            | How it takes the factor                                                                      | Reverts when the session ends                               |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| CRDT sweep per-chunk delay (`full-sync-runner`)        | `crdtSweepChunkDelayMs(cost, getBootstrapElevationFactor())`, called inside the chunk loop   | On the very next chunk                                      |
+| Attachment download queue (`sync-attachment-handlers`) | Seeded once, then push-updated through `onBootstrapElevationChange(...)`                     | On the next notification, before the next request           |
+| Pack download pacer (`full-sync-runner`)               | `pacer.setMultiplier(getBootstrapElevationFactor())` once per bootstrap run, no subscription | Not within the run — the multiplier is cached until it ends |
+
+Only the sweep reads it at charge time. The pack pacer's caching is deliberate and commented as
+such: a session that closes mid-run only narrows the factor, pack transfers are tens of large
+objects rather than thousands of small ones, and those transfers are presigned GETs direct to R2
+that spend no Worker bucket at all.
 
 Requests carry the token in `X-Memry-Bootstrap-Token`. Identity is re-bound to the authenticated
 context of the request it arrives on, so a token replayed from another device or another vault
@@ -990,10 +1035,61 @@ at the cap, a malformed body, or a plain network error all resolve to "no bootst
 client clears local state and syncs exactly as it did before the feature existed. The token can
 only ever widen a ceiling, so losing it can never lose data.
 
-The client closes the session on completion (the CRDT sweep draining with a pull actually
-resolved), on failure, and on vault switch or runtime restart. Local state is cleared **first**, so
-pacing reverts in the same tick, and the server call is best-effort afterwards — the token dies on
-its own TTL, so a lost close request is harmless.
+### Completing the bootstrap and releasing the session are two decisions
+
+They used to be one, and #1835/#1837 pulled them apart because every path where completion is
+legitimately impossible was leaking the per-user session slot.
+
+**Marking the bootstrap complete** is a claim that every note body the server holds is now current
+on this device. `maybeMarkBootstrapFullText()` fires only when four things hold at once:
+`sweepSettledOnThisEngine`, `bootstrapPullSucceeded`, no paced CRDT chunk in flight, and both the
+paced queue and the pending set empty.
+
+`sweepSettledOnThisEngine` deliberately does **not** mean "a sweep literally ran". The sweep
+throttle reads the persisted `LAST_CRDT_SWEEP_AT` stamp while fresh-device detection reads
+`LAST_CURSOR`, so a genuine first sync can find the sweep throttled and never run one — and a mark
+gated on a sweep having run would then never fire, holding the window and the elevated session open
+until the TTL expired. The flag is set when a sweep is queued **and** when the runner is online and
+the throttle declined, because that is the other way the question "is anything outstanding?" gets a
+real answer. Offline is not one of those ways: it means "nothing is fetchable", never "nothing is
+outstanding".
+
+`bootstrapPullSucceeded` is the other half, and is why `PullCoordinator.pull()` and
+`SyncEngine.pull()` return `Promise<boolean>` rather than `Promise<void>`. On a fresh device an
+empty index DB makes every sweep drain trivially whether or not the pull failed, so "queue empty"
+only becomes "bodies delivered" once a pull has reported that it actually delivered.
+
+`LAST_CRDT_SWEEP_AT` itself is written by `stampSweptVault()` when the paced drain has finished the
+vault — nothing in flight, nothing queued, nothing owed back to the pending set — not when the
+sweep enqueued it. `unstampedSweepAt` holds the throttle interval closed in between, so a process
+killed mid-drain does not leave a stamp claiming a drain that never completed.
+
+**Releasing the elevated session** is a resource concern, and takes any of these paths:
+
+| Path                           | Trigger                                                                                           | Reason logged  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- | -------------- |
+| Completion                     | `maybeMarkBootstrapFullText()` — all four gates hold                                              | `completed`    |
+| Stalled drain                  | Empty paced queue, nothing in flight — whether the drain finished or ended owing notes back       | `idle`         |
+| Blocked drain, terminal        | No `crdtProvider`; fixed for the engine's life, so the block cannot lift and the dwell is skipped | `idle`         |
+| Blocked drain, transient       | Blocked continuously for `BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS` = 2 minutes                           | `idle`         |
+| Run threw                      | The `catch` in `run()`, which also abandons the telemetry window if no pull had resolved yet      | `failed`       |
+| Vault switch / runtime restart | `dispose()`                                                                                       | `vault_switch` |
+
+The dwell is what separates the two blocked cases. A network block lifts by itself constantly, so
+cutting the session on a first blocked tick would revert pacing in the middle of a bootstrap that
+is about to resume; a missing CRDT provider never lifts, so waiting buys nothing. An active
+`fullSyncActive` is exempt from the blocked check entirely.
+
+`dispose()` also abandons the bootstrap telemetry window — but only one this runner owns
+(`bootstrapWindowOwned`). The window is a module global and `beginBootstrap` no-ops while one is
+set, so an unconditional abandon during a vault switch would delete the _incoming_ vault's window:
+`downloadRemoteVault` arms it before `selectVault` closes the outgoing engine.
+
+On every path, local state is cleared **first** — the token is captured, then
+`clearBootstrapSessionState()` runs and notifies the factor listeners, so pacing reverts in the same
+tick. The `POST /sync/bootstrap/close` call follows best-effort with the captured token, and its
+failure is logged at debug: the token dies on its own TTL, so a lost close request is harmless. The
+reason is local; it is logged and never sent.
 
 ### What the open response carries
 
@@ -1009,9 +1105,12 @@ Besides the session, `POST /sync/bootstrap` answers with:
   start and a client must not treat the page as a complete inventory. URLs come from
   `POST /sync/attachments/presign-batch`, which keeps this response bounded no matter how
   attachment-heavy the vault is.
-- `packs` — reserved, and always an empty array. Pack discovery is
-  [`GET /sync/packs`](#pack-discovery); the field exists so the shape did not have
-  to change when the pack pipeline landed.
+- `packs` — always an empty array, and now permanently so. The route returns `packs: []`
+  unconditionally. It was reserved so the pack pipeline could plug in without a protocol change,
+  but the pipeline did not use it: the client discovers packs through
+  [`GET /sync/packs`](#pack-discovery) instead, and reads this field only to log its length. It is
+  dead weight in `BootstrapOpenResponseSchema` — it cannot be removed without a contract change, so
+  it stays, but nothing should be built on it.
 
 ## Presigned R2 Transfers
 
@@ -1079,12 +1178,20 @@ Two properties of the upload direction follow from the Worker not seeing the byt
 
 ### Configuration and the graceful fallback
 
-| Binding                | Kind   | Value                                                       |
-| ---------------------- | ------ | ----------------------------------------------------------- |
-| `R2_ACCESS_KEY_ID`     | secret | R2 API token scoped to the bucket, Object Read & Write only |
-| `R2_SECRET_ACCESS_KEY` | secret | Its secret                                                  |
-| `R2_S3_ENDPOINT`       | var    | `https://<account-id>.r2.cloudflarestorage.com`             |
-| `R2_S3_BUCKET`         | var    | **The bucket bound as `STORAGE` in `wrangler.toml`**        |
+| Binding                | Value                                                |
+| ---------------------- | ---------------------------------------------------- |
+| `R2_ACCESS_KEY_ID`     | R2 API token id                                      |
+| `R2_SECRET_ACCESS_KEY` | Its secret                                           |
+| `R2_S3_ENDPOINT`       | `https://<account-id>.r2.cloudflarestorage.com`      |
+| `R2_S3_BUCKET`         | **The bucket bound as `STORAGE` in `wrangler.toml`** |
+
+**None of the four is declared in `wrangler.toml`** — there is no `[vars]`, `[env.staging.vars]` or
+`[env.production.vars]` entry for any of them. They appear only in `.dev.vars.example` and in the
+`Bindings` type in `src/types.ts`. All four are therefore supplied per environment out of band, and
+the usual var-versus-secret split does not apply to any of them; the table above deliberately does
+not claim one. Scoping the API token narrowly — one bucket, Object Read & Write — is a sound
+deployment practice and nothing in the code checks it, so it is a recommendation, not an invariant
+the Worker can enforce.
 
 `resolveR2PresignConfig` returns null unless all four are present, the endpoint parses as a URL,
 its protocol is `https:`, and it has a host. A trailing slash on the endpoint is normalised away,
@@ -1172,8 +1279,18 @@ TOML.
 
 **Migrations** apply on deploy. There are two independent files numbered 0007 — `0007_pack_index`
 and `0007_bootstrap_sessions` — plus `0008_upload_sessions_presigned_chunks`. All three are
-additive: two new empty tables, two new indexes, one nullable column with no backfill. A server
-running the previous code against the migrated schema behaves exactly as it did.
+additive:
+
+| File                                    | Adds                                                                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `0007_pack_index`                       | Tables `pack_index`, `pack_watermarks`; indexes `idx_pack_user_vault_cursor`, `idx_pack_user_vault_min`, and `idx_crdt_snapshots_created` |
+| `0007_bootstrap_sessions`               | Table `bootstrap_sessions`; indexes `idx_bootstrap_sessions_user_expires`, `idx_bootstrap_sessions_vault`                                 |
+| `0008_upload_sessions_presigned_chunks` | Nullable column `upload_sessions.presigned_chunks`, deliberately not backfilled                                                           |
+
+Three new empty tables, five new indexes, one nullable column. Only `idx_crdt_snapshots_created`
+touches a pre-existing table — it indexes `crdt_snapshots(user_id, vault_id, created_at)` so pack
+selection can scan snapshots above the watermark. A server running the previous code against the
+migrated schema behaves exactly as it did.
 
 ### Telemetry event schema first, then the desktop build
 

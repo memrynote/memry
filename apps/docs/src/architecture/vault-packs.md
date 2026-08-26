@@ -120,15 +120,20 @@ At-least-once queue delivery means every step has to tolerate re-running:
    object, and an R2 put is idempotent.
 3. `pack_index` carries `UNIQUE (user_id, vault_id, item_kind, min_cursor)`, so a duplicate insert
    is a no-op.
-4. The order is **object → D1 row → watermark**. A crash between 1 and 2 leaves an orphan pack
-   object — harmless invisible bytes. A crash before the watermark only causes an idempotent
-   rebuild.
+4. The order is **object → D1 row → watermark**: `storage.put(packKey, built.bytes)`, then
+   `insertPackIndexRow(...)`, then `advanceWatermark(...)`. A crash inside that ordering is why the
+   first three properties have to hold. Between the PUT and the row it leaves an orphan pack object
+   — harmless invisible bytes, since only a `pack_index` row makes a pack listable. Between the row
+   and the watermark it costs an idempotent rebuild that lands on the UNIQUE constraint.
 
-One known residual: a window whose every source blob vanished mid-flight advances its watermark
-_without_ writing a `pack_index` row. If an earlier attempt of that same range crashed after its
-PUT but before its row, the object at the deterministic key now has no row pointing at it and can
-never be listed — permanently dead bytes. Harmless today, and the concrete case a future sweep
-(list `packs/<kind>/` objects with no matching row, delete) should cover.
+One known residual: a window whose every source blob turned out to be a hole writes no pack and
+advances its watermark _without_ a `pack_index` row. If an earlier attempt of that same range
+crashed in the PUT-to-row window, the object at the deterministic key now has no row pointing at it
+and can never be listed — permanently dead bytes. Harmless today, and the concrete case a future
+sweep should cover. Such a sweep has to list the real key, which `packObjectKey` builds as
+`<userId>/vaults/<vaultId>/packs/<kind>/<minSortValue>_<maxSortValue>.pack` — the vault prefix is
+deliberate, so vault deletion's prefix purge already reaches these objects, and a sweep listing a
+bare `packs/<kind>/` prefix would match nothing.
 
 ### Holes
 
@@ -200,19 +205,34 @@ after the bootstrap session opens and before the item-granular pull. It is await
 fired off, because it writes into the same Y.Docs and the same databases the pull is about to
 touch.
 
-1. **Discover.** Walk `GET /sync/packs?limit=50` newest-first, at most 20 pages. Keep only packs
-   that are `crdt_snapshot`, carry a `url`, carry an `expiresAt`, and whose expiry is more than 30
+1. **Discover.** Walk `GET /sync/packs` newest-first at `PACK_LIST_PAGE_LIMIT` = 50 per page, for
+   at most `MAX_PACK_LIST_PAGES` = 20 pages. Keep only packs that are `crdt_snapshot`, carry a
+   `url`, carry an `expiresAt`, and whose expiry is more than `PRESIGN_EXPIRY_SAFETY_SECONDS` = 30
    seconds away. Packs at or below a previous run's `PACKS_APPLIED_THROUGH_CURSOR` are dropped
    before anything transfers.
-2. **Transfer.** Up to 3 packs concurrently, newest cursor range first, paced through the same
-   `DownloadPacer` the attachment queue uses at `PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE` = 60
-   divided by the bootstrap elevation factor. Each pack streams to a temp file under
-   `userData/sync-packs`; a partial file is resumed with `Range: bytes=<have>-` rather than
-   restarted, and a server that ignores the Range and answers 200 restarts cleanly. Body chunks go
-   straight to the file handle — a pack is never materialised as one buffer.
-3. **Read.** `openPackFile` probes the footer, checks header and footer magic and version, verifies
-   the whole-payload sha256 in 256 KB chunks, and decodes the index block. Nothing proportional to
-   the file is ever held in memory.
+2. **Transfer.** Up to `MAX_PARALLEL_PACK_DOWNLOADS` = 3 packs concurrently, newest cursor range
+   first, paced through the same `DownloadPacer` the attachment queue uses at
+   `PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE` = 60. Elevation **multiplies** that ceiling —
+   `effectiveMaxRequests` is `Math.max(1, Math.floor(maxRequests * multiplier))` — so a bootstrap
+   run paces at 60 × 5 = 300 requests/minute and a run with no session paces at 60. The factor is
+   read exactly once, when the pacer is constructed, and the pacer deliberately does not subscribe
+   to `onBootstrapElevationChange`: a session that ends mid-run only ever narrows the factor back
+   toward the base, and pack transfers are one large object each rather than thousands of small
+   ones, so the ceiling is a runaway-resume guard rather than the shaping force.
+   The pacer governs the pack transfers themselves, which are presigned GETs straight to R2 and
+   therefore hit no Worker bucket at all. The `GET /sync/packs` listing that precedes them is not
+   paced and spends the ordinary `sync_packs` bucket, which a bootstrap session does not elevate.
+   Each pack streams to a temp file under `userData/sync-packs`; a partial file is resumed with
+   `Range: bytes=<have>-` rather than restarted, and a server that ignores the Range and answers
+   200 restarts cleanly. Body chunks go straight to the file handle — a pack is never materialised
+   as one buffer.
+3. **Read.** `openPackFile` opens the temp file and hands it to `openPack`, which reads the footer
+   tail, then the header, bounds-checks `indexOffset` and `entryCount`, caps and decodes the index
+   block, bounds-checks every entry against the payload region, and finally verifies the
+   whole-payload sha256 by streaming the region in `PACK_READ_CHUNK_BYTES` = 256 KB chunks. A
+   structurally bad pack is therefore rejected after it has been read, not before it is opened —
+   what the streaming reader guarantees is that nothing proportional to the file is ever held in
+   memory, not that a bad file is diagnosed without touching it.
 4. **Apply.** For each `crdt_snapshot` entry with a well-formed `{sequenceNum, revision}` meta: ask
    the local snapshot watermark whether these bytes are still worth applying, read that entry's
    slice, verify it against the index's per-entry digest, decrypt, verify the Ed25519 signature,
@@ -277,23 +297,23 @@ immediately. The pack watermark gates pack work and nothing else.
 Every one of these ends the pack path quietly, leaves the cursor untouched, surfaces nothing to the
 user, and falls back to the item-granular bootstrap. A bad pack is never fatal.
 
-| Failure                                                                  | Scope      | Result                                                   |
-| ------------------------------------------------------------------------ | ---------- | -------------------------------------------------------- |
-| `GET /sync/packs` 404 (old server)                                       | Whole run  | Empty listing → item-granular                            |
-| Any non-2xx: 501, 429, 5xx, offline                                      | Whole run  | Empty listing → item-granular                            |
-| Response fails `PackListResponseSchema`                                  | Whole run  | Empty listing → item-granular                            |
-| Zero packs, or none above the watermark                                  | Whole run  | Returns immediately, `usedPacks: false`                  |
-| No access token, or temp dir cannot be created                           | Whole run  | Returns immediately                                      |
-| No CRDT store (in-memory provider)                                       | Whole run  | Returns — bodies rebuild from vault markdown instead     |
-| Pack has no `url` (deployment cannot presign)                            | That pack  | Filtered out at listing time                             |
-| `url` expired and re-listing could not re-sign                           | That pack  | Skipped                                                  |
-| Transfer fails, or aborts                                                | That pack  | Skipped; temp file discarded                             |
-| Bad footer magic, wrong version, truncated file, payload digest mismatch | That pack  | Discarded unopened; every item in it stays item-granular |
-| Entry is not `crdt_snapshot`                                             | That entry | Counted as skipped                                       |
-| Entry meta missing or malformed `{sequenceNum, revision}`                | That entry | Freshness unprovable → item GET                          |
-| Local watermark already at or beyond the entry                           | That entry | Counted as skipped — packed bytes are stale              |
-| Per-entry checksum mismatch                                              | That entry | Counted as failed → item GET                             |
-| Decrypt failure, or no registered key verifies                           | That entry | Counted as failed → item GET                             |
+| Failure                                                                  | Scope      | Result                                                             |
+| ------------------------------------------------------------------------ | ---------- | ------------------------------------------------------------------ |
+| `GET /sync/packs` 404 (old server)                                       | Whole run  | Empty listing → item-granular                                      |
+| Any non-2xx: 501, 429, 5xx, offline                                      | Whole run  | Empty listing → item-granular                                      |
+| Response fails `PackListResponseSchema`                                  | Whole run  | Empty listing → item-granular                                      |
+| Zero packs, or none above the watermark                                  | Whole run  | Returns immediately, `usedPacks: false`                            |
+| No access token, or temp dir cannot be created                           | Whole run  | Returns immediately                                                |
+| No CRDT store (in-memory provider)                                       | Whole run  | Returns — bodies rebuild from vault markdown instead               |
+| Pack has no `url` (deployment cannot presign)                            | That pack  | Filtered out at listing time                                       |
+| `url` expired and re-listing could not re-sign                           | That pack  | Skipped                                                            |
+| Transfer fails, or aborts                                                | That pack  | Skipped; temp file discarded                                       |
+| Bad footer magic, wrong version, truncated file, payload digest mismatch | That pack  | `openPack` throws; discarded, every item in it stays item-granular |
+| Entry is not `crdt_snapshot`                                             | That entry | Counted as skipped                                                 |
+| Entry meta missing or malformed `{sequenceNum, revision}`                | That entry | Freshness unprovable → item GET                                    |
+| Local watermark already at or beyond the entry                           | That entry | Counted as skipped — packed bytes are stale                        |
+| Per-entry checksum mismatch                                              | That entry | Counted as failed → item GET                                       |
+| Decrypt failure, or no registered key verifies                           | That entry | Counted as failed → item GET                                       |
 
 Temp files never survive: success, failure and abort all discard them.
 
