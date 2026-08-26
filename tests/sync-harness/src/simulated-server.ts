@@ -82,6 +82,20 @@ export class SimulatedServer {
     return this.mf.dispatchFetch(url, init)
   }
 
+  /**
+   * Run the Worker's scheduled handler.
+   *
+   * The pack pipeline (#1839) reaches vaults two ways: the queue consumer and
+   * the cron backfill. The backfill is the one a harness can drive without a
+   * Queues binding, so this is how an E2E gets real packs built by the real
+   * Worker against the real D1 ledger.
+   */
+  async triggerScheduled(cron = '0 */6 * * *'): Promise<void> {
+    if (!this.mf) throw new Error('Server not started')
+    const worker = await this.mf.getWorker()
+    await worker.scheduled({ cron })
+  }
+
   async getD1(): Promise<D1Database> {
     if (!this.mf) throw new Error('Server not started')
     return this.mf.getD1Database('DB')
