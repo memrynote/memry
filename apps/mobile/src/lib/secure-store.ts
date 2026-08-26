@@ -130,6 +130,10 @@ export async function clearDeviceSigningKeypair(vaultId: string): Promise<void> 
 
 // -- stable device identifier -----------------------------------------------
 
+export async function clearDeviceId(): Promise<void> {
+  await SecureStore.deleteItemAsync(DEVICE_ID_KEY, OPTIONS)
+}
+
 export async function getOrCreateDeviceId(): Promise<string> {
   const existing = await SecureStore.getItemAsync(DEVICE_ID_KEY, OPTIONS)
   if (existing !== null) return existing

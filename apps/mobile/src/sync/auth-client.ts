@@ -204,3 +204,7 @@ export async function saveCurrentVaultId(vaultId: string): Promise<void> {
 export async function loadCurrentVaultId(): Promise<string | null> {
   return SecureStore.getItemAsync(CURRENT_VAULT_KEY, OPTIONS)
 }
+
+export async function clearCurrentVaultId(): Promise<void> {
+  await SecureStore.deleteItemAsync(CURRENT_VAULT_KEY, OPTIONS)
+}

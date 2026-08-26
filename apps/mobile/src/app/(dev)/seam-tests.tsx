@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
+import { wipeDeviceState } from '@/lib/dev-wipe'
 import {
   runMobileConformance,
   runPullPipelineRoundTrip,
@@ -17,6 +18,32 @@ export default function SeamTestsScreen() {
   const [busy, setBusy] = useState(false)
   const [step, setStep] = useState<string | null>(null)
   const [crash, setCrash] = useState<string | null>(null)
+  const [wipeState, setWipeState] = useState<string | null>(null)
+
+  const confirmWipe = useCallback(() => {
+    Alert.alert(
+      'Wipe device state?',
+      'Clears the session, vault keys, device id and all local vault data. ' +
+        'Kill and relaunch the app right after — the next launch is a first launch.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Wipe',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await wipeDeviceState()
+                setWipeState('Wiped — now kill and relaunch the app.')
+              } catch (err) {
+                setWipeState(`Wipe failed: ${err instanceof Error ? err.message : String(err)}`)
+              }
+            })()
+          }
+        }
+      ]
+    )
+  }, [])
 
   const runAll = useCallback(() => {
     setBusy(true)
@@ -76,6 +103,17 @@ export default function SeamTestsScreen() {
           {crash ? <ThemedText type="smallBold">💥 round-trip threw: {crash}</ThemedText> : null}
           {render('Conformance', conformance)}
           {render('Pull round-trip', roundTrip)}
+          <ThemedText type="title">Danger zone</ThemedText>
+          <Pressable
+            style={styles.button}
+            onPress={confirmWipe}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Wipe device state"
+          >
+            <ThemedText type="smallBold">Wipe device state (sign-out + delete vaults)</ThemedText>
+          </Pressable>
+          {wipeState ? <ThemedText type="small">{wipeState}</ThemedText> : null}
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
