@@ -41,6 +41,9 @@ function wrangler(wranglerArgs, { capture = false } = {}) {
   const result = spawnSync('wrangler', wranglerArgs, {
     cwd: SYNC_SERVER_DIR,
     encoding: 'utf8',
+    // Default maxBuffer is 1MB; the R2 key query's JSON output exceeds it once
+    // staging holds a few thousand sync items (spawnSync fails with ENOBUFS).
+    maxBuffer: 256 * 1024 * 1024,
     stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit'
   })
   if (result.error) throw result.error
