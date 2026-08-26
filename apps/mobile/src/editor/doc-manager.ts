@@ -59,8 +59,16 @@ export interface DocStore {
    * merely well-ordered.
    */
   withCommit?<T>(fn: () => Promise<T>): Promise<T>
-  /** Fold the local half into a snapshot once it has grown past `threshold`. */
-  compactLocal?(docId: string, snapshot: Uint8Array, upToSeq: number): Promise<void>
+  /**
+   * Fold the local half into a snapshot once it has grown past the threshold.
+   *
+   * The store decides WHICH sequence it folded to, inside its own transaction:
+   * the doc manager only counts loose updates, and handing that count over as
+   * a sequence is how the first fold prunes nothing and the local half then
+   * grows without bound. Safe because guest updates are persisted one at a
+   * time, so nothing is appended between the snapshot and the fold.
+   */
+  compactLocal?(docId: string, snapshot: Uint8Array): Promise<void>
 }
 
 export interface OutboxSink {
@@ -211,9 +219,8 @@ export class EditorDocManager {
     const maybeCompact = async (): Promise<void> => {
       if (!store.compactLocal || looseLocal < LOCAL_COMPACT_THRESHOLD) return
       const snapshot = Y.encodeStateAsUpdate(doc)
-      const folded = looseLocal
       try {
-        await store.compactLocal(docId, snapshot, folded)
+        await store.compactLocal(docId, snapshot)
         looseLocal = 0
       } catch (err) {
         // Compaction is an optimisation; a failure must not lose the update

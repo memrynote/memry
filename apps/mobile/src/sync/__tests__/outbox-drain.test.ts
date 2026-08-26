@@ -71,16 +71,26 @@ function queue(rows: OutboxRow[]) {
  * to exercise the real request-building, the real response parsing and the
  * real accept/reject attribution without a server.
  */
-function transport(handler: (path: string, body: unknown) => unknown) {
+interface FakeResponse {
+  status?: number
+  payload: unknown
+}
+
+function transport(handler: (path: string, body: unknown) => unknown | FakeResponse) {
   const seen: { path: string; body: unknown }[] = []
   const http: SyncHttpClient = {
     async request(req) {
       // `seamJsonRequest` sends a JSON STRING, not bytes.
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : null
       seen.push({ path: req.path, body })
-      const payload = handler(req.path, body)
+      const answer = handler(req.path, body) as FakeResponse & Record<string, unknown>
+      // A STATUS, not a thrown error: `seamJsonRequest` wraps anything the
+      // transport throws in a NetworkError, which would make an error-code
+      // assertion pass for the wrong reason.
+      const status = typeof answer?.status === 'number' ? answer.status : 200
+      const payload = 'payload' in (answer ?? {}) ? answer.payload : answer
       return {
-        status: 200,
+        status,
         headers: { 'content-type': 'application/json' },
         body: new TextEncoder().encode(JSON.stringify(payload))
       }
@@ -220,11 +230,66 @@ describe('OutboxDrain per-item coalescing', () => {
   })
 })
 
-describe('SyncServerError policy codes', () => {
-  it('treats 403 and 426 as policy, not as transient failure', () => {
-    const forbidden = new SyncServerError('nope', 403, 'PLATFORM_WRITES_DISABLED')
-    const upgrade = new SyncServerError('needs 2.0.0', 426, 'CLIENT_UPGRADE_REQUIRED')
-    expect(forbidden.statusCode).toBe(403)
-    expect(upgrade.statusCode).toBe(426)
+describe('OutboxDrain CRDT chunking', () => {
+  it("splits a note's queued updates at the server cap", async () => {
+    // The server caps `updates` at 100. One over-sized request is a 400 that
+    // repeats on every drain, so that note's body would never sync again.
+    const rows = Array.from({ length: 250 }, (_, i) =>
+      row({
+        id: i + 1,
+        itemType: 'note:crdt',
+        op: 'crdt-update',
+        payload: new Uint8Array([i % 251])
+      })
+    )
+    const { store, completed, failed } = queue(rows)
+    const { http, seen } = transport(() => ({ sequences: [] }))
+
+    await drain(store, http).drain()
+
+    const requests = seen.filter((r) => r.path === '/sync/crdt/updates')
+    expect(requests).toHaveLength(3)
+    for (const request of requests) {
+      expect((request.body as { updates: string[] }).updates.length).toBeLessThanOrEqual(100)
+    }
+    expect(completed).toHaveLength(250)
+    expect(failed).toHaveLength(0)
+  })
+})
+
+describe('OutboxDrain server rejections', () => {
+  it('parks on a policy code', async () => {
+    const { store, failed } = queue([row({ id: 30 })])
+    const { http } = transport(() => ({
+      status: 403,
+      payload: { error: { code: 'PLATFORM_WRITES_DISABLED', message: 'writes off' } }
+    }))
+
+    const result = await drain(store, http).drain()
+
+    expect(result.parked).toBe(true)
+    expect(getReadOnlyState().readOnly).toBe(true)
+    // Parked rows must not accrue backoff for a condition they did not cause,
+    // or the first pass after the switch clears sits idle.
+    expect(failed).toHaveLength(0)
+
+    applyClientPolicy({ platform: 'ios', writesEnabled: true }, '1.0.0')
+  })
+
+  it('does NOT park on a 403 that is not a policy code', async () => {
+    const { store, failed } = queue([row({ id: 20 })])
+    // A 403 that is NOT a policy code: a revoked device, a quota refusal.
+    // Parking on it sets no read-only state and records no backoff, so the
+    // outbox stops draining with no symptom anywhere.
+    const { http } = transport(() => ({
+      status: 403,
+      payload: { error: { code: 'AUTH_DEVICE_REVOKED', message: 'device revoked' } }
+    }))
+
+    const result = await drain(store, http).drain()
+
+    expect(result.parked).toBe(false)
+    expect(getReadOnlyState().readOnly).toBe(false)
+    expect(failed.flatMap((f) => f.ids)).toContain(20)
   })
 })

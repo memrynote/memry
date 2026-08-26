@@ -16,6 +16,22 @@ import type { GuestBridge } from './bridge.ts'
 
 const OPEN_TOKEN = '[['
 
+/**
+ * Wait this long after the last keystroke before asking RN for candidates.
+ *
+ * The host answers with a scan over every note's payload, so a query per
+ * keystroke is a full table scan per keystroke — on the one code path that has
+ * to stay under a 50 ms budget.
+ */
+const QUERY_DEBOUNCE_MS = 120
+
+/**
+ * A wiki link target has no newline in it, and a run of spaces means the user
+ * typed `[[` and moved on. Without this the menu stays open for the rest of
+ * the paragraph, re-querying the whole vault as they type.
+ */
+const ABANDONED_QUERY = /\n|\s{2,}/
+
 export function installWikiLinkNavigation(root: HTMLElement, bridge: GuestBridge): () => void {
   const onPointerUp = (event: Event): void => {
     const target = event.target
@@ -76,8 +92,13 @@ export function installWikiLinkAutocomplete(
 
   let state: AutocompleteState | null = null
   let reqCounter = 0
+  let debounce: ReturnType<typeof setTimeout> | null = null
 
   const close = (): void => {
+    if (debounce !== null) {
+      clearTimeout(debounce)
+      debounce = null
+    }
     state = null
     menu.hidden = true
     menu.replaceChildren()
@@ -133,14 +154,26 @@ export function installWikiLinkAutocomplete(
     }
     const query = text.slice(openAt + OPEN_TOKEN.length)
     // A completed `[[X]]` is not an open menu — it is a link the user finished
-    // typing by hand, which the spec's own parse rule promotes.
-    if (query.includes(']]') || parseWikiLinkText(text.slice(openAt))) {
+    // typing by hand, which the spec's own parse rule promotes. A query that
+    // has run away into ordinary prose is not one either.
+    if (
+      query.includes(']]') ||
+      ABANDONED_QUERY.test(query) ||
+      parseWikiLinkText(text.slice(openAt))
+    ) {
       close()
       return
     }
+
     const reqId = `w${++reqCounter}`
     state = { query, reqId }
-    bridge.send({ type: 'wiki-query', reqId, query })
+    if (debounce !== null) clearTimeout(debounce)
+    debounce = setTimeout(() => {
+      debounce = null
+      // Only if this is still the query the user is typing: a stale request
+      // would repaint the menu with results for text that is already gone.
+      if (state?.reqId === reqId) bridge.send({ type: 'wiki-query', reqId, query })
+    }, QUERY_DEBOUNCE_MS)
   }
 
   const onKeyDown = (event: KeyboardEvent): void => {

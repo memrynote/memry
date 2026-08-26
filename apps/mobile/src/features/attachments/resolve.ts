@@ -77,16 +77,24 @@ export async function resolveAsset(
   let match = candidates.find((row) => row.filename === wanted)?.itemId
 
   if (!match) {
-    // Nothing local names this file yet. Pull the ones we have not seen, under
-    // the same Wi-Fi-only policy as any other download, and try again.
+    // Nothing local names this file yet, so the blobs have to be identified by
+    // downloading their manifests. ONE AT A TIME, stopping at the first match:
+    // a note with twenty embeds would otherwise download all twenty to render
+    // its first picture — on a phone, on the user's data plan.
     const unknown = ids.filter((id) => !candidates.some((row) => row.itemId === id))
     let anyPending = false
     for (const id of unknown) {
       const availability = await deps.transfer.ensureLocal(id, options)
-      if (availability === 'pending') anyPending = true
+      if (availability === 'pending') {
+        anyPending = true
+        continue
+      }
+      const record = await deps.transfer.getRecord(id)
+      if (record?.filename === wanted) {
+        match = id
+        break
+      }
     }
-    candidates = await knownFilenames(deps.db, ids)
-    match = candidates.find((row) => row.filename === wanted)?.itemId
     if (!match) return anyPending ? { status: 'pending' } : { status: 'missing' }
   }
 

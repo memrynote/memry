@@ -88,9 +88,22 @@ export function EditorView({
   // from a previous note is identifiable in a log rather than merely wrong.
   const bridge = useMemo(() => new EditorBridgeProvider(`rn-${doc.docId}`), [doc.docId])
 
-  // Every persist started by a guest update, so a flush can wait for them. The
-  // WebView round trip is several async hops; a drain fired immediately after
-  // `exec:flush` reads the outbox before the last keystroke has reached it.
+  /**
+   * Guest updates are persisted STRICTLY IN ORDER, one at a time.
+   *
+   * A single 24 ms envelope can carry several `y-update` messages, and running
+   * their persists concurrently races `SELECT MAX(seq)` against the local
+   * table's `PRIMARY KEY (doc_id, seq)` — and opens overlapping
+   * `withTransactionAsync` blocks on one expo-sqlite connection, which throws.
+   * The losers were caught and logged, so those keystrokes lived in memory and
+   * were never persisted or enqueued: silent loss on exactly the fast typing
+   * the batching exists to handle.
+   */
+  const persistChain = useRef<Promise<void>>(Promise.resolve())
+
+  // Tracks the tail of that chain so a flush can wait for it. The WebView round
+  // trip is several async hops; a drain fired immediately after `exec:flush`
+  // reads the outbox before the last keystroke has reached it.
   const inFlight = useRef(new Set<Promise<void>>())
 
   // Always instrumented: the recorder costs two Date.now() calls per update,
@@ -219,7 +232,7 @@ export function EditorView({
           // Sequential, and awaited: `applyFromGuest` is what makes the update
           // durable, and overlapping calls would race the local sequence.
           const deliveryMs = bridge.getLastDeliveryMs()
-          const work = (async () => {
+          const work = persistChain.current.then(async () => {
             for (const b64 of msg.updatesB64) {
               try {
                 await recorder.record(deliveryMs, () => doc.applyFromGuest(base64ToBytes(b64)))
@@ -230,7 +243,9 @@ export function EditorView({
                 })
               }
             }
-          })()
+          })
+          // The chain must never reject, or every later update is skipped.
+          persistChain.current = work.catch(() => undefined)
           inFlight.current.add(work)
           void work.finally(() => inFlight.current.delete(work))
           break

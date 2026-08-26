@@ -93,13 +93,18 @@ export function createVaultDocStore(db: VaultDb): DocStore {
       return result!
     },
 
-    async compactLocal(docId, snapshot, upToSeq) {
+    async compactLocal(docId, snapshot) {
       await db.withTransactionAsync(async () => {
+        // The fold point is read here, inside the transaction, rather than
+        // taken from the caller: the caller only knows how many updates it has
+        // seen, and a COUNT used as a SEQUENCE prunes nothing after the first
+        // fold. Nothing can be appended in between because guest updates are
+        // persisted strictly one at a time.
         const row = await db.getFirstAsync<{ max_seq: number | null }>(
           'SELECT MAX(seq) AS max_seq FROM yjs_updates WHERE doc_id = ?',
           [localId(docId)]
         )
-        const folded = Math.min(row?.max_seq ?? 0, upToSeq)
+        const folded = row?.max_seq ?? 0
         await db.runAsync(
           `INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES (?, ?, ?, ?)
            ON CONFLICT(doc_id) DO UPDATE SET snapshot = excluded.snapshot, last_seq = excluded.last_seq, compacted_at = excluded.compacted_at`,

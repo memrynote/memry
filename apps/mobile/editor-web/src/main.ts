@@ -106,18 +106,7 @@ function mountDoc(docId: string, stateB64: string, seedMarkdown?: string): void 
   }
 
   const fragment = doc.getXmlFragment(BRIDGE_FRAGMENT_NAME)
-  const editor = BlockNoteEditor.create({
-    schema,
-    collaboration: {
-      fragment,
-      // No remote cursors are ever shown here — one person, one device, one
-      // doc — but the field is required, so it carries the local identity and
-      // nothing else.
-      user: { name: 'You', color: '#ff671a' }
-    },
-    trailingBlock: true,
-    animations: false
-  })
+  const editor = createEditor(fragment)
 
   root.replaceChildren()
   editor.mount(root)

@@ -31,18 +31,42 @@ export interface NotePayload {
   [unknownFieldsFromNewerClients: string]: unknown
 }
 
-export async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
-  const row = await db.getFirstAsync<{ payload: string | null }>(
-    'SELECT payload FROM sync_items WHERE id = ? AND type IN (?, ?)',
+/** Item types the note editor can open. */
+export type EditableItemType = 'note' | 'journal'
+
+interface StoredNote {
+  type: EditableItemType
+  payload: NotePayload
+}
+
+/**
+ * Read a note (or journal) with its ACTUAL item type.
+ *
+ * The type has to travel with the payload: journals are editable through the
+ * same screen — a wiki link reaches one — and server uniqueness is
+ * `(user_id, vault_id, item_type, item_id)`. Pushing a journal edit as a
+ * `note` therefore INSERTS a phantom row instead of updating the journal, and
+ * the real entry never changes on any device.
+ */
+async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote | null> {
+  const row = await db.getFirstAsync<{ type: string; payload: string | null }>(
+    'SELECT type, payload FROM sync_items WHERE id = ? AND type IN (?, ?)',
     [noteId, 'note', 'journal']
   )
   if (!row?.payload) return null
   try {
-    return JSON.parse(row.payload) as NotePayload
+    return {
+      type: row.type === 'journal' ? 'journal' : 'note',
+      payload: JSON.parse(row.payload) as NotePayload
+    }
   } catch {
     log.warn('Note payload is not JSON; refusing to edit it', { noteId })
     return null
   }
+}
+
+export async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
+  return (await readStoredNote(db, noteId))?.payload ?? null
 }
 
 async function writeNotePayload(
@@ -55,6 +79,24 @@ async function writeNotePayload(
     `UPDATE sync_items SET payload = ?, payload_state = 'full', updated_at = ? WHERE id = ?`,
     [JSON.stringify(payload), updatedAt, noteId]
   )
+}
+
+/**
+ * The local write and its queue row, in ONE transaction.
+ *
+ * Same rule the editor's own persist path follows: a kill between the two
+ * leaves a change the user can see on this device and that nothing will ever
+ * push — invisible, and permanent.
+ */
+async function writeAndEnqueue(
+  ctx: NoteOpsContext,
+  write: () => Promise<void>,
+  enqueue: () => Promise<void>
+): Promise<void> {
+  await ctx.db.withTransactionAsync(async () => {
+    await write()
+    await enqueue()
+  })
 }
 
 export interface NoteOpsContext {
@@ -75,16 +117,23 @@ export async function updateNote(
   noteId: string,
   mutate: (payload: NotePayload) => void
 ): Promise<NotePayload | null> {
-  const payload = await readNotePayload(ctx.db, noteId)
-  if (!payload) return null
+  const stored = await readStoredNote(ctx.db, noteId)
+  if (!stored) return null
+  const { type, payload } = stored
 
   mutate(payload)
   const now = Date.now()
   payload.modifiedAt = now
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
+  const serialized = JSON.stringify(payload)
 
-  await writeNotePayload(ctx.db, noteId, payload, now)
-  await ctx.outbox.enqueueRecord('note', noteId, 'update', JSON.stringify(payload))
+  await writeAndEnqueue(
+    ctx,
+    () => writeNotePayload(ctx.db, noteId, payload, now),
+    // The item's OWN type, never a hardcoded 'note': server uniqueness is
+    // (user, vault, item_type, item_id).
+    () => ctx.outbox.enqueueRecord(type, noteId, 'update', serialized)
+  )
   return payload
 }
 
@@ -133,19 +182,19 @@ export async function createNote(
   }
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
 
+  const serialized = JSON.stringify(payload)
   await ctx.db.withTransactionAsync(async () => {
     await ctx.db.runAsync(
       `INSERT INTO sync_items (id, type, vault_id, updated_at, payload_state, payload)
        VALUES (?, 'note', ?, ?, 'full', ?)`,
-      [noteId, ctx.vaultId, now, JSON.stringify(payload)]
+      [noteId, ctx.vaultId, now, serialized]
     )
     await ctx.db.runAsync(
       `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)`,
       [noteId, derivePath(payload), payload.content ?? '', now]
     )
+    await ctx.outbox.enqueueRecord('note', noteId, 'create', serialized)
   })
-
-  await ctx.outbox.enqueueRecord('note', noteId, 'create', JSON.stringify(payload))
   return noteId
 }
 
@@ -155,18 +204,12 @@ export async function createNote(
  * treat the server's copy as new and resurrect it.
  */
 export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<void> {
-  const payload = (await readNotePayload(ctx.db, noteId)) ?? {}
+  const stored = await readStoredNote(ctx.db, noteId)
+  const type = stored?.type ?? 'note'
+  const payload = stored?.payload ?? {}
   const now = Date.now()
   bumpClock(payload as Record<string, unknown>, ctx.deviceId)
-
-  await ctx.db.withTransactionAsync(async () => {
-    await ctx.db.runAsync('UPDATE sync_items SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now,
-      now,
-      noteId
-    ])
-    await ctx.db.runAsync('DELETE FROM note_bodies WHERE item_id = ?', [noteId])
-  })
+  const serialized = JSON.stringify(payload)
 
   // Queued body updates describe a note that no longer exists; sending them
   // after the tombstone resurrects content on the other devices. The local
@@ -174,7 +217,18 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
   // namespace, so `local.<noteId>` would otherwise outlive the note forever.
   await ctx.outbox.dropForItem(noteId)
   await deleteLocalCrdt(ctx.db, noteId)
-  await ctx.outbox.enqueueRecord('note', noteId, 'delete', JSON.stringify(payload))
+
+  await ctx.db.withTransactionAsync(async () => {
+    // The bumped clock is written back with the tombstone. Without it a later
+    // pull sees a clock that never advanced and can treat a remote update as
+    // newer than the delete.
+    await ctx.db.runAsync(
+      'UPDATE sync_items SET deleted_at = ?, updated_at = ?, payload = ? WHERE id = ?',
+      [now, now, serialized, noteId]
+    )
+    await ctx.db.runAsync('DELETE FROM note_bodies WHERE item_id = ?', [noteId])
+    await ctx.outbox.enqueueRecord(type, noteId, 'delete', serialized)
+  })
 }
 
 // --- folders ---------------------------------------------------------------

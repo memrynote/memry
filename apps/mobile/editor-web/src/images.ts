@@ -22,6 +22,7 @@ import { requestAsset } from './assets.ts'
  */
 
 const RESOLVED_ATTR = 'data-asset-resolved'
+const CLAIMED_ATTR = 'data-asset-claimed'
 const REF_ATTR = 'data-asset-ref'
 
 /** Re-ask for pending refs on this schedule, then stop. */
@@ -77,10 +78,14 @@ export function installImageResolver(root: HTMLElement): () => void {
   }
 
   const claim = (img: HTMLImageElement): void => {
-    if (img.hasAttribute(RESOLVED_ATTR)) return
+    if (img.hasAttribute(RESOLVED_ATTR) || img.hasAttribute(CLAIMED_ATTR)) return
     const src = img.getAttribute(REF_ATTR) ?? img.getAttribute('src') ?? ''
     if (src.length === 0 || isAlreadyRenderable(src)) return
 
+    // Marked BEFORE `src` is touched. Removing `src` is itself an attribute
+    // mutation this observer watches, so without the mark the element claims
+    // itself again and every reference is requested twice.
+    img.setAttribute(CLAIMED_ATTR, '')
     // The original reference is parked on the element so a later re-render (or
     // a retry) still knows what to ask for after `src` has been swapped.
     img.setAttribute(REF_ATTR, src)

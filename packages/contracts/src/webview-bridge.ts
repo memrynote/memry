@@ -104,9 +104,7 @@ export const HostAssetSchema = z.object({
    * first-class answer: the guest renders a placeholder with a fetch action
    * instead of a broken image (FR / T072).
    */
-  status: z.enum(['ready', 'pending', 'missing']).default('ready'),
-  /** Bumped when the bytes land, so a late attachment invalidates the cache. */
-  revision: z.number().int().optional()
+  status: z.enum(['ready', 'pending', 'missing']).default('ready')
 })
 
 /**

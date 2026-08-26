@@ -61,7 +61,11 @@ export function NoteProperties({
     <View style={styles.container}>
       {entries.map(([name, value]) => (
         <PropertyRow
-          key={name}
+          // Keyed by the VALUE as well as the name: a pull that changes this
+          // property remounts the row, so its draft starts from the new value.
+          // A draft that survived would be written back on the next blur,
+          // silently overwriting the newer remote value with a stale one.
+          key={`${name}:${formatPropertyValue(value)}`}
           name={name}
           value={value}
           type={inferPropertyType(name, value)}
@@ -107,7 +111,15 @@ function PropertyRow({
   onCommit: (value: unknown) => void
   onRemove: () => void
 }) {
-  const [draft, setDraft] = useState(formatPropertyValue(value))
+  const initial = formatPropertyValue(value)
+  const [draft, setDraft] = useState(initial)
+
+  // Only an actual edit is committed. Blur alone must not write, or merely
+  // focusing a field re-pushes whatever it happened to be showing.
+  const commitIfChanged = (): void => {
+    if (draft === initial) return
+    onCommit(coercePropertyValue(type, draft))
+  }
 
   return (
     <View style={styles.row}>
@@ -126,8 +138,8 @@ function PropertyRow({
           value={draft}
           editable={!readOnly}
           onChangeText={setDraft}
-          onBlur={() => onCommit(coercePropertyValue(type, draft))}
-          onSubmitEditing={() => onCommit(coercePropertyValue(type, draft))}
+          onBlur={commitIfChanged}
+          onSubmitEditing={commitIfChanged}
           keyboardType={type === 'number' ? 'decimal-pad' : 'default'}
           autoCapitalize={type === 'url' ? 'none' : 'sentences'}
           style={styles.value}

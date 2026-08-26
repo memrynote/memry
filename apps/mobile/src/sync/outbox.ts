@@ -135,6 +135,12 @@ export class OutboxStore {
   }
 
   async fail(ids: number[], error: string): Promise<void> {
+    if (ids.length === 0) return
+    const now = Date.now()
+    const message = error.slice(0, 500)
+    // One statement per row, not a read plus a write: the attempt count is
+    // incremented in SQL, and the delay is computed from the row's own count
+    // rather than from one this code had to fetch first.
     for (const id of ids) {
       const row = await this.db.getFirstAsync<{ attempt_count: number }>(
         'SELECT attempt_count FROM outbox WHERE id = ?',
@@ -143,7 +149,7 @@ export class OutboxStore {
       const attempts = (row?.attempt_count ?? 0) + 1
       await this.db.runAsync(
         'UPDATE outbox SET attempt_count = ?, last_error = ?, next_attempt_at = ? WHERE id = ?',
-        [attempts, error.slice(0, 500), Date.now() + backoffDelayMs(attempts), id]
+        [attempts, message, now + backoffDelayMs(attempts), id]
       )
     }
   }
@@ -196,6 +202,17 @@ export function logOutboxDepth(depth: number): void {
 
 /** One drain pass never sends more than this; the server caps a push at 100. */
 const RECORD_BATCH_LIMIT = 100
+
+/**
+ * The server's cap on `updates` in one `POST /sync/crdt/updates`.
+ *
+ * Exceeding it is a 400 that repeats on every drain, so a note edited heavily
+ * offline would never sync its body again.
+ */
+const CRDT_UPDATES_PER_REQUEST = 100
+
+/** Server codes that mean "policy", not "failure" — see `handleFailure`. */
+const POLICY_REJECTION_CODES = new Set(['PLATFORM_WRITES_DISABLED', 'CLIENT_UPGRADE_REQUIRED'])
 const CLAIM_LIMIT = 200
 
 /**
@@ -311,33 +328,46 @@ export class OutboxDrain {
     signingSecretKey: Uint8Array
   ): Promise<{ pushed: number; failed: number; stop: boolean }> {
     const usable = rows.filter((r) => r.payload !== null)
-    if (usable.length === 0) {
-      await this.deps.store.complete(rows.map((r) => r.id))
-      return { pushed: 0, failed: 0, stop: false }
-    }
+    const empty = rows.filter((r) => r.payload === null)
+    if (empty.length > 0) await this.deps.store.complete(empty.map((r) => r.id))
+    if (usable.length === 0) return { pushed: 0, failed: 0, stop: false }
 
-    try {
-      const updates = usable.map((row) =>
-        this.deps.crypto.toBase64(
-          encryptCrdtUpdatePacked(
-            this.deps.crypto,
-            row.payload!,
-            vaultKey,
-            noteId,
-            signingSecretKey
+    let pushed = 0
+
+    // Chunked at the server's own cap. A note edited heavily offline easily
+    // accumulates more than this, and one over-sized request is a 400 that
+    // repeats forever — that note's body would never sync again.
+    for (let i = 0; i < usable.length; i += CRDT_UPDATES_PER_REQUEST) {
+      const chunk = usable.slice(i, i + CRDT_UPDATES_PER_REQUEST)
+      try {
+        const updates = chunk.map((row) =>
+          this.deps.crypto.toBase64(
+            encryptCrdtUpdatePacked(
+              this.deps.crypto,
+              row.payload!,
+              vaultKey,
+              noteId,
+              signingSecretKey
+            )
           )
         )
-      )
-      await seamJsonRequest<{ sequences: number[] }>(this.deps.httpCtx(), {
-        method: 'POST',
-        path: '/sync/crdt/updates',
-        body: { noteId, updates }
-      })
-      await this.deps.store.complete(rows.map((r) => r.id))
-      return { pushed: usable.length, failed: 0, stop: false }
-    } catch (err) {
-      return this.handleFailure(rows, err)
+        await seamJsonRequest<{ sequences: number[] }>(this.deps.httpCtx(), {
+          method: 'POST',
+          path: '/sync/crdt/updates',
+          body: { noteId, updates }
+        })
+        await this.deps.store.complete(chunk.map((r) => r.id))
+        pushed += chunk.length
+      } catch (err) {
+        // Only the rows that did NOT land are failed: the chunks before this
+        // one are already completed, and re-sending them would be a duplicate
+        // (harmless, but it also means their backoff is wrong).
+        const outcome = await this.handleFailure(usable.slice(i), err)
+        return { pushed, failed: outcome.failed, stop: outcome.stop }
+      }
     }
+
+    return { pushed, failed: 0, stop: false }
   }
 
   private async pushRecords(
@@ -467,14 +497,20 @@ export class OutboxDrain {
   ): Promise<{ pushed: number; failed: number; stop: boolean }> {
     const message = err instanceof Error ? err.message : String(err)
 
-    if (err instanceof SyncServerError && (err.statusCode === 403 || err.statusCode === 426)) {
-      const code =
-        err.serverError ??
-        (err.statusCode === 426 ? 'CLIENT_UPGRADE_REQUIRED' : 'PLATFORM_WRITES_DISABLED')
-      applyWriteRejection(code, extractMinVersion(err))
+    // Only the two POLICY codes park. A 403 for any other reason — a revoked
+    // device, a quota refusal — is a plain failure: parking on it would set no
+    // read-only state, record no backoff and surface nothing, so the outbox
+    // would simply stop draining with no symptom at all.
+    const policyCode =
+      err instanceof SyncServerError && POLICY_REJECTION_CODES.has(err.serverError ?? '')
+        ? err.serverError!
+        : null
+
+    if (policyCode) {
+      applyWriteRejection(policyCode, extractMinVersion(err as SyncServerError))
       // No `fail()`: parked rows must not accumulate backoff for a condition
       // they did not cause, or the first pass after the switch clears sits idle.
-      log.warn('Write refused by server policy; outbox parked', { code })
+      log.warn('Write refused by server policy; outbox parked', { code: policyCode })
       return { pushed: 0, failed: 0, stop: true }
     }
 
