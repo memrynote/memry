@@ -525,7 +525,9 @@
       "noResultsFor": "No results for “",
       "result": "result",
       "noResultsForQuery": "No results for “{query}”",
-      "resultCount": "{count, plural, one {# result} other {# results}}"
+      "resultCount": "{count, plural, one {# result} other {# results}}",
+      "indexBuilding": "Building search index {done}/{total} — results may be incomplete",
+      "indexBuildingUnknown": "Building search index — results may be incomplete"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Search and click items to build your trail",

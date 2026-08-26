@@ -1,3 +1,4 @@
+import { reclaimUnusedPresignedChunks } from './presigned-chunk-reclaim'
 import { adjustStorageUsed } from './quota'
 import { IDENTIFY_SESSION_TTL_SECONDS } from './telemetry-identify'
 
@@ -16,6 +17,18 @@ export const cleanupExpiredLinkingSessions = async (db: D1Database): Promise<num
   return result.meta.changes ?? 0
 }
 
+// Bootstrap session ledger rows (#1837) are bookkeeping only — the signed
+// tokens expire themselves — so this sweep reclaims rows that a client never
+// closed and issuance's per-user lazy prune did not reach.
+export const cleanupExpiredBootstrapSessions = async (db: D1Database): Promise<number> => {
+  const now = Math.floor(Date.now() / 1000)
+  const result = await db
+    .prepare('DELETE FROM bootstrap_sessions WHERE expires_at < ?')
+    .bind(now)
+    .run()
+  return result.meta.changes ?? 0
+}
+
 export const cleanupExpiredUploadSessions = async (
   db: D1Database,
   storage: R2Bucket
@@ -24,7 +37,7 @@ export const cleanupExpiredUploadSessions = async (
 
   const stale = await db
     .prepare(
-      `SELECT id, user_id, vault_id, total_size, chunk_count, encrypted_size, uploaded_chunks, r2_upload_id, r2_key
+      `SELECT id, user_id, vault_id, total_size, chunk_count, encrypted_size, uploaded_chunks, presigned_chunks, r2_upload_id, r2_key
        FROM upload_sessions
        WHERE expires_at < ?`
     )
@@ -37,6 +50,7 @@ export const cleanupExpiredUploadSessions = async (
       chunk_count: number
       encrypted_size: number | null
       uploaded_chunks: string
+      presigned_chunks: string | null
       r2_upload_id: string | null
       r2_key: string | null
     }>()
@@ -50,6 +64,14 @@ export const cleanupExpiredUploadSessions = async (
         // Multipart upload may already be completed or expired
       }
     }
+
+    // Presigned PUTs never transited the Worker, so an abandoned session's armed
+    // keys appear in neither `uploaded_chunks` (proxied appends only) nor
+    // `blob_chunks` (written at complete time) — the loop below cannot see them
+    // and `cleanupOrphanedBlobChunks` has no row to reap. Runs first, while
+    // blob_chunks still holds a row for every registered hash: anything real is
+    // skipped and left to the ref_count handling below.
+    await reclaimUnusedPresignedChunks(db, storage, session)
 
     const uploadedChunks = parseUploadedChunkHashes(session.uploaded_chunks)
     for (const hash of uploadedChunks) {

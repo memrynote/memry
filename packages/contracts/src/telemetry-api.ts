@@ -83,7 +83,8 @@ export const TelemetryEventNameSchema = z.enum([
   'deep_link_opened',
   'home_board_customized',
   'reminder_created',
-  'reminder_deleted'
+  'reminder_deleted',
+  'sync_bootstrap'
 ])
 
 export const TelemetrySurfaceSchema = z.enum([
@@ -174,9 +175,11 @@ export const TELEMETRY_DIMENSION_KEYS = [
   'from_version',
   'itemType',
   'log_action',
+  'note_bucket',
   'prior_app_version',
   'result_bucket',
   'setting',
+  'size_bucket',
   'target',
   'target_app_version',
   'tool',

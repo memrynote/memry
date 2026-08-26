@@ -865,6 +865,57 @@ describe('CrdtSyncCoordinator', () => {
     expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
   })
 
+  it('flags every batched note as unmerged for the whole window of its pull', async () => {
+    // #given a record-page batch (#1830): the notes were just applied and are
+    // already visible in the tree, but their server CRDT state has not been
+    // walked yet. Unlike the sweep path, nothing else flags these.
+    const { ctx } = createBatchContext()
+    postToServerMock.mockResolvedValue({
+      notes: {
+        'note-1': { updates: [], hasMore: false },
+        'note-2': { updates: [], hasMore: false }
+      }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when the batch starts
+    const batch = coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
+
+    // #then both notes are flagged synchronously — before the server was ever
+    // asked — so a user who opens a just-listed note mid-initial-sync and
+    // types cannot route a snapshot push to the pruning endpoint in the gap.
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(true)
+    expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(true)
+
+    // #and a clean end-to-end walk clears each one, so the batch leaves no
+    // permanently latched flag costing the vault its compaction points.
+    await batch
+    expect(coordinator.hasUnmergedRemoteState('note-1')).toBe(false)
+    expect(coordinator.hasUnmergedRemoteState('note-2')).toBe(false)
+  })
+
+  it('never flags a local-only note at batch start', async () => {
+    // #given a local-only note in the batch — it is filtered out of the walk,
+    // so a flag raised for it would never be cleared and would blanket the
+    // vault's persisted unmerged-debt key forever
+    const { ctx } = createBatchContext()
+    const provider = ctx.deps.crdtProvider as unknown as {
+      isNoteLocalOnly: ReturnType<typeof vi.fn>
+    }
+    provider.isNoteLocalOnly.mockImplementation((noteId: string) => noteId === 'note-local')
+    postToServerMock.mockResolvedValue({
+      notes: { 'note-synced': { updates: [], hasMore: false } }
+    })
+    const coordinator = new CrdtSyncCoordinator(ctx, vi.fn())
+
+    // #when
+    await coordinator.applyCrdtBatch(['note-local', 'note-synced'], 'token-1', new Uint8Array([4]))
+
+    // #then
+    expect(coordinator.hasUnmergedRemoteState('note-local')).toBe(false)
+    expect(coordinator.hasUnmergedRemoteState('note-synced')).toBe(false)
+  })
+
   it('clears the flag once a later pass verifies every signer', async () => {
     // #given a pass that skipped an update because the signer was unresolvable
     const { ctx } = createBatchContext()

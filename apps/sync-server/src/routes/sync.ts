@@ -10,6 +10,7 @@ import { clientGateMiddleware } from '../middleware/client-gate'
 import { getClientPolicy, toPolicySnapshot } from '../services/client-policies'
 import { paidSyncMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
+import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
 import {
   getChanges,
@@ -20,7 +21,8 @@ import {
   processRecordPushBatch,
   pullItems,
   setVaultName,
-  updateDeviceCursor
+  updateDeviceCursor,
+  type ManifestPage
 } from '../services/sync'
 import {
   ensureSyncVaultAllowed,
@@ -45,6 +47,9 @@ import {
   getSnapshot,
   pruneUpdatesBeforeSnapshot
 } from '../services/crdt'
+import { enqueuePackCompaction } from '../services/pack-compaction'
+import { listPacks } from '../services/pack-list'
+import { resolveR2PresignConfig } from '../services/r2-presign'
 import type { AppContext } from '../types'
 
 export const sync = new Hono<AppContext>()
@@ -210,19 +215,28 @@ const pushRateLimit = createRateLimiter({
 const changesRateLimit = createRateLimiter({
   keyPrefix: 'sync_changes',
   maxRequests: 60,
-  windowSeconds: 60
+  windowSeconds: 60,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const pullRateLimit = createRateLimiter({
   keyPrefix: 'sync_pull',
   maxRequests: 120,
-  windowSeconds: 60
+  windowSeconds: 60,
+  // P1.2 (#1837): a valid bootstrap session on THIS request widens the
+  // ceiling; no token changes nothing. See BOOTSTRAP_ELEVATION_MULTIPLIERS.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
+// 30/min (was 10): a paginated client spends ceil(rows / page) requests per
+// integrity check instead of 1, so the old ceiling would have stalled any vault
+// past 10 pages. Each paged request is a bounded indexed scan — strictly
+// cheaper than the single unbounded full scan the old ceiling was budgeted for.
 const manifestRateLimit = createRateLimiter({
   keyPrefix: 'sync_manifest',
-  maxRequests: 10,
-  windowSeconds: 60
+  maxRequests: 30,
+  windowSeconds: 60,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const statusRateLimit = createRateLimiter({
@@ -288,7 +302,32 @@ const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
   const vaultId = c.get('vaultId')!
-  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!)
+  const endpoint = getRequestPath(c)
+
+  // Pagination is OPT-IN via `limit` (+ optional `cursor`). A param-less
+  // request — every already-shipped client — keeps the original complete
+  // single-response behavior, nextCursor field and all absent.
+  const limitParam = c.req.query('limit')
+  const cursorParam = c.req.query('cursor')
+
+  let page: ManifestPage | undefined
+  if (limitParam !== undefined) {
+    const limit = parseInt(limitParam, 10)
+    if (isNaN(limit) || limit < 1) {
+      logQueryValidationFailure('record', endpoint, 'Invalid limit value')
+    }
+    const cursor = cursorParam ? parseInt(cursorParam, 10) : 0
+    if (isNaN(cursor) || cursor < 0) {
+      logQueryValidationFailure('record', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+    }
+    page = { cursor, limit }
+  } else if (cursorParam !== undefined) {
+    // A cursor without a limit is a malformed pagination attempt; answering it
+    // with the full manifest would silently duplicate the pages already served.
+    logQueryValidationFailure('record', endpoint, 'cursor requires limit')
+  }
+
+  const manifest = await getManifest(c.env.DB, userId, vaultId, c.get('syncTypes')!, page)
   return c.json(manifest)
 }
 
@@ -381,6 +420,14 @@ const handleRecordPush = async (c: Context<AppContext>): Promise<Response> => {
     await updateDevice(c.env.DB, deviceId, userId, {
       last_sync_at: Math.floor(Date.now() / 1000)
     })
+    // Pack compaction nudge (#1839): AFTER the commit above (a failed enqueue
+    // must never fail an already-committed push). Best-effort via waitUntil —
+    // at-least-once delivery + idempotent core make duplicates harmless, and
+    // a lost message only delays packing until the next nudge or backfill.
+    waitUntilCaptured(c, enqueuePackCompaction(c.env, { userId, vaultId }), {
+      source: 'PackQueue',
+      action: 'pack_enqueue_failed'
+    })
     const doId = c.env.USER_SYNC_STATE.idFromName(userId)
     const stub = c.env.USER_SYNC_STATE.get(doId)
     waitUntilCaptured(
@@ -455,6 +502,45 @@ const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   return c.json(item)
 }
 
+// Pack discovery for bootstrap (#1839). Paginated newest-first; presigned GET
+// per pack when the deployment opted into direct R2 transfers. Additive and
+// unused by old clients — the item-granular endpoints remain the source of
+// truth, packs are a derived cache on top.
+const packsRateLimit = createRateLimiter({
+  keyPrefix: 'sync_packs',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const vaultId = c.get('vaultId')!
+  const endpoint = getRequestPath(c)
+
+  const limitParam = c.req.query('limit')
+  const cursorParam = c.req.query('cursor')
+
+  let limit: number | undefined
+  if (limitParam !== undefined) {
+    limit = parseInt(limitParam, 10)
+    if (isNaN(limit) || limit < 1) {
+      logQueryValidationFailure('record', endpoint, 'Invalid limit value')
+    }
+  }
+  if (cursorParam !== undefined && !/^\d+:\S+$/.test(cursorParam)) {
+    logQueryValidationFailure('record', endpoint, 'Invalid cursor value', 'SYNC_INVALID_CURSOR')
+  }
+
+  const result = await listPacks(
+    c.env.DB,
+    userId,
+    vaultId,
+    { cursor: cursorParam ?? null, limit },
+    resolveR2PresignConfig(c.env)
+  )
+  return c.json(result)
+}
+
 const recordSync = new Hono<AppContext>()
 
 recordSync.get('/status', statusRateLimit, handleRecordStatus)
@@ -463,6 +549,7 @@ recordSync.get('/changes', changesRateLimit, handleRecordChanges)
 recordSync.post('/push', pushRateLimit, handleRecordPush)
 recordSync.post('/pull', pullRateLimit, handleRecordPull)
 recordSync.get('/items/:id', handleRecordItem)
+recordSync.get('/packs', packsRateLimit, handleListPacks)
 
 sync.route('/records', recordSync)
 
@@ -472,6 +559,7 @@ sync.get('/changes', changesRateLimit, handleRecordChanges)
 sync.post('/push', pushRateLimit, handleRecordPush)
 sync.post('/pull', pullRateLimit, handleRecordPull)
 sync.get('/items/:id', handleRecordItem)
+sync.get('/packs', packsRateLimit, handleListPacks)
 
 // ============================================================================
 // CRDT Endpoints
@@ -505,14 +593,19 @@ const crdtPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_pull',
   maxRequests: 600,
   windowSeconds: 60,
-  identifier: deviceIdentifier
+  identifier: deviceIdentifier,
+  // P1.2 (#1837): the whole point of the seam — a fresh device sweeping a
+  // 10k-note vault is ~80x this bucket's design point. Elevation only ever
+  // widens; requests without a bootstrap token keep the exact ceiling above.
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const crdtBatchPullRateLimit = createRateLimiter({
   keyPrefix: 'crdt_batch_pull',
   maxRequests: 30,
   windowSeconds: 60,
-  identifier: deviceIdentifier
+  identifier: deviceIdentifier,
+  getElevatedLimits: bootstrapRateLimitElevation
 })
 
 const CrdtBatchPullSchema = z.object({
@@ -763,6 +856,13 @@ const handleCrdtSnapshotPush = async (c: Context<AppContext>): Promise<Response>
   }
 
   await pruneUpdatesBeforeSnapshot(c.env.DB, userId, vaultId, parsed.noteId)
+
+  // Snapshot pushes are pack candidates too (#1839): nudge after the store +
+  // prune settle, best-effort, same reasoning as the record push path.
+  waitUntilCaptured(c, enqueuePackCompaction(c.env, { userId, vaultId }), {
+    source: 'PackQueue',
+    action: 'pack_enqueue_failed'
+  })
 
   // A snapshot is a body write like any other and has to wake the peers the way
   // an incremental does. It is not a duplicate of the update path: a device that

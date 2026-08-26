@@ -212,7 +212,9 @@
       "noResultsFor": "Нет результатов по запросу «",
       "result": "результат",
       "noResultsForQuery": "Нет результатов по запросу «{query}»",
-      "resultCount": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}"
+      "resultCount": "{count, plural, one {# результат} few {# результата} many {# результатов} other {# результата}}",
+      "indexBuilding": "Создаётся поисковый индекс {done}/{total} — результаты могут быть неполными",
+      "indexBuildingUnknown": "Создаётся поисковый индекс — результаты могут быть неполными"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Ищите и нажимайте на предметы, чтобы построить свой след",

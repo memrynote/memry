@@ -179,6 +179,15 @@ beforeEach(async () => {
     USER_SYNC_STATE: {
       idFromName: (name: string) => name,
       get: () => ({ fetch: async () => new Response(null, { status: 204 }) })
+    },
+    // The real rate-limit middleware runs in this suite (auth is mocked, the
+    // limiter is not). Nothing here exercises limits, so the counter stub
+    // always answers "first request of a fresh window".
+    RATE_LIMITER: {
+      idFromName: (name: string) => name,
+      get: () => ({
+        fetch: async () => Response.json({ count: 1, windowStart: Math.floor(Date.now() / 1000) })
+      })
     }
   } as unknown as Bindings
   await seed()

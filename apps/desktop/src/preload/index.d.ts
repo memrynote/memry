@@ -445,6 +445,10 @@ export interface VaultStatus {
   path: string | null
   isIndexing: boolean
   indexProgress: number
+  /** Files already visited by the in-flight background index build. Absent outside a build. */
+  indexBuilt?: number
+  /** Total files the in-flight background index build will visit. Absent outside a build. */
+  indexTotal?: number
   error: string | null
 }
 
@@ -1303,6 +1307,7 @@ export interface KeyboardShortcutsDTO {
 export interface SyncSettingsDTO {
   enabled: boolean
   autoSync: boolean
+  attachmentAutoDownload: boolean
 }
 
 export interface BackupSettingsDTO {

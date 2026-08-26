@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { EventEmitter } from 'events'
 import type { MainToWorkerMessage, WorkerToMainMessage } from '@memry/sync-client/worker-protocol'
+import { SignatureVerificationError } from './decrypt'
 
 const mockPort = Object.assign(new EventEmitter(), {
   postMessage: vi.fn()
@@ -52,6 +53,11 @@ vi.mock('./decrypt-item', () => ({
   decryptSingleItem: (...args: unknown[]) => mockDecryptFn(...args)
 }))
 
+const mockDecryptCrdtFn = vi.fn().mockReturnValue(new Uint8Array([1, 2, 3]))
+vi.mock('./crdt-encrypt', () => ({
+  decryptCrdtUpdate: (...args: unknown[]) => mockDecryptCrdtFn(...args)
+}))
+
 const mockCleanup = vi.fn()
 vi.mock('../crypto/primitives', () => ({
   secureCleanup: (...args: unknown[]) => mockCleanup(...args)
@@ -95,6 +101,7 @@ describe('worker', () => {
         signerDeviceId: 'device-1'
       }
     })
+    mockDecryptCrdtFn.mockClear().mockReturnValue(new Uint8Array([1, 2, 3]))
     mockCleanup.mockClear()
   })
 
@@ -334,6 +341,148 @@ describe('worker', () => {
       // #when
       const resultPromise = captureNextPostMessage()
       mockPort.emit('message', msg)
+      await resultPromise
+
+      // #then
+      expect(mockCleanup).toHaveBeenCalledWith(vaultKey)
+    })
+  })
+
+  // CRDT snapshot/update payloads: base64 decoded and decrypted off-thread by
+  // the same decryptCrdtUpdate the main-thread fallback runs.
+  describe('#given worker ready #when decrypt-crdt-batch message received', () => {
+    type CrdtDecryptBatchMsg = Extract<MainToWorkerMessage, { type: 'decrypt-crdt-batch' }>
+    const crdtMsg = (
+      items: CrdtDecryptBatchMsg['items'],
+      signerKeys: Record<string, string> = { 'device-1': 'cHVia2V5' },
+      requestId = 'req_crdt_1'
+    ): MainToWorkerMessage => ({
+      type: 'decrypt-crdt-batch',
+      requestId,
+      items,
+      vaultKey: new Uint8Array(32),
+      signerKeys
+    })
+
+    it('#then decodes server base64 payloads and posts results indexed', async () => {
+      // #given
+      const b64 = Buffer.from('hello-update').toString('base64')
+      mockDecryptCrdtFn.mockReturnValueOnce(new Uint8Array([9, 8, 7]))
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit(
+        'message',
+        crdtMsg([{ index: 2, noteId: 'n1', dataB64: b64, signerDeviceId: 'device-1' }])
+      )
+      const result = await resultPromise
+
+      // #then the worker did the atob decode itself
+      expect(mockDecryptCrdtFn).toHaveBeenCalledTimes(1)
+      const packed = mockDecryptCrdtFn.mock.calls[0][0] as Uint8Array
+      expect(Buffer.from(packed).toString('utf-8')).toBe('hello-update')
+
+      expect(result.type).toBe('decrypt-crdt-batch-result')
+      if (result.type === 'decrypt-crdt-batch-result') {
+        expect(result.results).toEqual([{ index: 2, update: new Uint8Array([9, 8, 7]) }])
+        expect(result.failures).toHaveLength(0)
+      }
+    })
+
+    it('#then passes already-decoded snapshot bytes through untouched', async () => {
+      // #given
+      const bytes = new Uint8Array([10, 20, 30])
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit(
+        'message',
+        crdtMsg([{ index: 0, noteId: 'n2', data: bytes, signerDeviceId: 'device-1' }])
+      )
+      await resultPromise
+
+      // #then
+      expect(mockDecryptCrdtFn.mock.calls[0][0]).toBe(bytes)
+    })
+
+    it('#then reports a plain decrypt failure without crashing the batch', async () => {
+      // #given
+      mockDecryptCrdtFn.mockImplementation(() => {
+        throw new Error('could not decrypt payload')
+      })
+      const b64 = Buffer.from('bad').toString('base64')
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit(
+        'message',
+        crdtMsg([
+          { index: 0, noteId: 'n3', dataB64: b64, signerDeviceId: 'device-1' },
+          { index: 1, noteId: 'n4', data: new Uint8Array([1]), signerDeviceId: 'device-1' }
+        ])
+      )
+      const result = await resultPromise
+
+      // #then every item is settled; the first failure carries the verdict.
+      if (result.type === 'decrypt-crdt-batch-result') {
+        expect(result.results).toHaveLength(0)
+        expect(result.failures).toHaveLength(2)
+        expect(result.failures[0]!.error).toBe('could not decrypt payload')
+        expect(result.failures[0]!.isSignatureError).toBe(false)
+        expect(result.failures[0]!.index).toBe(0)
+      } else {
+        throw new Error(`unexpected reply ${result.type}`)
+      }
+    })
+
+    it('#then flags signature failures for the caller', async () => {
+      // #given
+      mockDecryptCrdtFn.mockImplementation(() => {
+        throw new SignatureVerificationError('n5', 'device-x')
+      })
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit(
+        'message',
+        crdtMsg([{ index: 0, noteId: 'n5', data: new Uint8Array([1]), signerDeviceId: 'device-1' }])
+      )
+      const result = await resultPromise
+
+      // #then
+      if (result.type === 'decrypt-crdt-batch-result') {
+        expect(result.failures[0]!.isSignatureError).toBe(true)
+      } else {
+        throw new Error(`unexpected reply ${result.type}`)
+      }
+    })
+
+    it('#then reports a failure when the signer key is missing', async () => {
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit(
+        'message',
+        crdtMsg([{ index: 0, noteId: 'n6', dataB64: 'aGk=', signerDeviceId: 'ghost-device' }], {})
+      )
+      const result = await resultPromise
+
+      // #then
+      if (result.type === 'decrypt-crdt-batch-result') {
+        expect(result.results).toHaveLength(0)
+        expect(result.failures[0]!.error).toContain('No public key')
+        expect(result.failures[0]!.noteId).toBe('n6')
+      } else {
+        throw new Error(`unexpected reply ${result.type}`)
+      }
+    })
+
+    it('#then cleans up the vault key', async () => {
+      // #given
+      const vaultKey = new Uint8Array(32)
+
+      // #when
+      const resultPromise = captureNextPostMessage()
+      mockPort.emit('message', crdtMsg([], {}, 'req_crdt_empty'))
       await resultPromise
 
       // #then

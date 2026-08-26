@@ -3,6 +3,7 @@ export type Bindings = {
   STORAGE: R2Bucket
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
+  RATE_LIMITER: DurableObjectNamespace
   ENVIRONMENT: string
   LOCAL_ADMIN_SYNC_EMAILS?: string
   ALLOWED_ORIGIN?: string
@@ -28,6 +29,22 @@ export type Bindings = {
   POSTHOG_KEY?: string
   POSTHOG_HOST?: string
   GITHUB_TOKEN?: string
+  // R2 presign (direct-to-R2 attachment transfers, #1836). All four optional:
+  // absent/incomplete → presign endpoints degrade to a typed "unavailable" and
+  // clients fall back to the proxied blob paths. Never commit real values.
+  R2_ACCESS_KEY_ID?: string
+  R2_SECRET_ACCESS_KEY?: string
+  R2_S3_ENDPOINT?: string
+  R2_S3_BUCKET?: string
+  // Bootstrap session signing key (#1837). Optional like the presign set:
+  // absent → the bootstrap endpoints answer a typed 501 and rate-limit
+  // elevation returns null everywhere, so unconfigured deployments behave
+  // exactly as before. Never commit real values.
+  BOOTSTRAP_SESSION_HMAC_KEY?: string
+  // Pack compaction queue (#1839). Optional so local dev without Queues keeps
+  // working: an absent binding makes enqueuePackCompaction a no-op and the
+  // cron backfill still drains packs over time.
+  PACK_QUEUE?: Queue<import('./services/pack-compaction').PackCompactionMessageBody>
   fetch?: typeof fetch
 }
 

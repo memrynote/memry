@@ -103,6 +103,18 @@ export class SyncEngine extends SyncEventEmitter {
   private fullSyncRunner: FullSyncRunner
   private pullInterval: ReturnType<typeof setInterval> | null = null
   private networkReconnectAbortController: AbortController | null = null
+  /**
+   * Latched by requestCancel() for the rest of this engine's life.
+   *
+   * Aborting alone is not enough to stop a fullSync: every cycle opens a FRESH
+   * AbortController (PullCoordinator.pull), so the phases that follow an aborted
+   * one — seed push, manifest check, its re-pull, the follow-up push — would
+   * each start new pulls and runs against a runtime teardown is trying to stop.
+   * The latch makes acquireSyncLock refuse them all. Never reset: an engine is
+   * built per runtime start and discarded at teardown (vault switch, quit,
+   * close-during-initial-sync), so a fresh engine means a fresh latch.
+   */
+  private cancelRequested = false
   private syncLockAcquiredAt: number | null = null
   private activeLockRelease: (() => void) | null = null
   // Zero means "never swept by this engine", so the first reconnect after a
@@ -355,10 +367,16 @@ export class SyncEngine extends SyncEventEmitter {
     }
   }
 
-  async pull(): Promise<void> {
+  /**
+   * Resolves TRUE only when the pull actually delivered. Every failure below is
+   * swallowed exactly as it always has been — `handleCoordinatorError` returns
+   * from every branch — so the returned outcome is the only thing that
+   * separates a delivered pull from a silent one (#1835).
+   */
+  async pull(): Promise<boolean> {
     const start = Date.now()
     try {
-      await this.pullCoordinator.pull()
+      const delivered = await this.pullCoordinator.pull()
       trackMainEvent('sync_run_completed', {
         surface: 'sync',
         action: 'pull_completed',
@@ -370,6 +388,7 @@ export class SyncEngine extends SyncEventEmitter {
         source: 'pull',
         dimensions: { transport: 'record' }
       })
+      return delivered
     } catch (error) {
       trackMainEvent('sync_error', {
         surface: 'sync',
@@ -381,11 +400,32 @@ export class SyncEngine extends SyncEventEmitter {
         dimensions: { transport: 'record' }
       })
       await this.handleCoordinatorError(error)
+      return false
     }
   }
 
   requestPush(): void {
     this.pushCoordinator.requestPush()
+  }
+
+  /**
+   * Prompt whatever cycle is running to stop, and keep later cycles from
+   * starting.
+   *
+   * This is teardown's prompt, not a pause: stopSyncRuntime used to await the
+   * in-flight startPromise before touching anything, and that startPromise
+   * includes the engine's entire first fullSync — so closing or switching a
+   * vault seconds into a fresh-vault pull stalled the close IPC for the whole
+   * minutes-long pull. Called BEFORE that await, it aborts the active cycle's
+   * controller (pull loops observe it between pages and batches) and latches
+   * `cancelRequested`, so the phases after the abort cannot open a fresh
+   * controller and start pulling again.
+   */
+  requestCancel(): void {
+    if (this.cancelRequested) return
+    this.cancelRequested = true
+    log.info('Sync cancel requested — aborting in-flight sync and refusing further cycles')
+    this.ctx.abortController?.abort()
   }
 
   /**
@@ -588,7 +628,7 @@ export class SyncEngine extends SyncEventEmitter {
   }
 
   private async acquireSyncLock(): Promise<(() => void) | null> {
-    if (this.ctx.syncing || this.stateManager.isPaused()) return null
+    if (this.cancelRequested || this.ctx.syncing || this.stateManager.isPaused()) return null
     this.ctx.syncing = true
     this.syncLockAcquiredAt = Date.now()
 
@@ -756,7 +796,9 @@ export class SyncEngine extends SyncEventEmitter {
     switch (message.type) {
       case 'changes_available':
         if (!this.stateManager.isPaused()) {
-          this.scheduleSync(() => this.pull())
+          this.scheduleSync(async () => {
+            await this.pull()
+          })
         }
         break
       case 'crdt_updated': {

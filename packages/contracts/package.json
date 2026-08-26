@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth-api": "./src/auth-api.ts",
+    "./bootstrap-api": "./src/bootstrap-api.ts",
     "./blob-api": "./src/blob-api.ts",
     "./bookmark-types": "./src/bookmark-types.ts",
     "./bookmarks-api": "./src/bookmarks-api.ts",
@@ -39,6 +40,7 @@
     "./linking-api": "./src/linking-api.ts",
     "./locale-api": "./src/locale-api.ts",
     "./notes-api": "./src/notes-api.ts",
+    "./pack-format": "./src/pack-format.ts",
     "./properties-api": "./src/properties-api.ts",
     "./property-types": "./src/property-types.ts",
     "./redact": "./src/redact.ts",

@@ -662,12 +662,14 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     attachmentId: string
     diskPath: string
     intoDir?: boolean
+    recencyHint?: number
   }>
   const listener = (e: {
     noteId: string
     attachmentId: string
     diskPath: string
     intoDir?: boolean
+    recencyHint?: number
   }): void => {
     downloadEvents.push(e)
   }
@@ -695,18 +697,23 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
     )
 
     expect(result).toBe('applied')
+    // recencyHint is the payload's modifiedAt — the queue's recently-used-first
+    // ordering hint (#1829).
+    const recency = Date.parse('2024-01-01T00:00:00.000Z')
     expect(downloadEvents).toEqual([
       {
         noteId: 'note-att-create',
         attachmentId: 'att-a',
         diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-create'),
-        intoDir: true
+        intoDir: true,
+        recencyHint: recency
       },
       {
         noteId: 'note-att-create',
         attachmentId: 'att-b',
         diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-create'),
-        intoDir: true
+        intoDir: true,
+        recencyHint: recency
       }
     ])
     expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
@@ -736,7 +743,8 @@ describe('noteHandler.applyUpsert — embedded attachment references', () => {
         noteId: 'note-att-update',
         attachmentId: 'att-b',
         diskPath: path.join(VAULT_ROOT, 'attachments', 'note-att-update'),
-        intoDir: true
+        intoDir: true,
+        recencyHint: Date.parse('2024-01-01T00:00:00.000Z')
       }
     ])
     expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(

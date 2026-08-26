@@ -212,7 +212,9 @@
       "noResultsFor": "אין תוצאות עבור \"",
       "result": "תוצאה",
       "noResultsForQuery": "אין תוצאות עבור \"{query}\"",
-      "resultCount": "{count, plural, one {תוצאה אחת} two {# תוצאות} other {# תוצאות}}"
+      "resultCount": "{count, plural, one {תוצאה אחת} two {# תוצאות} other {# תוצאות}}",
+      "indexBuilding": "יוצר אינדקס חיפוש {done}/{total} — ייתכן שהתוצאות יהיו חלקיות",
+      "indexBuildingUnknown": "יוצר אינדקס חיפוש — ייתכן שהתוצאות יהיו חלקיות"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "חפש ולחץ על פריטים כדי לבנות את המסלול שלך",

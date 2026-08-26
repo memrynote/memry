@@ -112,7 +112,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     vi.mocked(reserveStorage).mockResolvedValue(undefined)
     vi.mocked(adjustStorageUsed).mockResolvedValue(undefined)
     app = createApp()
-    state = { plan: 'pro', session: createSession(), existingChunk: null, statements: [] }
+    state = { plan: 'pro', session: createSession(), statements: [] }
     state.entitlementRow = () => entitlementRow(state.plan)
     env = createEnv(state)
   })
@@ -210,6 +210,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
       1024, // total_size stays plaintext
       1, // chunk_count
       1024 + CHUNK_CRYPTO_OVERHEAD, // encrypted_size persisted
+      null, // presigned_chunks: proxied path arms no URLs
       expect.any(Number), // expires_at
       expect.any(Number) // created_at
     ])

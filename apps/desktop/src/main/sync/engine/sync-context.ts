@@ -99,7 +99,21 @@ export const SYNC_STATE_KEYS = {
    * A missing row reads as `'0'`, which is what every install written before
    * this key existed has and what a vault with nothing outstanding means.
    */
-  CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
+  CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+  /**
+   * Highest pack cursor covered by an unbroken run of fully-applied bootstrap
+   * packs (#1840), counting from the oldest pack upward.
+   *
+   * Written INSIDE the page transaction that commits the entries it covers, so
+   * an interrupted bootstrap resumes from a watermark that can never claim
+   * coverage over a page that did not commit. It gates nothing but pack work:
+   * `LAST_CURSOR` and the item-granular pull are untouched by it, so a device
+   * that never sees a pack behaves exactly as it does today.
+   *
+   * A missing row reads as 0 — no pack coverage — which is what every install
+   * written before this key existed has.
+   */
+  PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
 } as const
 
 // Item ids are NOT unique across item types (default project id 'inbox', tag
@@ -112,7 +126,15 @@ export const itemRefKey = (itemType: string, itemId: string): string => `${itemT
 export const PUSH_BATCH_SIZE = 100
 export const MAX_PUSH_ITERATIONS = 50
 export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
-export const PULL_PAGE_LIMIT = 100
+// The server's MAX_CHANGES_LIMIT for GET /sync/changes. Pinning 100 here made
+// a full sync spend 5x the requests on the 60/min `sync_changes` bucket for no
+// benefit — a changes page is refs only (no payloads), so a bigger page costs
+// almost nothing client-side. Payload fetching stays bounded regardless: the
+// page's ids are pulled in POST /sync/pull slices of PULL_REQUEST_MAX_IDS.
+export const PULL_PAGE_LIMIT = 500
+// The server's PullRequestSchema caps `itemIds` at 100 per POST /sync/pull —
+// exceeding it is a 400, so a changes page is always pulled in slices of this.
+export const PULL_REQUEST_MAX_IDS = 100
 export const CORRUPT_ITEM_COOLDOWN_MS = 60 * 60 * 1000
 /**
  * Hard cap on live corrupt-item cooldown entries.
@@ -277,6 +299,20 @@ export const CRDT_RECONNECT_SWEEP_FLOOR_MS = 60 * 1000
 // only channel by which a body-only remote edit reaches a device that missed the
 // broadcast, and a note filtered out here would go stale with no second chance.
 
+/**
+ * Inactive-doc cache capacity while a bootstrap pull page's CRDT batch is
+ * applied. The steady-state 32 splits every cold apply into 32-doc sub-chunks
+ * (applyCrdtBatch sub-chunks at `inactiveDocCapacity`, because a sub-chunk
+ * holds all of its docs open across the batch POST); at 128 the sub-chunk hits
+ * the server's own 100-note batch ceiling instead, with headroom left over so
+ * an editor doc opened mid-bootstrap does not push the cache over the limit
+ * and evict docs the batch pass is still holding — the eviction that used to
+ * clobber note bodies. ~128 open Y.Docs of ordinary notes is a few tens of MB;
+ * the raise lives only for the duration of one page's CRDT batch and the
+ * revert evicts (and flushes) back down to the steady-state limit.
+ */
+export const BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT = 128
+
 /** Notes per paced sweep chunk = the server's cap on the probe POST's `notes` array. */
 export const CRDT_SWEEP_CHUNK_NOTES = 100
 /** Floor between chunks, and the poll interval while the drain is blocked (offline, fullSync active). */
@@ -302,13 +338,39 @@ export interface CrdtPullCost {
  * mix of probe, baseline and apply rounds the chunk turned out to need. The
  * delay is measured from the chunk's COMPLETION, so the real period is the
  * chunk's own duration plus this — the rates below are ceilings, not targets.
+ *
+ * `elevationFactor` (#1837) divides every slice by the granted bootstrap
+ * multiplier: the same 50%-margin discipline, applied against the ELEVATED
+ * ceilings instead of the steady-state ones. It is read at charge time, so a
+ * session that closes or expires reverts the very next chunk automatically;
+ * clamped to >= 1 so a broken factor can only ever speed up toward — never
+ * past — the conservative base.
  */
-export const crdtSweepChunkDelayMs = (cost: CrdtPullCost): number =>
-  Math.max(
-    CRDT_SWEEP_CHUNK_INTERVAL_MS,
-    cost.batchPosts * CRDT_SWEEP_MS_PER_BATCH_POST,
-    cost.snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET
+export const crdtSweepChunkDelayMs = (cost: CrdtPullCost, elevationFactor = 1): number => {
+  const f =
+    Number.isFinite(elevationFactor) && elevationFactor >= 1 ? Math.floor(elevationFactor) : 1
+  return Math.max(
+    Math.ceil(CRDT_SWEEP_CHUNK_INTERVAL_MS / f),
+    Math.ceil((cost.batchPosts * CRDT_SWEEP_MS_PER_BATCH_POST) / f),
+    Math.ceil((cost.snapshotGets * CRDT_SWEEP_MS_PER_SNAPSHOT_GET) / f)
   )
+}
+
+/**
+ * Requests per minute a fresh device may spend on pack transfers (#1840),
+ * before bootstrap elevation.
+ *
+ * Fed to the existing `DownloadPacer` rather than a second pacing mechanism, so
+ * pack transfers back off through the same fixed-window machinery attachments
+ * use, and the bootstrap session's factor widens the ceiling through the same
+ * `setMultiplier` seam.
+ *
+ * A pack is one large object, not one small item: a bootstrap fetches tens of
+ * files, not thousands, and each Range resume costs one more request. 60/min is
+ * far more than a bootstrap can consume and still an actual ceiling if a
+ * pathological resume loop ever develops.
+ */
+export const PACK_DOWNLOAD_MAX_REQUESTS_PER_MINUTE = 60
 
 export const PUSH_DEBOUNCE_MS = 2000
 

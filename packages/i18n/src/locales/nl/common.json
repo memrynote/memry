@@ -212,7 +212,9 @@
       "noResultsFor": "Geen resultaat voor “",
       "result": "resultaat",
       "noResultsForQuery": "Geen resultaten voor “{query}”",
-      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}"
+      "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
+      "indexBuilding": "Zoekindex wordt opgebouwd {done}/{total} — resultaten zijn mogelijk onvolledig",
+      "indexBuildingUnknown": "Zoekindex wordt opgebouwd — resultaten zijn mogelijk onvolledig"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je parcours te bouwen",

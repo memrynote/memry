@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { FileQuestion, Plus, Loader2, AlertCircle } from '@/lib/icons'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,30 @@ export function NotesTreeSkeleton() {
       <Skeleton className="h-6 w-3/4 ms-4" />
       <Skeleton className="h-6 w-full" />
       <Skeleton className="h-6 w-2/3 ms-4" />
+    </div>
+  )
+}
+
+/**
+ * Shown instead of NotesTreeEmpty while the FIRST full sync is still filling a
+ * fresh vault: "create a note to get started" on a vault that is about to
+ * receive hundreds of notes reads as data loss. `children` is the progress
+ * indicator (InitialSyncProgress) — composed in by the tree so this file stays
+ * free of the sync context and unit-testable without a provider.
+ */
+export function NotesTreeSyncing({ children }: { children?: ReactNode }) {
+  const { t } = useT('notes')
+
+  return (
+    <div className="p-2" role="status" aria-live="polite">
+      <p className="px-1 pb-2 text-xs text-muted-foreground">{t('tree.syncing.body')}</p>
+      {children}
+      <div className="space-y-2 pt-3" aria-hidden="true">
+        <Skeleton className="h-6 w-full" />
+        <Skeleton className="h-6 w-3/4 ms-4" />
+        <Skeleton className="h-6 w-full" />
+        <Skeleton className="h-6 w-2/3 ms-4" />
+      </div>
     </div>
   )
 }

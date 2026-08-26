@@ -6,6 +6,7 @@ import {
   MAX_PUSH_ITERATIONS,
   MAX_RATE_LIMIT_BACKOFF_MS,
   PULL_PAGE_LIMIT,
+  PULL_REQUEST_MAX_IDS,
   PUSH_BATCH_SIZE,
   QUARANTINE_ENTRY_TTL_MS,
   QUARANTINE_MAX_ATTEMPTS,
@@ -81,7 +82,11 @@ describe('SYNC_STATE_KEYS', () => {
         // Additive too: absent reads as '0' — "the last session ended with
         // every note merged" — which is both what an older build's install
         // means and the answer that changes nothing.
-        CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt'
+        CRDT_UNMERGED_DEBT: 'crdtUnmergedDebt',
+        // Additive again (#1840): absent reads as 0 — "no pack coverage" —
+        // which is what every install written before packs existed means, and
+        // the answer that leaves the item-granular bootstrap untouched.
+        PACKS_APPLIED_THROUGH_CURSOR: 'packsAppliedThroughCursor'
       })
     })
 
@@ -126,6 +131,19 @@ describe('sync tuning constants', () => {
       // main process without ever yielding, freezing the UI mid-sync.
       expect(YIELD_EVERY_N_ITEMS).toBeGreaterThan(0)
       expect(YIELD_EVERY_N_ITEMS).toBeLessThan(PULL_PAGE_LIMIT)
+    })
+  })
+
+  describe('#given the changes page and pull slice sizes #when they meet the server caps', () => {
+    it('#then the page uses the full server changes limit and slices fit PullRequestSchema', () => {
+      // The server's MAX_CHANGES_LIMIT is 500 — anything above is silently
+      // clamped (wasted intent), anything below spends extra requests on the
+      // 60/min sync_changes bucket for nothing.
+      expect(PULL_PAGE_LIMIT).toBe(500)
+      // PullRequestSchema caps itemIds at 100 per POST /sync/pull; a bigger
+      // slice is a 400 that drops the whole page.
+      expect(PULL_REQUEST_MAX_IDS).toBe(100)
+      expect(PULL_REQUEST_MAX_IDS).toBeLessThanOrEqual(PULL_PAGE_LIMIT)
     })
   })
 })

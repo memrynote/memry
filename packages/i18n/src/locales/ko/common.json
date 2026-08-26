@@ -212,7 +212,9 @@
       "noResultsFor": "“에 대한 검색결과가 없습니다.",
       "result": "결과",
       "noResultsForQuery": "“{query}”에 대한 검색 결과가 없습니다",
-      "resultCount": "{count, plural, other {결과 #개}}"
+      "resultCount": "{count, plural, other {결과 #개}}",
+      "indexBuilding": "검색 인덱스 구축 중 {done}/{total} — 결과가 불완전할 수 있습니다",
+      "indexBuildingUnknown": "검색 인덱스 구축 중 — 결과가 불완전할 수 있습니다"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "항목을 검색하고 클릭하여 트레일을 구축하세요.",

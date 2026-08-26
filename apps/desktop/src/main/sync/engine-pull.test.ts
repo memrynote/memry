@@ -30,6 +30,46 @@ describe('SyncEngine', () => {
       )
       vi.restoreAllMocks()
     })
+
+    it('#then requests 500-ref changes pages and slices the pull into 100-id POSTs', async () => {
+      // The server's PullRequestSchema rejects more than 100 itemIds per POST
+      // with a 400 that drops the whole page — so a full 500-ref changes page
+      // MUST arrive as 100-id slices, every id exactly once, in page order.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      const getSpy = vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+      const postSpy = vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({
+        items: []
+      })
+
+      await engine.pull()
+
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/sync/changes?limit=500'),
+        'test-token'
+      )
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      const allIds = pullCalls.flatMap(([, body]) => (body as { itemIds: string[] }).itemIds)
+      expect(allIds).toEqual(refs.map((r) => r.id))
+      vi.restoreAllMocks()
+    })
   })
 
   describe('#given applier returns conflict #when pull receives item', () => {
@@ -129,7 +169,9 @@ describe('SyncEngine', () => {
 
       await engine.pull()
 
-      expect(applySpy).toHaveBeenCalledWith(
+      // apply() now takes an optional page-transaction db override as its
+      // second argument; assert on the input object itself.
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
           itemId: 'task-1',
           type: 'task',
@@ -234,7 +276,7 @@ describe('SyncEngine', () => {
         expect.objectContaining({ id: 'task-1', type: 'task' })
       )
 
-      expect(applySpy).toHaveBeenCalledWith(
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
           itemId: 'task-1',
           type: 'task',
@@ -309,7 +351,7 @@ describe('SyncEngine', () => {
       await engine.pull()
 
       expect(applySpy).toHaveBeenCalledTimes(1)
-      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ itemId: 'task-2' }))
 
       vi.restoreAllMocks()
     })
@@ -370,7 +412,7 @@ describe('SyncEngine', () => {
       await engine.pull()
 
       expect(applySpy).toHaveBeenCalledTimes(1)
-      expect(applySpy).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'task-2' }))
+      expect(applySpy.mock.calls[0]?.[0]).toEqual(expect.objectContaining({ itemId: 'task-2' }))
       expect(engine.currentState).not.toBe('error')
 
       vi.restoreAllMocks()
@@ -502,6 +544,73 @@ describe('SyncEngine', () => {
     })
   })
 
+  describe('#given a >100-ref page #when the breaker trips on slice 2', () => {
+    it('#then every remaining slice still runs before the page stops as breaker', async () => {
+      // pullChangesPage must run EVERY slice even when an early one trips the
+      // circuit breaker: the caller advances the cursor past the WHOLE page, so
+      // a slice skipped on breaker would neither be re-pulled nor marked
+      // corrupt — silent loss. 250 refs arrive as slices [100, 100, 50]; only
+      // slice 2 is poisoned, and all three POSTs must still happen.
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      const refs = Array.from({ length: 250 }, (_, i) => ({
+        id: `task-${i}`,
+        type: 'task',
+        version: 1,
+        modifiedAt: 1000,
+        size: 10
+      }))
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: refs,
+        deleted: [],
+        hasMore: false,
+        nextCursor: 250
+      })
+
+      const postSpy = vi
+        .spyOn(await import('./http-client'), 'postToServer')
+        .mockImplementation(async (_path, body) => {
+          const itemIds = (body as { itemIds: string[] }).itemIds
+          if (!itemIds.includes('task-100')) return { items: [] }
+          return {
+            items: itemIds.map((id) => ({
+              id,
+              type: 'task',
+              operation: 'update',
+              cryptoVersion: 1,
+              blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' },
+              signature: 'sig',
+              signerDeviceId: 'device-1'
+            }))
+          }
+        })
+
+      vi.spyOn(await import('./decrypt'), 'decryptItemFromPull').mockImplementation((input) => {
+        throw new Error(`decryption failed for ${input.id}`)
+      })
+
+      await engine.pull()
+
+      const pullCalls = postSpy.mock.calls.filter(([path]) => path === '/sync/pull')
+      expect(pullCalls.map(([, body]) => (body as { itemIds: string[] }).itemIds.length)).toEqual([
+        100, 100, 50
+      ])
+      expect((pullCalls[2]?.[1] as { itemIds: string[] }).itemIds[0]).toBe('task-200')
+
+      // Breaker reported for the page: run refused (error state), and exactly
+      // the poisoned slice's items surfaced as corrupt.
+      expect(engine.currentState).toBe('error')
+      const corruptCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => call[0] === 'sync:item-corrupt'
+      )
+      expect(corruptCalls.map((call) => call[1]?.itemId)).toEqual(
+        refs.slice(100, 200).map((r) => r.id)
+      )
+      vi.restoreAllMocks()
+    })
+  })
+
   describe('#given pull fails with 403 AUTH_DEVICE_REVOKED', () => {
     it('#then handles device revocation instead of generic error', async () => {
       const { SyncServerError } = await import('./http-client')
@@ -520,6 +629,72 @@ describe('SyncEngine', () => {
         'sync:device-removed',
         expect.objectContaining({ unsyncedCount: expect.any(Number) })
       )
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+  })
+
+  // #1835: every error inside a pull is swallowed — `handleCoordinatorError`
+  // returns from every branch and the coordinator returns early on a busy lock,
+  // missing credentials or a refused page. Callers that need to know whether
+  // anything was actually delivered cannot infer it from non-rejection, so the
+  // outcome is reported instead.
+  describe('#given a pull whose failure the engine swallows', () => {
+    it('#then pull() reports that nothing was delivered', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      // A 400 classifies as a non-retryable `server_error`, which is exactly
+      // the class `handleCoordinatorError` has no branch for: nothing is
+      // rethrown and nothing downstream can tell the run apart from a clean one.
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Bad request', 400, 'VALIDATION_ERROR')
+      )
+
+      await expect(engine.pull()).resolves.toBe(false)
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    // The 400 above never reaches `SyncEngine.pull`'s own catch — the
+    // coordinator swallows that class internally and returns false. The four
+    // classes it RETHROWS (device_revoked, auth_expired, network_offline,
+    // RateLimitError) are the only ones that get there, and that catch is a
+    // second, independent place a caller could be told a silent run delivered.
+    it('#then a rethrown device revocation reports nothing delivered too', async () => {
+      const { SyncServerError } = await import('./http-client')
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockRejectedValue(
+        new SyncServerError('Forbidden', 403, 'AUTH_DEVICE_REVOKED: Device has been revoked')
+      )
+
+      await expect(engine.pull()).resolves.toBe(false)
+      // Proof the throw really travelled out of the coordinator and through the
+      // engine's catch, rather than being swallowed one layer down.
+      expect(deps.ws.disconnect).toHaveBeenCalled()
+
+      await engine.stop({ skipFinalPush: true })
+      vi.restoreAllMocks()
+    })
+
+    it('#then a clean pull reports that it delivered', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      })
+      vi.spyOn(await import('./http-client'), 'postToServer').mockResolvedValue({ items: [] })
+
+      await expect(engine.pull()).resolves.toBe(true)
 
       await engine.stop({ skipFinalPush: true })
       vi.restoreAllMocks()

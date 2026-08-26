@@ -212,7 +212,9 @@
       "noResultsFor": "「」の結果はありません",
       "result": "結果",
       "noResultsForQuery": "「{query}」の結果はありません",
-      "resultCount": "{count, plural, other {# 件の結果}}"
+      "resultCount": "{count, plural, other {# 件の結果}}",
+      "indexBuilding": "検索インデックスを構築中 {done}/{total} — 結果が不完全な場合があります",
+      "indexBuildingUnknown": "検索インデックスを構築中 — 結果が不完全な場合があります"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "アイテムを検索してクリックしてトレイルを構築します",

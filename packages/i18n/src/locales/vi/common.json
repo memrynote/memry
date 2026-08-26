@@ -212,7 +212,9 @@
       "noResultsFor": "Không có kết quả cho “",
       "result": "kết quả",
       "noResultsForQuery": "Không có kết quả cho “{query}”",
-      "resultCount": "{count, plural, other {# kết quả}}"
+      "resultCount": "{count, plural, other {# kết quả}}",
+      "indexBuilding": "Đang xây dựng chỉ mục tìm kiếm {done}/{total} — kết quả có thể chưa đầy đủ",
+      "indexBuildingUnknown": "Đang xây dựng chỉ mục tìm kiếm — kết quả có thể chưa đầy đủ"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Tìm kiếm và nhấp vào các mục để xây dựng dấu vết của bạn",

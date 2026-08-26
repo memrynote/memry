@@ -212,7 +212,9 @@
       "noResultsFor": "Sonuç bulunamadı: “",
       "result": "sonuç",
       "noResultsForQuery": "“{query}” için sonuç bulunamadı",
-      "resultCount": "{count, plural, one {# sonuç} other {# sonuç}}"
+      "resultCount": "{count, plural, one {# sonuç} other {# sonuç}}",
+      "indexBuilding": "Arama dizini oluşturuluyor {done}/{total} — sonuçlar eksik olabilir",
+      "indexBuildingUnknown": "Arama dizini oluşturuluyor — sonuçlar eksik olabilir"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "İzinizi oluşturmak için öğeleri arayın ve tıklayın",

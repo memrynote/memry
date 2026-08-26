@@ -424,7 +424,13 @@ export const SyncManifestSchema = z.object({
 
 export const RecordSyncManifestSchema = z.object({
   items: z.array(RecordSyncItemRefSchema),
-  serverTime: z.number().int().min(0)
+  serverTime: z.number().int().min(0),
+  /**
+   * Present only on a paginated response (`GET /sync/manifest?limit=N`) that
+   * has more rows: pass it back as `cursor` to fetch the next page. Absent on
+   * the final page and on every param-less (legacy, everything-at-once) call.
+   */
+  nextCursor: z.number().int().min(0).optional()
 })
 
 export const ChangesResponseSchema = z.object({
@@ -473,6 +479,72 @@ export const DeviceSyncStateSchema = z.object({
   lastCursorSeen: z.number().int().min(0),
   updatedAt: z.number().int().min(0)
 })
+
+// ============================================================================
+// Pack Compaction — derived cache bootstrap (#1839)
+// ============================================================================
+
+/**
+ * What a pack file compacts. `record` packs hold sync-item payload blobs and
+ * their min/max are server_cursor values; `crdt_snapshot` packs hold note-body
+ * snapshots and their min/max are created_at epoch-second bounds.
+ * `crdt_update` is reserved: updates live in D1 today and have no R2
+ * small-object GET floor to kill.
+ */
+export const PACK_KINDS = ['record', 'crdt_snapshot', 'crdt_update'] as const
+
+export const PackKindSchema = z.enum(PACK_KINDS)
+
+/**
+ * One pack in `GET /sync/packs`. A pack is an immutable, versioned byte-concat
+ * of encrypted blobs + a trailing index block (see the server's pack-format
+ * module for the exact layout); the server never decrypts any of it.
+ *
+ * `url` is a presigned GET valid for minutes (expiresAt, epoch seconds) and is
+ * present only when the deployment opted into presigned transfers (#1836);
+ * absent means "use the item-granular endpoints".
+ *
+ * Tail semantics: packs cover the cursor ranges they advertise. Records tile
+ * their axis completely; snapshot coverage can under-cover same-second writes
+ * (a note written the same second as an already-packed tie group with a
+ * smaller note_id sorts below the watermark and stays item-granular forever).
+ * Holes inside a range (replaced/deleted items are dead bytes) also fall back
+ * to item GETs — membership is verified against the pack's own index block,
+ * never assumed, and individual blobs remain the source of truth throughout.
+ */
+export const PackSummarySchema = z.object({
+  id: z.string().min(1),
+  itemKind: PackKindSchema,
+  packKey: z.string().min(1),
+  minCursor: z.number().int().min(0),
+  maxCursor: z.number().int().min(0),
+  itemCount: z.number().int().min(0),
+  /**
+   * Payload-region bytes only — header, index block and footer are excluded.
+   * NOT a file length: do not Range-request against it; read the pack's
+   * footer/index for real offsets.
+   */
+  byteSize: z.number().int().min(1),
+  createdAt: z.number().int().min(0),
+  url: z.string().url().optional(),
+  /** Epoch seconds at which `url` stops working; mirrors the presign TTL. */
+  expiresAt: z.number().int().min(0).optional()
+})
+
+export const PackListResponseSchema = z.object({
+  packs: z.array(PackSummarySchema),
+  serverTime: z.number().int().min(0),
+  /**
+   * Opaque keyset token (max_cursor + row id of the last returned pack).
+   * Pass back as `cursor` on GET /sync/packs to fetch the next (older) page;
+   * absent on the final page. Packs arrive newest-first (max_cursor DESC).
+   */
+  nextCursor: z.string().min(1).optional()
+})
+
+export type PackKind = z.infer<typeof PackKindSchema>
+export type PackSummary = z.infer<typeof PackSummarySchema>
+export type PackListResponse = z.infer<typeof PackListResponseSchema>
 
 // ============================================================================
 // Pull Response (validated client-side)

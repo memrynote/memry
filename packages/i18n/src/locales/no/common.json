@@ -212,7 +212,9 @@
       "noResultsFor": "Ingen resultater for \"",
       "result": "resultat",
       "noResultsForQuery": "Ingen resultater for «{query}»",
-      "resultCount": "{count, plural, one {# resultat} other {# resultater}}"
+      "resultCount": "{count, plural, one {# resultat} other {# resultater}}",
+      "indexBuilding": "Bygger søkeindeks {done}/{total} — resultatene kan være ufullstendige",
+      "indexBuildingUnknown": "Bygger søkeindeks — resultatene kan være ufullstendige"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Søk og klikk på elementer for å bygge stien din",

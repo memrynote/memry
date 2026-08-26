@@ -1,0 +1,84 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
+import { handlePackQueueMessage } from './pack-consumer'
+
+/**
+ * Queue-handler wiring without real Queues (#1839): a valid message invokes
+ * the compaction core, malformed messages are ACKed (never retried), and core
+ * failures propagate so the platform retries the delivery.
+ */
+
+const USER = 'user-queue'
+let harness: SqliteD1
+let storage: R2Bucket
+
+beforeEach(() => {
+  harness = createSqliteD1()
+  storage = createMemoryR2()
+  harness.raw
+    .prepare(
+      `INSERT INTO users (id, email, auth_method, created_at, updated_at)
+       VALUES (?, 'q@example.com', 'otp', 1, 1)`
+    )
+    .run(USER)
+})
+
+describe('handlePackQueueMessage', () => {
+  it('compacts the vault for a well-formed message', async () => {
+    // size_bytes must equal the real payload: selection sizes the pack buffer
+    // from D1 rows, and a fetched-size mismatch is treated as a hole.
+    const bytes = new TextEncoder().encode('{"encryptedData":"x"}')
+    const blobKey = `${USER}/vaults/default/crdt/n-1/snapshot`
+    storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+    harness.raw
+      .prepare(
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES ('s1', ?, 'default', 'n-1', ?, 1, ?, 'device-1', 5, 'rev-n-1-1')`
+      )
+      .run(USER, blobKey, bytes.byteLength)
+
+    await handlePackQueueMessage(
+      { DB: harness.db, STORAGE: storage },
+      { userId: USER, vaultId: 'default' }
+    )
+
+    expect(
+      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
+    ).toBe(1)
+    expect(
+      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_watermarks').get() as { c: number }).c
+    ).toBeGreaterThanOrEqual(1)
+  })
+
+  it('ACKs malformed messages instead of burning retries on poison input', async () => {
+    for (const body of [null, {}, { userId: '' }, { userId: 'u' }, 42, 'nope']) {
+      await expect(
+        handlePackQueueMessage({ DB: harness.db, STORAGE: storage }, body)
+      ).resolves.toBeUndefined()
+    }
+    expect(
+      (harness.raw.prepare('SELECT COUNT(*) c FROM pack_index').get() as { c: number }).c
+    ).toBe(0)
+  })
+
+  it('propagates core failures so delivery is retried', async () => {
+    // Storage that throws simulates an R2 outage mid-build.
+    const failingStorage = {
+      get: vi.fn().mockRejectedValue(new Error('r2 unavailable'))
+    } as unknown as R2Bucket
+    harness.raw
+      .prepare(
+        `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
+         VALUES ('s1', ?, 'default', 'n-1', 'k', 1, 10, 'device-1', 1, 'rev-n-1-1')`
+      )
+      .run(USER)
+
+    await expect(
+      handlePackQueueMessage(
+        { DB: harness.db, STORAGE: failingStorage },
+        { userId: USER, vaultId: 'default' }
+      )
+    ).rejects.toThrow('r2 unavailable')
+  })
+})

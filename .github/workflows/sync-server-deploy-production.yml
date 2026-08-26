@@ -51,6 +51,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # The PACK_QUEUE producer binding requires a pre-existing queue, or the
+      # deploy below fails. Creation is guarded (`|| true`): on every deploy
+      # after the first the queue already exists and wrangler errors — that
+      # expected failure must not fail the workflow.
+      - name: Ensure pack compaction queue exists (production)
+        run: pnpm --filter @memry/sync-server exec wrangler queues create memry-pack-compaction-production || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: Deploy to production
         run: pnpm --filter @memry/sync-server exec wrangler deploy --env production
         env:

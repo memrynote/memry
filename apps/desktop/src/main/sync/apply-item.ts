@@ -26,8 +26,14 @@ export class ItemApplier {
     private adapters?: SyncAdapterRegistry<DrizzleDb, EmitToWindows>
   ) {}
 
-  apply(input: ApplyItemInput): ApplyResult {
-    const ctx = { db: this.db, emit: this.emitToWindows, vaultKey: input.vaultKey }
+  /**
+   * `dbOverride` lets the pull coordinator route a whole page's applies through
+   * its page-transaction-scoped data DB (see bulk-apply.ts). Absent, behavior
+   * is unchanged.
+   */
+  apply(input: ApplyItemInput, dbOverride?: DrizzleDb): ApplyResult {
+    const db = dbOverride ?? this.db
+    const ctx = { db, emit: this.emitToWindows, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
     const handler = adapter ? null : getHandler(input.type)
 
@@ -50,7 +56,7 @@ export class ItemApplier {
     if (input.operation === 'delete') {
       return adapter
         ? adapter.applyRemoteMutation({
-            db: this.db,
+            db,
             emit: this.emitToWindows,
             itemId: input.itemId,
             operation: 'delete',
@@ -90,7 +96,7 @@ export class ItemApplier {
 
     return adapter
       ? adapter.applyRemoteMutation({
-          db: this.db,
+          db,
           emit: this.emitToWindows,
           itemId: input.itemId,
           operation: input.operation,

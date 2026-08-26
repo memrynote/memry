@@ -1695,9 +1695,11 @@ const appReady = app.whenReady().then(async () => {
   }
   void autoOpenLastVault()
     .then(async () => {
-      // autoOpenLastVault blocks on the vault's first fullSync; if the user quit
-      // during it, shutdown has already stopped these services — do not re-arm
-      // them here (that was the mid-shutdown capture-server/scheduler restart).
+      // autoOpenLastVault no longer blocks on the vault's first fullSync (the
+      // sync runtime start is detached, #1830), but index rebuilds can still
+      // hold it open; if the user quit during that, shutdown has already
+      // stopped these services — do not re-arm them here (that was the
+      // mid-shutdown capture-server/scheduler restart).
       if (isAppShuttingDown()) {
         mainLog.info('skipping post-vault-open startup: app is shutting down')
         return

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { SyncEngine } from '../engine'
+import { SyncEngine, type SyncEngineDeps } from '../engine'
 import { createLogger } from '../../lib/logger'
+import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
+import { SyncTimer } from '@memry/sync-client/sync-timer'
+import { BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT, SYNC_STATE_KEYS } from './sync-context'
+import { ItemApplier } from '../apply-item'
+import type { DecryptedPullItem } from '@memry/sync-client/worker-protocol'
 import { createMockDeps, setupTestDb } from '@tests/utils/engine-mocks'
 
 vi.mock('../../lib/logger', () => {
@@ -39,5 +44,356 @@ describe('PullCoordinator', () => {
 
       vi.restoreAllMocks()
     })
+  })
+
+  describe('#given a one-page pull #when INITIAL_SYNC_PROGRESS could be emitted', () => {
+    // The emission is gated on ctx.fullSyncActive so socket reconnects and
+    // periodic ticks never masquerade as initial-sync progress. Nothing pinned
+    // the gate: removing it broke zero tests, and a stray event would resurrect
+    // the renderer's skeleton long after the first sync finished.
+    it('#then progress streams only while a full sync is active', async () => {
+      const deps = createMockDeps(getDb())
+      const engine = new SyncEngine(deps)
+      vi.spyOn(await import('../http-client'), 'getFromServer').mockResolvedValue({
+        items: [],
+        deleted: [],
+        hasMore: false,
+        nextCursor: 1
+      })
+      const progressEvent = (channel: string, data: unknown): boolean =>
+        channel === EVENT_CHANNELS.INITIAL_SYNC_PROGRESS &&
+        (data as { phase?: string }).phase === 'notes'
+
+      // Gate OFF — a plain pull (periodic tick, reconnect, broadcast) must
+      // stay silent.
+      await engine.pull()
+      const progressCalls = (deps.emitToRenderer as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call) => progressEvent(call[0], call[1])
+      )
+      expect(progressCalls).toHaveLength(0)
+
+      // Gate ON — the same page inside an active fullSync streams progress.
+      engine['ctx'].fullSyncActive = true
+      try {
+        await engine.pull()
+        expect(deps.emitToRenderer).toHaveBeenCalledWith(EVENT_CHANNELS.INITIAL_SYNC_PROGRESS, {
+          phase: 'notes',
+          processedItems: 0,
+          totalItems: 0
+        })
+      } finally {
+        engine['ctx'].fullSyncActive = false
+      }
+
+      vi.restoreAllMocks()
+    })
+  })
+})
+
+describe('#given a second changes page #when page one is still being applied', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then the N+1 request fires before apply(N) completes', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+
+    const http = await import('../http-client')
+    let releasePageOnePull!: () => void
+    const pageOnePullGate = new Promise<void>((resolve) => {
+      releasePageOnePull = resolve
+    })
+    let releasePageTwoFetch!: () => void
+    const pageTwoFetchGate = new Promise<void>((resolve) => {
+      releasePageTwoFetch = resolve
+    })
+
+    const getSpy = vi.spyOn(http, 'getFromServer')
+    getSpy.mockImplementationOnce(async () => ({
+      items: [{ id: 'note-1', type: 'note', version: 1, modifiedAt: 1000, size: 10 }],
+      deleted: [],
+      hasMore: true,
+      nextCursor: 2
+    }))
+    getSpy.mockImplementationOnce(async () => {
+      // Held so the test can observe exactly when the request was ISSUED.
+      await pageTwoFetchGate
+      return { items: [], deleted: [], hasMore: false, nextCursor: 3 }
+    })
+
+    const postSpy = vi.spyOn(http, 'postToServer')
+    postSpy.mockImplementationOnce(async () => {
+      // Blocks the page-one apply phase mid-run.
+      await pageOnePullGate
+      return { items: [] }
+    })
+
+    const pullPromise = engine.pull()
+
+    // The overlap proof: page two is already fetched WHILE page one's pull
+    // POST — the apply input fetch — is still blocked. Under the old ordering
+    // the second GET could not start until pullChangesPage(page one) returned,
+    // which this gate prevents.
+    await vi.waitFor(() => expect(getSpy).toHaveBeenCalledTimes(2))
+
+    releasePageOnePull()
+    releasePageTwoFetch()
+    // Both pages landed clean, so the run reports that it delivered (#1835).
+    await expect(pullPromise).resolves.toBe(true)
+    expect(postSpy).toHaveBeenCalledTimes(1)
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * The bootstrap LRU raise is gated on `ctx.fullSyncActive` so the paced vault
+ * sweep — blocked while a full sync runs — can never size itself against the
+ * raised capacity and then lose its docs when the page's batch reverts it.
+ */
+describe('#given a pull page ending in a CRDT batch #when the batch applies', () => {
+  const { getDb } = setupTestDb()
+
+  const makeProviderStub = (): Record<string, unknown> => {
+    const restore = vi.fn().mockResolvedValue(undefined)
+    return {
+      restore,
+      inactiveDocCapacity: 32,
+      isNoteLocalOnly: vi.fn(() => false),
+      getDoc: vi.fn().mockReturnValue(undefined),
+      open: vi.fn().mockResolvedValue({}),
+      closeIfInactive: vi.fn().mockResolvedValue(undefined),
+      applyRemoteUpdate: vi.fn(),
+      getStateVector: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3, 4])),
+      seedFromMarkdownPublic: vi.fn(),
+      raiseInactiveDocCapacity: vi.fn(() => restore)
+    }
+  }
+
+  const runBatch = async (
+    fullSyncActive: boolean
+  ): Promise<{ provider: Record<string, unknown>; cost: unknown }> => {
+    const provider = makeProviderStub()
+    const deps = createMockDeps(getDb(), {
+      crdtProvider: provider as unknown as SyncEngineDeps['crdtProvider']
+    })
+    const engine = new SyncEngine(deps)
+
+    // Cold vault: no watermarks, so no probe POST runs and the round below IS
+    // the whole batch.
+    vi.spyOn(await import('../http-client'), 'fetchCrdtSnapshot').mockResolvedValue(null)
+    vi.spyOn(await import('../http-client'), 'postToServer').mockResolvedValue({ notes: {} })
+
+    const eng = engine as unknown as {
+      ctx: { fullSyncActive: boolean; abortController: AbortController | null }
+      pullCoordinator: {
+        applyCrdtBatch: (runState: unknown) => Promise<unknown>
+      }
+    }
+    eng.ctx.fullSyncActive = fullSyncActive
+    eng.ctx.abortController = new AbortController()
+
+    const cost = await eng.pullCoordinator.applyCrdtBatch({
+      timer: new SyncTimer(),
+      startTime: Date.now(),
+      pulledCount: 0,
+      totalConflictsResolved: 0,
+      processedIds: new Set<string>(),
+      crdtNoteIds: ['note-1'],
+      accessJwt: 'jwt',
+      vaultKey: new Uint8Array(32)
+    })
+    return { provider, cost }
+  }
+
+  it('#then steady-state keeps the default 32-doc capacity', async () => {
+    const { provider } = await runBatch(false)
+
+    expect(provider.inactiveDocCapacity).toBe(32)
+    expect(provider.raiseInactiveDocCapacity).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
+  })
+
+  it('#then the raise happens only while fullSyncActive, and the revert runs after', async () => {
+    const { provider } = await runBatch(true)
+
+    expect(provider.raiseInactiveDocCapacity).toHaveBeenCalledWith(
+      BOOTSTRAP_CRDT_INACTIVE_DOC_LIMIT
+    )
+    expect(provider.restore as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1)
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * `stopSyncRuntime` calls `engine.requestCancel()` — which aborts the active
+ * cycle's controller — before awaiting the start promise, so closing or
+ * switching a vault mid-bootstrap is now a routine way for an abort to land
+ * INSIDE a page's item loop. `processPage` breaks out of that loop with part of
+ * the slice applied and still commits the page, reporting stop: 'none'. If the
+ * persisted cursor then advances past the whole page, the unapplied items are
+ * stranded: /sync/changes is a strictly ascending `server_cursor > ?` feed, so
+ * it never offers them again until the item is updated server-side or the
+ * 30-minute-gated manifest check resets the cursor to '0'.
+ */
+describe('#given an abort landing inside a page apply #when the page has only partly applied', () => {
+  const { getDb } = setupTestDb()
+
+  const decryptedTask = (id: string): DecryptedPullItem => ({
+    id,
+    type: 'task',
+    operation: 'update',
+    content: JSON.stringify({ title: id }),
+    clock: { 'device-1': 1 },
+    signerDeviceId: 'device-1'
+  })
+
+  it('#then the pull cursor does not advance past the page and the run is not a success', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      ctx: { abortController: AbortController | null }
+      stateManager: {
+        getStateValue: (key: string) => string | undefined
+        recordHistory: (...args: unknown[]) => void
+      }
+    }
+
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [
+        { id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 },
+        { id: 'task-2', type: 'task', version: 1, modifiedAt: 1000, size: 10 }
+      ],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 42
+    })
+    vi.spyOn(http, 'postToServer').mockResolvedValue({ items: [] })
+    vi.spyOn(await import('../sync-crypto-batch'), 'decryptPullBatch').mockResolvedValue({
+      decrypted: [decryptedTask('task-1'), decryptedTask('task-2')],
+      failures: []
+    })
+
+    const applied: string[] = []
+    vi.spyOn(ItemApplier.prototype, 'apply').mockImplementation((input) => {
+      applied.push(input.itemId)
+      // Teardown lands here: requestCancel() aborts the cycle's controller
+      // while the page is half applied.
+      eng.ctx.abortController!.abort()
+      return 'applied'
+    })
+    const historySpy = vi.spyOn(eng.stateManager, 'recordHistory')
+
+    await engine.pull()
+
+    // The abort stopped the item loop after the first item, as designed.
+    expect(applied).toEqual(['task-1'])
+    // task-2 was never applied, so the watermark must not claim the page.
+    expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+    // ...and an interrupted run is not a clean sync.
+    expect(historySpy).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * The same abort, one iteration earlier. `stopSyncRuntime` calls
+ * `engine.requestCancel()` BEFORE awaiting the start promise, so a cancel that
+ * lands while the cycle is still resolving credentials is the ordinary vault
+ * close/switch path, not an edge case — and the `while (hasMore)` guard broke
+ * out of the loop without marking the run refused. A pull that never issued a
+ * single GET then fell through to `finalizePullSuccess()` and reported that it
+ * had delivered, which is exactly the false "clean sync" the refused flag
+ * exists to prevent.
+ */
+describe('#given a cancel landing before the first page is fetched #when the pull runs', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then nothing is reported as delivered and no page is ever fetched', async () => {
+    const deps = createMockDeps(getDb())
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      stateManager: { recordHistory: (...args: unknown[]) => void }
+    }
+
+    // The cycle's AbortController is armed before credentials resolve, so a
+    // cancel here is observed by the loop guard on its very first iteration.
+    ;(deps.getVaultKey as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      engine.requestCancel()
+      return new Uint8Array(32)
+    })
+
+    const getSpy = vi.spyOn(await import('../http-client'), 'getFromServer')
+    const historySpy = vi.spyOn(eng.stateManager, 'recordHistory')
+
+    await expect(engine.pull()).resolves.toBe(false)
+
+    expect(getSpy).not.toHaveBeenCalled()
+    expect(historySpy).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
+  })
+})
+
+/**
+ * The headline shape of the 2026-07-18 incident: the run stopped on a page it
+ * refused to apply (here a confirmed vault-key mismatch), so no success history
+ * row and no fresh `lastSyncAt` may be recorded — and the outcome the caller
+ * reads must say so. `FullSyncRunner` gates the bootstrap full-text mark on
+ * this boolean, so a refused page reporting `true` re-creates the fake clean
+ * sync one layer up.
+ */
+describe('#given a pull whose page the run refused to apply #when the pull finishes', () => {
+  const { getDb } = setupTestDb()
+
+  it('#then the run reports that nothing was delivered', async () => {
+    const deps = createMockDeps(getDb(), {
+      checkAccountKey: vi.fn().mockResolvedValue('mismatch')
+    })
+    const engine = new SyncEngine(deps)
+    const eng = engine as unknown as {
+      stateManager: { getStateValue: (key: string) => string | undefined }
+    }
+
+    const http = await import('../http-client')
+    vi.spyOn(http, 'getFromServer').mockResolvedValue({
+      items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 10 }],
+      deleted: [],
+      hasMore: false,
+      nextCursor: 42
+    })
+    vi.spyOn(http, 'postToServer').mockResolvedValue({
+      items: [
+        {
+          id: 'task-1',
+          type: 'task',
+          operation: 'update',
+          signature: 'sig-task-1',
+          signerDeviceId: 'device-1',
+          blob: { encryptedKey: 'ek', keyNonce: 'kn', encryptedData: 'ed', dataNonce: 'dn' }
+        }
+      ]
+    })
+    // Every item in the page fails, and the account verifier confirms the key
+    // itself is wrong — the page is refused and the cursor must not advance.
+    vi.spyOn(await import('../sync-crypto-batch'), 'decryptPullBatch').mockResolvedValue({
+      decrypted: [],
+      failures: [
+        {
+          id: 'task-1',
+          type: 'task',
+          signerDeviceId: 'device-1',
+          error: 'decryption failed',
+          isCryptoError: true,
+          isSignatureError: false
+        }
+      ]
+    })
+
+    await expect(engine.pull()).resolves.toBe(false)
+
+    expect(eng.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR)).toBeUndefined()
+
+    vi.restoreAllMocks()
   })
 })

@@ -134,6 +134,111 @@ describe('checkManifestIntegrity', () => {
     })
   })
 
+  describe('#given a paginated server manifest #when check runs', () => {
+    it('#then walks every page and diffs against the union', async () => {
+      // #given — two locally synced tasks the server reports across two pages
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(tasks)
+        .values([
+          { id: 'task-1', projectId: 'proj-1', title: 'A', priority: 0, position: 0, clock },
+          { id: 'task-2', projectId: 'proj-1', title: 'B', priority: 0, position: 1, clock }
+        ])
+        .run()
+
+      const serverTime = Math.floor(Date.now() / 1000)
+      const getServerSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValueOnce({
+          items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+          serverTime,
+          nextCursor: 41
+        })
+        .mockResolvedValueOnce({
+          items: [{ id: 'task-2', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+          serverTime
+        })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — both pages fetched, second one resuming at the server's cursor
+      expect(getServerSpy).toHaveBeenCalledTimes(2)
+      expect(getServerSpy.mock.calls[0][0]).toBe('/sync/manifest?limit=1000&cursor=0')
+      expect(getServerSpy.mock.calls[1][0]).toBe('/sync/manifest?limit=1000&cursor=41')
+
+      // #then — the diff ran over the UNION: task-2 (page 2 only) must NOT be
+      // re-enqueued as locally-missing-from-server, and nothing is server-only
+      expect(queue.getPendingCount()).toBe(0)
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.performed).toBe(true)
+    })
+
+    it('#then a ref repeated across pages neither loops nor double-counts', async () => {
+      // #given — the server re-serves task-1 on page 2 (its row was updated
+      // between pages, so its cursor moved past the boundary) and the item is
+      // NOT held locally
+      const serverTime = Math.floor(Date.now() / 1000)
+      vi.spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValueOnce({
+          items: [{ id: 'task-1', type: 'task', version: 1, modifiedAt: 1000, size: 50 }],
+          serverTime,
+          nextCursor: 10
+        })
+        .mockResolvedValueOnce({
+          items: [{ id: 'task-1', type: 'task', version: 2, modifiedAt: 1001, size: 50 }],
+          serverTime
+        })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — one missing item, not two
+      expect(result.rePullNeeded).toBe(true)
+      expect(result.serverOnlyCount).toBe(1)
+    })
+
+    it('#then a cursor that fails to advance stops the walk instead of spinning', async () => {
+      // #given — a malformed server echoing the same cursor forever
+      const serverTime = Math.floor(Date.now() / 1000)
+      const getServerSpy = vi
+        .spyOn(await import('./http-client'), 'getFromServer')
+        .mockResolvedValue({
+          items: [],
+          serverTime,
+          nextCursor: 0
+        })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then — exactly one request; the pages gathered so far are the manifest
+      expect(getServerSpy).toHaveBeenCalledTimes(1)
+      expect(result.performed).toBe(true)
+    })
+  })
+
   describe('#given no access token #when check runs', () => {
     it('#then returns early without network call', async () => {
       const getServerSpy = vi.spyOn(await import('./http-client'), 'getFromServer')

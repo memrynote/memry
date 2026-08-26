@@ -75,34 +75,6 @@ function createD1Database(): D1Database {
           return prepared
         },
         async first<T>() {
-          if (sql.startsWith('INSERT INTO crdt_updates')) {
-            // Bindings are positional and this double reads them by index, so
-            // the insert's own column list and the subquery's offsets have to
-            // be kept in step with crdt.ts by hand. Attribution added two
-            // columns to the SELECT list, pushing the subquery's
-            // (user, vault, note) triple from 7-9 to 9-11.
-            const nextSequence =
-              sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
-                ? getCombinedMax(params[9] as string, params[10] as string, params[11] as string) +
-                  1
-                : getUpdateMax(params[9] as string, params[10] as string, params[11] as string) + 1
-
-            updates.push({
-              id: params[0] as string,
-              user_id: params[1] as string,
-              vault_id: params[2] as string,
-              note_id: params[3] as string,
-              update_data: params[4] as ArrayBuffer,
-              sequence_num: nextSequence,
-              signer_device_id: params[5] as string,
-              created_at: params[6] as number,
-              client_platform: (params[7] as string | null) ?? null,
-              client_version: (params[8] as string | null) ?? null
-            })
-
-            return { sequence_num: nextSequence } as T
-          }
-
           if (sql.startsWith('SELECT COALESCE(MAX(sequence_num), 0) as max_seq')) {
             const maxSeq =
               sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
@@ -159,6 +131,37 @@ function createD1Database(): D1Database {
           return null
         },
         async all<T>() {
+          if (sql.startsWith('INSERT INTO crdt_updates')) {
+            // storeUpdates sends these through db.batch, whose statements run
+            // sequentially inside one transaction — which this double models by
+            // executing each insert synchronously, so statement N's MAX sees
+            // statement N-1's row. Bindings are positional and this double
+            // reads them by index, so the insert's own column list and the
+            // subquery's offsets have to be kept in step with crdt.ts by hand.
+            // Attribution added two columns to the SELECT list, pushing the
+            // subquery's (user, vault, note) triple from 7-9 to 9-11.
+            const nextSequence =
+              sql.includes('crdt_snapshots') && sql.includes('UNION ALL')
+                ? getCombinedMax(params[9] as string, params[10] as string, params[11] as string) +
+                  1
+                : getUpdateMax(params[9] as string, params[10] as string, params[11] as string) + 1
+
+            updates.push({
+              id: params[0] as string,
+              user_id: params[1] as string,
+              vault_id: params[2] as string,
+              note_id: params[3] as string,
+              update_data: params[4] as ArrayBuffer,
+              sequence_num: nextSequence,
+              signer_device_id: params[5] as string,
+              created_at: params[6] as number,
+              client_platform: (params[7] as string | null) ?? null,
+              client_version: (params[8] as string | null) ?? null
+            })
+
+            return { results: [{ sequence_num: nextSequence }] as T[] }
+          }
+
           if (
             sql.startsWith(
               'SELECT id, user_id, vault_id, note_id, update_data, sequence_num, signer_device_id, created_at FROM crdt_updates'
@@ -284,6 +287,7 @@ function createRecordingDatabase(options: {
   const db = {
     prepare: vi.fn((sql: string) => {
       const stmt = {
+        sql,
         bindings: [] as unknown[],
         bind: vi.fn((...args: unknown[]) => {
           stmt.bindings = args
@@ -294,7 +298,12 @@ function createRecordingDatabase(options: {
         run: vi.fn(async () => ({ meta: { changes: options.changes?.(sql) ?? 1 } }))
       }
       return stmt
-    })
+    }),
+    batch: vi.fn(async (batched: Array<{ sql: string; bindings: unknown[] }>) =>
+      batched.map((stmt) => ({
+        results: [options.first?.(stmt.sql, stmt.bindings)].filter((row) => row != null)
+      }))
+    )
   }
 
   return { db: db as unknown as D1Database, statements }
@@ -714,12 +723,9 @@ function createAccountingDatabase(options: { failRefund?: boolean; failInsert?: 
   const db = {
     prepare: vi.fn((sql: string) => {
       const stmt = {
+        sql,
         bind: vi.fn(() => stmt),
         first: vi.fn(async () => {
-          if (sql.includes('INSERT INTO crdt_updates')) {
-            if (options.failInsert) throw new Error(D1_OUTAGE_MESSAGE)
-            return { sequence_num: 1 }
-          }
           if (sql.includes('COALESCE(MAX(sequence_num)')) return { max_seq: 0 }
           return null
         }),
@@ -733,7 +739,17 @@ function createAccountingDatabase(options: { failRefund?: boolean; failInsert?: 
         })
       }
       return stmt
-    })
+    }),
+    batch: vi.fn(async (batched: Array<{ sql: string }>) =>
+      batched.map((stmt) => {
+        if (stmt.sql.includes('INSERT INTO crdt_updates')) {
+          // A D1 batch is one transaction: an outage fails it whole.
+          if (options.failInsert) throw new Error(D1_OUTAGE_MESSAGE)
+          return { results: [{ sequence_num: 1 }] }
+        }
+        return { results: [] }
+      })
+    )
   }
 
   return { db: db as unknown as D1Database, runSql }

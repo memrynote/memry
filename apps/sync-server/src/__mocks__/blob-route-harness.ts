@@ -18,8 +18,6 @@ export interface MockDbState {
   session?: Record<string, unknown> | null
   /** Row for chunk metadata reads (ref_count / size_bytes / r2_key lookups). */
   chunk?: Record<string, unknown> | null
-  /** Row for the dedupe lookup performed on chunk upload. */
-  existingChunk?: Record<string, unknown> | null
   /**
    * Per-hash chunk rows for the dereference route, which looks up each hash in
    * a request independently (unlike the other single-row-at-a-time lookups
@@ -51,10 +49,22 @@ const createStatement = (sql: string, state: MockDbState) => {
         return (hash === undefined ? undefined : state.chunksByHash?.[hash]) ?? null
       }
       if (sql.includes('FROM blob_chunks') && sql.includes('hash = ?')) {
-        if (sql.includes('SELECT id, r2_key')) return state.existingChunk ?? null
         return state.chunk ?? null
       }
       return null
+    }),
+    // Batched hash lookups (presign-batch scopes by user/vault and filters by
+    // `hash IN (...)`); membership in chunksByHash encodes the scoping — a
+    // foreign vault's or user's hash is simply absent from the map.
+    all: vi.fn(async () => {
+      if (sql.includes('FROM blob_chunks') && sql.includes('hash IN (')) {
+        const hashes = stmt.bindings.slice(2) as string[]
+        const results = hashes
+          .map((hash) => state.chunksByHash?.[hash])
+          .filter((row): row is Record<string, unknown> => !!row)
+        return { results }
+      }
+      return { results: [] }
     }),
     run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
   }

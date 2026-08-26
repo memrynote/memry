@@ -43,7 +43,8 @@ const mocks = vi.hoisted(() => ({
     moved: [] as EmptyHandler[],
     external: [] as NoteHandler[],
     tagsChanged: [] as EmptyHandler[],
-    folderConfigUpdated: [] as EmptyHandler[]
+    folderConfigUpdated: [] as EmptyHandler[],
+    indexProgress: [] as ((progress: number) => void)[]
   }
 }))
 
@@ -85,6 +86,13 @@ vi.mock('@/services/notes-service', () => ({
 
 vi.mock('@/services/tags-service', () => ({
   tagsService: mocks.tagsService
+}))
+
+vi.mock('@/services/vault-service', () => ({
+  onVaultIndexProgress: (callback: (progress: number) => void) => {
+    mocks.handlers.indexProgress.push(callback)
+    return vi.fn()
+  }
 }))
 
 const note = (id: string, title: string): Note =>
@@ -190,6 +198,37 @@ describe('use-notes-query', () => {
 
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(6))
     expect(result.current.notes[0]?.title).toBe('Second')
+  })
+
+  it('#1832: refetches lists on background index-build progress, throttled, always at completion', async () => {
+    const { result } = renderHook(() => useNotesList(), { wrapper })
+
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))
+
+    mocks.notesService.list.mockResolvedValue({
+      notes: [listItem('n9', 'Indexed')],
+      total: 1,
+      hasMore: false
+    } satisfies NoteListResponse)
+
+    const beat = mocks.handlers.indexProgress[0]
+    expect(beat).toBeDefined()
+
+    // Progress beats arrive every 10 walked files — a burst inside the throttle
+    // window collapses to a single refetch.
+    await act(async () => {
+      beat(10)
+      beat(20)
+      beat(30)
+    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(2))
+
+    // The completion beat always lands so the finished tree is fetched.
+    await act(async () => {
+      beat(100)
+    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(3))
+    expect(result.current.notes[0]?.title).toBe('Indexed')
   })
 
   it('loads tags, folders, folder mutations, and link queries with event invalidation', async () => {

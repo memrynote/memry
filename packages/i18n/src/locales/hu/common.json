@@ -212,7 +212,9 @@
       "noResultsFor": "Nincs találat a következőre",
       "result": "eredményt",
       "noResultsForQuery": "Nincs találat a következőre: „{query}”",
-      "resultCount": "{count, plural, one {# találat} other {# találat}}"
+      "resultCount": "{count, plural, one {# találat} other {# találat}}",
+      "indexBuilding": "Keresési index építése {done}/{total} — az eredmények hiányosak lehetnek",
+      "indexBuildingUnknown": "Keresési index építése — az eredmények hiányosak lehetnek"
     },
     "componentsSearchRecentReasons": {
       "searchAndClickItemsToBuildYourTrail": "Keressen és kattintson az elemekre a nyomvonal megépítéséhez",

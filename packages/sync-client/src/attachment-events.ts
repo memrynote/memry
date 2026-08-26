@@ -19,6 +19,14 @@ interface AttachmentDownloadNeededEvent {
    */
   diskPath: string
   intoDir?: boolean
+  /**
+   * Priority hints for the download queue (hybrid strategy: recently-used +
+   * small first). Purely in-process and optional — an emitter that has neither
+   * simply enqueues at neutral priority.
+   */
+  sizeHint?: number
+  /** Epoch ms of the owning note's modifiedAt at the time of the emit. */
+  recencyHint?: number
 }
 
 type DownloadNeededHandler = (event: AttachmentDownloadNeededEvent) => void

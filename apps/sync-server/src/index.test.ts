@@ -321,12 +321,13 @@ describe('scheduled cleanup', () => {
       { waitUntil: vi.fn(), passThroughOnException: vi.fn() } as never
     )
 
-    // all 9 cleanup tasks fail against the broken DB — each must reach PostHog
-    // Logs (redacted detail) and PostHog events (server_error_seen), one of each per failure.
+    // all 10 cleanup tasks + the pack backfill (#1839) fail against the broken
+    // DB — each must reach PostHog Logs (redacted detail) and PostHog events
+    // (server_error_seen), one of each per failure.
     const logCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/v1/logs'))
     const eventCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/batch/'))
-    expect(logCalls).toHaveLength(9)
-    expect(eventCalls).toHaveLength(9)
+    expect(logCalls).toHaveLength(11)
+    expect(eventCalls).toHaveLength(11)
     const body = JSON.parse((logCalls[0][1] as RequestInit).body as string)
     const record = body.resourceLogs[0].scopeLogs[0].logRecords[0]
     expect(record.severityText).toBe('error')
@@ -392,8 +393,30 @@ describe('scheduled cleanup', () => {
         return JSON.parse(body.resourceLogs[0].scopeLogs[0].logRecords[0].body.stringValue).action
       })
     expect(actions).toContain('release_download_counts')
-    // 9 cleanups + the release pull; the pull is the only one without the prefix
-    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(9)
-    expect(actions).toHaveLength(10)
+    // 10 cleanups + the pack backfill (#1839) + the release pull; the pull is
+    // the only one without the cleanup_ prefix.
+    expect(actions.filter((a: string) => a.startsWith('cleanup_'))).toHaveLength(10)
+    expect(actions).toContain('pack_backfill')
+    expect(actions).toHaveLength(12)
+  })
+})
+
+describe('production route table', () => {
+  // Route-shape facts pinned against the REAL app, not a test-local rebuild:
+  // routes/bootstrap.test.ts mounts its own Hono at '/sync/bootstrap', so it
+  // cannot catch a wrong mount point here (#1837).
+  const hasPost = (path: string): boolean =>
+    app.routes.some((route) => route.method === 'POST' && route.path === path)
+
+  it('mounts the bootstrap session router under /sync/bootstrap', () => {
+    expect(hasPost('/sync/bootstrap')).toBe(true)
+    expect(hasPost('/sync/bootstrap/renew')).toBe(true)
+    expect(hasPost('/sync/bootstrap/close')).toBe(true)
+  })
+
+  it('does not publish the bootstrap routes at the bare /sync prefix', () => {
+    expect(hasPost('/sync')).toBe(false)
+    expect(hasPost('/sync/renew')).toBe(false)
+    expect(hasPost('/sync/close')).toBe(false)
   })
 })
