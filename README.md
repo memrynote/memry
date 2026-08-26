@@ -70,6 +70,12 @@ Want to run it locally, hack on it, or contribute? See **[docs/DEVELOPMENT.md](d
 
 https://memrynote.com/roadmap
 
+## Support
+
+MemryNote is free and stays free. Sync is the only paid part, and nothing here unlocks a feature. If the app saves you time and you want to chip in, a coffee covers certificates, servers, and developer fees.
+
+<a href="https://www.buymeacoffee.com/memrynote" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" height="41" width="174" ></a>
+
 ## Community
 
 [r/memrynote](https://www.reddit.com/r/memrynote/) · [@X](https://twitter.com/h4yfans) · [Issues](https://github.com/memrynote/memry/issues) · kaan@memrynote.com
@@ -89,7 +95,7 @@ Ship a workflow you love? Tell us. Something broken? Tell us louder.
  </picture>
 </a>
 <sub>
-  
-  AGPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
+
+AGPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
 
 </div>
