@@ -71,6 +71,13 @@ export class OutboxStore {
     op: Extract<SyncOperation, 'create' | 'update' | 'delete'>,
     payloadJson: string
   ): Promise<void> {
+    // Supersede this device's earlier pending rows for the same item. The
+    // payload is the WHOLE object as it stands now, so an older row says
+    // nothing this one does not — and leaving it queued is a real hazard: a
+    // row still serving a backoff is invisible to the batch that collapses
+    // per item id, and would later re-push a stale full payload over the
+    // newer one that already landed.
+    await this.db.runAsync(`DELETE FROM outbox WHERE item_id = ? AND op != 'crdt-update'`, [itemId])
     await this.db.runAsync(
       `INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at) VALUES (?, ?, ?, ?, ?)`,
       [
@@ -156,14 +163,26 @@ export class OutboxStore {
   }
 
   /**
-   * Clear the backoff on every queued row.
+   * Clear the backoff on the rows that just failed.
    *
-   * Used after a token refresh: the rows that just failed are sitting on a
-   * ≥10 s `next_attempt_at`, so an immediate retry drain would claim nothing
-   * and the refresh would be a no-op the user experiences as lost work.
+   * Used after a token refresh: those rows are sitting on a ≥10 s
+   * `next_attempt_at`, so an immediate retry drain would claim nothing and the
+   * refresh would be a no-op the user experiences as lost work.
+   *
+   * Scoped, not global. Clearing the whole table would reset the backoff of
+   * every unrelated row — one failed flush plus one successful refresh would
+   * disable exponential backoff outright, which is how a transient server
+   * problem turns into a request storm.
    */
-  async clearBackoff(): Promise<void> {
-    await this.db.runAsync('UPDATE outbox SET next_attempt_at = NULL')
+  async clearBackoff(ids: number[]): Promise<void> {
+    if (ids.length === 0) return
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100)
+      await this.db.runAsync(
+        `UPDATE outbox SET next_attempt_at = NULL WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        chunk
+      )
+    }
   }
 
   async pendingCount(): Promise<number> {
@@ -256,6 +275,14 @@ export interface OutboxDrainDeps {
 export interface DrainResult {
   pushed: number
   failed: number
+  /**
+   * Rows this pass put on a backoff.
+   *
+   * Named rather than counted so a caller that fixes the CAUSE — a token
+   * refresh, typically — can clear the backoff on exactly those rows instead
+   * of the whole table.
+   */
+  failedIds: number[]
   parked: boolean
   remaining: number
 }
@@ -298,7 +325,7 @@ export class OutboxDrain {
 
   private async run(): Promise<DrainResult> {
     const { store } = this.deps
-    const idle = { pushed: 0, failed: 0, parked: false, remaining: 0 }
+    const idle: DrainResult = { pushed: 0, failed: 0, failedIds: [], parked: false, remaining: 0 }
 
     if (!this.deps.isOnline()) return { ...idle, remaining: await store.pendingCount() }
 
@@ -321,6 +348,7 @@ export class OutboxDrain {
 
     let pushed = 0
     let failed = 0
+    const failedIds: number[] = []
 
     // CRDT updates first: a body edit that lands after its own note's delete
     // would be applied to a tombstone.
@@ -338,8 +366,10 @@ export class OutboxDrain {
       const result = await this.pushCrdt(noteId, noteRows, vaultKey, signingSecretKey)
       pushed += result.pushed
       failed += result.failed
-      if (result.stop)
-        return { pushed, failed, parked: true, remaining: await store.pendingCount() }
+      failedIds.push(...result.failedIds)
+      if (result.stop) {
+        return { pushed, failed, failedIds, parked: true, remaining: await store.pendingCount() }
+      }
     }
 
     for (let i = 0; i < recordRows.length; i += RECORD_BATCH_LIMIT) {
@@ -347,13 +377,15 @@ export class OutboxDrain {
       const result = await this.pushRecords(chunk, vaultKey, signingSecretKey)
       pushed += result.pushed
       failed += result.failed
-      if (result.stop)
-        return { pushed, failed, parked: true, remaining: await store.pendingCount() }
+      failedIds.push(...result.failedIds)
+      if (result.stop) {
+        return { pushed, failed, failedIds, parked: true, remaining: await store.pendingCount() }
+      }
     }
 
     const remaining = await store.pendingCount()
     logOutboxDepth(remaining)
-    return { pushed, failed, parked: false, remaining }
+    return { pushed, failed, failedIds, parked: false, remaining }
   }
 
   private async pushCrdt(
@@ -361,11 +393,11 @@ export class OutboxDrain {
     rows: OutboxRow[],
     vaultKey: Uint8Array,
     signingSecretKey: Uint8Array
-  ): Promise<{ pushed: number; failed: number; stop: boolean }> {
+  ): Promise<{ pushed: number; failed: number; failedIds: number[]; stop: boolean }> {
     const usable = rows.filter((r) => r.payload !== null)
     const empty = rows.filter((r) => r.payload === null)
     if (empty.length > 0) await this.deps.store.complete(empty.map((r) => r.id))
-    if (usable.length === 0) return { pushed: 0, failed: 0, stop: false }
+    if (usable.length === 0) return { pushed: 0, failed: 0, failedIds: [], stop: false }
 
     // Encrypt once, then let the shared planner decide what fits. It enforces
     // both wire budgets the server has: the per-update D1 row cap and the
@@ -422,7 +454,12 @@ export class OutboxDrain {
             .map((payload) => byPayload.get(payload)!)
             .filter(Boolean)
           const outcome = await this.handleFailure([...remaining, ...oversizedRows], err)
-          return { pushed, failed: outcome.failed, stop: outcome.stop }
+          return {
+            pushed,
+            failed: outcome.failed,
+            failedIds: outcome.failedIds,
+            stop: outcome.stop
+          }
         }
       }
     }
@@ -430,10 +467,15 @@ export class OutboxDrain {
     if (plan.oversized.length > 0) {
       const oversizedRows = plan.oversized.map((payload) => byPayload.get(payload)!).filter(Boolean)
       const outcome = await this.pushSnapshot(noteId, oversizedRows, vaultKey, signingSecretKey)
-      return { pushed: pushed + outcome.pushed, failed: outcome.failed, stop: outcome.stop }
+      return {
+        pushed: pushed + outcome.pushed,
+        failed: outcome.failed,
+        failedIds: outcome.failedIds,
+        stop: outcome.stop
+      }
     }
 
-    return { pushed, failed: 0, stop: false }
+    return { pushed, failed: 0, failedIds: [], stop: false }
   }
 
   /**
@@ -449,24 +491,19 @@ export class OutboxDrain {
     rows: OutboxRow[],
     vaultKey: Uint8Array,
     signingSecretKey: Uint8Array
-  ): Promise<{ pushed: number; failed: number; stop: boolean }> {
+  ): Promise<{ pushed: number; failed: number; failedIds: number[]; stop: boolean }> {
     const encodeDocSnapshot = this.deps.encodeDocSnapshot
+    const ids = rows.map((r) => r.id)
     if (!encodeDocSnapshot) {
-      await this.deps.store.fail(
-        rows.map((r) => r.id),
-        'update too large and no snapshot source'
-      )
-      return { pushed: 0, failed: rows.length, stop: false }
+      await this.deps.store.fail(ids, 'update too large and no snapshot source')
+      return { pushed: 0, failed: ids.length, failedIds: ids, stop: false }
     }
 
     try {
       const state = await encodeDocSnapshot(noteId)
       if (!state) {
-        await this.deps.store.fail(
-          rows.map((r) => r.id),
-          'update too large and doc unavailable'
-        )
-        return { pushed: 0, failed: rows.length, stop: false }
+        await this.deps.store.fail(ids, 'update too large and doc unavailable')
+        return { pushed: 0, failed: ids.length, failedIds: ids, stop: false }
       }
       const snapshot = this.deps.crypto.toBase64(
         encryptCrdtUpdatePacked(this.deps.crypto, state, vaultKey, noteId, signingSecretKey)
@@ -478,7 +515,7 @@ export class OutboxDrain {
       })
       await this.deps.store.complete(rows.map((r) => r.id))
       log.info('Pushed a full snapshot for an oversized update', { noteId, rows: rows.length })
-      return { pushed: rows.length, failed: 0, stop: false }
+      return { pushed: rows.length, failed: 0, failedIds: [], stop: false }
     } catch (err) {
       return this.handleFailure(rows, err)
     }
@@ -488,9 +525,13 @@ export class OutboxDrain {
     rows: OutboxRow[],
     vaultKey: Uint8Array,
     signingSecretKey: Uint8Array
-  ): Promise<{ pushed: number; failed: number; stop: boolean }> {
+  ): Promise<{ pushed: number; failed: number; failedIds: number[]; stop: boolean }> {
     const items: PushItem[] = []
     const rowsById = new Map<string, number[]>()
+    // Rows this call has already completed or failed. Passing them to
+    // `handleFailure` again would double their attempt count and double-count
+    // the failure in the result.
+    const settled = new Set<number>()
 
     // Collapse to ONE push item per item id, using the NEWEST row.
     //
@@ -521,7 +562,9 @@ export class OutboxDrain {
         // A row we cannot parse can never succeed; retrying it forever would
         // block every later row behind it.
         log.warn('Dropping unparseable outbox row', { id: row.id, itemId: row.itemId })
-        await this.deps.store.complete(rowsById.get(row.itemId) ?? [row.id])
+        const ids = rowsById.get(row.itemId) ?? [row.id]
+        await this.deps.store.complete(ids)
+        for (const id of ids) settled.add(id)
         rowsById.delete(row.itemId)
         continue
       }
@@ -561,13 +604,14 @@ export class OutboxDrain {
           })
           await this.deps.store.fail(ids, message)
         }
+        for (const id of ids) settled.add(id)
         rowsById.delete(row.itemId)
         continue
       }
       items.push(pushItem)
     }
 
-    if (items.length === 0) return { pushed: 0, failed: 0, stop: false }
+    if (items.length === 0) return { pushed: 0, failed: 0, failedIds: [], stop: false }
 
     try {
       const raw = await seamJsonRequest<unknown>(this.deps.httpCtx(), {
@@ -581,7 +625,7 @@ export class OutboxDrain {
         // delete rows the server may never have stored.
         const ids = [...rowsById.values()].flat()
         await this.deps.store.fail(ids, 'unparseable push response')
-        return { pushed: 0, failed: ids.length, stop: false }
+        return { pushed: 0, failed: ids.length, failedIds: ids, stop: false }
       }
 
       const acceptedIds: number[] = []
@@ -595,9 +639,17 @@ export class OutboxDrain {
       }
       if (rejectedIds.length > 0) await this.deps.store.fail(rejectedIds, 'server rejected item')
 
-      return { pushed: acceptedIds.length, failed: rejectedIds.length, stop: false }
+      return {
+        pushed: acceptedIds.length,
+        failed: rejectedIds.length,
+        failedIds: rejectedIds,
+        stop: false
+      }
     } catch (err) {
-      return this.handleFailure(rows, err)
+      return this.handleFailure(
+        rows.filter((row) => !settled.has(row.id)),
+        err
+      )
     }
   }
 
@@ -608,7 +660,7 @@ export class OutboxDrain {
   private async handleFailure(
     rows: OutboxRow[],
     err: unknown
-  ): Promise<{ pushed: number; failed: number; stop: boolean }> {
+  ): Promise<{ pushed: number; failed: number; failedIds: number[]; stop: boolean }> {
     const message = err instanceof Error ? err.message : String(err)
 
     // Only the two POLICY codes park. A 403 for any other reason — a revoked
@@ -625,15 +677,13 @@ export class OutboxDrain {
       // No `fail()`: parked rows must not accumulate backoff for a condition
       // they did not cause, or the first pass after the switch clears sits idle.
       log.warn('Write refused by server policy; outbox parked', { code: policyCode })
-      return { pushed: 0, failed: 0, stop: true }
+      return { pushed: 0, failed: 0, failedIds: [], stop: true }
     }
 
-    await this.deps.store.fail(
-      rows.map((r) => r.id),
-      message
-    )
-    log.warn('Outbox push failed; backing off', { rows: rows.length, error: message })
-    return { pushed: 0, failed: rows.length, stop: false }
+    const ids = rows.map((r) => r.id)
+    await this.deps.store.fail(ids, message)
+    log.warn('Outbox push failed; backing off', { rows: ids.length, error: message })
+    return { pushed: 0, failed: ids.length, failedIds: ids, stop: false }
   }
 }
 

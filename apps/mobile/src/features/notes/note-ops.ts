@@ -197,6 +197,13 @@ export async function createNote(
       `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)`,
       [noteId, derivePath(payload), payload.content ?? '', now]
     )
+    // The seed marker, and it is deliberately narrow — see `takePendingSeed`.
+    if ((payload.content ?? '').length > 0) {
+      await ctx.db.runAsync(
+        `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+        [seedKey(noteId), payload.content ?? '']
+      )
+    }
     await ctx.outbox.enqueueRecord('note', noteId, 'create', serialized)
   })
   return noteId
@@ -319,6 +326,37 @@ export function generateId(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+// --- editor seeding --------------------------------------------------------
+
+const seedKey = (noteId: string) => `seed.${noteId}`
+
+/**
+ * Markdown to seed a brand-new note's editor with, consumed exactly once.
+ *
+ * ONLY notes this device just created are seeded, which is why there is a
+ * marker rather than a rule like "the doc is empty, so use `note_bodies`".
+ * That rule is wrong and expensively so: the first sync pulls CRDT bodies only
+ * for recently-touched notes, while the record applier fills `note_bodies` for
+ * EVERY note from its create-time `content`. Opening an older note would find
+ * an empty local doc and a markdown body, seed a fresh Y.Doc from it and push
+ * that — and when it merged with the server's existing state the note's body
+ * would appear twice, on every device.
+ *
+ * A note pulled from the server whose CRDT has not arrived yet is not seeded;
+ * it waits for the body fetch, which is what actually has its content.
+ */
+export async function takePendingSeed(db: VaultDb, noteId: string): Promise<string | undefined> {
+  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', [
+    seedKey(noteId)
+  ])
+  return row?.value && row.value.length > 0 ? row.value : undefined
+}
+
+/** Called once the seed has been handed to the editor. */
+export async function clearPendingSeed(db: VaultDb, noteId: string): Promise<void> {
+  await db.runAsync('DELETE FROM meta WHERE key = ?', [seedKey(noteId)])
 }
 
 // --- tags ------------------------------------------------------------------

@@ -120,6 +120,8 @@ export interface OpenDoc {
   onLocalUpdate(listener: (update: Uint8Array) => void): () => void
   /** Fires for remote updates that must be forwarded to the WebView. */
   onRemoteUpdate(listener: (update: Uint8Array) => void): () => void
+  /** True while a view is still listening — see `evictOldest`. */
+  inUse(): boolean
   close(): void
 }
 
@@ -172,14 +174,33 @@ export class EditorDocManager {
   /**
    * Drop the least-recently-opened docs past the cap.
    *
-   * Safe by construction: an update is durable before it reaches the doc, so a
-   * closed doc has nothing that is not already on disk.
+   * Safe for the DATA by construction — an update is durable before it reaches
+   * the doc, so a closed doc holds nothing that is not already on disk — but
+   * NOT safe for a doc a mounted editor is still holding: destroying it and
+   * clearing its listeners leaves that editor permanently deaf to pulled
+   * remote updates. Docs with subscribers are skipped, so the cap is a target
+   * rather than a hard bound; a screen unsubscribes on unmount, and the next
+   * open collects it.
    */
   private async evictOldest(): Promise<void> {
-    while (this.open.size > MAX_OPEN_DOCS) {
-      const oldest = this.open.keys().next().value
-      if (oldest === undefined) return
-      await this.closeDoc(oldest)
+    if (this.open.size <= MAX_OPEN_DOCS) return
+
+    let over = this.open.size - MAX_OPEN_DOCS
+    for (const docId of [...this.open.keys()]) {
+      if (over <= 0) return
+      const pending = this.open.get(docId)
+      if (!pending) continue
+      let doc: OpenDoc
+      try {
+        doc = await pending
+      } catch {
+        this.open.delete(docId)
+        over -= 1
+        continue
+      }
+      if (doc.inUse()) continue
+      await this.closeDoc(docId)
+      over -= 1
     }
   }
 
@@ -339,6 +360,8 @@ export class EditorDocManager {
         remoteListeners.add(listener)
         return () => remoteListeners.delete(listener)
       },
+
+      inUse: () => localListeners.size > 0 || remoteListeners.size > 0,
 
       close() {
         doc.off('update', onUpdate)

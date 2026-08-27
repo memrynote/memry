@@ -56,8 +56,10 @@ export async function createNoteFromTemplate(
   templateId: string,
   options: { title?: string; folderPath?: string | null } = {}
 ): Promise<string | null> {
+  // `deleted_at IS NULL`: the picker's list can be stale, and instantiating a
+  // template another device deleted would resurrect its content as a new note.
   const row = await ctx.db.getFirstAsync<{ payload: string | null }>(
-    `SELECT payload FROM sync_items WHERE id = ? AND type = 'template'`,
+    `SELECT payload FROM sync_items WHERE id = ? AND type = 'template' AND deleted_at IS NULL`,
     [templateId]
   )
   if (!row?.payload) return null

@@ -180,6 +180,16 @@ export interface EditorSession {
   attachments: AttachmentTransfer
   /** Push everything queued; safe to call on every foreground/background edge. */
   flush(): Promise<void>
+  /**
+   * Drop the cached vault key and signing key.
+   *
+   * `closeEditorSession` removes the session from the registry, but a screen
+   * that already holds one keeps working — including encrypting and pushing —
+   * unless the secrets themselves are cleared. `refreshSecrets` only re-reads
+   * values that are already falsy, so nulling them here is what makes a lock
+   * take effect for a session that is already in someone's hands.
+   */
+  lock(): void
 }
 
 const sessions = new Map<string, Promise<EditorSession>>()
@@ -198,7 +208,10 @@ export function closeEditorSession(vaultId: string): void {
   const pending = sessions.get(vaultId)
   if (!pending) return
   sessions.delete(vaultId)
-  void pending.then((session) => session.docs.closeAll()).catch(() => {})
+  // `lock()`, not just `closeAll()`: removing the session from the registry
+  // does nothing for the copy a screen is already holding, which would keep
+  // encrypting and pushing with the key it cached at build time.
+  void pending.then((session) => session.lock()).catch(() => {})
 }
 
 async function build(vaultId: string): Promise<EditorSession> {
@@ -298,6 +311,15 @@ async function build(vaultId: string): Promise<EditorSession> {
     docs,
     drain,
     attachments,
+    lock() {
+      vaultKey?.fill(0)
+      keypair?.privateKey.fill(0)
+      vaultKey = null
+      keypair = null
+      accessToken = ''
+      docs.closeAll()
+    },
+
     async flush() {
       await refreshSecrets()
       const result = await drain.drain()
@@ -308,9 +330,9 @@ async function build(vaultId: string): Promise<EditorSession> {
         const fresh = await refreshSession()
         if (fresh) {
           accessToken = fresh
-          // The rows that just failed are on a backoff of at least ten
-          // seconds, so without this the retry claims nothing at all.
-          await outbox.clearBackoff()
+          // Only the rows that just failed: the rest of the queue keeps the
+          // backoff it earned, or one refresh would disable it table-wide.
+          if (result.failedIds.length > 0) await outbox.clearBackoff(result.failedIds)
           await drain.drain()
         }
       }

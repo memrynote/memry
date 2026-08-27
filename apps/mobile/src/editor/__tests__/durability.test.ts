@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as Y from 'yjs'
-import { EditorDocManager, type DocHalves, type DocStore, type OutboxSink } from '../doc-manager'
+import {
+  EditorDocManager,
+  MAX_OPEN_DOCS,
+  type DocHalves,
+  type DocStore,
+  type OutboxSink
+} from '../doc-manager'
 
 /**
  * The durability rule (T062): a WebView-originated update is committed to
@@ -265,6 +271,36 @@ describe('EditorDocManager durability', () => {
     seeded.getXmlFragment('prosemirror').insert(0, [new Y.XmlElement('paragraph')])
     open.applyFromRemote(Y.encodeStateAsUpdate(seeded))
     expect(open.isEmpty()).toBe(false)
+  })
+
+  it('never evicts a doc a mounted editor is still listening to', async () => {
+    const rec = recorder()
+    const manager = new EditorDocManager(rec.store, rec.outbox)
+
+    // The first doc keeps a subscriber, as a mounted EditorView would.
+    const held = await manager.openDoc('note-held')
+    held.onRemoteUpdate(() => {})
+
+    // Enough opens to push it well past the cap.
+    for (let i = 0; i < MAX_OPEN_DOCS + 4; i++) await manager.openDoc(`note-${i}`)
+
+    // Destroying it would clear its listeners and leave that editor
+    // permanently deaf to pulled remote updates.
+    expect(manager.isOpen('note-held')).toBe(true)
+    const same = await manager.openDoc('note-held')
+    expect(same).toBe(held)
+  })
+
+  it('evicts unheld docs past the cap', async () => {
+    const rec = recorder()
+    const manager = new EditorDocManager(rec.store, rec.outbox)
+
+    for (let i = 0; i < MAX_OPEN_DOCS + 3; i++) await manager.openDoc(`note-${i}`)
+
+    // Least-recently-opened goes first. Eviction is free: a doc holds nothing
+    // that is not already on disk.
+    expect(manager.isOpen('note-0')).toBe(false)
+    expect(manager.isOpen(`note-${MAX_OPEN_DOCS + 2}`)).toBe(true)
   })
 
   it('reuses an open doc rather than re-reading SQLite per WebView re-create', async () => {

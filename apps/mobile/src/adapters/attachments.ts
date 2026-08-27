@@ -136,12 +136,15 @@ export class AttachmentTransfer {
       const signerKey = await this.deps.resolveDeviceKey(encrypted.signerDeviceId)
       if (!signerKey) return { status: 'unavailable' }
 
-      const { manifest } = await decryptAttachmentManifest(
+      const { manifest, fileKey } = await decryptAttachmentManifest(
         this.deps.crypto,
         encrypted,
         vaultKey,
         signerKey
       )
+      // The peek needs the manifest, not the bytes, so the key it unwrapped is
+      // done with immediately — same rule as `download()` below.
+      fileKey.fill(0)
       await this.deps.db.runAsync(
         `INSERT INTO attachments (item_id, remote_size, filename, mime_type)
          VALUES (?, ?, ?, ?)
