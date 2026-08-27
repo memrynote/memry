@@ -55,22 +55,21 @@ function dateMentionData(overrides: Partial<DateMentionData> = {}): DateMentionD
 }
 
 /**
- * An anchor id whose token demonstrably exercises base64url's `_` and `-`
- * runs — the markdown-emphasis characters #1845 is about. Base64 output
- * depends on byte alignment of the whole JSON payload, so the crafted bytes
- * (0xFF runs → `_`, 0xFB 0xEF 0xBE → `-`) are tried at each of the three
- * alignments rather than hardcoded at one; a change to the JSON field order
- * that shifts them all fails loudly instead of silently weakening the corpus.
+ * An anchor id whose bytes (0xFF runs, 0xFB 0xEF 0xBE) forced base64url `__`
+ * and `--` emphasis runs into the token under the pre-#1845 alphabet — the
+ * exact characters remark escaped into unparseable tokens. #1866 closed the
+ * alphabet (the two odd base64 symbols are now `,` and `;`), so the same
+ * hostile bytes must yield a token with no emphasis character at all;
+ * asserted here so a future encoder change that reopens the alphabet fails
+ * the corpus loudly instead of silently reviving the bug.
  */
 function anchorIdWithEmphasisRuns(): string {
-  const underscoreBytes = 'ÿ'.repeat(4)
-  const dashBytes = 'ûï¾'.repeat(3)
-  for (let pad = 0; pad < 3; pad++) {
-    const anchorId = 'x'.repeat(pad) + underscoreBytes + dashBytes
-    const token = serializeDateMentionToken(dateMentionData({ anchorId }))
-    if (token.includes('__') && token.includes('--')) return anchorId
+  const anchorId = 'x' + 'ÿ'.repeat(4) + 'ûï¾'.repeat(3)
+  const token = serializeDateMentionToken(dateMentionData({ anchorId }))
+  if (token.includes('_') || token.includes('-')) {
+    throw new Error('the date token alphabet emits markdown emphasis characters again')
   }
-  throw new Error('no alignment produced both a `__` and a `--` run')
+  return anchorId
 }
 
 const mention = (url: string): string => serializeLinkMentionToken(url)
@@ -93,7 +92,7 @@ const mentionCases: RoundtripCase[] = [
 const dateCases: RoundtripCase[] = [
   { name: 'date pill in body text', markdown: `Before ${date(dateMentionData())} after.` },
   {
-    name: 'date pill with base64url emphasis runs',
+    name: 'date pill whose payload forced emphasis runs pre-#1845',
     markdown: `Before ${date(dateMentionData({ anchorId: anchorIdWithEmphasisRuns() }))} after.`
   },
   {
