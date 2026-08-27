@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Block } from '@blocknote/core'
-import { DATE_MENTION_TOKEN_REGEX, parseDateMentionToken } from '@memry/shared/date-mention'
+import {
+  DATE_MENTION_TOKEN_REGEX,
+  parseDateMentionToken,
+  salvageDateMentionToken
+} from '@memry/shared/date-mention'
 import { createDateMentionContent } from './date-mention'
 
 type InlineNode = { type: string; text?: string; styles?: unknown; props?: unknown }
@@ -14,7 +18,7 @@ function splitTextNode(node: InlineNode): InlineNode[] {
   let last = 0
   let m: RegExpExecArray | null
   while ((m = regex.exec(text)) !== null) {
-    const data = parseDateMentionToken(m[1])
+    const data = parseDateMentionToken(m[1]) ?? salvageDateMentionToken(m[1])
     if (!data) continue
     if (m.index > last) {
       out.push({ type: 'text', text: text.slice(last, m.index), styles: node.styles })

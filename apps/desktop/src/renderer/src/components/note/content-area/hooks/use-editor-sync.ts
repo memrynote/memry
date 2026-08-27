@@ -12,6 +12,7 @@ import {
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeNoteBlocks } from '../normalize-note-blocks'
 import { normalizeInlineCheckboxes } from '../inline-checkbox-utils'
+import { normalizeDateMentions } from '../date-mention-utils'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,
@@ -94,9 +95,9 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
  * Idempotent by construction: a promoted `wikiLink` node carries its target in
  * props, so `[[` never reappears and `normalizeWikiLinks` stops matching. A
  * second open writes no CRDT update at all, which is what keeps "opening a note
- * must not rewrite it" (#1434) true. Only wiki links promote here — hash tags
- * and date mentions have no promoter on the collaborative path and must stay
- * the bytes they were opened with.
+ * must not rewrite it" (#1434) true. Hash tags still have no promoter here:
+ * they need the note's tag list and colour map, so they must stay the bytes
+ * they were opened with.
  */
 function promoteWikiLinksInSharedDoc(editor: any): void {
   const normalized = normalizeWikiLinks(editor.document as Block[], {
@@ -133,6 +134,33 @@ function promoteWikiLinksInSharedDoc(editor: any): void {
  */
 function promoteInlineCheckboxesInSharedDoc(editor: any): void {
   const normalized = normalizeInlineCheckboxes(editor.document as Block[])
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Promote the raw `((date:…))` text a collaborative document opens with (#1845).
+ *
+ * The third instance of the gap above, and the one a user cannot read past.
+ * Main parses the vault file into the shared Y.Doc with a `dateMention` spec
+ * whose `parse` claims a `data-date-mention` element — markdown has none — so
+ * the token reaches the doc as plain TEXT, and the renderer is the only thing
+ * that can turn it back into a pill. The load effect returns before
+ * `normalizeNoteBlocks` on this path, so nothing did: a note whose CRDT doc is
+ * rebuilt from disk (a restart, a vault switch, a new device) opened showing a
+ * two-hundred-character base64 run where the date had been. A reminder pill is
+ * worse off than any other node here, because its text carries no readable
+ * fallback at all.
+ *
+ * Byte-neutral for a well-formed token: the promoted node re-serializes to the
+ * bytes it was promoted from, so a second open writes no CRDT update and
+ * "opening a note must not rewrite it" (#1434) still holds. A token the parser
+ * refuses is salvaged to a plain date instead, which does change the bytes —
+ * once, on a note that was already unreadable.
+ */
+function promoteDateMentionsInSharedDoc(editor: any): void {
+  const normalized = normalizeDateMentions(editor.document as Block[])
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
@@ -334,6 +362,7 @@ export function useEditorSync({
       // push that to every device.
       promoteWikiLinksInSharedDoc(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
+      promoteDateMentionsInSharedDoc(editor)
       clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {

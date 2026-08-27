@@ -54,6 +54,25 @@ When the reminder fires, memrynote shows an in-app toast with:
 | Open          | Open the note in a tab           |
 | Dismiss       | Mark as handled; don't reappear  |
 
+## Inline Date Pills
+
+Typing `@` in note text offers a date. Accepting one drops a pill into the sentence, and the pill can
+carry its own reminder — useful when the reminder belongs to a paragraph rather than to the note as a
+whole. Click the pill to change the date, the clock format or the reminder lead time.
+
+A pill reads as one of three things:
+
+| Appearance                             | Meaning                                   |
+| -------------------------------------- | ----------------------------------------- |
+| Muted text, no alarm icon              | A date, with no reminder attached         |
+| Blue text with an alarm icon           | A reminder is armed and has not fired yet |
+| Muted text on a soft fill, faded alarm | The reminder already fired                |
+
+A fired pill keeps its date and time on the page. It is a record of what you scheduled, so you can
+still read it back long after the reminder has passed. Fired styling is per-device: it comes from
+this device's reminder history and is never written into the note file, so the note reads the same on
+a machine where the reminder has not fired yet.
+
 ## Reminder Badge
 
 Notes with upcoming reminders show a small bell badge in the sidebar and tab bar. Hover for the time.
