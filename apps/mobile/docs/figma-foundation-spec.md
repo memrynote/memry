@@ -654,10 +654,11 @@ This needs one extra token beyond Figma's 30. Name it `ui/destructive-text`. It 
 
 ### Authoring slips
 
-| Component                    | Figma                         | Use                                                      | Reason                                                                                         |
-| ---------------------------- | ----------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `State/Empty` icon container | 24 wide x 56 tall, radius 999 | 56 x 56, radius 999                                      | a 24x56 pill around a 24pt icon reads as a hug-width slip, the render shows an intended circle |
-| `Toast` width                | 240 fixed                     | min 240, hug content, max = screen width minus 2x gutter | a fixed 240 truncates any label longer than the sample                                         |
+| Component                             | Figma                                              | Use                                                                      | Reason                                                                                                                                                                                                                                                  |
+| ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `State/Empty` icon container          | 24 wide x 56 tall, radius 999                      | 56 x 56, radius 999                                                      | a 24x56 pill around a 24pt icon reads as a hug-width slip, the render shows an intended circle                                                                                                                                                          |
+| `Toast` width                         | 240 fixed                                          | min 240, hug content, max = screen width minus 2x gutter                 | a fixed 240 truncates any label longer than the sample                                                                                                                                                                                                  |
+| `shell/Nav Bar — Inline + Back` title | `SPACE_BETWEEN` row, title is the middle flex item | title absolutely centred on the bar, both sides inset by the wider group | space-between puts the title's centre at 212 on the component, 213 on `09 · Bookmarks` and 216 on `10 · Reminder — picker` against a bar centre of 195. It is off-centre and it moves with the back label's length. iOS centres a nav title on the bar. |
 
 ### Open conflict, not resolved here
 

@@ -25,6 +25,7 @@ export const radius = {
 export const sizes = {
   tapTarget: 44,
   navBar: 44,
+  navBarLarge: 100,
   tabBar: 49,
   row: 56,
   statusBar: 47,
