@@ -1595,7 +1595,11 @@ describe('main index phase2 exports', () => {
 
     contextMenuHandler({}, editableParams)
 
-    expect(buildEditableTextContextMenuMock).toHaveBeenCalledWith(expect.anything(), editableParams)
+    expect(buildEditableTextContextMenuMock).toHaveBeenCalledWith(
+      expect.anything(),
+      editableParams,
+      mainWindow.webContents
+    )
     expect(editableContextMenuPopupMock).toHaveBeenCalledWith({
       window: mainWindow,
       frame: editableParams.frame

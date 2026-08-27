@@ -841,7 +841,7 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('context-menu', (_event, params) => {
-    const menu = buildEditableTextContextMenu(mainI18n, params)
+    const menu = buildEditableTextContextMenu(mainI18n, params, mainWindow.webContents)
     if (!menu) return
 
     menu.popup({

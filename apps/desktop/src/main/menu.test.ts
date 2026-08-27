@@ -20,11 +20,23 @@ import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 interface TemplateItem {
   label?: string
   role?: string
+  type?: string
+  enabled?: boolean
   accelerator?: string
   registerAccelerator?: boolean
   id?: string
   click?: () => void
   submenu?: TemplateItem[]
+}
+
+function createWebContents() {
+  return {
+    replaceMisspelling: vi.fn(),
+    session: { addWordToSpellCheckerDictionary: vi.fn() }
+  } as unknown as Electron.WebContents & {
+    replaceMisspelling: ReturnType<typeof vi.fn>
+    session: { addWordToSpellCheckerDictionary: ReturnType<typeof vi.fn> }
+  }
 }
 
 /** Find an item by label in the most recently built template. */
@@ -313,17 +325,21 @@ describe('buildAppMenu', () => {
   it('builds a native editable context menu from edit flags', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
 
-    const menu = buildEditableTextContextMenu(i18n, {
-      isEditable: true,
-      editFlags: {
-        canUndo: false,
-        canRedo: true,
-        canCut: false,
-        canCopy: true,
-        canPaste: true,
-        canSelectAll: true
-      }
-    })
+    const menu = buildEditableTextContextMenu(
+      i18n,
+      {
+        isEditable: true,
+        editFlags: {
+          canUndo: false,
+          canRedo: true,
+          canCut: false,
+          canCopy: true,
+          canPaste: true,
+          canSelectAll: true
+        }
+      },
+      createWebContents()
+    )
 
     expect(menu).toEqual({ template: buildFromTemplate.mock.calls[0][0] })
     expect(buildFromTemplate.mock.calls[0][0]).toEqual(
@@ -346,9 +362,73 @@ describe('buildAppMenu', () => {
   it('does not build a text context menu for non-editable targets', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
 
-    const menu = buildEditableTextContextMenu(i18n, { isEditable: false })
+    const menu = buildEditableTextContextMenu(i18n, { isEditable: false }, createWebContents())
 
     expect(menu).toBeNull()
     expect(buildFromTemplate).not.toHaveBeenCalled()
+  })
+
+  it('offers spelling suggestions above the edit items and applies the picked one', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const webContents = createWebContents()
+
+    buildEditableTextContextMenu(
+      i18n,
+      {
+        isEditable: true,
+        misspelledWord: 'recieve',
+        dictionarySuggestions: ['receive', 'reprieve'],
+        editFlags: { canPaste: true }
+      },
+      webContents
+    )
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    expect(template.slice(0, 5)).toEqual([
+      expect.objectContaining({ label: 'receive' }),
+      expect.objectContaining({ label: 'reprieve' }),
+      { type: 'separator' },
+      expect.objectContaining({ label: 'Add to Dictionary' }),
+      { type: 'separator' }
+    ])
+    expect(template[5]).toMatchObject({ label: 'Undo', role: 'undo' })
+
+    template[1].click?.()
+    expect(webContents.replaceMisspelling).toHaveBeenCalledWith('reprieve')
+
+    template[3].click?.()
+    expect(webContents.session.addWordToSpellCheckerDictionary).toHaveBeenCalledWith('recieve')
+  })
+
+  it('shows a disabled placeholder when the dictionary has no suggestions', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildEditableTextContextMenu(
+      i18n,
+      { isEditable: true, misspelledWord: 'qwertyu', dictionarySuggestions: [], editFlags: {} },
+      createWebContents()
+    )
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    expect(template.slice(0, 4)).toEqual([
+      { label: 'No Suggestions', enabled: false },
+      { type: 'separator' },
+      expect.objectContaining({ label: 'Add to Dictionary' }),
+      { type: 'separator' }
+    ])
+  })
+
+  it('leaves the context menu untouched when the word is spelled correctly', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildEditableTextContextMenu(
+      i18n,
+      { isEditable: true, misspelledWord: '', dictionarySuggestions: [], editFlags: {} },
+      createWebContents()
+    )
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    expect(template[0]).toMatchObject({ label: 'Undo', role: 'undo' })
+    expect(template.map((item) => item.label)).not.toContain('Add to Dictionary')
   })
 })

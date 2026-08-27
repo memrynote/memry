@@ -232,6 +232,10 @@ If enabled in [Settings → Editor](/user-guide/settings#editor), word count app
 
 Off by default. Turn on **Check Spelling** in [Settings → Editor](/user-guide/settings#editor) to underline misspelled words as you write.
 
+Open the context menu on an underlined word to correct it. Suggestions sit at the top of the menu; picking one replaces the word. **Add to Dictionary** teaches the spellchecker the word so it stops being flagged, on this and future runs. Words with no suggestion show a disabled **No Suggestions** entry.
+
+Memry does not pick a spellchecking language of its own. macOS detects the language you are writing in; Windows and Linux use the dictionary for the system locale.
+
 ## Toolbar
 
 The formatting toolbar can be sticky at the top or float above selections — choose in [Settings → Editor](/user-guide/settings#editor).
@@ -239,6 +243,8 @@ The formatting toolbar can be sticky at the top or float above selections — ch
 Both modes offer the same formatting controls: the block type (paragraph, heading, list) plus inline styles, alignment, colour, indent, and links. The block type control is hidden for blocks that have no alternative type, such as tasks, callouts, and files.
 
 The floating toolbar also carries **inline code** (`` `code` ``) next to bold, italic, underline and strikethrough, and ends with a full-width **Comment** button that opens a comment on the selection.
+
+Opening the context menu stands the floating toolbar down, so you get one menu rather than two. It returns on your next click or keystroke.
 
 ### Turning existing lines into a list
 

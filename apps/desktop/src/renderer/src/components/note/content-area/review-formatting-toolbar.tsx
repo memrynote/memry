@@ -1,7 +1,7 @@
 import type { BlockNoteEditor } from '@blocknote/core'
 import type { EditorState } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
-import { useEffect, useRef, type MouseEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
   BlockTypeSelect,
@@ -31,6 +31,15 @@ interface ReviewFormattingToolbarProps {
 }
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
+  const editor = useBlockNoteEditor()
+  // The gate lives here, not in the toolbar below: BlockNote tears the toolbar
+  // down and mounts a fresh one mid-interaction, so state held there is lost
+  // exactly when it is needed. This component is mounted by ContentArea and
+  // outlives that churn.
+  const isContextMenuOpen = useContextMenuOpen(editor)
+
+  if (isContextMenuOpen) return null
+
   return (
     <FormattingToolbarController
       formattingToolbar={(toolbarProps) => (
@@ -111,6 +120,50 @@ export function ReviewFormattingToolbar({
       </div>
     </FormattingToolbar>
   )
+}
+
+/**
+ * A secondary click pops the native context menu from the main process, while
+ * BlockNote independently opens this toolbar off the same pointer sequence
+ * (#1850). Two menus, and the toolbar is the one left without focus.
+ *
+ * Whether `contextmenu` arrives before or after the `pointerup` BlockNote opens
+ * on is platform-dependent, so this suppresses by state instead of racing that
+ * listener: hidden until the next ordinary interaction. Capture on `window`
+ * runs ahead of anything that might stop propagation.
+ *
+ * Call this from a component BlockNote does not own. Its controller remounts
+ * the toolbar during the very interaction being suppressed, which resets any
+ * state held below it.
+ */
+function useContextMenuOpen(editor: BlockNoteEditor): boolean {
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    const open = (event: Event): void => {
+      const viewDom = getProseMirrorViewDom(editor)
+      const target = event.target
+      if (!viewDom || !(target instanceof Node) || !viewDom.contains(target)) return
+      setIsOpen(true)
+    }
+    const closeOnPointer = (event: Event): void => {
+      if ((event as { button?: number }).button === 2) return
+      setIsOpen(false)
+    }
+    const closeOnKey = (): void => setIsOpen(false)
+
+    window.addEventListener('contextmenu', open, true)
+    window.addEventListener('pointerdown', closeOnPointer, true)
+    window.addEventListener('keydown', closeOnKey, true)
+
+    return () => {
+      window.removeEventListener('contextmenu', open, true)
+      window.removeEventListener('pointerdown', closeOnPointer, true)
+      window.removeEventListener('keydown', closeOnKey, true)
+    }
+  }, [editor])
+
+  return isOpen
 }
 
 /**

@@ -34,7 +34,9 @@
     "pasteAndMatchStyle": "Paste and Match Style",
     "delete": "Delete",
     "startSpeaking": "Start Speaking",
-    "stopSpeaking": "Stop Speaking"
+    "stopSpeaking": "Stop Speaking",
+    "addToDictionary": "Add to Dictionary",
+    "noSuggestions": "No Suggestions"
   },
   "insert": {
     "label": "Insert",
