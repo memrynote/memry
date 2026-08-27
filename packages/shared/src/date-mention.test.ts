@@ -3,6 +3,7 @@ import {
   DATE_MENTION_TOKEN_REGEX,
   serializeDateMentionToken,
   parseDateMentionToken,
+  salvageDateMentionToken,
   computeRemindAt,
   type DateMentionData
 } from './date-mention'
@@ -16,8 +17,15 @@ const base: DateMentionData = {
   timeFormat: '24h'
 }
 
+/**
+ * The writer that shipped before the alphabet closed: plain base64url, `-` and
+ * `_` included. Every token in a real vault was written by this, so it doubles
+ * as the compatibility fixture and as the byte-identity oracle below.
+ */
 const encode = (obj: unknown): string =>
   btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+const payload = (token: string): string => token.replace(/^\(\(date:|\)\)$/g, '')
 
 describe('date-mention token', () => {
   it('round-trips through serialize/parse', () => {
@@ -105,6 +113,101 @@ describe('date-mention token', () => {
     const token = serializeDateMentionToken(bare)
     const [m] = [...token.matchAll(DATE_MENTION_TOKEN_REGEX)]
     expect(parseDateMentionToken(m[1])).toEqual(bare)
+  })
+})
+
+describe('the on-disk alphabet is closed and markdown-inert', () => {
+  // `?` is the shortest input that drives base64 onto its 63rd symbol, which is
+  // where base64url puts `_` — the one character remark-stringify escapes
+  // unconditionally in phrasing content. Nothing in a real payload reaches it,
+  // which is exactly why the alphabet has to be closed by construction rather
+  // than left to what the fields happen to contain.
+  const forced: DateMentionData = { ...base, anchorId: 'dm_0?x' }
+
+  it('never emits a character a markdown writer would escape', () => {
+    expect(encode(forced)).toMatch(/_/)
+    expect(payload(serializeDateMentionToken(forced))).toMatch(/^[A-Za-z0-9,;]+$/)
+  })
+
+  it('round-trips a payload that forced the odd base64 symbols', () => {
+    const token = serializeDateMentionToken(forced)
+    const [m] = [...token.matchAll(DATE_MENTION_TOKEN_REGEX)]
+    expect(parseDateMentionToken(m[1])).toEqual(forced)
+  })
+
+  it('writes the bytes the old writer wrote, for every payload a note can hold', () => {
+    // Byte identity is the compatibility contract: the vault write-back compares
+    // bytes, so a token that re-serialized differently would rewrite every note
+    // holding a date pill. `anchorId` is the only free field and it is
+    // `dm_<uuid>`, so no payload reaches `+`/`/` and both writers agree.
+    for (let i = 0; i < 200; i++) {
+      const data: DateMentionData = {
+        anchorId: `dm_${crypto.randomUUID()}`,
+        dateISO: new Date(Date.UTC(2026, i % 12, (i % 27) + 1, i % 24, i % 60)).toISOString(),
+        hasTime: i % 2 === 0,
+        dateFormat: i % 3 === 0 ? 'full' : 'relative',
+        remind: (['none', 'at', '5m', '30m', '1h', '2h', '1d', '2d', '1w'] as const)[i % 9],
+        timeFormat: (['system', '12h', '24h'] as const)[i % 3]
+      }
+      expect(serializeDateMentionToken(data)).toBe(`((date:${encode(data)}))`)
+    }
+  })
+})
+
+describe('tolerating tokens already on disk', () => {
+  const legacy: DateMentionData = { ...base, anchorId: 'dm_0?x' }
+
+  it('parses a base64url token written before the alphabet closed', () => {
+    const written = encode(legacy)
+    expect(written).toMatch(/[-_]/)
+    expect(parseDateMentionToken(written)).toEqual(legacy)
+  })
+
+  it('heals a token a markdown escaper backslashed', () => {
+    // What the issue reports: `\` lands inside the run, the strict class stops
+    // matching, and the pill is left on the page as literal text.
+    const escaped = encode(legacy).replace(/_/g, '\\_').replace(/-/g, '\\-')
+    expect(escaped).toContain('\\')
+    expect(parseDateMentionToken(escaped)).toEqual(legacy)
+  })
+
+  it('matches escaped and legacy shapes with the token regex', () => {
+    const escaped = `((date:${encode(legacy).replace(/_/g, '\\_')}))`
+    const matches = [...`due ${escaped} today`.matchAll(DATE_MENTION_TOKEN_REGEX)]
+    expect(matches).toHaveLength(1)
+    expect(parseDateMentionToken(matches[0][1])?.anchorId).toBe('dm_0?x')
+  })
+})
+
+describe('salvageDateMentionToken', () => {
+  const preEnum = {
+    anchorId: 'dm_old',
+    dateISO: '2026-06-20T09:00:00.000Z',
+    hasTime: true,
+    dateFormat: 'full',
+    remind: true,
+    lead: '1h'
+  }
+
+  it('recovers the date from a token the parser refuses', () => {
+    // The parser's graceful null is unchanged — the salvage sits beside it, so
+    // a pre-enum token shows the date it was rather than its own base64.
+    expect(parseDateMentionToken(encode(preEnum))).toBeNull()
+    expect(salvageDateMentionToken(encode(preEnum))).toEqual({
+      anchorId: 'dm_old',
+      dateISO: '2026-06-20T09:00:00.000Z',
+      hasTime: true,
+      dateFormat: 'full',
+      remind: 'none',
+      timeFormat: 'system'
+    })
+  })
+
+  it('returns null when no date survives', () => {
+    expect(salvageDateMentionToken('not-json')).toBeNull()
+    expect(salvageDateMentionToken(encode({ anchorId: 'dm_x' }))).toBeNull()
+    expect(salvageDateMentionToken(encode({ anchorId: 'dm_x', dateISO: 'whenever' }))).toBeNull()
+    expect(salvageDateMentionToken(encode({ dateISO: base.dateISO }))).toBeNull()
   })
 })
 

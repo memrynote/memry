@@ -2941,3 +2941,93 @@ describe('blocknote-converter table cell checkboxes', () => {
     expect(await yDocToMarkdown(doc)).toBe('- [x] a task')
   })
 })
+
+/**
+ * #1845: what main writes for a date pill is exactly what the renderer's
+ * collaborative promoter reads back (`date-mention-collab-promotion.test.ts`).
+ * Main has no promoter of its own — a token it parses out of a vault file stays
+ * plain text in the Y.Doc — so these are the two halves of the loop: the bytes
+ * a node becomes, and the bytes an un-promoted token keeps.
+ *
+ * Asserted as exact strings, never `toContain`: write-back byte-compares, so a
+ * character of drift rewrites every note holding a date pill in every vault.
+ */
+describe('a date pill keeps its exact bytes on the main path', () => {
+  const props = {
+    anchorId: 'dm_5a0b9c1e-2d3f-4a5b-8c7d-9e0f1a2b3c4d',
+    dateISO: '2026-06-20T09:00:00.000Z',
+    hasTime: true,
+    dateFormat: 'full' as const,
+    remind: '1h' as const,
+    timeFormat: '24h' as const
+  }
+
+  const legacyEncode = (obj: unknown): string =>
+    btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+  async function roundTrip(markdown: string): Promise<string | null> {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return await yDocToMarkdown(doc)
+  }
+
+  it('serializes the node to the token the renderer promoted it from', async () => {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'b1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          content: [{ type: 'dateMention', props }]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    expect(await yDocToMarkdown(doc)).toBe(serializeDateMentionToken(props))
+  })
+
+  it('emits only characters no markdown writer escapes', async () => {
+    const doc = new Y.Doc()
+    blocksToYFragment(
+      [
+        {
+          id: 'b1',
+          type: 'paragraph',
+          props: {},
+          children: [],
+          // `?` is what drives base64 onto the symbols base64url spells `-`/`_`,
+          // and `_` is escaped unconditionally in phrasing content.
+          content: [{ type: 'dateMention', props: { ...props, anchorId: 'dm_0?x' } }]
+        }
+      ] as unknown as Parameters<typeof blocksToYFragment>[0],
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    expect(await yDocToMarkdown(doc)).toMatch(/^\(\(date:[A-Za-z0-9,;]+\)\)$/)
+  })
+
+  it('leaves a token it cannot promote byte-identical', async () => {
+    // Both shapes a vault can already hold: today's, and the base64url one
+    // written before the alphabet closed. Main must hand them back untouched.
+    const current = serializeDateMentionToken(props)
+    const legacy = `((date:${legacyEncode({ ...props, anchorId: 'dm_0?x' })}))`
+
+    expect(await roundTrip(`due ${current} ok`)).toBe(`due ${current} ok`)
+    expect(await roundTrip(`due ${legacy} ok`)).toBe(`due ${legacy} ok`)
+  })
+
+  it('drops a stray escape from a token rather than carrying it', async () => {
+    // A `\` inside the run is the shape the report describes. remark-parse reads
+    // it as an escape and does not put it back, so the round trip heals the
+    // bytes — and the wider token class means the renderer would have promoted
+    // the pill either way.
+    const payload = legacyEncode({ ...props, anchorId: 'dm_0?x' })
+    const escaped = `((date:${payload.replace(/_/g, '\\_')}))`
+
+    expect(escaped).toContain('\\')
+    expect(await roundTrip(`due ${escaped} ok`)).toBe(`due ((date:${payload})) ok`)
+  })
+})

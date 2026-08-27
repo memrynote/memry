@@ -2941,13 +2941,24 @@ del.bn-inline-content {
   --date-mention-color: #60a5fa;
 }
 
-/* Fired (triggered) reminder pill → red until the pill is edited. Set by
-   useTriggeredDatePills via data-fired; overrides the blue affordance above
-   (same specificity, later in source). One color for both themes. */
+/* Fired (triggered) reminder pill → a spent chip: the reminder is in the past,
+   which is a record, not a fault. Set by useTriggeredDatePills via data-fired;
+   overrides the blue affordance above (same specificity, later in source).
+   Muted text at full opacity keeps the date and time readable — this is the one
+   place a user goes back to ask what they had scheduled — while the settled
+   background and the dimmed alarm say "already happened". Distinct from an
+   armed pill (blue, no fill) and from a date-only pill (muted, no fill, no
+   alarm); red is left to mean broken. Theme-aware through the muted token. */
 .bn-shadcn .bn-editor .date-mention[data-fired='true'],
 .dark .bn-editor .date-mention[data-fired='true'],
 .date-mention[data-fired='true'] {
-  --date-mention-color: #e56458;
+  --date-mention-color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
+}
+
+.bn-shadcn .bn-editor .date-mention[data-fired='true'] .date-mention-icon,
+.date-mention[data-fired='true'] .date-mention-icon {
+  opacity: 0.6;
 }
 
 .bn-shadcn .bn-editor .date-mention:hover,
