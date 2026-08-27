@@ -20,22 +20,26 @@
  * banner pre-empts the outbox banner, making `notVisible` trivially true while
  * nothing had synced. That is a false green on the gate the matrix exists for.
  *
- *   node scripts/us2-offline-matrix.mjs --runs 20
+ *   node scripts/us2-offline-matrix.mjs --runs 20                 # simulator
+ *   node scripts/us2-offline-matrix.mjs --runs 20 --device        # hardware
  *   node scripts/us2-offline-matrix.mjs --runs 20 \
- *     --offline-cmd 'sudo pfctl -e -f /etc/pf.memry-offline.conf' \
- *     --online-cmd  'sudo pfctl -d'
+ *     --offline-cmd '<take the host offline>' --online-cmd '<put it back>'
  *
- * THE NETWORK CUT IS NOT AUTOMATED BY DEFAULT, and that is deliberate.
+ * THE NETWORK CUT COMES FROM THE APP, not from `simctl`.
  * `xcrun simctl status_bar override --dataNetwork hide` only repaints the
- * status bar — the simulator stays fully online — so a run driven by it would
- * do all of its "offline" work with a working network and report a green that
- * means nothing. The offline flow asserts the app's own Offline banner for the
- * same reason.
+ * status bar — the simulator stays fully online — so a run driven by it does
+ * all of its "offline" work with a working network and reports a green that
+ * means nothing.
  *
- * So each transition either runs the command you supplied (`--offline-cmd` /
- * `--online-cmd`, for a host firewall rule or a Network Link Conditioner
- * profile) or pauses and asks you to toggle it. Slower, and honest: a matrix
- * that silently skipped the offline half is worse than one that asks.
+ * Instead the app ships a dev-build-only switch reachable by deep link
+ * (`memry:///dev-network?offline=1`), which makes the HTTP adapter report
+ * offline and reject every request: `isOnline()` false, requests failing,
+ * outbox parked and retried. It cannot make the app behave BETTER than real
+ * airplane mode, which is the property a gate needs. The offline flow asserts
+ * the app's own Offline banner, so a pass cannot quietly have run online.
+ *
+ * On real hardware there is no such lever for the radio, so `--device` prompts
+ * for a manual airplane-mode toggle — slower, and honest.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
@@ -53,11 +57,12 @@ const flag = (name, fallback) => {
   return index === -1 ? fallback : args[index + 1]
 }
 const RUNS = Number(flag('runs', '20'))
+const UDID = flag('udid', 'booted')
 const OFFLINE_CMD = flag('offline-cmd', null)
 const ONLINE_CMD = flag('online-cmd', null)
-const SCRIPTED = Boolean(OFFLINE_CMD && ONLINE_CMD)
+const ON_DEVICE = args.includes('--device')
 
-const rl = SCRIPTED ? null : createInterface({ input: process.stdin, output: process.stdout })
+const rl = ON_DEVICE ? createInterface({ input: process.stdin, output: process.stdout }) : null
 
 async function setNetwork(online) {
   const command = online ? ONLINE_CMD : OFFLINE_CMD
@@ -65,10 +70,35 @@ async function setNetwork(online) {
     execFileSync('/bin/sh', ['-c', command], { stdio: 'inherit' })
     return
   }
-  await rl.question(
-    `\n  >> Take the device ${online ? 'ONLINE' : 'OFFLINE'} (airplane mode, or your host's` +
-      ` network conditioner), then press Enter. `
-  )
+  if (ON_DEVICE) {
+    await rl.question(
+      `\n  >> Turn airplane mode ${online ? 'OFF' : 'ON'} on the device, then press Enter. `
+    )
+    return
+  }
+  // The app's own switch. `openurl` does not navigate — the root layout
+  // handles this link without touching the current screen — so a transition
+  // mid-flow leaves the app exactly where the flow left it.
+  execFileSync('xcrun', [
+    'simctl',
+    'openurl',
+    UDID,
+    `memry:///dev-network?offline=${online ? '0' : '1'}`
+  ])
+  // Cosmetic, and only that: it makes a screen recording of the run show the
+  // state the app is actually in.
+  try {
+    execFileSync('xcrun', [
+      'simctl',
+      'status_bar',
+      UDID,
+      'override',
+      '--dataNetwork',
+      online ? 'wifi' : 'hide'
+    ])
+  } catch {
+    // A status-bar override failing changes nothing about the run.
+  }
 }
 
 function runFlow(flow, runId) {

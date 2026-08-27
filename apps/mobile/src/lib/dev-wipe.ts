@@ -1,5 +1,6 @@
 import { createLogger } from './logger'
 import { closeEditorSession } from '@/editor/session'
+import { setDevOffline } from './dev-network'
 import { clearVaultKey, clearDeviceSigningKeypair, clearDeviceId } from './secure-store'
 import { clearSession, clearCurrentVaultId, loadCurrentVaultId } from '../sync/auth-client'
 import { closeVaultDb, vaultsRootDir } from '../db'
@@ -37,6 +38,9 @@ export async function wipeDeviceState(): Promise<void> {
     await clearVaultKey(vaultId)
     await clearDeviceSigningKeypair(vaultId)
   }
+  // The dev network switch goes too: a wiped device is a fresh device, and a
+  // marker file surviving into the next run would make it start offline.
+  setDevOffline(false)
   await clearSession()
   await clearCurrentVaultId()
   await clearDeviceId()

@@ -30,18 +30,26 @@ a debug measurement is not evidence, it is a different number.
 ### 1. Offline matrix — ≥ 20 runs, 100 %
 
 ```bash
-# prompts at each transition:
+# simulator — fully unattended:
 pnpm --filter @memry/mobile test:offline-matrix -- --runs 20
-# or script the cut (host firewall rule, network conditioner profile, …):
-pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 \
-  --offline-cmd '<take the device offline>' --online-cmd '<put it back>'
+# real hardware (prompts for the airplane-mode toggle):
+pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 --device
 ```
 
-The cut is **not** automated by default. `simctl status_bar --dataNetwork hide`
-only repaints the status bar; the simulator stays online, so a run driven by it
-would do all of its "offline" work with a working network. The offline flow
-asserts the app's own Offline banner for the same reason — a pass cannot
-quietly have run online.
+The cut comes from the APP, not from `simctl`: `status_bar --dataNetwork hide`
+only repaints the status bar and leaves the simulator fully online, so a run
+driven by it would do all of its "offline" work with a working network. A
+dev-build-only switch (`memry:///dev-network?offline=1`) makes the HTTP adapter
+report offline and reject every request instead — it cannot make the app behave
+BETTER than airplane mode, which is the property a gate needs. It is persisted,
+because the scenario force-quits and relaunches while offline. The offline flow
+also asserts the app's own Offline banner, so a pass cannot quietly have run
+online.
+
+**Prerequisite this cannot supply:** a signed-in session and an unlocked vault.
+The recovery phrase is the only key to the vault and only Kaan has it, so the
+first run of a fresh install is manual; after that the session persists in the
+keychain and the 20 runs are unattended.
 
 Attach: the driver's `20/20 passed` line, plus one screen recording of a single
 pass showing airplane mode → edit + create → force-quit → relaunch (edits present

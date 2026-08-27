@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
 import { Spacing } from '@/constants/theme'
 import { wipeDeviceState } from '@/lib/dev-wipe'
+import { isDevOffline, setDevOffline } from '@/lib/dev-network'
 import {
   runMobileConformance,
   runPullPipelineRoundTrip,
@@ -19,6 +20,7 @@ export default function SeamTestsScreen() {
   const [step, setStep] = useState<string | null>(null)
   const [crash, setCrash] = useState<string | null>(null)
   const [wipeState, setWipeState] = useState<string | null>(null)
+  const [devOffline, setDevOfflineState] = useState(isDevOffline())
 
   const confirmWipe = useCallback(() => {
     Alert.alert(
@@ -103,6 +105,28 @@ export default function SeamTestsScreen() {
           {crash ? <ThemedText type="smallBold">💥 round-trip threw: {crash}</ThemedText> : null}
           {render('Conformance', conformance)}
           {render('Pull round-trip', roundTrip)}
+          <ThemedText type="title">Network</ThemedText>
+          {/*
+            The same switch the offline matrix drives by deep link, surfaced so
+            the offline paths can be exercised by hand. Dev builds only —
+            `setDevOffline` is a no-op in a release build.
+          */}
+          <Pressable
+            style={styles.button}
+            onPress={() => {
+              setDevOffline(!devOffline)
+              setDevOfflineState(!devOffline)
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle dev offline"
+          >
+            <ThemedText type="smallBold">
+              {devOffline
+                ? 'Dev network: OFFLINE (tap to restore)'
+                : 'Dev network: online (tap to cut)'}
+            </ThemedText>
+          </Pressable>
+
           <ThemedText type="title">Danger zone</ThemedText>
           <Pressable
             style={styles.button}
