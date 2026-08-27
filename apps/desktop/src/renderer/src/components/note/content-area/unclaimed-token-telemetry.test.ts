@@ -44,6 +44,15 @@ describe('countUnclaimedTokens', () => {
     expect(countUnclaimedTokens(blocks)).toEqual({ callout_marker: 1 })
   })
 
+  it('counts tokens in string-shaped content, at both the block and the run level', () => {
+    const blocks = [
+      { type: 'paragraph', content: '[!info] plus ((mention:x))', children: [] },
+      { type: 'paragraph', content: ['((date:y))', { type: 'text', text: 'tail', styles: {} }] }
+    ]
+
+    expect(countUnclaimedTokens(blocks)).toEqual({ mention: 1, date: 1, callout_marker: 1 })
+  })
+
   it('counts tokens inside table cells and nested children', () => {
     const blocks = [
       {
