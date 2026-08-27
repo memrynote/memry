@@ -1277,6 +1277,22 @@ recognised there, using the same rules the renderer uses on its own save path. M
 inside a code fence are the author's text and stay text; the fence tracker follows
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
 
+Some inline nodes have no `parse` rule that could recognise their markdown form, because
+that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, and a link mention's
+`((mention:…))` all reach the shared doc as plain text runs. The renderer promotes those
+back into nodes when the note opens (`use-editor-sync.ts`), which is the only thing that
+turns a saved mention back into a chip — without it a mention lives only as long as its
+Y.Doc and comes back as literal text after a restart or a vault switch. Every promoter has
+to be idempotent: the promoted node serialises back to the exact token it was built from,
+so `((mention:` is gone from the document and the second open writes no CRDT update at all.
+
+That in turn constrains the token: its payload alphabet is closed to `[A-Za-z0-9.%-]`, so
+nothing in it can be reinterpreted as markdown. `encodeURIComponent` alone is not enough —
+it leaves `_ ! ~ * ' ( )` raw, and two mentions on one line whose URLs each hold a `*` are
+read back as a single emphasis run spanning both tokens, destroying both. The parser is
+correspondingly tolerant: a token written by an older build can carry a stray space or
+escape, and it is repaired on open rather than left broken.
+
 Callouts are parsed back **only in the exact shape Memry itself writes**: a marker that is
 one of the four supported types with nothing after the `]`, followed by one `> ` per body
 line. The claim is proven per note — the body is re-serialized and must reproduce the file
