@@ -1,0 +1,139 @@
+@import '@blocknote/core/style.css';
+
+/*
+ * Touch-surface styling for the WebView editor.
+ *
+ * The RN host owns the page chrome — safe area, scroll container, keyboard
+ * avoidance — so this file only styles the document itself. No web fonts: the
+ * asset must open with no network, so the system stack is the stack.
+ *
+ * Everything is written in LOGICAL properties, so `dir=rtl` from the `cfg`
+ * message flips it with no second stylesheet.
+ */
+
+:root {
+  --memry-ink: #1c1917;
+  --memry-paper: #fdfcfb;
+  --memry-muted: #78716c;
+  --memry-accent: #ff671a;
+  --memry-hairline: rgba(28, 25, 23, 0.1);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --memry-ink: #f5f5f4;
+  --memry-paper: #1c1917;
+  --memry-muted: #a8a29e;
+  --memry-hairline: rgba(245, 245, 244, 0.14);
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--memry-paper);
+  color: var(--memry-ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  /* 17px is the iOS body size; anything under 16 makes Safari zoom on focus. */
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  /* The RN host provides the scroll view and the callout menus; the WebView
+     must not add its own long-press magnifier over the top of them. */
+  -webkit-touch-callout: none;
+}
+
+#root {
+  padding-block: 16px 96px;
+  padding-inline: 16px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.bn-editor {
+  padding-inline: 0;
+  background: transparent;
+}
+
+/* Wiki links: a tappable chip. 44px of touch target without 44px of visual
+   weight — the padding is on the inline box, the hit area on a pseudo-element. */
+.wiki-link {
+  color: var(--memry-accent);
+  text-decoration: none;
+  border-block-end: 1px solid color-mix(in srgb, var(--memry-accent) 35%, transparent);
+  position: relative;
+  cursor: pointer;
+}
+
+.wiki-link::after {
+  content: '';
+  position: absolute;
+  inset-block: -12px;
+  inset-inline: -4px;
+}
+
+/* Attachments that are not downloaded yet are a NORMAL state under the
+   Wi-Fi-only default, so they read as a placeholder, not as breakage. */
+img.asset-pending {
+  display: inline-block;
+  min-inline-size: 96px;
+  min-block-size: 96px;
+  background: color-mix(in srgb, var(--memry-ink) 6%, transparent);
+  border: 1px dashed var(--memry-hairline);
+  border-radius: 8px;
+}
+
+img.asset-missing {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--memry-accent) 40%, transparent);
+}
+
+/* Wiki-link autocomplete. */
+.wiki-menu {
+  position: fixed;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: 20;
+  max-block-size: 40vh;
+  overflow-y: auto;
+  background: var(--memry-paper);
+  border-block-start: 1px solid var(--memry-hairline);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.wiki-menu-item {
+  display: block;
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding-block: 12px;
+  padding-inline: 16px;
+  text-align: start;
+  background: none;
+  border: 0;
+  border-block-end: 1px solid var(--memry-hairline);
+  color: inherit;
+  font: inherit;
+}
+
+.wiki-menu-item:active {
+  background: color-mix(in srgb, var(--memry-accent) 12%, transparent);
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

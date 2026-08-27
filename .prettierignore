@@ -15,6 +15,9 @@ tsconfig.*.json
 # Prettier-formatted output won't match the generator's raw output).
 apps/desktop/src/main/ipc/generated-ipc-invoke-map.ts
 apps/desktop/src/preload/generated-rpc.ts
+# Same rule: `editor:check` compares the stamped hash, and the payload is a
+# 1 MB base64 literal that Prettier reflows into something the check cannot read.
+apps/mobile/src/editor/generated/
 
 # Golden byte-preservation fixtures: bytes (CRLF, BOM, missing final newline)
 # ARE the test contract — formatting them destroys what they assert.

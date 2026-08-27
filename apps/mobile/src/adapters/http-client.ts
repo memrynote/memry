@@ -1,5 +1,6 @@
 import NetInfo from '@react-native-community/netinfo'
 import type { SyncHttpClient, SyncHttpRequest, SyncHttpResponse } from '@memry/sync-client/adapters'
+import { DevOfflineError, isDevOffline, subscribeDevOffline } from '../lib/dev-network'
 
 /**
  * Seam 1 on mobile: fetch + NetInfo (contracts/platform-adapters.md §1).
@@ -13,6 +14,11 @@ export function createMobileHttpClient(baseUrl: string): SyncHttpClient {
 
   return {
     async request(req: SyncHttpRequest): Promise<SyncHttpResponse> {
+      // Dev-only, and it FAILS the request rather than faking a response: the
+      // offline matrix needs the app to behave as it does in airplane mode,
+      // and a synthesised 5xx would exercise a different path entirely.
+      if (isDevOffline()) throw new DevOfflineError()
+
       const path = req.path.startsWith('/') ? req.path : `/${req.path}`
       // Copy Uint8Array bodies so SharedArrayBuffer-typed views never reach
       // BodyInit (same guard as desktop's adapter).
@@ -36,14 +42,31 @@ export function createMobileHttpClient(baseUrl: string): SyncHttpClient {
 
     onOnlineChanged(cb) {
       let last: boolean | null = null
-      const unsubscribe = NetInfo.addEventListener((state) => {
-        const online = state.isConnected === true && state.isInternetReachable !== false
-        if (online !== last) {
-          last = online
-          cb(online)
-        }
+      const emit = (online: boolean): void => {
+        if (online === last) return
+        last = online
+        cb(online)
+      }
+
+      const unsubscribeNet = NetInfo.addEventListener((state) => {
+        const real = state.isConnected === true && state.isInternetReachable !== false
+        emit(real && !isDevOffline())
       })
-      return unsubscribe
+      // The switch drives this too, not just `request`. Otherwise the engine
+      // still believes it is online and the paths the matrix exists to
+      // exercise — parked outbox, deferred sync, the Offline banner — never
+      // run at all.
+      const unsubscribeDev = subscribeDevOffline(() => {
+        void NetInfo.fetch().then((state) => {
+          const real = state.isConnected === true && state.isInternetReachable !== false
+          emit(real && !isDevOffline())
+        })
+      })
+
+      return () => {
+        unsubscribeNet()
+        unsubscribeDev()
+      }
     },
 
     async isMetered() {

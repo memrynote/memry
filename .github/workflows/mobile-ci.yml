@@ -78,6 +78,17 @@ jobs:
       - name: Typecheck mobile
         run: pnpm --filter @memry/mobile typecheck
 
+      - name: Typecheck the WebView editor bundle
+        run: pnpm --filter @memry/editor-web typecheck
+
+      # The RN host and the WebView guest compile against the same bridge
+      # contract, so the types cannot drift. What CAN drift is the PREBUILT
+      # editor asset: an edit to editor-web/ or to the contract that ships
+      # without a rebuild leaves the app talking to yesterday's editor. This is
+      # the `ipc:check` of that boundary.
+      - name: Editor asset freshness (bridge contract drift gate)
+        run: pnpm --filter @memry/mobile editor:check
+
       - name: Test mobile (Vitest, RN logic)
         run: pnpm --filter @memry/mobile test
 

@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node", "react-native"]
   },
   "include": ["src/**/*.test.ts"],
   "exclude": ["node_modules"]

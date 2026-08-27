@@ -1,5 +1,9 @@
 packages:
   - apps/*
+  # The WebView editor bundle is built by vite and lives inside the mobile app,
+  # but it needs its own dependency set (BlockNote + react-dom), so it is its
+  # own workspace package rather than a folder of apps/mobile.
+  - apps/mobile/editor-web
   - packages/*
   - tests/*
   - '!spikes/**'
@@ -96,6 +100,7 @@ minimumReleaseAgeExclude:
   - defuddle@0.19.0
   - '@electron/rebuild@4.2.0'
   - node-abi@4.33.0
+  - expo-image-picker@57.0.14
 
 patchedDependencies:
   '@blocknote/core@0.47.1': patches/@blocknote__core@0.47.1.patch

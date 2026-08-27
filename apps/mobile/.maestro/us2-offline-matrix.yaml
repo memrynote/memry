@@ -1,0 +1,99 @@
+# T066 — US2 offline matrix, OFFLINE half: edit + create with no network,
+# force-quit, relaunch, and verify the work survived.
+#
+# The reconnect half is a SEPARATE flow (`us2-offline-reconnect.yaml`) because
+# the network transition happens between them and Maestro cannot make it:
+# neither the simulator nor a device exposes airplane mode to the accessibility
+# tree. `scripts/us2-offline-matrix.mjs` owns the toggle and runs the two flows
+# in order. Running this file alone proves persistence, not sync.
+#
+# `-e RUN_ID=<n>` makes each pass write a distinguishable note title, which is
+# what lets the reconnect assertion prove THIS run's edit arrived rather than a
+# previous one's.
+#
+# Prereqs, same as the US1 smoke: a signed-in session and an unlocked vault.
+appId: com.memry.mobile
+---
+- launchApp:
+    clearState: false
+
+# The driver cut the network before starting this flow. Asserting the banner
+# makes that a fact the run checked rather than a fact it assumed — a pass that
+# quietly ran online would prove nothing at all.
+#
+# Addressed by `testID`, not by the visible words: the banner is a View around
+# Text children, so on iOS only the children are accessibility elements unless
+# the container is marked `accessible` — the container's label is invisible to
+# the hierarchy, and matching the child text would tie this gate to a string
+# that exists to be reworded.
+- assertVisible:
+    id: 'sync-banner-offline'
+- assertVisible: 'Notes'
+
+# -- create a note while offline --
+# Selectors here are ACCESSIBILITY names, not the words on screen, and
+# Maestro matches them whole rather than as a substring. The button reads
+# "New" and answers to "New note"; a row reads its title and answers to
+# "Open note <title>". Matching the visible word finds nothing, which is how
+# this flow spent its first runs failing on elements that were plainly there.
+- tapOn: 'New note'
+- assertVisible: 'Note content'
+# The editor is a WebView: Maestro reaches WKWebView content only through the
+# accessibility tree, so the editor exposes `Note content` as a labelled
+# textbox — the aria-label sits on BlockNote's own contenteditable, since a
+# label on the wrapper is shadowed by it. Addressed by TEXT, not `id:`: on iOS
+# `id` matches the accessibility IDENTIFIER only, which web content and plain
+# RN accessibility labels do not have. Only the sync banners answer to `id:`,
+# and that is because they carry a `testID`.
+- tapOn: 'Note content'
+- inputText: 'offline body ${RUN_ID}'
+
+# -- rename it to something this run can recognise later --
+- tapOn: 'More'
+- tapOn: 'Note title'
+- eraseText
+- inputText: 'offline note ${RUN_ID}'
+# No `hideKeyboard`: the sheet's title field is inside a Modal and Maestro
+# cannot find a standard dismiss action for it. The backdrop is a full-screen
+# pressable, so tapping Close dismisses the keyboard and the sheet in one go —
+# and closing is what commits the rename.
+- tapOn: 'Close'
+
+# -- edit an existing note too: create and edit are different code paths --
+# Tapped, not swiped: Maestro's `back` is an edge-swipe on iOS and the editor
+# WebView swallows it, so the flow stayed on the note screen while every
+# following selector went looking for the list. `BackButton` is one of the few
+# real accessibility IDENTIFIERS on screen, courtesy of the navigator.
+- tapOn:
+    id: 'BackButton'
+- assertVisible: '.*Open note offline note ${RUN_ID}.*'
+# A note this run did not create — the edit path and the create path are
+# different code. Picked by position among the rows rather than by title, so
+# the gate does not depend on what happens to be seeded in the vault.
+- tapOn:
+    text: '.*Open note.*'
+    index: 1
+- tapOn: 'Note content'
+- inputText: ' edited offline ${RUN_ID}'
+- tapOn:
+    id: 'BackButton'
+
+# -- force-quit. Everything typed must already be in SQLite: the durability
+#    rule commits before acking, and backgrounding flushes the bridge first. --
+- stopApp
+
+# -- relaunch, still offline: the edits must be there with no network at all --
+- launchApp:
+    clearState: false
+- assertVisible:
+    id: 'sync-banner-offline'
+- assertVisible: '.*Open note offline note ${RUN_ID}.*'
+- tapOn: '.*Open note offline note ${RUN_ID}.*'
+- assertVisible: 'Note content'
+- assertVisible: '.*offline body ${RUN_ID}.*'
+- tapOn:
+    id: 'BackButton'
+
+# Leave the app stopped: the driver restores the network next, and the
+# reconnect flow's assertions depend on a cold foreground transition.
+- stopApp

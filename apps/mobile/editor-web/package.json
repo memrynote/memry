@@ -1,0 +1,23 @@
+{
+  "name": "@memry/editor-web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@blocknote/code-block": "^0.47.1",
+    "@blocknote/core": "^0.47.1",
+    "@memry/contracts": "workspace:*",
+    "@memry/editor-schema": "workspace:*",
+    "yjs": "^13.6.29"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6"
+  }
+}

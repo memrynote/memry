@@ -8,6 +8,14 @@ import { Spacing } from '@/constants/theme'
 import { openVaultDb } from '@/db/index'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
+import { getEditorSession } from '@/editor/session'
+import { createNote } from '@/features/notes/note-ops'
+import {
+  createNoteFromTemplate,
+  listTemplates,
+  type TemplateSummary
+} from '@/features/notes/from-template'
+import { subscribeReadOnly } from '@/sync/read-only-mode'
 
 interface NoteRow {
   id: string
@@ -31,6 +39,9 @@ export default function NotesScreen() {
   const [sections, setSections] = useState<Section[]>([])
   const [pendingCount, setPendingCount] = useState(0)
   const [vaultId, setVaultId] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<TemplateSummary[]>([])
+  const [choosingTemplate, setChoosingTemplate] = useState(false)
+  const [readOnly, setReadOnly] = useState(false)
 
   const reload = useCallback(async () => {
     const vid = await loadCurrentVaultId()
@@ -97,6 +108,49 @@ export default function NotesScreen() {
     })
   }, [vaultId, reload])
 
+  useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
+
+  useEffect(() => {
+    if (!vaultId) return
+    void getEditorSession(vaultId).then((session) => listTemplates(session.db).then(setTemplates))
+  }, [vaultId])
+
+  /**
+   * Create is offline-first like every other write: the note exists locally the
+   * moment it is tapped, and the outbox carries it whenever there is a network.
+   */
+  const create = useCallback(
+    async (templateId?: string) => {
+      if (!vaultId) return
+      const session = await getEditorSession(vaultId)
+      const ctx = {
+        db: session.db,
+        outbox: session.outbox,
+        vaultId,
+        deviceId: session.deviceId
+      }
+      // No title for the template path: `createNoteFromTemplate` falls back to
+      // the TEMPLATE's name, and passing 'Untitled' defeats that — every note
+      // made from a template would be called Untitled and they would all
+      // derive the same path.
+      const noteId = templateId
+        ? await createNoteFromTemplate(ctx, templateId)
+        : await createNote(ctx, { title: 'Untitled' })
+      setChoosingTemplate(false)
+      if (noteId) {
+        // Navigate FIRST. `reload()` re-reads the whole note list over the one
+        // SQLite connection the bootstrap sync is also using, so awaiting it
+        // put an unbounded wait between the tap and the editor — on a vault
+        // still seeding, long enough that the offline matrix timed out looking
+        // for an editor that had been created but never opened. Nothing on the
+        // note screen comes from that list, and `useFocusEffect` reloads the
+        // index on the way back, so the await bought nothing.
+        router.push(`/notes/${noteId}`)
+      }
+    },
+    [vaultId]
+  )
+
   const flat: ({ type: 'folder'; name: string } | { type: 'note'; note: NoteRow })[] = []
   for (const section of sections) {
     if (section.folder) flat.push({ type: 'folder', name: section.folder })
@@ -106,7 +160,44 @@ export default function NotesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ThemedView style={styles.container}>
-        <ThemedText type="title">Notes</ThemedText>
+        <View style={styles.header}>
+          <ThemedText type="title">Notes</ThemedText>
+          {readOnly ? null : (
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => void create()}
+                style={styles.headerButton}
+                accessibilityRole="button"
+                accessibilityLabel="New note"
+              >
+                <ThemedText type="smallBold">New</ThemedText>
+              </Pressable>
+              {templates.length > 0 ? (
+                <Pressable
+                  onPress={() => setChoosingTemplate((value) => !value)}
+                  style={styles.headerButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="New note from template"
+                >
+                  <ThemedText type="smallBold">Template</ThemedText>
+                </Pressable>
+              ) : null}
+            </View>
+          )}
+        </View>
+        {choosingTemplate
+          ? templates.map((template) => (
+              <Pressable
+                key={template.id}
+                onPress={() => void create(template.id)}
+                style={styles.templateRow}
+                accessibilityRole="button"
+                accessibilityLabel={`New note from ${template.name}`}
+              >
+                <ThemedText>{template.name}</ThemedText>
+              </Pressable>
+            ))
+          : null}
         {pendingCount > 0 ? (
           <ThemedText type="small">{pendingCount} more items still syncing…</ThemedText>
         ) : null}
@@ -144,6 +235,10 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: { flex: 1, padding: Spacing.three, gap: Spacing.two },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', gap: Spacing.two },
+  headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
+  templateRow: { minHeight: 44, justifyContent: 'center' },
   folderRow: { paddingTop: Spacing.three, paddingBottom: Spacing.one },
   noteRow: {
     paddingVertical: Spacing.two,

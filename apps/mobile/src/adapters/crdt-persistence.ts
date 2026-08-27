@@ -1,5 +1,6 @@
 import type { CrdtDocState, CrdtPersistenceAdapter } from '@memry/sync-client/adapters'
 import type { VaultDb } from '../db/index'
+import { withVaultTransaction } from '../db/tx'
 
 /**
  * Seam 3 on mobile: `yjs_updates` / `yjs_snapshots` tables (T041).
@@ -21,7 +22,7 @@ export function createMobileCrdtPersistence(db: VaultDb): CrdtPersistenceAdapter
 
   return {
     async appendUpdate(docId, update) {
-      await db.withTransactionAsync(async () => {
+      await withVaultTransaction(db, async () => {
         const row = await db.getFirstAsync<{ max_seq: number | null }>(
           'SELECT MAX(seq) AS max_seq FROM yjs_updates WHERE doc_id = ?',
           [localId(docId)]

@@ -9,7 +9,9 @@ import {
   getSessionToken,
   setSessionToken,
   clearSessionToken,
-  setDeviceSigningKeypair
+  getDeviceSigningKeypair,
+  setDeviceSigningKeypair,
+  type StoredSigningKeypair
 } from '../lib/secure-store'
 import * as SecureStore from 'expo-secure-store'
 import { mobileAppVersion } from '../adapters/runtime'
@@ -35,6 +37,14 @@ export interface StoredSession {
 }
 
 const ACCOUNT_KEY = 'default'
+
+/**
+ * Scope the registered signing keypair is stored under.
+ *
+ * Device registration is account-wide, not per-vault: one keypair is
+ * registered with the server and every vault's writes are signed with it.
+ */
+export const SIGNING_KEY_SCOPE = 'account'
 const DEVICE_ID_STORE_KEY = 'memry.device.id'
 
 const OPTIONS: SecureStore.SecureStoreOptions = {
@@ -125,9 +135,11 @@ export async function verifyOtpAndRegisterDevice(
   )
 
   await SecureStore.setItemAsync(DEVICE_ID_STORE_KEY, registered.deviceId, OPTIONS)
-  // The auth keypair doubles as the per-vault signing keypair seed store is
-  // vault-scoped; the registration keypair is stored under the account scope.
-  await setDeviceSigningKeypair('account', {
+  // ACCOUNT scope, and it matters: this is the key whose public half the server
+  // registered as `authPublicKey`, so it is the only key whose signatures other
+  // devices will verify. Anything signed with a different, vault-scoped key is
+  // rejected by every peer. Read it back through `loadPushSigningKeypair`.
+  await setDeviceSigningKeypair(SIGNING_KEY_SCOPE, {
     publicKey: keyPair.publicKey,
     privateKey: keyPair.secretKey
   })
@@ -203,4 +215,20 @@ export async function saveCurrentVaultId(vaultId: string): Promise<void> {
 
 export async function loadCurrentVaultId(): Promise<string | null> {
   return SecureStore.getItemAsync(CURRENT_VAULT_KEY, OPTIONS)
+}
+
+export async function clearCurrentVaultId(): Promise<void> {
+  await SecureStore.deleteItemAsync(CURRENT_VAULT_KEY, OPTIONS)
+}
+
+/**
+ * The keypair this device signs pushed items with.
+ *
+ * Deliberately NOT `getDeviceSigningKeypair(vaultId)`: registration stores the
+ * registered keypair under the account scope, and the vault-scoped store holds
+ * a locally-generated key the server has never seen — signing with it produces
+ * items every peer rejects, silently.
+ */
+export function loadPushSigningKeypair(): Promise<StoredSigningKeypair | null> {
+  return getDeviceSigningKeypair(SIGNING_KEY_SCOPE)
 }

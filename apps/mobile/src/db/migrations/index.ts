@@ -121,7 +121,24 @@ DROP INDEX IF EXISTS idx_note_bodies_path;
 CREATE INDEX idx_note_bodies_path ON note_bodies(path);
 `
 
+export const ATTACHMENT_FILENAME_SQL = `-- The reference inside a note body is a PATH (\`attachments/<noteId>/<file>\`),
+-- while sync addresses an attachment by its blob id. Desktop bridges the two by
+-- writing the downloaded file under the manifest's own filename, so the ref's
+-- basename and the manifest filename are the same string by construction.
+--
+-- Mobile has no vault tree to write into, so it records the pairing instead:
+-- the manifest filename lands here at download time and the resolver matches a
+-- ref's basename against it, scoped to the note that references it.
+--
+-- Additive: both columns are nullable, so rows written by the previous build
+-- keep working and simply resolve nothing until their next download.
+
+ALTER TABLE attachments ADD COLUMN filename TEXT;
+ALTER TABLE attachments ADD COLUMN mime_type TEXT;
+`
+
 export const MOBILE_MIGRATIONS: MobileMigration[] = [
   { version: 1, name: '0001_baseline', sql: BASELINE_SQL },
-  { version: 2, name: '0002_note_body_path_nonunique', sql: PATH_NONUNIQUE_SQL }
+  { version: 2, name: '0002_note_body_path_nonunique', sql: PATH_NONUNIQUE_SQL },
+  { version: 3, name: '0003_attachment_filename', sql: ATTACHMENT_FILENAME_SQL }
 ]

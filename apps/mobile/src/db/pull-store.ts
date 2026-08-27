@@ -6,6 +6,7 @@ import type {
 } from '@memry/sync-client/pull'
 import { createLogger } from '../lib/logger'
 import { getMeta, setMeta, type VaultDb } from './index'
+import { withVaultTransaction } from './tx'
 
 const log = createLogger('MobilePullStore')
 
@@ -56,7 +57,7 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
   }
 
   async applyRecordRefs(refs: RecordItemRef[], bareDeleteIds: string[]): Promise<void> {
-    await this.db.withTransactionAsync(async () => {
+    await withVaultTransaction(this.db, async () => {
       const upsert = await this.db.prepareAsync(
         `INSERT INTO sync_items (id, type, vault_id, updated_at, deleted_at, payload_state)
          VALUES (?, ?, ?, ?, ?, 'metadata-only')
@@ -122,7 +123,7 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
       for (const row of rows) existingBodies.add(row.item_id)
     }
 
-    await this.db.withTransactionAsync(async () => {
+    await withVaultTransaction(this.db, async () => {
       const upsertStmt = await this.db.prepareAsync(
         `INSERT INTO sync_items (id, type, vault_id, updated_at, deleted_at, vector_clock, payload_state, payload)
          VALUES (?, ?, ?, ?, NULL, ?, 'full', ?)
@@ -286,7 +287,7 @@ export class MobilePullStore implements PullStore, CrdtPullStore {
     upToSeq: number,
     revision: string | null
   ): Promise<void> {
-    await this.db.withTransactionAsync(async () => {
+    await withVaultTransaction(this.db, async () => {
       await this.db.runAsync(
         `INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES (?, ?, ?, ?)
          ON CONFLICT(doc_id) DO UPDATE SET snapshot = excluded.snapshot, last_seq = excluded.last_seq, compacted_at = excluded.compacted_at`,
