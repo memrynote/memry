@@ -60,7 +60,10 @@ describe('parseMarkdownPreservingBlanks', () => {
           content: [{ type: 'text', text: markdown, styles: {} }],
           children: []
         }
-      ])
+      ]),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
     }
 
     const blocks = await parseMarkdownPreservingBlanks(
@@ -70,7 +73,7 @@ describe('parseMarkdownPreservingBlanks', () => {
         '![embed](https://www.youtube.com/watch?v=dQw4w9WgXcQ)',
         '![embed](https://example.com/not-youtube)',
         '',
-        '> [!warning] Heads up',
+        '> [!warning]',
         '> Body line'
       ].join('\n')
     )
@@ -87,12 +90,66 @@ describe('parseMarkdownPreservingBlanks', () => {
         expect.objectContaining({
           type: 'callout',
           props: { type: 'warning' },
-          content: [{ type: 'text', text: 'Heads up\nBody line', styles: {} }]
+          content: [{ type: 'text', text: 'Body line', styles: {} }]
         })
       ])
     )
     expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
       expect.stringContaining('https://example.com/not-youtube')
+    )
+  })
+
+  it('leaves foreign and titled callout markers as markdown instead of claiming them', async () => {
+    // `> [!note]` and `> [!warning] A title` are bytes Memry never writes —
+    // claiming them would rewrite an Obsidian vault on the next save (#1846).
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ]),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      ['> [!note]\n> An Obsidian type', '', '> [!warning] A title\n> and a body'].join('\n')
+    )
+
+    expect(blocks.some((b) => (b.type as string) === 'callout')).toBe(false)
+    expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(expect.stringContaining('[!note]'))
+  })
+
+  it('heals a bare callout marker whose body sits directly below (#1846)', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ]),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(editor, '[!info]\nHer text line')
+
+    expect(blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'callout',
+          props: { type: 'info' },
+          content: [{ type: 'text', text: 'Her text line', styles: {} }]
+        })
+      ])
     )
   })
 
