@@ -2536,6 +2536,24 @@ describe('toggle blocks survive the markdown round-trip (#1643)', () => {
     expect(await rewrite(markdown)).toBe(markdown)
   })
 
+  it('round-trips a callout inside an expanded toggle', async () => {
+    // #given both features scanning the same bytes: toggle regions come off
+    // first, and the body re-enters the same walk, where the callout run reader
+    // then claims its lines.
+    const markdown = [
+      '<details data-memry-toggle open>',
+      '<summary>Notes</summary>',
+      '',
+      '> [!warning]',
+      '> Careful',
+      '',
+      '</details>'
+    ].join('\n')
+
+    // #when / #then
+    expect(await rewrite(markdown)).toBe(markdown)
+  })
+
   it('leaves a toggle written before the prop existed collapsed and byte-stable (#1847)', async () => {
     // #given a note from every build shipped so far. Write-back byte-compares,
     // so one character of drift here rewrites every toggle in every vault.
