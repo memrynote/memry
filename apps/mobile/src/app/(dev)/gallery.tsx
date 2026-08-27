@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useLocalSearchParams } from 'expo-router'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -11,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { FAB } from '@/components/ui/fab'
 import { Icon, iconNames, type IconName } from '@/components/ui/icon'
 import { ListRow } from '@/components/ui/list-row'
+import { NavBarInline, NavBarLargeTitle } from '@/components/ui/nav-bar'
 import { SearchField } from '@/components/ui/search-field'
 import { SectionHeader } from '@/components/ui/section-header'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -38,7 +40,16 @@ const tabs: { key: string; label: string; icon: IconName }[] = [
 
 const segments = ['Notes', 'Tasks', 'Journal'] as const
 
+// `?section=nav bar` narrows the gallery to one section so a screenshot lines
+// up against its Figma board without anyone scrolling to find it.
+function useSectionFilter() {
+  const { section } = useLocalSearchParams<{ section?: string }>()
+  return section?.trim().toLowerCase() ?? null
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const filter = useSectionFilter()
+  if (filter && !title.toLowerCase().includes(filter)) return null
   return (
     <View style={styles.section}>
       <AppText variant="title3">{title}</AppText>
@@ -61,6 +72,7 @@ function Demo({ name, children }: { name: string; children: ReactNode }) {
 
 export default function GalleryScreen() {
   const c = useColors()
+  const filter = useSectionFilter()
   const [tab, setTab] = useState('home')
   const [filled, setFilled] = useState('Weekly review')
   const [invalid, setInvalid] = useState('a')
@@ -70,7 +82,7 @@ export default function GalleryScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <AppText variant="largeTitle">Component gallery</AppText>
+        {filter ? null : <AppText variant="largeTitle">Component gallery</AppText>}
 
         <Section title="Type ramp">
           {textVariants.map((variant) => (
@@ -94,6 +106,35 @@ export default function GalleryScreen() {
               </View>
             ))}
           </View>
+        </Section>
+
+        <Section title="Nav bar">
+          <Demo name="shell/Nav Bar — Large Title">
+            <NavBarLargeTitle
+              title="Notes"
+              actions={[
+                { icon: 'search', label: 'Search', onPress: noop },
+                { icon: 'plus', label: 'New note', onPress: noop }
+              ]}
+            />
+          </Demo>
+          <Demo name="shell/Nav Bar — Large Title, no actions">
+            <NavBarLargeTitle title="Search" />
+          </Demo>
+          <Demo name="shell/Nav Bar — Inline + Back">
+            <NavBarInline
+              title="Weekly review"
+              back={{ label: 'Back', onPress: noop }}
+              actions={[{ icon: 'more', label: 'Note actions', onPress: noop }]}
+            />
+          </Demo>
+          <Demo name="shell/Nav Bar — Inline + Back, title outgrows the bar">
+            <NavBarInline
+              title="Field-level vector clocks and the delete-vs-edit tombstone"
+              back={{ label: 'Architecture', onPress: noop }}
+              actions={[{ icon: 'more', label: 'Note actions', onPress: noop }]}
+            />
+          </Demo>
         </Section>
 
         <Section title="Tab bar">
