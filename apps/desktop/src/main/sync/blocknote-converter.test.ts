@@ -1916,10 +1916,20 @@ describe('custom blocks survive the CRDT write path', () => {
     // #when
     const result = await yDocToMarkdown(doc)
 
-    // #then
-    expect(result).not.toBeNull()
-    expect(result).toContain('parent')
-    expect(result).toContain('Details')
+    // #then exactly the bytes the default spec produced before this one
+    // replaced it: the `<li>`/`<p>` DOM is unchanged, and `open` is invisible
+    // to `addDefaultPropsExternalHTML`.
+    expect(result).toBe(
+      [
+        '- parent',
+        '',
+        '<!-- memry:block-nesting-level=1 -->',
+        '',
+        '- Details',
+        '',
+        '<!-- memry:block-nesting-level=0 -->'
+      ].join('\n')
+    )
   })
 })
 
