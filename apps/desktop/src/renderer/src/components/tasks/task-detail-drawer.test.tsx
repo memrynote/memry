@@ -11,6 +11,8 @@ import type { Task, Priority, RepeatConfig } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 import { notesService } from '@/services/notes-service'
+import { canvasService } from '@/services/canvas-service'
+import { searchService } from '@/services/search-service'
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
@@ -19,6 +21,51 @@ vi.mock('@/services/notes-service', () => ({
     list: vi.fn().mockResolvedValue({ notes: [] })
   }
 }))
+
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: {
+    list: vi.fn().mockResolvedValue({ canvases: [] })
+  }
+}))
+
+vi.mock('@/services/search-service', () => ({
+  searchService: {
+    query: vi.fn().mockResolvedValue({ groups: [], totalCount: 0, queryTimeMs: 0 })
+  }
+}))
+
+const canvasSummary = (id: string, title: string | null, icon: string | null = null) => ({
+  id,
+  title,
+  icon,
+  folder: null,
+  createdAt: 0,
+  updatedAt: 0
+})
+
+const noteSearchGroup = (id: string, title: string) => ({
+  groups: [
+    {
+      type: 'note',
+      totalInGroup: 1,
+      results: [
+        {
+          id,
+          type: 'note',
+          title,
+          snippet: '',
+          score: 1,
+          normalizedScore: 1,
+          matchType: 'title',
+          modifiedAt: '2026-01-01T00:00:00.000Z',
+          metadata: { type: 'note', path: `${id}.md`, tags: [], emoji: null }
+        }
+      ]
+    }
+  ],
+  totalCount: 1,
+  queryTimeMs: 1
+})
 
 vi.mock('@/contexts/day-panel-context', () => ({
   useDayPanel: () => ({ isOpen: false, width: 320 })
@@ -525,12 +572,15 @@ describe('TaskDetailDrawer — editable properties', () => {
       const onUpdateTask = vi.fn()
       const onNoteClick = vi.fn()
       vi.mocked(notesService.get).mockRejectedValueOnce(new Error('missing note'))
-      vi.mocked(notesService.list).mockResolvedValueOnce({
+      vi.mocked(notesService.list).mockResolvedValue({
         notes: [
           { id: 'note-2', title: 'Second Note', emoji: null },
           { id: 'note-3', title: 'Third Note', emoji: 'T' }
         ]
       } as never)
+      vi.mocked(searchService.query).mockResolvedValue(
+        noteSearchGroup('note-3', 'Third Note') as never
+      )
 
       renderWithI18n(
         <TaskDetailDrawer
@@ -553,6 +603,60 @@ describe('TaskDetailDrawer — editable properties', () => {
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
         linkedNoteIds: ['note-1', 'note-3']
       })
+    })
+
+    it('lists notes and canvases together in the related picker', async () => {
+      const user = userEvent.setup()
+      vi.mocked(notesService.list).mockResolvedValue({
+        notes: [{ id: 'note-2', title: 'Second Note', emoji: null }]
+      } as never)
+      vi.mocked(canvasService.list).mockResolvedValue({
+        canvases: [canvasSummary('canvas-1', 'Sprint Canvas')]
+      } as never)
+
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask()} />)
+
+      await user.click(screen.getByRole('button', { name: /add related item/i }))
+
+      expect(await screen.findByText('Second Note')).toBeInTheDocument()
+      expect(await screen.findByText('Sprint Canvas')).toBeInTheDocument()
+    })
+
+    it('links a canvas from the picker and opens the canvas when its row is clicked', async () => {
+      const user = userEvent.setup()
+      const onUpdateTask = vi.fn()
+      const onCanvasClick = vi.fn()
+      vi.mocked(canvasService.list).mockResolvedValue({
+        canvases: [canvasSummary('canvas-1', 'Sprint Canvas')]
+      } as never)
+
+      const { rerender } = renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask()}
+          onUpdateTask={onUpdateTask}
+          onCanvasClick={onCanvasClick}
+        />
+      )
+
+      await user.click(screen.getByRole('button', { name: /add related item/i }))
+      await user.click(await screen.findByText('Sprint Canvas'))
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', { linkedCanvasIds: ['canvas-1'] })
+
+      rerender(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask({ linkedCanvasIds: ['canvas-1'] })}
+          onUpdateTask={onUpdateTask}
+          onCanvasClick={onCanvasClick}
+        />
+      )
+
+      const canvasRow = (await screen.findByText('Sprint Canvas')).closest('[role="button"]')!
+      await user.click(canvasRow)
+
+      expect(onCanvasClick).toHaveBeenCalledWith('canvas-1', 'Sprint Canvas')
     })
   })
 
