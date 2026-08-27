@@ -682,6 +682,16 @@ Where they conflict, the three-board set wins and board 11 contributes only its 
 
 Implement `#6366f1` as Figma specifies. It is one token value, so switching costs one line. Flag it for a decision.
 
+### Open question, the tab bar is opaque everywhere in Figma
+
+`shell/Tab Bar` (`20:655`) is a solid `canvas/background` fill with a 1pt `line/border` top stroke,
+and every board that includes it ends its content above it. Nothing in the file is translucent.
+
+`expo-glass-effect` is already a dependency and `TabBar` already takes a `background` node for
+exactly this, but a `GlassView` behind an opaque bar is invisible, and making it visible means
+scrolling content under the bar, which no board draws. That is a design decision, not an
+implementation one, so it stays unbuilt until a board asks for it. Ask before adding it.
+
 ### Row heights
 
 The primitives board gives `row 56`. The measured rows disagree and both are correct. `Row/Plain` and `Row/Setting` are 52. `Row/Note` and `Row/Folder` are 64. Keep `sizes.row = 56` as the token for new one-line rows, and use the measured height per variant.
