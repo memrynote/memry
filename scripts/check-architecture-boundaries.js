@@ -96,6 +96,12 @@ function isTestFile(filePath) {
   return /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(filePath)
 }
 
+// Tooling configs (vitest.config.ts, metro.config.js, ...) run under node by
+// definition; the mobile reachability rule is about the app's RUNTIME graph.
+function isToolingConfigFile(filePath) {
+  return /\.config\.(ts|js|mjs|cjs)$/.test(path.basename(filePath))
+}
+
 function stripSourceExtension(filePath) {
   return filePath.replace(/\.(ts|tsx|js|jsx|mjs|cjs)$/, '')
 }
@@ -391,7 +397,7 @@ async function walkMobileSources(dir) {
     }
 
     const filePath = path.join(dir, entry.name)
-    if (isSourceFile(filePath) && !isTestFile(filePath)) {
+    if (isSourceFile(filePath) && !isTestFile(filePath) && !isToolingConfigFile(filePath)) {
       files.push(filePath)
     }
   }
