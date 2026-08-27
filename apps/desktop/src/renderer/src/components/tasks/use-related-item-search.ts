@@ -67,6 +67,10 @@ export function useRelatedItemSearch(
     let cancelled = false
     const trimmed = query.trim()
 
+    // Only a typed query needs coalescing. Debouncing the empty one would delay
+    // the picker's first paint behind results from the previous time it opened.
+    const delay = trimmed === '' ? 0 : SEARCH_DEBOUNCE_MS
+
     const timer = setTimeout(() => {
       // Settled independently: one source failing must not blank the other.
       void (
@@ -143,7 +147,7 @@ export function useRelatedItemSearch(
           setCanvases([])
         }
       )
-    }, SEARCH_DEBOUNCE_MS)
+    }, delay)
 
     return () => {
       cancelled = true
