@@ -1278,8 +1278,10 @@ inside a code fence are the author's text and stay text; the fence tracker follo
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
 
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
-that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, and a link mention's
-`((mention:…))` all reach the shared doc as plain text runs. The renderer promotes those
+that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, a link mention's
+`((mention:…))` and a date pill's `((date:…))` all reach the shared doc as plain text runs.
+Hash tags are the exception that stays text, because they need the note's tag list and
+colour map, which only the editor has. The renderer promotes the rest
 back into nodes when the note opens (`use-editor-sync.ts`), which is the only thing that
 turns a saved mention back into a chip — without it a mention lives only as long as its
 Y.Doc and comes back as literal text after a restart or a vault switch. Every promoter has
