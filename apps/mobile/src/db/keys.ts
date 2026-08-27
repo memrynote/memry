@@ -8,3 +8,6 @@
 
 /** Markdown to seed a locally-created note's editor with, until it lands. */
 export const seedKey = (noteId: string) => `seed.${noteId}`
+
+/** The queries the search entry screen offers back, most recent first. */
+export const RECENT_SEARCHES_KEY = 'search.recent'
