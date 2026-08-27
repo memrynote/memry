@@ -1,16 +1,15 @@
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
-export interface SectionHeaderProps {
-  label: string
-  count?: number
-  style?: StyleProp<ViewStyle>
-}
+export type SectionHeaderProps = { label: string; style?: StyleProp<ViewStyle> } & (
+  | { count?: number; action?: never }
+  | { action: { label: string; onPress: () => void }; count?: never }
+)
 
-export function SectionHeader({ label, count, style }: SectionHeaderProps) {
+export function SectionHeader({ label, count, action, style }: SectionHeaderProps) {
   const c = useColors()
 
   return (
@@ -26,6 +25,13 @@ export function SectionHeader({ label, count, style }: SectionHeaderProps) {
           {count}
         </AppText>
       )}
+      {action ? (
+        <Pressable accessibilityRole="button" hitSlop={10} onPress={action.onPress}>
+          <AppText variant="caption" color={c.tint.base}>
+            {action.label}
+          </AppText>
+        </Pressable>
+      ) : null}
     </View>
   )
 }

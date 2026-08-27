@@ -11,6 +11,7 @@ export interface ListRowProps {
   title: string
   subtitle?: string
   variant?: ListRowVariant
+  icon?: IconName
   onPress?: () => void
   accessibilityLabel?: string
   style?: StyleProp<ViewStyle>
@@ -25,6 +26,7 @@ export function ListRow({
   title,
   subtitle,
   variant = 'plain',
+  icon,
   onPress,
   accessibilityLabel,
   style
@@ -37,6 +39,7 @@ export function ListRow({
     setting: { height: 52, icon: 'settings' }
   }
   const shape = shapes[variant]
+  const glyph = icon ?? shape.icon
 
   return (
     <Pressable
@@ -54,7 +57,7 @@ export function ListRow({
         style
       ]}
     >
-      {shape.icon ? <Icon name={shape.icon} size={20} color={c.text.tertiary} /> : null}
+      {glyph ? <Icon name={glyph} size={20} color={c.text.tertiary} /> : null}
       <View style={styles.text}>
         <AppText variant="body" color={c.text.primary}>
           {title}

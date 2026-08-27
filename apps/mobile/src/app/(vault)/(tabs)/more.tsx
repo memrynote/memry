@@ -27,6 +27,11 @@ export default function MoreScreen() {
             title="Seam tests"
             onPress={() => router.push('/seam-tests')}
           />
+          <ListRow
+            variant="setting"
+            title="Search screens"
+            onPress={() => router.push('/search-demo')}
+          />
         </View>
       ) : null}
     </SafeAreaView>
