@@ -109,9 +109,11 @@ const baselineTasks = (): Task[] => [
 ]
 
 /**
- * A project badge has to mean "tasks you will see when you open this project".
+ * A project badge has to mean "rows you will see when you open this project".
  * The project view is `getFilteredTasks(..., 'project', ...)`, which drops
- * archived rows up front, so the badge is that list minus its completed rows.
+ * archived rows up front, so the badge is that list minus its completed rows —
+ * and minus its subtasks, which render nested under a parent rather than as
+ * rows of their own.
  *
  * This replaces the pre-single-pass App.tsx expression, which filtered by
  * project id and status only and therefore counted archived tasks no view can
@@ -122,9 +124,9 @@ const expectedProjectTaskCount = (
   project: Project,
   allProjects: Project[]
 ): number =>
-  getFilteredTasks(tasks, project.id, 'project', allProjects).filter(
-    (t) => project.statuses.find((s) => s.id === t.statusId)?.type !== 'done'
-  ).length
+  getFilteredTasks(tasks, project.id, 'project', allProjects)
+    .filter((t) => t.parentId === null)
+    .filter((t) => project.statuses.find((s) => s.id === t.statusId)?.type !== 'done').length
 
 const expectMatchesFilters = (tasks: Task[], allProjects: Project[] = projects): void => {
   const { viewCounts, projectTaskCounts } = getTaskWorkspaceCounts(tasks, allProjects, ALL_VIEW_IDS)
@@ -167,9 +169,10 @@ describe('getTaskWorkspaceCounts', () => {
     })
 
     expect(projectTaskCounts).toEqual({
-      // project-a incomplete: overdue, overdue-sub, due-today, due-tomorrow,
-      // due-in-3, due-in-20, no-due-date, done-a-sub, ghost-status, orphan-sub
-      'project-a': 10,
+      // project-a incomplete rows: overdue, due-today, due-tomorrow, due-in-3,
+      // due-in-20, no-due-date, ghost-status. overdue-sub, done-a-sub and
+      // orphan-sub are subtasks, so they are not rows and not counted.
+      'project-a': 7,
       // project-b incomplete and renderable: b-open only. b-archived and
       // archived-sub are archived, so the project view never lists them and the
       // badge must not count them either (#1323).
@@ -237,7 +240,7 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
     {
       name: 'task created',
       apply: (tasks) => [...tasks, createTask({ id: 'fresh', dueDate: TODAY })],
-      changes: { all: 11, today: 5, 'project-a': 11 }
+      changes: { all: 11, today: 5, 'project-a': 8 }
     },
     {
       name: 'task edited (title only)',
@@ -248,23 +251,23 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
       name: 'task completed',
       apply: (tasks) =>
         tasks.map((t) => (t.id === 'overdue' ? { ...t, statusId: 'done', completedAt: TODAY } : t)),
-      changes: { all: 8, today: 2, completed: 5, 'project-a': 9 }
+      changes: { all: 8, today: 2, completed: 5, 'project-a': 6 }
     },
     {
       name: 'task uncompleted',
       apply: (tasks) =>
         tasks.map((t) => (t.id === 'done-a' ? { ...t, statusId: 'todo', completedAt: null } : t)),
-      changes: { all: 12, completed: 1, 'project-a': 11 }
+      changes: { all: 12, completed: 1, 'project-a': 8 }
     },
     {
       name: 'task deleted',
       apply: (tasks) => tasks.filter((t) => t.id !== 'due-today'),
-      changes: { all: 9, today: 3, 'project-a': 9 }
+      changes: { all: 9, today: 3, 'project-a': 6 }
     },
     {
       name: 'parent deleted (its subtask stops riding along)',
       apply: (tasks) => tasks.filter((t) => t.id !== 'overdue'),
-      changes: { all: 8, today: 2, 'project-a': 9 }
+      changes: { all: 8, today: 2, 'project-a': 6 }
     },
     {
       name: 'due date moved out of today',
@@ -283,7 +286,7 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
         tasks.map((t) =>
           t.id === 'no-due-date' ? { ...t, projectId: 'project-b', statusId: 'todo' } : t
         ),
-      changes: { 'project-a': 9, 'project-b': 2 }
+      changes: { 'project-a': 6, 'project-b': 2 }
     },
     {
       name: 'status reassigned within the project',
@@ -298,9 +301,9 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
     {
       name: 'task archived',
       // The project badge has to fall with the view: archiving removes the row
-      // from the project list, so project-a drops 10 -> 9 (#1323).
+      // from the project list, so project-a drops 7 -> 6 (#1323).
       apply: (tasks) => tasks.map((t) => (t.id === 'due-today' ? { ...t, archivedAt: TODAY } : t)),
-      changes: { all: 9, today: 3, 'project-a': 9 }
+      changes: { all: 9, today: 3, 'project-a': 6 }
     },
     {
       name: 'task unarchived',
@@ -314,12 +317,14 @@ describe('getTaskWorkspaceCounts invalidation matrix', () => {
         ...tasks,
         createTask({ id: 'from-inbox', sourceNoteId: 'note-1', dueDate: addDays(TODAY, 1) })
       ],
-      changes: { all: 11, upcoming: 3, tomorrow: 2, 'project-a': 11 }
+      changes: { all: 11, upcoming: 3, tomorrow: 2, 'project-a': 8 }
     },
     {
       name: 'remote device writes a subtask under an open parent',
+      // The view badges follow it (the subtask rides along under its parent),
+      // the project badge does not: a subtask is not a row of its own.
       apply: (tasks) => [...tasks, createTask({ id: 'remote-sub', parentId: 'due-today' })],
-      changes: { all: 11, today: 5, 'project-a': 11 }
+      changes: { all: 11, today: 5, 'project-a': 7 }
     }
   ]
 

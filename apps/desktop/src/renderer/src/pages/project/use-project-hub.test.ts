@@ -1,12 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { tasksService } from '@/services/tasks-service'
+import { flattenTasksByStatus } from '@/lib/virtual-list-utils'
 import { deriveProgress, useProjectHub } from './use-project-hub'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/task-model'
 
+// The hook reads the whole workspace out of context; tests swap what it sees.
+const workspace = vi.hoisted(() => ({
+  current: { tasks: [] as unknown[], projects: [] as unknown[] }
+}))
+
 vi.mock('@/contexts/tasks', () => ({
-  useTasksContext: () => ({ tasks: [], projects: [] })
+  useTasksContext: () => workspace.current
 }))
 
 vi.mock('@/services/tasks-service', () => ({
@@ -142,6 +148,7 @@ describe('useProjectHub', () => {
   beforeEach(() => {
     vi.mocked(tasksService.listProjectContents).mockReset()
     vi.mocked(tasksService.getProject).mockReset()
+    workspace.current = { tasks: [], projects: [] }
   })
 
   const emptyContents = {
@@ -177,5 +184,43 @@ describe('useProjectHub', () => {
 
     act(() => result.current.setHomeNoteId('note-9'))
     expect(result.current.homeNoteId).toBe('note-9')
+  })
+
+  /**
+   * The Tasks tab badge is a promise about the tab under it. It counted every
+   * task carrying the project id — subtasks nested under a parent row, and
+   * tasks whose status the project no longer has — so a project of finished
+   * work advertised 130 tasks over sections reading 0, 0 and 37 (#1878).
+   */
+  it('counts exactly the rows the Tasks tab lists', async () => {
+    const project = makeProject()
+    const parent = makeTask({ id: 'parent', subtaskIds: ['sub'] })
+    const tasks = [
+      parent,
+      makeTask({ id: 'sub', parentId: 'parent' }),
+      makeTask({ id: 'done', statusId: 'done', completedAt: new Date() }),
+      makeTask({ id: 'ghost-status', statusId: 'status-deleted-long-ago' }),
+      makeTask({ id: 'archived', archivedAt: new Date() })
+    ]
+    workspace.current = { tasks, projects: [project] }
+
+    vi.mocked(tasksService.listProjectContents).mockResolvedValue(emptyContents)
+    vi.mocked(tasksService.getProject).mockResolvedValue(null as never)
+
+    const { result } = renderHook(() => useProjectHub('p1'))
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const rows = flattenTasksByStatus(
+      result.current.tasks,
+      project,
+      new Set<string>(),
+      result.current.tasks,
+      true
+    ).filter((item) => item.type === 'task' || item.type === 'parent-task')
+
+    // parent, done and ghost-status. The subtask renders under its parent and
+    // the archived task renders nowhere.
+    expect(rows).toHaveLength(3)
+    expect(result.current.counts.tasks).toBe(rows.length)
   })
 })

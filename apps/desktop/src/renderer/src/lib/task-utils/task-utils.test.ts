@@ -2133,6 +2133,20 @@ describe('Task Utils', () => {
 
         expect(groups).toEqual([])
       })
+
+      // A dropped task is in no list at all: invisible and uneditable, while
+      // every badge that counts tasks still counts it (#1878).
+      it('should put tasks with an unknown status in the first status', () => {
+        const tasks = [
+          createMockTask({ id: 't1', statusId: 's1' }),
+          createMockTask({ id: 'orphan', statusId: 'status-deleted-long-ago' })
+        ]
+
+        const groups = groupTasksByStatus(tasks, statusList, true)
+
+        expect(groups[0].tasks.map((t: Task) => t.id)).toEqual(['t1', 'orphan'])
+        expect(groups.flatMap((g: { tasks: Task[] }) => g.tasks)).toHaveLength(tasks.length)
+      })
     })
   })
 

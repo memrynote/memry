@@ -338,9 +338,11 @@ describe('App workspace count computation', () => {
     // today: a-open (overdue) + a-open-sub
     // completed: a-done + b-done
     expect(lastViewCounts).toEqual({ all: 3, today: 2, completed: 2 })
-    // project-a: a-open, a-open-sub | project-b: b-open only — b-archived is
-    // archived, so no view renders it and the badge must not count it (#1323)
-    expect(lastProjectCounts).toEqual({ 'project-a': 2, 'project-b': 1 })
+    // project-a: a-open only — a-open-sub is a subtask, and a project badge
+    // counts rows, not the subtasks nested inside them (#1878).
+    // project-b: b-open only — b-archived is archived, so no view renders it
+    // and the badge must not count it (#1323)
+    expect(lastProjectCounts).toEqual({ 'project-a': 1, 'project-b': 1 })
   })
 
   it('recomputes the counts when a task changes', () => {
@@ -353,7 +355,7 @@ describe('App workspace count computation', () => {
     expect(lastViewCounts).toEqual({ all: 2, today: 2, completed: 2 })
     // project-b is left with b-done and b-archived only, neither of which the
     // project view renders as an open task, so its badge is empty
-    expect(lastProjectCounts).toEqual({ 'project-a': 2, 'project-b': 0 })
+    expect(lastProjectCounts).toEqual({ 'project-a': 1, 'project-b': 0 })
     expect(sidebarRenders).toBeGreaterThan(0)
     expect(belowProviderRenders).toBeGreaterThan(0)
   })
