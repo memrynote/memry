@@ -108,7 +108,11 @@ Attach: the driver's `20/20 passed` line, plus one screen recording of a single
 pass showing airplane mode → edit + create → force-quit → relaunch (edits present
 with no network) → reconnect → the note on desktop.
 
-- [ ] 20/20
+- [x] 20/20 — 2026-08-27, iPhone 17 Pro simulator (iOS 26.5) against staging.
+      Counted from the Maestro artefacts, not the driver's summary line: 20
+      `us2-offline-matrix` and 20 `us2-offline-reconnect` runs, no FAILED
+      command in any of them. Driven by the app-level switch, so this is the
+      dev-build scenario; hardware airplane mode is gate 2's job.
 - [ ] recording
 
 ### 2. Convergence on real devices
