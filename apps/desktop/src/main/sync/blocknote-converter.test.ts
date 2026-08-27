@@ -1900,6 +1900,28 @@ describe('custom blocks survive the CRDT write path', () => {
     }
   )
 
+  it('flattens an expanded toggle under a list item to the same bytes as a collapsed one', async () => {
+    // #given the fold has nowhere to go in the bullet form. `data-open` rides on
+    // the wrapper div of the exported HTML, so this pins that it never reaches
+    // markdown — otherwise expanding a nested toggle would rewrite the file.
+    const collapsed = BLOCK_CASES.find((c) => c.type === 'toggleListItem')!.block
+    const bullet = (toggle: unknown) => ({
+      id: 'parent',
+      type: 'bulletListItem',
+      props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default' },
+      content: [{ type: 'text', text: 'parent', styles: {} }],
+      children: [toggle]
+    })
+
+    // #when
+    const expanded = { ...collapsed, props: { ...collapsed.props, open: true } }
+
+    // #then
+    expect(await yDocToMarkdown(docHolding(bullet(expanded)))).toBe(
+      await yDocToMarkdown(docHolding(bullet(collapsed)))
+    )
+  })
+
   it('flattens a toggle nested under a list item without throwing', async () => {
     // #given the case the table above excludes. The bullet is the pre-existing
     // shape; what must not happen is the spec's render throwing, which returns
