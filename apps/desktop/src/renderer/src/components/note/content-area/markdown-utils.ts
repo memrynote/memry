@@ -36,6 +36,7 @@ import {
 } from '@memry/shared/block-nesting'
 import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import {
+  resolveCalloutRun,
   serializeToggleBlock,
   splitMarkdownByToggles,
   type ToggleBlockSegment
@@ -291,60 +292,73 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
 
   for (const cseg of calloutSegments) {
     if (cseg.kind === 'callout') {
-      const parsed = await editor.tryParseMarkdownToBlocks(cseg.content)
-      const inlineContent = parsed[0]?.content ?? cseg.content
-      blocks.push({
-        type: 'callout' as const,
-        props: { type: cseg.type },
-        content: inlineContent
-      } as unknown as Block)
-    } else {
-      const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(cseg.text))
-      for (const seg of blankSegments) {
-        if (seg.type === 'content') {
-          const embedParts = splitByEmbedMarkers(seg.text)
-          for (const part of embedParts) {
-            if (part.kind === 'embed') {
-              blocks.push({
-                type: 'youtubeEmbed' as const,
-                props: { videoId: part.videoId, videoUrl: part.url }
-              } as unknown as Block)
-            } else if (part.kind === 'bookmark') {
-              blocks.push({
-                type: 'bookmark' as const,
-                props: { url: part.url, domain: extractDomain(part.url) }
-              } as unknown as Block)
-            } else if (part.kind === 'file') {
-              blocks.push({
-                type: 'file' as const,
-                props: part.props
-              } as unknown as Block)
-            } else {
-              const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
-              if (part.colors && parsed[0]) {
-                parsed[0].props = { ...parsed[0].props, ...part.colors }
-              }
-              if (part.tableColors && parsed[0]) {
-                applyTableCellColors(parsed[0].content, part.tableColors)
-              }
-              blocks.push(...parsed)
-            }
-          }
-        } else {
-          for (let i = 0; i < seg.extraLines; i++) {
-            blocks.push({
-              type: 'paragraph',
-              content: [],
-              children: [],
-              props: {}
-            } as unknown as Block)
-          }
-        }
+      const claimed = await resolveCalloutRun(
+        cseg.run,
+        async (md) => editor.tryParseMarkdownToBlocks(md),
+        async (block) => serializeBlocks(editor, [block as Block])
+      )
+      if (claimed) {
+        blocks.push({
+          type: 'callout' as const,
+          props: { type: claimed.type },
+          content: claimed.content
+        } as unknown as Block)
+      } else {
+        // A run the byte-round-trip guard declines is not ours to reshape:
+        // parse its original lines exactly as any other markdown.
+        await parseMarkdownSegmentText(editor, cseg.run.raw, blocks)
       }
+    } else {
+      await parseMarkdownSegmentText(editor, cseg.text, blocks)
     }
   }
 
   return blocks
+}
+
+async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block[]): Promise<void> {
+  const blankSegments = splitMarkdownPreservingBlanks(separateBlockImages(text))
+  for (const seg of blankSegments) {
+    if (seg.type === 'content') {
+      const embedParts = splitByEmbedMarkers(seg.text)
+      for (const part of embedParts) {
+        if (part.kind === 'embed') {
+          blocks.push({
+            type: 'youtubeEmbed' as const,
+            props: { videoId: part.videoId, videoUrl: part.url }
+          } as unknown as Block)
+        } else if (part.kind === 'bookmark') {
+          blocks.push({
+            type: 'bookmark' as const,
+            props: { url: part.url, domain: extractDomain(part.url) }
+          } as unknown as Block)
+        } else if (part.kind === 'file') {
+          blocks.push({
+            type: 'file' as const,
+            props: part.props
+          } as unknown as Block)
+        } else {
+          const parsed = await parseMarkdownChunkPreservingNesting(editor, part.text)
+          if (part.colors && parsed[0]) {
+            parsed[0].props = { ...parsed[0].props, ...part.colors }
+          }
+          if (part.tableColors && parsed[0]) {
+            applyTableCellColors(parsed[0].content, part.tableColors)
+          }
+          blocks.push(...parsed)
+        }
+      }
+    } else {
+      for (let i = 0; i < seg.extraLines; i++) {
+        blocks.push({
+          type: 'paragraph',
+          content: [],
+          children: [],
+          props: {}
+        } as unknown as Block)
+      }
+    }
+  }
 }
 
 export async function serializeBlocksPreservingBlanks(

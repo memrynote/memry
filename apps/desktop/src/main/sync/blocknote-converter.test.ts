@@ -31,6 +31,7 @@ import {
 import { createWikiLinkInlineContent, wikiLinkToText } from '@memry/editor-schema/inline'
 import { createServerBlockSpecs, createServerInlineSpecs } from '@memry/editor-schema/server'
 import { serializeDateMentionToken } from '@memry/shared/date-mention'
+import { serializeBlockColorsMarker } from '@memry/shared/block-colors'
 import { fileBlockCommentData, parseFileBlockMarker } from '@memry/editor-schema/blocks'
 
 describe('blocknote-converter code block language', () => {
@@ -1644,9 +1645,9 @@ describe('registering the custom specs does not rewrite existing markdown', () =
     '- [ ] a task {task:t1}',
     '```ts\nconst x = "[[Roadmap]]"\n```',
     '((date:eyJhbmNob3JJZCI6ImExIn0)) leftover token.',
-    // Callouts stay quote blocks on this path: their marker line carries a type
-    // and an optional title the callout schema cannot hold, so parsing them
-    // would rewrite `> [!note]` as `> [!info]` in every Obsidian vault.
+    // A Memry-shaped callout is claimed as a callout block now, under a
+    // byte-round-trip guard; foreign types and titled markers stay quote
+    // blocks. Either way the bytes must not move (#1846).
     '> [!info]\n> Heads up',
     '> [!note]\n> An Obsidian type this schema has no value for',
     '> [!info] A title on the marker line\n> and a body',
@@ -3033,5 +3034,140 @@ describe('a date pill keeps its exact bytes on the main path', () => {
 
     expect(escaped).toContain('\\')
     expect(await roundTrip(`due ${escaped} ok`)).toBe(`due ((date:${payload})) ok`)
+  })
+})
+
+describe('callouts on the CRDT path (#1846)', () => {
+  // Main used to leave every callout a quote block, so seeding a doc from the
+  // vault file demoted `> [!info]` on reopen and the callout UI never came
+  // back. Now main claims exactly the bytes Memry's own serializer writes —
+  // proven per note by re-serializing the body — and declines everything else,
+  // which is what keeps a foreign `> [!note]` byte-identical.
+  it.each(['info', 'warning', 'error', 'success'] as const)(
+    '`> [!%s]` with a multi-line body claims as a callout and writes identical bytes',
+    async (type) => {
+      // #given the bytes serializeCalloutBlock writes for this type
+      const markdown = serializeCalloutBlock(type, 'line one\nline two')
+      const doc = new Y.Doc()
+      await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+      // #when / #then the doc holds a real callout block again…
+      const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+      expect(blocks?.[0]?.type).toBe('callout')
+      expect((blocks?.[0]?.props as { type: string }).type).toBe(type)
+      // …and write-back reproduces the file byte-for-byte
+      expect(await yDocToMarkdown(doc)).toBe(markdown)
+    }
+  )
+
+  it('an empty callout claims and round-trips', async () => {
+    const markdown = serializeCalloutBlock('info', '')
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.type).toBe('callout')
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it.each([
+    ['a foreign Obsidian type', '> [!note]\n> body text'],
+    ['another foreign type', '> [!tip]\n> body text'],
+    ['a title after the marker', '> [!info] A title\n> body text']
+  ])('%s stays a quote block and stays byte-identical', async (_name, markdown) => {
+    // #given bytes Memry never writes — an Obsidian vault's, typically
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when / #then not claimed, not rewritten
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.type).toBe('quote')
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it.each([
+    ['a blank `>` line in the body', '> [!info]\n> line one\n>\n> line two'],
+    ['a list in the body', '> [!info]\n> - item one\n> - item two']
+  ])('%s declines the claim and stays a quote block', async (_name, markdown) => {
+    // serializeCalloutBlock never writes these shapes, so claiming them could
+    // not reproduce the bytes; they stay on the quote path exactly as before
+    // this feature. (That path's own normalization of these shapes predates
+    // #1846 and is the conformance suite’s to pin down.)
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+  })
+
+  it('a colored callout keeps its colors marker through the round trip', async () => {
+    const markdown = `${serializeBlockColorsMarker({
+      textColor: 'red',
+      backgroundColor: 'default'
+    } as never)}\n${serializeCalloutBlock('info', 'colored body')}`
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.type).toBe('callout')
+    expect((blocks?.[0]?.props as { textColor: string }).textColor).toBe('red')
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it('a callout marker inside a code fence is the author’s text', async () => {
+    const markdown = '```md\n> [!info]\n> not a callout\n```'
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+})
+
+describe('healing callouts already torn bare (#1846)', () => {
+  // The damage this heals: a write path once tore `> [!info]` away from its
+  // `> `-quoted body, leaving the marker as a bare line above plain text. Only
+  // the unambiguous shape heals — marker at a paragraph start, body directly
+  // below. A lone marker, a marker mid-paragraph, or a body the callout schema
+  // could not reproduce stays exactly as the author’s bytes.
+  it('heals a bare marker with its body directly below', async () => {
+    const damaged = '[!info]\nHer text line\nand a second line'
+    const doc = new Y.Doc()
+    await markdownToYFragment(damaged, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.type).toBe('callout')
+    expect(await yDocToMarkdown(doc)).toBe(
+      serializeCalloutBlock('info', 'Her text line\nand a second line')
+    )
+  })
+
+  it.each([
+    ['a lone bare marker', '[!info]'],
+    ['a bare marker with a blank line before its text', '[!info]\n\na separate paragraph'],
+    ['a bare marker mid-paragraph', 'some text\n[!info]\nmore text'],
+    ['a foreign bare marker', '[!note]\nbody text']
+  ])('%s stays byte-identical', async (_name, markdown) => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
+    expect(await yDocToMarkdown(doc)).toBe(markdown)
+  })
+
+  it.each([
+    // Byte identity is not asserted for these two: the paragraph/list gap and
+    // the fence-language default are normalizations that predate #1846 and
+    // apply to these shapes with or without the marker line.
+    ['a bare marker whose body is a list', '[!info]\n- item one\n- item two'],
+    ['a bare marker inside a code fence', '```\n[!info]\nsnippet text\n```']
+  ])('%s does not heal into a callout', async (_name, markdown) => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
   })
 })

@@ -6,6 +6,8 @@ import {
   EMBED_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
   parseFileBlockMarker,
+  readCalloutRun,
+  resolveCalloutRun,
   serializeToggleBlock,
   splitMarkdownByToggles,
   type ToggleBlockSegment
@@ -531,11 +533,39 @@ async function parseContentWithColorMarkers(
   }
 
   const fence = createFenceTracker()
+  const lines = text.split('\n')
 
-  for (const line of text.split('\n')) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
     const trimmed = line.trim()
     // A marker inside a code fence is the author's text, not a marker.
     const insideFence = fence.consume(line)
+
+    // Callouts are claimed here ONLY in the exact shapes this feature owns —
+    // see parseCalloutRunAt. Everything else `> `-prefixed stays a quote block
+    // and its bytes stay untouched, which is what keeps `> [!note]` in an
+    // Obsidian vault byte-identical through Memry.
+    if (!insideFence) {
+      // A colors marker sits directly above the block it colors, so a claim
+      // right after one is still a paragraph start.
+      const atParagraphStart =
+        i === 0 ||
+        lines[i - 1].trim() === '' ||
+        (buffer.length === 0 && (pendingColors !== null || pendingTableColors !== null))
+      const claimed = await parseCalloutRunAt(editor, lines, i, atParagraphStart)
+      if (claimed) {
+        await flushBuffer()
+        const props = { type: claimed.type, ...(pendingColors ?? {}) }
+        pendingColors = null
+        pendingTableColors = null
+        blocks.push({ type: 'callout', props, content: claimed.content } as unknown as Block)
+        for (let consumed = i + 1; consumed < claimed.end; consumed++) {
+          fence.consume(lines[consumed])
+        }
+        i = claimed.end - 1
+        continue
+      }
+    }
 
     // Deliberately NOT fence-guarded: this branch predates custom-block parsing
     // and guarding it would drop a colour marker that follows a fence this
@@ -579,6 +609,42 @@ async function parseContentWithColorMarkers(
 }
 
 /**
+ * Claim a callout at `lines[i]`, or null to leave the bytes alone.
+ *
+ * The claim is proven, not pattern-matched: `resolveCalloutRun` re-serializes
+ * the body and claims only when `serializeCalloutBlock` would write the run
+ * back byte-for-byte. `> [!note]`, `> [!tip]`, a title after the marker, a
+ * blank `>` line, a list in the body — all decline and stay quote blocks with
+ * their bytes untouched, which is the Obsidian-vault guarantee the old
+ * "never parse callouts" rule existed to protect (#1846). What that rule cost
+ * was every Memry callout on this path: seeding a doc from the vault file
+ * demoted `> [!info]` to a quote block, the editor lost the callout UI, and
+ * the marker eventually tore away from its body as plain text.
+ *
+ * The bare `[!info]`-plus-body shape is the already-torn form of that damage;
+ * `readCalloutRun` heals it only at a paragraph start with the body directly
+ * below, so a lone `[!info]` someone typed as text stays text.
+ */
+async function parseCalloutRunAt(
+  editor: ServerBlockNoteEditor,
+  lines: readonly string[],
+  i: number,
+  atParagraphStart: boolean
+): Promise<{ type: string; content: unknown; end: number } | null> {
+  const run = readCalloutRun(lines, i, atParagraphStart)
+  if (!run) return null
+
+  const claimed = await resolveCalloutRun(
+    run,
+    async (md) => (await editor.tryParseMarkdownToBlocks(md)) as never[],
+    async (block) => serializeBlocks(editor, [block as PartialBlock])
+  )
+  if (!claimed) return null
+
+  return { type: claimed.type, content: claimed.content, end: run.end }
+}
+
+/**
  * The three custom blocks whose on-disk form is a single marker line.
  *
  * Without this, the main process — which is what seeds a note's shared Y.Doc
@@ -591,12 +657,9 @@ async function parseContentWithColorMarkers(
  * markdown-utils.ts); it only ever runs on the non-collaborative path, so this
  * is the same rule applied where the collaborative path actually parses.
  *
- * Callouts deliberately have no case here. Their marker line carries a type and
- * an optional title that this schema cannot hold — `> [!note]` and `> [!tip]`
- * are not among the four values `calloutConfig` allows, and a title after the
- * marker moves onto its own line on the way back out. Parsing them would
- * rewrite `> [!note]` as `> [!info]` in every Obsidian vault; left alone they
- * stay quote blocks and their bytes stay untouched.
+ * Callouts have no case here because their form spans lines; they are claimed
+ * by `parseCalloutRunAt` in the caller's line loop, under the byte-round-trip
+ * guard documented there.
  */
 function parseCustomBlockMarkerLine(line: string): Block | null {
   // Matched exactly the way the renderer matches (markdown-utils.ts): `file` on

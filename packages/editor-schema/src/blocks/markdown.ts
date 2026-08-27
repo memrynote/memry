@@ -27,14 +27,129 @@ export const CALLOUT_TYPE_VALUES = ['info', 'warning', 'error', 'success'] as co
 
 export type CalloutTypeValue = (typeof CALLOUT_TYPE_VALUES)[number]
 
-/** Matches a callout's opening line: `> [!type]`, with any trailing title text. */
-export const CALLOUT_LINE_REGEX = /^> \[!(\w+)\](.*)/
+/**
+ * Exactly the marker `serializeCalloutBlock` writes: one of the four Memry
+ * types, nothing after the `]`. `> [!note]` and `> [!info] A title` are NOT
+ * this — those are someone else's bytes (Obsidian's, usually) and claiming
+ * them would rewrite a file Memry never wrote.
+ */
+const MEMRY_CALLOUT_MARKER_REGEX = /^> \[!(info|warning|error|success)\]$/
+
+/**
+ * The damaged form #1846 heals: the marker alone on its line, its `> ` prefix
+ * already lost. Healed only at a paragraph start with the body directly below
+ * — a lone `[!info]` with nothing under it stays the author's text.
+ */
+const BARE_CALLOUT_MARKER_REGEX = /^\[!(info|warning|error|success)\]$/
 
 export function serializeCalloutBlock(type: string, contentMarkdown: string): string {
   const lines = contentMarkdown.split('\n').filter((l) => l.length > 0)
   if (lines.length === 0) return `> [!${type}]`
   const quoted = lines.map((line) => `> ${line}`).join('\n')
   return `> [!${type}]\n${quoted}`
+}
+
+export interface CalloutRun {
+  type: CalloutTypeValue
+  /** Body lines with the `> ` prefix stripped; verbatim for a bare run. */
+  contentLines: string[]
+  /** The run's original lines, verbatim, for fallback parsing on decline. */
+  raw: string
+  /** Index of the first line after the run. */
+  end: number
+}
+
+/**
+ * Read one callout run starting at `lines[start]`, or null.
+ *
+ * Accepts only the two shapes this feature owns: the exact bytes
+ * `serializeCalloutBlock` writes (strict marker + one `> ` per body line), and
+ * the bare damaged shape (marker line without its `> `, body directly below).
+ * Both require a paragraph start — a marker halfway through a paragraph or a
+ * quote is part of that paragraph's bytes, not a callout.
+ *
+ * A run that abuts more quote lines (`>` on its own, `>text`) is refused
+ * whole: `serializeCalloutBlock` never writes those, so the region is a quote
+ * block that merely starts like a callout, and splitting it would tear the
+ * quote in two.
+ */
+export function readCalloutRun(
+  lines: readonly string[],
+  start: number,
+  atParagraphStart: boolean
+): CalloutRun | null {
+  if (!atParagraphStart) return null
+
+  const quoted = lines[start].match(MEMRY_CALLOUT_MARKER_REGEX)
+  if (quoted) {
+    const contentLines: string[] = []
+    let end = start + 1
+    while (end < lines.length) {
+      const body = lines[end].match(/^> (.+)$/)
+      if (!body) break
+      contentLines.push(body[1])
+      end++
+    }
+    if (end < lines.length && lines[end].startsWith('>')) return null
+    return {
+      type: quoted[1] as CalloutTypeValue,
+      contentLines,
+      raw: lines.slice(start, end).join('\n'),
+      end
+    }
+  }
+
+  const bare = lines[start].match(BARE_CALLOUT_MARKER_REGEX)
+  if (bare) {
+    const contentLines: string[] = []
+    let end = start + 1
+    while (end < lines.length && lines[end].trim() !== '') {
+      contentLines.push(lines[end])
+      end++
+    }
+    if (contentLines.length === 0) return null
+    return {
+      type: bare[1] as CalloutTypeValue,
+      contentLines,
+      raw: lines.slice(start, end).join('\n'),
+      end
+    }
+  }
+
+  return null
+}
+
+interface ParsedBlockShape {
+  type?: unknown
+  content?: unknown
+  children?: unknown[]
+}
+
+/**
+ * Decide whether a run may become a callout block, by proof rather than by
+ * pattern: parse the body, and claim only if serializing it back reproduces
+ * the body byte-for-byte (so `serializeCalloutBlock` reproduces the whole run
+ * on the way out). Anything the schema would normalize — a list in the body, a
+ * nested quote, a second paragraph — declines, and the caller leaves the bytes
+ * exactly as they were.
+ */
+export async function resolveCalloutRun(
+  run: CalloutRun,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlock: (block: ParsedBlockShape) => Promise<string>
+): Promise<{ type: CalloutTypeValue; content: unknown } | null> {
+  const content = run.contentLines.join('\n')
+  if (content === '') return { type: run.type, content: [] }
+
+  const parsed = await parseMarkdown(content)
+  if (parsed.length !== 1) return null
+  const block = parsed[0]
+  if (block.type !== 'paragraph' || block.children?.length) return null
+
+  const roundTripped = (await serializeBlock(block)).trim()
+  if (roundTripped !== content) return null
+
+  return { type: run.type, content: block.content ?? [] }
 }
 
 // ---------------------------------------------------------------------------
