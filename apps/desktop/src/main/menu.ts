@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, Menu, shell, type MenuItemConstructorOptions } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  shell,
+  type MenuItemConstructorOptions,
+  type WebContents
+} from 'electron'
 import { AppChannels } from '@memry/contracts/ipc-channels'
 import type { I18nInstance } from '@memry/i18n/main'
 import { sendAppNavigationDirection } from './app-navigation-command'
@@ -7,6 +15,8 @@ const DOCS_URL = 'https://docs.memrynote.com'
 
 interface EditableContextMenuParams {
   isEditable?: boolean
+  misspelledWord?: string
+  dictionarySuggestions?: string[]
   editFlags?: {
     canUndo?: boolean
     canRedo?: boolean
@@ -289,13 +299,33 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
 
 export function buildEditableTextContextMenu(
   i18n: I18nInstance,
-  params: EditableContextMenuParams
+  params: EditableContextMenuParams,
+  webContents: WebContents
 ): Menu | null {
   if (!params.isEditable) return null
 
   const t = i18n.getFixedT(null, 'menu')
   const flags = params.editFlags ?? {}
+  const misspelledWord = params.misspelledWord
+  const suggestions = params.dictionarySuggestions ?? []
+  const spelling: MenuItemConstructorOptions[] = misspelledWord
+    ? [
+        ...(suggestions.length > 0
+          ? suggestions.map((suggestion) => ({
+              label: suggestion,
+              click: () => webContents.replaceMisspelling(suggestion)
+            }))
+          : [{ label: t('edit.noSuggestions'), enabled: false }]),
+        { type: 'separator' },
+        {
+          label: t('edit.addToDictionary'),
+          click: () => webContents.session.addWordToSpellCheckerDictionary(misspelledWord)
+        },
+        { type: 'separator' }
+      ]
+    : []
   const template: MenuItemConstructorOptions[] = [
+    ...spelling,
     { label: t('edit.undo'), role: 'undo', enabled: Boolean(flags.canUndo) },
     { label: t('edit.redo'), role: 'redo', enabled: Boolean(flags.canRedo) },
     { type: 'separator' },
