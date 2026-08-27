@@ -13,13 +13,15 @@ import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core
  * auto-linkified and fragmented; an <a> would be claimed by BlockNote's
  * built-in link mark). Reconstructed on load by normalizeLinkMentions.
  *
- * The pattern is deliberately wider than the alphabet the serializer emits. A
+ * The payload class admits whitespace, which the previous `[^)\s]+` refused: a
  * token written by an older build can hold a stray space or a remark escape
- * (see `parseLinkMentionToken`), and the previous `[^)\s]+` refused both — the
- * token then never matched and stayed literal `((mention:…))` text for good.
- * Every payload that pattern accepted, this one accepts identically.
+ * (see `parseLinkMentionToken`), and refusing those left the token as literal
+ * `((mention:…))` text for good. It must still stop at `(`, or an unterminated
+ * `((mention:` earlier on the line swallows the next real token whole and turns
+ * a working mention into text. No serializer has ever emitted a raw paren in a
+ * payload, so nothing is lost by excluding it.
  */
-export const MENTION_TOKEN_REGEX = /\(\(mention:([^)\n\r]+)\)\)/g
+export const MENTION_TOKEN_REGEX = /\(\(mention:([^()\n\r]+)\)\)/g
 
 /**
  * `encodeURIComponent` leaves `- _ . ! ~ * ' ( )` raw. `(` and `)` break the
@@ -59,7 +61,10 @@ export function serializeLinkMentionToken(url: string): string {
  */
 const WELL_FORMED_PAYLOAD = /^[^\s\\]+$/
 
-function isAbsoluteUrl(value: string): boolean {
+/** Every alphabet any build of the serializer has emitted, unioned. */
+const ANY_TOKEN_ALPHABET = /^[A-Za-z0-9.%!'*~_-]+$/
+
+function isUrl(value: string): boolean {
   try {
     new URL(value)
     return true
@@ -77,16 +82,18 @@ export function parseLinkMentionToken(encoded: string): string | null {
     }
   }
 
-  // Vaults hold tokens from builds that left `_ * ! ~ '` raw, so remark's
-  // escapes and stray whitespace are already on disk. Neither a backslash nor
-  // whitespace is legal in the token alphabet, so stripping them is an
-  // unambiguous repair rather than a guess; requiring a parseable URL after the
-  // repair stops the widened pattern from claiming ordinary prose.
+  // Vaults hold tokens from builds that left `_ * ! ~ '` raw, so remark escapes
+  // and stray whitespace are already on disk. Neither is legal in any version
+  // of the alphabet, so stripping them is an unambiguous repair rather than a
+  // guess. The pattern above admits whitespace, though, so what is left has to
+  // earn the chip twice over: it must be spellable as a token, and it must
+  // decode to a URL. `((mention: see http://x.com))` fails the first check and
+  // `((mention: see below))` fails the second.
   const repaired = encoded.replace(/[\s\\]/g, '')
-  if (!repaired) return null
+  if (!ANY_TOKEN_ALPHABET.test(repaired)) return null
   try {
     const url = decodeURIComponent(repaired)
-    return isAbsoluteUrl(url) ? url : null
+    return isUrl(url) ? url : null
   } catch {
     return null
   }

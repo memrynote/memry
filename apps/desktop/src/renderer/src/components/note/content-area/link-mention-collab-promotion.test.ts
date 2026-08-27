@@ -125,17 +125,19 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     expect(content[1].props?.domain).toBe('eksisozluk.com')
   })
 
-  it('promotes once and then stops — a second open writes nothing', () => {
+  it('promotes once and then stops — a second open writes nothing', async () => {
     // #given a note opened once
     const { editor, doc, fragment } = createCollaborativeEditor()
     seedWithPlainText(editor, `See ${serializeLinkMentionToken(URL_)} for details.`)
     openNote(editor, fragment)
 
-    // #when it is opened again against the already-promoted document
+    // #when it is opened again against the already-promoted document. Awaited
+    // so any queued microtask lands inside the window being asserted on.
     const updates: Uint8Array[] = []
     doc.on('update', (update: Uint8Array) => updates.push(update))
     openNote(editor, fragment)
     openNote(editor, fragment)
+    await Promise.resolve()
 
     // #then nothing more is written. A promoted `linkMention` carries its URL
     // in props, so `((mention:` is gone from the document and the normalizer
@@ -162,18 +164,21 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     expect(content[0].props?.url).toBe('https://x.test/page')
   })
 
-  it('fetches the site metadata the promoted chip renders', () => {
+  it('does not fetch site metadata on this path', async () => {
     // #given
     const { editor, fragment } = createCollaborativeEditor()
     seedWithPlainText(editor, serializeLinkMentionToken(URL_))
 
     // #when
     openNote(editor, fragment)
+    await Promise.resolve()
 
-    // #then the collaborative path hydrates like the markdown path does, so a
-    // mention does not render as a bare domain on one surface and a full chip
-    // on the other.
-    expect(fetchLinkPreview).toHaveBeenCalledWith(URL_)
+    // #then `hydrateLinkMentionFavicons` writes back a content array captured
+    // before its fetch and resolves after the undo history is cleared. On a
+    // shared document that is a stale block pushed to every device and an
+    // undoable step on open, so the collaborative path leaves the chip with the
+    // domain the token carries.
+    expect(fetchLinkPreview).not.toHaveBeenCalled()
   })
 
   it('leaves a note without a mention untouched', () => {
@@ -186,8 +191,7 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     doc.on('update', (update: Uint8Array) => updates.push(update))
     openNote(editor, fragment)
 
-    // #then no CRDT write, and no needless metadata fetch
+    // #then
     expect(updates).toEqual([])
-    expect(fetchLinkPreview).not.toHaveBeenCalled()
   })
 })

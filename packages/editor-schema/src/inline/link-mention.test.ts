@@ -64,7 +64,7 @@ describe('serializeLinkMentionToken', () => {
 })
 
 describe('MENTION_TOKEN_REGEX', () => {
-  it('accepts every payload the strict pattern accepted', () => {
+  it('captures a legacy token exactly as the strict pattern did', () => {
     const legacyStrict = /\(\(mention:([^)\s]+)\)\)/
     for (const url of ['https://x.test/a', 'https://x.test/foo_bar', 'https://x.test/a*b']) {
       // The legacy serializer left `_ * ! ~ '` raw, so build its output by hand.
@@ -73,6 +73,17 @@ describe('MENTION_TOKEN_REGEX', () => {
         new RegExp(MENTION_TOKEN_REGEX.source).exec(legacyToken)?.[1]
       )
     }
+  })
+
+  it('does not let a broken token upstream swallow a working one', () => {
+    // A note damaged by this very bug holds literal `((mention:` fragments. A
+    // payload class that stops only at `)` runs straight through the fragment
+    // and captures it together with the next real token, so widening the
+    // pattern would have broken mentions that work today.
+    const line = 'x ((mention:foo ((mention:https%3A%2F%2Fx.test)) y'
+    const matches = [...line.matchAll(MENTION_TOKEN_REGEX)]
+
+    expect(matches.map((m) => parseLinkMentionToken(m[1]))).toEqual(['https://x.test'])
   })
 
   it('matches a token a space or an escape has crept into', () => {
@@ -129,9 +140,14 @@ describe('parseLinkMentionToken', () => {
 
   it('refuses to turn prose into a mention', () => {
     // The pattern now admits whitespace, so the repair path is the only thing
-    // standing between `((mention: see below))` and a chip.
+    // standing between `((mention: see below))` and a chip. Stripping the
+    // spaces out of prose can hand it something `new URL` accepts —
+    // `see http://x.com` becomes `seehttp://x.com` — so the alphabet check has
+    // to run as well.
     expect(parseLinkMentionToken(' see below')).toBeNull()
     expect(parseLinkMentionToken('not a url ')).toBeNull()
+    expect(parseLinkMentionToken(' see http://x.com')).toBeNull()
+    expect(parseLinkMentionToken(' javascript:alert(1)')).toBeNull()
     expect(parseLinkMentionToken('  ')).toBeNull()
   })
 })

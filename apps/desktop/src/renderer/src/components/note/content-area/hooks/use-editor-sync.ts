@@ -175,21 +175,24 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
  * main seeds the shared doc straight from the vault file, where a mention is
  * plain text, and this path returns before `normalizeNoteBlocks` ever runs.
  *
- * Idempotent for the same reason wiki links are — a promoted `linkMention`
- * serializes back to the token it was built from, so `((mention:` is gone from
- * the document and the second open matches nothing and writes no update.
+ * Idempotent from the first open onwards — a promoted `linkMention` serializes
+ * back to the token it was built from, so `((mention:` is gone from the
+ * document and the second open matches nothing and writes no update. The one
+ * exception is a token whose URL holds `_ * ! ~ '`, which older builds wrote
+ * with those characters raw: promoting it rewrites the token in the closed
+ * alphabet once, and every open after that is a no-op.
  *
- * Reports whether it promoted, because only then is the metadata fetch worth
- * it: the token carries the URL and nothing else, so a chip promoted here has
- * no title or favicon until `hydrateLinkMentionFavicons` refills them, exactly
- * as it does on the markdown path.
+ * No favicon hydration here, deliberately. `hydrateLinkMentionFavicons` writes
+ * back a content array it captured before its fetch, which on a shared document
+ * would push a stale block to every device, and it resolves after
+ * `clearYjsUndoHistory` has run, leaving the open undoable. A chip promoted
+ * here renders its domain, which is what the token carries.
  */
-function promoteLinkMentionsInSharedDoc(editor: any): boolean {
+function promoteLinkMentionsInSharedDoc(editor: any): void {
   const normalized = normalizeLinkMentions(editor.document as Block[])
-  if (!normalized.didChange) return false
+  if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
-  return true
 }
 
 function clearYjsUndoHistory(editor: any): void {
@@ -387,7 +390,7 @@ export function useEditorSync({
       // undoable step: Cmd+Z here would turn the chips back into raw text and
       // push that to every device.
       promoteWikiLinksInSharedDoc(editor)
-      if (promoteLinkMentionsInSharedDoc(editor)) hydrateLinkMentionFavicons(editor)
+      promoteLinkMentionsInSharedDoc(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
       promoteDateMentionsInSharedDoc(editor)
       clearYjsUndoHistory(editor)

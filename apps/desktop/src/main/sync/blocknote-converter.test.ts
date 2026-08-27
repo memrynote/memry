@@ -3365,13 +3365,15 @@ describe('a link mention through the main serializer', () => {
 
     // #then the exact bytes, and nothing outside the token's closed alphabet
     expect(markdown).toBe(`See ${serializeLinkMentionToken(url)} here.`)
-    expect(markdown).toMatch(/\(\(mention:[A-Za-z0-9.%-]+\)\)/)
+    expect(markdown).toMatch(/^See \(\(mention:[A-Za-z0-9.%-]+\)\) here\.$/)
   })
 
   it('leaves a token it reads out of a vault file byte-identical', async () => {
     // #given main has no promoter — the token stays plain text through the
-    // seed, which is exactly why it must not be rewritten in passing.
-    const markdown = `See ${serializeLinkMentionToken("https://x.test/a*b_c'd")} here.`
+    // seed, which is exactly why it must not be rewritten in passing. Two `*`
+    // URLs on one line is the shape that used to pair up into an emphasis run
+    // and rewrite the whole paragraph.
+    const markdown = `See ${serializeLinkMentionToken("https://x.test/a*b_c'd")} and ${serializeLinkMentionToken('https://x.test/e*f~g')} here.`
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
