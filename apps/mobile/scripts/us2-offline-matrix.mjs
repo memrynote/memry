@@ -20,6 +20,7 @@
  * banner pre-empts the outbox banner, making `notVisible` trivially true while
  * nothing had synced. That is a false green on the gate the matrix exists for.
  *
+ *   node scripts/us2-offline-matrix.mjs --doctor                   # preflight
  *   node scripts/us2-offline-matrix.mjs --runs 20                 # simulator
  *   node scripts/us2-offline-matrix.mjs --runs 20 --device        # hardware
  *   node scripts/us2-offline-matrix.mjs --runs 20 \
@@ -47,7 +48,7 @@
  * `--device` prompts for a manual airplane-mode toggle — slower, and honest.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { rmSync, writeFileSync } from 'node:fs'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -116,6 +117,84 @@ function runFlow(flow, runId) {
     env: process.env
   })
   return result.status === 0
+}
+
+/**
+ * Preflight.
+ *
+ * The expensive part of this gate is not the runs, it is the ONE manual step
+ * in front of them — unlocking the vault. A driver that dies on run 1 because
+ * Java is missing or the app is not installed has wasted that. So everything
+ * checkable is checked first, and the report says which piece is missing
+ * rather than making you read a stack trace.
+ */
+function doctor() {
+  const checks = []
+  const ok = (name, detail) => checks.push({ name, pass: true, detail })
+  const bad = (name, detail) => checks.push({ name, pass: false, detail })
+
+  try {
+    execFileSync('xcrun', ['simctl', 'help'], { stdio: 'ignore' })
+    ok('xcrun simctl', 'available')
+  } catch {
+    bad('xcrun simctl', 'not found — install Xcode command line tools')
+  }
+
+  try {
+    const out = execFileSync('maestro', ['--version'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env
+    })
+      .toString()
+      .trim()
+    ok('maestro', out.split('\n').pop())
+  } catch (err) {
+    const message = String(err?.stderr ?? err?.message ?? err)
+    bad(
+      'maestro',
+      /Java/i.test(message)
+        ? 'needs a Java runtime — `brew install openjdk` and export JAVA_HOME=/opt/homebrew/opt/openjdk'
+        : 'not runnable'
+    )
+  }
+
+  if (!ON_DEVICE) {
+    try {
+      const container = execFileSync('xcrun', ['simctl', 'get_app_container', UDID, APP_ID, 'data'])
+        .toString()
+        .trim()
+      ok(`${APP_ID} installed`, container)
+
+      // The lever itself, exercised for real rather than assumed.
+      const markerPath = join(container, 'Documents', '.dev-offline')
+      writeFileSync(markerPath, '1')
+      const wrote = existsSync(markerPath)
+      rmSync(markerPath, { force: true })
+      const cleared = !existsSync(markerPath)
+      if (wrote && cleared) ok('offline switch', 'marker writes and clears')
+      else bad('offline switch', 'could not write or clear the marker file')
+    } catch {
+      bad(
+        `${APP_ID} installed`,
+        'no app on the simulator — run `pnpm --filter @memry/mobile ios` first'
+      )
+    }
+  }
+
+  for (const check of checks) {
+    console.log(`${check.pass ? 'ok  ' : 'FAIL'}  ${check.name.padEnd(24)} ${check.detail}`)
+  }
+  console.log(
+    '\nNot checkable from here: the vault has to be UNLOCKED on the device.' +
+      '\nIts recovery phrase is the only key, so that step is yours; after it the' +
+      '\nsession persists and the runs are unattended.'
+  )
+  return checks.every((check) => check.pass)
+}
+
+if (args.includes('--doctor')) {
+  rl?.close()
+  process.exit(doctor() ? 0 : 1)
 }
 
 const failures = []

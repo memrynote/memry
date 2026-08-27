@@ -22,6 +22,35 @@ Half-green is how a gate stops meaning anything.
 | Editor asset freshness (bridge drift gate)                             | `pnpm --filter @memry/mobile editor:check`                                            | ✅     |
 | Mobile typecheck + WebView bundle typecheck                            | `pnpm --filter @memry/mobile typecheck && pnpm --filter @memry/editor-web typecheck`  | ✅     |
 
+## Runbook — closing the three open tasks in one sitting
+
+Everything below is blocked on one manual step, and only one: **unlocking the
+vault on the device.** The 24-word recovery phrase is the vault's only key, so
+nobody but you can do it; after it the session and key persist in the keychain
+and the rest is unattended.
+
+```bash
+# 0. preflight — checks Xcode, Maestro, the installed app and the offline lever
+pnpm --filter @memry/mobile test:offline-matrix -- --doctor
+
+# 1. install and boot (simulator)
+pnpm --filter @memry/mobile ios
+#    >> unlock the vault on the device. This is the manual step.
+
+# 2. T066 — 20 unattended runs
+pnpm --filter @memry/mobile test:offline-matrix -- --runs 20
+
+# 3. T074 — open the 50 KB staging note on the REFERENCE DEVICE, release build,
+#    Info panel → Reset metrics → type ≥60 s → Bridge metrics
+#    (a simulator number is not a weaker version of this one, it is a
+#     different quantity: the budget is about mid-tier phone hardware)
+
+# 4. T077 — fill in the checkboxes below, then the kill-switch drill on staging
+```
+
+Maestro needs a Java runtime: `brew install openjdk` and
+`export JAVA_HOME=/opt/homebrew/opt/openjdk`.
+
 ## Device gates (reference device, RELEASE build)
 
 Debug messaging is drastically slower than release in `react-native-webview`;
