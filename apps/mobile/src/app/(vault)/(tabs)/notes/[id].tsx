@@ -209,7 +209,7 @@ export default function NoteScreen() {
       if (!session) return
       void (async () => {
         const noteId = await resolveWikiTarget(session.db, target)
-        if (noteId) router.push(`/(vault)/notes/${noteId}`)
+        if (noteId) router.push(`/(vault)/(tabs)/notes/${noteId}`)
         // A link with no target is a real state (the note has not been created
         // yet), not an error — the desktop shows the same nothing-happens.
       })()
