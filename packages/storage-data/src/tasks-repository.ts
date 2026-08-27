@@ -54,6 +54,8 @@ export interface TaskQueryModule<TDb> {
   getTaskTags(db: TDb, taskId: string): string[]
   setTaskNotes(db: TDb, taskId: string, noteIds: string[]): void
   getTaskNoteIds(db: TDb, taskId: string): string[]
+  setTaskCanvases(db: TDb, taskId: string, canvasIds: string[]): void
+  getTaskCanvasIds(db: TDb, taskId: string): string[]
   getAllTaskTags(db: TDb): { tag: string; count: number }[]
   getTaskStats(db: TDb): TaskStats
   getTodayTasks(db: TDb): TaskRecord[]
@@ -146,6 +148,7 @@ function enrichTask<TDb>(db: TDb, taskQueries: TaskQueryModule<TDb>, task: TaskR
     isRepeating: !!task.repeatConfig,
     tags: taskQueries.getTaskTags(db, task.id),
     linkedNoteIds: taskQueries.getTaskNoteIds(db, task.id),
+    linkedCanvasIds: taskQueries.getTaskCanvasIds(db, task.id),
     hasSubtasks: subtaskCounts.total > 0,
     subtaskCount: subtaskCounts.total,
     completedSubtaskCount: subtaskCounts.completed
@@ -196,6 +199,7 @@ export function createTasksRepository<TDb>({
         | 'isRepeating'
         | 'tags'
         | 'linkedNoteIds'
+        | 'linkedCanvasIds'
         | 'hasSubtasks'
         | 'subtaskCount'
         | 'completedSubtaskCount'
@@ -291,6 +295,14 @@ export function createTasksRepository<TDb>({
 
     getTaskNoteIds(taskId: string): string[] {
       return taskQueries.getTaskNoteIds(db, taskId)
+    },
+
+    getTaskCanvasIds(taskId: string): string[] {
+      return taskQueries.getTaskCanvasIds(db, taskId)
+    },
+
+    setTaskCanvases(taskId: string, canvasIds: string[]): void {
+      taskQueries.setTaskCanvases(db, taskId, canvasIds)
     },
 
     setTaskNotes(taskId: string, noteIds: string[]): void {

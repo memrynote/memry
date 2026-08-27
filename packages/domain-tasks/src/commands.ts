@@ -32,6 +32,7 @@ export interface TaskCreateInput {
   repeatFrom?: Task['repeatFrom']
   tags?: string[]
   linkedNoteIds?: string[]
+  linkedCanvasIds?: string[]
   sourceNoteId?: string | null
   position?: number
 }
@@ -51,6 +52,7 @@ export interface TaskUpdateInput {
   repeatFrom?: Task['repeatFrom']
   tags?: string[]
   linkedNoteIds?: string[]
+  linkedCanvasIds?: string[]
 }
 
 export interface TaskMoveInput {
@@ -103,7 +105,12 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   createTask(
     task: Omit<
       Task,
-      'tags' | 'linkedNoteIds' | 'hasSubtasks' | 'subtaskCount' | 'completedSubtaskCount'
+      | 'tags'
+      | 'linkedNoteIds'
+      | 'linkedCanvasIds'
+      | 'hasSubtasks'
+      | 'subtaskCount'
+      | 'completedSubtaskCount'
     >
   ): Task
   updateTask(
@@ -116,6 +123,7 @@ export interface TasksCommandRepository extends TasksQueryRepository {
         | 'modifiedAt'
         | 'tags'
         | 'linkedNoteIds'
+        | 'linkedCanvasIds'
         | 'hasSubtasks'
         | 'subtaskCount'
         | 'completedSubtaskCount'
@@ -143,6 +151,8 @@ export interface TasksCommandRepository extends TasksQueryRepository {
   setTaskTags(taskId: string, tags: string[]): void
   getTaskNoteIds(taskId: string): string[]
   setTaskNotes(taskId: string, noteIds: string[]): void
+  getTaskCanvasIds(taskId: string): string[]
+  setTaskCanvases(taskId: string, canvasIds: string[]): void
   getNextTaskPosition(projectId: string, parentId?: string | null): number
   getStatus(id: string): Status | undefined
   getEquivalentStatus(targetProjectId: string, sourceStatus?: Status): Status | undefined
@@ -330,12 +340,15 @@ function pickPrevious(
 
 function mergeTaskRelations(
   task: Task,
-  relations: Partial<Pick<Task, 'tags' | 'linkedNoteIds'>>
+  relations: Partial<Pick<Task, 'tags' | 'linkedNoteIds' | 'linkedCanvasIds'>>
 ): Task {
   return {
     ...task,
     ...(relations.tags !== undefined ? { tags: relations.tags } : {}),
-    ...(relations.linkedNoteIds !== undefined ? { linkedNoteIds: relations.linkedNoteIds } : {})
+    ...(relations.linkedNoteIds !== undefined ? { linkedNoteIds: relations.linkedNoteIds } : {}),
+    ...(relations.linkedCanvasIds !== undefined
+      ? { linkedCanvasIds: relations.linkedCanvasIds }
+      : {})
   }
 }
 
@@ -379,9 +392,14 @@ export function createTasksCommands({
         repository.setTaskNotes(id, input.linkedNoteIds)
       }
 
+      if (input.linkedCanvasIds && input.linkedCanvasIds.length > 0) {
+        repository.setTaskCanvases(id, input.linkedCanvasIds)
+      }
+
       const task = mergeTaskRelations(createdTask, {
         tags: input.tags ?? createdTask.tags,
-        linkedNoteIds: input.linkedNoteIds ?? createdTask.linkedNoteIds
+        linkedNoteIds: input.linkedNoteIds ?? createdTask.linkedNoteIds,
+        linkedCanvasIds: input.linkedCanvasIds ?? createdTask.linkedCanvasIds
       })
       await publisher.taskCreated({ task })
 
@@ -389,7 +407,7 @@ export function createTasksCommands({
     },
 
     async updateTask(input: TaskUpdateInput) {
-      const { id, tags, linkedNoteIds, priority, ...rawUpdates } = input
+      const { id, tags, linkedNoteIds, linkedCanvasIds, priority, ...rawUpdates } = input
       const existingTask = repository.getTask(id)
 
       const updates: Partial<Task> = definedUpdates({
@@ -409,6 +427,8 @@ export function createTasksCommands({
 
       const oldTags = tags !== undefined ? repository.getTaskTags(id) : undefined
       const oldNoteIds = linkedNoteIds !== undefined ? repository.getTaskNoteIds(id) : undefined
+      const oldCanvasIds =
+        linkedCanvasIds !== undefined ? repository.getTaskCanvasIds(id) : undefined
 
       const task = repository.updateTask(id, updates)
       if (!task) {
@@ -423,10 +443,15 @@ export function createTasksCommands({
         repository.setTaskNotes(id, linkedNoteIds)
       }
 
+      if (linkedCanvasIds !== undefined) {
+        repository.setTaskCanvases(id, linkedCanvasIds)
+      }
+
       const resolvedTask: Task = {
         ...task,
         ...(tags !== undefined ? { tags } : {}),
-        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {})
+        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
+        ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
       }
       const changedFields = computeChangedFields(existingTask, updates, [
         {
@@ -438,13 +463,19 @@ export function createTasksCommands({
           field: 'linkedNoteIds',
           before: oldNoteIds,
           after: linkedNoteIds
+        },
+        {
+          field: 'linkedCanvasIds',
+          before: oldCanvasIds,
+          after: linkedCanvasIds
         }
       ])
 
       const changes: Partial<Task> = {
         ...updates,
         ...(tags !== undefined ? { tags } : {}),
-        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {})
+        ...(linkedNoteIds !== undefined ? { linkedNoteIds } : {}),
+        ...(linkedCanvasIds !== undefined ? { linkedCanvasIds } : {})
       }
 
       await publisher.taskUpdated({
@@ -456,7 +487,8 @@ export function createTasksCommands({
         // pre-write truth — the explicit reads above are.
         previous: pickPrevious(existingTask, changedFields, {
           ...(oldTags !== undefined ? { tags: oldTags } : {}),
-          ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {})
+          ...(oldNoteIds !== undefined ? { linkedNoteIds: oldNoteIds } : {}),
+          ...(oldCanvasIds !== undefined ? { linkedCanvasIds: oldCanvasIds } : {})
         })
       })
 
@@ -628,9 +660,16 @@ export function createTasksCommands({
         repository.setTaskNotes(newId, linkedNoteIds)
       }
 
+      const linkedCanvasIds = repository.getTaskCanvasIds(id)
+      if (linkedCanvasIds.length > 0) {
+        repository.setTaskCanvases(newId, linkedCanvasIds)
+      }
+
       const resolvedTask = mergeTaskRelations(duplicatedTask, {
         tags: tags.length > 0 ? tags : duplicatedTask.tags,
-        linkedNoteIds: linkedNoteIds.length > 0 ? linkedNoteIds : duplicatedTask.linkedNoteIds
+        linkedNoteIds: linkedNoteIds.length > 0 ? linkedNoteIds : duplicatedTask.linkedNoteIds,
+        linkedCanvasIds:
+          linkedCanvasIds.length > 0 ? linkedCanvasIds : duplicatedTask.linkedCanvasIds
       })
       await publisher.taskCreated({ task: resolvedTask })
 
@@ -650,10 +689,17 @@ export function createTasksCommands({
           repository.setTaskNotes(newSubtaskId, subtaskNoteIds)
         }
 
+        const subtaskCanvasIds = repository.getTaskCanvasIds(subtask.id)
+        if (subtaskCanvasIds.length > 0) {
+          repository.setTaskCanvases(newSubtaskId, subtaskCanvasIds)
+        }
+
         const resolvedSubtask = mergeTaskRelations(duplicatedSubtask, {
           tags: subtaskTags.length > 0 ? subtaskTags : duplicatedSubtask.tags,
           linkedNoteIds:
-            subtaskNoteIds.length > 0 ? subtaskNoteIds : duplicatedSubtask.linkedNoteIds
+            subtaskNoteIds.length > 0 ? subtaskNoteIds : duplicatedSubtask.linkedNoteIds,
+          linkedCanvasIds:
+            subtaskCanvasIds.length > 0 ? subtaskCanvasIds : duplicatedSubtask.linkedCanvasIds
         })
         await publisher.taskCreated({ task: resolvedSubtask })
       }

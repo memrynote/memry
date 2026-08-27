@@ -63,6 +63,7 @@ export interface Task {
 
   // Linking
   linkedNoteIds: string[] // connections to notes
+  linkedCanvasIds?: string[] // connections to canvases
   sourceNoteId: string | null // if extracted from a note
 
   // Tags — case-preserving, case-insensitive identity. Shared with notes/inbox
@@ -195,6 +196,7 @@ export const createDefaultTask = (
   isRepeating: false,
   repeatConfig: null,
   linkedNoteIds: [],
+  linkedCanvasIds: [],
   sourceNoteId: null,
   tags: [],
   parentId,

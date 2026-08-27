@@ -117,6 +117,7 @@ export interface Task {
   modifiedAt: string
   tags?: string[]
   linkedNoteIds?: string[]
+  linkedCanvasIds?: string[]
   hasSubtasks?: boolean
   subtaskCount?: number
   completedSubtaskCount?: number

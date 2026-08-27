@@ -70,6 +70,7 @@ export const TaskCreateSchema = z.object({
   repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   linkedNoteIds: z.array(z.string()).optional(),
+  linkedCanvasIds: z.array(z.string()).optional(),
   sourceNoteId: z.string().nullish(),
   position: z.number().int().optional()
 })
@@ -98,7 +99,8 @@ export const TaskUpdateSchema = z.object({
   repeatConfig: RepeatConfigSchema.nullish(),
   repeatFrom: z.enum(['due', 'completion']).nullish(),
   tags: z.array(z.string().max(50)).max(20).optional(),
-  linkedNoteIds: z.array(z.string()).optional()
+  linkedNoteIds: z.array(z.string()).optional(),
+  linkedCanvasIds: z.array(z.string()).optional()
 })
 
 export const TaskCompleteSchema = z.object({

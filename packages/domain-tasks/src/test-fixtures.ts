@@ -123,6 +123,8 @@ export function createCommandRepository(
     setTaskTags: vi.fn(),
     getTaskNoteIds: vi.fn(() => []),
     setTaskNotes: vi.fn(),
+    getTaskCanvasIds: vi.fn(() => []),
+    setTaskCanvases: vi.fn(),
     getNextTaskPosition: vi.fn(() => 0),
     getStatus: vi.fn(() => undefined),
     getEquivalentStatus: vi.fn(() => undefined),

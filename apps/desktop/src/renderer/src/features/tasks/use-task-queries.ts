@@ -109,6 +109,7 @@ export function dbTaskToUiTask(dbTask: Task): UiTask {
     isRepeating: !!dbTask.repeatConfig,
     repeatConfig: dbRepeatConfigToUiRepeatConfig(dbTask.repeatConfig),
     linkedNoteIds: dbTask.linkedNoteIds ?? [],
+    linkedCanvasIds: dbTask.linkedCanvasIds ?? [],
     sourceNoteId: dbTask.sourceNoteId ?? null,
     tags: dbTask.tags ?? [],
     parentId: dbTask.parentId,
@@ -352,7 +353,8 @@ export function useTaskWorkspaceMutations() {
           repeatConfig: toServiceRepeatConfig(task.repeatConfig),
           repeatFrom: null,
           tags: task.tags,
-          linkedNoteIds: task.linkedNoteIds
+          linkedNoteIds: task.linkedNoteIds,
+          linkedCanvasIds: task.linkedCanvasIds
         })
         reportEnvelopeFailure('task_create', result)
         invalidateWorkspace()
@@ -407,6 +409,7 @@ export function useTaskWorkspaceMutations() {
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
               linkedNoteIds: otherUpdates.linkedNoteIds,
+              linkedCanvasIds: otherUpdates.linkedCanvasIds,
               tags: otherUpdates.tags
             })
             reportEnvelopeFailure('task_update', result)
@@ -448,6 +451,7 @@ export function useTaskWorkspaceMutations() {
               isRepeating: otherUpdates.isRepeating,
               repeatConfig: toServiceRepeatConfig(otherUpdates.repeatConfig),
               linkedNoteIds: otherUpdates.linkedNoteIds,
+              linkedCanvasIds: otherUpdates.linkedCanvasIds,
               tags: otherUpdates.tags
             })
             reportEnvelopeFailure('task_update', result)
@@ -476,6 +480,7 @@ export function useTaskWorkspaceMutations() {
           isRepeating: updates.isRepeating,
           repeatConfig: toServiceRepeatConfig(updates.repeatConfig),
           linkedNoteIds: updates.linkedNoteIds,
+          linkedCanvasIds: updates.linkedCanvasIds,
           tags: updates.tags
         })
         reportEnvelopeFailure('task_update', result)

@@ -99,6 +99,8 @@ function createTaskQueries(): TaskQueryModule<TestDb> {
     getTaskTags: vi.fn(() => []),
     setTaskNotes: vi.fn(),
     getTaskNoteIds: vi.fn(() => []),
+    setTaskCanvases: vi.fn(),
+    getTaskCanvasIds: vi.fn(() => []),
     getAllTaskTags: vi.fn(() => []),
     getTaskStats: vi.fn<TaskQueryModule<TestDb>['getTaskStats']>(
       () =>
