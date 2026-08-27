@@ -169,6 +169,13 @@ const toggleCases: RoundtripCase[] = [
     name: 'unterminated toggle stays literal markdown',
     markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody',
     pending: { renderer: 1847, main: 1847 }
+  },
+  {
+    // splitMarkdownByToggles trims the gap out of its markdown segments before
+    // the blank-line scanner runs, so the user's spacing collapses on save.
+    name: 'extra blank line next to a toggle survives',
+    markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line')}\n\n\nAfter`,
+    pending: { renderer: 1877, main: 1877 }
   }
 ]
 
@@ -347,6 +354,50 @@ function fuzzToggleMarkdown(random: () => number, depth = 0): string {
   return serializeToggleBlock(inertLine(random), body)
 }
 
+/**
+ * URL characters whose encoded form is markdown-inert on current main, so the
+ * mixed-document family stays green while the mention family above carries the
+ * hostile alphabet (and its pending flag) alone.
+ */
+const SAFE_URL_ALPHABET = [...'abcz019', ' ', '(', ')', 'é', '日'] as const
+
+function safeMentionSentence(random: () => number): string {
+  const path = stringFrom(random, SAFE_URL_ALPHABET, 1 + Math.floor(random() * 12))
+  return `${inertLine(random)} ${serializeLinkMentionToken(`https://fuzz.example/${path}`)} ${inertLine(random)}`
+}
+
+/**
+ * Whole notes mixing every token family with paragraphs, lists and blank-line
+ * gaps — the shape a real vault file has, where a bug in one block's region
+ * scanner shreds its NEIGHBOR (a toggle body swallowing the callout after it,
+ * a gap growing by one line per save).
+ */
+function fuzzMixedDocumentMarkdown(random: () => number): string {
+  let previousWasList = false
+  const nextPart = (): string => {
+    const roll = random()
+    // Two lists across one blank line are ONE list to CommonMark, so the gap
+    // fuses on the way back — accepted canonicalization, not token damage;
+    // the generator never produces the shape.
+    if (roll < 0.15 && !previousWasList) {
+      previousWasList = true
+      return `- ${inertLine(random)}\n- ${inertLine(random)}`
+    }
+    previousWasList = false
+    if (roll < 0.35) return safeMentionSentence(random)
+    if (roll < 0.55)
+      return `${inertLine(random)} ${serializeDateMentionToken(dateMentionData({ anchorId: stringFrom(random, ANCHOR_ALPHABET, 6) }))}`
+    if (roll < 0.7) return fuzzCalloutMarkdown(random)
+    if (roll < 0.85) return fuzzToggleMarkdown(random, 1)
+    return inertLine(random)
+  }
+  const parts = Array.from({ length: 2 + Math.floor(random() * 4) }, nextPart)
+  // A '\n\n\n' join would trip #1877 (gaps adjacent to toggles collapse);
+  // the static corpus case pins that bug, so this family stays green to keep
+  // catching everything else.
+  return parts.join('\n\n')
+}
+
 export interface FuzzFamily {
   name: string
   generate: (random: () => number) => string
@@ -363,5 +414,6 @@ export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
   },
   { name: 'date pill payloads', generate: fuzzDateMarkdown },
   { name: 'callout bodies', generate: fuzzCalloutMarkdown },
-  { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) }
+  { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
+  { name: 'mixed documents', generate: fuzzMixedDocumentMarkdown }
 ]
