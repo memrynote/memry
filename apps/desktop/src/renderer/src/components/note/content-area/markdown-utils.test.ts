@@ -746,6 +746,44 @@ describe('toggle blocks (#1643)', () => {
     }
   })
 
+  it('writes the fold as the open attribute, and omits it when collapsed (#1847)', async () => {
+    // #given the same toggle in each state. Main serializes through the very
+    // same `serializeToggleBlock`, and `blocknote-converter.test.ts` asserts the
+    // two agree; what this pins is the bytes each state reaches the vault as.
+    const expanded = { ...toggle('Details', [paragraph('Hidden')]), props: { open: true } }
+    const collapsed = { ...toggle('Details', [paragraph('Hidden')]), props: { open: false } }
+
+    // #when
+    const body = ['<summary>Details</summary>', '', 'Hidden', '', '</details>']
+
+    // #then
+    expect(await serializeBlocksPreservingBlanks(textEditor, [expanded] as any[])).toBe(
+      ['<details data-memry-toggle open>', ...body].join('\n')
+    )
+    // byte-identical to every toggle already on disk, prop or no prop
+    expect(await serializeBlocksPreservingBlanks(textEditor, [collapsed] as any[])).toBe(
+      ['<details data-memry-toggle>', ...body].join('\n')
+    )
+    expect(
+      await serializeBlocksPreservingBlanks(textEditor, [
+        toggle('Details', [paragraph('Hidden')])
+      ] as any[])
+    ).toBe(['<details data-memry-toggle>', ...body].join('\n'))
+  })
+
+  it('parses the open attribute back into the prop (#1847)', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(textEditor, [
+      { ...toggle('Details', [paragraph('Hidden')]), props: { open: true } }
+    ] as any[])
+
+    expect(await parseMarkdownPreservingBlanks(textEditor, markdown)).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        props: expect.objectContaining({ open: true })
+      })
+    ])
+  })
+
   it('leaves a plain <details> the app never wrote as markdown', async () => {
     const markdown = ['<details>', '<summary>Theirs</summary>', '', 'Body', '', '</details>'].join(
       '\n'
