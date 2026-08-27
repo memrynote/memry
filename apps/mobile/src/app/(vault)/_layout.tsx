@@ -98,7 +98,7 @@ export default function VaultLayout() {
     <>
       <SyncStatusBanner syncing={syncing} unsyncedCount={unsyncedCount} />
       <FirstSyncProgressBar progress={progress} />
-      <Stack screenOptions={{ headerShown: true }} />
+      <Stack screenOptions={{ headerShown: false }} />
     </>
   )
 }
