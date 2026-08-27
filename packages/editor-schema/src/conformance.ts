@@ -116,29 +116,28 @@ const calloutCases: RoundtripCase[] = [
   },
   {
     name: 'foreign > [!note] callout passes through untouched',
-    markdown: '> [!note]\n> An Obsidian note callout',
-    pending: { renderer: 1846 }
+    markdown: '> [!note]\n> An Obsidian note callout'
   },
   {
     name: 'foreign > [!tip] callout passes through untouched',
-    markdown: '> [!tip]\n> An Obsidian tip callout',
-    pending: { renderer: 1846 }
+    markdown: '> [!tip]\n> An Obsidian tip callout'
   },
   {
     name: 'callout with a title after the marker',
-    markdown: '> [!info] Title here\n> Body',
-    pending: { renderer: 1846 }
+    markdown: '> [!info] Title here\n> Body'
   },
   {
+    // #1875 declines blank-`>`-line shapes from the callout claim; the quote
+    // path then collapses the blank line — generic blockquote behavior (#1881).
     name: 'callout with a multi-paragraph body',
     markdown: '> [!info]\n> One\n>\n> Two',
-    pending: { renderer: 1846, main: 1846 }
+    pending: { renderer: 1881, main: 1881 }
   },
   {
     name: 'nested foreign callouts pass through untouched',
     markdown:
       '> [!note] Outer callout\n> Outer body text\n>\n> > [!warning] Inner callout\n> > Inner body text',
-    pending: { renderer: 1846, main: 1846 }
+    pending: { renderer: 1881, main: 1881 }
   }
 ]
 
