@@ -2,14 +2,18 @@ import { eq, isNull } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
-import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
+import { taskTags, taskNotes, taskCanvases } from '@memry/db-schema/schema/task-relations'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { TasksChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { utcNow } from '@memry/shared/utc'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { increment } from '@memry/sync-client/vector-clock'
-import { mergeTaskFields, initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
+import {
+  mergeTaskFields,
+  initAllFieldClocks,
+  TASK_SYNCABLE_FIELDS
+} from '@memry/sync-client/field-merge'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { MissingSyncParentError } from '@memry/sync-client/item-handlers/types'
@@ -76,6 +80,15 @@ function queryNoteIds(db: DrizzleDb, taskId: string): string[] {
     .map((r) => r.noteId)
 }
 
+function queryCanvasIds(db: DrizzleDb, taskId: string): string[] {
+  return db
+    .select({ canvasId: taskCanvases.canvasId })
+    .from(taskCanvases)
+    .where(eq(taskCanvases.taskId, taskId))
+    .all()
+    .map((r) => r.canvasId)
+}
+
 function writeTags(db: DrizzleDb, taskId: string, tagList: string[]): void {
   db.delete(taskTags).where(eq(taskTags.taskId, taskId)).run()
   // Case preserved; dedupe case-insensitively (NOCASE PK on (taskId, tag))
@@ -98,6 +111,15 @@ function writeNoteIds(db: DrizzleDb, taskId: string, noteIds: string[]): void {
   if (noteIds.length > 0) {
     db.insert(taskNotes)
       .values(noteIds.map((noteId) => ({ taskId, noteId })))
+      .run()
+  }
+}
+
+function writeCanvasIds(db: DrizzleDb, taskId: string, canvasIds: string[]): void {
+  db.delete(taskCanvases).where(eq(taskCanvases.taskId, taskId)).run()
+  if (canvasIds.length > 0) {
+    db.insert(taskCanvases)
+      .values(canvasIds.map((canvasId) => ({ taskId, canvasId })))
       .run()
   }
 }
@@ -173,6 +195,12 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             .where(eq(tasks.id, itemId))
             .run()
 
+          // Junction relations carry no field clocks, so there is no per-link
+          // ordering to resolve a concurrent edit with. Unioning both sides
+          // keeps every link either device added; the price is that an unlink
+          // racing a link loses, which is the cheaper of the two failures
+          // because a stray link is visible and removable, a silently dropped
+          // one is not.
           if (data.tags) {
             const localTags = queryTags(tx as unknown as DrizzleDb, itemId)
             const merged = [...new Set([...localTags, ...data.tags])]
@@ -182,6 +210,11 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
             const localNotes = queryNoteIds(tx as unknown as DrizzleDb, itemId)
             const merged = [...new Set([...localNotes, ...data.linkedNoteIds])]
             writeNoteIds(tx as unknown as DrizzleDb, itemId, merged)
+          }
+          if (data.linkedCanvasIds) {
+            const localCanvases = queryCanvasIds(tx as unknown as DrizzleDb, itemId)
+            const merged = [...new Set([...localCanvases, ...data.linkedCanvasIds])]
+            writeCanvasIds(tx as unknown as DrizzleDb, itemId, merged)
           }
 
           // The only activity rows a remote apply may write. Ordinary applied
@@ -242,8 +275,17 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           .where(eq(tasks.id, itemId))
           .run()
 
+        // Unlike the scalar columns above, which take `?? null` and so treat an
+        // absent key as a clear, junction writes are guarded so an absent key
+        // preserves the local rows. `TaskSyncPayloadSchema` is non-strict, so an
+        // older client silently drops `linkedCanvasIds` while parsing and omits
+        // it when it pushes the task back; without the guard that round-trip
+        // would erase every canvas link on the newer device. An explicit empty
+        // array still clears, which is how a real unlink travels.
         if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
         if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
+        if (data.linkedCanvasIds)
+          writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, { id: itemId, task: updated, changes: {} })
@@ -285,6 +327,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
       if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
       if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
+      if (data.linkedCanvasIds)
+        writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       ctx.emit(TasksChannels.events.CREATED, { task: inserted })
@@ -330,7 +374,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
     if (!task) return null
     const tagList = queryTags(db, itemId)
     const linkedNoteIds = queryNoteIds(db, itemId)
-    return JSON.stringify({ ...task, tags: tagList, linkedNoteIds })
+    const linkedCanvasIds = queryCanvasIds(db, itemId)
+    return JSON.stringify({ ...task, tags: tagList, linkedNoteIds, linkedCanvasIds })
   }
 
   markPushSynced(db: DrizzleDb, itemId: string): void {
@@ -352,7 +397,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           clock,
           fieldClocks,
           tags: queryTags(db, item.id),
-          linkedNoteIds: queryNoteIds(db, item.id)
+          linkedNoteIds: queryNoteIds(db, item.id),
+          linkedCanvasIds: queryCanvasIds(db, item.id)
         }),
         priority: 0
       })

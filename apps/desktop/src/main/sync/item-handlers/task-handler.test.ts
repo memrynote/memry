@@ -4,8 +4,12 @@ import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
-import { TASK_SYNCABLE_FIELDS, initAllFieldClocks, type FieldClocks } from '@memry/sync-client/field-merge'
+import { taskTags, taskNotes, taskCanvases } from '@memry/db-schema/schema/task-relations'
+import {
+  TASK_SYNCABLE_FIELDS,
+  initAllFieldClocks,
+  type FieldClocks
+} from '@memry/sync-client/field-merge'
 import { taskHandler } from './task-handler'
 import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import {
@@ -261,6 +265,44 @@ describe('taskHandler buildPushPayload', () => {
     expect(parsed.linkedNoteIds.sort()).toEqual(['note-1', 'note-2'])
   })
 
+  it('includes linkedCanvasIds from the task_canvases junction', () => {
+    // #given
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: 'task-push-3',
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task with canvases',
+        priority: 0,
+        position: 0,
+        clock: { 'device-A': 1 }
+      })
+      .run()
+
+    testDb.db
+      .insert(taskCanvases)
+      .values([
+        { taskId: 'task-push-3', canvasId: 'canvas-1' },
+        { taskId: 'task-push-3', canvasId: 'canvas-2' }
+      ])
+      .run()
+
+    // #when
+    const payload = taskHandler.buildPushPayload(
+      testDb.db as unknown as DrizzleDb,
+      'task-push-3',
+      'device-A',
+      'update'
+    )
+
+    // #then
+    expect(payload).not.toBeNull()
+    const parsed = JSON.parse(payload!)
+    expect(parsed.linkedCanvasIds).toBeDefined()
+    expect(parsed.linkedCanvasIds.sort()).toEqual(['canvas-1', 'canvas-2'])
+  })
+
   it('includes empty arrays when no junction data exists', () => {
     // #given
     testDb.db
@@ -289,6 +331,7 @@ describe('taskHandler buildPushPayload', () => {
     const parsed = JSON.parse(payload!)
     expect(parsed.tags).toEqual([])
     expect(parsed.linkedNoteIds).toEqual([])
+    expect(parsed.linkedCanvasIds).toEqual([])
   })
 })
 
@@ -326,6 +369,131 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
       .map((r) => r.noteId)
       .sort()
   }
+
+  function getCanvasIdsForTask(taskId: string): string[] {
+    return testDb.db
+      .select({ canvasId: taskCanvases.canvasId })
+      .from(taskCanvases)
+      .where(eq(taskCanvases.taskId, taskId))
+      .all()
+      .map((r) => r.canvasId)
+      .sort()
+  }
+
+  function seedTaskWithCanvasLinks(
+    taskId: string,
+    canvasIds: string[],
+    clock: Record<string, number>
+  ): void {
+    testDb.db
+      .insert(tasks)
+      .values({
+        id: taskId,
+        projectId: 'proj-1',
+        statusId: 'status-todo',
+        title: 'Task',
+        priority: 0,
+        position: 0,
+        clock,
+        fieldClocks: initAllFieldClocks(clock, TASK_SYNCABLE_FIELDS)
+      })
+      .run()
+    testDb.db
+      .insert(taskCanvases)
+      .values(canvasIds.map((canvasId) => ({ taskId, canvasId })))
+      .run()
+  }
+
+  it('writes remote linkedCanvasIds on INSERT (new task)', () => {
+    // #given — no local task exists
+    // #when
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-canvas-new',
+      makeTaskPayload({ linkedCanvasIds: ['canvas-a', 'canvas-b'] }),
+      { 'device-B': 1 }
+    )
+
+    // #then
+    expect(result).toBe('applied')
+    expect(getCanvasIdsForTask('task-canvas-new')).toEqual(['canvas-a', 'canvas-b'])
+  })
+
+  it('unions local and remote canvas links on MERGE (concurrent edits)', () => {
+    // #given — local links, concurrent clock
+    seedTaskWithCanvasLinks('task-canvas-merge', ['local-canvas', 'shared-canvas'], {
+      'device-A': 2
+    })
+
+    // #when — concurrent clocks trigger merge
+    const remoteFC = initAllFieldClocks({ 'device-B': 1 }, TASK_SYNCABLE_FIELDS)
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-canvas-merge',
+      makeTaskPayload({
+        linkedCanvasIds: ['remote-canvas', 'shared-canvas'],
+        fieldClocks: remoteFC
+      }),
+      { 'device-B': 2 }
+    )
+
+    // #then — union of both sides
+    expect(['applied', 'conflict']).toContain(result)
+    expect(getCanvasIdsForTask('task-canvas-merge')).toEqual([
+      'local-canvas',
+      'remote-canvas',
+      'shared-canvas'
+    ])
+  })
+
+  it('preserves local canvas links when an older client omits linkedCanvasIds on MERGE', () => {
+    // #given — local links, concurrent clock
+    seedTaskWithCanvasLinks('task-canvas-omit-merge', ['keep-canvas'], { 'device-A': 2 })
+
+    // #when — an older client round-trips the task without the unknown key
+    const remoteFC = initAllFieldClocks({ 'device-B': 1 }, TASK_SYNCABLE_FIELDS)
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-canvas-omit-merge',
+      makeTaskPayload({ fieldClocks: remoteFC }),
+      { 'device-B': 2 }
+    )
+
+    // #then — links survive the round-trip
+    expect(['applied', 'conflict']).toContain(result)
+    expect(getCanvasIdsForTask('task-canvas-omit-merge')).toEqual(['keep-canvas'])
+  })
+
+  it('preserves local canvas links when an older client omits linkedCanvasIds on APPLY', () => {
+    // #given — local links, remote clock dominates
+    seedTaskWithCanvasLinks('task-canvas-omit-apply', ['keep-canvas'], { 'device-A': 1 })
+
+    // #when — an older client round-trips the task without the unknown key
+    const result = taskHandler.applyUpsert(ctx, 'task-canvas-omit-apply', makeTaskPayload({}), {
+      'device-A': 5
+    })
+
+    // #then — links survive even though scalar columns were overwritten
+    expect(result).toBe('applied')
+    expect(getCanvasIdsForTask('task-canvas-omit-apply')).toEqual(['keep-canvas'])
+  })
+
+  it('clears canvas links when the payload carries an explicit empty linkedCanvasIds', () => {
+    // #given — local links, remote clock dominates
+    seedTaskWithCanvasLinks('task-canvas-clear', ['gone-canvas'], { 'device-A': 1 })
+
+    // #when — an explicit empty array is a real unlink, not missing information
+    const result = taskHandler.applyUpsert(
+      ctx,
+      'task-canvas-clear',
+      makeTaskPayload({ linkedCanvasIds: [] }),
+      { 'device-A': 5 }
+    )
+
+    // #then
+    expect(result).toBe('applied')
+    expect(getCanvasIdsForTask('task-canvas-clear')).toEqual([])
+  })
 
   it('writes remote tags and linkedNoteIds on INSERT (new task)', () => {
     // #given — no local task exists
