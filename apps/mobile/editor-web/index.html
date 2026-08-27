@@ -24,7 +24,12 @@
     <title>Memry editor</title>
   </head>
   <body>
-    <div id="root" role="textbox" aria-multiline="true" aria-label="Note content"></div>
+    <!--
+      Plain container. The textbox role and its label live on BlockNote's own
+      contenteditable (see `createEditor`); duplicating them here nested one
+      unreachable text box inside the real one.
+    -->
+    <div id="root"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

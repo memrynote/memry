@@ -110,6 +110,43 @@ async function setNetwork(online) {
   }
 }
 
+/**
+ * Silence the dev-client menu before driving anything.
+ *
+ * expo-dev-menu shows itself while its onboarding is unfinished, and a freshly
+ * erased simulator is always in that state. It does not appear at launch,
+ * which is what made it confusing: it surfaces the first time the app presents
+ * a second window, so a run got all the way to the note-management sheet
+ * before the menu took the screen — and the report blamed the sheet. The whole
+ * app window drops out of the accessibility tree behind it, so every selector
+ * after that point fails.
+ *
+ * These are UserDefaults on the simulator, not app state, so this survives
+ * reinstalls and is a no-op once set. It is idempotent, which is why it runs
+ * unconditionally rather than being something to remember.
+ */
+function quietDevMenu() {
+  const prefs = [
+    ['EXDevMenuIsOnboardingFinished', 'YES'],
+    ['EXDevMenuShowsAtLaunch', 'NO'],
+    ['EXDevMenuShowFloatingActionButton', 'NO'],
+    ['EXDevMenuMotionGestureEnabled', 'NO'],
+    ['EXDevMenuTouchGestureEnabled', 'NO']
+  ]
+  try {
+    for (const [key, value] of prefs) {
+      execFileSync(
+        'xcrun',
+        ['simctl', 'spawn', UDID, 'defaults', 'write', APP_ID, key, '-bool', value],
+        { stdio: 'ignore' }
+      )
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
 function runFlow(flow, runId) {
   const result = spawnSync('maestro', ['test', flow, '-e', `RUN_ID=${runId}`], {
     cwd: mobileRoot,
@@ -173,6 +210,9 @@ function doctor() {
       const cleared = !existsSync(markerPath)
       if (wrote && cleared) ok('offline switch', 'marker writes and clears')
       else bad('offline switch', 'could not write or clear the marker file')
+
+      if (quietDevMenu()) ok('dev menu', 'onboarding + gestures silenced')
+      else bad('dev menu', 'could not write simulator defaults — it steals the screen mid-run')
     } catch {
       bad(
         `${APP_ID} installed`,
@@ -230,6 +270,8 @@ if (args.includes('--doctor')) {
   rl?.close()
   process.exit(doctor() ? 0 : 1)
 }
+
+if (!ON_DEVICE) quietDevMenu()
 
 const failures = []
 for (let run = 1; run <= RUNS; run++) {

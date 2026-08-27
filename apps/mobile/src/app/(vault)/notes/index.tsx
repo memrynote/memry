@@ -138,11 +138,17 @@ export default function NotesScreen() {
         : await createNote(ctx, { title: 'Untitled' })
       setChoosingTemplate(false)
       if (noteId) {
-        await reload()
+        // Navigate FIRST. `reload()` re-reads the whole note list over the one
+        // SQLite connection the bootstrap sync is also using, so awaiting it
+        // put an unbounded wait between the tap and the editor — on a vault
+        // still seeding, long enough that the offline matrix timed out looking
+        // for an editor that had been created but never opened. Nothing on the
+        // note screen comes from that list, and `useFocusEffect` reloads the
+        // index on the way back, so the await bought nothing.
         router.push(`/notes/${noteId}`)
       }
     },
-    [reload, vaultId]
+    [vaultId]
   )
 
   const flat: ({ type: 'folder'; name: string } | { type: 'note'; note: NoteRow })[] = []

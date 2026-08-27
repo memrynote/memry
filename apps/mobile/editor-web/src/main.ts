@@ -49,7 +49,19 @@ function createEditor(fragment: Y.XmlFragment) {
       user: { name: 'You', color: '#ff671a' }
     },
     trailingBlock: true,
-    animations: false
+    animations: false,
+    /*
+     * The label belongs on the element that IS the text box.
+     *
+     * `#root` carried `role="textbox" aria-label="Note content"`, and it was
+     * never reachable: BlockNote mounts its own contenteditable inside, and
+     * that inner element is what VoiceOver and the iOS accessibility tree
+     * expose. The wrapper's label was shadowed, so the WebView surfaced only
+     * its document title and the editor had no addressable name at all.
+     */
+    domAttributes: {
+      editor: { 'aria-label': 'Note content' }
+    }
   })
 }
 

@@ -18,18 +18,19 @@ appId: com.memry.mobile
 
 - extendedWaitUntil:
     notVisible:
-      id: 'Offline'
+      id: 'sync-banner-offline'
     timeout: 30000
 
 - assertVisible: 'Notes'
 
 - extendedWaitUntil:
     notVisible:
-      id: 'Unsynced changes'
+      id: 'sync-banner-unsynced'
     timeout: 60000
 
 # The note is still here after the drain, with its offline body intact.
-- assertVisible: 'offline note ${RUN_ID}'
-- tapOn: 'offline note ${RUN_ID}'
-- assertVisible: 'offline body ${RUN_ID}'
-- back
+- assertVisible: '.*Open note offline note ${RUN_ID}.*'
+- tapOn: '.*Open note offline note ${RUN_ID}.*'
+- assertVisible: '.*offline body ${RUN_ID}.*'
+- tapOn:
+    id: 'BackButton'
