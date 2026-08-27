@@ -179,7 +179,7 @@ Clicking a row — built-in or custom — opens it in the [template editor](/use
 
 ### Spelling
 
-**Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write.
+**Check Spelling** underlines misspelled words in notes and journals. It is **off by default**; turn it on to see squiggles as you write. Correcting a flagged word happens from the editor's context menu — see [Spell Check](/user-guide/notes/editing#spell-check).
 
 ---
 
