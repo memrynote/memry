@@ -51,6 +51,55 @@ When to run:
 5. Run `pnpm ipc:generate && pnpm ipc:check`.
 6. Use it from the renderer.
 
+## The Mobile Twin: the RN ↔ WebView Editor Bridge
+
+The mobile app has a second boundary with the same shape, and it lives in the
+same package: `packages/contracts/src/webview-bridge.ts`.
+
+```
+┌──────────────────┐                    ┌─────────────────────┐
+│  React Native    │ ── postMessage ──▶ │  WKWebView          │
+│  owns the Y.Doc  │ ◀── postMessage ── │  hosts BlockNote    │
+└──────────────────┘                    └─────────────────────┘
+         │                                        │
+         └──── packages/contracts (Zod) ──────────┘
+```
+
+The note body is the only WebView surface, so `@memry/editor-schema` stays the
+single source of truth for the document. Three rules make this boundary
+different from the desktop one:
+
+- **The Y.Doc lives on the React Native side**, mirroring main-process
+  ownership. The WebView holds a replica for editing and persists nothing — iOS
+  evicts WKWebView storage, and a replica that is also the source of truth
+  loses unsynced writes silently.
+- **Everything is batched.** Both ends accumulate messages and flush on an
+  interval, a byte ceiling, or an explicit flush. A per-keystroke crossing is a
+  defect regardless of how comfortably it measures.
+- **Every WebView-originated update is durable before it is acked** — committed
+  to SQLite in the same transaction as its outbox row.
+
+### Drift is caught on the ASSET, not the types
+
+Both halves import the contract module directly, so the types cannot drift.
+What can go stale is the prebuilt WebView document: the editor ships as one
+self-contained HTML file generated from `apps/mobile/editor-web/`.
+
+```bash
+pnpm --filter @memry/mobile editor:build   # rebuild the asset
+pnpm --filter @memry/mobile editor:check   # fail if it is older than its sources
+```
+
+`editor:check` is the `ipc:check` of that boundary and runs in mobile CI. The
+build stamps a hash over the editor-web sources, the bridge contract and
+`@memry/editor-schema`; the same hash rides in the `ready` handshake, so a
+stale asset also fails at runtime.
+
+The schema is part of the hash for a specific reason: a block or inline spec
+the bundle cannot build is **deleted** from the shared Y.Doc by y-prosemirror.
+A schema change shipping against a stale editor is data loss, not a rendering
+gap.
+
 ## Error Propagation
 
 Renderer-side IPC errors carry Electron noise (stack frames, channel names). Always strip with:
