@@ -33,9 +33,22 @@ and the rest is unattended.
 # 0. preflight — checks Xcode, Maestro, the installed app and the offline lever
 pnpm --filter @memry/mobile test:offline-matrix -- --doctor
 
-# 1. install and boot (simulator)
-pnpm --filter @memry/mobile ios
-#    >> unlock the vault on the device. This is the manual step.
+# 1. install and boot (simulator) — STAGING, and it must be this script
+pnpm --filter @memry/mobile ios:staging
+#    >> sign in, then unlock the vault. This is the manual step.
+#
+#    `ios` (no suffix) builds a PRODUCTION client: `activeServer()` reads
+#    EXPO_PUBLIC_MEMRY_SERVER at BUNDLE time and defaults to production, and
+#    the server toggle on the (dev) explore screen drives only the G0 spike
+#    demo's own module state — it does not move the app's `syncBaseUrl()`.
+#    A production build asks production for the key verifier, so the staging
+#    phrase is rejected as "That phrase does not match this account".
+#
+#    Switching servers on a device that already holds a session needs a wipe
+#    first: the session and the current vault id are stored unscoped
+#    (`memry.session.default`), so a token issued by one server is presented
+#    to the other. On the simulator: `xcrun simctl erase <udid>` — deleting
+#    the app is NOT enough, the keychain survives reinstall.
 
 # 2. T066 — 20 unattended runs
 pnpm --filter @memry/mobile test:offline-matrix -- --runs 20

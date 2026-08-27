@@ -61,9 +61,11 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:staging": "EXPO_PUBLIC_MEMRY_SERVER=staging expo start --clear",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "ios:staging": "EXPO_PUBLIC_MEMRY_SERVER=staging expo run:ios",
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
