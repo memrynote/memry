@@ -75,4 +75,4 @@ agents/
 .env*.local
 .superpowers/
 
-.feedback/
+.feedback
