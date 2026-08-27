@@ -43,7 +43,11 @@ Open the project's **⋯** menu and choose **Edit statuses**. From there you can
 
 The sidebar shows **incomplete** task counts per project — tasks whose status type is not `done`. This keeps the count meaningful even as you complete tasks.
 
-Archived tasks are excluded, so the badge always matches the number of open tasks you see when you open the project.
+Every count is a count of **rows**. Subtasks are not rows of their own: they live under their parent task and show up as its `2/5` progress, so they never appear in a badge. Archived tasks are excluded too, so the badge always matches the number of open tasks you see when you open the project.
+
+The **Tasks** tab in the project hub counts the same rows, but all of them rather than only the open ones — so it equals the To Do, In Progress and Done sections underneath it added together.
+
+If a task points at a status the project no longer has — after the status was deleted, or after the task arrived from a project with a different workflow — it appears in the project's first status so you can see it and re-file it.
 
 ## Default Project
 

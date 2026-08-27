@@ -28,9 +28,9 @@ export const OverviewTab = ({ project, hub, handlers }: OverviewTabProps): React
         onViewAll={() => handlers.onGoToTab('tasks')}
         onAdd={handlers.onAddTask}
         emptyLabel={t('projectHub.sections.emptyTasks')}
-        isEmpty={hub.tasks.length === 0}
+        isEmpty={hub.rowTasks.length === 0}
       >
-        {hub.tasks.slice(0, OVERVIEW_PREVIEW_COUNT).map((task) => (
+        {hub.rowTasks.slice(0, OVERVIEW_PREVIEW_COUNT).map((task) => (
           <TaskRow
             key={task.id}
             task={task}

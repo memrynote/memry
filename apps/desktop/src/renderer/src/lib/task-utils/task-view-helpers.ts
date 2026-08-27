@@ -119,9 +119,10 @@ export interface TaskWorkspaceCounts {
   /** Per view id, equal to `getFilteredTasks(tasks, viewId, 'view', projects).length`. */
   viewCounts: Record<string, number>
   /**
-   * Per `task.projectId`, the number of that project's non-archived tasks not in
-   * a `done` status — i.e. the rows `getFilteredTasks(tasks, projectId,
-   * 'project', projects)` renders, minus the completed ones.
+   * Per `task.projectId`, the number of that project's non-archived, top-level
+   * tasks not in a `done` status — i.e. the rows `getFilteredTasks(tasks,
+   * projectId, 'project', projects)` renders as rows, minus the completed ones.
+   * Subtasks are excluded: they render nested under their parent.
    */
   projectTaskCounts: Record<string, number>
 }
@@ -209,13 +210,17 @@ export const getTaskWorkspaceCounts = (
     // badge makes it read higher than the list it opens.
     if (task.archivedAt) continue
 
-    if (isIncomplete) {
-      projectTaskCounts[projectId] = (projectTaskCounts[projectId] ?? 0) + 1
-    }
-
     if (task.parentId !== null) {
       nonArchivedSubtaskParentIds.push(task.parentId)
       continue
+    }
+
+    // A subtask is a row under its parent, never a row of its own, so it must
+    // not lift the project badge past the number of rows the project lists.
+    // Counting them made a project of finished parents read as dozens of open
+    // tasks over an empty To Do section.
+    if (isIncomplete) {
+      projectTaskCounts[projectId] = (projectTaskCounts[projectId] ?? 0) + 1
     }
 
     for (const viewId of viewIds) {

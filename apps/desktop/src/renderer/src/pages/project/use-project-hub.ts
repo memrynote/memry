@@ -37,6 +37,12 @@ export interface ProjectProgress {
 export interface ProjectHubData {
   project: Project | null
   tasks: Task[]
+  /**
+   * The project's tasks that the Tasks tab lists as rows — top-level only.
+   * Subtasks are in `tasks` (the list renders them nested under their parent)
+   * but are not rows, so they must not reach a count or a preview.
+   */
+  rowTasks: Task[]
   notes: ProjectLinkedNote[]
   pinnedNotes: ProjectLinkedNote[]
   files: ProjectLinkedFile[]
@@ -141,6 +147,8 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
     return getFilteredTasks(tasks, projectId, 'project', projects)
   }, [tasks, projectId, projects])
 
+  const rowTasks = useMemo(() => projectTasks.filter((t) => t.parentId === null), [projectTasks])
+
   useEffect(() => {
     if (!projectId) return
 
@@ -221,12 +229,16 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
   return {
     project,
     tasks: projectTasks,
+    rowTasks,
     notes: contents.notes,
     pinnedNotes,
     files: contents.files,
     events: contents.events,
     counts: {
-      tasks: projectTasks.length,
+      // The rows the Tasks tab shows, so the badge and the status sections under
+      // it add up. Counting subtasks here made the badge read far higher than
+      // any section on the tab it labels.
+      tasks: rowTasks.length,
       notes: contents.counts.notes,
       files: contents.counts.files,
       events: contents.counts.events

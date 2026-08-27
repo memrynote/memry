@@ -278,6 +278,33 @@ describe('bulk action components', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  /**
+   * jsdom does no layout, so this pins the shrink contract instead of the
+   * pixels. A long title used to widen the dialog's single grid track past its
+   * max width; the footer stretched with the track and carried the confirm
+   * button off the dialog, then off the window (#1878). Every box between the
+   * dialog and the title has to be allowed to shrink for `truncate` to work.
+   */
+  it('lets a long task title shrink instead of widening the dialog', () => {
+    const longTitle =
+      'Research into whether Copilot will classify and retrieve documents instead of Docuware (and retention management)'
+
+    render(
+      <BulkDeleteDialog
+        open
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+        tasks={[{ ...tasks[0], title: longTitle }]}
+      />
+    )
+
+    expect(screen.getByRole('dialog').className).toContain('grid-cols-[minmax(0,1fr)]')
+
+    const title = screen.getByText(longTitle)
+    expect(title).toHaveClass('truncate', 'min-w-0')
+    expect(title.parentElement).toHaveClass('min-w-0')
+  })
+
   it('selects due dates with optional time and resets after close', () => {
     const onClose = vi.fn()
     const onConfirm = vi.fn()

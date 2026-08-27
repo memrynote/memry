@@ -142,18 +142,30 @@ export interface TaskGroupByStatus {
   tasks: Task[]
 }
 
+/**
+ * Buckets tasks into the project's own statuses, in status order.
+ *
+ * Every task lands in exactly one bucket. A task whose `statusId` is not one of
+ * the project's — a status that was deleted, or one carried over from another
+ * project — matches nothing, and dropping it would leave it in no list at all:
+ * invisible, uneditable, but still counted by everything that counts tasks. The
+ * first status adopts those instead, so the user can see and re-file them.
+ */
 export const groupTasksByStatus = (
   tasks: Task[],
   projectStatuses: Status[],
   preserveOrder: boolean = false
 ): TaskGroupByStatus[] => {
   const sortedStatuses = [...projectStatuses].sort((a, b) => a.order - b.order)
+  const knownStatusIds = new Set(projectStatuses.map((status) => status.id))
+  const unknownStatusTasks = tasks.filter((t) => !knownStatusIds.has(t.statusId))
 
-  return sortedStatuses.map((status) => {
+  return sortedStatuses.map((status, index) => {
     const statusTasks = tasks.filter((t) => t.statusId === status.id)
+    const groupTasks = index === 0 ? [...statusTasks, ...unknownStatusTasks] : statusTasks
     return {
       status,
-      tasks: preserveOrder ? statusTasks : sortTasksByPriorityAndDate(statusTasks)
+      tasks: preserveOrder ? groupTasks : sortTasksByPriorityAndDate(groupTasks)
     }
   })
 }

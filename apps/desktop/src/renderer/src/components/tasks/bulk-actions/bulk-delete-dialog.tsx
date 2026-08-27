@@ -65,12 +65,17 @@ export const BulkDeleteDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
-          <ul className="space-y-1 text-sm">
+        <div className="min-w-0 py-4">
+          <ul className="min-w-0 space-y-1 text-sm">
             {visibleTasks.map((task) => (
-              <li key={task.id} className="flex items-center gap-2">
+              // `min-w-0` on both the row and the title: a flex item refuses to
+              // shrink below its content by default, which is what `truncate`
+              // needs it to do.
+              <li key={task.id} className="flex min-w-0 items-center gap-2">
                 <span className="text-muted-foreground">•</span>
-                <span className="truncate">{task.title}</span>
+                <span className="min-w-0 truncate" title={task.title}>
+                  {task.title}
+                </span>
               </li>
             ))}
             {remainingCount > 0 && (

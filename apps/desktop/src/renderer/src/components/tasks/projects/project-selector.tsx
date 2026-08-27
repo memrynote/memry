@@ -110,7 +110,10 @@ export const ProjectSelector = ({
   const projectTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     activeProjects.forEach((project) => {
-      const projectTaskList = tasks.filter((t) => t.projectId === project.id && !t.parentId)
+      const projectTaskList = tasks.filter(
+        // Archived tasks are in no list, so they must not be in a badge either.
+        (t) => t.projectId === project.id && !t.parentId && !t.archivedAt
+      )
       const incompleteCount = projectTaskList.filter((t) => {
         const proj = projects.find((p) => p.id === t.projectId)
         if (!proj) return true
