@@ -190,6 +190,15 @@ export function EditorView({
     })
   }, [bridge, doc])
 
+  // A seed resolved by the background probe arrives AFTER the guest has
+  // already been handed its (empty) doc, so it needs a fresh `doc-load` to be
+  // applied at all. Guarded on emptiness, so a late seed can never land on a
+  // document that has since acquired content.
+  useEffect(() => {
+    if (!loaded || !seedMarkdown || !doc.isEmpty()) return
+    sendDocLoad()
+  }, [doc, loaded, seedMarkdown, sendDocLoad])
+
   // Config changes (theme, read-only from the kill switch) are pushed live.
   useEffect(() => {
     if (!loaded) return

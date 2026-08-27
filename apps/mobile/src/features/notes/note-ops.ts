@@ -1,5 +1,6 @@
 import type { VaultDb } from '@/db/index'
 import { seedKey } from '@/db/keys'
+import type { BodyFetchOutcome } from '@/sync/body-fetch'
 import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
@@ -387,6 +388,31 @@ export async function materializedBody(db: VaultDb, noteId: string): Promise<str
     [noteId]
   )
   return body?.markdown && body.markdown.length > 0 ? body.markdown : undefined
+}
+
+/**
+ * Whether it is safe to seed this note's editor from its markdown body.
+ *
+ * The one decision here whose failure is UNRECOVERABLE, and it has been got
+ * wrong twice — each time by collapsing two states into a boolean. First "the
+ * doc is empty" standing in for "the server has nothing"; then a boolean fetch
+ * result collapsing "the server had nothing" with "we could not ask". Both
+ * end the same way: a second copy of the body pushed to every device, forever.
+ *
+ * So the rule is written once, here, and pinned by a test.
+ */
+export function shouldSeedFromMarkdown(input: {
+  docIsEmpty: boolean
+  /** A create marker exists, so THIS device made the note. */
+  createdHere: boolean
+  probe: BodyFetchOutcome | 'not-run'
+}): boolean {
+  if (!input.docIsEmpty) return false
+  // No other device can hold CRDT for a note this one just created — true even
+  // offline, which is the case the probe cannot cover.
+  if (input.createdHere) return true
+  // Otherwise the only evidence is a probe that completed and found nothing.
+  return input.probe === 'empty'
 }
 
 /**

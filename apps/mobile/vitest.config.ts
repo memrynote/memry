@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 /**
@@ -9,6 +10,14 @@ import { defineConfig } from 'vitest/config'
  * test should be asserting against.
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      // The same `@/*` -> `src/*` mapping `tsconfig.json` gives the app.
+      // Without it a test can only reach modules whose whole import graph
+      // happens to use relative paths, which is an accident, not a rule.
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  },
   define: {
     __DEV__: false
   }

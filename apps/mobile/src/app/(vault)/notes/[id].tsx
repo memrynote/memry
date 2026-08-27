@@ -19,6 +19,7 @@ import {
   materializedBody,
   readNotePayload,
   resolveSeedMarkdown,
+  shouldSeedFromMarkdown,
   type NoteOpsContext,
   type NotePayload
 } from '@/features/notes/note-ops'
@@ -90,26 +91,39 @@ export default function NoteScreen() {
       const editorSession = await getEditorSession(vaultId)
       const openDoc = await editorSession.docs.openDoc(id)
       const notePayload = await readNotePayload(editorSession.db, id)
-      let seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
-
-      if (!seed && openDoc.isEmpty()) {
-        // No create marker, so the only other evidence that seeding is safe is
-        // a CRDT pull that completes NOW and still leaves the doc empty. A
-        // marker written earlier would say nothing about what another device
-        // pushed while this one was offline, which is why the probe happens
-        // here rather than being remembered.
-        const pulled = await ensureNoteBody(vaultId, id)
-        if (pulled) await openDoc.refreshFromServer()
-        if (!cancelled && openDoc.isEmpty()) {
-          seed = await materializedBody(editorSession.db, id)
-        }
-      }
+      const seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
 
       if (cancelled) return
       setSession(editorSession)
       setDoc(openDoc)
       setPayload(notePayload)
       setSeedMarkdown(seed)
+
+      // The network probe runs AFTER the screen is up, never in front of it.
+      // Offline it can spend minutes waiting out `withRetry`, and this path
+      // used to be nothing but local SQLite reads — blocking on it turns
+      // opening a note into a bare spinner for the whole duration.
+      if (!seed && openDoc.isEmpty()) {
+        void (async () => {
+          const outcome = await ensureNoteBody(vaultId, id)
+          if (cancelled) return
+          if (outcome === 'updated') {
+            await openDoc.refreshFromServer()
+            return
+          }
+          if (
+            !shouldSeedFromMarkdown({
+              docIsEmpty: openDoc.isEmpty(),
+              createdHere: false,
+              probe: outcome
+            })
+          ) {
+            return
+          }
+          const body = await materializedBody(editorSession.db, id)
+          if (!cancelled && body) setSeedMarkdown(body)
+        })()
+      }
     })().catch((err: unknown) => {
       // Without this the screen is a bare spinner forever and the failure
       // surfaces only as an unhandled rejection nobody reads.
