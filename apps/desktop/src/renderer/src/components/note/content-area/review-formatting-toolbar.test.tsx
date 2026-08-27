@@ -126,10 +126,63 @@ describe('ReviewFormattingToolbar', () => {
     ]
     toolbarMocks.editor.updateBlock.mockClear()
     ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
+    ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = undefined
     const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
     delete selection.$from
     delete selection.$to
     vi.mocked(openWikiLinkForSelection).mockClear()
+  })
+
+  describe('native context menu', () => {
+    function mountEditorDom(): HTMLElement {
+      const dom = document.createElement('div')
+      document.body.appendChild(dom)
+      ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = { dom }
+      return dom
+    }
+
+    it('yields the floating toolbar to the native menu on right-click', () => {
+      const editorDom = mountEditorDom()
+
+      render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      fireEvent.contextMenu(editorDom)
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      // A second right-click keeps it hidden; only an ordinary interaction restores it.
+      fireEvent.pointerDown(editorDom, { button: 2 })
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      fireEvent.pointerDown(editorDom, { button: 0 })
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      fireEvent.contextMenu(editorDom)
+      fireEvent.keyDown(editorDom, { key: 'Escape' })
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      editorDom.remove()
+    })
+
+    it('ignores right-clicks outside the editor', () => {
+      mountEditorDom()
+
+      render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+      fireEvent.contextMenu(document.body)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+    })
+
+    it('leaves the sticky toolbar alone', () => {
+      const editorDom = mountEditorDom()
+
+      render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+
+      fireEvent.contextMenu(editorDom)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      editorDom.remove()
+    })
   })
 
   it('offers Link to note only once a single-block selection exists', () => {
