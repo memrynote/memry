@@ -48,6 +48,10 @@ const reminder: DateMentionData = {
 const legacyEncode = (obj: unknown): string =>
   btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
+/** A base64url run as a markdown escaper would have left it. */
+const markdownEscaped = (run: string): string =>
+  [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+
 const mounted: Array<{ editor: BlockNoteEditor; el: HTMLElement; doc: Y.Doc }> = []
 
 afterEach(() => {
@@ -138,7 +142,7 @@ describe('opening a collaborative note promotes its date pills', () => {
   it('promotes a token a markdown escaper backslashed', () => {
     const { editor, fragment } = createCollaborativeEditor()
     const legacy = { ...reminder, anchorId: 'dm_0?x' }
-    const escaped = legacyEncode(legacy).replace(/_/g, '\\_').replace(/-/g, '\\-')
+    const escaped = markdownEscaped(legacyEncode(legacy))
     seedParagraph(editor, `((date:${escaped}))`)
 
     openNote(editor, fragment)

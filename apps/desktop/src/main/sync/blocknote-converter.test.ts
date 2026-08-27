@@ -2965,6 +2965,10 @@ describe('a date pill keeps its exact bytes on the main path', () => {
   const legacyEncode = (obj: unknown): string =>
     btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
+  /** A base64url run as a markdown escaper would have left it. */
+  const markdownEscaped = (run: string): string =>
+    [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
@@ -3025,7 +3029,7 @@ describe('a date pill keeps its exact bytes on the main path', () => {
     // bytes — and the wider token class means the renderer would have promoted
     // the pill either way.
     const payload = legacyEncode({ ...props, anchorId: 'dm_0?x' })
-    const escaped = `((date:${payload.replace(/_/g, '\\_')}))`
+    const escaped = `((date:${markdownEscaped(payload)}))`
 
     expect(escaped).toContain('\\')
     expect(await roundTrip(`due ${escaped} ok`)).toBe(`due ((date:${payload})) ok`)

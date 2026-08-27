@@ -27,6 +27,10 @@ const encode = (obj: unknown): string =>
 
 const payload = (token: string): string => token.replace(/^\(\(date:|\)\)$/g, '')
 
+/** A base64url run as a markdown escaper would have left it. */
+const markdownEscaped = (run: string): string =>
+  [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+
 describe('date-mention token', () => {
   it('round-trips through serialize/parse', () => {
     const token = serializeDateMentionToken(base)
@@ -166,13 +170,13 @@ describe('tolerating tokens already on disk', () => {
   it('heals a token a markdown escaper backslashed', () => {
     // What the issue reports: `\` lands inside the run, the strict class stops
     // matching, and the pill is left on the page as literal text.
-    const escaped = encode(legacy).replace(/_/g, '\\_').replace(/-/g, '\\-')
+    const escaped = markdownEscaped(encode(legacy))
     expect(escaped).toContain('\\')
     expect(parseDateMentionToken(escaped)).toEqual(legacy)
   })
 
   it('matches escaped and legacy shapes with the token regex', () => {
-    const escaped = `((date:${encode(legacy).replace(/_/g, '\\_')}))`
+    const escaped = `((date:${markdownEscaped(encode(legacy))}))`
     const matches = [...`due ${escaped} today`.matchAll(DATE_MENTION_TOKEN_REGEX)]
     expect(matches).toHaveLength(1)
     expect(parseDateMentionToken(matches[0][1])?.anchorId).toBe('dm_0?x')
