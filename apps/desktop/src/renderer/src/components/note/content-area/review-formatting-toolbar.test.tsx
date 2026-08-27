@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ReviewFormattingToolbar } from './review-formatting-toolbar'
+import {
+  ReviewFormattingToolbar,
+  ReviewFormattingToolbarController
+} from './review-formatting-toolbar'
 import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 
 const toolbarMocks = vi.hoisted(() => ({
+  remountKey: 0,
   editor: {
     prosemirrorState: {
       selection: { empty: false, from: 2, to: 15 },
@@ -64,11 +68,13 @@ vi.mock('@blocknote/react', () => ({
   FormattingToolbar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="formatting-toolbar">{children}</div>
   ),
+  // Keyed so a test can force the remount BlockNote performs mid-interaction:
+  // the toolbar below is torn down and rebuilt while the controller stays put.
   FormattingToolbarController: ({
     formattingToolbar
   }: {
     formattingToolbar: (props: Record<string, unknown>) => React.ReactNode
-  }) => <>{formattingToolbar({})}</>,
+  }) => <div key={toolbarMocks.remountKey}>{formattingToolbar({})}</div>,
   BlockTypeSelect: () => <button type="button">block type</button>,
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
@@ -127,6 +133,8 @@ describe('ReviewFormattingToolbar', () => {
     toolbarMocks.editor.updateBlock.mockClear()
     ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
     ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = undefined
+    toolbarMocks.remountKey = 0
+    fireEvent.pointerDown(document.body, { button: 0 })
     const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
     delete selection.$from
     delete selection.$to
@@ -144,7 +152,7 @@ describe('ReviewFormattingToolbar', () => {
     it('yields the floating toolbar to the native menu on right-click', () => {
       const editorDom = mountEditorDom()
 
-      render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+      render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
       expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
 
       fireEvent.contextMenu(editorDom)
@@ -164,10 +172,27 @@ describe('ReviewFormattingToolbar', () => {
       editorDom.remove()
     })
 
+    // The first attempt at this fix held the state inside the toolbar and passed
+    // its unit tests while failing in the real app: BlockNote rebuilds the
+    // toolbar during the right-click, so the state died with the old instance.
+    it('stays suppressed when BlockNote rebuilds the toolbar mid-right-click', () => {
+      const editorDom = mountEditorDom()
+
+      const { rerender } = render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+      fireEvent.contextMenu(editorDom)
+
+      toolbarMocks.remountKey += 1
+      rerender(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      editorDom.remove()
+    })
+
     it('ignores right-clicks outside the editor', () => {
       mountEditorDom()
 
-      render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+      render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
 
       fireEvent.contextMenu(document.body)
       expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()

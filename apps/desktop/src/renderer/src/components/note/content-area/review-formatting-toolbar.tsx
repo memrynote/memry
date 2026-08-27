@@ -31,6 +31,15 @@ interface ReviewFormattingToolbarProps {
 }
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
+  const editor = useBlockNoteEditor()
+  // The gate lives here, not in the toolbar below: BlockNote tears the toolbar
+  // down and mounts a fresh one mid-interaction, so state held there is lost
+  // exactly when it is needed. This component is mounted by ContentArea and
+  // outlives that churn.
+  const isContextMenuOpen = useContextMenuOpen(editor)
+
+  if (isContextMenuOpen) return null
+
   return (
     <FormattingToolbarController
       formattingToolbar={(toolbarProps) => (
@@ -58,7 +67,6 @@ export function ReviewFormattingToolbar({
       return Boolean(selection && !selection.empty && (selection as { node?: unknown }).node)
     }
   })
-  const isContextMenuOpen = useContextMenuOpen(editor)
 
   if (variant === 'sticky') {
     return (
@@ -71,7 +79,7 @@ export function ReviewFormattingToolbar({
     )
   }
 
-  if (isNodeSelection || isContextMenuOpen) return null
+  if (isNodeSelection) return null
 
   return (
     <FormattingToolbar {...toolbarProps}>
@@ -123,6 +131,10 @@ export function ReviewFormattingToolbar({
  * on is platform-dependent, so this suppresses by state instead of racing that
  * listener: hidden until the next ordinary interaction. Capture on `window`
  * runs ahead of anything that might stop propagation.
+ *
+ * Call this from a component BlockNote does not own. Its controller remounts
+ * the toolbar during the very interaction being suppressed, which resets any
+ * state held below it.
  */
 function useContextMenuOpen(editor: BlockNoteEditor): boolean {
   const [isOpen, setIsOpen] = useState(false)
