@@ -1,5 +1,6 @@
 import { createReactBlockSpec } from '@blocknote/react'
-import { calloutConfig, CALLOUT_LINE_REGEX } from '@memry/editor-schema/blocks'
+import { calloutConfig, readCalloutRun, type CalloutRun } from '@memry/editor-schema/blocks'
+import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -176,21 +177,22 @@ export function getCalloutSlashMenuItem(
 // Callout Block Serialization (> [!type]\n> content)
 // ============================================================================
 
-// The `> [!type]` form lives in @memry/editor-schema/blocks so the main process
-// writes the same bytes. The splitter below stays here: it is the editor's
-// lenient reader (an unknown type falls back to `info`, a title on the marker
-// line moves into the body), which is fine for a paste but would rewrite every
-// `> [!note]` in an Obsidian vault if the CRDT parser used it.
+// The `> [!type]` form AND the claim rules live in @memry/editor-schema/blocks
+// so both processes read and write the same bytes. The reader is strict on
+// purpose: only the exact shape `serializeCalloutBlock` writes (plus the bare
+// damaged shape #1846 heals) is claimed — `> [!note]` and a title after the
+// marker are someone else's bytes and stay quote blocks, on this path exactly
+// as on the CRDT one.
 export { serializeCalloutBlock } from '@memry/editor-schema/blocks'
 
-export type CalloutSegment = { kind: 'callout'; type: CalloutTypeValue; content: string }
+export type CalloutSegment = { kind: 'callout'; run: CalloutRun }
 export type MarkdownSegment = { kind: 'markdown'; text: string }
 export type ContentSegment = CalloutSegment | MarkdownSegment
 
 export function splitMarkdownByCallouts(markdown: string): ContentSegment[] {
-  const validTypes: readonly string[] = CALLOUT_TYPES.map((t) => t.value)
   const lines = markdown.split('\n')
   const segments: ContentSegment[] = []
+  const fence = createFenceTracker()
 
   let mdLines: string[] = []
   let i = 0
@@ -202,28 +204,17 @@ export function splitMarkdownByCallouts(markdown: string): ContentSegment[] {
   }
 
   while (i < lines.length) {
-    const match = lines[i].match(CALLOUT_LINE_REGEX)
-    if (match) {
+    const insideFence = fence.consume(lines[i])
+    const atParagraphStart = i === 0 || lines[i - 1].trim() === ''
+    const run = insideFence ? null : readCalloutRun(lines, i, atParagraphStart)
+
+    if (run) {
       flushMarkdown()
-
-      const rawType = match[1]
-      const type = validTypes.includes(rawType) ? (rawType as CalloutTypeValue) : 'info'
-      const contentLines: string[] = []
-
-      const titleText = match[2].trim()
-      if (titleText) contentLines.push(titleText)
-
-      i++
-      while (i < lines.length && (lines[i].startsWith('> ') || lines[i] === '>')) {
-        if (lines[i] === '>') {
-          contentLines.push('')
-        } else {
-          contentLines.push(lines[i].slice(2))
-        }
-        i++
+      segments.push({ kind: 'callout', run })
+      for (let consumed = i + 1; consumed < run.end; consumed++) {
+        fence.consume(lines[consumed])
       }
-
-      segments.push({ kind: 'callout', type, content: contentLines.join('\n').trim() })
+      i = run.end
     } else {
       mdLines.push(lines[i])
       i++
