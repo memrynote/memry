@@ -19,6 +19,7 @@ import {
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
+import { normalizeLinkMentions } from '../link-mention-utils'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
@@ -164,6 +165,31 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Promote the `((mention:…))` tokens a collaborative document opens with.
+ *
+ * The same gap the two promoters above close, and the one that made a saved
+ * mention come back as literal text after a restart or a vault switch (#1844):
+ * main seeds the shared doc straight from the vault file, where a mention is
+ * plain text, and this path returns before `normalizeNoteBlocks` ever runs.
+ *
+ * Idempotent for the same reason wiki links are — a promoted `linkMention`
+ * serializes back to the token it was built from, so `((mention:` is gone from
+ * the document and the second open matches nothing and writes no update.
+ *
+ * Reports whether it promoted, because only then is the metadata fetch worth
+ * it: the token carries the URL and nothing else, so a chip promoted here has
+ * no title or favicon until `hydrateLinkMentionFavicons` refills them, exactly
+ * as it does on the markdown path.
+ */
+function promoteLinkMentionsInSharedDoc(editor: any): boolean {
+  const normalized = normalizeLinkMentions(editor.document as Block[])
+  if (!normalized.didChange) return false
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+  return true
 }
 
 function clearYjsUndoHistory(editor: any): void {
@@ -361,6 +387,7 @@ export function useEditorSync({
       // undoable step: Cmd+Z here would turn the chips back into raw text and
       // push that to every device.
       promoteWikiLinksInSharedDoc(editor)
+      if (promoteLinkMentionsInSharedDoc(editor)) hydrateLinkMentionFavicons(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
       promoteDateMentionsInSharedDoc(editor)
       clearYjsUndoHistory(editor)

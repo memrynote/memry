@@ -3322,3 +3322,63 @@ describe('healing callouts already torn bare (#1846)', () => {
     expect(blocks?.some((b) => (b.type as string) === 'callout')).toBe(false)
   })
 })
+
+/**
+ * The main serializer's half of the mention token (#1844). The renderer writes
+ * the vault file when the note is open; main writes it from the shared Y.Doc
+ * when it is not. A URL whose bytes differ between the two would rewrite the
+ * file on every handoff, so what main puts on disk has to be exactly what
+ * `serializeLinkMentionToken` says.
+ */
+describe('a link mention through the main serializer', () => {
+  const mentionBlock = (url: string): unknown => ({
+    id: 'm1',
+    type: 'paragraph',
+    props: {},
+    children: [],
+    content: [
+      { type: 'text', text: 'See ', styles: {} },
+      {
+        type: 'linkMention',
+        props: { url, domain: 'x.test', title: '', favicon: '', siteName: '' }
+      },
+      { type: 'text', text: ' here.', styles: {} }
+    ]
+  })
+
+  it.each([
+    'https://x.test/foo_bar',
+    'https://x.test/a*b',
+    'https://x.test/a~b',
+    "https://x.test/it's",
+    'https://x.test/a!b',
+    'https://x.test/a(b)c',
+    'https://x.test/s?q=a+b&page=2#frag',
+    'https://eksisozluk.com/başlık/şeker'
+  ])('writes the same token the renderer would for %s', async (url) => {
+    // #given
+    const doc = new Y.Doc()
+    blocksToYFragment([mentionBlock(url) as never], doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const markdown = await yDocToMarkdown(doc)
+
+    // #then the exact bytes, and nothing outside the token's closed alphabet
+    expect(markdown).toBe(`See ${serializeLinkMentionToken(url)} here.`)
+    expect(markdown).toMatch(/\(\(mention:[A-Za-z0-9.%-]+\)\)/)
+  })
+
+  it('leaves a token it reads out of a vault file byte-identical', async () => {
+    // #given main has no promoter — the token stays plain text through the
+    // seed, which is exactly why it must not be rewritten in passing.
+    const markdown = `See ${serializeLinkMentionToken("https://x.test/a*b_c'd")} here.`
+    const doc = new Y.Doc()
+    await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result).toBe(markdown)
+  })
+})
