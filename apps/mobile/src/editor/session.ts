@@ -27,6 +27,15 @@ const log = createLogger('EditorSession')
 const LOCAL_PREFIX = 'local.'
 
 /**
+ * How long a lock waits for in-flight work before wiping key material anyway.
+ *
+ * Long enough for a normal drain or upload to finish, short enough that a
+ * stalled request cannot leave the keys in memory indefinitely after the user
+ * explicitly locked the vault.
+ */
+const LOCK_WIPE_DEADLINE_MS = 30_000
+
+/**
  * The doc store over the two CRDT namespaces.
  *
  * Server rows sit under the bare doc id with the SERVER's sequence numbers;
@@ -330,13 +339,23 @@ async function build(vaultId: string): Promise<EditorSession> {
       locked = true
       docs.closeAll()
 
-      void drain
-        .drain()
-        .catch(() => undefined)
-        .then(() => {
-          oldVaultKey?.fill(0)
-          oldKeypair?.privateKey.fill(0)
-        })
+      // Uploads too: `AttachmentTransfer.upload` holds the same keys across
+      // its chunk PUTs and its manifest signing, so wiping mid-upload produces
+      // a permanently undecryptable attachment — the same corruption, one
+      // subsystem over.
+      //
+      // And BOUNDED. The HTTP client sets no fetch timeout on this path, so a
+      // stalled request would otherwise mean the keys are never wiped at all
+      // after an explicit lock. Whichever comes first: quiet, or the deadline.
+      const quiet = Promise.all([
+        drain.drain().catch(() => undefined),
+        attachments.idle().catch(() => undefined)
+      ])
+      const deadline = new Promise((resolve) => setTimeout(resolve, LOCK_WIPE_DEADLINE_MS))
+      void Promise.race([quiet, deadline]).then(() => {
+        oldVaultKey?.fill(0)
+        oldKeypair?.privateKey.fill(0)
+      })
     },
 
     async flush() {

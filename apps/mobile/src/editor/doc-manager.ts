@@ -136,9 +136,23 @@ export interface OpenDoc {
  */
 export const MAX_OPEN_DOCS = 8
 
+/**
+ * How long a doc is protected from eviction after being handed out.
+ *
+ * `inUse()` reads the listener sets, and an `EditorView` subscribes only after
+ * `openDoc` resolves and the component mounts — a frame or two. In between the
+ * doc looks idle, so a concurrent open could destroy it out from under a
+ * screen that is about to use it. The window is bounded rather than open-ended
+ * because some callers (the snapshot push path) open a doc and never
+ * subscribe at all; those must still become collectable.
+ */
+export const UNCLAIMED_GRACE_MS = 5_000
+
 export class EditorDocManager {
   /** Insertion order IS the LRU order — a reopen re-inserts at the end. */
   private open = new Map<string, Promise<OpenDoc>>()
+  /** docId → when it was handed out, for the grace window above. */
+  private handedOutAt = new Map<string, number>()
 
   constructor(
     private readonly store: DocStore,
@@ -157,6 +171,7 @@ export class EditorDocManager {
       this.open.delete(docId)
       this.open.set(docId, cached)
       const doc = await cached
+      this.handedOutAt.set(docId, Date.now())
       // Reusing a cached doc without this is how a desktop edit stays
       // invisible after navigating away and back: the rows are in SQLite, the
       // in-memory doc simply never read them.
@@ -166,11 +181,12 @@ export class EditorDocManager {
 
     const pending = this.load(docId)
     this.open.set(docId, pending)
-    pending.catch(() => this.open.delete(docId))
-    // Excluded from eviction: it has no subscriber yet — the EditorView
-    // subscribes after this resolves — so a cache full of mounted screens
-    // would otherwise destroy the very doc this call is about to hand back.
-    void this.evictOldest(docId)
+    this.handedOutAt.set(docId, Date.now())
+    pending.catch(() => {
+      this.open.delete(docId)
+      this.handedOutAt.delete(docId)
+    })
+    void this.evictOldest()
     return pending
   }
 
@@ -185,13 +201,12 @@ export class EditorDocManager {
    * rather than a hard bound; a screen unsubscribes on unmount, and the next
    * open collects it.
    */
-  private async evictOldest(keep: string): Promise<void> {
+  private async evictOldest(): Promise<void> {
     if (this.open.size <= MAX_OPEN_DOCS) return
 
     let over = this.open.size - MAX_OPEN_DOCS
     for (const docId of [...this.open.keys()]) {
       if (over <= 0) return
-      if (docId === keep) continue
       const pending = this.open.get(docId)
       if (!pending) continue
       let doc: OpenDoc
@@ -199,10 +214,18 @@ export class EditorDocManager {
         doc = await pending
       } catch {
         this.open.delete(docId)
+        this.handedOutAt.delete(docId)
         over -= 1
         continue
       }
-      if (doc.inUse()) continue
+      // Held by a mounted view, or handed out so recently that its view has
+      // not had a frame to subscribe yet.
+      if (doc.inUse()) {
+        this.handedOutAt.delete(docId)
+        continue
+      }
+      const handedOut = this.handedOutAt.get(docId)
+      if (handedOut !== undefined && Date.now() - handedOut < UNCLAIMED_GRACE_MS) continue
       await this.closeDoc(docId)
       over -= 1
     }
@@ -233,6 +256,7 @@ export class EditorDocManager {
     const pending = this.open.get(docId)
     if (!pending) return
     this.open.delete(docId)
+    this.handedOutAt.delete(docId)
     try {
       ;(await pending).close()
     } catch (err) {

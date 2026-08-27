@@ -1,4 +1,5 @@
 import type { VaultDb } from '@/db/index'
+import { crdtProbedKey, seedKey } from '@/db/keys'
 import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
@@ -197,7 +198,8 @@ export async function createNote(
       `INSERT INTO note_bodies (item_id, path, markdown, fetched_at) VALUES (?, ?, ?, ?)`,
       [noteId, derivePath(payload), payload.content ?? '', now]
     )
-    // The seed marker, and it is deliberately narrow — see `takePendingSeed`.
+    // The seed marker, and it is deliberately narrow — see
+    // `resolveSeedMarkdown` for what makes seeding safe.
     if ((payload.content ?? '').length > 0) {
       await ctx.db.runAsync(
         `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
@@ -333,8 +335,6 @@ export function generateId(): string {
 
 // --- editor seeding --------------------------------------------------------
 
-const seedKey = (noteId: string) => `seed.${noteId}`
-
 /**
  * Markdown to seed an empty editor with — or `undefined`, which means "leave
  * it empty".
@@ -351,10 +351,9 @@ const seedKey = (noteId: string) => `seed.${noteId}`
  *
  *  1. THIS device created the note (the marker below). True even offline,
  *     which is the case the second piece cannot cover.
- *  2. A CRDT pull for this note has completed and found nothing — the
- *     `crdt.since` watermark exists and is 0. That is what covers a note
- *     created on another device and opened here before its body ever
- *     round-tripped through CRDT.
+ *  2. A CRDT pull has REACHED this note (the probe marker) and the doc is
+ *     still empty. That is what covers a note created on another device and
+ *     opened here before its body ever round-tripped through CRDT.
  *
  * Neither available (offline, never pulled) means no seed: a blank editor that
  * fills in when the body arrives is recoverable, a duplicated body is not.
@@ -368,12 +367,14 @@ export async function resolveSeedMarkdown(
   ])
   if (marker?.value) return marker.value
 
-  const watermark = await db.getFirstAsync<{ value: string }>(
-    'SELECT value FROM meta WHERE key = ?',
-    [`crdt.since.${noteId}`]
-  )
-  // Absent watermark = never pulled, which proves nothing.
-  if (!watermark || Number(watermark.value) !== 0) return undefined
+  // The PROBE marker, not the `crdt.since` watermark. A watermark is written
+  // only when a pull finds something, so its absence is indistinguishable
+  // between "the server has nothing" and "we have never asked" — reading it
+  // here made this whole branch unreachable.
+  const probed = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', [
+    crdtProbedKey(noteId)
+  ])
+  if (!probed) return undefined
 
   const body = await db.getFirstAsync<{ markdown: string }>(
     'SELECT markdown FROM note_bodies WHERE item_id = ?',

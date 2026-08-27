@@ -65,9 +65,17 @@ export default function NoteScreen() {
   // its body to a back-navigation or a kill in between.
   useEffect(() => {
     if (!doc || !session || !id || !seedMarkdown) return
-    return doc.onLocalUpdate(() => {
+    let done = false
+    const unsubscribe = doc.onLocalUpdate(() => {
+      // ONCE. `seedMarkdown` never changes, so without this the listener stays
+      // attached and issues an unqueued DELETE per ~24 ms keystroke batch — on
+      // the same single SQLite connection the persist path is using.
+      if (done) return
+      done = true
+      unsubscribe()
       void clearPendingSeed(session.db, id).catch(() => {})
     })
+    return unsubscribe
   }, [doc, id, seedMarkdown, session])
 
   useEffect(() => {

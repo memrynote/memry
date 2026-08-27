@@ -56,6 +56,14 @@ export interface CrdtPullDeps {
   signal?: AbortSignal
   /** Called after a note's body state changed on disk (materialize previews). */
   onNoteBodyChanged?: (noteId: string) => Promise<void> | void
+  /**
+   * Called for every note the pull actually reached, with whether it changed.
+   *
+   * Distinct from `onNoteBodyChanged`, which only fires when something
+   * arrived: a shell needs "this note was looked at and the server had
+   * nothing" as a positive fact, and no watermark is written in that case.
+   */
+  onNoteProbed?: (noteId: string, changed: boolean) => Promise<void> | void
 }
 
 export interface CrdtPullResult {
@@ -129,6 +137,11 @@ export class CrdtBodyPuller {
             result.notesUpdated++
             await this.deps.onNoteBodyChanged?.(noteId)
           }
+          // Fires whether or not anything came back. "The server has no CRDT
+          // for this note" is a fact a shell can only learn here, and it is
+          // not the same as "nothing changed" — a watermark is written only
+          // when there IS something, so its absence proves nothing.
+          await this.deps.onNoteProbed?.(noteId, changed)
         } catch (err) {
           result.notesFailed++
           this.deps.log.warn('CRDT body pull failed for note', {

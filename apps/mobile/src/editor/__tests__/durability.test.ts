@@ -3,6 +3,7 @@ import * as Y from 'yjs'
 import {
   EditorDocManager,
   MAX_OPEN_DOCS,
+  UNCLAIMED_GRACE_MS,
   type DocHalves,
   type DocStore,
   type OutboxSink
@@ -291,16 +292,28 @@ describe('EditorDocManager durability', () => {
     expect(same).toBe(held)
   })
 
-  it('evicts unheld docs past the cap', async () => {
-    const rec = recorder()
-    const manager = new EditorDocManager(rec.store, rec.outbox)
+  it('evicts unheld docs once their grace window has passed', async () => {
+    vi.useFakeTimers()
+    try {
+      const rec = recorder()
+      const manager = new EditorDocManager(rec.store, rec.outbox)
 
-    for (let i = 0; i < MAX_OPEN_DOCS + 3; i++) await manager.openDoc(`note-${i}`)
+      for (let i = 0; i < MAX_OPEN_DOCS + 3; i++) await manager.openDoc(`note-${i}`)
 
-    // Least-recently-opened goes first. Eviction is free: a doc holds nothing
-    // that is not already on disk.
-    expect(manager.isOpen('note-0')).toBe(false)
-    expect(manager.isOpen(`note-${MAX_OPEN_DOCS + 2}`)).toBe(true)
+      // Still inside the grace window: a doc handed out a moment ago may not
+      // have had a frame to be subscribed to yet.
+      expect(manager.isOpen('note-0')).toBe(true)
+
+      vi.advanceTimersByTime(UNCLAIMED_GRACE_MS + 1)
+      await manager.openDoc('note-late')
+
+      // Least-recently-opened goes first. Eviction is free: a doc holds
+      // nothing that is not already on disk.
+      expect(manager.isOpen('note-0')).toBe(false)
+      expect(manager.isOpen('note-late')).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('reuses an open doc rather than re-reading SQLite per WebView re-create', async () => {
