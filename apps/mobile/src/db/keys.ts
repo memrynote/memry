@@ -6,8 +6,5 @@
  * half of it fails silently — the reader simply never finds the row.
  */
 
-/** Set once a CRDT body pull has REACHED this note, whatever it found. */
-export const crdtProbedKey = (noteId: string) => `crdt.probed.${noteId}`
-
 /** Markdown to seed a locally-created note's editor with, until it lands. */
 export const seedKey = (noteId: string) => `seed.${noteId}`

@@ -16,6 +16,7 @@ import { resolveAsset } from '@/features/attachments/resolve'
 import { NoteManageSheet } from '@/features/notes/manage'
 import {
   clearPendingSeed,
+  materializedBody,
   readNotePayload,
   resolveSeedMarkdown,
   type NoteOpsContext,
@@ -27,6 +28,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
+import { ensureNoteBody } from '@/sync/body-fetch'
 import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
 
@@ -88,7 +90,20 @@ export default function NoteScreen() {
       const editorSession = await getEditorSession(vaultId)
       const openDoc = await editorSession.docs.openDoc(id)
       const notePayload = await readNotePayload(editorSession.db, id)
-      const seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
+      let seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
+
+      if (!seed && openDoc.isEmpty()) {
+        // No create marker, so the only other evidence that seeding is safe is
+        // a CRDT pull that completes NOW and still leaves the doc empty. A
+        // marker written earlier would say nothing about what another device
+        // pushed while this one was offline, which is why the probe happens
+        // here rather than being remembered.
+        const pulled = await ensureNoteBody(vaultId, id)
+        if (pulled) await openDoc.refreshFromServer()
+        if (!cancelled && openDoc.isEmpty()) {
+          seed = await materializedBody(editorSession.db, id)
+        }
+      }
 
       if (cancelled) return
       setSession(editorSession)

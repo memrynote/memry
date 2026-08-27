@@ -1,5 +1,5 @@
 import type { VaultDb } from '@/db/index'
-import { crdtProbedKey, seedKey } from '@/db/keys'
+import { seedKey } from '@/db/keys'
 import { withVaultTransaction } from '@/db/tx'
 import { createLogger } from '@/lib/logger'
 import { bumpClock, type OutboxStore } from '@/sync/outbox'
@@ -351,12 +351,16 @@ export function generateId(): string {
  *
  *  1. THIS device created the note (the marker below). True even offline,
  *     which is the case the second piece cannot cover.
- *  2. A CRDT pull has REACHED this note (the probe marker) and the doc is
- *     still empty. That is what covers a note created on another device and
- *     opened here before its body ever round-tripped through CRDT.
+ *  2. A CRDT pull for this note completes RIGHT NOW and the doc is still
+ *     empty. That covers a note created on another device and opened here
+ *     before its body ever round-tripped through CRDT — and the caller does
+ *     that probe at open time rather than trusting a stored marker, because a
+ *     marker written earlier says nothing about what another device pushed
+ *     while this one was offline.
  *
- * Neither available (offline, never pulled) means no seed: a blank editor that
- * fills in when the body arrives is recoverable, a duplicated body is not.
+ * Neither available (offline, or the probe fails) means no seed: a blank
+ * editor that fills in when the body arrives is recoverable, a duplicated body
+ * is not.
  */
 export async function resolveSeedMarkdown(
   db: VaultDb,
@@ -367,15 +371,17 @@ export async function resolveSeedMarkdown(
   ])
   if (marker?.value) return marker.value
 
-  // The PROBE marker, not the `crdt.since` watermark. A watermark is written
-  // only when a pull finds something, so its absence is indistinguishable
-  // between "the server has nothing" and "we have never asked" — reading it
-  // here made this whole branch unreachable.
-  const probed = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', [
-    crdtProbedKey(noteId)
-  ])
-  if (!probed) return undefined
+  return undefined
+}
 
+/**
+ * The markdown body as the pull path materialized it.
+ *
+ * Reading it is safe; SEEDING from it is not, unless a CRDT pull for this note
+ * has just completed and left the doc empty. See `resolveSeedMarkdown` — the
+ * caller does that probe, this is only the read.
+ */
+export async function materializedBody(db: VaultDb, noteId: string): Promise<string | undefined> {
   const body = await db.getFirstAsync<{ markdown: string }>(
     'SELECT markdown FROM note_bodies WHERE item_id = ?',
     [noteId]

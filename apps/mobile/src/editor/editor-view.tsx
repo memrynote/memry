@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native'
-import { KeyboardAvoidingView } from 'react-native'
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import {
   BRIDGE_PROTOCOL_VERSION,

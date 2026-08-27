@@ -10,8 +10,7 @@ import { DeviceKeysResponseSchema } from '@memry/contracts/sync-api'
 import type { SyncHttpClient } from '@memry/sync-client/adapters'
 import { createMobileHttpClient } from '../adapters/http-client'
 import { mobileAppVersion } from '../adapters/runtime'
-import { openVaultDb, setMeta } from '../db/index'
-import { crdtProbedKey } from '../db/keys'
+import { openVaultDb } from '../db/index'
 import { MobilePullStore } from '../db/pull-store'
 import { fromBase64 } from '../crypto/libsodium'
 import { createLogger } from '../lib/logger'
@@ -205,13 +204,6 @@ export class MobileSyncEngine {
       isOnline: () => this.online,
       onNoteBodyChanged: async (noteId) => {
         await materializeNoteBody(db, store, noteId)
-      },
-      // Recorded so the editor can tell "the server has no CRDT for this
-      // note" from "we have never asked". Only the first tells it that
-      // seeding the doc from the markdown body is safe; the second means a
-      // seed could duplicate a body the server already holds.
-      onNoteProbed: async (noteId) => {
-        await setMeta(db, crdtProbedKey(noteId), '1')
       }
     })
     const result = await puller.pullBodies(noteIds)

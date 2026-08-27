@@ -80,22 +80,6 @@ export class AttachmentTransfer {
   private readonly store = createMobileAttachmentStore()
   /** In-flight downloads, so two blocks pointing at one file fetch it once. */
   private inFlight = new Map<string, Promise<AttachmentAvailability>>()
-  /**
-   * In-flight uploads.
-   *
-   * An upload captures the vault and signing keys for its whole run — chunks
-   * first, then the manifest — so a vault lock that zeroed those buffers
-   * mid-upload would sign the manifest with all-zero keys and produce a
-   * permanently undecryptable attachment. `idle()` is what lets the lock wait.
-   */
-  private uploads = new Set<Promise<unknown>>()
-
-  /** Resolves once no transfer is holding key material. */
-  async idle(): Promise<void> {
-    while (this.uploads.size > 0) {
-      await Promise.allSettled([...this.uploads])
-    }
-  }
 
   constructor(private readonly deps: AttachmentTransferDeps) {}
 

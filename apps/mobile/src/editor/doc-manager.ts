@@ -205,29 +205,44 @@ export class EditorDocManager {
     if (this.open.size <= MAX_OPEN_DOCS) return
 
     let over = this.open.size - MAX_OPEN_DOCS
-    for (const docId of [...this.open.keys()]) {
-      if (over <= 0) return
-      const pending = this.open.get(docId)
-      if (!pending) continue
-      let doc: OpenDoc
-      try {
-        doc = await pending
-      } catch {
-        this.open.delete(docId)
-        this.handedOutAt.delete(docId)
+
+    // Two passes, and the difference between them is the whole design.
+    //
+    // The first respects the hand-out grace window, which protects a doc that
+    // has resolved but whose `EditorView` has not had a frame to subscribe
+    // yet. The second ignores it, because the grace is a PREFERENCE: a burst
+    // of opens inside five seconds — fast list navigation, a run of snapshot
+    // pushes — would otherwise leave every doc protected, `over` never
+    // decrementing, and the cap unenforced on exactly the low-memory device it
+    // exists to protect.
+    //
+    // `inUse()` is honoured in BOTH passes. Destroying a doc a mounted screen
+    // is listening to leaves that screen permanently deaf to pulled updates,
+    // and no memory pressure justifies that.
+    for (const respectGrace of [true, false]) {
+      for (const docId of [...this.open.keys()]) {
+        if (over <= 0) return
+        const pending = this.open.get(docId)
+        if (!pending) continue
+
+        let doc: OpenDoc
+        try {
+          doc = await pending
+        } catch {
+          this.open.delete(docId)
+          this.handedOutAt.delete(docId)
+          over -= 1
+          continue
+        }
+
+        if (doc.inUse()) continue
+        if (respectGrace) {
+          const handedOut = this.handedOutAt.get(docId)
+          if (handedOut !== undefined && Date.now() - handedOut < UNCLAIMED_GRACE_MS) continue
+        }
+        await this.closeDoc(docId)
         over -= 1
-        continue
       }
-      // Held by a mounted view, or handed out so recently that its view has
-      // not had a frame to subscribe yet.
-      if (doc.inUse()) {
-        this.handedOutAt.delete(docId)
-        continue
-      }
-      const handedOut = this.handedOutAt.get(docId)
-      if (handedOut !== undefined && Date.now() - handedOut < UNCLAIMED_GRACE_MS) continue
-      await this.closeDoc(docId)
-      over -= 1
     }
   }
 

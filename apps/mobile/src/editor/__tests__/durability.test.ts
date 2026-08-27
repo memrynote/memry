@@ -292,25 +292,39 @@ describe('EditorDocManager durability', () => {
     expect(same).toBe(held)
   })
 
-  it('evicts unheld docs once their grace window has passed', async () => {
+  it('enforces the cap even during a burst inside the grace window', async () => {
     vi.useFakeTimers()
     try {
       const rec = recorder()
       const manager = new EditorDocManager(rec.store, rec.outbox)
 
+      // Every one of these is inside the grace window, so the first pass
+      // protects them all. The cap still has to hold — this is exactly the
+      // fast-navigation burst the cap exists for.
       for (let i = 0; i < MAX_OPEN_DOCS + 3; i++) await manager.openDoc(`note-${i}`)
 
-      // Still inside the grace window: a doc handed out a moment ago may not
-      // have had a frame to be subscribed to yet.
-      expect(manager.isOpen('note-0')).toBe(true)
-
-      vi.advanceTimersByTime(UNCLAIMED_GRACE_MS + 1)
-      await manager.openDoc('note-late')
-
-      // Least-recently-opened goes first. Eviction is free: a doc holds
-      // nothing that is not already on disk.
       expect(manager.isOpen('note-0')).toBe(false)
-      expect(manager.isOpen('note-late')).toBe(true)
+      expect(manager.isOpen(`note-${MAX_OPEN_DOCS + 2}`)).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('prefers to keep a freshly handed-out doc over an older idle one', async () => {
+    vi.useFakeTimers()
+    try {
+      const rec = recorder()
+      const manager = new EditorDocManager(rec.store, rec.outbox)
+
+      for (let i = 0; i < MAX_OPEN_DOCS; i++) await manager.openDoc(`note-${i}`)
+      vi.advanceTimersByTime(UNCLAIMED_GRACE_MS + 1)
+
+      const fresh = await manager.openDoc('note-fresh')
+
+      // The oldest went, and the one just handed back is still usable — its
+      // EditorView has not even had a frame to subscribe yet.
+      expect(manager.isOpen('note-0')).toBe(false)
+      expect(await manager.openDoc('note-fresh')).toBe(fresh)
     } finally {
       vi.useRealTimers()
     }

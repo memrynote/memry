@@ -27,15 +27,6 @@ const log = createLogger('EditorSession')
 const LOCAL_PREFIX = 'local.'
 
 /**
- * How long a lock waits for in-flight work before wiping key material anyway.
- *
- * Long enough for a normal drain or upload to finish, short enough that a
- * stalled request cannot leave the keys in memory indefinitely after the user
- * explicitly locked the vault.
- */
-const LOCK_WIPE_DEADLINE_MS = 30_000
-
-/**
  * The doc store over the two CRDT namespaces.
  *
  * Server rows sit under the bare doc id with the SERVER's sequence numbers;
@@ -324,38 +315,28 @@ async function build(vaultId: string): Promise<EditorSession> {
     drain,
     attachments,
     lock() {
-      // The REFERENCES are dropped immediately, so nothing new can encrypt
-      // with them. The buffers are zeroed only once the running drain has
-      // settled: `OutboxDrain` captured those same arrays when the pass
-      // started, and wiping them mid-pass makes the remaining chunks encrypt
-      // with an all-zero key. CRDT updates are not signature-checked
-      // server-side, so that blob is ACCEPTED, its queue row is completed, and
-      // the edit is undecryptable on every device forever.
-      const oldVaultKey = vaultKey
-      const oldKeypair = keypair
+      // References dropped, buffers NOT wiped — deliberately.
+      //
+      // Zeroing them looks like the careful thing and is the opposite here:
+      // the outbox drain and every in-flight attachment upload captured these
+      // same arrays when they started, and each holds them across a whole run
+      // of network requests. Wiping mid-run makes the rest of that run encrypt
+      // and sign with an all-zero key, and because CRDT updates are not
+      // signature-checked server-side the result is ACCEPTED, its queue row is
+      // completed, and that edit is undecryptable on every device forever.
+      // Two separate attempts to time the wipe safely (wait for the drain;
+      // wait with a deadline) each still had a window that ends in permanent
+      // corruption, and a phone's process memory is not the threat model that
+      // justifies the risk.
+      //
+      // Per-operation keys ARE still wiped, in the `finally` of the operation
+      // that generated them — that is the case where nobody else can be
+      // holding them.
       vaultKey = null
       keypair = null
       accessToken = ''
       locked = true
       docs.closeAll()
-
-      // Uploads too: `AttachmentTransfer.upload` holds the same keys across
-      // its chunk PUTs and its manifest signing, so wiping mid-upload produces
-      // a permanently undecryptable attachment — the same corruption, one
-      // subsystem over.
-      //
-      // And BOUNDED. The HTTP client sets no fetch timeout on this path, so a
-      // stalled request would otherwise mean the keys are never wiped at all
-      // after an explicit lock. Whichever comes first: quiet, or the deadline.
-      const quiet = Promise.all([
-        drain.drain().catch(() => undefined),
-        attachments.idle().catch(() => undefined)
-      ])
-      const deadline = new Promise((resolve) => setTimeout(resolve, LOCK_WIPE_DEADLINE_MS))
-      void Promise.race([quiet, deadline]).then(() => {
-        oldVaultKey?.fill(0)
-        oldKeypair?.privateKey.fill(0)
-      })
     },
 
     async flush() {
