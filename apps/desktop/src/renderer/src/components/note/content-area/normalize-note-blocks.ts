@@ -20,6 +20,7 @@ import { normalizeLinkMentions } from './link-mention-utils'
 import { normalizeDateMentions } from './date-mention-utils'
 import { normalizeInlineCheckboxes } from './inline-checkbox-utils'
 import { normalizeTaskBlocks } from './task-block/task-block-utils'
+import { reportUnclaimedTokens } from './unclaimed-token-telemetry'
 
 export function normalizeNoteBlocks(blocks: Block[]): Block[] {
   let normalized = normalizeWikiLinks(blocks).blocks
@@ -31,5 +32,9 @@ export function normalizeNoteBlocks(blocks: Block[]): Block[] {
   // cell whose token is followed by a wiki link or a mention has already had
   // that half promoted, so this only ever looks at the leading text run.
   normalized = normalizeInlineCheckboxes(normalized).blocks
-  return normalizeTaskBlocks(normalized as any[]).blocks as Block[]
+  const result = normalizeTaskBlocks(normalized as any[]).blocks as Block[]
+  // Anything still literal after the chain is a token the note will render
+  // broken. Counted, never surfaced — see unclaimed-token-telemetry.ts (#1848).
+  reportUnclaimedTokens(result)
+  return result
 }
