@@ -27,7 +27,7 @@ export interface RoundtripCase {
   pending?: { renderer?: number; main?: number }
 }
 
-export const MENTION_URLS = [
+const MENTION_URLS = [
   'https://example.com/a_b_c',
   'https://example.com/a*b*c',
   'https://example.com/a!b',
@@ -42,7 +42,7 @@ export const MENTION_URLS = [
   "https://example.com/x_(y)*z!~'&=#%20 end)"
 ] as const
 
-export function dateMentionData(overrides: Partial<DateMentionData> = {}): DateMentionData {
+function dateMentionData(overrides: Partial<DateMentionData> = {}): DateMentionData {
   return {
     anchorId: 'a1',
     dateISO: '2026-08-14T09:00:00.000Z',
@@ -62,7 +62,7 @@ export function dateMentionData(overrides: Partial<DateMentionData> = {}): DateM
  * alignments rather than hardcoded at one; a change to the JSON field order
  * that shifts them all fails loudly instead of silently weakening the corpus.
  */
-export function anchorIdWithEmphasisRuns(): string {
+function anchorIdWithEmphasisRuns(): string {
   const underscoreBytes = 'ÿ'.repeat(4)
   const dashBytes = 'ûï¾'.repeat(3)
   for (let pad = 0; pad < 3; pad++) {
@@ -308,13 +308,13 @@ function inertLine(random: () => number): string {
   )
 }
 
-export function fuzzMentionMarkdown(random: () => number): string {
+function fuzzMentionMarkdown(random: () => number): string {
   const path = stringFrom(random, URL_ALPHABET, 1 + Math.floor(random() * 24))
   const url = `https://fuzz.example/${path}`
   return `Fuzz ${serializeLinkMentionToken(url)} tail.`
 }
 
-export function fuzzDateMarkdown(random: () => number): string {
+function fuzzDateMarkdown(random: () => number): string {
   const remindValues = ['none', 'at', '5m', '1h', '1d', '1w'] as const
   const data = dateMentionData({
     anchorId: stringFrom(random, ANCHOR_ALPHABET, 1 + Math.floor(random() * 16)),
@@ -325,14 +325,14 @@ export function fuzzDateMarkdown(random: () => number): string {
   return `Fuzz ${serializeDateMentionToken(data)} tail.`
 }
 
-export function fuzzCalloutMarkdown(random: () => number): string {
+function fuzzCalloutMarkdown(random: () => number): string {
   const types = ['info', 'warning', 'error', 'success'] as const
   const lines = 1 + Math.floor(random() * 3)
   const body = Array.from({ length: lines }, () => inertLine(random)).join('\n')
   return serializeCalloutBlock(pick(random, types), body)
 }
 
-export function fuzzToggleMarkdown(random: () => number, depth = 0): string {
+function fuzzToggleMarkdown(random: () => number, depth = 0): string {
   const roll = random()
   const body =
     roll < 0.2

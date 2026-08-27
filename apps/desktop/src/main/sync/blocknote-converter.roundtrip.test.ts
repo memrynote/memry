@@ -31,6 +31,7 @@ async function roundTrip(markdown: string): Promise<string> {
 
 describe('round-trip conformance corpus, main pipeline', () => {
   const cases = ROUNDTRIP_CASES.map((c) => ({ ...c, pendingIssue: c.pending?.main }))
+  const pendingCases = cases.filter((c) => c.pendingIssue)
 
   it.each(cases.filter((c) => !c.pendingIssue))('$name', async ({ markdown }) => {
     const once = await roundTrip(markdown)
@@ -41,14 +42,13 @@ describe('round-trip conformance corpus, main pipeline', () => {
   // Broken on current main; fixed by the named sibling of epic #1843. `it.fails`
   // inverts the expectation, so the sibling landing turns these red and forces
   // the pending flag off — the case then asserts the fixed behavior forever.
-  it.fails.each(cases.filter((c) => c.pendingIssue))(
-    '$name (pending #$pendingIssue)',
-    async ({ markdown }) => {
+  if (pendingCases.length > 0) {
+    it.fails.each(pendingCases)('$name (pending #$pendingIssue)', async ({ markdown }) => {
       const once = await roundTrip(markdown)
       expect(once, 'round-trip is identity').toBe(markdown)
       expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
-    }
-  )
+    })
+  }
 })
 
 describe('round-trip fuzz, main pipeline', () => {
@@ -67,15 +67,19 @@ describe('round-trip fuzz, main pipeline', () => {
     }
   }
 
+  const pendingFamilies = families.filter((f) => f.pendingIssue)
+
   it.each(families.filter((f) => !f.pendingIssue))(
     '$name stay byte-identical across 48 seeded cases',
     async ({ generate }) => assertFamily(generate)
   )
 
-  it.fails.each(families.filter((f) => f.pendingIssue))(
-    '$name stay byte-identical across 48 seeded cases (pending #$pendingIssue)',
-    async ({ generate }) => assertFamily(generate)
-  )
+  if (pendingFamilies.length > 0) {
+    it.fails.each(pendingFamilies)(
+      '$name stay byte-identical across 48 seeded cases (pending #$pendingIssue)',
+      async ({ generate }) => assertFamily(generate)
+    )
+  }
 })
 
 describe('golden vault round-trip fixtures, main pipeline', () => {
