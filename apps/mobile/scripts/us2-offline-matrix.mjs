@@ -176,7 +176,37 @@ function doctor() {
     } catch {
       bad(
         `${APP_ID} installed`,
-        'no app on the simulator — run `pnpm --filter @memry/mobile ios` first'
+        'no app on the simulator — run `pnpm --filter @memry/mobile ios:staging` first'
+      )
+    }
+  }
+
+  /*
+   * Metro, because a dev build has no bundle of its own.
+   *
+   * Each pass calls `launchApp` three times and `stopApp` twice, so twenty
+   * runs is sixty cold starts, and every one of them fetches its JS from the
+   * packager. Kill Metro and the run does not fail with "Metro is down" — the
+   * app comes up on the dev-client's red screen, Maestro times out on a
+   * selector, and the report blames the assertion.
+   *
+   * Skipped for a release build on hardware, which carries its own bundle.
+   */
+  if (!ON_DEVICE) {
+    try {
+      const status = execFileSync(
+        'curl',
+        ['-sS', '--max-time', '3', 'http://localhost:8081/status'],
+        { stdio: ['ignore', 'pipe', 'ignore'] }
+      )
+        .toString()
+        .trim()
+      if (status.includes('packager-status:running')) ok('metro', 'running on :8081')
+      else bad('metro', `unexpected reply on :8081 — ${status.slice(0, 40)}`)
+    } catch {
+      bad(
+        'metro',
+        'not answering on :8081 — leave `pnpm --filter @memry/mobile ios:staging` running'
       )
     }
   }
@@ -187,7 +217,11 @@ function doctor() {
   console.log(
     '\nNot checkable from here: the vault has to be UNLOCKED on the device.' +
       '\nIts recovery phrase is the only key, so that step is yours; after it the' +
-      '\nsession persists and the runs are unattended.'
+      '\nsession persists and the runs are unattended.' +
+      '\n\nLeave the simulator booted and Metro running for the whole matrix, and' +
+      '\nkeep your hands off the simulator while it runs: `--udid booted` targets' +
+      '\nwhatever is booted now, and Maestro drives the same UI you would be' +
+      '\ntouching. A Mac that sleeps mid-run takes the simulator with it.'
   )
   return checks.every((check) => check.pass)
 }
