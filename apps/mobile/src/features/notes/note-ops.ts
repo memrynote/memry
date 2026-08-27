@@ -254,6 +254,9 @@ export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<v
       [now, now, serialized, noteId]
     )
     await ctx.db.runAsync('DELETE FROM note_bodies WHERE item_id = ?', [noteId])
+    // The seed marker holds the note's plaintext body; it goes with the note
+    // rather than sitting in `meta` for the life of the vault.
+    await ctx.db.runAsync('DELETE FROM meta WHERE key = ?', [seedKey(noteId)])
     // Queued body updates describe a note that no longer exists; sending them
     // after the tombstone resurrects content on the other devices. This runs
     // INSIDE the transaction — done beforehand, a bridge flush landing in the
@@ -333,28 +336,59 @@ export function generateId(): string {
 const seedKey = (noteId: string) => `seed.${noteId}`
 
 /**
- * Markdown to seed a brand-new note's editor with, consumed exactly once.
+ * Markdown to seed an empty editor with — or `undefined`, which means "leave
+ * it empty".
  *
- * ONLY notes this device just created are seeded, which is why there is a
- * marker rather than a rule like "the doc is empty, so use `note_bodies`".
- * That rule is wrong and expensively so: the first sync pulls CRDT bodies only
- * for recently-touched notes, while the record applier fills `note_bodies` for
- * EVERY note from its create-time `content`. Opening an older note would find
- * an empty local doc and a markdown body, seed a fresh Y.Doc from it and push
- * that — and when it merged with the server's existing state the note's body
- * would appear twice, on every device.
+ * The naive rule ("the doc is empty, so use `note_bodies`") is wrong and
+ * expensively so: the first sync pulls CRDT bodies only for recently-touched
+ * notes, while the record applier fills `note_bodies` for EVERY note from its
+ * create-time `content`. Seeding an older note from that markdown pushes a
+ * second copy of its body, and it appears twice on every device once the
+ * server's existing state merges in.
  *
- * A note pulled from the server whose CRDT has not arrived yet is not seeded;
- * it waits for the body fetch, which is what actually has its content.
+ * So a seed needs positive evidence that the server has no CRDT for this note.
+ * There are exactly two such pieces of evidence:
+ *
+ *  1. THIS device created the note (the marker below). True even offline,
+ *     which is the case the second piece cannot cover.
+ *  2. A CRDT pull for this note has completed and found nothing — the
+ *     `crdt.since` watermark exists and is 0. That is what covers a note
+ *     created on another device and opened here before its body ever
+ *     round-tripped through CRDT.
+ *
+ * Neither available (offline, never pulled) means no seed: a blank editor that
+ * fills in when the body arrives is recoverable, a duplicated body is not.
  */
-export async function takePendingSeed(db: VaultDb, noteId: string): Promise<string | undefined> {
-  const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', [
+export async function resolveSeedMarkdown(
+  db: VaultDb,
+  noteId: string
+): Promise<string | undefined> {
+  const marker = await db.getFirstAsync<{ value: string }>('SELECT value FROM meta WHERE key = ?', [
     seedKey(noteId)
   ])
-  return row?.value && row.value.length > 0 ? row.value : undefined
+  if (marker?.value) return marker.value
+
+  const watermark = await db.getFirstAsync<{ value: string }>(
+    'SELECT value FROM meta WHERE key = ?',
+    [`crdt.since.${noteId}`]
+  )
+  // Absent watermark = never pulled, which proves nothing.
+  if (!watermark || Number(watermark.value) !== 0) return undefined
+
+  const body = await db.getFirstAsync<{ markdown: string }>(
+    'SELECT markdown FROM note_bodies WHERE item_id = ?',
+    [noteId]
+  )
+  return body?.markdown && body.markdown.length > 0 ? body.markdown : undefined
 }
 
-/** Called once the seed has been handed to the editor. */
+/**
+ * Called once the seed has actually LANDED in the doc.
+ *
+ * Not when it is read: a back-navigation, a kill or a WebView failure between
+ * reading and applying would leave the note blank forever, with the only copy
+ * of its body deleted.
+ */
 export async function clearPendingSeed(db: VaultDb, noteId: string): Promise<void> {
   await db.runAsync('DELETE FROM meta WHERE key = ?', [seedKey(noteId)])
 }

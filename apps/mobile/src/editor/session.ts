@@ -244,8 +244,11 @@ async function build(vaultId: string): Promise<EditorSession> {
   let accessToken = (await loadSession())?.accessToken ?? ''
   let vaultKey = await getVaultKey(vaultId)
   let keypair = await loadPushSigningKeypair()
+  /** Set by `lock()`; stops the re-read below from silently unlocking. */
+  let locked = false
 
   const refreshSecrets = async (): Promise<void> => {
+    if (locked) return
     if (!vaultKey) vaultKey = await getVaultKey(vaultId)
     if (!keypair) keypair = await loadPushSigningKeypair()
     if (!accessToken) accessToken = (await loadSession())?.accessToken ?? ''
@@ -312,12 +315,28 @@ async function build(vaultId: string): Promise<EditorSession> {
     drain,
     attachments,
     lock() {
-      vaultKey?.fill(0)
-      keypair?.privateKey.fill(0)
+      // The REFERENCES are dropped immediately, so nothing new can encrypt
+      // with them. The buffers are zeroed only once the running drain has
+      // settled: `OutboxDrain` captured those same arrays when the pass
+      // started, and wiping them mid-pass makes the remaining chunks encrypt
+      // with an all-zero key. CRDT updates are not signature-checked
+      // server-side, so that blob is ACCEPTED, its queue row is completed, and
+      // the edit is undecryptable on every device forever.
+      const oldVaultKey = vaultKey
+      const oldKeypair = keypair
       vaultKey = null
       keypair = null
       accessToken = ''
+      locked = true
       docs.closeAll()
+
+      void drain
+        .drain()
+        .catch(() => undefined)
+        .then(() => {
+          oldVaultKey?.fill(0)
+          oldKeypair?.privateKey.fill(0)
+        })
     },
 
     async flush() {

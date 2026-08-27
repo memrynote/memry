@@ -167,7 +167,10 @@ export class EditorDocManager {
     const pending = this.load(docId)
     this.open.set(docId, pending)
     pending.catch(() => this.open.delete(docId))
-    void this.evictOldest()
+    // Excluded from eviction: it has no subscriber yet — the EditorView
+    // subscribes after this resolves — so a cache full of mounted screens
+    // would otherwise destroy the very doc this call is about to hand back.
+    void this.evictOldest(docId)
     return pending
   }
 
@@ -182,12 +185,13 @@ export class EditorDocManager {
    * rather than a hard bound; a screen unsubscribes on unmount, and the next
    * open collects it.
    */
-  private async evictOldest(): Promise<void> {
+  private async evictOldest(keep: string): Promise<void> {
     if (this.open.size <= MAX_OPEN_DOCS) return
 
     let over = this.open.size - MAX_OPEN_DOCS
     for (const docId of [...this.open.keys()]) {
       if (over <= 0) return
+      if (docId === keep) continue
       const pending = this.open.get(docId)
       if (!pending) continue
       let doc: OpenDoc

@@ -17,7 +17,7 @@ import { NoteManageSheet } from '@/features/notes/manage'
 import {
   clearPendingSeed,
   readNotePayload,
-  takePendingSeed,
+  resolveSeedMarkdown,
   type NoteOpsContext,
   type NotePayload
 } from '@/features/notes/note-ops'
@@ -59,6 +59,17 @@ export default function NoteScreen() {
 
   useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
 
+  // The seed marker is cleared only once the seed has actually LANDED — the
+  // guest parses the markdown into blocks, which arrives here as an ordinary
+  // local update. Clearing it at read time would lose the note's only copy of
+  // its body to a back-navigation or a kill in between.
+  useEffect(() => {
+    if (!doc || !session || !id || !seedMarkdown) return
+    return doc.onLocalUpdate(() => {
+      void clearPendingSeed(session.db, id).catch(() => {})
+    })
+  }, [doc, id, seedMarkdown, session])
+
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -69,20 +80,13 @@ export default function NoteScreen() {
       const editorSession = await getEditorSession(vaultId)
       const openDoc = await editorSession.docs.openDoc(id)
       const notePayload = await readNotePayload(editorSession.db, id)
-      // From the CREATE marker, not from `note_bodies`: the record applier
-      // fills that table for every pulled note from its create-time content,
-      // and seeding an older note from it would duplicate the body on every
-      // device once the server's CRDT state merged in.
-      const seed = openDoc.isEmpty() ? await takePendingSeed(editorSession.db, id) : undefined
+      const seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
 
       if (cancelled) return
       setSession(editorSession)
       setDoc(openDoc)
       setPayload(notePayload)
       setSeedMarkdown(seed)
-      // Consumed once. A second open after the seed became real content must
-      // not re-apply it.
-      if (seed) void clearPendingSeed(editorSession.db, id)
     })().catch((err: unknown) => {
       // Without this the screen is a bare spinner forever and the failure
       // surfaces only as an unhandled rejection nobody reads.
