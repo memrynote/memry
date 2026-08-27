@@ -39,17 +39,28 @@ pnpm --filter @memry/mobile test:offline-matrix -- --runs 20 --device
 The cut comes from the APP, not from `simctl`: `status_bar --dataNetwork hide`
 only repaints the status bar and leaves the simulator fully online, so a run
 driven by it would do all of its "offline" work with a working network. A
-dev-build-only switch (`memry:///dev-network?offline=1`) makes the HTTP adapter
-report offline and reject every request instead — it cannot make the app behave
-BETTER than airplane mode, which is the property a gate needs. It is persisted,
-because the scenario force-quits and relaunches while offline. The offline flow
-also asserts the app's own Offline banner, so a pass cannot quietly have run
-online.
+dev-build-only switch, backed by a marker file the driver writes straight into
+the app's document container, makes the HTTP adapter report offline and reject
+every request instead — it cannot make the app behave BETTER than airplane
+mode, which is the property a gate needs, and it survives the force-quit the
+scenario depends on. The offline flow also asserts the app's own Offline
+banner, so a pass cannot quietly have run online.
 
-**Prerequisite this cannot supply:** a signed-in session and an unlocked vault.
-The recovery phrase is the only key to the vault and only Kaan has it, so the
-first run of a fresh install is manual; after that the session persists in the
-keychain and the 20 runs are unattended.
+### What has been verified on this machine, and what has not
+
+Verified on the iPhone 17e simulator (2026-08-27):
+
+- The app **builds, installs, bundles and boots** — `expo run:ios` succeeded,
+  Metro bundled 1984 modules, libsodium loaded, the router came up. That is the
+  gate the 1 MB gzipped editor asset had not passed before.
+- The account session is already in the keychain, so the app comes up on
+  **Unlock your vault**.
+
+**Not verified, and not verifiable without you:** everything past unlock. The
+24-word recovery phrase is the only key to the vault and it is yours alone, so
+the offline matrix, the latency measurement and the kill-switch drill all wait
+on it. Once the vault is unlocked once, the session and key persist and the 20
+runs are unattended.
 
 Attach: the driver's `20/20 passed` line, plus one screen recording of a single
 pass showing airplane mode → edit + create → force-quit → relaunch (edits present

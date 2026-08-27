@@ -31,23 +31,30 @@
  * all of its "offline" work with a working network and reports a green that
  * means nothing.
  *
- * Instead the app ships a dev-build-only switch reachable by deep link
- * (`memry:///dev-network?offline=1`), which makes the HTTP adapter report
- * offline and reject every request: `isOnline()` false, requests failing,
- * outbox parked and retried. It cannot make the app behave BETTER than real
- * airplane mode, which is the property a gate needs. The offline flow asserts
- * the app's own Offline banner, so a pass cannot quietly have run online.
+ * Instead the app ships a dev-build-only switch backed by a marker FILE in its
+ * document directory. While it exists the HTTP adapter reports offline and
+ * rejects every request: `isOnline()` false, requests failing, outbox parked
+ * and retried. It cannot make the app behave BETTER than real airplane mode,
+ * which is the property a gate needs, and the offline flow asserts the app's
+ * own Offline banner so a pass cannot quietly have run online.
  *
- * On real hardware there is no such lever for the radio, so `--device` prompts
- * for a manual airplane-mode toggle — slower, and honest.
+ * A file rather than a deep link, which was tried first and does not work:
+ * under the dev-client shell the `memry://` scheme is consumed by the launcher
+ * and the running app never sees the URL. A file needs no scheme, no UI and no
+ * running app, and it survives the force-quit the scenario depends on.
+ *
+ * On real hardware the data container is not writable from the host, so
+ * `--device` prompts for a manual airplane-mode toggle — slower, and honest.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
+import { rmSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const mobileRoot = resolve(here, '..')
+const APP_ID = 'com.memry.mobile'
 const offlineFlow = join(mobileRoot, '.maestro/us2-offline-matrix.yaml')
 const reconnectFlow = join(mobileRoot, '.maestro/us2-offline-reconnect.yaml')
 
@@ -76,15 +83,16 @@ async function setNetwork(online) {
     )
     return
   }
-  // The app's own switch. `openurl` does not navigate — the root layout
-  // handles this link without touching the current screen — so a transition
-  // mid-flow leaves the app exactly where the flow left it.
-  execFileSync('xcrun', [
-    'simctl',
-    'openurl',
-    UDID,
-    `memry:///dev-network?offline=${online ? '0' : '1'}`
-  ])
+
+  // The app's own switch, written straight into its document directory. No
+  // scheme, no UI, no navigation — the app is left exactly where the flow left
+  // it, and the marker survives the force-quit the scenario depends on.
+  const container = execFileSync('xcrun', ['simctl', 'get_app_container', UDID, APP_ID, 'data'])
+    .toString()
+    .trim()
+  const markerPath = join(container, 'Documents', '.dev-offline')
+  if (online) rmSync(markerPath, { force: true })
+  else writeFileSync(markerPath, '1')
   // Cosmetic, and only that: it makes a screen recording of the run show the
   // state the app is actually in.
   try {
