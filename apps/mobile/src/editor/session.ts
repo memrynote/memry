@@ -58,11 +58,22 @@ export function createVaultDocStore(db: VaultDb): DocStore {
     loadLocalHalf: (docId) => loadHalf(localId(docId)),
 
     async loadServerUpdatesSince(docId, sinceSeq) {
+      // The snapshot is checked too: the pull path folds updates into one and
+      // DELETES the rows it folded, so an updates-only read would come back
+      // empty and the open doc would keep showing a stale body.
+      const snap = await db.getFirstAsync<{ snapshot: Uint8Array; last_seq: number }>(
+        'SELECT snapshot, last_seq FROM yjs_snapshots WHERE doc_id = ? AND last_seq > ?',
+        [docId, sinceSeq]
+      )
       const rows = await db.getAllAsync<{ seq: number; update_blob: Uint8Array }>(
         'SELECT seq, update_blob FROM yjs_updates WHERE doc_id = ? AND seq > ? ORDER BY seq ASC',
         [docId, sinceSeq]
       )
-      return rows.map((r) => ({ seq: r.seq, update: new Uint8Array(r.update_blob) }))
+      return {
+        snapshot: snap ? new Uint8Array(snap.snapshot) : null,
+        snapshotSeq: snap?.last_seq ?? 0,
+        updates: rows.map((r) => ({ seq: r.seq, update: new Uint8Array(r.update_blob) }))
+      }
     },
 
     async appendLocalUpdate(docId, update) {

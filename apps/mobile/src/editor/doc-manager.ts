@@ -42,13 +42,29 @@ export interface SequencedUpdate {
   update: Uint8Array
 }
 
+/**
+ * What arrived on the server side since a given watermark.
+ *
+ * A snapshot has to be in here, not just loose updates: the pull path FOLDS
+ * updates into a snapshot and deletes the rows it folded, so a doc that only
+ * re-read `yjs_updates` would see nothing, advance its watermark past the
+ * folded range, and show a stale body for the rest of the process — exactly
+ * the case the refresh exists to prevent.
+ */
+export interface ServerDelta {
+  /** Present when the stored snapshot is newer than the caller's watermark. */
+  snapshot: Uint8Array | null
+  snapshotSeq: number
+  updates: SequencedUpdate[]
+}
+
 export interface DocStore {
   /** Rows the pull engine wrote: bare doc id, server sequence. */
   loadServerHalf(docId: string): Promise<DocHalves>
   /** Rows this device wrote: `local.<docId>` namespace, local sequence. */
   loadLocalHalf(docId: string): Promise<DocHalves>
-  /** Server rows appended after `sinceSeq`, oldest first. */
-  loadServerUpdatesSince(docId: string, sinceSeq: number): Promise<SequencedUpdate[]>
+  /** Server-side CRDT state written after `sinceSeq`. */
+  loadServerUpdatesSince(docId: string, sinceSeq: number): Promise<ServerDelta>
   /** MUST resolve only once the row is committed. */
   appendLocalUpdate(docId: string, update: Uint8Array): Promise<void>
   /**
@@ -264,15 +280,24 @@ export class EditorDocManager {
       },
 
       async refreshFromServer() {
-        const rows = await store.loadServerUpdatesSince(docId, serverSeq)
-        if (rows.length === 0) return 0
+        const delta = await store.loadServerUpdatesSince(docId, serverSeq)
+        const applied = delta.updates.length + (delta.snapshot ? 1 : 0)
+        if (applied === 0) return 0
+
         doc.transact(() => {
-          for (const row of rows) {
+          // Snapshot first: it is the folded state the loose rows sit on top
+          // of. Yjs merges idempotently, so re-applying anything it already
+          // contains costs nothing.
+          if (delta.snapshot) {
+            Y.applyUpdate(doc, delta.snapshot, ORIGIN_REMOTE)
+            if (delta.snapshotSeq > serverSeq) serverSeq = delta.snapshotSeq
+          }
+          for (const row of delta.updates) {
             Y.applyUpdate(doc, row.update, ORIGIN_REMOTE)
             if (row.seq > serverSeq) serverSeq = row.seq
           }
         }, ORIGIN_REMOTE)
-        return rows.length
+        return applied
       },
 
       onLocalUpdate(listener) {

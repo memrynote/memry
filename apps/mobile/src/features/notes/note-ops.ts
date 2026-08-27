@@ -209,11 +209,34 @@ export async function createNote(
  */
 export async function deleteNote(ctx: NoteOpsContext, noteId: string): Promise<void> {
   const stored = await readStoredNote(ctx.db, noteId)
-  const type = stored?.type ?? 'note'
-  const payload = stored?.payload ?? {}
   const now = Date.now()
-  bumpClock(payload as Record<string, unknown>, ctx.deviceId)
-  const serialized = JSON.stringify(payload)
+
+  let type: EditableItemType
+  let serialized: string
+
+  if (stored) {
+    type = stored.type
+    bumpClock(stored.payload as Record<string, unknown>, ctx.deviceId)
+    serialized = JSON.stringify(stored.payload)
+  } else {
+    // No parseable payload — either the row is gone, or its JSON is broken (a
+    // note the list already shows as "Untitled"). Replacing it with `{}` would
+    // push a tombstone whose clock is `{thisDevice: 1}`, which peers' field
+    // merge treats as older than what they hold and skip: the note would come
+    // back. The stored bytes are reused verbatim instead.
+    const raw = await ctx.db.getFirstAsync<{ type: string; payload: string | null }>(
+      'SELECT type, payload FROM sync_items WHERE id = ?',
+      [noteId]
+    )
+    if (!raw) return
+    type = raw.type === 'journal' ? 'journal' : 'note'
+    serialized = raw.payload ?? '{}'
+    if (!raw.payload) {
+      log.warn('Deleting an item with no stored payload; the tombstone carries no clock', {
+        noteId
+      })
+    }
+  }
 
   await withVaultTransaction(ctx.db, async () => {
     // The bumped clock is written back with the tombstone. Without it a later

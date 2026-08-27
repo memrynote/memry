@@ -35,7 +35,7 @@ function recorder(
     store: {
       loadServerHalf: async () => server,
       loadLocalHalf: async () => local,
-      loadServerUpdatesSince: async () => [],
+      loadServerUpdatesSince: async () => ({ snapshot: null, snapshotSeq: 0, updates: [] }),
       appendLocalUpdate: async (_docId, update) => {
         if (opts.appendDelayMs) await new Promise((r) => setTimeout(r, opts.appendDelayMs))
         if (opts.appendThrows) {
@@ -174,7 +174,11 @@ describe('EditorDocManager durability', () => {
     const manager = new EditorDocManager(
       {
         ...rec.store,
-        loadServerUpdatesSince: async (_id, since) => arriving.filter((r) => r.seq > since)
+        loadServerUpdatesSince: async (_id, since) => ({
+          snapshot: null,
+          snapshotSeq: 0,
+          updates: arriving.filter((r) => r.seq > since)
+        })
       },
       rec.outbox
     )
@@ -195,13 +199,46 @@ describe('EditorDocManager durability', () => {
     expect(await open.refreshFromServer()).toBe(0)
   })
 
+  it('applies a server SNAPSHOT the pull path folded updates into', async () => {
+    const rec = recorder()
+    // The pull path writes a snapshot and DELETES the rows it folded, so an
+    // updates-only refresh comes back empty, advances past the folded range
+    // and shows a stale body for the rest of the process.
+    const folded = new Y.Doc()
+    folded.getText('t').insert(0, 'folded into a snapshot')
+    const manager = new EditorDocManager(
+      {
+        ...rec.store,
+        loadServerUpdatesSince: async (_id, since) =>
+          since >= 9
+            ? { snapshot: null, snapshotSeq: 0, updates: [] }
+            : { snapshot: Y.encodeStateAsUpdate(folded), snapshotSeq: 9, updates: [] }
+      },
+      rec.outbox
+    )
+    const open = await manager.openDoc('note-1')
+
+    expect(await open.refreshFromServer()).toBe(1)
+    const check = new Y.Doc()
+    Y.applyUpdate(check, open.encodeState())
+    expect(check.getText('t').toString()).toBe('folded into a snapshot')
+
+    // The watermark moved to the snapshot's own sequence, so it is not
+    // re-applied on every later refresh.
+    expect(await open.refreshFromServer()).toBe(0)
+  })
+
   it('refreshes a CACHED doc on re-open', async () => {
     const rec = recorder()
     const arriving: { seq: number; update: Uint8Array }[] = []
     const manager = new EditorDocManager(
       {
         ...rec.store,
-        loadServerUpdatesSince: async (_id, since) => arriving.filter((r) => r.seq > since)
+        loadServerUpdatesSince: async (_id, since) => ({
+          snapshot: null,
+          snapshotSeq: 0,
+          updates: arriving.filter((r) => r.seq > since)
+        })
       },
       rec.outbox
     )

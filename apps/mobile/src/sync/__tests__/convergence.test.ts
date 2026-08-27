@@ -65,8 +65,13 @@ function memoryStore(): DocStore & { local: Uint8Array[]; server: Uint8Array[] }
     server,
     loadServerHalf: async () => half(server),
     loadLocalHalf: async () => half(local),
-    loadServerUpdatesSince: async (_docId: string, sinceSeq: number) =>
-      server.slice(sinceSeq).map((update, index) => ({ seq: sinceSeq + index + 1, update })),
+    loadServerUpdatesSince: async (_docId: string, sinceSeq: number) => ({
+      snapshot: null,
+      snapshotSeq: 0,
+      updates: server
+        .slice(sinceSeq)
+        .map((update, index) => ({ seq: sinceSeq + index + 1, update }))
+    }),
     appendLocalUpdate: async (_docId, update) => {
       local.push(update)
     }

@@ -36,6 +36,15 @@ const NONCE_LEN = 24
 
 export type AttachmentAvailability = 'ready' | 'pending' | 'missing'
 
+/**
+ * The outcome of naming an attachment without downloading it.
+ *
+ * `gone` and `unavailable` are kept apart because the caller turns one into a
+ * permanent verdict and the other into a retry.
+ */
+export type PeekResult =
+  { status: 'named'; filename: string } | { status: 'unavailable' } | { status: 'gone' }
+
 export interface AttachmentRecord {
   itemId: string
   localPath: string | null
@@ -110,12 +119,14 @@ export class AttachmentTransfer {
    *
    * Cached in the same row `ensureLocal` writes, so it is learned once.
    */
-  async peekFilename(attachmentId: string): Promise<string | null> {
+  async peekFilename(attachmentId: string): Promise<PeekResult> {
     const known = await this.getRecord(attachmentId)
-    if (known?.filename) return known.filename
+    if (known?.filename) return { status: 'named', filename: known.filename }
 
     const vaultKey = this.deps.vaultKey()
-    if (!vaultKey) return null
+    // Locked, not absent: reporting "gone" here would retire the image for the
+    // rest of the session even though the file is perfectly fine.
+    if (!vaultKey) return { status: 'unavailable' }
 
     try {
       const encrypted = await this.json<EncryptedAttachmentManifest>(
@@ -123,7 +134,7 @@ export class AttachmentTransfer {
         `/sync/attachments/${attachmentId}/manifest`
       )
       const signerKey = await this.deps.resolveDeviceKey(encrypted.signerDeviceId)
-      if (!signerKey) return null
+      if (!signerKey) return { status: 'unavailable' }
 
       const { manifest } = await decryptAttachmentManifest(
         this.deps.crypto,
@@ -140,13 +151,14 @@ export class AttachmentTransfer {
            mime_type = excluded.mime_type`,
         [attachmentId, manifest.size, manifest.filename, manifest.mimeType]
       )
-      return manifest.filename
+      return { status: 'named', filename: manifest.filename }
     } catch (err) {
-      log.debug('Manifest peek failed', {
-        attachmentId,
-        error: err instanceof Error ? err.message : String(err)
-      })
-      return null
+      const message = err instanceof Error ? err.message : String(err)
+      log.debug('Manifest peek failed', { attachmentId, error: message })
+      // Only a 404 means the blob is really gone. Everything else — offline, a
+      // 500, a token that needs refreshing — is transient, and calling it gone
+      // makes the caller's `missing` verdict permanent for the session.
+      return /\b404\b/.test(message) ? { status: 'gone' } : { status: 'unavailable' }
     }
   }
 
@@ -211,7 +223,14 @@ export class AttachmentTransfer {
         signerKey
       )
 
-      const plaintext = await this.fetchChunks(manifest, fileKey)
+      let plaintext: Uint8Array
+      try {
+        plaintext = await this.fetchChunks(manifest, fileKey)
+      } finally {
+        // Same rule as every other crypto path in this change: the unwrapped
+        // key does not outlive the operation that needed it.
+        fileKey.fill(0)
+      }
       if (sha256Hex(plaintext) !== manifest.checksum) {
         throw new Error(`File integrity failure for ${attachmentId}`)
       }
@@ -288,6 +307,30 @@ export class AttachmentTransfer {
     if (!vaultKey || !signing) throw new Error('Vault is locked; cannot upload')
 
     const fileKey = this.deps.crypto.generateFileKey()
+    try {
+      return await this.uploadWithKey(
+        attachmentId,
+        filename,
+        mimeType,
+        bytes,
+        vaultKey,
+        signing,
+        fileKey
+      )
+    } finally {
+      fileKey.fill(0)
+    }
+  }
+
+  private async uploadWithKey(
+    attachmentId: string,
+    filename: string,
+    mimeType: string,
+    bytes: Uint8Array,
+    vaultKey: Uint8Array,
+    signing: { secretKey: Uint8Array; deviceId: string },
+    fileKey: Uint8Array
+  ): Promise<AttachmentManifest> {
     const chunkRefs: AttachmentChunkRef[] = []
     const encryptedChunks: Uint8Array[] = []
 

@@ -88,13 +88,22 @@ export async function resolveAsset(
     const unidentified = ids.filter(
       (id) => !candidates.some((row) => row.itemId === id && row.filename !== null)
     )
+    let anyUnavailable = false
     for (const id of unidentified) {
-      if ((await deps.transfer.peekFilename(id)) === wanted) {
+      const peek = await deps.transfer.peekFilename(id)
+      if (peek.status === 'unavailable') {
+        anyUnavailable = true
+        continue
+      }
+      if (peek.status === 'named' && peek.filename === wanted) {
         match = id
         break
       }
     }
-    if (!match) return { status: 'missing' }
+    // `missing` is a PERMANENT verdict to the caller — it stops retrying — so
+    // it is only reported when every candidate was actually looked at. A
+    // transient failure (offline, a 500) reports `pending` and is re-asked.
+    if (!match) return anyUnavailable ? { status: 'pending' } : { status: 'missing' }
   }
 
   const availability = await deps.transfer.ensureLocal(match, options)

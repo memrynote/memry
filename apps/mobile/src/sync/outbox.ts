@@ -393,7 +393,13 @@ export class OutboxDrain {
           pushed += rowsInChunk.length
         } catch (err) {
           const remaining = incremental.filter((row) => !landed.has(row.id))
-          const outcome = await this.handleFailure(remaining, err)
+          // The oversized rows go with them. Returning without touching those
+          // leaves them neither snapshot-pushed nor failed: no backoff, and
+          // re-claimed and re-encrypted on every single drain.
+          const oversizedRows = plan.oversized
+            .map((payload) => byPayload.get(payload)!)
+            .filter(Boolean)
+          const outcome = await this.handleFailure([...remaining, ...oversizedRows], err)
           return { pushed, failed: outcome.failed, stop: outcome.stop }
         }
       }
