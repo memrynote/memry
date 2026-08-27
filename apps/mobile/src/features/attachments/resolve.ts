@@ -42,20 +42,34 @@ export function refBasename(ref: string): string {
   }
 }
 
-/** The blob ids a note declares it embeds. */
-export async function noteAttachmentIds(db: VaultDb, noteId: string): Promise<string[]> {
-  const row = await db.getFirstAsync<{ payload: string | null }>(
-    'SELECT payload FROM sync_items WHERE id = ?',
+/**
+ * The blob ids a note declares it embeds, and whether that list is KNOWN.
+ *
+ * A note whose payload has not been pulled yet (`payload_state` is
+ * metadata-only) declares nothing, which is not the same as declaring an empty
+ * list: treating it as empty retires every image in the note permanently, for
+ * the life of the page, over a payload that is about to arrive.
+ */
+export async function noteAttachmentIds(
+  db: VaultDb,
+  noteId: string
+): Promise<{ ids: string[]; known: boolean }> {
+  const row = await db.getFirstAsync<{ payload: string | null; payload_state: string }>(
+    'SELECT payload, payload_state FROM sync_items WHERE id = ?',
     [noteId]
   )
-  if (!row?.payload) return []
+  if (!row) return { ids: [], known: true }
+  if (row.payload_state !== 'full' || !row.payload) return { ids: [], known: false }
   try {
     const payload = JSON.parse(row.payload) as { attachmentReferences?: unknown }
-    return Array.isArray(payload.attachmentReferences)
-      ? payload.attachmentReferences.filter((id): id is string => typeof id === 'string')
-      : []
+    return {
+      ids: Array.isArray(payload.attachmentReferences)
+        ? payload.attachmentReferences.filter((id): id is string => typeof id === 'string')
+        : [],
+      known: true
+    }
   } catch {
-    return []
+    return { ids: [], known: false }
   }
 }
 
@@ -68,8 +82,8 @@ export async function resolveAsset(
   const wanted = refBasename(ref)
   if (wanted.length === 0) return { status: 'missing' }
 
-  const ids = await noteAttachmentIds(deps.db, noteId)
-  if (ids.length === 0) return { status: 'missing' }
+  const { ids, known } = await noteAttachmentIds(deps.db, noteId)
+  if (ids.length === 0) return known ? { status: 'missing' } : { status: 'pending' }
 
   // Prefer an attachment whose filename is already known — that is a match we
   // can make without spending bytes on a metered connection.

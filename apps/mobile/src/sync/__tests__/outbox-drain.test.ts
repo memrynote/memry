@@ -259,6 +259,56 @@ describe('OutboxDrain per-item coalescing', () => {
   })
 })
 
+describe('OutboxDrain coalescing', () => {
+  it('gives a caller that arrives mid-pass its own pass afterwards', async () => {
+    // The background handler starts a drain, the editor then flushes its last
+    // keystrokes into the queue, and the screen drains again. Joining the
+    // earlier pass would report "done" for work enqueued after it read the
+    // queue — those keystrokes would sit until the next foreground edge.
+    let claims = 0
+    const store: OutboxQueue = {
+      claimBatch: async () => {
+        claims += 1
+        return []
+      },
+      complete: async () => {},
+      fail: async () => {},
+      pendingCount: async () => 0
+    }
+    const drainer = drain(store)
+
+    const first = drainer.drain()
+    const second = drainer.drain()
+    await Promise.all([first, second])
+
+    expect(claims).toBe(2)
+  })
+
+  it('collapses several mid-pass callers into ONE trailing pass', async () => {
+    // At most one extra pass, however many callers pile up: two overlapping
+    // drains would double-send, and three callers must not mean three passes.
+    let claims = 0
+    const store: OutboxQueue = {
+      claimBatch: async () => {
+        claims += 1
+        return []
+      },
+      complete: async () => {},
+      fail: async () => {},
+      pendingCount: async () => 0
+    }
+    const drainer = drain(store)
+
+    const first = drainer.drain()
+    const trailing = [drainer.drain(), drainer.drain(), drainer.drain()]
+    expect(trailing[1]).toBe(trailing[0])
+    expect(trailing[2]).toBe(trailing[0])
+    await Promise.all([first, ...trailing])
+
+    expect(claims).toBe(2)
+  })
+})
+
 describe('OutboxDrain CRDT chunking', () => {
   it("splits a note's queued updates at the server cap", async () => {
     // The server caps `updates` at 100. One over-sized request is a 400 that

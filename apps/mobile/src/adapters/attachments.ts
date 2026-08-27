@@ -408,7 +408,12 @@ export class AttachmentTransfer {
          downloaded_at = excluded.downloaded_at,
          remote_size = excluded.remote_size,
          filename = excluded.filename,
-         mime_type = excluded.mime_type`,
+         mime_type = excluded.mime_type,
+         -- The policy columns too: a row can already exist (setWifiOnly, or a
+         -- manifest peek), and leaving it lazy/unpinned for a file this device
+         -- just uploaded means re-downloading bytes it is already holding.
+         wifi_only = 0,
+         pinned = 1`,
       [attachmentId, path, Date.now(), bytes.length, filename, mimeType]
     )
 

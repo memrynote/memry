@@ -123,7 +123,19 @@ export interface OpenDoc {
   close(): void
 }
 
+/**
+ * Open docs kept in memory.
+ *
+ * The cache exists so WebView process death is cheap, but a session that
+ * visits a hundred notes should not be holding a hundred Y.Docs — on a
+ * memory-constrained device that is exactly what gets the app killed. Eviction
+ * is least-recently-opened, and evicting is free: everything a doc holds is
+ * already on disk.
+ */
+export const MAX_OPEN_DOCS = 8
+
 export class EditorDocManager {
+  /** Insertion order IS the LRU order — a reopen re-inserts at the end. */
   private open = new Map<string, Promise<OpenDoc>>()
 
   constructor(
@@ -139,6 +151,9 @@ export class EditorDocManager {
   async openDoc(docId: string): Promise<OpenDoc> {
     const cached = this.open.get(docId)
     if (cached) {
+      // Re-insert to mark it most-recently-used.
+      this.open.delete(docId)
+      this.open.set(docId, cached)
       const doc = await cached
       // Reusing a cached doc without this is how a desktop edit stays
       // invisible after navigating away and back: the rows are in SQLite, the
@@ -150,7 +165,22 @@ export class EditorDocManager {
     const pending = this.load(docId)
     this.open.set(docId, pending)
     pending.catch(() => this.open.delete(docId))
+    void this.evictOldest()
     return pending
+  }
+
+  /**
+   * Drop the least-recently-opened docs past the cap.
+   *
+   * Safe by construction: an update is durable before it reaches the doc, so a
+   * closed doc has nothing that is not already on disk.
+   */
+  private async evictOldest(): Promise<void> {
+    while (this.open.size > MAX_OPEN_DOCS) {
+      const oldest = this.open.keys().next().value
+      if (oldest === undefined) return
+      await this.closeDoc(oldest)
+    }
   }
 
   /** True when the doc is already in memory — the process-death fast path. */

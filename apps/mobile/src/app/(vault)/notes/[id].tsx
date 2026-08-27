@@ -18,6 +18,7 @@ import { readNotePayload, type NoteOpsContext, type NotePayload } from '@/featur
 import { NoteProperties } from '@/features/notes/properties'
 import { NoteTags } from '@/features/notes/tags'
 import { useColorScheme } from '@/hooks/use-color-scheme'
+import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
@@ -47,6 +48,7 @@ export default function NoteScreen() {
   const [showMeta, setShowMeta] = useState(false)
   // Dev-build bridge counters + keystroke latency, read on demand (T075).
   const [metrics, setMetrics] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const controls = useRef<EditorControls | null>(null)
 
   useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
@@ -73,7 +75,13 @@ export default function NoteScreen() {
       setDoc(openDoc)
       setPayload(notePayload)
       setSeedMarkdown(body?.markdown ?? undefined)
-    })()
+    })().catch((err: unknown) => {
+      // Without this the screen is a bare spinner forever and the failure
+      // surfaces only as an unhandled rejection nobody reads.
+      const message = extractErrorMessage(err, 'This note could not be opened.')
+      log.error('Opening the note failed', { noteId: id, error: message })
+      if (!cancelled) setLoadError(message)
+    })
     return () => {
       cancelled = true
     }
@@ -187,6 +195,16 @@ export default function NoteScreen() {
     },
     [ctx, id, session]
   )
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ThemedView style={styles.center}>
+          <ThemedText type="small">{loadError}</ThemedText>
+        </ThemedView>
+      </SafeAreaView>
+    )
+  }
 
   if (!doc || !id) {
     return (

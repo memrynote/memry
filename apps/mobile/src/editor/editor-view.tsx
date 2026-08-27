@@ -281,18 +281,38 @@ export function EditorView({
           onNavigate(msg.target)
           break
 
+        // Both of these ALWAYS answer, including on rejection. The guest waits
+        // on a reqId; a dropped answer leaves the menu permanently empty, or
+        // an image waiting out its 20 s timeout for nothing.
         case 'wiki-query':
-          void onWikiQuery(msg.query).then((items) => {
-            bridge.send({ type: 'wiki-candidates', reqId: msg.reqId, items })
-            bridge.flush()
-          })
+          void onWikiQuery(msg.query)
+            .catch((err: unknown) => {
+              log.warn('Wiki query failed', {
+                error: err instanceof Error ? err.message : String(err)
+              })
+              return []
+            })
+            .then((items) => {
+              bridge.send({ type: 'wiki-candidates', reqId: msg.reqId, items })
+              bridge.flush()
+            })
           break
 
         case 'asset-req':
-          void onAssetRequest(msg.ref).then((asset) => {
-            bridge.send({ type: 'asset', reqId: msg.reqId, ...asset })
-            bridge.flush()
-          })
+          void onAssetRequest(msg.ref)
+            .catch((err: unknown) => {
+              log.warn('Asset resolution failed', {
+                ref: msg.ref,
+                error: err instanceof Error ? err.message : String(err)
+              })
+              // `pending`, not `missing`: a failure here says nothing about
+              // whether the file exists, and `missing` is permanent.
+              return { status: 'pending' as const }
+            })
+            .then((asset) => {
+              bridge.send({ type: 'asset', reqId: msg.reqId, ...asset })
+              bridge.flush()
+            })
           break
 
         case 'err':

@@ -150,10 +150,17 @@ export async function deleteLocalCrdt(db: VaultDb, docId: string): Promise<void>
  * remotely-deleted note would otherwise never be reclaimed.
  */
 export async function sweepDeletedLocalCrdt(db: VaultDb): Promise<number> {
+  // Updates AND snapshots: compaction deletes every row it folds, so a note
+  // that was compacted before being deleted elsewhere has no update rows left
+  // and a join over those alone would leak its snapshot forever.
   const rows = await db.getAllAsync<{ doc_id: string }>(
-    `SELECT DISTINCT u.doc_id AS doc_id FROM yjs_updates u
-     JOIN sync_items s ON s.id = SUBSTR(u.doc_id, ${LOCAL_PREFIX.length + 1})
-     WHERE u.doc_id LIKE '${LOCAL_PREFIX}%' AND s.deleted_at IS NOT NULL`
+    `SELECT doc_id FROM (
+       SELECT DISTINCT doc_id FROM yjs_updates WHERE doc_id LIKE '${LOCAL_PREFIX}%'
+       UNION
+       SELECT doc_id FROM yjs_snapshots WHERE doc_id LIKE '${LOCAL_PREFIX}%'
+     ) local
+     JOIN sync_items s ON s.id = SUBSTR(local.doc_id, ${LOCAL_PREFIX.length + 1})
+     WHERE s.deleted_at IS NOT NULL`
   )
   for (const row of rows) {
     await db.runAsync('DELETE FROM yjs_updates WHERE doc_id = ?', [row.doc_id])

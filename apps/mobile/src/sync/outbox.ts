@@ -262,16 +262,38 @@ export interface DrainResult {
 
 export class OutboxDrain {
   private running: Promise<DrainResult> | null = null
+  private trailing: Promise<DrainResult> | null = null
 
   constructor(private readonly deps: OutboxDrainDeps) {}
 
-  /** Coalesces concurrent callers; two overlapping drains would double-send. */
+  /**
+   * Drain the queue. Never two passes at once — that would double-send — and
+   * at most one pass waiting behind the running one.
+   *
+   * A caller that arrives mid-pass gets that TRAILING pass rather than the
+   * in-flight one, which is the whole point on a background transition: the
+   * app-wide handler starts a drain, the editor then flushes its last
+   * keystrokes into the queue, and joining the earlier pass would report
+   * "done" for work enqueued after it read the queue. Those keystrokes would
+   * sit until the next foreground edge. Several mid-pass callers share the one
+   * trailing pass, so a burst does not become a burst of passes.
+   */
   drain(): Promise<DrainResult> {
-    if (this.running) return this.running
-    this.running = this.run().finally(() => {
-      this.running = null
-    })
-    return this.running
+    if (!this.running) {
+      this.running = this.run().finally(() => {
+        this.running = null
+      })
+      return this.running
+    }
+    if (!this.trailing) {
+      this.trailing = this.running
+        .catch(() => undefined)
+        .then(() => this.drain())
+        .finally(() => {
+          this.trailing = null
+        })
+    }
+    return this.trailing
   }
 
   private async run(): Promise<DrainResult> {

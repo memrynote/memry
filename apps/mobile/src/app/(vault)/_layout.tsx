@@ -67,18 +67,27 @@ export default function VaultLayout() {
   useEffect(() => {
     let cancelled = false
     let timer: ReturnType<typeof setInterval> | null = null
-    void (async () => {
+
+    // The poll re-tries its own setup instead of running once at mount. The
+    // vault id and the session are not necessarily ready on the first frame,
+    // and a setup that gave up there left the banner at zero for the whole
+    // session — including the one the offline matrix waits on to declare the
+    // outbox drained.
+    const tick = async (): Promise<void> => {
       const vaultId = await loadCurrentVaultId()
       if (!vaultId || cancelled) return
       const session = await getEditorSession(vaultId)
-      const tick = async (): Promise<void> => {
-        const depth = await session.outbox.pendingCount()
-        if (!cancelled) setUnsyncedCount(depth)
-      }
-      await tick()
-      if (cancelled) return
-      timer = setInterval(() => void tick().catch(() => {}), 2_000)
-    })()
+      const depth = await session.outbox.pendingCount()
+      if (!cancelled) setUnsyncedCount(depth)
+    }
+
+    void tick().catch((err: unknown) => {
+      log.debug('Outbox depth poll failed', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    })
+    timer = setInterval(() => void tick().catch(() => {}), 2_000)
+
     return () => {
       cancelled = true
       if (timer) clearInterval(timer)
