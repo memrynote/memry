@@ -138,6 +138,29 @@ const calloutCases: RoundtripCase[] = [
     markdown:
       '> [!note] Outer callout\n> Outer body text\n>\n> > [!warning] Inner callout\n> > Inner body text',
     pending: { renderer: 1881, main: 1881 }
+  },
+  {
+    name: 'plain quote with a blank separator line',
+    markdown: '> One\n>\n> Two',
+    pending: { renderer: 1881, main: 1881 }
+  },
+  {
+    name: 'quote with a fenced code block after a blank line',
+    markdown: '> Intro\n>\n> ```ts\n> const x = 1\n> ```',
+    pending: { renderer: 1881, main: 1881 }
+  },
+  {
+    name: 'quote with a list after a blank line',
+    markdown: '> Intro\n>\n> - one\n> - two',
+    pending: { renderer: 1881, main: 1881 }
+  },
+  {
+    // Lazy continuation: the inner blocks only come back through a blank
+    // separator the author never wrote, so the claim declines by proof and the
+    // run stays on BlockNote's flat quote path.
+    name: 'lazily continued nested quote keeps its flat bytes',
+    markdown: '> Outer\n> > Inner',
+    pending: { renderer: 1881, main: 1881 }
   }
 ]
 
