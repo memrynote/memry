@@ -11,8 +11,9 @@ import { getVaultKey, setVaultKey, clearVaultKey } from './secure-store'
  * the credential; seed = mnemonicToSeed(phrase) with empty passphrase, then
  * Argon2id(seed, kdfSalt), verifier check, then the vault key by KDF context).
  * The spec's "password path" resolves to this same derivation — the phrase IS
- * the password surface on a fresh device; device unlock is the local boundary
- * (decision record §8, no Face ID gate in v1).
+ * the password surface on a fresh device. An optional biometric gate now sits
+ * in front of an already-unlocked vault (`lib/device-unlock.ts`); it is an app
+ * lock and does not change how this key is stored or derived.
  *
  * Failure rule (spec): on a wrong phrase NOTHING is left half-unlocked — the
  * vault key reaches secure-store only after the verifier matches.

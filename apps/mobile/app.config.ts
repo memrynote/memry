@@ -53,6 +53,10 @@ const config: ExpoConfig = {
         }
       }
     ],
+    [
+      'expo-local-authentication',
+      { faceIDPermission: 'Memry uses Face ID to unlock your vault on this device.' }
+    ],
     'react-native-libsodium',
     'expo-secure-store',
     'expo-background-task'

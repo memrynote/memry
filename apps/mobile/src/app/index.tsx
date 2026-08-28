@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Redirect } from 'expo-router'
 
 import { BrandSplash } from '@/features/auth/brand-splash'
+import { isDeviceUnlockEnabled } from '@/lib/device-unlock'
 import { isVaultUnlocked } from '@/lib/vault-unlock'
 import { loadCurrentVaultId, loadSession } from '@/sync/auth-client'
 
-type Destination = '/welcome' | '/vaults' | '/unlock' | '/notes'
+type Destination = '/welcome' | '/vaults' | '/unlock' | '/device-unlock' | '/notes'
 
 /** Entry gate: session → vault → unlock state decides where the app opens. */
 export default function Entry() {
@@ -25,7 +26,14 @@ export default function Entry() {
         return
       }
       const unlocked = await isVaultUnlocked(vaultId)
-      if (!cancelled) setDestination(unlocked ? '/notes' : '/unlock')
+      if (!unlocked) {
+        if (!cancelled) setDestination('/unlock')
+        return
+      }
+      // The biometric gate sits after the key already exists, so it is an app
+      // lock rather than a second key ceremony. Off unless the user asked.
+      const gated = await isDeviceUnlockEnabled()
+      if (!cancelled) setDestination(gated ? '/device-unlock' : '/notes')
     })()
     return () => {
       cancelled = true
