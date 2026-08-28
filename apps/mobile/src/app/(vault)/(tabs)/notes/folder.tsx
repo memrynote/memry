@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FlatList, StyleSheet, View } from 'react-native'
+import { Alert, FlatList, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router'
 
 import { AppText } from '@/components/ui/app-text'
 import { FAB } from '@/components/ui/fab'
 import { NavBarInline } from '@/components/ui/nav-bar'
+import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { TreeRow, TreeSectionHeader } from '@/components/ui/tree-row'
 import { openVaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
-import { createNote } from '@/features/notes/note-ops'
+import { MoveSheet } from '@/features/notes/move-sheet'
+import { createNote, deleteNote, type NoteOpsContext } from '@/features/notes/note-ops'
 import { readNotesSnapshot, readSortMode, type NotesSnapshot } from '@/features/notes/notes-repo'
 import {
   buildFolderTree,
@@ -21,11 +23,15 @@ import {
   type MobileSortMode,
   type NoteEntry
 } from '@/features/notes/tree'
+import { extractErrorMessage } from '@/lib/errors'
+import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
 import { sizes } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
+
+const log = createLogger('NoteFolderScreen')
 
 const EMPTY_SNAPSHOT: NotesSnapshot = { entries: [], icons: new Map(), pendingCount: 0 }
 const NOTHING_EXPANDED: ReadonlySet<string> = new Set<string>()
@@ -52,6 +58,8 @@ export default function NoteFolderScreen() {
   const [sort, setSort] = useState<MobileSortMode>(MOBILE_SORT_DEFAULT)
   const [vaultId, setVaultId] = useState<string | null>(null)
   const [readOnly, setReadOnly] = useState(false)
+  const [ctx, setCtx] = useState<NoteOpsContext | null>(null)
+  const [moving, setMoving] = useState<NoteEntry | null>(null)
 
   const reload = useCallback(async () => {
     const vid = await loadCurrentVaultId()
@@ -77,6 +85,22 @@ export default function NoteFolderScreen() {
   }, [vaultId, reload])
 
   useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
+
+  useEffect(() => {
+    if (!vaultId) return
+    void getEditorSession(vaultId)
+      .then((session) =>
+        setCtx({
+          db: session.db,
+          outbox: session.outbox,
+          vaultId,
+          deviceId: session.deviceId
+        })
+      )
+      .catch((err: unknown) =>
+        log.error('Opening the editor session failed', { error: String(err) })
+      )
+  }, [vaultId])
 
   const node = useMemo(
     () => findFolder(buildFolderTree(snapshot.entries, snapshot.icons), path),
@@ -126,6 +150,58 @@ export default function NoteFolderScreen() {
     router.push(`/notes/${noteId}`)
   }, [vaultId, path])
 
+  const confirmDelete = useCallback(
+    (note: NoteEntry) => {
+      Alert.alert('Delete note', `${note.title} will be deleted on every device.`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              if (!ctx) return
+              try {
+                // `deleteNote` writes the tombstone and drops the note's queued
+                // body updates in one transaction; nothing here repeats that.
+                await deleteNote(ctx, note.id)
+                await reload()
+              } catch (err) {
+                log.error('Deleting the note failed', { noteId: note.id, error: String(err) })
+                Alert.alert(
+                  'Delete failed',
+                  extractErrorMessage(err, 'The note could not be deleted.')
+                )
+              }
+            })()
+          }
+        }
+      ])
+    },
+    [ctx, reload]
+  )
+
+  const noteActions = useCallback(
+    (note: NoteEntry): SwipeAction[] => [
+      {
+        label: 'Move',
+        icon: 'folder',
+        width: 72,
+        background: c.canvas.surfaceActive,
+        foreground: c.text.primary,
+        onPress: () => setMoving(note)
+      },
+      {
+        label: 'Delete',
+        icon: 'trash',
+        width: 76,
+        background: c.ui.destructive,
+        foreground: c.ui.destructiveForeground,
+        onPress: () => confirmDelete(note)
+      }
+    ],
+    [c, confirmDelete]
+  )
+
   return (
     <SafeAreaView
       edges={['top', 'left', 'right']}
@@ -160,6 +236,9 @@ export default function NoteFolderScreen() {
               return (
                 <TreeSectionHeader label={`NOTES — ${item.count}`} style={styles.notesHeader} />
               )
+            // Folder rows carry no swipe actions. A folder is a projection of
+            // the notes' `folderPath`s, so moving or deleting one is a batch
+            // move of every note beneath it, which is a different change.
             case 'folder':
               return (
                 <TreeRow
@@ -174,8 +253,8 @@ export default function NoteFolderScreen() {
                   }
                 />
               )
-            case 'note':
-              return (
+            case 'note': {
+              const row = (
                 <TreeRow
                   label={item.note.title}
                   level={0}
@@ -184,6 +263,9 @@ export default function NoteFolderScreen() {
                   onPress={() => router.push(`/notes/${item.note.id}`)}
                 />
               )
+              if (readOnly) return row
+              return <SwipeRow actions={noteActions(item.note)}>{row}</SwipeRow>
+            }
           }
         }}
         ListEmptyComponent={
@@ -197,6 +279,18 @@ export default function NoteFolderScreen() {
 
       {readOnly ? null : (
         <FAB onPress={() => void create()} accessibilityLabel="New note" style={styles.fab} />
+      )}
+
+      {moving === null ? null : (
+        <MoveSheet
+          visible
+          ctx={ctx}
+          noteId={moving.id}
+          currentPath={moving.folderPath}
+          snapshot={snapshot}
+          onClose={() => setMoving(null)}
+          onMoved={() => void reload()}
+        />
       )}
     </SafeAreaView>
   )
