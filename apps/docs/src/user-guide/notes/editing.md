@@ -147,6 +147,27 @@ Common markdown shortcuts work inline:
 | `` `code` `` | `code`        |
 | ` ``` `      | Code block    |
 
+## Quotes
+
+A quote can hold more than one paragraph. A blank quote line separates them, and a quote
+indented inside another one stays nested:
+
+```md
+> [!note] Outer callout
+> Outer body text
+>
+> > [!warning] Inner callout
+> > Inner body text
+```
+
+Both survive a save, byte for byte. A note written in Obsidian with multi-paragraph or
+nested quotes opens here and is written back exactly as its author wrote it, so the two
+apps can edit the same vault without either one reflowing the other's quotes.
+
+One shape is still flattened: a nested quote written without the blank line between the
+levels (`> Outer` directly above `> > Inner`) is read as a single quote and saved that
+way.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
