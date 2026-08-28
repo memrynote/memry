@@ -23,7 +23,7 @@ export interface NavBarLargeTitleProps {
 
 export interface NavBarInlineProps {
   title: string
-  back?: { label: string; onPress: () => void }
+  back?: { label: string; onPress: () => void; showLabel?: boolean }
   actions?: NavBarAction[]
 }
 
@@ -93,9 +93,13 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
           style={({ pressed }) => [styles.backGroup, pressed && styles.pressed]}
         >
           <Icon name="chevron-left" size={24} color={c.tint.base} />
-          <AppText variant="body" color={c.tint.base}>
-            {back.label}
-          </AppText>
+          {/* The label can be hidden, the accessible name above cannot: a bare
+              chevron with no name is unusable. */}
+          {back.showLabel === false ? null : (
+            <AppText variant="body" color={c.tint.base}>
+              {back.label}
+            </AppText>
+          )}
         </Pressable>
       ) : (
         <View />

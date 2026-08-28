@@ -1,97 +1,76 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router, useFocusEffect } from 'expo-router'
-import { ThemedText } from '@/components/themed-text'
-import { ThemedView } from '@/components/themed-view'
-import { Spacing } from '@/constants/theme'
-import { openVaultDb } from '@/db/index'
-import { loadCurrentVaultId } from '@/sync/auth-client'
-import { getSyncEngine } from '@/sync/engine'
+import { router, Stack, useFocusEffect } from 'expo-router'
+
+import { AppText } from '@/components/ui/app-text'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
+import { FAB } from '@/components/ui/fab'
+import { Icon, type IconName } from '@/components/ui/icon'
+import { SearchField } from '@/components/ui/search-field'
+import { TreeRow } from '@/components/ui/tree-row'
+import { openVaultDb, type VaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
-import { createNote } from '@/features/notes/note-ops'
 import {
   createNoteFromTemplate,
   listTemplates,
   type TemplateSummary
 } from '@/features/notes/from-template'
+import { createNote } from '@/features/notes/note-ops'
+import {
+  readExpandedFolders,
+  readNotesSnapshot,
+  readSortMode,
+  writeExpandedFolders,
+  writeSortMode,
+  type NotesSnapshot
+} from '@/features/notes/notes-repo'
+import { SheetRow, SortSheet } from '@/features/notes/sort-sheet'
+import {
+  allFolderPaths,
+  buildFolderTree,
+  flattenFolderTree,
+  MOBILE_SORT_DEFAULT,
+  NOTE_FILE_TYPE_TONE,
+  type MobileSortMode
+} from '@/features/notes/tree'
+import { loadCurrentVaultId } from '@/sync/auth-client'
+import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
+import { sizes, space } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
 
-interface NoteRow {
-  id: string
-  title: string
-  folderPath: string
-  updatedAt: number
-  hasBody: boolean
-}
+const EMPTY_SNAPSHOT: NotesSnapshot = { entries: [], icons: new Map(), pendingCount: 0 }
 
-interface Section {
-  folder: string
-  notes: NoteRow[]
-}
+/** The two panes are mutually exclusive, so one value carries both. */
+type MoreSheet = 'closed' | 'actions' | 'templates'
 
 /**
- * Notes browse (T049): folder tree + note list, read-only. Folders come from
- * the note payloads' folderPath projection; notes without a pulled payload
- * yet show as pending rows.
+ * Notes browse (board 26): the folder tree, the sort sheet and search. Every
+ * nesting, counting, ordering and filtering rule lives in `tree.ts` and every
+ * query in `notes-repo.ts`; this screen owns state and rows only.
  */
 export default function NotesScreen() {
-  const [sections, setSections] = useState<Section[]>([])
-  const [pendingCount, setPendingCount] = useState(0)
+  const c = useColors()
+  const [snapshot, setSnapshot] = useState<NotesSnapshot>(EMPTY_SNAPSHOT)
   const [vaultId, setVaultId] = useState<string | null>(null)
+  const [db, setDb] = useState<VaultDb | null>(null)
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
-  const [choosingTemplate, setChoosingTemplate] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
+  const [sort, setSort] = useState<MobileSortMode>(MOBILE_SORT_DEFAULT)
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set<string>())
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [sortOpen, setSortOpen] = useState(false)
+  const [moreSheet, setMoreSheet] = useState<MoreSheet>('closed')
 
   const reload = useCallback(async () => {
     const vid = await loadCurrentVaultId()
     if (!vid) return
     setVaultId(vid)
-    const db = await openVaultDb(vid)
-    const rows = await db.getAllAsync<{
-      id: string
-      payload: string | null
-      updated_at: number
-      body: number | null
-    }>(
-      `SELECT s.id, s.payload, s.updated_at, (SELECT 1 FROM note_bodies b WHERE b.item_id = s.id) AS body
-       FROM sync_items s
-       WHERE s.type = 'note' AND s.deleted_at IS NULL AND s.payload_state = 'full'
-       ORDER BY s.updated_at DESC`
-    )
-    const pending = await db.getFirstAsync<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM sync_items WHERE type = 'note' AND deleted_at IS NULL AND payload_state = 'metadata-only'`
-    )
-    setPendingCount(pending?.n ?? 0)
-
-    const byFolder = new Map<string, NoteRow[]>()
-    for (const row of rows) {
-      let title = 'Untitled'
-      let folderPath = ''
-      try {
-        const payload = row.payload
-          ? (JSON.parse(row.payload) as { title?: string; folderPath?: string | null })
-          : {}
-        title = payload.title ?? 'Untitled'
-        folderPath = payload.folderPath ?? ''
-      } catch {
-        // unparseable payload: keep defaults
-      }
-      const list = byFolder.get(folderPath) ?? []
-      list.push({
-        id: row.id,
-        title,
-        folderPath,
-        updatedAt: row.updated_at,
-        hasBody: row.body === 1
-      })
-      byFolder.set(folderPath, list)
-    }
-
-    const next = [...byFolder.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([folder, notes]) => ({ folder, notes }))
-    setSections(next)
+    const opened = await openVaultDb(vid)
+    setDb(opened)
+    setSnapshot(await readNotesSnapshot(opened))
   }, [])
 
   useFocusEffect(
@@ -115,6 +94,52 @@ export default function NotesScreen() {
     void getEditorSession(vaultId).then((session) => listTemplates(session.db).then(setTemplates))
   }, [vaultId])
 
+  const prefsLoaded = useRef(false)
+  useEffect(() => {
+    // Once, and only once: `reload()` runs on every focus, and re-reading the
+    // stored preferences there would undo a change made in this session.
+    if (!db || prefsLoaded.current) return
+    prefsLoaded.current = true
+    void (async () => {
+      setSort(await readSortMode(db))
+      setExpanded(await readExpandedFolders(db))
+    })()
+  }, [db])
+
+  const applySort = useCallback(
+    (mode: MobileSortMode) => {
+      setSort(mode)
+      if (db) void writeSortMode(db, mode)
+    },
+    [db]
+  )
+
+  const applyExpanded = useCallback(
+    (next: ReadonlySet<string>) => {
+      setExpanded(next)
+      if (db) void writeExpandedFolders(db, next)
+    },
+    [db]
+  )
+
+  const toggleFolder = useCallback(
+    (path: string) => {
+      const next = new Set(expanded)
+      if (!next.delete(path)) next.add(path)
+      applyExpanded(next)
+    },
+    [expanded, applyExpanded]
+  )
+
+  const tree = useMemo(
+    () => buildFolderTree(snapshot.entries, snapshot.icons),
+    [snapshot.entries, snapshot.icons]
+  )
+  const rows = useMemo(
+    () => flattenFolderTree(tree, { expanded, sort, query }),
+    [tree, expanded, sort, query]
+  )
+
   /**
    * Create is offline-first like every other write: the note exists locally the
    * moment it is tapped, and the outbox carries it whenever there is a network.
@@ -136,7 +161,6 @@ export default function NotesScreen() {
       const noteId = templateId
         ? await createNoteFromTemplate(ctx, templateId)
         : await createNote(ctx, { title: 'Untitled' })
-      setChoosingTemplate(false)
       if (noteId) {
         // Navigate FIRST. `reload()` re-reads the whole note list over the one
         // SQLite connection the bootstrap sync is also using, so awaiting it
@@ -151,102 +175,176 @@ export default function NotesScreen() {
     [vaultId]
   )
 
-  const flat: ({ type: 'folder'; name: string } | { type: 'note'; note: NoteRow })[] = []
-  for (const section of sections) {
-    if (section.folder) flat.push({ type: 'folder', name: section.folder })
-    for (const note of section.notes) flat.push({ type: 'note', note })
-  }
+  const navActions: { icon: IconName; label: string; onPress: () => void }[] = [
+    { icon: 'sort', label: 'Sort notes', onPress: () => setSortOpen(true) },
+    { icon: 'search', label: 'Search notes', onPress: () => setSearching(true) },
+    { icon: 'more', label: 'More actions', onPress: () => setMoreSheet('actions') }
+  ]
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <ThemedText type="title">Notes</ThemedText>
-          {readOnly ? null : (
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={() => void create()}
-                style={styles.headerButton}
-                accessibilityRole="button"
-                accessibilityLabel="New note"
-              >
-                <ThemedText type="smallBold">New</ThemedText>
-              </Pressable>
-              {templates.length > 0 ? (
-                <Pressable
-                  onPress={() => setChoosingTemplate((value) => !value)}
-                  style={styles.headerButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="New note from template"
-                >
-                  <ThemedText type="smallBold">Template</ThemedText>
-                </Pressable>
-              ) : null}
-            </View>
-          )}
+    <SafeAreaView
+      edges={['top', 'left', 'right']}
+      style={[styles.safe, { backgroundColor: c.canvas.background }]}
+    >
+      {/* Per-screen, because the notes stack sets `headerShown: true` for
+          `[id].tsx` and board 26 draws its own nav row. */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {searching ? (
+        <View style={styles.searchRow}>
+          <SearchField
+            style={styles.searchField}
+            placeholder="Search notes"
+            autoFocus
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            value={query}
+            onChangeText={setQuery}
+          />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setQuery('')
+              setSearching(false)
+            }}
+          >
+            <AppText color={c.tint.base}>Cancel</AppText>
+          </Pressable>
         </View>
-        {choosingTemplate
-          ? templates.map((template) => (
-              <Pressable
-                key={template.id}
-                onPress={() => void create(template.id)}
-                style={styles.templateRow}
-                accessibilityRole="button"
-                accessibilityLabel={`New note from ${template.name}`}
-              >
-                <ThemedText>{template.name}</ThemedText>
-              </Pressable>
-            ))
-          : null}
-        {pendingCount > 0 ? (
-          <ThemedText type="small">{pendingCount} more items still syncing…</ThemedText>
-        ) : null}
-        <FlatList
-          data={flat}
-          keyExtractor={(item) => (item.type === 'folder' ? `f:${item.name}` : item.note.id)}
-          renderItem={({ item }) =>
-            item.type === 'folder' ? (
-              <View style={styles.folderRow} accessibilityRole="header">
-                <ThemedText type="smallBold">{item.name}</ThemedText>
-              </View>
-            ) : (
-              <Pressable
-                style={styles.noteRow}
-                onPress={() => router.push(`/notes/${item.note.id}`)}
-                accessibilityRole="button"
-                accessibilityLabel={`Open note ${item.note.title}`}
-              >
-                <ThemedText>{item.note.title}</ThemedText>
-                {!item.note.hasBody ? <ThemedText type="small">tap to fetch</ThemedText> : null}
-              </Pressable>
-            )
-          }
-          ListEmptyComponent={
-            <ThemedText type="small">
-              Nothing here yet. Notes appear as the first sync progresses.
-            </ThemedText>
-          }
-        />
-      </ThemedView>
+      ) : (
+        <View style={styles.navRow}>
+          {navActions.map((action) => (
+            <Pressable
+              key={action.label}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              hitSlop={10}
+              onPress={action.onPress}
+            >
+              <Icon name={action.icon} size={24} color={c.text.primary} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {snapshot.pendingCount > 0 ? (
+        <AppText variant="footnote" color={c.text.secondary} style={styles.pending}>
+          {`${snapshot.pendingCount} more items still syncing…`}
+        </AppText>
+      ) : null}
+
+      <FlatList
+        data={rows}
+        keyExtractor={(row) => row.key}
+        renderItem={({ item }) =>
+          item.kind === 'folder' ? (
+            <TreeRow
+              label={item.node.name}
+              level={item.level}
+              folder={{ expanded: item.expanded, icon: item.node.icon }}
+              // Collapsed folders only: an open folder's contents already
+              // answer what the count was answering.
+              count={item.expanded ? undefined : item.node.noteCount}
+              accessibilityLabel={`Open folder ${item.node.name}`}
+              onToggle={() => toggleFolder(item.node.path)}
+              onPress={() =>
+                router.push(`/notes/folder?path=${encodeURIComponent(item.node.path)}`)
+              }
+            />
+          ) : (
+            <TreeRow
+              label={item.note.title}
+              level={item.level}
+              tone={NOTE_FILE_TYPE_TONE[item.note.fileType]}
+              accessibilityLabel={`Open note ${item.note.title}`}
+              onPress={() => router.push(`/notes/${item.note.id}`)}
+            />
+          )
+        }
+        ListEmptyComponent={
+          <AppText variant="footnote" color={c.text.secondary} style={styles.empty}>
+            {query.trim().length > 0
+              ? 'No notes match that search.'
+              : 'Nothing here yet. Notes appear as the first sync progresses.'}
+          </AppText>
+        }
+      />
+
+      {readOnly ? null : (
+        <FAB onPress={() => void create()} accessibilityLabel="New note" style={styles.fab} />
+      )}
+
+      <SortSheet
+        visible={sortOpen}
+        sort={sort}
+        onSelect={applySort}
+        onClose={() => setSortOpen(false)}
+      />
+
+      <BottomSheet
+        visible={moreSheet !== 'closed'}
+        onClose={() => setMoreSheet('closed')}
+        accessibilityLabel={moreSheet === 'templates' ? 'Choose a template' : 'Notes actions'}
+      >
+        {moreSheet === 'templates' ? (
+          templates.map((template) => (
+            <SheetRow
+              key={template.id}
+              label={template.name}
+              onPress={() => {
+                setMoreSheet('closed')
+                void create(template.id)
+              }}
+            />
+          ))
+        ) : (
+          <>
+            <SheetRow
+              label="Expand all"
+              onPress={() => {
+                applyExpanded(new Set(allFolderPaths(tree)))
+                setMoreSheet('closed')
+              }}
+            />
+            <SheetRow
+              label="Collapse all"
+              onPress={() => {
+                applyExpanded(new Set())
+                setMoreSheet('closed')
+              }}
+            />
+            {/* No `New folder`: a mobile folder is a projection of the notes'
+                `folderPath`s, so an empty one cannot exist — see the
+                `listFolders` doc comment in `manage.tsx`. */}
+            {templates.length > 0 && !readOnly ? (
+              <SheetRow label="New from template" onPress={() => setMoreSheet('templates')} />
+            ) : null}
+          </>
+        )}
+      </BottomSheet>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: { flex: 1, padding: Spacing.three, gap: Spacing.two },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerActions: { flexDirection: 'row', gap: Spacing.two },
-  headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
-  templateRow: { minHeight: 44, justifyContent: 'center' },
-  folderRow: { paddingTop: Spacing.three, paddingBottom: Spacing.one },
-  noteRow: {
-    paddingVertical: Spacing.two,
-    paddingStart: Spacing.three,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(127,127,127,0.2)',
+  navRow: {
+    height: sizes.navBar,
+    paddingHorizontal: sizes.gutter,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  }
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: space.s20
+  },
+  searchRow: {
+    height: sizes.navBar,
+    paddingHorizontal: sizes.gutter,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s12
+  },
+  searchField: { flex: 1 },
+  pending: { paddingHorizontal: sizes.gutter, paddingBottom: space.s8 },
+  empty: { paddingHorizontal: sizes.gutter, paddingTop: space.s12 },
+  fab: { position: 'absolute', end: sizes.gutter, bottom: sizes.gutter }
 })
