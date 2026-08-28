@@ -7,6 +7,7 @@ import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
 import { SkeletonRow } from '@/components/ui/skeleton-row'
 import { AUTH_GUTTER } from '@/features/auth/chrome'
+import { withThousands } from '@/lib/format'
 import {
   listVaults,
   loadSession,
@@ -29,8 +30,6 @@ interface VaultCard {
   lastSuccessAt: number | null
   onThisDevice: boolean
 }
-
-const withThousands = (value: number) => value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
 function since(at: number, now: number): string {
   const minutes = Math.floor(Math.max(0, now - at) / 60_000)
