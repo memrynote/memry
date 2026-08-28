@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
+import { taskCanvases } from '@memry/db-schema/schema/task-relations'
 import { SyncQueueManager } from '@memry/sync-client/queue'
 import {
   TaskSyncService,
@@ -80,6 +81,37 @@ describe('TaskSyncService', () => {
 
       const payload = JSON.parse(item.payload)
       expect(payload.clock).toEqual({ 'device-A': 1 })
+    })
+  })
+
+  describe('#given a task with canvas links #when enqueueUpdate called', () => {
+    it('#then the enqueued payload carries linkedCanvasIds', () => {
+      testDb.db.insert(tasks).values(TEST_TASK).run()
+      testDb.db
+        .insert(taskCanvases)
+        .values([
+          { taskId: 'task-1', canvasId: 'canvas-1' },
+          { taskId: 'task-1', canvasId: 'canvas-2' }
+        ])
+        .run()
+
+      service.enqueueUpdate('task-1')
+
+      const [item] = queue.dequeue(1)
+      const payload = JSON.parse(item.payload)
+      expect(payload.linkedCanvasIds.sort()).toEqual(['canvas-1', 'canvas-2'])
+    })
+  })
+
+  describe('#given a task with no canvas links #when enqueueUpdate called', () => {
+    it('#then the enqueued payload carries an empty linkedCanvasIds', () => {
+      testDb.db.insert(tasks).values(TEST_TASK).run()
+
+      service.enqueueUpdate('task-1')
+
+      const [item] = queue.dequeue(1)
+      const payload = JSON.parse(item.payload)
+      expect(payload.linkedCanvasIds).toEqual([])
     })
   })
 

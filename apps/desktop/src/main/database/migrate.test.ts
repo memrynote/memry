@@ -615,3 +615,123 @@ describe('0047_sync_queue_revive_dead_lettered migration', () => {
     sqlite.close()
   })
 })
+
+describe('0055_task_canvases migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-task-canvases-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  function makePre0055Folder(): string {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0055')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0055_task_canvases')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    const removed = journal.entries.splice(cutoff)
+    for (const entry of removed) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  function seedTaskWithNoteLink(sqlite: InstanceType<typeof Database>): void {
+    sqlite.prepare("INSERT INTO projects (id, name) VALUES ('p1', 'Inbox')").run()
+    sqlite
+      .prepare(
+        "INSERT INTO tasks (id, project_id, title, description) VALUES ('t1', 'p1', 'Ship it', 'body')"
+      )
+      .run()
+    sqlite.prepare("INSERT INTO task_notes (task_id, note_id) VALUES ('t1', 'n1')").run()
+  }
+
+  it('leaves an existing task and its note links untouched when upgrading', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    const sqlite = new Database(dbPath)
+    const db = drizzle(sqlite)
+
+    migrate(db, { migrationsFolder: makePre0055Folder() })
+    const preTables = (
+      sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string
+      }[]
+    ).map((t) => t.name)
+    expect(preTables).not.toContain('task_canvases')
+    seedTaskWithNoteLink(sqlite)
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const task = sqlite.prepare("SELECT * FROM tasks WHERE id = 't1'").get() as {
+      title: string
+      description: string
+      project_id: string
+    }
+    expect(task).toMatchObject({ title: 'Ship it', description: 'body', project_id: 'p1' })
+    expect(sqlite.prepare('SELECT task_id, note_id FROM task_notes').all()).toEqual([
+      { task_id: 't1', note_id: 'n1' }
+    ])
+    expect(sqlite.prepare('SELECT count(*) AS n FROM task_canvases').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+
+  it('raw SQL statements are idempotent when executed twice', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+
+    const sqlite = new Database(dbPath)
+    const statements = fs
+      .readFileSync(path.join(migrationsDir, '0055_task_canvases.sql'), 'utf8')
+      .split('--> statement-breakpoint')
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    for (let round = 0; round < 2; round++) {
+      for (const statement of statements) {
+        expect(() => sqlite.exec(statement)).not.toThrow()
+      }
+    }
+    sqlite.close()
+  })
+
+  it('cascades on task delete and has no foreign key to canvases', () => {
+    const dbPath = path.join(tempDir, 'data.db')
+    runMigrations(dbPath)
+
+    const sqlite = new Database(dbPath)
+    sqlite.pragma('foreign_keys = ON')
+    seedTaskWithNoteLink(sqlite)
+
+    // No FK to `canvases`, so a link may be written before the canvas arrives.
+    // That is what keeps sync apply order irrelevant.
+    const fks = sqlite.pragma('foreign_key_list(task_canvases)') as {
+      table: string
+      from: string
+      on_delete: string
+    }[]
+    expect(fks).toHaveLength(1)
+    expect(fks[0]).toMatchObject({ table: 'tasks', from: 'task_id', on_delete: 'CASCADE' })
+
+    sqlite
+      .prepare("INSERT INTO task_canvases (task_id, canvas_id) VALUES ('t1', 'absent-canvas')")
+      .run()
+    expect(() =>
+      sqlite
+        .prepare("INSERT INTO task_canvases (task_id, canvas_id) VALUES ('t1', 'absent-canvas')")
+        .run()
+    ).toThrow(/UNIQUE|PRIMARY KEY/)
+
+    sqlite.prepare("DELETE FROM tasks WHERE id = 't1'").run()
+    expect(sqlite.prepare('SELECT count(*) AS n FROM task_canvases').get()).toEqual({ n: 0 })
+    sqlite.close()
+  })
+})

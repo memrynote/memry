@@ -95,6 +95,14 @@ The `[[…]]` run leaves the task title, and the note shows up under **Related**
 
 This is the one marker with a list instead of greyed-out completion: note titles are yours, so showing them beats guessing at them.
 
+## Related Items
+
+The **Related** section of the task drawer links both notes and canvases. Press <kbd>+</kbd> beside the heading to open the picker; it lists your most recently edited notes and your canvases, each with its own icon. Picking a canvas links it, and clicking a linked canvas opens it in a canvas tab.
+
+Typing in the picker searches your whole vault rather than filtering the handful of items already on screen, so a note you have not touched in months is still reachable by title.
+
+Notes and canvases are stored as separate links, so a task keeps its note links unchanged when you add a canvas — including on a device still running an older version of Memry, which simply does not show the canvas half.
+
 ## Tags
 
 Tasks take tags from the same pool as your notes — one tag means one thing across the app,

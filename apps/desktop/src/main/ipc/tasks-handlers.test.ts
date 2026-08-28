@@ -64,6 +64,8 @@ vi.mock('@main/database/queries/tasks', () => ({
   setTaskTags: vi.fn(),
   getTaskNoteIds: vi.fn(),
   setTaskNotes: vi.fn(),
+  getTaskCanvasIds: vi.fn(),
+  setTaskCanvases: vi.fn(),
   getAllTaskTags: vi.fn(),
   getNextTaskPosition: vi.fn(),
   bulkCompleteTasks: vi.fn(),
@@ -158,6 +160,7 @@ describe('tasks-handlers', () => {
     ;(taskQueries.getNextTaskPosition as Mock).mockReturnValue(0)
     ;(taskQueries.getTaskTags as Mock).mockReturnValue([])
     ;(taskQueries.getTaskNoteIds as Mock).mockReturnValue([])
+    ;(taskQueries.getTaskCanvasIds as Mock).mockReturnValue([])
     ;(taskQueries.countSubtasks as Mock).mockReturnValue({ total: 0, completed: 0 })
   })
 
@@ -203,6 +206,7 @@ describe('tasks-handlers', () => {
         expect(result.task).toEqual({
           ...mockTask,
           linkedNoteIds: [],
+          linkedCanvasIds: [],
           tags: [],
           isRepeating: false,
           hasSubtasks: false,
@@ -265,6 +269,7 @@ describe('tasks-handlers', () => {
         ;(taskQueries.getTaskById as Mock).mockReturnValue(mockTask)
         ;(taskQueries.getTaskTags as Mock).mockReturnValue(['tag1'])
         ;(taskQueries.getTaskNoteIds as Mock).mockReturnValue(['note1'])
+        ;(taskQueries.getTaskCanvasIds as Mock).mockReturnValue(['canvas1'])
         ;(taskQueries.countSubtasks as Mock).mockReturnValue({ total: 2, completed: 1 })
 
         const result = await invokeHandler(TasksChannels.invoke.GET, 'task1')
@@ -274,6 +279,7 @@ describe('tasks-handlers', () => {
           isRepeating: false,
           tags: ['tag1'],
           linkedNoteIds: ['note1'],
+          linkedCanvasIds: ['canvas1'],
           hasSubtasks: true,
           subtaskCount: 2,
           completedSubtaskCount: 1

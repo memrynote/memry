@@ -1,5 +1,12 @@
 import { asc, eq, inArray } from 'drizzle-orm'
-import { projects, statuses, tasks, taskNotes, taskTags } from '@memry/db-schema/data-schema'
+import {
+  projects,
+  statuses,
+  tasks,
+  taskCanvases,
+  taskNotes,
+  taskTags
+} from '@memry/db-schema/data-schema'
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { createId } from './ids.ts'
 
@@ -24,6 +31,7 @@ export interface TaskRecord {
   modifiedAt: string
   tags: string[]
   linkedNoteIds: string[]
+  linkedCanvasIds: string[]
 }
 
 export interface ProjectRecord {
@@ -78,6 +86,7 @@ export interface CreateTaskInput {
   priority?: number
   tags?: string[]
   linkedNoteIds?: string[]
+  linkedCanvasIds?: string[]
 }
 
 export interface MoveTaskInput {
@@ -224,6 +233,22 @@ function setLinkedNoteIds(db: DataDb, taskId: string, noteIds: string[]): void {
   }
 }
 
+function getLinkedCanvasIds(db: DataDb, taskId: string): string[] {
+  return db
+    .select()
+    .from(taskCanvases)
+    .where(eq(taskCanvases.taskId, taskId))
+    .all()
+    .map((row) => row.canvasId)
+}
+
+function setLinkedCanvasIds(db: DataDb, taskId: string, canvasIds: string[]): void {
+  db.delete(taskCanvases).where(eq(taskCanvases.taskId, taskId)).run()
+  for (const canvasId of [...new Set(canvasIds.map((id) => id.trim()).filter(Boolean))]) {
+    db.insert(taskCanvases).values({ taskId, canvasId }).onConflictDoNothing().run()
+  }
+}
+
 function toTask(db: DataDb, row: typeof tasks.$inferSelect): TaskRecord {
   return {
     id: row.id,
@@ -245,7 +270,8 @@ function toTask(db: DataDb, row: typeof tasks.$inferSelect): TaskRecord {
     createdAt: row.createdAt,
     modifiedAt: row.modifiedAt,
     tags: getTags(db, row.id),
-    linkedNoteIds: getLinkedNoteIds(db, row.id)
+    linkedNoteIds: getLinkedNoteIds(db, row.id),
+    linkedCanvasIds: getLinkedCanvasIds(db, row.id)
   }
 }
 
@@ -324,6 +350,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
         .run()
       if (input.tags) setTags(dataDb, id, input.tags)
       if (input.linkedNoteIds) setLinkedNoteIds(dataDb, id, input.linkedNoteIds)
+      if (input.linkedCanvasIds) setLinkedCanvasIds(dataDb, id, input.linkedCanvasIds)
       return this.get(id).then((task) => {
         if (!task) throw new Error('Task not found after create')
         return task
@@ -420,6 +447,9 @@ export function createTasksService(dataDb: DataDb): TasksService {
       if (updates.tags !== undefined) setTags(dataDb, id, updates.tags)
       if (updates.linkedNoteIds !== undefined) {
         setLinkedNoteIds(dataDb, id, updates.linkedNoteIds)
+      }
+      if (updates.linkedCanvasIds !== undefined) {
+        setLinkedCanvasIds(dataDb, id, updates.linkedCanvasIds)
       }
       return toTask(dataDb, task)
     },
@@ -601,6 +631,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
         .run()
       setTags(dataDb, newId, original.tags)
       setLinkedNoteIds(dataDb, newId, original.linkedNoteIds)
+      setLinkedCanvasIds(dataDb, newId, original.linkedCanvasIds)
       const duplicated = await this.get(newId)
       if (!duplicated) throw new Error('Task not found after duplicate')
       return duplicated

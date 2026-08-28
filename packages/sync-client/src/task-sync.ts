@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import { taskTags, taskNotes } from '@memry/db-schema/schema/task-relations'
+import { taskTags, taskNotes, taskCanvases } from '@memry/db-schema/schema/task-relations'
 import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
@@ -32,7 +32,13 @@ function enrichWithJunctionData(
     .where(eq(taskNotes.taskId, taskId))
     .all()
     .map((r) => r.noteId)
-  return { ...base, tags, linkedNoteIds }
+  const linkedCanvasIds = db
+    .select({ canvasId: taskCanvases.canvasId })
+    .from(taskCanvases)
+    .where(eq(taskCanvases.taskId, taskId))
+    .all()
+    .map((r) => r.canvasId)
+  return { ...base, tags, linkedNoteIds, linkedCanvasIds }
 }
 
 interface TaskSyncDeps {
@@ -66,8 +72,7 @@ export class TaskSyncService {
       getDeviceId: deps.getDeviceId,
       load: (taskId) =>
         deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get() as
-          | Record<string, unknown>
-          | undefined,
+          Record<string, unknown> | undefined,
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
         const existingClock = (local.clock as VectorClock) ?? {}

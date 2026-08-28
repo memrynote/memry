@@ -10,8 +10,10 @@ import { tasks, type Task, type NewTask } from '@memry/db-schema/schema/tasks'
 import {
   taskTags,
   taskNotes,
+  taskCanvases,
   type NewTaskTag,
-  type NewTaskNote
+  type NewTaskNote,
+  type NewTaskCanvas
 } from '@memry/db-schema/schema/task-relations'
 import type { DataDb } from '../types'
 
@@ -663,6 +665,38 @@ export function getTaskNoteIds(db: DataDb, taskId: string): string[] {
     .all()
 
   return results.map((r) => r.noteId)
+}
+
+// ============================================================================
+// Task-Canvas Links
+// ============================================================================
+
+/**
+ * Set linked canvases for a task (replaces existing links).
+ */
+export function setTaskCanvases(db: DataDb, taskId: string, canvasIds: string[]): void {
+  db.delete(taskCanvases).where(eq(taskCanvases.taskId, taskId)).run()
+
+  if (canvasIds.length > 0) {
+    const linkRecords: NewTaskCanvas[] = canvasIds.map((canvasId) => ({
+      taskId,
+      canvasId
+    }))
+    db.insert(taskCanvases).values(linkRecords).run()
+  }
+}
+
+/**
+ * Get linked canvas IDs for a task.
+ */
+export function getTaskCanvasIds(db: DataDb, taskId: string): string[] {
+  const results = db
+    .select({ canvasId: taskCanvases.canvasId })
+    .from(taskCanvases)
+    .where(eq(taskCanvases.taskId, taskId))
+    .all()
+
+  return results.map((r) => r.canvasId)
 }
 
 /**

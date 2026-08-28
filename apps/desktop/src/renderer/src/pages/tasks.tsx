@@ -89,6 +89,7 @@ import {
   parseViewMode
 } from './tasks-view-state'
 import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
+import { canvasTabData } from '@/lib/sidebar-tab-data'
 
 const log = createLogger('Page:Tasks')
 
@@ -132,6 +133,7 @@ export const TasksPage = ({
   onSelectedTaskIdsChange
 }: TasksPageProps): React.JSX.Element => {
   const { t } = useT('tasks')
+  const { t: tCommon } = useT('common')
 
   // Get database-aware task operations from context
   const {
@@ -166,6 +168,13 @@ export const TasksPage = ({
       await openRelatedVaultItem(noteId, openTab)
     },
     [openTab]
+  )
+
+  const handleCanvasClick = useCallback(
+    (canvasId: string, title: string | null) => {
+      openTab(canvasTabData({ id: canvasId, title }, tCommon('canvas.untitled')))
+    },
+    [openTab, tCommon]
   )
 
   // Local setter that updates via parent callback
@@ -1321,6 +1330,7 @@ export const TasksPage = ({
           onUpdateTask={handleUpdateTask}
           onAddSubtask={subtaskManagement.handleAddSubtask}
           onNoteClick={(...args) => void handleNoteClick(...args)}
+          onCanvasClick={handleCanvasClick}
           onDeleteTask={handleDeleteTaskFromDrawer}
         />
       </div>

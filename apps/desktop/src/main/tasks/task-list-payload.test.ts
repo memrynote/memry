@@ -57,6 +57,7 @@ const RENDERER_READ_FIELDS = [
   'dueTime',
   'repeatConfig',
   'linkedNoteIds',
+  'linkedCanvasIds',
   'sourceNoteId',
   'tags',
   'parentId',
