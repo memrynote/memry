@@ -90,10 +90,13 @@ Ship a workflow you love? Tell us. Something broken? Tell us louder.
 
 <a href="https://www.star-history.com/?repos=memrynote%2Fmemry&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=RfnW2HzoduF_QqJlXo5Aep12pgXEoYiDWc2DnlQEvG7qwKXw2WG8YIVrEDs9BP7Oii0_rc7baIChuEb6_O6nkS2eyzxCm_JcvyQ-aZgxkZkcEhCzDGG64KSAcEw9AR8B8BrgOhS9LEtLPa2Lcgnz62EvG6Sw4hwrv8zaQDW8OhZ-Si5a1-K_u4YCYWxM" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=RfnW2HzoduF_QqJlXo5Aep12pgXEoYiDWc2DnlQEvG7qwKXw2WG8YIVrEDs9BP7Oii0_rc7baIChuEb6_O6nkS2eyzxCm_JcvyQ-aZgxkZkcEhCzDGG64KSAcEw9AR8B8BrgOhS9LEtLPa2Lcgnz62EvG6Sw4hwrv8zaQDW8OhZ-Si5a1-K_u4YCYWxM" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=memrynote/memry&type=date&theme=dark&legend=top-left&sealed_token=nt-KwjHrpgaEjiel8Y6JI55_pssUa-b9RV2qChgEyRsnKF0d23dlT5aN2Iw87tTpBJEA8mv294j5EWL_QYZ6DXp1mo7inKpknctBhPpZCAa6WpECwNd_6-4O_UIfTQXxn9NfOHjznkgrzCFGutKCO4NmfRYpY5aNTt_myfgT9ygX5HopO4U36xcQfyHF" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=nt-KwjHrpgaEjiel8Y6JI55_pssUa-b9RV2qChgEyRsnKF0d23dlT5aN2Iw87tTpBJEA8mv294j5EWL_QYZ6DXp1mo7inKpknctBhPpZCAa6WpECwNd_6-4O_UIfTQXxn9NfOHjznkgrzCFGutKCO4NmfRYpY5aNTt_myfgT9ygX5HopO4U36xcQfyHF" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=memrynote/memry&type=date&legend=top-left&sealed_token=nt-KwjHrpgaEjiel8Y6JI55_pssUa-b9RV2qChgEyRsnKF0d23dlT5aN2Iw87tTpBJEA8mv294j5EWL_QYZ6DXp1mo7inKpknctBhPpZCAa6WpECwNd_6-4O_UIfTQXxn9NfOHjznkgrzCFGutKCO4NmfRYpY5aNTt_myfgT9ygX5HopO4U36xcQfyHF" />
  </picture>
 </a>
+
+
 <sub>
 
 AGPL-3.0 © MemryNote contributors — private by design, open at heart.</sub>
