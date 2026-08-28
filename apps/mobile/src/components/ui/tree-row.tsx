@@ -107,13 +107,18 @@ export function TreeRow({
   }
   const glyphColor = folder ? c.text.secondary : toneColors[tone ?? 'tertiary']
 
-  const chevronGlyph = folder ? (
-    <Icon
-      name={folder.expanded ? 'chevron-down' : 'chevron-right'}
-      size={16}
-      color={c.text.tertiary}
-    />
-  ) : null
+  // The chevron means "this toggles", so a folder that navigates instead of
+  // expanding gets the empty slot a note row gets. Board 27's subfolders and
+  // board 35's already-expanded children both draw it that way; only board
+  // 26, where every folder opens in place, draws one on every folder.
+  const chevronGlyph =
+    folder && onToggle ? (
+      <Icon
+        name={folder.expanded ? 'chevron-down' : 'chevron-right'}
+        size={16}
+        color={c.text.tertiary}
+      />
+    ) : null
 
   const accessibilityState: AccessibilityState = {
     ...(folder && onToggle ? { expanded: folder.expanded } : null),
