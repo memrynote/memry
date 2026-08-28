@@ -34,9 +34,11 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
-import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
+import { splitMarkdownByBlockquoteRuns, serializeCalloutBlock } from './callout-block'
 import {
   resolveCalloutRun,
+  resolveQuoteRun,
+  serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles,
   type ToggleBlockSegment
@@ -188,6 +190,24 @@ async function serializeToggle(editor: any, block: Block): Promise<string> {
   return serializeToggleBlock(summary, body, colorsMarker, isOpen === true)
 }
 
+function isStructuredQuote(block: Block): boolean {
+  return (block.type as string) === 'quote' && ((block.children ?? []) as Block[]).length > 0
+}
+
+/**
+ * A quote block that owns children writes them INSIDE the blockquote, one `> `
+ * per line and a bare `>` per gap — the bytes `readStructuredQuoteRun` reads
+ * back. BlockNote's own serializer puts children AFTER the quote (`> A\n\nB`),
+ * which is how a blank quote line and a nested callout were lost (#1881).
+ * Byte-identical to the main process's `serializeQuote`.
+ */
+async function serializeQuote(editor: any, block: Block): Promise<string> {
+  const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+  const children = (block.children ?? []) as Block[]
+  const inner = await serializeBlocksPreservingBlanks(editor, [own, ...children])
+  return serializeQuoteBlock(inner.trim())
+}
+
 export function sanitizeBlockIds(blocks: Block[]): Block[] {
   let didChange = false
 
@@ -296,11 +316,30 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
 }
 
 async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promise<Block[]> {
-  const calloutSegments = splitMarkdownByCallouts(markdown)
+  const quotedSegments = splitMarkdownByBlockquoteRuns(markdown)
   const blocks: Block[] = []
 
-  for (const cseg of calloutSegments) {
-    if (cseg.kind === 'callout') {
+  for (const cseg of quotedSegments) {
+    if (cseg.kind === 'quote') {
+      const claimed = await resolveQuoteRun(
+        cseg.run,
+        async (md) => editor.tryParseMarkdownToBlocks(md),
+        async (parsed) => serializeBlocks(editor, parsed as Block[])
+      )
+      if (claimed) {
+        blocks.push({
+          type: 'quote' as const,
+          props: {},
+          content: claimed.content,
+          children: claimed.children
+        } as unknown as Block)
+      } else {
+        // Same rule as a declined callout: a run the byte-round-trip guard
+        // refuses is not ours to reshape, so its original lines parse as any
+        // other markdown would.
+        await parseMarkdownSegmentText(editor, cseg.run.raw, blocks)
+      }
+    } else if (cseg.kind === 'callout') {
       const claimed = await resolveCalloutRun(
         cseg.run,
         async (md) => editor.tryParseMarkdownToBlocks(md),
@@ -446,6 +485,14 @@ export async function serializeBlocksPreservingBlanks(
       await flushContent()
       flushGap()
       segments.push({ type: 'content', text: await serializeToggle(editor, block) })
+    } else if (isStructuredQuote(block)) {
+      await flushContent()
+      flushGap()
+      const quoted = await serializeQuote(editor, block)
+      segments.push({
+        type: 'content',
+        text: colorMarkers.length > 0 ? `${colorMarkers.join('\n')}\n${quoted}` : quoted
+      })
     } else if (isEmptyParagraph(block)) {
       await flushContent()
       emptyCount++
