@@ -13,6 +13,7 @@ import { mobileAppVersion } from '../adapters/runtime'
 import { openVaultDb } from '../db/index'
 import { MobilePullStore } from '../db/pull-store'
 import { fromBase64 } from '../crypto/libsodium'
+import { recordSyncOutcome } from './sync-state'
 import { createLogger } from '../lib/logger'
 import { getVaultKey } from '../lib/secure-store'
 import { loadSession, refreshSession } from './auth-client'
@@ -160,6 +161,8 @@ export class MobileSyncEngine {
   private async runSync(): Promise<SyncSummary> {
     const prepared = await this.prepare()
     if (!prepared) {
+      // Not recorded: a locked vault is the app waiting on the user, not a
+      // sync failure, and counting it would inflate the retry backoff.
       return { ok: false, reason: 'locked', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
     const { store } = prepared
@@ -170,6 +173,7 @@ export class MobileSyncEngine {
       record = await engine.pullIncremental()
     } catch (err) {
       log.warn('Record pull failed', { error: err instanceof Error ? err.message : String(err) })
+      await recordSyncOutcome(this.vaultId, { ok: false, reason: 'error' })
       return { ok: false, reason: 'error', itemsApplied: 0, bodiesUpdated: 0, changedNoteIds: [] }
     }
 
@@ -183,6 +187,7 @@ export class MobileSyncEngine {
       bodiesUpdated: bodies,
       changedNoteIds: record.changedNoteIds
     }
+    await recordSyncOutcome(this.vaultId, { ok: summary.ok, reason: summary.reason })
     for (const listener of this.listeners) listener(summary)
     return summary
   }

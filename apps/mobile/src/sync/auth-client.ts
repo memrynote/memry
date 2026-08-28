@@ -51,6 +51,21 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
 }
 
+/**
+ * Carries the HTTP status so callers can act on it. Without this a screen can
+ * only pattern-match the message, and an expired session reads to the user as
+ * a mysterious failure instead of a trip back to sign-in.
+ */
+export class SyncRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message)
+    this.name = 'SyncRequestError'
+  }
+}
+
 async function request<T>(
   path: string,
   init: { method?: string; token?: string; body?: unknown } = {}
@@ -73,7 +88,10 @@ async function request<T>(
         : body.error
           ? `${body.error.code ?? ''} ${body.error.message ?? ''}`.trim()
           : ''
-    throw new Error(`${path} failed (HTTP ${response.status})${detail ? `: ${detail}` : ''}`)
+    throw new SyncRequestError(
+      `${path} failed (HTTP ${response.status})${detail ? `: ${detail}` : ''}`,
+      response.status
+    )
   }
   return body
 }
@@ -194,6 +212,15 @@ export async function refreshSession(): Promise<string | null> {
     log.warn('Token refresh failed', { error: err instanceof Error ? err.message : String(err) })
     return null
   }
+}
+
+/**
+ * Forget the account on this device. Deliberately local-only: the encrypted
+ * vault files stay, so signing back in does not re-download everything.
+ */
+export async function signOut(): Promise<void> {
+  await clearSession()
+  await clearCurrentVaultId()
 }
 
 export interface RemoteVault {

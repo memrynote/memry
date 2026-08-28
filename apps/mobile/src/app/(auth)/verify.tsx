@@ -40,9 +40,7 @@ export default function VerifyScreen() {
       try {
         const result = await verifyOtpAndRegisterDevice(email, value)
         if (result.needsSetup) {
-          setError(
-            'This account has no vault yet. Set Memry up on your desktop first, then sign in here.'
-          )
+          router.replace('/no-vault')
           return
         }
         router.replace('/vaults')
