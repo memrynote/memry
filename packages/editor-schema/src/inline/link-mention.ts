@@ -12,20 +12,88 @@ import { createInlineContentSpec, type InlineContentSpec } from '@blocknote/core
  * markdown round-trip as a single text node (a raw URL would be GFM
  * auto-linkified and fragmented; an <a> would be claimed by BlockNote's
  * built-in link mark). Reconstructed on load by normalizeLinkMentions.
+ *
+ * The payload class admits whitespace, which the previous `[^)\s]+` refused: a
+ * token written by an older build can hold a stray space or a remark escape
+ * (see `parseLinkMentionToken`), and refusing those left the token as literal
+ * `((mention:…))` text for good. It must still stop at `(`, or an unterminated
+ * `((mention:` earlier on the line swallows the next real token whole and turns
+ * a working mention into text. No serializer has ever emitted a raw paren in a
+ * payload, so nothing is lost by excluding it.
  */
-export const MENTION_TOKEN_REGEX = /\(\(mention:([^)\s]+)\)\)/g
+export const MENTION_TOKEN_REGEX = /\(\(mention:([^()\n\r]+)\)\)/g
+
+/**
+ * `encodeURIComponent` leaves `- _ . ! ~ * ' ( )` raw. `(` and `)` break the
+ * `))` delimiter. The rest are markdown-significant, and remark-stringify does
+ * NOT escape them inside the token — so two mentions on one line whose URLs
+ * both hold a `*` (or both a `~`) come back as one emphasis run spanning from
+ * the first token into the second, and both mentions are destroyed (#1844).
+ *
+ * Encoding all seven closes the alphabet to `[A-Za-z0-9.%-]`, so the property
+ * is structural rather than a bet on remark's flanking rules staying put.
+ * `.` and `-` stay raw: both are inert unless they open a line, and a token
+ * never does.
+ */
+const TOKEN_UNSAFE = /[!'()*~_]/g
+const TOKEN_UNSAFE_ENCODED: Record<string, string> = {
+  '!': '%21',
+  "'": '%27',
+  '(': '%28',
+  ')': '%29',
+  '*': '%2A',
+  '~': '%7E',
+  _: '%5F'
+}
 
 export function serializeLinkMentionToken(url: string): string {
-  // encodeURIComponent leaves `(` and `)` raw, which would break the `))`
-  // delimiter for URLs containing parens — escape them explicitly.
-  const encoded = encodeURIComponent(url).replace(/\(/g, '%28').replace(/\)/g, '%29')
+  const encoded = encodeURIComponent(url).replace(
+    TOKEN_UNSAFE,
+    (char) => TOKEN_UNSAFE_ENCODED[char]
+  )
   return `((mention:${encoded}))`
 }
 
-export function parseLinkMentionToken(encoded: string): string | null {
+/**
+ * Any payload with no whitespace and no backslash: everything this serializer
+ * emits, and every older token that reached disk intact. Those keep the
+ * original code path so their bytes and their failure modes are unchanged.
+ */
+const WELL_FORMED_PAYLOAD = /^[^\s\\]+$/
+
+/** Every alphabet any build of the serializer has emitted, unioned. */
+const ANY_TOKEN_ALPHABET = /^[A-Za-z0-9.%!'*~_-]+$/
+
+function isUrl(value: string): boolean {
   try {
-    const url = decodeURIComponent(encoded)
-    return url || null
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function parseLinkMentionToken(encoded: string): string | null {
+  if (WELL_FORMED_PAYLOAD.test(encoded)) {
+    try {
+      return decodeURIComponent(encoded) || null
+    } catch {
+      return null
+    }
+  }
+
+  // Vaults hold tokens from builds that left `_ * ! ~ '` raw, so remark escapes
+  // and stray whitespace are already on disk. Neither is legal in any version
+  // of the alphabet, so stripping them is an unambiguous repair rather than a
+  // guess. The pattern above admits whitespace, though, so what is left has to
+  // earn the chip twice over: it must be spellable as a token, and it must
+  // decode to a URL. `((mention: see http://x.com))` fails the first check and
+  // `((mention: see below))` fails the second.
+  const repaired = encoded.replace(/[\s\\]/g, '')
+  if (!ANY_TOKEN_ALPHABET.test(repaired)) return null
+  try {
+    const url = decodeURIComponent(repaired)
+    return isUrl(url) ? url : null
   } catch {
     return null
   }

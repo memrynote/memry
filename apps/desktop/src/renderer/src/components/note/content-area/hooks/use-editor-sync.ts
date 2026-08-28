@@ -19,6 +19,7 @@ import {
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
+import { normalizeLinkMentions } from '../link-mention-utils'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
@@ -161,6 +162,34 @@ function promoteInlineCheckboxesInSharedDoc(editor: any): void {
  */
 function promoteDateMentionsInSharedDoc(editor: any): void {
   const normalized = normalizeDateMentions(editor.document as Block[])
+  if (!normalized.didChange) return
+
+  editor.replaceBlocks(editor.document, normalized.blocks)
+}
+
+/**
+ * Promote the `((mention:…))` tokens a collaborative document opens with.
+ *
+ * The same gap the two promoters above close, and the one that made a saved
+ * mention come back as literal text after a restart or a vault switch (#1844):
+ * main seeds the shared doc straight from the vault file, where a mention is
+ * plain text, and this path returns before `normalizeNoteBlocks` ever runs.
+ *
+ * Idempotent from the first open onwards — a promoted `linkMention` serializes
+ * back to the token it was built from, so `((mention:` is gone from the
+ * document and the second open matches nothing and writes no update. The one
+ * exception is a token whose URL holds `_ * ! ~ '`, which older builds wrote
+ * with those characters raw: promoting it rewrites the token in the closed
+ * alphabet once, and every open after that is a no-op.
+ *
+ * No favicon hydration here, deliberately. `hydrateLinkMentionFavicons` writes
+ * back a content array it captured before its fetch, which on a shared document
+ * would push a stale block to every device, and it resolves after
+ * `clearYjsUndoHistory` has run, leaving the open undoable. A chip promoted
+ * here renders its domain, which is what the token carries.
+ */
+function promoteLinkMentionsInSharedDoc(editor: any): void {
+  const normalized = normalizeLinkMentions(editor.document as Block[])
   if (!normalized.didChange) return
 
   editor.replaceBlocks(editor.document, normalized.blocks)
@@ -361,6 +390,7 @@ export function useEditorSync({
       // undoable step: Cmd+Z here would turn the chips back into raw text and
       // push that to every device.
       promoteWikiLinksInSharedDoc(editor)
+      promoteLinkMentionsInSharedDoc(editor)
       promoteInlineCheckboxesInSharedDoc(editor)
       promoteDateMentionsInSharedDoc(editor)
       clearYjsUndoHistory(editor)

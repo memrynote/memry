@@ -320,6 +320,8 @@ A cell whose text genuinely begins `[ ] ` becomes a checkbox too. The characters
 
 Links in a note are enriched with the page title, site name and favicon, both for inline link mentions and for bookmark blocks. The lookup runs once per URL and the result is kept in memory, so reopening a note with the same links does not refetch them.
 
+Only the URL is written to the note file, so a mention that has been through a restart or a vault switch comes back showing its site's domain. Its title and favicon return the next time that note's links are looked up.
+
 That in-memory cache holds the 200 most recently used links and evicts the least recently used entry beyond that, which keeps a long session with many link-heavy notes from growing without a limit. Evicted links are simply fetched again the next time they are shown.
 
 ## Comments
