@@ -293,10 +293,17 @@ export function parseFileBlockMarker(marker: string): FileBlockProps | null {
  * Renderers ignore the unknown attribute, so nothing is lost by carrying it.
  */
 export const TOGGLE_OPEN_LINE = '<details data-memry-toggle>'
+/**
+ * An expanded toggle. `open` is HTML's own attribute, so GitHub and Obsidian
+ * render the section unfolded too. It is written only when the toggle IS open:
+ * collapsed is the default on both sides, and omitting the attribute is what
+ * keeps every toggle already on disk byte-identical on its next save.
+ */
+export const TOGGLE_OPEN_LINE_EXPANDED = '<details data-memry-toggle open>'
 export const TOGGLE_CLOSE_LINE = '</details>'
 
 /** Only a `<details>` carrying our attribute, alone on its line, is a toggle. */
-const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle>$/
+const TOGGLE_OPEN_LINE_REGEX = /^<details\s+data-memry-toggle(\s+open)?>$/
 /** Any `<details>` open tag — used for depth only, so a foreign one nested in a
  * toggle body cannot close the toggle early. */
 const DETAILS_OPEN_LINE_REGEX = /^<details(?:\s[^>]*)?>$/
@@ -308,6 +315,8 @@ export interface ToggleBlockSegment {
   summary: string
   /** Markdown of the blocks nested under it; `''` for an empty toggle. */
   body: string
+  /** Whether the open tag carried `open`, i.e. the toggle was left expanded. */
+  open: boolean
   /** A `<!-- colors:{…} -->` line that preceded the block, verbatim, or null. */
   colorsMarker: string | null
 }
@@ -322,7 +331,8 @@ export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment
 export function serializeToggleBlock(
   summaryMarkdown: string,
   bodyMarkdown: string,
-  colorsMarker?: string | null
+  colorsMarker?: string | null,
+  open?: boolean
 ): string {
   // `<summary>` closes on its own line, so a soft break inside the toggle's own
   // content would split the tag and stop the block from parsing back at all.
@@ -339,7 +349,10 @@ export function serializeToggleBlock(
     .join(' ')
   const body = bodyMarkdown.trim()
 
-  const lines = [TOGGLE_OPEN_LINE, `<summary>${summary}</summary>`]
+  const lines = [
+    open ? TOGGLE_OPEN_LINE_EXPANDED : TOGGLE_OPEN_LINE,
+    `<summary>${summary}</summary>`
+  ]
   // The blank lines are not cosmetic: without them CommonMark reads the body as
   // part of the raw HTML block and GitHub/Obsidian render it unformatted.
   if (body) lines.push('', body, '')
@@ -393,10 +406,8 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
 
   for (let i = 0; i < lines.length; i++) {
     const insideFence = fence.consume(lines[i])
-    const region =
-      !insideFence && TOGGLE_OPEN_LINE_REGEX.test(lines[i].trim())
-        ? readToggleRegion(lines, i)
-        : null
+    const openMatch = insideFence ? null : lines[i].trim().match(TOGGLE_OPEN_LINE_REGEX)
+    const region = openMatch ? readToggleRegion(lines, i, Boolean(openMatch[1])) : null
 
     if (!region) {
       buffer.push(lines[i])
@@ -404,7 +415,13 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
     }
 
     const colorsMarker = flushMarkdown(true)
-    segments.push({ kind: 'toggle', summary: region.summary, body: region.body, colorsMarker })
+    segments.push({
+      kind: 'toggle',
+      summary: region.summary,
+      body: region.body,
+      open: region.open,
+      colorsMarker
+    })
     // The region's own lines never reach the outer fence tracker, which is
     // correct: they belong to the toggle, not to the markdown around it.
     i = region.endIndex
@@ -416,8 +433,9 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
 
 function readToggleRegion(
   lines: readonly string[],
-  openIndex: number
-): { summary: string; body: string; endIndex: number } | null {
+  openIndex: number,
+  open: boolean
+): { summary: string; body: string; open: boolean; endIndex: number } | null {
   const summaryMatch = lines[openIndex + 1]?.trim().match(TOGGLE_SUMMARY_LINE_REGEX)
   if (!summaryMatch) return null
 
@@ -437,6 +455,7 @@ function readToggleRegion(
           return {
             summary: summaryMatch[1].trim(),
             body: body.join('\n').trim(),
+            open,
             endIndex: i
           }
         }

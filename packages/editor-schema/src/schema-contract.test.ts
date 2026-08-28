@@ -51,6 +51,7 @@ import {
   calloutConfig,
   fileBlockConfig,
   taskBlockConfig,
+  toggleListItemConfig,
   youtubeEmbedConfig
 } from './blocks'
 import { createServerBlockSpecs, createServerInlineSpecs } from './server'
@@ -68,7 +69,8 @@ const BLOCK_CONFIGS: Record<MemryBlockType, { type: string; propSchema: object }
   callout: calloutConfig,
   file: fileBlockConfig,
   youtubeEmbed: youtubeEmbedConfig,
-  bookmark: bookmarkConfig
+  bookmark: bookmarkConfig,
+  toggleListItem: toggleListItemConfig
 }
 
 const INLINE_CONFIGS: Record<MemryInlineType, { type: string; propSchema: object }> = {
@@ -127,6 +129,15 @@ const BLOCK_FIXTURES: Record<MemryBlockType, unknown> = {
       favicon: 'https://example.com/f.ico',
       siteName: 'Example'
     },
+    children: []
+  },
+  // Expanded, not defaulted: `open: false` is the byte-identical legacy shape,
+  // so a fixture carrying it would pass against a spec that dropped the prop.
+  toggleListItem: {
+    id: 'blk',
+    type: 'toggleListItem',
+    props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default', open: true },
+    content: [{ type: 'text', text: 'Details', styles: {} }],
     children: []
   }
 }

@@ -1765,6 +1765,26 @@ const BLOCK_CASES = [
       props: { taskId: 't1', title: 'a task', checked: false, parentTaskId: '' },
       children: []
     }
+  },
+  {
+    type: 'toggleListItem',
+    // Literal for the same reason as `file`: the converter serializes toggles
+    // through `serializeToggleBlock` itself, so a computed expectation compares
+    // the function to itself. These bytes are what every vault holds today, and
+    // a collapsed toggle must keep producing them exactly.
+    markdown: '<details data-memry-toggle>\n<summary>Details</summary>\n</details>',
+    block: {
+      id: 'blk',
+      type: 'toggleListItem',
+      props: {
+        backgroundColor: 'default',
+        textColor: 'default',
+        textAlignment: 'left',
+        open: false
+      },
+      content: [{ type: 'text', text: 'Details', styles: {} }],
+      children: []
+    }
   }
 ] as const
 
@@ -1850,7 +1870,12 @@ describe('custom blocks survive the CRDT write path', () => {
     expect(findUnrepresentableNodes(docHolding(block))).toEqual([])
   })
 
-  it.each(BLOCK_CASES)(
+  // `toggleListItem` is excluded here and covered by the case below instead: the
+  // `<details>` form is written by the converter's top-level walk, which a block
+  // nested under a bullet never reaches. It flattens to a plain bullet, as it
+  // did before the fold prop and before #1643 — see the note on
+  // `parseMaskedMarkdown` in markdown-utils.ts.
+  it.each(BLOCK_CASES.filter((c) => c.type !== 'toggleListItem'))(
     '$type keeps its marker nested under a list item',
     async ({ block, markdown }) => {
       // #given a block indented under a bullet. This path does NOT take the
@@ -1874,6 +1899,60 @@ describe('custom blocks survive the CRDT write path', () => {
       expect(result).toContain(markdown)
     }
   )
+
+  it('flattens an expanded toggle under a list item to the same bytes as a collapsed one', async () => {
+    // #given the fold has nowhere to go in the bullet form. `data-open` rides on
+    // the wrapper div of the exported HTML, so this pins that it never reaches
+    // markdown — otherwise expanding a nested toggle would rewrite the file.
+    const collapsed = BLOCK_CASES.find((c) => c.type === 'toggleListItem')!.block
+    const bullet = (toggle: unknown) => ({
+      id: 'parent',
+      type: 'bulletListItem',
+      props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default' },
+      content: [{ type: 'text', text: 'parent', styles: {} }],
+      children: [toggle]
+    })
+
+    // #when
+    const expanded = { ...collapsed, props: { ...collapsed.props, open: true } }
+
+    // #then
+    expect(await yDocToMarkdown(docHolding(bullet(expanded)))).toBe(
+      await yDocToMarkdown(docHolding(bullet(collapsed)))
+    )
+  })
+
+  it('flattens a toggle nested under a list item without throwing', async () => {
+    // #given the case the table above excludes. The bullet is the pre-existing
+    // shape; what must not happen is the spec's render throwing, which returns
+    // null for the whole document and stops the note writing back at all.
+    const toggle = BLOCK_CASES.find((c) => c.type === 'toggleListItem')!.block
+    const doc = docHolding({
+      id: 'parent',
+      type: 'bulletListItem',
+      props: { textAlignment: 'left', textColor: 'default', backgroundColor: 'default' },
+      content: [{ type: 'text', text: 'parent', styles: {} }],
+      children: [toggle]
+    })
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then exactly the bytes the default spec produced before this one
+    // replaced it: the `<li>`/`<p>` DOM is unchanged, and `open` is invisible
+    // to `addDefaultPropsExternalHTML`.
+    expect(result).toBe(
+      [
+        '- parent',
+        '',
+        '<!-- memry:block-nesting-level=1 -->',
+        '',
+        '- Details',
+        '',
+        '<!-- memry:block-nesting-level=0 -->'
+      ].join('\n')
+    )
+  })
 })
 
 describe('custom blocks and table cells', () => {
@@ -2423,6 +2502,78 @@ describe('toggle blocks survive the markdown round-trip (#1643)', () => {
 
     // #then every pass produced exactly the same bytes as the first write
     expect(passes).toEqual(Array.from({ length: 6 }, () => first))
+  })
+
+  it('keeps an expanded toggle expanded across the round-trip (#1847)', async () => {
+    // #given a toggle the user left open. BlockNote keeps that bit in
+    // localStorage under the block's id — per-device, and keyed by an id the
+    // next parse mints fresh — so it reached neither the next open nor sync.
+    const blocks = [
+      {
+        ...toggleBlock('Details', [paragraph('Hidden')]),
+        props: {
+          backgroundColor: 'default',
+          textColor: 'default',
+          textAlignment: 'left',
+          open: true
+        }
+      }
+    ]
+
+    // #when
+    const markdown = await serialize(blocks)
+
+    // #then the fold is in the file, as HTML's own attribute…
+    expect(markdown).toContain('<details data-memry-toggle open>')
+    // …and comes back as the prop rather than as a default
+    expect(await markdownToBlocks(markdown)).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        props: expect.objectContaining({ open: true }),
+        children: [expect.objectContaining({ type: 'paragraph' })]
+      })
+    ])
+    expect(await rewrite(markdown)).toBe(markdown)
+  })
+
+  it('round-trips a callout inside an expanded toggle', async () => {
+    // #given both features scanning the same bytes: toggle regions come off
+    // first, and the body re-enters the same walk, where the callout run reader
+    // then claims its lines.
+    const markdown = [
+      '<details data-memry-toggle open>',
+      '<summary>Notes</summary>',
+      '',
+      '> [!warning]',
+      '> Careful',
+      '',
+      '</details>'
+    ].join('\n')
+
+    // #when / #then
+    expect(await rewrite(markdown)).toBe(markdown)
+  })
+
+  it('leaves a toggle written before the prop existed collapsed and byte-stable (#1847)', async () => {
+    // #given a note from every build shipped so far. Write-back byte-compares,
+    // so one character of drift here rewrites every toggle in every vault.
+    const markdown = [
+      '<details data-memry-toggle>',
+      '<summary>Details</summary>',
+      '',
+      'Hidden',
+      '',
+      '</details>'
+    ].join('\n')
+
+    // #when / #then
+    expect(await markdownToBlocks(markdown)).toEqual([
+      expect.objectContaining({
+        type: 'toggleListItem',
+        props: expect.objectContaining({ open: false })
+      })
+    ])
+    expect(await rewrite(markdown)).toBe(markdown)
   })
 
   it('leaves a plain <details> the app never wrote untouched', async () => {

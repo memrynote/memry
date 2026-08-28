@@ -83,11 +83,28 @@ export const bookmarkConfig = {
   content: 'none' as const
 }
 
+/**
+ * `toggleListItem` shadows a BlockNote DEFAULT block, and the only difference is
+ * `open`. BlockNote keeps a toggle's fold in `window.localStorage` under the
+ * block's id, which is per-device and keyed by an id that is minted fresh on
+ * every markdown parse — so the fold survived neither a re-open nor a sync
+ * (#1847). A prop puts it in the document, where the rest of the block already
+ * lives. It defaults to `false` because that is what BlockNote does when the
+ * localStorage key is absent, and because a collapsed toggle must keep writing
+ * the bytes every vault already holds.
+ */
+export const toggleListItemConfig = {
+  type: 'toggleListItem' as const,
+  propSchema: { ...defaultProps, open: { default: false } },
+  content: 'inline' as const
+}
+
 /** Node names of every custom block spec. The parity gate (#1433) will read this. */
 export const MEMRY_BLOCK_TYPES = [
   'taskBlock',
   'callout',
   'file',
   'youtubeEmbed',
-  'bookmark'
+  'bookmark',
+  'toggleListItem'
 ] as const

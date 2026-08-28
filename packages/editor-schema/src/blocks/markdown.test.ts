@@ -57,7 +57,62 @@ describe('serializeToggleBlock', () => {
   })
 })
 
+describe('serializeToggleBlock carries the fold (#1847)', () => {
+  it('writes the open attribute for an expanded toggle', () => {
+    expect(serializeToggleBlock('Title', 'Body', null, true)).toBe(
+      [
+        '<details data-memry-toggle open>',
+        '<summary>Title</summary>',
+        '',
+        'Body',
+        '',
+        '</details>'
+      ].join('\n')
+    )
+  })
+
+  it('writes a collapsed toggle byte-identically to before the prop existed', () => {
+    // The bytes every vault already holds. `open` is omitted rather than
+    // written `open="false"`, so no existing note is rewritten on next open.
+    const legacy = [
+      '<details data-memry-toggle>',
+      '<summary>Title</summary>',
+      '',
+      'Body',
+      '',
+      '</details>'
+    ].join('\n')
+
+    expect(serializeToggleBlock('Title', 'Body', null, false)).toBe(legacy)
+    expect(serializeToggleBlock('Title', 'Body')).toBe(legacy)
+  })
+})
+
 describe('splitMarkdownByToggles', () => {
+  it('reports the fold of an expanded toggle', () => {
+    expect(splitMarkdownByToggles(serializeToggleBlock('Title', 'Body', null, true))).toEqual([
+      { kind: 'toggle', summary: 'Title', body: 'Body', open: true, colorsMarker: null }
+    ])
+  })
+
+  it('reads an open toggle nested inside a collapsed one', () => {
+    // #given the depth counter has to admit `<details data-memry-toggle open>`
+    // as an opening tag too, or the inner close ends the outer toggle early
+    const inner = serializeToggleBlock('Inner', 'Deep', null, true)
+
+    // #when
+    const segments = splitMarkdownByToggles(serializeToggleBlock('Outer', inner))
+
+    // #then the outer region still owns the whole inner block…
+    expect(segments).toEqual([
+      { kind: 'toggle', summary: 'Outer', body: inner, open: false, colorsMarker: null }
+    ])
+    // …and the inner one reads back expanded when the body is re-entered
+    expect(splitMarkdownByToggles(inner)).toEqual([
+      { kind: 'toggle', summary: 'Inner', body: 'Deep', open: true, colorsMarker: null }
+    ])
+  })
+
   it('returns one markdown segment when there is no toggle', () => {
     expect(splitMarkdownByToggles('Just text\n\nMore')).toEqual([
       { kind: 'markdown', text: 'Just text\n\nMore' }
@@ -69,7 +124,7 @@ describe('splitMarkdownByToggles', () => {
 
     expect(splitMarkdownByToggles(markdown)).toEqual([
       { kind: 'markdown', text: 'Before' },
-      { kind: 'toggle', summary: 'Title', body: 'Body', colorsMarker: null },
+      { kind: 'toggle', summary: 'Title', body: 'Body', open: false, colorsMarker: null },
       { kind: 'markdown', text: 'After' }
     ])
   })
@@ -80,7 +135,7 @@ describe('splitMarkdownByToggles', () => {
     const body = 'One\n\n\nTwo'
 
     expect(splitMarkdownByToggles(serializeToggleBlock('Title', body))).toEqual([
-      { kind: 'toggle', summary: 'Title', body, colorsMarker: null }
+      { kind: 'toggle', summary: 'Title', body, open: false, colorsMarker: null }
     ])
   })
 
@@ -88,7 +143,7 @@ describe('splitMarkdownByToggles', () => {
     const inner = serializeToggleBlock('Inner', 'Deep')
 
     expect(splitMarkdownByToggles(serializeToggleBlock('Outer', inner))).toEqual([
-      { kind: 'toggle', summary: 'Outer', body: inner, colorsMarker: null }
+      { kind: 'toggle', summary: 'Outer', body: inner, open: false, colorsMarker: null }
     ])
   })
 
@@ -96,7 +151,7 @@ describe('splitMarkdownByToggles', () => {
     const body = ['<details>', '<summary>Theirs</summary>', '</details>'].join('\n')
 
     expect(splitMarkdownByToggles(serializeToggleBlock('Ours', body))).toEqual([
-      { kind: 'toggle', summary: 'Ours', body, colorsMarker: null }
+      { kind: 'toggle', summary: 'Ours', body, open: false, colorsMarker: null }
     ])
   })
 
@@ -114,6 +169,7 @@ describe('splitMarkdownByToggles', () => {
         kind: 'toggle',
         summary: 'Title',
         body: '',
+        open: false,
         colorsMarker: '<!-- colors:{"textColor":"red"} -->'
       }
     ])
@@ -151,7 +207,7 @@ describe('splitMarkdownByToggles', () => {
     const body = ['```html', '</details>', '```'].join('\n')
 
     expect(splitMarkdownByToggles(serializeToggleBlock('Docs', body))).toEqual([
-      { kind: 'toggle', summary: 'Docs', body, colorsMarker: null }
+      { kind: 'toggle', summary: 'Docs', body, open: false, colorsMarker: null }
     ])
   })
 })

@@ -23,15 +23,17 @@
  *   comment node      → `<!-- file:{…} -->`, passed through raw
  *   blockquote        → `> [!type]` + one `> ` per content line
  *   checkbox li       → `- [ ] title {task:id}`
+ *   li > p            → `- summary`, for a toggle nested under a list item
  */
 
-import { createBlockSpec } from '@blocknote/core'
+import { addDefaultPropsExternalHTML, createBlockSpec } from '@blocknote/core'
 import { serializeTaskBlock, type TaskBlockProps } from '@memry/shared/task-block'
 import {
   bookmarkConfig,
   calloutConfig,
   fileBlockConfig,
   taskBlockConfig,
+  toggleListItemConfig,
   youtubeEmbedConfig
 } from './configs'
 import { fileBlockCommentData, type FileBlockProps } from './markdown'
@@ -120,6 +122,26 @@ function taskBlockDom(block: { props: unknown }): { dom: HTMLElement } {
 }
 
 /**
+ * Byte-for-byte what BlockNote's own `toggleListItem` exports today. Main only
+ * registers the block so that ProseMirror declares `open`: `computeAttrs` drops
+ * every attribute the schema does not name, so without this spec main's
+ * write-back would strip the fold off every toggle on every save. A toggle on a
+ * page never reaches here — the converter serializes those as `<details>`
+ * itself — but one nested under a list item does, and it must keep coming back
+ * as the plain bullet it is on disk today.
+ */
+function toggleListItemDom(block: { props: Parameters<typeof addDefaultPropsExternalHTML>[0] }): {
+  dom: HTMLElement
+  contentDOM: HTMLElement
+} {
+  const li = document.createElement('li')
+  const p = document.createElement('p')
+  addDefaultPropsExternalHTML(block.props, li)
+  li.appendChild(p)
+  return { dom: li, contentDOM: p }
+}
+
+/**
  * The keys below are what BlockNote keys its `blockSchema` by; each spec's
  * `config.type` is what ProseMirror builds. Asserted equal rather than assumed
  * — see spec-keys.ts (#1455).
@@ -145,6 +167,10 @@ export function createServerBlockSpecs() {
     bookmark: createBlockSpec(bookmarkConfig, {
       render: bookmarkDom,
       toExternalHTML: bookmarkDom
+    })(),
+    toggleListItem: createBlockSpec(toggleListItemConfig, {
+      render: toggleListItemDom,
+      toExternalHTML: toggleListItemDom
     })()
   }
   assertSpecKeysMatchNodeTypes('blockSpecs (createServerBlockSpecs)', registered)

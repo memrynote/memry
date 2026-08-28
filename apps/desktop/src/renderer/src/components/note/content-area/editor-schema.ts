@@ -4,6 +4,7 @@ import { createCalloutBlock } from './callout-block'
 import { createYoutubeEmbedBlock } from './youtube-embed-block'
 import { createBookmarkBlock } from './bookmark-block'
 import { createTaskBlock } from './task-block'
+import { createToggleListItemBlock } from './toggle-list-item-block'
 import { HashTag } from './hash-tag'
 import { LinkMention } from './link-mention'
 import { DateMention } from './date-mention'
@@ -25,7 +26,11 @@ export const editorSchema = createMemrySchema({
     callout: createCalloutBlock(),
     youtubeEmbed: createYoutubeEmbedBlock(),
     bookmark: createBookmarkBlock(),
-    taskBlock: createTaskBlock()
+    taskBlock: createTaskBlock(),
+    // A default block overridden, not a new one: BlockNote's own toggle keeps
+    // its fold in localStorage, which is per-device and keyed by an id that is
+    // regenerated on every parse (#1847).
+    toggleListItem: createToggleListItemBlock()
   },
   inline: {
     // The editor flavour of wikiLink: same node as main's, plus the `parse`

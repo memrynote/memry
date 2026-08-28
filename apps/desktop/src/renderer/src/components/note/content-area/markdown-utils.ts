@@ -169,14 +169,23 @@ async function serializeBlocksWithNestingMarkers(editor: any, blocks: Block[]): 
  * would put a stray `- ` inside the `<summary>`.
  */
 async function serializeToggle(editor: any, block: Block): Promise<string> {
-  const summaryBlock = { ...block, type: 'paragraph', children: [] } as unknown as Block
+  // `open` comes off with the type: BlockNote compares every prop against the
+  // target block's propSchema, and a paragraph has no `open` to compare with —
+  // it throws there, which loses the whole document's serialization.
+  const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
+  const summaryBlock = {
+    ...block,
+    type: 'paragraph',
+    props: summaryProps,
+    children: []
+  } as unknown as Block
   const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
   const children = (block.children ?? []) as Block[]
   const body = children.length > 0 ? await serializeBlocksPreservingBlanks(editor, children) : ''
   const colors = block.props as BlockColors
   const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
 
-  return serializeToggleBlock(summary, body, colorsMarker)
+  return serializeToggleBlock(summary, body, colorsMarker, isOpen === true)
 }
 
 export function sanitizeBlockIds(blocks: Block[]): Block[] {
@@ -280,7 +289,7 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
 
   return {
     type: 'toggleListItem' as const,
-    props: { ...(colors ?? {}) },
+    props: { ...(colors ?? {}), open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
   } as unknown as Block

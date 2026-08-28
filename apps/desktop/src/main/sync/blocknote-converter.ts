@@ -403,14 +403,23 @@ async function serializeBlocksWithNestingMarkers(
  * inside the `<summary>`. Byte-identical to the renderer's `serializeToggle`.
  */
 async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
-  const summaryBlock = { ...block, type: 'paragraph', children: [] } as unknown as PartialBlock
+  // `open` comes off with the type: BlockNote compares every prop against the
+  // target block's propSchema, and a paragraph has no `open` to compare with —
+  // it throws there, which returns null for the whole document.
+  const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
+  const summaryBlock = {
+    ...block,
+    type: 'paragraph',
+    props: summaryProps,
+    children: []
+  } as unknown as PartialBlock
   const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
   const children = (block.children ?? []) as Block[]
   const body = children.length > 0 ? await blocksToMarkdownPreserving(editor, children) : ''
   const colors = block.props as BlockColors
   const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
 
-  return serializeToggleBlock(summary, body, colorsMarker)
+  return serializeToggleBlock(summary, body, colorsMarker, isOpen === true)
 }
 
 /**
@@ -482,7 +491,7 @@ async function parseToggleSegment(
   return {
     type: 'toggleListItem',
     id: crypto.randomUUID(),
-    props: { ...(colors ?? {}) },
+    props: { ...(colors ?? {}), open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
   } as unknown as Block
