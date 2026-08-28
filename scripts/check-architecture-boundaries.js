@@ -378,6 +378,13 @@ function resolveWorkspaceImport(specifier, workspacePackages) {
   return resolveSourceFile(path.resolve(packageInfo.dir, 'src', match[2]))
 }
 
+// Build-time configs (vitest, metro, babel, app.config) run under Node by
+// definition and never reach the RN bundle, so a node builtin there is tooling,
+// not a reachability violation. Same reasoning that already skips `scripts`.
+function isToolingConfig(filePath) {
+  return /\.config\.[cm]?[jt]s$/.test(path.basename(filePath))
+}
+
 async function walkMobileSources(dir) {
   const files = []
   const entries = await fs.readdir(dir, { withFileTypes: true })
@@ -391,7 +398,7 @@ async function walkMobileSources(dir) {
     }
 
     const filePath = path.join(dir, entry.name)
-    if (isSourceFile(filePath) && !isTestFile(filePath)) {
+    if (isSourceFile(filePath) && !isTestFile(filePath) && !isToolingConfig(filePath)) {
       files.push(filePath)
     }
   }
