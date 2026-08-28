@@ -1,4 +1,10 @@
-import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle
+} from 'react-native'
 
 import { AppText } from '@/components/ui/app-text'
 import type { Color } from '@/theme/colors'
@@ -12,6 +18,9 @@ export interface ButtonProps {
   onPress?: () => void
   variant?: ButtonVariant
   accessibilityLabel?: string
+  disabled?: boolean
+  /** Swaps the label for a spinner and blocks presses while a request is out. */
+  busy?: boolean
   style?: StyleProp<ViewStyle>
 }
 
@@ -26,6 +35,8 @@ export function Button({
   onPress,
   variant = 'primary',
   accessibilityLabel,
+  disabled = false,
+  busy = false,
   style
 }: ButtonProps) {
   const c = useColors()
@@ -36,12 +47,19 @@ export function Button({
     destructive: { background: c.ui.destructive, label: c.ui.destructiveForeground },
     ghost: { label: c.tint.base }
   }
-  const surface = surfaces[variant]
+  // Disabled is its own surface in the design system, not the variant's
+  // surface dimmed: a filled button at reduced opacity still reads as pressable.
+  const surface = disabled
+    ? { background: c.canvas.surfaceActive, label: c.text.tertiary }
+    : surfaces[variant]
+  const inert = disabled || busy
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: inert, busy }}
+      disabled={inert}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
@@ -50,13 +68,17 @@ export function Button({
           borderColor: surface.border,
           borderWidth: surface.border ? 1 : 0
         },
-        pressed && styles.pressed,
+        !inert && pressed && styles.pressed,
         style
       ]}
     >
-      <AppText variant="bodyEmphasis" color={surface.label}>
-        {label}
-      </AppText>
+      {busy ? (
+        <ActivityIndicator color={surface.label} />
+      ) : (
+        <AppText variant="bodyEmphasis" color={surface.label}>
+          {label}
+        </AppText>
+      )}
     </Pressable>
   )
 }

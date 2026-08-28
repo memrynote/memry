@@ -632,6 +632,7 @@ list.
 | `GET /sync/packs`                      | down      | List this vault's compaction packs, newest-first, with presigned URLs when available          |
 | `POST /sync/attachments/presign-batch` | down      | Presigned R2 GETs for attachment chunks the caller already owns                               |
 | `POST /auth/*`                         | mixed     | OTP, sign-in, refresh, sign-out                                                               |
+| `POST /auth/oauth/google/native`       | mixed     | Trade a platform-issued Google ID token for a setup token (mobile)                            |
 | `GET /auth/key-verifier`               | down      | Account key verifier for an established session (vault-key mismatch detection)                |
 | `POST /devices/*`                      | mixed     | Linking, listing, revoking                                                                    |
 | `POST /keys/*`                         | mixed     | Key sealing during link, rotation                                                             |
@@ -642,6 +643,24 @@ moves metadata only. A device reads a body by applying the baseline from
 `POST /sync/crdt/updates/batch` is the whole-vault form of that second step — up to 100 notes per
 request, each with its own `since` — but it batches incrementals only, so the baselines stay one GET
 per note and dominate a first-sync sweep's request count.
+
+### Native OAuth on mobile
+
+`GET /auth/oauth/google` starts the browser flow and only accepts a `redirect_uri` that is a
+`127.0.0.1` loopback (the desktop app) or the configured web origin. iOS has neither, so mobile does
+not use it. The app signs in with Google's own SDK and posts the resulting ID token to
+`POST /auth/oauth/google/native`, which skips the authorization-code exchange and rejoins the
+browser flow at token validation. Everything after that point — user lookup, entitlement, setup
+token, analytics — is the same code path, so the two entry points cannot drift into two account
+models.
+
+Two consequences worth knowing:
+
+- The route validates the ID token against `GOOGLE_IOS_CLIENT_ID`. When that binding is unset it
+  answers `501` rather than falling back to the web client, because validating against the wrong
+  audience would accept a token minted for a different application.
+- The client ids are also what gate the button. A mobile build without them omits the Google option
+  from the sign-in screen entirely rather than showing one that fails when tapped.
 
 ### Snapshot revisions
 

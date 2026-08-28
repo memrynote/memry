@@ -17,6 +17,10 @@ export type Bindings = {
   GOOGLE_REDIRECT_URI: string
   GOOGLE_DESKTOP_CLIENT_ID?: string
   GOOGLE_DESKTOP_CLIENT_SECRET?: string
+  // The iOS app's own OAuth client. Its id is the audience the native sign-in
+  // ID token carries, and there is no secret because a public client has
+  // nowhere to keep one.
+  GOOGLE_IOS_CLIENT_ID?: string
   WEB_OAUTH_REDIRECT_URI?: string
   MIN_APP_VERSION: string
   RECOVERY_DUMMY_SECRET: string

@@ -310,7 +310,7 @@ Scope divergence is explicit per the constitution; each exclusion is a recorded 
 | Canvas editing | Read-only view ships | Desktop canvas editing technology is not portable in v1; a bad port risks canvas data |
 | System share-sheet capture from other apps | Deferred to v2 | In-app quick capture covers v1; external capture into an encrypted vault is separate scope |
 | Instant push-triggered sync | Deferred (periodic background + foreground sync ship) | No server push infrastructure exists today |
-| Biometric app lock | Deferred (optional toggle later) | Adds lockout failure modes; device unlock already protects keys |
+| Biometric app lock | Screen ships, off by default | Reversed 2026-08-28 with the Paper `09 · Device unlock` board. It is an app-level gate, not a change to key storage, so no install migrates; it stays off until the Settings toggle ships, which keeps the original lockout concern answered |
 | Android at launch | Follows iOS from the same product definition (~4–8 weeks after) | Solo development; serialized QA |
 
 ## Success Criteria *(mandatory)*

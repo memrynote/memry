@@ -1,24 +1,50 @@
-import { useCallback, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { ThemedText } from '@/components/themed-text'
-import { ThemedView } from '@/components/themed-view'
-import { Spacing } from '@/constants/theme'
+import { wordlist } from '@scure/bip39/wordlists/english.js'
+
+import { AppText } from '@/components/ui/app-text'
+import { Button } from '@/components/ui/button'
+import { AUTH_GUTTER, BackBar } from '@/features/auth/chrome'
+import { emptyPhrase, suggest } from '@/features/auth/phrase-entry'
+import { PhraseGrid } from '@/features/auth/phrase-grid'
 import { extractErrorMessage } from '@/lib/errors'
 import { InvalidPhraseError, WrongPhraseError, unlockVaultWithPhrase } from '@/lib/vault-unlock'
 import { loadCurrentVaultId, loadSession } from '@/sync/auth-client'
+import { radius, space } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
+
+const SUGGESTION_HEIGHT = 34
 
 /**
- * Vault unlock (T044). The 24-word recovery phrase is the credential — the
- * product has no separate vault password (G0 record); Argon2id runs on-device
- * and the derived key is stored only after the server verifier matches, so a
- * wrong phrase leaves NOTHING half-unlocked.
+ * Vault unlock (Paper `08 · Auth — Unlock, recovery phrase`).
+ *
+ * The 24-word BIP39 phrase is the whole credential: the product has no vault
+ * password, so board `07 · Unlock, password` has no implementation and this is
+ * the only way in. Argon2id runs on-device and the derived key reaches
+ * secure-store only after the server verifier matches, so a wrong phrase
+ * leaves nothing half-unlocked.
  */
 export default function UnlockScreen() {
-  const [phrase, setPhrase] = useState('')
+  const c = useColors()
+  const [words, setWords] = useState<string[]>(emptyPhrase)
+  const [focused, setFocused] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const suggestions = useMemo(() => suggest(words[focused] ?? '', wordlist), [words, focused])
+
+  const complete = words.every((word) => word.length > 0)
+
+  const accept = useCallback(
+    (suggestion: string) => {
+      const next = [...words]
+      next[focused] = suggestion
+      setWords(next)
+    },
+    [words, focused]
+  )
 
   const unlock = useCallback(async () => {
     setBusy(true)
@@ -27,10 +53,10 @@ export default function UnlockScreen() {
       const session = await loadSession()
       const vaultId = await loadCurrentVaultId()
       if (!session || !vaultId) {
-        router.replace('/sign-in')
+        router.replace('/welcome')
         return
       }
-      await unlockVaultWithPhrase(vaultId, session.accessToken, phrase)
+      await unlockVaultWithPhrase(vaultId, session.accessToken, words.join(' '))
       router.replace('/notes')
     } catch (err) {
       if (err instanceof WrongPhraseError) {
@@ -38,83 +64,87 @@ export default function UnlockScreen() {
           'That phrase does not match this account. Nothing was unlocked — check the words and try again.'
         )
       } else if (err instanceof InvalidPhraseError) {
-        setError('A recovery phrase is 24 words. Check for typos or missing words.')
+        setError('Those words are not a valid recovery phrase. Check the spelling and the order.')
       } else {
         setError(extractErrorMessage(err, 'Unlock failed. Try again.'))
       }
     } finally {
       setBusy(false)
     }
-  }, [phrase])
+  }, [words])
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">Unlock your vault</ThemedText>
-        <ThemedText type="small">
-          Enter your 24-word recovery phrase. The key never leaves this device.
-        </ThemedText>
-        <TextInput
-          style={styles.input}
-          value={phrase}
-          onChangeText={setPhrase}
-          placeholder="apple banana cherry …"
-          autoCapitalize="none"
-          autoCorrect={false}
-          multiline
-          numberOfLines={4}
-          secureTextEntry={false}
-          accessibilityLabel="Recovery phrase, 24 words"
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
+      <BackBar />
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.heading}>
+          <AppText variant="largeTitle">Recovery phrase</AppText>
+          <AppText variant="body" color={c.text.secondary}>
+            Enter the twenty-four words in order, from the sheet you wrote down when you created
+            this vault.
+          </AppText>
+        </View>
+
+        <PhraseGrid
+          words={words}
+          onChange={setWords}
+          focused={focused}
+          onFocusIndex={setFocused}
           editable={!busy}
         />
-        <Pressable
-          style={styles.button}
-          onPress={unlock}
-          disabled={busy || phrase.trim().length === 0}
-          accessibilityRole="button"
-          accessibilityLabel="Unlock vault"
-        >
-          {busy ? (
-            <>
-              <ActivityIndicator />
-              <ThemedText type="small">Deriving keys…</ThemedText>
-            </>
-          ) : (
-            <ThemedText type="smallBold">Unlock</ThemedText>
-          )}
-        </Pressable>
-        {error ? (
-          <ThemedText type="small" style={styles.error} accessibilityRole="alert">
-            {error}
-          </ThemedText>
+
+        {suggestions.length > 0 ? (
+          <View style={styles.suggestions}>
+            {suggestions.map((suggestion) => (
+              <Pressable
+                key={suggestion}
+                accessibilityRole="button"
+                accessibilityLabel={`Use ${suggestion} for word ${focused + 1}`}
+                onPress={() => accept(suggestion)}
+                style={[styles.suggestion, { backgroundColor: c.canvas.surface }]}
+              >
+                <AppText variant="subhead">{suggestion}</AppText>
+              </Pressable>
+            ))}
+          </View>
         ) : null}
-      </ThemedView>
+
+        {error ? (
+          <AppText variant="footnote" color={c.ui.destructiveText} accessibilityRole="alert">
+            {error}
+          </AppText>
+        ) : null}
+      </ScrollView>
+
+      <View style={styles.actions}>
+        <Button
+          label="Unlock vault"
+          onPress={unlock}
+          disabled={!complete}
+          busy={busy}
+          accessibilityLabel="Unlock vault"
+        />
+      </View>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: { flex: 1, padding: Spacing.four, gap: Spacing.three },
-  input: {
-    borderWidth: 1,
-    borderColor: 'rgba(127,127,127,0.4)',
-    borderRadius: 8,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    minHeight: 96,
-    fontSize: 16,
-    textAlignVertical: 'top'
-  },
-  button: {
+  flex: { flex: 1 },
+  body: { paddingHorizontal: AUTH_GUTTER, paddingTop: space.s24, gap: space.s20 },
+  heading: { gap: space.s8 },
+  suggestions: { flexDirection: 'row', gap: space.s8 },
+  suggestion: {
+    height: SUGGESTION_HEIGHT,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
     alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(127,127,127,0.4)',
-    paddingVertical: Spacing.two,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: Spacing.two
+    justifyContent: 'center'
   },
-  error: { color: '#c0392b' }
+  actions: { paddingHorizontal: AUTH_GUTTER, paddingBottom: space.s8, paddingTop: space.s8 }
 })

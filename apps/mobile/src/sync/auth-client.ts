@@ -4,6 +4,7 @@ import {
   toBase64,
   generateDeviceSigningKeyPair
 } from '../crypto/libsodium'
+import { SyncRequestError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import {
   getSessionToken,
@@ -67,13 +68,18 @@ async function request<T>(
     error?: string | { code?: string; message?: string }
   }
   if (!response.ok) {
+    const code = typeof body.error === 'object' && body.error ? (body.error.code ?? null) : null
     const detail =
       typeof body.error === 'string'
         ? body.error
         : body.error
           ? `${body.error.code ?? ''} ${body.error.message ?? ''}`.trim()
           : ''
-    throw new Error(`${path} failed (HTTP ${response.status})${detail ? `: ${detail}` : ''}`)
+    throw new SyncRequestError(
+      `${path} failed (HTTP ${response.status})${detail ? `: ${detail}` : ''}`,
+      response.status,
+      code
+    )
   }
   return body
 }
@@ -88,6 +94,15 @@ function decodeJwtPayload(token: string): { jti?: string } {
 
 export async function requestOtp(email: string): Promise<void> {
   await request('/auth/otp/request', { body: { email } })
+}
+
+/**
+ * Ask for a fresh code. The server no-ops when nothing is pending, so a resend
+ * after the code already expired is safe rather than an error the UI has to
+ * explain.
+ */
+export async function resendOtp(email: string): Promise<void> {
+  await request('/auth/otp/resend', { body: { email } })
 }
 
 export interface OtpVerifyResult {
@@ -110,11 +125,27 @@ export async function verifyOtpAndRegisterDevice(
     return { needsSetup: true }
   }
 
+  await registerDeviceWithSetupToken(email, verify.setupToken)
+  return { needsSetup: false }
+}
+
+/**
+ * The second half of sign-in, shared by every way in.
+ *
+ * OTP and native Google both end holding a setup token, and the device
+ * registration that follows is identical. Keeping one implementation is what
+ * stops a second sign-in route quietly storing the signing key in the wrong
+ * scope, which fails silently and only shows up as items no peer accepts.
+ */
+export async function registerDeviceWithSetupToken(
+  email: string,
+  setupToken: string
+): Promise<void> {
   const keyPair = await generateDeviceSigningKeyPair()
   const nonceBytes = new Uint8Array(12)
   crypto.getRandomValues(nonceBytes)
   const nonce = `ios-${Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('')}`
-  const jti = decodeJwtPayload(verify.setupToken).jti
+  const jti = decodeJwtPayload(setupToken).jti
   if (!jti) throw new Error('Setup token missing jti')
   const challenge = new TextEncoder().encode(`${nonce}:${jti}`)
   const signature = signDetached(challenge, keyPair.secretKey)
@@ -122,7 +153,7 @@ export async function verifyOtpAndRegisterDevice(
   const registered = await request<{ deviceId: string; accessToken: string; refreshToken: string }>(
     '/auth/devices',
     {
-      token: verify.setupToken,
+      token: setupToken,
       body: {
         name: 'iPhone',
         platform: 'ios',
@@ -150,6 +181,19 @@ export async function verifyOtpAndRegisterDevice(
     deviceId: registered.deviceId
   })
   log.info('Device registered')
+}
+
+/** Exchange a Google ID token for a Memry session (`/auth/oauth/google/native`). */
+export async function signInWithGoogleIdToken(
+  email: string,
+  idToken: string
+): Promise<OtpVerifyResult> {
+  const result = await request<{ setupToken: string; needsSetup: boolean }>(
+    '/auth/oauth/google/native',
+    { body: { idToken } }
+  )
+  if (result.needsSetup) return { needsSetup: true }
+  await registerDeviceWithSetupToken(email, result.setupToken)
   return { needsSetup: false }
 }
 
@@ -185,6 +229,15 @@ export async function refreshSession(): Promise<string | null> {
     log.warn('Token refresh failed', { error: err instanceof Error ? err.message : String(err) })
     return null
   }
+}
+
+/**
+ * Forget the account on this device. Deliberately local-only: the encrypted
+ * vault files stay, so signing back in does not re-download everything.
+ */
+export async function signOut(): Promise<void> {
+  await clearSession()
+  await clearCurrentVaultId()
 }
 
 export interface RemoteVault {
