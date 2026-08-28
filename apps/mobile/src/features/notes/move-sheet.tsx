@@ -71,19 +71,19 @@ function buildRows(
     const open = expandedTops.has(topSegment(node.path))
     // A query forces every kept folder open and takes the toggles away, the
     // same rule `flattenFolderTree` applies to the notes list.
-    const expandable = query === '' && level === 0 && node.folders.length > 0
+    const children = query === '' ? (open ? node.folders : []) : node.folders.filter(matches)
     rows.push({
       path: node.path,
       name: node.name,
       icon: node.icon,
       level,
-      expandable,
-      expanded: expandable && open
+      expandable: query === '' && level === 0 && node.folders.length > 0,
+      // Whether the children are actually drawn, not whether this row can
+      // toggle: a nested folder never toggles, but its subfolders are listed
+      // right below it and an open folder is what that is.
+      expanded: children.length > 0
     })
-    if (query === '' && !open) return
-    for (const child of node.folders) {
-      if (query === '' || matches(child)) emit(child, level + 1)
-    }
+    for (const child of children) emit(child, level + 1)
   }
 
   for (const folder of root.folders) {
