@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 
 import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
@@ -133,9 +133,15 @@ export function MoveSheet(props: MoveSheetProps) {
   const { visible, noteId, onClose } = props
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      {/* Keyed by the note, so opening the sheet mounts it and the draft
-          selection starts from that note's folder by construction. */}
-      {visible ? <MoveSheetBody key={noteId} {...props} /> : null}
+      {/* Its OWN provider. A Modal is a separate native window, so the insets
+          the app root measured do not reach inside it and the SafeAreaView
+          below resolves every edge to 0 — the nav row lands on top of the
+          status bar. This is the library's documented fix for modals. */}
+      <SafeAreaProvider>
+        {/* Keyed by the note, so opening the sheet mounts it and the draft
+            selection starts from that note's folder by construction. */}
+        {visible ? <MoveSheetBody key={noteId} {...props} /> : null}
+      </SafeAreaProvider>
     </Modal>
   )
 }
