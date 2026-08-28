@@ -48,6 +48,19 @@ export const OAuthCallbackSchema = z.object({
 })
 
 /**
+ * Native OAuth: the client did the whole dance with the provider's own SDK and
+ * arrives holding an ID token, so there is no authorization code to exchange
+ * and no redirect_uri to police. This exists because iOS has no 127.0.0.1
+ * loopback for the desktop flow and a custom scheme is worse than the native
+ * sheet on every axis a user can feel.
+ */
+export const NativeOAuthSchema = z.object({
+  idToken: z.string().min(1).max(4096),
+  sessionNonce: z.string().min(1).optional(),
+  devicePublicKey: z.string().min(1).max(128).optional()
+})
+
+/**
  * Renew a setup token that ran out while the user was away finding their
  * recovery phrase. Proof of possession of the committed device key — not mere
  * possession of the (expired) token — is what authorises the new one.

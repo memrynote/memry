@@ -9,6 +9,7 @@ import {
   DeviceRegisterRequestSchema,
   FirstDeviceSetupRequestSchema,
   RefreshTokenRequestSchema,
+  NativeOAuthSchema,
   OAuthCallbackSchema,
   RenewSetupTokenRequestSchema,
   EmailChangeRequestSchema,
@@ -413,6 +414,74 @@ auth.post('/oauth/:provider/callback', async (c) => {
     captureBusinessEvent(c.env, isNewUser ? 'user_signed_up' : 'user_logged_in', user.id, {
       auth_method: 'oauth',
       auth_provider: 'google'
+    })
+  )
+
+  return c.json({
+    success: true,
+    isNewUser,
+    needsSetup: !user.kdf_salt,
+    setupToken
+  })
+})
+
+// POST /oauth/:provider/native
+//
+// The mobile counterpart of the callback below. The app signs in with Google's
+// own iOS SDK and posts the resulting ID token, so this route skips the code
+// exchange and picks the flow up at validation. Everything after that — user
+// lookup, entitlement, setup token, analytics — is the same path the browser
+// flow takes, deliberately: two ways in must not become two account models.
+auth.post('/oauth/:provider/native', async (c) => {
+  const provider = c.req.param('provider')
+  if (provider !== 'google') {
+    throw new AppError(ErrorCodes.AUTH_INVALID_PROVIDER, 'Unsupported OAuth provider', 400)
+  }
+
+  const clientId = c.env.GOOGLE_IOS_CLIENT_ID
+  if (!clientId) {
+    // Loud rather than falling back to the web client: validating against the
+    // wrong audience would accept a token minted for a different app.
+    throw new AppError(
+      ErrorCodes.AUTH_INVALID_PROVIDER,
+      'Native Google sign-in is not configured on this deployment',
+      501
+    )
+  }
+
+  const body = await c.req.json()
+  const parsed = NativeOAuthSchema.safeParse(body)
+  if (!parsed.success) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid request body', 400)
+  }
+
+  const { idToken, sessionNonce, devicePublicKey } = parsed.data
+  const claims = await validateGoogleIdToken(idToken, clientId)
+
+  const { user, isNewUser } = await getOrCreateUserByEmail(c.env.DB, claims.email, {
+    authMethod: 'oauth',
+    authProvider: 'google',
+    authProviderId: claims.sub
+  })
+
+  await ensureLocalAdminPaidSyncAccess(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    claims.email,
+    user.id,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
+
+  const setupToken = await signSetupToken(user.id, c.env.JWT_PRIVATE_KEY, sessionNonce, {
+    devicePublicKey
+  })
+
+  safeWaitUntil(
+    c,
+    captureBusinessEvent(c.env, isNewUser ? 'user_signed_up' : 'user_logged_in', user.id, {
+      auth_method: 'oauth',
+      auth_provider: 'google',
+      surface: 'mobile'
     })
   )
 

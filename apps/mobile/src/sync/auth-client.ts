@@ -137,11 +137,27 @@ export async function verifyOtpAndRegisterDevice(
     return { needsSetup: true }
   }
 
+  await registerDeviceWithSetupToken(email, verify.setupToken)
+  return { needsSetup: false }
+}
+
+/**
+ * The second half of sign-in, shared by every way in.
+ *
+ * OTP and native Google both end holding a setup token, and the device
+ * registration that follows is identical. Keeping one implementation is what
+ * stops a second sign-in route quietly storing the signing key in the wrong
+ * scope, which fails silently and only shows up as items no peer accepts.
+ */
+export async function registerDeviceWithSetupToken(
+  email: string,
+  setupToken: string
+): Promise<void> {
   const keyPair = await generateDeviceSigningKeyPair()
   const nonceBytes = new Uint8Array(12)
   crypto.getRandomValues(nonceBytes)
   const nonce = `ios-${Array.from(nonceBytes, (b) => b.toString(16).padStart(2, '0')).join('')}`
-  const jti = decodeJwtPayload(verify.setupToken).jti
+  const jti = decodeJwtPayload(setupToken).jti
   if (!jti) throw new Error('Setup token missing jti')
   const challenge = new TextEncoder().encode(`${nonce}:${jti}`)
   const signature = signDetached(challenge, keyPair.secretKey)
@@ -149,7 +165,7 @@ export async function verifyOtpAndRegisterDevice(
   const registered = await request<{ deviceId: string; accessToken: string; refreshToken: string }>(
     '/auth/devices',
     {
-      token: verify.setupToken,
+      token: setupToken,
       body: {
         name: 'iPhone',
         platform: 'ios',
@@ -177,6 +193,19 @@ export async function verifyOtpAndRegisterDevice(
     deviceId: registered.deviceId
   })
   log.info('Device registered')
+}
+
+/** Exchange a Google ID token for a Memry session (`/auth/oauth/google/native`). */
+export async function signInWithGoogleIdToken(
+  email: string,
+  idToken: string
+): Promise<OtpVerifyResult> {
+  const result = await request<{ setupToken: string; needsSetup: boolean }>(
+    '/auth/oauth/google/native',
+    { body: { idToken } }
+  )
+  if (result.needsSetup) return { needsSetup: true }
+  await registerDeviceWithSetupToken(email, result.setupToken)
   return { needsSetup: false }
 }
 

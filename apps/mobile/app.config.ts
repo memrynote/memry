@@ -1,5 +1,20 @@
 import type { ExpoConfig } from 'expo/config'
 
+/**
+ * Native Google sign-in needs a Google Cloud project, and a build without one
+ * must still prebuild and run. Both the config plugin and the client ids the
+ * app reads are therefore conditional: absent credentials simply leave the
+ * Google option off the sign-in screen. `GOOGLE_IOS_CLIENT_ID` looks like
+ * `<id>.apps.googleusercontent.com`; its URL scheme is that value reversed.
+ */
+const googleIosClientId = process.env.GOOGLE_IOS_CLIENT_ID
+const googleWebClientId = process.env.GOOGLE_WEB_CLIENT_ID
+const googleSignIn =
+  googleIosClientId && googleWebClientId
+    ? { iosClientId: googleIosClientId, webClientId: googleWebClientId }
+    : undefined
+const reversedIosClientId = googleIosClientId?.split('.').reverse().join('.')
+
 // Memry Mobile (spec 001-mobile-app). iOS 17+ target, dev-client + prebuild
 // workflow, Hermes (SDK 57 default). Keys never leave expo-secure-store;
 // production-safety constraints live in the sync server, not here.
@@ -57,10 +72,16 @@ const config: ExpoConfig = {
       'expo-local-authentication',
       { faceIDPermission: 'Memry uses Face ID to unlock your vault on this device.' }
     ],
+    ...(googleSignIn && reversedIosClientId
+      ? ([
+          ['@react-native-google-signin/google-signin', { iosUrlScheme: reversedIosClientId }]
+        ] as NonNullable<ExpoConfig['plugins']>)
+      : []),
     'react-native-libsodium',
     'expo-secure-store',
     'expo-background-task'
   ],
+  extra: { googleSignIn },
   experiments: {
     typedRoutes: true,
     reactCompiler: true

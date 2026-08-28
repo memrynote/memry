@@ -841,6 +841,90 @@ describe('auth routes', () => {
   })
 
   // ==========================================================================
+  // POST /auth/oauth/:provider/native
+  // ==========================================================================
+
+  describe('POST /auth/oauth/:provider/native', () => {
+    const iosEnv = () => ({ ...env, GOOGLE_IOS_CLIENT_ID: 'mock-ios-client-id' })
+
+    it('should reject unsupported providers', async () => {
+      const res = await app.request(
+        '/auth/oauth/github/native',
+        jsonPost('/auth/oauth/github/native', { idToken: 'anything' }),
+        iosEnv()
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_PROVIDER)
+    })
+
+    it('should refuse rather than fall back to the web client when the iOS client is unset', async () => {
+      // #given a deployment that never configured the iOS OAuth client
+      // #when
+      const res = await app.request(
+        '/auth/oauth/google/native',
+        jsonPost('/auth/oauth/google/native', { idToken: 'mock-id-token' }),
+        env
+      )
+
+      // #then it fails loudly; validating against the web audience would accept
+      // a token minted for a different application
+      expect(res.status).toBe(501)
+    })
+
+    it('should return 400 when the ID token is missing', async () => {
+      const res = await app.request(
+        '/auth/oauth/google/native',
+        jsonPost('/auth/oauth/google/native', { idToken: '' }),
+        iosEnv()
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('should validate the ID token against the iOS client and issue a setup token', async () => {
+      // #when
+      const res = await app.request(
+        '/auth/oauth/google/native',
+        jsonPost('/auth/oauth/google/native', { idToken: 'mock-id-token' }),
+        iosEnv()
+      )
+
+      // #then
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        success: true,
+        isNewUser: true,
+        needsSetup: true,
+        setupToken: 'mock-setup-token'
+      })
+      // The audience is the thing that stops another app's token working here.
+      const options = vi.mocked(jwtVerify).mock.calls.at(-1)?.[2] as { audience?: string }
+      expect(options.audience).toBe('mock-ios-client-id')
+    })
+
+    it('should reject an ID token whose email Google has not verified', async () => {
+      // #given
+      vi.mocked(jwtVerify).mockResolvedValueOnce({
+        payload: { email: 'test@example.com', email_verified: false, sub: 'google-sub-123' }
+      } as never)
+
+      // #when
+      const res = await app.request(
+        '/auth/oauth/google/native',
+        jsonPost('/auth/oauth/google/native', { idToken: 'mock-id-token' }),
+        iosEnv()
+      )
+
+      // #then
+      expect(res.status).toBe(401)
+    })
+  })
+
+  // ==========================================================================
   // POST /auth/oauth/:provider/callback
   // ==========================================================================
 

@@ -14,6 +14,7 @@
     "@memry/sync-client": "workspace:*",
     "@noble/hashes": "^2.0.1",
     "@react-native-community/netinfo": "12.0.1",
+    "@react-native-google-signin/google-signin": "^16.1.4",
     "@scure/bip39": "^2.0.0",
     "cborg": "^4.5.8",
     "expo": "~57.0.15",
