@@ -1,5 +1,6 @@
 import { getMeta, setMeta, type VaultDb } from '@/db/index'
 import { NOTES_EXPANDED_KEY, NOTES_SORT_KEY } from '@/db/keys'
+import { toEpochMs } from '@/features/notes/note-ops'
 import {
   fileTypeFromTitle,
   isMobileSortMode,
@@ -22,23 +23,6 @@ export interface NotesSnapshot {
   entries: NoteEntry[]
   icons: Map<string, string>
   pendingCount: number
-}
-
-/**
- * `createdAt` arrives in two shapes and both are live in the same table.
- * Desktop's `buildSnapshotPayload` pushes the ISO string from
- * `NoteMetadata.createdAt`, and this app's `createNote` writes `Date.now()`.
- * Accepting only numbers would collapse every desktop-synced note onto its
- * `updated_at` and make the two `created-*` sort modes wrong for most of a
- * real vault.
- */
-function toEpochMs(value: unknown, fallback: number): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value)
-    return Number.isFinite(parsed) ? parsed : fallback
-  }
-  return fallback
 }
 
 /**

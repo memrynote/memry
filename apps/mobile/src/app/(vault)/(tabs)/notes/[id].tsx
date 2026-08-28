@@ -25,6 +25,7 @@ import {
   readNoteRecord,
   resolveSeedMarkdown,
   shouldSeedFromMarkdown,
+  toEpochMs,
   type NoteOpsContext,
   type NotePayload,
   type NoteRecord
@@ -362,7 +363,7 @@ export default function NoteScreen() {
   const title = payload?.title ?? 'Untitled'
   const folderSegments = (payload?.folderPath ?? '').split('/').filter((part) => part.length > 0)
   const parentFolder = folderSegments[folderSegments.length - 1] ?? 'Notes'
-  const editedAt = payload?.modifiedAt ?? updatedAt
+  const editedAt = toEpochMs(payload?.modifiedAt, updatedAt)
 
   const readActions: NavBarAction[] = [
     // Never offered on a locked vault: the mode flip could not produce an

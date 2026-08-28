@@ -28,9 +28,29 @@ export interface NotePayload {
   tags?: string[]
   properties?: Record<string, unknown>
   clock?: Record<string, number>
-  createdAt?: number
-  modifiedAt?: number
+  /**
+   * Epoch ms from this app, an ISO string from desktop.
+   *
+   * `NoteSyncPayloadSchema` declares both of these `z.string()` and desktop's
+   * `buildSnapshotPayload` pushes the ISO form, while `createNote` below writes
+   * `Date.now()`. Both shapes are live in the same table on the same device, so
+   * the union is the truth and narrowing it to `number` only moved the failure
+   * to whoever compared one against a number and got `false` forever. Read them
+   * through `toEpochMs`.
+   */
+  createdAt?: number | string
+  modifiedAt?: number | string
   [unknownFieldsFromNewerClients: string]: unknown
+}
+
+/** A note timestamp in either stored shape, as epoch ms. */
+export function toEpochMs(value: unknown, fallback: number): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : fallback
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+  return fallback
 }
 
 /** Item types the note editor can open. */
