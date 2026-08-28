@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator } from 'react-native'
 import { Redirect } from 'expo-router'
-import { ThemedView } from '@/components/themed-view'
+
+import { BrandSplash } from '@/features/auth/brand-splash'
 import { isVaultUnlocked } from '@/lib/vault-unlock'
 import { loadCurrentVaultId, loadSession } from '@/sync/auth-client'
 
-type Destination = '/sign-in' | '/vaults' | '/unlock' | '/notes'
+type Destination = '/welcome' | '/vaults' | '/unlock' | '/notes'
 
 /** Entry gate: session → vault → unlock state decides where the app opens. */
 export default function Entry() {
@@ -16,7 +16,7 @@ export default function Entry() {
     void (async () => {
       const session = await loadSession()
       if (!session) {
-        if (!cancelled) setDestination('/sign-in')
+        if (!cancelled) setDestination('/welcome')
         return
       }
       const vaultId = await loadCurrentVaultId()
@@ -32,12 +32,8 @@ export default function Entry() {
     }
   }, [])
 
-  if (!destination) {
-    return (
-      <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </ThemedView>
-    )
-  }
+  // The gate reads the keychain, so it is never instant. Showing the brand
+  // field rather than a spinner keeps the launch one continuous surface.
+  if (!destination) return <BrandSplash status="Unlocking your vault…" />
   return <Redirect href={destination} />
 }

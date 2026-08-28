@@ -39,9 +39,10 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
-        backgroundColor: '#208AEF',
-        image: './assets/images/splash-icon.png',
-        imageWidth: 76
+        // No image: the native splash is a plain brand field that the JS
+        // splash draws the wordmark on top of, so the handoff is seamless and
+        // no new raster asset has to be kept in sync with the design.
+        backgroundColor: '#ff671a'
       }
     ],
     [

@@ -33,6 +33,12 @@ export const white = {
     base: '#6366f1',
     foreground: '#ffffff'
   },
+  // Terracotta is the marketing mark, not an in-app accent. It is allowed on
+  // brand surfaces only (splash, paywall); anything interactive uses tint.
+  brand: {
+    base: '#ff671a',
+    foreground: '#ffffff'
+  },
   dot: {
     cyan: '#0891b2',
     purple: '#7c3aed',
