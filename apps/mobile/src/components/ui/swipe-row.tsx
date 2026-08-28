@@ -113,6 +113,8 @@ export function SwipeRow({ actions, children }: SwipeRowProps) {
 
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row' },
-  action: { alignItems: 'center', justifyContent: 'center', gap: 6 },
+  // Board 27 sets the glyph beside the label, not above it: at 72pt the row
+  // fits, and stacking makes the strip read as a tile rather than a button.
+  action: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   actionLabel: { fontFamily: fontFamilies.sansMedium }
 })
