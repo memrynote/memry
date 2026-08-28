@@ -153,6 +153,103 @@ export async function resolveCalloutRun(
 }
 
 // ---------------------------------------------------------------------------
+// quote — a blockquote run whose inner structure BlockNote's flat `quote` block
+// cannot hold on its own
+// ---------------------------------------------------------------------------
+
+/**
+ * Re-quote inner markdown: one `> ` per line, a bare `>` for each blank line
+ * separating the quote's own blocks. The exact inverse of the one-level strip
+ * `readStructuredQuoteRun` performs.
+ */
+export function serializeQuoteBlock(innerMarkdown: string): string {
+  return innerMarkdown
+    .split('\n')
+    .map((line) => (line === '' ? '>' : `> ${line}`))
+    .join('\n')
+}
+
+export interface QuoteRun {
+  /** The run's lines with one `>` level stripped. */
+  innerMarkdown: string
+  /** The run's original lines, verbatim, for fallback parsing on decline. */
+  raw: string
+  /** Index of the first line after the run. */
+  end: number
+}
+
+/**
+ * Read a blockquote run at `lines[start]` whose inner structure BlockNote
+ * cannot hold flat, or null to leave the bytes on the path they are on today.
+ *
+ * BlockNote parses a whole blockquote into ONE block of inline content, so a
+ * blank `>` separator and a `> >` nesting level are gone before serialization
+ * ever runs: `> A\n>\n> B` comes back as `> A\n> B` and a nested callout comes
+ * back unnested (#1881). Those two are exactly the shapes claimed here. A run
+ * with neither is already flat and stays on the untouched path, so no quote
+ * that round-trips today changes.
+ *
+ * Strict on the prefix: only `>` alone and `> …` are read. A `>text` line —
+ * valid CommonMark, never bytes Memry writes — refuses the whole run rather
+ * than ending it early, which would tear one blockquote into two.
+ */
+export function readStructuredQuoteRun(lines: readonly string[], start: number): QuoteRun | null {
+  if (!lines[start]?.startsWith('>')) return null
+
+  const inner: string[] = []
+  let end = start
+  let structured = false
+
+  while (end < lines.length && lines[end].startsWith('>')) {
+    const line = lines[end]
+    if (line === '>') {
+      inner.push('')
+      structured = true
+    } else if (line.startsWith('> ')) {
+      const stripped = line.slice(2)
+      inner.push(stripped)
+      if (stripped.startsWith('>')) structured = true
+    } else {
+      return null
+    }
+    end++
+  }
+
+  if (!structured) return null
+  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end }
+}
+
+/**
+ * Decide whether a run may become a quote block that owns children, by proof
+ * rather than by pattern — the same rule `resolveCalloutRun` applies: parse the
+ * stripped inner markdown, and claim only if re-serializing and re-quoting it
+ * reproduces the run byte-for-byte. Anything the schema would normalize
+ * declines and the caller leaves the bytes exactly as they were. A lazily
+ * continued `> A\n> > B` is one such run: its inner blocks only come back
+ * through a blank separator the author never wrote.
+ *
+ * The first inner block becomes the quote's own content and the rest its
+ * children, which is the list `serializeQuoteBlock` is handed on the way out.
+ */
+export async function resolveQuoteRun(
+  run: QuoteRun,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<{ content: unknown; children: ParsedBlockShape[] } | null> {
+  const parsed = await parseMarkdown(run.innerMarkdown)
+  const [first, ...children] = parsed
+  if (!first || first.type !== 'paragraph' || first.children?.length) return null
+  // No children means a flat quote, which the untouched path already serializes
+  // correctly — claiming it would only route identical bytes through more code.
+  if (children.length === 0) return null
+
+  const roundTripped = (await serializeBlocks(parsed)).trim()
+  if (serializeQuoteBlock(roundTripped) !== run.raw) return null
+
+  return { content: first.content ?? [], children }
+}
+
+// ---------------------------------------------------------------------------
 // youtubeEmbed / bookmark — an image embed whose alt text names the block
 // ---------------------------------------------------------------------------
 

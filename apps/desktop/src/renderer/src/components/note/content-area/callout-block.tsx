@@ -1,5 +1,11 @@
 import { createReactBlockSpec } from '@blocknote/react'
-import { calloutConfig, readCalloutRun, type CalloutRun } from '@memry/editor-schema/blocks'
+import {
+  calloutConfig,
+  readCalloutRun,
+  readStructuredQuoteRun,
+  type CalloutRun,
+  type QuoteRun
+} from '@memry/editor-schema/blocks'
 import { createFenceTracker } from '@memry/shared/markdown-fences'
 import {
   DropdownMenu,
@@ -186,10 +192,16 @@ export function getCalloutSlashMenuItem(
 export { serializeCalloutBlock } from '@memry/editor-schema/blocks'
 
 export type CalloutSegment = { kind: 'callout'; run: CalloutRun }
+/**
+ * A blockquote run whose inner structure BlockNote's flat quote block loses —
+ * claimed under the same byte-round-trip proof as a callout, and for the same
+ * reason: the bytes belong to whoever wrote the file (#1881).
+ */
+export type QuoteSegment = { kind: 'quote'; run: QuoteRun }
 export type MarkdownSegment = { kind: 'markdown'; text: string }
-export type ContentSegment = CalloutSegment | MarkdownSegment
+export type ContentSegment = CalloutSegment | QuoteSegment | MarkdownSegment
 
-export function splitMarkdownByCallouts(markdown: string): ContentSegment[] {
+export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[] {
   const lines = markdown.split('\n')
   const segments: ContentSegment[] = []
   const fence = createFenceTracker()
@@ -208,13 +220,22 @@ export function splitMarkdownByCallouts(markdown: string): ContentSegment[] {
     const atParagraphStart = i === 0 || lines[i - 1].trim() === ''
     const run = insideFence ? null : readCalloutRun(lines, i, atParagraphStart)
 
-    if (run) {
+    const quoteRun =
+      run || insideFence || !atParagraphStart ? null : readStructuredQuoteRun(lines, i)
+
+    const segment: CalloutSegment | QuoteSegment | null = run
+      ? { kind: 'callout', run }
+      : quoteRun
+        ? { kind: 'quote', run: quoteRun }
+        : null
+
+    if (segment) {
       flushMarkdown()
-      segments.push({ kind: 'callout', run })
-      for (let consumed = i + 1; consumed < run.end; consumed++) {
+      segments.push(segment)
+      for (let consumed = i + 1; consumed < segment.run.end; consumed++) {
         fence.consume(lines[consumed])
       }
-      i = run.end
+      i = segment.run.end
     } else {
       mdLines.push(lines[i])
       i++

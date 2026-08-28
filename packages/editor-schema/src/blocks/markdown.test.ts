@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { serializeToggleBlock, splitMarkdownByToggles } from './markdown'
+import {
+  readStructuredQuoteRun,
+  serializeQuoteBlock,
+  serializeToggleBlock,
+  splitMarkdownByToggles
+} from './markdown'
 
 describe('serializeToggleBlock', () => {
   it('wraps the body in blank lines so renderers format it as markdown', () => {
@@ -209,5 +214,52 @@ describe('splitMarkdownByToggles', () => {
     expect(splitMarkdownByToggles(serializeToggleBlock('Docs', body))).toEqual([
       { kind: 'toggle', summary: 'Docs', body, open: false, colorsMarker: null }
     ])
+  })
+})
+
+describe('readStructuredQuoteRun', () => {
+  const read = (markdown: string): ReturnType<typeof readStructuredQuoteRun> =>
+    readStructuredQuoteRun(markdown.split('\n'), 0)
+
+  it('strips one level off a run separated by a bare `>`', () => {
+    expect(read('> One\n>\n> Two')).toEqual({
+      innerMarkdown: 'One\n\nTwo',
+      raw: '> One\n>\n> Two',
+      end: 3
+    })
+  })
+
+  it('strips one level off a nested run, leaving the inner `>` in place', () => {
+    expect(read('> Outer\n>\n> > Inner')?.innerMarkdown).toBe('Outer\n\n> Inner')
+  })
+
+  it('declines a flat run, which BlockNote already round-trips', () => {
+    expect(read('> One\n> Two')).toBeNull()
+  })
+
+  it('declines a line that is not a quote at all', () => {
+    expect(read('Just text')).toBeNull()
+  })
+
+  it('refuses the whole run on a `>text` line rather than tearing it in two', () => {
+    expect(read('> One\n>\n>Two')).toBeNull()
+  })
+
+  it('stops at the first line outside the quote', () => {
+    expect(read('> One\n>\n> Two\n\nAfter')?.end).toBe(3)
+  })
+})
+
+describe('serializeQuoteBlock', () => {
+  it('inverts the strip, writing a bare `>` for each blank line', () => {
+    expect(serializeQuoteBlock('One\n\nTwo')).toBe('> One\n>\n> Two')
+  })
+
+  it('round-trips every run its reader claims', () => {
+    for (const raw of ['> One\n>\n> Two', '> Outer\n>\n> > Inner', '> A\n>\n> - one\n> - two']) {
+      const run = readStructuredQuoteRun(raw.split('\n'), 0)
+      expect(run).not.toBeNull()
+      expect(serializeQuoteBlock(run!.innerMarkdown)).toBe(raw)
+    }
   })
 })

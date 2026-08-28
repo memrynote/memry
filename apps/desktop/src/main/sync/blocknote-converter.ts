@@ -7,7 +7,10 @@ import {
   FILE_BLOCK_LINE_REGEX,
   parseFileBlockMarker,
   readCalloutRun,
+  readStructuredQuoteRun,
   resolveCalloutRun,
+  resolveQuoteRun,
+  serializeQuoteBlock,
   serializeToggleBlock,
   splitMarkdownByToggles,
   type ToggleBlockSegment
@@ -422,6 +425,27 @@ async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Pro
   return serializeToggleBlock(summary, body, colorsMarker, isOpen === true)
 }
 
+function isStructuredQuote(block: Block): boolean {
+  return (block.type as string) === 'quote' && ((block.children ?? []) as Block[]).length > 0
+}
+
+/**
+ * A quote block that owns children writes them INSIDE the blockquote, one `> `
+ * per line and a bare `>` per gap — the bytes `readStructuredQuoteRun` reads
+ * back. BlockNote's own serializer puts children AFTER the quote (`> A\n\nB`),
+ * which is how a blank quote line and a nested callout were lost (#1881).
+ *
+ * The quote's own line is serialized as a paragraph, the same trick
+ * `serializeToggle` uses: a `quote` serialized alone already carries the `> `
+ * this function is about to add.
+ */
+async function serializeQuote(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
+  const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+  const children = (block.children ?? []) as Block[]
+  const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
+  return serializeQuoteBlock(inner.trim())
+}
+
 /**
  * Main-process twin of the renderer's embed resolution: same rewrite, but the
  * vault lookup is a direct call instead of an IPC round trip. A closed vault or
@@ -574,6 +598,25 @@ async function parseContentWithColorMarkers(
         i = claimed.end - 1
         continue
       }
+
+      const quoted = atParagraphStart ? await parseQuoteRunAt(editor, lines, i) : null
+      if (quoted) {
+        await flushBuffer()
+        const props = { ...(pendingColors ?? {}) }
+        pendingColors = null
+        pendingTableColors = null
+        blocks.push({
+          type: 'quote',
+          props,
+          content: quoted.content,
+          children: quoted.children
+        } as unknown as Block)
+        for (let consumed = i + 1; consumed < quoted.end; consumed++) {
+          fence.consume(lines[consumed])
+        }
+        i = quoted.end - 1
+        continue
+      }
     }
 
     // Deliberately NOT fence-guarded: this branch predates custom-block parsing
@@ -651,6 +694,38 @@ async function parseCalloutRunAt(
   if (!claimed) return null
 
   return { type: claimed.type, content: claimed.content, end: run.end }
+}
+
+/**
+ * Claim a structured blockquote at `lines[i]`, or null to leave the bytes on
+ * BlockNote's own quote path.
+ *
+ * Only the two shapes BlockNote's flat quote block loses are read (a blank `>`
+ * separator, a `> >` nesting level), and even those only when re-serializing
+ * the parse reproduces the run byte-for-byte — see `resolveQuoteRun`. The
+ * claimed run becomes a quote block that owns its later blocks as children,
+ * which `serializeQuote` writes back inside the blockquote.
+ *
+ * Inner blocks are parsed flat, so a quote nested two levels deep declines and
+ * keeps today's behavior rather than round-tripping through a half-applied
+ * nesting.
+ */
+async function parseQuoteRunAt(
+  editor: ServerBlockNoteEditor,
+  lines: readonly string[],
+  i: number
+): Promise<{ content: unknown; children: Block[]; end: number } | null> {
+  const run = readStructuredQuoteRun(lines, i)
+  if (!run) return null
+
+  const claimed = await resolveQuoteRun(
+    run,
+    async (md) => (await editor.tryParseMarkdownToBlocks(md)) as never[],
+    async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
+  )
+  if (!claimed) return null
+
+  return { content: claimed.content, children: claimed.children as Block[], end: run.end }
 }
 
 /**
@@ -777,6 +852,14 @@ async function blocksToMarkdownPreserving(
       await flushContentGroup()
       flushGap()
       segments.push({ type: 'content', text: await serializeToggle(editor, block) })
+    } else if (isStructuredQuote(block)) {
+      await flushContentGroup()
+      flushGap()
+      const quoted = await serializeQuote(editor, block)
+      segments.push({
+        type: 'content',
+        text: colorMarkers.length > 0 ? `${colorMarkers.join('\n')}\n${quoted}` : quoted
+      })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
         const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
