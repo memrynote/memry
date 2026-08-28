@@ -212,7 +212,7 @@ test.describe('Inline @-date ghost autocomplete', () => {
     await expect(page.locator(TYPING)).toHaveCount(0)
   })
 
-  test('a fired (triggered) date pill renders in the triggered color', async ({ page }) => {
+  test('a fired (triggered) date pill renders as a spent chip', async ({ page }) => {
     await createNote(page, uniqueLabel('Fired pill color'))
     await focusEditor(page)
 
@@ -223,15 +223,33 @@ test.describe('Inline @-date ghost autocomplete', () => {
     const pill = page.locator(PILL).first()
     await expect(pill).toBeVisible()
 
-    // Simulate the overlay marking this pill fired, then assert the CSS contract:
-    // --date-mention-color resolves to #e56458 = rgb(229, 100, 88).
+    // Simulate the overlay marking this pill fired, then assert the CSS contract
+    // (#1845): a spent chip — --date-mention-color resolves to --muted-foreground
+    // and a settled background fill appears (a date-only pill shares the muted
+    // color but has no fill); red is reserved for broken tokens.
     // Set + read in ONE evaluate: useTriggeredDatePills strips data-fired from
     // un-fired pills on any DOM mutation, so a separate round-trip can race it.
-    const color = await pill.evaluate((el) => {
-      el.setAttribute('data-fired', 'true')
-      return getComputedStyle(el).color
-    })
-    expect(color).toBe('rgb(229, 100, 88)')
+    const { beforeBackground, firedBackground, firedColor, mutedColor } = await pill.evaluate(
+      (el) => {
+        const probe = document.createElement('span')
+        probe.style.color = 'var(--muted-foreground)'
+        document.body.appendChild(probe)
+        const mutedColor = getComputedStyle(probe).color
+        probe.remove()
+        const beforeBackground = getComputedStyle(el).backgroundColor
+        el.setAttribute('data-fired', 'true')
+        const style = getComputedStyle(el)
+        return {
+          beforeBackground,
+          firedBackground: style.backgroundColor,
+          firedColor: style.color,
+          mutedColor
+        }
+      }
+    )
+    expect(firedColor).toBe(mutedColor)
+    expect(firedBackground).not.toBe(beforeBackground)
+    expect(firedBackground).not.toBe('rgba(0, 0, 0, 0)')
   })
 
   test('keeps the highlight while a meridiem is typed after the hour', async ({ page }) => {
