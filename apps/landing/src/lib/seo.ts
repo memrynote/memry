@@ -12,7 +12,7 @@ export const TWITTER_HANDLE = '@memrynote'
 // ~7 days and X retired its Card Validator, so editing the image URL alone won't refresh
 // an already-cached card — share the page URL once with a throwaway query (e.g.
 // memrynote.com/?r=1) to make the scraper treat it as new, or wait out the TTL.
-const SOCIAL_IMAGE_PATH = '/og-image-v2.png'
+const SOCIAL_IMAGE_PATH = '/og-image-v3.png'
 export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
 export const SOCIAL_IMAGE_HEIGHT = '630'
