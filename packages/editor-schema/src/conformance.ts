@@ -81,11 +81,11 @@ const mentionCases: RoundtripCase[] = [
     markdown: `Intro ${mention(url)} outro.`
   })),
   {
-    // encodeURIComponent leaves `!` and `_` raw, and `_` next to punctuation is
-    // exactly where remark-stringify escapes it into the token.
+    // encodeURIComponent left `!` and `_` raw, and `_` next to punctuation is
+    // exactly where remark-stringify escaped it into the token before #1867
+    // closed the alphabet.
     name: 'link mention url with underscore next to punctuation',
-    markdown: `Intro ${mention('https://example.com/!_bang/x.y_~z')} outro.`,
-    pending: { renderer: 1844, main: 1844 }
+    markdown: `Intro ${mention('https://example.com/!_bang/x.y_~z')} outro.`
   }
 ]
 
@@ -203,9 +203,12 @@ function tableOf(header: [string, string], row: [string, string]): string {
 
 const containerCases: RoundtripCase[] = [
   {
+    // The rich linkMention render is what a renderer-side cell serializes
+    // through, rewriting the token as a markdown link — #1865's class, second
+    // instance (the wiki-link case below is the first).
     name: 'mention and date tokens in table cells',
     markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())]),
-    pending: { renderer: 1844 }
+    pending: { renderer: 1865 }
   },
   {
     // The renderer's rich wikiLink render is what a table cell serializes
@@ -413,13 +416,7 @@ export interface FuzzFamily {
 }
 
 export const FUZZ_FAMILIES: readonly FuzzFamily[] = [
-  {
-    name: 'link mention urls',
-    generate: fuzzMentionMarkdown,
-    // The alphabet includes `_` next to punctuation, which remark escapes into
-    // the token on current main — the exact class #1844 closes.
-    pending: { renderer: 1844, main: 1844 }
-  },
+  { name: 'link mention urls', generate: fuzzMentionMarkdown },
   { name: 'date pill payloads', generate: fuzzDateMarkdown },
   { name: 'callout bodies', generate: fuzzCalloutMarkdown },
   { name: 'toggle summaries and bodies', generate: (random) => fuzzToggleMarkdown(random) },
