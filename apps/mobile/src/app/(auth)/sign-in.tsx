@@ -1,30 +1,35 @@
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, TextInput } from 'react-native'
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { ThemedText } from '@/components/themed-text'
-import { ThemedView } from '@/components/themed-view'
-import { Spacing } from '@/constants/theme'
-import { extractErrorMessage } from '@/lib/errors'
-import { requestOtp, verifyOtpAndRegisterDevice } from '@/sync/auth-client'
 
-/**
- * Sign-in (T043): e-mail → one-time code → device registration. An account
- * with no vault yet is out of US1 scope — seed it from desktop first.
- */
+import { AppText } from '@/components/ui/app-text'
+import { Button } from '@/components/ui/button'
+import { TextField } from '@/components/ui/text-field'
+import { AUTH_GUTTER, BackBar } from '@/features/auth/chrome'
+import { extractErrorMessage } from '@/lib/errors'
+import { requestOtp } from '@/sync/auth-client'
+import { space } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
+
+// The board authors this label at 0.06em on 12px. captionEmphasis carries a
+// different tracking, so the resolved px value overrides it here.
+const fieldLabel = { letterSpacing: 0.72 }
+
+/** Sign in, step one (Paper `03 · Auth — Sign in, email`). */
 export default function SignInScreen() {
+  const c = useColors()
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const sendCode = useCallback(async () => {
+    const address = email.trim()
     setBusy(true)
     setError(null)
     try {
-      await requestOtp(email.trim())
-      setStep('code')
+      await requestOtp(address)
+      router.push({ pathname: '/verify', params: { email: address } })
     } catch (err) {
       setError(extractErrorMessage(err, 'Could not send the code. Check the address and retry.'))
     } finally {
@@ -32,120 +37,65 @@ export default function SignInScreen() {
     }
   }, [email])
 
-  const verify = useCallback(async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      const result = await verifyOtpAndRegisterDevice(email.trim(), code.trim())
-      if (result.needsSetup) {
-        setError(
-          'This account has no vault yet. Set Memry up on your desktop first, then sign in here.'
-        )
-        return
-      }
-      router.replace('/vaults')
-    } catch (err) {
-      setError(extractErrorMessage(err, 'Sign-in failed. Check the code and retry.'))
-    } finally {
-      setBusy(false)
-    }
-  }, [email, code])
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">Sign in</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
+      <BackBar />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.body}>
+          <View style={styles.heading}>
+            <AppText variant="largeTitle">Sign in</AppText>
+            <AppText variant="body" color={c.text.secondary}>
+              We’ll email you a six-digit code. No password to remember.
+            </AppText>
+          </View>
 
-        {step === 'email' ? (
-          <>
-            <ThemedText type="small">
-              Enter the e-mail of your Memry account. We send a one-time code.
-            </ThemedText>
-            <TextInput
-              style={styles.input}
+          <View style={styles.field}>
+            <AppText variant="captionEmphasis" color={c.text.secondary} style={fieldLabel}>
+              EMAIL
+            </AppText>
+            <TextField
               value={email}
               onChangeText={setEmail}
+              error={error ?? undefined}
               placeholder="you@example.com"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
-              accessibilityLabel="E-mail address"
+              accessibilityLabel="Email address"
               editable={!busy}
+              autoFocus
             />
-            <Pressable
-              style={styles.button}
-              onPress={sendCode}
-              disabled={busy || email.trim().length === 0}
-              accessibilityRole="button"
-              accessibilityLabel="Send code"
-            >
-              {busy ? <ActivityIndicator /> : <ThemedText type="smallBold">Send code</ThemedText>}
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <ThemedText type="small">Enter the code we sent to {email.trim()}.</ThemedText>
-            <TextInput
-              style={styles.input}
-              value={code}
-              onChangeText={setCode}
-              placeholder="123456"
-              keyboardType="number-pad"
-              autoComplete="one-time-code"
-              accessibilityLabel="One-time code"
-              editable={!busy}
-            />
-            <Pressable
-              style={styles.button}
-              onPress={verify}
-              disabled={busy || code.trim().length === 0}
-              accessibilityRole="button"
-              accessibilityLabel="Verify code"
-            >
-              {busy ? <ActivityIndicator /> : <ThemedText type="smallBold">Verify</ThemedText>}
-            </Pressable>
-            <Pressable
-              onPress={() => setStep('email')}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel="Use a different e-mail"
-            >
-              <ThemedText type="link">Use a different e-mail</ThemedText>
-            </Pressable>
-          </>
-        )}
+          </View>
 
-        {error ? (
-          <ThemedText type="small" style={styles.error} accessibilityRole="alert">
-            {error}
-          </ThemedText>
-        ) : null}
-      </ThemedView>
+          <Button
+            label="Send code"
+            onPress={sendCode}
+            busy={busy}
+            disabled={email.trim().length === 0}
+            accessibilityLabel="Send code"
+          />
+        </View>
+
+        <View style={styles.legal}>
+          <AppText variant="caption" color={c.text.secondary} style={styles.centered}>
+            Signing in creates no plaintext copy of your vault. Memry stores anonymous usage
+            telemetry only.
+          </AppText>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: {
-    flex: 1,
-    padding: Spacing.four,
-    gap: Spacing.three
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: 'rgba(127,127,127,0.4)',
-    borderRadius: 8,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16
-  },
-  button: {
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(127,127,127,0.4)',
-    paddingVertical: Spacing.two
-  },
-  error: { color: '#c0392b' }
+  flex: { flex: 1 },
+  body: { flex: 1, paddingHorizontal: AUTH_GUTTER, paddingTop: space.s24, gap: space.s24 },
+  heading: { gap: space.s8 },
+  field: { gap: space.s8 },
+  legal: { paddingHorizontal: AUTH_GUTTER, paddingBottom: space.s8 },
+  centered: { textAlign: 'center' }
 })

@@ -90,6 +90,15 @@ export async function requestOtp(email: string): Promise<void> {
   await request('/auth/otp/request', { body: { email } })
 }
 
+/**
+ * Ask for a fresh code. The server no-ops when nothing is pending, so a resend
+ * after the code already expired is safe rather than an error the UI has to
+ * explain.
+ */
+export async function resendOtp(email: string): Promise<void> {
+  await request('/auth/otp/resend', { body: { email } })
+}
+
 export interface OtpVerifyResult {
   needsSetup: boolean
 }
