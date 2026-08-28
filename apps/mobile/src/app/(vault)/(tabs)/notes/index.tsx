@@ -7,6 +7,7 @@ import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
 import { FAB } from '@/components/ui/fab'
 import { Icon, type IconName } from '@/components/ui/icon'
+import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { SearchField } from '@/components/ui/search-field'
 import { TreeRow } from '@/components/ui/tree-row'
 import { openVaultDb, type VaultDb } from '@/db/index'
@@ -16,7 +17,10 @@ import {
   listTemplates,
   type TemplateSummary
 } from '@/features/notes/from-template'
-import { createNote } from '@/features/notes/note-ops'
+import { createFolder } from '@/features/notes/folder-ops'
+import { createNote, type NoteOpsContext } from '@/features/notes/note-ops'
+import { resolveIcon } from '@/features/notes/icon-value'
+import { folderTarget, useRowMenu } from '@/features/notes/row-menu'
 import {
   readExpandedFolders,
   readNotesSnapshot,
@@ -40,7 +44,14 @@ import { subscribeReadOnly } from '@/sync/read-only-mode'
 import { sizes, space } from '@/theme/primitives'
 import { useColors } from '@/theme/use-colors'
 
-const EMPTY_SNAPSHOT: NotesSnapshot = { entries: [], icons: new Map(), pendingCount: 0 }
+const EMPTY_SNAPSHOT: NotesSnapshot = {
+  entries: [],
+  icons: new Map(),
+  customIcons: new Map(),
+  folderPaths: new Set(),
+  bookmarks: new Set(),
+  pendingCount: 0
+}
 
 /** The two panes are mutually exclusive, so one value carries both. */
 type MoreSheet = 'closed' | 'actions' | 'templates'
@@ -55,6 +66,7 @@ export default function NotesScreen() {
   const [snapshot, setSnapshot] = useState<NotesSnapshot>(EMPTY_SNAPSHOT)
   const [vaultId, setVaultId] = useState<string | null>(null)
   const [db, setDb] = useState<VaultDb | null>(null)
+  const [ctx, setCtx] = useState<NoteOpsContext | null>(null)
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [readOnly, setReadOnly] = useState(false)
   const [sort, setSort] = useState<MobileSortMode>(MOBILE_SORT_DEFAULT)
@@ -63,6 +75,9 @@ export default function NotesScreen() {
   const [searching, setSearching] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
   const [moreSheet, setMoreSheet] = useState<MoreSheet>('closed')
+  // A top-level folder has no row to long-press, so the `···` sheet is its
+  // only entry point; every nested one is created from its parent's menu.
+  const [newRootFolder, setNewRootFolder] = useState(false)
 
   const reload = useCallback(async () => {
     const vid = await loadCurrentVaultId()
@@ -91,7 +106,15 @@ export default function NotesScreen() {
 
   useEffect(() => {
     if (!vaultId) return
-    void getEditorSession(vaultId).then((session) => listTemplates(session.db).then(setTemplates))
+    void getEditorSession(vaultId).then((session) => {
+      setCtx({
+        db: session.db,
+        outbox: session.outbox,
+        vaultId,
+        deviceId: session.deviceId
+      })
+      return listTemplates(session.db).then(setTemplates)
+    })
   }, [vaultId])
 
   const prefsLoaded = useRef(false)
@@ -132,13 +155,21 @@ export default function NotesScreen() {
   )
 
   const tree = useMemo(
-    () => buildFolderTree(snapshot.entries, snapshot.icons),
-    [snapshot.entries, snapshot.icons]
+    () => buildFolderTree(snapshot.entries, snapshot.icons, snapshot.folderPaths),
+    [snapshot.entries, snapshot.icons, snapshot.folderPaths]
   )
   const rows = useMemo(
     () => flattenFolderTree(tree, { expanded, sort, query }),
     [tree, expanded, sort, query]
   )
+
+  const menu = useRowMenu({
+    ctx,
+    snapshot,
+    readOnly,
+    onChanged: () => void reload(),
+    onSearchInFolder: (path) => router.push(`/notes/search?path=${encodeURIComponent(path)}`)
+  })
 
   /**
    * Create is offline-first like every other write: the note exists locally the
@@ -232,36 +263,66 @@ export default function NotesScreen() {
       <FlatList
         data={rows}
         keyExtractor={(row) => row.key}
-        renderItem={({ item }) =>
-          item.kind === 'folder' ? (
-            <TreeRow
-              label={item.node.name}
-              level={item.level}
-              folder={{ expanded: item.expanded, icon: item.node.icon }}
-              // Collapsed folders only: an open folder's contents already
-              // answer what the count was answering.
-              count={item.expanded ? undefined : item.node.noteCount}
-              accessibilityLabel={`Open folder ${item.node.name}`}
-              onToggle={() => toggleFolder(item.node.path)}
-              onPress={() =>
-                router.push(`/notes/folder?path=${encodeURIComponent(item.node.path)}`)
-              }
-            />
-          ) : (
-            <TreeRow
-              label={item.note.title}
-              level={item.level}
-              tone={NOTE_FILE_TYPE_TONE[item.note.fileType]}
-              accessibilityLabel={`Open note ${item.note.title}`}
-              onPress={() => router.push(`/notes/${item.note.id}`)}
-            />
-          )
-        }
+        renderItem={({ item }) => {
+          switch (item.kind) {
+            case 'folder':
+              return (
+                <TreeRow
+                  label={item.node.name}
+                  level={item.level}
+                  folder={{ expanded: item.expanded }}
+                  icon={resolveIcon(item.node.icon, snapshot.customIcons)}
+                  // Collapsed folders only: an open folder's contents already
+                  // answer what the count was answering.
+                  count={item.expanded ? undefined : item.node.noteCount}
+                  accessibilityLabel={`Open folder ${item.node.name}`}
+                  bookmarked={menu.isBookmarked(folderTarget(item.node.path, item.node.noteCount))}
+                  onToggle={() => toggleFolder(item.node.path)}
+                  onPress={() =>
+                    router.push(`/notes/folder?path=${encodeURIComponent(item.node.path)}`)
+                  }
+                  onLongPress={(pageY) =>
+                    menu.open(folderTarget(item.node.path, item.node.noteCount), pageY)
+                  }
+                />
+              )
+            case 'note': {
+              const entry = item.note
+              return (
+                <TreeRow
+                  label={entry.title}
+                  level={item.level}
+                  icon={resolveIcon(entry.icon, snapshot.customIcons)}
+                  tone={NOTE_FILE_TYPE_TONE[entry.fileType]}
+                  accessibilityLabel={`Open note ${entry.title}`}
+                  bookmarked={menu.isBookmarked({
+                    kind: 'note',
+                    id: entry.id,
+                    title: entry.title,
+                    folderPath: entry.folderPath
+                  })}
+                  onPress={() => router.push(`/notes/${entry.id}`)}
+                  onLongPress={(pageY) =>
+                    menu.open(
+                      {
+                        kind: 'note',
+                        id: entry.id,
+                        title: entry.title,
+                        folderPath: entry.folderPath
+                      },
+                      pageY
+                    )
+                  }
+                />
+              )
+            }
+          }
+        }}
         ListEmptyComponent={
           <AppText variant="footnote" color={c.text.secondary} style={styles.empty}>
             {query.trim().length > 0
-              ? 'No notes match that search.'
-              : 'Nothing here yet. Notes appear as the first sync progresses.'}
+              ? 'Nothing matches that search.'
+              : 'Nothing here yet. Items appear as the first sync progresses.'}
           </AppText>
         }
       />
@@ -309,15 +370,36 @@ export default function NotesScreen() {
                 setMoreSheet('closed')
               }}
             />
-            {/* No `New folder`: a mobile folder is a projection of the notes'
-                `folderPath`s, so an empty one cannot exist — see the
-                `listFolders` doc comment in `manage.tsx`. */}
+            {readOnly ? null : (
+              <SheetRow
+                label="New folder"
+                onPress={() => {
+                  setMoreSheet('closed')
+                  setNewRootFolder(true)
+                }}
+              />
+            )}
             {templates.length > 0 && !readOnly ? (
               <SheetRow label="New from template" onPress={() => setMoreSheet('templates')} />
             ) : null}
           </>
         )}
       </BottomSheet>
+
+      <PromptDialog
+        visible={newRootFolder}
+        title="New folder"
+        message="Created at the top of the vault"
+        initialValue="Untitled folder"
+        confirmLabel="Create"
+        onCancel={() => setNewRootFolder(false)}
+        onConfirm={(name) => {
+          setNewRootFolder(false)
+          if (ctx) void createFolder(ctx, name).then(reload)
+        }}
+      />
+
+      {menu.overlay}
     </SafeAreaView>
   )
 }

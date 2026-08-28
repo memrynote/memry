@@ -31,13 +31,16 @@ function entry(
   id: string,
   title: string,
   folderPath: string,
-  overrides: Partial<Pick<NoteEntry, 'fileType' | 'updatedAt' | 'createdAt' | 'hasBody'>> = {}
+  overrides: Partial<
+    Pick<NoteEntry, 'fileType' | 'icon' | 'updatedAt' | 'createdAt' | 'hasBody'>
+  > = {}
 ): NoteEntry {
   return {
     id,
     title,
     folderPath,
     fileType: overrides.fileType ?? 'markdown',
+    icon: overrides.icon ?? null,
     updatedAt: overrides.updatedAt ?? 0,
     createdAt: overrides.createdAt ?? 0,
     hasBody: overrides.hasBody ?? true
@@ -241,9 +244,10 @@ describe('flattenFolderTree', () => {
     expect(product?.kind === 'folder' && product.expanded).toBe(false)
   })
 
-  it('keeps folders A→Z under every sort mode', () => {
-    // Folders carry no timestamp, so a time mode has nothing to sort them by;
-    // desktop keeps them A→Z in that direction regardless of the mode's own.
+  it('keeps folders A→Z under every mode but name-desc', () => {
+    // Desktop's `compareFolders`: folders carry no timestamp, so a time mode
+    // has nothing to sort them by and leaves them A→Z whatever its own
+    // direction is. Only the name modes move them.
     const expected = [
       'Archive',
       'Archive/2024',
@@ -254,11 +258,36 @@ describe('flattenFolderTree', () => {
       'Work/Product'
     ]
     for (const mode of MOBILE_SORT_MODES) {
+      if (mode === 'name-desc') continue
       const folders = flatten({ sort: mode })
         .filter((row) => row.kind === 'folder')
         .map((row) => (row.kind === 'folder' ? row.node.path : ''))
       expect(folders, mode).toEqual(expected)
     }
+  })
+
+  it('flips folders Z→A under name-desc, at every depth', () => {
+    const folders = flatten({ sort: 'name-desc' })
+      .filter((row) => row.kind === 'folder')
+      .map((row) => (row.kind === 'folder' ? row.node.path : ''))
+    expect(folders).toEqual([
+      'Work',
+      'Work/Product',
+      'Reading',
+      'personal',
+      'Archive',
+      'Archive/2024',
+      'Archive/2024/Plans'
+    ])
+  })
+
+  it('does not reorder the folders of the tree it was given', () => {
+    // Same contract `visibleNotes` keeps: the tree outlives the render, so a
+    // flatten must not leave the caller's folders in the last mode's order.
+    const root = tree()
+    const before = root.folders.map((folder) => folder.path)
+    flattenFolderTree(root, { expanded: ALL_FOLDERS, sort: 'name-desc', query: '' })
+    expect(root.folders.map((folder) => folder.path)).toEqual(before)
   })
 
   it('reports the unfiltered recursive count on a filtered row', () => {
@@ -380,6 +409,33 @@ describe('query filtering', () => {
 
   it('keeps a matching root note with no folder rows around it', () => {
     expect(shape(flatten({ query: 'weeknotes' }))).toEqual(['n:n6@0'])
+  })
+
+  it('keeps a folder the query names, with everything under it', () => {
+    // No note title here contains `work`; the folder's own name is the match,
+    // and a person typing it wants that folder, not the notes that repeat it.
+    expect(shape(flatten({ query: 'work' }))).toEqual([
+      'f:Work@0',
+      'f:Work/Product@1',
+      'n:n1@2',
+      'n:n2@2',
+      'n:n3@1'
+    ])
+  })
+
+  it('matches a folder name case-insensitively on a substring', () => {
+    const expected = ['f:Work@0', 'f:Work/Product@1', 'n:n1@2', 'n:n2@2']
+    expect(shape(flatten({ query: 'PRODUCT' }))).toEqual(expected)
+    expect(shape(flatten({ query: 'roduc' }))).toEqual(expected)
+  })
+
+  it('keeps a named folder that holds no notes of its own', () => {
+    expect(shape(flatten({ query: '2024' }))).toEqual([
+      'f:Archive@0',
+      'f:Archive/2024@1',
+      'f:Archive/2024/Plans@2',
+      'n:n7@3'
+    ])
   })
 
   it('treats a whitespace-only query as no filter', () => {

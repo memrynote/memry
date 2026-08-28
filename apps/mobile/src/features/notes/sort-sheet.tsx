@@ -56,13 +56,11 @@ export function SortSheet({ visible, sort, onSelect, onClose }: SortSheetProps) 
 
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="Sort notes">
+      {/* No `Done`. Picking a mode IS the confirmation, so the sheet closes on
+          the tap; the scrim behind it still carries the `Close` button for a
+          person who opened the sheet and changed nothing. */}
       <View style={styles.header}>
         <AppText style={styles.headerTitle}>Sort notes</AppText>
-        <Pressable accessibilityRole="button" onPress={onClose}>
-          <AppText variant="callout" color={c.tint.base}>
-            Done
-          </AppText>
-        </Pressable>
       </View>
 
       {/* The board also drew a `Manual` row. `MOBILE_SORT_MODES` has no
@@ -72,7 +70,10 @@ export function SortSheet({ visible, sort, onSelect, onClose }: SortSheetProps) 
           key={mode}
           label={MOBILE_SORT_LABELS[mode]}
           selected={mode === sort}
-          onPress={() => onSelect(mode)}
+          onPress={() => {
+            onSelect(mode)
+            onClose()
+          }}
         />
       ))}
 

@@ -6,8 +6,10 @@ import { AppText } from '@/components/ui/app-text'
 import { Icon } from '@/components/ui/icon'
 import { SearchField } from '@/components/ui/search-field'
 import { TreeRow } from '@/components/ui/tree-row'
+import { isUnder, moveFolder, parentPath } from '@/features/notes/folder-ops'
 import { moveNote, type NoteOpsContext } from '@/features/notes/note-ops'
 import type { NotesSnapshot } from '@/features/notes/notes-repo'
+import { resolveIcon, type ResolvedIcon } from '@/features/notes/icon-value'
 import { buildFolderTree, findFolder, type FolderNode } from '@/features/notes/tree'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
@@ -26,16 +28,31 @@ const log = createLogger('MoveSheet')
  * perfectly ordinary value rather than a tree that has to be mutated first.
  */
 
+/**
+ * What is being moved. A folder move is the same picker with two differences:
+ * the destinations exclude its own subtree, and the thing that travels is
+ * every note under it rather than one note.
+ */
+export type MoveTarget =
+  { kind: 'note'; id: string; folderPath: string } | { kind: 'folder'; path: string }
+
 export interface MoveSheetProps {
   visible: boolean
   ctx: NoteOpsContext | null
-  noteId: string
-  /** Where the note is now; `''` is the vault root. */
-  currentPath: string
+  target: MoveTarget
   /** The tree the screen already read, so this sheet never re-queries SQLite. */
   snapshot: NotesSnapshot
   onClose: () => void
   onMoved: () => void
+}
+
+/** Where the target lives now; `''` is the vault root. */
+function originOf(target: MoveTarget): string {
+  return target.kind === 'note' ? target.folderPath : parentPath(target.path)
+}
+
+function targetKey(target: MoveTarget): string {
+  return target.kind === 'note' ? `n:${target.id}` : `f:${target.path}`
 }
 
 interface PickerRow {
@@ -107,7 +124,7 @@ function DestinationRow({
 }: {
   label: string
   level: number
-  icon: string | null
+  icon: ResolvedIcon | null
   expanded: boolean
   selected: boolean
   current: boolean
@@ -117,7 +134,8 @@ function DestinationRow({
   const shared = {
     label,
     level,
-    folder: { expanded, icon },
+    folder: { expanded },
+    icon,
     selected,
     onPress,
     onToggle,
@@ -130,7 +148,7 @@ function DestinationRow({
 }
 
 export function MoveSheet(props: MoveSheetProps) {
-  const { visible, noteId, onClose } = props
+  const { visible, target, onClose } = props
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       {/* Its OWN provider. A Modal is a separate native window, so the insets
@@ -140,14 +158,15 @@ export function MoveSheet(props: MoveSheetProps) {
       <SafeAreaProvider>
         {/* Keyed by the note, so opening the sheet mounts it and the draft
             selection starts from that note's folder by construction. */}
-        {visible ? <MoveSheetBody key={noteId} {...props} /> : null}
+        {visible ? <MoveSheetBody key={targetKey(target)} {...props} /> : null}
       </SafeAreaProvider>
     </Modal>
   )
 }
 
-function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }: MoveSheetProps) {
+function MoveSheetBody({ ctx, target, snapshot, onClose, onMoved }: MoveSheetProps) {
   const c = useColors()
+  const currentPath = originOf(target)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(currentPath)
   // Seeded with the note's own branch so the sheet opens showing where it is
@@ -157,13 +176,17 @@ function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }:
   )
 
   const tree = useMemo(
-    () => buildFolderTree(snapshot.entries, snapshot.icons),
-    [snapshot.entries, snapshot.icons]
+    () => buildFolderTree(snapshot.entries, snapshot.icons, snapshot.folderPaths),
+    [snapshot.entries, snapshot.icons, snapshot.folderPaths]
   )
-  const folderRows = useMemo(
-    () => buildRows(tree, expandedTops, query.trim().toLowerCase()),
-    [tree, expandedTops, query]
-  )
+  const folderRows = useMemo(() => {
+    const rows = buildRows(tree, expandedTops, query.trim().toLowerCase())
+    // A folder cannot be moved into itself or into anything below it: the
+    // subtree would be detached from every path its notes still name. Hiding
+    // those rows is the guard the user sees; `renameFolder` has the other one.
+    if (target.kind !== 'folder') return rows
+    return rows.filter((row) => !isUnder(row.path, target.path))
+  }, [tree, expandedTops, query, target])
 
   const rows = useMemo<SheetRow[]>(() => {
     // The root is drawn under a query too. It is the un-file destination and
@@ -206,14 +229,15 @@ function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }:
   const commitMove = useCallback(async () => {
     if (!ctx) return
     try {
-      await moveNote(ctx, noteId, selected === '' ? null : selected)
+      if (target.kind === 'note') await moveNote(ctx, target.id, selected === '' ? null : selected)
+      else await moveFolder(ctx, target.path, selected)
       onMoved()
       onClose()
     } catch (err) {
-      log.error('Moving the note failed', { noteId, error: String(err) })
-      Alert.alert('Move failed', extractErrorMessage(err, 'The note could not be moved.'))
+      log.error('Moving failed', { target: targetKey(target), error: String(err) })
+      Alert.alert('Move failed', extractErrorMessage(err, 'That could not be moved.'))
     }
-  }, [ctx, noteId, selected, onMoved, onClose])
+  }, [ctx, target, selected, onMoved, onClose])
 
   const canMove = ctx !== null && selected !== currentPath
 
@@ -224,7 +248,7 @@ function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }:
           <AppText color={c.tint.base}>Cancel</AppText>
         </Pressable>
         <AppText variant="headline" style={styles.navTitle}>
-          Move to
+          {target.kind === 'folder' ? 'Move folder' : 'Move to'}
         </AppText>
         <Pressable
           accessibilityRole="button"
@@ -276,7 +300,7 @@ function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }:
                 <DestinationRow
                   label={item.row.name}
                   level={item.row.level}
-                  icon={item.row.icon}
+                  icon={resolveIcon(item.row.icon, snapshot.customIcons)}
                   expanded={item.row.expanded}
                   selected={selected === item.row.path}
                   current={currentPath === item.row.path}
@@ -318,7 +342,9 @@ function MoveSheetBody({ ctx, noteId, currentPath, snapshot, onClose, onMoved }:
       />
 
       <AppText variant="caption" color={c.text.secondary} style={styles.footnote}>
-        Moving a note keeps every link to it working — links point at the note, not its path.
+        {target.kind === 'folder'
+          ? 'Moving a folder takes its notes with it — every link keeps working.'
+          : 'Moving a note keeps every link to it working — links point at the note, not its path.'}
       </AppText>
     </SafeAreaView>
   )

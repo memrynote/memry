@@ -1,8 +1,10 @@
 import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
 
 /**
- * The notes tree the mobile list renders. Folders are derived from each note's
- * `folderPath`, with the sort and filter rules laid over them.
+ * The note tree the mobile list renders: the vault's notes, nested by
+ * `folderPath`, with the sort and filter rules laid over them. NOTHING else
+ * from the sync table belongs here — a task, a project or a home board is a
+ * different surface, not a row in the vault's file tree.
  *
  * Nothing here touches SQLite, React or a logger. The screen reads the rows and
  * owns the state; this module is a function of what it already has, so the tree
@@ -17,6 +19,11 @@ export interface NoteEntry {
   /** `''` means the vault root. */
   folderPath: string
   fileType: NoteFileType
+  /**
+   * The raw icon value: an emoji, `icon:<name>` or `custom:<id>`. Resolve it
+   * with `resolveIcon` at the render boundary, never render it directly.
+   */
+  icon: string | null
   /** `sync_items.updated_at`. */
   updatedAt: number
   /** Parsed `payload.createdAt`, falling back to `updatedAt`. */
@@ -175,6 +182,19 @@ function byId(a: NoteEntry, b: NoteEntry): number {
   return a.id < b.id ? -1 : 1
 }
 
+/**
+ * Folder order for a sort mode — desktop's `compareFolders`, unchanged.
+ *
+ * Only the name modes move folders. A folder carries no timestamp anywhere in
+ * the payloads this device holds, so a time mode has nothing to order them by,
+ * and desktop keeps them A→Z in that direction whatever the mode's own
+ * direction is. `null` means "the A→Z order `buildFolderTree` already built",
+ * which is every mode but one.
+ */
+function folderComparator(mode: MobileSortMode): ((a: FolderNode, b: FolderNode) => number) | null {
+  return mode === 'name-desc' ? (a, b) => -compareText(a.name, b.name) : null
+}
+
 const NOTE_COMPARATORS: Record<MobileSortMode, (a: NoteEntry, b: NoteEntry) => number> = {
   'name-asc': (a, b) => compareText(a.title, b.title) || byId(a, b),
   'name-desc': (a, b) => -compareText(a.title, b.title) || byId(a, b),
@@ -202,17 +222,41 @@ function sortFolders(node: FolderNode): void {
 /**
  * Build the tree from a flat list of notes.
  *
- * Folders are sorted A→Z here, once, and the sort mode never touches them
- * again. That is the desktop contract: folders carry no timestamp anywhere in
- * the tree payload, so they stay A→Z under every time mode, in that direction
- * regardless of the mode's own direction.
+ * Folders are sorted A→Z here, once. That is the base order every mode but
+ * `name-desc` renders as-is — see `folderComparator` — because folders carry no
+ * timestamp anywhere in the tree payload, so a time mode has nothing to order
+ * them by.
  */
 export function buildFolderTree(
   entries: NoteEntry[],
-  icons: ReadonlyMap<string, string>
+  icons: ReadonlyMap<string, string>,
+  /**
+   * Folders that exist even though no note names them — the `folder_config`
+   * paths `New folder` writes. Without them an empty folder would vanish the
+   * moment its last note moved out, on this device and only this device.
+   */
+  folderPaths: Iterable<string> = []
 ): FolderNode {
   const root = makeFolder('', '', icons)
   const index = new Map<string, FolderNode>([['', root]])
+
+  const ensure = (folderPath: string): FolderNode => {
+    let node = root
+    let path = ''
+    for (const segment of segmentsOf(folderPath)) {
+      path = path === '' ? segment : `${path}/${segment}`
+      let child = index.get(path)
+      if (!child) {
+        child = makeFolder(path, segment, icons)
+        index.set(path, child)
+        node.folders.push(child)
+      }
+      node = child
+    }
+    return node
+  }
+
+  for (const folderPath of folderPaths) ensure(folderPath)
 
   for (const entry of entries) {
     let node = root
@@ -251,15 +295,34 @@ export function findFolder(root: FolderNode, path: string): FolderNode | null {
 // --- flattening ------------------------------------------------------------
 
 interface FlattenContext {
-  expanded: ReadonlySet<string>
+  isExpanded: (path: string) => boolean
   compare: (a: NoteEntry, b: NoteEntry) => number
+  /** `null` when the mode leaves folders in the A→Z order the tree was built in. */
+  compareFolders: ((a: FolderNode, b: FolderNode) => number) | null
   /** Already trimmed and lowercased; `''` means no filter. */
   query: string
 }
 
-function visibleNotes(node: FolderNode, ctx: FlattenContext): NoteEntry[] {
+/**
+ * Subfolders in the mode's order.
+ *
+ * A COPY whenever the mode reorders them, for the reason `visibleNotes` copies:
+ * the tree outlives the render, and sorting `node.folders` in place would
+ * reorder shared state. `null` is the common path and allocates nothing.
+ */
+function visibleFolders(node: FolderNode, ctx: FlattenContext): FolderNode[] {
+  if (!ctx.compareFolders) return node.folders
+  return [...node.folders].sort(ctx.compareFolders)
+}
+
+/**
+ * `underMatch` is the folder-name match: everything below a folder the query
+ * named is kept whole. Somebody typing a folder's name is asking for that
+ * folder, not for the notes inside it that happen to repeat its name.
+ */
+function visibleNotes(node: FolderNode, ctx: FlattenContext, underMatch: boolean): NoteEntry[] {
   const kept =
-    ctx.query === ''
+    ctx.query === '' || underMatch
       ? // A copy, because `node.notes` is the tree's own array and the tree
         // outlives the render. Sorting it in place would reorder shared state.
         [...node.notes]
@@ -271,40 +334,50 @@ function noteRow(note: NoteEntry, level: number): NoteTreeRow {
   return { kind: 'note', key: `n:${note.id}`, note, level }
 }
 
-function emitFolder(node: FolderNode, level: number, ctx: FlattenContext): NoteTreeRow[] {
-  const expanded = ctx.query !== '' || ctx.expanded.has(node.path)
+function emitFolder(
+  node: FolderNode,
+  level: number,
+  ctx: FlattenContext,
+  underMatch: boolean
+): NoteTreeRow[] {
+  const matched = underMatch || (ctx.query !== '' && node.name.toLowerCase().includes(ctx.query))
+  const expanded = ctx.query !== '' || ctx.isExpanded(node.path)
   const children: NoteTreeRow[] = []
   if (expanded) {
-    for (const child of node.folders) {
-      for (const row of emitFolder(child, level + 1, ctx)) children.push(row)
+    for (const child of visibleFolders(node, ctx)) {
+      for (const row of emitFolder(child, level + 1, ctx, matched)) children.push(row)
     }
-    for (const note of visibleNotes(node, ctx)) children.push(noteRow(note, level + 1))
+    for (const note of visibleNotes(node, ctx, matched)) children.push(noteRow(note, level + 1))
   }
   // Under a query an empty subtree means nothing below here matched, so the
-  // folder goes too. Without one, an empty folder is just a folder.
-  if (ctx.query !== '' && children.length === 0) return []
+  // folder goes too — unless the query named this folder, which an empty one
+  // still answers. Without a query, an empty folder is just a folder.
+  if (ctx.query !== '' && !matched && children.length === 0) return []
   // The tree's OWN node, never a rebuilt one: `noteCount` stays the unfiltered
   // recursive total under a query, and the renderer keeps its identity across
   // keystrokes.
   return [{ kind: 'folder', key: `f:${node.path}`, node, level, expanded }, ...children]
 }
 
+/** The synthetic root emits no row of its own; its loose notes come last. */
+function emitRoot(root: FolderNode, level: number, ctx: FlattenContext): NoteTreeRow[] {
+  const rows: NoteTreeRow[] = []
+  for (const folder of visibleFolders(root, ctx)) {
+    for (const row of emitFolder(folder, level, ctx, false)) rows.push(row)
+  }
+  // The root's own name is `''`, so it never matches a query itself.
+  for (const note of visibleNotes(root, ctx, false)) rows.push(noteRow(note, level))
+  return rows
+}
+
 export function flattenFolderTree(
   root: FolderNode,
   opts: { expanded: ReadonlySet<string>; sort: MobileSortMode; query: string }
 ): NoteTreeRow[] {
-  const ctx: FlattenContext = {
-    expanded: opts.expanded,
+  return emitRoot(root, 0, {
+    isExpanded: (path) => opts.expanded.has(path),
     compare: NOTE_COMPARATORS[opts.sort],
+    compareFolders: folderComparator(opts.sort),
     query: opts.query.trim().toLowerCase()
-  }
-
-  const rows: NoteTreeRow[] = []
-  for (const folder of root.folders) {
-    for (const row of emitFolder(folder, 0, ctx)) rows.push(row)
-  }
-  // The synthetic root emits no row of its own, and its loose notes come after
-  // every folder.
-  for (const note of visibleNotes(root, ctx)) rows.push(noteRow(note, 0))
-  return rows
+  })
 }

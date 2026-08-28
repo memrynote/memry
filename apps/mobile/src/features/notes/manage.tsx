@@ -213,9 +213,12 @@ function FolderRow({
 }
 
 /**
- * Folders are a projection of the notes' `folderPath`, not a table of record —
- * which is exactly why an empty folder cannot exist on mobile yet, and why a
- * rename is a batch of moves (see `renameFolder`).
+ * The folders that hold at least one note.
+ *
+ * NOT every folder: an empty one exists only as a `folder_config` row, which
+ * `readFolderPaths` in `folder-ops.ts` reads. This list is the older, narrower
+ * question — "where can a note go that something already lives" — and is all
+ * this sheet's picker needs.
  */
 export async function listFolders(db: VaultDb): Promise<string[]> {
   const rows = await db.getAllAsync<{ payload: string | null }>(

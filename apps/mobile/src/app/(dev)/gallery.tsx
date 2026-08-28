@@ -22,6 +22,9 @@ import { SyncProgress } from '@/components/ui/sync-progress'
 import { TabBar } from '@/components/ui/tab-bar'
 import { TextField } from '@/components/ui/text-field'
 import { Toast } from '@/components/ui/toast'
+import { ContextMenu } from '@/components/ui/context-menu'
+import { PromptDialog } from '@/components/ui/prompt-dialog'
+import { rowActionGroups } from '@/features/notes/row-actions'
 import { TreeRow, TreeSectionHeader } from '@/components/ui/tree-row'
 import { NOTE_FILE_TYPE_TONE, type NoteFileType } from '@/features/notes/tree'
 import { sizes, space } from '@/theme/primitives'
@@ -82,6 +85,8 @@ export default function GalleryScreen() {
   const [invalid, setInvalid] = useState('a')
   const [segment, setSegment] = useState<(typeof segments)[number]>('Notes')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [menuKind, setMenuKind] = useState<'folder' | 'note' | null>(null)
+  const [promptOpen, setPromptOpen] = useState(false)
   const [researchExpanded, setResearchExpanded] = useState(true)
 
   return (
@@ -245,7 +250,8 @@ export default function GalleryScreen() {
             <TreeRow
               label="Research"
               level={0}
-              folder={{ expanded: researchExpanded, icon: '📚' }}
+              folder={{ expanded: researchExpanded }}
+              icon={{ kind: 'emoji', text: '📚' }}
               onPress={noop}
               onToggle={() => setResearchExpanded((expanded) => !expanded)}
             />
@@ -254,7 +260,7 @@ export default function GalleryScreen() {
             <TreeRow
               label="Archive"
               level={0}
-              folder={{ expanded: false, icon: null }}
+              folder={{ expanded: false }}
               count={18}
               onPress={noop}
             />
@@ -281,24 +287,18 @@ export default function GalleryScreen() {
             <TreeRow
               label="Meeting notes"
               level={0}
-              folder={{ expanded: false, icon: null }}
+              folder={{ expanded: false }}
               count={7}
               chevron
               onPress={noop}
             />
           </Demo>
           <Demo name="Tree/Folder (selected, and the current location)">
-            <TreeRow
-              label="Inbox"
-              level={0}
-              folder={{ expanded: false, icon: null }}
-              selected
-              onPress={noop}
-            />
+            <TreeRow label="Inbox" level={0} folder={{ expanded: false }} selected onPress={noop} />
             <TreeRow
               label="Research"
               level={1}
-              folder={{ expanded: false, icon: null }}
+              folder={{ expanded: false }}
               trailingLabel="current"
               onPress={noop}
             />
@@ -344,6 +344,25 @@ export default function GalleryScreen() {
           <Demo name="Toast/Long">
             <Toast message="Note saved to Archive and synced across all of your devices" />
           </Demo>
+          <Demo name="Toast/Action">
+            <Toast
+              message="Note duplicated"
+              icon={null}
+              action={{ label: 'Open', onPress: noop }}
+            />
+          </Demo>
+        </Section>
+
+        <Section title="Context menu">
+          <Demo name="ContextMenu/Folder">
+            <Button label="Open folder menu" onPress={() => setMenuKind('folder')} />
+          </Demo>
+          <Demo name="ContextMenu/Note">
+            <Button label="Open note menu" onPress={() => setMenuKind('note')} />
+          </Demo>
+          <Demo name="PromptDialog">
+            <Button label="Open new-folder dialog" onPress={() => setPromptOpen(true)} />
+          </Demo>
         </Section>
 
         <Section title="FAB">
@@ -381,6 +400,36 @@ export default function GalleryScreen() {
           </Demo>
         </Section>
       </ScrollView>
+
+      <ContextMenu
+        visible={menuKind !== null}
+        anchorY={260}
+        preview={
+          menuKind === 'note' ? (
+            <TreeRow label="Sync protocol — open questions" level={0} />
+          ) : (
+            <TreeRow label="Interviews" level={0} folder={{ expanded: false }} count={14} />
+          )
+        }
+        groups={rowActionGroups(
+          menuKind === 'note'
+            ? { kind: 'note', id: 'n1', title: 'Sync protocol', folderPath: '' }
+            : { kind: 'folder', path: 'Interviews', name: 'Interviews', noteCount: 14 },
+          { bookmarked: false, readOnly: false }
+        )}
+        onSelect={() => setMenuKind(null)}
+        onClose={() => setMenuKind(null)}
+      />
+
+      <PromptDialog
+        visible={promptOpen}
+        title="New folder"
+        message="Created inside Interviews"
+        initialValue="Untitled folder"
+        confirmLabel="Create"
+        onCancel={() => setPromptOpen(false)}
+        onConfirm={() => setPromptOpen(false)}
+      />
 
       <BottomSheet
         visible={sheetOpen}

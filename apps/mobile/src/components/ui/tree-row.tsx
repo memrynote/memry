@@ -8,8 +8,11 @@ import {
   type ViewStyle
 } from 'react-native'
 
+import { Image } from 'expo-image'
+
 import { AppText } from '@/components/ui/app-text'
 import { Icon, type IconName } from '@/components/ui/icon'
+import type { ResolvedIcon } from '@/features/notes/icon-value'
 import type { NOTE_FILE_TYPE_TONE } from '@/features/notes/tree'
 import type { Color } from '@/theme/colors'
 import { fontFamilies } from '@/theme/fonts'
@@ -56,15 +59,28 @@ export function TreeSectionHeader({ label, style }: TreeSectionHeaderProps) {
 export type TreeRowProps = {
   label: string
   level: number
-  /** A folder row when set, a note row when absent. */
-  folder?: { expanded: boolean; icon: string | null }
-  /** Recolours the note glyph. Absent on folder rows. */
+  /** A folder row when set, an item row when absent. */
+  folder?: { expanded: boolean }
+  /**
+   * The row's OWN icon, already parsed out of the stored value. Wins over
+   * `glyph` and `tone`; `null` falls back to them.
+   */
+  icon?: ResolvedIcon | null
+  /** Recolours the item glyph. Absent on folder rows. */
   tone?: NoteToneName
   /** Draws a trailing 14pt chevron-right (board 27's navigable subfolder rows). */
   chevron?: boolean
   /** Draws a trailing 16pt tint check and tints the label (board 35's selection). */
   selected?: boolean
+  /** Draws the brand bookmark glyph before the count (board 26I). */
+  bookmarked?: boolean
   onPress?: () => void
+  /**
+   * Long press opens the row's context menu (boards 26B / 26C). The page-space
+   * y comes straight off the gesture so the menu can anchor to the finger
+   * rather than to a measurement taken a frame later.
+   */
+  onLongPress?: (pageY: number) => void
   /** Chevron-slot press. Present only on an expandable folder row. */
   onToggle?: () => void
   accessibilityLabel?: string
@@ -78,12 +94,15 @@ export function TreeRow({
   label,
   level,
   folder,
+  icon,
   tone,
   count,
   trailingLabel,
   chevron,
   selected,
+  bookmarked,
   onPress,
+  onLongPress,
   onToggle,
   accessibilityLabel
 }: TreeRowProps) {
@@ -96,14 +115,13 @@ export function TreeRow({
     tertiary: c.text.tertiary
   }
 
-  const emoji = folder?.icon ?? null
-  let glyph: IconName
+  let fallbackGlyph: IconName
   if (folder) {
-    glyph = folder.expanded ? 'folder-open' : 'folder'
+    fallbackGlyph = folder.expanded ? 'folder-open' : 'folder'
   } else if (tone === 'blue') {
-    glyph = 'image'
+    fallbackGlyph = 'image'
   } else {
-    glyph = 'file'
+    fallbackGlyph = 'file'
   }
   const glyphColor = folder ? c.text.secondary : toneColors[tone ?? 'tertiary']
 
@@ -131,6 +149,10 @@ export function TreeRow({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState}
       onPress={onPress}
+      onLongPress={onLongPress ? (event) => onLongPress(event.nativeEvent.pageY) : undefined}
+      // 350ms rather than RN's 500: the menu is the row's only route to
+      // rename, move and delete, so it has to feel like a shortcut, not a wait.
+      delayLongPress={350}
       style={({ pressed }) => [
         styles.row,
         { paddingStart: level * INDENT + sizes.gutter },
@@ -155,10 +177,19 @@ export function TreeRow({
       )}
 
       <View style={styles.iconSlot}>
-        {emoji === null ? (
-          <Icon name={glyph} size={16} color={glyphColor} />
+        {icon == null ? (
+          <Icon name={fallbackGlyph} size={16} color={glyphColor} />
+        ) : icon.kind === 'emoji' ? (
+          <Text style={styles.emoji}>{icon.text}</Text>
         ) : (
-          <Text style={styles.emoji}>{emoji}</Text>
+          // `contain`, not the default `cover`: a custom icon is normalized to
+          // its longest edge, so a non-square one would be cropped by a fill.
+          <Image
+            source={{ uri: icon.uri }}
+            style={styles.customIcon}
+            contentFit="contain"
+            accessible={false}
+          />
         )}
       </View>
 
@@ -171,6 +202,11 @@ export function TreeRow({
         {label}
       </AppText>
 
+      {bookmarked ? (
+        <View style={styles.bookmark}>
+          <Icon name="bookmark" size={13} color={c.brand.base} />
+        </View>
+      ) : null}
       {count === undefined ? null : (
         <AppText variant="caption" color={c.text.tertiary}>
           {count}
@@ -231,7 +267,11 @@ const styles = StyleSheet.create({
   },
   iconSlot: { width: 20, flexShrink: 0, alignItems: 'center', justifyContent: 'center' },
   emoji: { fontSize: 14, lineHeight: 16, textAlign: 'center' },
+  // 16 to match the lucide glyph beside it, not the 20pt slot: the two have to
+  // read as the same size when a folder with an icon sits above one without.
+  customIcon: { width: 16, height: 16 },
   // -0.15 is the board's `--tracking-snug` resolved at 15px.
   label: { flex: 1, marginStart: space.s6, letterSpacing: -0.15 },
-  trailingChevron: { marginStart: space.s8 }
+  trailingChevron: { marginStart: space.s8 },
+  bookmark: { marginEnd: space.s4 }
 })

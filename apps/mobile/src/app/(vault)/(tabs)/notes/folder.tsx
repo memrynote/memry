@@ -10,8 +10,9 @@ import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { TreeRow, TreeSectionHeader } from '@/components/ui/tree-row'
 import { openVaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
-import { MoveSheet } from '@/features/notes/move-sheet'
+import { resolveIcon } from '@/features/notes/icon-value'
 import { createNote, deleteNote, type NoteOpsContext } from '@/features/notes/note-ops'
+import { folderTarget, useRowMenu } from '@/features/notes/row-menu'
 import { readNotesSnapshot, readSortMode, type NotesSnapshot } from '@/features/notes/notes-repo'
 import {
   buildFolderTree,
@@ -33,7 +34,14 @@ import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('NoteFolderScreen')
 
-const EMPTY_SNAPSHOT: NotesSnapshot = { entries: [], icons: new Map(), pendingCount: 0 }
+const EMPTY_SNAPSHOT: NotesSnapshot = {
+  entries: [],
+  icons: new Map(),
+  customIcons: new Map(),
+  folderPaths: new Set(),
+  bookmarks: new Set(),
+  pendingCount: 0
+}
 const NOTHING_EXPANDED: ReadonlySet<string> = new Set<string>()
 
 type FolderScreenRow =
@@ -59,7 +67,6 @@ export default function NoteFolderScreen() {
   const [vaultId, setVaultId] = useState<string | null>(null)
   const [readOnly, setReadOnly] = useState(false)
   const [ctx, setCtx] = useState<NoteOpsContext | null>(null)
-  const [moving, setMoving] = useState<NoteEntry | null>(null)
 
   const reload = useCallback(async () => {
     const vid = await loadCurrentVaultId()
@@ -103,9 +110,18 @@ export default function NoteFolderScreen() {
   }, [vaultId])
 
   const node = useMemo(
-    () => findFolder(buildFolderTree(snapshot.entries, snapshot.icons), path),
-    [snapshot.entries, snapshot.icons, path]
+    () => findFolder(buildFolderTree(snapshot.entries, snapshot.icons, snapshot.folderPaths), path),
+    [snapshot.entries, snapshot.icons, snapshot.folderPaths, path]
   )
+
+  const menu = useRowMenu({
+    ctx,
+    snapshot,
+    readOnly,
+    onChanged: () => void reload(),
+    onSearchInFolder: (folderPath) =>
+      router.push(`/notes/search?path=${encodeURIComponent(folderPath)}`)
+  })
 
   const rows = useMemo<FolderScreenRow[]>(() => {
     if (!node) return []
@@ -188,7 +204,13 @@ export default function NoteFolderScreen() {
         width: 72,
         background: c.canvas.surfaceActive,
         foreground: c.text.primary,
-        onPress: () => setMoving(note)
+        onPress: () =>
+          menu.openMove({
+            kind: 'note',
+            id: note.id,
+            title: note.title,
+            folderPath: note.folderPath
+          })
       },
       {
         label: 'Delete',
@@ -199,7 +221,7 @@ export default function NoteFolderScreen() {
         onPress: () => confirmDelete(note)
       }
     ],
-    [c, confirmDelete]
+    [c, confirmDelete, menu]
   )
 
   return (
@@ -234,20 +256,25 @@ export default function NoteFolderScreen() {
               return (
                 <TreeSectionHeader label={`NOTES — ${item.count}`} style={styles.notesHeader} />
               )
-            // Folder rows carry no swipe actions. A folder is a projection of
-            // the notes' `folderPath`s, so moving or deleting one is a batch
-            // move of every note beneath it, which is a different change.
+            // Folder rows carry no SWIPE actions — a folder's verbs are a
+            // batch over every note beneath it, which is a different change
+            // from a note's — but they do carry the long-press menu.
             case 'folder':
               return (
                 <TreeRow
                   label={item.node.name}
                   level={0}
-                  folder={{ expanded: false, icon: item.node.icon }}
+                  folder={{ expanded: false }}
+                  icon={resolveIcon(item.node.icon, snapshot.customIcons)}
                   count={item.node.noteCount}
                   chevron
                   accessibilityLabel={`Open folder ${item.node.name}`}
+                  bookmarked={menu.isBookmarked(folderTarget(item.node.path, item.node.noteCount))}
                   onPress={() =>
                     router.push(`/notes/folder?path=${encodeURIComponent(item.node.path)}`)
+                  }
+                  onLongPress={(pageY) =>
+                    menu.open(folderTarget(item.node.path, item.node.noteCount), pageY)
                   }
                 />
               )
@@ -256,9 +283,27 @@ export default function NoteFolderScreen() {
                 <TreeRow
                   label={item.note.title}
                   level={0}
+                  icon={resolveIcon(item.note.icon, snapshot.customIcons)}
                   tone={NOTE_FILE_TYPE_TONE[item.note.fileType]}
                   accessibilityLabel={`Open note ${item.note.title}`}
+                  bookmarked={menu.isBookmarked({
+                    kind: 'note',
+                    id: item.note.id,
+                    title: item.note.title,
+                    folderPath: item.note.folderPath
+                  })}
                   onPress={() => router.push(`/notes/${item.note.id}`)}
+                  onLongPress={(pageY) =>
+                    menu.open(
+                      {
+                        kind: 'note',
+                        id: item.note.id,
+                        title: item.note.title,
+                        folderPath: item.note.folderPath
+                      },
+                      pageY
+                    )
+                  }
                 />
               )
               if (readOnly) return row
@@ -279,17 +324,7 @@ export default function NoteFolderScreen() {
         <FAB onPress={() => void create()} accessibilityLabel="New note" style={styles.fab} />
       )}
 
-      {moving === null ? null : (
-        <MoveSheet
-          visible
-          ctx={ctx}
-          noteId={moving.id}
-          currentPath={moving.folderPath}
-          snapshot={snapshot}
-          onClose={() => setMoving(null)}
-          onMoved={() => void reload()}
-        />
-      )}
+      {menu.overlay}
     </SafeAreaView>
   )
 }
