@@ -10,13 +10,13 @@
 
 **Context**: Memry is a shipped, end-to-end encrypted, offline-first desktop knowledge app with real users and live vaults. This feature brings the same product to mobile as a second shell over the same vault and the same sync service. Scope follows the agreed decision record `docs/ideas/2026-08-22-mobile-expo-plan.md` and the project constitution (v1.0.0): **vault parity, not desktop-tool parity** — every kind of content a user owns is reachable on mobile; desktop-only tooling is explicitly excluded and labeled.
 
-## User Scenarios & Testing _(mandatory)_
+## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Open Your Vault on Your Phone (Priority: P1)
 
 An existing Memry user installs the mobile app, signs in to their account, unlocks their vault with the same password or recovery phrase they use today, and within moments is browsing the same notes, tasks, journals, projects, and other content they see on desktop — without the service ever being able to read their content.
 
-**Why this priority**: This is the foundation of every other story and the single biggest promise of the product: _your_ vault, still private, now in your pocket. If an existing vault does not open with existing credentials, the product has failed totally; nothing else matters until this works.
+**Why this priority**: This is the foundation of every other story and the single biggest promise of the product: *your* vault, still private, now in your pocket. If an existing vault does not open with existing credentials, the product has failed totally; nothing else matters until this works.
 
 **Independent Test**: Take a real, desktop-created vault; on a phone that has never seen it, sign in, unlock with the vault password (and separately with the recovery phrase), and verify recent content is browsable and readable. Delivers standalone value as a read-only companion even before editing exists.
 
@@ -191,7 +191,7 @@ A user can purchase a Memry subscription inside the mobile app; entitlement from
 - Vault content written by a newer desktop version contains fields mobile does not know: unknown data is preserved round-trip, never stripped.
 - Account deletion is requested from mobile: the flow completes in-app and the outcome matches the existing service-side deletion behavior.
 
-## Requirements _(mandatory)_
+## Requirements *(mandatory)*
 
 ### Functional Requirements
 
@@ -302,18 +302,18 @@ A user can purchase a Memry subscription inside the mobile app; entitlement from
 
 Scope divergence is explicit per the constitution; each exclusion is a recorded decision with a reason, and each affected surface says so in the UI rather than failing silently.
 
-| Capability                                 | v1 status                                                       | Reason                                                                                                                                                                                                                                       |
-| ------------------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent Chat                                 | Absent                                                          | Depends on desktop-only local tooling that the mobile platform cannot host                                                                                                                                                                   |
-| Importers (from other apps)                | Absent                                                          | Require reading other apps' local data, which the mobile sandbox forbids                                                                                                                                                                     |
-| Semantic / AI search                       | Absent (full-text search stays)                                 | On-device semantic engine unavailable on mobile in v1                                                                                                                                                                                        |
-| Canvas editing                             | Read-only view ships                                            | Desktop canvas editing technology is not portable in v1; a bad port risks canvas data                                                                                                                                                        |
-| System share-sheet capture from other apps | Deferred to v2                                                  | In-app quick capture covers v1; external capture into an encrypted vault is separate scope                                                                                                                                                   |
-| Instant push-triggered sync                | Deferred (periodic background + foreground sync ship)           | No server push infrastructure exists today                                                                                                                                                                                                   |
-| Biometric app lock                         | Screen ships, off by default                                    | Reversed 2026-08-28 with the Paper `09 · Device unlock` board. It is an app-level gate, not a change to key storage, so no install migrates; it stays off until the Settings toggle ships, which keeps the original lockout concern answered |
-| Android at launch                          | Follows iOS from the same product definition (~4–8 weeks after) | Solo development; serialized QA                                                                                                                                                                                                              |
+| Capability | v1 status | Reason |
+|---|---|---|
+| Agent Chat | Absent | Depends on desktop-only local tooling that the mobile platform cannot host |
+| Importers (from other apps) | Absent | Require reading other apps' local data, which the mobile sandbox forbids |
+| Semantic / AI search | Absent (full-text search stays) | On-device semantic engine unavailable on mobile in v1 |
+| Canvas editing | Read-only view ships | Desktop canvas editing technology is not portable in v1; a bad port risks canvas data |
+| System share-sheet capture from other apps | Deferred to v2 | In-app quick capture covers v1; external capture into an encrypted vault is separate scope |
+| Instant push-triggered sync | Deferred (periodic background + foreground sync ship) | No server push infrastructure exists today |
+| Biometric app lock | Screen ships, off by default | Reversed 2026-08-28 with the Paper `09 · Device unlock` board. It is an app-level gate, not a change to key storage, so no install migrates; it stays off until the Settings toggle ships, which keeps the original lockout concern answered |
+| Android at launch | Follows iOS from the same product definition (~4–8 weeks after) | Solo development; serialized QA |
 
-## Success Criteria _(mandatory)_
+## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
