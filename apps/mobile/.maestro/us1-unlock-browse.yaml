@@ -37,9 +37,12 @@ appId: com.memry.mobile
       - inputText: ${MEMRY_PHRASE}
       - tapOn: 'Unlock'
 # -- browse + open --
-- assertVisible: 'Notes'
+# The notes list has no title of its own (board 26 starts at the tree), so the
+# screen is identified by the one control only it carries and rows are picked
+# by their own accessible name instead of by position under a heading.
+- assertVisible: 'New note'
 - tapOn:
-    below: 'Notes'
+    text: '.*Open note.*'
     index: 0
 - assertVisible:
     id: 'Note content'

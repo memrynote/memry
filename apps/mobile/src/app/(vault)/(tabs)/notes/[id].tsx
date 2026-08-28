@@ -342,7 +342,7 @@ export default function NoteScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <ThemedView style={styles.center}>
           <ThemedText type="small">{loadError}</ThemedText>
         </ThemedView>
@@ -352,7 +352,7 @@ export default function NoteScreen() {
 
   if (!doc || !id) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <ThemedView style={styles.center}>
           <ActivityIndicator />
         </ThemedView>
@@ -377,7 +377,7 @@ export default function NoteScreen() {
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
-      edges={['top', 'left', 'right']}
+      edges={['left', 'right']}
     >
       {gate === 'editing' ? (
         <View style={[styles.editNav, { borderBottomColor: c.line.border }]}>

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack } from 'expo-router'
 import { FirstSyncScreen } from '@/features/sync/first-sync-screen'
 import { FirstSyncProgressBar } from '@/features/sync/progress'
@@ -15,6 +17,7 @@ import { getEditorSession } from '@/editor/session'
 import { getSyncEngine } from '@/sync/engine'
 import { runFirstSyncIfNeeded, type FirstSyncProgress } from '@/sync/first-sync'
 import { readSyncState, type VaultSyncState } from '@/sync/sync-state'
+import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('VaultLayout')
 
@@ -33,6 +36,8 @@ type Overlay =
  * first sync (T047) with the app fully usable behind the progress strip.
  */
 export default function VaultLayout() {
+  const c = useColors()
+  const insets = useSafeAreaInsets()
   const [progress, setProgress] = useState<FirstSyncProgress | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [unsyncedCount, setUnsyncedCount] = useState(0)
@@ -148,8 +153,19 @@ export default function VaultLayout() {
 
   return (
     <>
-      <SyncStatusBanner syncing={syncing} unsyncedCount={unsyncedCount} />
-      <FirstSyncProgressBar progress={progress} />
+      {/*
+        The shell owns the top inset, and always — not only when a banner is
+        showing. Two owners is what put the banner's text under the clock and
+        moved every screen down by the band's height the moment one appeared,
+        so vault screens claim `left`/`right` only and this strip is here even
+        when it holds nothing. Board 21 draws the status bar on the canvas with
+        the band below it, which is why the colour is the canvas and not the
+        band's surface.
+      */}
+      <View style={{ paddingTop: insets.top, backgroundColor: c.canvas.background }}>
+        <SyncStatusBanner syncing={syncing} unsyncedCount={unsyncedCount} />
+        <FirstSyncProgressBar progress={progress} />
+      </View>
       <Stack screenOptions={{ headerShown: false }} />
     </>
   )

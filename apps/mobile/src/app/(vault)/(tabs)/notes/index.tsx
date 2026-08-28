@@ -183,7 +183,7 @@ export default function NotesScreen() {
 
   return (
     <SafeAreaView
-      edges={['top', 'left', 'right']}
+      edges={['left', 'right']}
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
     >
       {searching ? (

@@ -21,16 +21,25 @@ appId: com.memry.mobile
       id: 'sync-banner-offline'
     timeout: 30000
 
-- assertVisible: 'Notes'
+# The notes list has no title of its own (board 26 starts at the tree), so the
+# screen is identified by the one control only it carries.
+- assertVisible: 'New note'
 
 - extendedWaitUntil:
     notVisible:
       id: 'sync-banner-unsynced'
     timeout: 60000
 
-# The note is still here after the drain, with its offline body intact.
-- assertVisible: '.*Open note offline note ${RUN_ID}.*'
+# The note is still here after the drain, with its offline body intact. Scrolled
+# to rather than asserted outright: the list is a tree and an unfoldered note is
+# emitted after every folder. Read mode keeps the body in the hierarchy, so
+# nothing here has to enter the editor.
+- scrollUntilVisible:
+    element:
+      text: '.*Open note offline note ${RUN_ID}.*'
+    direction: DOWN
+    timeout: 20000
 - tapOn: '.*Open note offline note ${RUN_ID}.*'
 - assertVisible: '.*offline body ${RUN_ID}.*'
 - tapOn:
-    id: 'BackButton'
+    id: 'nav-back'

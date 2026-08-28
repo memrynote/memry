@@ -110,6 +110,11 @@ export function NavBarInline({ title, back, actions = [] }: NavBarInlineProps) {
     <View style={[styles.inlineRoot, { backgroundColor: c.canvas.background }]}>
       {back ? (
         <Pressable
+          // The accessible NAME is `Back to <folder>` and moves with the
+          // destination, so it cannot be a selector. `testID` is what becomes
+          // an accessibility identifier on iOS, and the offline matrix leaves
+          // the note screen through this control on every pass.
+          testID="nav-back"
           accessibilityRole="button"
           accessibilityLabel={`Back to ${back.label}`}
           hitSlop={{ top: 10, bottom: 10 }}

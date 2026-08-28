@@ -1,10 +1,35 @@
-import { useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Linking, Pressable, StyleSheet, View } from 'react-native'
 import NetInfo from '@react-native-community/netinfo'
-import { ThemedText } from '@/components/themed-text'
-import { Spacing } from '@/constants/theme'
+
+import { AppText } from '@/components/ui/app-text'
+import { Icon, type IconName } from '@/components/ui/icon'
 import { isDevOffline, subscribeDevOffline } from '@/lib/dev-network'
+import { extractErrorMessage } from '@/lib/errors'
+import { createLogger } from '@/lib/logger'
 import { subscribeReadOnly, type ReadOnlyState } from '@/sync/read-only-mode'
+import { fontFamilies } from '@/theme/fonts'
+import { sizes } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
+
+const log = createLogger('SyncStatusBanner')
+
+// Boards 21 and 22 draw the band at 10pt block padding, a 10pt gap and an 18pt
+// glyph. None of the three is on the space scale, so they stay local rather
+// than growing the scale for one component (the nav bar's action gap makes the
+// same call).
+const BAND_PADDING_Y = 10
+const BAND_GAP = 10
+const GLYPH = 18
+
+/**
+ * Where `Update` sends someone on a version gate.
+ *
+ * The bare App Store scheme, not a listing URL: Memry has no numeric App Store
+ * id yet, and `id0000000000` would open a dead page on a real device while
+ * looking correct in review.
+ */
+const APP_STORE_URL = 'itms-apps://'
 
 /**
  * Sync/degraded-state banner (T053) using desktop's vocabulary: offline,
@@ -17,15 +42,10 @@ import { subscribeReadOnly, type ReadOnlyState } from '@/sync/read-only-mode'
  * asserts on the second one specifically — a run that only waited for the pull
  * indicator would call a full outbox a success.
  *
- * Every variant is `accessible` with a `testID`, and that is load-bearing
- * rather than tidy. A plain `View` wrapping `Text` children is NOT an
- * accessibility element on iOS: the children are, so the container's
- * `accessibilityLabel` never reaches the tree and neither VoiceOver nor
- * Maestro can address the banner as one thing. The first offline-matrix run
- * dumped a hierarchy holding `Sending 12 changes…` and no `Unsynced changes`
- * node at all — which is why `id:` selectors against these labels matched
- * nothing. `accessible` merges the children into one element and `testID`
- * gives it a stable identifier that survives copy edits to the strings.
+ * The band claims no safe-area inset of its own. `(vault)/_layout.tsx` owns the
+ * top inset for the whole shell, which is what stops the message rendering
+ * under the clock and what keeps every screen's geometry identical whether or
+ * not a banner is showing.
  */
 export function SyncStatusBanner({
   syncing,
@@ -79,98 +99,143 @@ export function SyncStatusBanner({
   }, [])
 
   if (readOnly.readOnly) {
-    const explanation =
+    // Board 22 draws one read-only sentence; these are two, because only the
+    // version gate is something the person holding the phone can act on. The
+    // server-side pause clears itself, so flattening them would offer an
+    // `Update` that fixes nothing.
+    const message =
       readOnly.reason === 'version-gate'
-        ? `This version of Memry can read your vault but the server requires ${readOnly.minWriteVersion ?? 'a newer version'} for changes. Update the app from the App Store to write again.`
-        : 'Memry is temporarily read-only while we protect your data on the server side. Your notes are safe and readable; changes wait and send themselves once writing is back.'
+        ? `Read-only. This version can read your vault, but the server needs ${readOnly.minWriteVersion ?? 'a newer version'} to write.`
+        : 'Read-only. The server paused writes; your changes wait here and send themselves when writing is back.'
     return (
-      <View
-        style={[styles.banner, styles.readOnly]}
-        accessible
+      <Band
         testID="sync-banner-read-only"
-        accessibilityRole="alert"
-        accessibilityLabel={`Read-only mode. ${explanation}`}
-      >
-        <ThemedText type="smallBold">Read-only</ThemedText>
-        <ThemedText type="small">{explanation}</ThemedText>
-      </View>
+        role="alert"
+        icon="warning"
+        tone="sand"
+        message={message}
+        action={readOnly.reason === 'version-gate' ? <UpdateAction /> : null}
+      />
     )
   }
 
   if (locked) {
-    return (
-      <View
-        style={styles.banner}
-        accessible
-        testID="sync-banner-locked"
-        accessibilityRole="text"
-        accessibilityLabel="Vault locked"
-      >
-        <ThemedText type="smallBold">Locked</ThemedText>
-      </View>
-    )
+    return <Band testID="sync-banner-locked" icon="lock" message="Vault locked" />
   }
 
   if (!online) {
     return (
-      <View
-        style={styles.banner}
-        accessible
+      <Band
         testID="sync-banner-offline"
-        accessibilityRole="text"
-        accessibilityLabel="Offline. Showing what is already on this device."
-      >
-        <ThemedText type="smallBold">Offline</ThemedText>
-        <ThemedText type="small">
-          {unsyncedCount > 0
-            ? `Showing what is already on this device. ${unsyncedCount} change${unsyncedCount === 1 ? '' : 's'} will send when you reconnect.`
-            : 'Showing what is already on this device.'}
-        </ThemedText>
-      </View>
+        icon="offline"
+        message="Offline. Your edits are saved here and will sync when you reconnect."
+      />
     )
   }
 
   if (unsyncedCount > 0) {
     return (
-      <View
-        style={styles.banner}
-        accessible
+      <Band
         testID="sync-banner-unsynced"
-        accessibilityRole="text"
-        accessibilityLabel={`Unsynced changes. Sending ${unsyncedCount} change${unsyncedCount === 1 ? '' : 's'}.`}
-      >
-        <ThemedText type="small">
-          Sending {unsyncedCount} change{unsyncedCount === 1 ? '' : 's'}…
-        </ThemedText>
-      </View>
+        icon="sync"
+        message={`Sending ${unsyncedCount} change${unsyncedCount === 1 ? '' : 's'}…`}
+      />
     )
   }
 
   if (syncing) {
-    return (
-      <View
-        style={styles.banner}
-        accessible
-        testID="sync-banner-syncing"
-        accessibilityRole="text"
-        accessibilityLabel="Syncing"
-      >
-        <ThemedText type="small">Syncing…</ThemedText>
-      </View>
-    )
+    return <Band testID="sync-banner-syncing" icon="sync" message="Syncing…" />
   }
 
   return null
 }
 
+/**
+ * The band every variant draws (boards 21 and 22).
+ *
+ * `accessible` sits on the glyph + message group rather than on the row, and
+ * that is load-bearing rather than tidy. A plain `View` wrapping `Text` is NOT
+ * an accessibility element on iOS: the children are, so a container label never
+ * reaches the tree and neither VoiceOver nor Maestro can address the banner as
+ * one thing. The first offline-matrix run dumped a hierarchy holding
+ * `Sending 12 changes…` and no `Unsynced changes` node at all — which is why
+ * `id:` selectors matched nothing. `accessible` merges the children into one
+ * element and `testID` gives it a stable identifier that survives copy edits.
+ *
+ * It stops at the message group because marking the whole row would swallow
+ * `Update` into that one element and leave the only actionable control in the
+ * banner unreachable to VoiceOver.
+ */
+function Band({
+  testID,
+  role = 'text',
+  icon,
+  tone = 'surface',
+  message,
+  action = null
+}: {
+  testID: string
+  role?: 'text' | 'alert'
+  icon: IconName
+  tone?: 'surface' | 'sand'
+  message: string
+  action?: ReactNode
+}) {
+  const c = useColors()
+  const sand = tone === 'sand'
+  const color = sand ? c.text.primary : c.text.secondary
+
+  return (
+    <View style={[styles.band, { backgroundColor: sand ? c.pastel.sand : c.canvas.surface }]}>
+      <View
+        style={styles.group}
+        accessible
+        testID={testID}
+        accessibilityRole={role}
+        accessibilityLabel={message}
+      >
+        <Icon name={icon} size={GLYPH} color={color} />
+        <AppText variant="footnote" color={color} style={styles.message}>
+          {message}
+        </AppText>
+      </View>
+      {action}
+    </View>
+  )
+}
+
+function UpdateAction() {
+  const c = useColors()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Update"
+      hitSlop={10}
+      onPress={() => {
+        void Linking.openURL(APP_STORE_URL).catch((err: unknown) => {
+          log.warn('Opening the App Store failed', {
+            error: extractErrorMessage(err, 'unknown error')
+          })
+        })
+      }}
+    >
+      <AppText variant="footnote" color={c.text.primary} style={styles.action}>
+        Update
+      </AppText>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
-  banner: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    gap: 2
+  band: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: BAND_PADDING_Y,
+    paddingHorizontal: sizes.gutter,
+    gap: BAND_GAP
   },
-  readOnly: {
-    borderStartWidth: 3,
-    borderStartColor: '#ff671a'
-  }
+  group: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: BAND_GAP },
+  message: { flex: 1 },
+  action: { flexShrink: 0, fontFamily: fontFamilies.sansSemiBold }
 })

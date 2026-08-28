@@ -204,7 +204,7 @@ export default function NoteFolderScreen() {
 
   return (
     <SafeAreaView
-      edges={['top', 'left', 'right']}
+      edges={['left', 'right']}
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
     >
       {/* The board's trailing `···` is dropped: every row in the list screen's
