@@ -72,9 +72,9 @@ https://memrynote.com/roadmap
 
 ## Support
 
-MemryNote is free and stays free. Sync is the only paid part, and nothing here unlocks a feature. If the app saves you time and you want to chip in, a coffee covers certificates, servers, and developer fees.
+MemryNote is free and stays free. Sync is the only paid part, and nothing here unlocks a feature. If the app saves you time and you want to chip in, sponsoring covers certificates, servers, and developer fees.
 
-<a href="https://www.buymeacoffee.com/memrynote" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" height="41" width="174" ></a>
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/h4yfans?style=for-the-badge&logo=githubsponsors&label=Sponsor)](https://github.com/sponsors/h4yfans)
 
 ## Community
 
