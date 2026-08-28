@@ -1,4 +1,5 @@
 import {
+  ArrowDownWideNarrow,
   ArrowLeft,
   Bell,
   BookOpen,
@@ -12,11 +13,14 @@ import {
   CloudOff,
   CreditCard,
   Ellipsis,
+  File,
   FileText,
   Folder,
   FolderKanban,
+  FolderOpen,
   Frame,
   House,
+  Image,
   Inbox,
   Key,
   Link,
@@ -44,10 +48,17 @@ import { useColors } from '@/theme/use-colors'
 const glyphs = {
   home: House,
   note: FileText,
+  // The tree draws a plain page with a corner fold and no text lines; `note`
+  // keeps its lines for the tab bar.
+  file: File,
+  image: Image,
   task: SquareCheck,
   journal: BookOpen,
   inbox: Inbox,
   search: Search,
+  // Mirrored: the board draws lines-left with the arrow on the right, lucide
+  // draws arrow-left with the lines on the right, and ships no flipped variant.
+  sort: ArrowDownWideNarrow,
   plus: Plus,
   // The Figma glyph is two horizontal sliders with knobs, not a gear.
   settings: SlidersHorizontal,
@@ -57,6 +68,7 @@ const glyphs = {
   more: Ellipsis,
   calendar: Calendar,
   folder: Folder,
+  'folder-open': FolderOpen,
   tag: Tag,
   close: X,
   'arrow-left': ArrowLeft,

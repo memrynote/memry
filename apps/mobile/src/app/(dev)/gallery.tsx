@@ -22,6 +22,8 @@ import { SyncProgress } from '@/components/ui/sync-progress'
 import { TabBar } from '@/components/ui/tab-bar'
 import { TextField } from '@/components/ui/text-field'
 import { Toast } from '@/components/ui/toast'
+import { TreeRow, TreeSectionHeader } from '@/components/ui/tree-row'
+import { NOTE_FILE_TYPE_TONE, type NoteFileType } from '@/features/notes/tree'
 import { sizes, space } from '@/theme/primitives'
 import { textStyles, type TextVariant } from '@/theme/text-styles'
 import { useColors } from '@/theme/use-colors'
@@ -29,6 +31,8 @@ import { useColors } from '@/theme/use-colors'
 const noop = () => {}
 
 const textVariants = Object.keys(textStyles) as TextVariant[]
+
+const noteFileTypes = Object.keys(NOTE_FILE_TYPE_TONE) as NoteFileType[]
 
 const tabs: { key: string; label: string; icon: IconName }[] = [
   { key: 'home', label: 'Home', icon: 'home' },
@@ -78,6 +82,7 @@ export default function GalleryScreen() {
   const [invalid, setInvalid] = useState('a')
   const [segment, setSegment] = useState<(typeof segments)[number]>('Notes')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [researchExpanded, setResearchExpanded] = useState(true)
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: c.canvas.background }]}>
@@ -235,6 +240,71 @@ export default function GalleryScreen() {
           </Demo>
         </Section>
 
+        <Section title="Tree row">
+          <Demo name="Tree/Folder (expanded, emoji icon, live toggle)">
+            <TreeRow
+              label="Research"
+              level={0}
+              folder={{ expanded: researchExpanded, icon: '📚' }}
+              onPress={noop}
+              onToggle={() => setResearchExpanded((expanded) => !expanded)}
+            />
+          </Demo>
+          <Demo name="Tree/Folder (collapsed, plain glyph, recursive count)">
+            <TreeRow
+              label="Archive"
+              level={0}
+              folder={{ expanded: false, icon: null }}
+              count={18}
+              onPress={noop}
+            />
+          </Demo>
+          <Demo name="Tree/Note (one row per file-type tone)">
+            {noteFileTypes.map((fileType) => (
+              <TreeRow
+                key={fileType}
+                label={`${fileType} — ${NOTE_FILE_TYPE_TONE[fileType]}`}
+                level={1}
+                tone={NOTE_FILE_TYPE_TONE[fileType]}
+                onPress={noop}
+              />
+            ))}
+          </Demo>
+          <Demo name="Tree/Note (level 2, one indent step deeper)">
+            <TreeRow label="Vector clocks" level={2} onPress={noop} />
+          </Demo>
+          <Demo name="Tree/Section header">
+            <TreeSectionHeader label="FOLDERS" />
+            <TreeSectionHeader label="NOTES — 24" style={styles.treeHeaderGap} />
+          </Demo>
+          <Demo name="Tree/Folder (count and a navigable chevron)">
+            <TreeRow
+              label="Meeting notes"
+              level={0}
+              folder={{ expanded: false, icon: null }}
+              count={7}
+              chevron
+              onPress={noop}
+            />
+          </Demo>
+          <Demo name="Tree/Folder (selected, and the current location)">
+            <TreeRow
+              label="Inbox"
+              level={0}
+              folder={{ expanded: false, icon: null }}
+              selected
+              onPress={noop}
+            />
+            <TreeRow
+              label="Research"
+              level={1}
+              folder={{ expanded: false, icon: null }}
+              trailingLabel="current"
+              onPress={noop}
+            />
+          </Demo>
+        </Section>
+
         <Section title="Chips">
           <Demo name="Chip/Tag, Chip/Active, Chip/Tint">
             <View style={styles.chipRow}>
@@ -339,6 +409,7 @@ const styles = StyleSheet.create({
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s16 },
   iconCell: { width: 84, alignItems: 'center', gap: space.s4 },
   iconLabel: { textAlign: 'center' },
+  treeHeaderGap: { marginTop: space.s4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s8 },
   bannerStack: { gap: space.s12 },
   skeletonStack: { gap: space.s8 },
