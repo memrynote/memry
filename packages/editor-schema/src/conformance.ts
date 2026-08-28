@@ -164,9 +164,19 @@ const toggleCases: RoundtripCase[] = [
     )
   },
   {
+    // splitMarkdownByToggles declines the region, but the leftover raw-HTML
+    // lines then hit BlockNote's parser, which drops them (#1883).
     name: 'unterminated toggle stays literal markdown',
     markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody',
-    pending: { renderer: 1847, main: 1847 }
+    pending: { renderer: 1883, main: 1883 }
+  },
+  {
+    name: 'expanded toggle keeps its open attribute',
+    markdown: serializeToggleBlock('Summary', 'Body line', null, true)
+  },
+  {
+    name: 'expanded toggle nested in a collapsed one',
+    markdown: serializeToggleBlock('Outer', serializeToggleBlock('Inner', 'Deep body', null, true))
   },
   {
     // splitMarkdownByToggles trims the gap out of its markdown segments before
@@ -349,7 +359,7 @@ function fuzzToggleMarkdown(random: () => number, depth = 0): string {
           : roll < 0.8 && depth === 0
             ? fuzzToggleMarkdown(random, depth + 1)
             : inertLine(random)
-  return serializeToggleBlock(inertLine(random), body)
+  return serializeToggleBlock(inertLine(random), body, null, random() < 0.5)
 }
 
 /**

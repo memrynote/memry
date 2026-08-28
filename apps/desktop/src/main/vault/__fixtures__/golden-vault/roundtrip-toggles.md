@@ -33,3 +33,10 @@ const x = 1
 ```
 
 </details>
+
+<details data-memry-toggle open>
+<summary>Left expanded</summary>
+
+Visible body
+
+</details>
