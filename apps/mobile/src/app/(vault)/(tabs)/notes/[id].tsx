@@ -5,6 +5,10 @@ import { router, Stack, useLocalSearchParams } from 'expo-router'
 import type { BridgeCfg } from '@memry/contracts/webview-bridge'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
+import { AppText } from '@/components/ui/app-text'
+import { Chip } from '@/components/ui/chip'
+import { Icon } from '@/components/ui/icon'
+import { NavBarInline, type NavBarAction } from '@/components/ui/nav-bar'
 import { Spacing } from '@/constants/theme'
 import { EditorView, type EditorControls } from '@/editor/editor-view'
 import { formatG3Report } from '@/editor/__rig__/latency'
@@ -13,18 +17,21 @@ import { getEditorSession, type EditorSession } from '@/editor/session'
 import { queryWikiCandidates, resolveWikiTarget } from '@/editor/wiki-links'
 import { insertAttachment, pickDocument, pickImage } from '@/features/attachments/insert'
 import { resolveAsset } from '@/features/attachments/resolve'
+import { editGate, type NoteMode } from '@/features/notes/edit-gate'
 import { NoteManageSheet } from '@/features/notes/manage'
 import {
   clearPendingSeed,
   materializedBody,
-  readNotePayload,
+  readNoteRecord,
   resolveSeedMarkdown,
   shouldSeedFromMarkdown,
   type NoteOpsContext,
-  type NotePayload
+  type NotePayload,
+  type NoteRecord
 } from '@/features/notes/note-ops'
 import { NoteProperties } from '@/features/notes/properties'
 import { NoteTags } from '@/features/notes/tags'
+import { editedRelative } from '@/features/search/subtitle'
 import { useColorScheme } from '@/hooks/use-color-scheme'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
@@ -32,8 +39,26 @@ import { loadCurrentVaultId } from '@/sync/auth-client'
 import { ensureNoteBody } from '@/sync/body-fetch'
 import { getSyncEngine } from '@/sync/engine'
 import { subscribeReadOnly } from '@/sync/read-only-mode'
+import { fontFamilies } from '@/theme/fonts'
+import { sizes, space } from '@/theme/primitives'
+import { useColors } from '@/theme/use-colors'
 
 const log = createLogger('NoteScreen')
+
+// Board 28/29 numbers that are not on the space scale, kept local rather than
+// growing the scale for one screen (the nav bar's action gap makes the same
+// call).
+const HEADER_GAP = 14
+const EDIT_NAV_SLOT = 100
+const EDIT_NAV_GAP = 18
+
+/**
+ * How long the editor must be quiet before `Saved` is claimed.
+ *
+ * Long enough that a flush is not fired between two keystrokes, short enough
+ * that a pause reads as saved rather than as a stuck indicator.
+ */
+const SAVE_SETTLE_MS = 800
 
 /**
  * The note editor (T064). Replaces the US1 read-only preview.
@@ -45,6 +70,7 @@ const log = createLogger('NoteScreen')
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const scheme = useColorScheme()
+  const c = useColors()
 
   const [session, setSession] = useState<EditorSession | null>(null)
   const [doc, setDoc] = useState<OpenDoc | null>(null)
@@ -52,15 +78,31 @@ export default function NoteScreen() {
   // The markdown body as the pull path materialized it. Only ever used to seed
   // a doc that has no CRDT state, so it cannot overwrite real content.
   const [seedMarkdown, setSeedMarkdown] = useState<string | undefined>(undefined)
-  const [readOnly, setReadOnly] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState(0)
+  const [readAt, setReadAt] = useState(0)
+  const [vaultReadOnly, setVaultReadOnly] = useState(false)
+  const [mode, setMode] = useState<NoteMode>('read')
+  const [saveState, setSaveState] = useState<'saved' | 'saving'>('saved')
   const [managing, setManaging] = useState(false)
   const [showMeta, setShowMeta] = useState(false)
   // Dev-build bridge counters + keystroke latency, read on demand (T075).
   const [metrics, setMetrics] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const controls = useRef<EditorControls | null>(null)
+  const localUpdates = useRef(0)
 
-  useEffect(() => subscribeReadOnly((state) => setReadOnly(state.readOnly)), [])
+  useEffect(() => subscribeReadOnly((state) => setVaultReadOnly(state.readOnly)), [])
+
+  const gate = editGate({ vaultReadOnly, mode })
+
+  const applyRecord = useCallback((record: NoteRecord | null) => {
+    setPayload(record?.payload ?? null)
+    setUpdatedAt(record?.updatedAt ?? 0)
+    // The clock is read WITH the record rather than in the render body, which
+    // is where `Date.now()` is impure. It also means the relative label moves
+    // when the note does, not on an unrelated re-render.
+    setReadAt(Date.now())
+  }, [])
 
   // The seed marker is cleared only once the seed has actually LANDED — the
   // guest parses the markdown into blocks, which arrives here as an ordinary
@@ -90,13 +132,13 @@ export default function NoteScreen() {
 
       const editorSession = await getEditorSession(vaultId)
       const openDoc = await editorSession.docs.openDoc(id)
-      const notePayload = await readNotePayload(editorSession.db, id)
+      const record = await readNoteRecord(editorSession.db, id)
       const seed = openDoc.isEmpty() ? await resolveSeedMarkdown(editorSession.db, id) : undefined
 
       if (cancelled) return
       setSession(editorSession)
       setDoc(openDoc)
-      setPayload(notePayload)
+      applyRecord(record)
       setSeedMarkdown(seed)
 
       // The network probe runs AFTER the screen is up, never in front of it.
@@ -134,7 +176,7 @@ export default function NoteScreen() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [applyRecord, id])
 
   // Remote CRDT updates reach the open doc through the sync engine's pull; this
   // is what makes a desktop edit appear in the open editor rather than only
@@ -150,11 +192,11 @@ export default function NoteScreen() {
         if (summary.changedNoteIds.length > 0) {
           await session.docs.refreshOpenDocs(summary.changedNoteIds)
         }
-        const refreshed = await readNotePayload(session.db, id)
-        if (refreshed) setPayload(refreshed)
+        const refreshed = await readNoteRecord(session.db, id)
+        if (refreshed) applyRecord(refreshed)
       })()
     })
-  }, [id, session])
+  }, [applyRecord, id, session])
 
   // Background transition: flush the bridge, then drain the outbox (T076). The
   // order matters — flushing first is what puts the last keystrokes INTO the
@@ -178,6 +220,40 @@ export default function NoteScreen() {
     return () => subscription.remove()
   }, [session])
 
+  /**
+   * What backs `Saved`, so it reports disk rather than decorating the bar.
+   *
+   * `applyFromGuest` persists the update and enqueues it BEFORE it advances the
+   * owned doc, so by the time `onLocalUpdate` fires everything the host has
+   * RECEIVED is already durable. What that says nothing about is the ~24 ms
+   * batch still inside the WebView, which is why the indicator only returns to
+   * `Saved` once a `flush()` that no later update overtook has resolved — the
+   * same round trip the background transition relies on.
+   */
+  useEffect(() => {
+    if (!doc || gate !== 'editing') return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const unsubscribe = doc.onLocalUpdate(() => {
+      localUpdates.current += 1
+      setSaveState('saving')
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        const seen = localUpdates.current
+        const settled = controls.current?.flush()
+        // No controls means no way to prove the WebView has handed everything
+        // over, and an unprovable `Saved` is worse than no indicator at all.
+        if (!settled) return
+        void settled.then(() => {
+          if (localUpdates.current === seen) setSaveState('saved')
+        })
+      }, SAVE_SETTLE_MS)
+    })
+    return () => {
+      if (timer) clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [doc, gate])
+
   const ctx: NoteOpsContext | null = useMemo(
     () =>
       session
@@ -199,9 +275,12 @@ export default function NoteScreen() {
       // logical-property CSS is written against.
       rtl: false,
       reducedMotion: false,
-      readOnly
+      // The guest applies this live (`mounted.editor.isEditable = !cfg.readOnly`),
+      // so read↔edit is a prop flip on the running WebView — no remount, and no
+      // second renderer for the reading surface.
+      readOnly: gate !== 'editing'
     }),
-    [readOnly, scheme]
+    [gate, scheme]
   )
 
   const onNavigate = useCallback(
@@ -237,13 +316,28 @@ export default function NoteScreen() {
       if (!picked) return
       const result = await insertAttachment(ctx, session.attachments, id, picked)
       if (!result) return
-      setPayload(await readNotePayload(ctx.db, id))
+      applyRecord(await readNoteRecord(ctx.db, id))
       // The editor owns the block structure; the host only names the reference
       // and its type, so a PDF becomes a file block rather than a broken image.
       controls.current?.insertAttachment(result.ref, result.filename, result.mimeType)
     },
-    [ctx, id, session]
+    [applyRecord, ctx, id, session]
   )
+
+  const finishEditing = useCallback(() => {
+    void (async () => {
+      try {
+        await controls.current?.flush()
+        setSaveState('saved')
+      } finally {
+        setMode('read')
+      }
+    })().catch((err: unknown) => {
+      log.warn('Flushing on Done failed', {
+        error: err instanceof Error ? err.message : String(err)
+      })
+    })
+  }, [])
 
   if (loadError) {
     return (
@@ -266,24 +360,76 @@ export default function NoteScreen() {
   }
 
   const title = payload?.title ?? 'Untitled'
+  const folderSegments = (payload?.folderPath ?? '').split('/').filter((part) => part.length > 0)
+  const parentFolder = folderSegments[folderSegments.length - 1] ?? 'Notes'
+  const editedAt = payload?.modifiedAt ?? updatedAt
+
+  const readActions: NavBarAction[] = [
+    // Never offered on a locked vault: the mode flip could not produce an
+    // editable surface there, only an editor that refuses every keystroke.
+    ...(gate === 'reading'
+      ? [{ text: 'Edit', label: 'Edit', onPress: () => setMode('edit') }]
+      : []),
+    { icon: 'more', label: 'More', onPress: () => setManaging(true) }
+  ]
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <Stack.Screen
-        options={{
-          title,
-          headerRight: () => (
-            <View style={styles.headerActions}>
-              <HeaderButton label="Undo" onPress={() => controls.current?.undo()} />
-              <HeaderButton label="Redo" onPress={() => controls.current?.redo()} />
-              <HeaderButton label="Info" onPress={() => setShowMeta((value) => !value)} />
-              <HeaderButton label="More" onPress={() => setManaging(true)} />
-            </View>
-          )
-        }}
-      />
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: c.canvas.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
 
-      {readOnly ? (
+      {gate === 'editing' ? (
+        <View style={[styles.editNav, { borderBottomColor: c.line.border }]}>
+          <View style={styles.saveSlot}>
+            <Icon
+              name={saveState === 'saved' ? 'check' : 'sync'}
+              size={18}
+              color={c.text.secondary}
+            />
+            <AppText variant="footnote" color={c.text.secondary} style={styles.saveLabel}>
+              {saveState === 'saved' ? 'Saved' : 'Saving…'}
+            </AppText>
+          </View>
+          <View style={styles.doneSlot}>
+            {/* Board 29 draws no `···` here, but board 30's editor toolbar is
+                unbuilt and this is the only way to reach undo, redo and the
+                insert buttons while editing. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="More"
+              hitSlop={10}
+              onPress={() => setManaging(true)}
+            >
+              <Icon name="more" size={24} color={c.text.primary} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              hitSlop={10}
+              onPress={finishEditing}
+            >
+              <AppText variant="body" color={c.tint.base} style={styles.doneLabel}>
+                Done
+              </AppText>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        // `NavBarInline` carries no bottom border of its own, so board 28's is
+        // added here the way the folder screen adds board 27's. The bar's title
+        // is empty because the serif heading below IS the title.
+        <View style={[styles.navBorder, { borderBottomColor: c.line.border }]}>
+          <NavBarInline
+            title=""
+            back={{ label: parentFolder, onPress: () => router.back() }}
+            actions={readActions}
+          />
+        </View>
+      )}
+
+      {gate === 'locked' ? (
         <ThemedView style={styles.banner}>
           <ThemedText type="small">
             Read-only right now. Your edits stay on this device and sync when writing is available
@@ -292,24 +438,56 @@ export default function NoteScreen() {
         </ThemedView>
       ) : null}
 
+      {/* Board 28 draws this block at `padding-inline: 20`. It is 16 here
+          because the WebView below is `padding-inline: 16px`
+          (editor-web/src/styles.css), and at 20 the native title sits 4pt right
+          of the prose it titles. */}
+      <View style={styles.header}>
+        <AppText variant="serifTitle">{title}</AppText>
+        {gate === 'editing' ? null : (
+          <View style={styles.metaRow}>
+            {/* Board 28 draws these 24pt tall. The shipped chip is 26, and one
+                board does not outrank a primitive every other screen uses. */}
+            {(payload?.tags ?? []).map((tag) => (
+              <Chip key={tag} label={tag} variant="tag" />
+            ))}
+            {editedAt > 0 ? (
+              <AppText variant="caption" color={c.text.secondary}>
+                {`Edited ${editedRelative(editedAt, readAt)}`}
+              </AppText>
+            ) : null}
+          </View>
+        )}
+      </View>
+
       {showMeta ? (
         <ScrollView style={styles.meta} contentContainerStyle={styles.metaContent}>
+          <View style={styles.insertRow}>
+            <HeaderButton label="Close details" onPress={() => setShowMeta(false)} />
+          </View>
+          {/* `gate === 'locked'`, not `!== 'editing'`: tags and properties are
+              metadata, not body, and reading the note is no reason to freeze
+              them. Only the vault's own read-only state is. */}
           <NoteTags
             ctx={ctx}
             noteId={id}
             tags={payload?.tags ?? []}
-            readOnly={readOnly}
+            readOnly={gate === 'locked'}
             onChanged={(tags) => setPayload((prev) => (prev ? { ...prev, tags } : prev))}
           />
           <NoteProperties
             ctx={ctx}
             noteId={id}
             properties={payload?.properties ?? {}}
-            readOnly={readOnly}
+            readOnly={gate === 'locked'}
             onChanged={(properties) =>
               setPayload((prev) => (prev ? { ...prev, properties } : prev))
             }
           />
+          <View style={styles.insertRow}>
+            <HeaderButton label="Undo" onPress={() => controls.current?.undo()} />
+            <HeaderButton label="Redo" onPress={() => controls.current?.redo()} />
+          </View>
           <View style={styles.insertRow}>
             <HeaderButton label="Insert image" onPress={() => void onInsert('image')} />
             <HeaderButton label="Insert file" onPress={() => void onInsert('file')} />
@@ -362,8 +540,9 @@ export default function NoteScreen() {
         title={title}
         folderPath={payload?.folderPath ?? ''}
         onClose={() => setManaging(false)}
+        onOpenDetails={() => setShowMeta(true)}
         onChanged={() => {
-          if (session) void readNotePayload(session.db, id).then(setPayload)
+          if (session) void readNoteRecord(session.db, id).then(applyRecord)
         }}
         onDeleted={() => router.back()}
       />
@@ -387,7 +566,32 @@ function HeaderButton({ label, onPress }: { label: string; onPress: () => void }
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headerActions: { flexDirection: 'row', gap: Spacing.two },
+  navBorder: { borderBottomWidth: 1 },
+  editNav: {
+    height: sizes.navBar,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: sizes.gutter,
+    borderBottomWidth: 1
+  },
+  saveSlot: {
+    width: EDIT_NAV_SLOT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s6
+  },
+  saveLabel: { lineHeight: 16 },
+  doneSlot: {
+    width: EDIT_NAV_SLOT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: EDIT_NAV_GAP
+  },
+  doneLabel: { fontFamily: fontFamilies.sansSemiBold },
+  header: { paddingTop: space.s20, paddingHorizontal: sizes.gutter, gap: HEADER_GAP },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.s8 },
   headerButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   banner: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
   meta: { maxHeight: 260 },

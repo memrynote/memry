@@ -25,6 +25,13 @@ export interface NoteManageSheetProps {
   onChanged: () => void
   /** Called after a delete, so the screen can navigate away. */
   onDeleted: () => void
+  /**
+   * Opens the note's tags, properties, attachments and editor tools.
+   *
+   * They have no home on board 28 — boards 32, 33 and 38 own them and none is
+   * built — so this sheet is where they stay reachable in the meantime.
+   */
+  onOpenDetails?: () => void
 }
 
 export function NoteManageSheet(props: NoteManageSheetProps) {
@@ -50,7 +57,8 @@ function NoteManageBody({
   folderPath,
   onClose,
   onChanged,
-  onDeleted
+  onDeleted,
+  onOpenDetails
 }: NoteManageSheetProps) {
   const [draftTitle, setDraftTitle] = useState(title)
   const [folders, setFolders] = useState<string[]>([])
@@ -135,6 +143,20 @@ function NoteManageBody({
           />
         ))}
       </ScrollView>
+
+      {onOpenDetails ? (
+        <Pressable
+          onPress={() => {
+            onClose()
+            onOpenDetails()
+          }}
+          style={styles.folderRow}
+          accessibilityRole="button"
+          accessibilityLabel="Note details"
+        >
+          <ThemedText>Note details</ThemedText>
+        </Pressable>
+      ) : null}
 
       {confirmingDelete ? (
         <View style={styles.confirmRow}>

@@ -39,6 +39,17 @@ export type EditableItemType = 'note' | 'journal'
 interface StoredNote {
   type: EditableItemType
   payload: NotePayload
+  updatedAt: number
+}
+
+export interface NoteRecord {
+  payload: NotePayload
+  /**
+   * The row's own timestamp. A payload written by a client older than
+   * `modifiedAt` carries no edit time of its own, and then the row is the only
+   * thing that knows when the note last changed.
+   */
+  updatedAt: number
 }
 
 /**
@@ -55,15 +66,16 @@ async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote |
   // queues an `update`, and an update is newer than the tombstone — the note
   // comes back on every other device. Editing a deleted note is not an error
   // worth surfacing, it is simply not a thing that can happen.
-  const row = await db.getFirstAsync<{ type: string; payload: string | null }>(
-    'SELECT type, payload FROM sync_items WHERE id = ? AND type IN (?, ?) AND deleted_at IS NULL',
+  const row = await db.getFirstAsync<{ type: string; payload: string | null; updated_at: number }>(
+    'SELECT type, payload, updated_at FROM sync_items WHERE id = ? AND type IN (?, ?) AND deleted_at IS NULL',
     [noteId, 'note', 'journal']
   )
   if (!row?.payload) return null
   try {
     return {
       type: row.type === 'journal' ? 'journal' : 'note',
-      payload: JSON.parse(row.payload) as NotePayload
+      payload: JSON.parse(row.payload) as NotePayload,
+      updatedAt: row.updated_at
     }
   } catch {
     log.warn('Note payload is not JSON; refusing to edit it', { noteId })
@@ -71,8 +83,14 @@ async function readStoredNote(db: VaultDb, noteId: string): Promise<StoredNote |
   }
 }
 
-export async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
+async function readNotePayload(db: VaultDb, noteId: string): Promise<NotePayload | null> {
   return (await readStoredNote(db, noteId))?.payload ?? null
+}
+
+/** The payload plus the row timestamp, in one read. */
+export async function readNoteRecord(db: VaultDb, noteId: string): Promise<NoteRecord | null> {
+  const stored = await readStoredNote(db, noteId)
+  return stored ? { payload: stored.payload, updatedAt: stored.updatedAt } : null
 }
 
 async function writeNotePayload(

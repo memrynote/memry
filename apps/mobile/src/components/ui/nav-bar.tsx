@@ -10,11 +10,30 @@ import { useColors } from '@/theme/use-colors'
 // local constant rather than growing the scale for one component.
 const ACTION_GAP = 18
 
-export interface NavBarAction {
-  icon: IconName
+interface NavBarActionBase {
+  /** The accessible name, and the row's React key. */
   label: string
   onPress: () => void
 }
+
+export interface NavBarIconAction extends NavBarActionBase {
+  icon: IconName
+}
+
+/**
+ * A word action (`Edit`, `Done`), drawn in tint beside the glyphs.
+ *
+ * It lives here rather than at the call site because a bar's trailing group
+ * has to be MEASURED for the title centring below, and a Pressable smuggled in
+ * next to `NavBarInline` would centre the title against a zero-width group.
+ * Icon or word is the only thing that varies, so it is a variant of the action
+ * rather than a second component.
+ */
+export interface NavBarTextAction extends NavBarActionBase {
+  text: string
+}
+
+export type NavBarAction = NavBarIconAction | NavBarTextAction
 
 export interface NavBarLargeTitleProps {
   title: string
@@ -45,7 +64,13 @@ function ActionRow({ actions, onLayout }: ActionRowProps) {
           onPress={action.onPress}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <Icon name={action.icon} size={24} color={c.text.primary} />
+          {'text' in action ? (
+            <AppText variant="headline" color={c.tint.base}>
+              {action.text}
+            </AppText>
+          ) : (
+            <Icon name={action.icon} size={24} color={c.text.primary} />
+          )}
         </Pressable>
       ))}
     </View>
