@@ -47,7 +47,11 @@ export function Button({
     destructive: { background: c.ui.destructive, label: c.ui.destructiveForeground },
     ghost: { label: c.tint.base }
   }
-  const surface = surfaces[variant]
+  // Disabled is its own surface in the design system, not the variant's
+  // surface dimmed: a filled button at reduced opacity still reads as pressable.
+  const surface = disabled
+    ? { background: c.canvas.surfaceActive, label: c.text.tertiary }
+    : surfaces[variant]
   const inert = disabled || busy
 
   return (
@@ -64,7 +68,6 @@ export function Button({
           borderColor: surface.border,
           borderWidth: surface.border ? 1 : 0
         },
-        inert && styles.inert,
         !inert && pressed && styles.pressed,
         style
       ]}
@@ -87,6 +90,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  pressed: { transform: [{ scale: 0.97 }] },
-  inert: { opacity: 0.4 }
+  pressed: { transform: [{ scale: 0.97 }] }
 })
