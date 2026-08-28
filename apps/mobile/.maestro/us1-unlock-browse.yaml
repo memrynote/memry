@@ -44,5 +44,8 @@ appId: com.memry.mobile
 - tapOn:
     text: '.*Open note.*'
     index: 0
-- assertVisible:
-    id: 'Note content'
+# By TEXT, not `id:`. The editor is a WebView and `id` matches the iOS
+# accessibility IDENTIFIER only, which web content never has — the offline
+# matrix documents the same rule. Asserted as an identifier this line could
+# only ever fail, which it did on every run since it was written.
+- assertVisible: 'Note content'
