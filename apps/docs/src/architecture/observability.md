@@ -968,6 +968,17 @@ load=… crashes=…]` block appended only when a context was resolved, so every
 - **Vault watcher**: chokidar `onError` can burst per file (a permission-denied subtree), so
   watcher faults are sampled to one `app_error_seen` per minute (`main/vault/watcher.ts`). Every
   error still reaches the local log.
+- **Unclaimed persistence tokens**: a `((mention:…))` / `((date:…))` token the note-open
+  normalize chain left as literal text, or a callout marker orphaned of its `> ` prefix, is a
+  block that will render broken with no error anywhere — the failure mode behind the #1843
+  round-trip epic, previously detectable only by a user emailing a screenshot. The renderer
+  counts them after every normalize pass
+  (`renderer/…/content-area/unclaimed-token-telemetry.ts`) and reports through `app_error_seen`
+  as `action: editor_unclaimed_token` with `errorCode: unclaimed_mention` / `unclaimed_date` /
+  `unclaimed_callout_marker` and the occurrence count in `metrics.itemCount`. First sighting
+  emits immediately; after that, counts aggregate into at most one event per kind per minute,
+  since the chain re-runs on every note open and remote update. Metric only — the user sees no
+  toast or dialog, and no token content ever ships.
 - **User-visible failures that previously left no trail**: a renderer `did-fail-load` (the user is
   staring at a blank window) reports as `DidFailLoad:<chromiumErrorCode>` — the URL never leaves
   the process; a `memry-file:` protocol serve failure (a silently broken image/PDF/video embed)

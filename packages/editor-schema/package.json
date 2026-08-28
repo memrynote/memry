@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./inline": "./src/inline/index.ts",
     "./blocks": "./src/blocks/index.ts",
+    "./conformance": "./src/conformance.ts",
     "./note-refs": "./src/blocks/rewrite-note-refs.ts",
     "./server": "./src/server.ts"
   },
