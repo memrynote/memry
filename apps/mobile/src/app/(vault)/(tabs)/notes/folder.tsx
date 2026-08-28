@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, FlatList, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 
 import { AppText } from '@/components/ui/app-text'
 import { FAB } from '@/components/ui/fab'
@@ -207,8 +207,6 @@ export default function NoteFolderScreen() {
       edges={['top', 'left', 'right']}
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
     >
-      <Stack.Screen options={{ headerShown: false }} />
-
       {/* The board's trailing `···` is dropped: every row in the list screen's
           sheet is either inert here (`Expand all` / `Collapse all`, with no
           expansion state to act on) or wrong (`New from template` creates at

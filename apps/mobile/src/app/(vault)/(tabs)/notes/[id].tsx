@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router, Stack, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import type { BridgeCfg } from '@memry/contracts/webview-bridge'
 import { ThemedText } from '@/components/themed-text'
 import { ThemedView } from '@/components/themed-view'
@@ -379,8 +379,6 @@ export default function NoteScreen() {
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
       edges={['top', 'left', 'right']}
     >
-      <Stack.Screen options={{ headerShown: false }} />
-
       {gate === 'editing' ? (
         <View style={[styles.editNav, { borderBottomColor: c.line.border }]}>
           <View style={styles.saveSlot}>

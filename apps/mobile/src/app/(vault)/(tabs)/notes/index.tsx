@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router, Stack, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 
 import { AppText } from '@/components/ui/app-text'
 import { BottomSheet } from '@/components/ui/bottom-sheet'
@@ -186,10 +186,6 @@ export default function NotesScreen() {
       edges={['top', 'left', 'right']}
       style={[styles.safe, { backgroundColor: c.canvas.background }]}
     >
-      {/* Per-screen, because the notes stack sets `headerShown: true` for
-          `[id].tsx` and board 26 draws its own nav row. */}
-      <Stack.Screen options={{ headerShown: false }} />
-
       {searching ? (
         <View style={styles.searchRow}>
           <SearchField
