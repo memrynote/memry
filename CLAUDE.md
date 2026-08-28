@@ -19,6 +19,17 @@ pnpm --filter @memry/desktop dev:b # desktop profile/device B
 pnpm --filter @memry/desktop dev:c # desktop profile/device C
 ```
 
+## Mobile
+
+Mobile always runs against **staging**. There is no prod test environment — never point the app at prod.
+
+```bash
+pnpm --filter @memry/mobile ios:staging   # default: build + run iOS on staging
+pnpm --filter @memry/mobile start:staging # Metro only, staging server
+```
+
+Both set `EXPO_PUBLIC_MEMRY_SERVER=staging`. Bare `ios` / `start` are not the mobile test path; use the `:staging` scripts unless Kaan says otherwise.
+
 ## Verify
 
 ```bash
