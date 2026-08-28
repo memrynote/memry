@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { SIDEBAR_SORT_MODES } from '@memry/contracts/sidebar-sort'
 import {
+  allFolderPaths,
   buildFolderTree,
+  fileTypeFromTitle,
   findFolder,
   flattenFolderTree,
   isMobileSortMode,
@@ -396,5 +398,45 @@ describe('NOTE_FILE_TYPE_TONE', () => {
       audio: 'green',
       video: 'purple'
     } satisfies Record<NoteFileType, string>)
+  })
+})
+
+describe('fileTypeFromTitle', () => {
+  it('reads the extension, whatever its case', () => {
+    expect(fileTypeFromTitle('Contract.pdf')).toBe('pdf')
+    expect(fileTypeFromTitle('SCAN.PNG')).toBe('image')
+    expect(fileTypeFromTitle('Standup.m4a')).toBe('audio')
+    expect(fileTypeFromTitle('Demo.MOV')).toBe('video')
+  })
+
+  it('reads a bare title, a .md and an unknown extension as markdown', () => {
+    expect(fileTypeFromTitle('Roadmap')).toBe('markdown')
+    expect(fileTypeFromTitle('Roadmap.md')).toBe('markdown')
+    expect(fileTypeFromTitle('Roadmap.tar')).toBe('markdown')
+  })
+
+  it('does not treat a dot inside a title as an extension', () => {
+    // The tail after the last dot is `2 draft`, which is nobody's file format.
+    expect(fileTypeFromTitle('Notes v1.2 draft')).toBe('markdown')
+    // A leading dot leaves the whole name as the tail, which is not one either.
+    expect(fileTypeFromTitle('.pdf')).toBe('markdown')
+  })
+})
+
+describe('allFolderPaths', () => {
+  it('lists every folder including the nested ones, and never the root', () => {
+    const paths = allFolderPaths(tree())
+    expect(paths).toEqual([
+      'Archive',
+      'Archive/2024',
+      'Archive/2024/Plans',
+      'personal',
+      'Reading',
+      'Work',
+      'Work/Product'
+    ])
+    // The synthetic root has no row to expand, so its `''` must not be in the
+    // set `Expand all` writes.
+    expect(paths).not.toContain('')
   })
 })

@@ -100,6 +100,55 @@ export const NOTE_FILE_TYPE_TONE: Record<
 }
 
 /**
+ * `| undefined` is deliberate: this tsconfig has no `noUncheckedIndexedAccess`,
+ * so without it the `??` fallback below reads as dead code to the compiler
+ * while still being the live path at runtime.
+ */
+const FILE_TYPE_BY_EXTENSION: Record<string, NoteFileType | undefined> = {
+  pdf: 'pdf',
+  png: 'image',
+  jpg: 'image',
+  jpeg: 'image',
+  gif: 'image',
+  webp: 'image',
+  heic: 'image',
+  m4a: 'audio',
+  mp3: 'audio',
+  wav: 'audio',
+  aac: 'audio',
+  mp4: 'video',
+  mov: 'video',
+  webm: 'video'
+}
+
+export function isNoteFileType(value: unknown): value is NoteFileType {
+  return typeof value === 'string' && value in NOTE_FILE_TYPE_TONE
+}
+
+/**
+ * The FALLBACK, not the source of truth. `NoteSyncPayloadSchema` carries a real
+ * `fileType` enum and desktop's note handler writes it for every binary note,
+ * so a stored value always wins; this is what is left when the field is absent.
+ */
+export function fileTypeFromTitle(title: string): NoteFileType {
+  const dot = title.lastIndexOf('.')
+  // `-1` is a title with no dot and `0` is a leading-dot name whose whole body
+  // would otherwise read as the extension. Neither is one.
+  if (dot <= 0) return 'markdown'
+  return FILE_TYPE_BY_EXTENSION[title.slice(dot + 1).toLowerCase()] ?? 'markdown'
+}
+
+/** Every folder path, for `Expand all`. Walking children skips the root's `''`. */
+export function allFolderPaths(root: FolderNode): string[] {
+  const paths: string[] = []
+  for (const child of root.folders) {
+    paths.push(child.path)
+    for (const nested of allFolderPaths(child)) paths.push(nested)
+  }
+  return paths
+}
+
+/**
  * Case-insensitive, and deliberately not `localeCompare`.
  *
  * This module runs on Hermes on device and on Node with full ICU under test,
