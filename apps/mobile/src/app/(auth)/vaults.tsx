@@ -8,12 +8,12 @@ import { Icon } from '@/components/ui/icon'
 import { SkeletonRow } from '@/components/ui/skeleton-row'
 import { AUTH_GUTTER } from '@/features/auth/chrome'
 import { withThousands } from '@/lib/format'
+import { extractErrorMessage, SyncRequestError } from '@/lib/errors'
 import {
   listVaults,
   loadSession,
   saveCurrentVaultId,
   signOut,
-  SyncRequestError,
   type RemoteVault
 } from '@/sync/auth-client'
 import { readSyncState } from '@/sync/sync-state'
@@ -93,7 +93,9 @@ export default function VaultsScreen() {
           router.replace('/welcome')
           return
         }
-        setError('Could not load your vaults. Check your connection and try again.')
+        setError(
+          extractErrorMessage(err, 'Could not load your vaults. Check your connection and try again.')
+        )
       }
     })()
     return () => {

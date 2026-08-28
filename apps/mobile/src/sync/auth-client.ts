@@ -4,6 +4,7 @@ import {
   toBase64,
   generateDeviceSigningKeyPair
 } from '../crypto/libsodium'
+import { SyncRequestError } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import {
   getSessionToken,
@@ -51,21 +52,6 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY
 }
 
-/**
- * Carries the HTTP status so callers can act on it. Without this a screen can
- * only pattern-match the message, and an expired session reads to the user as
- * a mysterious failure instead of a trip back to sign-in.
- */
-export class SyncRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: number
-  ) {
-    super(message)
-    this.name = 'SyncRequestError'
-  }
-}
-
 async function request<T>(
   path: string,
   init: { method?: string; token?: string; body?: unknown } = {}
@@ -82,6 +68,7 @@ async function request<T>(
     error?: string | { code?: string; message?: string }
   }
   if (!response.ok) {
+    const code = typeof body.error === 'object' && body.error ? (body.error.code ?? null) : null
     const detail =
       typeof body.error === 'string'
         ? body.error
@@ -90,7 +77,8 @@ async function request<T>(
           : ''
     throw new SyncRequestError(
       `${path} failed (HTTP ${response.status})${detail ? `: ${detail}` : ''}`,
-      response.status
+      response.status,
+      code
     )
   }
   return body
