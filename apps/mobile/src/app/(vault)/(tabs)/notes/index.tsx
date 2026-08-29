@@ -9,6 +9,7 @@ import { FAB } from '@/components/ui/fab'
 import { Icon, type IconName } from '@/components/ui/icon'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
 import { SearchField } from '@/components/ui/search-field'
+import { SwipeRow } from '@/components/ui/swipe-row'
 import { TreeRow } from '@/components/ui/tree-row'
 import { openVaultDb, type VaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
@@ -20,7 +21,7 @@ import {
 import { createFolder } from '@/features/notes/folder-ops'
 import { createNote, type NoteOpsContext } from '@/features/notes/note-ops'
 import { resolveIcon } from '@/features/notes/icon-value'
-import { folderTarget, useRowMenu } from '@/features/notes/row-menu'
+import { folderTarget, noteSwipeActions, noteTarget, useRowMenu } from '@/features/notes/row-menu'
 import {
   readExpandedFolders,
   readNotesSnapshot,
@@ -288,33 +289,25 @@ export default function NotesScreen() {
               )
             case 'note': {
               const entry = item.note
-              return (
+              const row = (
                 <TreeRow
                   label={entry.title}
                   level={item.level}
                   icon={resolveIcon(entry.icon, snapshot.customIcons)}
                   tone={NOTE_FILE_TYPE_TONE[entry.fileType]}
                   accessibilityLabel={`Open note ${entry.title}`}
-                  bookmarked={menu.isBookmarked({
-                    kind: 'note',
-                    id: entry.id,
-                    title: entry.title,
-                    folderPath: entry.folderPath
-                  })}
+                  bookmarked={menu.isBookmarked(noteTarget(entry))}
                   onPress={() => router.push(`/notes/${entry.id}`)}
-                  onLongPress={(pageY) =>
-                    menu.open(
-                      {
-                        kind: 'note',
-                        id: entry.id,
-                        title: entry.title,
-                        folderPath: entry.folderPath
-                      },
-                      pageY
-                    )
-                  }
+                  onLongPress={(pageY) => menu.open(noteTarget(entry), pageY)}
                 />
               )
+              // The same strip the folder screen draws: a note answers to the
+              // same verbs wherever it is listed, and the tree here holds the
+              // vault-root notes that have no folder screen to be swiped on.
+              // Folder rows carry no strip — a folder's verbs are a batch over
+              // everything beneath it — but they keep the long-press menu.
+              if (readOnly) return row
+              return <SwipeRow actions={noteSwipeActions(entry, c, menu)}>{row}</SwipeRow>
             }
           }
         }}

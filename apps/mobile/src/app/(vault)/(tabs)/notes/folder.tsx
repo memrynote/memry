@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, FlatList, StyleSheet, View } from 'react-native'
+import { FlatList, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 
 import { AppText } from '@/components/ui/app-text'
 import { FAB } from '@/components/ui/fab'
 import { NavBarInline } from '@/components/ui/nav-bar'
-import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
+import { SwipeRow } from '@/components/ui/swipe-row'
 import { TreeRow, TreeSectionHeader } from '@/components/ui/tree-row'
 import { openVaultDb } from '@/db/index'
 import { getEditorSession } from '@/editor/session'
 import { resolveIcon } from '@/features/notes/icon-value'
-import { createNote, deleteNote, type NoteOpsContext } from '@/features/notes/note-ops'
-import { folderTarget, useRowMenu } from '@/features/notes/row-menu'
+import { createNote, type NoteOpsContext } from '@/features/notes/note-ops'
+import { folderTarget, noteSwipeActions, noteTarget, useRowMenu } from '@/features/notes/row-menu'
 import { readNotesSnapshot, readSortMode, type NotesSnapshot } from '@/features/notes/notes-repo'
 import {
   buildFolderTree,
@@ -24,7 +24,6 @@ import {
   type MobileSortMode,
   type NoteEntry
 } from '@/features/notes/tree'
-import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
 import { loadCurrentVaultId } from '@/sync/auth-client'
 import { getSyncEngine } from '@/sync/engine'
@@ -166,64 +165,6 @@ export default function NoteFolderScreen() {
     router.push(`/notes/${noteId}`)
   }, [vaultId, path])
 
-  const confirmDelete = useCallback(
-    (note: NoteEntry) => {
-      Alert.alert('Delete note', `${note.title} will be deleted on every device.`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              if (!ctx) return
-              try {
-                // `deleteNote` writes the tombstone and drops the note's queued
-                // body updates in one transaction; nothing here repeats that.
-                await deleteNote(ctx, note.id)
-                await reload()
-              } catch (err) {
-                log.error('Deleting the note failed', { noteId: note.id, error: String(err) })
-                Alert.alert(
-                  'Delete failed',
-                  extractErrorMessage(err, 'The note could not be deleted.')
-                )
-              }
-            })()
-          }
-        }
-      ])
-    },
-    [ctx, reload]
-  )
-
-  const noteActions = useCallback(
-    (note: NoteEntry): SwipeAction[] => [
-      {
-        label: 'Move',
-        icon: 'folder',
-        width: 72,
-        background: c.canvas.surfaceActive,
-        foreground: c.text.primary,
-        onPress: () =>
-          menu.openMove({
-            kind: 'note',
-            id: note.id,
-            title: note.title,
-            folderPath: note.folderPath
-          })
-      },
-      {
-        label: 'Delete',
-        icon: 'trash',
-        width: 76,
-        background: c.ui.destructive,
-        foreground: c.ui.destructiveForeground,
-        onPress: () => confirmDelete(note)
-      }
-    ],
-    [c, confirmDelete, menu]
-  )
-
   return (
     <SafeAreaView
       edges={['left', 'right']}
@@ -286,28 +227,13 @@ export default function NoteFolderScreen() {
                   icon={resolveIcon(item.note.icon, snapshot.customIcons)}
                   tone={NOTE_FILE_TYPE_TONE[item.note.fileType]}
                   accessibilityLabel={`Open note ${item.note.title}`}
-                  bookmarked={menu.isBookmarked({
-                    kind: 'note',
-                    id: item.note.id,
-                    title: item.note.title,
-                    folderPath: item.note.folderPath
-                  })}
+                  bookmarked={menu.isBookmarked(noteTarget(item.note))}
                   onPress={() => router.push(`/notes/${item.note.id}`)}
-                  onLongPress={(pageY) =>
-                    menu.open(
-                      {
-                        kind: 'note',
-                        id: item.note.id,
-                        title: item.note.title,
-                        folderPath: item.note.folderPath
-                      },
-                      pageY
-                    )
-                  }
+                  onLongPress={(pageY) => menu.open(noteTarget(item.note), pageY)}
                 />
               )
               if (readOnly) return row
-              return <SwipeRow actions={noteActions(item.note)}>{row}</SwipeRow>
+              return <SwipeRow actions={noteSwipeActions(item.note, c, menu)}>{row}</SwipeRow>
             }
           }
         }}

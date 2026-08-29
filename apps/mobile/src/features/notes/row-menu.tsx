@@ -4,6 +4,7 @@ import { router } from 'expo-router'
 
 import { ContextMenu } from '@/components/ui/context-menu'
 import { PromptDialog } from '@/components/ui/prompt-dialog'
+import type { SwipeAction } from '@/components/ui/swipe-row'
 import { Toast, type ToastAction } from '@/components/ui/toast'
 import { TreeRow } from '@/components/ui/tree-row'
 import { toggleBookmark } from '@/features/notes/bookmarks'
@@ -36,9 +37,10 @@ import {
   type RowActionId,
   type RowTarget
 } from '@/features/notes/row-actions'
-import { NOTE_FILE_TYPE_TONE } from '@/features/notes/tree'
+import { NOTE_FILE_TYPE_TONE, type NoteEntry } from '@/features/notes/tree'
 import { extractErrorMessage } from '@/lib/errors'
 import { createLogger } from '@/lib/logger'
+import type { ThemeColors } from '@/theme/colors'
 import { sizes, space } from '@/theme/primitives'
 
 const log = createLogger('RowMenu')
@@ -91,6 +93,12 @@ export interface RowMenuHost {
    * menu would make one gesture open a second chooser.
    */
   openMove: (target: RowTarget) => void
+  /**
+   * Skip the menu and go straight to the delete confirmation, for the swipe
+   * strip's own `Delete`. It is the SAME confirmation the menu opens, so the
+   * two entry points cannot drift apart in wording or in what they remove.
+   */
+  openDelete: (target: RowTarget) => void
   /** Whether a row is bookmarked, for the row's own glyph. */
   isBookmarked: (target: RowTarget) => boolean
   /** Render last inside the screen, so the overlays sit above the list. */
@@ -404,7 +412,7 @@ export function useRowMenu({
     </>
   )
 
-  return { open, openMove, isBookmarked, overlay }
+  return { open, openMove, openDelete: confirmDelete, isBookmarked, overlay }
 }
 
 /**
@@ -447,6 +455,42 @@ function PreviewRow({ target, snapshot }: { target: RowTarget; snapshot: NotesSn
       tone={NOTE_FILE_TYPE_TONE[entry?.fileType ?? 'markdown']}
     />
   )
+}
+
+/** Build the menu target for a note row. */
+export function noteTarget(note: NoteEntry): RowTarget {
+  return { kind: 'note', id: note.id, title: note.title, folderPath: note.folderPath }
+}
+
+/**
+ * The trailing swipe verbs for a note row.
+ *
+ * Both tree screens draw the same strip, so it is built here beside the menu
+ * whose flows the two actions open, rather than copied into each screen.
+ */
+export function noteSwipeActions(
+  note: NoteEntry,
+  c: ThemeColors,
+  menu: RowMenuHost
+): SwipeAction[] {
+  return [
+    {
+      label: 'Move',
+      icon: 'folder',
+      width: 72,
+      background: c.canvas.surfaceActive,
+      foreground: c.text.primary,
+      onPress: () => menu.openMove(noteTarget(note))
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      width: 76,
+      background: c.ui.destructive,
+      foreground: c.ui.destructiveForeground,
+      onPress: () => menu.openDelete(noteTarget(note))
+    }
+  ]
 }
 
 /** Build the menu target for a folder row. */
