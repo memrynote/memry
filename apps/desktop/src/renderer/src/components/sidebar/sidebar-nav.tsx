@@ -126,6 +126,10 @@ export function SidebarNav({
         id={NAV_CONTENT_ID}
         data-testid="sidebar-nav-items"
         aria-hidden={collapsed}
+        // `aria-hidden` alone would leave eight buttons in the tab order behind
+        // a zero-height row — a keyboard user would tab into rows that are not
+        // on screen and that screen readers have been told do not exist.
+        inert={collapsed}
         className={cn(
           'grid transition-[grid-template-rows] duration-100 ease-out motion-reduce:transition-none',
           collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
