@@ -34,7 +34,13 @@ import {
   getMinimizeToTraySetting,
   setGlobalCaptureAppliedHandler
 } from './ipc/settings-handlers'
-import { applyTraySetting, handleMainWindowClose, initTray } from './tray'
+import {
+  applyTraySetting,
+  handleMainWindowClose,
+  initTray,
+  isTrayActive,
+  showMainWindow
+} from './tray'
 import {
   autoOpenLastVault,
   beginVaultShutdown,
@@ -1197,11 +1203,17 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
       // already running) must surface the existing window, not silently no-op.
       // On Windows there is no Dock/'activate' fallback, so without this a hidden
       // or minimized instance stays invisible and the app looks like it "won't open".
-      const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
-      if (existing) {
-        if (!existing.isVisible()) existing.show()
-        if (existing.isMinimized()) existing.restore()
-        existing.focus()
+      if (isTrayActive()) {
+        // Hidden to the tray rather than closed, so it needs the same restore
+        // the tray icon performs, including leaving skipTaskbar behind.
+        showMainWindow()
+      } else {
+        const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
+        if (existing) {
+          if (!existing.isVisible()) existing.show()
+          if (existing.isMinimized()) existing.restore()
+          existing.focus()
+        }
       }
       const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
       if (deepLinkUrl) {
@@ -1779,7 +1791,13 @@ const appReady = app.whenReady().then(async () => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+      return
+    }
+    // The Dock icon deliberately stays while the app is in the tray, so a Dock
+    // click has to reach a window that was hidden rather than closed.
+    if (isTrayActive()) showMainWindow()
   })
 })
 

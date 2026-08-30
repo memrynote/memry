@@ -125,7 +125,12 @@ export function applyTraySetting(next: boolean): void {
  * can bring it back leaves the user with a running app they cannot see or quit.
  */
 export function shouldHideOnClose(): boolean {
-  return enabled && tray !== null && !quitting
+  return enabled && isTrayActive() && !quitting
+}
+
+/** Whether a window hidden by this module can currently be brought back. */
+export function isTrayActive(): boolean {
+  return tray !== null
 }
 
 export function handleMainWindowClose(event: Electron.Event, window: BrowserWindow): void {

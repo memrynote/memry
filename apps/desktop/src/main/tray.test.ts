@@ -82,6 +82,7 @@ import {
   applyTraySetting,
   handleMainWindowClose,
   initTray,
+  isTrayActive,
   shouldHideOnClose,
   showMainWindow
 } from './tray'
@@ -174,6 +175,29 @@ describe('applyTraySetting', () => {
 
     expect(() => applyTraySetting(true)).not.toThrow()
     expect(shouldHideOnClose()).toBe(false)
+  })
+})
+
+describe('isTrayActive', () => {
+  // The Dock icon on macOS and a second launch on Windows both reach a window
+  // that was hidden rather than closed, so both ask this before restoring.
+  it('#given no tray #then reports inactive', () => {
+    expect(isTrayActive()).toBe(false)
+  })
+
+  it('#given a tray #then reports active until it is destroyed', () => {
+    applyTraySetting(true)
+    expect(isTrayActive()).toBe(true)
+
+    applyTraySetting(false)
+    expect(isTrayActive()).toBe(false)
+  })
+
+  it('#given tray creation failed #then reports inactive', () => {
+    mocks.trayThrows = true
+    applyTraySetting(true)
+
+    expect(isTrayActive()).toBe(false)
   })
 })
 
