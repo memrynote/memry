@@ -169,6 +169,23 @@ above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quo
 is added on the first save, and the file stops changing after that. Markdown reads both
 spellings as the same nested quote, and a note can only be saved in one of them.
 
+## Toggle lists
+
+A toggle is written to disk as a `<details>` section, so GitHub and Obsidian render it as
+a real collapsible block. The blank lines around it belong to whoever wrote the file: an
+extra blank line above a toggle, below it, or between two of them is still there the next
+time the note is opened.
+
+Two shapes are deliberately left alone rather than adopted:
+
+- A `<details>` written by hand, without Memry's own marker attribute, does not become a
+  toggle. It stays exactly as its author wrote it, tags and all, so a vault shared with
+  Obsidian keeps its hand-written collapsible sections.
+- A toggle whose closing `</details>` is missing — half-typed, or cut short in transit —
+  is not closed for you. Its `<details>` and `<summary>` lines stay in the note as
+  literal text, so nothing is lost; close the block by hand and it becomes a real toggle
+  on the next open.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
