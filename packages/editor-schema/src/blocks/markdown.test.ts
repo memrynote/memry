@@ -180,26 +180,89 @@ describe('splitMarkdownByToggles', () => {
     ])
   })
 
-  it('leaves a bare <details> alone — it is not ours to rewrite', () => {
+  // The `\\<` on every declined markup line is what MAKES these bytes survive.
+  // Left raw they reach BlockNote's markdown parser, which has no block for
+  // HTML and drops them (#1883); escaped they parse as text and remark writes
+  // them back without the backslash. Byte preservation is asserted end to end
+  // by the round-trip conformance corpus.
+  it('escapes a bare <details> rather than feeding it to a parser that drops it', () => {
     const markdown = ['<details>', '<summary>Theirs</summary>', '', 'Body', '', '</details>'].join(
       '\n'
     )
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      {
+        kind: 'markdown',
+        text: ['\\<details>', '\\<summary>Theirs\\</summary>', '', 'Body', '', '\\</details>'].join(
+          '\n'
+        )
+      }
+    ])
   })
 
-  it('leaves an open tag with no <summary> after it alone', () => {
+  it('escapes an open tag with no <summary> after it', () => {
     const markdown = ['<details data-memry-toggle>', 'Body', '</details>'].join('\n')
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      {
+        kind: 'markdown',
+        text: ['\\<details data-memry-toggle>', 'Body', '\\</details>'].join('\n')
+      }
+    ])
   })
 
-  it('leaves an unterminated toggle alone rather than swallowing the note', () => {
+  it('escapes an unterminated toggle rather than swallowing the note', () => {
     const markdown = ['<details data-memry-toggle>', '<summary>Title</summary>', '', 'Rest'].join(
       '\n'
     )
 
-    expect(splitMarkdownByToggles(markdown)).toEqual([{ kind: 'markdown', text: markdown }])
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      {
+        kind: 'markdown',
+        text: ['\\<details data-memry-toggle>', '\\<summary>Title\\</summary>', '', 'Rest'].join(
+          '\n'
+        )
+      }
+    ])
+  })
+
+  it('carries the blank lines at a toggle seam as a gap instead of trimming them', () => {
+    const markdown = `Before\n\n\n${serializeToggleBlock('S', 'B')}\n\n\nAfter`
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      { kind: 'markdown', text: 'Before' },
+      { kind: 'gap', extraLines: 1 },
+      { kind: 'toggle', summary: 'S', body: 'B', open: false, colorsMarker: null },
+      { kind: 'gap', extraLines: 1 },
+      { kind: 'markdown', text: 'After' }
+    ])
+  })
+
+  it('counts a run of blanks between two toggles once', () => {
+    const markdown = `${serializeToggleBlock('A', 'a')}\n\n\n${serializeToggleBlock('B', 'b')}`
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      { kind: 'toggle', summary: 'A', body: 'a', open: false, colorsMarker: null },
+      { kind: 'gap', extraLines: 1 },
+      { kind: 'toggle', summary: 'B', body: 'b', open: false, colorsMarker: null }
+    ])
+  })
+
+  it('keeps the gap when a colors marker sits between it and the toggle', () => {
+    const marker = '<!-- colors:{"backgroundColor":"blue"} -->'
+    const markdown = `Before\n\n\n${serializeToggleBlock('S', 'B', marker)}`
+
+    expect(splitMarkdownByToggles(markdown)).toEqual([
+      { kind: 'markdown', text: 'Before' },
+      { kind: 'gap', extraLines: 1 },
+      { kind: 'toggle', summary: 'S', body: 'B', open: false, colorsMarker: marker }
+    ])
+  })
+
+  it('drops a gap before the first segment, which has no paragraph break to extend', () => {
+    expect(splitMarkdownByToggles(`\n\n\n${serializeToggleBlock('S', 'B')}`)).toEqual([
+      { kind: 'toggle', summary: 'S', body: 'B', open: false, colorsMarker: null }
+    ])
   })
 
   it('ignores a toggle quoted inside a code fence', () => {

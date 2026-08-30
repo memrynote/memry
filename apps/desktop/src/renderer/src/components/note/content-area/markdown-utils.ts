@@ -295,6 +295,13 @@ async function parseMaskedMarkdown(editor: any, markdown: string): Promise<Block
   for (const segment of splitMarkdownByToggles(markdown)) {
     if (segment.kind === 'toggle') {
       blocks.push(await parseToggleSegment(editor, segment))
+    } else if (segment.kind === 'gap') {
+      // Blank lines the user left at a toggle's edge. Same currency, and the
+      // same empty paragraphs, as a gap the blank-line scanner finds inside a
+      // markdown segment (#1877).
+      for (let i = 0; i < segment.extraLines; i++) {
+        blocks.push({ type: 'paragraph', content: [], children: [], props: {} } as unknown as Block)
+      }
     } else {
       blocks.push(...(await parseMarkdownWithoutToggles(editor, segment.text)))
     }

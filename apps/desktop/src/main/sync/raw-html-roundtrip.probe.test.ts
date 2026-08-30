@@ -2,6 +2,11 @@
  * Probe: what markdown → Y.Doc → markdown does to raw HTML (#1883, and the
  * wider hole behind it).
  *
+ * The `<details>` family is out of that hole as of #1883's fix — the toggle
+ * splitter escapes every `<details>`/`<summary>` line it declines, so those
+ * bytes reach the parser as text and come back whole. Everything else here is
+ * still lost, which is what the wider hole means.
+ *
  * The pair below is exactly what the app runs — `markdownToYFragment` seeds the
  * doc on note open, `yDocToMarkdown` re-serializes the WHOLE doc on the first
  * write-back after that. So `pass1` is the bytes that land in the user's file
@@ -81,16 +86,6 @@ const HTML_ONLY_BODY: Probe[] = [
 /** With markdown around it, the tags go and the inner text stays. */
 const BLOCK_LEVEL_IN_CONTEXT: Probe[] = [
   {
-    name: 'bare <details> written by hand',
-    markdown: '<details>\n<summary>Foreign</summary>\n\nBody\n\n</details>',
-    pass1: 'Body'
-  },
-  {
-    name: 'bare <details> holding a markdown list',
-    markdown: '<details>\n<summary>S</summary>\n\n- one\n- two\n\n</details>',
-    pass1: '- one\n- two'
-  },
-  {
     name: '<div> wrapper around a blank-line-separated body',
     markdown: '<div class="x">\n\nBody\n\n</div>',
     pass1: 'Body'
@@ -104,14 +99,6 @@ const BLOCK_LEVEL_IN_CONTEXT: Probe[] = [
     name: 'blockquote whose only content is html',
     markdown: '> <div>Body</div>',
     pass1: '>'
-  },
-  {
-    name: 'bare <details> nested in a Memry toggle body',
-    markdown: serializeToggleBlock(
-      'Summary',
-      '<details>\n<summary>In</summary>\n\nX\n\n</details>'
-    ),
-    pass1: serializeToggleBlock('Summary', 'X')
   }
 ]
 
@@ -150,6 +137,33 @@ const SURVIVORS: Probe[] = [
     pass1: null
   },
   {
+    // Every `<details>` line the toggle splitter declines is escaped on its way
+    // into the markdown parser, so the whole family now survives: a foreign
+    // block, one holding markdown, one nested in a Memry toggle, and the
+    // unterminated shape #1883 was filed for.
+    name: 'bare <details> written by hand',
+    markdown: '<details>\n<summary>Foreign</summary>\n\nBody\n\n</details>',
+    pass1: null
+  },
+  {
+    name: 'bare <details> holding a markdown list',
+    markdown: '<details>\n<summary>S</summary>\n\n- one\n- two\n\n</details>',
+    pass1: null
+  },
+  {
+    name: 'bare <details> nested in a Memry toggle body',
+    markdown: serializeToggleBlock(
+      'Summary',
+      '<details>\n<summary>In</summary>\n\nX\n\n</details>'
+    ),
+    pass1: null
+  },
+  {
+    name: 'unterminated Memry toggle',
+    markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody',
+    pass1: null
+  },
+  {
     name: "Memry's own file-block marker",
     markdown:
       '<!-- file:{"url":"memry-file://v/a.pdf","name":"a.pdf","size":12,"mimeType":"application/pdf"} -->',
@@ -172,14 +186,6 @@ const SURVIVORS: Probe[] = [
   }
 ]
 
-const PENDING_1883: Probe[] = [
-  {
-    name: 'unterminated Memry toggle',
-    markdown: '<details data-memry-toggle>\n<summary>Unterminated</summary>\n\nBody',
-    pass1: 'Body'
-  }
-]
-
 function run(title: string, probes: Probe[]): void {
   describe(title, () => {
     it.each(probes)('$name', async ({ markdown, pass1, pass2 }) => {
@@ -195,5 +201,4 @@ describe('raw HTML through the write-back round-trip', () => {
   run('a block-level tag is dropped, its inner text kept', BLOCK_LEVEL_IN_CONTEXT)
   run('an inline tag is dropped, its text kept', INLINE_LEVEL)
   run('what survives', SURVIVORS)
-  run('the narrow shape #1883 tracks', PENDING_1883)
 })

@@ -470,7 +470,19 @@ export interface ToggleMarkdownSegment {
   text: string
 }
 
-export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment
+/**
+ * Blank lines at the seam between two segments, in the same `extraLines`
+ * currency `splitMarkdownPreservingBlanks` uses inside one: the count BEYOND
+ * the single blank line that separates any two blocks. Callers turn it into
+ * that many empty paragraphs, exactly as they already do for a gap the
+ * blank-line scanner finds mid-segment.
+ */
+export interface ToggleGapSegment {
+  kind: 'gap'
+  extraLines: number
+}
+
+export type ToggleContentSegment = ToggleBlockSegment | ToggleMarkdownSegment | ToggleGapSegment
 
 export function serializeToggleBlock(
   summaryMarkdown: string,
@@ -507,23 +519,69 @@ export function serializeToggleBlock(
 }
 
 /**
+ * The three whole-line shapes `<details>` markup takes on disk. Matched against
+ * the raw line, never a trimmed one: an indented `<details>` is inside a code
+ * block or a list item, and those bytes are not this function's to touch.
+ */
+const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summary>|<\/details>)$/
+
+/**
+ * Escape a `<details>` markup line that no toggle claimed, so CommonMark reads
+ * it as text rather than as a raw HTML block.
+ *
+ * BlockNote's markdown parser has no block for raw HTML and drops it, which is
+ * how an unterminated toggle lost its open and summary lines on the next
+ * write-back (#1883) — and how a hand-written Obsidian `<details>` lost all
+ * three, despite the promise above that it is left as its author wrote it.
+ * Escaped, the line parses as an ordinary paragraph and remark writes the
+ * backslash back out as nothing, so the author's bytes survive every save.
+ *
+ * Every `<` on the line is escaped, not just the leading one: a
+ * `<summary>x</summary>` whose closing tag stays raw loses that tag to the same
+ * parser and comes back as `<summary>x`.
+ */
+function escapeDetailsMarkup(line: string): string {
+  return DETAILS_MARKUP_LINE_REGEX.test(line) ? line.replace(/</g, '\\<') : line
+}
+
+/**
  * Split markdown into toggle regions and everything between them.
  *
- * Callers parse the `markdown` segments however they normally would and rebuild
- * a `toggleListItem` from each toggle segment, recursing into `body` with the
- * same parser. Splitting has to happen BEFORE the blank-line and marker-line
- * scanners: those work line by line and would shred a toggle body apart at its
- * own paragraph gaps.
+ * Callers parse the `markdown` segments however they normally would, rebuild a
+ * `toggleListItem` from each toggle segment (recursing into `body` with the
+ * same parser), and emit `extraLines` empty paragraphs for each gap segment.
+ * Splitting has to happen BEFORE the blank-line and marker-line scanners: those
+ * work line by line and would shred a toggle body apart at its own paragraph
+ * gaps. Which is also why the gaps at a toggle's own edges are this function's
+ * to carry — nothing downstream ever sees them (#1877).
  *
  * An unterminated `<details data-memry-toggle>` stays markdown. Swallowing the
  * rest of the note into a block the author never closed loses more than it
- * saves.
+ * saves. Its lines are escaped on the way into that markdown, which is what
+ * makes the decline actually preserve them (see `escapeDetailsMarkup`).
  */
 export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[] {
   const lines = markdown.split('\n')
   const segments: ToggleContentSegment[] = []
   const fence = createFenceTracker()
   let buffer: string[] = []
+
+  /**
+   * One blank line is the standard paragraph break `assembleMarkdownWithBlanks`
+   * writes back on its own, so only the lines beyond it need carrying.
+   *
+   * A gap before the FIRST segment is dropped rather than carried. Assembly
+   * writes a gap as `\n\n` plus its extra lines whether or not a segment
+   * precedes it, so with nothing in front that `\n\n` is not a separator being
+   * extended — it is two more blank lines. Measured: three leading blank lines
+   * come back as four, and four as five, growing on every save. Leading blank
+   * lines therefore stay trimmed, exactly as they were before gaps existed.
+   */
+  const pushGap = (blankLines: number): void => {
+    if (segments.length > 0 && blankLines > 1) {
+      segments.push({ kind: 'gap', extraLines: blankLines - 1 })
+    }
+  }
 
   /**
    * Flush the pending markdown. Before a toggle, a trailing `<!-- colors:{…} -->`
@@ -534,16 +592,36 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
     let marker: string | null = null
 
     if (popColorsMarker) {
-      while (buffer.length > 0 && !buffer[buffer.length - 1].trim()) buffer.pop()
-      const last = buffer[buffer.length - 1]?.trim()
+      // Scan back over the trailing blanks instead of popping them: they are
+      // the user's gap against the toggle that follows, and discarding them
+      // here was half of what collapsed it (#1877). Only the marker leaves.
+      let candidate = buffer.length - 1
+      while (candidate >= 0 && !buffer[candidate].trim()) candidate--
+      const last = buffer[candidate]?.trim()
       if (last && BLOCK_COLORS_LINE_REGEX.test(last)) {
         marker = last
-        buffer.pop()
+        buffer.splice(candidate, 1)
       }
     }
 
-    const text = buffer.join('\n').trim()
-    if (text) segments.push({ kind: 'markdown', text })
+    // The blank lines at each end of the buffer are the user's spacing against
+    // whatever segment sits on that side, and `.trim()` used to eat them
+    // (#1877). Split off as gaps instead; a buffer that is nothing BUT blanks
+    // is a single seam between two toggles, counted once.
+    let first = 0
+    while (first < buffer.length && buffer[first].trim() === '') first++
+    let afterLast = buffer.length
+    while (afterLast > first && buffer[afterLast - 1].trim() === '') afterLast--
+
+    const text = buffer.slice(first, afterLast).join('\n').trim()
+    if (text) {
+      pushGap(first)
+      segments.push({ kind: 'markdown', text })
+      pushGap(buffer.length - afterLast)
+    } else {
+      pushGap(buffer.length)
+    }
+
     buffer = []
     return marker
   }
@@ -554,7 +632,7 @@ export function splitMarkdownByToggles(markdown: string): ToggleContentSegment[]
     const region = openMatch ? readToggleRegion(lines, i, Boolean(openMatch[1])) : null
 
     if (!region) {
-      buffer.push(lines[i])
+      buffer.push(insideFence ? lines[i] : escapeDetailsMarkup(lines[i]))
       continue
     }
 
