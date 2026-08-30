@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
   state: {} as any,
   activeTab: null as any,
   closeTab: vi.fn(),
-  windowClose: vi.fn()
+  windowClose: vi.fn(),
+  zoomIn: vi.fn(),
+  zoomOut: vi.fn(),
+  resetZoom: vi.fn()
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -20,6 +23,15 @@ vi.mock('@/contexts/settings-modal-context', () => ({
   useSettingsModal: () => ({ open: vi.fn() })
 }))
 vi.mock('next-themes', () => ({ useTheme: () => ({ setTheme: vi.fn() }) }))
+vi.mock('./use-ui-zoom', () => ({
+  useUiZoom: () => ({
+    factor: 1,
+    setFactor: vi.fn(),
+    zoomIn: mocks.zoomIn,
+    zoomOut: mocks.zoomOut,
+    resetZoom: mocks.resetZoom
+  })
+}))
 vi.mock('@/lib/menu-commands', () => ({
   isEditorMenuCommand: () => false,
   runEditorMenuCommand: vi.fn(),
@@ -74,5 +86,17 @@ describe('useMenuCommands', () => {
 
     expect(mocks.windowClose).toHaveBeenCalled()
     expect(mocks.closeTab).not.toHaveBeenCalled()
+  })
+
+  it('drives whole-UI zoom from the View menu', () => {
+    const dispatch = renderMenu()
+
+    dispatch('view.zoomIn')
+    dispatch('view.zoomOut')
+    dispatch('view.actualSize')
+
+    expect(mocks.zoomIn).toHaveBeenCalledTimes(1)
+    expect(mocks.zoomOut).toHaveBeenCalledTimes(1)
+    expect(mocks.resetZoom).toHaveBeenCalledTimes(1)
   })
 })
