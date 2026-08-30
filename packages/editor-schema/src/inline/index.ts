@@ -6,7 +6,9 @@ import { hashTagConfig } from './hash-tag'
 import { dateMentionConfig } from './date-mention'
 import { inlineImageConfig } from './inline-image'
 import { inlineCheckboxConfig } from './inline-checkbox'
+import { serializeThroughExternalHTML } from './table-cell-serialization'
 
+export * from './table-cell-serialization'
 export * from './wiki-link'
 export * from './link-mention'
 export * from './hash-tag'
@@ -63,15 +65,22 @@ export interface MemryInlineSpecs {
  * The keys below are the node names BlockNote will key its `inlineContentSchema`
  * by; each spec's `config.type` is the node name ProseMirror will build. They
  * are asserted equal here rather than assumed — see spec-keys.ts (#1455).
+ *
+ * Every spec is passed through `serializeThroughExternalHTML` on the way in.
+ * Inside a TABLE CELL, BlockNote serializes an inline node through ProseMirror
+ * rather than through its own exporter, so the rich render is what reaches the
+ * vault file unless the node's `toDOM` is pointed at `toExternalHTML` — see
+ * table-cell-serialization.ts (#1865). Doing it here rather than per spec is
+ * what stops the next inline type from shipping with the same hole.
  */
 export function createMemryInlineContentSpecs(specs: MemryInlineSpecs) {
   const registered = {
-    wikiLink: specs.wikiLink,
-    linkMention: specs.linkMention,
-    hashTag: specs.hashTag,
-    dateMention: specs.dateMention,
-    inlineImage: specs.inlineImage,
-    inlineCheckbox: specs.inlineCheckbox
+    wikiLink: serializeThroughExternalHTML(specs.wikiLink),
+    linkMention: serializeThroughExternalHTML(specs.linkMention),
+    hashTag: serializeThroughExternalHTML(specs.hashTag),
+    dateMention: serializeThroughExternalHTML(specs.dateMention),
+    inlineImage: serializeThroughExternalHTML(specs.inlineImage),
+    inlineCheckbox: serializeThroughExternalHTML(specs.inlineCheckbox)
   }
   assertSpecKeysMatchNodeTypes('inlineContentSpecs (createMemryInlineContentSpecs)', registered)
   return registered
