@@ -309,15 +309,13 @@ const containerCases: RoundtripCase[] = [
     // through, rewriting the token as a markdown link — #1865's class, second
     // instance (the wiki-link case below is the first).
     name: 'mention and date tokens in table cells',
-    markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())]),
-    pending: { renderer: 1865 }
+    markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())])
   },
   {
     // The renderer's rich wikiLink render is what a table cell serializes
     // through, and it emits display text — the marker never comes back (#1865).
     name: 'wiki link and hash tag in table cells',
-    markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work']),
-    pending: { renderer: 1865 }
+    markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work'])
   },
   {
     name: 'mention and date tokens in list items',
