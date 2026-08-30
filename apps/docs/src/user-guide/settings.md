@@ -78,6 +78,8 @@ When memrynote finds an update it opens an in-app **update prompt** showing the 
 - **Skip This Version** — never prompt automatically for this version again. A manual check clears the skip so the version can surface again.
 - **Automatically download & install updates** — when enabled, future updates download in the background and install on the next quit without prompting.
 
+When a version surfaces, memrynote also opens its **release notes** as a read-only tab. That tab always opens in the background. It never takes focus from the note, template, or canvas you are working in, so an update arriving mid-edit cannot interrupt or discard what you are typing. Click it when you want to read the notes, or close it and reopen it with `Cmd/Ctrl+Shift+T`.
+
 You can also run the same check from the menu bar without opening Settings: **memrynote → Check for Updates…** on macOS, **Help → Check for Updates…** on Windows and Linux. The result is always reported as a toast — up to date, an available or ready-to-install version, or the error — and an available update still opens the update prompt unless automatic downloads are on. In a development build the toast says updates are packaged-release only.
 
 ### Language & Region
