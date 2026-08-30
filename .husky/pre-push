@@ -33,6 +33,22 @@ has_changes() {
   printf '%s\n' "$changed_files" | grep -E "$1" >/dev/null
 }
 
+# The generated mobile editor asset carries a freshness hash over the editor
+# sources, the shared schema and the bridge contract. A schema change shipping
+# with a stale asset is data loss, not a rendering gap: y-prosemirror DELETES
+# any block or inline spec the mobile bundle cannot build from the shared Y.Doc.
+# #1886 landed a schema change without the rebuild and left main red on this
+# gate for two days, so the check runs here rather than only in CI. `--check`
+# only hashes files; it does not run a build.
+editor_asset_inputs='^(packages/editor-schema/src|packages/contracts/src/webview-bridge\.ts|apps/mobile/editor-web/)'
+
+if has_changes "$editor_asset_inputs"; then
+  if ! pnpm --filter @memry/mobile editor:check; then
+    printf '\npre-push: mobile editor asset is stale. Run `pnpm --filter @memry/mobile editor:build` and commit the result.\n\n' >&2
+    exit 1
+  fi
+fi
+
 code_changed='^(apps/desktop|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
 
 if ! has_changes "$code_changed"; then
