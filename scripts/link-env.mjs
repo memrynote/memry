@@ -87,8 +87,17 @@ export function isEnvFileName(name) {
  * `.wrangler/tmp` is deliberately not shared: it is scratch space wrangler
  * recreates per run, and per-worktree scratch keeps two dev servers from
  * stepping on each other.
+ *
+ * `.claude/skills` is the repo's agent skill set (`/user-feedback`,
+ * `/release-desktop`, `/ipc-contract-change`, ...). `.claude/` is gitignored,
+ * so an agent session started in a worktree sees none of them and silently
+ * falls back to ad hoc answers. Only `skills` is shared: the rest of `.claude`
+ * holds per-session state and `.claude/worktrees`, which are real git
+ * worktrees and must stay where they are. The skill entries that are
+ * themselves symlinks into `.agents/skills` keep resolving, because the kernel
+ * resolves them against the source worktree they physically live in.
  */
-export const SHARED_DIRS = ['apps/sync-server/.wrangler/state']
+export const SHARED_DIRS = ['apps/sync-server/.wrangler/state', '.claude/skills']
 
 /** Repo-relative paths from SHARED_DIRS that actually exist under `root`. */
 export function findSharedDirs(root, { exists = existsSync } = {}) {

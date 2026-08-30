@@ -177,6 +177,14 @@ describe('findSharedDirs', () => {
   it('carries the sync server database, which is the point', () => {
     assert.ok(SHARED_DIRS.includes('apps/sync-server/.wrangler/state'))
   })
+
+  it('carries the repo skill set, so a worktree agent session is not skill-less', () => {
+    assert.ok(SHARED_DIRS.includes('.claude/skills'))
+  })
+
+  it('shares only skills, never the whole gitignored .claude directory', () => {
+    assert.ok(!SHARED_DIRS.includes('.claude'))
+  })
 })
 
 describe('planAction on a shared state directory', () => {
