@@ -19,7 +19,8 @@
  * - Registered as type `calendar`, defaultLayout 4x4, so its size tier is M.
  * - Rows render as <li data-testid="calendar-event"> containing the title.
  * - The body filters out `visualType === 'task'`, so a seeded task never shows.
- * - The range is today's UTC day, so events must be seeded inside it.
+ * - The range is the local calendar date pinned to UTC hours, so events must
+ *   be seeded inside it.
  */
 
 import { test, expect } from './fixtures'
@@ -68,13 +69,16 @@ function calendarRows(page) {
 }
 
 /**
- * An ISO instant inside today's UTC day, which is the range the widget queries.
- * Clamped away from both edges so the event cannot land on the neighbouring day.
+ * An ISO instant inside the widget's range, which is the LOCAL calendar date
+ * pinned to UTC hours (`todayCalendarRange`). Building the day from UTC
+ * components instead would seed the wrong day whenever the local date and the
+ * UTC date disagree, e.g. any evening east of UTC. Clamped away from both
+ * edges so the event cannot land on the neighbouring day.
  */
 function todayUtcAt(hour: number): string {
   const now = new Date()
-  const day = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(
-    now.getUTCDate()
+  const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
   ).padStart(2, '0')}`
   return `${day}T${String(hour).padStart(2, '0')}:00:00.000Z`
 }
