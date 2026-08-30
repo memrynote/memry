@@ -10,6 +10,7 @@ import {
   type PropertyDefinitionsFileData,
   type SelectOption,
   type StatusCategories,
+  DEFAULT_STATUS_CATEGORIES,
   DEFAULT_STATUS_DEFINITION
 } from '@memry/contracts/property-types'
 import { propertyDefinitions as propertyDefinitionsTable } from '@memry/db-schema/schema/notes-cache'
@@ -192,10 +193,10 @@ export class PropertyDefinitionsService {
       throw new Error(`Property "${propertyName}" is not a status property`)
     }
 
-    // The picker shows DEFAULT_STATUS_DEFINITION's categories for a status
-    // property that has none persisted, so materialize what the user is looking
-    // at instead of dropping the write.
-    const categories = def?.categories ?? DEFAULT_STATUS_DEFINITION.categories
+    // The picker shows the default categories for a status property that has
+    // none persisted, so materialize what the user is looking at instead of
+    // dropping the write.
+    const categories = def?.categories ?? DEFAULT_STATUS_CATEGORIES
     const category = categories[categoryKey as keyof StatusCategories]
     if (!category) {
       throw new Error(`Unknown status category "${categoryKey}"`)
@@ -253,7 +254,7 @@ export class PropertyDefinitionsService {
       if (def.type === 'status') {
         properties[name] = {
           type: 'status',
-          categories: def.categories ?? DEFAULT_STATUS_DEFINITION.categories
+          categories: def.categories ?? DEFAULT_STATUS_CATEGORIES
         }
       } else if (def.type === 'date') {
         properties[name] = { type: 'date', showOnCalendar: def.showOnCalendar ?? false }
@@ -371,7 +372,7 @@ function addOptionToDefinition(def: PropertyDefinition, option: SelectOption): P
 function normalizeDefinition(definition: PropertyDefinition): PropertyDefinition {
   if (definition.type !== 'status' || definition.categories) return definition
 
-  return { ...definition, categories: DEFAULT_STATUS_DEFINITION.categories }
+  return { ...definition, categories: DEFAULT_STATUS_CATEGORIES }
 }
 
 export { DEFAULT_STATUS_DEFINITION }

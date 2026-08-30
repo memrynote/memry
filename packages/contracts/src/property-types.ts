@@ -48,26 +48,28 @@ export interface PropertyDefinition {
   showOnCalendar?: boolean
 }
 
+export const DEFAULT_STATUS_CATEGORIES: StatusCategories = {
+  todo: {
+    label: 'To-do',
+    options: [{ value: 'Not started', color: 'stone', default: true }]
+  },
+  in_progress: {
+    label: 'In progress',
+    options: [{ value: 'In Progress', color: 'amber' }]
+  },
+  done: {
+    label: 'Complete',
+    options: [
+      { value: 'Done', color: 'emerald' },
+      { value: 'Abandoned', color: 'rose' }
+    ]
+  }
+}
+
 export const DEFAULT_STATUS_DEFINITION: PropertyDefinition = {
   name: 'status',
   type: PropertyTypes.STATUS,
-  categories: {
-    todo: {
-      label: 'To-do',
-      options: [{ value: 'Not started', color: 'stone', default: true }]
-    },
-    in_progress: {
-      label: 'In progress',
-      options: [{ value: 'In Progress', color: 'amber' }]
-    },
-    done: {
-      label: 'Complete',
-      options: [
-        { value: 'Done', color: 'emerald' },
-        { value: 'Abandoned', color: 'rose' }
-      ]
-    }
-  }
+  categories: DEFAULT_STATUS_CATEGORIES
 }
 
 const SelectOptionSchema = z.object({
