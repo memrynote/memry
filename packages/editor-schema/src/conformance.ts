@@ -224,6 +224,51 @@ const toggleCases: RoundtripCase[] = [
     name: 'extra blank line next to a toggle survives',
     markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line')}\n\n\nAfter`,
     pending: { renderer: 1877, main: 1877 }
+  },
+  {
+    // A gap with a toggle on BOTH sides: the whole run is one seam, so a
+    // splitter that counted it twice would double the user's spacing.
+    name: 'extra blank line between two toggles survives',
+    markdown: `${serializeToggleBlock('A', 'a')}\n\n\n${serializeToggleBlock('B', 'b')}`,
+    pending: { renderer: 1877, main: 1877 }
+  },
+  {
+    name: 'two extra blank lines before a toggle survive',
+    markdown: `Before\n\n\n\n${serializeToggleBlock('Summary', 'Body line')}`,
+    pending: { renderer: 1877, main: 1877 }
+  },
+  {
+    // The colors marker sits between the gap and the toggle, and finding it
+    // must not eat the gap on the way past.
+    name: 'extra blank line before a colored toggle survives',
+    markdown: `Before\n\n\n${serializeToggleBlock('Summary', 'Body line', '<!-- colors:{"backgroundColor":"blue"} -->')}`,
+    pending: { renderer: 1877, main: 1877 }
+  },
+  {
+    // No `<summary>` at all is the other way readToggleRegion declines, and
+    // the open line is dropped by the same parser (#1883).
+    name: 'unterminated toggle with no summary keeps its open line',
+    markdown: '<details data-memry-toggle>\n\nBody',
+    pending: { renderer: 1883, main: 1883 }
+  },
+  {
+    name: 'unterminated expanded toggle keeps its open and summary lines',
+    markdown: '<details data-memry-toggle open>\n<summary>Unterminated</summary>\n\nBody',
+    pending: { renderer: 1883, main: 1883 }
+  },
+  {
+    // A `<details>` without our attribute is somebody else's bytes — Obsidian's
+    // usually. It was never claimed as a toggle, and it was never preserved
+    // either: all three markup lines went to the same parser that drops raw
+    // HTML, so a hand-written collapsible section came back as its body alone.
+    name: 'foreign details block stays the bytes its author wrote',
+    markdown: '<details>\n<summary>Foreign</summary>\n\nBody\n\n</details>',
+    pending: { renderer: 1883, main: 1883 }
+  },
+  {
+    name: 'orphan closing details tag stays literal markdown',
+    markdown: 'Body\n\n</details>',
+    pending: { renderer: 1883, main: 1883 }
   }
 ]
 
