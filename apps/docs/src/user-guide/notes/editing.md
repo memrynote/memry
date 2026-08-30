@@ -164,9 +164,10 @@ Both survive a save, byte for byte. A note written in Obsidian with multi-paragr
 nested quotes opens here and is written back exactly as its author wrote it, so the two
 apps can edit the same vault without either one reflowing the other's quotes.
 
-One shape is still flattened: a nested quote written without the blank line between the
-levels (`> Outer` directly above `> > Inner`) is read as a single quote and saved that
-way.
+A nested quote written without the blank line between the levels (`> Outer` directly
+above `> > Inner`) keeps its nesting too, but not its exact bytes: the blank quote line
+is added on the first save, and the file stops changing after that. Markdown reads both
+spellings as the same nested quote, and a note can only be saved in one of them.
 
 ## Title
 

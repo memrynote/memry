@@ -23,6 +23,15 @@ export interface RoundtripCase {
   name: string
   /** Canonical on-disk bytes: round-tripping them must be identity. */
   markdown: string
+  /**
+   * Set only when `markdown` is a spelling the block tree cannot tell apart
+   * from another case's, so identity is unreachable for one of the two. The
+   * round-trip must produce exactly these bytes and they must then round-trip
+   * to themselves, which pins both the rewrite and the fact that it happens
+   * once. Anything reachable by identity states no `canonical` — this is not an
+   * escape hatch for a serializer that merely reflows.
+   */
+  canonical?: string
   /** Sibling issue that must land before the marked pipeline can pass. */
   pending?: { renderer?: number; main?: number }
 }
@@ -151,12 +160,24 @@ const calloutCases: RoundtripCase[] = [
     markdown: '> Intro\n>\n> - one\n> - two'
   },
   {
-    // Lazy continuation: the inner blocks only come back through a blank
-    // separator the author never wrote, so the claim declines by proof and the
-    // run stays on BlockNote's flat quote path.
-    name: 'lazily continued nested quote keeps its flat bytes',
+    // Lazy continuation, the one shape in this group that cannot be identity:
+    // it parses to the same block tree as `plain quote with a blank separator
+    // line` nested, and the tree has nowhere to record which of the two
+    // spellings it was read from, so only one of them can round-trip. It
+    // normalizes onto the separator form in one write and stops moving. What
+    // was actually at stake is the `>` level: before this, the flat fallback
+    // deleted it and the run came back `> Outer\n> Inner`.
+    name: 'lazily continued nested quote normalizes onto the separator form',
     markdown: '> Outer\n> > Inner',
-    pending: { renderer: 1881, main: 1881 }
+    canonical: '> Outer\n>\n> > Inner'
+  },
+  {
+    // The same normalization on the shape #1881 was filed over: an Obsidian
+    // callout nested lazily. The flat fallback used to demote it to literal
+    // `[!warning]` text in the outer quote.
+    name: 'lazily continued nested callout keeps its nesting',
+    markdown: '> Outer\n> > [!warning] Inner\n> > Inner body',
+    canonical: '> Outer\n>\n> > [!warning] Inner\n> > Inner body'
   }
 ]
 
