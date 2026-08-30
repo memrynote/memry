@@ -1271,6 +1271,7 @@ export interface GeneralSettingsDTO {
   onboardingCompleted: boolean
   createInSelectedFolder: boolean
   openPagesInNewTab: boolean
+  minimizeToTray: boolean
   clockFormat: '12h' | '24h'
   dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD.MM.YYYY'
 }

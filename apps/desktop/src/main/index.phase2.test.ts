@@ -175,6 +175,7 @@ vi.mock('./ipc', () => ({
 
 vi.mock('./ipc/settings-handlers', () => ({
   applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock,
+  getMinimizeToTraySetting: () => false,
   setGlobalCaptureAppliedHandler: setGlobalCaptureAppliedHandlerMock
 }))
 

@@ -91,5 +91,8 @@
     "shortcuts": "Keyboard Shortcuts",
     "about": "About MemryNote",
     "aboutVersion": "Version {version}"
+  },
+  "tray": {
+    "show": "Show MemryNote"
   }
 }

@@ -100,6 +100,14 @@ export function GeneralSettings() {
     [t, updateGeneralSettings]
   )
 
+  const handleMinimizeToTrayChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateGeneralSettings({ minimizeToTray: enabled })
+      if (!success) toast.error(t('general.window.minimizeToTray.error'))
+    },
+    [t, updateGeneralSettings]
+  )
+
   const handleCreateInSelectedFolderChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateGeneralSettings({ createInSelectedFolder: enabled })
@@ -423,6 +431,19 @@ export function GeneralSettings() {
               <SelectItem value="active">{t('general.tabs.closeButton.options.active')}</SelectItem>
             </SelectContent>
           </Select>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('general.groups.window')}>
+        <SettingRow
+          label={t('general.window.minimizeToTray.label')}
+          description={t('general.window.minimizeToTray.description')}
+        >
+          <Switch
+            checked={generalSettings.minimizeToTray}
+            onCheckedChange={(...args) => void handleMinimizeToTrayChange(...args)}
+            className={ACCENT_SWITCH}
+          />
         </SettingRow>
       </SettingsGroup>
 

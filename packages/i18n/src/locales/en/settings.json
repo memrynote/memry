@@ -81,6 +81,7 @@
       "updates": "Updates",
       "languageRegion": "Language & Region",
       "tabBehavior": "Tab Behavior",
+      "window": "Window Behavior",
       "fileCreation": "File Creation",
       "privacy": "Privacy"
     },
@@ -170,6 +171,13 @@
         }
       },
       "error": "Failed to update setting"
+    },
+    "window": {
+      "minimizeToTray": {
+        "label": "Minimize to Tray",
+        "description": "Closing the window hides memrynote to the system tray instead of closing it. Click the tray icon to bring it back. On macOS the app also stays in the Dock; on Linux desktops without a system tray the window closes as usual.",
+        "error": "Failed to update minimize to tray"
+      }
     },
     "fileCreation": {
       "createInSelectedFolder": {

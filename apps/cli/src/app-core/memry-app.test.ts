@@ -676,6 +676,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     onboardingCompleted: false,
     createInSelectedFolder: true,
     openPagesInNewTab: false,
+    minimizeToTray: false,
     clockFormat: '12h',
     dateFormat: 'DD.MM.YYYY'
   })
@@ -689,6 +690,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     onboardingCompleted: false,
     createInSelectedFolder: true,
     openPagesInNewTab: false,
+    minimizeToTray: false,
     clockFormat: '12h',
     dateFormat: 'DD.MM.YYYY'
   })
