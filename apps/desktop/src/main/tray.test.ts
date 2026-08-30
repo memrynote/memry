@@ -218,6 +218,14 @@ describe('handleMainWindowClose', () => {
     expect(event.preventDefault).not.toHaveBeenCalled()
   })
 
+  it('#given a tray exists #when the app quits #then the icon is removed before the process exits', () => {
+    applyTraySetting(true)
+
+    emitBeforeQuit()
+
+    expect(mocks.trays[0].destroy).toHaveBeenCalledTimes(1)
+  })
+
   it('#given windows #when the window hides to tray #then it leaves the taskbar and returns on restore', () => {
     applyTraySetting(true)
 

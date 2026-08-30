@@ -84,6 +84,10 @@ export function initTray(deps: TrayDeps): void {
   quitListenerRegistered = true
   app.on('before-quit', () => {
     quitting = true
+    // Windows leaves a ghost icon in the notification area until the user
+    // hovers it if the process exits with a live Tray, and the shutdown
+    // sequence ends in app.exit().
+    destroyTray()
   })
 }
 
