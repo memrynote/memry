@@ -539,9 +539,20 @@ const DETAILS_MARKUP_LINE_REGEX = /^(?:<details(?:\s[^>]*)?>|<summary>.*<\/summa
  * Every `<` on the line is escaped, not just the leading one: a
  * `<summary>x</summary>` whose closing tag stays raw loses that tag to the same
  * parser and comes back as `<summary>x`.
+ *
+ * The author's own backslashes are doubled FIRST, because a `\` already sitting
+ * in front of a `<` would otherwise pair with the escape being added:
+ * `<summary>C:\<path></summary>` became `...C:\\<path>...`, CommonMark read the
+ * `\\` as one literal backslash, and `<path>` was left raw for the parser to
+ * drop — the exact loss this function exists to prevent. Doubling costs nothing
+ * on the way out: CommonMark reads `\\` back as one backslash and remark writes
+ * a literal backslash bare, so a line with a backslash anywhere else is
+ * byte-identical either way. Measured both directions, `<summary>a\b</summary>`
+ * and `<summary>C:\Users\me</summary>` included.
  */
 function escapeDetailsMarkup(line: string): string {
-  return DETAILS_MARKUP_LINE_REGEX.test(line) ? line.replace(/</g, '\\<') : line
+  if (!DETAILS_MARKUP_LINE_REGEX.test(line)) return line
+  return line.replace(/\\/g, '\\\\').replace(/</g, '\\<')
 }
 
 /**

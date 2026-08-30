@@ -268,6 +268,24 @@ const toggleCases: RoundtripCase[] = [
   {
     name: 'orphan closing details tag stays literal markdown',
     markdown: 'Body\n\n</details>'
+  },
+  {
+    // A backslash already in front of a bracket pairs with the escape the
+    // splitter adds, so `\<` became `\\<`: one literal backslash, and `<path>`
+    // raw again for the parser to drop.
+    name: 'declined details markup keeps a backslash next to its bracket',
+    markdown: '<details data-memry-toggle>\n<summary>C:\\<path></summary>\n\nBody'
+  },
+  {
+    name: 'declined details markup keeps a backslash that ends the line',
+    markdown: '<details data-memry-toggle>\n<summary>ends\\</summary>\n\nBody'
+  },
+  {
+    // The other side of that fix: doubling every backslash must not change a
+    // line whose backslashes are nowhere near a bracket. This case passes
+    // before and after, and fails if the escaping ever over-reaches.
+    name: 'declined details markup keeps a backslash away from its bracket',
+    markdown: '<details>\n<summary>C:\\Users\\me</summary>\n\nBody\n\n</details>'
   }
 ]
 
