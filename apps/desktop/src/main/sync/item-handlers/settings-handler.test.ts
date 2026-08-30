@@ -321,6 +321,37 @@ describe('settingsHandler.applyUpsert', () => {
     expect(broadcast?.[1]).toEqual({ key: 'sidebar.navCollapsed', value: false })
   })
 
+  // A merge can land while no vault is open, which is exactly what the catch in
+  // the propagate block is for: the settings item still has to apply, because
+  // one unwritable local key must not fail the whole synced payload.
+  it('#given the nav flag cannot be written #then swallows it and still applies', () => {
+    mockGetSettings.mockReturnValue({ sidebar: { navCollapsed: true } })
+    vi.mocked(getDatabase).mockImplementation(() => {
+      throw new Error('vault closed')
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { sidebar: { navCollapsed: true } },
+      fieldClocks: { 'sidebar.navCollapsed': { 'device-B': 9 } }
+    }
+
+    try {
+      const result = settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+      expect(result).toBe('applied')
+      expect(
+        mockSend.mock.calls.some(
+          (call: unknown[]) => (call[1] as { key?: string })?.key === 'sidebar.navCollapsed'
+        )
+      ).toBe(false)
+    } finally {
+      // `vi.clearAllMocks()` in beforeEach clears calls, not implementations, so
+      // a throwing `getDatabase` left in place here follows the suite into every
+      // later describe.
+      vi.mocked(getDatabase).mockReturnValue(asClientDb(testDb.db))
+    }
+  })
+
   it('#given a remote merge with no nav flag #then leaves the stored flag alone', () => {
     setSetting(testDb.db, 'sidebar.navCollapsed', 'true')
     mockGetSettings.mockReturnValue({ general: { theme: 'light' } })

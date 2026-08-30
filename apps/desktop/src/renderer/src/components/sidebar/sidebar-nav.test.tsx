@@ -228,6 +228,59 @@ describe('SidebarNav', () => {
       expect(toggle()).toHaveAttribute('aria-expanded', 'true')
     })
 
+    it('folds and unfolds from the keyboard', async () => {
+      const api = stubNavApi()
+      renderNav()
+      await api.settle()
+
+      fireEvent.keyDown(toggle(), { key: 'ArrowLeft' })
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+      expect(api.setSidebarNavCollapsed).toHaveBeenLastCalledWith(true)
+
+      fireEvent.keyDown(toggle(), { key: 'ArrowRight' })
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+      expect(api.setSidebarNavCollapsed).toHaveBeenLastCalledWith(false)
+    })
+
+    it('ignores the arrow that points the way the nav already is', async () => {
+      const api = stubNavApi()
+      renderNav()
+      await api.settle()
+
+      // Unfolding an unfolded nav is not a change, so it must not cost a write
+      // that another device would then have to merge.
+      fireEvent.keyDown(toggle(), { key: 'ArrowRight' })
+      fireEvent.keyDown(toggle(), { key: 'End' })
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+      expect(api.setSidebarNavCollapsed).not.toHaveBeenCalled()
+
+      fireEvent.keyDown(toggle(), { key: 'ArrowLeft' })
+      fireEvent.keyDown(toggle(), { key: 'ArrowLeft' })
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+      expect(api.setSidebarNavCollapsed).toHaveBeenCalledTimes(1)
+    })
+
+    it('takes the folded rows out of the tab order', async () => {
+      const api = stubNavApi()
+      const user = userEvent.setup()
+      renderNav()
+      await api.settle()
+
+      expect(navItems()).toHaveAttribute('aria-hidden', 'false')
+      expect(navItems().hasAttribute('inert')).toBe(false)
+
+      await user.click(toggle())
+
+      // `aria-hidden` on its own would leave every nav row focusable inside a
+      // zero-height container: tabbable, invisible, and denied to a reader.
+      expect(navItems()).toHaveAttribute('aria-hidden', 'true')
+      expect(navItems().hasAttribute('inert')).toBe(true)
+    })
+
     it('puts the nav back when the save fails', async () => {
       const api = stubNavApi({ save: { success: false, error: 'Vault is read-only' } })
       const user = userEvent.setup()
