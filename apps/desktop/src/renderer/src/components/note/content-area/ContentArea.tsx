@@ -1000,6 +1000,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     enabled: editable
   })
 
+  // A conversion rewrites the checkbox to a `taskBlock` before the `tasks` row
+  // exists, so every path that fails to produce a row has to put the checkbox
+  // back. Otherwise the block keeps `taskId: ''` forever and renders as a task
+  // whose controls all early-return on the empty id (#1907). It stays in
+  // `dismissedBlocksRef` so the analyzer does not immediately re-schedule the
+  // conversion that just failed; reopening the note retries with a fresh set.
+  const restoreCheckbox = useCallback(
+    (blockId: string, content: unknown, checked: boolean) => {
+      const block = editor.getBlock(blockId)
+      if (!block) return
+      editor.updateBlock(block, {
+        type: 'checkListItem' as any,
+        props: { checked } as any,
+        content: content as any
+      })
+    },
+    [editor]
+  )
+
   const convertCheckboxToTask = useCallback(
     (blockId: string) => {
       dismissedBlocksRef.current.add(blockId)
@@ -1039,7 +1058,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
 
         const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-        if (!defaultProject) return
+        if (!defaultProject) {
+          restoreCheckbox(blockId, content, wasChecked)
+          return
+        }
 
         let projectIdForCreate: string | null = null
         if (liveParentTaskId) {
@@ -1081,13 +1103,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
+          } else {
+            restoreCheckbox(blockId, content, wasChecked)
           }
         } catch {
-          dismissedBlocksRef.current.delete(blockId)
+          restoreCheckbox(blockId, content, wasChecked)
         }
       })()
     },
-    [editor, noteId, tasksCtx]
+    [editor, noteId, tasksCtx, restoreCheckbox]
   )
 
   const convertCheckboxToSubtask = useCallback(
@@ -1117,7 +1141,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         try {
           const parentTask = await tasksService.get(parentTaskId)
           if (!parentTask) {
-            dismissedBlocksRef.current.delete(blockId)
+            restoreCheckbox(blockId, content, wasChecked)
             return
           }
 
@@ -1145,13 +1169,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
+          } else {
+            restoreCheckbox(blockId, content, wasChecked)
           }
         } catch {
-          dismissedBlocksRef.current.delete(blockId)
+          restoreCheckbox(blockId, content, wasChecked)
         }
       })()
     },
-    [editor, noteId]
+    [editor, noteId, restoreCheckbox]
   )
 
   const cancelPendingConvert = useCallback(() => {
