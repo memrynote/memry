@@ -108,6 +108,3 @@ export const TRAY_ICON_TEMPLATE_BASE64 =
 
 await writeFile(TARGET, file)
 console.log(`wrote ${TARGET}`)
-
-await writeFile('/tmp/tray-preview-color.png', color)
-await writeFile('/tmp/tray-preview-template.png', template)
