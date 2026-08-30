@@ -53,6 +53,7 @@ describe('UpdateReleaseNotesTabOpener', () => {
       isPreview: false,
       viewState: { content: '<p>2026.708.1</p>', contentType: 'html' }
     })
+    expect(mocks.openTab.mock.calls[0][1]).toMatchObject({ background: true })
   })
 
   it('does not re-open the same version on a re-render', () => {
