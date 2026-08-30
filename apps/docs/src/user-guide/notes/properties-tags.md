@@ -57,7 +57,13 @@ beside the sidebar's **New** button, and the **+** on the tab bar).
 - **New category** — click **New category**, name it, press Enter.
 - **New tag** — click **New tag** in the hub, name it, and pick a starting color. (You can
   still create a tag the usual way, by typing `#tag` on a note or in the tags row — this is
-  just a second entry point that lets you place it in a category up front.)
+  just a second entry point that lets you place it in a category up front.) The tag appears
+  in the hub straight away with a count of 0 and stays there until you use it, so you can lay
+  out a set of tags before writing anything. It keeps the capitalisation you typed —
+  `Reading` stays `Reading` — and because tag names ignore case, typing `reading` afterwards
+  reopens the same tag rather than making a second one. Until a note or task uses it, an
+  empty tag shows in the hub and in tag pickers but not in the sidebar's Tags section, which
+  lists the tags actually in use.
 - **Rename or delete a category** — hover its heading for the pencil and trash icons.
   Deleting a category does not delete its tags; they fall back to **Uncategorized**.
 - **Reorder** — drag a category to reorder categories, or drag a tag chip between or within
