@@ -696,20 +696,11 @@ export function registerNotesHandlers(): void {
         option: z.object({ value: z.string().min(1), color: z.string().min(1) })
       }),
       async (input) => {
-        const { PropertyDefinitionsService, DEFAULT_STATUS_DEFINITION } =
-          await import('../vault/property-definitions')
+        const { PropertyDefinitionsService } = await import('../vault/property-definitions')
         const service = PropertyDefinitionsService.get()
-        const existing = service.get(input.propertyName)
-        if (!existing) {
-          const def = {
-            ...DEFAULT_STATUS_DEFINITION,
-            name: input.propertyName
-          }
-          await service.upsert(def)
-          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
-        } else {
-          await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
-        }
+        // The service materializes a missing status definition itself, so the
+        // pre-upsert this used to do only cost a second write of the same file.
+        await service.addStatusOption(input.propertyName, input.categoryKey, input.option)
         return { success: true }
       }
     )
