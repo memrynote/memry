@@ -169,6 +169,13 @@ export const settingsRpc = defineDomain({
       channel: SettingsChannels.invoke.SET_SIDEBAR_SECTION_ORDER,
       params: ['order']
     }),
+    getSidebarNavCollapsed: defineMethod<() => Promise<boolean>>({
+      channel: SettingsChannels.invoke.GET_SIDEBAR_NAV_COLLAPSED
+    }),
+    setSidebarNavCollapsed: defineMethod<(collapsed: boolean) => SuccessResponse>({
+      channel: SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED,
+      params: ['collapsed']
+    }),
     getAISettings: defineMethod<() => Promise<AISettings>>({
       channel: SettingsChannels.invoke.GET_AI_SETTINGS
     }),

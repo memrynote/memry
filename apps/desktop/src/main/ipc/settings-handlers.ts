@@ -82,6 +82,11 @@ import {
   writeSidebarSectionOrder
 } from '../settings/sidebar-section-order-store'
 import {
+  SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY,
+  readSidebarNavCollapsed,
+  writeSidebarNavCollapsed
+} from '../settings/sidebar-nav-store'
+import {
   SIDEBAR_SORT_DEFAULTS,
   SidebarSortModeSchema,
   SidebarSortSurfaceSchema,
@@ -621,6 +626,44 @@ export function registerSettingsHandlers(): void {
       return { success: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
+
+  ipcMain.handle(SettingsChannels.invoke.GET_SIDEBAR_NAV_COLLAPSED, () => {
+    const db = getDbOrNull()
+    // No vault open yet: "expanded" is the honest answer and what the sidebar
+    // already renders, so hand it back instead of an error.
+    if (!db) return false
+    return readSidebarNavCollapsed(db)
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_SIDEBAR_NAV_COLLAPSED,
+    (_event, collapsed: boolean) => {
+      const db = getDbOrNull()
+      if (!db) {
+        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
+      }
+
+      if (typeof collapsed !== 'boolean') {
+        return { success: false, error: 'Invalid sidebar nav collapsed flag' }
+      }
+
+      try {
+        const next = writeSidebarNavCollapsed(db, collapsed)
+        broadcastToAllWindows(SettingsChannels.events.CHANGED, {
+          key: SIDEBAR_NAV_COLLAPSED_SETTINGS_KEY,
+          value: next
+        })
+        trackMainEvent('setting_changed', {
+          surface: 'settings',
+          action: 'changed',
+          dimensions: { setting: 'sidebarNavCollapsed' }
+        })
+        return { success: true }
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
 
   // Set journal settings
   ipcMain.handle(

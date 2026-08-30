@@ -93,7 +93,12 @@ export const SyncedSettingsSchema = z.object({
       // device to drag wins rather than two partial orders interleaving. Ids
       // stay unconstrained strings — a section a newer build added must ride
       // along instead of failing the whole settings payload.
-      sectionOrder: z.array(z.string()).optional()
+      sectionOrder: z.array(z.string()).optional(),
+      // One flag under one clock: collapsing hides the whole nav block at
+      // once, so there is no per-row state for two devices to interleave.
+      // Absent means expanded, which is every payload a build older than this
+      // toggle writes.
+      navCollapsed: z.boolean().optional()
     })
     .optional()
 })
