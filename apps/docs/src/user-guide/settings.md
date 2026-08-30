@@ -249,6 +249,12 @@ Simple on/off toggles for optional or in-progress surfaces, per device.
 
 ## Appearance
 
+### Display
+
+- **Interface Zoom** — Scales the entire interface: sidebar, panels, buttons and text together, not just type. Steps from 75% to 200%, and <kbd>⌘</kbd>+<kbd>+</kbd> / <kbd>⌘</kbd>+<kbd>-</kbd> / <kbd>⌘</kbd>+<kbd>0</kbd> move through the same steps. Use it when the app looks small on a large or high-resolution monitor.
+
+  Unlike the rest of Appearance, this one **does not sync**. Zoom describes the display you are sitting at, so the right value on a 27-inch monitor is the wrong one on a laptop; each install keeps its own. Font Size is separate and still syncs — zoom scales everything, Font Size changes only type.
+
 ### Theme
 
 Light, White, Dark, or System (follow OS).

@@ -34,6 +34,12 @@ export interface LaunchOptions {
   deviceId?: string
   syncServerUrl?: string | null
   extraEnv?: Record<string, string | undefined>
+  /**
+   * Reuse an existing user-data dir instead of minting a fresh one, so a test
+   * can relaunch the app over the state a previous launch left behind. The
+   * caller owns the directory: teardown will not delete it.
+   */
+  userDataDir?: string
 }
 
 export interface LaunchedElectron {
@@ -44,6 +50,8 @@ export interface LaunchedElectron {
   mainLogs: string[]
   logDir: string
   deviceId?: string
+  /** False when the caller supplied `userDataDir` and so owns its lifetime. */
+  ownsUserDataDir: boolean
 }
 
 function getElectronExecutablePath(): string {
@@ -110,8 +118,8 @@ function getElectronPlatformPath(): string {
  * keychain purge and silently start leaking again.
  */
 export async function destroyLaunchedElectron(launched: LaunchedElectron): Promise<void> {
-  const dirs = [launched.userDataDir]
-  if (launched.resolvedUserDataDir !== launched.userDataDir) {
+  const dirs = launched.ownsUserDataDir ? [launched.userDataDir] : []
+  if (launched.ownsUserDataDir && launched.resolvedUserDataDir !== launched.userDataDir) {
     dirs.push(launched.resolvedUserDataDir)
   }
   await destroyElectronApp(launched.app, dirs, launched.deviceId)
@@ -179,7 +187,8 @@ export async function waitForMainLog(
 
 async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   const prefix = opts.deviceId ? `memry-userdata-${opts.deviceId}-` : 'memry-userdata-'
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
+  const ownsUserDataDir = !opts.userDataDir
+  const userDataDir = opts.userDataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), prefix))
   // Isolate electron-log's file output to this run's fresh dir (see logger.ts) so
   // waitForMainLog reads only lines from this launch, never a prior run's leftovers.
   const logDir = path.join(userDataDir, 'logs')
@@ -255,10 +264,11 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
       resolvedUserDataDir,
       mainLogs,
       logDir,
-      deviceId: opts.deviceId
+      deviceId: opts.deviceId,
+      ownsUserDataDir
     }
   } catch (err) {
-    await destroyElectronApp(app, [userDataDir], opts.deviceId)
+    await destroyElectronApp(app, ownsUserDataDir ? [userDataDir] : [], opts.deviceId)
     const tail = mainLogs.slice(-40).join('').slice(-4000)
     const baseMsg = err instanceof Error ? err.message : String(err)
     throw new Error(`${baseMsg}\n--- main process output ---\n${tail}\n--- end ---`)

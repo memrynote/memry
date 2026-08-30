@@ -195,6 +195,68 @@ describe('buildAppMenu', () => {
     expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'edit.redo' })
   })
 
+  it('routes View zoom through the renderer instead of native roles', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+    const send = vi.fn()
+    vi.mocked(BrowserWindow.getFocusedWindow).mockReturnValue({
+      webContents: { isDestroyed: () => false, send }
+    } as unknown as Electron.BrowserWindow)
+
+    buildAppMenu(i18n)
+
+    const zoomIn = findMenuItem('Zoom In')
+    const zoomOut = findMenuItem('Zoom Out')
+    const actualSize = findMenuItem('Actual Size')
+
+    // Regression: these were roles 'zoomIn'/'zoomOut'/'resetZoom', which mutate
+    // webContents.zoomFactor directly. Kept alongside the persisted setting they
+    // would be a second writer, and the stored factor would drift from what the
+    // user actually sees. window-zoom.ts has to stay the only writer.
+    expect(zoomIn).toMatchObject({
+      id: 'view.zoomIn',
+      accelerator: 'CmdOrCtrl+Plus',
+      registerAccelerator: false
+    })
+    expect(zoomIn?.role).toBeUndefined()
+    expect(zoomOut).toMatchObject({
+      id: 'view.zoomOut',
+      accelerator: 'CmdOrCtrl+-',
+      registerAccelerator: false
+    })
+    expect(zoomOut?.role).toBeUndefined()
+    expect(actualSize).toMatchObject({
+      id: 'view.actualSize',
+      accelerator: 'CmdOrCtrl+0',
+      registerAccelerator: false
+    })
+    expect(actualSize?.role).toBeUndefined()
+
+    zoomIn?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomIn' })
+    zoomOut?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, { command: 'view.zoomOut' })
+    actualSize?.click?.()
+    expect(send).toHaveBeenCalledWith(AppChannels.events.MENU_COMMAND, {
+      command: 'view.actualSize'
+    })
+  })
+
+  it('never ships a native zoom role in any menu', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls.at(-1)?.[0] as TemplateItem[]
+    const roles = template
+      .flatMap((item) => item.submenu ?? [])
+      .flatMap((item) => [item, ...(item.submenu ?? [])])
+      .map((item) => item.role)
+
+    expect(roles).not.toContain('zoomIn')
+    expect(roles).not.toContain('zoomOut')
+    expect(roles).not.toContain('resetZoom')
+  })
+
   it('gives ⌘W to Close Tab and routes Close Window through the renderer', async () => {
     const i18n = await createMainI18n({ locale: 'en' })
     const send = vi.fn()

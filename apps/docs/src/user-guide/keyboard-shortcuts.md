@@ -79,10 +79,17 @@ cell on <kbd>Esc</kbd>. See
 | ------------------------------ | ----------------------------------------- |
 | Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                 |
 | Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd> |
+| Zoom interface in              | <kbd>⌘</kbd>+<kbd>+</kbd>                 |
+| Zoom interface out             | <kbd>⌘</kbd>+<kbd>-</kbd>                 |
+| Reset interface to actual size | <kbd>⌘</kbd>+<kbd>0</kbd>                 |
 
 > <kbd>⌘</kbd>+<kbd>B</kbd> is shared on purpose: with the caret in a note it bolds
 > the selection and nothing else, and everywhere else it toggles the sidebar. Rebind
 > **Toggle Sidebar** if you would rather keep the two apart.
+
+Zoom scales the whole interface between 75% and 200% and is remembered per install
+rather than synced, since the right scale depends on the monitor in front of you. The
+same steps are on the View menu, and the level is in Settings → Appearance → Display.
 
 The same shortcut reference opens from the question-mark button in the sidebar footer.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
