@@ -131,6 +131,7 @@ vi.mock('@/hooks', () => ({
   useNewNoteShortcut: (callback: () => void) => {
     newNoteShortcut = callback
   },
+  useUiZoomShortcuts: vi.fn(),
   useUndoKeyboardShortcut: vi.fn(),
   useReminderNotifications: vi.fn(),
   useInboxReviewNotifications: vi.fn(),

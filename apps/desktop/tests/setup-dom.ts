@@ -74,6 +74,13 @@ const createMockApi = () => ({
   // Native context menu bridge (main-process IPC in production)
   showContextMenu: vi.fn().mockResolvedValue(null),
 
+  // Whole-UI zoom (device-local; useUiZoom reads it on mount)
+  uiZoom: {
+    get: vi.fn().mockResolvedValue(1),
+    set: vi.fn().mockResolvedValue(1)
+  },
+  onUiZoomChanged: vi.fn(() => () => {}),
+
   // Auto-updater API (used by useAppUpdater on mount)
   updater: {
     getState: vi.fn().mockResolvedValue({
