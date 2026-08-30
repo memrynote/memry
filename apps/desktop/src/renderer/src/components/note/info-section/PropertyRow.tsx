@@ -526,7 +526,13 @@ export function PropertyRow({
         role="button"
         tabIndex={0}
         onClick={handleStartEdit}
+        // Only this wrapper's own keystrokes activate it. React routes synthetic
+        // events up the component tree, including out of the Radix portal the
+        // select/status pickers render into, so every editor below feeds its
+        // keydowns through here. Without the target check, `preventDefault()`
+        // deleted the space bar in every property field.
         onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             handleStartEdit()
