@@ -1017,3 +1017,11 @@ export const DiagnosticsChannels = {
 
 export type DiagnosticsInvokeChannel =
   (typeof DiagnosticsChannels.invoke)[keyof typeof DiagnosticsChannels.invoke]
+
+// ============================================================================
+// UI Zoom Channels
+// ============================================================================
+// UiZoomChannels lives in ./ui-zoom.ts, alongside the zoom ladder the channels
+// carry. Re-exported here so channel names keep one import point.
+
+export { UiZoomChannels, type UiZoomChangedEvent } from './ui-zoom.ts'
