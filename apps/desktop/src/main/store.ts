@@ -2,6 +2,7 @@ import { app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
+import { clampZoomFactor, DEFAULT_ZOOM_FACTOR, type ZoomFactor } from '@memry/contracts/ui-zoom'
 import { createLogger } from './lib/logger'
 import { trackMainError } from './telemetry/diagnostics'
 
@@ -203,6 +204,15 @@ interface StoreSchema {
   updater: UpdaterStoreData
   /** Last known main-window geometry (null until the window is first sized) */
   windowBounds: StoredWindowBounds | null
+  /**
+   * Whole-UI zoom applied to every window's webContents.
+   *
+   * Device-local like `windowBounds`: it describes the physical display, not
+   * the vault, so the right value on a 27-inch monitor is the wrong one on a
+   * 13-inch laptop. Read through `getUiZoomFactor`, never raw — `readConfig`
+   * merges the parsed file in unvalidated, so this field can hold anything.
+   */
+  uiZoomFactor: number
   /** Cross-vault bookkeeping for the userData-level CRDT stores */
   crdtStore: CrdtStoreData
 }
@@ -218,6 +228,7 @@ const defaultData: StoreSchema = {
   captureAllowedOrigins: [],
   updater: {},
   windowBounds: null,
+  uiZoomFactor: DEFAULT_ZOOM_FACTOR,
   crdtStore: {}
 }
 
@@ -301,6 +312,23 @@ export function getWindowBounds(): StoredWindowBounds | null {
  */
 export function setWindowBounds(bounds: StoredWindowBounds): void {
   store.set('windowBounds', bounds)
+}
+
+/**
+ * Get the persisted whole-UI zoom factor, snapped to the shared ladder.
+ *
+ * Installs written before this setting existed have no key at all and read as
+ * the default through `defaultData`; anything else on disk is reconciled here.
+ */
+export function getUiZoomFactor(): ZoomFactor {
+  return clampZoomFactor(store.get('uiZoomFactor'))
+}
+
+/**
+ * Persist the whole-UI zoom factor, snapped to the shared ladder.
+ */
+export function setUiZoomFactor(factor: number): void {
+  store.set('uiZoomFactor', clampZoomFactor(factor))
 }
 
 /**

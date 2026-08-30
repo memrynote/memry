@@ -51,6 +51,7 @@ import {
   resolveStartupBounds,
   type SavedWindowBounds
 } from './window-bounds'
+import { applyZoomToWindow, getZoomFactor } from './window-zoom'
 import { resolveOsLocale } from './startup-locale'
 import { configureSessionPermissions } from './session-permissions'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -780,8 +781,6 @@ function createWindow(): void {
   mainWindow.on('closed', () => clearTimeout(fallbackShowTimer))
 
   mainWindow.on('ready-to-show', () => {
-    // Zoom out once (equivalent to Cmd+-)
-    // mainWindow.webContents.setZoomLevel(-0.8)
     recordLaunchPhase('window_ready_to_show')
     revealMainWindow('ready-to-show')
   })
@@ -806,6 +805,9 @@ function createWindow(): void {
 
   mainWindow.webContents.on('did-finish-load', () => {
     recordLaunchPhase('window_did_finish_load')
+    // Also the reload path: Chromium resets the factor on a fresh document, so
+    // re-applying here is what makes the setting survive ⌘R.
+    applyZoomToWindow(mainWindow)
   })
 
   mainWindow.on('focus', () => {
@@ -1809,8 +1811,13 @@ function showQuickCaptureWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize
 
-  const windowWidth = 480
-  const windowHeight = 82
+  // The frame scales with the content: this window is fixed-size and
+  // non-resizable, so zoomed contents in an unscaled frame would simply clip.
+  // Read once at creation — it is destroyed on blur, so it cannot be open while
+  // the user changes the setting.
+  const zoomFactor = getZoomFactor()
+  const windowWidth = Math.round(480 * zoomFactor)
+  const windowHeight = Math.round(82 * zoomFactor)
 
   // Calculate center position
   const x = Math.round((screenWidth - windowWidth) / 2)
@@ -1864,6 +1871,7 @@ function showQuickCaptureWindow(): void {
 
   // Show window when ready
   quickCaptureWindow.once('ready-to-show', () => {
+    if (quickCaptureWindow) applyZoomToWindow(quickCaptureWindow)
     quickCaptureWindow?.show()
     quickCaptureWindow?.focus()
   })

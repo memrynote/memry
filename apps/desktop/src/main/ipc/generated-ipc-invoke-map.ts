@@ -447,6 +447,8 @@ export interface MainIpcInvokeHandlers {
   "templates:get": (...args: [string]) => Awaited<Promise<import("../../../../../packages/contracts/src/templates-api").Template | null>>
   "templates:list": (...args: []) => Awaited<Promise<{ templates: import("../../../../../packages/contracts/src/templates-api").TemplateListItem[]; }>>
   "templates:update": (...args: [{ id: string; name?: string | undefined; description?: string | undefined; icon?: string | null | undefined; tags?: string[] | undefined; properties?: { name: string; type: "number" | "date" | "text" | "select" | "url" | "checkbox" | "multiselect" | "project" | "rating"; value: unknown; options?: string[] | undefined; }[] | undefined; content?: string | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; template: import("../../../../../packages/contracts/src/templates-api").Template; }>>
+  "ui-zoom:get": (...args: []) => Awaited<1 | 2 | 0.75 | 0.85 | 1.15 | 1.3 | 1.5 | 1.75>
+  "ui-zoom:set": (...args: [unknown]) => Awaited<1 | 2 | 0.75 | 0.85 | 1.15 | 1.3 | 1.5 | 1.75>
   "updater:check-for-updates": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:download-update": (...args: []) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>>
   "updater:get-state": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ipc-updater").AppUpdateState>
