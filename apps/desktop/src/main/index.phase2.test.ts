@@ -122,7 +122,9 @@ function createBrowserWindowMock() {
     webContents: {
       send: vi.fn(),
       setWindowOpenHandler: vi.fn(),
-      on: vi.fn()
+      on: vi.fn(),
+      isDestroyed: vi.fn(() => false),
+      setZoomFactor: vi.fn()
     },
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       eventHandlers.set(event, handler)
@@ -196,7 +198,10 @@ vi.mock('./store', () => ({
   getVaults: getVaultsMock,
   setStoredLocale: setStoredLocaleMock,
   getWindowBounds: getWindowBoundsMock,
-  setWindowBounds: setWindowBoundsMock
+  setWindowBounds: setWindowBoundsMock,
+  // Quick capture scales its fixed frame by the zoom factor at creation.
+  getUiZoomFactor: () => 1,
+  setUiZoomFactor: vi.fn()
 }))
 
 vi.mock('./vault/vault-preferences', () => ({

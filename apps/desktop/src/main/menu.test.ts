@@ -366,9 +366,9 @@ describe('buildAppMenu', () => {
     // stays — it provides the behaviour — and the label only names it.
     expect(findMenuItem('Paste and Match Style')).toMatchObject({ role: 'pasteAndMatchStyle' })
     expect(findMenuItem('Delete')).toMatchObject({ role: 'delete' })
-    expect(findMenuItem('Actual Size')).toMatchObject({ role: 'resetZoom' })
-    expect(findMenuItem('Zoom In')).toMatchObject({ role: 'zoomIn' })
-    expect(findMenuItem('Zoom Out')).toMatchObject({ role: 'zoomOut' })
+    // Actual Size / Zoom In / Zoom Out used to be roles here. They now route to
+    // the renderer so window-zoom.ts stays the only writer of zoomFactor; the
+    // two tests above own that ground.
 
     // macOS app menu only. Same app.name trap as About: the hide role's default
     // label is `Hide ${app.name}`, which reads "Hide @memry/desktop" in production.

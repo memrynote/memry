@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // registerAllHandlers itself now touches ipcMain to label handlers with their
 // channel.
 vi.mock('electron', () => ({
-  ipcMain: { handle: vi.fn() }
+  ipcMain: { handle: vi.fn(), removeHandler: vi.fn() }
 }))
 
 const hoisted = vi.hoisted(() => ({
