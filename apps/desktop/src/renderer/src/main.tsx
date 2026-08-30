@@ -29,6 +29,7 @@ import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
 import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
+import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
 import {
   registerRendererDiagnostics,
@@ -38,20 +39,7 @@ import {
 } from './lib/telemetry-diagnostics'
 
 // Create a client with default options for the entire app
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Data is considered fresh for 30 seconds
-      staleTime: 30 * 1000,
-      // Keep unused data in cache for 5 minutes
-      gcTime: 5 * 60 * 1000,
-      // Retry failed requests once
-      retry: 1,
-      // Don't refetch on window focus for desktop app
-      refetchOnWindowFocus: false
-    }
-  }
-})
+const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
 
 const log = createLogger('RendererBoot')
 const rendererStartedAt = performance.now()

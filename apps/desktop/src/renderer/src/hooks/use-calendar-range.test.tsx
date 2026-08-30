@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createWrapper } from '@tests/utils/render'
+import { useCalendarChangeEvents } from './use-calendar-change-events'
 import { useCalendarRange } from './use-calendar-range'
 
 const { mockGetRange, mockOnCalendarChanged, state } = vi.hoisted(() => ({
@@ -32,13 +33,18 @@ describe('useCalendarRange', () => {
   it('refetches the range when calendar data changes', async () => {
     mockGetRange.mockResolvedValue({ items: [] })
 
+    // The listener that turns a change into a refetch lives in
+    // `useCalendarChangeEvents`, mounted once at app level, so it is part of the
+    // system under test here.
     const { result } = renderHook(
-      () =>
-        useCalendarRange({
+      () => {
+        useCalendarChangeEvents()
+        return useCalendarRange({
           startAt: '2026-04-12T00:00:00.000Z',
           endAt: '2026-04-19T00:00:00.000Z',
           includeUnselectedSources: true
-        }),
+        })
+      },
       { wrapper: createWrapper() }
     )
 
