@@ -31,6 +31,8 @@ export * from './use-settings-shortcut'
 
 // New note
 export * from './use-new-note-shortcut'
+export * from './use-ui-zoom'
+export * from './use-ui-zoom-shortcuts'
 
 // Undo
 export * from './use-undo'

@@ -38,6 +38,7 @@ import {
   useVault,
   useSettingsShortcut,
   useNewNoteShortcut,
+  useUiZoomShortcuts,
   useUndoKeyboardShortcut,
   useReminderNotifications,
   useInboxReviewNotifications,
@@ -230,6 +231,7 @@ const AppContent = (): React.JSX.Element => {
   const { open: openSettings } = useSettingsModal()
   useSettingsShortcut(openSettings)
   useNewNoteShortcut(() => void handleNewNote())
+  useUiZoomShortcuts()
   useUndoKeyboardShortcut() // T051-T054: Cmd+Z for task undo
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click

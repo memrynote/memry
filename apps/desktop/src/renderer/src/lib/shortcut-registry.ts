@@ -27,6 +27,9 @@ export type ShortcutId =
   | 'editor.underline'
   | 'view.toggleSidebar'
   | 'view.shortcuts'
+  | 'view.zoomIn'
+  | 'view.zoomOut'
+  | 'view.resetZoom'
 
 export interface ShortcutEntry {
   id: ShortcutId
@@ -181,6 +184,30 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     description: 'Show keyboard shortcuts reference',
     category: 'View',
     defaultBinding: { key: '/', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.zoomIn',
+    i18nKey: 'view.zoomIn',
+    label: 'Zoom In',
+    description: 'Scale the whole interface up one step',
+    category: 'View',
+    defaultBinding: { key: '=', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.zoomOut',
+    i18nKey: 'view.zoomOut',
+    label: 'Zoom Out',
+    description: 'Scale the whole interface down one step',
+    category: 'View',
+    defaultBinding: { key: '-', modifiers: { meta: true } }
+  },
+  {
+    id: 'view.resetZoom',
+    i18nKey: 'view.resetZoom',
+    label: 'Actual Size',
+    description: 'Reset the interface scale to 100%',
+    category: 'View',
+    defaultBinding: { key: '0', modifiers: { meta: true } }
   }
 ]
 

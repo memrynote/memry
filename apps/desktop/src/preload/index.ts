@@ -39,6 +39,7 @@ import { agentApi } from './api/agent'
 import { importApi, importEvents } from './api/import'
 import { homePagesApi, homePagesEvents } from './api/home-pages'
 import { customIconsApi, customIconsEvents } from './api/custom-icons'
+import { uiZoomApi, uiZoomEvents } from './api/ui-zoom'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -125,6 +126,7 @@ export const api = {
   import: importApi,
   homePages: homePagesApi,
   customIcons: customIconsApi,
+  uiZoom: uiZoomApi,
 
   onCrdtStateChanged,
   onCrdtProviderReset,
@@ -133,6 +135,7 @@ export const api = {
   ...updaterEvents,
   ...importEvents,
   ...flushApi,
+  ...uiZoomEvents,
 
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>
     subscribe<AppNavigationCommandEvent>(AppChannels.events.NAVIGATION_COMMAND, callback),

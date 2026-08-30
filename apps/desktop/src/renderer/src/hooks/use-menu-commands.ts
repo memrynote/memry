@@ -11,6 +11,7 @@ import {
   runHistoryMenuCommand
 } from '@/lib/menu-commands'
 import { runMenuUpdateCheck } from '@/lib/menu-update-check'
+import { useUiZoom } from './use-ui-zoom'
 
 interface MenuCommandHandlers {
   onNewNote: () => void
@@ -29,6 +30,7 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
   const { toggle: toggleDayPanel } = useDayPanel()
   const { open: openSettings } = useSettingsModal()
   const { setTheme } = useTheme()
+  const { zoomIn, zoomOut, resetZoom } = useUiZoom()
 
   const handlers: Record<string, () => void> = {
     'file.newNote': onNewNote,
@@ -49,6 +51,9 @@ export function useMenuCommands({ onNewNote, onOpenSearch }: MenuCommandHandlers
     'view.toggleSidebar': toggleSidebar,
     'view.toggleDayPanel': toggleDayPanel,
     'view.shortcuts': () => window.dispatchEvent(new CustomEvent('memry:open-shortcuts')),
+    'view.zoomIn': zoomIn,
+    'view.zoomOut': zoomOut,
+    'view.actualSize': resetZoom,
     'view.theme.light': () => setTheme('light'),
     'view.theme.dark': () => setTheme('dark'),
     'view.theme.white': () => setTheme('white'),

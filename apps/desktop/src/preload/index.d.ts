@@ -6,6 +6,7 @@ import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent, AppMenuCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
+import type { UiZoomChangedEvent, ZoomFactor } from '@memry/contracts/ui-zoom'
 import type {
   AgentEvent,
   AgentBackendId,
@@ -608,6 +609,11 @@ export interface CustomIconsClientAPI {
   addFromUrl(input: CustomIconAddFromUrlInput): Promise<CustomIcon>
   rename(input: CustomIconRenameInput): Promise<CustomIcon>
   delete(id: string): Promise<{ success: boolean }>
+}
+
+export interface UiZoomClientAPI {
+  get(): Promise<ZoomFactor>
+  set(factor: number): Promise<ZoomFactor>
 }
 
 export interface HomePagesClientAPI {
@@ -1794,6 +1800,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   customIcons: CustomIconsClientAPI
+  uiZoom: UiZoomClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
   import: {
@@ -1849,6 +1856,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
   onCustomIconsUpdated: (callback: (event: { id: string }) => void) => () => void
+  onUiZoomChanged: (callback: (event: UiZoomChangedEvent) => void) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryCreated: (callback: (event: JournalEntryCreatedEvent) => void) => () => void

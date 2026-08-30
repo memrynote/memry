@@ -9,6 +9,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useUiZoom } from '@/hooks/use-ui-zoom'
+import { ZOOM_FACTORS } from '@memry/contracts/ui-zoom'
 import { isFontInstalled, sanitizeCustomFontName, MAX_FONT_NAME_LENGTH } from '@/lib/custom-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -100,6 +102,7 @@ const FONT_SIZE_OPTIONS: SegmentOption[] = [
 
 export function AppearanceSettings() {
   const { t } = useT('settings')
+  const { factor: zoomFactor, setFactor: setZoomFactor } = useUiZoom()
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
   // null means "not editing" — the row then shows the saved value, including one
@@ -150,13 +153,7 @@ export function AppearanceSettings() {
   const handleFontFamilyChange = useCallback(
     async (value: string) => {
       const fontFamily = value as
-        | 'system'
-        | 'serif'
-        | 'sans-serif'
-        | 'monospace'
-        | 'gelasio'
-        | 'geist'
-        | 'inter'
+        'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
       const success = await updateSettings({ fontFamily })
       if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
@@ -192,6 +189,26 @@ export function AppearanceSettings() {
         title={t('appearance.header.title')}
         subtitle={t('appearance.header.subtitle')}
       />
+
+      <SettingsGroup label={t('appearance.groups.display')}>
+        <SettingRow
+          label={t('appearance.display.zoom.label')}
+          description={t('appearance.display.zoom.description')}
+        >
+          <Select value={String(zoomFactor)} onValueChange={(v) => setZoomFactor(Number(v))}>
+            <SelectTrigger className={COMPACT_SELECT} data-testid="appearance-zoom-select">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ZOOM_FACTORS.map((factor) => (
+                <SelectItem key={factor} value={String(factor)}>
+                  {t('appearance.display.zoom.option', { percent: Math.round(factor * 100) })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+      </SettingsGroup>
 
       <SettingsGroup label={t('appearance.groups.theme')}>
         <SettingRow

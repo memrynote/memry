@@ -217,7 +217,16 @@
     "groups": {
       "theme": "Theme",
       "accentColor": "Accent Color",
-      "typography": "Typography"
+      "typography": "Typography",
+      "display": "Display"
+    },
+    "display": {
+      "zoom": {
+        "label": "Interface Zoom",
+        "description": "Scale the entire interface, not just text. Applies to this device only.",
+        "option": "{percent}%",
+        "error": "Could not change the interface zoom"
+      }
     },
     "theme": {
       "colorMode": {
@@ -1455,6 +1464,18 @@
         "shortcuts": {
           "label": "Keyboard Shortcuts Help",
           "description": "Show keyboard shortcuts reference"
+        },
+        "zoomIn": {
+          "label": "Zoom In",
+          "description": "Scale the whole interface up one step"
+        },
+        "zoomOut": {
+          "label": "Zoom Out",
+          "description": "Scale the whole interface down one step"
+        },
+        "resetZoom": {
+          "label": "Actual Size",
+          "description": "Reset the interface scale to 100%"
         }
       }
     }
