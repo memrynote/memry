@@ -24,7 +24,13 @@ import { SIDEBAR_SORT_SETTINGS_KEY } from '../../settings/sidebar-sort-store'
 import { SIDEBAR_SECTION_ORDER_SETTINGS_KEY } from '../../settings/sidebar-section-order-store'
 import { createLogger } from '../../lib/logger'
 import { broadcastToAllWindows } from '../../lib/window-broadcast'
-import type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import { applyTraySetting } from '../../tray'
+import type {
+  SyncItemHandler,
+  ApplyContext,
+  ApplyResult,
+  DrizzleDb
+} from '@memry/sync-client/item-handlers/types'
 
 const log = createLogger('SettingsHandler')
 
@@ -177,6 +183,9 @@ function propagateMergedSettings(merged: SyncedSettings): void {
         if (g.openPagesInNewTab !== undefined) {
           prefsUpdate.openPagesInNewTab = g.openPagesInNewTab
         }
+        if (g.minimizeToTray !== undefined) {
+          prefsUpdate.minimizeToTray = g.minimizeToTray
+        }
       }
 
       if (merged.editor) {
@@ -198,6 +207,12 @@ function propagateMergedSettings(merged: SyncedSettings): void {
     } catch (err) {
       log.warn('Failed to propagate merged settings to config.json:', err)
     }
+  }
+
+  // Outside the vaultPath guard: the tray is a process-level effect, and an
+  // inbound change has to take hold now rather than at the next restart.
+  if (merged.general?.minimizeToTray !== undefined) {
+    applyTraySetting(merged.general.minimizeToTray)
   }
 
   broadcastSettingsChanged(merged, journalBroadcast)

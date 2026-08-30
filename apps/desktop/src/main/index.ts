@@ -29,7 +29,12 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
-import { applyGlobalCaptureShortcut, setGlobalCaptureAppliedHandler } from './ipc/settings-handlers'
+import {
+  applyGlobalCaptureShortcut,
+  getMinimizeToTraySetting,
+  setGlobalCaptureAppliedHandler
+} from './ipc/settings-handlers'
+import { applyTraySetting, handleMainWindowClose, initTray } from './tray'
 import {
   autoOpenLastVault,
   beginVaultShutdown,
@@ -732,9 +737,18 @@ function createWindow(): void {
   mainWindow.on('unmaximize', () => boundsPersister.schedule())
   mainWindow.on('close', () => boundsPersister.flush())
 
+  // Registered after the bounds flush so geometry is still persisted on a close
+  // that the tray intercepts.
+  initTray({ getMainWindow: () => mainWindow })
+  mainWindow.on('close', (event) => handleMainWindowClose(event, mainWindow))
+
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
     if (mainWindow.isDestroyed()) return
     if (status.isOpen) {
+      // Settings live in the vault's database, so this is the first point the
+      // tray preference can be read. applyTraySetting converges, so the repeat
+      // calls a vault switch produces are no-ops.
+      applyTraySetting(getMinimizeToTraySetting())
       // Grow from the compact picker to the app window, but never fight a window
       // the user has already sized/moved/maximized (or that we just restored):
       // only act on the genuine picker → main transition.

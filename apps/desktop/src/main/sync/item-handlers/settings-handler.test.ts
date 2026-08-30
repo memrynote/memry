@@ -49,6 +49,11 @@ vi.mock('../../vault/vault-preferences', () => ({
   readPreferences: (...args: unknown[]) => mockReadPreferences(...args)
 }))
 
+const mockApplyTraySetting = vi.fn()
+vi.mock('../../tray', () => ({
+  applyTraySetting: (...args: unknown[]) => mockApplyTraySetting(...args)
+}))
+
 const mockGetCurrentVaultPath = vi.fn(() => '/test/vault')
 const mockSetStoredLocale = vi.fn()
 vi.mock('../../store', () => ({
@@ -168,6 +173,53 @@ describe('settingsHandler.applyUpsert', () => {
 
     const prefsArg = mockWritePreferences.mock.calls[0][1]
     expect(prefsArg.openPagesInNewTab).toBe(false)
+  })
+
+  // Same trap again. A device that turned the tray off has to be able to say so:
+  // under a truthiness check this device would stay in tray mode forever.
+  it('#given a synced minimizeToTray=false #then writes it to config.json and applies it', () => {
+    mockGetSettings.mockReturnValue({
+      general: { minimizeToTray: false }
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { minimizeToTray: false } },
+      fieldClocks: { 'general.minimizeToTray': { 'device-B': 2 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    const prefsArg = mockWritePreferences.mock.calls[0][1]
+    expect(prefsArg.minimizeToTray).toBe(false)
+    expect(mockApplyTraySetting).toHaveBeenCalledWith(false)
+  })
+
+  it('#given a synced minimizeToTray=true #then the tray comes up without a restart', () => {
+    mockGetSettings.mockReturnValue({
+      general: { minimizeToTray: true }
+    })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { minimizeToTray: true } },
+      fieldClocks: { 'general.minimizeToTray': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(mockApplyTraySetting).toHaveBeenCalledWith(true)
+  })
+
+  it('#given merged settings that never mention the tray #then the tray setting is left alone', () => {
+    mockGetSettings.mockReturnValue({ general: { theme: 'dark' } })
+
+    const data: SettingsSyncPayload = {
+      settings: { general: { theme: 'dark' } },
+      fieldClocks: { 'general.theme': { 'device-B': 3 } }
+    }
+
+    settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
+
+    expect(mockApplyTraySetting).not.toHaveBeenCalled()
   })
 
   // Same truthiness trap as openPagesInNewTab above: '' is how the other device
