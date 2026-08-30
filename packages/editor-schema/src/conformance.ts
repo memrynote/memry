@@ -305,15 +305,24 @@ function tableOf(header: [string, string], row: [string, string]): string {
 
 const containerCases: RoundtripCase[] = [
   {
-    // The rich linkMention render is what a renderer-side cell serializes
-    // through, rewriting the token as a markdown link — #1865's class, second
-    // instance (the wiki-link case below is the first).
+    // A cell serializes its inline content through ProseMirror's `toDOM`, which
+    // BlockNote builds from `render` — so before #1865 the renderer's rich
+    // linkMention chip was the serializer here, and this row came back as
+    // `[example.com](https://example.com/plain)`: the token, and the domain,
+    // title, favicon and siteName riding on it, gone from disk. The date
+    // mention shares the row because it always survived — its renderer render
+    // emits the token — which is what makes the mention half the measurement
+    // rather than a guess about tables in general.
     name: 'mention and date tokens in table cells',
     markdown: tableOf(['a', 'b'], [mention('https://example.com/plain'), date(dateMentionData())])
   },
   {
-    // The renderer's rich wikiLink render is what a table cell serializes
-    // through, and it emits display text — the marker never comes back (#1865).
+    // Same hole, first instance: the rich wikiLink render emits the ALIAS, so
+    // `[[Roadmap]]` was written back as bare `Roadmap` and the link never came
+    // back. `#work` is here for the same reason the date mention is above — an
+    // unstyled hash tag's render is already its own text, so it survived, and a
+    // row where one cell breaks and the other does not is what pins the cause
+    // to the spec's render rather than to the table serializer.
     name: 'wiki link and hash tag in table cells',
     markdown: tableOf(['a', 'b'], ['[[Roadmap]]', '#work'])
   },
