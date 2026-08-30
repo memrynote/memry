@@ -44,8 +44,14 @@ const signAccessToken = async (
 
 // D1 double for the once-per-session $identify guard. `changes: 1` on the first
 // INSERT for a key, `0` afterwards — the real ON CONFLICT DO NOTHING semantics.
-const createDb = () => {
+//
+// `entitlement` doubles as the sync_entitlements row behind the plan lookup;
+// left null it returns no row, which is what getSyncEntitlement turns into a
+// 404 and resolveTelemetryPlan swallows. `planReads` counts the SELECTs so a
+// regression back to a per-batch read is visible.
+const createDb = (entitlement: { plan: string; status: string } | null = null) => {
   const claimed = new Set<string>()
+  const planReads: string[] = []
   const db = {
     prepare: (sql: string) => ({
       bind: (...args: unknown[]) => ({
@@ -55,11 +61,16 @@ const createDb = () => {
           const isNew = !claimed.has(key)
           claimed.add(key)
           return { meta: { changes: isNew ? 1 : 0 } }
+        },
+        first: async () => {
+          if (!sql.includes('sync_entitlements')) return null
+          planReads.push(String(args[0]))
+          return entitlement
         }
       })
     })
   } as unknown as D1Database
-  return { db, claimed }
+  return { db, claimed, planReads }
 }
 
 const createEnv = (db: D1Database, overrides?: Record<string, unknown>) => ({
@@ -267,6 +278,82 @@ describe('POST /telemetry/batch — account identity', () => {
     // #then identity does not resolve
     const installHash = await hashTelemetryId(HMAC_KEY, INSTALL_ID)
     for (const event of captureEvents(fetchSpy)) expect(event.distinct_id).toBe(installHash)
+  })
+})
+
+describe('POST /telemetry/batch — usage segmentation', () => {
+  // Without this the only "is anyone actually using this" split available in
+  // PostHog was sync_state, which lumps anonymous installs together with
+  // signed-in free users.
+  it('carries auth_state as an event property, not only a person property', async () => {
+    // #given an authenticated batch (batchBody declares authState: signed_in)
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { db } = createDb()
+
+    // #when posting
+    await postBatch(createEnv(db), await signAccessToken())
+
+    // #then every product event can be broken down by auth_state on its own
+    const product = captureEvents(fetchSpy).filter((e) => e.event !== '$identify')
+    expect(product.length).toBeGreaterThan(0)
+    for (const event of product) expect(event.properties.auth_state).toBe('signed_in')
+  })
+
+  it('stamps the plan from the entitlements row, not from anything the client sent', async () => {
+    // #given an account on an active pro plan
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { db } = createDb({ plan: 'pro', status: 'active' })
+
+    // #when posting the first batch of a session
+    await postBatch(createEnv(db), await signAccessToken())
+
+    // #then the person carries plan AND status — a canceled pro must not read as
+    // a paying user, so the pair travels together or not at all
+    for (const event of captureEvents(fetchSpy)) {
+      expect(event.properties.$set).toMatchObject({ plan: 'pro', plan_status: 'active' })
+    }
+    expectNoRawAccountId(fetchSpy)
+  })
+
+  it('reads the plan once per session, not on every 30s batch', async () => {
+    // #given a session that has already flushed one batch
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { db, planReads } = createDb({ plan: 'pro', status: 'active' })
+    const token = await signAccessToken()
+    const env = createEnv(db)
+    await postBatch(env, token)
+
+    // #when the same session flushes again
+    fetchSpy.mockClear()
+    await postBatch(env, token)
+
+    // #then no second D1 read...
+    expect(planReads).toHaveLength(1)
+    // #and the plan keys are OMITTED rather than sent as null, which would wipe
+    // the person property the first batch set.
+    for (const event of captureEvents(fetchSpy)) {
+      expect(event.properties.$set).not.toHaveProperty('plan')
+      expect(event.properties.$set).not.toHaveProperty('plan_status')
+    }
+  })
+
+  it('still forwards the batch when the account has no entitlements row', async () => {
+    // #given a token for an account whose row is gone (deleted account, live token)
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchSpy)
+    const { db } = createDb(null)
+
+    // #when posting
+    const response = await postBatch(createEnv(db), await signAccessToken())
+
+    // #then the missing plan costs one person property, never the whole batch
+    expect(response.status).toBe(202)
+    for (const event of captureEvents(fetchSpy)) {
+      expect(event.properties.$set).not.toHaveProperty('plan')
+    }
   })
 })
 
