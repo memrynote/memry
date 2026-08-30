@@ -110,6 +110,18 @@ locale has finished loading.
 - **Restore Session** — reopen the previous session's tabs on launch
 - **Tab Close Button** — always visible, hover only, or active tab only
 
+### Window Behavior
+
+**Minimize to Tray** is off by default. Turn it on and closing the main window hides it to the system tray instead of closing it; memrynote keeps running and syncing. Click the tray icon to bring the window back, or use **Show memrynote** in the tray menu. The same menu has **Quit**, which exits for real.
+
+Platform differences:
+
+- On **Windows** the window leaves the taskbar while it is hidden. Left-click the tray icon to restore it, right-click for the menu.
+- On **macOS** the icon appears in the menu bar. The app also stays in the Dock, so ⌘-Tab and the Dock icon still reach it. Left-click the menu bar icon to restore the window, right-click for the menu.
+- On **Linux** the icon appears in the system tray if your desktop provides one. Use its menu, since click handling varies between desktops. A session with no system tray leaves the setting without effect and the window closes as usual, so the app can never end up hidden with no way to bring it back.
+
+The setting syncs across your devices.
+
 ### File Creation
 
 **Create in Selected Folder** routes new notes into whichever folder is currently selected in the sidebar.
