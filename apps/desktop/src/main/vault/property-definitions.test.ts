@@ -238,11 +238,10 @@ describe('PropertyDefinitionsService', () => {
     expect(service.getAll()).toEqual([])
   })
 
-  it('mutates select and status options without touching missing definitions', async () => {
+  it('mutates select and status options', async () => {
     const service = PropertyDefinitionsService.init('/vault')
     const newOption: SelectOption = { value: 'Review', color: 'violet' }
 
-    await service.addOption('missing', newOption)
     await service.upsert({
       name: 'Stage',
       type: 'select',
@@ -264,7 +263,6 @@ describe('PropertyDefinitionsService', () => {
     await service.renameOption('Status', 'Backlog', 'Queued')
     await service.updateOptionColor('Status', 'Queued', 'blue')
     await service.removeOption('Status', 'Working')
-    await service.addStatusOption('Status', 'missing', { value: 'Ignored', color: 'red' })
 
     expect(service.get('Status')).toMatchObject({
       categories: {
@@ -386,5 +384,157 @@ describe('PropertyDefinitionsService — showOnCalendar', () => {
     safeReadMock.mockResolvedValueOnce(writtenContent)
     await svc.reload()
     expect(svc.listCalendarEnabledNames()).toEqual(['Published'])
+  })
+})
+
+describe('PropertyDefinitionsService — option writes never vanish', () => {
+  let dataDb: ReturnType<typeof createDbMock>
+  let indexDb: ReturnType<typeof createDbMock>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    PropertyDefinitionsService.destroy()
+    dataDb = createDbMock()
+    indexDb = createDbMock()
+    getMemryDirMock.mockReturnValue('/vault/.memry')
+    getDatabaseMock.mockReturnValue(dataDb.db)
+    getIndexDatabaseMock.mockReturnValue(indexDb.db)
+    safeReadMock.mockResolvedValue(null)
+    atomicWriteMock.mockResolvedValue(undefined)
+  })
+
+  // notes:create-property-definition sends exactly this shape for a status
+  // property: no `categories`. js-yaml refuses to dump `undefined`, so the
+  // write threw, the cache kept the unserializable definition, and every later
+  // addStatusOption saw `!def.categories` and returned silently.
+  it('persists a status definition created without categories', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+
+    await service.upsert({ name: 'Workflow', type: 'status' })
+
+    expect(service.get('Workflow')?.categories).toEqual(DEFAULT_STATUS_DEFINITION.categories)
+    expect(atomicWriteMock).toHaveBeenCalledWith(
+      '/vault/.memry/properties.md',
+      expect.stringContaining('Not started')
+    )
+  })
+
+  it('round-trips a status definition created without categories through properties.md', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Workflow', type: 'status' })
+
+    const written = atomicWriteMock.mock.calls.at(-1)![1] as string
+    safeReadMock.mockResolvedValueOnce(written)
+
+    const reloaded = PropertyDefinitionsService.init('/vault')
+    await reloaded.reload()
+
+    expect(reloaded.get('Workflow')?.categories).toEqual(DEFAULT_STATUS_DEFINITION.categories)
+  })
+
+  it('keeps persisting unrelated definitions after a status property is created', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({
+      name: 'Stage',
+      type: 'select',
+      options: [{ value: 'Idea', color: 'sky' }]
+    })
+    await service.upsert({ name: 'Workflow', type: 'status' })
+
+    await service.upsert({
+      name: 'Area',
+      type: 'select',
+      options: [{ value: 'Ops', color: 'sky' }]
+    })
+
+    expect(atomicWriteMock.mock.calls.at(-1)![1] as string).toContain('Ops')
+  })
+
+  it('serializes a select definition that carries no options', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+
+    await service.upsert({ name: 'Stage', type: 'select' })
+
+    expect(atomicWriteMock).toHaveBeenCalledWith(
+      '/vault/.memry/properties.md',
+      expect.stringContaining('type: select')
+    )
+  })
+
+  it('adds a status option to a property that has no persisted definition', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+
+    await service.addStatusOption('Status', 'in_progress', { value: 'Blocked', color: 'amber' })
+
+    expect(service.get('Status')?.categories?.in_progress.options).toEqual([
+      { value: 'In Progress', color: 'amber' },
+      { value: 'Blocked', color: 'amber' }
+    ])
+    expect(atomicWriteMock.mock.calls.at(-1)![1] as string).toContain('Blocked')
+  })
+
+  it('adds a status option to a definition stored without categories', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Workflow', type: 'status' })
+
+    await service.addStatusOption('Workflow', 'todo', { value: 'Blocked', color: 'amber' })
+
+    expect(service.get('Workflow')?.categories?.todo.options).toEqual([
+      { value: 'Not started', color: 'stone', default: true },
+      { value: 'Blocked', color: 'amber' }
+    ])
+  })
+
+  it('keeps one entry when the same status option value is added twice', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Status', type: 'status', categories: statusCategories() })
+
+    await service.addStatusOption('Status', 'in_progress', { value: 'Blocked', color: 'amber' })
+    await service.addStatusOption('Status', 'in_progress', { value: 'Blocked', color: 'rose' })
+
+    expect(service.get('Status')?.categories?.in_progress.options).toEqual([
+      { value: 'Working', color: 'amber' },
+      { value: 'Blocked', color: 'amber' }
+    ])
+  })
+
+  it('keeps one entry when the same select option value is added twice', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Stage', type: 'select', options: [] })
+
+    await service.addOption('Stage', { value: 'Idea', color: 'sky' })
+    await service.addOption('Stage', { value: 'Idea', color: 'rose' })
+
+    expect(service.get('Stage')?.options).toEqual([{ value: 'Idea', color: 'sky' }])
+  })
+
+  it('rejects an option mutation against a definition that does not exist', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+
+    await expect(
+      service.addOption('missing', { value: 'Review', color: 'violet' })
+    ).rejects.toThrow(/missing/)
+    await expect(service.removeOption('missing', 'Review')).rejects.toThrow(/missing/)
+    await expect(service.renameOption('missing', 'Review', 'Done')).rejects.toThrow(/missing/)
+    await expect(service.updateOptionColor('missing', 'Review', 'sky')).rejects.toThrow(/missing/)
+    expect(atomicWriteMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a status option added to a definition of another type', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Status', type: 'select', options: [] })
+
+    await expect(
+      service.addStatusOption('Status', 'todo', { value: 'Blocked', color: 'amber' })
+    ).rejects.toThrow(/Status/)
+  })
+
+  it('rejects a status option added to an unknown category', async () => {
+    const service = PropertyDefinitionsService.init('/vault')
+    await service.upsert({ name: 'Status', type: 'status', categories: statusCategories() })
+
+    await expect(
+      service.addStatusOption('Status', 'nope', { value: 'Blocked', color: 'amber' })
+    ).rejects.toThrow(/nope/)
   })
 })
