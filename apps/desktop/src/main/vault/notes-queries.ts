@@ -13,17 +13,13 @@ import {
   listNotesFromCache,
   countNotes,
   getTagsForNotes,
-  getAllTags,
-  getAllTagDefinitions,
-  getOrCreateTag,
-  deleteTagDefinition,
   getPropertiesForNotes,
   getOutgoingLinks,
   getIncomingReferences,
   type NoteTreeCacheRow
 } from '@main/database/queries/notes'
 import type { NoteCache } from '@memry/db-schema/schema/notes-cache'
-import { getAllTaskTags } from '@main/database/queries/tasks'
+import { getAllTagsWithCounts } from '@main/database/queries/tags'
 import { getDatabase, getIndexDatabase } from '../database'
 import { toAbsolutePath } from './notes-io'
 import type {
@@ -115,46 +111,21 @@ export function noteToListItem(note: Note): NoteListItem {
 // Tags & Links
 // ============================================================================
 
+// This endpoint (notes:get-tags) feeds the editor's `#` autocomplete and the
+// tag pickers. It used to carry its own copy of the orphan-definition sweep,
+// which deleted any zero-usage row unconditionally — so a tag created in the
+// hub survived `tags:get-all` only until the first picker opened. Delegating
+// keeps one sweep with one predicate. It also merges counts case-insensitively,
+// which the old copy's exact-case maps did not.
 export function getTagsWithCounts(): { tag: string; color: string; count: number }[] {
   const indexDb = getIndexDatabase()
   const dataDb = getDatabase()
 
-  const definitions = getAllTagDefinitions(dataDb)
-  const noteUsage = getAllTags(indexDb)
-  const taskUsage = getAllTaskTags(dataDb)
-
-  const noteCountMap = new Map(noteUsage.map((u) => [u.tag, u.count]))
-  const taskCountMap = new Map(taskUsage.map((u) => [u.tag, u.count]))
-  const defMap = new Map(definitions.map((d) => [d.name, d.color]))
-
-  const results: { tag: string; color: string; count: number }[] = []
-
-  for (const def of definitions) {
-    const totalCount = (noteCountMap.get(def.name) ?? 0) + (taskCountMap.get(def.name) ?? 0)
-    if (totalCount > 0) {
-      results.push({ tag: def.name, color: def.color, count: totalCount })
-    } else {
-      deleteTagDefinition(dataDb, def.name)
-    }
-  }
-
-  for (const usage of noteUsage) {
-    if (!defMap.has(usage.tag)) {
-      const { color } = getOrCreateTag(dataDb, usage.tag)
-      defMap.set(usage.tag, color)
-      const totalCount = usage.count + (taskCountMap.get(usage.tag) ?? 0)
-      results.push({ tag: usage.tag, color, count: totalCount })
-    }
-  }
-
-  for (const usage of taskUsage) {
-    if (!defMap.has(usage.tag) && !noteCountMap.has(usage.tag)) {
-      const { color } = getOrCreateTag(dataDb, usage.tag)
-      results.push({ tag: usage.tag, color, count: usage.count })
-    }
-  }
-
-  return results.sort((a, b) => b.count - a.count)
+  return getAllTagsWithCounts(indexDb, dataDb).map((tag) => ({
+    tag: tag.name,
+    color: tag.color ?? '',
+    count: tag.count
+  }))
 }
 
 interface LinkContext {
