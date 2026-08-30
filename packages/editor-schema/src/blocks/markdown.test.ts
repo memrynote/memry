@@ -225,12 +225,24 @@ describe('readStructuredQuoteRun', () => {
     expect(read('> One\n>\n> Two')).toEqual({
       innerMarkdown: 'One\n\nTwo',
       raw: '> One\n>\n> Two',
-      end: 3
+      end: 3,
+      nested: false
     })
   })
 
   it('strips one level off a nested run, leaving the inner `>` in place', () => {
     expect(read('> Outer\n>\n> > Inner')?.innerMarkdown).toBe('Outer\n\n> Inner')
+  })
+
+  // `nested` is what buys a run the second chance in `resolveQuoteRun`, because
+  // declining a nested run costs a `>` level rather than a blank line (#1881).
+  it('marks a run that carries a second `>` level', () => {
+    expect(read('> Outer\n> > Inner')?.nested).toBe(true)
+    expect(read('> One\n>\n> Two')?.nested).toBe(false)
+  })
+
+  it('reads a lazily continued nested run, which has no bare `>` at all', () => {
+    expect(read('> Outer\n> > Inner')?.innerMarkdown).toBe('Outer\n> Inner')
   })
 
   it('declines a flat run, which BlockNote already round-trips', () => {

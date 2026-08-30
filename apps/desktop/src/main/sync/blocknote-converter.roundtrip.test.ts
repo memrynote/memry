@@ -33,9 +33,9 @@ describe('round-trip conformance corpus, main pipeline', () => {
   const cases = ROUNDTRIP_CASES.map((c) => ({ ...c, pendingIssue: c.pending?.main }))
   const pendingCases = cases.filter((c) => c.pendingIssue)
 
-  it.each(cases.filter((c) => !c.pendingIssue))('$name', async ({ markdown }) => {
+  it.each(cases.filter((c) => !c.pendingIssue))('$name', async ({ markdown, canonical }) => {
     const once = await roundTrip(markdown)
-    expect(once, 'round-trip is identity').toBe(markdown)
+    expect(once, 'round-trip reaches the canonical bytes').toBe(canonical ?? markdown)
     expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
   })
 
@@ -43,11 +43,14 @@ describe('round-trip conformance corpus, main pipeline', () => {
   // inverts the expectation, so the sibling landing turns these red and forces
   // the pending flag off — the case then asserts the fixed behavior forever.
   if (pendingCases.length > 0) {
-    it.fails.each(pendingCases)('$name (pending #$pendingIssue)', async ({ markdown }) => {
-      const once = await roundTrip(markdown)
-      expect(once, 'round-trip is identity').toBe(markdown)
-      expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
-    })
+    it.fails.each(pendingCases)(
+      '$name (pending #$pendingIssue)',
+      async ({ markdown, canonical }) => {
+        const once = await roundTrip(markdown)
+        expect(once, 'round-trip reaches the canonical bytes').toBe(canonical ?? markdown)
+        expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
+      }
+    )
   }
 })
 

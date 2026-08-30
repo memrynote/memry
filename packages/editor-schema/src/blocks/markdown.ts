@@ -176,6 +176,13 @@ export interface QuoteRun {
   raw: string
   /** Index of the first line after the run. */
   end: number
+  /**
+   * The run carries a second `>` level. Declining such a run is not free: the
+   * flat fallback deletes the level outright, so `> Outer\n> > Inner` comes
+   * back `> Outer\n> Inner` and a nested `> > [!warning]` callout comes back as
+   * literal text (#1881).
+   */
+  nested: boolean
 }
 
 /**
@@ -198,35 +205,49 @@ export function readStructuredQuoteRun(lines: readonly string[], start: number):
 
   const inner: string[] = []
   let end = start
-  let structured = false
+  let separated = false
+  let nested = false
 
   while (end < lines.length && lines[end].startsWith('>')) {
     const line = lines[end]
     if (line === '>') {
       inner.push('')
-      structured = true
+      separated = true
     } else if (line.startsWith('> ')) {
       const stripped = line.slice(2)
       inner.push(stripped)
-      if (stripped.startsWith('>')) structured = true
+      if (stripped.startsWith('>')) nested = true
     } else {
       return null
     }
     end++
   }
 
-  if (!structured) return null
-  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end }
+  if (!separated && !nested) return null
+  return { innerMarkdown: inner.join('\n'), raw: lines.slice(start, end).join('\n'), end, nested }
 }
 
 /**
  * Decide whether a run may become a quote block that owns children, by proof
  * rather than by pattern — the same rule `resolveCalloutRun` applies: parse the
- * stripped inner markdown, and claim only if re-serializing and re-quoting it
- * reproduces the run byte-for-byte. Anything the schema would normalize
- * declines and the caller leaves the bytes exactly as they were. A lazily
- * continued `> A\n> > B` is one such run: its inner blocks only come back
- * through a blank separator the author never wrote.
+ * stripped inner markdown, then check what re-serializing and re-quoting it
+ * gives back.
+ *
+ * Reproducing the run byte-for-byte claims it, and that is the only outcome a
+ * run with just a blank `>` separator accepts. Anything else declines and the
+ * caller leaves the bytes exactly as they were.
+ *
+ * A run carrying a `> >` level gets a second chance, because declining it is
+ * not free. Lazy continuation (`> Outer\n> > Inner`, no blank line between the
+ * levels) is AST-identical to the separator form `> Outer\n>\n> > Inner`, and a
+ * block tree has nowhere to record which of the two spellings it was read from,
+ * so exactly one of them can round-trip and the separator form is the one that
+ * does. The cost of declining is not the missing separator, it is that the flat
+ * fallback deletes the `>` level: `> Outer\n> Inner`, and a foreign
+ * `> > [!warning]` callout demoted to literal text (#1881). So a nested run is
+ * claimed when its canonical form settles — when re-reading and re-parsing
+ * those bytes reproduces them — which trades an unreachable byte identity for a
+ * one-step normalization that keeps the nesting.
  *
  * The first inner block becomes the quote's own content and the rest its
  * children, which is the list `serializeQuoteBlock` is handed on the way out.
@@ -243,10 +264,36 @@ export async function resolveQuoteRun(
   // correctly — claiming it would only route identical bytes through more code.
   if (children.length === 0) return null
 
-  const roundTripped = (await serializeBlocks(parsed)).trim()
-  if (serializeQuoteBlock(roundTripped) !== run.raw) return null
+  const canonical = serializeQuoteBlock((await serializeBlocks(parsed)).trim())
+  if (canonical !== run.raw) {
+    if (!run.nested) return null
+    if (!(await settles(canonical, parseMarkdown, serializeBlocks))) return null
+  }
 
   return { content: first.content ?? [], children }
+}
+
+/**
+ * Whether `canonical` is a fixed point of this same seam: it reads back as one
+ * whole quote run, and re-parsing and re-quoting that run returns it unchanged.
+ * A run that settles is written once and then left alone on every later save,
+ * so the vault file stops moving after the first write.
+ */
+async function settles(
+  canonical: string,
+  parseMarkdown: (markdown: string) => Promise<ParsedBlockShape[]>,
+  serializeBlocks: (blocks: ParsedBlockShape[]) => Promise<string>
+): Promise<boolean> {
+  const lines = canonical.split('\n')
+  const reread = readStructuredQuoteRun(lines, 0)
+  if (!reread || reread.end !== lines.length) return false
+
+  const reparsed = await parseMarkdown(reread.innerMarkdown)
+  const [first, ...children] = reparsed
+  if (!first || first.type !== 'paragraph' || first.children?.length) return false
+  if (children.length === 0) return false
+
+  return serializeQuoteBlock((await serializeBlocks(reparsed)).trim()) === canonical
 }
 
 // ---------------------------------------------------------------------------
