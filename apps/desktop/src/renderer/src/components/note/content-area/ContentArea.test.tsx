@@ -1196,6 +1196,83 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
   })
 
+  // #1907 — `convertCheckboxToTask` rewrites the checkbox to a `taskBlock`
+  // with `taskId: ''` before the row exists. If the create never lands, the
+  // block used to keep that shape forever: a task-looking row whose every
+  // control early-returns on the empty id. A checkbox Memry has no row for
+  // must stay a checkbox.
+  it('reverts a checkbox to a checklist item when the task create fails', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk 2026-09-01', styles: {} }]
+    })
+    contentAreaMocks.tasksService.create.mockResolvedValue({
+      success: false,
+      error: 'Task not found'
+    })
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk 2026-09-01', styles: {} }])
+  })
+
+  it('reverts a checkbox to a checklist item when there is no project to create into', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockResolvedValue({ projects: [] })
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalled()
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {
     render(<ContentArea noteId="note-1" />)
 
