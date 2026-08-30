@@ -1,6 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { SidebarNav } from './sidebar-nav'
 import type { AppPage } from '@/App'
@@ -43,6 +43,63 @@ const items = [
 ]
 
 const noop = () => () => {}
+
+const renderNav = () =>
+  render(
+    <SidebarNav
+      items={items}
+      isActive={() => false}
+      onNavClick={noop}
+      onNavMiddleClick={noop}
+      isModifierHeld={false}
+      inboxCount={0}
+      todayTasksCount={0}
+      onOpenJournalSettings={() => {}}
+    />
+  )
+
+const realApi = window.api
+
+type SettingsListener = (event: { key: string; value: unknown }) => void
+
+function stubNavApi(
+  options: { collapsed?: boolean; save?: { success: boolean; error?: string } } = {}
+) {
+  const loaded = Promise.resolve(options.collapsed ?? false)
+  const getSidebarNavCollapsed = vi.fn(() => loaded)
+  const setSidebarNavCollapsed = vi.fn(() => Promise.resolve(options.save ?? { success: true }))
+  const listeners: SettingsListener[] = []
+
+  window.api = {
+    ...realApi,
+    settings: { ...realApi.settings, getSidebarNavCollapsed, setSidebarNavCollapsed },
+    onSettingsChanged: vi.fn((listener: SettingsListener) => {
+      listeners.push(listener)
+      return () => {}
+    })
+  }
+
+  return {
+    getSidebarNavCollapsed,
+    setSidebarNavCollapsed,
+    // The stored value lands after the first paint and overwrites whatever the
+    // nav is showing, so a click that races it is undone by a value nobody asked for.
+    settle: async () => {
+      await waitFor(() => expect(getSidebarNavCollapsed).toHaveBeenCalled())
+      await act(async () => {
+        await loaded
+      })
+    },
+    emit: (event: { key: string; value: unknown }) => {
+      act(() => {
+        for (const listener of listeners) listener(event)
+      })
+    }
+  }
+}
+
+const toggle = () => screen.getByTestId('sidebar-nav-toggle')
+const navItems = () => screen.getByTestId('sidebar-nav-items')
 
 describe('SidebarNav', () => {
   it('renders exactly the items it is given (caller pre-filters visibility)', () => {
@@ -112,5 +169,75 @@ describe('SidebarNav', () => {
     await user.click(await screen.findByText('Journal Settings…'))
 
     expect(onOpenJournalSettings).toHaveBeenCalledTimes(1)
+  })
+
+  describe('nav collapse', () => {
+    afterEach(() => {
+      window.api = realApi
+    })
+
+    it('folds the nav away and opens it again', async () => {
+      const api = stubNavApi()
+      const user = userEvent.setup()
+      renderNav()
+      await api.settle()
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+      expect(navItems()).toHaveAttribute('aria-hidden', 'false')
+
+      await user.click(toggle())
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+      expect(navItems()).toHaveAttribute('aria-hidden', 'true')
+      expect(api.setSidebarNavCollapsed).toHaveBeenLastCalledWith(true)
+
+      await user.click(toggle())
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+      expect(navItems()).toHaveAttribute('aria-hidden', 'false')
+      expect(api.setSidebarNavCollapsed).toHaveBeenLastCalledWith(false)
+    })
+
+    it('renders collapsed from the stored flag alone', async () => {
+      const api = stubNavApi({ collapsed: true })
+      const { unmount } = renderNav()
+      await api.settle()
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+
+      unmount()
+      renderNav()
+      await api.settle()
+
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+      expect(api.setSidebarNavCollapsed).not.toHaveBeenCalled()
+    })
+
+    it('follows a settings change from another device', async () => {
+      const api = stubNavApi()
+      renderNav()
+      await api.settle()
+
+      api.emit({ key: 'sidebar.navCollapsed', value: true })
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false')
+
+      // The merge that reopens the nav, and the one a truthy guard would drop.
+      api.emit({ key: 'sidebar.navCollapsed', value: false })
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+
+      api.emit({ key: 'sidebar.sectionOrder', value: true })
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('puts the nav back when the save fails', async () => {
+      const api = stubNavApi({ save: { success: false, error: 'Vault is read-only' } })
+      const user = userEvent.setup()
+      renderNav()
+      await api.settle()
+
+      await user.click(toggle())
+
+      await waitFor(() => expect(toggle()).toHaveAttribute('aria-expanded', 'true'))
+      expect(navItems()).toHaveAttribute('aria-hidden', 'false')
+    })
   })
 })
