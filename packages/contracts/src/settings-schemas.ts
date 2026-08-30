@@ -41,6 +41,15 @@ export const GeneralSettingsSchema = z.object({
    * user choice alone.
    */
   openPagesInNewTab: z.boolean(),
+  /**
+   * Whether closing the main window hides it to a system tray icon instead of
+   * closing it. Off by default; the tray icon only exists while this is on.
+   *
+   * A machine whose desktop has no tray host (some Linux sessions) keeps the
+   * normal close behavior even with this on, because hiding a window that
+   * nothing can restore would leave the app running and unreachable.
+   */
+  minimizeToTray: z.boolean(),
   clockFormat: z.enum(['12h', '24h']),
   dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY'])
 })
@@ -60,6 +69,7 @@ export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   onboardingCompleted: false,
   createInSelectedFolder: true,
   openPagesInNewTab: false,
+  minimizeToTray: false,
   clockFormat: '12h',
   dateFormat: 'DD.MM.YYYY'
 }

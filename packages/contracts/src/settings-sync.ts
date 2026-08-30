@@ -18,7 +18,8 @@ export const SyncedSettingsSchema = z.object({
       startOnBoot: z.boolean().optional(),
       language: z.string().optional(),
       createInSelectedFolder: z.boolean().optional(),
-      openPagesInNewTab: z.boolean().optional()
+      openPagesInNewTab: z.boolean().optional(),
+      minimizeToTray: z.boolean().optional()
     })
     .optional(),
   editor: z
