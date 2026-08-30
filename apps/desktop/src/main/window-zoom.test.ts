@@ -120,6 +120,20 @@ describe('window zoom', () => {
     expect(win.webContents.setZoomFactor).toHaveBeenLastCalledWith(1)
   })
 
+  it('#given a window that throws mid-apply #then the failure is contained', () => {
+    const flaky = fakeWindow()
+    flaky.webContents.setZoomFactor.mockImplementation(() => {
+      throw new Error('window went away')
+    })
+    const healthy = fakeWindow()
+    mocks.windows = [flaky, healthy]
+    applyZoomToWindow(flaky)
+    applyZoomToWindow(healthy)
+
+    expect(() => setZoomFactor(1.5)).not.toThrow()
+    expect(healthy.webContents.setZoomFactor).toHaveBeenCalledWith(1.5)
+  })
+
   it('#given a destroyed window opted in earlier #then applying does not throw', () => {
     const dead = {
       isDestroyed: () => true,

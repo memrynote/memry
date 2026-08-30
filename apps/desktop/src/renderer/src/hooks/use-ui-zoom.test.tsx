@@ -10,6 +10,7 @@ vi.mock('sonner', () => ({
   toast: { error: vi.fn() }
 }))
 
+import { toast } from 'sonner'
 import { useUiZoom } from './use-ui-zoom'
 
 let listener: ((event: UiZoomChangedEvent) => void) | null = null
@@ -107,6 +108,39 @@ describe('useUiZoom', () => {
     act(() => listener?.({ factor: 1.75 }))
 
     expect(result.current.factor).toBe(1.75)
+  })
+
+  it('#given the initial read fails #then the hook stays on the default', async () => {
+    Object.assign(window.api, {
+      uiZoom: {
+        get: vi.fn().mockRejectedValue(new Error('ipc down')),
+        set: vi.fn(async (factor: number) => factor)
+      },
+      onUiZoomChanged: vi.fn(() => () => {})
+    })
+
+    const { result } = renderHook(() => useUiZoom())
+
+    await waitFor(() => expect(window.api.uiZoom.get).toHaveBeenCalled())
+    expect(result.current.factor).toBe(1)
+  })
+
+  it('#given persisting the zoom fails #then the user is told', async () => {
+    Object.assign(window.api, {
+      uiZoom: {
+        get: vi.fn(async () => 1),
+        set: vi.fn().mockRejectedValue(new Error('disk full'))
+      },
+      onUiZoomChanged: vi.fn(() => () => {})
+    })
+    const { result } = renderHook(() => useUiZoom())
+    await waitFor(() => expect(result.current.factor).toBe(1))
+
+    act(() => result.current.setFactor(1.5))
+
+    // The control still moves; only the persistence failed.
+    expect(result.current.factor).toBe(1.5)
+    await waitFor(() => expect(vi.mocked(toast.error)).toHaveBeenCalled())
   })
 
   it('#given a zoomed app #when reset #then it returns to actual size', async () => {

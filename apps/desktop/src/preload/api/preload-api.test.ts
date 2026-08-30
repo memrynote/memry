@@ -14,6 +14,7 @@ import {
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
+import { UiZoomChannels } from '@memry/contracts/ui-zoom'
 import { invoke, invokeSync, subscribe } from '../lib/ipc'
 import { agentApi } from './agent'
 import { bookmarksApi, bookmarkEvents } from './bookmarks'
@@ -29,6 +30,7 @@ import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './syn
 import { syncOps, cryptoApi, syncAttachments, syncCrdt } from './sync-ops'
 import { tagsApi, tagEvents } from './tags'
 import { updaterApi, updaterEvents } from './updater'
+import { uiZoomApi, uiZoomEvents } from './ui-zoom'
 import { vaultApi, vaultEvents } from './vault'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from '../lib/startup-theme'
 
@@ -1050,5 +1052,14 @@ describe('preload api wrappers', () => {
       () => updaterEvents.onUpdaterStateChanged(callback),
       UpdaterChannels.events.STATE_CHANGED
     )
+  })
+
+  it('routes whole-UI zoom through its IPC channels', async () => {
+    await expectInvoke(() => uiZoomApi.get(), UiZoomChannels.invoke.GET)
+    await expectInvoke(() => uiZoomApi.set(1.5), UiZoomChannels.invoke.SET, 1.5)
+
+    expectSubscribe(() => uiZoomEvents.onUiZoomChanged(callback), UiZoomChannels.events.CHANGED, {
+      ok: true
+    })
   })
 })
