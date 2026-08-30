@@ -12,20 +12,25 @@ function readZoomFactor(app: ElectronApplication): Promise<number | undefined> {
   )
 }
 
+/** The OS window size, which zoom must not change. */
+function readWindowWidth(app: ElectronApplication): Promise<number | undefined> {
+  return app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getBounds().width)
+}
+
 /**
- * The share of the window covered by the sidebar.
+ * What the renderer is actually laying out into.
  *
- * Zoom divides the CSS-pixel viewport while the sidebar keeps its CSS width, so
- * this share rises in direct proportion to the zoom factor. It is the measure
- * that actually answers "did the interface get bigger on screen", which a
- * bounding box in CSS pixels alone cannot.
+ * `body`'s bounding box is in CSS pixels, and zoom divides the CSS-pixel
+ * viewport. Read together with an unchanged OS window width, a box that shrinks
+ * by the factor is the proof that every CSS pixel now covers proportionally
+ * more of the screen — which is what "the interface got bigger" means.
+ * devicePixelRatio scales with the same factor and is the direct confirmation.
  */
-function sidebarShare(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const sidebar = document.querySelector('[data-testid="app-sidebar"]')
-    if (!sidebar) throw new Error('sidebar not rendered')
-    return sidebar.getBoundingClientRect().width / window.innerWidth
-  })
+function readLayout(page: Page): Promise<{ boxWidth: number; dpr: number }> {
+  return page.evaluate(() => ({
+    boxWidth: document.body.getBoundingClientRect().width,
+    dpr: window.devicePixelRatio
+  }))
 }
 
 test.describe('Whole-UI zoom', () => {
@@ -36,19 +41,20 @@ test.describe('Whole-UI zoom', () => {
     await ready(page)
 
     expect(await readZoomFactor(electronApp)).toBe(1)
-    const baselineShare = await sidebarShare(page)
-    const baselineWidth = await page.evaluate(() => window.innerWidth)
+    const baseline = await readLayout(page)
+    const windowWidth = await readWindowWidth(electronApp)
 
     await page.evaluate(() => window.api.uiZoom.set(1.5))
     await expect.poll(() => readZoomFactor(electronApp)).toBeCloseTo(1.5, 2)
+    await expect.poll(async () => (await readLayout(page)).dpr).toBeCloseTo(baseline.dpr * 1.5, 1)
 
-    const zoomedShare = await sidebarShare(page)
-    const zoomedWidth = await page.evaluate(() => window.innerWidth)
+    const zoomed = await readLayout(page)
 
-    // Same window, 1.5x the scale: the CSS viewport shrinks by 1.5 and the
-    // sidebar therefore covers 1.5x as much of it.
-    expect(zoomedShare / baselineShare).toBeCloseTo(1.5, 1)
-    expect(baselineWidth / zoomedWidth).toBeCloseTo(1.5, 1)
+    // The OS window never moved, so the same physical width now holds 1.5x
+    // fewer CSS pixels: everything drawn in it is 1.5x bigger on screen.
+    expect(await readWindowWidth(electronApp)).toBe(windowWidth)
+    expect(baseline.boxWidth / zoomed.boxWidth).toBeCloseTo(1.5, 1)
+    expect(zoomed.dpr / baseline.dpr).toBeCloseTo(1.5, 1)
   })
 
   test('applies a zoom chosen in Settings', async ({ page, electronApp }) => {
@@ -89,30 +95,46 @@ test.describe('Whole-UI zoom', () => {
   test('holds the layout together at both ends of the ladder', async ({ page }) => {
     await ready(page)
 
-    const observed: Array<{ factor: number; innerWidth: number; sidebar: boolean; home: boolean }> =
-      []
+    const observed: Array<{
+      factor: number
+      innerWidth: number
+      breakpoint: string
+      rendered: boolean
+    }> = []
+    const baseDpr = await page.evaluate(() => window.devicePixelRatio)
 
     for (const factor of [0.75, 2]) {
       await page.evaluate((f) => window.api.uiZoom.set(f), factor)
-      await expect.poll(() => page.evaluate(() => window.innerWidth)).not.toBe(0)
-      observed.push(
-        await page.evaluate(() => ({
-          factor: 0,
-          innerWidth: window.innerWidth,
-          sidebar: !!document.querySelector('[data-testid="app-sidebar"]'),
-          home: document.body.textContent !== ''
-        }))
-      )
-      observed[observed.length - 1].factor = factor
+      await expect
+        .poll(() => page.evaluate(() => window.devicePixelRatio))
+        .toBeCloseTo(baseDpr * factor, 1)
+      const state = await page.evaluate(() => {
+        const width = window.innerWidth
+        const breakpoint =
+          width >= 1280
+            ? 'xl'
+            : width >= 1024
+              ? 'lg'
+              : width >= 768
+                ? 'md'
+                : width >= 640
+                  ? 'sm'
+                  : 'base'
+        return {
+          innerWidth: width,
+          breakpoint,
+          rendered: (document.body.textContent ?? '').trim().length > 0
+        }
+      })
+      observed.push({ factor, ...state })
     }
 
     const [zoomedOut, zoomedIn] = observed
     // Zooming out widens the CSS viewport and zooming in narrows it, which is
-    // what moves responsive breakpoints under the layout.
+    // exactly what drags responsive breakpoints under an unchanged layout.
     expect(zoomedOut.innerWidth).toBeGreaterThan(zoomedIn.innerWidth)
     for (const state of observed) {
-      expect(state.sidebar, `sidebar missing at ${state.factor}x`).toBe(true)
-      expect(state.home, `app rendered nothing at ${state.factor}x`).toBe(true)
+      expect(state.rendered, `app rendered nothing at ${state.factor}x`).toBe(true)
     }
 
     console.log('[ui-zoom] viewport at the extremes:', JSON.stringify(observed))
