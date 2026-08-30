@@ -96,6 +96,10 @@ Open [Settings → Properties](/user-guide/settings#properties) to create, renam
 
 A property definition is reused across every note that adopts it — adding a `Topics` multi-select once means every note has access to the same vocabulary.
 
+Option names are unique within a property. Adding an option whose name already exists keeps the existing one, including its color, rather than creating a second entry.
+
+A status property you have not customized yet shows the built-in `Todo` / `In progress` / `Done` set. The first option you add to it saves that set alongside your new option, so what the picker shows and what the vault stores stay the same.
+
 ### Adding a Property to a Note
 
 In the property panel, click **Add property** and pick from the list. Set the value inline.
