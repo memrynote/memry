@@ -1273,6 +1273,41 @@ describe('ContentArea', () => {
     expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
   })
 
+  it('reverts a checkbox to a checklist item when the project lookup rejects', async () => {
+    vi.useFakeTimers()
+    const obsidian = createBlock('obsidian-line', {
+      type: 'checkListItem',
+      content: [{ type: 'text', text: 'Buy milk', styles: {} }]
+    })
+    contentAreaMocks.tasksService.listProjects.mockRejectedValue(new Error('no vault open'))
+    // Twice: once for the onChange that schedules, once for the re-scan the
+    // debounce timer runs before it converts.
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-line' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.listProjects).toHaveBeenCalled()
+    expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+    expect(obsidian.type).toBe('checkListItem')
+    expect(obsidian.content).toEqual([{ type: 'text', text: 'Buy milk', styles: {} }])
+  })
+
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {
     render(<ContentArea noteId="note-1" />)
 

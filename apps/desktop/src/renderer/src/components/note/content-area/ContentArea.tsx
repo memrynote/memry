@@ -1051,29 +1051,31 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const liveBlock = editor.getBlock(blockId)
         const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
 
-        let projects: any[] = tasksCtx?.projects ?? []
-        if (projects.length === 0) {
-          const res = await tasksService.listProjects()
-          projects = res.projects ?? []
-        }
-
-        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-        if (!defaultProject) {
-          restoreCheckbox(blockId, content, wasChecked)
-          return
-        }
-
-        let projectIdForCreate: string | null = null
-        if (liveParentTaskId) {
-          const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
-          if (parentTask) projectIdForCreate = parentTask.projectId
-        }
-
-        const parsed = text
-          ? parseQuickAdd(text, projects)
-          : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
-
+        // Everything that can fail sits inside this try: the project lookup
+        // rejects when no vault is open, not just when the create fails.
         try {
+          let projects: any[] = tasksCtx?.projects ?? []
+          if (projects.length === 0) {
+            const res = await tasksService.listProjects()
+            projects = res.projects ?? []
+          }
+
+          const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+          if (!defaultProject) {
+            restoreCheckbox(blockId, content, wasChecked)
+            return
+          }
+
+          let projectIdForCreate: string | null = null
+          if (liveParentTaskId) {
+            const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+            if (parentTask) projectIdForCreate = parentTask.projectId
+          }
+
+          const parsed = text
+            ? parseQuickAdd(text, projects)
+            : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
+
           const result = await tasksService.create({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
