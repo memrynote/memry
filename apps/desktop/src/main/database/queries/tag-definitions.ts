@@ -71,7 +71,16 @@ export function getOrCreateTag(
   const tagCount = db.select({ count: count() }).from(tagDefinitions).get()?.count ?? 0
   const color = TAG_COLOR_PALETTE[tagCount % TAG_COLOR_PALETTE.length]
 
-  db.insert(tagDefinitions).values({ name: normalizedName, color, colorAuthored: false }).run()
+  // Stored with the caller's casing, matched without it. `name` is the primary
+  // key under COLLATE NOCASE (see nocase.ts), so `Reading` and `reading` are
+  // still the same row and every `eq(name, lowercased)` lookup keeps working;
+  // the row just remembers how the tag was first written. For a tag that no
+  // note uses yet — one created from the tag hub — this row is the only place
+  // the display name exists, since `getAllTagsWithCounts` otherwise takes it
+  // from usage. Only inserts are affected: an existing row's casing is never
+  // rewritten, so nothing re-emits to sync.
+  const displayName = name.trim()
+  db.insert(tagDefinitions).values({ name: displayName, color, colorAuthored: false }).run()
 
   // Insert branch only — the get branch above returns without emitting.
   trackMainEvent('tag_created', {
@@ -81,12 +90,13 @@ export function getOrCreateTag(
     result: 'success'
   })
 
-  return { name: normalizedName, color, icon: null, categoryId: null, sortOrder: 0 }
+  return { name: displayName, color, icon: null, categoryId: null, sortOrder: 0 }
 }
 
 export function getAllTagDefinitions(db: DataDb): {
   name: string
   color: string
+  colorAuthored: boolean
   icon: string | null
   categoryId: string | null
   sortOrder: number
@@ -95,6 +105,7 @@ export function getAllTagDefinitions(db: DataDb): {
     .select({
       name: tagDefinitions.name,
       color: tagDefinitions.color,
+      colorAuthored: tagDefinitions.colorAuthored,
       icon: tagDefinitions.icon,
       categoryId: tagDefinitions.categoryId,
       sortOrder: tagDefinitions.sortOrder
