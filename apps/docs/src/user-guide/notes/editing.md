@@ -526,8 +526,8 @@ is guaranteed is that nothing is _lost_ on the way through:
 - **A hard line break stays a hard line break.** A line ending in two spaces keeps them, so the
   break stays a break rather than becoming a paragraph gap.
 - **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
-  definition both survive, including a definition several links share. Definitions are gathered
-  at the end of the file.
+  definition both survive, including a definition several links share. The link stays a working,
+  clickable link while the note is open. Definitions are gathered at the end of the file.
 - **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
   which is what an Obsidian Kanban board's settings block needs to keep working.
 

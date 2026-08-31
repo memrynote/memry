@@ -1049,7 +1049,15 @@ export class CrdtProvider {
     }
 
     const raw = await safeRead(absolutePath)
-    if (!raw) return
+    if (!raw) {
+      // An empty file seeds nothing, but its zero bytes WERE read and the empty
+      // doc represents them faithfully. Recording the hash is what lets the
+      // first keystroke into an empty foreign note reach the file — without it
+      // the write-back's never-read guard would refuse that save forever,
+      // since nothing else fills the column in (#1909).
+      if (raw === '') this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      return
+    }
 
     // Before gray-matter, before BlockNote. The parse is what freezes the main
     // process — cost tracks single-block size, not file size — so a large-file
@@ -1068,7 +1076,13 @@ export class CrdtProvider {
     }
 
     const parsed = parseNote(raw, cached.path)
-    if (!parsed.content?.trim()) return
+    if (!parsed.content?.trim()) {
+      // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
+      // WERE read and the empty doc represents the empty body faithfully, so
+      // the same recording applies as for an empty file above.
+      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      return
+    }
 
     // Pass the note's path so embed targets are written relative to it — this
     // fragment is what gets serialized back to the vault file.
@@ -1083,20 +1097,31 @@ export class CrdtProvider {
     // for the user who opens such a note and edits it, because nothing else
     // ever fills that column in: `indexVault` skips a path that already has a
     // row. The bytes ARE read here, and the doc is built from them, so this is
-    // the honest place to say so. A hash the indexer already measured is left
-    // alone; this only ever fills a hole.
-    if (ok && !cached.contentHash) {
-      try {
-        updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
-      } catch (err) {
-        log.warn('Failed to record the seeded content hash', { noteId, error: err })
-      }
+    // the honest place to say so.
+    if (ok) {
+      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
     }
 
     if (ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc)).catch((err) => {
         log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })
       })
+    }
+  }
+
+  // A hash the indexer already measured is left alone; this only ever fills a
+  // hole, and only with the hash of bytes the seed genuinely read.
+  private recordSeedContentHash(
+    indexDb: ReturnType<typeof getIndexDatabase>,
+    noteId: string,
+    existingHash: string | null | undefined,
+    raw: string
+  ): void {
+    if (existingHash) return
+    try {
+      updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
+    } catch (err) {
+      log.warn('Failed to record the seeded content hash', { noteId, error: err })
     }
   }
 

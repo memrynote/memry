@@ -15,7 +15,7 @@
 import { describe, expect, it } from 'vitest'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { markdownToYFragment, yDocToMarkdown } from './blocknote-converter'
+import { markdownToYFragment, yDocToMarkdown, yFragmentToBlocks } from './blocknote-converter'
 
 async function roundTrip(markdown: string): Promise<string> {
   const doc = new Y.Doc()
@@ -90,6 +90,13 @@ const REFERENCE_LINK_CASES: ForeignCase[] = [
   {
     name: 'an unused definition is kept rather than dropped',
     markdown: 'No links here.\n\n[d]: https://example.com'
+  },
+  {
+    // CommonMark resolves a definition wherever it sits, so moving it to the
+    // end keeps every link working; what it costs is the author's position.
+    name: 'a mid-file definition comes back at the end without leaving a gap',
+    markdown: 'Intro.\n\n[d]: /d\n\nSee [x][d].',
+    canonical: 'Intro.\n\nSee [x][d].\n\n[d]: /d'
   }
 ]
 
@@ -143,6 +150,28 @@ const KANBAN_CASES: ForeignCase[] = [
 ]
 
 describe('foreign markdown round-trip, main pipeline', () => {
+  /**
+   * The half a byte assertion cannot see. Stripping the definitions before the
+   * parse would keep the round trip byte-perfect while the note opens with
+   * every reference link as dead bracket text: CommonMark reads `[a][d]` with
+   * no definition in sight as literal characters, not a link. The parse must
+   * see the definitions so the user gets a working link, and the side-channel
+   * is only for the way back out.
+   */
+  it('a reference link opens as a working link, not bracket text', async () => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(
+      'See [the docs][d].\n\n[d]: https://example.com',
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    const inline = (blocks?.[0]?.content ?? []) as Array<{ type: string; href?: string }>
+    expect(
+      inline.some((part) => part.type === 'link' && part.href === 'https://example.com'),
+      'the doc holds a real link with the definition resolved'
+    ).toBe(true)
+  })
+
   const groups: Array<[string, ForeignCase[]]> = [
     ['hard line breaks', HARD_BREAK_CASES],
     ['reference links', REFERENCE_LINK_CASES],

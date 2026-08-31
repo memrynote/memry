@@ -304,11 +304,14 @@ export async function markdownToYFragment(
   notePath?: string
 ): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
-  // Reference definitions are pulled out before the editor sees them: it has no
-  // block for one, so it drops the definition and inlines the destination at
-  // every use site. They ride beside the document instead (#1909).
+  // Reference definitions ride beside the document in two Y.Arrays: the editor
+  // has no block for one, so the definition is dropped and the destination
+  // inlined at every use site, and the arrays are what puts both back (#1909).
+  // The parse still sees the definitions — without them `[docs][d]` is literal
+  // bracket text to CommonMark, not a link, and the note would open with every
+  // reference link dead on screen.
   const references = stripLinkReferenceDefinitions(parsed.plainText)
-  const blocks = await markdownToBlocks(references.markdown, notePath)
+  const blocks = await markdownToBlocks(parsed.plainText, notePath)
   if (!blocks) return false
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
   // binds the custom block on first paint instead of a raw checkbox.
