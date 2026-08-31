@@ -20,6 +20,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     listProjects: vi.fn(),
     get: vi.fn(),
     create: vi.fn(),
+    complete: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
   },
@@ -365,11 +366,17 @@ function setDocument(blocks: any[]): void {
   })
 }
 
+const OBSIDIAN_LINE = 'Buy milk #Errand 📅 2026-01-01 ⏫ ✅ 2026-01-07 ❌ 2026-01-08'
+
 function resetEditor(): void {
   contentAreaMocks.blocks = new Map()
   const standalone = createBlock('standalone', {
     type: 'checkListItem',
     content: [{ type: 'text', text: 'Standalone #urgent', styles: {} }]
+  })
+  createBlock('obsidian-check', {
+    type: 'checkListItem',
+    content: [{ type: 'text', text: OBSIDIAN_LINE, styles: {} }]
   })
   const subCheck = createBlock('sub-check', {
     type: 'checkListItem',
@@ -476,6 +483,7 @@ describe('ContentArea', () => {
       success: true,
       task: { id: 'created-task', title: 'Created task', projectId: 'project-1' }
     })
+    contentAreaMocks.tasksService.complete.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.update.mockResolvedValue({ success: true })
     contentAreaMocks.tasksService.delete.mockResolvedValue({ success: true })
     contentAreaMocks.notesService.uploadAttachment.mockResolvedValue({
@@ -1194,6 +1202,52 @@ describe('ContentArea', () => {
     })
 
     expect(contentAreaMocks.tasksService.create).not.toHaveBeenCalled()
+  })
+
+  it('imports an Obsidian Tasks checkbox into the task it describes', async () => {
+    vi.useFakeTimers()
+    contentAreaMocks.analyzeTaskIntents
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+      .mockReturnValueOnce({
+        ...emptyIntents(new Set()),
+        standaloneCandidate: { blockId: 'obsidian-check' }
+      })
+
+    render(<ContentArea noteId="note-1" />)
+
+    fireEvent.click(screen.getByText('change'))
+    fireEvent.click(screen.getByText('change'))
+
+    await act(async () => {
+      vi.advanceTimersByTime(600)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(contentAreaMocks.tasksService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Buy milk',
+        priority: 3,
+        dueDate: '2026-01-01',
+        // The cancelled date has no column, so the whole line is kept.
+        description: OBSIDIAN_LINE,
+        tags: ['Errand']
+      })
+    )
+    expect(contentAreaMocks.tasksService.complete).toHaveBeenCalledWith({
+      id: 'created-task',
+      completedAt: '2026-01-07T00:00:00.000Z'
+    })
+    // The plugin fields left the block, so the markdown line the `{task:<id>}`
+    // suffix lands on is the description alone.
+    expect(contentAreaMocks.blocks.get('obsidian-check').props.title).toBe('Buy milk #Errand')
   })
 
   it('focuses the previous task title instead of letting Backspace delete task blocks', () => {

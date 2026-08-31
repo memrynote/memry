@@ -63,6 +63,7 @@ import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { buildObsidianTaskImport } from '@/lib/obsidian-task-import'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
@@ -120,6 +121,16 @@ import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
+
+/** Case-insensitive union, first casing kept, as `setTaskTags` stores them. */
+function mergeTags(obsidianTags: string[], parsedTags: string[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const tag of [...obsidianTags, ...parsedTags]) {
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()]
+}
 
 /**
  * Rewrite the first inline node in `content` that `match` accepts.
@@ -1019,9 +1030,15 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // editor) becomes a task that is already done.
       const wasChecked = !!(block.props as any)?.checked
 
+      // An Obsidian Tasks line carries its plugin fields in the text. They are
+      // read off here so the title the block keeps, and therefore the markdown
+      // line the suffix is appended to, is the description alone.
+      const obsidian = buildObsidianTaskImport(text, new Date())
+      const title = obsidian?.title ?? text
+
       editor.updateBlock(block, {
         type: 'taskBlock' as any,
-        props: { taskId: '', title: text, checked: wasChecked }
+        props: { taskId: '', title, checked: wasChecked }
       })
 
       void (async () => {
@@ -1047,8 +1064,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (parentTask) projectIdForCreate = parentTask.projectId
         }
 
-        const parsed = text
-          ? parseQuickAdd(text, projects)
+        const parsed = title
+          ? parseQuickAdd(title, projects)
           : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
 
         try {
@@ -1056,15 +1073,25 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
             title: parsed.title,
-            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
-            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            priority: obsidian?.priority ?? PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: obsidian?.dueDate ?? (parsed.dueDate ? formatDateKey(parsed.dueDate) : null),
+            startDate: obsidian?.startDate ?? null,
+            repeatConfig: obsidian?.repeatConfig ?? null,
+            repeatFrom: obsidian?.repeatFrom ?? null,
+            description: obsidian?.description ?? null,
             // A `#tag` on the checklist line leaves the title now that `#` means
             // tag, so it has to land on the task instead of being dropped.
-            tags: parsed.tags,
+            tags: mergeTags(obsidian?.tags ?? [], parsed.tags),
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
-            if (wasChecked) await tasksService.complete({ id: result.task.id })
+            const doneAt = obsidian?.completedAt ?? null
+            if (wasChecked || doneAt) {
+              await tasksService.complete({
+                id: result.task.id,
+                ...(doneAt ? { completedAt: doneAt } : {})
+              })
+            }
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
