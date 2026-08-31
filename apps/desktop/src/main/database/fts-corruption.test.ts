@@ -58,10 +58,18 @@ function garbleSegments(sqlite: Database.Database): void {
   sqlite.unsafeMode(false)
 }
 
-/** Garble the structure record: reads still answer, writes and checks fail. */
+/**
+ * Garble the structure record: reads still answer, writes and checks fail.
+ *
+ * Zero bytes rather than random ones, because fts5 only rejects this record
+ * when its varints fail to consume the blob exactly. Random bytes decode
+ * cleanly about 1 run in 15 — the table then deletes without complaint and the
+ * test claiming a corrupt table cannot be emptied goes red for no reason.
+ * Zeroes always decode short, so the corruption is real on every run.
+ */
 function garbleStructure(sqlite: Database.Database): void {
   sqlite.unsafeMode(true)
-  sqlite.prepare('UPDATE fts_notes_data SET block = randomblob(20) WHERE id = 1').run()
+  sqlite.prepare('UPDATE fts_notes_data SET block = zeroblob(20) WHERE id = 1').run()
   sqlite.unsafeMode(false)
 }
 
@@ -229,9 +237,9 @@ describe('fts5 index corruption', () => {
 
       // A busy database is a transient condition; treating it as corruption
       // would buy the user a needless full reindex.
-      expect(isSqliteCorruptError(Object.assign(new Error('locked'), { code: 'SQLITE_BUSY' }))).toBe(
-        false
-      )
+      expect(
+        isSqliteCorruptError(Object.assign(new Error('locked'), { code: 'SQLITE_BUSY' }))
+      ).toBe(false)
       expect(isSqliteCorruptError(new Error('something went wrong'))).toBe(false)
     })
   })
