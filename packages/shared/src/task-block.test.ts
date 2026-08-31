@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scanTaskCheckboxStates, serializeTaskBlock } from './task-block'
+import { parseTaskBlockSuffix, scanTaskCheckboxStates, serializeTaskBlock } from './task-block'
 
 describe('scanTaskCheckboxStates', () => {
   it('returns an empty map when the note has no task lines', () => {
@@ -57,5 +57,31 @@ describe('scanTaskCheckboxStates', () => {
 
   it('ignores checkbox states other than space and x', () => {
     expect(scanTaskCheckboxStates('- [-] Half done {task:h1}').size).toBe(0)
+  })
+})
+
+describe('parseTaskBlockSuffix with an Obsidian Tasks tail', () => {
+  it('still finds the id after the plugin appends a done date', () => {
+    expect(parseTaskBlockSuffix('Buy milk {task:abc} ✅ 2026-09-05')).toEqual({
+      taskId: 'abc',
+      title: 'Buy milk'
+    })
+  })
+
+  it('still finds the id after the plugin appends a dataview completion field', () => {
+    expect(parseTaskBlockSuffix('Buy milk {task:abc}  [completion:: 2026-09-05]')).toEqual({
+      taskId: 'abc',
+      title: 'Buy milk'
+    })
+  })
+
+  it('leaves ordinary trailing prose alone so the line is not claimed', () => {
+    expect(parseTaskBlockSuffix('Buy milk {task:abc} and eggs')).toBeNull()
+  })
+
+  it('reconciles a checkbox the plugin completed in Obsidian', () => {
+    expect(scanTaskCheckboxStates('- [x] Buy milk {task:abc} ✅ 2026-09-05')).toEqual(
+      new Map([['abc', true]])
+    )
   })
 })
