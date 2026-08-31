@@ -32,15 +32,17 @@ A vault half way through a migration can mix the two on a single line. Memry rea
 | Due date             | `📅` `📆` `🗓`            | Due date                                                                            |
 | Start date           | `🛫`                     | Start date                                                                          |
 | Scheduled date       | `⏳` `⌛`                | Start date, when the line carries no start date. Otherwise kept in the description. |
-| Done date            | `✅`                     | Completion time                                                                     |
+| Done date            | `✅`                     | Completion time. The line is imported as done, and Memry ticks the box to match.    |
 | Cancelled date       | `❌`                     | Kept in the description                                                             |
 | Created date         | `➕`                     | Kept in the description                                                             |
 | Recurrence           | `🔁`                     | Repeat, for the rules Memry can express. Otherwise kept in the description.         |
 | On completion        | `🏁`                     | Kept in the description                                                             |
-| Tags                 | `#tag`                   | Task tags, original casing preserved                                                |
+| Tags                 | `#tag`                   | Task tags, original casing preserved. See the limits below.                         |
 | Id                   | `🆔`                     | Line left alone                                                                     |
 | Depends on           | `⛔`                     | Line left alone                                                                     |
 | Block link           | `^blockid`               | Line left alone                                                                     |
+
+A line nested under a task imports as a subtask of it, and reads exactly the same fields as a top-level one.
 
 ## The original line is always kept
 
@@ -49,6 +51,20 @@ Every task imported this way stores the line it came from on its description, ve
 Importing rewrites the line in your vault: the plugin's fields come off it and Memry's suffix goes on. Mapping `📅 2026-09-01` into a due date still loses your symbol choice, your field order and your spacing, and a record only of the fields Memry happened to find useful is not a record. Keeping the whole line means you can always read back exactly what you wrote, or copy it straight into Obsidian to undo the import by hand.
 
 **Kept in the description** in the table above therefore means the value lives only there. Memry has no field for a cancelled date, a created date or an on-completion action, so the description is the only place that value survives.
+
+## A done date ticks the box
+
+The plugin writes `✅` when a task is finished, so a line carrying one imports as a completed task and Memry writes it back as `- [x]`.
+
+That matters because the checkbox in the file is what Memry reads back. A completed task written back as `- [ ]` would be un-completed again on the next save of the note, and the done date you imported would be gone. See [The Checkbox in the File Wins](/user-guide/tasks/capturing#the-checkbox-in-the-file-wins).
+
+A done date the calendar does not have, `✅ 2026-02-30`, is not a completion time. The task imports as it is written otherwise, and the date survives on the description with the rest of the line.
+
+## Tag limits
+
+A Memry task takes up to twenty tags, each up to fifty characters. The Obsidian tag grammar is looser than that, so a longer or a twenty-first tag does not become a Memry tag.
+
+Nothing is lost from the file. Tags stay inline in the title where you wrote them, and the description keeps the whole original line.
 
 ## Priority
 
@@ -71,7 +87,7 @@ Any other rule imports the task without a repeat and keeps its text on the descr
 
 ## What Memry leaves alone
 
-Three constructs stop the conversion. The line stays an ordinary checkbox and its bytes on disk do not change.
+Three constructs stop the conversion, however the conversion is asked for. The line stays an ordinary checkbox and its bytes on disk do not change, whether Memry offered to convert it or you asked for it yourself from the right-click menu.
 
 | Construct  | Symbol      |
 | ---------- | ----------- |

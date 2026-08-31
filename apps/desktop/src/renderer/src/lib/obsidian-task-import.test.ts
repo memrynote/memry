@@ -87,8 +87,22 @@ describe('buildObsidianTaskImport', () => {
       expect(build('Buy milk 🛫 2026-01-04 ⏳ 2026-01-05')?.startDate).toBe('2026-01-04')
     })
 
-    it('maps ✅ to a full ISO completedAt', () => {
-      expect(build('Buy milk ✅ 2026-01-07')?.completedAt).toBe('2026-01-07T00:00:00.000Z')
+    it('maps ✅ to the instant local midnight starts on that date', () => {
+      // The plugin writes a calendar date. `2026-01-07` means that day where the
+      // user is, so a UTC-midnight instant renders as the 6th west of UTC.
+      expect(build('Buy milk ✅ 2026-01-07')?.completedAt).toBe(new Date(2026, 0, 7).toISOString())
+    })
+
+    it('refuses a done date the calendar does not have', () => {
+      // `z.string().datetime()` rejects `2026-02-30T...`, and the complete call
+      // it rejects runs after the task row already exists.
+      expect(build('Buy milk ✅ 2026-02-30')?.completedAt).toBeNull()
+      expect(build('Buy milk ✅ 2025-02-29')?.completedAt).toBeNull()
+      expect(build('Buy milk ✅ 2026-13-01')?.completedAt).toBeNull()
+    })
+
+    it('keeps a leap day the calendar does have', () => {
+      expect(build('Buy milk ✅ 2024-02-29')?.completedAt).toBe(new Date(2024, 1, 29).toISOString())
     })
 
     it('leaves completedAt null without a done date', () => {

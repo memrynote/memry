@@ -35,6 +35,24 @@ export interface ObsidianTaskImport {
   completedAt: string | null
 }
 
+/**
+ * The instant local midnight starts on a written calendar date.
+ *
+ * The plugin writes a date, a Memry completion is an instant, and `2026-01-07`
+ * means that day where the user is. A UTC-midnight instant renders as the 6th
+ * anywhere west of UTC, which is the same reason `formatDateKey` is local.
+ *
+ * Null for a date the calendar does not have. `2026-02-30` matches the plugin's
+ * date shape, and `z.string().datetime()` on the complete call rejects it after
+ * the task row already exists.
+ */
+function localMidnight(date: string): string | null {
+  const [year, month, day] = date.split('-').map(Number)
+  const at = new Date(year, month - 1, day)
+  if (at.getFullYear() !== year || at.getMonth() !== month - 1 || at.getDate() !== day) return null
+  return at.toISOString()
+}
+
 // `lowest` collapses onto `low` because Memry's scale has four steps to the
 // plugin's five. The line is preserved so the distinction is not lost.
 const PRIORITIES: Record<ObsidianPriority, 1 | 2 | 3 | 4> = {
@@ -88,6 +106,6 @@ export function buildObsidianTaskImport(text: string, now: Date): ObsidianTaskIm
           },
     repeatFrom: recurrence === null ? null : recurrence.fromCompletion ? 'completion' : 'due',
     description: text,
-    completedAt: fields.doneDate === null ? null : `${fields.doneDate}T00:00:00.000Z`
+    completedAt: fields.doneDate === null ? null : localMidnight(fields.doneDate)
   }
 }
