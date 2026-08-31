@@ -123,4 +123,33 @@ describe('useTagCategories', () => {
       expect(listCategories.mock.calls.length).toBeGreaterThan(listCategoriesCallsBefore)
     )
   })
+
+  it('creates a tag from the hub with the casing the user typed, and refetches so it lands without a restart', async () => {
+    updateTagColor.mockResolvedValue({ success: true })
+    reorder.mockResolvedValue({ success: true })
+
+    const { result } = renderHook(() => useTagCategories())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await result.current.createTag('Reading', 'emerald', null)
+
+    expect(updateTagColor).toHaveBeenCalledWith({ tag: 'Reading', color: 'emerald' })
+    expect(reorder).toHaveBeenCalledWith({
+      tags: [{ tag: 'Reading', categoryId: null, sortOrder: 0 }]
+    })
+    await waitFor(() => expect(refetchNoteTags).toHaveBeenCalled())
+    expect(result.current.error).toBeNull()
+  })
+
+  it('surfaces a failed tag create instead of swallowing it', async () => {
+    updateTagColor.mockResolvedValue({ success: false, error: 'disk is full' })
+
+    const { result } = renderHook(() => useTagCategories())
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    await result.current.createTag('Reading', 'emerald', null)
+
+    await waitFor(() => expect(result.current.error).toBe('disk is full'))
+    expect(reorder).not.toHaveBeenCalled()
+  })
 })
