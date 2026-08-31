@@ -63,6 +63,8 @@ import { TaskPrefetchProvider } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
 import { useTasksOptional } from '@/contexts/tasks'
 import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { buildObsidianTaskImport } from '@/lib/obsidian-task-import'
+import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
@@ -120,6 +122,39 @@ import type { PasteLinkOption } from './hooks/use-paste-link-menu'
 import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
+
+// `TaskCreateSchema` caps a tag at 50 characters and a task at 20 of them, and
+// the Obsidian tag grammar is looser than both. One over-long tag rejects the
+// whole create, so the task never arrives at all. Dropping it here costs
+// nothing on disk: tags stay inline in the title, and the description keeps the
+// line verbatim.
+const TAG_MAX_LENGTH = 50
+const TAG_MAX_COUNT = 20
+
+/**
+ * Case-insensitive union, first casing kept, as `setTaskTags` stores them,
+ * clamped to what the create contract will accept.
+ */
+function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const tag of [...obsidianTags, ...parsedTags]) {
+    if (tag.length > TAG_MAX_LENGTH) continue
+    const key = tag.toLowerCase()
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()].slice(0, TAG_MAX_COUNT)
+}
+
+/** The block's line as markdown sees it, without the `- [ ] ` marker. */
+function checkboxLineText(block: { content?: unknown }): string {
+  const content = block.content as (string | { text?: string })[] | undefined
+  return (
+    content
+      ?.map((c) => (typeof c === 'string' ? c : (c.text ?? '')))
+      .join('')
+      .trim() ?? ''
+  )
+}
 
 /**
  * Rewrite the first inline node in `content` that `match` accepts.
@@ -1000,28 +1035,72 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     enabled: editable
   })
 
+  // The block becomes a `taskBlock` before the create call resolves. A create
+  // that fails would otherwise leave one holding `taskId: ''`: a task the file
+  // has no suffix for and the database has no row for.
+  const restoreCheckbox = useCallback(
+    (blockId: string, content: unknown, checked: boolean) => {
+      const stale = editor.getBlock(blockId)
+      if (!stale || (stale.props as any)?.taskId) return
+      editor.updateBlock(stale, {
+        type: 'checkListItem' as any,
+        props: { checked } as any,
+        content: content as any
+      })
+    },
+    [editor]
+  )
+
+  // A rejected completion must not cost the block its task id. The row already
+  // exists at this point, and a block left on `taskId: ''` can never find it.
+  const completeConverted = useCallback(async (taskId: string, completedAt: string | null) => {
+    try {
+      await tasksService.complete({ id: taskId, ...(completedAt ? { completedAt } : {}) })
+    } catch (err) {
+      toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.completeFailed')))
+    }
+  }, [])
+
   const convertCheckboxToTask = useCallback(
     (blockId: string) => {
-      dismissedBlocksRef.current.add(blockId)
-
       const block = editor.getBlock(blockId)
       if (!block) return
 
-      const content = block.content as any[] | undefined
-      const text =
-        content
-          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
-          .join('')
-          .trim() ?? ''
+      const originalContent = block.content
+      const text = checkboxLineText(block)
+
+      // Refused where the rewrite happens rather than only where the analyzer
+      // proposes it. The context menu reaches this converter directly.
+      // Appending Memry's suffix un-anchors the plugin's field regexes, and an
+      // id or a dependency names lines in files Memry has never read.
+      if (obsidianTaskImportBlocker(text) !== null) {
+        toast.error(tRef.current('editor.obsidianTask.refused'))
+        return
+      }
+
+      dismissedBlocksRef.current.add(blockId)
 
       // Markdown is the source of truth: a checkbox that arrives already
       // ticked (`- [x] Buy milk`, typically from an import or an external
       // editor) becomes a task that is already done.
       const wasChecked = !!(block.props as any)?.checked
 
+      // An Obsidian Tasks line carries its plugin fields in the text. They are
+      // read off here so the title the block keeps, and therefore the markdown
+      // line the suffix is appended to, is the description alone.
+      const obsidian = buildObsidianTaskImport(text, new Date())
+      const title = obsidian?.title ?? text
+
+      // The plugin's done date says the line is finished, so the box has to be
+      // ticked to match. Left unticked, the block serializes as `- [ ] ...
+      // {task:id}` over a task that has a completedAt, and the markdown
+      // reconciler un-completes it on the very next save of the note.
+      const doneAt = obsidian?.completedAt ?? null
+      const isDone = wasChecked || doneAt !== null
+
       editor.updateBlock(block, {
         type: 'taskBlock' as any,
-        props: { taskId: '', title: text, checked: wasChecked }
+        props: { taskId: '', title, checked: isDone }
       })
 
       void (async () => {
@@ -1039,7 +1118,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         }
 
         const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-        if (!defaultProject) return
+        if (!defaultProject) {
+          dismissedBlocksRef.current.delete(blockId)
+          restoreCheckbox(blockId, originalContent, wasChecked)
+          return
+        }
 
         let projectIdForCreate: string | null = null
         if (liveParentTaskId) {
@@ -1047,8 +1130,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           if (parentTask) projectIdForCreate = parentTask.projectId
         }
 
-        const parsed = text
-          ? parseQuickAdd(text, projects)
+        const parsed = title
+          ? parseQuickAdd(title, projects)
           : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
 
         try {
@@ -1056,15 +1139,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
             title: parsed.title,
-            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
-            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            priority: obsidian?.priority ?? PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: obsidian?.dueDate ?? (parsed.dueDate ? formatDateKey(parsed.dueDate) : null),
+            startDate: obsidian?.startDate ?? null,
+            repeatConfig: obsidian?.repeatConfig ?? null,
+            repeatFrom: obsidian?.repeatFrom ?? null,
+            description: obsidian?.description ?? null,
             // A `#tag` on the checklist line leaves the title now that `#` means
             // tag, so it has to land on the task instead of being dropped.
-            tags: parsed.tags,
+            tags: tagsForCreate(obsidian?.tags ?? [], parsed.tags),
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
-            if (wasChecked) await tasksService.complete({ id: result.task.id })
+            if (isDone) await completeConverted(result.task.id, doneAt)
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
               const currentTitle = (freshBlock.props as any).title || parsed.title
@@ -1073,7 +1160,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: wasChecked,
+                  checked: isDone,
                   parentTaskId: currentParentTaskId
                 }
               })
@@ -1082,35 +1169,49 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }
             }
           }
-        } catch {
+        } catch (err) {
+          // No row was created, so the block must not stay a taskBlock: one
+          // holding `taskId: ''` renders a task that nothing can ever open.
           dismissedBlocksRef.current.delete(blockId)
+          restoreCheckbox(blockId, originalContent, wasChecked)
+          toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
         }
       })()
     },
-    [editor, noteId, tasksCtx]
+    [editor, noteId, tasksCtx, completeConverted, restoreCheckbox]
   )
 
   const convertCheckboxToSubtask = useCallback(
     (blockId: string, parentTaskId: string) => {
-      dismissedBlocksRef.current.add(blockId)
-
       const block = editor.getBlock(blockId)
       if (!block) return
 
-      const content = block.content as any[] | undefined
-      const text =
-        content
-          ?.map((c: any) => (typeof c === 'string' ? c : (c.text ?? '')))
-          .join('')
-          .trim() ?? ''
+      const originalContent = block.content
+      const text = checkboxLineText(block)
+
+      // Same refusal as the top-level path. A nested line is no safer to rewrite.
+      if (obsidianTaskImportBlocker(text) !== null) {
+        toast.error(tRef.current('editor.obsidianTask.refused'))
+        return
+      }
+
+      dismissedBlocksRef.current.add(blockId)
 
       // Same markdown-wins rule as convertCheckboxToTask: an already-ticked
       // nested checkbox becomes a completed subtask.
       const wasChecked = !!(block.props as any)?.checked
 
+      // And the same field lift. Left on the line, a due date would be
+      // serialized behind Memry's suffix, where the plugin's end-anchored
+      // regex can no longer see it, and Memry would never have read it either.
+      const obsidian = buildObsidianTaskImport(text, new Date())
+      const title = obsidian?.title ?? text
+      const doneAt = obsidian?.completedAt ?? null
+      const isDone = wasChecked || doneAt !== null
+
       editor.updateBlock(block, {
         type: 'taskBlock' as any,
-        props: { taskId: '', title: text, checked: wasChecked, parentTaskId }
+        props: { taskId: '', title, checked: isDone, parentTaskId }
       })
 
       void (async () => {
@@ -1118,26 +1219,33 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           const parentTask = await tasksService.get(parentTaskId)
           if (!parentTask) {
             dismissedBlocksRef.current.delete(blockId)
+            restoreCheckbox(blockId, originalContent, wasChecked)
             return
           }
 
           const result = await tasksService.create({
             projectId: parentTask.projectId,
             parentId: parentTaskId,
-            title: text,
-            priority: 0,
+            title,
+            priority: obsidian?.priority ?? 0,
+            dueDate: obsidian?.dueDate ?? null,
+            startDate: obsidian?.startDate ?? null,
+            repeatConfig: obsidian?.repeatConfig ?? null,
+            repeatFrom: obsidian?.repeatFrom ?? null,
+            description: obsidian?.description ?? null,
+            tags: tagsForCreate(obsidian?.tags ?? [], []),
             linkedNoteIds: noteId ? [noteId] : []
           })
           if (result.success && result.task) {
-            if (wasChecked) await tasksService.complete({ id: result.task.id })
+            if (isDone) await completeConverted(result.task.id, doneAt)
             const freshBlock = editor.getBlock(blockId)
             if (freshBlock) {
-              const currentTitle = (freshBlock.props as any).title || text
+              const currentTitle = (freshBlock.props as any).title || title
               editor.updateBlock(freshBlock, {
                 props: {
                   taskId: result.task.id,
                   title: currentTitle,
-                  checked: wasChecked,
+                  checked: isDone,
                   parentTaskId
                 }
               })
@@ -1146,12 +1254,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
               }
             }
           }
-        } catch {
+        } catch (err) {
           dismissedBlocksRef.current.delete(blockId)
+          restoreCheckbox(blockId, originalContent, wasChecked)
+          toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
         }
       })()
     },
-    [editor, noteId]
+    [editor, noteId, completeConverted, restoreCheckbox]
   )
 
   const cancelPendingConvert = useCallback(() => {

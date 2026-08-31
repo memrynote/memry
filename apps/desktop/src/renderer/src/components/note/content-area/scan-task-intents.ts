@@ -13,6 +13,7 @@
  */
 
 import { extractInlineText, parseTaskBlockSuffix } from '@memry/shared/task-block'
+import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
 
 export interface SubtaskCandidate {
   blockId: string
@@ -74,6 +75,16 @@ function isCheckListItem(block: TaskIntentBlock): boolean {
 // must never be treated as a conversion candidate.
 function hasTaskSuffix(block: TaskIntentBlock): boolean {
   return parseTaskBlockSuffix(extractInlineText(block.content)) !== null
+}
+
+// Three Obsidian Tasks constructs Memry cannot rewrite. Appending `{task:<id>}`
+// un-anchors the plugin's end-anchored field regexes, and `🆔` / `⛔` name lines
+// in files Memry has not read. Declining them leaves the bytes untouched.
+//
+// Called only where a candidate would otherwise be taken: this runs on every
+// editor onChange, and the check parses the line.
+function isImportBlocked(block: TaskIntentBlock): boolean {
+  return obsidianTaskImportBlocker(extractInlineText(block.content)) !== null
 }
 
 export function analyzeTaskIntents(
@@ -142,13 +153,13 @@ export function analyzeTaskIntents(
 
       if (isCheckListItem(b) && !dismissedBlockIds.has(b.id) && !hasTaskSuffix(b)) {
         if (parentTaskBlock && parentTaskBlock.props?.taskId) {
-          if (!intents.subtaskCandidate) {
+          if (!intents.subtaskCandidate && !isImportBlocked(b)) {
             intents.subtaskCandidate = {
               blockId: b.id,
               parentTaskId: parentTaskBlock.props.taskId
             }
           }
-        } else if (!intents.standaloneCandidate) {
+        } else if (!intents.standaloneCandidate && !isImportBlocked(b)) {
           intents.standaloneCandidate = { blockId: b.id }
         }
       }
