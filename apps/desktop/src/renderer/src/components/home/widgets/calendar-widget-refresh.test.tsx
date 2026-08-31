@@ -1,6 +1,6 @@
 import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CalendarChangedEvent, CalendarProjectionItem } from '@/services/calendar-service'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
@@ -25,15 +25,21 @@ vi.mock('@/hooks/use-general-settings', () => ({
   useGeneralSettings: () => ({ settings: { clockFormat: '24h' } })
 }))
 
+const SOURCE_TYPE_BY_VISUAL_TYPE = {
+  event: 'calendar_event',
+  external_event: 'calendar_external_event',
+  note: 'note'
+} as const
+
 function projectionItem(
   id: string,
   title: string,
   hourUtc: number,
-  visualType: 'event' | 'external_event'
+  visualType: keyof typeof SOURCE_TYPE_BY_VISUAL_TYPE
 ): CalendarProjectionItem {
   return {
     projectionId: id,
-    sourceType: visualType === 'event' ? 'calendar_event' : 'calendar_external_event',
+    sourceType: SOURCE_TYPE_BY_VISUAL_TYPE[visualType],
     sourceId: id,
     title,
     descriptionPreview: null,
@@ -51,6 +57,18 @@ function projectionItem(
 
 function emit(event: CalendarChangedEvent): void {
   for (const listener of [...listeners]) listener(event)
+}
+
+let settingsListener: ((event: { key: string; value: unknown }) => void) | undefined
+
+function emitSettings(key: string): void {
+  act(() => settingsListener?.({ key, value: {} }))
+}
+
+async function settle(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  })
 }
 
 function eventTitles(): string[] {
@@ -88,6 +106,13 @@ describe('home calendar widget stays current', () => {
     server.items = [projectionItem('e1', 'Standup', 10, 'event')]
     mockGetRange.mockReset()
     mockGetRange.mockImplementation(async () => ({ items: server.items }))
+    settingsListener = undefined
+    window.api.onSettingsChanged = vi.fn((callback) => {
+      settingsListener = callback
+      return () => {
+        settingsListener = undefined
+      }
+    })
   })
 
   it('shows an event created elsewhere while the board is open', async () => {
@@ -132,6 +157,38 @@ describe('home calendar widget stays current', () => {
     await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(showsEvent('Design review')).toBe(true))
     expect(showsEvent('Standup')).toBe(true)
+  })
+
+  it('shows a note that a calendar settings change brought into the projection', async () => {
+    renderApp()
+    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    expect(mockGetRange).toHaveBeenCalledTimes(1)
+
+    server.items = [...server.items, projectionItem('n1', 'Trip planning', 16, 'note')]
+    emitSettings('calendar')
+
+    await waitFor(() => expect(mockGetRange).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(showsEvent('Trip planning')).toBe(true))
+  })
+
+  // The trailing calendar emit is the control: it proves the same settle window is
+  // long enough to observe a refetch, so the first assertion is not passing vacuously.
+  it('ignores a settings change under another key', async () => {
+    renderApp()
+    await waitFor(() => expect(showsEvent('Standup')).toBe(true))
+    expect(mockGetRange).toHaveBeenCalledTimes(1)
+
+    server.items = [...server.items, projectionItem('n1', 'Trip planning', 16, 'note')]
+
+    emitSettings('notes')
+    await settle()
+    expect(mockGetRange).toHaveBeenCalledTimes(1)
+    expect(showsEvent('Trip planning')).toBe(false)
+
+    emitSettings('calendar')
+    await settle()
+    expect(mockGetRange).toHaveBeenCalledTimes(2)
+    expect(showsEvent('Trip planning')).toBe(true)
   })
 
   it('shows a provider event that syncs in while the board tab was unmounted', async () => {
