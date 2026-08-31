@@ -47,6 +47,11 @@ const DATAVIEW_LINE = '- [ ] Pay rent  [due:: 2026-09-15]  [priority:: high]'
 const DECLINED_LINE = '- [ ] Do first 🆔 dcf64c'
 const BODY = ['- [ ] Buy milk 📅 2026-09-01 ⏫ #errand', DATAVIEW_LINE, DECLINED_LINE].join('\n')
 
+/**
+ * `task-detail-drawer.tsx` never unmounts. Closed, it keeps a 1px transparent
+ * border, so Playwright calls it visible either way and `state: 'visible'` /
+ * `state: 'hidden'` prove nothing. `aria-hidden` is the state the app publishes.
+ */
 const TASK_DRAWER = '[aria-label="Task details"]'
 
 type DateParts = { year: number; month: number; day: number }
@@ -135,7 +140,7 @@ function taskRow(page: Page, titleFragment: string): Locator {
 async function openTaskDrawer(page: Page, titleFragment: string): Promise<Locator> {
   await taskRow(page, titleFragment).click()
   const drawer = page.locator(TASK_DRAWER).first()
-  await drawer.waitFor({ state: 'visible', timeout: 15_000 })
+  await expect(drawer).toHaveAttribute('aria-hidden', 'false', { timeout: 15_000 })
   return drawer
 }
 
@@ -198,7 +203,11 @@ async function createProject(page: Page, name: string): Promise<string> {
       description: 'Obsidian import target',
       color: '#3b82f6',
       icon: 'FolderKanban',
-      statuses: [{ name: 'Backlog', color: '#6b7280', type: 'todo', order: 0 }]
+      // `ProjectCreateSchema` requires at least two statuses.
+      statuses: [
+        { name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
+        { name: 'Done', color: '#10b981', type: 'done', order: 1 }
+      ]
     })
     if (!result.success || !result.project) throw new Error(result.error ?? 'project create failed')
     return result.project.id
@@ -309,8 +318,12 @@ test.describe('Obsidian Tasks import', () => {
       return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() }
     })
     await drawer.getByRole('button', { name: /^Due: .*\. Click to change\.$/ }).click()
-    // The preset lives in a Radix popover, portalled out of the drawer.
-    await page.getByRole('dialog').getByRole('button', { name: 'Today', exact: true }).click()
+    // The preset lives in a Radix popover, portalled out of the drawer, and its
+    // accessible name carries the formatted date after the label: "Today Aug 31".
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^Today\b/ })
+      .click()
 
     // #then
     await expect
@@ -318,7 +331,7 @@ test.describe('Obsidian Tasks import', () => {
       .toEqual(today)
 
     await page.getByRole('button', { name: 'Close task details' }).click()
-    await drawer.waitFor({ state: 'hidden', timeout: 10_000 })
+    await expect(drawer).toHaveAttribute('aria-hidden', 'true', { timeout: 10_000 })
 
     // #when the other imported task is deleted from its drawer
     const rentDrawer = await openTaskDrawer(page, 'Pay rent')
