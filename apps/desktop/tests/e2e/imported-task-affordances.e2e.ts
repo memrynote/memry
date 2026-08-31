@@ -11,6 +11,10 @@
  *   - a `{task:<id>}` whose id resolves to no row, which is what a vault
  *     copied between installs looks like.
  *
+ * The third test forces a conversion failure (all project rows deleted via a
+ * main-process hook, so the create trips the projectId foreign key) and pins
+ * the fix proper: the line stays a plain checkbox. That one is red on main.
+ *
  * The renderer marks a row it cannot act on `aria-busy` and strips its
  * controls, so "an inert control is on screen" is exactly
  * `[role="button"][aria-label*="Task:"][aria-busy="true"]` surviving after the
@@ -42,17 +46,24 @@ const SETTLE_MS = 4000
 const INERT_TASK_ROW = '[role="button"][aria-label*="Task:"][aria-busy="true"]'
 const TASK_ROW = SELECTORS.taskItem
 
-async function openSeededNote(page: Page, title: string, body: string): Promise<void> {
+async function appReady(page: Page): Promise<void> {
   await waitForAppReady(page)
   await waitForVaultReady(page)
   await dismissFirstRunOnboarding(page)
+}
 
+async function seedAndOpenNote(page: Page, title: string, body: string): Promise<void> {
   await seedNote(page, title, body)
   await search(page, title)
   await selectSearchResult(page, title)
 
   await page.waitForSelector(SELECTORS.noteEditor, { timeout: 20_000 })
   await page.waitForTimeout(SETTLE_MS)
+}
+
+async function openSeededNote(page: Page, title: string, body: string): Promise<void> {
+  await appReady(page)
+  await seedAndOpenNote(page, title, body)
 }
 
 test.describe('imported checkbox lines', () => {
@@ -112,5 +123,54 @@ test.describe('imported checkbox lines', () => {
     // #and the only control it offers is the one that removes it, which works
     const notice = page.locator('div:has-text("Task deleted") > button').last()
     await expect(notice).toBeEnabled()
+  })
+
+  test('a conversion that cannot complete leaves the line a plain checkbox', async ({
+    page,
+    electronApp
+  }) => {
+    await appReady(page)
+
+    // #given a vault whose project rows are gone out from under the open app.
+    // `tasks.project_id` carries a foreign key, so every checkbox→task
+    // conversion now fails its create — the deterministic stand-in for the
+    // failure exits that produced the reported dead rows. On main each line
+    // was left as a `taskBlock` at `taskId: ''`: a task-shaped row whose
+    // every control early-returns, so this test is red there.
+    await electronApp.evaluate(async () => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { deleteAllTaskProjectsForE2E?: () => Promise<void> }
+        }
+      ).__memryTestHooks
+      if (!hooks?.deleteAllTaskProjectsForE2E) {
+        throw new Error('deleteAllTaskProjectsForE2E hook is not registered')
+      }
+      await hooks.deleteAllTaskProjectsForE2E()
+    })
+
+    await seedAndOpenNote(
+      page,
+      'Groceries without a home',
+      [
+        '# Groceries',
+        '',
+        '- [ ] Buy milk',
+        '- [x] Call the plumber',
+        '- [ ] Renew passport',
+        ''
+      ].join('\n')
+    )
+
+    // #then no line is dressed as a task, live-looking or inert
+    expect(await page.locator(TASK_ROW).count()).toBe(0)
+    expect(await page.locator(INERT_TASK_ROW).count()).toBe(0)
+
+    // #and every line is still a plain checkbox, text and tick intact
+    const checklistItems = await page
+      .locator('[data-content-type="checkListItem"], [data-node-type="checkListItem"]')
+      .count()
+    expect(checklistItems).toBeGreaterThanOrEqual(3)
+    await expect(page.getByText('Call the plumber')).toBeVisible()
   })
 })
