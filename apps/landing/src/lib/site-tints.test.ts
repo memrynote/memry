@@ -41,7 +41,8 @@ const UNTINTED_PAGES = [
   'roadmap',
   'changelog',
   'terms',
-  'refund'
+  'refund',
+  'blog'
 ]
 
 function tintToken(tint: HeroTint) {

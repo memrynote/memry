@@ -50,6 +50,15 @@ const AlternativePages = {
   heptabase: lazyPage(() => import('@/pages/AlternativePage'), 'HeptabaseAlternativePage')
 }
 
+const BlogPages = {
+  index: lazyPage(() => import('@/pages/BlogIndex'), 'BlogIndexPage'),
+  journalLongevity: lazyPage(() => import('@/pages/BlogPost'), 'JournalLongevityPostPage'),
+  e2eEncryption: lazyPage(() => import('@/pages/BlogPost'), 'E2EEncryptionPostPage'),
+  localFirstOffline: lazyPage(() => import('@/pages/BlogPost'), 'LocalFirstOfflinePostPage'),
+  terminalPkm: lazyPage(() => import('@/pages/BlogPost'), 'TerminalPkmPostPage'),
+  markdownMigration: lazyPage(() => import('@/pages/BlogPost'), 'MarkdownMigrationPostPage')
+}
+
 /** Routes whose element is just a page component, in the order App renders them. */
 export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] = [
   { path: '/', Component: HomePage },
@@ -113,6 +122,27 @@ export const PAGE_ROUTES: readonly { path: string; Component: PageComponent }[] 
   { path: '/terms', Component: lazyPage(() => import('@/pages/Terms'), 'TermsPage') },
   { path: '/privacy', Component: lazyPage(() => import('@/pages/Privacy'), 'PrivacyPage') },
   { path: '/refund', Component: lazyPage(() => import('@/pages/Refund'), 'RefundPage') },
+  { path: '/blog', Component: BlogPages.index },
+  {
+    path: '/blog/how-to-keep-a-plain-text-daily-journal-that-outlives-any-app',
+    Component: BlogPages.journalLongevity
+  },
+  {
+    path: '/blog/what-end-to-end-encrypted-notes-actually-means',
+    Component: BlogPages.e2eEncryption
+  },
+  {
+    path: '/blog/local-first-vs-cloud-first-note-taking-apps',
+    Component: BlogPages.localFirstOffline
+  },
+  {
+    path: '/blog/running-a-pkm-from-the-terminal',
+    Component: BlogPages.terminalPkm
+  },
+  {
+    path: '/blog/migrating-from-evernote-notion-to-markdown',
+    Component: BlogPages.markdownMigration
+  },
   { path: '/login', Component: lazyPage(() => import('@/pages/Login'), 'LoginPage') },
   {
     path: '/auth/oauth/callback',
