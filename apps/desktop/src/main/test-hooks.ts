@@ -167,6 +167,7 @@ interface MemryTestHooks {
   forceInboxReviewTickForE2E(input: {
     nowIso: string
   }): Promise<{ notified: boolean; count: number }>
+  deleteAllTaskProjectsForE2E(): Promise<void>
 }
 
 interface GoogleTestCredentials {
@@ -899,6 +900,16 @@ export function registerTestHooks(): void {
       nowIso: string
     }): Promise<{ notified: boolean; count: number }> {
       return runReviewTick(new Date(input.nowIso))
+    },
+
+    // #1907 repro seam: with every project row gone (FK cascade takes the
+    // statuses and tasks with them), `tasks.create` fails on the foreign key
+    // and a checkbox→task conversion hits its failure exit deterministically.
+    // The renderer keeps its cached project list, so the conversion still
+    // attempts the create rather than bailing on the empty-projects check.
+    async deleteAllTaskProjectsForE2E(): Promise<void> {
+      const db = getDatabase()
+      db.run(sql`DELETE FROM projects`)
     }
   }
 }

@@ -592,8 +592,15 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
     )
   }
 
-  // Render TaskRow — use real task if loaded, placeholder otherwise
+  // Render TaskRow — use real task if loaded, placeholder otherwise. The
+  // placeholder carries an empty id, so every mutating handler behind it
+  // early-returns: a checkbox with no `tasks` row (a half-converted Obsidian
+  // line, or a `{task:<id>}` copied from another install) would otherwise show
+  // a full set of controls that silently do nothing (#1907). Keep the row's
+  // shape so notes don't flicker on open, but hand it no affordance it cannot
+  // honour until the task resolves.
   const rowTask = displayTask ?? placeholderTask
+  const hasResolvedTask = !!task
   const rowProject = project ?? defaultProject
 
   if (!rowProject) {
@@ -627,10 +634,11 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
           projects={projects}
           isCompleted={isCompleted}
           showProjectBadge
+          interactive={hasResolvedTask}
           onToggleComplete={(...args) => void handleToggleComplete(...args)}
           onUpdateTask={(...args) => void handleUpdateTask(...args)}
           onProjectChange={(...args) => void handleProjectChange(...args)}
-          actions={navigateArrow}
+          actions={hasResolvedTask ? navigateArrow : null}
           renderTitle={isEditingTitle ? titleInput : clickableTitle}
           className="px-0"
         />

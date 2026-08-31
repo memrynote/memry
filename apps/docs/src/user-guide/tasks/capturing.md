@@ -167,6 +167,16 @@ Only the checkbox is read this way; due dates, priority, and project stay with t
 
 Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other markers some editors use for "in progress", such as `- [-]`, are ignored rather than guessed at.
 
+## When a Line Has No Task Behind It
+
+A checklist line is only a task once memrynote has a task for it. Two cases where it does not, both common in a vault you brought over from somewhere else:
+
+A **plain checkbox with no `{task:…}` suffix** — the shape Obsidian and most other editors write — is turned into a task as you go. If that cannot happen, because there is no project to create it in or the task could not be saved, the line stays a plain checklist item. It keeps its text and its tick, and memrynote tries again the next time you open the note. It never sits there looking like a task you cannot touch.
+
+A **`{task:…}` suffix naming a task that is not in this vault** — usually a note copied out of another install, where the ids belong to that install's tasks — shows as "Task deleted", with a button to take the line out of the note. Its text and its tick are left exactly as they are in the file; nothing is rewritten and nothing is deleted until you ask.
+
+While a task is still loading, its row shows but its controls are inert for that moment. A control you can click is a control that works.
+
 ## Rich Descriptions
 
 A task's description is a rich text editor, the same style as notes. In the task detail drawer (and the add-task dialog) you can use headings, lists, checkboxes, and inline formatting, and paste links that stay clickable. Type `/` for the block menu. Descriptions are stored as Markdown, so plain-text descriptions from earlier versions keep working unchanged.

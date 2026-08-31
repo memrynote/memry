@@ -1035,9 +1035,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     enabled: editable
   })
 
-  // The block becomes a `taskBlock` before the create call resolves. A create
-  // that fails would otherwise leave one holding `taskId: ''`: a task the file
-  // has no suffix for and the database has no row for.
+  // The block becomes a `taskBlock` before the create call resolves, so every
+  // path that fails to produce a row has to put the checkbox back. Otherwise it
+  // holds `taskId: ''` forever: a task the file has no suffix for, the database
+  // has no row for, and whose every control early-returns on the empty id
+  // (#1907). The block stays in `dismissedBlocksRef` so the analyzer does not
+  // immediately re-schedule the conversion that just failed and loop on it;
+  // reopening the note retries with a fresh set.
   const restoreCheckbox = useCallback(
     (blockId: string, content: unknown, checked: boolean) => {
       const stale = editor.getBlock(blockId)
@@ -1111,30 +1115,33 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const liveBlock = editor.getBlock(blockId)
         const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
 
-        let projects: any[] = tasksCtx?.projects ?? []
-        if (projects.length === 0) {
-          const res = await tasksService.listProjects()
-          projects = res.projects ?? []
-        }
-
-        const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
-        if (!defaultProject) {
-          dismissedBlocksRef.current.delete(blockId)
-          restoreCheckbox(blockId, originalContent, wasChecked)
-          return
-        }
-
-        let projectIdForCreate: string | null = null
-        if (liveParentTaskId) {
-          const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
-          if (parentTask) projectIdForCreate = parentTask.projectId
-        }
-
-        const parsed = title
-          ? parseQuickAdd(title, projects)
-          : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
-
+        // Everything that can fail sits inside this try: the project lookup
+        // rejects when no vault is open, not just when the create fails.
         try {
+          let projects: any[] = tasksCtx?.projects ?? []
+          if (projects.length === 0) {
+            const res = await tasksService.listProjects()
+            projects = res.projects ?? []
+          }
+
+          const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+          if (!defaultProject) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
+
+          let projectIdForCreate: string | null = null
+          if (liveParentTaskId) {
+            const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+            if (parentTask) projectIdForCreate = parentTask.projectId
+          }
+
+          // The plugin fields were lifted off the line already, so quick-add
+          // parses the description alone.
+          const parsed = title
+            ? parseQuickAdd(title, projects)
+            : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
+
           const result = await tasksService.create({
             projectId: projectIdForCreate ?? parsed.projectId ?? defaultProject.id,
             ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
@@ -1168,11 +1175,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
+          } else {
+            restoreCheckbox(blockId, originalContent, wasChecked)
           }
         } catch (err) {
           // No row was created, so the block must not stay a taskBlock: one
           // holding `taskId: ''` renders a task that nothing can ever open.
-          dismissedBlocksRef.current.delete(blockId)
           restoreCheckbox(blockId, originalContent, wasChecked)
           toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
         }
@@ -1218,7 +1226,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         try {
           const parentTask = await tasksService.get(parentTaskId)
           if (!parentTask) {
-            dismissedBlocksRef.current.delete(blockId)
             restoreCheckbox(blockId, originalContent, wasChecked)
             return
           }
@@ -1253,9 +1260,10 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 void tasksService.update({ id: result.task.id, title: currentTitle })
               }
             }
+          } else {
+            restoreCheckbox(blockId, originalContent, wasChecked)
           }
         } catch (err) {
-          dismissedBlocksRef.current.delete(blockId)
           restoreCheckbox(blockId, originalContent, wasChecked)
           toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
         }
