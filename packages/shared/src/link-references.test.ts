@@ -150,3 +150,48 @@ describe('restoreLinkReferences', () => {
     ).toBe('See [x][d].\n\n[d]: </a path>')
   })
 })
+
+/**
+ * A vault file is input nobody vetted, and both scans here used to be a regex
+ * that retried from every position (CodeQL js/polynomial-redos, #1918). At these
+ * sizes the old code took 14s and 6s; a bound this loose fails only if the
+ * quadratic comes back, not because CI was busy.
+ */
+describe('adversarial input', () => {
+  const BUDGET_MS = 1000
+
+  function elapsed(work: () => void): number {
+    const startedAt = performance.now()
+    work()
+    return performance.now() - startedAt
+  }
+
+  it('trims a trailing newline run without walking it once per newline', () => {
+    const stripped = stripLinkReferenceDefinitions('[d]: https://example.com')
+    const body = `${'\n'.repeat(200_000)}a${'\n'.repeat(3)}`
+    let restored = ''
+
+    const ms = elapsed(() => {
+      restored = restoreLinkReferences(body, stripped.definitions, stripped.usages)
+    })
+
+    expect(restored).toBe(`${'\n'.repeat(200_000)}a\n\n[d]: https://example.com`)
+    expect(ms).toBeLessThan(BUDGET_MS)
+  })
+
+  it('scans a line of escaped brackets without restarting at each one', () => {
+    const noise = `[${'\\[Z'.repeat(60_000)}`
+    let stripped: ReturnType<typeof stripLinkReferenceDefinitions> | undefined
+
+    const ms = elapsed(() => {
+      stripped = stripLinkReferenceDefinitions(
+        `${noise}\n\nSee [the docs][d].\n\n[d]: https://example.com`
+      )
+    })
+
+    expect(stripped?.usages).toEqual([
+      { label: 'd', destination: 'https://example.com', text: 'the docs', raw: '[the docs][d]' }
+    ])
+    expect(ms).toBeLessThan(BUDGET_MS)
+  })
+})

@@ -58,8 +58,6 @@ export interface StrippedLinkReferences {
 const DEFINITION_LINE =
   /^ {0,3}\[(?!\^)((?:[^\\[\]]|\\.)+)\]:[ \t]*(<[^<>]*>|\S+)(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^()]*\)))?[ \t]*$/
 
-const REFERENCE_SPAN = /(!?)\[((?:[^\\[\]]|\\.)*)\](\[((?:[^\\[\]]|\\.)*)\]|\()?/g
-
 export function normalizeLinkReferenceLabel(label: string): string {
   return label.trim().replace(/\s+/g, ' ').toLowerCase()
 }
@@ -145,7 +143,11 @@ export function restoreLinkReferences(
     block += definition.raw
   }
 
-  const trimmed = body.replace(/\n+$/, '')
+  // Scanned rather than `body.replace(/\n+$/, '')`: an unanchored `\n+$` retries
+  // from every newline, so a body that is one long run of them costs O(n²).
+  let end = body.length
+  while (end > 0 && body[end - 1] === '\n') end--
+  const trimmed = body.slice(0, end)
   return trimmed === '' ? block : `${trimmed}\n\n${block}`
 }
 
@@ -215,23 +217,122 @@ function collectUsages(
   for (const line of lines) {
     if (fences.consume(line)) continue
 
-    REFERENCE_SPAN.lastIndex = 0
-    let match: RegExpExecArray | null
-    while ((match = REFERENCE_SPAN.exec(line)) !== null) {
-      const [span, bang, text, tail] = match
-      if (bang === '!' || tail === '(') continue
+    for (const span of findReferenceSpans(line)) {
+      if (span.image || span.tail === '(') continue
       // `[[wiki]]` is not two shortcut references.
-      if (line[match.index - 1] === '[' || line[match.index + span.length] === ']') continue
+      if (line[span.index - 1] === '[' || line[span.index + span.raw.length] === ']') continue
 
-      const label = normalizeLinkReferenceLabel(match[4] ?? '') || normalizeLinkReferenceLabel(text)
+      const label =
+        normalizeLinkReferenceLabel(span.reference ?? '') || normalizeLinkReferenceLabel(span.text)
       const definition = byLabel.get(label)
       if (!definition) continue
 
-      usages.push({ label, destination: definition.destination, text, raw: span })
+      usages.push({ label, destination: definition.destination, text: span.text, raw: span.raw })
     }
   }
 
   return usages
+}
+
+interface ReferenceSpan {
+  /** Offset of the whole span, `!` included, in the line. */
+  index: number
+  /** The span as the author wrote it: `[docs][d]`, `[docs][]`, `[docs]`. */
+  raw: string
+  /** The span opens with `!`, so it is an image and not a reference. */
+  image: boolean
+  /** Whatever sits between the first pair of brackets. */
+  text: string
+  /** The label between the second pair, `''` for the collapsed form. */
+  reference: string | undefined
+  /** `[d]`, `[]` or `(` — what follows the text, when anything does. */
+  tail: string | undefined
+}
+
+/**
+ * Every `[…]` span in one line, left to right, non-overlapping.
+ *
+ * This was `/(!?)\[((?:[^\\[\]]|\\.)*)\](\[((?:[^\\[\]]|\\.)*)\]|\()?/g` under
+ * `exec`. The alternation is unambiguous, but the scan is not: a global regex
+ * retries at every `[`, and on a line of escaped brackets (`[\[Z\[Z…`) every
+ * retry walks to the end of the line before failing, which is O(n²) on a file
+ * the user did nothing but open. `bracketRunEnds` walks the line once and
+ * answers all of those retries in constant time.
+ */
+function findReferenceSpans(line: string): ReferenceSpan[] {
+  if (!line.includes('[')) return []
+
+  const runEnds = bracketRunEnds(line)
+  const spans: ReferenceSpan[] = []
+  let from = 0
+
+  while (from < line.length) {
+    const open = line.indexOf('[', from)
+    if (open === -1) break
+
+    const textEnd = runEnds[open + 1]
+    if (line[textEnd] !== ']') {
+      from = open + 1
+      continue
+    }
+
+    const image = open > from && line[open - 1] === '!'
+    let end = textEnd + 1
+    let reference: string | undefined
+    let tail: string | undefined
+
+    if (line[end] === '[') {
+      const labelEnd = runEnds[end + 1]
+      if (line[labelEnd] === ']') {
+        reference = line.slice(end + 1, labelEnd)
+        tail = line.slice(end, labelEnd + 1)
+        end = labelEnd + 1
+      }
+    } else if (line[end] === '(') {
+      tail = '('
+      end++
+    }
+
+    const index = image ? open - 1 : open
+    spans.push({
+      index,
+      raw: line.slice(index, end),
+      image,
+      text: line.slice(open + 1, textEnd),
+      reference,
+      tail
+    })
+    from = end
+  }
+
+  return spans
+}
+
+/**
+ * For every offset in the line, where `(?:[^\\[\]]|\\.)*` stops if it starts
+ * there. One backward pass, because a run starting on a backslash is a
+ * character out of phase with the run starting after it and the two cannot
+ * share an answer.
+ */
+function bracketRunEnds(line: string): Int32Array {
+  const ends = new Int32Array(line.length + 1)
+  ends[line.length] = line.length
+
+  for (let index = line.length - 1; index >= 0; index--) {
+    const char = line[index]
+    if (char === '[' || char === ']') ends[index] = index
+    else if (char !== '\\') ends[index] = ends[index + 1]
+    // `\\.` needs a character to escape, and `.` never matches a line terminator.
+    else ends[index] = isLineTerminator(line[index + 1]) ? index : ends[index + 2]
+  }
+
+  return ends
+}
+
+function isLineTerminator(char: string | undefined): boolean {
+  return (
+    char === undefined || char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029'
+  )
 }
 
 function replaceArray(array: YArrayLike, next: unknown[]): void {
