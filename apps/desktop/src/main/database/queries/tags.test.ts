@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestDataDb, createTestIndexDb, sql } from '@tests/utils/test-db'
 import { getAllTagsWithCounts, mergeTagInNotes, mergeTagInTasks } from './tags'
+import { getOrCreateTag, setTagCategory, updateTagColor } from './tag-definitions'
 
 // ============================================================================
 // Helpers
@@ -559,5 +560,125 @@ describe('mergeTagInTasks', () => {
 
     // #then: t2's tags are untouched
     expect(readTaskTags(dataDb, 't2')).toEqual(['other'])
+  })
+})
+
+// ============================================================================
+// getAllTagsWithCounts — tags created from the tag hub, before any note uses them
+// ============================================================================
+
+describe('getAllTagsWithCounts and tags created from the hub', () => {
+  let indexResult: TestDatabaseResult
+  let dataResult: TestDatabaseResult
+  let indexDb: TestDb
+  let dataDb: TestDb
+
+  beforeEach(() => {
+    indexResult = createTestIndexDb()
+    dataResult = createTestDataDb()
+    indexDb = indexResult.db
+    dataDb = dataResult.db
+  })
+
+  afterEach(() => {
+    indexResult.close()
+    dataResult.close()
+  })
+
+  function readDefinitionNames(db: TestDb): string[] {
+    return db
+      .all<{ name: string }>(sql`SELECT name FROM tag_definitions ORDER BY name`)
+      .map((r) => r.name)
+  }
+
+  it('keeps a tag the hub created, before any note or task uses it', () => {
+    // #given: the hub's create path — getOrCreateTag then updateTagColor
+    getOrCreateTag(dataDb, 'reading')
+    updateTagColor(dataDb, 'reading', 'emerald')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then: it is listed, at zero, and its definition survives the read
+    const reading = result.find((t) => t.name.toLowerCase() === 'reading')
+    expect(reading).toBeDefined()
+    expect(reading?.count).toBe(0)
+    expect(reading?.color).toBe('emerald')
+    expect(readDefinitionNames(dataDb)).toContain('reading')
+  })
+
+  it('keeps the casing the user typed', () => {
+    // #given
+    getOrCreateTag(dataDb, 'Reading')
+    updateTagColor(dataDb, 'Reading', 'emerald')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    const names = result.map((t) => t.name)
+    expect(names).toContain('Reading')
+  })
+
+  it('collides `reading` into `Reading` under nocase instead of making a second tag', () => {
+    // #given
+    getOrCreateTag(dataDb, 'Reading')
+    updateTagColor(dataDb, 'Reading', 'emerald')
+
+    // #when: the same tag typed in a different case
+    getOrCreateTag(dataDb, 'reading')
+    updateTagColor(dataDb, 'reading', 'violet')
+
+    // #then: one tag, still spelled the way it was first created
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+    const matches = result.filter((t) => t.name.toLowerCase() === 'reading')
+    expect(matches).toHaveLength(1)
+    expect(matches[0]?.name).toBe('Reading')
+    expect(matches[0]?.color).toBe('violet')
+    expect(readDefinitionNames(dataDb)).toEqual(['Reading'])
+  })
+
+  it('carries the category the hub assigned', () => {
+    // #given
+    getOrCreateTag(dataDb, 'Reading')
+    updateTagColor(dataDb, 'Reading', 'emerald')
+    dataDb.run(sql`
+      INSERT INTO tag_categories (id, name, sort_order, created_at)
+      VALUES ('cat-1', 'Hobbies', 0, '2026-01-01T00:00:00.000Z')
+    `)
+    setTagCategory(dataDb, 'Reading', 'cat-1')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    const reading = result.find((t) => t.name === 'Reading')
+    expect(reading?.categoryId).toBe('cat-1')
+  })
+
+  it('still collects a bare definition left behind when a note drops its tag', () => {
+    // #given: an auto-minted definition nobody shaped, with no usage left
+    getOrCreateTag(dataDb, 'stale')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    expect(result.find((t) => t.name === 'stale')).toBeUndefined()
+    expect(readDefinitionNames(dataDb)).not.toContain('stale')
+  })
+
+  it('sorts used tags ahead of an unused one', () => {
+    // #given
+    insertNote(indexDb, 'n1')
+    insertNoteTag(indexDb, 'n1', 'work')
+    getOrCreateTag(dataDb, 'Reading')
+    updateTagColor(dataDb, 'Reading', 'emerald')
+
+    // #when
+    const result = getAllTagsWithCounts(indexDb, dataDb)
+
+    // #then
+    expect(result.map((t) => t.name)).toEqual(['work', 'Reading'])
   })
 })

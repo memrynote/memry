@@ -5,6 +5,8 @@ import { describe, it } from 'node:test'
 import { DIRECT_NAV_LINKS, DOWNLOAD_NAV_ITEMS, FOOTER_LINKS } from './constants.ts'
 import {
   BASE_URL,
+  getArticleJsonLd,
+  getBlogIndexJsonLd,
   getCanonicalUrl,
   getWebsiteJsonLd,
   PAGE_META,
@@ -72,6 +74,7 @@ describe('landing SEO signals', () => {
     assert.ok(DIRECT_NAV_LINKS.some((link) => link.href === '/roadmap'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/features'))
     assert.ok(FOOTER_LINKS.product.some((link) => link.href === '/changelog'))
+    assert.ok(FOOTER_LINKS.resources.some((link) => link.href === '/blog'))
 
     const desktopDownload = DOWNLOAD_NAV_ITEMS.find((item) => item.href === '/download/desktop')
 
@@ -88,5 +91,50 @@ describe('landing SEO signals', () => {
     assert.deepEqual(website.alternateName, ['Memrynote', 'memrynote.com'])
     assert.equal(website.url, 'https://memrynote.com/')
     assert.equal(website.potentialAction, undefined)
+  })
+
+  it('emits Article Schema.org JSON-LD with author and publish dates for blog posts', () => {
+    const article = JSON.parse(
+      getArticleJsonLd({
+        slug: 'test-article-slug',
+        title: 'Test Article Title',
+        description: 'Test article description for SEO.',
+        datePublished: '2026-08-31T08:00:00.000Z',
+        dateModified: '2026-08-31T09:00:00.000Z',
+        author: { name: 'Kaan Karaca', url: 'https://x.com/h4yfans' }
+      })
+    )
+
+    assert.equal(article['@context'], 'https://schema.org')
+    assert.equal(article['@type'], 'Article')
+    assert.equal(article.headline, 'Test Article Title')
+    assert.equal(article.description, 'Test article description for SEO.')
+    assert.equal(article.datePublished, '2026-08-31T08:00:00.000Z')
+    assert.equal(article.dateModified, '2026-08-31T09:00:00.000Z')
+    assert.equal(article.author['@type'], 'Person')
+    assert.equal(article.author.name, 'Kaan Karaca')
+    assert.equal(article.publisher['@type'], 'Organization')
+    assert.equal(article.publisher.name, 'memrynote')
+    assert.equal(article.mainEntityOfPage['@id'], 'https://memrynote.com/blog/test-article-slug')
+  })
+
+  it('emits CollectionPage JSON-LD for the blog index', () => {
+    const collection = JSON.parse(
+      getBlogIndexJsonLd([
+        {
+          slug: 'post-1',
+          title: 'Post 1 Title',
+          description: 'Post 1 Description',
+          datePublished: '2026-08-31T08:00:00.000Z'
+        }
+      ])
+    )
+
+    assert.equal(collection['@context'], 'https://schema.org')
+    assert.equal(collection['@type'], 'CollectionPage')
+    assert.equal(collection.url, 'https://memrynote.com/blog')
+    assert.equal(collection.hasPart?.length, 1)
+    assert.equal(collection.hasPart[0]['@type'], 'Article')
+    assert.equal(collection.hasPart[0].url, 'https://memrynote.com/blog/post-1')
   })
 })

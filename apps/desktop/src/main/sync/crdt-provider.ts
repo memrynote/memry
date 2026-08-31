@@ -5,7 +5,7 @@ import { CRDT_EVENTS, CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getIndexDatabase } from '../database/client'
-import { getNoteCacheById } from '@main/database/queries/notes'
+import { getNoteCacheById, updateNoteCache } from '@main/database/queries/notes'
 import type { CrdtUpdateQueue } from './crdt-queue'
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import { parallelWithLimit } from '@memry/sync-client/concurrency'
@@ -27,7 +27,7 @@ import { recordPendingCrdtNotes } from './crdt-pending-notes'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { toAbsolutePath } from '../vault/notes'
 import { safeRead } from '../vault/file-ops'
-import { parseNote } from '../vault/frontmatter'
+import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { markdownToYFragment, repairEmptyBlockIds } from './blocknote-converter'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -1049,7 +1049,15 @@ export class CrdtProvider {
     }
 
     const raw = await safeRead(absolutePath)
-    if (!raw) return
+    if (!raw) {
+      // An empty file seeds nothing, but its zero bytes WERE read and the empty
+      // doc represents them faithfully. Recording the hash is what lets the
+      // first keystroke into an empty foreign note reach the file — without it
+      // the write-back's never-read guard would refuse that save forever,
+      // since nothing else fills the column in (#1909).
+      if (raw === '') this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      return
+    }
 
     // Before gray-matter, before BlockNote. The parse is what freezes the main
     // process — cost tracks single-block size, not file size — so a large-file
@@ -1068,15 +1076,52 @@ export class CrdtProvider {
     }
 
     const parsed = parseNote(raw, cached.path)
-    if (!parsed.content?.trim()) return
+    if (!parsed.content?.trim()) {
+      // Frontmatter-only or whitespace-only: nothing to seed, but the bytes
+      // WERE read and the empty doc represents the empty body faithfully, so
+      // the same recording applies as for an empty file above.
+      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+      return
+    }
 
     // Pass the note's path so embed targets are written relative to it — this
     // fragment is what gets serialized back to the vault file.
     const ok = await markdownToYFragment(parsed.content, fragment, cached.path)
+
+    // Record what this doc was built from, so the write-back's external-edit
+    // guard has something to compare against (#1909).
+    //
+    // A row listed from `stat` alone carries no `contentHash`, and until now
+    // the guard treated "no hash" as "nothing to check" and wrote anyway —
+    // straight over a file nobody had read. Refusing outright would be worse
+    // for the user who opens such a note and edits it, because nothing else
+    // ever fills that column in: `indexVault` skips a path that already has a
+    // row. The bytes ARE read here, and the doc is built from them, so this is
+    // the honest place to say so.
+    if (ok) {
+      this.recordSeedContentHash(indexDb, noteId, cached.contentHash, raw)
+    }
+
     if (ok && this.persistence) {
       await this.persistence.storeUpdate(noteId, Y.encodeStateAsUpdate(doc)).catch((err) => {
         log.error('Failed to persist markdown-seeded CRDT doc', { noteId, error: err })
       })
+    }
+  }
+
+  // A hash the indexer already measured is left alone; this only ever fills a
+  // hole, and only with the hash of bytes the seed genuinely read.
+  private recordSeedContentHash(
+    indexDb: ReturnType<typeof getIndexDatabase>,
+    noteId: string,
+    existingHash: string | null | undefined,
+    raw: string
+  ): void {
+    if (existingHash) return
+    try {
+      updateNoteCache(indexDb, noteId, { contentHash: generateContentHash(raw) })
+    } catch (err) {
+      log.warn('Failed to record the seeded content hash', { noteId, error: err })
     }
   }
 

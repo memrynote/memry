@@ -7,7 +7,13 @@
  * suffix, e.g. `- [ ] Buy milk {task:abc}`. `normalizeTaskBlocks` upgrades such
  * `checkListItem` blocks into the custom `taskBlock` type; `serializeTaskBlock`
  * renders a `taskBlock` back to that markdown line.
+ *
+ * The one thing that may follow the suffix is Obsidian Tasks plugin syntax,
+ * which that plugin appends when a user edits an imported task back in
+ * Obsidian. See `parseTaskBlockSuffix`.
  */
+
+import { parseObsidianTaskFields } from './obsidian-tasks'
 
 const TASK_BLOCK_SUFFIX_OPEN = '{task:'
 
@@ -37,19 +43,41 @@ export function serializeTaskBlock(props: TaskBlockProps): string {
   return `${indent}- [${check}] ${props.title} {task:${props.taskId}}`
 }
 
-// Parsed by hand rather than with a regex: the suffix is always the trailing
-// `{task:<id>}`, and a greedy-class-plus-end-anchor regex (`\{task:([^}]+)\}$`)
-// backtracks quadratically on adversarial note content with many `{task:`
-// starts — flagged as polynomial ReDoS on uncontrolled input. String ops keep
-// it linear.
-export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
-  const trimmed = text.trimEnd()
-  if (!trimmed.endsWith('}')) return null
-  const open = trimmed.lastIndexOf(TASK_BLOCK_SUFFIX_OPEN)
-  if (open === -1) return null
-  const taskId = trimmed.slice(open + TASK_BLOCK_SUFFIX_OPEN.length, -1)
+function readSuffix(
+  trimmed: string,
+  open: number,
+  close: number
+): { taskId: string; title: string } | null {
+  const taskId = trimmed.slice(open + TASK_BLOCK_SUFFIX_OPEN.length, close)
   if (taskId.length === 0 || taskId.includes('}')) return null
   return { taskId, title: trimmed.slice(0, open).trim() }
+}
+
+// Parsed by hand rather than with a regex: a greedy-class-plus-end-anchor regex
+// (`\{task:([^}]+)\}$`) backtracks quadratically on adversarial note content
+// with many `{task:` starts — flagged as polynomial ReDoS on uncontrolled
+// input. String ops keep it linear.
+export function parseTaskBlockSuffix(text: string): { taskId: string; title: string } | null {
+  const trimmed = text.trimEnd()
+  if (trimmed.endsWith('}')) {
+    const open = trimmed.lastIndexOf(TASK_BLOCK_SUFFIX_OPEN)
+    if (open !== -1) return readSuffix(trimmed, open, trimmed.length - 1)
+    return null
+  }
+
+  // Memry and the Obsidian Tasks plugin both want the end of the line. When a
+  // user completes or edits an imported task back in Obsidian, the plugin
+  // appends its own field after this suffix, and a strict end-anchored read
+  // would stop recognising the id Memry itself wrote: the block would regress
+  // to a bare checkbox and the next open would mint a duplicate task. So a
+  // suffix is still ours when everything behind it is plugin syntax, and only
+  // then. Ordinary trailing prose still means this is not a task line.
+  const open = trimmed.lastIndexOf(TASK_BLOCK_SUFFIX_OPEN)
+  if (open === -1) return null
+  const close = trimmed.indexOf('}', open)
+  if (close === -1) return null
+  if (parseObsidianTaskFields(trimmed.slice(close + 1)).description !== '') return null
+  return readSuffix(trimmed, open, close)
 }
 
 // Markdown is the source of truth for a task's checkbox state: editing

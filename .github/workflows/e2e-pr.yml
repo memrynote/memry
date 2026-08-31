@@ -1,0 +1,89 @@
+name: PR E2E
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/tests/e2e/**'
+      - '.github/workflows/e2e-pr.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+  ELECTRON_DISABLE_SANDBOX: 1
+  NODE_OPTIONS: --max-old-space-size=4096
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  changed-e2e:
+    name: Electron E2E changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Playwright compares HEAD with the PR base for --only-changed.
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Cache Electron binary
+        uses: ./.github/actions/cache-electron-binary
+
+      - name: Install system dependencies
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev gnome-keyring dbus-x11 xvfb
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright system dependencies
+        run: pnpm --filter @memry/desktop exec playwright install-deps chromium
+
+      - name: Build desktop app
+        run: |
+          bash apps/desktop/scripts/check-cert-hashes.sh
+          bash apps/desktop/scripts/ensure-native.sh electron
+          pnpm --filter @memry/desktop exec electron-vite build
+
+      - name: Run changed Electron E2E tests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          bash apps/desktop/scripts/ensure-native.sh electron
+          # The quoted script expands variables in the inner bash process.
+          # shellcheck disable=SC2016
+          dbus-run-session -- bash -c '
+            eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
+            eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
+            xvfb-run -a pnpm --filter @memry/desktop exec playwright test \
+              --config config/playwright.config.ts \
+              --only-changed="$BASE_SHA"
+          '
+
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-e2e-results
+          path: apps/desktop/test-results/
+          if-no-files-found: ignore

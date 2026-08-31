@@ -97,4 +97,14 @@ describe('InlineCreateRow', () => {
 
     expect(onCreateTag).toHaveBeenCalledWith('draft', expect.any(String), 'cat-1')
   })
+
+  it('hands the tag name over with the casing the user typed', async () => {
+    const onCreateTag = vi.fn().mockResolvedValue(undefined)
+    render(<InlineCreateRow onCreateCategory={vi.fn()} onCreateTag={onCreateTag} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /new tag/i }))
+    await userEvent.type(screen.getByRole('textbox'), 'Reading{Enter}')
+
+    expect(onCreateTag).toHaveBeenCalledWith('Reading', expect.any(String), null)
+  })
 })

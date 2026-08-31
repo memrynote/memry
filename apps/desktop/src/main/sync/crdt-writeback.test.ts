@@ -181,10 +181,16 @@ describe('crdt writeback', () => {
     mocks.sent = []
     mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
     mocks.findUnrepresentableNodes.mockReturnValue([])
+    // An ordinary indexed note: `indexVault` reads every file present when the
+    // vault opens and records its hash, so a row WITHOUT one is the exception,
+    // not the default. The write-back refuses to touch a file it has never
+    // read, so the cases below that are not about that guard start from a row
+    // whose hash matches the bytes `safeRead` returns.
     mocks.getNoteCacheById.mockReturnValue({
       id: 'note-1',
       path: 'notes/Existing.md',
-      title: 'Existing'
+      title: 'Existing',
+      contentHash: 'hash:---\ntitle: Existing\n---\nold markdown'
     })
     mocks.getNoteCacheByPath.mockReturnValue(undefined)
     mocks.getNoteMetadataById.mockReturnValue(undefined)
@@ -308,6 +314,84 @@ describe('crdt writeback', () => {
 
     expect(mocks.atomicWrite).not.toHaveBeenCalled()
     expect(mocks.maybeCreateSignificantSnapshot).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The hole `53c1672e0` left open, and what #1909 closes.
+   *
+   * A row listed from `stat` alone carries no hash, and the guard used to read
+   * that as "nothing to compare" and write anyway. `sweepAllCrdtNotes` queues a
+   * pull for every markdown note in the vault on every reconnect, and the
+   * write-back a remote update schedules re-serializes the whole body — so a
+   * file in a vault Memry was merely pointed at came back rewritten into
+   * Memry's dialect without anyone opening it.
+   */
+  it('never writes over a file this app has not read, even with no hash to compare', async () => {
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Foreign.md',
+      title: 'Foreign',
+      contentHash: null
+    })
+    mocks.safeRead.mockResolvedValue('Line one  \nLine two')
+
+    scheduleWriteback('note-1', makeDoc('Foreign', []))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+    expect(mocks.maybeCreateSignificantSnapshot).not.toHaveBeenCalled()
+    expect(mocks.syncNoteToCache).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The other half of that guard: widening it must not cost a real save.
+   *
+   * Opening a note seeds its doc from the file, and the seed records the hash
+   * of the bytes it read (`CrdtProvider.seedFromMarkdown`), so by the time the
+   * user's first keystroke debounces there is a hash to compare against. This
+   * asserts the write still lands from that state.
+   */
+  it('writes the edit of a note whose hash was filled in when its doc was seeded', async () => {
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Foreign.md',
+      title: 'Foreign',
+      // What `seedFromMarkdown` recorded off the bytes it built the doc from.
+      contentHash: 'hash:Line one  \nLine two'
+    })
+    mocks.safeRead.mockResolvedValue('Line one  \nLine two')
+
+    scheduleWriteback('note-1', makeDoc('Foreign', []))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Foreign.md',
+      expect.stringContaining('updated markdown')
+    )
+  })
+
+  /**
+   * A file an older build already rewrote is not rewritten again. The index
+   * measured the mutated bytes, so the hashes agree and the write is allowed —
+   * and it is a no-op, because the body the doc serializes to is what is
+   * already on disk.
+   */
+  it('leaves a file a previous version already mutated exactly as it is', async () => {
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Mutated.md',
+      title: 'Mutated',
+      contentHash: 'hash:already mutated body'
+    })
+    mocks.safeRead.mockResolvedValue('already mutated body')
+    mocks.parseNote.mockReturnValue({ frontmatter: null, content: 'already mutated body' })
+    mocks.serializeParsedNote.mockReturnValue('already mutated body')
+    mocks.yDocToMarkdown.mockResolvedValue('already mutated body')
+
+    scheduleWriteback('note-1', makeDoc('Mutated', []))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
   })
 
   it('writes back as usual once the index and the file agree', async () => {
@@ -739,6 +823,14 @@ describe('crdt writeback', () => {
       vaultFile = ''
       mocks.yDocToMarkdown.mockImplementation(async (doc: Y.Doc) => doc.getText('body').toString())
       mocks.safeRead.mockImplementation(async () => vaultFile)
+      // The index has read whatever is on disk right now, so the external-edit
+      // guard is not what any of these cases is about.
+      mocks.getNoteCacheById.mockImplementation(() => ({
+        id: 'note-1',
+        path: 'notes/Existing.md',
+        title: 'Existing',
+        contentHash: `hash:${vaultFile}`
+      }))
       mocks.atomicWrite.mockImplementation(async (_path: string, content: string) => {
         vaultFile = content
       })
@@ -846,9 +938,15 @@ describe('crdt writeback', () => {
   it('hands the old and new body to the attachment rename reconcile', async () => {
     // #given a body whose attachment ref changed — the shape a rename made on
     // another device arrives in, since the blob itself is never re-uploaded
-    mocks.safeRead.mockResolvedValue(
+    const onDisk =
       '---\ntitle: Existing\n---\n<!-- file:{"url":"../attachments/note-1/k3f9x2-scan.pdf"} -->'
-    )
+    mocks.safeRead.mockResolvedValue(onDisk)
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Existing.md',
+      title: 'Existing',
+      contentHash: `hash:${onDisk}`
+    })
     mocks.yDocToMarkdown.mockResolvedValue(
       '<!-- file:{"url":"../attachments/note-1/k3f9x2-invoice.pdf"} -->'
     )

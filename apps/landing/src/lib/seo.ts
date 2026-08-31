@@ -140,6 +140,43 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Fourteen-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
     path: '/refund'
   },
+  blog: {
+    title: 'Blog & Editorial Guides — memrynote',
+    description:
+      'Essays, deep dives, and technical guides on local-first software, zero-knowledge encryption, plain-text longevity, and developer workflows.',
+    path: '/blog'
+  },
+  blogJournalLongevity: {
+    title: 'How to keep a plain-text daily journal that outlives any app — memrynote',
+    description:
+      'Why proprietary journaling apps eventually fail your memories, and how to structure a durable, file-based daily journal in plain Markdown with YAML frontmatter.',
+    path: '/blog/how-to-keep-a-plain-text-daily-journal-that-outlives-any-app'
+  },
+  blogE2EEncryption: {
+    title:
+      'What end-to-end encrypted notes actually means (and which apps really do it) — memrynote',
+    description:
+      'Demystifying encryption claims in note apps. Learn the real technical difference between in-transit TLS, at-rest server encryption, and genuine zero-knowledge client-side encryption.',
+    path: '/blog/what-end-to-end-encrypted-notes-actually-means'
+  },
+  blogLocalFirstOffline: {
+    title: 'Local-first vs cloud-first note apps: what breaks when you go offline — memrynote',
+    description:
+      'Why cloud-first note taking apps stutter on slow connections, drop offline edits, and create sync conflicts, and how local-first architecture fixes productivity software.',
+    path: '/blog/local-first-vs-cloud-first-note-taking-apps'
+  },
+  blogTerminalPkm: {
+    title: 'Running a PKM from the terminal: scriptable notes, tasks, and journal — memrynote',
+    description:
+      'Supercharge your personal knowledge management with a CLI. Query notes, capture tasks from git hooks, append to your daily journal, and automate workflows with Unix pipes.',
+    path: '/blog/running-a-pkm-from-the-terminal'
+  },
+  blogMarkdownMigration: {
+    title: 'Migrating from Evernote or Notion to Markdown without losing structure — memrynote',
+    description:
+      'A practical, step-by-step guide to exporting your knowledge base from Evernote or Notion into clean, portable Markdown with frontmatter, wiki-links, and attachments intact.',
+    path: '/blog/migrating-from-evernote-notion-to-markdown'
+  },
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:
@@ -465,5 +502,66 @@ export function getBreadcrumbJsonLd(page: keyof typeof PAGE_META): string | null
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: items
+  })
+}
+
+export function getArticleJsonLd(post: {
+  slug: string
+  title: string
+  description: string
+  datePublished: string
+  dateModified?: string
+  author: { name: string; url?: string }
+}): string {
+  const canonical = getCanonicalUrl(`/blog/${post.slug}`)
+
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonical
+    },
+    headline: post.title,
+    description: post.description,
+    image: [SOCIAL_IMAGE_URL],
+    datePublished: post.datePublished,
+    dateModified: post.dateModified || post.datePublished,
+    author: {
+      '@type': 'Person',
+      name: post.author.name,
+      url: post.author.url || 'https://x.com/h4yfans'
+    },
+    publisher: {
+      '@type': 'Organization',
+      '@id': ORGANIZATION_ID,
+      name: SITE_NAME,
+      url: `${BASE_URL}/`,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${BASE_URL}/favicon.svg`
+      }
+    }
+  })
+}
+
+export function getBlogIndexJsonLd(
+  posts: readonly { slug: string; title: string; description: string; datePublished: string }[]
+): string {
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${BASE_URL}/blog#collection`,
+    name: 'memrynote Blog & Editorial Guides',
+    description: PAGE_META.blog.description,
+    url: `${BASE_URL}/blog`,
+    publisher: { '@id': ORGANIZATION_ID },
+    hasPart: posts.map((post) => ({
+      '@type': 'Article',
+      headline: post.title,
+      description: post.description,
+      url: `${BASE_URL}/blog/${post.slug}`,
+      datePublished: post.datePublished
+    }))
   })
 }

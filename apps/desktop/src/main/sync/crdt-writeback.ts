@@ -549,12 +549,34 @@ async function writebackExisting(
   //
   // Skipping costs a round, not the edit. The ingest already on its way feeds
   // the file into this doc (`feedExternalEditToCrdt`), and the update that
-  // merge produces writes back from the merged result. A note whose hash was
-  // never measured — a tier-0 sidebar row, listed from `stat` alone — has
-  // nothing to compare and writes as it always did.
-  if (existingRaw !== null && cached.contentHash) {
-    const onDisk = generateContentHash(existingRaw)
-    if (onDisk !== cached.contentHash) {
+  // merge produces writes back from the merged result.
+  //
+  // A note whose hash was never measured used to be the exception: a tier-0
+  // sidebar row, listed from `stat` alone, had nothing to compare and wrote as
+  // it always did. That is the hole a stranger's vault fell through (#1909) —
+  // `sweepAllCrdtNotes` queues a pull for EVERY markdown note on every
+  // reconnect, and the write-back that a remote update schedules re-serializes
+  // the whole body, so a file nobody had ever opened came back rewritten. The
+  // rule is now the plain one: bytes this app never read are never overwritten.
+  //
+  // Seeding a doc fills the column in (`CrdtProvider.seedFromMarkdown`), so
+  // this refuses the write only while it is genuinely true that nothing here
+  // has read the file. Opening the note is what makes it false.
+  if (existingRaw !== null) {
+    // A row that is not in the index at all is a different situation and not
+    // this guard's: `cached` then came from canonical metadata, which means the
+    // item handler applied this note and wrote this file moments ago and only
+    // the projection is late (`resolveFromCanonicalMetadata`). Those bytes are
+    // ours. The hole being closed is the row that EXISTS and carries no hash.
+    if (!cached.contentHash && getNoteCacheById(indexDb, noteId)) {
+      log.warn('Write-back skipped: the file has never been read by this app', {
+        noteId,
+        path: relativePath
+      })
+      return
+    }
+    const onDisk = cached.contentHash ? generateContentHash(existingRaw) : null
+    if (onDisk !== null && onDisk !== cached.contentHash) {
       log.warn('Write-back skipped: the file changed outside the app', {
         noteId,
         path: relativePath

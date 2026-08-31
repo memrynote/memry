@@ -96,6 +96,76 @@ describe('analyzeTaskIntents', () => {
     })
   })
 
+  describe('Obsidian Tasks lines Memry must not rewrite', () => {
+    it('should decline a top-level checkbox carrying a block link', () => {
+      // #given - appending `{task:<id>}` would move `^ref-1` off the end of the line
+      const blocks = [cl('cl1', 'Buy milk ^ref-1')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toBeNull()
+      expect(result.subtaskCandidate).toBeNull()
+    })
+
+    it('should decline a top-level checkbox carrying a task id', () => {
+      // #given - the id is a graph edge other files point at
+      const blocks = [cl('cl1', 'Buy milk 🆔 abc123')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toBeNull()
+    })
+
+    it('should decline a top-level checkbox carrying a dependency', () => {
+      // #given
+      const blocks = [cl('cl1', 'Buy milk ⛔ abc123')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toBeNull()
+    })
+
+    it('should decline a nested blocked checkbox as a subtask candidate', () => {
+      // #given
+      const blocks = [tb('tb1', 'task-1', 'Plan trip', '', [cl('cl1', 'Book flight 🆔 flight-1')])]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.subtaskCandidate).toBeNull()
+      expect(result.standaloneCandidate).toBeNull()
+    })
+
+    it('should still pick an ordinary checkbox that carries plugin fields', () => {
+      // #given - a due date and a priority are importable, not blockers
+      const blocks = [cl('cl1', 'Buy milk 📅 2026-01-01 ⏫')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl1' })
+    })
+
+    it('should pick the next unblocked checkbox after a blocked one', () => {
+      // #given
+      const blocks = [cl('cl1', 'Buy milk ^ref-1'), cl('cl2', 'Buy bread')]
+
+      // #when
+      const result = analyzeTaskIntents(blocks, new Set())
+
+      // #then
+      expect(result.standaloneCandidate).toEqual({ blockId: 'cl2' })
+    })
+  })
+
   describe('checkListItem nested under taskBlock', () => {
     it('should mark a nested checkbox under a top-level taskBlock as subtask candidate', () => {
       // #given
