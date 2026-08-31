@@ -58,7 +58,13 @@ import {
   restoreBlockNesting,
   splitMarkdownByBlockNestingMarkers
 } from '@memry/shared/block-nesting'
-import { createFenceTracker } from '@memry/shared/markdown-fences'
+import { createFenceTracker, listCodeFenceInfoStrings } from '@memry/shared/markdown-fences'
+import {
+  readLinkReferencesFromYDoc,
+  restoreLinkReferences,
+  stripLinkReferenceDefinitions,
+  writeLinkReferencesToYDoc
+} from '@memry/shared/link-references'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -119,7 +125,9 @@ export async function yDocToMarkdown(
       }
       return ''
     }
-    return await blocksToMarkdownPreserving(editor, blocks as Block[])
+    const body = await blocksToMarkdownPreserving(editor, blocks as Block[])
+    const references = readLinkReferencesFromYDoc(doc)
+    return restoreLinkReferences(body, references.definitions, references.usages)
   } catch (err) {
     log.error('Yjs-to-markdown conversion failed', err)
     return null
@@ -203,10 +211,43 @@ export async function markdownToBlocks(
 ): Promise<Block[] | null> {
   try {
     const editor = getEditor()
-    return await markdownToBlocksPreserving(editor, markdown, notePath)
+    const blocks = await markdownToBlocksPreserving(editor, markdown, notePath)
+    restoreUntaggedFenceLanguages(markdown, blocks)
+    return blocks
   } catch (err) {
     log.error('Markdown-to-blocks conversion failed', err)
     return null
+  }
+}
+
+/**
+ * Un-invent the language BlockNote stamps on a fence that carried none.
+ *
+ * A bare ``` ``` ``` parses to a `codeBlock` whose `language` is the schema
+ * default, `javascript`, and the source is the only place that still knows the
+ * author left it bare. So the fences are counted off the markdown and matched
+ * against the code blocks in document order — the same order both are written
+ * in — and only the invented language is cleared. A count mismatch means some
+ * fence did not become a code block (a declined toggle body, an unclosed
+ * fence), and the whole pass is abandoned rather than guessed at: today's
+ * wrong language is better than a language moved onto the wrong block.
+ */
+function restoreUntaggedFenceLanguages(markdown: string, blocks: Block[]): void {
+  const infoStrings = listCodeFenceInfoStrings(markdown)
+  if (!infoStrings.includes('')) return
+
+  const codeBlocks: Block[] = []
+  const visit = (list: Block[]): void => {
+    for (const block of list) {
+      if (block.type === 'codeBlock') codeBlocks.push(block)
+      visit((block.children ?? []) as Block[])
+    }
+  }
+  visit(blocks)
+
+  if (codeBlocks.length !== infoStrings.length) return
+  for (const [index, info] of infoStrings.entries()) {
+    if (info === '') (codeBlocks[index].props as { language: string }).language = ''
   }
 }
 
@@ -263,6 +304,13 @@ export async function markdownToYFragment(
   notePath?: string
 ): Promise<boolean> {
   const parsed = parseCriticMarkup(markdown)
+  // Reference definitions ride beside the document in two Y.Arrays: the editor
+  // has no block for one, so the definition is dropped and the destination
+  // inlined at every use site, and the arrays are what puts both back (#1909).
+  // The parse still sees the definitions — without them `[docs][d]` is literal
+  // bracket text to CommonMark, not a link, and the note would open with every
+  // reference link dead on screen.
+  const references = stripLinkReferenceDefinitions(parsed.plainText)
   const blocks = await markdownToBlocks(parsed.plainText, notePath)
   if (!blocks) return false
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
@@ -271,6 +319,7 @@ export async function markdownToYFragment(
   const ok = blocksToYFragment(normalized, fragment)
   if (ok && fragment.doc) {
     writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
+    writeLinkReferencesToYDoc(fragment.doc, references.definitions, references.usages)
   }
   return ok
 }

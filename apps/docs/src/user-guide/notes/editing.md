@@ -511,3 +511,26 @@ are making at the same time is not thrown away.
 memrynote will not write over bytes it has not read. If a note's file has changed since
 memrynote last looked at it, the app leaves the file alone until it has taken that change in,
 rather than saving an older version of the note over it.
+
+memrynote will not write over a file it has never read at all. Pointing memrynote at an
+existing vault lists every note straight away, from the filename and timestamps alone. Until a
+note is opened, its file is left exactly as its author wrote it — a background sync round that
+touches that note skips the save rather than replacing bytes nobody here has looked at.
+
+## Opening a Note Written Somewhere Else
+
+Opening a note that another app wrote reads its markdown into memrynote's editor, and saving it
+afterwards writes memrynote's markdown back. The two are not always byte-for-byte the same. What
+is guaranteed is that nothing is _lost_ on the way through:
+
+- **A hard line break stays a hard line break.** A line ending in two spaces keeps them, so the
+  break stays a break rather than becoming a paragraph gap.
+- **A reference-style link keeps both halves.** `[the docs][d]` and its `[d]: https://…`
+  definition both survive, including a definition several links share. The link stays a working,
+  clickable link while the note is open. Definitions are gathered at the end of the file.
+- **A code fence with no language keeps no language.** A bare ` ` ``` fence is not given one,
+  which is what an Obsidian Kanban board's settings block needs to keep working.
+
+Some cosmetic details are normalized to one house style: `*` and `+` bullets become `-`, `_em_`
+becomes `*em*`, an underlined `Title` heading becomes `# Title`, and a `~~~` fence becomes a
+` ``` ` one. These change how the file is spelled, never what it says.

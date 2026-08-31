@@ -16,6 +16,7 @@
     "./youtube": "./src/youtube.ts",
     "./task-block": "./src/task-block.ts",
     "./markdown-class": "./src/markdown-class.ts",
+    "./link-references": "./src/link-references.ts",
     "./markdown-fences": "./src/markdown-fences.ts",
     "./wiki-target": "./src/wiki-target.ts",
     "./rewrite-wiki-links": "./src/rewrite-wiki-links.ts",
