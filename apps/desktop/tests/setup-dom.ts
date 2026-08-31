@@ -552,6 +552,7 @@ const createMockApi = () => ({
   onProjectUpdated: vi.fn().mockReturnValue(() => {}),
   onProjectDeleted: vi.fn().mockReturnValue(() => {}),
   onSettingsChanged: vi.fn().mockReturnValue(() => {}),
+  onCalendarChanged: vi.fn().mockReturnValue(() => {}),
   onMenuCommand: vi.fn().mockReturnValue(() => {}),
   onReminderDue: vi.fn().mockReturnValue(() => {}),
   onReminderCreated: vi.fn().mockReturnValue(() => {}),

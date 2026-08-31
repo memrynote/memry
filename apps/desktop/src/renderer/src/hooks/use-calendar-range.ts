@@ -1,8 +1,6 @@
-import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   calendarService,
-  onCalendarChanged,
   type GetCalendarRangeInput,
   type CalendarRangeResponse
 } from '@/services/calendar-service'
@@ -19,29 +17,19 @@ export const calendarRangeKeys = {
     ] as const
 }
 
+/**
+ * A calendar projection for one range.
+ *
+ * Keeping these caches fresh is `useCalendarChangeEvents`' job, mounted once in
+ * App.tsx. It used to be done here, per consumer, which meant a range only heard
+ * about a change while something was rendering it — and only the active tab of a
+ * group is mounted, so a background board never caught up.
+ */
 export function useCalendarRange(input: GetCalendarRangeInput) {
-  const queryClient = useQueryClient()
-
   const query = useQuery<CalendarRangeResponse>({
     queryKey: calendarRangeKeys.range(input),
     queryFn: () => calendarService.getRange(input)
   })
-
-  useEffect(() => {
-    return onCalendarChanged(() => {
-      void queryClient.invalidateQueries({ queryKey: calendarRangeKeys.all() })
-    })
-  }, [queryClient])
-
-  // Calendar settings (e.g. "show notes on calendar") change what the projection
-  // returns, so refetch the range when they change.
-  useEffect(() => {
-    return window.api.onSettingsChanged((event) => {
-      if (event.key === 'calendar') {
-        void queryClient.invalidateQueries({ queryKey: calendarRangeKeys.all() })
-      }
-    })
-  }, [queryClient])
 
   return {
     ...query,
