@@ -40,6 +40,10 @@ const SEL = {
   galleryItem: '[data-testid="widget-gallery-item"]',
   addWidgetTrigger: '[data-testid="add-widget-trigger"]',
   calendarPage: '[data-testid="calendar-page"]',
+  // The sidebar row, not the widget footer's "Open Calendar" link. A
+  // role+name lookup for "Calendar" matches both once the widget is on the
+  // board, and Playwright's strict mode rejects the pair.
+  calendarNav: '[data-tour="nav-calendar"]',
   tab: '[role="tab"][data-group-id]'
 }
 
@@ -127,7 +131,7 @@ test.describe('Home calendar widget picks up new events (#1911)', () => {
     const title = `Background board event ${Date.now()}`
     await expect(calendarRows(page).filter({ hasText: title })).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Calendar' }).click()
+    await page.locator(SEL.calendarNav).click()
     await expect(page.locator(SEL.calendarPage)).toBeVisible({ timeout: 20000 })
     // The board is now a background tab, so its widgets are unmounted.
     await expect(page.locator(SEL.calendarWidget)).toHaveCount(0)
