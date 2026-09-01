@@ -46,6 +46,7 @@ import {
   withErrorHandler
 } from './validate'
 import { registerCommand } from './lib/register-command'
+import type { Note } from '../vault/notes'
 import {
   getNoteById,
   getNoteByPath,
@@ -78,6 +79,8 @@ import {
 import { applyTemplateToNote } from '../notes/apply-template'
 import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { saveAttachment, deleteAttachment, listNoteAttachments } from '../vault/attachments'
+import { getStatus as getVaultStatus } from '../vault/index'
+import { inlineExportImages } from '../lib/export-image-inliner'
 import { readFolderConfig, writeFolderConfig, getFolderTemplate } from '../vault/folders'
 import {
   syncFolderConfigSet,
@@ -192,6 +195,29 @@ const ExportNoteSchema = z.object({
   // Headless export target — when provided, skip the save dialog (Agent MCP).
   outputPath: z.string().min(1).optional()
 })
+
+/**
+ * Render a note for export with its images carried inside the document.
+ *
+ * Both export paths go through here so the two stay in step: the PDF path has
+ * no base URL to resolve a relative `<img src>` against, and an exported
+ * `.html` only kept its images while it sat next to the attachments (#1935).
+ */
+async function renderNoteForExport(note: Note, includeMetadata: boolean): Promise<string> {
+  const html = renderNoteAsHtml(
+    {
+      id: note.id,
+      title: note.title,
+      content: note.content,
+      emoji: note.emoji,
+      tags: note.tags,
+      created: note.created,
+      modified: note.modified
+    },
+    { includeMetadata }
+  )
+  return inlineExportImages(html, { notePath: note.path, vaultPath: getVaultStatus().path })
+}
 
 /**
  * Register all note-related IPC handlers.
@@ -893,18 +919,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = renderNoteAsHtml(
-        {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          emoji: note.emoji,
-          tags: note.tags,
-          created: note.created,
-          modified: note.modified
-        },
-        { includeMetadata: input.includeMetadata }
-      )
+      const html = await renderNoteForExport(note, input.includeMetadata)
 
       const win = new BrowserWindow({
         show: false,
@@ -982,18 +997,7 @@ export function registerNotesHandlers(): void {
         targetPath = result.filePath
       }
 
-      const html = renderNoteAsHtml(
-        {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          emoji: note.emoji,
-          tags: note.tags,
-          created: note.created,
-          modified: note.modified
-        },
-        { includeMetadata: input.includeMetadata }
-      )
+      const html = await renderNoteForExport(note, input.includeMetadata)
 
       await fs.writeFile(targetPath, html, 'utf-8')
 
