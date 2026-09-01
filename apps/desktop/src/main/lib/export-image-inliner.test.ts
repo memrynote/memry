@@ -123,6 +123,9 @@ describe('inlineExportImages', () => {
   })
 
   it('leaves a ref that climbs above the vault root untouched', async () => {
+    // The file the climb would land on if `..` were collapsed instead of
+    // rejected: without the guard this would be inlined from the vault root.
+    writeFileSync(path.join(vaultPath, 'escape.png'), PNG_BYTES)
     const source = '<img src="../../escape.png">'
 
     expect(await inlineExportImages(source, { notePath: 'Folder/Note.md', vaultPath })).toBe(source)
