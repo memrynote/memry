@@ -88,8 +88,10 @@ export function isEnvFileName(name) {
  * recreates per run, and per-worktree scratch keeps two dev servers from
  * stepping on each other.
  *
- * `.claude/skills` is the repo's agent skill set (`/user-feedback`,
- * `/release-desktop`, `/ipc-contract-change`, ...). `.claude/` is gitignored,
+ * `.claude/skills` is the repo's agent skill set (`/memrynote:user-feedback`,
+ * `/memrynote:release-desktop`, `/ipc-contract-change`, ...). The `memrynote`
+ * entry is a skills-dir plugin, so its skills load under that namespace and
+ * travel with the same link. `.claude/` is gitignored,
  * so an agent session started in a worktree sees none of them and silently
  * falls back to ad hoc answers. Only `skills` is shared: the rest of `.claude`
  * holds per-session state and `.claude/worktrees`, which are real git
