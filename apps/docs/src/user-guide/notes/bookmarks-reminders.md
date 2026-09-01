@@ -32,6 +32,13 @@ list of the ones already set, each with its own edit and delete button. All of i
 when the panel is taller than the room the picker has, so the reminders at the end of the list stay
 editable however low in the window you opened it from.
 
+A note or a journal entry carries one reminder. Picking a relative button or a custom time while one
+is already set moves that reminder to the new time instead of adding a second one, so changing the
+hour on a reminder you set last week leaves you with one reminder rather than two firing on the same
+entry. Use the delete button next to a reminder to remove it; removing the last one clears the bell
+on the toolbar. Entries that collected duplicate reminders under an earlier version keep them, and
+each duplicate is listed with its own delete button.
+
 The optional note is available on both paths: type it before you press a relative button and it is
 saved with that reminder too. It is kept everywhere the picker appears — notes, journal entries,
 tasks and inbox items.
