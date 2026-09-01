@@ -201,9 +201,12 @@ Call `library` first unless the user gives a `/org/project` ID. Do not use ctx7 
 
 Strategic design brief lives in `PRODUCT.md` (root). Read it before UI work.
 
-- **Register:** `product` (desktop app) by default; `apps/landing` is a co-equal `brand` surface.
+- **Register:** `product` for desktop, mobile, and future product apps; `apps/landing` is a separate `brand` surface.
 - **Personality:** calm, private, crafted. Not cold-corporate, not gamified, not cluttered.
 - **Principles:** privacy is the product · one calm place · graceful by toggle · crafted not corporate · earn trust through restraint.
-- **A11y:** WCAG AA + reduced-motion + RTL (logical Tailwind props).
-- **Visual system:** `docs/DESIGN_TOKENS.md`, `apps/landing/src/index.css` (terracotta `#ff671a` / paper / ink). Run
+- **A11y:** WCAG AA + reduced-motion + RTL. Use logical Tailwind properties on desktop and logical React Native properties on mobile.
+- **Global product design authority:** `DESIGN.md`. Read it before any desktop, mobile, or future product UI change. Desktop is the current reference implementation; other platforms adapt it through native patterns.
+- **Desktop implementation:** `apps/desktop/src/renderer/src/assets/base.css` owns live desktop values; `docs/DESIGN_TOKENS.md` is the desktop implementation catalog.
+- **Mobile implementation:** `apps/mobile/src/theme/` and `apps/mobile/src/components/ui/`. Mobile is in development and unreleased; its current code and Figma files do not override `DESIGN.md` or the desktop reference.
+- **Landing visual system:** `apps/landing/src/index.css` (terracotta `#ff671a` / paper / ink). Do not copy landing typography, mascots, or CTA treatment into product apps.
 - **Mascot icons:** hand-drawn set in `apps/landing/public/mascots`. To create a new one in-style, follow `apps/landing/scripts/mascots/README.md`.

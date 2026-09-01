@@ -676,11 +676,11 @@ Where they conflict, the three-board set wins and board 11 contributes only its 
 | Recent search subtitles        | 03 draws `4 results`, `18 notes`, `2 results`.                                                                                                             | `N results`, recomputed live on entry.                       | `18 notes` belongs to a tag search that does not exist on mobile. A stored count also goes stale the moment a note changes, and a stale number next to a saved query is a small lie the user has no way to spot.                                            |
 | Scope chips on the empty state | 06 draws none. 04 and 11 draw them.                                                                                                                        | Rendered whenever the unfiltered result count is above zero. | With zero results there is nothing to scope, which is what 06 draws. Above zero the chips are the only way out of a scope that happens to be empty, so hiding them there would strand the user.                                                             |
 
-### Open conflict, not resolved here
+### Resolved conflict, desktop tint is the reference
 
-`tint/base` is `#6366f1` in Figma. `apps/desktop/src/renderer/src/assets/base.css` line 2266 sets `--default-user-accent-color: #f97316` for both `.white` and `.dark`, which is the value the desktop app actually ships. `docs/DESIGN_TOKENS.md` documents the stale indigo.
+`tint/base` is `#6366f1` in Figma. `apps/desktop/src/renderer/src/assets/base.css` sets `--default-user-accent-color: #f97316`, which is the product reference value.
 
-Implement `#6366f1` as Figma specifies. It is one token value, so switching costs one line. Flag it for a decision.
+Use `#f97316` as the default mobile tint. A synced user accent may replace it at runtime. The current `#6366f1` mobile token is migration debt, not an approved platform difference.
 
 ### Open question, the tab bar is opaque everywhere in Figma
 

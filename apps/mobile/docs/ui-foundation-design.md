@@ -1,7 +1,8 @@
 # Mobile UI foundation, design contract
 
-Synthesized from three independent design packages. This is the contract the implementation fills in.
-Measured values live in `figma-foundation-spec.md`. This file owns the shape.
+The root `DESIGN.md` is the global product design authority. Desktop is the current reference implementation. This mobile contract maps that system to native touch interaction and the current Expo implementation.
+
+Measured values live in `figma-foundation-spec.md`. Figma and this file define mobile implementation detail only where they do not conflict with the global system or the desktop reference.
 
 ## Decisions
 
@@ -51,12 +52,12 @@ back. `fontFamilies` holds seven role named strings, `FontFamily` is the union o
 `src/constants/theme.ts`, `src/hooks/use-theme.ts`, `themed-text.tsx` and `themed-view.tsx` are not
 touched, not deleted, not re-pointed at the new tokens.
 
-22 files consume them, including every screen in the shipping sign-in, vaults, unlock and notes flow.
+22 files consume them, including every screen in the current sign-in, vaults, unlock and notes flow.
 Those screens have no design in this Figma pass and get redesigned in the next step. Re-pointing them
 now would change their colours (`#000000` to `#37352f`) with no spec to check the result against, and
 migrating them would be churn on files about to be rewritten.
 
-Cost accepted, two text vocabularies coexist until the screen work lands. Follow up issue tracks the sweep.
+Cost accepted, two text vocabularies coexist until the screen work lands. Follow up issue tracks the sweep. New product screens use `src/theme/`; the legacy layer is not an approved alternative.
 
 ## Module map
 

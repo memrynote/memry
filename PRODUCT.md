@@ -4,10 +4,11 @@
 
 product
 
-> Default register is `product` — most design work serves the Memry **desktop app**
-> (notes, tasks, projects, journal, calendar, agent chat, settings, app shell).
-> The **landing/marketing site** (`apps/landing`) is a co-equal **brand** surface:
-> when working on it, override to the `brand` register and read `reference/brand.md`.
+> The `product` register covers every Memry product app. Desktop is the current
+> reference implementation. Mobile and future platforms carry the same product
+> system through their native interaction and navigation patterns. The
+> landing/marketing site (`apps/landing`) is a separate `brand` surface. When
+> working on it, override to the `brand` register and read `reference/brand.md`.
 
 ## Users
 
