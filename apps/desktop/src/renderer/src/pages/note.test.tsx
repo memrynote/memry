@@ -327,8 +327,13 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 
 vi.mock('@/hooks/use-note-reminders', () => ({
   useNoteReminders: () => ({
+    activeReminders: [],
     hasActiveReminder: false,
-    actions: { setReminder: mocks.setReminder }
+    actions: {
+      setReminder: mocks.setReminder,
+      editReminder: vi.fn(),
+      deleteReminder: vi.fn()
+    }
   })
 }))
 
