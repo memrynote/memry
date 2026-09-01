@@ -34,6 +34,14 @@ export interface LaunchOptions {
   deviceId?: string
   syncServerUrl?: string | null
   extraEnv?: Record<string, string | undefined>
+  /**
+   * Reuse an existing user-data dir instead of minting a fresh one, so a
+   * relaunch sees the renderer state Chromium keeps there (localStorage,
+   * IndexedDB). Pass the same dir to both launches and delete it yourself.
+   * Note this also shares `logDir`, so `waitForMainLog` can match a line the
+   * earlier launch wrote.
+   */
+  userDataDir?: string
 }
 
 export interface LaunchedElectron {
@@ -179,7 +187,7 @@ export async function waitForMainLog(
 
 async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
   const prefix = opts.deviceId ? `memry-userdata-${opts.deviceId}-` : 'memry-userdata-'
-  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))
+  const userDataDir = opts.userDataDir ?? fs.mkdtempSync(path.join(os.tmpdir(), prefix))
   // Isolate electron-log's file output to this run's fresh dir (see logger.ts) so
   // waitForMainLog reads only lines from this launch, never a prior run's leftovers.
   const logDir = path.join(userDataDir, 'logs')
