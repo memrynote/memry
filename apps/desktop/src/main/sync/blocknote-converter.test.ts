@@ -3384,3 +3384,81 @@ describe('a link mention through the main serializer', () => {
     expect(result).toBe(markdown)
   })
 })
+
+describe('text alignment survives the markdown round trip (#1937)', () => {
+  const blocksToMd = async (blocks: NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>) => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    blocksToYFragment(blocks, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const crdtRoundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    await markdownToYFragment(md, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    return yDocToMarkdown(doc)
+  }
+
+  it.each(['center', 'right', 'justify'])(
+    'reads and writes a %s-aligned paragraph',
+    async (alignment) => {
+      const md = `<!-- align:${alignment} -->\nCentred`
+
+      const blocks = await markdownToBlocks(md)
+
+      expect(blocks![0]).toMatchObject({ type: 'paragraph', props: { textAlignment: alignment } })
+      expect(await blocksToMd(blocks!)).toBe(md)
+    }
+  )
+
+  it('reads and writes a right-aligned heading', async () => {
+    const md = '<!-- align:right -->\n## Title'
+
+    const blocks = await markdownToBlocks(md)
+
+    expect(blocks![0]).toMatchObject({
+      type: 'heading',
+      props: { level: 2, textAlignment: 'right' }
+    })
+    expect(await blocksToMd(blocks!)).toBe(md)
+  })
+
+  it('writes no marker for the default alignment', async () => {
+    const blocks = await markdownToBlocks('Centred')
+
+    expect(blocks![0]).toMatchObject({ props: { textAlignment: 'left' } })
+    expect(await blocksToMd(blocks!)).toBe('Centred')
+  })
+
+  it('writes no marker for a block whose props say left', async () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        props: { textAlignment: 'left' },
+        content: [{ type: 'text', text: 'Plain', styles: {} }],
+        children: []
+      }
+    ] as unknown as NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>
+
+    expect(await blocksToMd(blocks)).toBe('Plain')
+  })
+
+  // ProseMirror's computeAttrs drops any attribute the schema does not declare,
+  // so this is the proof that `textAlignment` (a BlockNote defaultProp) needs no
+  // editor-schema change to survive the CRDT hop.
+  it('keeps the marker across the CRDT path', async () => {
+    const md = '<!-- align:center -->\nCentred'
+
+    const once = await crdtRoundTrip(md)
+
+    expect(once).toBe(md)
+    expect(await crdtRoundTrip(once!)).toBe(md)
+  })
+
+  it.each(['<!-- align:left -->\nText', '<!-- todo -->\nText'])(
+    'leaves %j on the unrecognised-comment path, which drops it',
+    async (md) => {
+      expect(await crdtRoundTrip(md)).toBe('Text')
+    }
+  )
+})
