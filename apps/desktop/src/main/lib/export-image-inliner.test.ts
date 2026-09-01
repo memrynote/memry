@@ -123,23 +123,61 @@ describe('inlineExportImages', () => {
   })
 
   it('leaves a ref that climbs above the vault root untouched', async () => {
-    // The file the climb would land on if `..` were collapsed instead of
-    // rejected: without the guard this would be inlined from the vault root.
+    // The file the climb lands on when `..` is collapsed instead of rejected.
+    // Without the guard this would be inlined from the vault root.
     writeFileSync(path.join(vaultPath, 'escape.png'), PNG_BYTES)
     const source = '<img src="../../escape.png">'
 
     expect(await inlineExportImages(source, { notePath: 'Folder/Note.md', vaultPath })).toBe(source)
   })
 
-  it('falls back to application/octet-stream for an unknown extension', async () => {
+  it('leaves a readable file whose extension is not a known image type', async () => {
     writeFileSync(path.join(vaultPath, 'attachments', 'note-a', 'photo.heic'), PNG_BYTES)
+    const source = '<img src="attachments/note-a/photo.heic">'
 
-    const html = await inlineExportImages('<img src="attachments/note-a/photo.heic">', {
-      notePath: 'Note.md',
-      vaultPath
-    })
+    expect(await inlineExportImages(source, { notePath: 'Note.md', vaultPath })).toBe(source)
+    expect(mocks.warn).toHaveBeenCalledWith(
+      'Export skipped a reference that is not a known image type',
+      expect.objectContaining({ src: 'attachments/note-a/photo.heic' })
+    )
+  })
 
-    expect(html).toBe(`<img src="data:application/octet-stream;base64,${PNG_BASE64}">`)
+  it('never embeds a non-image file the note points at by absolute path', async () => {
+    const secret = path.join(outsidePath, 'id_rsa')
+    writeFileSync(secret, 'PRIVATE KEY BYTES')
+
+    for (const src of [secret, pathToFileURL(secret).href, toMemryFileUrl(secret)]) {
+      const source = `<img src="${src}">`
+      const html = await inlineExportImages(source, { notePath: 'Folder/Note.md', vaultPath })
+
+      expect(html).toBe(source)
+      expect(html).not.toContain('PRIVATE KEY BYTES')
+      expect(html).not.toContain(Buffer.from('PRIVATE KEY BYTES').toString('base64'))
+    }
+  })
+
+  it('inlines every extension on the image allowlist', async () => {
+    const cases: Array<[string, string]> = [
+      ['a.png', 'image/png'],
+      ['a.jpg', 'image/jpeg'],
+      ['a.jpeg', 'image/jpeg'],
+      ['a.gif', 'image/gif'],
+      ['a.webp', 'image/webp'],
+      ['a.svg', 'image/svg+xml'],
+      ['a.bmp', 'image/bmp'],
+      ['a.avif', 'image/avif'],
+      ['a.ico', 'image/x-icon']
+    ]
+
+    for (const [filename, mime] of cases) {
+      writeFileSync(path.join(vaultPath, 'attachments', 'note-a', filename), PNG_BYTES)
+      const html = await inlineExportImages(`<img src="attachments/note-a/${filename}">`, {
+        notePath: 'Note.md',
+        vaultPath
+      })
+
+      expect(html).toBe(`<img src="data:${mime};base64,${PNG_BASE64}">`)
+    }
   })
 
   it('rewrites every occurrence of a repeated image and keeps the original quoting', async () => {

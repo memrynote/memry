@@ -9,8 +9,15 @@
  *
  * Inlining the bytes fixes both paths with one rule. It needs no base URL and
  * no script, so it works with `webPreferences.javascript: false`, and it makes
- * an exported `.html` self-contained. The cost is document size: every image is
- * carried as base64, about a third larger than the file on disk.
+ * an exported `.html` self-contained. The cost is document size, since base64
+ * runs about a third larger than the file on disk.
+ *
+ * Only the image extensions below are inlined. A note is data, and a synced or
+ * imported one can name any path its author liked, so without the allowlist an
+ * `<img src="file:///…/id_rsa">` would put those bytes into a document the user
+ * then emails. `memry-file:` has the protocol handler's vault and userData
+ * check behind it; every other scheme here has nothing, so the extension is the
+ * gate.
  *
  * @module lib/export-image-inliner
  */
@@ -18,7 +25,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { getExtension, getMimeType } from '@memry/shared/file-types'
+import { getExtension } from '@memry/shared/file-types'
 import { createLogger } from './logger'
 
 const logger = createLogger('ExportImageInliner')
@@ -30,10 +37,22 @@ export interface ExportImageSource {
   vaultPath?: string | null
 }
 
+const IMAGE_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  avif: 'image/avif',
+  ico: 'image/x-icon'
+}
+
 const IMG_TAG = /<img\b[^>]*>/gi
 const SRC_ATTR = /(\ssrc\s*=\s*)(["'])([^"']*)\2/i
 
-/** `https:`, `data:`, `memry-file:` — and `C:` on Windows, ruled out first. */
+/** Matches `https:`, `data:`, `memry-file:`, and `C:` on Windows. */
 const HAS_SCHEME = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
 const WINDOWS_DRIVE = /^[a-zA-Z]:[/\\]/
 const SEPARATOR = /[/\\]/
@@ -43,9 +62,9 @@ const SEPARATOR = /[/\\]/
  * and `..`. Returns null when the ref climbs above the vault root.
  *
  * Restated from the renderer's `resolve-note-relative-url.ts` rather than
- * imported: the renderer is not importable here, and both sides have to agree
- * on what a note-relative ref means or the export resolves images the editor
- * does not.
+ * imported, because the renderer is not importable here. Both sides have to
+ * agree on what a note-relative ref means, or the export resolves images the
+ * editor does not.
  */
 function joinWithinVault(dir: string, ref: string): string[] | null {
   const out: string[] = []
@@ -132,9 +151,15 @@ export async function inlineExportImages(html: string, source: ExportImageSource
     [...refs].map(async (src) => {
       const filePath = resolveLocalPath(src, source)
       if (!filePath) return
+
+      const mime = IMAGE_MIME[getExtension(filePath)]
+      if (!mime) {
+        logger.warn('Export skipped a reference that is not a known image type', { src, filePath })
+        return
+      }
+
       try {
         const bytes = await readFile(filePath)
-        const mime = getMimeType(getExtension(filePath)) ?? 'application/octet-stream'
         inlined.set(src, `data:${mime};base64,${bytes.toString('base64')}`)
       } catch (error) {
         logger.warn('Export could not inline an image, leaving the reference as written', {

@@ -199,7 +199,7 @@ const ExportNoteSchema = z.object({
 /**
  * Render a note for export with its images carried inside the document.
  *
- * Both export paths go through here so the two stay in step: the PDF path has
+ * Both export paths go through here so the two stay in step. The PDF path has
  * no base URL to resolve a relative `<img src>` against, and an exported
  * `.html` only kept its images while it sat next to the attachments (#1935).
  */
