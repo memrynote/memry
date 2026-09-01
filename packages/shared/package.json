@@ -10,6 +10,7 @@
     "./file-types": "./src/file-types.ts",
     "./empty-lines": "./src/empty-lines.ts",
     "./block-colors": "./src/block-colors.ts",
+    "./block-markers": "./src/block-markers.ts",
     "./inline-colors": "./src/inline-colors.ts",
     "./date-mention": "./src/date-mention.ts",
     "./block-nesting": "./src/block-nesting.ts",
