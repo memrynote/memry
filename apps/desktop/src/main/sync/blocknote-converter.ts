@@ -27,17 +27,16 @@ import {
 } from '@memry/shared/task-block'
 import {
   type BlockColors,
-  type TableCellColors,
-  applyTableCellColors,
-  extractTableCellColors,
-  BLOCK_COLORS_LINE_REGEX,
-  TABLE_CELL_COLORS_LINE_REGEX,
   hasNonDefaultColors,
   parseBlockColorsMarker,
-  parseTableCellColorsMarker,
-  serializeBlockColorsMarker,
-  serializeTableCellColorsMarker
+  serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
+import {
+  type MarkedBlock,
+  type SidecarPatch,
+  parseSidecarMarkerLine,
+  sidecarMarkerLines
+} from '@memry/shared/block-markers'
 import {
   applyInlineColorTokens,
   extractInlineColorRuns,
@@ -586,7 +585,7 @@ async function parseMarkdownWithoutToggles(
 
   for (const seg of segments) {
     if (seg.type === 'content') {
-      blocks.push(...(await parseContentWithColorMarkers(editor, seg.text)))
+      blocks.push(...(await parseContentWithMarkers(editor, seg.text)))
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
         blocks.push(createEmptyParagraph())
@@ -597,26 +596,23 @@ async function parseMarkdownWithoutToggles(
   return blocks
 }
 
-async function parseContentWithColorMarkers(
+async function parseContentWithMarkers(
   editor: ServerBlockNoteEditor,
   text: string
 ): Promise<Block[]> {
   const blocks: Block[] = []
   let buffer: string[] = []
-  let pendingColors: BlockColors | null = null
-  let pendingTableColors: TableCellColors | null = null
+  let pending: SidecarPatch[] = []
+
+  const applyPending = (block: Block | undefined): void => {
+    if (block) for (const apply of pending) apply(block as unknown as MarkedBlock)
+    pending = []
+  }
 
   const flushBuffer = async (): Promise<void> => {
     if (buffer.length === 0) return
     const parsed = await parseMarkdownChunkPreservingNesting(editor, buffer.join('\n'))
-    if (pendingColors && parsed[0]) {
-      parsed[0].props = { ...parsed[0].props, ...pendingColors }
-    }
-    if (pendingTableColors && parsed[0]) {
-      applyTableCellColors(parsed[0].content, pendingTableColors)
-    }
-    pendingColors = null
-    pendingTableColors = null
+    applyPending(parsed[0])
     blocks.push(...parsed)
     buffer = []
   }
@@ -635,19 +631,18 @@ async function parseContentWithColorMarkers(
     // and its bytes stay untouched, which is what keeps `> [!note]` in an
     // Obsidian vault byte-identical through Memry.
     if (!insideFence) {
-      // A colors marker sits directly above the block it colors, so a claim
-      // right after one is still a paragraph start.
-      const atParagraphStart =
-        i === 0 ||
-        lines[i - 1].trim() === '' ||
-        (buffer.length === 0 && (pendingColors !== null || pendingTableColors !== null))
+      const afterSidecarMarker = buffer.length === 0 && pending.length > 0
+      const atParagraphStart = i === 0 || lines[i - 1].trim() === '' || afterSidecarMarker
       const claimed = await parseCalloutRunAt(editor, lines, i, atParagraphStart)
       if (claimed) {
         await flushBuffer()
-        const props = { type: claimed.type, ...(pendingColors ?? {}) }
-        pendingColors = null
-        pendingTableColors = null
-        blocks.push({ type: 'callout', props, content: claimed.content } as unknown as Block)
+        const callout = {
+          type: 'callout',
+          props: { type: claimed.type },
+          content: claimed.content
+        } as unknown as Block
+        applyPending(callout)
+        blocks.push(callout)
         for (let consumed = i + 1; consumed < claimed.end; consumed++) {
           fence.consume(lines[consumed])
         }
@@ -658,15 +653,14 @@ async function parseContentWithColorMarkers(
       const quoted = atParagraphStart ? await parseQuoteRunAt(editor, lines, i) : null
       if (quoted) {
         await flushBuffer()
-        const props = { ...(pendingColors ?? {}) }
-        pendingColors = null
-        pendingTableColors = null
-        blocks.push({
+        const quote = {
           type: 'quote',
-          props,
+          props: {},
           content: quoted.content,
           children: quoted.children
-        } as unknown as Block)
+        } as unknown as Block
+        applyPending(quote)
+        blocks.push(quote)
         for (let consumed = i + 1; consumed < quoted.end; consumed++) {
           fence.consume(lines[consumed])
         }
@@ -676,35 +670,20 @@ async function parseContentWithColorMarkers(
     }
 
     // Deliberately NOT fence-guarded: this branch predates custom-block parsing
-    // and guarding it would drop a colour marker that follows a fence this
+    // and guarding it would drop a sidecar marker that follows a fence this
     // tracker read differently, which is data loss on a path #1432 never
     // touched. The renderer's twin (markdown-utils.ts) is unguarded too.
-    if (BLOCK_COLORS_LINE_REGEX.test(trimmed)) {
-      const colors = parseBlockColorsMarker(trimmed)
-      if (colors) {
-        await flushBuffer()
-        pendingColors = colors
-        continue
-      }
-    }
-
-    // Same rule, one level down: the colors of the individual cells of the
-    // table that follows. `flushBuffer` returns early on an empty buffer, so
-    // the two markers can sit on consecutive lines without clearing each other.
-    if (TABLE_CELL_COLORS_LINE_REGEX.test(trimmed)) {
-      const cellColors = parseTableCellColorsMarker(trimmed)
-      if (cellColors) {
-        await flushBuffer()
-        pendingTableColors = cellColors
-        continue
-      }
+    const patch = parseSidecarMarkerLine(trimmed)
+    if (patch) {
+      await flushBuffer()
+      pending.push(patch)
+      continue
     }
 
     const marker = insideFence ? null : parseCustomBlockMarkerLine(line)
     if (marker) {
       await flushBuffer()
-      pendingColors = null
-      pendingTableColors = null
+      pending = []
       blocks.push(marker)
       continue
     }
@@ -849,22 +828,6 @@ function parseHttpUrl(url: string): URL | null {
   }
 }
 
-/**
- * The marker lines a block needs in front of it to keep the colors markdown
- * cannot carry: its own text/background color, and — for a table — the colors
- * of its individual cells. Empty for everything else, which is what keeps the
- * bytes of every note without a colored block exactly as they were.
- */
-function colorMarkerLines(block: Block): string[] {
-  const lines: string[] = []
-  if (hasNonDefaultColors(block.props as BlockColors)) {
-    lines.push(serializeBlockColorsMarker(block.props as BlockColors))
-  }
-  const cellColors = extractTableCellColors(block.content)
-  if (cellColors) lines.push(serializeTableCellColorsMarker(cellColors))
-  return lines
-}
-
 async function blocksToMarkdownPreserving(
   editor: ServerBlockNoteEditor,
   blocks: Block[]
@@ -889,7 +852,7 @@ async function blocksToMarkdownPreserving(
   }
 
   for (const block of blocks) {
-    const colorMarkers = colorMarkerLines(block)
+    const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
 
     if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
@@ -914,7 +877,7 @@ async function blocksToMarkdownPreserving(
       const quoted = await serializeQuote(editor, block)
       segments.push({
         type: 'content',
-        text: colorMarkers.length > 0 ? `${colorMarkers.join('\n')}\n${quoted}` : quoted
+        text: markers.length > 0 ? `${markers.join('\n')}\n${quoted}` : quoted
       })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
@@ -923,7 +886,7 @@ async function blocksToMarkdownPreserving(
         contentGroup = []
       }
       emptyCount++
-    } else if (colorMarkers.length > 0) {
+    } else if (markers.length > 0) {
       if (contentGroup.length > 0) {
         const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
         segments.push({ type: 'content', text: md.trim() })
@@ -936,7 +899,7 @@ async function blocksToMarkdownPreserving(
       const blockMd = await serializeBlocks(editor, [block] as PartialBlock[])
       segments.push({
         type: 'content',
-        text: `${colorMarkers.join('\n')}\n${blockMd.trim()}`
+        text: `${markers.join('\n')}\n${blockMd.trim()}`
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
