@@ -358,7 +358,10 @@ const blockMarkerCases: RoundtripCase[] = [
     markdown:
       '<!-- file:{"url":"memry-file://local/v/a/x.pdf","name":"x.pdf","size":1234,"mimeType":"application/pdf"} -->'
   },
-  { name: 'task block line', markdown: '- [ ] a task {task:t1}' }
+  { name: 'task block line', markdown: '- [ ] a task {task:t1}' },
+  { name: 'centred paragraph', markdown: '<!-- align:center -->\nCentred' },
+  { name: 'right-aligned heading', markdown: '<!-- align:right -->\n## Title' },
+  { name: 'justified paragraph', markdown: '<!-- align:justify -->\nJustified' }
 ]
 
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
