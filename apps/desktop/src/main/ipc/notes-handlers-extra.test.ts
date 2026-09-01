@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   }
   const windowInstance = {
     loadURL: vi.fn().mockResolvedValue(undefined),
+    loadFile: vi.fn().mockResolvedValue(undefined),
     webContents,
     destroy: vi.fn(),
     isDestroyed: vi.fn(() => false)
@@ -37,6 +38,8 @@ const mocks = vi.hoisted(() => {
     windowInstance,
     webContents,
     fsWriteFile: vi.fn(),
+    fsRm: vi.fn(),
+    appGetPath: vi.fn(() => '/tmp'),
     resolveNoteByTitle: vi.fn(),
     resolveNotesByTitles: vi.fn(),
     getNoteTags: vi.fn(),
@@ -89,12 +92,14 @@ vi.mock('electron', () => ({
     removeHandler: mocks.removeHandler
   },
   dialog: mocks.dialog,
-  BrowserWindow: mocks.BrowserWindow
+  BrowserWindow: mocks.BrowserWindow,
+  app: { getPath: mocks.appGetPath }
 }))
 
 vi.mock('fs/promises', async (importOriginal) => ({
   ...(await importOriginal<typeof import('fs/promises')>()),
-  writeFile: mocks.fsWriteFile
+  writeFile: mocks.fsWriteFile,
+  rm: mocks.fsRm
 }))
 
 vi.mock('../database', () => ({
@@ -227,7 +232,6 @@ const successful = (result: unknown): unknown => {
   return result
 }
 
-const DATA_HTML_PREFIX = 'data:text/html;charset=utf-8,'
 const PNG_BYTES = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
   'base64'
@@ -245,8 +249,11 @@ describe('notes-handlers extra coverage', () => {
     mocks.handlers.clear()
     mocks.webContents.printToPDF.mockResolvedValue(Buffer.from('pdf'))
     mocks.windowInstance.loadURL.mockResolvedValue(undefined)
+    mocks.windowInstance.loadFile.mockResolvedValue(undefined)
     mocks.windowInstance.isDestroyed.mockReturnValue(false)
     mocks.fsWriteFile.mockResolvedValue(undefined)
+    mocks.fsRm.mockResolvedValue(undefined)
+    mocks.appGetPath.mockReturnValue('/tmp')
     mocks.service.get.mockReturnValue(null)
     mocks.getVaultStatus.mockReturnValue({ path: null })
     mocks.renderNoteAsHtml.mockReturnValue('<html><body>note</body></html>')
@@ -590,13 +597,16 @@ describe('notes-handlers extra coverage', () => {
     )
     expect(mocks.fsWriteFile).toHaveBeenCalledWith('/tmp/Daily_note.pdf', Buffer.from('pdf'))
 
-    // The PDF window loads a `data:` URL, which has no base to resolve a
-    // relative ref against, so the bytes have to travel in the document.
-    const loaded = mocks.windowInstance.loadURL.mock.calls.at(-1)?.[0] as string
-    expect(loaded.startsWith(DATA_HTML_PREFIX)).toBe(true)
-    expect(decodeURIComponent(loaded.slice(DATA_HTML_PREFIX.length))).toBe(
-      `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`
+    // Staged to a real file rather than a `data:` URL, which Chromium rejects
+    // past its length ceiling once an image is inlined.
+    const staged = mocks.windowInstance.loadFile.mock.calls.at(-1)?.[0] as string
+    expect(staged).toMatch(/^\/tmp\/memry-export-.+\.html$/)
+    expect(mocks.fsWriteFile).toHaveBeenCalledWith(
+      staged,
+      `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`,
+      'utf-8'
     )
+    expect(mocks.fsRm).toHaveBeenCalledWith(staged, { force: true })
 
     mocks.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: true })
     await expect(
@@ -677,10 +687,13 @@ describe('notes-handlers extra coverage', () => {
       })
     ).toEqual({ success: false, error: 'printToPDF crashed' })
     expect(mocks.windowInstance.destroy).toHaveBeenCalledTimes(1)
-    expect(mocks.fsWriteFile).not.toHaveBeenCalled()
+    expect(mocks.fsWriteFile).not.toHaveBeenCalledWith('/tmp/Daily_note.pdf', expect.anything())
+    // The staged HTML is removed even when the print fails.
+    const staged = mocks.windowInstance.loadFile.mock.calls.at(-1)?.[0] as string
+    expect(mocks.fsRm).toHaveBeenCalledWith(staged, { force: true })
 
     mocks.windowInstance.destroy.mockClear()
-    mocks.windowInstance.loadURL.mockRejectedValueOnce(new Error('loadURL crashed'))
+    mocks.windowInstance.loadFile.mockRejectedValueOnce(new Error('loadFile crashed'))
     expect(
       await invoke(NotesChannels.invoke.EXPORT_PDF, {
         noteId: 'note-a',
@@ -688,7 +701,7 @@ describe('notes-handlers extra coverage', () => {
         includeMetadata: false,
         pageSize: 'A4'
       })
-    ).toEqual({ success: false, error: 'loadURL crashed' })
+    ).toEqual({ success: false, error: 'loadFile crashed' })
     expect(mocks.windowInstance.destroy).toHaveBeenCalledTimes(1)
 
     // An already-destroyed window is never destroyed twice.

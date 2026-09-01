@@ -5,8 +5,10 @@
  * @module ipc/notes-handlers
  */
 
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, app } from 'electron'
 import * as fs from 'fs/promises'
+import * as path from 'path'
+import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import {
   NotesChannels,
@@ -930,9 +932,16 @@ export function registerNotesHandlers(): void {
         }
       })
 
+      // A `data:` URL would be simpler, but Chromium rejects one past its URL
+      // length ceiling with ERR_INVALID_URL, and a note holding one phone
+      // photograph clears that ceiling once its images are inlined. A real file
+      // has no such limit.
+      const stagedHtmlPath = path.join(app.getPath('temp'), `memry-export-${randomUUID()}.html`)
+
       let pdfData: Buffer
       try {
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+        await fs.writeFile(stagedHtmlPath, html, 'utf-8')
+        await win.loadFile(stagedHtmlPath)
         await new Promise((resolve) => setTimeout(resolve, 100))
 
         const pageSizeMap: Record<string, Electron.PrintToPDFOptions['pageSize']> = {
@@ -953,6 +962,9 @@ export function registerNotesHandlers(): void {
         })
       } finally {
         if (!win.isDestroyed()) win.destroy()
+        await fs.rm(stagedHtmlPath, { force: true }).catch((error) => {
+          logger.warn('Failed to remove the staged export HTML', { stagedHtmlPath, error })
+        })
       }
 
       await fs.writeFile(targetPath, pdfData)
