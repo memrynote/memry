@@ -102,7 +102,11 @@ Notes, events, and files join a project as **links** (many-to-many): the same no
 - **Add an event** — right-click a calendar event and choose **Add to project**
 - Dragging any note or file from the sidebar onto a project links it in one step — memrynote tells notes and files apart automatically, so the same drag works for either
 
-Files and calendar events, which have no frontmatter, show small **project chips** under their title — click a chip to jump to that project's hub. A note or journal entry shows its projects in the `project` property row instead.
+Files and calendar events, which have no frontmatter, show small **project chips** under their title. A note or journal entry shows its projects in the `project` property row instead.
+
+### Removing from a project
+
+Nothing has to be deleted to undo a link. A note or journal entry leaves a project from the same `project` property row that put it there: every project is a chip with an **×**. A file leaves the same way, from the project chips under its title, which carry that **×** too. Removing the last one leaves the item in your vault with no project at all, exactly as it was before you linked it. A note's membership lives in its frontmatter, so the removal travels to your other devices with the file itself.
 
 ## Deleting a Project
 
