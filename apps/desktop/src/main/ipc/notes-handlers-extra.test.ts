@@ -1,3 +1,6 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
@@ -63,6 +66,8 @@ const mocks = vi.hoisted(() => {
     countLocalOnlyNoteMetadata: vi.fn(),
     listPropertyDefinitions: vi.fn(),
     emitNoteAttachmentSaved: vi.fn(),
+    getVaultStatus: vi.fn(() => ({ path: null }) as { path: string | null }),
+    renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
     service: {
       get: vi.fn(),
       upsert: vi.fn(),
@@ -173,8 +178,13 @@ vi.mock('../vault/property-definitions', () => ({
 }))
 
 vi.mock('../lib/export-utils', () => ({
-  renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
+  renderNoteAsHtml: mocks.renderNoteAsHtml,
   sanitizeFilename: vi.fn((value: string) => value.replace(/\W+/g, '_'))
+}))
+
+vi.mock('../vault/index', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../vault/index')>()),
+  getStatus: mocks.getVaultStatus
 }))
 
 vi.mock('../lib/main-i18n', () => ({
@@ -197,7 +207,8 @@ vi.mock('@memry/storage-data', () => ({
   listPropertyDefinitions: mocks.listPropertyDefinitions
 }))
 
-vi.mock('@memry/shared/file-types', () => ({
+vi.mock('@memry/shared/file-types', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@memry/shared/file-types')>()),
   getAllSupportedExtensions: vi.fn(() => ['md', 'pdf', 'png'])
 }))
 
@@ -216,8 +227,20 @@ const successful = (result: unknown): unknown => {
   return result
 }
 
+const DATA_HTML_PREFIX = 'data:text/html;charset=utf-8,'
+const PNG_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64'
+)
+const PNG_BASE64 = PNG_BYTES.toString('base64')
+
 describe('notes-handlers extra coverage', () => {
+  let vaultPath: string
+
   beforeEach(() => {
+    vaultPath = mkdtempSync(path.join(tmpdir(), 'memry-export-handler-'))
+    mkdirSync(path.join(vaultPath, 'attachments', 'note-a'), { recursive: true })
+    writeFileSync(path.join(vaultPath, 'attachments', 'note-a', 'photo.png'), PNG_BYTES)
     vi.clearAllMocks()
     mocks.handlers.clear()
     mocks.webContents.printToPDF.mockResolvedValue(Buffer.from('pdf'))
@@ -225,12 +248,15 @@ describe('notes-handlers extra coverage', () => {
     mocks.windowInstance.isDestroyed.mockReturnValue(false)
     mocks.fsWriteFile.mockResolvedValue(undefined)
     mocks.service.get.mockReturnValue(null)
+    mocks.getVaultStatus.mockReturnValue({ path: null })
+    mocks.renderNoteAsHtml.mockReturnValue('<html><body>note</body></html>')
     registerNotesHandlers()
   })
 
   afterEach(() => {
     unregisterNotesHandlers()
     mocks.handlers.clear()
+    rmSync(vaultPath, { recursive: true, force: true })
   })
 
   it('resolves a batch of titles into a plain record over one channel', async () => {
@@ -531,6 +557,7 @@ describe('notes-handlers extra coverage', () => {
 
     const note = {
       id: 'note-a',
+      path: 'Note.md',
       title: 'Daily note',
       content: '# Today',
       emoji: null,
@@ -539,6 +566,10 @@ describe('notes-handlers extra coverage', () => {
       modified: new Date('2026-05-10T00:00:00.000Z')
     }
     mocks.getNoteById.mockResolvedValue(note)
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+    mocks.renderNoteAsHtml.mockReturnValue(
+      '<html><body><img src="attachments/note-a/photo.png"></body></html>'
+    )
     mocks.dialog.showSaveDialog.mockResolvedValueOnce({
       canceled: false,
       filePath: '/tmp/Daily_note.pdf'
@@ -558,6 +589,14 @@ describe('notes-handlers extra coverage', () => {
       expect.objectContaining({ pageSize: 'Letter', printBackground: true })
     )
     expect(mocks.fsWriteFile).toHaveBeenCalledWith('/tmp/Daily_note.pdf', Buffer.from('pdf'))
+
+    // The PDF window loads a `data:` URL, which has no base to resolve a
+    // relative ref against, so the bytes have to travel in the document.
+    const loaded = mocks.windowInstance.loadURL.mock.calls.at(-1)?.[0] as string
+    expect(loaded.startsWith(DATA_HTML_PREFIX)).toBe(true)
+    expect(decodeURIComponent(loaded.slice(DATA_HTML_PREFIX.length))).toBe(
+      `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`
+    )
 
     mocks.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: true })
     await expect(
@@ -579,9 +618,39 @@ describe('notes-handlers extra coverage', () => {
         pageSize: 'A4'
       })
     ).resolves.toEqual({ success: true, path: '/tmp/Daily_note.html' })
+    // Self-contained, so the file keeps its images once the user moves it.
     expect(mocks.fsWriteFile).toHaveBeenCalledWith(
       '/tmp/Daily_note.html',
-      '<html><body>note</body></html>',
+      `<html><body><img src="data:image/png;base64,${PNG_BASE64}"></body></html>`,
+      'utf-8'
+    )
+  })
+
+  it('leaves an image it cannot read as written', async () => {
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-a',
+      path: 'Note.md',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: null,
+      tags: [],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    })
+    mocks.getVaultStatus.mockReturnValue({ path: vaultPath })
+    mocks.renderNoteAsHtml.mockReturnValue('<img src="attachments/note-a/missing.png">')
+
+    await expect(
+      invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        outputPath: '/tmp/Daily_note.html',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).resolves.toEqual({ success: true, path: '/tmp/Daily_note.html' })
+    expect(mocks.fsWriteFile).toHaveBeenCalledWith(
+      '/tmp/Daily_note.html',
+      '<img src="attachments/note-a/missing.png">',
       'utf-8'
     )
   })
