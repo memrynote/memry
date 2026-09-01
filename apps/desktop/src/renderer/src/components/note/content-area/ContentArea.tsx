@@ -81,6 +81,7 @@ import {
 } from './review-formatting-toolbar'
 import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
 
 import {
   useBlockNoteSetup,
@@ -892,6 +893,16 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     },
     [editor, insertDatePill]
   )
+
+  // Tab / Shift+Tab over a selection spanning two or more blocks. Prepended
+  // because BlockNote's own keymap hands Tab back to the browser while any
+  // non-empty selection is live, so nothing indents without this. It registers
+  // before the date ghost below on purpose: each prepend goes to the front, so
+  // the ghost ends up ahead of it and keeps Tab while a date is being typed.
+  useEffect(() => {
+    const plugin = createMultiBlockIndentPlugin(editor)
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
 
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.
