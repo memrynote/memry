@@ -205,7 +205,7 @@ The **⋯ button** in the top-right of a note (the _More actions_ menu) collects
 - **Local graph** — show or hide the note's local link graph
 - **Find…** — open in-note search (also <kbd>⌘</kbd>+<kbd>F</kbd>)
 - **Version history** — browse and restore past versions
-- **Export** — export the note to PDF or HTML
+- **Export** — export the note to PDF or HTML. Both formats embed the note's images in the exported file itself, so the PDF prints them and an exported `.html` keeps them after you move or send it
 - **Apply template** — insert a template into the note
 - **Full width** — toggle the wide editor layout
 
