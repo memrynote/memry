@@ -39,14 +39,45 @@ vi.mock('@/components/ui/picker', async () => {
   return createPickerStub()
 })
 
+function reminderApi(): Record<string, ReturnType<typeof vi.fn>> {
+  return (getMockApi() as unknown as { reminders: Record<string, ReturnType<typeof vi.fn>> })
+    .reminders
+}
+
+/**
+ * `useNoteReminders` asks for both the note's own reminders and its highlight
+ * reminders, so the seed has to answer per target type. Returning the same row
+ * to both queries would list it twice and make the remove button ambiguous.
+ */
+function seedActiveReminder(targetType: 'journal' | 'note', targetId: string): void {
+  reminderApi().getForTarget.mockImplementation((input: { targetType: string }) =>
+    Promise.resolve(
+      input.targetType === targetType
+        ? [
+            {
+              id: `rem-${targetType}-1`,
+              targetType,
+              targetId,
+              remindAt: '2026-05-17T09:00:00.000Z',
+              status: 'pending',
+              note: null
+            }
+          ]
+        : []
+    )
+  )
+}
+
 describe('JournalReminderButton', () => {
   beforeEach(() => {
-    const api = getMockApi() as unknown as {
-      reminders: Record<string, ReturnType<typeof vi.fn>>
-    }
-    api.reminders.getForTarget = vi.fn().mockResolvedValue([])
-    api.reminders.create.mockClear()
-    api.reminders.create.mockResolvedValue({ success: true })
+    const api = reminderApi()
+    api.getForTarget = vi.fn().mockResolvedValue([])
+    api.create.mockClear()
+    api.create.mockResolvedValue({ success: true })
+    api.update.mockClear()
+    api.update.mockResolvedValue({ success: true, reminder: null })
+    api.delete.mockClear()
+    api.delete.mockResolvedValue({ success: true })
   })
 
   it('sends the note typed in the picker to reminders.create', async () => {
@@ -70,6 +101,40 @@ describe('JournalReminderButton', () => {
           note: 'revisit after the offsite'
         })
       )
+    })
+  })
+
+  it('moves the reminder the entry already has instead of creating a second', async () => {
+    const user = userEvent.setup()
+    seedActiveReminder('journal', '2026-05-10')
+    renderWithProviders(<JournalReminderButton journalDate="2026-05-10" />)
+
+    await screen.findByRole('button', {
+      name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+    })
+    await user.click(screen.getByTestId('preset-in-one-week'))
+
+    await waitFor(() => {
+      expect(reminderApi().update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'rem-journal-1' })
+      )
+    })
+    expect(reminderApi().create).not.toHaveBeenCalled()
+  })
+
+  it('removes the reminder from the picker list', async () => {
+    const user = userEvent.setup()
+    seedActiveReminder('journal', '2026-05-10')
+    renderWithProviders(<JournalReminderButton journalDate="2026-05-10" />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.deleteReminder/
+      })
+    )
+
+    await waitFor(() => {
+      expect(reminderApi().delete).toHaveBeenCalledWith('rem-journal-1')
     })
   })
 })
