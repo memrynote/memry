@@ -305,6 +305,10 @@ Color and underline are kept on separate nested spans, so an older version of Me
 
 Formatting applied in MemryNote round-trips. Underline written any other way — Obsidian's `<u>` tags, for example — is not read back, and is dropped the next time MemryNote saves the note.
 
+### Text alignment
+
+Centring a paragraph, or aligning it right or justified, is kept when you leave the note and when you restart MemryNote. Markdown has no syntax for alignment, so it is stored as a comment line above the paragraph (`<!-- align:center -->`) that other markdown editors ignore. Left alignment is the default and writes nothing.
+
 ### Text colours
 
 The nine text colours are tuned so each one is legible and tellable apart from the others in every theme. Each clears the WCAG AA contrast floor for small text against the page, carries enough colour to be nameable rather than reading as grey, and stays clear of the default body text. Grey is the deliberate exception: it stays neutral, and reads as a muted colour rather than a hue.
