@@ -8,7 +8,7 @@
 
 import React from 'react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, getMockApi, userEvent } from '@tests/utils/render'
 import { NoteReminderButton } from './note-reminder-button'
 
@@ -136,5 +136,29 @@ describe('NoteReminderButton', () => {
     await waitFor(() => {
       expect(reminderApi().delete).toHaveBeenCalledWith('rem-note-1')
     })
+  })
+
+  it('changes the time on the reminder already set', async () => {
+    const user = userEvent.setup()
+    seedActiveReminder('note', 'note-1')
+    renderWithProviders(<NoteReminderButton noteId="note-1" />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /phaseF.componentsReminderReminderPicker.editReminder/
+      })
+    )
+    fireEvent.change(screen.getByLabelText(/phaseF.componentsReminderReminderPicker.time/), {
+      target: { value: '07:15' }
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsReminderReminderPicker.save' })
+    )
+
+    await waitFor(() => expect(reminderApi().update).toHaveBeenCalledTimes(1))
+    const [payload] = reminderApi().update.mock.calls[0] as [{ id: string; remindAt: string }]
+    expect(payload.id).toBe('rem-note-1')
+    const moved = new Date(payload.remindAt)
+    expect([moved.getHours(), moved.getMinutes()]).toEqual([7, 15])
   })
 })
