@@ -31,10 +31,28 @@ const SOURCE_TYPE_BY_VISUAL_TYPE = {
   note: 'note'
 } as const
 
+/**
+ * The instant these tests pretend it is, on today's real local date.
+ *
+ * `use-today` snapshots the local date into module scope at import and re-reads the wall clock
+ * for its first subscriber. A clock faked onto any other date therefore arrives as a midnight
+ * rollover, which moves `todayCalendarRange`, moves the query key with it, and makes the widget
+ * fetch a second day on mount. Only the time of day is pinned, and from local fields rather than
+ * a UTC instant, which far enough from UTC would name a different day.
+ */
+const NOW = new Date()
+NOW.setHours(9, 30, 0, 0)
+
+function todayAtHour(hour: number): string {
+  const at = new Date(NOW)
+  at.setHours(hour, 0, 0, 0)
+  return at.toISOString()
+}
+
 function projectionItem(
   id: string,
   title: string,
-  hourUtc: number,
+  hour: number,
   visualType: keyof typeof SOURCE_TYPE_BY_VISUAL_TYPE
 ): CalendarProjectionItem {
   return {
@@ -43,8 +61,8 @@ function projectionItem(
     sourceId: id,
     title,
     descriptionPreview: null,
-    startAt: `2026-08-31T${String(hourUtc).padStart(2, '0')}:00:00.000Z`,
-    endAt: `2026-08-31T${String(hourUtc + 1).padStart(2, '0')}:00:00.000Z`,
+    startAt: todayAtHour(hour),
+    endAt: todayAtHour(hour + 1),
     isAllDay: false,
     timezone: 'UTC',
     visualType,
@@ -101,7 +119,7 @@ function renderApp(): { showBoard: (visible: boolean) => void } {
 
 describe('home calendar widget stays current', () => {
   beforeEach(() => {
-    vi.setSystemTime(new Date('2026-08-31T09:30:00.000Z'))
+    vi.setSystemTime(NOW)
     listeners.clear()
     server.items = [projectionItem('e1', 'Standup', 10, 'event')]
     mockGetRange.mockReset()
