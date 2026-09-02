@@ -38,13 +38,14 @@ export function useSystemFonts(enabled: boolean): SystemFontsState {
       return
     }
 
-    let cancelled = false
     setState({ status: 'loading' })
 
+    // No cancel-on-cleanup guard: StrictMode tears the first effect down and
+    // the `started` ref makes the remount a no-op, so cancelling here would
+    // strand the state on `loading` forever.
     void window
       .queryLocalFonts()
       .then((fonts) => {
-        if (cancelled) return
         // FontData keeps `family` on its prototype, so read the accessor per
         // face rather than copying or spreading the object.
         const families = [
@@ -53,14 +54,9 @@ export function useSystemFonts(enabled: boolean): SystemFontsState {
         setState(families.length > 0 ? { status: 'ready', families } : { status: 'unavailable' })
       })
       .catch((error: unknown) => {
-        if (cancelled) return
         log.warn('Failed to enumerate local fonts', error)
         setState({ status: 'unavailable' })
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [enabled])
 
   return state

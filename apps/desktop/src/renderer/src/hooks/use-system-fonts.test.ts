@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { useSystemFonts } from './use-system-fonts'
@@ -68,6 +69,14 @@ describe('useSystemFonts', () => {
         families: ['Avenir Next', 'Inter', 'Iosevka Term']
       })
     )
+  })
+
+  it('#given StrictMode remounts the effect #when enabled #then it still resolves', async () => {
+    stubQueryLocalFonts(async () => [{ family: 'Inter' }])
+
+    const { result } = renderHook(() => useSystemFonts(true), { wrapper: StrictMode })
+
+    await waitFor(() => expect(result.current).toEqual({ status: 'ready', families: ['Inter'] }))
   })
 
   it('#given a completed load #when enabled toggles again #then it does not query twice', async () => {
