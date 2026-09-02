@@ -79,13 +79,3 @@ export function findNextEventIndex(events: CalendarWidgetEvent[], nowMs: number)
 export function nowLinePosition(events: CalendarWidgetEvent[], nowMs: number): number {
   return events.filter((e) => e.startAtMs <= nowMs).length
 }
-
-// Today's [start, next-midnight) range, matching journal-day-panel's getDayRange convention so the
-// useCalendarRange query key (and cache) is shared across the widget body, count, and footer.
-export function todayCalendarRange(now: Date): { startAt: string; endAt: string } {
-  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const start = new Date(`${date}T00:00:00.000Z`)
-  const end = new Date(start)
-  end.setUTCDate(end.getUTCDate() + 1)
-  return { startAt: start.toISOString(), endAt: end.toISOString() }
-}

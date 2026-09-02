@@ -1,8 +1,10 @@
-import { Fragment, useRef } from 'react'
+import { Fragment, useMemo, useRef } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
 import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
 import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useToday } from '@/hooks/use-today'
+import { localDayRange } from '@/lib/local-day-range'
 import { getGreetingKey, buildHeaderMetrics } from '@/lib/home/header-helpers'
 import type { HomePage, WidgetType } from '@/lib/home/types'
 import {
@@ -14,16 +16,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { WidgetGallery } from '@/components/home/widget-gallery'
 import { Check, ChevronDown, Plus, Settings2, Trash } from '@/lib/icons/icon-map'
-
-// Start/end of the local day as ISO strings. Stable for the whole day, so the
-// calendar query key doesn't churn between renders.
-function todayRangeIso(): { startAt: string; endAt: string } {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
-  const end = new Date()
-  end.setHours(23, 59, 59, 999)
-  return { startAt: start.toISOString(), endAt: end.toISOString() }
-}
 
 interface HomeHeaderProps {
   boards: HomePage[]
@@ -64,7 +56,12 @@ export function HomeHeader({
 
   const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
   const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
-  const { items } = useCalendarRange(todayRangeIso())
+  // Same day, same helper, same query key as the calendar widget on this board, so the two
+  // never report different events and the board pays for one range fetch instead of two.
+  // `useToday` and not `new Date()`, so the count rolls over at midnight with the widget.
+  const today = useToday()
+  const range = useMemo(() => localDayRange(today), [today])
+  const { items } = useCalendarRange(range)
 
   const activeName = boards.find((b) => b.id === activeBoardId)?.name ?? t('home.board.label')
 

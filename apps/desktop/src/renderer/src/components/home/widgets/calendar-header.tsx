@@ -4,12 +4,8 @@ import { useCalendarRange } from '@/hooks/use-calendar-range'
 import { useToday } from '@/hooks/use-today'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { useTabActions } from '@/contexts/tabs'
-import {
-  findNextEventIndex,
-  todayCalendarRange,
-  toCalendarWidgetEvents
-} from '@/lib/home/calendar-widget-events'
-import { parseISODate } from '@/lib/journal-utils'
+import { findNextEventIndex, toCalendarWidgetEvents } from '@/lib/home/calendar-widget-events'
+import { localDayRange } from '@/lib/local-day-range'
 import { ArrowRight } from '@/lib/icons/icon-map'
 import { useT } from '@memry/i18n/renderer'
 
@@ -25,7 +21,7 @@ export function CalendarHeaderLabel(): React.JSX.Element {
 export function CalendarHeaderCount(): React.JSX.Element | null {
   const { settings } = useGeneralSettings()
   const today = useToday()
-  const range = useMemo(() => todayCalendarRange(parseISODate(today)), [today])
+  const range = useMemo(() => localDayRange(today), [today])
   const { items, isLoading } = useCalendarRange(range)
   if (isLoading) return null
 
@@ -40,7 +36,7 @@ export function CalendarFooter(): React.JSX.Element {
   const { settings } = useGeneralSettings()
   const { openTab } = useTabActions()
   const today = useToday()
-  const range = useMemo(() => todayCalendarRange(parseISODate(today)), [today])
+  const range = useMemo(() => localDayRange(today), [today])
   const { items } = useCalendarRange(range)
   const [nowMs, setNowMs] = useState(() => Date.now())
 
