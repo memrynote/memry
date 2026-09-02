@@ -51,12 +51,21 @@ function getDurationMinutes(item: CalendarProjectionItem): number | null {
   return minutes > 0 ? minutes : null
 }
 
+// The set of calendar items the Home widget actually draws a row for. Tasks are excluded here
+// because they already have their own "tasks due" header metric — counting them again under
+// "events" would double-count them. The header reuses this so its count can never drift from
+// what the widget renders (see #1956).
+export function filterCalendarWidgetItems(
+  items: CalendarProjectionItem[]
+): CalendarProjectionItem[] {
+  return items.filter((item) => item.visualType !== 'task')
+}
+
 export function toCalendarWidgetEvents(
   items: CalendarProjectionItem[],
   clockFormat: ClockFormat
 ): CalendarWidgetEvent[] {
-  return items
-    .filter((item) => item.visualType !== 'task')
+  return filterCalendarWidgetItems(items)
     .map((item) => ({
       id: item.projectionId,
       startAtMs: new Date(item.startAt).getTime(),

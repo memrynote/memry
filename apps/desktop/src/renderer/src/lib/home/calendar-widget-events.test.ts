@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 import {
   toCalendarWidgetEvents,
+  filterCalendarWidgetItems,
   findNextEventIndex,
   nowLinePosition
 } from './calendar-widget-events'
@@ -69,6 +70,17 @@ describe('toCalendarWidgetEvents', () => {
       '24h'
     )
     expect(ev.metaLabel).toBe('Google')
+  })
+})
+
+describe('filterCalendarWidgetItems', () => {
+  it('drops tasks and keeps everything else, so the widget and the Home header agree (#1956)', () => {
+    const filtered = filterCalendarWidgetItems([
+      item({ projectionId: 'task', visualType: 'task' }),
+      item({ projectionId: 'reminder', visualType: 'reminder' }),
+      item({ projectionId: 'event', visualType: 'event' })
+    ])
+    expect(filtered.map((i) => i.projectionId)).toEqual(['reminder', 'event'])
   })
 })
 
