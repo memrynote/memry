@@ -51,6 +51,11 @@ Use the row and column handles on the edge of a table to toggle a header row or
 a header column on and off. The same table controls are available in task
 descriptions and in inbox items.
 
+A column width you drag is kept when you leave the note and when you restart the
+app. Like cell colours, it is stored as a comment line above the table that
+other markdown editors ignore. Row heights are not stored, because the editor
+has no row height to store.
+
 ### The handles on the border lines
 
 Put the pointer in a cell and three small grey marks appear, on the table's own

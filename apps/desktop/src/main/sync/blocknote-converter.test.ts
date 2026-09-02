@@ -3474,3 +3474,103 @@ describe('text alignment survives the markdown round trip (#1937)', () => {
     }
   )
 })
+
+describe('table column widths survive the markdown round trip (#1936)', () => {
+  const crdtRoundTrip = async (md: string): Promise<string | null> => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    await markdownToYFragment(md, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const blocksToMd = async (blocks: NonNullable<Awaited<ReturnType<typeof markdownToBlocks>>>) => {
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    blocksToYFragment(blocks, fragment)
+    return yDocToMarkdown(doc)
+  }
+
+  const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+
+  const contentOf = (block: unknown) =>
+    (
+      block as {
+        content: {
+          columnWidths: (number | undefined)[]
+          rows: Array<{ cells: Array<{ props: Record<string, string> }> }>
+        }
+      }
+    ).content
+
+  it('leaves a table nobody has resized byte-identical', async () => {
+    const canonical = await crdtRoundTrip(TABLE_MD)
+
+    expect(canonical).not.toContain('table-layout')
+    expect(await crdtRoundTrip(canonical!)).toBe(canonical)
+  })
+
+  it('writes a dragged column width as a marker and reads it back onto the table', async () => {
+    // #given a table whose first column was dragged wider
+    const blocks = await markdownToBlocks(TABLE_MD)
+    contentOf(blocks![0]).columnWidths = [120, undefined]
+
+    // #when it is saved
+    const saved = await blocksToMd(blocks!)
+
+    // #then the width is on disk, in front of the table it belongs to
+    expect(saved).toContain('<!-- table-layout:{"columnWidths":[120,null]} -->')
+    expect(saved).toContain('| Ship')
+
+    // #and reading the note back puts it on the column it came from
+    const reparsed = await markdownToBlocks(saved!)
+    expect(contentOf(reparsed![0]).columnWidths).toEqual([120, undefined])
+
+    // #and the second save is byte-identical to the first
+    expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+
+  it('pads a marker that names fewer columns than the table has', async () => {
+    const md = `<!-- table-layout:{"columnWidths":[120]} -->\n${TABLE_MD}`
+
+    const blocks = await markdownToBlocks(md)
+
+    expect(contentOf(blocks![0]).columnWidths).toEqual([120, undefined])
+  })
+
+  it('truncates a marker that names more columns than the table has', async () => {
+    const md = `<!-- table-layout:{"columnWidths":[120,80,60]} -->\n${TABLE_MD}`
+
+    const blocks = await markdownToBlocks(md)
+
+    expect(contentOf(blocks![0]).columnWidths).toEqual([120, 80])
+  })
+
+  it('keeps the marker through the CRDT path', async () => {
+    const md = `<!-- table-layout:{"columnWidths":[120,null]} -->\n${TABLE_MD}`
+
+    const once = await crdtRoundTrip(md)
+
+    expect(once).toContain('<!-- table-layout:{"columnWidths":[120,null]} -->')
+    expect(await crdtRoundTrip(once!)).toBe(once)
+  })
+
+  it('writes colours and widths for one table in registry order', async () => {
+    const blocks = await markdownToBlocks(TABLE_MD)
+    contentOf(blocks![0]).columnWidths = [120, undefined]
+    Object.assign(contentOf(blocks![0]).rows[1].cells[0].props, { backgroundColor: 'red' })
+
+    const saved = await blocksToMd(blocks!)
+
+    expect(saved!.split('\n').slice(0, 2)).toEqual([
+      '<!-- table-colors:{"1:0":{"backgroundColor":"red"}} -->',
+      '<!-- table-layout:{"columnWidths":[120,null]} -->'
+    ])
+
+    const reparsed = await markdownToBlocks(saved!)
+    expect(contentOf(reparsed![0]).columnWidths).toEqual([120, undefined])
+    expect(contentOf(reparsed![0]).rows[1].cells[0].props).toMatchObject({
+      backgroundColor: 'red'
+    })
+    expect(await blocksToMd(reparsed!)).toBe(saved)
+  })
+})

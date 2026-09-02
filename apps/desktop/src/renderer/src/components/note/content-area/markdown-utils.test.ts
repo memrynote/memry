@@ -879,6 +879,83 @@ describe('table cell colours (#1639)', () => {
   })
 })
 
+/**
+ * #1936 — the non-collaborative save path's half of the table column width
+ * marker. `blocksToMarkdownLossy` drops `columnWidths` entirely, so the width a
+ * user drags only survives as a marker line in front of the table.
+ */
+describe('table column widths (#1936)', () => {
+  const TABLE_MD = ['| Name | Status |', '| --- | --- |', '| Ship | Done |'].join('\n')
+
+  const cell = (text: string) => ({
+    type: 'tableCell',
+    content: [{ type: 'text', text, styles: {} }],
+    props: { colspan: 1, rowspan: 1, textAlignment: 'left' }
+  })
+
+  const table = (columnWidths: unknown[]) => ({
+    type: 'table',
+    props: {},
+    content: {
+      type: 'tableContent',
+      columnWidths,
+      headerRows: 1,
+      rows: [{ cells: [cell('Name'), cell('Status')] }, { cells: [cell('Ship'), cell('Done')] }]
+    },
+    children: []
+  })
+
+  const tableEditor = {
+    tryParseMarkdownToBlocks: vi.fn(async (markdown: string) =>
+      markdown.includes('|') ? [table([null, null])] : []
+    ),
+    blocksToMarkdownLossy: vi.fn(async () => TABLE_MD)
+  }
+
+  const widthsOf = (block: unknown) => (block as any).content.columnWidths
+
+  it('writes the marker in front of the table whose column was dragged', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, [
+      table([120, null])
+    ] as any[])
+
+    expect(markdown).toBe(`<!-- table-layout:{"columnWidths":[120,null]} -->\n${TABLE_MD}`)
+  })
+
+  it('writes nothing extra for a table nobody has resized', async () => {
+    const markdown = await serializeBlocksPreservingBlanks(tableEditor, [
+      table([null, null])
+    ] as any[])
+
+    expect(markdown).toBe(TABLE_MD)
+  })
+
+  it('reads the marker back onto the parsed table', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120,80]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(blocks).toHaveLength(1)
+    expect(widthsOf(blocks[0])).toEqual([120, 80])
+  })
+
+  it('truncates a marker that names more columns than the table has', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120,80,60]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(widthsOf(blocks[0])).toEqual([120, 80])
+  })
+
+  it('pads a marker that names fewer columns than the table has', async () => {
+    const markdown = `<!-- table-layout:{"columnWidths":[120]} -->\n${TABLE_MD}`
+
+    const blocks = await parseMarkdownPreservingBlanks(tableEditor, markdown)
+
+    expect(widthsOf(blocks[0])).toEqual([120, null])
+  })
+})
+
 describe('text alignment markers (#1937)', () => {
   const serializeEditor = () => ({
     blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
