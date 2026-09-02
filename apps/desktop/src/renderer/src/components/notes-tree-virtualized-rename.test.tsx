@@ -115,11 +115,15 @@ vi.mock('@/components/ui/context-menu', () => ({
 }))
 
 // jsdom measures every element at 0px, so the real virtualizer would render no
-// rows at all and "no input" would prove nothing. Force every row to mount.
+// rows at all and "no input" would prove nothing. Mount a viewport's worth
+// instead of every row: the real virtualizer never mounts more than the visible
+// rows plus its overscan, and every keystroke into a rename input re-renders
+// the whole tree, so mounting all 150 fillers made the typing case cost 6.6s on
+// a quiet CI worker (#1921). 'Projects' is row 0 and 'Note 0' is row 1.
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
     getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
+      Array.from({ length: Math.min(count, 20) }, (_, index) => ({
         index,
         key: index,
         start: index * 28,
@@ -310,8 +314,8 @@ describe('sidebar folder rename across the virtualization threshold', () => {
     expect(screen.getByRole('textbox', { name: /rename/i })).toBeInTheDocument()
   })
 
-  // The mock above mounts every row; the real virtualizer mounts only visible
-  // ones. A folder created from the sidebar goes straight into rename mode and
+  // The real virtualizer mounts only visible rows, and so does the mock above.
+  // A folder created from the sidebar goes straight into rename mode and
   // usually sorts off screen, so unless the tree scrolls to it there is still
   // no input to type into.
   it('above the threshold: entering rename mode scrolls the row into view', async () => {
