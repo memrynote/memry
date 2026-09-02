@@ -29,20 +29,16 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-/** Vitest's cwd is apps/desktop; jsdom has no file: `import.meta.url`. */
-const PACKAGE_JSON = join(process.cwd(), 'package.json')
-const CURSOR_CSS = join(
-  process.cwd(),
-  'src/renderer/src/components/note/mind-map/mind-map-canvas.css'
-)
+const TEST_DIR = dirname(fileURLToPath(import.meta.url))
+const DESKTOP_ROOT = join(TEST_DIR, '../../../../../..')
+const PACKAGE_JSON = join(DESKTOP_ROOT, 'package.json')
+const CURSOR_CSS = join(TEST_DIR, 'mind-map-canvas.css')
 /** What electron-vite bundles: the package's `production` export condition. */
-const RUNTIME_BUNDLE_DIR = join(
-  process.cwd(),
-  '../../node_modules/@excalidraw/excalidraw/dist/prod'
-)
+const RUNTIME_BUNDLE_DIR = join(DESKTOP_ROOT, '../../node_modules/@excalidraw/excalidraw/dist/prod')
 const VERIFIED_VERSION = '0.18.1'
 
 function installedVersion(): string | undefined {

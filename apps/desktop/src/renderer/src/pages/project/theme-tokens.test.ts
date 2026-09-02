@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// The renderer suite runs in jsdom, where `import.meta.url` is not a file: URL.
-// Vitest's cwd is apps/desktop.
-const HUB_DIR = join(process.cwd(), 'src/renderer/src/pages/project')
-const BASE_CSS = join(process.cwd(), 'src/renderer/src/assets/base.css')
+// jsdom gives `import.meta.url` a real file: URL even though it lacks other
+// Node file APIs, so resolving from it (rather than `process.cwd()`) works
+// regardless of which directory vitest was invoked from.
+const HUB_DIR = dirname(fileURLToPath(import.meta.url))
+const BASE_CSS = join(HUB_DIR, '../../assets/base.css')
 
 /**
  * Tailwind silently drops a class whose token does not exist — `bg-surface-hover`

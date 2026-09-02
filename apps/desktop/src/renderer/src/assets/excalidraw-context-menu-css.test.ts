@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// The renderer suite runs in jsdom, where `import.meta.url` is not a file: URL.
-// Vitest's cwd is apps/desktop.
-const BASE_CSS = join(process.cwd(), 'src/renderer/src/assets/base.css')
-const PACKAGE_JSON = join(process.cwd(), 'package.json')
+const TEST_DIR = dirname(fileURLToPath(import.meta.url))
+const BASE_CSS = join(TEST_DIR, 'base.css')
+const PACKAGE_JSON = join(TEST_DIR, '../../../../package.json')
 
 const OVERRIDE_SELECTOR = '.excalidraw .context-menu'
 

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -80,7 +81,10 @@ function nextFrame(): Promise<void> {
 
 describe('review UI', () => {
   it('moves rail cards left on hover with a theme-owned background token', () => {
-    const css = readFileSync(resolve(process.cwd(), 'src/renderer/src/assets/base.css'), 'utf8')
+    const css = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../../../assets/base.css'),
+      'utf8'
+    )
     const cardBlock = css.match(/\.critic-review-card\s*\{(?<body>[^}]*)\}/)?.groups?.body
     const hoverBlock = css.match(
       /\.critic-review-card\[data-hovered='true'\],\s*\.critic-review-card:hover\s*\{(?<body>[^}]*)\}/
