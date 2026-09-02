@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, BookOpen, CheckSquare, Inbox, X, Filter, Tag, Calendar } from '@/lib/icons'
 import type { ContentType, DateRange } from '@memry/contracts/search-api'
 import { searchService } from '@/services/search-service'
+import { localDayRange } from '@/lib/local-day-range'
+import { toLocalDateString } from '@/components/calendar/date-utils'
 import { useT } from '@memry/i18n/renderer'
 
 interface SearchFiltersProps {
@@ -32,30 +34,38 @@ const DATE_PRESETS = [
   { label: 'This Month', getValue: () => thisMonthRange() }
 ] as const
 
+/**
+ * The presets used to read the date off `toISOString()` and pin it to `T00:00:00.000Z`, so both
+ * the day they named and the window they covered were UTC's, not the user's (#1954). At UTC-7 a
+ * note edited at 18:00 local landed on tomorrow's date and fell outside "Today" entirely.
+ *
+ * `search.ts` filters `modifiedAt >= from && modifiedAt <= to`, an inclusive end, while
+ * `localDayRange` hands back the half-open `[start, next start)`. One millisecond back off the
+ * end is what reconciles the two without letting the next day's first instant through.
+ */
+function localDaysBetween(fromDate: string, toDate: string): DateRange {
+  return {
+    from: localDayRange(fromDate).startAt,
+    to: new Date(Date.parse(localDayRange(toDate).endAt) - 1).toISOString()
+  }
+}
+
 function todayRange(): DateRange {
-  const now = new Date()
-  const date = now.toISOString().slice(0, 10)
-  return { from: `${date}T00:00:00.000Z`, to: `${date}T23:59:59.999Z` }
+  const today = toLocalDateString(new Date())
+  return localDaysBetween(today, today)
 }
 
 function thisWeekRange(): DateRange {
   const now = new Date()
-  const dayOfWeek = now.getDay()
   const start = new Date(now)
-  start.setDate(now.getDate() - dayOfWeek)
-  return {
-    from: `${start.toISOString().slice(0, 10)}T00:00:00.000Z`,
-    to: `${now.toISOString().slice(0, 10)}T23:59:59.999Z`
-  }
+  start.setDate(now.getDate() - now.getDay())
+  return localDaysBetween(toLocalDateString(start), toLocalDateString(now))
 }
 
 function thisMonthRange(): DateRange {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  return {
-    from: `${start.toISOString().slice(0, 10)}T00:00:00.000Z`,
-    to: `${now.toISOString().slice(0, 10)}T23:59:59.999Z`
-  }
+  return localDaysBetween(toLocalDateString(start), toLocalDateString(now))
 }
 
 export function SearchFilters({

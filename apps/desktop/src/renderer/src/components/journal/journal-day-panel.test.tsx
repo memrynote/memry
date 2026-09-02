@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import type { ReactElement } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
+import { localDayRange } from '@/lib/local-day-range'
 import { JournalDayPanel } from './journal-day-panel'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
@@ -138,10 +139,9 @@ describe('JournalDayPanel', () => {
 
     await waitFor(() =>
       expect(mockUseCalendarRange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          startAt: '2026-04-14T00:00:00.000Z',
-          endAt: '2026-04-15T00:00:00.000Z'
-        })
+        // Through the helper the panel uses, not literal instants: the window is the local
+        // day, so its UTC form moves with the machine's zone (#1954).
+        expect.objectContaining(localDayRange('2026-04-14'))
       )
     )
 

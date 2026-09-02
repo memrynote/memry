@@ -107,3 +107,32 @@ describe('localDayRange in the host zone', () => {
 it('local-day-range.ts stays import-free', () => {
   expect(readFileSync(MODULE_PATH, 'utf8')).not.toMatch(/^\s*import\s/m)
 })
+
+// A behavioural test cannot tell the two windows apart on a UTC CI runner, so the rule that keeps
+// the fix from creeping back is structural: no renderer module rebuilds a day window by pinning a
+// date to UTC midnight. `T00:00:00` without the `Z` is a local parse and stays allowed (#1954).
+it('no renderer module pins a day window to UTC midnight', () => {
+  const root = resolve(dirname(expect.getState().testPath!), '..')
+  // `git grep` exits 1 when nothing matches, which is the healthy end state once the comments
+  // that still name the literal stop doing so.
+  let matched = ''
+  try {
+    matched = execFileSync('git', ['grep', '-l', 'T00:00:00\\.000Z', '--', root], {
+      encoding: 'utf8'
+    })
+  } catch {
+    matched = ''
+  }
+  const offenders = matched
+    .split('\n')
+    .filter(Boolean)
+    .filter((file) => !/\.(test|spec)\.tsx?$/.test(file))
+    .filter((file) => {
+      const code = readFileSync(file, 'utf8')
+        .split('\n')
+        .filter((line) => !/^\s*(\*|\/\/|\/\*)/.test(line))
+      return code.some((line) => line.includes('T00:00:00.000Z'))
+    })
+
+  expect(offenders).toEqual([])
+})

@@ -5,6 +5,7 @@ import { SearchFilters } from '@/components/search/search-filters'
 import { SearchResultGroup } from '@/components/search/search-result-group'
 import { SearchResultItem } from '@/components/search/search-result-item'
 import { searchService } from '@/services/search-service'
+import { localDayRange } from '@/lib/local-day-range'
 
 const openTab = vi.fn()
 const setQuery = vi.fn()
@@ -279,6 +280,36 @@ describe('search components coverage', () => {
     expect(onToggleTag).toHaveBeenCalledWith('roadmap')
     expect(onSetDateRange).toHaveBeenCalled()
     expect(onClear).toHaveBeenCalled()
+  })
+
+  // The presets used to name the UTC date and cover the UTC day, so in a westerly zone "Today"
+  // meant tomorrow and excluded the whole local evening (#1954).
+  it('scopes the Today preset to the local day, not the UTC one', () => {
+    const onSetDateRange = vi.fn()
+    render(
+      <SearchFilters
+        activeTypes={[]}
+        activeTags={[]}
+        activeDateRange={null}
+        onToggleType={vi.fn()}
+        onToggleTag={vi.fn()}
+        onSetDateRange={onSetDateRange}
+        onClear={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent === '')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }))
+
+    const now = new Date()
+    const { startAt, endAt } = localDayRange(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    )
+    // `search.ts` filters with an inclusive `to`, so the preset stops a millisecond short of the
+    // next local midnight rather than reaching it.
+    expect(onSetDateRange).toHaveBeenCalledWith({
+      from: startAt,
+      to: new Date(Date.parse(endAt) - 1).toISOString()
+    })
   })
 
   it('opens command palette results and recent reasons', async () => {
