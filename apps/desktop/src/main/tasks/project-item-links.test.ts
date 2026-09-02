@@ -81,6 +81,37 @@ describe('project item link reroute', () => {
     expect(setEntityProperties).toHaveBeenCalledWith('n1', { project: ['Beta'] })
   })
 
+  // The chips on the file page are the only unassign surface a binary file
+  // has. It owns no frontmatter, so the row in `project_links` is the whole of
+  // its membership and this branch is the entire write.
+  it('deletes the link row for a file on unlink, writing no frontmatter', async () => {
+    isMarkdownNote.mockReturnValue(false)
+    domainUnlink.mockResolvedValue({ success: true })
+
+    const result = await unlinkProjectItem({} as never, domain as never, {
+      projectId: 'p1',
+      itemType: 'file',
+      itemId: 'f1'
+    })
+
+    expect(result).toEqual({ success: true })
+    expect(domainUnlink).toHaveBeenCalledWith({ projectId: 'p1', itemType: 'file', itemId: 'f1' })
+    expect(setEntityProperties).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed file unlink instead of claiming success', async () => {
+    isMarkdownNote.mockReturnValue(false)
+    domainUnlink.mockResolvedValue({ success: false })
+
+    expect(
+      await unlinkProjectItem({} as never, domain as never, {
+        projectId: 'p1',
+        itemType: 'file',
+        itemId: 'f1'
+      })
+    ).toEqual({ success: false, error: 'Failed to unlink item' })
+  })
+
   it('errors when the project does not exist', async () => {
     isMarkdownNote.mockReturnValue(true)
     getProjectById.mockReturnValue(undefined)
