@@ -933,6 +933,43 @@ describe('text alignment markers (#1937)', () => {
     expect(markdown).toBe('<!-- align:center -->\nTitle')
   })
 
+  it('writes the marker in front of a centred callout', async () => {
+    const editor = serializeEditor()
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'callout',
+        props: { type: 'info', textAlignment: 'center' },
+        content: [{ type: 'text', text: 'Heads up', styles: {} }],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toBe('<!-- align:center -->\n> [!info]\n> Heads up')
+  })
+
+  it('reads the marker back onto the callout under it', async () => {
+    const editor = {
+      ...parseEditor(),
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks.map((block) => block.content?.[0]?.text ?? '').join('\n')
+      )
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      '<!-- align:center -->\n> [!info]\n> Heads up'
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'callout',
+        props: { type: 'info', textAlignment: 'center' },
+        content: [{ type: 'text', text: 'Heads up', styles: {} }]
+      })
+    ])
+  })
+
   it('writes no marker for the default alignment', async () => {
     const editor = serializeEditor()
 

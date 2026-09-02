@@ -3423,6 +3423,18 @@ describe('text alignment survives the markdown round trip (#1937)', () => {
     expect(await blocksToMd(blocks!)).toBe(md)
   })
 
+  it('reads and writes a centred callout', async () => {
+    const md = '<!-- align:center -->\n> [!info]\n> Heads up'
+
+    const blocks = await markdownToBlocks(md)
+
+    expect(blocks![0]).toMatchObject({
+      type: 'callout',
+      props: { type: 'info', textAlignment: 'center' }
+    })
+    expect(await blocksToMd(blocks!)).toBe(md)
+  })
+
   it('writes no marker for the default alignment', async () => {
     const blocks = await markdownToBlocks('Centred')
 

@@ -317,17 +317,19 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
         async (parsed) => serializeBlocks(editor, parsed as Block[])
       )
       if (claimed) {
-        blocks.push({
+        const quote = {
           type: 'quote' as const,
           props: {},
           content: claimed.content,
           children: claimed.children
-        } as unknown as Block)
+        } as unknown as Block
+        applyMarkers(cseg.markers, quote)
+        blocks.push(quote)
       } else {
         // Same rule as a declined callout: a run the byte-round-trip guard
         // refuses is not ours to reshape, so its original lines parse as any
         // other markdown would.
-        await parseMarkdownSegmentText(editor, cseg.run.raw, blocks)
+        await parseMarkdownSegmentText(editor, [...cseg.markers, cseg.run.raw].join('\n'), blocks)
       }
     } else if (cseg.kind === 'callout') {
       const claimed = await resolveCalloutRun(
@@ -336,15 +338,17 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
         async (block) => serializeBlocks(editor, [block as Block])
       )
       if (claimed) {
-        blocks.push({
+        const callout = {
           type: 'callout' as const,
           props: { type: claimed.type },
           content: claimed.content
-        } as unknown as Block)
+        } as unknown as Block
+        applyMarkers(cseg.markers, callout)
+        blocks.push(callout)
       } else {
         // A run the byte-round-trip guard declines is not ours to reshape:
         // parse its original lines exactly as any other markdown.
-        await parseMarkdownSegmentText(editor, cseg.run.raw, blocks)
+        await parseMarkdownSegmentText(editor, [...cseg.markers, cseg.run.raw].join('\n'), blocks)
       }
     } else {
       await parseMarkdownSegmentText(editor, cseg.text, blocks)
@@ -352,6 +356,10 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
   }
 
   return blocks
+}
+
+function applyMarkers(markers: string[], block: Block): void {
+  for (const line of markers) parseSidecarMarkerLine(line)?.(block as unknown as MarkedBlock)
 }
 
 async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block[]): Promise<void> {
@@ -464,9 +472,10 @@ export async function serializeBlocksPreservingBlanks(
       flushGap()
       const calloutType = (block.props as any).type as string
       const contentMd = await serializeBlocks(editor, [block])
+      const calloutMd = serializeCalloutBlock(calloutType, contentMd.trim())
       segments.push({
         type: 'content',
-        text: serializeCalloutBlock(calloutType, contentMd.trim())
+        text: markers.length > 0 ? `${markers.join('\n')}\n${calloutMd}` : calloutMd
       })
     } else if ((block.type as string) === 'toggleListItem') {
       await flushContent()

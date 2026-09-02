@@ -361,7 +361,15 @@ const blockMarkerCases: RoundtripCase[] = [
   { name: 'task block line', markdown: '- [ ] a task {task:t1}' },
   { name: 'centred paragraph', markdown: '<!-- align:center -->\nCentred' },
   { name: 'right-aligned heading', markdown: '<!-- align:right -->\n## Title' },
-  { name: 'justified paragraph', markdown: '<!-- align:justify -->\nJustified' }
+  { name: 'justified paragraph', markdown: '<!-- align:justify -->\nJustified' },
+  {
+    name: 'centred callout',
+    markdown: `<!-- align:center -->\n${serializeCalloutBlock('info', 'Heads up')}`
+  },
+  {
+    name: 'coloured callout',
+    markdown: `<!-- colors:{"textColor":"red"} -->\n${serializeCalloutBlock('warning', 'Careful')}`
+  }
 ]
 
 export const ROUNDTRIP_CASES: readonly RoundtripCase[] = [
