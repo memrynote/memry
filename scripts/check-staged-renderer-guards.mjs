@@ -7,6 +7,12 @@ const ignoredTestPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 const rawConsolePattern = /\bconsole\.(?:debug|error|info|log|trace|warn)\s*\(/g
 const physicalTailwindPattern =
   /(?:^|[\s"'`])((?:[a-z0-9-]+:)*-?(?:(?:ml|mr|pl|pr|left|right)-[^\s"'`]+|text-(?:left|right)\b|border-(?:l|r)(?:-[^\s"'`]+)?\b|rounded-(?:l|r)(?:-[^\s"'`]+)?\b))/gi
+const classListCallPattern = /\b(?:cn|clsx|cva|twMerge)\s*\(/g
+const classNameAttributePattern = /\bclassName\s*=/g
+
+const CODE = 0
+const COMMENT = 1
+const STRING = 2
 
 function shouldScanPath(filePath) {
   return rendererSourcePattern.test(filePath) && !ignoredTestPattern.test(filePath)
@@ -14,6 +20,201 @@ function shouldScanPath(filePath) {
 
 function lineNumberAt(text, index) {
   return text.slice(0, index).split('\n').length
+}
+
+// Splits a source file into code, comment and string regions without parsing it.
+// `literalEnds` maps each opening quote or backtick to the index just past its
+// closing delimiter, so a caller can take a whole literal including any `${}`.
+function classifySource(text) {
+  const kinds = new Uint8Array(text.length)
+  const stringSpans = []
+  const literalEnds = new Map()
+
+  function fill(start, end, kind) {
+    for (let index = start; index < end && index < text.length; index += 1) {
+      kinds[index] = kind
+    }
+  }
+
+  function scanQuoted(start) {
+    const quote = text[start]
+    let index = start + 1
+
+    while (index < text.length && text[index] !== quote && text[index] !== '\n') {
+      index += text[index] === '\\' ? 2 : 1
+    }
+
+    const contentEnd = Math.min(index, text.length)
+    const end = Math.min(contentEnd + 1, text.length)
+
+    fill(start, end, STRING)
+    stringSpans.push({ start: start + 1, end: contentEnd })
+    literalEnds.set(start, end)
+    return end
+  }
+
+  function scanTemplate(start) {
+    let index = start + 1
+    let chunkStart = index
+
+    while (index < text.length) {
+      if (text[index] === '\\') {
+        index += 2
+        continue
+      }
+
+      if (text[index] === '`') {
+        fill(chunkStart, index, STRING)
+        stringSpans.push({ start: chunkStart, end: index })
+        fill(start, start + 1, STRING)
+        fill(index, index + 1, STRING)
+        literalEnds.set(start, index + 1)
+        return index + 1
+      }
+
+      if (text[index] === '$' && text[index + 1] === '{') {
+        fill(chunkStart, index, STRING)
+        stringSpans.push({ start: chunkStart, end: index })
+        index = scanCode(index + 2, true)
+        chunkStart = index
+        continue
+      }
+
+      index += 1
+    }
+
+    fill(chunkStart, text.length, STRING)
+    stringSpans.push({ start: chunkStart, end: text.length })
+    literalEnds.set(start, text.length)
+    return text.length
+  }
+
+  function scanCode(from, insideInterpolation) {
+    let index = from
+
+    while (index < text.length) {
+      const char = text[index]
+      const nextChar = text[index + 1]
+
+      if (char === '/' && nextChar === '/') {
+        const lineEnd = text.indexOf('\n', index)
+        const end = lineEnd === -1 ? text.length : lineEnd
+        fill(index, end, COMMENT)
+        index = end
+        continue
+      }
+
+      if (char === '/' && nextChar === '*') {
+        const blockEnd = text.indexOf('*/', index + 2)
+        const end = blockEnd === -1 ? text.length : blockEnd + 2
+        fill(index, end, COMMENT)
+        index = end
+        continue
+      }
+
+      if (char === '"' || char === "'") {
+        index = scanQuoted(index)
+        continue
+      }
+
+      if (char === '`') {
+        index = scanTemplate(index)
+        continue
+      }
+
+      if (insideInterpolation) {
+        if (char === '{') {
+          index = scanCode(index + 1, true)
+          continue
+        }
+
+        if (char === '}') {
+          return index + 1
+        }
+      }
+
+      index += 1
+    }
+
+    return index
+  }
+
+  scanCode(0, false)
+  return { kinds, stringSpans, literalEnds }
+}
+
+function findClosingDelimiter(text, kinds, openIndex) {
+  const open = text[openIndex]
+  const close = open === '(' ? ')' : '}'
+  let depth = 0
+
+  for (let index = openIndex; index < text.length; index += 1) {
+    if (kinds[index] !== CODE) {
+      continue
+    }
+
+    if (text[index] === open) {
+      depth += 1
+    } else if (text[index] === close) {
+      depth -= 1
+
+      if (depth === 0) {
+        return index + 1
+      }
+    }
+  }
+
+  return text.length
+}
+
+// A class list is either an argument to cn/clsx/cva/twMerge or the value of a
+// className prop. Everything else in the file is prose as far as this rule cares.
+function findClassListRegions(text, kinds, literalEnds) {
+  const regions = []
+
+  for (const match of text.matchAll(classListCallPattern)) {
+    const start = match.index ?? 0
+
+    if (kinds[start] !== CODE) {
+      continue
+    }
+
+    const parenIndex = start + match[0].length - 1
+    regions.push({ start: parenIndex, end: findClosingDelimiter(text, kinds, parenIndex) })
+  }
+
+  for (const match of text.matchAll(classNameAttributePattern)) {
+    const start = match.index ?? 0
+
+    if (kinds[start] !== CODE) {
+      continue
+    }
+
+    let valueIndex = start + match[0].length
+
+    while (valueIndex < text.length && /\s/.test(text[valueIndex])) {
+      valueIndex += 1
+    }
+
+    const valueChar = text[valueIndex]
+
+    if (valueChar === '{') {
+      regions.push({ start: valueIndex, end: findClosingDelimiter(text, kinds, valueIndex) })
+    } else if (literalEnds.has(valueIndex)) {
+      regions.push({ start: valueIndex, end: literalEnds.get(valueIndex) })
+    }
+  }
+
+  return regions
+}
+
+function findClassListStringSpans(text) {
+  const { kinds, stringSpans, literalEnds } = classifySource(text)
+  const regions = findClassListRegions(text, kinds, literalEnds)
+
+  return stringSpans.filter((span) =>
+    regions.some((region) => span.start >= region.start && span.end <= region.end)
+  )
 }
 
 export function scanRendererText(filePath, text) {
@@ -24,20 +225,22 @@ export function scanRendererText(filePath, text) {
   const findings = []
   const physicalClassLines = new Set()
 
-  for (const match of text.matchAll(physicalTailwindPattern)) {
-    const line = lineNumberAt(text, match.index ?? 0)
+  for (const span of findClassListStringSpans(text)) {
+    for (const match of text.slice(span.start, span.end).matchAll(physicalTailwindPattern)) {
+      const line = lineNumberAt(text, span.start + (match.index ?? 0))
 
-    if (physicalClassLines.has(line)) {
-      continue
+      if (physicalClassLines.has(line)) {
+        continue
+      }
+
+      physicalClassLines.add(line)
+      findings.push({
+        filePath,
+        line,
+        rule: 'physical-tailwind-class',
+        message: match[1]
+      })
     }
-
-    physicalClassLines.add(line)
-    findings.push({
-      filePath,
-      line,
-      rule: 'physical-tailwind-class',
-      message: match[1]
-    })
   }
 
   for (const match of text.matchAll(rawConsolePattern)) {

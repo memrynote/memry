@@ -120,6 +120,11 @@ jobs:
       - name: Test docs gate and pre-push policy
         run: node --test scripts/docs-impact.test.mjs scripts/pre-push-policy.test.mjs
 
+      # The renderer guard runs on every commit, so a regression here either blocks
+      # legitimate work or lets physical direction classes into RTL-sensitive code.
+      - name: Test renderer guardrails
+        run: node --test scripts/check-staged-renderer-guards.test.mjs
+
   unit:
     name: Unit & integration tests
     runs-on: ubuntu-latest

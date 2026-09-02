@@ -111,6 +111,16 @@ describe('text that only looks like a physical Tailwind class', () => {
 
     assert.deepEqual(scanRendererText(rendererPath, source), [])
   })
+
+  // Known limit of anchoring on className and cn/clsx/cva/twMerge. A class list
+  // parked in a config table reaches className through a variable, and following
+  // that would need a real parser. DENSITY_CONFIG in use-display-density.ts is the
+  // only such site in the renderer tree today.
+  it('does not follow a class list held in a config object', () => {
+    const source = 'const config = { watermarkOffset: "-left-2 lg:-left-4" }'
+
+    assert.deepEqual(scanRendererText(rendererPath, source), [])
+  })
 })
 
 describe('raw console calls', () => {
