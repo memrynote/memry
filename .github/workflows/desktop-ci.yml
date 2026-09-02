@@ -117,13 +117,12 @@ jobs:
 
       # The pre-push docs block was deleted by an unrelated PR and stayed deleted for
       # weeks because nothing ran these guards. Keep them in CI.
-      - name: Test docs gate and pre-push policy
-        run: node --test scripts/docs-impact.test.mjs scripts/pre-push-policy.test.mjs
-
-      # The renderer guard runs on every commit, so a regression here either blocks
-      # legitimate work or lets physical direction classes into RTL-sensitive code.
-      - name: Test renderer guardrails
-        run: node --test scripts/check-staged-renderer-guards.test.mjs
+      #
+      # Globbed rather than listed by name. A script test nobody remembers to wire up
+      # is the same silent non-coverage. Every scripts/*.test.mjs is node:test and
+      # hermetic, so the next one is covered without anyone knowing this step exists.
+      - name: Test repo scripts
+        run: node --test scripts/*.test.mjs
 
   unit:
     name: Unit & integration tests
