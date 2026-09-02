@@ -78,6 +78,19 @@ describe('TaskSyncPayloadSchema', () => {
     expect(TaskSyncPayloadSchema.safeParse({}).success).toBe(true)
   })
 
+  // A peer running an older build may hold a task whose dueDate the calendar
+  // does not have. TaskCreateSchema refuses that date on a fresh write, but the
+  // sync payload has to stay loose: a strict date here would make the receiving
+  // device reject the item forever, and the user cannot see the row to fix it.
+  it('accepts a stored date the calendar does not have, so an old row still syncs', () => {
+    const result = TaskSyncPayloadSchema.safeParse({
+      title: 'Written before the date was validated',
+      dueDate: '2026-02-30',
+      startDate: '2025-02-29'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('accepts full payload with clock + fieldClocks (Phase 8 regression)', () => {
     const result = TaskSyncPayloadSchema.safeParse({
       title: 'Write tests',
