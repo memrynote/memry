@@ -190,11 +190,15 @@ vi.mock('@/components/ui/context-menu', () => ({
 }))
 
 // jsdom measures every element at 0px, so the real virtualizer would render no
-// rows at all. Force every row to mount.
+// rows at all. Mount a viewport's worth instead of every row: the real
+// virtualizer never mounts more than the visible rows plus its overscan, and
+// every keystroke into the rename input re-renders the whole tree, so mounting
+// all 150 fillers made each two-rename test cost ~4,800 row renders and 15s on
+// a quiet CI worker (#1921). The folder under test is row 0.
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
     getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
+      Array.from({ length: Math.min(count, 20) }, (_, index) => ({
         index,
         key: index,
         start: index * 28,
