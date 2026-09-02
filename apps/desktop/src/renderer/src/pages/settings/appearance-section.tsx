@@ -1,4 +1,4 @@
-import { type ComponentType, Fragment, useCallback, useState } from 'react'
+import { type ComponentType, Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -44,6 +44,17 @@ const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
 function setRootFontSize(px: number): void {
   document.documentElement.style.fontSize = `${px}px`
 }
+
+/**
+ * How long the font size settles before it is written.
+ *
+ * Radix reports a value on every pointer move and commits on every *keydown*,
+ * so an unthrottled row turns one held ArrowRight into a dozen IPC round trips,
+ * a dozen config.json rewrites and a dozen encrypted settings uploads. Long
+ * enough to coalesce a drag or a key repeat into one write, short enough that
+ * letting go feels like it saved instantly.
+ */
+const FONT_SIZE_COMMIT_DELAY_MS = 150
 
 interface SegmentOption {
   value: string
@@ -110,6 +121,10 @@ export function AppearanceSettings() {
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
   const [fontSizePxDraft, setFontSizePxDraft] = useState<number | null>(null)
+  const pendingFontSizeRef = useRef<{
+    commit: () => void
+    timer: ReturnType<typeof setTimeout>
+  } | null>(null)
   // null means "not editing" — the row then shows the saved value, including one
   // that arrived from another device.
   const [customFontDraft, setCustomFontDraft] = useState<string | null>(null)
@@ -160,10 +175,21 @@ export function AppearanceSettings() {
 
   const commitFontSizePx = useCallback(
     async (px: number) => {
-      setFontSizePxDraft(px)
-      setRootFontSize(px)
+      // Only ever release a draft that is still the one this call owns. A held
+      // arrow key otherwise makes the displayed size jump backwards whenever a
+      // slow write lands after a newer preview.
+      const releaseDraft = (): void => setFontSizePxDraft((cur) => (cur === px ? null : cur))
+
+      // A drag that wanders and comes back writes nothing. Radix will not tell
+      // us either way: it skips onValueCommit when pointer-up lands on the
+      // value pointer-down started from, which is why the row settles itself.
+      if (px === savedFontSizePx) {
+        releaseDraft()
+        return
+      }
+
       const success = await updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) })
-      setFontSizePxDraft(null)
+      releaseDraft()
       if (!success) {
         toast.error(t('appearance.typography.fontSizeError'))
         // useThemeSync will not re-run: its effect deps never changed, so the
@@ -172,6 +198,33 @@ export function AppearanceSettings() {
       }
     },
     [savedFontSizePx, t, updateSettings]
+  )
+
+  const previewFontSizePx = useCallback(
+    (px: number) => {
+      setFontSizePxDraft(px)
+      setRootFontSize(px)
+      if (pendingFontSizeRef.current) clearTimeout(pendingFontSizeRef.current.timer)
+      const commit = (): void => {
+        pendingFontSizeRef.current = null
+        void commitFontSizePx(px)
+      }
+      pendingFontSizeRef.current = { commit, timer: setTimeout(commit, FONT_SIZE_COMMIT_DELAY_MS) }
+    },
+    [commitFontSizePx]
+  )
+
+  // Flushed, not dropped: the preview writes the root font size directly, so an
+  // unmount that discarded the pending write would leave the whole interface at
+  // a size nothing on disk agrees with, until the next restart.
+  useEffect(
+    () => () => {
+      const pending = pendingFontSizeRef.current
+      if (!pending) return
+      clearTimeout(pending.timer)
+      pending.commit()
+    },
+    []
   )
 
   const customFontValue = customFontDraft ?? settings.customFontFamily ?? ''
@@ -282,7 +335,7 @@ export function AppearanceSettings() {
             <button
               type="button"
               aria-label={t('appearance.typography.fontSize.reset')}
-              onClick={() => void commitFontSizePx(FONT_SIZE_PX_DEFAULT)}
+              onClick={() => previewFontSizePx(FONT_SIZE_PX_DEFAULT)}
               className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <RotateCcw className="size-3" />
@@ -296,11 +349,7 @@ export function AppearanceSettings() {
               max={FONT_SIZE_PX_MAX}
               step={1}
               value={[fontSizePx]}
-              onValueChange={([px]) => {
-                setFontSizePxDraft(px)
-                setRootFontSize(px)
-              }}
-              onValueCommit={([px]) => void commitFontSizePx(px)}
+              onValueChange={([px]) => previewFontSizePx(px)}
               aria-label={t('appearance.typography.fontSize.aria')}
               className="w-36"
             />

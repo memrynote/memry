@@ -161,8 +161,8 @@ vi.mock('@/components/ui/switch', () => ({
 }))
 
 vi.mock('@/components/ui/slider', () => ({
-  Slider: ({ onValueCommit }: { onValueCommit?: (value: number[]) => void }) => (
-    <button type="button" onClick={() => onValueCommit?.([12000])}>
+  Slider: ({ onValueChange }: { onValueChange?: (value: number[]) => void }) => (
+    <button type="button" onClick={() => onValueChange?.([12000])}>
       slider
     </button>
   )
@@ -496,6 +496,7 @@ describe('settings section coverage', () => {
     mocks.syncContext.linkingRequest = null
     mocks.syncContext.triggerSync.mockResolvedValue(undefined)
     mocks.generalSettings.isLoading = false
+    mocks.generalSettings.settings.fontSizePx = 16
     mocks.generalSettings.updateSettings.mockResolvedValue(true)
     mocks.calendarPreferences.isLoading = false
     mocks.calendarPreferences.updateSettings.mockResolvedValue(true)
@@ -619,6 +620,8 @@ describe('settings section coverage', () => {
 
   it('updates appearance controls and reports failed saves', async () => {
     mocks.generalSettings.updateSettings.mockResolvedValueOnce(false).mockResolvedValue(true)
+    // Off the default, or the reset button has nothing to write.
+    mocks.generalSettings.settings.fontSizePx = 22
     render(<AppearanceSettings />)
 
     fireEvent.click(screen.getByText('appearance.theme.options.dark'))
