@@ -115,11 +115,15 @@ vi.mock('@/components/ui/context-menu', () => ({
 }))
 
 // jsdom measures every element at 0px, so the real virtualizer would render no
-// rows at all and "no input" would prove nothing. Force every row to mount.
+// rows at all and "no input" would prove nothing. Mount a viewport's worth
+// instead of every row: the real virtualizer never mounts more than the visible
+// rows plus its overscan, and every keystroke into a rename input re-renders
+// the whole tree, so mounting all 150 fillers made the typing case cost 6.6s on
+// a quiet CI worker (#1921). 'Projects' is row 0 and 'Note 0' is row 1.
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({ count }: { count: number }) => ({
     getVirtualItems: () =>
-      Array.from({ length: count }, (_, index) => ({
+      Array.from({ length: Math.min(count, 20) }, (_, index) => ({
         index,
         key: index,
         start: index * 28,
@@ -155,13 +159,20 @@ const renderTree = () =>
     </I18nextProvider>
   )
 
+// The sidebar's default sort is `manual`, which falls back to newest-first, so
+// the row a note lands on is decided by its timestamp. `new Date()` per note
+// ties on a fast machine (insertion order survives) and spreads across
+// milliseconds on a slow one (the last note created sorts first), which put
+// 'Note 0' at row 1 locally and row 150 in CI. Stamp each note one millisecond
+// older than the one before it so newest-first is insertion order everywhere.
+let stamp = Date.UTC(2026, 0, 1)
 const createNote = (id: string, path: string): NoteListItem => ({
   id,
   path,
   title: path.split('/').pop()?.replace('.md', '') || 'Untitled',
   emoji: null,
-  created: new Date(),
-  modified: new Date(),
+  created: new Date(stamp),
+  modified: new Date(stamp--),
   wordCount: 100,
   tags: []
 })
@@ -310,8 +321,8 @@ describe('sidebar folder rename across the virtualization threshold', () => {
     expect(screen.getByRole('textbox', { name: /rename/i })).toBeInTheDocument()
   })
 
-  // The mock above mounts every row; the real virtualizer mounts only visible
-  // ones. A folder created from the sidebar goes straight into rename mode and
+  // The real virtualizer mounts only visible rows, and so does the mock above.
+  // A folder created from the sidebar goes straight into rename mode and
   // usually sorts off screen, so unless the tree scrolls to it there is still
   // no input to type into.
   it('above the threshold: entering rename mode scrolls the row into view', async () => {
