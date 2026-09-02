@@ -180,7 +180,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:
-      'See how memrynote compares to Obsidian, Notion, Evernote, Tana — local-first, E2E encrypted notes, tasks, calendar & journal in plain Markdown files you own.',
+      'Compare memrynote to Obsidian, Notion, Evernote, and 13 more — a private, local-first notes, tasks, calendar, and journal app with Markdown files you own.',
     path: '/compare'
   },
   obsidianAlternative: {
