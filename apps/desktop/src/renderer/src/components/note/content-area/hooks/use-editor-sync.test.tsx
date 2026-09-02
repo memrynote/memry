@@ -435,7 +435,22 @@ describe('useEditorSync', () => {
     })
     expect(onMarkdownChange).toHaveBeenLastCalledWith('* One')
 
-    editor.blocksToMarkdownLossy.mockResolvedValue('- Two')
+    // The save derives its base by re-parsing the source, so the serializer
+    // must answer by content: the document now says Two, the source still One.
+    // A fresh block, because the parse mock hands back the very objects the
+    // load put into the document and mutating them would move the base too.
+    editor.replaceBlocks(editor.document, [
+      {
+        id: 'p1',
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Two', styles: {} }],
+        children: []
+      }
+    ])
+    editor.blocksToMarkdownLossy.mockImplementation(async (blocks: unknown) =>
+      JSON.stringify(blocks).includes('Two') ? '- Two' : '- One'
+    )
     act(() => {
       result.current.handleChange()
       vi.advanceTimersByTime(150)

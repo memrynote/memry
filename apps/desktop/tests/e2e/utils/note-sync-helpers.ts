@@ -16,7 +16,7 @@ interface MemryNoteTestHooks {
   } | null>
   getCrdtMarkdownSourceState(
     noteId: string
-  ): Promise<{ source: string; canonical: string; current: string | null } | null>
+  ): Promise<{ source: string; current: string | null } | null>
 }
 
 export interface NoteHandle {
@@ -288,13 +288,13 @@ export async function getWritebackDebugByTitle(
 }
 
 /**
- * The author's bytes kept beside the open doc (#1915) with the house style
- * recorded at seed and the house style now, or null when no record exists.
+ * The author's bytes kept beside the open doc (#1915) and the house style the
+ * doc serializes to now, or null when no record exists.
  */
 export async function getCrdtMarkdownSourceById(
   electronApp: ElectronApplication,
   noteId: string
-): Promise<{ source: string; canonical: string; current: string | null } | null> {
+): Promise<{ source: string; current: string | null } | null> {
   return electronApp.evaluate(async (_context, noteId) => {
     const hooks = (
       globalThis as typeof globalThis & {

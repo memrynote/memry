@@ -465,13 +465,6 @@ test.describe('Foreign markdown round-trip', () => {
           return {
             file: fs.readFileSync(absPath, 'utf8'),
             recordPresent: record !== null,
-            // The open editor keeps an empty trailing paragraph, so the live
-            // doc serializes to the seed's house style plus a trailing gap and
-            // nothing else; anything more is the renderer reshaping the doc.
-            canonicalDrift:
-              record && record.current?.replace(/\n+$/, '') !== record.canonical
-                ? { seed: record.canonical, now: record.current }
-                : null,
             sourceRestore: debug?.sourceRestore,
             lastError: debug?.lastError
           }
@@ -481,7 +474,6 @@ test.describe('Foreign markdown round-trip', () => {
       .toEqual({
         file: baseline.bytes,
         recordPresent: true,
-        canonicalDrift: null,
         sourceRestore: 'source',
         lastError: null
       })

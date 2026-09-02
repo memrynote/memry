@@ -24,7 +24,6 @@ vi.mock('react-pdf', () => ({
   pdfjs: { GlobalWorkerOptions: { workerSrc: '' } }
 }))
 
-import { recordMarkdownSource } from '@memry/shared/markdown-source'
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { serializeMarkdownPreservingSource } from './markdown-source'
@@ -46,8 +45,11 @@ async function roundTripPreservingSource(markdown: string): Promise<string> {
   const parsed = await parseMarkdownPreservingBlanks(editor, markdown)
   const normalized = normalizeNoteBlocks(parsed as Block[]) as Block[]
   const canonical = await serializeBlocksPreservingBlanks(editor, normalized)
-  const record = recordMarkdownSource(markdown, canonical)
-  return serializeMarkdownPreservingSource(editor, normalized, record)
+  return serializeMarkdownPreservingSource(
+    editor,
+    normalized,
+    canonical === markdown ? null : markdown
+  )
 }
 
 describe('round-trip conformance corpus, renderer pipeline', () => {

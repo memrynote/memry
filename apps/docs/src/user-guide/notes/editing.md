@@ -536,7 +536,8 @@ wrote it: `*` bullets stay `*`, `_emphasis_` stays underscored, an underlined `T
 stays underlined, a `---` rule stays dashes, a list glued to the line above stays glued, and a
 nested list keeps its indent. Only the parts you edited are written in memrynote's own style, and
 only when the result still says exactly what the editor shows. Opening a note and closing it
-again writes nothing at all.
+again writes nothing at all. Very large notes, roughly half a megabyte of markdown and up, are
+written in memrynote's own style throughout so that they keep syncing between your devices.
 
 Inside an edited region the two are not always byte-for-byte the same. What is guaranteed there
 is that nothing is _lost_ on the way through:

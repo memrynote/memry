@@ -3,16 +3,12 @@
 /**
  * Renderer twin of the main process's source-preserving serialization
  * (`blocknote-converter.ts`, #1915), for the path where the renderer itself
- * owns persistence: no shared doc, so the record lives with whoever loaded
+ * owns persistence: no shared doc, so the source lives with whoever loaded
  * the note and is handed back at save.
  */
 
 import { type Block } from '@blocknote/core'
-import {
-  recordMarkdownSource,
-  restoreMarkdownSource,
-  type MarkdownSourceRecord
-} from '@memry/shared/markdown-source'
+import { restoreMarkdownSource } from '@memry/shared/markdown-source'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { normalizeNoteBlocks } from './normalize-note-blocks'
 
@@ -27,28 +23,26 @@ export async function canonicalizeMarkdown(
 }
 
 /**
- * Call once the loaded markdown is in the editor: what the file said, and what
- * the editor now serializes it to. `null` when the two agree.
+ * Call once the loaded markdown is in the editor: the source to keep, or
+ * `null` when the editor already serializes it byte for byte.
  */
 export async function recordLoadedMarkdownSource(
   editor: any,
   source: string
-): Promise<MarkdownSourceRecord | null> {
-  return recordMarkdownSource(
-    source,
-    await serializeBlocksPreservingBlanks(editor, editor.document)
-  )
+): Promise<string | null> {
+  const canonical = await serializeBlocksPreservingBlanks(editor, editor.document)
+  return canonical === source ? null : source
 }
 
 /** The bytes to save: the author's where the document did not change, house style where it did. */
 export async function serializeMarkdownPreservingSource(
   editor: any,
   blocks: Block[],
-  record: MarkdownSourceRecord | null,
+  source: string | null,
   notePath?: string
 ): Promise<string> {
   const canonical = await serializeBlocksPreservingBlanks(editor, blocks)
-  return restoreMarkdownSource(canonical, record, (markdown) =>
+  return restoreMarkdownSource(canonical, source, (markdown) =>
     canonicalizeMarkdown(editor, markdown, notePath)
   )
 }

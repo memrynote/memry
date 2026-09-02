@@ -11,16 +11,24 @@
  * can never get them back.
  *
  * So the bytes are kept instead. When a document is seeded from markdown, the
- * source and what the pipeline serialized it to are stored beside the document
- * — the shape #1909 used for reference definitions, and nothing an older build
- * reads. On the way out the current serialization is merged three ways at line
- * granularity: `base` is the canonical text at seed time, `ours` is the
- * canonical text now, `theirs` is the source. A region only the source differs
- * in is the author's spelling of unchanged content and comes back as written;
- * a region the document changed comes back in house style; a region both
- * changed is a real edit inside a re-spelled construct and house style wins.
- * Lines nobody changed separate regions, so an edit next to a re-spelled list
- * takes the whole list with it rather than splitting it on its bullet.
+ * source is stored beside the document — the shape #1909 used for reference
+ * definitions, and nothing an older build reads. On the way out the current
+ * serialization is merged three ways at line granularity: `base` is what the
+ * source canonicalizes to, `ours` is the canonical text now, `theirs` is the
+ * source. A region only the source differs in is the author's spelling of
+ * unchanged content and comes back as written; a region the document changed
+ * comes back in house style; a region both changed is a real edit inside a
+ * re-spelled construct and house style wins. Lines nobody changed separate
+ * regions, so an edit next to a re-spelled list takes the whole list with it
+ * rather than splitting it on its bullet.
+ *
+ * The base is re-derived at write time rather than stored. Stored, it would
+ * double what the record costs the shared doc, which is what pushes a foreign
+ * note past the sync ceiling (measured in `blocknote-converter.ts`), and it
+ * would be wrong the moment the serializer changed between builds: every
+ * re-spelling the newer serializer does would read as an edit and push the
+ * file to house style. Derived by the same code that produces `ours`, the
+ * base can only ever differ from `ours` by real edits.
  *
  * A line-level splice of two markdown texts is not guaranteed to parse to
  * either input, so the merge is never trusted on its own: the caller re-parses
@@ -29,21 +37,6 @@
  * which is what every build before this one wrote.
  */
 
-export interface MarkdownSourceRecord {
-  /** The body as the author wrote it, at the layer the serializer returns. */
-  source: string
-  /** What the pipeline serialized that source to, the moment it was seeded. */
-  canonical: string
-}
-
-/** `null` when the source is already in house style — nothing to carry. */
-export function recordMarkdownSource(
-  source: string,
-  canonical: string
-): MarkdownSourceRecord | null {
-  return source === canonical ? null : { source, canonical }
-}
-
 /**
  * Re-parses markdown through the same pipeline that produced `canonicalNow`.
  * `null` when the parse fails, which counts as a failed proof.
@@ -51,26 +44,29 @@ export function recordMarkdownSource(
 export type Canonicalize = (markdown: string) => Promise<string | null>
 
 /**
- * The bytes to write for a document that serializes to `canonicalNow`.
+ * The bytes to write for a document that serializes to `canonicalNow`, given
+ * the `source` it was read from, or `null` when none was kept.
  *
  * Returns the source untouched when the document has not changed since it
- * was seeded, the merge when the merged bytes are proven to mean exactly what
+ * was read, the merge when the merged bytes are proven to mean exactly what
  * the document means, and `canonicalNow` otherwise.
  */
 export async function restoreMarkdownSource(
   canonicalNow: string,
-  record: MarkdownSourceRecord | null,
+  source: string | null,
   canonicalize: Canonicalize
 ): Promise<string> {
-  if (!record) return canonicalNow
+  if (source === null) return canonicalNow
+  const seedCanonical = await canonicalize(source)
+  if (seedCanonical === null) return canonicalNow
   // The body the file can hold. An open editor keeps an empty trailing
   // paragraph after the last block, which serializes as a trailing gap no
   // parse gives back and no vault file keeps, so it would read as an edit
   // against the seed and fail every proof.
   const ours = trimTrailingNewlines(canonicalNow)
-  const base = trimTrailingNewlines(record.canonical)
-  if (ours === base) return record.source
-  const merged = mergeMarkdownSource({ source: record.source, canonical: base }, ours)
+  const base = trimTrailingNewlines(seedCanonical)
+  if (ours === base) return source
+  const merged = mergeMarkdownSource(source, base, ours)
   if (merged === null || merged === ours) return canonicalNow
   const proof = await canonicalize(merged)
   return proof !== null && trimTrailingNewlines(proof) === ours ? merged : canonicalNow
@@ -90,12 +86,13 @@ function trimTrailingNewlines(text: string): string {
  * the Myers history on a file that shares nothing with its own canonical form.
  */
 export function mergeMarkdownSource(
-  record: MarkdownSourceRecord,
+  sourceText: string,
+  baseText: string,
   canonicalNow: string
 ): string | null {
-  const base = record.canonical.split('\n')
+  const base = baseText.split('\n')
   const ours = canonicalNow.split('\n')
-  const theirs = record.source.split('\n')
+  const theirs = sourceText.split('\n')
 
   const oursHunks = diffLines(base, ours, markdownAlignmentKey)
   if (!oursHunks) return null
@@ -144,8 +141,7 @@ export function mergeMarkdownSource(
 
 export const MARKDOWN_SOURCE_MAP = 'markdownSource'
 
-// One key, one value: two keys would be two last-writer-wins races, and a
-// base from one seed with a source from another merges into nonsense.
+// One key, one value, so a second seed replaces the record whole.
 const RECORD_KEY = 'record'
 
 interface YMapLike {
@@ -159,31 +155,25 @@ interface YDocLike {
   getMap(name: string): YMapLike
 }
 
-export function writeMarkdownSourceToYDoc(
-  doc: YDocLike,
-  record: MarkdownSourceRecord | null
-): void {
+/** Store the source, or clear it with `null`. */
+export function writeMarkdownSourceToYDoc(doc: YDocLike, source: string | null): void {
   const map = doc.getMap(MARKDOWN_SOURCE_MAP)
-  if (!record) {
+  if (source === null) {
     if (map.has(RECORD_KEY)) map.delete(RECORD_KEY)
     return
   }
-  const current = normalizeRecord(map.get(RECORD_KEY))
-  if (current && current.source === record.source && current.canonical === record.canonical) {
-    return
-  }
-  map.set(RECORD_KEY, { source: record.source, canonical: record.canonical })
+  if (readSource(map.get(RECORD_KEY)) === source) return
+  map.set(RECORD_KEY, { source })
 }
 
-export function readMarkdownSourceFromYDoc(doc: YDocLike): MarkdownSourceRecord | null {
-  return normalizeRecord(doc.getMap(MARKDOWN_SOURCE_MAP).get(RECORD_KEY))
+export function readMarkdownSourceFromYDoc(doc: YDocLike): string | null {
+  return readSource(doc.getMap(MARKDOWN_SOURCE_MAP).get(RECORD_KEY))
 }
 
-function normalizeRecord(value: unknown): MarkdownSourceRecord | null {
+function readSource(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null
-  const record = value as Record<string, unknown>
-  if (typeof record.source !== 'string' || typeof record.canonical !== 'string') return null
-  return { source: record.source, canonical: record.canonical }
+  const source = (value as Record<string, unknown>).source
+  return typeof source === 'string' ? source : null
 }
 
 // ---------------------------------------------------------------------------

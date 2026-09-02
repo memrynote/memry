@@ -19,7 +19,6 @@ import {
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
 import { recordLoadedMarkdownSource, serializeMarkdownPreservingSource } from '../markdown-source'
-import type { MarkdownSourceRecord } from '@memry/shared/markdown-source'
 import { createLinkMentionContent } from '../link-mention'
 import { normalizeLinkMentions } from '../link-mention-utils'
 import { fetchLinkPreview } from '@/lib/url-metadata'
@@ -329,10 +328,10 @@ export function useEditorSync({
   const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The debounced markdown save, kept callable so teardown can run it early.
   const pendingMarkdownSaveRef = useRef<(() => Promise<void>) | null>(null)
-  // What the loaded markdown said and what the editor serialized it to, so a
-  // save gives the author's spelling back wherever the document did not change
-  // (#1915). Null for anything that did not load from markdown.
-  const markdownSourceRef = useRef<MarkdownSourceRecord | null>(null)
+  // What the loaded markdown said, so a save gives the author's spelling back
+  // wherever the document did not change (#1915). Null for anything that did
+  // not load from markdown, or that the editor already spells the same way.
+  const markdownSourceRef = useRef<string | null>(null)
 
   // Cleanup debounce timers on unmount
   useEffect(() => {

@@ -20,6 +20,7 @@ import type { Block } from '@blocknote/core'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import {
+  MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES,
   blocksToYFragment,
   markdownToYFragment,
   yDocToMarkdown,
@@ -479,5 +480,56 @@ describe('foreign markdown round-trip, main pipeline', () => {
       const doc = await seed('- One\n- Two')
       expect(doc.getMap('markdownSource').size).toBe(0)
     })
+  })
+
+  describe('the sync snapshot budget (#1915)', () => {
+    // Foreign prose whose fragment is ~2.9x its bytes (inline marks, nested
+    // list), built until the seeded doc plus the source would cross the budget.
+    const unit = [
+      'Section',
+      '=======',
+      '',
+      'Text:',
+      '* One item here',
+      '* Two items here',
+      '    * Nested item',
+      '',
+      `${'This is _em_ and __strong__ prose written elsewhere. '.repeat(40)}`,
+      '',
+      '---',
+      ''
+    ].join('\n')
+    const foreignOf = (bytes: number): string => {
+      let out = ''
+      while (Buffer.byteLength(out) < bytes) out += unit
+      return out.trimEnd()
+    }
+
+    it('keeps the record for a note well inside the budget', async () => {
+      const markdown = foreignOf(64 * 1024)
+      const doc = await seed(markdown)
+      const docBytes = Y.encodeStateAsUpdate(doc).byteLength
+      expect(docBytes, 'the seeded doc itself is inside the budget').toBeLessThan(
+        MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES
+      )
+      expect(doc.getMap('markdownSource').size).toBe(1)
+      expect(await serialize(doc)).toBe(markdown)
+    }, 60_000)
+
+    it('records nothing past the budget and round-trips through house style', async () => {
+      // Sized off the measured ~2.9x fragment: doc plus source lands past the
+      // budget while the file itself is still under the 1 MiB seed ceiling.
+      const markdown = foreignOf(Math.ceil(MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES / 3.2))
+      const doc = await seed(markdown)
+      const docBytes = Y.encodeStateAsUpdate(doc).byteLength
+      expect(
+        docBytes + Buffer.byteLength(markdown),
+        'the case really is past the budget'
+      ).toBeGreaterThan(MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES)
+      expect(doc.getMap('markdownSource').size).toBe(0)
+      const houseStyle = await serialize(doc)
+      expect(houseStyle).not.toBe(markdown)
+      expect(await roundTripCanonical(markdown)).toBe(houseStyle)
+    }, 120_000)
   })
 })

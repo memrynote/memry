@@ -70,10 +70,10 @@ import {
 } from '@memry/shared/link-references'
 import {
   readMarkdownSourceFromYDoc,
-  recordMarkdownSource,
   restoreMarkdownSource,
   writeMarkdownSourceToYDoc
 } from '@memry/shared/markdown-source'
+import { NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 import { createLogger } from '../lib/logger'
 import { resolveVaultEmbeds } from '../vault/resolve-embed'
 
@@ -148,15 +148,15 @@ export async function yDocToMarkdown(
     return canonical
   }
 
-  const record = readMarkdownSourceFromYDoc(doc)
-  if (!record) return report('no-record')
+  const source = readMarkdownSourceFromYDoc(doc)
+  if (source === null) return report('no-record')
   if (readCriticMarkupMarksFromYDoc(doc).length > 0) return report('critic-marks')
 
   try {
-    const restored = await restoreMarkdownSource(canonical, record, (markdown) =>
+    const restored = await restoreMarkdownSource(canonical, source, (markdown) =>
       canonicalMarkdown(markdown, options.notePath)
     )
-    if (restored === record.source) {
+    if (restored === source) {
       options.onSourceRestore?.('source')
       return restored
     }
@@ -169,9 +169,7 @@ export async function yDocToMarkdown(
     // silently — this is the line that tells a lookup miss from a design choice.
     log.warn('Source record present but not restorable, writing house style', {
       notePath: options.notePath,
-      unchangedSinceSeed: canonical === record.canonical,
-      sourceBytes: record.source.length,
-      seedCanonicalBytes: record.canonical.length,
+      sourceBytes: source.length,
       canonicalBytes: canonical.length
     })
     return report('house-style-fallback')
@@ -444,12 +442,28 @@ async function seedFragment(
 }
 
 /**
+ * How much of the pushable snapshot (`NOTE_SYNC_MAX_BYTES`, the encrypt-time
+ * cap net of base64 growth) a freshly seeded doc plus its source record may
+ * occupy. Past that cap the push throws before any request, dead-letters the
+ * queue row, and no toast reaches the user (#1465), so a note that crosses it
+ * stops syncing silently; any byte this record adds moves a note toward it.
+ * Half, because the rest is headroom for the update history a doc in use
+ * accumulates between compactions. Measured on a foreign note whose fragment
+ * holds inline marks (`* One`, `_em_`, four-space nesting): the bare fragment
+ * is ~2.9x the markdown bytes and the source adds ~1.0x, so the record is
+ * kept for files up to ~480 KB and larger ones stay in house style, as before.
+ */
+export const MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES = Math.floor(NOTE_SYNC_MAX_BYTES / 2)
+
+/**
  * Remember what the document was just built from (#1915), so the write-back
  * can give the author's spelling back for whatever it does not change. Stores
  * nothing when the source already is house style, which is every file this
- * app wrote itself. Every markdown → fragment door calls this; the seed above
- * does, and `replaceNoteBodyInCrdt` does after an external edit, since a
- * stale record can only cost style, never meaning, but costs it every save.
+ * app wrote itself, and nothing when the doc plus the source would not fit
+ * the snapshot budget above. Every markdown → fragment door calls this; the
+ * seed above does, and `replaceNoteBodyInCrdt` does after an external edit,
+ * since a stale record can only cost style, never meaning, but costs it
+ * every save.
  */
 export async function recordMarkdownSourceInYDoc(
   doc: Y.Doc,
@@ -457,14 +471,23 @@ export async function recordMarkdownSourceInYDoc(
   fragmentName: string = CRDT_FRAGMENT_NAME
 ): Promise<void> {
   const canonical = await serializeCanonical(doc, fragmentName)
-  const record = canonical === null ? null : recordMarkdownSource(source, canonical)
-  writeMarkdownSourceToYDoc(doc, record)
-  log.debug('Source record', {
-    fragmentName,
-    recorded: record !== null,
-    sourceBytes: source.length,
-    canonicalBytes: canonical?.length ?? null
-  })
+  if (canonical === null || canonical === source) {
+    writeMarkdownSourceToYDoc(doc, null)
+    return
+  }
+  const docBytes = Y.encodeStateAsUpdate(doc).byteLength
+  const sourceBytes = Buffer.byteLength(source, 'utf8')
+  if (docBytes + sourceBytes > MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES) {
+    writeMarkdownSourceToYDoc(doc, null)
+    log.info('Source record skipped: doc plus source would exceed the snapshot budget', {
+      fragmentName,
+      docBytes,
+      sourceBytes,
+      budgetBytes: MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES
+    })
+    return
+  }
+  writeMarkdownSourceToYDoc(doc, source)
 }
 
 function fragmentNameOf(fragment: Y.XmlFragment): string {

@@ -146,9 +146,7 @@ interface MemryTestHooks {
   /** The author's bytes kept beside an open doc (#1915), or null when none. */
   getCrdtMarkdownSourceState(noteId: string): Promise<{
     source: string
-    /** House style at seed time, as recorded. */
-    canonical: string
-    /** House style now, from the live doc. Differs from `canonical` when the doc changed. */
+    /** House style now, from the live doc. */
     current: string | null
   } | null>
   simulateCrdtTeardownForTests(): Promise<void>
@@ -584,9 +582,9 @@ export function registerTestHooks(): void {
 
     async getCrdtMarkdownSourceState(noteId: string) {
       const doc = getCrdtProvider().getDoc(noteId)
-      const record = doc ? readMarkdownSourceFromYDoc(doc) : null
-      if (!doc || !record) return null
-      return { ...record, current: await yDocToCanonicalMarkdown(doc) }
+      const source = doc ? readMarkdownSourceFromYDoc(doc) : null
+      if (!doc || source === null) return null
+      return { source, current: await yDocToCanonicalMarkdown(doc) }
     },
 
     async simulateCrdtTeardownForTests(): Promise<void> {
