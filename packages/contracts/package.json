@@ -22,6 +22,7 @@
     "./feedback-api": "./src/feedback-api.ts",
     "./feature-flags": "./src/feature-flags.ts",
     "./folder-view-api": "./src/folder-view-api.ts",
+    "./font-size": "./src/font-size.ts",
     "./graph-api": "./src/graph-api.ts",
     "./inbox-api": "./src/inbox-api.ts",
     "./ipc-attachments": "./src/ipc-attachments.ts",
