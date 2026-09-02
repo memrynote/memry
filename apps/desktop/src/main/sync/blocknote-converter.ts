@@ -409,12 +409,25 @@ export async function markdownToYFragment(
   return seedFragment(markdown, fragment, notePath, { recordSource: true })
 }
 
-async function seedFragment(
+export interface PreparedFragmentSeed {
+  blocks: Block[]
+  marks: ReturnType<typeof parseCriticMarkup>['marks']
+  definitions: ReturnType<typeof stripLinkReferenceDefinitions>['definitions']
+  usages: ReturnType<typeof stripLinkReferenceDefinitions>['usages']
+  plainText: string
+}
+
+/**
+ * Parse markdown into everything a fragment seed needs to write, without
+ * touching the Y.Doc. Shared by the initial seed (`markdownToYFragment`) and
+ * the external-edit door (`replaceNoteBodyInCrdt`), so both refresh the same
+ * side channels — link references (#1909) and CriticMarkup marks — instead of
+ * only the one that happens to parse the fragment itself.
+ */
+export async function prepareFragmentSeed(
   markdown: string,
-  fragment: Y.XmlFragment,
-  notePath: string | undefined,
-  options: { recordSource: boolean }
-): Promise<boolean> {
+  notePath: string | undefined
+): Promise<PreparedFragmentSeed | null> {
   const parsed = parseCriticMarkup(markdown)
   // Reference definitions ride beside the document in two Y.Arrays: the editor
   // has no block for one, so the definition is dropped and the destination
@@ -424,19 +437,50 @@ async function seedFragment(
   // reference link dead on screen.
   const references = stripLinkReferenceDefinitions(parsed.plainText)
   const blocks = await markdownToBlocks(parsed.plainText, notePath)
-  if (!blocks) return false
+  if (!blocks) return null
   // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes so the renderer
   // binds the custom block on first paint instead of a raw checkbox.
   const normalized = normalizeTaskBlocks(blocks).blocks
-  const ok = blocksToYFragment(normalized, fragment)
+  return {
+    blocks: normalized,
+    marks: parsed.marks,
+    definitions: references.definitions,
+    usages: references.usages,
+    plainText: parsed.plainText
+  }
+}
+
+/**
+ * Synchronous write half of a fragment seed: replaces the fragment's blocks
+ * and both side-channel arrays. Safe to call on an already-empty fragment
+ * (the initial seed) or to wrap in a `doc.transact` alongside clearing an
+ * existing fragment (a replace).
+ */
+export function applyFragmentSeed(
+  prepared: PreparedFragmentSeed,
+  fragment: Y.XmlFragment
+): boolean {
+  const ok = blocksToYFragment(prepared.blocks, fragment)
   if (ok && fragment.doc) {
-    writeCriticMarkupMarksToYDoc(fragment.doc, parsed.marks)
-    writeLinkReferencesToYDoc(fragment.doc, references.definitions, references.usages)
-    if (options.recordSource) {
-      // The source at the layer `yDocToMarkdown` returns: CriticMarkup already
-      // stripped, definitions still where the author put them.
-      await recordMarkdownSourceInYDoc(fragment.doc, parsed.plainText, fragmentNameOf(fragment))
-    }
+    writeCriticMarkupMarksToYDoc(fragment.doc, prepared.marks)
+    writeLinkReferencesToYDoc(fragment.doc, prepared.definitions, prepared.usages)
+  }
+  return ok
+}
+
+async function seedFragment(
+  markdown: string,
+  fragment: Y.XmlFragment,
+  notePath: string | undefined,
+  options: { recordSource: boolean }
+): Promise<boolean> {
+  const prepared = await prepareFragmentSeed(markdown, notePath)
+  if (!prepared) return false
+  const ok = applyFragmentSeed(prepared, fragment)
+  if (ok && fragment.doc && options.recordSource) {
+    // The source at the layer `yDocToMarkdown` returns: CriticMarkup already
+    // stripped, definitions still where the author put them.
+    await recordMarkdownSourceInYDoc(fragment.doc, prepared.plainText, fragmentNameOf(fragment))
   }
   return ok
 }

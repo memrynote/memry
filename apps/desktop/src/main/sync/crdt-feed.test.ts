@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const getDoc = vi.fn()
-const markdownToBlocks = vi.fn()
-const blocksToYFragment = vi.fn()
+const prepareFragmentSeed = vi.fn()
+const applyFragmentSeed = vi.fn()
 const recordMarkdownSourceInYDoc = vi.fn()
 
 vi.mock('../sync/crdt-provider', () => ({
@@ -10,8 +10,8 @@ vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local'
 }))
 vi.mock('../sync/blocknote-converter', () => ({
-  markdownToBlocks: (...a: unknown[]) => markdownToBlocks(...a),
-  blocksToYFragment: (...a: unknown[]) => blocksToYFragment(...a),
+  prepareFragmentSeed: (...a: unknown[]) => prepareFragmentSeed(...a),
+  applyFragmentSeed: (...a: unknown[]) => applyFragmentSeed(...a),
   recordMarkdownSourceInYDoc: (...a: unknown[]) => recordMarkdownSourceInYDoc(...a)
 }))
 
@@ -41,8 +41,8 @@ function makeTagDoc(initialTags: string[] = ['work', 'daily']) {
 
 beforeEach(() => {
   getDoc.mockReset()
-  markdownToBlocks.mockReset()
-  blocksToYFragment.mockReset()
+  prepareFragmentSeed.mockReset()
+  applyFragmentSeed.mockReset()
   recordMarkdownSourceInYDoc.mockReset()
 })
 
@@ -50,12 +50,12 @@ describe('replaceNoteBodyInCrdt', () => {
   it('returns false when no doc is open', async () => {
     getDoc.mockReturnValue(null)
     expect(await replaceNoteBodyInCrdt('n1', '# hi')).toBe(false)
-    expect(markdownToBlocks).not.toHaveBeenCalled()
+    expect(prepareFragmentSeed).not.toHaveBeenCalled()
   })
 
   it('returns false when markdown does not parse', async () => {
     getDoc.mockReturnValue(makeDoc())
-    markdownToBlocks.mockResolvedValue(null)
+    prepareFragmentSeed.mockResolvedValue(null)
     expect(await replaceNoteBodyInCrdt('n1', '')).toBe(false)
   })
 
@@ -72,18 +72,20 @@ describe('replaceNoteBodyInCrdt', () => {
 
     // #then no parse, no transaction, and the live doc is left alone
     expect(await replaceNoteBodyInCrdt('n1', dump)).toBe(false)
-    expect(markdownToBlocks).not.toHaveBeenCalled()
+    expect(prepareFragmentSeed).not.toHaveBeenCalled()
     expect(doc.transact).not.toHaveBeenCalled()
   })
 
   it('clears the fragment then rebuilds it once when a doc is open', async () => {
     const doc = makeDoc()
     getDoc.mockReturnValue(doc)
-    markdownToBlocks.mockResolvedValue([{ type: 'paragraph' }])
+    const prepared = { blocks: [{ type: 'paragraph' }] }
+    prepareFragmentSeed.mockResolvedValue(prepared)
+    applyFragmentSeed.mockReturnValue(true)
     const ok = await replaceNoteBodyInCrdt('n1', '# hi')
     expect(ok).toBe(true)
     expect(doc._fragment.delete).toHaveBeenCalledWith(0, 3)
-    expect(blocksToYFragment).toHaveBeenCalledTimes(1)
+    expect(applyFragmentSeed).toHaveBeenCalledWith(prepared, doc._fragment)
     expect(doc.transact).toHaveBeenCalledTimes(1)
     // The file's new bytes become the source the write-back preserves (#1915).
     expect(recordMarkdownSourceInYDoc).toHaveBeenCalledWith(doc, '# hi', 'prosemirror')
