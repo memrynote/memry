@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type React from 'react'
@@ -12,6 +11,7 @@ import type { CalendarProjectionItem, GetCalendarRangeInput } from '@/services/c
 import { APP_QUERY_DEFAULT_OPTIONS } from '@/lib/query-client-options'
 import { toLocalDateString } from '@/components/calendar/date-utils'
 import { CalendarWidget } from '@/components/home/widgets/calendar-widget'
+import { runInTz } from '@/lib/test-support/run-in-tz'
 import { JournalDayPanel } from './journal-day-panel'
 
 /**
@@ -155,8 +155,8 @@ describe('the Journal day panel and the Home board ask for one day', () => {
  * The cases above only separate the two windows on a machine that is not at UTC, and the renderer
  * project runs on vitest's `threads` pool where assigning `process.env.TZ` never reaches the C++
  * `tzset`. So the one case that has to hold on a UTC CI runner runs in a child `node` with a real
- * `TZ`, the way `local-day-range.test.ts` does. The zone matrix itself lives there; this pins the
- * single instant #1954 reported.
+ * `TZ`, via `runInTz` (the mechanism `local-day-range.test.ts` uses). The zone matrix itself
+ * lives there; this pins the single instant #1954 reported.
  */
 const HELPER_URL = pathToFileURL(
   resolve(dirname(expect.getState().testPath!), '../../lib/local-day-range.ts')
@@ -178,11 +178,7 @@ function windowsIn(tz: string, date: string): { local: string[]; retired: string
       })
     )
   `
-  const out = execFileSync(process.execPath, ['--input-type=module', '--eval', source], {
-    env: { ...process.env, TZ: tz },
-    encoding: 'utf8'
-  })
-  return JSON.parse(out)
+  return runInTz(tz, source)
 }
 
 describe('the window the panel retired', () => {
