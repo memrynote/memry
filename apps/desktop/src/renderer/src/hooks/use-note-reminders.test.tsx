@@ -169,6 +169,33 @@ describe('useNoteReminders', () => {
     expect(result.current.nextReminder).toBeNull()
   })
 
+  it('surfaces edit failures and thrown errors against the update wording', async () => {
+    const { result } = renderHook(() => useNoteReminders('note-1'))
+
+    mocks.updateReminder.mockResolvedValueOnce({ success: false, error: 'server said no' })
+    await act(async () => {
+      expect(
+        await result.current.actions.editReminder('soon', new Date('2026-05-15T00:00:00Z'))
+      ).toBe(false)
+    })
+    expect(mocks.toastError).toHaveBeenCalledWith('server said no')
+
+    mocks.updateReminder.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => {
+      expect(
+        await result.current.actions.editReminder('soon', new Date('2026-05-15T00:00:00Z'))
+      ).toBe(false)
+    })
+    expect(mocks.toastError).toHaveBeenCalledWith('reminders.toast.updateFailed')
+    expect(mocks.logError).toHaveBeenCalledWith('Failed to edit reminder:', expect.any(Error))
+
+    mocks.updateReminder.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => {
+      expect(await result.current.actions.setReminder(new Date('2026-05-13T00:00:00Z'))).toBe(false)
+    })
+    expect(mocks.logError).toHaveBeenCalledWith('Failed to set reminder:', expect.any(Error))
+  })
+
   it('reports a failed replace against the update wording', async () => {
     mocks.updateReminder.mockResolvedValueOnce({ success: false })
     const { result } = renderHook(() => useNoteReminders('note-1'))

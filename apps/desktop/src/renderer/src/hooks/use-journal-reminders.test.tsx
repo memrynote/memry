@@ -208,6 +208,41 @@ describe('useJournalReminders', () => {
     expect(result.current.nextReminder).toBeNull()
   })
 
+  it('surfaces edit failures and thrown errors against the update wording', async () => {
+    const { result } = renderHook(() => useJournalReminders('2026-05-10'))
+
+    mocks.update.mockResolvedValueOnce({ success: false, error: 'server said no' })
+    await act(async () => {
+      await expect(
+        result.current.actions.editReminder('later', new Date('2026-05-11T18:30:00.000Z'))
+      ).resolves.toBe(false)
+    })
+    expect(mocks.toastError).toHaveBeenCalledWith('server said no')
+
+    mocks.update.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => {
+      await expect(
+        result.current.actions.editReminder('later', new Date('2026-05-11T18:30:00.000Z'))
+      ).resolves.toBe(false)
+    })
+    expect(mocks.toastError).toHaveBeenCalledWith('reminder.error.update')
+    expect(mocks.logError).toHaveBeenCalledWith(
+      'Failed to edit journal reminder:',
+      expect.any(Error)
+    )
+
+    mocks.update.mockRejectedValueOnce(new Error('offline'))
+    await act(async () => {
+      await expect(
+        result.current.actions.setReminder(new Date('2026-05-10T18:30:00.000Z'))
+      ).resolves.toBe(false)
+    })
+    expect(mocks.logError).toHaveBeenCalledWith(
+      'Failed to set journal reminder:',
+      expect.any(Error)
+    )
+  })
+
   it('does not create a reminder without a journal date', async () => {
     const { result } = renderHook(() => useJournalReminders(null))
 
