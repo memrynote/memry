@@ -669,6 +669,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.deepEqual(await app.settings.getGroup('general'), {
     theme: 'white',
     fontSize: 'medium',
+    fontSizePx: 16,
     fontFamily: 'system',
     accentColor: '#6366f1',
     startOnBoot: false,
@@ -683,6 +684,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   assert.deepEqual(await app.settings.setGroup('general', { theme: 'dark', language: 'tr' }), {
     theme: 'dark',
     fontSize: 'medium',
+    fontSizePx: 16,
     fontFamily: 'system',
     accentColor: '#6366f1',
     startOnBoot: false,
