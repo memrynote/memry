@@ -4,14 +4,9 @@ import { useGeneralSettings } from './use-general-settings'
 import { setDateFormatPref } from '@/lib/format-date'
 import { sanitizeCustomFontName } from '@/lib/custom-font'
 import { createLogger } from '@/lib/logger'
+import { resolveFontSizePx } from '@memry/contracts/font-size'
 
 const log = createLogger('ThemeSync')
-
-const FONT_SIZE_MAP = {
-  small: '14px',
-  medium: '16px',
-  large: '20px'
-} as const
 
 const FONT_FAMILY_MAP: Record<string, string> = {
   system: '',
@@ -41,8 +36,8 @@ export function useThemeSync(): void {
 
   useEffect(() => {
     if (isLoading) return
-    document.documentElement.style.fontSize = FONT_SIZE_MAP[settings.fontSize]
-  }, [isLoading, settings.fontSize])
+    document.documentElement.style.fontSize = `${resolveFontSizePx(settings.fontSizePx, settings.fontSize)}px`
+  }, [isLoading, settings.fontSizePx, settings.fontSize])
 
   useEffect(() => {
     if (isLoading) return

@@ -1,0 +1,130 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
+import { AppearanceSettings } from './appearance-section'
+
+const mocks = vi.hoisted(() => ({
+  generalSettings: {
+    settings: {
+      theme: 'system',
+      accentColor: '#6366f1',
+      fontSize: 'medium',
+      fontSizePx: 16 as number | undefined,
+      fontFamily: 'system',
+      customFontFamily: ''
+    },
+    isLoading: false,
+    updateSettings: vi.fn()
+  }
+}))
+
+vi.mock('@/hooks/use-general-settings', () => ({
+  useGeneralSettings: () => mocks.generalSettings
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() }
+}))
+
+const FONT_SIZE_ARIA = 'Font size'
+
+beforeAll(() => {
+  // Radix's slider drives its pointer path through capture APIs jsdom omits.
+  Element.prototype.setPointerCapture = vi.fn()
+  Element.prototype.releasePointerCapture = vi.fn()
+  Element.prototype.hasPointerCapture = vi.fn(() => true)
+})
+
+describe('Appearance font size slider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.generalSettings.settings = {
+      theme: 'system',
+      accentColor: '#6366f1',
+      fontSize: 'medium',
+      fontSizePx: 16,
+      fontFamily: 'system',
+      customFontFamily: ''
+    }
+    mocks.generalSettings.updateSettings.mockResolvedValue(true)
+    document.documentElement.removeAttribute('style')
+  })
+
+  it('#given a drag in progress #then the interface resizes live without saving', () => {
+    render(<AppearanceSettings />)
+
+    // jsdom measures the track as zero-width, which Radix maps to the minimum.
+    fireEvent.pointerDown(screen.getByLabelText(FONT_SIZE_ARIA), { clientX: 0, pointerId: 1 })
+
+    expect(document.documentElement.style.fontSize).toBe('12px')
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '12')
+    expect(mocks.generalSettings.updateSettings).not.toHaveBeenCalled()
+  })
+
+  it('#given the drag is released #then both the pixel size and the legacy bucket are saved', async () => {
+    render(<AppearanceSettings />)
+
+    const slider = screen.getByLabelText(FONT_SIZE_ARIA)
+    fireEvent.pointerDown(slider, { clientX: 0, pointerId: 1 })
+    fireEvent.pointerUp(slider, { clientX: 0, pointerId: 1 })
+
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 12,
+        fontSize: 'small'
+      })
+    )
+  })
+
+  it('#given an arrow key on the slider #then the step is saved without a pointer release', async () => {
+    render(<AppearanceSettings />)
+
+    fireEvent.keyDown(screen.getByLabelText(FONT_SIZE_ARIA), { key: 'ArrowRight' })
+
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 17,
+        fontSize: 'medium'
+      })
+    )
+    expect(document.documentElement.style.fontSize).toBe('17px')
+  })
+
+  it('#given the reset button #then the size returns to the default', async () => {
+    mocks.generalSettings.settings = { ...mocks.generalSettings.settings, fontSizePx: 22 }
+    render(<AppearanceSettings />)
+
+    fireEvent.click(screen.getByLabelText('Reset font size to default'))
+
+    await waitFor(() =>
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 16,
+        fontSize: 'medium'
+      })
+    )
+    expect(document.documentElement.style.fontSize).toBe('16px')
+  })
+
+  it('#given the save fails #then the previewed size is rolled back and the failure is reported', async () => {
+    mocks.generalSettings.updateSettings.mockResolvedValue(false)
+    render(<AppearanceSettings />)
+
+    const slider = screen.getByLabelText(FONT_SIZE_ARIA)
+    fireEvent.pointerDown(slider, { clientX: 0, pointerId: 1 })
+    fireEvent.pointerUp(slider, { clientX: 0, pointerId: 1 })
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update font size'))
+    expect(document.documentElement.style.fontSize).toBe('16px')
+  })
+
+  it('#given only the legacy bucket is stored #then the slider starts at that pixel size', () => {
+    mocks.generalSettings.settings = {
+      ...mocks.generalSettings.settings,
+      fontSize: 'large',
+      fontSizePx: undefined
+    }
+    render(<AppearanceSettings />)
+
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuenow', '20')
+  })
+})

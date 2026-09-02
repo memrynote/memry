@@ -7,12 +7,20 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
+import { Slider } from '@/components/ui/slider'
+import { Sun, Moon, Monitor, FileText, RotateCcw } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { isFontInstalled, sanitizeCustomFontName, MAX_FONT_NAME_LENGTH } from '@/lib/custom-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { useT } from '@memry/i18n/renderer'
+import { useT, useDirection } from '@memry/i18n/renderer'
+import {
+  resolveFontSizePx,
+  toLegacyFontSize,
+  FONT_SIZE_PX_MIN,
+  FONT_SIZE_PX_MAX,
+  FONT_SIZE_PX_DEFAULT
+} from '@memry/contracts/font-size'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -32,6 +40,10 @@ const ACCENT_PRESETS = [
 ] as const
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
+
+function setRootFontSize(px: number): void {
+  document.documentElement.style.fontSize = `${px}px`
+}
 
 interface SegmentOption {
   value: string
@@ -92,16 +104,12 @@ const THEME_OPTIONS = [
   { value: 'system', labelKey: 'appearance.theme.options.system', icon: Monitor }
 ]
 
-const FONT_SIZE_OPTIONS: SegmentOption[] = [
-  { value: 'small', label: 'S' },
-  { value: 'medium', label: 'M' },
-  { value: 'large', label: 'L' }
-]
-
 export function AppearanceSettings() {
   const { t } = useT('settings')
+  const direction = useDirection()
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+  const [fontSizePxDraft, setFontSizePxDraft] = useState<number | null>(null)
   // null means "not editing" — the row then shows the saved value, including one
   // that arrived from another device.
   const [customFontDraft, setCustomFontDraft] = useState<string | null>(null)
@@ -137,30 +145,33 @@ export function AppearanceSettings() {
     }
   }, [customHex, handleAccentChange])
 
-  const handleFontSizeChange = useCallback(
-    async (value: string) => {
-      if (!value) return
-      const fontSize = value as 'small' | 'medium' | 'large'
-      const success = await updateSettings({ fontSize })
-      if (!success) toast.error(t('appearance.typography.fontSizeError'))
-    },
-    [t, updateSettings]
-  )
-
   const handleFontFamilyChange = useCallback(
     async (value: string) => {
       const fontFamily = value as
-        | 'system'
-        | 'serif'
-        | 'sans-serif'
-        | 'monospace'
-        | 'gelasio'
-        | 'geist'
-        | 'inter'
+        'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
       const success = await updateSettings({ fontFamily })
       if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
     [t, updateSettings]
+  )
+
+  const savedFontSizePx = resolveFontSizePx(settings.fontSizePx, settings.fontSize)
+  const fontSizePx = fontSizePxDraft ?? savedFontSizePx
+
+  const commitFontSizePx = useCallback(
+    async (px: number) => {
+      setFontSizePxDraft(px)
+      setRootFontSize(px)
+      const success = await updateSettings({ fontSizePx: px, fontSize: toLegacyFontSize(px) })
+      setFontSizePxDraft(null)
+      if (!success) {
+        toast.error(t('appearance.typography.fontSizeError'))
+        // useThemeSync will not re-run: its effect deps never changed, so the
+        // size previewed during the drag has to be undone here.
+        setRootFontSize(savedFontSizePx)
+      }
+    },
+    [savedFontSizePx, t, updateSettings]
   )
 
   const customFontValue = customFontDraft ?? settings.customFontFamily ?? ''
@@ -267,12 +278,33 @@ export function AppearanceSettings() {
           label={t('appearance.typography.fontSize.label')}
           description={t('appearance.typography.fontSize.description')}
         >
-          <SegmentedControl
-            options={FONT_SIZE_OPTIONS}
-            value={settings.fontSize}
-            onValueChange={(...args) => void handleFontSizeChange(...args)}
-            ariaLabel={t('appearance.typography.fontSize.aria')}
-          />
+          <div className="flex items-center shrink-0 gap-2">
+            <button
+              type="button"
+              aria-label={t('appearance.typography.fontSize.reset')}
+              onClick={() => void commitFontSizePx(FONT_SIZE_PX_DEFAULT)}
+              className="flex items-center justify-center size-6 rounded-md shrink-0 text-muted-foreground transition-colors cursor-pointer hover:text-foreground"
+            >
+              <RotateCcw className="size-3" />
+            </button>
+            <span className="w-6 shrink-0 text-xs tabular-nums text-end text-muted-foreground">
+              {fontSizePx}
+            </span>
+            <Slider
+              dir={direction}
+              min={FONT_SIZE_PX_MIN}
+              max={FONT_SIZE_PX_MAX}
+              step={1}
+              value={[fontSizePx]}
+              onValueChange={([px]) => {
+                setFontSizePxDraft(px)
+                setRootFontSize(px)
+              }}
+              onValueCommit={([px]) => void commitFontSizePx(px)}
+              aria-label={t('appearance.typography.fontSize.aria')}
+              className="w-36"
+            />
+          </div>
         </SettingRow>
 
         <SettingRow

@@ -263,8 +263,9 @@
     "typography": {
       "fontSize": {
         "label": "Font Size",
-        "description": "Adjust the base text size",
-        "aria": "Font size"
+        "description": "Base interface text size in pixels",
+        "aria": "Font size",
+        "reset": "Reset font size to default"
       },
       "fontFamily": {
         "label": "Font Family",

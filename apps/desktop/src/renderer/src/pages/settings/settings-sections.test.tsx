@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
       theme: 'system',
       accentColor: '#6366f1',
       fontSize: 'medium',
+      fontSizePx: 16,
       fontFamily: 'system',
       customFontFamily: ''
     },
@@ -77,7 +78,8 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) =>
       values ? `${key} ${JSON.stringify(values)}` : key
-  })
+  }),
+  useDirection: () => 'ltr'
 }))
 
 vi.mock('sonner', () => ({
@@ -629,9 +631,12 @@ describe('settings section coverage', () => {
       })
     )
 
-    fireEvent.click(screen.getByText('L'))
+    fireEvent.click(screen.getByLabelText('appearance.typography.fontSize.reset'))
     await waitFor(() =>
-      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ fontSize: 'large' })
+      expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
+        fontSizePx: 16,
+        fontSize: 'medium'
+      })
     )
 
     fireEvent.click(screen.getByText('appearance.typography.fontFamily.options.monospace'))
