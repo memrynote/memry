@@ -435,4 +435,27 @@ describe('tasks queries', () => {
     createTask('task-58', { parentId: parent.id, position: 2 })
     expect(getNextTaskPosition(db, projectId, parent.id)).toBe(3)
   })
+  // A row written before dueDate and startDate were validated is still sitting
+  // in a beta user's database. Validation lands on the next write; every read
+  // over the row it already holds has to keep working.
+  it('reads back a row holding dates the calendar does not have', () => {
+    const legacy = createTask('task-legacy', { dueDate: '2026-02-30', startDate: '2025-02-29' })
+    createTask('task-real', { dueDate: '2026-02-28' })
+
+    const fetched = getTaskById(db, legacy.id)
+    expect(fetched?.dueDate).toBe('2026-02-30')
+    expect(fetched?.startDate).toBe('2025-02-29')
+
+    expect(listTasks(db).map((task) => task.id)).toContain('task-legacy')
+    expect(listTasks(db, { sortBy: 'dueDate', sortOrder: 'asc' }).map((task) => task.id)).toEqual([
+      'task-real',
+      'task-legacy'
+    ])
+    expect(getTasksByDueDate(db, '2026-02-30').map((task) => task.id)).toEqual(['task-legacy'])
+    expect(() => getOverdueTasks(db)).not.toThrow()
+    expect(getTaskStats(db).total).toBe(2)
+
+    const copy = duplicateTask(db, legacy.id, 'task-legacy-copy')
+    expect(copy?.dueDate).toBe('2026-02-30')
+  })
 })

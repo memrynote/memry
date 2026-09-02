@@ -168,4 +168,28 @@ describe('Vault MCP tool schemas', () => {
       }).success
     ).toBe(false)
   })
+  // The agent's task writes reach the tasks domain through handles-adapter, not
+  // through the IPC handler, so TaskCreateSchema never sees them and this schema
+  // is the only place an impossible date can be stopped.
+  it('refuses a task date the calendar does not have', () => {
+    const create = (patch: Record<string, unknown>) =>
+      TOOL_SCHEMAS.vault_create_task.input.safeParse({ title: 'Task', ...patch }).success
+
+    for (const date of ['2026-02-30', '2025-02-29', '2026-13-01']) {
+      expect(create({ due_date: date })).toBe(false)
+      expect(create({ start_date: date })).toBe(false)
+      expect(create({ due: date })).toBe(false)
+      expect(
+        TOOL_SCHEMAS.vault_update_task.input.safeParse({ id: 'task-1', due_date: date }).success
+      ).toBe(false)
+    }
+
+    expect(create({ due_date: '2024-02-29', start_date: '2024-02-29', due: '2024-02-29' })).toBe(
+      true
+    )
+    expect(
+      TOOL_SCHEMAS.vault_update_task.input.safeParse({ id: 'task-1', due_date: '2024-02-29' })
+        .success
+    ).toBe(true)
+  })
 })

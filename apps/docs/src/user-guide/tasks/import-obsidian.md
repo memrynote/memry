@@ -60,6 +60,14 @@ That matters because the checkbox in the file is what Memry reads back. A comple
 
 A done date the calendar does not have, `✅ 2026-02-30`, is not a completion time. The task imports as it is written otherwise, and the date survives on the description with the rest of the line.
 
+## A due or start date the calendar does not have
+
+The plugin's date grammar accepts any four digits, two digits and two digits, so `📅 2026-02-30`, `📅 2025-02-29` and `📅 2026-13-01` are all things you can type into a note. None of them is a day, and Memry will not store a due date that never arrives.
+
+The import stops rather than guessing which day you meant. The checkbox stays an ordinary checkbox, your line is left exactly as you wrote it, and a message names the date that was refused. Correct the date and the line imports on the next tick.
+
+February the twenty-ninth in a leap year is a real day and imports normally.
+
 ## Tag limits
 
 A Memry task takes up to twenty tags, each up to fifty characters. The Obsidian tag grammar is looser than that, so a longer or a twenty-first tag does not become a Memry tag.

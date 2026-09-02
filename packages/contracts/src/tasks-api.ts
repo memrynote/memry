@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod'
+import { CalendarDateSchema } from './calendar-date.ts'
 import type { ProjectWithStats, Task, TaskListItem } from '@memry/domain-tasks'
 export type {
   RepeatConfig,
@@ -53,18 +54,12 @@ export const TaskCreateSchema = z.object({
   priority: z.number().int().min(0).max(4).default(0),
   statusId: z.string().nullish(),
   parentId: z.string().nullish(),
-  dueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullish(),
+  dueDate: CalendarDateSchema.nullish(),
   dueTime: z
     .string()
     .regex(/^\d{2}:\d{2}$/)
     .nullish(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullish(),
+  startDate: CalendarDateSchema.nullish(),
   isRepeating: z.boolean().default(false),
   repeatConfig: RepeatConfigSchema.nullish(),
   repeatFrom: z.enum(['due', 'completion']).nullish(),
@@ -83,18 +78,12 @@ export const TaskUpdateSchema = z.object({
   projectId: z.string().optional(),
   statusId: z.string().nullish(),
   parentId: z.string().nullish(),
-  dueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullish(),
+  dueDate: CalendarDateSchema.nullish(),
   dueTime: z
     .string()
     .regex(/^\d{2}:\d{2}$/)
     .nullish(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullish(),
+  startDate: CalendarDateSchema.nullish(),
   isRepeating: z.boolean().optional(),
   repeatConfig: RepeatConfigSchema.nullish(),
   repeatFrom: z.enum(['due', 'completion']).nullish(),
