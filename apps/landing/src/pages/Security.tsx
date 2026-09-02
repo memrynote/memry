@@ -240,6 +240,64 @@ export function SecurityPage() {
         </Container>
       </section>
 
+      <section className="py-20">
+        <Container size="md">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+            className="max-w-2xl mb-6"
+          >
+            <h2 className="font-serif text-3xl md:text-4xl text-ink mb-4">
+              How the encryption actually works
+            </h2>
+            <p className="text-lg text-muted leading-relaxed">
+              Your vault key is the only thing that can decrypt your notes, and it never touches our
+              servers. When you set a passphrase, memrynote derives a wrapping key from it with
+              Argon2id — the same memory-hard key derivation function recommended for password
+              hashing — and uses that to unlock your vault key locally. From there, per-item data
+              keys, per-blob keys, and per-document keys are derived to encrypt your notes,
+              attachments, and edit history with XChaCha20-Poly1305 authenticated encryption.
+            </p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">
+              Add a second device and memrynote never sends your vault key across the network in the
+              clear. It seals a copy of the key to that device&rsquo;s own X25519 public key, so
+              only that device&rsquo;s private key can open it. Revoking a device cuts its access
+              immediately — no vault-wide key rotation required — though you can rotate the vault
+              key entirely (say, after a lost laptop), and every linked device is resealed
+              automatically.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: EASE_OUT_EXPO, delay: 0.1 }}
+            className="max-w-2xl"
+          >
+            <h2 className="font-serif text-3xl md:text-4xl text-ink mb-4">
+              What &ldquo;zero-knowledge&rdquo; actually means here
+            </h2>
+            <p className="text-lg text-muted leading-relaxed">
+              Zero-knowledge is a specific, checkable claim, not a marketing line. The sync server
+              stores your note titles, bodies, properties, attachments, task fields, and search
+              queries only as ciphertext — it never holds the keys required to read them. Every
+              synced item also carries an Ed25519 signature over its metadata, including deletions,
+              so a compromised or hostile server cannot silently forge a delete or alter what it
+              stores without the signature failing to verify.
+            </p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">
+              If memrynote&rsquo;s servers were subpoenaed, seized, or breached tomorrow, what an
+              attacker would get is encrypted blobs and signed metadata — not your notes. Local use
+              never touches a server at all: notes, tasks, calendar, and journal all work fully
+              offline, with sync as something you turn on, not something the app depends on.
+            </p>
+          </motion.div>
+        </Container>
+      </section>
+
       <section className="py-24">
         <Container size="sm">
           <motion.div
