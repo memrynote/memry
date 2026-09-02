@@ -275,6 +275,21 @@ Editor colors persist in two Obsidian-compatible forms:
 
 The pipeline is wired into both duplicated serializers: the renderer save path (`markdown-utils.ts`) and the main/CRDT path (`blocknote-converter.ts`).
 
+### Layout markers in markdown
+
+A block's text alignment has no markdown syntax either, so it travels the same way the block colour marker does: a comment line immediately above the block it describes.
+
+```text
+<!-- align:center -->
+Centred paragraph
+```
+
+`center`, `right` and `justify` are the only values written. `left` is BlockNote's default and is never written, so every note already in a vault keeps exactly the bytes it has, and a block that has never been aligned adds nothing on its next save. The three values are also the only ones the parser matches, so a hand-written `<!-- align:left -->` or any other HTML comment is not claimed as a marker and takes whatever path the markdown pipeline already gives an unrecognised comment. The marker attaches to the block on the next line only; a following block is unaffected.
+
+Colour and alignment markers share one registry (`packages/shared/src/block-markers.ts`), which fixes their on-disk order (colours, table colours, alignment) so a block carrying more than one always writes the same bytes. Both serializers read and write through the registry, the renderer save path and the main/CRDT path alike. `textAlignment` is one of BlockNote's `defaultProps`, so ProseMirror's `computeAttrs` keeps it across the CRDT hop with no schema change on either side.
+
+An older app version reading a marked file drops the comment line on its next save and shows the block left-aligned. A toggle's own alignment is not written: toggle regions are split off before the marker-line scanner runs, and the splitter lifts only the colours line. A callout under a marker is claimed as a callout on both paths: the renderer's blockquote splitter treats the marker lines above a `> [!type]` run as part of that block, lifts them onto the claimed run, and applies them to the callout, which is also what makes a coloured callout read back on the renderer path.
+
 ### Toggle blocks in markdown
 
 BlockNote's HTML export writes a `toggleListItem` as a plain `<li>`, so a toggle used to reach the vault file as an ordinary bullet — the fold gone and every block nested under it flattened out beside it. Toggles therefore have an on-disk form of their own (`packages/editor-schema/src/blocks/markdown.ts`):
