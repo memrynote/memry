@@ -9,7 +9,10 @@ import {
   hasPlaceholderHashes
 } from '@memry/sync-client/certificate-pins'
 
-export { getPinnedCertificateHashesForHostname, hasPlaceholderHashes } from '@memry/sync-client/certificate-pins'
+export {
+  getPinnedCertificateHashesForHostname,
+  hasPlaceholderHashes
+} from '@memry/sync-client/certificate-pins'
 
 const log = createLogger('CertPin')
 

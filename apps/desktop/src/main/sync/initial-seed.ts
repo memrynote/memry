@@ -6,7 +6,6 @@ import { getAllRemoteSyncAdapters } from './item-handlers'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import { createLogger } from '../lib/logger'
 
-
 const log = createLogger('InitialSeed')
 
 const SEED_DONE_KEY = 'initialSeedDone'

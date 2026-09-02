@@ -1,8 +1,4 @@
-import type {
-  SyncHttpClient,
-  SyncHttpRequest,
-  SyncHttpResponse
-} from '@memry/sync-client/adapters'
+import type { SyncHttpClient, SyncHttpRequest, SyncHttpResponse } from '@memry/sync-client/adapters'
 
 /**
  * Desktop implementation of seam 1 — plain fetch against the sync base URL.

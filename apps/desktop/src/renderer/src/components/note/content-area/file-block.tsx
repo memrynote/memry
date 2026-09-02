@@ -222,6 +222,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
     return estimateRowHeight(Number((el as HTMLElement).dataset.index ?? 0))
   }
 
+  // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
+  // known library limitation the React Compiler can't memoize around.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
@@ -231,8 +234,13 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
   })
 
   // Resizing the embed changes every row's height; the virtualizer keeps its
-  // cached measurements until it is told to drop them.
+  // cached measurements until it is told to drop them. False positive below:
+  // `virtualizer`'s config closes over local refs/props (scrollRef, the width
+  // and height that feed pageNaturalHeight), and this plugin's taint tracking
+  // reads calling a method on the returned object as forwarding those to a
+  // parent. Nothing here is passed to or received from any parent.
   useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent
     virtualizer.measure()
   }, [pageNaturalHeight, numPages, virtualizer])
 
@@ -700,13 +708,22 @@ function useAttachmentPresence(url: string): AttachmentPresence {
   )
   const [presence, setPresence] = useState<AttachmentPresence>(ATTACHMENT_PRESENT)
 
+  // A changed note or ref means any pending resolve is now for a different
+  // file: reset to neutral in the same render rather than in the effect below
+  // — the "adjusting state during render" pattern at
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes.
+  const [prevKey, setPrevKey] = useState({ noteId, url })
+  if (prevKey.noteId !== noteId || prevKey.url !== url) {
+    setPrevKey({ noteId, url })
+    setPresence(ATTACHMENT_PRESENT)
+  }
+
   useEffect(() => {
     // Only vault refs (note-relative or legacy memry-file) are checkable;
     // http/data urls are not attachments. Surfaces without a note id (and
     // tests without the IPC surface) just never show the card.
     const isVaultRef = Boolean(url) && (!HAS_SCHEME.test(url) || url.startsWith('memry-file:'))
     if (!noteId || !isVaultRef || !window.api?.notes?.resolveAttachment) {
-      setPresence(ATTACHMENT_PRESENT)
       return
     }
     let cancelled = false

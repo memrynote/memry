@@ -264,7 +264,7 @@ export class CrdtUpdateQueue {
       if (run.length === 0) return
       merged.push({
         noteId,
-        rawUpdate: run.length === 1 ? run[0]! : Y.mergeUpdates(run),
+        rawUpdate: run.length === 1 ? run[0] : Y.mergeUpdates(run),
         timestamp: runTimestamp
       })
       run = []

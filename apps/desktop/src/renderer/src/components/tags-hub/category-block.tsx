@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useDroppable } from '@dnd-kit/core'
 import { useSortable, SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
@@ -96,9 +96,9 @@ export interface CategoryBlockProps {
   /** Drops this block's top rule — the rules separate blocks, so the block
       leading the list gets none and sits directly under the action bar. */
   isFirst?: boolean
-  onTagOpen(tag: string): void
-  onRename?(name: string): void
-  onDelete?(): void
+  onTagOpen: (tag: string) => void
+  onRename?: (name: string) => void
+  onDelete?: () => void
 }
 
 /**
@@ -134,7 +134,6 @@ export function CategoryBlock({
   const [isRenaming, setIsRenaming] = useState(false)
   const [draftName, setDraftName] = useState(name)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const {
     attributes,
@@ -161,11 +160,12 @@ export function CategoryBlock({
 
   const tagIds = useMemo(() => tags.map((t) => t.tag), [tags])
 
-  useEffect(() => {
-    if (isRenaming) {
-      inputRef.current?.focus()
-    }
-  }, [isRenaming])
+  // Focuses the rename input as soon as it mounts, instead of reacting to
+  // `isRenaming` in an effect (same pattern as notes-tree.tsx's
+  // `renameCallbackRef`).
+  const focusRenameInput = useCallback((el: HTMLInputElement | null) => {
+    if (el) el.focus()
+  }, [])
 
   const startRename = (): void => {
     setDraftName(name)
@@ -231,7 +231,7 @@ export function CategoryBlock({
         </div>
         {isRenaming ? (
           <Input
-            ref={inputRef}
+            ref={focusRenameInput}
             value={draftName}
             onChange={(event) => setDraftName(event.target.value)}
             onKeyDown={handleRenameKeyDown}

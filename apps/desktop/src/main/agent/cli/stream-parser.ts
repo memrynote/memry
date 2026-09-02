@@ -122,8 +122,7 @@ function translateSingle(
 
   if (type === 'content_block_start') {
     const block = event.content_block as
-      | { type?: string; id?: string; name?: string; input?: unknown }
-      | undefined
+      { type?: string; id?: string; name?: string; input?: unknown } | undefined
     if (block?.type === 'tool_use' && block.id && block.name) {
       return {
         kind: 'tool_use',

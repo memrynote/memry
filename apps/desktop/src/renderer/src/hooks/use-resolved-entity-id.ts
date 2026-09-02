@@ -13,7 +13,7 @@
  * later), and the owner is told to clear it from tab state.
  */
 
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 
 export interface UseResolvedEntityIdOptions {
   /** The id read out of tab state. */
@@ -37,15 +37,14 @@ export function useResolvedEntityId({
 }: UseResolvedEntityIdOptions): string | null {
   const missing = id !== null && ready && !exists
 
-  const onMissingRef = useRef(onMissing)
-  useLayoutEffect(() => {
-    onMissingRef.current = onMissing
+  const notifyMissing = useEffectEvent(() => {
+    onMissing()
   })
 
   // `id` is a dependency so that a SECOND stale id — a restore that lands while
   // the first clear is still in flight — is cleared too.
   useEffect(() => {
-    if (missing) onMissingRef.current()
+    if (missing) notifyMissing()
   }, [missing, id])
 
   return missing ? null : id

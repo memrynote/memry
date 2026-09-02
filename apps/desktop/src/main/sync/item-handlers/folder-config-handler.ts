@@ -130,8 +130,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     return db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+      Record<string, unknown> | undefined
   }
 
   buildPushPayload(

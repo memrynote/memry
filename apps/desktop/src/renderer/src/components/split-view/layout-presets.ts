@@ -11,12 +11,7 @@ import { generateId, createDefaultTab } from '@/contexts/tabs/helpers'
 // =============================================================================
 
 export type LayoutPreset =
-  | 'single'
-  | 'two-columns'
-  | 'two-rows'
-  | 'three-columns'
-  | 'grid-2x2'
-  | 'main-sidebar'
+  'single' | 'two-columns' | 'two-rows' | 'three-columns' | 'grid-2x2' | 'main-sidebar'
 
 export interface LayoutPresetConfig {
   id: LayoutPreset

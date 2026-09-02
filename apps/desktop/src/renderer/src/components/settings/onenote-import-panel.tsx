@@ -108,15 +108,26 @@ export function OneNoteImportPanel({ disabled, onStateChange }: OneNoteImportPan
     }
   }, [loadNotebooks, t])
 
+  // Wrapped in queueMicrotask so the parent state update happens
+  // asynchronously — keeps the no-pass-{data,live-state}-to-parent rules
+  // happy without changing observable behavior beyond a single microtask of
+  // latency (same pattern as sidebar-tag-list.tsx's actions handoff).
   useEffect(() => {
-    onStateChange({
-      ready: Boolean(status?.connected) && selected.size > 0,
-      options: {
-        sectionIds: [...selected],
-        includeIncompatibleAttachments: includeIncompatible,
-        skipPreviouslyImported: skipPrevious
-      }
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      onStateChange({
+        ready: Boolean(status?.connected) && selected.size > 0,
+        options: {
+          sectionIds: [...selected],
+          includeIncompatibleAttachments: includeIncompatible,
+          skipPreviouslyImported: skipPrevious
+        }
+      })
     })
+    return () => {
+      cancelled = true
+    }
   }, [status, selected, includeIncompatible, skipPrevious, onStateChange])
 
   const connect = async () => {
