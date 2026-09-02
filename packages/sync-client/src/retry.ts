@@ -13,6 +13,13 @@ export interface RetryOptions {
   // poll cadence itself is the retry (otherwise each tick spawns its own
   // multi-attempt backoff storm). Defaults to retrying 429.
   retryOn429?: boolean
+  // When false, a 5xx is thrown immediately instead of being retried. Use when
+  // the caller can change the SHAPE of the request in response — retrying an
+  // identical request first only burns the budget. The push path sends a
+  // smaller batch: an oversized /sync/push is terminated by the edge before it
+  // reaches the Worker, so every attempt at that size fails identically.
+  // Defaults to retrying 5xx.
+  retryOn5xx?: boolean
 }
 
 export interface RetryResult<T> {
@@ -91,6 +98,14 @@ export async function withRetry<T>(
         error.statusCode >= 400 &&
         error.statusCode < 500 &&
         (error.statusCode !== 429 || opts.retryOn429 === false)
+      ) {
+        throw error
+      }
+
+      if (
+        error instanceof SyncServerError &&
+        error.statusCode >= 500 &&
+        opts.retryOn5xx === false
       ) {
         throw error
       }

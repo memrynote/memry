@@ -124,6 +124,11 @@ export const SYNC_STATE_KEYS = {
 export const itemRefKey = (itemType: string, itemId: string): string => `${itemType}:${itemId}`
 
 export const PUSH_BATCH_SIZE = 100
+// Floor for the batch the push loop shrinks to when the server cannot take the
+// current one (see PushCoordinator). One item per request is slow but always
+// makes progress, which is the point: the alternative is a queue that never
+// drains.
+export const MIN_PUSH_BATCH_SIZE = 1
 export const MAX_PUSH_ITERATIONS = 50
 export const CLOCK_SKEW_THRESHOLD_SECONDS = 300
 // The server's MAX_CHANGES_LIMIT for GET /sync/changes. Pinning 100 here made

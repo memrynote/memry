@@ -445,6 +445,46 @@ describe('PushCoordinator', () => {
     })
   })
 
+  describe('#given the edge kills an oversized push batch with 503', () => {
+    it('#then the batch is halved until it lands, instead of failing the whole run', async () => {
+      const { coordinator, queue, ctx, stateManager } = createHarness(getDb())
+      ctx.options.pushBatchSize = 8
+
+      // Stands in for Cloudflare terminating the Worker on CPU: the batch never
+      // reaches our code, so the edge answers 503 with no server error code —
+      // exactly the shape observed on /sync/push (2026-09-01). Retrying the
+      // same size can never succeed; only a smaller batch can.
+      const sentSizes: number[] = []
+      postToServerMock.mockImplementation(async (_path: string, body: PushBody) => {
+        sentSizes.push(body.items.length)
+        if (body.items.length > 2) throw new SyncServerError('Server error (503)', 503)
+        return {
+          accepted: body.items.map((i) => i.id),
+          rejected: [],
+          serverTime: Math.floor(Date.now() / 1000),
+          maxCursor: 0
+        }
+      })
+
+      for (let i = 0; i < 8; i++) {
+        queue.enqueue({
+          type: 'task',
+          itemId: `task-${i}`,
+          operation: 'update',
+          payload: JSON.stringify({ title: `Edit ${i}` })
+        })
+      }
+
+      await coordinator.push()
+
+      // 8 -> 4 -> 2: two rejected probes, then the rest goes out in twos and the
+      // backlog drains inside this cycle instead of being parked forever.
+      expect(sentSizes.slice(0, 3)).toEqual([8, 4, 2])
+      expect(queue.getPendingCount()).toBe(0)
+      expect(stateManager.setState).not.toHaveBeenCalledWith('error')
+    })
+  })
+
   describe('#given the access token is stale #when the server answers 401', () => {
     it('#then the session is refreshed, the push retried with the fresh token, and nothing is dropped', async () => {
       const { coordinator, queue, getAccessToken, refreshAccessToken } = createHarness(getDb())

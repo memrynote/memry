@@ -213,6 +213,27 @@ preferences cache, not in a sync table there is anything to rebuild from. For an
 frozen queue payload is the entire push, so retaining the older row published older state and
 discarded the newer edit through the success path, with no error surfaced.
 
+### A batch the server refuses shrinks instead of ending the run
+
+The acknowledgement rules above all assume a per-item verdict. A request that never reaches the
+handler has none: Cloudflare terminates an oversized `POST /sync/push` at the edge — invocation
+outcome `exceededCpu`, an empty `503` with no server error code — so nothing is accepted, nothing is
+rejected, and no attempt is charged. Resending that request unchanged cannot succeed, because what
+tripped the limit is the batch itself: a 100-item push costs roughly 50 ms of Worker CPU, about 80%
+of it the per-item Ed25519 signature check.
+
+The push loop therefore reads a `5xx` as a statement about the batch's **shape** rather than a
+transient blip. It halves the batch and keeps going — from `PUSH_BATCH_SIZE` (100) down to
+`MIN_PUSH_BATCH_SIZE` (1) — so the queue drains at whatever size the server can take. `withRetry`
+is given `retryOn5xx: false` for this one call: retrying an identical request first spends the
+backoff budget before the loop can adapt, then dead-letters the batch and ends the run. That is how
+one vault sat at 2914 pending changes for five days, with `POST /sync/pull` and `GET /sync/manifest`
+taking collateral 503s from the same isolate.
+
+The size that worked is remembered on the coordinator rather than re-derived per run, so a vault
+refused at 100 does not re-spend those doomed requests every cycle. It only ever shrinks; a restart
+clears it and the loop starts optimistically from the configured size again.
+
 ### The per-item attempt budget is spent per sync cycle
 
 A push response can accept some items and reject others. A rejected row keeps its payload and is
@@ -622,7 +643,7 @@ list.
 | `GET /sync/crdt/updates`               | down      | One note's incremental updates (`note_id`, `since`, `limit` query params)                     |
 | `POST /sync/crdt/updates/batch`        | down      | Incremental updates for up to 100 notes in one request, plus `snapshotMeta`                   |
 | `POST /sync/crdt/snapshot`             | up        | Full Yjs document baseline; prunes the note's stored updates at or below it                   |
-| `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note      |
+| `POST /sync/crdt/snapshot/batch`       | up        | Up to 50 full baselines in one request; same store-and-prune semantics, reported per note     |
 | `GET /sync/crdt/snapshot/:noteId`      | down      | The note's snapshot baseline and its `revision`, applied before its incrementals              |
 | `GET /sync/vaults`                     | down      | List the account's registered vaults                                                          |
 | `POST /sync/vaults`                    | up        | Register or update a vault's encrypted name                                                   |
