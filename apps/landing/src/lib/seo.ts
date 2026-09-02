@@ -33,39 +33,39 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/'
   },
   features: {
-    title: 'Features — memrynote',
+    title: 'Features: Notes, Tasks, Journal & Calendar in One App',
     description:
       'Inbox, notes, tasks & journal — four pillars of thought in one app. Wiki-links, Kanban, daily journal, optional AI clustering, all local-first.',
     path: '/features'
   },
   notes: {
-    title: 'Notes — memrynote',
+    title: 'Markdown Notes with Wiki-Links & Backlinks — memrynote',
     description:
       'A file-first, markdown-native notes app. Wiki-links, backlinks, 8 property types, version history. Plain .md files in a folder you own, local-first.',
     path: '/features/notes'
   },
   inbox: {
-    title: 'Inbox — memrynote',
+    title: 'Quick Capture Inbox for Notes & Tasks — memrynote',
     description:
       'A contemplative space for processing what comes in. Quick capture, voice memos, web clips, PDF extraction, and optional AI-powered filing — all on your device.',
     path: '/features/inbox'
   },
   journal: {
-    title: 'Journal — memrynote',
+    title: 'Daily Journal & Markdown Diary, Private by Default',
     description:
       'A reflective daily writing ritual. Day context sidebar, activity heatmap, time-based greetings, monthly stats, and templates. Reflect. Daily.',
     path: '/features/journal'
   },
   tasks: {
-    title: 'Tasks — memrynote',
+    title: 'Task Manager Built Into Your Notes, Kanban & Due Dates',
     description:
       'A multi-dimensional task system. Projects, custom statuses, subtasks, recurring schedules, Kanban / Calendar / List views, smart filters. From thought to done.',
     path: '/features/tasks'
   },
   calendar: {
-    title: 'Calendar — memrynote',
+    title: 'Calendar That Knows Your Tasks & Journal — memrynote',
     description:
-      'The calendar view that knows about your tasks, deadlines, and journal entries. Drag-drop rescheduling, due and start dates, day overviews — all from your local vault.',
+      'The calendar view that knows your tasks, deadlines, and journal entries. Drag-drop rescheduling, due and start dates, day overviews — all local.',
     path: '/features/calendar'
   },
   aiAgent: {
@@ -75,9 +75,9 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/features/ai-agent'
   },
   webClipper: {
-    title: 'Web Clipper — memrynote',
+    title: 'Web Clipper for Chrome & Firefox — Save Pages to memrynote',
     description:
-      'Clip and save any link into memrynote. One click sends the page, its text, and the URL to your Inbox. Live on the Chrome Web Store and Firefox Add-ons — Edge on the way.',
+      'Clip and save any link into memrynote. One click sends the page, text, and URL to your Inbox. Live on Chrome Web Store and Firefox Add-ons.',
     path: '/features/web-clipper'
   },
   downloadDesktop: {
@@ -93,31 +93,31 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/cli'
   },
   useCases: {
-    title: 'Use Cases — memrynote',
+    title: 'memrynote for Students, Researchers, Makers & Freelancers',
     description:
       'Built for knowledge workers, students, freelancers, and personal productivity. One app that adapts to how you think.',
     path: '/use-cases'
   },
   security: {
-    title: 'Security & Privacy — memrynote',
+    title: 'Security: End-to-End Encrypted, Zero-Knowledge Sync',
     description:
       'Local-first storage, XChaCha20-Poly1305 encryption, zero-knowledge sync, optional on-device AI. Your data never leaves your device unencrypted.',
     path: '/security'
   },
   pricing: {
-    title: 'Pricing — memrynote Sync',
+    title: 'Pricing — Free Local Vault, Encrypted Sync from $5/mo',
     description:
       'Local-first stays free, forever. Plus adds 1 GB sync, Pro adds 10 GB and 10 vaults, and Believer supports independent software with 50 GB and unlimited vaults.',
     path: '/pricing'
   },
   changelog: {
-    title: 'Changelog — memrynote',
+    title: 'memrynote Changelog — Release Notes & Shipped Features',
     description:
       'Follow the latest memrynote product updates, release notes, fixes, and shipped features.',
     path: '/changelog'
   },
   roadmap: {
-    title: 'Roadmap — memrynote',
+    title: "memrynote Roadmap — What's Shipping Next",
     description:
       'What is shipping now, what is planned next, and what we have already launched. We update this page as we ship.',
     path: '/roadmap'
@@ -125,7 +125,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   terms: {
     title: 'Terms of Service — memrynote',
     description:
-      'The agreement between you and memrynote when you use the local app and Sync service. Plain-English terms covering accounts, billing, lapse policy, and acceptable use.',
+      'The agreement between you and memrynote for the local app and Sync service. Plain-English terms on accounts, billing, lapse policy, and acceptable use.',
     path: '/terms'
   },
   privacy: {
@@ -180,25 +180,25 @@ export const PAGE_META: Record<string, PageMeta> = {
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:
-      'See how memrynote compares to Obsidian, Notion, Evernote, Tana, Heptabase, and more — a local-first, end-to-end encrypted notes, tasks, calendar, and journal app with plain Markdown files you own.',
+      'See how memrynote compares to Obsidian, Notion, Evernote, Tana — local-first, E2E encrypted notes, tasks, calendar & journal in plain Markdown files you own.',
     path: '/compare'
   },
   obsidianAlternative: {
     title: 'Obsidian alternative — memrynote',
     description:
-      'Looking for an Obsidian alternative with built-in tasks, a calendar, and end-to-end encrypted sync? memrynote keeps your notes as local Markdown files — no plugin tax.',
+      'Looking for an Obsidian alternative with built-in tasks, a calendar, and E2E encrypted sync? memrynote keeps notes as local Markdown files — no plugin tax.',
     path: '/obsidian-alternative'
   },
   notionAlternative: {
     title: 'Private Notion alternative — memrynote',
     description:
-      'A private, end-to-end encrypted Notion alternative. memrynote stores notes as local Markdown files on your device — offline-first, open source, no vendor access to your data.',
+      'A private, end-to-end encrypted Notion alternative. memrynote stores notes as local Markdown files on your device — offline-first, open source.',
     path: '/notion-alternative'
   },
   noteplanAlternative: {
     title: 'NotePlan alternative — memrynote',
     description:
-      'A cross-platform NotePlan alternative for Windows, macOS, and Linux. Notes, tasks, calendar, and a daily journal in one local-first app with end-to-end encrypted sync.',
+      'A cross-platform NotePlan alternative for Windows, macOS, and Linux — notes, tasks, calendar, and journal in one local-first app with E2E sync.',
     path: '/noteplan-alternative'
   },
   capacitiesAlternative: {
@@ -232,7 +232,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/apple-notes-alternative'
   },
   bearAlternative: {
-    title: 'Bear alternative — memrynote',
+    title: 'Bear Alternative for Windows & Linux — memrynote',
     description:
       'The Bear alternative for Windows and Linux — plain Markdown files, built-in tasks, calendar, journal, and zero-knowledge encrypted sync.',
     path: '/bear-alternative'
@@ -268,15 +268,15 @@ export const PAGE_META: Record<string, PageMeta> = {
     path: '/google-keep-alternative'
   },
   tanaAlternative: {
-    title: 'Tana alternative — memrynote',
+    title: 'Tana Alternative — Local Markdown, No Cloud Database',
     description:
-      'A private, local-first Tana alternative — plain Markdown files you own, end-to-end encrypted sync, and built-in tasks, calendar, and journal. Open source, offline.',
+      'A private, local-first Tana alternative — plain Markdown files you own, E2E encrypted sync, and built-in tasks, calendar, and journal. Offline.',
     path: '/tana-alternative'
   },
   heptabaseAlternative: {
     title: 'Heptabase alternative — memrynote',
     description:
-      'A local-first Heptabase alternative with plain Markdown files you own, end-to-end encrypted sync, and built-in tasks, a calendar, and a daily journal. Open source.',
+      'A local-first Heptabase alternative with plain Markdown files you own, E2E encrypted sync, and built-in tasks, calendar, and journal. Open source.',
     path: '/heptabase-alternative'
   }
 }
