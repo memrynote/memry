@@ -1,15 +1,20 @@
-import { type ComponentType, Fragment, useCallback, useState } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+import { type ComponentType, Fragment, useCallback, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { Picker, usePickerContext, usePickerSearch } from '@/components/ui/picker'
 import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { isFontInstalled, sanitizeFontFamilyName, MAX_FONT_NAME_LENGTH } from '@/lib/interface-font'
+import { useSystemFonts, type SystemFontsState } from '@/hooks/use-system-fonts'
+import {
+  BUILT_IN_FONT_FAMILIES,
+  FONT_FAMILY_MAP,
+  fontChoiceFromSettings,
+  fontChoiceKey,
+  fontChoiceToSettings,
+  isFontInstalled,
+  parseFontChoiceKey,
+  type BuiltInFontFamily,
+  type FontChoice
+} from '@/lib/interface-font'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -92,6 +97,171 @@ const THEME_OPTIONS = [
   { value: 'system', labelKey: 'appearance.theme.options.system', icon: Monitor }
 ]
 
+const BUILT_IN_FONT_LABEL_KEYS: Record<BuiltInFontFamily, string> = {
+  system: 'system',
+  'sans-serif': 'sansSerif',
+  serif: 'serif',
+  gelasio: 'gelasio',
+  geist: 'geist',
+  inter: 'inter',
+  monospace: 'monospace'
+}
+
+const systemFontStack = (family: string): string => `"${family}"`
+
+interface FontPickerItem {
+  key: string
+  label: string
+  stack: string
+  notInstalled?: boolean
+}
+
+// Rendered inside <Picker> so it can read the search query from context.
+function FontFamilyPickerList({
+  choice,
+  systemFonts
+}: {
+  choice: FontChoice
+  systemFonts: SystemFontsState
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  const { searchQuery } = usePickerContext()
+
+  const builtInItems = useMemo<FontPickerItem[]>(
+    () =>
+      BUILT_IN_FONT_FAMILIES.map((family) => ({
+        key: fontChoiceKey({ kind: 'builtin', family }),
+        label: t(`appearance.typography.fontFamily.options.${BUILT_IN_FONT_LABEL_KEYS[family]}`),
+        stack: FONT_FAMILY_MAP[family]
+      })),
+    [t]
+  )
+
+  const systemItems = useMemo<FontPickerItem[]>(() => {
+    const families = systemFonts.status === 'ready' ? systemFonts.families : []
+    const items: FontPickerItem[] = families.map((family) => ({
+      key: fontChoiceKey({ kind: 'system', family }),
+      label: family,
+      stack: systemFontStack(family)
+    }))
+
+    // A family saved before this picker shipped, or uninstalled since, is in no
+    // enumeration. List it anyway so the saved selection stays visible, and only
+    // this row needs the installed check — everything else was just enumerated.
+    const selected = choice.kind === 'system' ? choice.family : null
+    if (selected && !families.includes(selected)) {
+      items.unshift({
+        key: fontChoiceKey({ kind: 'system', family: selected }),
+        label: selected,
+        stack: systemFontStack(selected),
+        notInstalled: !isFontInstalled(selected)
+      })
+    }
+
+    return items
+  }, [choice, systemFonts])
+
+  const filteredBuiltIn = usePickerSearch(builtInItems, ['label'], searchQuery)
+  const filteredSystem = usePickerSearch(systemItems, ['label'], searchQuery)
+
+  const systemStatus =
+    systemFonts.status === 'loading'
+      ? t('appearance.typography.fontFamily.loading')
+      : systemFonts.status === 'unavailable'
+        ? t('appearance.typography.fontFamily.unavailable')
+        : null
+
+  if (filteredBuiltIn.length === 0 && filteredSystem.length === 0 && !systemStatus) {
+    return <Picker.Empty message={t('appearance.typography.fontFamily.empty')} />
+  }
+
+  return (
+    <Picker.List>
+      {filteredBuiltIn.length > 0 && (
+        <Picker.Section label={t('appearance.typography.fontFamily.sections.builtin')}>
+          {filteredBuiltIn.map((item) => (
+            <Picker.Item
+              key={item.key}
+              value={item.key}
+              label={item.label}
+              indicator="check"
+              className="w-full"
+              style={item.stack ? { fontFamily: item.stack } : undefined}
+            />
+          ))}
+        </Picker.Section>
+      )}
+
+      {(filteredSystem.length > 0 || systemStatus) && (
+        <>
+          <Picker.Separator />
+          <Picker.Section label={t('appearance.typography.fontFamily.sections.system')}>
+            {systemStatus && <p className="py-1.5 px-2 text-muted-foreground">{systemStatus}</p>}
+            {filteredSystem.map((item) => (
+              <Picker.Item
+                key={item.key}
+                value={item.key}
+                label={item.label}
+                description={
+                  item.notInstalled ? t('appearance.typography.fontFamily.notInstalled') : undefined
+                }
+                indicator="check"
+                className="w-full"
+                style={{ fontFamily: item.stack }}
+              />
+            ))}
+          </Picker.Section>
+        </>
+      )}
+    </Picker.List>
+  )
+}
+
+function FontFamilyPicker({
+  choice,
+  onSelect
+}: {
+  choice: FontChoice
+  onSelect: (key: string) => void
+}): React.JSX.Element {
+  const { t } = useT('settings')
+  // Enumeration only starts once the picker is opened, so a user who never
+  // touches this row never pays for it.
+  const [open, setOpen] = useState(false)
+  const systemFonts = useSystemFonts(open)
+
+  const label =
+    choice.kind === 'builtin'
+      ? t(`appearance.typography.fontFamily.options.${BUILT_IN_FONT_LABEL_KEYS[choice.family]}`)
+      : choice.family
+  const stack =
+    choice.kind === 'builtin' ? FONT_FAMILY_MAP[choice.family] : systemFontStack(choice.family)
+
+  return (
+    <Picker
+      open={open}
+      onOpenChange={setOpen}
+      value={fontChoiceKey(choice)}
+      onValueChange={onSelect}
+    >
+      <Picker.Trigger
+        variant="button"
+        chevron
+        className={cn(COMPACT_SELECT, 'max-w-56')}
+        aria-label={t('appearance.typography.fontFamily.label')}
+      >
+        <span className="truncate" style={stack ? { fontFamily: stack } : undefined}>
+          {label}
+        </span>
+      </Picker.Trigger>
+      <Picker.Content width={264} align="end">
+        <Picker.Search placeholder={t('appearance.typography.fontFamily.searchPlaceholder')} />
+        <FontFamilyPickerList choice={choice} systemFonts={systemFonts} />
+      </Picker.Content>
+    </Picker>
+  )
+}
+
 const FONT_SIZE_OPTIONS: SegmentOption[] = [
   { value: 'small', label: 'S' },
   { value: 'medium', label: 'M' },
@@ -102,9 +272,6 @@ export function AppearanceSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
-  // null means "not editing" — the row then shows the saved value, including one
-  // that arrived from another device.
-  const [customFontDraft, setCustomFontDraft] = useState<string | null>(null)
 
   const themeOptions: SegmentOption[] = THEME_OPTIONS.map((option) => ({
     value: option.value,
@@ -147,27 +314,17 @@ export function AppearanceSettings() {
     [t, updateSettings]
   )
 
-  const handleFontFamilyChange = useCallback(
-    async (value: string) => {
-      const fontFamily = value as
-        'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
-      const success = await updateSettings({ fontFamily })
+  const handleFontChoiceChange = useCallback(
+    async (key: string) => {
+      const choice = parseFontChoiceKey(key)
+      if (!choice) return
+      const success = await updateSettings(fontChoiceToSettings(choice))
       if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
     [t, updateSettings]
   )
 
-  const customFontValue = customFontDraft ?? settings.customFontFamily ?? ''
-  const customFontName = sanitizeFontFamilyName(customFontValue)
-  const customFontMissing = customFontName.length > 0 && !isFontInstalled(customFontName)
-
-  const commitCustomFont = useCallback(async () => {
-    const next = sanitizeFontFamilyName(customFontDraft ?? '')
-    setCustomFontDraft(null)
-    if (customFontDraft === null || next === (settings.customFontFamily ?? '')) return
-    const success = await updateSettings({ customFontFamily: next })
-    if (!success) toast.error(t('appearance.typography.customFontError'))
-  }, [customFontDraft, settings.customFontFamily, t, updateSettings])
+  const fontChoice = fontChoiceFromSettings(settings.fontFamily, settings.customFontFamily)
 
   if (isLoading) {
     return (
@@ -273,64 +430,10 @@ export function AppearanceSettings() {
           label={t('appearance.typography.fontFamily.label')}
           description={t('appearance.typography.fontFamily.description')}
         >
-          <Select
-            value={settings.fontFamily}
-            onValueChange={(...args) => void handleFontFamilyChange(...args)}
-          >
-            <SelectTrigger className={COMPACT_SELECT}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="system">
-                {t('appearance.typography.fontFamily.options.system')}
-              </SelectItem>
-              <SelectItem value="sans-serif">
-                {t('appearance.typography.fontFamily.options.sansSerif')}
-              </SelectItem>
-              <SelectItem value="serif">
-                {t('appearance.typography.fontFamily.options.serif')}
-              </SelectItem>
-              <SelectItem value="gelasio">
-                {t('appearance.typography.fontFamily.options.gelasio')}
-              </SelectItem>
-              <SelectItem value="geist">
-                {t('appearance.typography.fontFamily.options.geist')}
-              </SelectItem>
-              <SelectItem value="inter">
-                {t('appearance.typography.fontFamily.options.inter')}
-              </SelectItem>
-              <SelectItem value="monospace">
-                {t('appearance.typography.fontFamily.options.monospace')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
-
-        <SettingRow
-          label={t('appearance.typography.customFont.label')}
-          description={t('appearance.typography.customFont.description')}
-        >
-          <div className="flex flex-col items-end shrink-0 gap-1">
-            <Input
-              placeholder={t('appearance.typography.customFont.placeholder')}
-              value={customFontValue}
-              onChange={(e) => setCustomFontDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void commitCustomFont()
-              }}
-              onBlur={() => void commitCustomFont()}
-              maxLength={MAX_FONT_NAME_LENGTH}
-              aria-label={t('appearance.typography.customFont.label')}
-              aria-describedby={customFontMissing ? 'custom-font-missing' : undefined}
-              className="w-48 h-7 text-xs bg-muted/50 border-border"
-              style={customFontName ? { fontFamily: `'${customFontName}'` } : undefined}
-            />
-            {customFontMissing && (
-              <span id="custom-font-missing" className="text-[11px]/4 text-muted-foreground">
-                {t('appearance.typography.customFont.notInstalled')}
-              </span>
-            )}
-          </div>
+          <FontFamilyPicker
+            choice={fontChoice}
+            onSelect={(...args) => void handleFontChoiceChange(...args)}
+          />
         </SettingRow>
       </SettingsGroup>
     </div>

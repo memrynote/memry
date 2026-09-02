@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettings } from './account-section'
 import { AgentProvidersSection } from './agent-providers-section'
@@ -11,6 +11,8 @@ import { JournalSettings } from './journal-section'
 import { toast } from 'sonner'
 
 const mocks = vi.hoisted(() => ({
+  pickerOpenChange: null as null | ((open: boolean) => void),
+  pickerValueChange: null as null | ((value: string) => void),
   authState: { status: 'authenticated', email: 'kaan@example.com' } as Record<string, unknown>,
   logout: vi.fn(),
   syncContext: {
@@ -130,6 +132,64 @@ vi.mock('@/components/ui/select', async () => {
         </button>
       )
     }
+  }
+})
+
+// The font picker is a Radix popover; jsdom gets a flat stand-in that always
+// renders its content, the same shape the other picker suites use.
+vi.mock('@/components/ui/picker', () => {
+  const PickerRoot = ({
+    children,
+    onOpenChange,
+    onValueChange,
+    value
+  }: {
+    children: React.ReactNode
+    onOpenChange?: (open: boolean) => void
+    onValueChange?: (value: string) => void
+    value?: string | string[] | null
+  }) => {
+    mocks.pickerOpenChange = onOpenChange ?? null
+    mocks.pickerValueChange = onValueChange ?? null
+    return <div data-picker-value={value}>{children}</div>
+  }
+
+  return {
+    Picker: Object.assign(PickerRoot, {
+      Trigger: ({ children, ...props }: { children: React.ReactNode }) => (
+        <button type="button" onClick={() => mocks.pickerOpenChange?.(true)} {...props}>
+          {children}
+        </button>
+      ),
+      Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      Search: ({ placeholder }: { placeholder?: string }) => (
+        <input aria-label="picker-search" placeholder={placeholder} />
+      ),
+      List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      Empty: ({ message }: { message: string }) => <p>{message}</p>,
+      Item: ({
+        label,
+        value,
+        description
+      }: {
+        label: string
+        value: string
+        description?: string
+      }) => (
+        <div>
+          <button type="button" onClick={() => mocks.pickerValueChange?.(value)}>
+            {label}
+          </button>
+          {description && <span>{description}</span>}
+        </div>
+      ),
+      Separator: () => <hr />,
+      Section: ({ label, children }: { label: string; children: React.ReactNode }) => (
+        <section aria-label={label}>{children}</section>
+      )
+    }),
+    usePickerContext: () => ({ searchQuery: '' }),
+    usePickerSearch: <T,>(items: T[]) => items
   }
 })
 
@@ -494,6 +554,9 @@ describe('settings section coverage', () => {
     mocks.syncContext.linkingRequest = null
     mocks.syncContext.triggerSync.mockResolvedValue(undefined)
     mocks.generalSettings.isLoading = false
+    Reflect.deleteProperty(document, 'fonts')
+    mocks.generalSettings.settings.fontFamily = 'system'
+    mocks.generalSettings.settings.customFontFamily = ''
     mocks.generalSettings.updateSettings.mockResolvedValue(true)
     mocks.calendarPreferences.isLoading = false
     mocks.calendarPreferences.updateSettings.mockResolvedValue(true)
@@ -634,21 +697,50 @@ describe('settings section coverage', () => {
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({ fontSize: 'large' })
     )
 
+    // Picking a built-in preset also clears any custom family behind it, so the
+    // preset is what actually renders.
     fireEvent.click(screen.getByText('appearance.typography.fontFamily.options.monospace'))
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-        fontFamily: 'monospace'
+        fontFamily: 'monospace',
+        customFontFamily: ''
       })
     )
+  })
 
-    // A typed font name is saved sanitized on blur — the raw text goes into a
-    // CSS font stack, so anything that could escape the declaration is dropped.
-    const customFontInput = screen.getByLabelText('appearance.typography.customFont.label')
-    fireEvent.change(customFontInput, { target: { value: '"Iosevka Term"; color: red' } })
-    fireEvent.blur(customFontInput)
+  it('reports that installed fonts cannot be enumerated but still offers the presets', async () => {
+    render(<AppearanceSettings />)
+
+    // jsdom has no Local Font Access API, so opening the picker resolves to the
+    // unavailable branch.
+    fireEvent.click(screen.getByLabelText('appearance.typography.fontFamily.label'))
+
+    await screen.findByText('appearance.typography.fontFamily.unavailable')
+    expect(screen.getByText('appearance.typography.fontFamily.options.gelasio')).toBeInTheDocument()
+  })
+
+  it('keeps a saved font family that this machine cannot render selectable', async () => {
+    mocks.generalSettings.settings.fontFamily = 'serif'
+    mocks.generalSettings.settings.customFontFamily = 'Iosevka Term'
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: { check: () => false }
+    })
+    render(<AppearanceSettings />)
+
+    // The family is in no enumeration here, so it is listed from the saved
+    // value with the fallback hint rather than silently dropped.
+    const systemSection = within(
+      screen.getByLabelText('appearance.typography.fontFamily.sections.system')
+    )
+    expect(
+      systemSection.getByText('appearance.typography.fontFamily.notInstalled')
+    ).toBeInTheDocument()
+
+    fireEvent.click(systemSection.getByText('Iosevka Term'))
     await waitFor(() =>
       expect(mocks.generalSettings.updateSettings).toHaveBeenCalledWith({
-        customFontFamily: 'Iosevka Term color red'
+        customFontFamily: 'Iosevka Term'
       })
     )
   })
