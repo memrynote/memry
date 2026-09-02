@@ -204,12 +204,27 @@ async function stageDevices(args: {
   const localPath = path.join(vaultPathA, 'attachments', seeded.noteId, seeded.storedFilename)
   expect(fs.statSync(localPath).size).toBe(FILE_BYTES)
 
-  const uploadResult = await pageA.evaluate(
-    async ({ noteId, filePath }) => window.api.syncAttachments.upload({ noteId, filePath }),
-    { noteId: seeded.noteId, filePath: localPath }
-  )
-  expect(uploadResult.success, uploadResult.error ?? 'attachment sync upload failed').toBe(true)
-  const attachmentId = uploadResult.attachmentId!
+  // A one-shot call here raced device A's just-completed bootstrap: the access
+  // token / vault key can still be settling in the OS keychain immediately
+  // after `bootstrapSyncDevice` returns, so a single attempt could observe
+  // "Not authenticated" or "Vault is locked" even though auth lands moments
+  // later. `syncAttachments.upload` is safe to retry — each attempt encrypts
+  // under a fresh file key, which is exactly why `chunkRows` is asserted as a
+  // floor below rather than an equality.
+  let uploadResult: Awaited<ReturnType<typeof window.api.syncAttachments.upload>> | undefined
+  await expect
+    .poll(
+      async () => {
+        uploadResult = await pageA.evaluate(
+          async ({ noteId, filePath }) => window.api.syncAttachments.upload({ noteId, filePath }),
+          { noteId: seeded.noteId, filePath: localPath }
+        )
+        return uploadResult.success ? true : uploadResult.error
+      },
+      { timeout: 30_000, intervals: [2_000] }
+    )
+    .toBe(true)
+  const attachmentId = uploadResult!.attachmentId!
   expect(attachmentId).toBeTruthy()
 
   // `syncAttachments.upload` resolves only once every chunk and the manifest are
