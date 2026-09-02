@@ -20,17 +20,12 @@ import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
-/** A 16x16 solid PNG, large enough that Chromium emits a real image object. */
-const PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mO4Y2NEEmIY1TCqYfhqAAAatkoQSZYreAAAAABJRU5ErkJggg=='
-const PNG_BYTES = Buffer.from(PNG_BASE64, 'base64')
-
 /**
- * A `size`x`size` PNG stored uncompressed, so the file really is megabytes.
- * Exists to push the inlined document past Chromium's 2 MB URL ceiling, which a
- * phone photograph in a real note would do on its own.
+ * A `size`x`size` RGB PNG. `level` 0 stores the pixels uncompressed, which is
+ * how the large case reaches the megabytes needed to clear Chromium's URL
+ * length ceiling, the ceiling a phone photograph clears on its own.
  */
-function makeLargePng(size: number): Buffer {
+function makePng(size: number, level: number): Buffer {
   const stride = size * 3 + 1
   const raw = Buffer.alloc(size * stride)
   for (let i = 0; i < raw.length; i++) raw[i] = i % 251
@@ -53,9 +48,24 @@ function makeLargePng(size: number): Buffer {
   return Buffer.concat([
     Buffer.from('89504e470d0a1a0a', 'hex'),
     chunk('IHDR', ihdr),
-    chunk('IDAT', zlib.deflateSync(raw, { level: 0 })),
+    chunk('IDAT', zlib.deflateSync(raw, { level })),
     chunk('IEND', Buffer.alloc(0))
   ])
+}
+
+/** The image the exported note embeds, wide enough to tell from a broken-image icon. */
+const IMAGE_WIDTH = 613
+const PNG_BYTES = makePng(IMAGE_WIDTH, 9)
+const PNG_BASE64 = PNG_BYTES.toString('base64')
+
+/**
+ * The widest image object in a PDF. Chromium always writes some image, so the
+ * presence of one proves nothing. A broken reference leaves only the tiny
+ * broken-image icon, while a resolved one embeds the note's own bitmap.
+ */
+function widestEmbeddedImage(pdf: Buffer): number {
+  const widths = [...pdf.toString('latin1').matchAll(/\/Width\s+(\d+)/g)].map((m) => Number(m[1]))
+  return widths.length > 0 ? Math.max(...widths) : 0
 }
 
 interface SeededNote {
@@ -160,14 +170,13 @@ test.describe('Note export keeps embedded images', () => {
 
     const pdf = fs.readFileSync(outputPath)
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
-    expect(pdf.byteLength).toBeGreaterThan(2000)
-    // Skia writes the XObject dictionary uncompressed, so a rendered bitmap is
-    // visible in the raw bytes. A broken image leaves no image object at all.
     expect(pdf.toString('latin1')).toContain('/Image')
+    const widest = widestEmbeddedImage(pdf)
+    expect(widest, `widest embedded image was ${widest}px`).toBeGreaterThan(64)
   })
 
   test('exported PDF embeds an image far larger than the URL length ceiling', async ({ page }) => {
-    const png = makeLargePng(900)
+    const png = makePng(900, 0)
     expect(png.byteLength).toBeGreaterThan(2 * 1024 * 1024)
     const seeded = await seedNoteWithImage(page, 'Export big pdf images', png)
 
@@ -186,6 +195,7 @@ test.describe('Note export keeps embedded images', () => {
 
     const pdf = fs.readFileSync(outputPath)
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
-    expect(pdf.toString('latin1')).toContain('/Image')
+    const widest = widestEmbeddedImage(pdf)
+    expect(widest, `widest embedded image was ${widest}px`).toBeGreaterThan(64)
   })
 })
