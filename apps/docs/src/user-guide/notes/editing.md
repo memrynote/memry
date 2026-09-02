@@ -191,6 +191,18 @@ Two shapes are deliberately left alone rather than adopted:
   literal text, so nothing is lost; close the block by hand and it becomes a real toggle
   on the next open.
 
+## Folding a bullet list
+
+Any bullet with something nested under it can be folded. Hover the line and a small
+chevron appears in the margin beside its bullet; click it to hide everything indented
+below, click it again to bring it back. A folded bullet keeps its chevron on screen, so
+you can always see that something is tucked away.
+
+This is a view, not an edit. Nothing about the fold is written to the note: the file on
+disk is unchanged, other devices are unaffected, and reopening the note shows every line
+expanded again. For a collapsible section that _is_ saved with the note — and that
+GitHub and Obsidian also render collapsed — use a toggle list instead.
+
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
