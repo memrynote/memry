@@ -176,7 +176,10 @@ function FontFamilyPickerList({
   }
 
   return (
-    <Picker.List>
+    // The popover's own max-height is not enough to make a 200-row list
+    // scrollable, so the list carries its own bound. It also stops the picker
+    // from stretching to fill a tall window.
+    <Picker.List className="max-h-72 overflow-y-auto">
       {filteredBuiltIn.length > 0 && (
         <Picker.Section label={t('appearance.typography.fontFamily.sections.builtin')}>
           {filteredBuiltIn.map((item) => (

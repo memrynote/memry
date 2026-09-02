@@ -165,7 +165,11 @@ vi.mock('@/components/ui/picker', () => {
       Search: ({ placeholder }: { placeholder?: string }) => (
         <input aria-label="picker-search" placeholder={placeholder} />
       ),
-      List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      List: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+        <div data-testid="picker-list" className={className}>
+          {children}
+        </div>
+      ),
       Empty: ({ message }: { message: string }) => <p>{message}</p>,
       Item: ({
         label,
@@ -717,6 +721,16 @@ describe('settings section coverage', () => {
 
     await screen.findByText('appearance.typography.fontFamily.unavailable')
     expect(screen.getByText('appearance.typography.fontFamily.options.gelasio')).toBeInTheDocument()
+  })
+
+  it('bounds the font list so a few hundred families stay scrollable', async () => {
+    render(<AppearanceSettings />)
+
+    // The popover's own max-height leaves the list at its full content height,
+    // which on a real machine is thousands of pixels with nothing to scroll.
+    const list = screen.getByTestId('picker-list')
+    expect(list.className).toContain('max-h-72')
+    expect(list.className).toContain('overflow-y-auto')
   })
 
   it('keeps a saved font family that this machine cannot render selectable', async () => {
