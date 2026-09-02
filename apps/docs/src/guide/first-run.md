@@ -1,3 +1,7 @@
+---
+description: What happens the first time you open memrynote — choosing a vault location, setting a passphrase, and saving the recovery phrase.
+---
+
 # First Run & Vault Setup
 
 What happens the first time you open memrynote: choosing a vault location, setting a passphrase, and saving the recovery phrase.

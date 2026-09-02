@@ -1,3 +1,7 @@
+---
+description: How to set up a local memrynote development environment and contribute changes.
+---
+
 # Contributing
 
 Thanks for helping build memrynote. Keep changes small, focused, and easy to review.

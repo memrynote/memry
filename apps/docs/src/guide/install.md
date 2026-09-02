@@ -1,3 +1,7 @@
+---
+description: Download and install memrynote on macOS, Windows, or Linux, including Homebrew and manual installer options.
+---
+
 # Install memrynote
 
 Download the desktop app from **[memrynote.com/download/desktop](https://memrynote.com/download/desktop)**.

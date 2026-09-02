@@ -1,3 +1,7 @@
+---
+description: A high-level map of what memrynote does — notes, journal, tasks, canvas, sync, and AI features.
+---
+
 # Features Overview
 
 A high-level map of what memrynote does. Each section links to dedicated pages in the [User Guide](/user-guide/notes/editing).

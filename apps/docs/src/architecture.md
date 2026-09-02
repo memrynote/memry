@@ -1,3 +1,7 @@
+---
+description: How memrynote's Electron desktop app, Cloudflare Workers sync server, and shared packages fit together in the monorepo.
+---
+
 # Architecture
 
 memrynote is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudflare Workers sync server, and shared TypeScript packages.
