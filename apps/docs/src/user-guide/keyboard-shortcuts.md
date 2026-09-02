@@ -84,6 +84,9 @@ cell on <kbd>Esc</kbd>. See
 > the selection and nothing else, and everywhere else it toggles the sidebar. Rebind
 > **Toggle Sidebar** if you would rather keep the two apart.
 
+Memry remembers whether the sidebar is open. Close it and it stays closed when you
+switch vaults and when you next start the app, until you open it again.
+
 The same shortcut reference opens from the question-mark button in the sidebar footer.
 It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
 and Settings sections so you can scan by workflow.
