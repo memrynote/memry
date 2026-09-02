@@ -219,16 +219,14 @@ function FontFamilyPickerList({
 
 function FontFamilyPicker({
   choice,
+  systemFonts,
   onSelect
 }: {
   choice: FontChoice
+  systemFonts: SystemFontsState
   onSelect: (key: string) => void
 }): React.JSX.Element {
   const { t } = useT('settings')
-  // Enumeration only starts once the picker is opened, so a user who never
-  // touches this row never pays for it.
-  const [open, setOpen] = useState(false)
-  const systemFonts = useSystemFonts(open)
 
   const label =
     choice.kind === 'builtin'
@@ -238,12 +236,7 @@ function FontFamilyPicker({
     choice.kind === 'builtin' ? FONT_FAMILY_MAP[choice.family] : systemFontStack(choice.family)
 
   return (
-    <Picker
-      open={open}
-      onOpenChange={setOpen}
-      value={fontChoiceKey(choice)}
-      onValueChange={onSelect}
-    >
+    <Picker value={fontChoiceKey(choice)} onValueChange={onSelect}>
       <Picker.Trigger
         variant="button"
         chevron
@@ -272,6 +265,10 @@ export function AppearanceSettings() {
   const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+  // Enumeration takes seconds on a cold OS font cache but never blocks the main
+  // thread, so it starts with the page rather than with the picker: by the time
+  // the row is clicked the list is already there.
+  const systemFonts = useSystemFonts(!isLoading)
 
   const themeOptions: SegmentOption[] = THEME_OPTIONS.map((option) => ({
     value: option.value,
@@ -432,6 +429,7 @@ export function AppearanceSettings() {
         >
           <FontFamilyPicker
             choice={fontChoice}
+            systemFonts={systemFonts}
             onSelect={(...args) => void handleFontChoiceChange(...args)}
           />
         </SettingRow>
